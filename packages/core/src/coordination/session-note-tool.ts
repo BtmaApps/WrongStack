@@ -3,6 +3,11 @@
  * live agents. Not mailbox: nothing is persisted, other sessions never
  * see it, and `coordination.mail` is not required.
  *
+ * One exception: a note to the session LEADER that finds no live inbox (the
+ * leader finished its turn, or its loop is not running) falls back to durable
+ * mail, so a worker's result is never silently dropped. Any other recipient
+ * that is not live fails the call.
+ *
  * @module session-note-tool
  */
 
@@ -10,7 +15,9 @@ import type { Context } from '../core/context.js';
 import { resolveOwningSessionId } from '../core/context.js';
 import type { SessionNoteKind } from '../core/session-notes.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { Tool } from '../types/tool.js';
+import { type MailToolsOptions, makeMailSendTool } from './mail-tools.js';
 import { mailboxIdentityBase } from './mailbox-types.js';
 import { postSessionNote } from './session-note-hub.js';
 
@@ -20,7 +27,13 @@ function isKind(value: string): value is SessionNoteKind {
   return (KINDS as readonly string[]).includes(value);
 }
 
-export function makeSessionNoteTool(): Tool {
+/** Mailbox wiring for the leader fallback — same options as the mail tools. */
+export type SessionNoteToolOptions = MailToolsOptions;
+
+export function makeSessionNoteTool(opts: SessionNoteToolOptions = {}): Tool {
+  // Reuse mail_send wholesale so the fallback inherits its codec, send policy
+  // and owning-session affinity instead of re-implementing them.
+  const mailSend = makeMailSendTool(opts);
   return {
     name: 'session_note',
     description:
@@ -28,8 +41,10 @@ export function makeSessionNoteTool(): Tool {
       'Delivered at their next iteration. Use it for same-session talk ' +
       '(findings, a short ask, a steer). Durable mail remains ' +
       'the durable cross-session channel. to="leader" reaches the session ' +
-      'leader; to="@session" fans out to every other live agent in the session; ' +
-      'an exact agent id reaches one peer. You never receive your own note.',
+      'leader — if the leader is not live right now, the note is sent as durable mail ' +
+      'to that leader instead; to="@session" fans out to every other live agent in the session; ' +
+      'an exact agent id reaches one live peer (fails if it is not live — use mail_send). ' +
+      'You never receive your own note.',
     usageHint: 'session_note to="leader" kind="result" body="file:line — what it is"',
     category: 'Coordination',
     permission: 'auto',
@@ -60,7 +75,7 @@ export function makeSessionNoteTool(): Tool {
       const kindRaw = typeof rec['kind'] === 'string' ? rec['kind'].trim().toLowerCase() : 'note';
       const kind: SessionNoteKind = isKind(kindRaw) ? kindRaw : 'note';
       if (!to || !body.trim()) {
-        return { ok: false, delivered: 0, error: 'to and body are required' };
+        throw new ToolValidationError({ message: 'session_note: to and body are required.' });
       }
       const from =
         (typeof ctx.meta['globalAgentId'] === 'string' && ctx.meta['globalAgentId']) ||
@@ -77,7 +92,51 @@ export function makeSessionNoteTool(): Tool {
         body,
         subject,
       });
-      return { ok: delivered > 0, delivered, to, kind };
+      if (delivered > 0) return { delivered, to, kind, channel: 'session' };
+
+      const target = to.toLowerCase();
+      if (target === '@session' || target === '*' || target === 'all') {
+        // Nobody else is live in the session — a real "no audience" answer.
+        return { delivered: 0, to, kind, channel: 'session' };
+      }
+      if (mailboxIdentityBase(target) !== 'leader') {
+        throw new Error(
+          `session_note: "${to}" is not a live agent in this session. Use mail_send for durable delivery.`,
+        );
+      }
+      // The bare `leader` alias needs an owning-session stamp to be mailed
+      // safely: without one, mail_send cannot scope it, and the mail would be
+      // folded into EVERY leader on the project (other tabs, other sessions).
+      // Fail closed — mis-delivery is worse than a visible failure.
+      const owning = ctx.meta['sessionId'];
+      if (target === 'leader' && (typeof owning !== 'string' || owning.length === 0)) {
+        throw new Error(
+          'session_note: the leader is not live in this session, and this agent has no ' +
+            'owning-session stamp to address a mail fallback to the right leader.',
+        );
+      }
+      let mail: { messageId?: unknown; to?: unknown };
+      try {
+        mail = (await mailSend.execute(
+          { to, subject: subject ?? `[session_note] ${kind}`, body, type: kind },
+          ctx,
+        )) as { messageId?: unknown; to?: unknown };
+      } catch (err) {
+        throw new Error(
+          `session_note: the leader is not live in this session and the mail fallback failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+          { cause: err },
+        );
+      }
+      return {
+        delivered: 0,
+        to,
+        kind,
+        channel: 'mail',
+        messageId: mail.messageId,
+        mailTo: mail.to,
+      };
     },
   };
 }

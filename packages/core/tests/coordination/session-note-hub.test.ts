@@ -356,10 +356,21 @@ describe('session_note tool', () => {
       { to: 'leader', kind: 'result', body: 'map src/a.ts' },
       worker,
       { signal: new AbortController().signal },
-    )) as { ok: boolean; delivered: number };
-    expect(out.ok).toBe(true);
+    )) as { delivered: number; channel: string };
     expect(out.delivered).toBe(1);
+    expect(out.channel).toBe('session');
     expect(consumeSessionNotes(leader)[0]?.body).toBe('map src/a.ts');
     off();
+  });
+
+  it('throws on a missing recipient or body', async () => {
+    const tool = makeSessionNoteTool();
+    const exec = { signal: new AbortController().signal };
+    await expect(
+      tool.execute({ to: 'leader', body: '   ' }, makeCtx('worker-1'), exec),
+    ).rejects.toThrow(/to and body are required/);
+    await expect(tool.execute({ body: 'x' }, makeCtx('worker-1'), exec)).rejects.toThrow(
+      /to and body are required/,
+    );
   });
 });

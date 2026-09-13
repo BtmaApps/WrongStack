@@ -97,7 +97,7 @@ export function registerBuiltinTools(deps: RegisterBuiltinToolsDeps): void {
       makeMailSendTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),
       makeMailInboxTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),
       makeFleetStatusTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),
-      makeSessionNoteTool(),
+      makeSessionNoteTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),
     ],
     descriptionMode: deps.config.tools?.descriptionMode,
     resultRenderMode: deps.config.tools?.resultRenderMode,

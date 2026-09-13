@@ -91,7 +91,7 @@ describe('session_note from a worker with its own journal', () => {
     }
   });
 
-  it('still reaches nobody when it names a session no inbox is on', async () => {
+  it('fails closed (no mail fallback) when an unstamped worker names a session no inbox is on', async () => {
     const leader = makeCtx('leader', 'tab-1');
     const off = sessionNoteHub.register({
       sessionId: 'tab-1',
@@ -99,20 +99,113 @@ describe('session_note from a worker with its own journal', () => {
       aliases: ['leader'],
       deliver: (n) => enqueueSessionNote(leader, n),
     });
+    const sent: Record<string, unknown>[] = [];
     try {
       // No stamp: the writer is all there is, and it names the worker's own
       // journal. Fail-closed by design — mis-delivery is worse than silence.
       const worker = makeCtx('explore-companion-abc', 'sub-sess-9');
-      const out = (await makeSessionNoteTool().execute(
-        { to: 'leader', kind: 'result', body: 'lost' },
-        worker,
-        exec,
-      )) as { delivered: number };
-      expect(out.delivered).toBe(0);
+      // An unscoped "leader" mail would reach every leader on the project, so
+      // the fallback refuses and the call fails visibly instead of dropping.
+      await expect(
+        makeSessionNoteTool({ resolveMailbox: () => recordingMailbox(sent) }).execute(
+          { to: 'leader', kind: 'result', body: 'lost' },
+          worker,
+          exec,
+        ),
+      ).rejects.toThrow(/no owning-session stamp/);
+      expect(sent).toEqual([]);
       expect(consumeSessionNotes(leader)).toEqual([]);
     } finally {
       off();
     }
+  });
+});
+
+describe('session_note leader fallback to mail', () => {
+  it('delivers live — and sends no mail — when the leader inbox is registered', async () => {
+    const leader = makeCtx('leader', 'tab-1');
+    const off = sessionNoteHub.register({
+      sessionId: 'tab-1',
+      agentId: 'leader',
+      aliases: ['leader'],
+      deliver: (n) => enqueueSessionNote(leader, n),
+    });
+    const sent: Record<string, unknown>[] = [];
+    try {
+      const out = (await makeSessionNoteTool({
+        resolveMailbox: () => recordingMailbox(sent),
+      }).execute(
+        { to: 'leader', kind: 'result', body: 'live' },
+        makeCtx('worker-1', 'sub-sess-9', 'tab-1'),
+        exec,
+      )) as { delivered: number; channel: string };
+      expect(out).toMatchObject({ delivered: 1, channel: 'session' });
+      expect(sent).toEqual([]);
+    } finally {
+      off();
+    }
+  });
+
+  it('mails the owning leader when no leader inbox is live', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const out = (await makeSessionNoteTool({
+      resolveMailbox: () => recordingMailbox(sent),
+    }).execute(
+      { to: 'leader', kind: 'result', body: 'src/a.ts:12', subject: '[explore]' },
+      makeCtx('worker-1', 'sub-sess-9', 'tab-1'),
+      exec,
+    )) as { delivered: number; channel: string; messageId: string };
+    expect(out).toMatchObject({ delivered: 0, channel: 'mail', messageId: 'm1' });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: 'leader',
+      type: 'result',
+      subject: '[explore]',
+      body: 'src/a.ts:12',
+      // Scoped to the worker's own conversation, never every leader.
+      sessionAffinity: { sessionId: 'tab-1' },
+    });
+  });
+
+  it('fails the call when a non-leader recipient is not live (no silent drop, no mail)', async () => {
+    const sent: Record<string, unknown>[] = [];
+    await expect(
+      makeSessionNoteTool({ resolveMailbox: () => recordingMailbox(sent) }).execute(
+        { to: 'reviewer-1', body: 'ping' },
+        makeCtx('worker-1', 'sub-sess-9', 'tab-1'),
+        exec,
+      ),
+    ).rejects.toThrow(/not a live agent in this session/);
+    expect(sent).toEqual([]);
+  });
+
+  it('treats a session broadcast with no live peers as a real zero-audience answer', async () => {
+    const sent: Record<string, unknown>[] = [];
+    const out = (await makeSessionNoteTool({
+      resolveMailbox: () => recordingMailbox(sent),
+    }).execute(
+      { to: '@session', body: 'fyi' },
+      makeCtx('worker-1', 'sub-sess-9', 'tab-1'),
+      exec,
+    )) as { delivered: number; channel: string };
+    expect(out).toMatchObject({ delivered: 0, channel: 'session' });
+    expect(sent).toEqual([]);
+  });
+
+  it('surfaces a failed mail fallback as a failed call', async () => {
+    const failing = {
+      registerAgent: async () => {},
+      send: async () => {
+        throw new Error('mailbox daemon down');
+      },
+    } as unknown as Mailbox;
+    await expect(
+      makeSessionNoteTool({ resolveMailbox: () => failing }).execute(
+        { to: 'leader', body: 'x' },
+        makeCtx('worker-1', 'sub-sess-9', 'tab-1'),
+        exec,
+      ),
+    ).rejects.toThrow(/mail fallback failed: mailbox daemon down/);
   });
 });
 
