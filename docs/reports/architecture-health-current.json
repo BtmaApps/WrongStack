@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T09:17:40.898Z",
+  "generatedAt": "2026-09-13T11:46:49.450Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,23 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3773,
-    "testFiles": 3295,
-    "sourceLines": 915003,
+    "sourceFiles": 3782,
+    "testFiles": 3313,
+    "sourceLines": 919413,
     "workspaceEdges": 128,
-    "moduleEdges": 12049,
+    "moduleEdges": 12095,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 8,
+    "typeModuleCycles": 7,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 923
+    "testOnlyExports": 928
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)",
+    "ARCH-CYCLE-TYPE-11: exception no longer matches an active cycle",
+    "ARCH-CYCLE-TYPE-29: exception no longer matches an active cycle"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -103,7 +107,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 42,
-      "testFiles": 38,
+      "testFiles": 39,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -117,7 +121,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 38
+          "testFiles": 39
         }
       ]
     },
@@ -146,7 +150,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 493,
-      "testFiles": 485,
+      "testFiles": 487,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -185,7 +189,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 485
+          "testFiles": 487
         }
       ]
     },
@@ -215,8 +219,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 854,
-      "testFiles": 746,
+      "sourceFiles": 860,
+      "testFiles": 753,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +235,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 746
+          "testFiles": 753
         }
       ]
     },
@@ -437,7 +441,7 @@
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
       "sourceFiles": 83,
-      "testFiles": 124,
+      "testFiles": 125,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/plugin-sdk",
@@ -453,7 +457,7 @@
         {
           "path": "packages/plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 124
+          "testFiles": 125
         }
       ]
     },
@@ -662,7 +666,7 @@
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
       "sourceFiles": 97,
-      "testFiles": 69,
+      "testFiles": 70,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -683,7 +687,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 69
+          "testFiles": 70
         }
       ]
     },
@@ -735,7 +739,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 213,
-      "testFiles": 219,
+      "testFiles": 220,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,15 +755,15 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 219
+          "testFiles": 220
         }
       ]
     },
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 392,
-      "testFiles": 353,
+      "sourceFiles": 393,
+      "testFiles": 354,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +786,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 353
+          "testFiles": 354
         }
       ]
     },
@@ -813,7 +817,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 548,
-      "testFiles": 376,
+      "testFiles": 377,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -836,7 +840,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 376
+          "testFiles": 377
         }
       ]
     },
@@ -867,7 +871,7 @@
     {
       "name": "@wrongstack/webui-protocol",
       "dir": "packages/webui-protocol",
-      "sourceFiles": 16,
+      "sourceFiles": 17,
       "testFiles": 7,
       "workspaceDependencies": [
         "@wrongstack/core"
@@ -888,8 +892,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 226,
-      "testFiles": 212,
+      "sourceFiles": 227,
+      "testFiles": 215,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -915,7 +919,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 212
+          "testFiles": 215
         }
       ]
     },
@@ -985,6 +989,7 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/core/src/coordination/agent-subagent-runner.ts",
           "packages/core/src/coordination/agents/agent-prompts.ts",
           "packages/core/src/coordination/agents/index.ts",
           "packages/core/src/coordination/agents/phase1-discovery.ts",
@@ -1003,12 +1008,65 @@
           "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
           "packages/core/src/coordination/agents/project-agent-identity.ts",
           "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/delegation/delegation-tracker.ts",
+          "packages/core/src/coordination/delegation/run-delegation.ts",
+          "packages/core/src/coordination/director-basic-tools.ts",
+          "packages/core/src/coordination/director-collab-tools.ts",
+          "packages/core/src/coordination/director-host-contracts.ts",
+          "packages/core/src/coordination/director-mutation-test-tool.ts",
+          "packages/core/src/coordination/director-options.ts",
+          "packages/core/src/coordination/director-quality-gate-tool.ts",
+          "packages/core/src/coordination/director-session.ts",
+          "packages/core/src/coordination/director-spawn-model.ts",
+          "packages/core/src/coordination/director-tools.ts",
+          "packages/core/src/coordination/director.ts",
+          "packages/core/src/coordination/director/director-toolset.ts",
           "packages/core/src/coordination/dispatcher.ts",
+          "packages/core/src/coordination/fleet-manager.ts",
+          "packages/core/src/coordination/fleet-spawn.ts",
           "packages/core/src/coordination/fleet.ts",
+          "packages/core/src/coordination/model-matrix.ts",
+          "packages/core/src/coordination/model-tier.ts",
           "packages/core/src/coordination/multi-agent-coordinator.ts",
+          "packages/core/src/core/agent-internals.ts",
+          "packages/core/src/core/agent-loop-context.ts",
+          "packages/core/src/core/agent-loop-detector.ts",
+          "packages/core/src/core/agent-loop.ts",
+          "packages/core/src/core/agent-response.ts",
+          "packages/core/src/core/agent-tools.ts",
+          "packages/core/src/core/agent-types.ts",
+          "packages/core/src/core/agent.ts",
+          "packages/core/src/core/fallback-model.ts",
+          "packages/core/src/execution/eternal-autonomy-types.ts",
+          "packages/core/src/execution/eternal-autonomy.ts",
           "packages/core/src/execution/parallel-eternal-engine.ts",
+          "packages/core/src/extension/extension-points.ts",
+          "packages/core/src/extension/registry.ts",
+          "packages/core/src/kernel/tokens.ts",
+          "packages/core/src/leader-delivery-attach.ts",
+          "packages/core/src/mailbox-attach.ts",
+          "packages/core/src/session-note-attach.ts",
+          "packages/core/src/storage/file-session-writer.ts",
+          "packages/core/src/storage/session-checkpoint-gc.ts",
+          "packages/core/src/storage/session-resume-validation.ts",
+          "packages/core/src/storage/session-store.ts",
+          "packages/core/src/storage/session-store/create-session.ts",
+          "packages/core/src/storage/session-store/delete-session-artifacts.ts",
+          "packages/core/src/storage/session-store/load-session.ts",
+          "packages/core/src/storage/session-store/prune-helpers.ts",
+          "packages/core/src/storage/session-store/rename-session.ts",
+          "packages/core/src/storage/session-store/resume-session.ts",
+          "packages/core/src/storage/session-store/session-archive.ts",
+          "packages/core/src/storage/session-store/summary-manifest.ts",
+          "packages/core/src/storage/session-write-buffer.ts",
+          "packages/core/src/storage/session-writer-checkpoint.ts",
+          "packages/core/src/storage/session-writer-rewind.ts",
+          "packages/core/src/storage/session-writer-snapshot.ts",
           "packages/core/src/types/autonomy.ts",
-          "packages/core/src/types/index.ts"
+          "packages/core/src/types/index.ts",
+          "packages/core/src/types/plugin.ts",
+          "packages/core/src/utils/context-breakdown.ts",
+          "packages/core/src/utils/index.ts"
         ]
       },
       {
@@ -1019,24 +1077,6 @@
           "packages/core/src/kernel/events.ts",
           "packages/core/src/kernel/events/brain-events.ts",
           "packages/core/src/kernel/events/session-events.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/core/src/core/agent-internals.ts",
-          "packages/core/src/core/agent-loop-context.ts",
-          "packages/core/src/core/agent-loop-detector.ts",
-          "packages/core/src/core/agent-loop.ts",
-          "packages/core/src/core/agent-response.ts",
-          "packages/core/src/core/agent-tools.ts",
-          "packages/core/src/core/agent-types.ts",
-          "packages/core/src/core/agent.ts",
-          "packages/core/src/extension/extension-points.ts",
-          "packages/core/src/extension/registry.ts",
-          "packages/core/src/mailbox-attach.ts",
-          "packages/core/src/session-note-attach.ts",
-          "packages/core/src/types/plugin.ts"
         ]
       },
       {
@@ -1077,14 +1117,96 @@
     "matchedExceptions": [
       "ARCH-CYCLE-TYPE-05",
       "ARCH-CYCLE-TYPE-09",
-      "ARCH-CYCLE-TYPE-11",
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-13",
       "ARCH-CYCLE-TYPE-14",
-      "ARCH-CYCLE-TYPE-29",
       "ARCH-CYCLE-TYPE-30"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/core/src/coordination/agent-subagent-runner.ts",
+          "packages/core/src/coordination/agents/agent-prompts.ts",
+          "packages/core/src/coordination/agents/index.ts",
+          "packages/core/src/coordination/agents/phase1-discovery.ts",
+          "packages/core/src/coordination/agents/phase2-planning.ts",
+          "packages/core/src/coordination/agents/phase3-build.ts",
+          "packages/core/src/coordination/agents/phase3-wave1-platform.ts",
+          "packages/core/src/coordination/agents/phase3-wave2-meta.ts",
+          "packages/core/src/coordination/agents/phase4-verify.ts",
+          "packages/core/src/coordination/agents/phase5-review.ts",
+          "packages/core/src/coordination/agents/phase6-domain.ts",
+          "packages/core/src/coordination/agents/phase7-knowledge.ts",
+          "packages/core/src/coordination/agents/phase8-delivery.ts",
+          "packages/core/src/coordination/agents/phase8-wave3-products.ts",
+          "packages/core/src/coordination/agents/phase9-meta.ts",
+          "packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts",
+          "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
+          "packages/core/src/coordination/agents/project-agent-identity.ts",
+          "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/delegation/delegation-tracker.ts",
+          "packages/core/src/coordination/delegation/run-delegation.ts",
+          "packages/core/src/coordination/director-basic-tools.ts",
+          "packages/core/src/coordination/director-collab-tools.ts",
+          "packages/core/src/coordination/director-host-contracts.ts",
+          "packages/core/src/coordination/director-mutation-test-tool.ts",
+          "packages/core/src/coordination/director-options.ts",
+          "packages/core/src/coordination/director-quality-gate-tool.ts",
+          "packages/core/src/coordination/director-session.ts",
+          "packages/core/src/coordination/director-spawn-model.ts",
+          "packages/core/src/coordination/director-tools.ts",
+          "packages/core/src/coordination/director.ts",
+          "packages/core/src/coordination/director/director-toolset.ts",
+          "packages/core/src/coordination/dispatcher.ts",
+          "packages/core/src/coordination/fleet-manager.ts",
+          "packages/core/src/coordination/fleet-spawn.ts",
+          "packages/core/src/coordination/fleet.ts",
+          "packages/core/src/coordination/model-matrix.ts",
+          "packages/core/src/coordination/model-tier.ts",
+          "packages/core/src/coordination/multi-agent-coordinator.ts",
+          "packages/core/src/core/agent-internals.ts",
+          "packages/core/src/core/agent-loop-context.ts",
+          "packages/core/src/core/agent-loop-detector.ts",
+          "packages/core/src/core/agent-loop.ts",
+          "packages/core/src/core/agent-response.ts",
+          "packages/core/src/core/agent-tools.ts",
+          "packages/core/src/core/agent-types.ts",
+          "packages/core/src/core/agent.ts",
+          "packages/core/src/core/fallback-model.ts",
+          "packages/core/src/execution/eternal-autonomy-types.ts",
+          "packages/core/src/execution/eternal-autonomy.ts",
+          "packages/core/src/execution/parallel-eternal-engine.ts",
+          "packages/core/src/extension/extension-points.ts",
+          "packages/core/src/extension/registry.ts",
+          "packages/core/src/kernel/tokens.ts",
+          "packages/core/src/leader-delivery-attach.ts",
+          "packages/core/src/mailbox-attach.ts",
+          "packages/core/src/session-note-attach.ts",
+          "packages/core/src/storage/file-session-writer.ts",
+          "packages/core/src/storage/session-checkpoint-gc.ts",
+          "packages/core/src/storage/session-resume-validation.ts",
+          "packages/core/src/storage/session-store.ts",
+          "packages/core/src/storage/session-store/create-session.ts",
+          "packages/core/src/storage/session-store/delete-session-artifacts.ts",
+          "packages/core/src/storage/session-store/load-session.ts",
+          "packages/core/src/storage/session-store/prune-helpers.ts",
+          "packages/core/src/storage/session-store/rename-session.ts",
+          "packages/core/src/storage/session-store/resume-session.ts",
+          "packages/core/src/storage/session-store/session-archive.ts",
+          "packages/core/src/storage/session-store/summary-manifest.ts",
+          "packages/core/src/storage/session-write-buffer.ts",
+          "packages/core/src/storage/session-writer-checkpoint.ts",
+          "packages/core/src/storage/session-writer-rewind.ts",
+          "packages/core/src/storage/session-writer-snapshot.ts",
+          "packages/core/src/types/autonomy.ts",
+          "packages/core/src/types/index.ts",
+          "packages/core/src/types/plugin.ts",
+          "packages/core/src/utils/context-breakdown.ts",
+          "packages/core/src/utils/index.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -1378,6 +1500,12 @@
       },
       {
         "file": "packages/acp/tests/security-hardening.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/server-agent-turn-delivery-notice.test.ts",
         "projects": [
           "root-node"
         ]
@@ -1876,6 +2004,12 @@
       },
       {
         "file": "packages/cli/tests/architecture/kanban-governance-hosts.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/architecture/leader-auto-wake-single-controller.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3568,6 +3702,12 @@
       },
       {
         "file": "packages/cli/tests/security-command-adapter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/session-event-wiring-delegation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5397,6 +5537,18 @@
         ]
       },
       {
+        "file": "packages/core/tests/coordination/delegate-background.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/delegate-no-session-fallback.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/coordination/delegate-timeout-e2e.test.ts",
         "projects": [
           "root-node"
@@ -5500,6 +5652,12 @@
       },
       {
         "file": "packages/core/tests/coordination/director-spawn-idle-override.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/director-task-registry-ownership.test.ts",
         "projects": [
           "root-node"
         ]
@@ -5638,6 +5796,18 @@
       },
       {
         "file": "packages/core/tests/coordination/large-answer-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/leader-auto-wake.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/coordination/leader-delivery-hub.test.ts",
         "projects": [
           "root-node"
         ]
@@ -6094,6 +6264,12 @@
       },
       {
         "file": "packages/core/tests/core/agent-input-dedup.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/core/agent-loop-delegation-delivery.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8158,6 +8334,12 @@
       },
       {
         "file": "packages/core/tests/storage/goal-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/in-project-fleet-delegate-denied.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11085,6 +11267,12 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/todo-tracker-fault-injection.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/todo-tracker.test.ts",
         "projects": [
           "root-node"
@@ -12717,6 +12905,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/delegation-auto-wake.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/error-boundary.test.tsx",
         "projects": [
           "root-node"
@@ -14181,6 +14375,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/kanban-error-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/kanban-evidence-bridge.test.ts",
         "projects": [
           "root-node"
@@ -15610,6 +15810,12 @@
       },
       {
         "file": "packages/tui/tests/layout-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/leader-auto-wake-host.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17745,6 +17951,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/leader-auto-wake-host.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/lifecycle.test.ts",
         "projects": [
           "root-node"
@@ -18189,6 +18401,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/session-agent-registry-leader-id.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/session-catalog-connections.test.ts",
         "projects": [
           "root-node"
@@ -18214,6 +18432,12 @@
       },
       {
         "file": "packages/webui-server/tests/session-delete-tab-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/session-displayed-auto-wake.test.ts",
         "projects": [
           "root-node"
         ]
@@ -19629,6 +19853,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/hooks/delegation-auto-wake-notices.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/hooks/error-frame-lane-routing.test.ts",
         "projects": [
           "webui-jsdom"
@@ -20956,6 +21186,11 @@
   "nonCommandSlashImports": [],
   "hotspotCandidates": [
     {
+      "file": "packages/acp/src/agent/server-agent-turn.ts",
+      "lines": 804,
+      "relativeImports": 2
+    },
+    {
       "file": "packages/acp/src/client/acp-session.ts",
       "lines": 890,
       "relativeImports": 19
@@ -20967,7 +21202,7 @@
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "lines": 828,
+      "lines": 837,
       "relativeImports": 1
     },
     {
@@ -20982,7 +21217,7 @@
     },
     {
       "file": "packages/cli/src/execution.ts",
-      "lines": 906,
+      "lines": 941,
       "relativeImports": 43
     },
     {
@@ -21037,7 +21272,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 1012,
+      "lines": 1048,
       "relativeImports": 21
     },
     {
@@ -21061,9 +21296,9 @@
       "relativeImports": 10
     },
     {
-      "file": "packages/core/src/coordination/delegate-tool.ts",
-      "lines": 1077,
-      "relativeImports": 11
+      "file": "packages/core/src/coordination/delegation/run-delegation.ts",
+      "lines": 1130,
+      "relativeImports": 9
     },
     {
       "file": "packages/core/src/coordination/director-tools.ts",
@@ -21072,13 +21307,18 @@
     },
     {
       "file": "packages/core/src/coordination/director.ts",
-      "lines": 1069,
+      "lines": 1108,
       "relativeImports": 43
     },
     {
       "file": "packages/core/src/coordination/fleet-supervisor.ts",
       "lines": 971,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/core/src/coordination/index.ts",
+      "lines": 840,
+      "relativeImports": 99
     },
     {
       "file": "packages/core/src/coordination/sqlite-mailbox.ts",
@@ -21157,12 +21397,12 @@
     },
     {
       "file": "packages/core/src/types/session.ts",
-      "lines": 1003,
+      "lines": 1034,
       "relativeImports": 4
     },
     {
       "file": "packages/core/src/utils/tool-output-serializer.ts",
-      "lines": 915,
+      "lines": 925,
       "relativeImports": 0
     },
     {
@@ -21256,6 +21496,11 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/plugins/src/todo-tracker/index.ts",
+      "lines": 904,
+      "relativeImports": 0
+    },
+    {
       "file": "packages/primitives/src/regex-ambiguity.ts",
       "lines": 843,
       "relativeImports": 0
@@ -21307,7 +21552,7 @@
     },
     {
       "file": "packages/simpleui/src/lib/message-handler.ts",
-      "lines": 868,
+      "lines": 931,
       "relativeImports": 18
     },
     {
@@ -21361,6 +21606,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/tools/src/kanban-lifecycle-actions.ts",
+      "lines": 930,
+      "relativeImports": 6
+    },
+    {
       "file": "packages/tools/src/pwsh.ts",
       "lines": 847,
       "relativeImports": 8
@@ -21376,14 +21626,19 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/tui/src/app-props.ts",
+      "lines": 808,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/tui/src/app-state.ts",
       "lines": 1017,
       "relativeImports": 14
     },
     {
       "file": "packages/tui/src/app.tsx",
-      "lines": 967,
-      "relativeImports": 58
+      "lines": 981,
+      "relativeImports": 59
     },
     {
       "file": "packages/tui/src/components/agents-monitor.tsx",
@@ -21402,7 +21657,7 @@
     },
     {
       "file": "packages/tui/src/components/history/utils.tsx",
-      "lines": 1035,
+      "lines": 1038,
       "relativeImports": 17
     },
     {
@@ -21628,24 +21883,24 @@
       "relativeImports": 17
     },
     {
+      "file": "packages/core/src/coordination/delegation/run-delegation.ts",
+      "lines": 1130,
+      "relativeImports": 9
+    },
+    {
       "file": "apps/desktop/src/main/runtime-manager.ts",
       "lines": 1119,
       "relativeImports": 4
     },
     {
+      "file": "packages/core/src/coordination/director.ts",
+      "lines": 1108,
+      "relativeImports": 43
+    },
+    {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
       "lines": 1078,
       "relativeImports": 52
-    },
-    {
-      "file": "packages/core/src/coordination/delegate-tool.ts",
-      "lines": 1077,
-      "relativeImports": 11
-    },
-    {
-      "file": "packages/core/src/coordination/director.ts",
-      "lines": 1069,
-      "relativeImports": 43
     },
     {
       "file": "packages/plugins/src/git-autocommit/index.ts",
@@ -21688,6 +21943,11 @@
       "relativeImports": 9
     },
     {
+      "file": "packages/cli/src/webui-server.ts",
+      "lines": 1048,
+      "relativeImports": 21
+    },
+    {
       "file": "packages/plugins/src/path-guard/shell-targets.ts",
       "lines": 1048,
       "relativeImports": 1
@@ -21718,14 +21978,19 @@
       "relativeImports": 1
     },
     {
+      "file": "packages/tui/src/components/history/utils.tsx",
+      "lines": 1038,
+      "relativeImports": 17
+    },
+    {
       "file": "packages/tui/src/components/kanban-panel.tsx",
       "lines": 1036,
       "relativeImports": 4
     },
     {
-      "file": "packages/tui/src/components/history/utils.tsx",
-      "lines": 1035,
-      "relativeImports": 17
+      "file": "packages/core/src/types/session.ts",
+      "lines": 1034,
+      "relativeImports": 4
     },
     {
       "file": "packages/cli/src/plugin-management.ts",
@@ -21788,11 +22053,6 @@
       "relativeImports": 13
     },
     {
-      "file": "packages/cli/src/webui-server.ts",
-      "lines": 1012,
-      "relativeImports": 21
-    },
-    {
       "file": "packages/core/src/execution/brain-runtime.ts",
       "lines": 1007,
       "relativeImports": 14
@@ -21806,11 +22066,6 @@
       "file": "packages/tui/src/kanban-slash.ts",
       "lines": 1005,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/core/src/types/session.ts",
-      "lines": 1003,
-      "relativeImports": 4
     },
     {
       "file": "packages/kanban/src/types.ts",
@@ -21848,6 +22103,11 @@
       "relativeImports": 15
     },
     {
+      "file": "packages/tui/src/app.tsx",
+      "lines": 981,
+      "relativeImports": 59
+    },
+    {
       "file": "packages/webui/src/components/KanbanTaskInspector.tsx",
       "lines": 980,
       "relativeImports": 16
@@ -21866,11 +22126,6 @@
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
       "lines": 973,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/core/src/coordination/fleet-supervisor.ts",
-      "lines": 971,
-      "relativeImports": 6
     }
   ],
   "testOnlyExports": [
@@ -22631,8 +22886,8 @@
       "name": "DEFAULT_MAX_TARGET_FILES"
     },
     {
-      "file": "packages/core/src/coordination/delegate-tool.ts",
-      "name": "hintForKind"
+      "file": "packages/core/src/coordination/delegation/run-delegation.ts",
+      "name": "readSubagentPartial"
     },
     {
       "file": "packages/core/src/coordination/fleet.ts",
@@ -22881,6 +23136,10 @@
     {
       "file": "packages/core/src/infrastructure/provider-cache-ledger.ts",
       "name": "RECENT_HIT_RATIO_WINDOW"
+    },
+    {
+      "file": "packages/core/src/leader-delivery-attach.ts",
+      "name": "isLeaderAgentId"
     },
     {
       "file": "packages/core/src/mailbox-attach.ts",
@@ -23599,6 +23858,14 @@
       "name": "parseConventional"
     },
     {
+      "file": "packages/plugins/src/todo-tracker/index.ts",
+      "name": "createTodoTrackerPlugin"
+    },
+    {
+      "file": "packages/plugins/src/todo-tracker/index.ts",
+      "name": "deriveProjectSlug"
+    },
+    {
       "file": "packages/plugins/src/token-throttle/index.ts",
       "name": "computeThrottleDelay"
     },
@@ -23797,6 +24064,10 @@
     {
       "file": "packages/simpleui/src/lib/agent-model.ts",
       "name": "parseAgentSessionReplays"
+    },
+    {
+      "file": "packages/simpleui/src/lib/message-handler.ts",
+      "name": "delegationNoticeText"
     },
     {
       "file": "packages/simpleui/src/lib/model-catalog-view.ts",
@@ -24525,6 +24796,10 @@
     {
       "file": "packages/tui/src/hooks/use-history-auto-scroll.ts",
       "name": "HISTORY_AUTO_SCROLL_DELAY_MS"
+    },
+    {
+      "file": "packages/tui/src/hooks/use-leader-auto-wake.ts",
+      "name": "createTuiLeaderWakePort"
     },
     {
       "file": "packages/tui/src/hooks/use-mode-picker.ts",

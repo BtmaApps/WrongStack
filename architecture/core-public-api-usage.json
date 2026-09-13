@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 315,
-      "typeOnly": 251,
+      "files": 317,
+      "typeOnly": 253,
       "runtimeOrMixed": 81
     },
     "@wrongstack/core/agent-catalog": {
@@ -19,9 +19,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/coordination": {
-      "files": 217,
+      "files": 222,
       "typeOnly": 84,
-      "runtimeOrMixed": 188
+      "runtimeOrMixed": 195
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 43
     },
     "@wrongstack/core/kernel": {
-      "files": 267,
-      "typeOnly": 140,
-      "runtimeOrMixed": 140
+      "files": 270,
+      "typeOnly": 141,
+      "runtimeOrMixed": 142
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -124,9 +124,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/registry": {
-      "files": 128,
+      "files": 129,
       "typeOnly": 62,
-      "runtimeOrMixed": 68
+      "runtimeOrMixed": 69
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/types": {
-      "files": 1092,
-      "typeOnly": 1012,
-      "runtimeOrMixed": 284
+      "files": 1095,
+      "typeOnly": 980,
+      "runtimeOrMixed": 324
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 587,
+      "files": 584,
       "typeOnly": 55,
-      "runtimeOrMixed": 560
+      "runtimeOrMixed": 557
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -253,6 +253,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/acp/src/agent/server-agent-turn.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/acp/tests/server-agent-turn-delivery-notice.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -1452,6 +1458,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/kanban-error-contract.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/kanban-evidence-bridge.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -2443,8 +2455,8 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/execution.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -2707,6 +2719,12 @@
     {
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/subagent-models/panel-service.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/subcommands/handlers/acp.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -3266,7 +3284,7 @@
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/tui/src/app-props.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3336,6 +3354,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/src/hooks/use-leader-auto-wake.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/tui/src/hooks/use-session-rewind.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -3393,6 +3417,12 @@
       "file": "packages/tui/tests/agents-monitor.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/tests/leader-auto-wake-host.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -3504,6 +3534,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/src/server/leader-auto-wake-host.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/src/server/mailbox-handlers.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3591,6 +3627,12 @@
       "file": "packages/webui-server/tests/http-server.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/leader-auto-wake-host.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -5497,8 +5539,8 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -6648,6 +6690,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/src/hooks/use-leader-auto-wake.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/tui/src/hooks/use-subagent-events.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6828,6 +6876,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/src/server/leader-auto-wake-host.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/src/server/mailbox-handlers.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -6967,6 +7021,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/webui-server/tests/collaboration-ws-handler.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/webui-server/tests/leader-auto-wake-host.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -8143,6 +8203,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/stdio-fault-soak.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/plugins/tests/todo-tracker.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13142,7 +13208,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/src/tools/codebase-lsp-search.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13285,8 +13351,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/accessibility-auditor/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13303,8 +13369,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/auto-doc/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13315,8 +13381,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/auto-i18n-extractor/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13333,20 +13399,20 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/changelog-writer/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/checkpoint/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/code-metrics/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13363,8 +13429,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/context-pins/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13375,14 +13441,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/cron/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/dead-code-detector/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13411,8 +13477,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13429,14 +13495,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/feature-flag-tracker/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/file-watcher/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13447,14 +13513,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/git-autocommit/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/gitignore-guard/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13471,14 +13537,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/interface-contract-guard/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/knowledge-graph/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13507,8 +13573,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/migration-planner/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13519,8 +13585,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/notify-hub/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13531,8 +13597,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/performance-regression-gate/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13543,8 +13609,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/pr-drafter/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13561,8 +13627,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/refactor-suggester/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13579,26 +13645,26 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/secret-scanner/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/security-hotspot-scanner/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/semantic-search-indexer/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/semver-bump/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13609,14 +13675,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/shell-check/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/smart-rename/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13627,8 +13693,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/template-engine/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13639,14 +13705,14 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/test-flake-detector/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/test-generator/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13663,8 +13729,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/todo-tracker/index.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15104,7 +15170,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/clarify.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15139,8 +15205,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15182,7 +15248,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15254,13 +15320,19 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/json.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/kanban-board-actions.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/src/kanban-tool-results.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15325,8 +15397,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/mode.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15482,7 +15554,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/tests/clarify-tool.test.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 3
+      "runtimeOrMixed": 4
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15501,6 +15573,12 @@
       "file": "packages/tools/tests/install.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/kanban-error-contract.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15721,6 +15799,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/hooks/use-initial-prompt.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/hooks/use-leader-auto-wake.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -19296,6 +19380,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/tests/todo-tracker-fault-injection.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/providers/src/_tool-input.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19794,12 +19884,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/codebase-index/codebase-context-tool.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19818,19 +19902,7 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/tools/src/codebase-index/codebase-invariant-check-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/codebase-index/codebase-outgoing-calls-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20019,12 +20091,6 @@
       "file": "packages/tools/src/search.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/tools/src/security-ast-scan-tool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

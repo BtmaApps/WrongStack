@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ToolRegistry } from '@wrongstack/core';
+import { ToolRegistry } from '@wrongstack/core/registry';
 import todoTrackerPlugin, { createTodoTrackerPlugin, deriveProjectSlug } from '../src/todo-tracker';
 
 function corruptSiblings(): string[] {

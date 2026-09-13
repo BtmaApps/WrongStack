@@ -654,6 +654,7 @@
         "export type { TaskAuctionOptions, TaskBid, } from './task-auctioneer.js';",
         "export { ACP_AGENTS, ALL_FLEET_AGENTS, AUDIT_LOG_AGENT, applyRosterBudget, BUG_HUNTER_AGENT, FLEET_ROSTER, FLEET_ROSTER_BUDGETS, FLEET_ROSTER_WITHACP, type FleetRosterBudget, GENERIC_AGENT, REFACTOR_PLANNER_AGENT, SECURITY_SCANNER_AGENT, } from './fleet.js';",
         "export { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentBudgetTier, type AgentCapability, type AgentDefinition, type AgentPhase, ALL_AGENT_DEFINITIONS, type AutoOptimizeDecision, type AutoOptimizeEvent, type AutoOptimizePolicy, type AutoOptimizePolicyOverrides, applyProjectAgentConfig, assertProjectAgentRole, BUILD_AGENTS, buildConsolidationInstruction, buildProjectContextualizedPrompt, buildSkillDistillInstruction, CAPTURE_COOLDOWN_MS, CAPTURE_MAX_PER_SESSION, CAPTURE_SESSION_WINDOW_MS, type ConsolidationMetadata, type CreateProjectAgentInput, canCaptureNewLearned, captureLearnedFromAgentOutput, captureLearnedFromAgentOutputDetailed, clearProjectAgentConsolidated, clearProjectSkillAugmentation, consolidatedDocumentPath, createProjectAgent, createProjectAgentRoster, DEFAULT_AUTO_OPTIMIZE_POLICY, DEFAULT_EAGER_SKILL_LIMIT, DELIVERY_AGENTS, DIRECTIVE_QUARANTINE_MAX_UTILITY, DIRECTIVE_QUARANTINE_MIN_APPLIED, DISCOVERY_AGENTS, type DirectiveOutcomeResult, DOMAIN_AGENTS, detectLearnedConflicts, directiveTrials, directiveUtility, directiveWasApplied, evaluateAutoOptimize, getAgentDefinition, getProjectAgentLearnStats, HEAVY_BUDGET, hintLearnedNeedsSummarization, isConsolidated, isProvenDirective, KNOWLEDGE_AGENTS, LEARNED_HARD_LIMIT, LEARNED_SOFT_LIMIT, type LearnedCaptureResult, LearningOptimizationScheduler, type LearningOptimizationSchedulerOptions, type LearningOptimizerLlm, LIGHT_BUDGET, listProjectAgentLearnedEntries, listProjectAgentRoles, listProjectSkillAugmentations, loadConsolidationMetadata, loadProjectAgentConfig, loadProjectAgentConsolidated, loadProjectAgentIdentity, loadProjectAgentLearned, loadProjectAgentLearningPolicy, loadProjectAgentProfile, loadProjectSkillAugmentation, loadRoleKnowledgeManifest, loadSkillAffinity, MEDIUM_BUDGET, META_AGENTS, type OptimizeLearningOptions, type OptimizeLearningResult, optimizeProjectAgentLearning, PLANNING_AGENTS, type ProjectAgentConfig, type ProjectAgentLearningPolicy, type ProjectAgentProfile, type QuarantinedDirective, quarantinePath, REVIEW_AGENTS, type RoleKnowledgeManifest, rankRoleSkills, readQuarantinedDirectives, readRawLearnedEntries, recordDirectiveOutcomes, recordSkillLoad, recordSkillOutcome, refreshProjectAgentIdentity, renderSkillAugmentation, resetCaptureWindow, resetCaptureWindows, resetProjectAgentIdentity, resolveAutoOptimizePolicy, resolveRoleSkillCandidates, retiredDirectivesToWarnAbout, routeDirectiveToSkill, type SaveConsolidationOptions, SKILL_AUGMENTATION_MAX_BYTES, type SkillAffinity, type SkillAffinityEntry, saveProjectAgentConsolidated, saveProjectSkillAugmentation, scoreSkillAffinity, scrubRetiredLines, setSkillPinned, slugifyProjectAgentRole, unwrapWholeDocumentFence, updateProjectAgentConfig, updateProjectAgentIdentity, updateProjectAgentKnowledge, updateProjectAgentLearned, updateProjectAgentLearningPolicy, VERIFY_AGENTS, validateProjectAgentConfig, } from './agents/index.js';",
+        "export { AUTO_WAKE_MARKER, buildAutoWakePrompt, DEFAULT_AUTO_WAKE_DEBOUNCE_MS, DEFAULT_MAX_CHAINED_WAKES, DEFAULT_MIN_WAKE_INTERVAL_MS, type LeaderAutoWakeConfig, LeaderAutoWakeController, type LeaderAutoWakeControllerOptions, type LeaderAutoWakeStartedEvent, type LeaderAutoWakeSuppressedEvent, type LeaderAutoWakeSuppressedReason, type LeaderWakeDecision, type LeaderWakePort, } from './delegation/leader-auto-wake.js';",
         "export { AdaptiveConcurrencyController, type AdaptiveConcurrencyState, } from './adaptive-concurrency.js';",
         "export { AgentStatusTracker, type AgentStatusTrackerOptions, } from './agent-status-tracker.js';",
         "export { AutonomousBrain } from './autonomous-brain.js';",
@@ -665,6 +666,7 @@
         "export { ConsensusProtocol } from './consensus-protocol.js';",
         "export { DEFAULT_DISPATCH_ROLE, type DispatchCandidate, type DispatchClassifier, type DispatchMethod, type DispatchOptions, type DispatchResult, dispatchAgent, makeLLMClassifier, scoreAgents, } from './dispatcher.js';",
         "export { DEFAULT_MAX_FLEET_SPAWNS, HARD_MAX_SPAWN_DEPTH, resolveMaxSpawnDepth, } from './spawn-budget.js';",
+        "export { DELEGATION_RESULT_MARKER, type DelegationDeliveryPayload, delegationDeliveryId, type LeaderDelivery, LeaderDeliveryHub, type LeaderDeliveryPendingEvent, leaderDeliveryHub, renderLeaderDeliveryBlock, } from './delegation/leader-delivery-hub.js';",
         "export { DEPENDENCY_FILE_PATTERNS, type DependencyWatcherConfig, type DepWatchEntry, makeDependencyWatcherConfig, } from './dep-watcher.js';",
         "export { DefaultMultiAgentCoordinator, type MultiAgentCoordinatorOptions, } from './multi-agent-coordinator.js';",
         "export { Director, FleetCostCapError, FleetSpawnBudgetError, FleetTokenCapError, type TaskResultNotification, } from './director.js';",
@@ -688,6 +690,7 @@
         "export { assignNickname } from './subagent-nicknames.js';",
         "export { attachDepWatcherBridge, type DepWatcherBridgeOptions, } from './dep-watcher-bridge.js';",
         "export { authorizeMailboxBearerToken, authorizePersistedMailboxCredential, createMailboxHttpRouter, MAILBOX_HTTP_DEFAULT_MAX_AGE_MS, MAILBOX_HTTP_MAX_AGE_CEILING_MS, MAILBOX_HTTP_MAX_BODY_BYTES, MAILBOX_HTTP_RATE_LIMIT_PER_MINUTE, MAILBOX_HTTP_RATE_LIMIT_WINDOW_MS, type MailboxHttpAccessDecision, MailboxHttpRateLimiter, type MailboxHttpRouter, type MailboxHttpRouterOptions, } from './mailbox-http-router.js';",
+        "export { buildDelegationResultExcerpt, type DelegateInput, type DelegateMode, type DelegateResult, makeDelegateCompletedEmitter, } from './delegation/run-delegation.js';",
         "export { buildDirectorToolset } from './director/director-toolset.js';",
         "export { buildDownAlert, buildRecoveryAlert, type DownAlertInput, MAILBOX_HEALTH_DEFAULT_FAILURE_THRESHOLD, MAILBOX_HEALTH_DEFAULT_FROM, MAILBOX_HEALTH_DEFAULT_INTERVAL_MS, MAILBOX_HEALTH_DEFAULT_TIMEOUT_MS, type MailboxHealthEvent, MailboxHealthWatchdog, type MailboxHealthWatchdogOptions, type RecoveryAlertInput, validateWatchdogOptions, type WatchdogConfig, } from './mailbox-health.js';",
         "export { buildProbeTaskText, DEFAULT_EXPLORE_COMPANION_AGENT_ID, DEFAULT_EXPLORE_EDIT_TOOLS, DEFAULT_EXPLORE_SEARCH_TOOLS, DEFAULT_MAILBOX_POLL_INTERVAL_MS, DEFAULT_MAX_PENDING_PROBES, DEFAULT_PROBE_COOLDOWN_MS, ExploreCompanion, type ExploreCompanionOptions, type ExploreCompanionSignalToggles, type ExploreCompanionTunables, type ExploreProbe, type ExploreProbeSource, } from './explore-companion.js';",
@@ -700,6 +703,7 @@
         "export { createProjectMailbox, getSharedProjectMailbox, type ProjectMailboxOptions, RemoteMailbox, } from './remote-mailbox.js';",
         "export { detectEcosystem, getFullPackageLog, getManifestPackages, getPackageAuthor, getPackagesByAgent, type PackageAuthorEntry, type PackageAuthorLog, type PackageAuthorTrackerOptions, recordPackageAction, updatePackageOutdatedStatus, } from './package-author-tracker.js';",
         "export { evaluateLeaderTierSwitch, evaluateSwitchEconomics, type LeaderTierRefusalCode, type LeaderTierSwitchRequest, type LeaderTierVerdict, leaderTierPolicy, type ResolvedLeaderTierPolicy, type TierModelEconomics, tierRank, } from './model-tier-leader.js';",
+        "export { findDelegationForTask, markDelegationDelivered, noteLeaderConsumedTask, type TrackedDelegationInfo, } from './delegation/delegation-lookup.js';",
         "export { formatSubagentStructuredReport, MAX_SUBAGENT_STRUCTURED_REPORT_CHARS, makeSubagentResultTool, normalizeSubagentStructuredReport, readSubagentStructuredReport, SUBAGENT_STRUCTURED_REPORT_META_KEY, } from './subagent-result-tool.js';",
         "export { isMailboxLeader, isMailboxMessageVisibleTo, MAILBOX_TYPE_PROPERTIES, mailboxIdentityBase, normalizeRecipient, SESSION_RECIPIENT_PREFIX, sessionRecipient, } from './mailbox-types.js';",
         "export { isMailboxProjectServerAvailable, MailboxProjectServerConnection, type MailboxProjectServerConnectionState, } from './mailbox-project-server-client.js';",
@@ -724,6 +728,7 @@
         "export { type CollabBusState, CollaborationBus, type ConsumedInjectionInfo, } from './collab-bus.js';",
         "export { type CreateDefineSubagentToolOptions, createDefineSubagentTool, type DefineSubagentInput, type DefineSubagentOutput, } from './define-subagent-tool.js';",
         "export { type CreateDelegateToolOptions, createDelegateTool, type DelegateHost, } from './delegate-tool.js';",
+        "export { type DelegationCancelCause, type DelegationEntry, type DelegationState, DelegationTracker, type DelegationTrackerOptions, } from './delegation/delegation-tracker.js';",
         "export { type DirectorSessionFactory, type DirectorSessionFactoryOptions, makeDirectorSessionFactory, } from './director-session.js';",
         "export { type ErrorHistoryEntry, type ProviderModelState, type ProviderModelStatus, ProviderModelStatusTracker, type ProviderStatusSnapshot, type ProviderStatusTrackerConfig, } from './provider-status-tracker.js';",
         "export { type FileAuthorTrackerOptions, recordFileAction } from './file-author-tracker.js';",
@@ -1440,15 +1445,15 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 188,
-      "sourceLines": 53987
+      "sourceFiles": 193,
+      "sourceLines": 55817
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 56,
-      "sourceLines": 12964
+      "sourceLines": 13002
     },
     {
       "directory": "design",
@@ -1504,7 +1509,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 19,
-      "sourceLines": 4017
+      "sourceLines": 4082
     },
     {
       "directory": "models",
@@ -1609,7 +1614,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23444
+      "sourceLines": 23493
     },
     {
       "directory": "tasking",
@@ -1623,21 +1628,21 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 20,
-      "sourceLines": 3910
+      "sourceLines": 3997
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 73,
-      "sourceLines": 13681
+      "sourceLines": 13732
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 69,
-      "sourceLines": 12207
+      "sourceLines": 12222
     },
     {
       "directory": "wiring",

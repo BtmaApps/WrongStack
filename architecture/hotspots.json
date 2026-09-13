@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "thresholdLines": 800,
   "files": {
+    "packages/acp/src/agent/server-agent-turn.ts": {
+      "lines": 804,
+      "relativeImports": 2
+    },
     "packages/acp/src/client/acp-session.ts": {
       "lines": 890,
       "relativeImports": 19
@@ -11,7 +15,7 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 828,
+      "lines": 837,
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
@@ -23,7 +27,7 @@
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 906,
+      "lines": 941,
       "relativeImports": 43
     },
     "packages/cli/src/fleet/host.ts": {
@@ -67,7 +71,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 1012,
+      "lines": 1048,
       "relativeImports": 21
     },
     "packages/core/src/boot.ts": {
@@ -86,21 +90,25 @@
       "lines": 915,
       "relativeImports": 10
     },
-    "packages/core/src/coordination/delegate-tool.ts": {
-      "lines": 1077,
-      "relativeImports": 11
+    "packages/core/src/coordination/delegation/run-delegation.ts": {
+      "lines": 1130,
+      "relativeImports": 9
     },
     "packages/core/src/coordination/director-tools.ts": {
       "lines": 958,
       "relativeImports": 18
     },
     "packages/core/src/coordination/director.ts": {
-      "lines": 1069,
+      "lines": 1108,
       "relativeImports": 43
     },
     "packages/core/src/coordination/fleet-supervisor.ts": {
       "lines": 971,
       "relativeImports": 6
+    },
+    "packages/core/src/coordination/index.ts": {
+      "lines": 840,
+      "relativeImports": 99
     },
     "packages/core/src/coordination/sqlite-mailbox.ts": {
       "lines": 982,
@@ -163,11 +171,11 @@
       "relativeImports": 7
     },
     "packages/core/src/types/session.ts": {
-      "lines": 1003,
+      "lines": 1034,
       "relativeImports": 4
     },
     "packages/core/src/utils/tool-output-serializer.ts": {
-      "lines": 915,
+      "lines": 925,
       "relativeImports": 0
     },
     "packages/governance/src/protocol-decoder.ts": {
@@ -242,6 +250,10 @@
       "lines": 876,
       "relativeImports": 1
     },
+    "packages/plugins/src/todo-tracker/index.ts": {
+      "lines": 904,
+      "relativeImports": 0
+    },
     "packages/primitives/src/regex-ambiguity.ts": {
       "lines": 843,
       "relativeImports": 0
@@ -283,7 +295,7 @@
       "relativeImports": 3
     },
     "packages/simpleui/src/lib/message-handler.ts": {
-      "lines": 868,
+      "lines": 931,
       "relativeImports": 18
     },
     "packages/simpleui/src/simple-ui-session.tsx": {
@@ -326,6 +338,10 @@
       "lines": 804,
       "relativeImports": 2
     },
+    "packages/tools/src/kanban-lifecycle-actions.ts": {
+      "lines": 930,
+      "relativeImports": 6
+    },
     "packages/tools/src/pwsh.ts": {
       "lines": 847,
       "relativeImports": 8
@@ -338,13 +354,17 @@
       "lines": 857,
       "relativeImports": 13
     },
+    "packages/tui/src/app-props.ts": {
+      "lines": 808,
+      "relativeImports": 10
+    },
     "packages/tui/src/app-state.ts": {
       "lines": 1017,
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
-      "lines": 967,
-      "relativeImports": 58
+      "lines": 981,
+      "relativeImports": 59
     },
     "packages/tui/src/components/agents-monitor.tsx": {
       "lines": 984,
@@ -359,7 +379,7 @@
       "relativeImports": 7
     },
     "packages/tui/src/components/history/utils.tsx": {
-      "lines": 1035,
+      "lines": 1038,
       "relativeImports": 17
     },
     "packages/tui/src/components/kanban-panel.tsx": {

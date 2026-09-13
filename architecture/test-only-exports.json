@@ -382,8 +382,8 @@
     "packages/core/src/coordination/collab-debug.ts": [
       "DEFAULT_MAX_TARGET_FILES"
     ],
-    "packages/core/src/coordination/delegate-tool.ts": [
-      "hintForKind"
+    "packages/core/src/coordination/delegation/run-delegation.ts": [
+      "readSubagentPartial"
     ],
     "packages/core/src/coordination/fleet.ts": [
       "EXPLORE_COMPANION_TOOLS"
@@ -500,6 +500,9 @@
     ],
     "packages/core/src/infrastructure/provider-cache-ledger.ts": [
       "RECENT_HIT_RATIO_WINDOW"
+    ],
+    "packages/core/src/leader-delivery-attach.ts": [
+      "isLeaderAgentId"
     ],
     "packages/core/src/mailbox-attach.ts": [
       "applySessionAffinityFilter",
@@ -886,6 +889,10 @@
       "determineBump",
       "parseConventional"
     ],
+    "packages/plugins/src/todo-tracker/index.ts": [
+      "createTodoTrackerPlugin",
+      "deriveProjectSlug"
+    ],
     "packages/plugins/src/token-throttle/index.ts": [
       "computeThrottleDelay",
       "pruneWindow",
@@ -1001,6 +1008,9 @@
       "IDLE_AGENT_TTL_MS",
       "isActiveStatus",
       "parseAgentSessionReplays"
+    ],
+    "packages/simpleui/src/lib/message-handler.ts": [
+      "delegationNoticeText"
     ],
     "packages/simpleui/src/lib/model-catalog-view.ts": [
       "isLikelyNonChatModel"
@@ -1375,6 +1385,9 @@
     ],
     "packages/tui/src/hooks/use-history-auto-scroll.ts": [
       "HISTORY_AUTO_SCROLL_DELAY_MS"
+    ],
+    "packages/tui/src/hooks/use-leader-auto-wake.ts": [
+      "createTuiLeaderWakePort"
     ],
     "packages/tui/src/hooks/use-mode-picker.ts": [
       "buildModePickerOptions"
