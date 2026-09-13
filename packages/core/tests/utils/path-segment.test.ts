@@ -114,6 +114,8 @@ describe('decodeSessionIdStrict / isSafeSessionId', () => {
     ['..', 'bare parent'],
     ['a%00b', 'NUL truncation'],
     ['C:foo', 'windows drive-relative'],
+    ['2026-09-13%2FCON', 'Windows reserved device name in date-sharded id'],
+    ['con.txt', 'Windows reserved device name with an extension'],
     ['a%5Cb', 'backslash separator'],
     ['%E0%A4%A', 'malformed percent-encoding — used to return the raw segment'],
     ['', 'empty'],

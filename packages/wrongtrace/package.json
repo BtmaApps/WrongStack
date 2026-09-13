@@ -39,11 +39,11 @@
     "access": "public"
   },
   "dependencies": {
-    "undici-types": "^8.10.0"
+    "undici-types": "^8.10.2"
   },
   "devDependencies": {
-    "@types/node": "^22.19.0",
-    "typescript": "^7.0.0",
-    "vitest": "^4.1.11"
+    "@types/node": "^22.20.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   }
 }

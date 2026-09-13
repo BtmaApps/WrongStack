@@ -305,14 +305,14 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.5.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@wrongstack/core": "workspace:*",
-    "@wrongstack/primitives": "workspace:*",
     "@wrongstack/plugin-sdk": "workspace:*",
+    "@wrongstack/primitives": "workspace:*",
     "@wrongstack/tools": "workspace:*"
   }
 }

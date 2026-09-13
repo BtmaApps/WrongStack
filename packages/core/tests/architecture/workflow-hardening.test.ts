@@ -196,7 +196,11 @@ describe('release scripts (WS-040)', () => {
 
   it('keeps coverage and e2e out of the laptop local profile', () => {
     const runner = readFileSync(join(repoRoot, 'scripts', 'release-check-matrix.mjs'), 'utf8');
-    expect(runner).toContain("profile === 'local' ? 'local CI' : 'release:check'");
+    // `release-fast` is a third profile, so assert the local branch and the
+    // remaining release title mapping independently instead of freezing the
+    // old two-way conditional.
+    expect(runner).toContain("profile === 'local' ? 'local CI'");
+    expect(runner).toContain("profile === 'release-fast' ? 'release:fast' : 'release:check'");
     expect(runner).toContain('--profile');
     // The local id list is the source of truth for `pnpm ci:local`. It must
     // include the test suite GitHub CI runs, and must not silently grow a

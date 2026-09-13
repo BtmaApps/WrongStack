@@ -40,18 +40,18 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "5.0.81",
-    "@ai-sdk/azure": "4.0.68",
-    "@ai-sdk/cohere": "4.0.40",
-    "@ai-sdk/google-vertex": "5.0.79",
+    "@ai-sdk/amazon-bedrock": "5.0.82",
+    "@ai-sdk/azure": "4.0.70",
+    "@ai-sdk/cohere": "4.0.41",
+    "@ai-sdk/google-vertex": "5.0.80",
     "@wrongstack/core": "workspace:*",
-    "ai": "7.0.77",
+    "ai": "7.0.98",
     "ai-gateway-provider": "4.0.1",
     "ws": "^8.21.3",
-    "zod": "4.4.3"
+    "zod": "4.6.2"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.5.1",
     "@types/ws": "^8.18.1",
     "typescript": "^7.0.2"
   },

@@ -71,14 +71,14 @@
   },
   "dependencies": {
     "@wrongstack/core": "workspace:*",
-    "@wrongstack/kanban": "workspace:*",
     "@wrongstack/governance": "workspace:*",
+    "@wrongstack/kanban": "workspace:*",
     "@wrongstack/sage": "workspace:*",
     "@wrongstack/tools": "workspace:*",
     "@wrongstack/vector-memory": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.5.1",
     "@wrongstack/wrongtrace": "workspace:*",
     "typescript": "^7.0.2"
   },

@@ -34,10 +34,10 @@
   },
   "dependencies": {
     "@wrongstack/core": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.6.2"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.5.1",
     "typescript": "^7.0.2"
   },
   "publishConfig": {

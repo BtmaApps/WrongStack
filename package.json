@@ -91,11 +91,11 @@
     "setup:hooks": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.10",
+    "@biomejs/biome": "2.5.13",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",
-    "@vitest/coverage-istanbul": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-istanbul": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "@wrongstack/core": "workspace:*",
     "@wrongstack/tools": "workspace:*",
     "cross-env": "^10.1.0",
@@ -105,9 +105,9 @@
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "typescript-language-server": "^6.0.0",
-    "typescript5": "npm:typescript@5.9.3",
+    "typescript5": "npm:typescript@7.0.2",
     "undici-types": "^8.10.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "wrongstack": "link:apps/wrongstack"

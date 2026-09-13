@@ -40,7 +40,7 @@ async function within<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   }
 }
 
-describe.sequential('CLI production dispatch journeys', () => {
+describe('CLI production dispatch journeys', { concurrent: false }, () => {
   let tempRoot: string;
   let originalWrongStackHome: string | undefined;
 

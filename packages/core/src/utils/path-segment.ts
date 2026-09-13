@@ -68,7 +68,7 @@ export function isSafeSessionId(value: string): boolean {
   if (value.includes('\\') || value.includes('\0') || value.includes(':')) return false;
   const parts = value.split('/');
   if (parts.length > 2) return false;
-  return parts.every((p) => p.length > 0 && p !== '.' && p !== '..');
+  return parts.every(isSafePathSegment);
 }
 
 /**
