@@ -1,23 +1,29 @@
 /**
- * SDD Kanban store — regression tests for board CRUD, column management,
- * workflow-state persistence, and legacy snapshot migration.
+ * SDD board store — regression tests for snapshot CRUD, column ordering,
+ * the JSONL event log, index listing, and lifecycle worktree cleanup.
  *
- * Tests the SDD board store (event-sourced, real fs) and the SDD lifecycle
- * cleanup hooks (real fs).  Coverage gap was 0% on:
- *   packages/sdd/src/stores/kanban-store.ts (lines 8-161)
- * which maps to sdd-board-store.ts (event log + snapshot persistence).
+ * Exercises SddBoardStore (snapshot + event-log persistence) and the SDD
+ * lifecycle cleanup hook against the real filesystem — no mocking.
  */
 
 import * as fsp from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  SddBoardStore,
-  type SddBoardSnapshot,
-  type SddBoardEvent,
-} from '../../src/sdd-board-store.js';
+import type { SddBoardSnapshot, SddBoardTask } from '../../src/board-types.js';
+import { SddBoardStore } from '../../src/sdd-board-store.js';
 import { cleanupSddWorktrees } from '../../src/sdd-lifecycle.js';
+
+async function makeTmpDir(prefix: string): Promise<string> {
+  return fsp.mkdtemp(path.join(os.tmpdir(), `wstack-sdd-${prefix}-`));
+}
+
+async function loadOrFail(store: SddBoardStore, runId: string): Promise<SddBoardSnapshot> {
+  const loaded = await store.load(runId);
+  if (!loaded) throw new Error(`expected a snapshot for ${runId}`);
+  return loaded;
+}
 
 // ── SddBoardStore — snapshot CRUD (real fs, no mocking) ───────────────────────
 
@@ -26,8 +32,7 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
   let store: SddBoardStore;
 
   beforeEach(async () => {
-    tmpDir = path.join(import.meta.dirname, `../.tmp-board-${Date.now()}`);
-    await fsp.mkdir(tmpDir, { recursive: true });
+    tmpDir = await makeTmpDir('board');
     store = new SddBoardStore({ baseDir: tmpDir });
   });
 
@@ -35,51 +40,37 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
     await fsp.rm(tmpDir, { recursive: true, force: true });
   });
 
-  // ── Create ────────────────────────────────────────────────────────────────
-
-  it('saveSnapshot + load — round-trip a board with columns and cards', async () => {
+  it('saveSnapshot + load — round-trip a board with columns and tasks', async () => {
     const snapshot = makeSnapshot('run-001', 'spec-alpha');
-    snapshot.boardId = 'board-001';
-    snapshot.projectId = 'proj-test';
     snapshot.columns = [
-      { id: 'col-backlog', title: 'Backlog', cardIds: ['card-1'] },
-      { id: 'col-done', title: 'Done', cardIds: [] },
+      { label: 'Backlog', taskIds: ['t01'] },
+      { label: 'Done', taskIds: [] },
     ];
-    snapshot.cards = [
-      {
-        id: 'card-1',
-        title: 'Implement feature',
-        description: null,
-        columnId: 'col-backlog',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ];
+    snapshot.tasks = [makeTask('t01', 'Implement feature')];
 
     await store.saveSnapshot(snapshot);
-    const loaded = await store.load('run-001');
+    const loaded = await loadOrFail(store, 'run-001');
 
-    expect(loaded).not.toBeNull();
-    expect(loaded!.boardId).toBe('board-001');
-    expect(loaded!.columns).toHaveLength(2);
-    expect(loaded!.columns![0].cardIds).toContain('card-1');
-    expect(loaded!.cards).toHaveLength(1);
-    expect(loaded!.cards![0].title).toBe('Implement feature');
+    expect(loaded.graphId).toBe('graph-run-001');
+    expect(loaded.columns).toHaveLength(2);
+    expect(loaded.columns[0]?.taskIds).toContain('t01');
+    expect(loaded.tasks).toHaveLength(1);
+    expect(loaded.tasks[0]?.title).toBe('Implement feature');
   });
 
   it('load returns null for a nonexistent run', async () => {
-    const loaded = await store.load('nonexistent-run');
-    expect(loaded).toBeNull();
+    expect(await store.load('nonexistent-run')).toBeNull();
   });
 
   // ── Overwrite ─────────────────────────────────────────────────────────────
 
   it('saveSnapshot overwrites an existing snapshot', async () => {
-    await store.saveSnapshot(makeSnapshot('run-002', 'spec-x'));
-    await store.saveSnapshot(makeSnapshot('run-002', 'spec-x', Date.now() + 1));
+    await store.saveSnapshot(makeSnapshot('run-002', 'spec-x', 1_000));
+    await store.saveSnapshot(makeSnapshot('run-002', 'spec-x', 2_000));
 
-    const loaded = await store.load('run-002');
-    expect(loaded!.lastModified).toBeGreaterThan(0);
+    const loaded = await loadOrFail(store, 'run-002');
+    expect(loaded.updatedAt).toBe(2_000);
+    expect(await store.list()).toHaveLength(1);
   });
 
   // ── List ─────────────────────────────────────────────────────────────────
@@ -89,8 +80,7 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
     await store.saveSnapshot(makeSnapshot('run-list-b', 'spec-b'));
     await store.saveSnapshot(makeSnapshot('run-list-c', 'spec-c'));
 
-    const entries = await store.list();
-    const ids = entries.map((e) => e.runId);
+    const ids = (await store.list()).map((e) => e.runId);
 
     expect(ids).toContain('run-list-a');
     expect(ids).toContain('run-list-b');
@@ -98,83 +88,72 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
   });
 
   it('list is empty before any saves', async () => {
-    const entries = await store.list();
-    expect(entries).toHaveLength(0);
+    expect(await store.list()).toHaveLength(0);
   });
 
   // ── Latest ────────────────────────────────────────────────────────────────
 
-  it('latest returns the most recently saved board', async () => {
+  it('latest returns the most recently updated board', async () => {
     await store.saveSnapshot(makeSnapshot('run-old', 'spec-x', 1_000_000_000));
     await store.saveSnapshot(makeSnapshot('run-new', 'spec-x', 2_000_000_000));
 
     const entry = await store.latest();
-    expect(entry!.runId).toBe('run-new');
+    expect(entry?.runId).toBe('run-new');
   });
 
   // ── Column management ─────────────────────────────────────────────────────
 
-  it('column card ordering is preserved across save + load', async () => {
+  it('column task ordering is preserved across save + load', async () => {
     const snapshot = makeSnapshot('run-cols', 'spec-cols');
     snapshot.columns = [
-      { id: 'c1', title: 'To Do', cardIds: ['a', 'b', 'c'] },
-      { id: 'c2', title: 'Done', cardIds: ['x'] },
+      { label: 'To Do', taskIds: ['a', 'b', 'c'] },
+      { label: 'Done', taskIds: ['x'] },
     ];
-    snapshot.cards = [
-      { id: 'a', title: 'A', description: null, columnId: 'c1', createdAt: 1, updatedAt: 1 },
-      { id: 'b', title: 'B', description: null, columnId: 'c1', createdAt: 1, updatedAt: 1 },
-      { id: 'c', title: 'C', description: null, columnId: 'c1', createdAt: 1, updatedAt: 1 },
-      { id: 'x', title: 'X', description: null, columnId: 'c2', createdAt: 1, updatedAt: 1 },
-    ];
+    snapshot.tasks = [makeTask('a', 'A'), makeTask('b', 'B'), makeTask('c', 'C'), makeTask('x', 'X')];
 
     await store.saveSnapshot(snapshot);
-    const loaded = await store.load('run-cols')!;
+    const loaded = await loadOrFail(store, 'run-cols');
 
-    expect(loaded.columns![0].cardIds).toEqual(['a', 'b', 'c']);
-    expect(loaded.columns![1].cardIds).toEqual(['x']);
+    expect(loaded.columns[0]?.taskIds).toEqual(['a', 'b', 'c']);
+    expect(loaded.columns[1]?.taskIds).toEqual(['x']);
   });
 
-  it('moving a card between columns persists correctly', async () => {
-    const snapshot = makeSnapshot('run-move', 'spec-move');
+  it('moving a task between columns persists correctly', async () => {
+    const snapshot = makeSnapshot('run-move', 'spec-move', 1_000);
     snapshot.columns = [
-      { id: 'col-a', title: 'A', cardIds: ['card-1'] },
-      { id: 'col-b', title: 'B', cardIds: [] },
+      { label: 'A', taskIds: ['t01'] },
+      { label: 'B', taskIds: [] },
     ];
-    snapshot.cards = [
-      { id: 'card-1', title: 'Card', description: null, columnId: 'col-a', createdAt: 1, updatedAt: 1 },
-    ];
+    snapshot.tasks = [makeTask('t01', 'Task')];
 
     await store.saveSnapshot(snapshot);
 
-    // Move card-1 from col-a to col-b
-    snapshot.columns![0].cardIds = [];
-    snapshot.columns![1].cardIds = ['card-1'];
-    snapshot.cards![0].columnId = 'col-b';
-    snapshot.lastModified = Date.now() + 1;
-    await store.saveSnapshot(snapshot);
+    const moved: SddBoardSnapshot = {
+      ...snapshot,
+      columns: [
+        { label: 'A', taskIds: [] },
+        { label: 'B', taskIds: ['t01'] },
+      ],
+      updatedAt: 2_000,
+    };
+    await store.saveSnapshot(moved);
 
-    const loaded = await store.load('run-move')!;
-    expect(loaded.columns![0].cardIds).not.toContain('card-1');
-    expect(loaded.columns![1].cardIds).toContain('card-1');
-    expect(loaded.cards![0].columnId).toBe('col-b');
+    const loaded = await loadOrFail(store, 'run-move');
+    expect(loaded.columns[0]?.taskIds).not.toContain('t01');
+    expect(loaded.columns[1]?.taskIds).toContain('t01');
+    expect(loaded.updatedAt).toBe(2_000);
   });
 
   // ── Event log ────────────────────────────────────────────────────────────
 
   it('appendEvent writes to the events file (single entry)', async () => {
-    const event: SddBoardEvent = {
+    await store.appendEvent('run-evt-1', {
       type: 'task.added',
-      runId: 'run-evt-1',
       ts: Date.now(),
       payload: { taskId: 'task-new', title: 'New task' },
-    };
+    });
 
-    await store.appendEvent('run-evt-1', event);
-
-    const raw = await fsp.readFile(
-      path.join(tmpDir, 'run-evt-1.events.jsonl'),
-      'utf8',
-    );
+    const raw = await fsp.readFile(store.eventsPath('run-evt-1'), 'utf8');
     const parsed = JSON.parse(raw.trim());
     expect(parsed.type).toBe('task.added');
     expect(parsed.payload.taskId).toBe('task-new');
@@ -182,38 +161,33 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
 
   it('appendEvent serialises multiple events as JSONL lines', async () => {
     await store.appendEvent('run-evt-2', {
-      type: 'task.added', runId: 'run-evt-2', ts: 1, payload: { taskId: 't1', title: 'T1' },
+      type: 'task.added',
+      ts: 1,
+      payload: { taskId: 't1', title: 'T1' },
     });
     await store.appendEvent('run-evt-2', {
-      type: 'task.moved', runId: 'run-evt-2', ts: 2, payload: { taskId: 't1', toColumn: 'done' },
+      type: 'task.moved',
+      ts: 2,
+      payload: { taskId: 't1', toColumn: 'done' },
     });
 
-    const raw = await fsp.readFile(
-      path.join(tmpDir, 'run-evt-2.events.jsonl'),
-      'utf8',
-    );
+    const raw = await fsp.readFile(store.eventsPath('run-evt-2'), 'utf8');
     const lines = raw.trim().split('\n');
     expect(lines).toHaveLength(2);
-    expect(JSON.parse(lines[0]).type).toBe('task.added');
-    expect(JSON.parse(lines[1]).type).toBe('task.moved');
+    expect(JSON.parse(lines[0] ?? '').type).toBe('task.added');
+    expect(JSON.parse(lines[1] ?? '').type).toBe('task.moved');
   });
 
   // ── Error resilience ─────────────────────────────────────────────────────
 
   it('load returns null on malformed snapshot JSON', async () => {
-    const snapPath = path.join(tmpDir, 'run-bad.json');
-    await fsp.writeFile(snapPath, '{ not valid json }');
-
-    const loaded = await store.load('run-bad');
-    expect(loaded).toBeNull();
+    await fsp.writeFile(store.snapshotPath('run-bad'), '{ not valid json }');
+    expect(await store.load('run-bad')).toBeNull();
   });
 
   it('load returns null when file exists but is a primitive', async () => {
-    const snapPath = path.join(tmpDir, 'run-primitive.json');
-    await fsp.writeFile(snapPath, JSON.stringify('just a string'));
-
-    const loaded = await store.load('run-primitive');
-    expect(loaded).toBeNull();
+    await fsp.writeFile(store.snapshotPath('run-primitive'), JSON.stringify('just a string'));
+    expect(await store.load('run-primitive')).toBeNull();
   });
 });
 
@@ -224,8 +198,7 @@ describe('SddBoardStore — concurrent writes (real fs)', () => {
   let store: SddBoardStore;
 
   beforeEach(async () => {
-    tmpDir = path.join(import.meta.dirname, `../.tmp-concurrent-${Date.now()}`);
-    await fsp.mkdir(tmpDir, { recursive: true });
+    tmpDir = await makeTmpDir('concurrent');
     store = new SddBoardStore({ baseDir: tmpDir });
   });
 
@@ -234,25 +207,25 @@ describe('SddBoardStore — concurrent writes (real fs)', () => {
   });
 
   it('parallel saves to different runs all succeed', async () => {
-    const saves = Array.from({ length: 8 }, (_, i) =>
-      store.saveSnapshot(makeSnapshot(`run-par-${i}`, `spec-par-${i}`)),
+    await Promise.all(
+      Array.from({ length: 8 }, (_, i) =>
+        store.saveSnapshot(makeSnapshot(`run-par-${i}`, `spec-par-${i}`)),
+      ),
     );
-    await Promise.all(saves);
 
-    const entries = await store.list();
-    expect(entries).toHaveLength(8);
+    expect(await store.list()).toHaveLength(8);
   });
 
   it('parallel saves to the same run produce a valid snapshot', async () => {
     const runId = 'run-same-par';
-    const saves = Array.from({ length: 4 }, (_, i) =>
-      store.saveSnapshot(makeSnapshot(runId, 'spec-par', Date.now() + i)),
+    await Promise.all(
+      Array.from({ length: 4 }, (_, i) =>
+        store.saveSnapshot(makeSnapshot(runId, 'spec-par', Date.now() + i)),
+      ),
     );
-    await Promise.all(saves);
 
-    const loaded = await store.load(runId);
-    expect(loaded).not.toBeNull();
-    expect(loaded!.runId).toBe(runId);
+    const loaded = await loadOrFail(store, runId);
+    expect(loaded.runId).toBe(runId);
   });
 });
 
@@ -262,8 +235,7 @@ describe('SddLifecycle — worktree cleanup (real fs)', () => {
   let projectRoot: string;
 
   beforeEach(async () => {
-    projectRoot = path.join(import.meta.dirname, `../.tmp-lifecycle-${Date.now()}`);
-    await fsp.mkdir(projectRoot, { recursive: true });
+    projectRoot = await makeTmpDir('lifecycle');
     // Create a minimal .git/worktrees dir so the scanner finds the root
     await fsp.mkdir(path.join(projectRoot, '.git', 'worktrees'), { recursive: true });
   });
@@ -280,21 +252,44 @@ describe('SddLifecycle — worktree cleanup (real fs)', () => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeSnapshot(
-  runId: string,
-  specId: string,
-  ts = Date.now(),
-): SddBoardSnapshot {
+function makeSnapshot(runId: string, specId: string, ts = Date.now()): SddBoardSnapshot {
   return {
     runId,
     specId,
-    boardId: `board-${runId}`,
-    projectId: 'proj-test',
-    columns: [],
-    cards: [],
-    cardAssignments: {},
-    progress: { total: 0, completed: 0 },
-    lastModified: ts,
+    graphId: `graph-${runId}`,
+    title: `Board ${runId}`,
+    status: 'running',
+    startedAt: ts,
     updatedAt: ts,
+    progress: {
+      total: 0,
+      pending: 0,
+      inProgress: 0,
+      blocked: 0,
+      failed: 0,
+      review: 0,
+      completed: 0,
+      percentComplete: 0,
+      estimatedHours: 0,
+      actualHours: 0,
+    },
+    wave: 0,
+    tasks: [],
+    columns: [],
+  };
+}
+
+function makeTask(shortId: string, title: string): SddBoardTask {
+  return {
+    id: `task-${shortId}`,
+    shortId,
+    title,
+    description: '',
+    status: 'pending',
+    displayStatus: 'pending',
+    priority: 'medium',
+    type: 'feature',
+    deps: [],
+    retries: 0,
   };
 }

@@ -416,6 +416,8 @@ describe('ACPSession', () => {
     t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_abc' });
     await new Promise((r) => setImmediate(r));
     const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
+    // The turn must be on the wire before the abort, or this is the pre-abort path.
+    expect(promptMsg).toBeDefined();
 
     // Abort mid-turn — onTurnAbort rejects the race, and onAbort (session id
     // already assigned) sends session/cancel on the wire.

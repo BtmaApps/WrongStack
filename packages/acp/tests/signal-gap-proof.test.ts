@@ -11,19 +11,6 @@
  * regardless of timing, plus a re-check after the await resolves.
  */
 
-/**
- * Regression test: ACPSession.prompt() must propagate AbortSignal aborts
- * that fire during session creation (createSessionWithAuth).
- *
- * Bug: prompt() checks signal.aborted at line 465, then awaits
- * createSessionWithAuth() at line 490, then registers the abort listener
- * at line 508. An abort arriving between the await and the listener is silently
- * lost — the agent runs the full turn despite the cancellation.
- *
- * Fix: Promise.race against a fresh abort listener so the abort is detected
- * regardless of timing, plus a re-check after the await resolves.
- */
-
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -52,7 +39,10 @@ afterEach(async () => {
 function makeSessionInReadyState(): ACPSession {
   // Mock the session state to 'ready' so prompt() accepts the call.
   // We bypass full ACP initialization — only the abort-gap logic matters here.
-  const session = new ACPSession({
+  // The constructor is private (start()/connect() are the public entry points);
+  // this test drives prompt() directly, so it constructs without a transport.
+  const PrivateCtor = ACPSession as unknown as new (opts: ACPSessionOptions) => ACPSession;
+  const session = new PrivateCtor({
     command: 'fake-agent-cmd',
     projectRoot: PROJECT_ROOT,
     timeoutMs: 30_000,
