@@ -11,6 +11,8 @@ import { areDependenciesMet, findBlockedTasks, getTaskChain } from '../src/manag
 import {
   appendKanbanEvent,
   deleteBoard,
+  EVENT_LOG_MAX_ENTRIES,
+  EVENT_LOG_TRIM_TO,
   getKanbanPath,
   listBoardIds,
   mutateBoard,
@@ -142,30 +144,32 @@ describe('storage error paths', () => {
 describe('event log trim', () => {
   it('trims event log when size exceeds threshold', async () => {
     const board = await createBoard(tmpDir, { title: 'Event trim' });
-    // Append enough events to trigger trimming (> 10K)
-    const maxEntries = 10_000;
-    for (let i = 0; i < maxEntries + 100; i++) {
-      await appendKanbanEvent(tmpDir, board.id, {
-        id: `evt-${i}`,
-        boardId: board.id,
-        taskId: 'task-1',
-        type: 'test.event',
-        sessionId: TEST_EVENT_CONTEXT.sessionId,
-        ts: new Date().toISOString(),
-      });
-    }
-    // Read back events - should be trimmed to 5000
-    const raw = await fs.readFile(
-      path.join(tmpDir, '.wrongstack', 'kanbans', `${board.id}.events.jsonl`),
-      'utf8',
-    );
-    const lines = raw.trim().split('\n').filter(Boolean);
-    // After trimming 10K+ lines to 5000, subsequent appends add back up.
-    // The final count is at most 5000 (trim target) + remaining appends.
-    // Verify trimming actually occurred (count is between 5K and 5.1K
-    // rather than the original 10,100+)
-    expect(lines.length).toBeGreaterThan(4900);
-    expect(lines.length).toBeLessThan(10_000);
+    const eventsPath = path.join(tmpDir, '.wrongstack', 'kanbans', `${board.id}.events.jsonl`);
+    const event = (id: string) => ({
+      id,
+      boardId: board.id,
+      taskId: 'task-1',
+      type: 'test.event',
+      sessionId: TEST_EVENT_CONTEXT.sessionId,
+      ts: new Date().toISOString(),
+    });
+    // Seed the log past the threshold in one write. Appending 10K events one
+    // by one (lock + mkdir + append + stat each) blew the 60s timeout under
+    // the coverage run; the trim path only needs a cold, over-threshold file.
+    const seed = Array.from(
+      { length: EVENT_LOG_MAX_ENTRIES },
+      (_, i) => `${JSON.stringify(event(`seed-${i}`))}\n`,
+    ).join('');
+    await fs.mkdir(path.dirname(eventsPath), { recursive: true });
+    await fs.appendFile(eventsPath, seed, 'utf8');
+    // A cold cache only recounts lines at >= 512KB; keep the seed on that path.
+    expect((await fs.stat(eventsPath)).size).toBeGreaterThanOrEqual(512_000);
+
+    await appendKanbanEvent(tmpDir, board.id, event('evt-last'));
+
+    const lines = (await fs.readFile(eventsPath, 'utf8')).split('\n').filter(Boolean);
+    expect(lines).toHaveLength(EVENT_LOG_TRIM_TO);
+    expect(JSON.parse(lines.at(-1)!).id).toBe('evt-last');
   });
 });
 
