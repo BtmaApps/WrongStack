@@ -49,3 +49,18 @@ export function sageProjectServerMetadataPath(projectRoot: string, directory?: s
     SAGE_PROJECT_SERVER_METADATA_FILE,
   );
 }
+
+export const SAGE_PROJECT_SERVER_LOG_FILE = 'daemon.log';
+
+/**
+ * Best-effort stderr/stdout sink for the detached daemon. Lives beside
+ * `server.json` in the storage root so one project's daemon log is resolved
+ * through the same identity as its endpoint. The client rotates it by size
+ * (see `daemon-log.ts`) and never deletes it.
+ */
+export function sageProjectServerLogPath(projectRoot: string, directory?: string): string {
+  return path.join(
+    resolveProjectSageStorageRoot(projectRoot, directory),
+    SAGE_PROJECT_SERVER_LOG_FILE,
+  );
+}

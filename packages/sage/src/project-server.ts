@@ -16,6 +16,7 @@ import {
 } from '@wrongstack/core/utils';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
 import { SqliteMemoryPort } from './memory-port.js';
+import { detectNinepStoreMount, ninepStoreRefusalMessage, readSelfMounts } from './mount-probe.js';
 import {
   resolveProjectSageStorageRoot,
   sageProjectServerEndpoint,
@@ -138,6 +139,20 @@ const projectRoot = canonicalProjectRoot(parsed.projectRoot);
 const storageRoot = resolveProjectSageStorageRoot(projectRoot, parsed.directory);
 const endpoint = sageProjectServerEndpoint(projectRoot, parsed.directory);
 const metadataPath = sageProjectServerMetadataPath(projectRoot, parsed.directory);
+// Fail fast BEFORE the bind election: a WAL store on a 9p/drvfs mount (a
+// Windows drive reached through WSL's /mnt/*) cannot open SQLite's
+// shared-memory WAL index (SQLITE_IOERR_SHMOPEN), and the historical failure
+// shape was the worst possible one — the daemon bound the endpoint, then died
+// in store init, leaving a tombstone socket the client retried against for
+// the full 10s window while every respawned daemon crashed identically with
+// its stderr discarded. Refusing pre-bind makes it one clean message.
+// `process.exit` (not `process.exitCode`) because the module body must stop
+// here — nothing below this point may run for a refused store.
+const ninepMountFsType = detectNinepStoreMount(storageRoot, readSelfMounts());
+if (ninepMountFsType) {
+  process.stderr.write(`${ninepStoreRefusalMessage(storageRoot, ninepMountFsType)}\n`);
+  process.exit(1);
+}
 const idleMsInput = Number(process.env['WRONGSTACK_SAGE_SERVER_IDLE_MS']);
 const idleMs = Number.isFinite(idleMsInput) && idleMsInput >= 100 ? idleMsInput : DEFAULT_IDLE_MS;
 const startedAt = new Date().toISOString();

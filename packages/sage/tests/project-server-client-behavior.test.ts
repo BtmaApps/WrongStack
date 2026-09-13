@@ -6,6 +6,13 @@ const mocks = vi.hoisted(() => ({
   readFileSync: vi.fn(() => JSON.stringify({ authToken: 'owner-token' })),
   createConnection: vi.fn(),
   spawn: vi.fn(),
+  openDaemonLogFd: vi.fn(() => null),
+  closeDaemonLogFd: vi.fn(),
+}));
+
+vi.mock('../src/daemon-log.js', () => ({
+  closeDaemonLogFd: mocks.closeDaemonLogFd,
+  openDaemonLogFd: mocks.openDaemonLogFd,
 }));
 
 vi.mock('node:fs', async (importOriginal) => {
@@ -72,6 +79,7 @@ describe('SageProjectServerConnection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.openDaemonLogFd.mockReturnValue(null);
     socket = new FakeSocket();
     mocks.createConnection.mockReturnValue(socket);
   });
@@ -337,22 +345,51 @@ describe('SageProjectServerConnection', () => {
     }
   });
 
-  it('spawns detached server with directory option and handles spawn error event safely', () => {
+  it('spawns detached server with directory option, log fd, and safe error handling', () => {
     const fakeChild = new EventEmitter() as any;
     fakeChild.unref = vi.fn();
     mocks.spawn.mockReturnValue(fakeChild);
+    mocks.openDaemonLogFd.mockReturnValue(7);
 
     const connection = new SageProjectServerConnection('D:/repo', '.wstack/sage') as any;
     connection.spawnDetachedServer();
 
+    expect(mocks.openDaemonLogFd).toHaveBeenCalledWith(
+      expect.stringContaining('daemon.log'),
+      expect.stringContaining('endpoint='),
+    );
     expect(mocks.spawn).toHaveBeenCalledWith(
       process.execPath,
       expect.arrayContaining(['--project-root', 'D:/repo', '--directory', '.wstack/sage']),
+      expect.objectContaining({ detached: true, stdio: ['ignore', 7, 7] }),
+    );
+    expect(fakeChild.unref).toHaveBeenCalled();
+
+    // The parent's copy of the fd is released as soon as the child is live.
+    fakeChild.emit('spawn');
+    expect(mocks.closeDaemonLogFd).toHaveBeenCalledWith(7);
+
+    // A spawn-level error is safely observable instead of crashing the process.
+    fakeChild.emit('error', new Error('spawn failed'));
+  });
+
+  it('falls back to discarded stdio when the daemon log sink is unusable', () => {
+    const fakeChild = new EventEmitter() as any;
+    fakeChild.unref = vi.fn();
+    mocks.spawn.mockReturnValue(fakeChild);
+
+    const connection = new SageProjectServerConnection('D:/repo') as any;
+    connection.spawnDetachedServer();
+
+    expect(mocks.spawn).toHaveBeenCalledWith(
+      process.execPath,
+      expect.arrayContaining(['--project-root', 'D:/repo']),
       expect.objectContaining({ detached: true, stdio: 'ignore' }),
     );
     expect(fakeChild.unref).toHaveBeenCalled();
 
-    // Trigger error event on child to test listener
+    // closeDaemonLogFd is still invoked with null and must tolerate it.
     fakeChild.emit('error', new Error('spawn failed'));
+    expect(mocks.closeDaemonLogFd).toHaveBeenCalledWith(null);
   });
 });

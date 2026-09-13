@@ -124,6 +124,7 @@ export {
   resolveProjectSageStorageRoot,
   sageProjectServerEndpoint,
   sageProjectServerKey,
+  sageProjectServerLogPath,
   sageProjectServerMetadataPath,
 } from './project-server-endpoint.js';
 export {

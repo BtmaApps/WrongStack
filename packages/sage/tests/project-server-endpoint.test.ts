@@ -6,6 +6,7 @@ import {
   resolveProjectSageStorageRoot,
   sageProjectServerEndpoint,
   sageProjectServerKey,
+  sageProjectServerLogPath,
 } from '../src/project-server-endpoint.js';
 
 describe('SAGE project server identity', () => {
@@ -25,6 +26,16 @@ describe('SAGE project server identity', () => {
     );
     expect(resolveProjectSageStorageRoot(projectRoot, '.memory-a')).toContain(
       `${path.sep}.memory-a`,
+    );
+  });
+
+  it('places the daemon log beside server.json in the storage root', () => {
+    const projectRoot = path.resolve('fixtures', 'project-server');
+    expect(sageProjectServerLogPath(projectRoot)).toBe(
+      path.join(resolveProjectSageStorageRoot(projectRoot), 'daemon.log'),
+    );
+    expect(sageProjectServerLogPath(projectRoot, '.memory-a')).toBe(
+      path.join(resolveProjectSageStorageRoot(projectRoot, '.memory-a'), 'daemon.log'),
     );
   });
 

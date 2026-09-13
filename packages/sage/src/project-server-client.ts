@@ -2,8 +2,10 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { closeDaemonLogFd, openDaemonLogFd } from './daemon-log.js';
 import {
   sageProjectServerEndpoint,
+  sageProjectServerLogPath,
   sageProjectServerMetadataPath,
 } from './project-server-endpoint.js';
 import {
@@ -627,18 +629,30 @@ export class SageProjectServerConnection {
     if (!url) throw new Error('Built SAGE project server is unavailable');
     const args = [fileURLToPath(url), '--project-root', this.projectRoot];
     if (this.directory) args.push('--directory', this.directory);
+    // Persist the daemon's stderr instead of discarding it. A crash AFTER the
+    // bind — e.g. SQLITE_IOERR_SHMOPEN when the store is the Windows side's
+    // live WAL database reached through a 9p/drvfs mount — previously
+    // vanished completely, leaving a tombstone socket and a generic
+    // ECONNREFUSED. Best-effort: an unusable sink falls back to 'ignore' and
+    // must never block spawning.
+    const logFd = openDaemonLogFd(
+      sageProjectServerLogPath(this.projectRoot, this.directory),
+      `${new Date().toISOString()} spawn endpoint=${this.state.endpoint} project=${this.projectRoot} pid=${process.pid}\n`,
+    );
     const child = spawn(process.execPath, args, {
       detached: true,
-      stdio: 'ignore',
+      stdio: logFd === null ? 'ignore' : ['ignore', logFd, logFd],
       windowsHide: true,
       env: process.env,
     });
-    // stdio is ignored and nothing else consumes lifecycle events; without a
-    // listener a spawn-level 'error' (e.g. a transient EMFILE under load)
-    // would crash this process instead of failing the connect. The
-    // cadence-bounded re-spawn in connectWithElection owns recovery, so the
-    // event only needs to be safely observable here.
-    child.on('error', () => undefined);
+    // Nothing else consumes lifecycle events; without a listener a
+    // spawn-level 'error' (e.g. a transient EMFILE under load) would crash
+    // this process instead of failing the connect. The cadence-bounded
+    // re-spawn in connectWithElection owns recovery, so the events only need
+    // to be safely observable — and to release the parent's copy of the log
+    // fd, which the kernel dups into the child at spawn time either way.
+    child.once('spawn', () => closeDaemonLogFd(logFd));
+    child.on('error', () => closeDaemonLogFd(logFd));
     child.unref();
   }
 }
