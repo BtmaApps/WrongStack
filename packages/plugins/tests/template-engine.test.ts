@@ -125,14 +125,14 @@ describe('template-engine plugin', () => {
       // credential sinks. path-guard could not cover them either: its matcher
       // keyed on the tool names write|edit|bash|exec, so it never saw a
       // plugin-registered tool.
-      const res = await tool.execute({
-        template: '#!/bin/sh\necho pwned',
-        variables: {},
-        raw: true,
-        output_path: target,
-      });
-      expect(res.ok).toBe(false);
-      expect(String(res.error)).toContain('protected path');
+      await expect(
+        tool.execute({
+          template: '#!/bin/sh\necho pwned',
+          variables: {},
+          raw: true,
+          output_path: target,
+        }),
+      ).rejects.toThrow(/protected path/);
       // Belt and braces: nothing reached the filesystem either.
       expect(existsSync(path.join(sandbox, target))).toBe(false);
     });
@@ -157,13 +157,13 @@ describe('template-engine plugin', () => {
       const tool = mockApi.tools.register.mock.calls.find(
         ([t]: any[]) => t.name === 'template_expand',
       )?.[0];
-      const result = await tool.execute({
-        template: 'hello {{name}}',
-        variables: { name: 'world' },
-        output_path: '/etc/passwd',
-      });
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain('relative path');
+      await expect(
+        tool.execute({
+          template: 'hello {{name}}',
+          variables: { name: 'world' },
+          output_path: '/etc/passwd',
+        }),
+      ).rejects.toThrow(/relative path/);
     });
 
     it('rejects output_path with .. traversal', async () => {
@@ -171,13 +171,13 @@ describe('template-engine plugin', () => {
       const tool = mockApi.tools.register.mock.calls.find(
         ([t]: any[]) => t.name === 'template_expand',
       )?.[0];
-      const result = await tool.execute({
-        template: 'hello {{name}}',
-        variables: { name: 'world' },
-        output_path: '../../../etc/passwd',
-      });
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain('relative path');
+      await expect(
+        tool.execute({
+          template: 'hello {{name}}',
+          variables: { name: 'world' },
+          output_path: '../../../etc/passwd',
+        }),
+      ).rejects.toThrow(/relative path/);
     });
 
     it('accepts relative output_path (no path validation error)', async () => {

@@ -1,4 +1,4 @@
-import type { ModeStore, Tool } from '@wrongstack/core/types';
+import { type ModeStore, type Tool, ToolValidationError } from '@wrongstack/core/types';
 
 export interface ModeInput {
   action: 'get' | 'list' | 'set' | 'clear';
@@ -17,7 +17,8 @@ export interface ModeOutput {
     family: ModeFamily;
     tags: string[];
   }[];
-  success: boolean;
+  /** Always true: invalid input and unknown modes are thrown, not returned. */
+  success: true;
   message: string;
 }
 
@@ -96,12 +97,20 @@ export function createModeTool(modeStore: ModeStore): Tool<ModeInput, ModeOutput
           };
         }
         case 'set': {
+          // Refusals throw: a returned `success: false` is recorded as a
+          // successful tool call by the executor.
           if (!input.mode) {
-            return { action: 'set', success: false, message: 'mode is required for action=set' };
+            throw new ToolValidationError({
+              message: 'mode: mode is required for action=set',
+              field: 'mode',
+            });
           }
           const mode = await modeStore.getMode(input.mode);
           if (!mode) {
-            return { action: 'set', success: false, message: `Mode "${input.mode}" not found` };
+            throw new ToolValidationError({
+              message: `mode: Mode "${input.mode}" not found — use action=list to see available modes`,
+              field: 'mode',
+            });
           }
           await modeStore.setActiveMode(input.mode);
           return {
@@ -120,11 +129,10 @@ export function createModeTool(modeStore: ModeStore): Tool<ModeInput, ModeOutput
           };
         }
         default:
-          return {
-            action: input.action,
-            success: false,
-            message: `Unknown action "${input.action}"`,
-          };
+          throw new ToolValidationError({
+            message: `mode: Unknown action "${(input as { action?: unknown })?.action}". Allowed: get, list, set, clear`,
+            field: 'action',
+          });
       }
     },
   };

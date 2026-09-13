@@ -55,7 +55,7 @@
  */
 import { lookup } from 'node:dns/promises';
 import type { NotificationMessage, NotificationResult } from '@wrongstack/core/notifications';
-import type { Logger, Plugin } from '@wrongstack/core/types';
+import { type Logger, type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { safeJsonStringify } from '../runtime/index.js';
 import { WebhookNotificationChannel } from './webhook-channel.js';
 
@@ -484,19 +484,20 @@ const plugin: Plugin = {
         msg?: string | undefined;
         level?: string | undefined;
       }) {
-        if (!cfg.enabled) return { ok: false, error: 'notify-hub is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('notify-hub is disabled');
         const ch = state.channel;
         if (!ch) {
-          return {
-            ok: false,
-            error:
-              'no webhookUrl configured — set config.extensions["notify-hub"].webhookUrl to enable deliveries',
-          };
+          throw new Error(
+            'no webhookUrl configured — set config.extensions["notify-hub"].webhookUrl to enable deliveries',
+          );
         }
         const inp = (input ?? {}) as Record<string, unknown>;
         const rawMsg = inp['message'] ?? inp['body'] ?? inp['text'] ?? inp['content'] ?? inp['msg'];
         const message = typeof rawMsg === 'string' && rawMsg.trim().length > 0 ? rawMsg.trim() : '';
-        if (!message) return { ok: false, error: 'message is required' };
+        if (!message) {
+          throw new ToolValidationError({ message: 'message is required', field: 'message' });
+        }
         const rawTitle = inp['title'] ?? inp['subject'] ?? inp['header'];
         const title =
           typeof rawTitle === 'string' && rawTitle.trim()
@@ -509,11 +510,10 @@ const plugin: Plugin = {
           level: input.level === 'warning' || input.level === 'critical' ? input.level : 'info',
           source: 'manual',
         });
-        return {
-          ok: result.ok,
-          circuitOpen: ch.circuitStatus().open,
-          ...(result.ok ? {} : { error: result.error ?? 'delivery failed' }),
-        };
+        if (!result.ok) {
+          throw new Error(`notification delivery failed: ${result.error ?? 'unknown error'}`);
+        }
+        return { ok: true, circuitOpen: ch.circuitStatus().open };
       },
     });
 

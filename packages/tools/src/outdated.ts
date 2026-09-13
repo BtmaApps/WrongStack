@@ -176,7 +176,7 @@ function runOutdated(
     });
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
     let stdoutBytes = 0;
@@ -276,13 +276,9 @@ function runOutdated(
         });
         return;
       }
-      resolve({
-        exit_code: 1,
-        packages: [],
-        total: 0,
-        output: e.message,
-        truncated: false,
-      });
+      // The package manager could not be started (ENOENT, EACCES…): a failed
+      // call, not an "exit 1, no packages" result.
+      reject(new Error(`outdated: failed to run ${manager}: ${e.message}`, { cause: e }));
     });
   });
 }

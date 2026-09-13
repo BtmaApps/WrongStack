@@ -3,6 +3,7 @@ import type { ToolRegistry } from '../registry/tool-registry.js';
 import { getDangerousCapabilities, ToolCapabilities } from '../security/capabilities.js';
 import { toolMutates } from '../security/readonly-permission-policy.js';
 import type { Config, PluginConfig } from '../types/config.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { validateAgainstSchema } from '../utils/json-schema-validate.js';
 
@@ -224,8 +225,10 @@ export function createPluginManagerTool(opts: CreatePluginManagerToolOptions): T
         };
       }
 
+      // Failures THROW: the executor marks a call failed only on a throw, so a
+      // returned { status: 'error' } was recorded (and shown) as success.
       const resolved = resolvePlugin(input.plugin!, views);
-      if ('error' in resolved) return { status: 'error', message: resolved.error };
+      if ('error' in resolved) throw new Error(resolved.error);
       const plugin = resolved.plugin;
 
       if (input.action === 'describe') {
@@ -235,19 +238,13 @@ export function createPluginManagerTool(opts: CreatePluginManagerToolOptions): T
       if (input.action === 'enable' || input.action === 'disable') {
         const enabled = input.action === 'enable';
         if (plugin.managerControl === 'locked') {
-          return {
-            status: 'error',
-            code: 'plugin_manager_locked',
-            message:
-              `Plugin "${plugin.name}" is locked against LLM enable/disable changes. ` +
+          throw new Error(
+            `[plugin_manager_locked] Plugin "${plugin.name}" is locked against LLM enable/disable changes. ` +
               'Only the user can change it with /plugin or update pluginManager.locked.',
-          };
+          );
         }
         if (!enabled && !plugin.canDisable) {
-          return {
-            status: 'error',
-            message: `Plugin "${plugin.name}" is locked and cannot be disabled.`,
-          };
+          throw new Error(`Plugin "${plugin.name}" is locked and cannot be disabled.`);
         }
         if (plugin.enabled === enabled && plugin.stateSource !== 'feature_flag') {
           return {
@@ -259,20 +256,20 @@ export function createPluginManagerTool(opts: CreatePluginManagerToolOptions): T
           };
         }
         const result = await opts.setEnabled(plugin.name, enabled);
+        if (!result.ok) throw new Error(result.message);
         return {
-          status: result.ok ? 'ok' : 'error',
+          status: 'ok',
           action: input.action,
-          changed: result.ok,
-          restartRequired: result.restartRequired ?? result.ok,
+          changed: true,
+          restartRequired: result.restartRequired ?? true,
           message: result.message,
         };
       }
 
       if (!plugin.enabled) {
-        return {
-          status: 'error',
-          message: `Plugin "${plugin.name}" is disabled. Enable it first; newly enabled plugins become callable after restart.`,
-        };
+        throw new Error(
+          `Plugin "${plugin.name}" is disabled. Enable it first; newly enabled plugins become callable after restart.`,
+        );
       }
       if (!input.tool) {
         return {
@@ -288,25 +285,20 @@ export function createPluginManagerTool(opts: CreatePluginManagerToolOptions): T
 
       const selected = plugin.tools.find((tool) => tool.name === input.tool);
       if (!selected) {
-        return {
-          status: 'error',
-          message: `Tool "${input.tool}" is not registered by plugin "${plugin.name}" in this session.`,
-          availableTools: plugin.tools.map((tool) => tool.name),
-        };
+        const available = plugin.tools.map((tool) => tool.name).join(', ') || 'none';
+        throw new Error(
+          `Tool "${input.tool}" is not registered by plugin "${plugin.name}" in this session. Available tools: ${available}.`,
+        );
       }
       if (!selected.enabled) {
-        return {
-          status: 'error',
-          message: `Tool "${selected.name}" is registered but disabled by the tool configuration.`,
-        };
+        throw new Error(
+          `Tool "${selected.name}" is registered but disabled by the tool configuration.`,
+        );
       }
 
       const tool = opts.toolRegistry.get(selected.name);
       if (!tool || !ownerMatches(opts.toolRegistry.ownerOf(selected.name), plugin)) {
-        return {
-          status: 'error',
-          message: `Tool "${selected.name}" is no longer available from "${plugin.name}".`,
-        };
+        throw new Error(`Tool "${selected.name}" is no longer available from "${plugin.name}".`);
       }
       if (tool.permission !== 'auto' || tool.riskTier === 'destructive') {
         return {
@@ -363,31 +355,28 @@ export function createPluginManagerTool(opts: CreatePluginManagerToolOptions): T
           mutating: tool.mutating,
         });
         if (pre.block) {
-          return {
-            status: 'error',
-            message:
-              `A policy hook blocked "${tool.name}"` + (pre.reason ? `: ${pre.reason}` : '.'),
-          };
+          throw new Error(
+            `A policy hook blocked "${tool.name}"` + (pre.reason ? `: ${pre.reason}` : '.'),
+          );
         }
         if (pre.input) nestedInput = pre.input;
       }
       const validation = validateAgainstSchema(nestedInput, tool.inputSchema);
       if (!validation.ok) {
-        return {
-          status: 'error',
-          message: `Invalid input for plugin tool "${tool.name}".`,
-          errors: validation.errors,
-          inputSchema: tool.inputSchema,
-        };
+        const detail = validation.errors
+          .map((error) => `${error.path || '(root)'}: ${error.message}`)
+          .join('; ');
+        throw new ToolValidationError({
+          message: `Invalid input for plugin tool "${tool.name}": ${detail}. Input schema: ${JSON.stringify(tool.inputSchema)}`,
+          field: tool.name,
+        });
       }
       const crossFieldErrors = tool.validate?.(nestedInput) ?? [];
       if (crossFieldErrors.length > 0) {
-        return {
-          status: 'error',
-          message: `Invalid input for plugin tool "${tool.name}".`,
-          errors: crossFieldErrors,
-          inputSchema: tool.inputSchema,
-        };
+        throw new ToolValidationError({
+          message: `Invalid input for plugin tool "${tool.name}": ${crossFieldErrors.join('; ')}`,
+          field: tool.name,
+        });
       }
 
       const result = await tool.execute(nestedInput, ctx, executeOpts);

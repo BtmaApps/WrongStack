@@ -46,7 +46,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { BoundedSet } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------
@@ -463,7 +463,7 @@ const plugin: Plugin = {
       category: 'Docs',
       mutating: false,
       async execute(input: { text: string; section?: string | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'changelog-writer is disabled' };
+        if (!cfg.enabled) throw new Error('changelog-writer is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawText =
           input.text ??
@@ -477,7 +477,9 @@ const plugin: Plugin = {
           raw['note'] ??
           raw['item'];
         const text = String(rawText ?? '').trim();
-        if (!text) return { ok: false, error: 'entry text must not be empty' };
+        if (!text) {
+          throw new ToolValidationError({ message: 'entry text must not be empty', field: 'text' });
+        }
         const section = SECTION_ORDER.includes(input.section as Section)
           ? (input.section as Section)
           : 'Changed';
@@ -546,12 +548,12 @@ const plugin: Plugin = {
       category: 'Docs',
       mutating: true,
       async execute(input: { polish?: boolean | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'changelog-writer is disabled' };
+        if (!cfg.enabled) throw new Error('changelog-writer is disabled');
         if (!cfg.filePath) {
-          return { ok: false, error: 'filePath must stay within the current project directory' };
+          throw new Error('filePath must stay within the current project directory');
         }
         if (state.entries.length === 0) {
-          return { ok: false, error: 'no pending entries — add some with changelog_add first' };
+          throw new Error('no pending entries — add some with changelog_add first');
         }
         const rawInput = (input ?? {}) as Record<string, unknown>;
         const shouldPolish =
@@ -564,16 +566,24 @@ const plugin: Plugin = {
         let existing: string | null = null;
         try {
           existing = readFileSync(cfg.filePath, 'utf-8');
-        } catch {
+        } catch (err) {
+          // Only a missing file means "create it"; any other read failure must
+          // not fall through to overwriting an existing changelog.
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw new Error(
+              `failed to read ${cfg.filePath}: ${err instanceof Error ? err.message : String(err)}`,
+              { cause: err },
+            );
+          }
           existing = null;
         }
         try {
           writeFileSync(cfg.filePath, mergeIntoChangelog(existing, block));
         } catch (err) {
-          return {
-            ok: false,
-            error: `failed to write ${cfg.filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          };
+          throw new Error(
+            `failed to write ${cfg.filePath}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
         const written = state.entries.length;
         state.entries = [];

@@ -246,18 +246,23 @@ describe('check_interface_contracts tool', () => {
     plugin.setup(api as never);
     const check = getTool(api, 'check_interface_contracts');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await check({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(check({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws for a missing path instead of reporting no findings', async () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const check = getTool(api, 'check_interface_contracts');
+    await expect(check({ path: 'definitely-missing-contracts-dir' })).rejects.toThrow(
+      /check_interface_contracts failed/,
+    );
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'interface-contract-guard': { enabled: false } } });
     plugin.setup(api as never);
     const check = getTool(api, 'check_interface_contracts');
-    const result = (await check({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(check({})).rejects.toThrow(/disabled/);
   });
 });
 

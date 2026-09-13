@@ -227,18 +227,23 @@ describe('generate_unit_tests tool', () => {
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_unit_tests');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await generate({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(generate({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws when the source file cannot be read', async () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const generate = getTool(api, 'generate_unit_tests');
+    await expect(generate({ path: 'src/missing.ts' })).rejects.toThrow(
+      /Could not read src\/missing\.ts: .*ENOENT/,
+    );
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'test-generator': { enabled: false } } });
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_unit_tests');
-    const result = (await generate({ path: 'src/x.ts' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(generate({ path: 'src/x.ts' })).rejects.toThrow(/disabled/);
   });
 
   it('uses api.llm for behavior-focused tests and strips an outer code fence', async () => {

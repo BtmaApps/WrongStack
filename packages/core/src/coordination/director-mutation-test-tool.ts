@@ -24,6 +24,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { ToolValidationError } from '../types/errors.js';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { ToolCapabilities } from '../security/capabilities.js';
@@ -142,13 +143,31 @@ export function makeMutationTestTool(
     } satisfies JSONSchema,
     async execute(input, ctx) {
       const i = normalizeMutationTestInput(input);
+      if (i.targets.length === 0) {
+        throw new ToolValidationError({
+          message: 'mutation_test requires at least one entry in `targets`.',
+          field: 'targets',
+        });
+      }
+      if (!i.testCommand) {
+        throw new ToolValidationError({
+          message: 'mutation_test requires a non-empty `testCommand`.',
+          field: 'testCommand',
+        });
+      }
       const root = opts.projectRoot ?? ctx.projectRoot;
-      const plan = buildPlan(i, root);
+      const { plan, unreadable } = buildPlan(i, root);
+      if (unreadable.length === i.targets.length) {
+        throw new Error(
+          `mutation_test could not read any target: ${unreadable.join(', ')}. Pass existing project-relative or absolute file paths.`,
+        );
+      }
       if (plan.length === 0) {
         return {
           verdict: 'inconclusive',
           passed: false,
           error: 'No mutable sites found in the given targets (after comment/string filtering).',
+          ...(unreadable.length > 0 ? { unreadableTargets: unreadable } : {}),
         };
       }
 
@@ -159,12 +178,9 @@ export function makeMutationTestTool(
       // ALL_AGENT_DEFINITIONS), so a missing entry is a hard stop.
       const chaosBase = roster?.[CHAOS_ROLE];
       if (!chaosBase) {
-        return {
-          verdict: 'inconclusive',
-          passed: false,
-          error:
-            "chaos-monkey role missing from the roster — refusing to spawn a saboteur without its prompt/tools contract. Build the toolset with a roster that includes 'chaos-monkey' (FLEET_ROSTER does).",
-        };
+        throw new Error(
+          "chaos-monkey role missing from the roster — refusing to spawn a saboteur without its prompt/tools contract. Build the toolset with a roster that includes 'chaos-monkey' (FLEET_ROSTER does).",
+        );
       }
       const chaosSubagentId = await director.spawn(
         makeChaosConfig(chaosBase, i.chaosWorktree ?? chaosBase.worktree ?? 'off'),
@@ -348,21 +364,26 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
 }
 
-function buildPlan(i: MutationTestInput, projectRoot: string | undefined): MutationPlanItem[] {
+function buildPlan(
+  i: MutationTestInput,
+  projectRoot: string | undefined,
+): { plan: MutationPlanItem[]; unreadable: string[] } {
   const plan: MutationPlanItem[] = [];
+  const unreadable: string[] = [];
   for (const target of i.targets) {
     const abs = isAbsolute(target) ? target : join(projectRoot ?? process.cwd(), target);
     let source: string;
     try {
       source = readFileSync(abs, 'utf8');
     } catch {
-      continue; // unreadable target — surfaced via zero-plan error when all fail
+      unreadable.push(target);
+      continue;
     }
     plan.push(
       ...planMutations(target, source, { maxPerFile: i.maxPerFile ?? DEFAULT_MAX_PER_FILE }),
     );
   }
-  return plan;
+  return { plan, unreadable };
 }
 
 function makeChaosConfig(

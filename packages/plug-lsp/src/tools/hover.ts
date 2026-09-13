@@ -9,8 +9,8 @@ import {
   readDocumentContent,
   requireServer,
   resolveInputPath,
-  stringifyToolError,
   type ToolDeps,
+  toToolError,
 } from './shared.js';
 
 interface Input {
@@ -59,7 +59,7 @@ export function createHoverTool(deps: ToolDeps): Tool<Input, string> {
           ),
         );
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

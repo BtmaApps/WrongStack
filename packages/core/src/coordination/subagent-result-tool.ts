@@ -1,5 +1,6 @@
 import type { Context } from '../core/context.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { SubagentStructuredReport } from '../types/multi-agent.js';
 import type { Tool } from '../types/tool.js';
 
@@ -151,11 +152,10 @@ export function makeSubagentResultTool(): Tool {
     async execute(input, ctx) {
       const report = normalizeSubagentStructuredReport(input);
       if (!report) {
-        return {
-          ok: false,
-          error:
-            'Invalid report: summary/findings/files_examined/confidence/suggested_next_steps are required and confidence must be 0..1.',
-        };
+        throw new ToolValidationError({
+          message:
+            'Invalid report: summary/findings/files_examined/confidence/suggested_next_steps are required, confidence must be 0..1, completion="partial" needs remaining_work, and the report must fit the size limits.',
+        });
       }
       ctx.meta[SUBAGENT_STRUCTURED_REPORT_META_KEY] = report;
       return {

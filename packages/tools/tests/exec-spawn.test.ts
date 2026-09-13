@@ -128,17 +128,14 @@ describe('execTool runCommand (faked child)', () => {
   });
 
   it('still blocks externally destructive subcommands only in subcommand position', async () => {
-    const blocked = await execTool.execute({ command: 'pnpm', args: ['publish'] }, ctx(), opts());
-    expect(blocked.allowed).toBe(false);
-    expect(blocked.stderr).toContain('Blocked subcommand "publish"');
+    // Refusals throw — a returned `allowed: false` was recorded as a successful call.
+    await expect(
+      execTool.execute({ command: 'pnpm', args: ['publish'] }, ctx(), opts()),
+    ).rejects.toThrow('Blocked subcommand "publish"');
 
-    const dockerPush = await execTool.execute(
-      { command: 'docker', args: ['push', 'repo/image'] },
-      ctx(),
-      opts(),
-    );
-    expect(dockerPush.allowed).toBe(false);
-    expect(dockerPush.stderr).toContain('Blocked subcommand "push"');
+    await expect(
+      execTool.execute({ command: 'docker', args: ['push', 'repo/image'] }, ctx(), opts()),
+    ).rejects.toThrow('Blocked subcommand "push"');
 
     const yarnInfo = await execTool.execute(
       { command: 'yarn', args: ['npm', 'info', 'typescript'] },
@@ -147,13 +144,9 @@ describe('execTool runCommand (faked child)', () => {
     );
     expect(yarnInfo.allowed).toBe(true);
 
-    const yarnPublish = await execTool.execute(
-      { command: 'yarn', args: ['npm', 'publish'] },
-      ctx(),
-      opts(),
-    );
-    expect(yarnPublish.allowed).toBe(false);
-    expect(yarnPublish.stderr).toContain('Blocked subcommand "npm publish"');
+    await expect(
+      execTool.execute({ command: 'yarn', args: ['npm', 'publish'] }, ctx(), opts()),
+    ).rejects.toThrow('Blocked subcommand "npm publish"');
 
     const downstreamArg = await execTool.execute(
       { command: 'pnpm', args: ['test', '--', 'publish'] },
@@ -174,13 +167,9 @@ describe('execTool runCommand (faked child)', () => {
         throw err;
       }
 
-      const result = await execTool.execute(
-        { command: 'echo', cwd: 'outside-link' },
-        ctx(),
-        opts(),
-      );
-      expect(result.allowed).toBe(false);
-      expect(result.stderr).toContain('outside project root');
+      await expect(
+        execTool.execute({ command: 'echo', cwd: 'outside-link' }, ctx(), opts()),
+      ).rejects.toThrow('outside project root');
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });
     }
@@ -192,11 +181,11 @@ describe('execTool runCommand (faked child)', () => {
     expect(result.exitCode).toBe(2);
   });
 
-  it('handles a spawn error', async () => {
+  it('fails the call on a spawn error (the command never ran)', async () => {
     cfg.mode = 'error';
-    const result = await execTool.execute({ command: 'echo' }, ctx(), opts());
-    expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('spawn failed');
+    await expect(execTool.execute({ command: 'echo' }, ctx(), opts())).rejects.toThrow(
+      /exec: process error: spawn failed/,
+    );
   });
 
   it('returns exit code 124 when the timeout fires', async () => {

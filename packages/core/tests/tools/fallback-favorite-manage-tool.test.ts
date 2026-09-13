@@ -22,12 +22,12 @@ function makeOpts(overrides: Record<string, unknown> = {}): FallbackManageToolOp
   };
 }
 
+const signal = () => ({ signal: new AbortController().signal });
+
 describe('favorite_manage — list', () => {
   it('lists all favorites with indices', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'list' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'list' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.favorites).toEqual(['test-provider/test-model', 'test-provider/other-model']);
     expect(result.message).toContain('1. test-provider/test-model');
@@ -36,9 +36,7 @@ describe('favorite_manage — list', () => {
 
   it('shows a helpful message when no favorites exist', async () => {
     const tool = createFavoriteManageTool(makeOpts({ favoriteModels: [] }));
-    const result = await tool.execute({ action: 'list' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'list' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.favorites).toEqual([]);
     expect(result.message).toContain('No favorites set');
@@ -49,107 +47,89 @@ describe('favorite_manage — add', () => {
   it('adds a new favorite', async () => {
     const opts = makeOpts();
     const tool = createFavoriteManageTool(opts);
-    const result = await tool.execute({ action: 'add', model: 'openai/gpt-4o' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute(
+      { action: 'add', model: 'openai/gpt-4o' },
+      {} as never,
+      signal(),
+    );
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Added favorite');
     expect(result.favorites).toContain('openai/gpt-4o');
     expect(opts.updateConfig).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects adding without a model', async () => {
+  it('throws when adding without a model', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'add' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Provide "model"');
+    await expect(tool.execute({ action: 'add' }, {} as never, signal())).rejects.toThrow(
+      /Provide "model"/,
+    );
   });
 
-  it('rejects adding a duplicate favorite', async () => {
-    const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute(
-      { action: 'add', model: 'test-provider/test-model' },
-      {} as never,
-      { signal: new AbortController().signal },
-    );
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('already a favorite');
+  it('throws when adding a duplicate favorite, without persisting', async () => {
+    const opts = makeOpts();
+    const tool = createFavoriteManageTool(opts);
+    await expect(
+      tool.execute({ action: 'add', model: 'test-provider/test-model' }, {} as never, signal()),
+    ).rejects.toThrow(/already a favorite/);
+    expect(opts.updateConfig).not.toHaveBeenCalled();
   });
 });
 
 describe('favorite_manage — remove', () => {
   it('removes by 1-based index', async () => {
-    const opts = makeOpts();
-    const tool = createFavoriteManageTool(opts);
-    const result = await tool.execute({ action: 'remove', index: 1 }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const tool = createFavoriteManageTool(makeOpts());
+    const result = await tool.execute({ action: 'remove', index: 1 }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Removed favorite: test-provider/test-model');
     expect(result.favorites).toEqual(['test-provider/other-model']);
   });
 
-  it('rejects out-of-range index', async () => {
+  it('throws on out-of-range index', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove', index: 99 }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('out of range');
+    await expect(
+      tool.execute({ action: 'remove', index: 99 }, {} as never, signal()),
+    ).rejects.toThrow(/out of range/);
   });
 
-  it('rejects index 0', async () => {
+  it('throws on index 0', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove', index: 0 }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('out of range');
+    await expect(
+      tool.execute({ action: 'remove', index: 0 }, {} as never, signal()),
+    ).rejects.toThrow(/out of range/);
   });
 
   it('removes by model ref', async () => {
-    const opts = makeOpts();
-    const tool = createFavoriteManageTool(opts);
+    const tool = createFavoriteManageTool(makeOpts());
     const result = await tool.execute(
       { action: 'remove', model: 'test-provider/other-model' },
       {} as never,
-      { signal: new AbortController().signal },
+      signal(),
     );
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Removed favorite: test-provider/other-model');
     expect(result.favorites).toEqual(['test-provider/test-model']);
   });
 
-  it('rejects removing a model not in favorites', async () => {
+  it('throws when removing a model not in favorites', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute(
-      { action: 'remove', model: 'openai/nonexistent' },
-      {} as never,
-      { signal: new AbortController().signal },
-    );
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(
+      tool.execute({ action: 'remove', model: 'openai/nonexistent' }, {} as never, signal()),
+    ).rejects.toThrow(/not found/);
   });
 
-  it('rejects remove without model or index', async () => {
+  it('throws on remove without model or index', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Provide either');
+    await expect(tool.execute({ action: 'remove' }, {} as never, signal())).rejects.toThrow(
+      /Provide either/,
+    );
   });
 });
 
 describe('favorite_manage — unknown action', () => {
-  it('returns an error for unrecognized actions', async () => {
+  it('throws for unrecognized actions', async () => {
     const tool = createFavoriteManageTool(makeOpts());
-    const result = await tool.execute({ action: 'destroy' as never }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Unknown action');
+    await expect(
+      tool.execute({ action: 'destroy' as never }, {} as never, signal()),
+    ).rejects.toThrow(/Unknown action/);
   });
 });

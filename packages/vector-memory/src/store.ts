@@ -25,6 +25,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { withFileLock } from '@wrongstack/core/utils';
 import { loadRuntimeDatabaseSync } from '@wrongstack/persistence';
 import { cosineSimilarity, HashingEmbeddingProvider } from '@wrongstack/sage';
+import { VectorMemoryProviderUnavailableError } from './errors.js';
 
 import {
   decodeVector,
@@ -184,9 +185,9 @@ export class VectorMemoryStore {
    * Embed `text`, hitting the provider-level cache first. Cache miss falls
    * through to the configured provider and writes the result back. Returns
    * `undefined` when the provider fails — the caller can persist the entry
-   * without a vector (fail-open).
+   * without a vector (fail-open) — unless `strict`, which throws instead.
    */
-  private async embedWithCache(text: string): Promise<Float32Array | undefined> {
+  private async embedWithCache(text: string, strict = false): Promise<Float32Array | undefined> {
     const now = new Date().toISOString();
     const cached = this.cachedVector(text, now);
     if (cached) return cached;
@@ -195,7 +196,13 @@ export class VectorMemoryStore {
       const vec = result[0];
       if (vec) this.cacheVector(text, vec, now);
       return vec;
-    } catch {
+    } catch (err) {
+      if (strict) {
+        throw new VectorMemoryProviderUnavailableError(
+          `Embedding provider "${this.provider.id}" failed: ${err instanceof Error ? err.message : String(err)}`,
+          err,
+        );
+      }
       return undefined;
     }
   }
@@ -398,8 +405,16 @@ export class VectorMemoryStore {
 
     // Embed the query through the same provider-level cache as writes —
     // repeated identical queries skip the ONNX pass entirely.
-    const queryVec = await this.embedWithCache(query);
-    if (!queryVec || queryVec.length === 0) return [];
+    const strict = opts.failOnEmbeddingError === true;
+    const queryVec = await this.embedWithCache(query, strict);
+    if (!queryVec || queryVec.length === 0) {
+      if (strict) {
+        throw new VectorMemoryProviderUnavailableError(
+          `Embedding provider "${this.provider.id}" returned no vector for the query.`,
+        );
+      }
+      return [];
+    }
 
     const providerId = this.provider.id;
     const dimensions = this.provider.dimensions;

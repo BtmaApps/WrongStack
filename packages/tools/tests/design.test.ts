@@ -49,11 +49,32 @@ describe('designTool', () => {
     expect((ctx.meta.designStudio as any)?.activeKit).toBe('neo-brutalist');
   });
 
-  it('returns the menu when an unknown kit is requested', async () => {
+  it('throws (with the menu in the message) when an unknown kit is requested', async () => {
     const ctx = makeCtx();
-    const res = await designTool.execute({ action: 'use', kit: 'nope' }, ctx, opts);
-    expect(res.output).toMatch(/not found/i);
-    expect(res.output).toContain('minimal-clarity');
+    await expect(designTool.execute({ action: 'use', kit: 'nope' }, ctx, opts)).rejects.toThrow(
+      /not found[\s\S]*minimal-clarity/i,
+    );
+  });
+
+  it('throws when "set" is called without overrides', async () => {
+    await expect(designTool.execute({ action: 'set' }, makeCtx(), opts)).rejects.toThrow(
+      /no overrides given/i,
+    );
+  });
+
+  it('throws when verify/materialize have no active kit to work from', async () => {
+    const bare = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-bare-'));
+    try {
+      const ctx = { cwd: bare, tools: [], projectRoot: bare, meta: {} } as any;
+      await expect(designTool.execute({ action: 'verify' }, ctx, opts)).rejects.toThrow(
+        /no active kit/i,
+      );
+      await expect(designTool.execute({ action: 'materialize' }, ctx, opts)).rejects.toThrow(
+        /no active kit/i,
+      );
+    } finally {
+      await fs.rm(bare, { recursive: true, force: true });
+    }
   });
 
   it('returns the mandatory foundations baseline', async () => {
@@ -127,5 +148,10 @@ describe('designTool', () => {
     expect(css).toContain('--radius-md: 0.75rem;');
     expect(css).toContain('--spacing-4: 0.8rem;'); // compact density
     expect(mat.output).toMatch(/Wrote/);
+
+    // Refusing to clobber without force is a failed call, not an ok result.
+    await expect(
+      designTool.execute({ action: 'materialize', out: 'tuned.css' }, ctx, opts),
+    ).rejects.toThrow(/already exists/);
   });
 });

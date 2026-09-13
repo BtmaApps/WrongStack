@@ -45,15 +45,13 @@ export interface CodebaseContextOutput {
   /** Files the walk reached before truncation to `limit`. */
   totalCandidates: number;
   /**
-   * `ok` — a ranked answer. `no-index` — nothing indexed yet.
-   * `no-matches` — the index exists but the query matched nothing.
-   * `unranked` — symbols exist but no reference graph, so results are lexical
-   * only. `error` — the lookup itself failed; see `error`.
+   * `ok` — a ranked answer. `no-matches` — the index exists but the query
+   * matched nothing. `unranked` — symbols exist but no reference graph, so
+   * results are lexical only. A missing index or a failed lookup THROWS.
    */
-  indexStatus: 'ok' | 'no-index' | 'no-matches' | 'unranked' | 'error';
+  indexStatus: 'ok' | 'no-matches' | 'unranked';
   /** True when a cached answer from a previous generation was served. */
   stale?: boolean | undefined;
-  error?: string | undefined;
 }
 
 /** The host watchdog cancels at 30s; ask for slightly more so it wins. */
@@ -135,7 +133,7 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
     '- `matched: true` means the file matched the query directly; the rest were reached through the graph.\n' +
     '- `relevance` is relative to this answer only (top result is always 1.0) — never compare it across queries.\n' +
     '- Narrow with `pathPrefix: "packages/core"` when you already know the area.\n' +
-    '- `indexStatus: "no-index"` means run `/codebase-reindex` first.',
+    '- If the call fails because no index exists, run `/codebase-reindex` (or `codebase-index`) first.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -171,12 +169,13 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
     const signal = execOpts?.signal ?? ctx.signal;
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
 
+    signal?.throwIfAborted();
+    const indexDir = codebaseIndexDirOverride(ctx);
+    let result: Awaited<ReturnType<typeof codebaseContext>>;
     try {
-      signal?.throwIfAborted();
-      const indexDir = codebaseIndexDirOverride(ctx);
       const vectorFiles = await semanticSeeds(projectRoot, indexDir, query);
       signal?.throwIfAborted();
-      const result = await codebaseContext({
+      result = await codebaseContext({
         projectRoot,
         indexDir,
         query,
@@ -185,34 +184,33 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
         symbolsPerFile: input.symbolsPerFile,
         pathPrefix: input.pathPrefix,
       });
-      return {
-        query: result.query,
-        entries: result.entries,
-        seedCount: result.seedCount,
-        semanticSeedCount: result.semanticSeedCount,
-        totalCandidates: result.totalCandidates,
-        indexStatus: result.indexStatus,
-        ...('stale' in result && (result as { stale?: boolean }).stale === true
-          ? { stale: true }
-          : {}),
-      };
     } catch (err) {
-      // A user cancel is not a tool failure.
       if (signal?.aborted) throw err;
-      // A refresh in flight is a "try again", not a broken index — say so
-      // rather than reporting the raw internal error.
+      // Failures THROW so the executor marks the call is_error; a returned
+      // `indexStatus: 'error'` payload was recorded as a successful call.
       const refreshing = err instanceof Error && err.name === 'IndexRefreshInProgressError';
-      return {
-        query,
-        entries: [],
-        seedCount: 0,
-        semanticSeedCount: 0,
-        totalCandidates: 0,
-        indexStatus: 'error',
-        error: refreshing
+      throw new Error(
+        refreshing
           ? 'Codebase index is refreshing; retry once the current generation is published.'
-          : toErrorMessage(err),
-      };
+          : `codebase-context lookup failed: ${toErrorMessage(err)}`,
+        { cause: err },
+      );
     }
+    if (result.indexStatus === 'no-index') {
+      throw new Error(
+        'No codebase index data found. Run /codebase-reindex (or codebase-index), then retry codebase-context.',
+      );
+    }
+    return {
+      query: result.query,
+      entries: result.entries,
+      seedCount: result.seedCount,
+      semanticSeedCount: result.semanticSeedCount,
+      totalCandidates: result.totalCandidates,
+      indexStatus: result.indexStatus,
+      ...('stale' in result && (result as { stale?: boolean }).stale === true
+        ? { stale: true }
+        : {}),
+    };
   },
 };

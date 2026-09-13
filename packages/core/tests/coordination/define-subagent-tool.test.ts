@@ -11,7 +11,8 @@ describe('define_subagent tool', () => {
       {
         name: 'code-cleaner',
         description: 'Refactors dead imports and formats comments',
-        system_prompt: 'You are a dedicated code cleaner. Focus on formatting and dead import removal.',
+        system_prompt:
+          'You are a dedicated code cleaner. Focus on formatting and dead import removal.',
         enable_write_tools: true,
       },
       {} as never,
@@ -24,6 +25,17 @@ describe('define_subagent tool', () => {
     expect(roster['code-cleaner']?.prompt).toContain('You are a dedicated code cleaner');
     expect(roster['code-cleaner']?.allowedCapabilities).toContain('fs.write');
     expect(roster['code-cleaner']?.tools).toContain('write');
+  });
+
+  it('throws instead of reporting success when no roster is attached', async () => {
+    const tool = createDefineSubagentTool({});
+    await expect(
+      tool.execute(
+        { name: 'orphan', description: 'never registered', system_prompt: 'You do things.' },
+        {} as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/no session roster is attached/);
   });
 
   it('rejects invalid names defensively', async () => {

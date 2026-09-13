@@ -1,4 +1,5 @@
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { CollabSessionOptions } from './collab-debug.js';
@@ -57,7 +58,10 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
         contextWindow?: number | undefined;
       };
       if (!i.targetPaths?.length) {
-        return { error: 'collab_debug: targetPaths is required and must be non-empty.' };
+        throw new ToolValidationError({
+          message: 'collab_debug: targetPaths is required and must be non-empty.',
+          field: 'targetPaths',
+        });
       }
       const options: CollabSessionOptions = {
         targetPaths: i.targetPaths,
@@ -79,7 +83,7 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
           evaluations: report.evaluations,
         };
       } catch (err) {
-        return { error: 'collab_debug failed: ' + toErrorMessage(err) };
+        throw new Error(`collab_debug failed: ${toErrorMessage(err)}`, { cause: err });
       }
     },
   };
@@ -112,7 +116,9 @@ export function makeFleetEmitTool(director: Host.DirectorPublishingPort): Tool {
       const i = input as { type: string; payload?: Record<string, unknown> | null };
       const role = ctx.meta['agentRole'] as string | undefined;
       const validationError = validateFleetEventEmission(i.type, i.payload ?? {}, role);
-      if (validationError) return { ok: false, error: validationError };
+      if (validationError) {
+        throw new ToolValidationError({ message: validationError, field: 'payload' });
+      }
       const callerId = ctx.agentId && ctx.agentId !== 'unknown' ? ctx.agentId : director.id;
       const taskId = ctx.meta['subagentTaskId'] as string | undefined;
       director.fleet.emit({

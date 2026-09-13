@@ -23,6 +23,7 @@
 import type { TierModelEconomics } from '../coordination/model-tier-leader.js';
 import { evaluateLeaderTierSwitch, leaderTierPolicy } from '../coordination/model-tier-leader.js';
 import { activeTierConfig, listTierIds, resolveTier } from '../coordination/model-tier.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 
@@ -90,7 +91,7 @@ interface Input {
 }
 
 interface Output {
-  status: 'ok' | 'error' | 'proposed';
+  status: 'ok' | 'proposed';
   message: string;
 }
 
@@ -119,12 +120,10 @@ export function createModelTierSetTool(opts: ModelTierSetToolOptions): Tool<Inpu
       const config = opts.getConfig();
       const tiers = activeTierConfig(config);
       if (!tiers) {
-        return {
-          status: 'error',
-          message:
-            'The model-tier layer is not enabled. Set `modelTiers.enabled = true` and define ' +
+        throw new Error(
+          'The model-tier layer is not enabled. Set `modelTiers.enabled = true` and define ' +
             '`modelTiers.levels` first.',
-        };
+        );
       }
 
       const currentTier = opts.getCurrentTier?.();
@@ -159,18 +158,21 @@ export function createModelTierSetTool(opts: ModelTierSetToolOptions): Tool<Inpu
       }
 
       if (!input.tier) {
-        return { status: 'error', message: 'Provide "tier" for the "set" action.' };
+        throw new ToolValidationError({
+          message: 'Provide "tier" for the "set" action.',
+          field: 'tier',
+        });
       }
 
       const resolved = resolveTier(config, { tier: input.tier });
       if (!resolved?.model) {
         const available = listTierIds(config);
-        return {
-          status: 'error',
+        throw new ToolValidationError({
           message:
             `Tier "${input.tier}" does not resolve to a model` +
             `${available.length ? ` (configured tiers: ${available.join(', ')})` : ''}.`,
-        };
+          field: 'tier',
+        });
       }
       const targetProvider = resolved.provider ?? config.provider;
       const targetModel = resolved.model;
@@ -201,7 +203,7 @@ export function createModelTierSetTool(opts: ModelTierSetToolOptions): Tool<Inpu
       });
 
       if (!verdict.allowed) {
-        return { status: 'error', message: `Refused (${verdict.code}): ${verdict.reason}` };
+        throw new Error(`Refused (${verdict.code}): ${verdict.reason}`);
       }
 
       const proposal: LeaderTierProposal = {
@@ -228,10 +230,9 @@ export function createModelTierSetTool(opts: ModelTierSetToolOptions): Tool<Inpu
       if (opts.switchProviderAndModel) {
         const switchError = await opts.switchProviderAndModel(targetProvider, targetModel);
         if (switchError) {
-          return {
-            status: 'error',
-            message: `Could not switch to ${targetProvider}/${targetModel}: ${switchError}. Config was not changed.`,
-          };
+          throw new Error(
+            `Could not switch to ${targetProvider}/${targetModel}: ${switchError}. Config was not changed.`,
+          );
         }
       }
 

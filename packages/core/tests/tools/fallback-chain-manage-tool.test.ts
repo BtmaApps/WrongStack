@@ -23,12 +23,12 @@ function makeOpts(overrides: Record<string, unknown> = {}): FallbackManageToolOp
   };
 }
 
+const signal = () => ({ signal: new AbortController().signal });
+
 describe('fallback_chain_manage — list', () => {
   it('lists the chain with positions', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'list' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'list' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.chain).toEqual(['test-provider/test-model', 'test-provider/other-model']);
     expect(result.message).toContain('1. test-provider/test-model');
@@ -36,9 +36,7 @@ describe('fallback_chain_manage — list', () => {
 
   it('shows empty message when chain is empty', async () => {
     const tool = createFallbackChainManageTool(makeOpts({ fallbackModels: [] }));
-    const result = await tool.execute({ action: 'list' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'list' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.chain).toEqual([]);
     expect(result.message).toContain('empty');
@@ -49,61 +47,58 @@ describe('fallback_chain_manage — add', () => {
   it('appends a favorite model to the chain', async () => {
     const opts = makeOpts();
     const tool = createFallbackChainManageTool(opts);
-    const result = await tool.execute({ action: 'add', model: 'openai/gpt-4o' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute(
+      { action: 'add', model: 'openai/gpt-4o' },
+      {} as never,
+      signal(),
+    );
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Added to chain');
     expect(result.chain).toContain('openai/gpt-4o');
     expect(opts.updateConfig).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects adding without a model', async () => {
+  it('throws when adding without a model', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'add' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Provide "model"');
-  });
-
-  it('rejects adding a non-favorite model', async () => {
-    const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'add', model: 'anthropic/claude-3' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not in your favorites');
-  });
-
-  it('rejects adding a duplicate', async () => {
-    const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute(
-      { action: 'add', model: 'test-provider/test-model' },
-      {} as never,
-      { signal: new AbortController().signal },
+    await expect(tool.execute({ action: 'add' }, {} as never, signal())).rejects.toThrow(
+      /Provide "model"/,
     );
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('already in the chain');
+  });
+
+  it('throws when adding a non-favorite model, without persisting', async () => {
+    const opts = makeOpts();
+    const tool = createFallbackChainManageTool(opts);
+    await expect(
+      tool.execute({ action: 'add', model: 'anthropic/claude-3' }, {} as never, signal()),
+    ).rejects.toThrow(/not in your favorites/);
+    expect(opts.updateConfig).not.toHaveBeenCalled();
+  });
+
+  it('throws when adding a duplicate', async () => {
+    const tool = createFallbackChainManageTool(makeOpts());
+    await expect(
+      tool.execute({ action: 'add', model: 'test-provider/test-model' }, {} as never, signal()),
+    ).rejects.toThrow(/already in the chain/);
   });
 
   it('allows adding when favorites list is empty (no enforcement)', async () => {
     const tool = createFallbackChainManageTool(makeOpts({ favoriteModels: [] }));
-    const result = await tool.execute({ action: 'add', model: 'anthropic/claude-3' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute(
+      { action: 'add', model: 'anthropic/claude-3' },
+      {} as never,
+      signal(),
+    );
     expect(result.status).toBe('ok');
   });
 });
 
 describe('fallback_chain_manage — insert', () => {
   it('inserts at a specific position', async () => {
-    const opts = makeOpts();
-    const tool = createFallbackChainManageTool(opts);
+    const tool = createFallbackChainManageTool(makeOpts());
     const result = await tool.execute(
       { action: 'insert', model: 'openai/gpt-4o', index: 1 },
       {} as never,
-      { signal: new AbortController().signal },
+      signal(),
     );
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Inserted at position 1');
@@ -112,9 +107,11 @@ describe('fallback_chain_manage — insert', () => {
 
   it('appends when index is omitted', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'insert', model: 'openai/gpt-4o' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute(
+      { action: 'insert', model: 'openai/gpt-4o' },
+      {} as never,
+      signal(),
+    );
     expect(result.status).toBe('ok');
     expect(result.chain?.[result.chain!.length - 1]).toBe('openai/gpt-4o');
   });
@@ -124,63 +121,49 @@ describe('fallback_chain_manage — insert', () => {
     const result = await tool.execute(
       { action: 'insert', model: 'openai/gpt-4o', index: 999 },
       {} as never,
-      { signal: new AbortController().signal },
+      signal(),
     );
     expect(result.status).toBe('ok');
     // Clamped to end
     expect(result.chain?.[result.chain!.length - 1]).toBe('openai/gpt-4o');
   });
 
-  it('rejects insert without model', async () => {
+  it('throws on insert without model', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'insert' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
+    await expect(tool.execute({ action: 'insert' }, {} as never, signal())).rejects.toThrow(
+      /Provide "model"/,
+    );
   });
 
-  it('rejects inserting a non-favorite', async () => {
+  it('throws when inserting a non-favorite', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute(
-      { action: 'insert', model: 'anthropic/claude-3' },
-      {} as never,
-      { signal: new AbortController().signal },
-    );
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not in your favorites');
+    await expect(
+      tool.execute({ action: 'insert', model: 'anthropic/claude-3' }, {} as never, signal()),
+    ).rejects.toThrow(/not in your favorites/);
   });
 
-  it('rejects inserting a duplicate', async () => {
+  it('throws when inserting a duplicate', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute(
-      { action: 'insert', model: 'test-provider/test-model' },
-      {} as never,
-      { signal: new AbortController().signal },
-    );
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('already in the chain');
+    await expect(
+      tool.execute({ action: 'insert', model: 'test-provider/test-model' }, {} as never, signal()),
+    ).rejects.toThrow(/already in the chain/);
   });
 });
 
 describe('fallback_chain_manage — remove', () => {
   it('removes by 1-based index', async () => {
-    const opts = makeOpts();
-    const tool = createFallbackChainManageTool(opts);
-    const result = await tool.execute({ action: 'remove', index: 1 }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const tool = createFallbackChainManageTool(makeOpts());
+    const result = await tool.execute({ action: 'remove', index: 1 }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Removed: test-provider/test-model');
     expect(result.chain).toEqual(['test-provider/other-model']);
   });
 
-  it('rejects out-of-range index', async () => {
+  it('throws on out-of-range index', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove', index: 99 }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('out of range');
+    await expect(
+      tool.execute({ action: 'remove', index: 99 }, {} as never, signal()),
+    ).rejects.toThrow(/out of range/);
   });
 
   it('removes by model ref', async () => {
@@ -188,37 +171,31 @@ describe('fallback_chain_manage — remove', () => {
     const result = await tool.execute(
       { action: 'remove', model: 'test-provider/other-model' },
       {} as never,
-      { signal: new AbortController().signal },
+      signal(),
     );
     expect(result.status).toBe('ok');
     expect(result.chain).toEqual(['test-provider/test-model']);
   });
 
-  it('rejects removing a model not in chain', async () => {
+  it('throws when removing a model not in chain', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove', model: 'openai/gpt-4o' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(
+      tool.execute({ action: 'remove', model: 'openai/gpt-4o' }, {} as never, signal()),
+    ).rejects.toThrow(/not found/);
   });
 
-  it('rejects remove on empty chain', async () => {
+  it('throws on remove from an empty chain', async () => {
     const tool = createFallbackChainManageTool(makeOpts({ fallbackModels: [] }));
-    const result = await tool.execute({ action: 'remove', index: 1 }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('empty');
+    await expect(
+      tool.execute({ action: 'remove', index: 1 }, {} as never, signal()),
+    ).rejects.toThrow(/empty/);
   });
 
-  it('rejects remove without model or index', async () => {
+  it('throws on remove without model or index', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'remove' }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Provide');
+    await expect(tool.execute({ action: 'remove' }, {} as never, signal())).rejects.toThrow(
+      /Provide/,
+    );
   });
 });
 
@@ -226,9 +203,7 @@ describe('fallback_chain_manage — clear', () => {
   it('clears a non-empty chain', async () => {
     const opts = makeOpts();
     const tool = createFallbackChainManageTool(opts);
-    const result = await tool.execute({ action: 'clear' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'clear' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.message).toContain('Cleared');
     expect(opts.updateConfig).toHaveBeenCalledTimes(1);
@@ -236,21 +211,17 @@ describe('fallback_chain_manage — clear', () => {
 
   it('reports already-empty chain', async () => {
     const tool = createFallbackChainManageTool(makeOpts({ fallbackModels: [] }));
-    const result = await tool.execute({ action: 'clear' }, {} as never, {
-      signal: new AbortController().signal,
-    });
+    const result = await tool.execute({ action: 'clear' }, {} as never, signal());
     expect(result.status).toBe('ok');
     expect(result.message).toContain('already empty');
   });
 });
 
 describe('fallback_chain_manage — unknown action', () => {
-  it('returns an error', async () => {
+  it('throws', async () => {
     const tool = createFallbackChainManageTool(makeOpts());
-    const result = await tool.execute({ action: 'nuke' as never }, {} as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Unknown action');
+    await expect(tool.execute({ action: 'nuke' as never }, {} as never, signal())).rejects.toThrow(
+      /Unknown action/,
+    );
   });
 });

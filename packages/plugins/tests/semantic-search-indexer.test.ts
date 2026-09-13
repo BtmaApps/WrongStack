@@ -332,23 +332,33 @@ describe('semantic-search-indexer plugin', () => {
     const api = makeApi({ extensions: { 'semantic-search-indexer': { enabled: false } } });
     plugin.setup(api as never);
     const search = getTool(api, 'semantic_search');
-    const result = (await search({ query: 'auth' })) as { ok: boolean; error: string };
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(search({ query: 'auth' })).rejects.toThrow(/disabled/);
   });
 
   it('returns an error for paths outside the project', async () => {
     const api = makeApi();
     plugin.setup(api as never);
     const search = getTool(api, 'semantic_search');
-    const result = (await search({ query: 'auth', path: '/etc' })) as {
-      ok: boolean;
-      error: string;
-    };
+    await expect(search({ query: 'auth', path: '/etc' })).rejects.toThrow(/outside project root/);
+  });
 
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside project root');
+  it('throws for a search path that does not exist instead of returning zero results', async () => {
+    mockTree({ '/project': { type: 'dir', entries: [] } });
+    const api = makeApi();
+    plugin.setup(api as never);
+    const search = getTool(api, 'semantic_search');
+    await expect(search({ query: 'auth', path: 'nope' })).rejects.toThrow(
+      /path does not exist or cannot be read: nope/,
+    );
+  });
+
+  it('throws when the query has no searchable keyword', async () => {
+    mockTree({ '/project': { type: 'dir', entries: [] } });
+    const api = makeApi();
+    plugin.setup(api as never);
+    const search = getTool(api, 'semantic_search');
+    await expect(search({})).rejects.toThrow(/query must contain at least one keyword/);
+    await expect(search({ query: '  ! ' })).rejects.toThrow(/query must contain/);
   });
 
   it('teardown zeros state and logs', async () => {

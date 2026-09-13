@@ -108,8 +108,7 @@ describe('agent-handoff plugin', () => {
     const api = makeApi({ extensions: { 'agent-handoff': { enabled: false } } });
     agentHandoffPlugin.setup(api as never);
     const tool = getTool(api, 'handoff_note');
-    const result = (await tool({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
+    await expect(tool({})).rejects.toThrow(/disabled/);
   });
 
   it('teardown zeros state and logs', async () => {

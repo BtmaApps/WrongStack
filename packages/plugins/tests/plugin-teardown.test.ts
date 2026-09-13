@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // chokidar import is left un-mocked — the H1 audit is about resource
@@ -134,7 +135,12 @@ describe('plugin teardown (H1 regression guard)', () => {
 
       // The watch_start tool itself can enqueue a debounce timer per path.
       const watchTool = getTool(api, 'watch_start');
-      await watchTool.execute({ path: '/tmp/x', recursive: true, debounceMs: 200 });
+      // An in-project path: out-of-project paths are now rejected with a throw.
+      await watchTool.execute({
+        path: fileURLToPath(new URL('.', import.meta.url)),
+        recursive: true,
+        debounceMs: 200,
+      });
       // Setup also installs an event handler that uses the debounce
       // helper — we expect at least one timer from a fresh setup.
       const before = vi.getTimerCount();

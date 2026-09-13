@@ -55,8 +55,35 @@ describe('memory candidates branch coverage', () => {
     expect(tool.validate?.({ action: 'propose', text: ' valid ' })).toEqual([]);
   });
 
+  it('fails the call for an unknown or non-pending candidate', async () => {
+    // `undefined` / `{ rejected: false }` were recorded as successful calls.
+    const memory = service();
+    vi.mocked(memory.acceptCandidate).mockResolvedValue(undefined);
+    vi.mocked(memory.rejectCandidate).mockResolvedValue(false);
+    vi.mocked(memory.resolveCandidate).mockResolvedValue(undefined);
+    const tool = memoryCandidatesTool(memory);
+    await expect(
+      tool.execute({ action: 'accept', candidate_id: 'gone' }, {} as never, options),
+    ).rejects.toThrow(/"gone" not found or no longer pending/);
+    await expect(
+      tool.execute({ action: 'reject', candidate_id: 'gone' }, {} as never, options),
+    ).rejects.toThrow(/"gone" not found or no longer pending/);
+    await expect(
+      tool.execute(
+        { action: 'resolve', candidate_id: 'gone', decision: 'keep' },
+        {} as never,
+        options,
+      ),
+    ).rejects.toThrow(/"gone" not found/);
+  });
+
   it('forwards an omitted resolve reason', async () => {
     const memory = service();
+    vi.mocked(memory.resolveCandidate).mockResolvedValue({
+      candidateId: 'candidate',
+      decision: 'keep',
+      applied: true,
+    } as never);
     const tool = memoryCandidatesTool(memory);
     await tool.execute(
       { action: 'resolve', candidate_id: 'candidate', decision: 'keep' },

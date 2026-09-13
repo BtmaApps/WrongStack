@@ -23,6 +23,7 @@ import type { EventBus } from '../kernel/events.js';
 import type { Context } from '../core/context.js';
 import type { Tool } from '../types/tool.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import { getSharedProjectMailbox } from './remote-mailbox.js';
 import {
   filterMailboxSendPayload,
@@ -34,13 +35,13 @@ import type {
   Mailbox,
   MailboxActorContext,
   MailboxCapability,
-  MailboxMessage,
   MailboxMessageType,
 } from './mailbox-types.js';
 import { resolveSendType } from './mailbox-message-codec.js';
 import {
   applyMailboxSendPolicy,
   defaultResolveProjectDir,
+  queryMailboxTargets,
   resolveMailboxIdentity,
   type MailboxResolver,
 } from './mailbox-tool.js';
@@ -208,7 +209,7 @@ export function makeMailSendTool(opts: MailToolsOptions = {}) {
       const subject = i.subject as string | undefined;
       const body = i.body as string | undefined;
       if (!rawTo || !subject || body === undefined || body === null) {
-        return { ok: false, error: '"to", "subject" and "body" are required.' };
+        throw new ToolValidationError({ message: '"to", "subject" and "body" are required.' });
       }
       // GM-P0.8: Early validation through the shared boundary codec, fed the
       // pre-filtered payload. Rejects trust-relevant fields (from,
@@ -233,7 +234,10 @@ export function makeMailSendTool(opts: MailToolsOptions = {}) {
       try {
         parsed = parseMailboxSendInput(i, codecActor);
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) };
+        throw new ToolValidationError({
+          message: err instanceof Error ? err.message : String(err),
+          cause: err,
+        });
       }
       const audience = parsed.audience;
       const mb = resolveMailbox(ctx);
@@ -334,12 +338,8 @@ export function makeMailInboxTool(opts: MailToolsOptions = {}) {
       const targets = [identity.callerId];
       if (identity.baseId !== identity.callerId) targets.push(identity.baseId);
       targets.push(`@session:${identity.sessionId}`);
-      const batches = await Promise.all(
-        targets.map((to) =>
-          mb
-            .query({ to, unreadBy: identity.callerId, readerRole: identity.role, limit })
-            .catch(() => [] as MailboxMessage[]),
-        ),
+      const batches = await queryMailboxTargets(targets, (to) =>
+        mb.query({ to, unreadBy: identity.callerId, readerRole: identity.role, limit }),
       );
       const seen = new Set<string>();
       const messages = batches

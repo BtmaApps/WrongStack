@@ -91,21 +91,13 @@ export const codebaseStatsTool: Tool<CodebaseStatsInput, CodebaseStatsOutput> = 
       if (signal?.aborted) {
         signal.throwIfAborted();
       }
-      return {
-        totalSymbols: 0,
-        totalFiles: 0,
-        byLang: {},
-        byKind: {},
-        lastIndexed: null,
-        sizeBytes: 0,
-        indexPath,
-        version: SCHEMA_VERSION,
-        statsAvailable: false,
-        indexStatus:
-          err instanceof IndexTimeoutError || (err as Error)?.name === 'IndexTimeoutError'
-            ? 'Index statistics timed out. Do not repeatedly retry stats; try codebase-search directly or use the appropriate grep/glob/tree fallback.'
-            : `Index statistics query failed: ${toErrorMessage(err)}. The index may be corrupted or inaccessible; try /codebase-reindex.`,
-      };
+      // A failed stats read is a failed call, not a zero-count report.
+      throw new Error(
+        err instanceof IndexTimeoutError || (err as Error)?.name === 'IndexTimeoutError'
+          ? 'Index statistics timed out. Do not repeatedly retry stats; try codebase-search directly or use the appropriate grep/glob/tree fallback.'
+          : `Index statistics query failed: ${toErrorMessage(err)}. The index may be corrupted or inaccessible; try /codebase-reindex.`,
+        { cause: err },
+      );
     }
 
     const circuit = idxState.circuit;

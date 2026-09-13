@@ -1,4 +1,5 @@
 import { normalizeModelRef } from '../core/fallback-model.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 import { modelList, normalizeRef } from './fallback-manage-helpers.js';
@@ -36,7 +37,7 @@ interface FavoriteManageInput {
 }
 
 interface FavoriteManageOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
   favorites?: string[];
 }
@@ -73,15 +74,18 @@ export function createFavoriteManageTool(
 
       if (input.action === 'add') {
         if (!input.model) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: 'Provide "model" (e.g. "anthropic/claude-haiku-3") to add a favorite.',
-          };
+            field: 'model',
+          });
         }
         const ref = normalizeRef(input.model);
         const canonical = normalizeModelRef(ref, config.provider);
         if (favorites.some((f) => normalizeModelRef(f, config.provider) === canonical)) {
-          return { status: 'error', message: `"${ref}" is already a favorite.` };
+          throw new ToolValidationError({
+            message: `"${ref}" is already a favorite.`,
+            field: 'model',
+          });
         }
         favorites.push(ref);
         await opts.updateConfig((cfg) => {
@@ -98,10 +102,10 @@ export function createFavoriteManageTool(
         if (input.index !== undefined) {
           const idx = input.index - 1;
           if (idx < 0 || idx >= favorites.length) {
-            return {
-              status: 'error',
+            throw new ToolValidationError({
               message: `Index ${input.index} is out of range (1–${favorites.length}).`,
-            };
+              field: 'index',
+            });
           }
           const [removed] = favorites.splice(idx, 1);
           await opts.updateConfig((cfg) => {
@@ -120,10 +124,10 @@ export function createFavoriteManageTool(
             (f) => normalizeModelRef(f, config.provider) === canonical,
           );
           if (idx === -1) {
-            return {
-              status: 'error',
+            throw new ToolValidationError({
               message: `Favorite "${ref}" not found. Use "list" to see all favorites.`,
-            };
+              field: 'model',
+            });
           }
           const [removed] = favorites.splice(idx, 1);
           await opts.updateConfig((cfg) => {
@@ -135,16 +139,15 @@ export function createFavoriteManageTool(
             favorites: [...favorites],
           };
         }
-        return {
-          status: 'error',
+        throw new ToolValidationError({
           message: 'Provide either "model" or "index" to remove a favorite.',
-        };
+        });
       }
 
-      return {
-        status: 'error',
+      throw new ToolValidationError({
         message: `Unknown action: "${input.action}". Use "list", "add", or "remove".`,
-      };
+        field: 'action',
+      });
     },
   };
 }

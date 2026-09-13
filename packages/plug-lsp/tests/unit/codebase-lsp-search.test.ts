@@ -54,15 +54,15 @@ describe('createCodebaseLspSearchTool', () => {
     expect(result).toContain('No symbols matching "nonexistent"');
   });
 
-  it('returns error string on empty query', async () => {
+  it('rejects an empty query as invalid input', async () => {
     const tool = createCodebaseLspSearchTool(makeDeps());
-    const result = await tool.execute(
-      { query: '' },
-      { projectRoot: '/proj', cwd: '/proj' } as never,
-      { signal: new AbortController().signal } as never,
-    );
-    // Empty query → index returns nothing, LSP returns nothing → "No symbols"
-    expect(result).toContain('No symbols');
+    await expect(
+      tool.execute(
+        { query: '  ' },
+        { projectRoot: '/proj', cwd: '/proj' } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/query is required/);
   });
 
   it('queries LSP servers when preferLsp is true', async () => {
@@ -91,33 +91,53 @@ describe('createCodebaseLspSearchTool', () => {
     expect(result).toContain('[lsp:ts]');
   });
 
-  it('skips LSP servers that are not ready', async () => {
+  it('skips LSP servers that are not ready, failing preferLsp when none can answer', async () => {
     const wsSymbol = vi.fn(async () => []);
     const server = makeMockServer({ name: 'ts', state: 'stopped', workspaceSymbol: wsSymbol });
     const tool = createCodebaseLspSearchTool(makeDeps([server]));
 
-    await tool.execute(
-      { query: 'test', preferLsp: true },
-      { projectRoot: '/proj', cwd: '/proj' } as never,
-      { signal: new AbortController().signal } as never,
-    );
+    await expect(
+      tool.execute(
+        { query: 'test', preferLsp: true },
+        { projectRoot: '/proj', cwd: '/proj' } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/no ready LSP server supports workspace symbols/);
     expect(wsSymbol).not.toHaveBeenCalled();
   });
 
-  it('handles individual LSP server errors gracefully', async () => {
-    const wsSymbol = vi.fn(async () => {
-      throw new Error('LSP crashed');
+  it('tolerates one failing server while another answers', async () => {
+    const crashed = makeMockServer({
+      name: 'broken',
+      workspaceSymbol: vi.fn(async () => {
+        throw new Error('LSP crashed');
+      }),
     });
-    const server = makeMockServer({ name: 'ts', workspaceSymbol: wsSymbol });
-    const tool = createCodebaseLspSearchTool(makeDeps([server]));
+    const healthy = makeMockServer({ name: 'ts', workspaceSymbol: vi.fn(async () => []) });
+    const tool = createCodebaseLspSearchTool(makeDeps([crashed, healthy]));
 
-    // Should not throw — individual server errors are non-fatal
     const result = await tool.execute(
       { query: 'test', preferLsp: true },
       { projectRoot: '/proj', cwd: '/proj' } as never,
       { signal: new AbortController().signal } as never,
     );
     expect(result).toContain('No symbols');
+  });
+
+  it('fails the call when every LSP server fails instead of reporting "No symbols"', async () => {
+    const wsSymbol = vi.fn(async () => {
+      throw new Error('LSP crashed');
+    });
+    const server = makeMockServer({ name: 'ts', workspaceSymbol: wsSymbol });
+    const tool = createCodebaseLspSearchTool(makeDeps([server]));
+
+    await expect(
+      tool.execute(
+        { query: 'test', preferLsp: true },
+        { projectRoot: '/proj', cwd: '/proj' } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/every LSP workspace-symbol request failed \(ts: LSP crashed\)/);
   });
 
   it('respects the limit parameter', async () => {
@@ -273,18 +293,60 @@ describe('createCodebaseLspSearchTool', () => {
     expect(result).toContain('[lsp:tsserver]');
   });
 
-  it('catches and formats errors from execute', async () => {
-    // Force searchCodebaseIndex to throw
+  it('falls back to LSP when the index query fails', async () => {
+    const { searchCodebaseIndex } = await import('@wrongstack/tools/codebase-index/index');
+    vi.mocked(searchCodebaseIndex).mockRejectedValueOnce(new Error('DB locked'));
+    const wsSymbol = vi.fn(async () => [
+      {
+        name: 'liveSym',
+        kind: 12,
+        location: {
+          uri: 'file:///proj/src.ts',
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } },
+        },
+      },
+    ]);
+    const tool = createCodebaseLspSearchTool(
+      makeDeps([makeMockServer({ name: 'ts', workspaceSymbol: wsSymbol })]),
+    );
+
+    const result = await tool.execute(
+      { query: 'liveSym' },
+      { projectRoot: '/proj', cwd: '/proj' } as never,
+      { signal: new AbortController().signal } as never,
+    );
+    expect(result).toContain('liveSym');
+  });
+
+  it('fails the call when the index query fails and no LSP server can answer', async () => {
     const { searchCodebaseIndex } = await import('@wrongstack/tools/codebase-index/index');
     vi.mocked(searchCodebaseIndex).mockRejectedValueOnce(new Error('DB locked'));
 
     const tool = createCodebaseLspSearchTool(makeDeps());
-    const result = await tool.execute(
-      { query: 'test' },
-      { projectRoot: '/proj', cwd: '/proj' } as never,
-      { signal: new AbortController().signal } as never,
-    );
-    // Should contain the error message, not crash
-    expect(typeof result).toBe('string');
+    await expect(
+      tool.execute(
+        { query: 'test' },
+        { projectRoot: '/proj', cwd: '/proj' } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/index query failed: DB locked/);
+  });
+
+  it('fails the call on a never-built index when no LSP server can answer', async () => {
+    const { searchCodebaseIndex } = await import('@wrongstack/tools/codebase-index/index');
+    vi.mocked(searchCodebaseIndex).mockResolvedValueOnce({
+      results: [],
+      total: 0,
+      indexSummary: { totalFiles: 0, lastIndexed: null },
+    });
+
+    const tool = createCodebaseLspSearchTool(makeDeps());
+    await expect(
+      tool.execute(
+        { query: 'test' },
+        { projectRoot: '/proj', cwd: '/proj' } as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/no persisted codebase index/);
   });
 });

@@ -1,7 +1,8 @@
 import * as fs from 'node:fs/promises';
-import { deepMerge as deepMergeCore } from '@wrongstack/core/utils';
+import { deepMerge as deepMergeCore, toErrorMessage } from '@wrongstack/core/utils';
 import type { Context } from '@wrongstack/core/agent';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import { capSubject, compileUserRegex } from './_regex.js';
 import { safeResolveReal } from './_util.js';
 
@@ -100,17 +101,16 @@ export interface JsonOutput {
   valid?: boolean | undefined;
   errors?: string[] | undefined;
   steps?: Array<{ transform: string; result: unknown }> | undefined;
-  error?: string | undefined;
 }
 
 export const jsonTool: Tool<JsonInput, JsonOutput> = {
   name: 'json',
   category: 'Data',
   description:
-    'Parse, pretty-print, query, validate, transform, and merge JSON/JSON5/YAML (read-only — does not write files). Use `action` to select the operation: parse (default), query, validate, transform, or merge.',
+    'Parse, pretty-print, query, validate, transform, and merge JSON (read-only — does not write files). Input must be strict JSON; results can be rendered as JSON, JSON5-style, or YAML via `format`. Use `action` to select the operation: parse (default), query, validate, transform, or merge.',
   usageHint:
     'VERY USEFUL FOR DATA INSPECTION:\n\n' +
-    '- `action: "parse"` (default): read/pretty-print/convert JSON, JSON5, or YAML from `file` or `data`.\n' +
+    '- `action: "parse"` (default): read/pretty-print JSON from `file` or `data` (output as JSON, JSON5-style, or YAML via `format`).\n' +
     '- `action: "query"`: JMESPath-like query (`a.b[0].c`, `items[*].name`, filters, functions).\n' +
     '- `action: "validate"`: validate data against a JSON Schema (`schema` param).\n' +
     '- `action: "transform"`: chain multiple JMESPath transforms (`transforms` param).\n' +
@@ -131,10 +131,10 @@ export const jsonTool: Tool<JsonInput, JsonOutput> = {
         description:
           'Operation (default: parse). parse=read/pretty-print, query=JMESPath, validate=schema, transform=chained queries, merge=deep merge.',
       },
-      file: { type: 'string', description: 'Path to JSON/JSON5/YAML file (parse/query/validate)' },
+      file: { type: 'string', description: 'Path to a JSON file (parse/query/validate/transform)' },
       data: {
         type: 'string',
-        description: 'JSON/JSON5/YAML string (parse/query/validate, alternative to file)',
+        description: 'JSON string (parse/query/validate/transform, alternative to file)',
       },
       format: {
         type: 'string',
@@ -180,13 +180,10 @@ export const jsonTool: Tool<JsonInput, JsonOutput> = {
       'merge',
     ]);
     if (input.action !== undefined && !ALLOWED_ACTIONS.has(input.action)) {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: String(input.action),
-        error: `Unknown action "${input.action}". Allowed actions: parse, query, validate, transform, merge`,
-      };
+      throw new ToolValidationError({
+        message: `json: unknown action "${input.action}". Allowed actions: parse, query, validate, transform, merge`,
+        field: 'action',
+      });
     }
 
     switch (action) {
@@ -208,62 +205,76 @@ export const jsonTool: Tool<JsonInput, JsonOutput> = {
 // Action: parse (default — the original json tool behavior)
 // ---------------------------------------------------------------------------
 
+// Every failure below THROWS: the executor only marks a call failed when
+// execute() rejects, so returning `{ error }` recorded broken calls as ok.
+
+/** Read the raw source text from `file` or `data`; throws when neither is usable. */
+async function readSource(input: JsonInput, ctx: Context, action: JsonAction): Promise<string> {
+  if (input.file) {
+    try {
+      return await readJsonFileBounded(input.file, ctx);
+    } catch (error) {
+      if (error instanceof JsonFileTooLargeError || error instanceof JsonFileIsDirectoryError) {
+        throw error;
+      }
+      throw new Error(`json: could not read file "${input.file}": ${toErrorMessage(error)}`, {
+        cause: error,
+      });
+    }
+  }
+  if (input.data) return input.data;
+  throw new ToolValidationError({
+    message: `json: provide \`file\` or \`data\` for action: ${action}`,
+    field: 'file',
+  });
+}
+
+/** Parse source text as JSON; a syntax error is an input error for `data`, an I/O-side error for `file`. */
+function parseSource(raw: string, input: JsonInput): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    const message = `json: parse failed${input.file ? ` for "${input.file}"` : ''}: ${toErrorMessage(error)}`;
+    if (input.file) throw new Error(message, { cause: error });
+    throw new ToolValidationError({ message, field: 'data', cause: error });
+  }
+}
+
 async function executeParse(input: JsonInput, ctx: Context): Promise<JsonOutput> {
   const format = input.format ?? 'json';
 
-  let parsed: unknown;
-  let raw: string;
+  const raw = await readSource(input, ctx, 'parse');
 
-  if (input.file) {
+  if (input.validate) {
+    // Syntax-check mode: "is this valid JSON?" is the question being asked, so
+    // a syntax error is the answer (valid: false), not a tool failure.
+    let checked: unknown;
     try {
-      raw = await readJsonFileBounded(input.file, ctx);
+      checked = JSON.parse(raw);
     } catch (error) {
       return {
         data: null,
-        formatted: '',
+        formatted: 'invalid',
         type: 'unknown',
         action: 'parse',
-        error:
-          error instanceof JsonFileTooLargeError || error instanceof JsonFileIsDirectoryError
-            ? error.message
-            : 'Could not read file',
+        valid: false,
+        errors: [`Parse failed: ${toErrorMessage(error)}`],
       };
     }
-  } else if (input.data) {
-    raw = input.data;
-  } else {
     return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'parse',
-      error: 'Provide file or data',
-    };
-  }
-
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'parse',
-      /* v8 ignore next -- JSON.parse only throws SyntaxError (an Error); the String(e) side is defensive. */
-      error: `Parse failed: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
-
-  if (input.validate) {
-    return {
-      data: parsed,
+      data: checked,
       formatted: 'valid',
-      type: Array.isArray(parsed) ? 'array' : typeof parsed,
+      type: Array.isArray(checked) ? 'array' : typeof checked,
       action: 'parse',
+      valid: true,
       keys:
-        typeof parsed === 'object' && parsed !== null ? Object.keys(parsed as object) : undefined,
+        typeof checked === 'object' && checked !== null
+          ? Object.keys(checked as object)
+          : undefined,
     };
   }
+
+  const parsed = parseSource(raw, input);
 
   // Backward compat: if `query` is provided without an explicit action,
   // use the original simple path-based query (supports `a.b[0].c` notation).
@@ -298,74 +309,28 @@ async function executeParse(input: JsonInput, ctx: Context): Promise<JsonOutput>
 
 async function executeQuery(input: JsonInput, ctx: Context): Promise<JsonOutput> {
   if (!input.query) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'query',
-      error: 'query is required for action: query',
-    };
+    throw new ToolValidationError({
+      message: 'json: query is required for action: query',
+      field: 'query',
+    });
   }
 
-  let parsed: unknown;
-  if (input.file) {
-    try {
-      const raw = await readJsonFileBounded(input.file, ctx);
-      parsed = JSON.parse(raw);
-    } catch (error) {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'query',
-        error:
-          error instanceof JsonFileTooLargeError || error instanceof JsonFileIsDirectoryError
-            ? error.message
-            : 'Could not read/parse file',
-      };
-    }
-  } else if (input.data) {
-    try {
-      parsed = JSON.parse(input.data);
-    } catch {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'query',
-        error: 'Could not parse data string',
-      };
-    }
-  } else {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'query',
-      error: 'Provide file or data',
-    };
-  }
+  const parsed = parseSource(await readSource(input, ctx, 'query'), input);
 
+  let result: unknown;
   try {
-    const result = jmespathSearch(parsed, input.query);
-    const format = input.format ?? 'json';
-    return {
-      data: parsed,
-      formatted: formatOutput(result, format),
-      type: result === null ? 'null' : Array.isArray(result) ? 'array' : typeof result,
-      action: 'query',
-      query_result: result,
-    };
-  } catch (e) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'query',
-      /* v8 ignore next -- defensive String(e) */
-      error: `Query failed: ${e instanceof Error ? e.message : String(e)}`,
-    };
+    result = jmespathSearch(parsed, input.query);
+  } catch (error) {
+    throw new Error(`json: query failed: ${toErrorMessage(error)}`, { cause: error });
   }
+  const format = input.format ?? 'json';
+  return {
+    data: parsed,
+    formatted: formatOutput(result, format),
+    type: result === null ? 'null' : Array.isArray(result) ? 'array' : typeof result,
+    action: 'query',
+    query_result: result,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -374,74 +339,32 @@ async function executeQuery(input: JsonInput, ctx: Context): Promise<JsonOutput>
 
 async function executeValidate(input: JsonInput, ctx: Context): Promise<JsonOutput> {
   if (!input.schema) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'validate',
-      error: 'schema is required for action: validate',
-    };
+    throw new ToolValidationError({
+      message: 'json: schema is required for action: validate',
+      field: 'schema',
+    });
   }
 
-  let parsed: unknown;
-  if (input.file) {
-    try {
-      const raw = await readJsonFileBounded(input.file, ctx);
-      parsed = JSON.parse(raw);
-    } catch (error) {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'validate',
-        error:
-          error instanceof JsonFileTooLargeError || error instanceof JsonFileIsDirectoryError
-            ? error.message
-            : 'Could not read/parse file',
-      };
-    }
-  } else if (input.data) {
-    try {
-      parsed = JSON.parse(input.data);
-    } catch {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'validate',
-        error: 'Could not parse data string',
-      };
-    }
-  } else {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'validate',
-      error: 'Provide file or data',
-    };
-  }
+  const parsed = parseSource(await readSource(input, ctx, 'validate'), input);
 
+  // `valid: false` is the answer to a successful check and stays a return
+  // value; only a validator crash is a tool failure.
+  let outcome: { valid: boolean; errors: string[] };
   try {
-    const { valid, errors } = validateJsonSchema(parsed, input.schema as Record<string, unknown>);
-    return {
-      data: parsed,
-      formatted: valid ? 'valid' : 'invalid',
-      type: Array.isArray(parsed) ? 'array' : typeof parsed,
-      action: 'validate',
-      valid,
-      errors,
-    };
-  } catch (e) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'validate',
-      /* v8 ignore next -- defensive String(e) */
-      error: `Validation failed: ${e instanceof Error ? e.message : String(e)}`,
-    };
+    outcome = validateJsonSchema(parsed, input.schema as Record<string, unknown>);
+  } catch (error) {
+    throw new Error(`json: schema validation failed to run: ${toErrorMessage(error)}`, {
+      cause: error,
+    });
   }
+  return {
+    data: parsed,
+    formatted: outcome.valid ? 'valid' : 'invalid',
+    type: Array.isArray(parsed) ? 'array' : typeof parsed,
+    action: 'validate',
+    valid: outcome.valid,
+    errors: outcome.errors,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -450,82 +373,34 @@ async function executeValidate(input: JsonInput, ctx: Context): Promise<JsonOutp
 
 async function executeTransform(input: JsonInput, ctx: Context): Promise<JsonOutput> {
   if (!input.transforms || input.transforms.length === 0) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'transform',
-      error: 'transforms array is required for action: transform',
-    };
+    throw new ToolValidationError({
+      message: 'json: transforms array is required for action: transform',
+      field: 'transforms',
+    });
   }
 
-  let parsed: unknown;
-  if (input.file) {
-    try {
-      const raw = await readJsonFileBounded(input.file, ctx);
-      parsed = JSON.parse(raw);
-    } catch (error) {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'transform',
-        error:
-          error instanceof JsonFileTooLargeError || error instanceof JsonFileIsDirectoryError
-            ? error.message
-            : 'Could not read/parse file',
-      };
-    }
-  } else if (input.data) {
-    try {
-      parsed = JSON.parse(input.data);
-    } catch {
-      return {
-        data: null,
-        formatted: '',
-        type: 'unknown',
-        action: 'transform',
-        error: 'Could not parse data string',
-      };
-    }
-  } else {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'transform',
-      error: 'Provide file or data',
-    };
-  }
+  const parsed = parseSource(await readSource(input, ctx, 'transform'), input);
 
-  try {
-    let current: unknown = parsed;
-    const steps: Array<{ transform: string; result: unknown }> = [];
-
-    for (const t of input.transforms) {
+  let current: unknown = parsed;
+  const steps: Array<{ transform: string; result: unknown }> = [];
+  for (const t of input.transforms) {
+    try {
       current = jmespathSearch(current, t);
-      steps.push({ transform: t, result: current });
+    } catch (error) {
+      throw new Error(`json: transform "${t}" failed: ${toErrorMessage(error)}`, { cause: error });
     }
-
-    const format = input.format ?? 'json';
-    return {
-      data: parsed,
-      formatted: formatOutput(current, format),
-      type: current === null ? 'null' : Array.isArray(current) ? 'array' : typeof current,
-      action: 'transform',
-      result: current,
-      steps,
-    };
-  } catch (e) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'transform',
-      /* v8 ignore next -- defensive String(e) */
-      error: `Transform failed: ${e instanceof Error ? e.message : String(e)}`,
-    };
+    steps.push({ transform: t, result: current });
   }
+
+  const format = input.format ?? 'json';
+  return {
+    data: parsed,
+    formatted: formatOutput(current, format),
+    type: current === null ? 'null' : Array.isArray(current) ? 'array' : typeof current,
+    action: 'transform',
+    result: current,
+    steps,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -534,37 +409,28 @@ async function executeTransform(input: JsonInput, ctx: Context): Promise<JsonOut
 
 async function executeMerge(input: JsonInput): Promise<JsonOutput> {
   if (input.base === undefined || input.patch === undefined) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'merge',
-      error: 'base and patch are required for action: merge',
-    };
+    throw new ToolValidationError({
+      message: 'json: base and patch are required for action: merge',
+      field: input.base === undefined ? 'base' : 'patch',
+    });
   }
 
   const conflictResolution = input.conflictResolution ?? 'prefer-patch';
 
+  let result: unknown;
   try {
-    const result = deepMergeCore(input.base, input.patch, { conflictResolution });
-    const format = input.format ?? 'json';
-    return {
-      data: result,
-      formatted: formatOutput(result, format),
-      type: result === null ? 'null' : Array.isArray(result) ? 'array' : typeof result,
-      action: 'merge',
-      result,
-    };
-  } catch (e) {
-    return {
-      data: null,
-      formatted: '',
-      type: 'unknown',
-      action: 'merge',
-      /* v8 ignore next -- defensive String(e) */
-      error: `Merge failed: ${e instanceof Error ? e.message : String(e)}`,
-    };
+    result = deepMergeCore(input.base, input.patch, { conflictResolution });
+  } catch (error) {
+    throw new Error(`json: merge failed: ${toErrorMessage(error)}`, { cause: error });
   }
+  const format = input.format ?? 'json';
+  return {
+    data: result,
+    formatted: formatOutput(result, format),
+    type: result === null ? 'null' : Array.isArray(result) ? 'array' : typeof result,
+    action: 'merge',
+    result,
+  };
 }
 
 // ---------------------------------------------------------------------------

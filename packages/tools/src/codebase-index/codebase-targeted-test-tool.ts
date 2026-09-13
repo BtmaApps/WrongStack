@@ -29,14 +29,13 @@ export interface TargetedTestInput {
 export type CodebaseTargetedTestInput = TargetedTestInput;
 
 export interface TargetedTestOutput {
-  status: 'passed' | 'failed' | 'no_tests_found' | 'error';
+  status: 'passed' | 'failed' | 'no_tests_found';
   discoveredSuites: string[];
   testsRun: number;
   passed: number;
   failed: number;
   durationMs: number;
   output: string;
-  error?: string | undefined;
 }
 
 export type CodebaseTargetedTestOutput = TargetedTestOutput;
@@ -229,16 +228,13 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
         output: combinedOutput,
       };
     } catch (err) {
-      return {
-        status: 'error',
-        discoveredSuites: [...suitesSet],
-        testsRun: 0,
-        passed: 0,
-        failed: 0,
-        durationMs: 0,
-        output: '',
-        error: toErrorMessage(err),
-      };
+      // THROW, don't return `status: 'error'` — a returned payload is a
+      // successful call to the executor (is_error:false, UI shows "ok").
+      // A red test run is data ('failed'); a runner that could not start is not.
+      const suites = suitesSet.size > 0 ? ` (discovered suites: ${[...suitesSet].join(', ')})` : '';
+      throw new Error(`Targeted test run failed to execute: ${toErrorMessage(err)}${suites}`, {
+        cause: err,
+      });
     }
   },
 };

@@ -78,23 +78,23 @@ afterEach(() => {
 describe('watch_start', () => {
   it('rejects non-array paths', async () => {
     const tools = setup();
-    const res = await tools.watch_start!.execute({ paths: 'not-array' });
-    expect(res).toMatchObject({ ok: false, watch_id: null });
+    await expect(tools.watch_start!.execute({ paths: 'not-array' })).rejects.toThrow(
+      /must be an array/,
+    );
   });
 
   it('rejects an empty paths array', async () => {
     const tools = setup();
-    const res = await tools.watch_start!.execute({ paths: [] });
-    expect(res.error).toMatch(/at least one path/);
+    await expect(tools.watch_start!.execute({ paths: [] })).rejects.toThrow(/at least one path/);
   });
 
   it('rejects path and watch-group counts that would leak watcher handles', async () => {
     const tools = setup();
-    const tooManyPaths = await tools.watch_start!.execute({
-      paths: Array.from({ length: 17 }, (_, index) => `dir-${index}`),
-    });
-    expect(tooManyPaths).toMatchObject({ ok: false, watch_id: null });
-    expect(tooManyPaths.error).toMatch(/at most 16/);
+    await expect(
+      tools.watch_start!.execute({
+        paths: Array.from({ length: 17 }, (_, index) => `dir-${index}`),
+      }),
+    ).rejects.toThrow(/at most 16/);
 
     for (let index = 0; index < 32; index++) {
       await expect(
@@ -103,11 +103,9 @@ describe('watch_start', () => {
         ok: true,
       });
     }
-    await expect(tools.watch_start!.execute({ paths: ['overflow'] })).resolves.toMatchObject({
-      ok: false,
-      watch_id: null,
-      error: expect.stringMatching(/group limit/),
-    });
+    await expect(tools.watch_start!.execute({ paths: ['overflow'] })).rejects.toThrow(
+      /group limit/,
+    );
   });
 
   it('starts watching and returns a watch id', async () => {
@@ -131,15 +129,16 @@ describe('watch_start', () => {
     expect(res.recursive).toBe(false);
   });
 
-  it('logs a warning when fs.watch throws', async () => {
+  it('throws when fs.watch fails for every path, registering no watch', async () => {
     fsm.watch.mockImplementation(() => {
       throw new Error('ENOSPC');
     });
     const tools = setup();
-    const res = await tools.watch_start!.execute({ paths: ['bad'] });
-    expect(res.ok).toBe(true); // start still succeeds; the watch just isn't active
-    expect(res.paths).toEqual([]); // the failing path is NOT reported as watched
+    await expect(tools.watch_start!.execute({ paths: ['bad'] })).rejects.toThrow(
+      /could not watch any of the requested paths: bad/,
+    );
     expect(log.warn).toHaveBeenCalledWith(expect.stringMatching(/could not watch/));
+    expect((await tools.watch_list!.execute({})).count).toBe(0);
   });
 
   it('only reports successfully-opened paths in watch_list when some fail', async () => {
@@ -148,7 +147,8 @@ describe('watch_start', () => {
       return fakeWatcher();
     });
     const tools = setup();
-    await tools.watch_start!.execute({ paths: ['good', 'bad'] });
+    const started = await tools.watch_start!.execute({ paths: ['good', 'bad'] });
+    expect(started.failedPaths).toEqual(['bad']);
     const listed = await tools.watch_list!.execute({});
     const watches = listed.watches as Array<{ paths: string[] }>;
     expect(watches[0]!.paths).toEqual(['good']);
@@ -246,11 +246,10 @@ describe('watch_start', () => {
   it('rejects watch_start when any path is outside the project root', async () => {
     const tools = setup();
     const outside = process.platform === 'win32' ? 'C:\\Windows\\System32' : '/etc';
-    const res = await tools.watch_start!.execute({ paths: ['src', outside] });
-    expect(res.ok).toBe(false);
-    expect(res.rejectedOutsideProject).toBe(true);
-    expect(res.error).toMatch(/outside the project root/);
-    expect((res as { watch_id: string | null }).watch_id).toBeNull();
+    await expect(tools.watch_start!.execute({ paths: ['src', outside] })).rejects.toThrow(
+      /outside the project root/,
+    );
+    expect(fsm.watch).not.toHaveBeenCalled();
   });
 
   it('does not reindex non-indexable files', async () => {
@@ -314,9 +313,9 @@ describe('watch_stop', () => {
 
   it('errors for an unknown watch id', async () => {
     const tools = setup();
-    const res = await tools.watch_stop!.execute({ watch_id: 'missing' });
-    expect(res).toMatchObject({ ok: false });
-    expect(res.error).toMatch(/No active watch/);
+    await expect(tools.watch_stop!.execute({ watch_id: 'missing' })).rejects.toThrow(
+      /No active watch/,
+    );
   });
 
   it('tolerates a watcher whose close() throws', async () => {

@@ -146,37 +146,22 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     // and should not affect breaker state. This allows background vitest, dev
     // servers, etc. to run even when the breaker is open.
     const bypassBreaker = !!input.background;
+    // Refusals and launch failures below THROW: a returned `error` field is
+    // recorded by the executor as a successful call. Non-zero exits, timeouts
+    // and aborts remain data (the command did run). Mirrors pwsh.ts.
     if (!registry.beforeCall(bypassBreaker)) {
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error:
-            'bash: circuit breaker open — too many consecutive failures or slow calls. Use /kill to inspect or /kill reset to recover.',
-        },
-      };
-      return;
+      throw new Error(
+        'bash: circuit breaker open — too many consecutive failures or slow calls. Use /kill to inspect or /kill reset to recover.',
+      );
     }
 
     // Kill protection: block commands that try to kill protected WrongStack processes
     // This includes direct kill commands, bash -c wrapped kills, and name-based kills (pkill, killall)
     const killCheck = await checkAndBlockKillCommand(input.command);
     if (killCheck.blocked) {
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error:
-            killCheck.reason || 'Kill command blocked: targets a protected WrongStack process.',
-        },
-      };
-      return;
+      throw new Error(
+        `bash: ${killCheck.reason || 'Kill command blocked: targets a protected WrongStack process.'}`,
+      );
     }
 
     // Security: detect pipe-to-shell patterns that could lead to arbitrary
@@ -347,17 +332,9 @@ export const bashTool: Tool<BashInput, BashOutput> = {
           timedOut: false,
           endedAt: new Date().toISOString(),
         });
-        yield {
-          type: 'final',
-          output: {
-            output: '',
-            exit_code: 1,
-            timed_out: false,
-            pid: null,
-            error: `spawn failed: ${err instanceof Error ? err.message : String(err)}`,
-          },
-        };
-        return;
+        throw new Error(`bash: spawn failed: ${err instanceof Error ? err.message : String(err)}`, {
+          cause: err,
+        });
       }
       const pid = child.pid;
       const stdoutBytes = 0;
@@ -430,17 +407,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
       });
       if (typeof pid !== 'number') {
         completeBackground(1);
-        yield {
-          type: 'final',
-          output: {
-            output: '',
-            exit_code: 1,
-            timed_out: false,
-            pid: null,
-            error: 'Failed to launch background process: invalid PID',
-          },
-        };
-        return;
+        throw new Error('bash: failed to launch background process: invalid PID');
       }
       child.unref(); // unref() so the event loop can exit while this background process runs.
       yield {
@@ -503,17 +470,9 @@ export const bashTool: Tool<BashInput, BashOutput> = {
         timedOut: false,
         endedAt: new Date().toISOString(),
       });
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error: `spawn failed: ${err instanceof Error ? err.message : String(err)}`,
-        },
-      };
-      return;
+      throw new Error(`bash: spawn failed: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err,
+      });
     }
 
     // Register with global registry so Ctrl+C / /kill can find and kill it.
@@ -743,23 +702,13 @@ export const bashTool: Tool<BashInput, BashOutput> = {
         const c = await next();
         resumeIfDrained();
         if (c.kind === 'error') {
-          const isAbort = (c.err as { code?: string })?.code === 'ABORT_ERR' || callerSignal.aborted;
+          const isAbort =
+            (c.err as { code?: string })?.code === 'ABORT_ERR' || callerSignal.aborted;
           const remainder = flush();
           if (remainder !== null) {
             yield { type: 'partial_output', text: remainder };
           }
           const spooled = spool.finalize();
-          yield {
-            type: 'final',
-            output: {
-              output:
-                normalizeCommandOutput(buf) + (spooled ? spoolNote(spooled) : '') + pipeToShellNote,
-              exit_code: isAbort ? 124 : 1,
-              timed_out: isAbort,
-              pid: pid ?? null,
-              error: isAbort ? 'Command aborted by user or signal' : c.err.message,
-            },
-          };
           ctx.recordSideEffect?.({
             toolUseId: `bash-${Date.now()}`,
             toolName: 'bash',
@@ -768,6 +717,22 @@ export const bashTool: Tool<BashInput, BashOutput> = {
             outcome: isAbort ? 'aborted' : `error (${c.err.message})`,
             risk: 'shell',
           });
+          if (!isAbort) {
+            // The child failed at the OS level (shell binary missing, EACCES):
+            // a failed call, not an exit-code result.
+            throw new Error(`bash: process error: ${c.err.message}`, { cause: c.err });
+          }
+          yield {
+            type: 'final',
+            output: {
+              output:
+                normalizeCommandOutput(buf) + (spooled ? spoolNote(spooled) : '') + pipeToShellNote,
+              exit_code: 124,
+              timed_out: true,
+              pid: pid ?? null,
+              error: 'Command aborted by user or signal',
+            },
+          };
           return;
         }
         if (c.kind === 'end') {

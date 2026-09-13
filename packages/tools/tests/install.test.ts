@@ -13,6 +13,9 @@ import type { ToolProgressEvent } from '@wrongstack/core/types';
 // Exported as a hoisted vi.fn so individual tests can inspect the args
 // (cmd/args) that installTool constructed for the package-manager call.
 const spawnStreamMock = vi.hoisted(() => vi.fn());
+const spawnOutcome = vi.hoisted(() => ({
+  override: undefined as Partial<SpawnStreamResult> | undefined,
+}));
 vi.mock('../src/_spawn-stream.js', () => ({
   spawnStream: ((opts: unknown) => {
     spawnStreamMock(opts);
@@ -23,6 +26,7 @@ vi.mock('../src/_spawn-stream.js', () => ({
         stderr: '',
         exitCode: 0,
         truncated: false,
+        ...spawnOutcome.override,
       };
     })();
   }) as never as (opts: unknown) => AsyncGenerator<ToolProgressEvent, SpawnStreamResult>,
@@ -54,6 +58,7 @@ describe('installTool', () => {
     vi.spyOn(Core, 'recordPackageAction').mockResolvedValue(undefined);
     vi.spyOn(Core, 'detectEcosystem').mockReturnValue('npm');
     vi.clearAllMocks();
+    spawnOutcome.override = undefined;
   });
 
   afterEach(() => {
@@ -214,9 +219,30 @@ describe('installTool', () => {
 
   it('rejects an invalid package name (flag injection guard)', async () => {
     const ctx = makeCtx();
-    const result = await installTool.execute({ packages: '--ignore-scripts' }, ctx, makeOpts());
-    expect(result.exit_code).toBe(1);
-    expect(result.output).toContain('Invalid package name');
+    await expect(
+      installTool.execute({ packages: '--ignore-scripts' }, ctx, makeOpts()),
+    ).rejects.toThrow('Invalid package name');
+  });
+
+  it('throws when the package manager exits non-zero (install did not happen)', async () => {
+    spawnOutcome.override = {
+      stdout: '',
+      stderr: 'npm error 404 Not Found - GET https://registry.npmjs.org/nope',
+      exitCode: 1,
+    };
+    const ctx = makeCtx();
+    await expect(installTool.execute({ packages: 'nope' }, ctx, makeOpts())).rejects.toThrow(
+      /failed \(exit 1\)[\s\S]*404 Not Found/,
+    );
+    // The attempted side effect is still recorded.
+    expect(ctx.sideEffects).toHaveLength(1);
+  });
+
+  it('throws when the package manager cannot be started', async () => {
+    spawnOutcome.override = { stdout: '', exitCode: 1, error: 'spawn npm ENOENT' };
+    await expect(installTool.execute({ packages: 'foo' }, makeCtx(), makeOpts())).rejects.toThrow(
+      /could not run npm: spawn npm ENOENT/,
+    );
   });
 
   it.each([
@@ -237,9 +263,9 @@ describe('installTool', () => {
   it.each(['file:../../etc/passwd', 'pkg@1.0.0; rm -rf /', 'pkg@1.0.0 --flag', 'pkg@ver$(whoami)'])(
     'still rejects malicious spec %s',
     async (spec) => {
-      const result = await installTool.execute({ packages: spec }, makeCtx(), makeOpts());
-      expect(result.exit_code).toBe(1);
-      expect(result.output).toContain('Invalid package name');
+      await expect(installTool.execute({ packages: spec }, makeCtx(), makeOpts())).rejects.toThrow(
+        'Invalid package name',
+      );
     },
   );
 

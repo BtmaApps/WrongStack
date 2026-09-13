@@ -392,9 +392,9 @@ describe('gitignore_guard_append tool', () => {
     await plugin.setup(api as never);
     const tool = getTool(api, 'gitignore_guard_append');
 
-    const out = await tool.execute({ path: join(ROOT, '..', 'secret.txt') });
-    expect(out.ok).toBe(false);
-    expect(out.reason).toContain('outside project root');
+    await expect(tool.execute({ path: join(ROOT, '..', 'secret.txt') })).rejects.toThrow(
+      /outside project root/,
+    );
     expect(mockWriteFile).not.toHaveBeenCalled();
   });
 
@@ -403,9 +403,9 @@ describe('gitignore_guard_append tool', () => {
     await plugin.setup(api as never);
     const tool = getTool(api, 'gitignore_guard_append');
 
-    const out = await tool.execute({ path: 'src/index.ts' });
-    expect(out.ok).toBe(false);
-    expect(out.reason).toContain('does not match any configured artifact pattern');
+    await expect(tool.execute({ path: 'src/index.ts' })).rejects.toThrow(
+      /does not match any configured artifact pattern/,
+    );
   });
 });
 

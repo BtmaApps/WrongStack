@@ -129,11 +129,21 @@ describe('auditTool', () => {
     expect(result.total).toBe(0);
   });
 
-  it('reports "Audit failed" when exit code is non-zero with empty output', async () => {
+  it('throws when the audit exits non-zero without producing a report', async () => {
     spawnStreamMocks.spawnStream.mockImplementation(fakeSpawnStream('', 1));
-    const result = await auditTool.execute({}, makeCtx(), makeOpts());
-    expect(result.summary).toBe('Audit failed');
-    expect(result.exit_code).toBe(1);
+    await expect(auditTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
+      /failed \(exit 1\) without producing a report/,
+    );
+  });
+
+  it('throws when the package manager reports its own error object (e.g. no lockfile)', async () => {
+    const payload = JSON.stringify({
+      error: { code: 'ENOLOCK', summary: 'This command requires an existing lockfile.' },
+    });
+    spawnStreamMocks.spawnStream.mockImplementation(fakeSpawnStream(payload, 1));
+    await expect(auditTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
+      /requires an existing lockfile/,
+    );
   });
 
   it('returns "Could not parse" message when JSON is malformed', async () => {

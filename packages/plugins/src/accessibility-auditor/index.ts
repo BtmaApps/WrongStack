@@ -25,9 +25,9 @@
  * @public
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import {
   releaseHandle,
   collectSourceFilesAsync,
@@ -133,6 +133,14 @@ function readConfig(raw: unknown): AccessibilityAuditorConfig {
 // ---------------------------------------------------------------------------
 
 // withinProject() imported from ../runtime/index.js
+
+async function assertPathExists(rawPath: string): Promise<void> {
+  try {
+    await stat(resolve(process.cwd(), rawPath));
+  } catch (err) {
+    throw new Error(`path not found: ${rawPath}`, { cause: err });
+  }
+}
 
 function normalizeExtensions(exts: string[]): string[] {
   return exts.map((e) => (e.startsWith('.') ? e.toLowerCase() : `.${e.toLowerCase()}`));
@@ -592,7 +600,7 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'accessibility-auditor is disabled' };
+        if (!cfg.enabled) throw new Error('accessibility-auditor is disabled');
         const raw = input as Record<string, unknown>;
         const rawPath =
           (typeof input.path === 'string' && input.path.trim().length > 0
@@ -608,8 +616,13 @@ const plugin: Plugin = {
           (typeof raw['file'] === 'string' ? raw['file'] : undefined) ??
           '.';
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'path must be inside the project' };
+          throw new ToolValidationError({
+            message: 'path must be inside the project',
+            field: 'path',
+          });
         }
+        // A missing path would otherwise walk nothing and read as a clean audit.
+        await assertPathExists(rawPath);
 
         state.auditCount += 1;
         const result = await auditPath(rawPath, cfg);

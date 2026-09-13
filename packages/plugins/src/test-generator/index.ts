@@ -25,7 +25,7 @@
 
 import { readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { runOptionalPluginLlm, stripOuterMarkdownFence } from '../runtime/llm.js';
 
 const API_VERSION = '^0.1.10';
@@ -443,7 +443,8 @@ const plugin: Plugin = {
         _ctx: unknown,
         execOpts?: { signal?: AbortSignal },
       ) {
-        if (!cfg.enabled) return { ok: false, error: 'test-generator is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('test-generator is disabled');
         execOpts?.signal?.throwIfAborted();
 
         const inp = (input ?? {}) as Record<string, unknown>;
@@ -463,18 +464,21 @@ const plugin: Plugin = {
           inp['targetFile'] ??
           inp['file'];
         if (!rawPath || typeof rawPath !== 'string') {
-          return { ok: false, error: 'path is required' };
+          throw new ToolValidationError({ message: 'path is required', field: 'path' });
         }
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'path is outside the project root',
+            field: 'path',
+          });
         }
         if (!SOURCE_EXTENSIONS.some((ext) => rawPath.toLowerCase().endsWith(ext))) {
-          return {
-            ok: false,
-            error:
+          throw new ToolValidationError({
+            message:
               `test generation only reads source files (${SOURCE_EXTENSIONS.join(', ')}); ` +
               `refusing "${rawPath}"`,
-          };
+            field: 'path',
+          });
         }
 
         const resolved = resolve(process.cwd(), rawPath);
@@ -484,7 +488,7 @@ const plugin: Plugin = {
           result = generateForFile(resolved, effectiveCfg);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(`Could not read ${rawPath}: ${String(err)}`, { cause: err });
         }
         state.exportCount += result.exports.length;
 

@@ -139,6 +139,17 @@ describe('makeFleetStatusTool', () => {
     });
   });
 
+  it('throws instead of reporting "no other agents" when the registry read fails', async () => {
+    const broken = Object.create(mailbox) as SqliteMailbox;
+    broken.getAgentStatuses = async () => {
+      throw new Error('registry offline');
+    };
+    const tool = makeFleetStatusTool({ resolveMailbox: () => broken });
+    await expect(
+      tool.execute({}, mockCtx({ meta: { agentId: 'leader' } }) as never, {} as never),
+    ).rejects.toThrow(/registry offline/);
+  });
+
   it('is read-only metadata-wise', () => {
     const tool = makeFleetStatusTool({ resolveMailbox: () => mailbox });
     expect(tool.mutating).toBe(false);

@@ -31,7 +31,7 @@
 import { execFile } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
 import { releaseHandle } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -51,6 +51,7 @@ interface PrDrafterState {
   draftErrors: number;
   stopInvocations: number;
   stopHookUnregister: null | (() => void);
+  postHookUnregister: null | (() => void);
   eventUnsubscribers: Array<() => void>;
 }
 
@@ -65,8 +66,31 @@ const state: PrDrafterState = {
   draftErrors: 0,
   stopInvocations: 0,
   stopHookUnregister: null,
+  postHookUnregister: null,
   eventUnsubscribers: [],
 };
+
+const TRACKED_FILE_TOOLS = new Set(['write', 'edit', 'write_to_file', 'replace_file_content']);
+
+/**
+ * Extract the commit from git_autocommit's serialized result (`{ok, hash, message, …, diff}`).
+ * Regex, not JSON.parse: the trailing diff can push the text past the output budget and
+ * truncate it. A dry run carries no `hash`, so it records nothing.
+ */
+export function parseAutocommitResult(content: string): { hash: string; message: string } | null {
+  const hash = /"hash":\s*"([0-9a-f]{7,64})"/.exec(content)?.[1];
+  if (!hash) return null;
+  const rawMessage = /"message":\s*("(?:[^"\\]|\\.)*")/.exec(content)?.[1];
+  let message = 'commit';
+  if (rawMessage) {
+    try {
+      message = JSON.parse(rawMessage) as string;
+    } catch {
+      // keep the fallback label
+    }
+  }
+  return { hash, message };
+}
 
 // ---------------------------------------------------------------------------
 // Config
@@ -301,6 +325,7 @@ const plugin: Plugin = {
     state.draftErrors = 0;
     state.stopInvocations = 0;
     state.stopHookUnregister = releaseHandle(state.stopHookUnregister);
+    state.postHookUnregister = releaseHandle(state.postHookUnregister);
     for (const off of state.eventUnsubscribers) {
       try {
         off();
@@ -312,43 +337,40 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['pr-drafter']);
 
-    // Subscribe to live events.
+    // `tool.completed` carries only {name, id, durationMs, outputChars} — no input or
+    // result — and fires for successful calls only, so it is used purely as a counter.
     if (api.onPattern) {
-      const offTool = api.onPattern('tool.completed', (_event: string, payload: unknown) => {
-        const p = payload as {
-          tool?: string;
-          input?: { path?: string; message?: string };
-          result?: { committed?: boolean; commitMessage?: string };
-        } | null;
-        const toolName = p?.tool;
+      const offTool = api.onPattern('tool.completed', () => {
         state.toolCalls += 1;
-
-        if (toolName === 'git_autocommit' && p?.result?.committed) {
-          const msg = p.result.commitMessage ?? p.input?.message ?? 'commit';
-          state.commits.push(msg);
-        }
-
-        const rawInput = (p?.input ?? {}) as Record<string, unknown>;
-        const filePath =
-          (typeof rawInput['path'] === 'string' && rawInput['path']) ||
-          (typeof rawInput['filePath'] === 'string' && rawInput['filePath']) ||
-          (typeof rawInput['file_path'] === 'string' && rawInput['file_path']) ||
-          (typeof rawInput['TargetFile'] === 'string' && rawInput['TargetFile']) ||
-          (typeof rawInput['targetFile'] === 'string' && rawInput['targetFile']) ||
-          (typeof rawInput['file'] === 'string' && rawInput['file']);
-
-        if (
-          (toolName === 'write' ||
-            toolName === 'edit' ||
-            toolName === 'write_to_file' ||
-            toolName === 'replace_file_content') &&
-          filePath
-        ) {
-          state.files.add(filePath);
-        }
       });
       state.eventUnsubscribers.push(offTool);
     }
+
+    // Commits and edited files come from PostToolUse, the one surface with the tool's
+    // input and result. The old listener read `p.tool` / `p.input` / `p.result.committed`
+    // off `tool.completed`, none of which exist, so it recorded nothing.
+    const postHook = (input: {
+      toolName?: string | undefined;
+      toolInput?: unknown;
+      toolResult?: { content: string; isError: boolean } | undefined;
+    }): void => {
+      // git_autocommit throws on refusal/failure; never record a failed call.
+      if (!input.toolResult || input.toolResult.isError) return;
+      const toolName = input.toolName;
+
+      if (toolName === 'git_autocommit') {
+        const commit = parseAutocommitResult(String(input.toolResult.content ?? ''));
+        if (commit) state.commits.push(commit.message);
+        return;
+      }
+
+      if (!toolName || !TRACKED_FILE_TOOLS.has(toolName)) return;
+      const rawInput = (input.toolInput ?? {}) as Record<string, unknown>;
+      const filePath = ['path', 'filePath', 'file_path', 'TargetFile', 'targetFile', 'file']
+        .map((key) => rawInput[key])
+        .find((value): value is string => typeof value === 'string' && value.length > 0);
+      if (filePath) state.files.add(filePath);
+    };
 
     if (api.onEvent) {
       const offUsage = api.onEvent('provider.response', (payload: unknown) => {
@@ -387,6 +409,11 @@ const plugin: Plugin = {
       await writeDraft(cfg, api.llm);
     };
     state.stopHookUnregister = api.registerHook('Stop', undefined, stopHook as never);
+    state.postHookUnregister = api.registerHook(
+      'PostToolUse',
+      'git_autocommit|write|edit|write_to_file|replace_file_content',
+      postHook as never,
+    );
 
     // --- pr_draft tool ---
     api.tools.register({
@@ -412,7 +439,8 @@ const plugin: Plugin = {
       mutating: true,
       capabilities: ['fs.write'],
       async execute(input: { preview?: boolean | undefined } = {}) {
-        if (!cfg.enabled) return { ok: false, error: 'pr-drafter is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('pr-drafter is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const preview = Boolean(
           input?.preview ?? raw['dryRun'] ?? raw['dry_run'] ?? raw['dry'] ?? raw['previewOnly'],
@@ -435,24 +463,29 @@ const plugin: Plugin = {
           return { ok: true, preview: true, title: draft.title, body: draft.body };
         }
         const resolved = resolveProjectPath(outputPathStr);
-        if (!resolved) return { ok: false, error: 'outputPath resolves outside project' };
+        if (!resolved) {
+          throw new ToolValidationError({
+            message: 'outputPath resolves outside project',
+            field: 'outputPath',
+          });
+        }
         try {
           await mkdir(dirname(resolved), { recursive: true });
           await writeFile(resolved, draft.body);
-          state.draftsWritten += 1;
-          return {
-            ok: true,
-            path: outputPathStr,
-            resolvedPath: resolved,
-            title: draft.title,
-          };
         } catch (err) {
           state.draftErrors += 1;
-          return {
-            ok: false,
-            error: err instanceof Error ? err.message : String(err),
-          };
+          throw new Error(
+            `Could not write PR draft to ${outputPathStr}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
+        state.draftsWritten += 1;
+        return {
+          ok: true,
+          path: outputPathStr,
+          resolvedPath: resolved,
+          title: draft.title,
+        };
       },
     });
 
@@ -472,6 +505,7 @@ const plugin: Plugin = {
       }
       state.stopHookUnregister = null;
     }
+    state.postHookUnregister = releaseHandle(state.postHookUnregister);
     for (const off of state.eventUnsubscribers) {
       try {
         off();

@@ -29,19 +29,19 @@ describe('toolUseTool', () => {
 
   it('rejects missing tool name', async () => {
     const ctx = makeCtx([]);
-    const result = await toolUseTool.execute({ tool: '' } as any, ctx, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('required');
+    await expect(toolUseTool.execute({ tool: '' } as any, ctx, makeOpts())).rejects.toThrow(
+      /required/,
+    );
   });
 
-  it('returns error for unknown tool', async () => {
+  it('throws for unknown tool', async () => {
     const ctx = makeCtx([]);
-    const result = await toolUseTool.execute({ tool: 'nonexistent' }, ctx, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('not found');
+    await expect(toolUseTool.execute({ tool: 'nonexistent' }, ctx, makeOpts())).rejects.toThrow(
+      /not found/,
+    );
   });
 
-  it('returns error for denied tool', async () => {
+  it('throws for denied tool', async () => {
     const ctx = makeCtx([
       {
         name: 'denied',
@@ -50,9 +50,9 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    const result = await toolUseTool.execute({ tool: 'denied' }, ctx, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('denied by policy');
+    await expect(toolUseTool.execute({ tool: 'denied' }, ctx, makeOpts())).rejects.toThrow(
+      /denied by policy/,
+    );
   });
 
   it('fails closed when the governed executor bridge is unavailable', async () => {
@@ -62,24 +62,17 @@ describe('toolUseTool', () => {
     ]);
     delete ctx.meta[GOVERNED_TOOL_EXECUTOR_META_KEY];
 
-    const result = await toolUseTool.execute({ tool: 'works', input: {} }, ctx, makeOpts());
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('governed nested execution is unavailable');
+    await expect(
+      toolUseTool.execute({ tool: 'works', input: {} }, ctx, makeOpts()),
+    ).rejects.toThrow(/governed nested execution is unavailable/);
     expect(directExecute).not.toHaveBeenCalled();
   });
 
   it('blocks recursive tool_use dispatch', async () => {
     const ctx = makeCtx([toolUseTool]);
-
-    const result = await toolUseTool.execute(
-      { tool: 'tool_use', input: { tool: 'tool_use' } },
-      ctx,
-      makeOpts(),
-    );
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('recursive');
+    await expect(
+      toolUseTool.execute({ tool: 'tool_use', input: { tool: 'tool_use' } }, ctx, makeOpts()),
+    ).rejects.toThrow(/recursive/);
   });
 
   it('dispatches confirm-permission tools (outer tool_use already gated the call)', async () => {
@@ -100,7 +93,7 @@ describe('toolUseTool', () => {
     expect(result.result).toEqual({ ok: true });
   });
 
-  it('returns error when execute throws', async () => {
+  it('propagates a nested failure as a thrown error, not a successful payload', async () => {
     const ctx = makeCtx([
       {
         name: 'broken',
@@ -109,9 +102,9 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    const result = await toolUseTool.execute({ tool: 'broken' }, ctx, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('boom');
+    await expect(toolUseTool.execute({ tool: 'broken' }, ctx, makeOpts())).rejects.toThrow(
+      /"broken" failed: boom/,
+    );
   });
 
   it('returns result on success', async () => {
@@ -141,7 +134,7 @@ describe('toolUseTool', () => {
     expect(result.executionMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('handles non-Error thrown values in catch', async () => {
+  it('carries non-Error nested failure values into the thrown message', async () => {
     const ctx = makeCtx([
       {
         name: 'throws-string',
@@ -150,14 +143,8 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    const result = await toolUseTool.execute({ tool: 'throws-string' }, ctx, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('string error');
-  });
-
-  it('reports zero execution time when no tool given', async () => {
-    const ctx = makeCtx([]);
-    const result = await toolUseTool.execute({ tool: '' } as any, ctx, makeOpts());
-    expect(result.executionMs).toBe(0);
+    await expect(toolUseTool.execute({ tool: 'throws-string' }, ctx, makeOpts())).rejects.toThrow(
+      /string error/,
+    );
   });
 });

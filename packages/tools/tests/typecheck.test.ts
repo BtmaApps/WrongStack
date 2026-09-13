@@ -101,6 +101,24 @@ describe('typecheckTool', () => {
     }
   });
 
+  it('throws when the checker process cannot be spawned', async () => {
+    spawnStreamMocks.spawnStream.mockImplementation(
+      // biome-ignore lint/correctness/useYield: test mock returns the final result
+      async function* () {
+        return {
+          stdout: '',
+          stderr: '',
+          exitCode: 1,
+          truncated: false,
+          error: 'spawn npx ENOENT',
+        };
+      },
+    );
+    await expect(typecheckTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
+      /typecheck: failed to start npx: spawn npx ENOENT/,
+    );
+  });
+
   it('counts errors and warnings from tsc output', async () => {
     spawnStreamMocks.spawnStream.mockImplementation(
       fakeSpawn('a.ts(1,1): error TS1: bad\nb.ts(2,2): warning TS2: meh\n', 1),

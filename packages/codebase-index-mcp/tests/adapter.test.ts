@@ -41,6 +41,22 @@ describe('createCodebaseIndexMcpToolHost', () => {
     );
   });
 
+  it('reports a degraded codebase_context failure as an MCP error', async () => {
+    const executeTool = vi
+      .fn()
+      .mockResolvedValue({ query: 'x', entries: [], indexStatus: 'error', error: 'db locked' });
+    const host = createCodebaseIndexMcpToolHost('C:/project', { dependencies: { executeTool } });
+
+    await expect(host.callTool('codebase_context', { query: 'x' })).resolves.toMatchObject({
+      isError: true,
+      content: { error: 'db locked' },
+    });
+    executeTool.mockResolvedValue({ query: 'x', entries: [], indexStatus: 'no-matches' });
+    await expect(host.callTool('codebase_context', { query: 'x' })).resolves.toMatchObject({
+      isError: false,
+    });
+  });
+
   it('routes graph reads through the project service dependencies', async () => {
     const packageGraph = vi.fn().mockResolvedValue({ nodes: [], edges: [] });
     const fileGraph = vi.fn().mockResolvedValue({ nodes: [{ id: 'a' }], edges: [] });

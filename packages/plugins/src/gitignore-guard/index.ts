@@ -55,7 +55,7 @@
 
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const API_VERSION = '^0.1.10';
 
@@ -591,11 +591,16 @@ const plugin: Plugin = {
           rawInp['targetFile'] ??
           rawInp['file'];
         const rawPath = typeof raw === 'string' ? raw.trim() : '';
-        if (rawPath.length === 0) return { ok: false, reason: 'path is required' };
+        if (rawPath.length === 0) {
+          throw new ToolValidationError({ message: 'path is required', field: 'path' });
+        }
 
         const resolved = projectRelativePath(rawPath, process.cwd());
         if (!resolved) {
-          return { ok: false, reason: `path outside project root: ${rawPath}` };
+          throw new ToolValidationError({
+            message: `path outside project root: ${rawPath}`,
+            field: 'path',
+          });
         }
 
         const cfg = readConfig(api.config.extensions?.['gitignore-guard']);
@@ -605,10 +610,10 @@ const plugin: Plugin = {
             : null;
         const pattern = explicit ?? classifyArtifact(resolved.rel, cfg.artifactPatterns);
         if (!pattern) {
-          return {
-            ok: false,
-            reason: `'${resolved.rel}' does not match any configured artifact pattern; pass an explicit pattern`,
-          };
+          throw new ToolValidationError({
+            message: `'${resolved.rel}' does not match any configured artifact pattern; pass an explicit pattern`,
+            field: 'pattern',
+          });
         }
 
         const candidates = gitignoreCandidates(relDirOf(resolved.rel), resolved.root);

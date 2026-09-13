@@ -74,18 +74,14 @@ describe('knowledge-graph - contributor edge cases', () => {
     const api = makeKgApi({ 'knowledge-graph': { enabled: false, filePath: '' } });
     knowledgeGraphPlugin.setup(api as never);
     const query = getKgTool(api, 'kg_query');
-    const result = (await query({ subject: 'x' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(query({ subject: 'x' })).rejects.toThrow(/disabled/);
   });
 
   it('kg_remove_fact returns disabled when plugin disabled', async () => {
     const api = makeKgApi({ 'knowledge-graph': { enabled: false, filePath: '' } });
     knowledgeGraphPlugin.setup(api as never);
     const remove = getKgTool(api, 'kg_remove_fact');
-    const result = (await remove({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(remove({})).rejects.toThrow(/disabled/);
   });
 });
 

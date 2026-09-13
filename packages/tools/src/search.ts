@@ -30,12 +30,6 @@ export interface SearchOutput {
   source: string;
   truncated: boolean;
   cached: boolean;
-  /**
-   * Present when the search engine could not be reached or returned an
-   * unusable response. `results` is empty in that case — the failure is never
-   * disguised as a synthetic result entry.
-   */
-  error?: string | undefined;
 }
 
 /** What an engine call yields: parsed results, or empty results + an error. */
@@ -221,19 +215,20 @@ export const searchTool: Tool<SearchInput, SearchOutput> = {
       effectiveSource = 'duckduckgo';
     }
 
+    // Unreachable engine (after any fallback) is an operational failure, not an
+    // empty result set: throw so the call is recorded as failed and never cached.
+    if (engineError) {
+      throw new Error(`search: ${engineError}`);
+    }
+
     const finalResults = ranked.slice(0, num);
 
-    // --- Store in cache (never cache a failed search) ---
-    if (!engineError) {
-      cache.set(cacheKey, { results: ranked, source: effectiveSource, timestamp: Date.now() });
-      pruneCacheEntries();
-    }
+    cache.set(cacheKey, { results: ranked, source: effectiveSource, timestamp: Date.now() });
+    pruneCacheEntries();
 
     yield {
       type: 'partial_output',
-      text: engineError
-        ? `search failed: ${engineError}`
-        : `${finalResults.length} results from ${effectiveSource}`,
+      text: `${finalResults.length} results from ${effectiveSource}`,
       data: { count: finalResults.length, cached: false, source: effectiveSource },
     };
     yield {
@@ -248,7 +243,6 @@ export const searchTool: Tool<SearchInput, SearchOutput> = {
         source: effectiveSource,
         truncated: ranked.length > num,
         cached: false,
-        ...(engineError ? { error: engineError } : {}),
       },
     };
   },

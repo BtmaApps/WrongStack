@@ -72,15 +72,16 @@ describe('git_autocommit', () => {
 
   it('rejects an invalid type on a real (non-dry) run', async () => {
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'bogus' });
-    expect(res).toMatchObject({ ok: false });
-    expect(res.error).toMatch(/valid conventional commit type/);
+    await expect(tools.git_autocommit!.execute({ type: 'bogus' })).rejects.toThrow(
+      /valid conventional commit type/,
+    );
   });
 
   it('rejects non-array files', async () => {
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'feat', files: 'a.ts' });
-    expect(res.error).toMatch(/files must be an array/);
+    await expect(tools.git_autocommit!.execute({ type: 'feat', files: 'a.ts' })).rejects.toThrow(
+      /files must be an array/,
+    );
   });
 
   it('stages provided files, commits with a hook-friendly timeout, and appends to the session', async () => {
@@ -115,13 +116,9 @@ describe('git_autocommit', () => {
   it('reports a staging failure when no provided file exists', async () => {
     fsm.existsSync.mockReturnValue(false);
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({
-      type: 'fix',
-      message: 'x',
-      files: ['ghost.ts'],
-    });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Failed to stage files/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'fix', message: 'x', files: ['ghost.ts'] }),
+    ).rejects.toThrow(/Failed to stage files/);
   });
 
   it('refuses to commit with an empty index by default instead of absorbing the tree', async () => {
@@ -132,14 +129,12 @@ describe('git_autocommit', () => {
       return '';
     };
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'chore', message: 'auto' });
     // Scope guard: previously this silently staged EVERY changed file — on a
     // shared checkout that absorbed unrelated concurrently staged work into
     // the commit. The default now refuses and explains the scoped options.
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Nothing staged/);
-    expect(res.error).toMatch(/paths/);
-    expect(res.error).toMatch(/autoStage/);
+    await expect(tools.git_autocommit!.execute({ type: 'chore', message: 'auto' })).rejects.toThrow(
+      /Nothing staged.*paths.*autoStage/,
+    );
   });
 
   it('autoStage=true keeps the legacy stage-everything behavior', async () => {
@@ -227,13 +222,9 @@ describe('git_autocommit', () => {
       return '';
     };
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({
-      type: 'chore',
-      message: 'website',
-      paths: ['website/**'],
-    });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/No changed files match/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'chore', message: 'website', paths: ['website/**'] }),
+    ).rejects.toThrow(/No changed files match/);
   });
 
   it('aborts when a scoped path drifts in the working tree after staging', async () => {
@@ -248,14 +239,9 @@ describe('git_autocommit', () => {
       return '';
     };
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({
-      type: 'fix',
-      message: 'a',
-      files: ['a.ts'],
-    });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Working tree changed after staging/);
-    expect(res.error).toMatch(/a\.ts/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'fix', message: 'a', files: ['a.ts'] }),
+    ).rejects.toThrow(/Working tree changed after staging for: a\.ts/);
   });
 
   it('warns when foreign staged files exist outside the requested scope', async () => {
@@ -291,30 +277,30 @@ describe('git_autocommit', () => {
 
   it('rejects a non-array paths input', async () => {
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'feat', message: 'x', paths: 'a/**' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/paths must be an array/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'feat', message: 'x', paths: 'a/**' }),
+    ).rejects.toThrow(/paths must be an array/);
   });
 
   it('rejects files and paths passed together instead of silently dropping files', async () => {
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({
-      type: 'feat',
-      message: 'x',
-      files: ['a.ts'],
-      paths: ['**/package.json'],
-    });
     // Previously `files` was silently ignored whenever `paths` was present.
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/not both/);
+    await expect(
+      tools.git_autocommit!.execute({
+        type: 'feat',
+        message: 'x',
+        files: ['a.ts'],
+        paths: ['**/package.json'],
+      }),
+    ).rejects.toThrow(/not both/);
   });
 
   it('returns "Nothing staged" when there is nothing to commit', async () => {
     gitHandler = () => ''; // no staged, no changed
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'feat', message: 'x' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Nothing staged/);
+    await expect(tools.git_autocommit!.execute({ type: 'feat', message: 'x' })).rejects.toThrow(
+      /Nothing staged/,
+    );
   });
 
   it('falls back to the default commit type when none is given', async () => {
@@ -338,9 +324,9 @@ describe('git_autocommit', () => {
       return '';
     };
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'feat', message: 'x' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Nothing staged/);
+    await expect(tools.git_autocommit!.execute({ type: 'feat', message: 'x' })).rejects.toThrow(
+      /Nothing staged/,
+    );
   });
 
   it('surfaces worktree and external-change warnings', async () => {
@@ -390,9 +376,9 @@ describe('git_autocommit', () => {
       return '';
     };
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({ type: 'feat', message: 'x' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Failed to commit/);
+    await expect(tools.git_autocommit!.execute({ type: 'feat', message: 'x' })).rejects.toThrow(
+      /Failed to commit:[\s\S]*nothing to commit/,
+    );
   });
 
   it('tolerates a throwing existsSync during staging', async () => {
@@ -401,9 +387,9 @@ describe('git_autocommit', () => {
     });
     const tools = setup();
     // No files exist (existsSync throws → treated as absent) → staging fails.
-    const res = await tools.git_autocommit!.execute({ type: 'fix', message: 'x', files: ['a.ts'] });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Failed to stage/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'fix', message: 'x', files: ['a.ts'] }),
+    ).rejects.toThrow(/Failed to stage/);
   });
 
   it('falls back gracefully when diff/status commands throw', async () => {

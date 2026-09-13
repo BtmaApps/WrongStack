@@ -1,3 +1,4 @@
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type {
   OneShotLLMInput,
@@ -185,7 +186,7 @@ export function createOneShotLLMTool(
       'Provide `system` for the instruction and `userPrompt` for the input. ' +
       'Either set `model`+`providerId`, or have defaults configured on the tool. ' +
       'Set `fallbackModels` for resilience. ' +
-      'Check `error` on the result for failure details.',
+      'A failed call (no provider resolved, every attempt failed, timeout) is reported as a tool error.',
     inputSchema: INPUT_SCHEMA,
     // Metadata mirrors council-tool.ts — both are read-only meta tools that
     // spend tokens but never touch the workspace.
@@ -215,18 +216,13 @@ export function createOneShotLLMTool(
       // If the caller didn't provide model/providerId, check for tool-level defaults.
       // This prevents silent fallback to session config which may not be intended.
       if (!input.model && !input.providerId && !opts.defaultModel && !opts.defaultProvider) {
-        return {
-          text: '',
-          model: '',
-          provider: '',
-          tokens: { input: 0, output: 0, total: 0 },
-          durationMs: 0,
-          fromFallback: false,
-          error:
+        throw new ToolValidationError({
+          message:
             'Either provide `model` and `providerId` in the call, or configure ' +
             'defaultProvider/defaultModel when creating the tool. The `llm` tool ' +
             'does not infer provider/model from the session by default.',
-        };
+          field: 'model',
+        });
       }
 
       // Apply defaults when caller omits model/providerId but defaults are configured.
@@ -243,7 +239,15 @@ export function createOneShotLLMTool(
           : { timeoutMs: undefined }),
       };
 
-      return orchestrator.call(effectiveInput);
+      // The orchestrator never throws; a total failure comes back as `error`.
+      const result = await orchestrator.call(effectiveInput);
+      if (result.error !== undefined) {
+        const target =
+          result.provider || result.model ? ` (${result.provider}/${result.model})` : '';
+        const attempts = result.attempts !== undefined ? `, ${result.attempts} attempt(s)` : '';
+        throw new Error(`llm call failed${target}${attempts}: ${result.error}`);
+      }
+      return result;
     },
   };
 }

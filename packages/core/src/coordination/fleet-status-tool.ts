@@ -98,7 +98,13 @@ export function makeFleetStatusTool(opts: FleetStatusToolOptions = {}): Tool {
         /* best-effort */
       }
 
-      const statuses = await mb.getAgentStatuses().catch(() => []);
+      // A registry failure must not read as "no other agents are active".
+      const statuses = await mb.getAgentStatuses().catch((err: unknown) => {
+        throw new Error(
+          `fleet_status: could not read agent statuses: ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
+      });
       const local = new Map<string, AgentEntry>();
       try {
         for (const e of opts.getLocalAgents?.() ?? []) local.set(e.name, e);

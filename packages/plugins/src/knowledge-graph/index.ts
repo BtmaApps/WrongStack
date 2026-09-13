@@ -31,7 +31,7 @@
 
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
 
 const API_VERSION = '^0.1.10';
@@ -322,12 +322,9 @@ const plugin: Plugin = {
         source?: string | undefined;
         confidence?: 'low' | 'medium' | 'high' | undefined;
       }) {
-        if (!cfg.enabled) return { ok: false, error: 'knowledge-graph is disabled' };
+        if (!cfg.enabled) throw new Error('knowledge-graph is disabled');
         if (state.facts.length >= cfg.maxFacts) {
-          return {
-            ok: false,
-            error: `fact limit reached (${cfg.maxFacts}). Remove old facts first.`,
-          };
+          throw new Error(`fact limit reached (${cfg.maxFacts}). Remove old facts first.`);
         }
 
         const trim = (s: unknown) =>
@@ -360,7 +357,10 @@ const plugin: Plugin = {
             raw['targetEntity'],
         );
         if (!subject || !relation || !object) {
-          return { ok: false, error: 'subject, relation, and object are required' };
+          throw new ToolValidationError({
+            message: 'subject, relation, and object are required',
+            field: !subject ? 'subject' : !relation ? 'relation' : 'object',
+          });
         }
 
         const rawConf =
@@ -410,7 +410,7 @@ const plugin: Plugin = {
         confidence?: 'low' | 'medium' | 'high' | undefined;
         limit?: number | undefined;
       }) {
-        if (!cfg.enabled) return { ok: false, error: 'knowledge-graph is disabled' };
+        if (!cfg.enabled) throw new Error('knowledge-graph is disabled');
         state.queries += 1;
         const raw = input as Record<string, unknown>;
         const rawQ =
@@ -467,10 +467,11 @@ const plugin: Plugin = {
       category: 'Memory',
       mutating: true,
       async execute(input: { id: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'knowledge-graph is disabled' };
+        if (!cfg.enabled) throw new Error('knowledge-graph is disabled');
         const before = state.facts.length;
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawId = String(input.id ?? raw['factId'] ?? raw['fact_id'] ?? '').trim();
+        if (!rawId) throw new ToolValidationError({ message: 'id is required', field: 'id' });
         const normalized = rawId.toLowerCase().startsWith('kg-')
           ? rawId.toLowerCase()
           : `kg-${rawId.toLowerCase()}`;
@@ -478,7 +479,7 @@ const plugin: Plugin = {
           (f) => f.id.toLowerCase() !== normalized && f.id !== rawId,
         );
         const removed = before - state.facts.length;
-        if (removed === 0) return { ok: false, error: `no fact matches "${input.id ?? rawId}"` };
+        if (removed === 0) throw new Error(`no fact matches "${input.id ?? rawId}"`);
         state.removals += removed;
         api.metrics.counter('removals', removed);
         const persisted = await persistFacts(resolved);

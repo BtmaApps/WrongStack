@@ -80,8 +80,9 @@ describe('notify-hub plugin', () => {
     await notifyHubPlugin.setup(api as never);
     expect(api.registerHook).not.toHaveBeenCalled();
     expect(api.onPattern).not.toHaveBeenCalled();
-    const result = await getTool(api, 'notify_send').execute({ message: 'hi' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'notify_send').execute({ message: 'hi' })).rejects.toThrow(
+      /no webhookUrl configured/,
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -104,8 +105,9 @@ describe('notify-hub plugin', () => {
     ]) {
       const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
       await notifyHubPlugin.setup(api as never);
-      const result = await getTool(api, 'notify_send').execute({ message: 'x' });
-      expect(result['ok']).toBe(false);
+      await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+        /no webhookUrl configured/,
+      );
       expect(api.registerHook).not.toHaveBeenCalled();
     }
     expect(fetchMock).not.toHaveBeenCalled();
@@ -126,8 +128,18 @@ describe('notify-hub plugin', () => {
     );
     // notify_send tool is still registered (global tool registry) but returns
     // "no webhookUrl configured" because the channel was never constructed.
-    const result = await getTool(api, 'notify_send').execute({ message: 'x' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+      /no webhookUrl configured/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('notify_send requires a message', async () => {
+    const api = makeApi({ extensions: URL_CFG });
+    await notifyHubPlugin.setup(api as never);
+    await expect(getTool(api, 'notify_send').execute({ title: 't' })).rejects.toThrow(
+      /message is required/,
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -167,9 +179,9 @@ describe('notify-hub plugin', () => {
     });
     await notifyHubPlugin.setup(api as never);
     const send = getTool(api, 'notify_send');
-    await send.execute({ message: '1' });
-    await send.execute({ message: '2' }); // circuit opens
-    await send.execute({ message: '3' }); // suppressed
+    await expect(send.execute({ message: '1' })).rejects.toThrow(/connection refused/);
+    await expect(send.execute({ message: '2' })).rejects.toThrow(/delivery failed/); // circuit opens
+    await expect(send.execute({ message: '3' })).rejects.toThrow(/circuit open/); // suppressed
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const status = await getTool(api, 'notify_hub_status').execute({});
     expect(status['circuitOpen']).toBe(true);
@@ -184,8 +196,10 @@ describe('notify-hub plugin', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500 });
     const api = makeApi({ extensions: URL_CFG });
     await notifyHubPlugin.setup(api as never);
-    const result = await getTool(api, 'notify_send').execute({ message: 'x' });
-    expect(result['ok']).toBe(false);
+    // A failed delivery used to come back as a successful tool result.
+    await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+      /notification delivery failed/,
+    );
   });
 
   it('enabled:false idles even with a webhookUrl', async () => {
@@ -194,8 +208,7 @@ describe('notify-hub plugin', () => {
     });
     await notifyHubPlugin.setup(api as never);
     expect(api.registerHook).not.toHaveBeenCalled();
-    const result = await getTool(api, 'notify_send').execute({ message: 'x' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(/disabled/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -245,9 +258,9 @@ describe('notify-hub plugin', () => {
       const counters = (notifyHubPlugin as { counters?: { blocked: number } }).counters;
       // Direct test of the underlying classifier: an embedded-127
       // mapped host is private, so a public send is blocked.
-      const { isPrivateIPv4 } = (notifyHubPlugin as unknown as {
+      const { isPrivateIPv4 } = notifyHubPlugin as unknown as {
         isPrivateIPv4: (h: string) => boolean;
-      });
+      };
       // Function may not be exported; fall through to the delivery
       // assertion that the URL is not honoured as a public host.
       if (typeof isPrivateIPv4 === 'function') {

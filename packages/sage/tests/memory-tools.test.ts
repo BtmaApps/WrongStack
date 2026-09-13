@@ -509,6 +509,25 @@ describe('memory_gather_batch tool', () => {
     expect(result.relationsScannedAt).toBe(2);
   });
 
+  it('fails the call when every graph lookup fails (outage, not "no relations")', async () => {
+    const service = createMockService();
+    service.listSagePage = vi.fn().mockResolvedValue({
+      memories: [
+        { id: 'mem_1', text: 'A' },
+        { id: 'mem_2', text: 'B' },
+      ],
+      nextCursor: null,
+      total: 2,
+      statusCounts: { active: 2 },
+    });
+    service.graphFor = vi.fn().mockRejectedValue(new Error('graph store closed'));
+
+    const tool = createSageTools(service).find((t) => t.name === 'memory_gather_batch')!;
+    await expect(
+      tool.execute({} as never, {} as never, { signal: new AbortController().signal } as never),
+    ).rejects.toThrow(/relation lookup failed for all 2 memories \(graph store closed\)/);
+  });
+
   it('throws on abort signal', async () => {
     const tool = createSageTools(createMockService()).find((t) => t.name === 'memory_graph')!;
     const abort = new AbortController();
@@ -544,6 +563,23 @@ describe('memory_verify tool', () => {
     await tool.execute({}, {} as never, { signal } as never);
 
     expect(verify).toHaveBeenCalledWith(undefined, signal);
+  });
+
+  it('fails the call for an unknown memory_id instead of returning []', async () => {
+    const verify = vi.fn().mockResolvedValue([]);
+    const service = createMockService();
+    service.verify = verify;
+    service.getSage = vi.fn().mockResolvedValue(null);
+
+    const tool = createSageTools(service).find((t) => t.name === 'memory_verify')!;
+    await expect(
+      tool.execute(
+        { memory_id: 'mem_missing' },
+        {} as never,
+        { signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/SAGE "mem_missing" not found/);
+    expect(verify).not.toHaveBeenCalled();
   });
 });
 

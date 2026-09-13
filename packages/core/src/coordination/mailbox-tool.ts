@@ -15,6 +15,7 @@ import type { EventBus } from '../kernel/events.js';
 import type { Context } from '../core/context.js';
 import type { Tool } from '../types/tool.js';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import { toErrorMessage } from '../utils/error.js';
 import { wstackGlobalRoot } from '../utils/wstack-paths.js';
 import { resolveProjectDir } from './global-mailbox-paths.js';
@@ -278,13 +279,31 @@ export function makeMailboxTool(opts: MailboxToolOptions = {}): Tool {
         case 'unread':
           return executeUnread(mb, callerId, callerSessionId, [baseCallerId], identity.role);
         default:
-          return {
-            ok: false,
-            error: `Unknown action: "${action}". Use check, send, ack, query, status, online, or unread.`,
-          };
+          throw new ToolValidationError({
+            message: `Unknown action: "${action}". Use check, send, ack, query, status, online, or unread.`,
+            field: 'action',
+          });
       }
     },
   };
+}
+
+/**
+ * Run one inbox query per target. Individual failures stay best-effort, but
+ * when EVERY query fails the mailbox is unreachable — reporting an empty
+ * inbox would hide that, so throw instead.
+ */
+export async function queryMailboxTargets(
+  targets: readonly string[],
+  run: (to: string) => Promise<MailboxMessage[]>,
+): Promise<MailboxMessage[][]> {
+  const settled = await Promise.allSettled(targets.map((to) => run(to)));
+  const failures = settled.filter((s): s is PromiseRejectedResult => s.status === 'rejected');
+  if (settled.length > 0 && failures.length === settled.length) {
+    const cause = failures[0]?.reason;
+    throw new Error(`Mailbox query failed: ${toErrorMessage(cause)}`, { cause });
+  }
+  return settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
 }
 
 // ── Action handlers ──────────────────────────────────────────────────────
@@ -308,12 +327,8 @@ async function executeCheck(
     ...aliases.filter((al) => al && al !== agentId),
     `@session:${sessionId}`,
   ];
-  const batches = await Promise.all(
-    targets.map((to) =>
-      mb
-        .query({ to, unreadBy: agentId, readerRole: role, limit, minPriority: 'low' })
-        .catch(() => []),
-    ),
+  const batches = await queryMailboxTargets(targets, (to) =>
+    mb.query({ to, unreadBy: agentId, readerRole: role, limit, minPriority: 'low' }),
   );
   const seen = new Set<string>();
   const candidates = batches.flat().filter((m) => {
@@ -377,14 +392,17 @@ async function executeSend(
   const body = i.body as string | undefined;
   const audience = i.audience as MailboxAudience | undefined;
 
-  if (!to) return { ok: false, error: '"to" is required.' };
-  if (!tp) return { ok: false, error: '"type" is required.' };
-  if (!subject) return { ok: false, error: '"subject" is required.' };
+  const invalid = (field: string, message: string): never => {
+    throw new ToolValidationError({ message, field });
+  };
+  if (!to) return invalid('to', '"to" is required.');
+  if (!tp) return invalid('type', '"type" is required.');
+  if (!subject) return invalid('subject', '"subject" is required.');
   // Empty string is a legitimate body (e.g. subject-only status pings) —
   // only reject when the field is genuinely absent.
-  if (body === undefined || body === null) return { ok: false, error: '"body" is required.' };
+  if (body === undefined || body === null) return invalid('body', '"body" is required.');
   if (audience !== undefined && audience !== 'all' && audience !== 'leaders') {
-    return { ok: false, error: '"audience" must be "all" or "leaders".' };
+    return invalid('audience', '"audience" must be "all" or "leaders".');
   }
 
   // Resolve and validate the (type, to) pair using the canonical helper.
@@ -393,11 +411,15 @@ async function executeSend(
   try {
     normalizedTo = normalizeRecipient(to, sessionId);
   } catch (err) {
-    return { ok: false, error: `"to" is invalid: ${toErrorMessage(err)}` };
+    throw new ToolValidationError({
+      message: `"to" is invalid: ${toErrorMessage(err)}`,
+      field: 'to',
+      cause: err,
+    });
   }
   const delivery = applyMailboxSendPolicy(ctx, identity, normalizedTo, audience);
   const typeResult = resolveSendTypeSafe(tp as MailboxMessageType, delivery.to);
-  if (!typeResult.ok) return { ok: false, error: `"type" is invalid: ${typeResult.error}` };
+  if (!typeResult.ok) return invalid('type', `"type" is invalid: ${typeResult.error}`);
 
   const msg = await mb.send({
     from: identity.callerId,
@@ -432,7 +454,9 @@ async function executeSend(
 
 async function executeAck(mb: Mailbox, agentId: string, i: Record<string, unknown>) {
   const messageId = i.messageId as string | undefined;
-  if (!messageId) return { ok: false, error: '"messageId" is required.' };
+  if (!messageId) {
+    throw new ToolValidationError({ message: '"messageId" is required.', field: 'messageId' });
+  }
 
   const updated = await mb.ack({
     messageId,
@@ -442,7 +466,7 @@ async function executeAck(mb: Mailbox, agentId: string, i: Record<string, unknow
     outcome: i.outcome as string | undefined,
   });
 
-  if (!updated) return { ok: false, error: `Message "${messageId}" not found.` };
+  if (!updated) throw new Error(`Message "${messageId}" not found.`);
 
   return {
     ok: true,
@@ -550,10 +574,8 @@ async function executeUnread(
     ...aliases.filter((al) => al && al !== agentId),
     `@session:${sessionId}`,
   ];
-  const batches = await Promise.all(
-    targets.map((to) =>
-      mb.query({ to, unreadBy: agentId, readerRole: role, limit: 200 }).catch(() => []),
-    ),
+  const batches = await queryMailboxTargets(targets, (to) =>
+    mb.query({ to, unreadBy: agentId, readerRole: role, limit: 200 }),
   );
   // Session-affinity filter: every read path that touches cross-session
   // mail must wire the same filter — check (line 284) and query (line 412)

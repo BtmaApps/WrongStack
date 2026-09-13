@@ -71,6 +71,19 @@ describe('pwshTool', () => {
     }
   });
 
+  it('throws (not an `error` payload) when workdir escapes the project root', async () => {
+    const sb = await mkSandbox();
+    try {
+      await expect(
+        pwshTool.execute({ command: 'Write-Output "x"', workdir: '../../..' }, sb.ctx, {
+          signal: newSignal(),
+        }),
+      ).rejects.toThrow(/^pwsh: /);
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
   it('defines selection boundaries for tool router', () => {
     expect(pwshTool.selection?.useInstead).toContain('exec');
   });

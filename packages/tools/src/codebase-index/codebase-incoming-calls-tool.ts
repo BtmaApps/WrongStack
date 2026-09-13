@@ -83,22 +83,16 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
         circuit.state === 'open'
           ? `Indexing is paused (circuit open, retry in ${Math.ceil(circuit.cooldownRemainingMs / 1000)}s).`
           : 'Try /codebase-reindex.';
-      return {
-        symbol: input.symbol,
-        calls: [],
-        total: 0,
-        indexStatus: `Index build failed: ${state.lastError}. ${retryHint}`,
-      };
+      throw new Error(`Index build failed: ${state.lastError}. ${retryHint}`);
     }
 
     const limit = Math.max(1, Math.min(Math.trunc(input.limit ?? 50), 200));
     const transitive = input.transitive === true;
-    // Degrade infrastructure failures (daemon down, invalid endpoint, index
-    // read timeout) to the empty-results + indexStatus contract instead of a
-    // raw throw — mirrors codebase-search-tool.ts / codebase-stats-tool.ts.
-    // A refresh in progress is NOT a failure: the project server serves
-    // previous-generation answers flagged `stale`, and only refuses when it
-    // has no cached answer for this query.
+    // Infrastructure failures (daemon down, invalid endpoint, index read
+    // timeout, never-built index) THROW: an empty `calls` payload read as
+    // "no callers" — exactly the wrong conclusion before a refactor. A
+    // refresh with a cached answer is served `stale`; without one the server
+    // refuses and that refusal is a failure too.
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
     let serviced: Awaited<ReturnType<typeof incomingCallsService>>;
     try {
@@ -112,19 +106,15 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
       });
     } catch (err) {
       if ((err as { name?: string }).name === 'IndexRefreshInProgressError') {
-        return {
-          symbol: input.symbol,
-          calls: [],
-          total: 0,
-          indexStatus: `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); this symbol has no cached answer yet — retry after the completed generation is published.`,
-        };
+        throw new Error(
+          `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); this symbol has no cached answer yet — retry after the completed generation is published.`,
+          { cause: err },
+        );
       }
-      return {
-        symbol: input.symbol,
-        calls: [],
-        total: 0,
-        indexStatus: `Index query failed: ${toErrorMessage(err)}. Fall back to grep for this lookup.`,
-      };
+      throw new Error(
+        `Index query failed: ${toErrorMessage(err)}. Fall back to grep for this lookup.`,
+        { cause: err },
+      );
     }
     const { calls, symbolFound, ambiguous, totalMatches, stale } = serviced;
 
@@ -141,18 +131,17 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
             indexDir: codebaseIndexDirOverride(ctx),
           });
           hasPersistedIndex = stats.totalFiles > 0 || stats.lastIndexed !== null;
-        } catch {
-          // Keep the conservative missing-index hint rather than failing the
-          // whole tool because the stats probe failed.
+        } catch (err) {
+          throw new Error(
+            `Symbol "${input.symbol}" was not found and the persisted index could not be verified: ${toErrorMessage(err)}. Try /codebase-reindex or fall back to grep.`,
+            { cause: err },
+          );
         }
       }
       if (!hasPersistedIndex) {
-        return {
-          symbol: input.symbol,
-          calls: [],
-          total: 0,
-          indexStatus: 'No persisted index data found. Run codebase-index to build it.',
-        };
+        throw new Error(
+          'No persisted index data found. Run codebase-index to build it, then retry.',
+        );
       }
       return {
         symbol: input.symbol,
@@ -210,8 +199,6 @@ export interface IncomingCallsOutput {
    * the files currently being indexed.
    */
   stale?: boolean | undefined;
-  /** Non-empty when the index blocked the query (not ready, indexing, failed). */
-  indexStatus?: string | undefined;
   /** Advisory note when the symbol was not found in the index. */
   note?: string | undefined;
 }

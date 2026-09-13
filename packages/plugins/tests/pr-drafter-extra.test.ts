@@ -39,6 +39,32 @@ function getTool(api: MockApi, name: string) {
   return (call[0] as { execute: (input: unknown) => Promise<unknown> }).execute;
 }
 
+type PostHook = (input: {
+  toolName?: string;
+  toolInput?: unknown;
+  toolResult?: { content: string; isError: boolean };
+}) => void;
+
+function getPostHook(api: MockApi): PostHook {
+  const call = api.registerHook.mock.calls.find((c) => c[0] === 'PostToolUse');
+  if (!call) throw new Error('PostToolUse hook not registered');
+  return call[2] as PostHook;
+}
+
+/** git_autocommit's real success result, serialized the way the executor does. */
+function autocommitResult(message: string): string {
+  return JSON.stringify({
+    ok: true,
+    hash: 'a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0',
+    message,
+    stagedFiles: ['src/a.ts'],
+    type: 'fix',
+    scope: null,
+    generatedByLlm: false,
+    diff: '\n## Staged diff\n\n1 file changed',
+  });
+}
+
 beforeEach(() => vi.clearAllMocks());
 
 describe('pr-drafter extra coverage', () => {
@@ -64,53 +90,85 @@ describe('pr-drafter extra coverage', () => {
     expect(result.body).toContain('# PR Draft');
   });
 
-  it('onPattern handler records git_autocommit and write/edit tool calls', async () => {
+  it('records real git_autocommit commits and write/edit files from PostToolUse', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);
+    const postHook = getPostHook(api);
     const onPatternHandler = api.onPattern.mock.calls[0]?.[1] as (
       event: string,
       payload: unknown,
     ) => void;
-    expect(onPatternHandler).toBeDefined();
 
-    // Simulate git_autocommit
-    onPatternHandler('tool.completed', {
-      tool: 'git_autocommit',
-      result: { committed: true, commitMessage: 'fix: resolve auth bug' },
+    // The executor serializes git_autocommit's actual success result as JSON text.
+    postHook({
+      toolName: 'git_autocommit',
+      toolInput: { type: 'fix', summary: 'resolve auth bug' },
+      toolResult: { content: autocommitResult('fix: resolve auth bug'), isError: false },
     });
-
-    // Simulate write tool
-    onPatternHandler('tool.completed', {
-      tool: 'write',
-      input: { path: 'src/auth.ts' },
+    postHook({
+      toolName: 'write',
+      toolInput: { path: 'src/auth.ts' },
+      toolResult: { content: 'ok', isError: false },
     });
-
-    // Simulate edit tool
-    onPatternHandler('tool.completed', {
-      tool: 'edit',
-      input: { path: 'src/utils.ts' },
+    postHook({
+      toolName: 'edit',
+      toolInput: { file_path: 'src/utils.ts' },
+      toolResult: { content: 'ok', isError: false },
     });
+    // `tool.completed` as core really emits it: no tool/input/result fields.
+    for (const name of ['git_autocommit', 'write', 'edit']) {
+      onPatternHandler('tool.completed', { name, id: name, durationMs: 1, outputChars: 2 });
+    }
 
     const h = (await prDrafterPlugin.health!()) as {
       counters: Record<string, number>;
       message: string;
     };
     expect(h.counters.commits).toBe(1);
-    // 3 tool.completed events: git_autocommit + write + edit
+    expect(h.counters.files).toBe(2);
     expect(h.counters.toolCalls).toBe(3);
     expect(h.message).toContain('1 commit(s)');
   });
 
-  it('onPattern handler handles null/empty payload gracefully', async () => {
+  it('ignores failed, errored, dry-run and truncated-without-hash git_autocommit calls', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);
-    const onPatternHandler = api.onPattern.mock.calls[0]?.[1] as (
-      event: string,
-      payload: unknown,
-    ) => void;
-    expect(() => onPatternHandler('tool.completed', null)).not.toThrow();
-    expect(() => onPatternHandler('tool.completed', {})).not.toThrow();
-    expect(() => onPatternHandler('tool.completed', { tool: 'write' })).not.toThrow();
+    const postHook = getPostHook(api);
+
+    // git_autocommit now throws on refusal → the executor reports isError.
+    postHook({
+      toolName: 'git_autocommit',
+      toolInput: {},
+      toolResult: { content: 'Error: Nothing staged.', isError: true },
+    });
+    postHook({
+      toolName: 'git_autocommit',
+      toolInput: {},
+      toolResult: {
+        content: JSON.stringify({ ok: true, dry_run: true, message: 'Would create: fix: x' }),
+        isError: false,
+      },
+    });
+    postHook({
+      toolName: 'write',
+      toolInput: { path: 'src/failed.ts' },
+      toolResult: { content: 'Error: EACCES', isError: true },
+    });
+    expect(() => postHook({ toolName: 'git_autocommit' })).not.toThrow();
+
+    const h = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    expect(h.counters.commits).toBe(0);
+    expect(h.counters.files).toBe(0);
+  });
+
+  it('parses a commit out of a truncated git_autocommit result', async () => {
+    const { parseAutocommitResult } = await import('../src/pr-drafter');
+    const full = autocommitResult('feat(api): add "quoted" \\ thing');
+    expect(parseAutocommitResult(full.slice(0, full.indexOf('"stagedFiles"') + 5))).toEqual({
+      hash: 'a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0',
+      message: 'feat(api): add "quoted" \\ thing',
+    });
+    expect(parseAutocommitResult('{"ok":true,"dry_run":true}')).toBeNull();
   });
 
   it('onEvent handler records provider responses', async () => {

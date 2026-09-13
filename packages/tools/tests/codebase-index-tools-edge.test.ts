@@ -69,6 +69,17 @@ let outgoingValue: {
   totalMatches: 0,
 };
 
+let contextError: Error | undefined;
+const emptyContext = {
+  query: 'retry logic',
+  entries: [],
+  seedCount: 0,
+  semanticSeedCount: 0,
+  totalCandidates: 0,
+  indexStatus: 'no-matches' as string,
+};
+let contextValue = { ...emptyContext };
+
 vi.mock('../src/codebase-index/background-indexer.js', () => ({
   getIndexState: () => state,
   isIndexing: () => isIndexingValue,
@@ -89,6 +100,11 @@ vi.mock('../src/codebase-index/background-indexer.js', () => ({
     if (outgoingError) throw outgoingError;
     return outgoingValue;
   },
+  codebaseContext: async () => {
+    if (contextError) throw contextError;
+    return contextValue;
+  },
+  codebaseVectorSearch: async () => ({ hits: [], total: 0 }),
   runStartupIndex: async () => ({
     filesIndexed: 1,
     symbolsIndexed: 1,
@@ -105,6 +121,7 @@ vi.mock('../src/codebase-index/circuit-breaker.js', () => ({
   indexCircuitBreaker: { snapshot: () => circuitSnapshot },
 }));
 
+import { codebaseContextTool } from '../src/codebase-index/codebase-context-tool.js';
 import { codebaseIncomingCallsTool } from '../src/codebase-index/codebase-incoming-calls-tool.js';
 import { codebaseIndexTool } from '../src/codebase-index/codebase-index-tool.js';
 import { codebaseOutgoingCallsTool } from '../src/codebase-index/codebase-outgoing-calls-tool.js';
@@ -134,26 +151,31 @@ beforeEach(() => {
   incomingValue = { calls: [], symbolFound: true, ambiguous: false, totalMatches: 0 };
   outgoingError = undefined;
   outgoingValue = { calls: [], symbolFound: true, unresolvedCount: 0, totalMatches: 0 };
+  contextError = undefined;
+  contextValue = { ...emptyContext };
 });
 afterEach(() => vi.restoreAllMocks());
 
+// Refusals and outages THROW: a returned payload is a successful call to the
+// executor (is_error:false), so they used to read as "ok" / "nothing found".
 describe('codebase-index tool gates', () => {
-  it('reports when an index is already in progress', async () => {
+  it('fails the call when an index is already in progress', async () => {
     isIndexingValue = true;
-    const out = await codebaseIndexTool.execute({}, ctx(), opts());
-    expect(out.note).toMatch(/already in progress/);
+    await expect(codebaseIndexTool.execute({}, ctx(), opts())).rejects.toThrow(
+      /already in progress/,
+    );
   });
 
-  it('reports when the circuit breaker is open', async () => {
+  it('fails the call when the circuit breaker is open', async () => {
     circuitSnapshot = { state: 'open', cooldownRemainingMs: 5000, lastFailure: 'boom' };
-    const out = await codebaseIndexTool.execute({}, ctx(), opts());
-    expect(out.note).toMatch(/paused after repeated failures/);
+    await expect(codebaseIndexTool.execute({}, ctx(), opts())).rejects.toThrow(
+      /paused after repeated failures \(last: boom\)/,
+    );
   });
 
-  it('reports open circuit without a specific last failure', async () => {
+  it('fails the call on an open circuit without a specific last failure', async () => {
     circuitSnapshot = { state: 'open', cooldownRemainingMs: 5000 };
-    const out = await codebaseIndexTool.execute({}, ctx(), opts());
-    expect(out.note).toContain('last: unknown');
+    await expect(codebaseIndexTool.execute({}, ctx(), opts())).rejects.toThrow(/last: unknown/);
   });
 
   it('runs the indexer when not gated', async () => {
@@ -197,13 +219,20 @@ describe('codebase-stats tool gates', () => {
     expect(statsCalls).toBe(0);
   });
 
-  it('returns structured guidance instead of throwing when the stats host times out', async () => {
+  it('fails the call with guidance when the stats host times out', async () => {
     const err = new Error('index stats timed out');
     err.name = 'IndexTimeoutError';
     statsError = err;
-    const out = await codebaseStatsTool.execute({}, ctx(), opts());
-    expect(out.indexStatus).toMatch(/statistics timed out.*codebase-search/s);
-    expect(out.statsAvailable).toBe(false);
+    await expect(codebaseStatsTool.execute({}, ctx(), opts())).rejects.toThrow(
+      /statistics timed out.*codebase-search/s,
+    );
+  });
+
+  it('fails the call when the stats query itself fails', async () => {
+    statsError = new Error('database disk image is malformed');
+    await expect(codebaseStatsTool.execute({}, ctx(), opts())).rejects.toThrow(
+      /statistics query failed: database disk image is malformed/,
+    );
   });
 
   it('appends a paused note when the circuit is open', async () => {
@@ -232,13 +261,21 @@ describe('codebase-search tool gates', () => {
     expect(codebaseSearchTool.timeoutMs).toBeGreaterThan(30_000);
   });
 
-  it('reports no persisted data when not ready and DB is empty', async () => {
+  it('fails the call when not ready and the DB is empty (not "zero hits")', async () => {
     state.ready = false;
     statsValue.totalSymbols = 0;
     statsValue.totalFiles = 0;
     statsValue.lastIndexed = null;
-    const out = await codebaseSearchTool.execute({ query: 'q' }, ctx(), opts());
-    expect(out.indexStatus).toMatch(/No persisted index data/);
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /No persisted index data.*codebase-index/,
+    );
+  });
+
+  it('fails the call when the index query itself fails', async () => {
+    searchError = new Error('project daemon unavailable');
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /Index query failed: project daemon unavailable/,
+    );
   });
 
   it('does not mistake a zero-hit persisted snapshot for a missing index', async () => {
@@ -247,7 +284,7 @@ describe('codebase-search tool gates', () => {
     expect(out.indexStatus).toBeUndefined();
   });
 
-  it('reports refresh-in-progress when the first build has no cached answer yet', async () => {
+  it('fails the call when the first build has no cached answer yet', async () => {
     // First build: nothing was ever indexed, so the server has no cached
     // answer to serve stale and refuses with IndexRefreshInProgressError.
     state.ready = false;
@@ -258,13 +295,12 @@ describe('codebase-search tool gates', () => {
       'Codebase index refresh in progress (0/0 files); retry after the completed generation is published.',
     );
     searchError.name = 'IndexRefreshInProgressError';
-    const out = await codebaseSearchTool.execute({ query: 'q' }, ctx(), opts());
-    expect(out.indexStatus).toMatch(/Index refresh in progress/);
-    expect(out.indexStatus).toMatch(/no cached answer yet/);
-    expect(out.results).toEqual([]);
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /Index refresh in progress.*no cached answer yet/s,
+    );
   });
 
-  it('refuses gracefully when a refresh has no cached answer for this query', async () => {
+  it('fails the call with a retry hint when a refresh has no cached answer for this query', async () => {
     state.ready = true;
     state.indexing = true;
     state.currentFile = 4;
@@ -273,9 +309,9 @@ describe('codebase-search tool gates', () => {
       'Codebase index refresh in progress (4/9 files); retry after the completed generation is published.',
     );
     searchError.name = 'IndexRefreshInProgressError';
-    const out = await codebaseSearchTool.execute({ query: 'q' }, ctx(), opts());
-    expect(out.indexStatus).toMatch(/Index refresh in progress \(4\/9 files\)/);
-    expect(out.indexStatus).toMatch(/completed generation is published/);
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /Index refresh in progress \(4\/9 files\).*completed generation is published/s,
+    );
   });
 
   it('serves a stale previous-generation answer during a refresh instead of refusing', async () => {
@@ -300,17 +336,40 @@ describe('codebase-search tool gates', () => {
     expect(out.indexStatus).toBeUndefined();
   });
 
-  it('reports a build failure with a circuit-open retry hint', async () => {
+  it('fails the call on a build failure with a circuit-open retry hint', async () => {
     state.lastError = 'disk full';
     state.circuit = { state: 'open', cooldownRemainingMs: 2000 };
-    const out = await codebaseSearchTool.execute({ query: 'q' }, ctx(), opts());
-    expect(out.indexStatus).toMatch(/Index build failed.*circuit open/s);
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /Index build failed.*circuit open/s,
+    );
   });
 
-  it('reports a build failure with a plain retry hint when the circuit is closed', async () => {
+  it('fails the call on a build failure with a plain retry hint when the circuit is closed', async () => {
     state.lastError = 'parse error';
-    const out = await codebaseSearchTool.execute({ query: 'q' }, ctx(), opts());
-    expect(out.indexStatus).toMatch(/Try \/codebase-reindex/);
+    await expect(codebaseSearchTool.execute({ query: 'q' }, ctx(), opts())).rejects.toThrow(
+      /Try \/codebase-reindex/,
+    );
+  });
+});
+
+describe('codebase-context tool failures', () => {
+  it('fails the call when the lookup fails instead of returning indexStatus "error"', async () => {
+    contextError = new Error('worker crashed');
+    await expect(
+      codebaseContextTool.execute({ query: 'retry logic' }, ctx(), opts()),
+    ).rejects.toThrow(/codebase-context lookup failed: worker crashed/);
+  });
+
+  it('fails the call when no index exists', async () => {
+    contextValue = { ...contextValue, indexStatus: 'no-index' };
+    await expect(
+      codebaseContextTool.execute({ query: 'retry logic' }, ctx(), opts()),
+    ).rejects.toThrow(/No codebase index data found/);
+  });
+
+  it('returns a no-matches answer from a healthy index as data', async () => {
+    const out = await codebaseContextTool.execute({ query: 'retry logic' }, ctx(), opts());
+    expect(out.indexStatus).toBe('no-matches');
   });
 });
 
@@ -323,21 +382,51 @@ describe('codebase call-graph tool gates', () => {
     return error;
   }
 
-  it('degrades a refresh refusal to a friendly status for both tools', async () => {
+  it('fails the call on a refresh refusal for both tools', async () => {
     state.ready = true;
     state.indexing = true;
     state.currentFile = 4;
     state.totalFiles = 9;
     incomingError = refreshRefusal();
     outgoingError = refreshRefusal();
-    const incoming = await codebaseIncomingCallsTool.execute({ symbol: 'Target' }, ctx(), opts());
-    const outgoing = await codebaseOutgoingCallsTool.execute({ symbol: 'Target' }, ctx(), opts());
-    expect(incoming.indexStatus).toMatch(/Index refresh in progress \(4\/9 files\)/);
-    expect(incoming.indexStatus).toMatch(/no cached answer yet/);
-    expect(outgoing.indexStatus).toMatch(/Index refresh in progress \(4\/9 files\)/);
-    expect(outgoing.indexStatus).toMatch(/no cached answer yet/);
-    expect(incoming.calls).toEqual([]);
-    expect(outgoing.calls).toEqual([]);
+    const refusal = /Index refresh in progress \(4\/9 files\).*no cached answer yet/s;
+    await expect(
+      codebaseIncomingCallsTool.execute({ symbol: 'Target' }, ctx(), opts()),
+    ).rejects.toThrow(refusal);
+    await expect(
+      codebaseOutgoingCallsTool.execute({ symbol: 'Target' }, ctx(), opts()),
+    ).rejects.toThrow(refusal);
+  });
+
+  it('fails the call on an index query failure instead of returning "no callers"', async () => {
+    incomingError = new Error('endpoint invalid');
+    outgoingError = new Error('endpoint invalid');
+    await expect(
+      codebaseIncomingCallsTool.execute({ symbol: 'Target' }, ctx(), opts()),
+    ).rejects.toThrow(/Index query failed: endpoint invalid/);
+    await expect(
+      codebaseOutgoingCallsTool.execute({ symbol: 'Target' }, ctx(), opts()),
+    ).rejects.toThrow(/Index query failed: endpoint invalid/);
+  });
+
+  it('fails the call on a missing index but reports an unknown symbol in a healthy index as data', async () => {
+    incomingValue = { ...incomingValue, symbolFound: false };
+    outgoingValue = { ...outgoingValue, symbolFound: false };
+
+    // Healthy persisted index: "not found" is a legitimate answer.
+    const incoming = await codebaseIncomingCallsTool.execute({ symbol: 'Nope' }, ctx(), opts());
+    expect(incoming.note).toMatch(/not found in the index/);
+
+    // Never-built index: the same empty answer would be a lie.
+    state.ready = false;
+    statsValue.totalFiles = 0;
+    statsValue.lastIndexed = null;
+    await expect(
+      codebaseIncomingCallsTool.execute({ symbol: 'Nope' }, ctx(), opts()),
+    ).rejects.toThrow(/No persisted index data/);
+    await expect(
+      codebaseOutgoingCallsTool.execute({ symbol: 'Nope' }, ctx(), opts()),
+    ).rejects.toThrow(/No persisted index data/);
   });
 
   it('serves stale previous-generation callers/callees during a refresh instead of refusing', async () => {

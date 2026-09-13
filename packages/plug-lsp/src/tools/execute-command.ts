@@ -1,7 +1,7 @@
 import type { Tool } from '@wrongstack/core/types';
 import { LSP_CONSTANTS } from '../constants.js';
 import { LSPError, LSPErrorCode } from '../types.js';
-import { requireServer, resolveInputPath, stringifyToolError, type ToolDeps } from './shared.js';
+import { requireServer, resolveInputPath, type ToolDeps, toToolError } from './shared.js';
 
 interface Input {
   path: string;
@@ -52,7 +52,7 @@ export function createExecuteCommandTool(deps: ToolDeps): Tool<Input, string> {
           ? 'Command completed.'
           : JSON.stringify(result, null, 2);
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

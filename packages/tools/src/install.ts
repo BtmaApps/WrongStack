@@ -168,6 +168,13 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
       if (bridge?.outcome) {
         const outcome = bridge.outcome;
         const run = outcome.run;
+        if (outcome.status !== 'passed') {
+          throw new Error(
+            `install: ${bridge.language} package install ${outcome.status}` +
+              `${run?.exitCode != null ? ` (exit ${run.exitCode})` : ''}` +
+              `${run?.error ? `: ${run.error}` : ''}${failureTail(run?.output ?? '')}`,
+          );
+        }
         yield {
           type: 'final',
           output: {
@@ -211,17 +218,10 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
     const PKG_NAME_RE = /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+(?:@[a-z0-9^~><=*.+-]+)?$/i;
     for (const pkg of pkgList) {
       if (!PKG_NAME_RE.test(pkg) || pkg.startsWith('-') || pkg.length > 200) {
-        yield {
-          type: 'final',
-          output: {
-            packages: pkgList,
-            exit_code: 1,
-            output: `Invalid package name "${pkg}". Names must match ${PKG_NAME_RE} and not start with "-".`,
-            dry_run: Boolean(input.dry_run),
-            truncated: false,
-          },
-        };
-        return;
+        throw new ToolValidationError({
+          message: `install: Invalid package name "${pkg}". Names must match ${PKG_NAME_RE} and not start with "-".`,
+          field: 'packages',
+        });
       }
     }
 
@@ -271,6 +271,10 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
       signal,
       maxBytes: 100_000,
     });
+    // Package manager could not be started at all.
+    if (result.error) {
+      throw new Error(`install: could not run ${pkgManager}: ${result.error}`);
+    }
 
     const rawOutput =
       result.stdout && result.stderr
@@ -329,9 +333,26 @@ export const installTool: Tool<InstallInput, InstallOutput> = {
       risk: 'package',
     });
 
+    // The install did not happen (resolution error, network, 404 …). Throw so
+    // the executor records a failed call; the side effect above is kept.
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `install: ${pkgManager} ${args.filter((a) => !a.startsWith('-')).join(' ')} failed ` +
+          `(exit ${result.exitCode})${failureTail(output.output)}`,
+      );
+    }
+
     yield { type: 'final', output };
   },
 } satisfies Tool<InstallInput, InstallOutput>;
+
+/** Last few KB of the package-manager output, for an actionable error message. */
+function failureTail(output: string): string {
+  const trimmed = output.trim();
+  if (!trimmed) return '';
+  const MAX = 4_000;
+  return `:\n${trimmed.length > MAX ? `…${trimmed.slice(-MAX)}` : trimmed}`;
+}
 
 function resolveManifestPath(cwd: string, pkgManager: string): string {
   switch (pkgManager) {

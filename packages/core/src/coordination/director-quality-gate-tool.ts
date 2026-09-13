@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { getAgentDefinition } from './agents/index.js';
@@ -132,11 +133,10 @@ export function makeQualityGateTool(
       const runReviewer = i.reviewer !== false;
       const runVerifier = i.verifier !== false;
       if (!runReviewer && !runVerifier) {
-        return {
-          verdict: 'inconclusive',
-          passed: false,
-          error: 'quality_gate requires reviewer, verifier, or both.',
-        };
+        throw new ToolValidationError({
+          message: 'quality_gate requires reviewer, verifier, or both.',
+          field: 'reviewer',
+        });
       }
 
       const implementerResults =

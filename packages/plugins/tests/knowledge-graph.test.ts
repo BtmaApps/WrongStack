@@ -121,8 +121,7 @@ describe('knowledge-graph plugin', () => {
     const api = makeApi({ extensions: { 'knowledge-graph': { enabled: false } } });
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
-    const result = (await add({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
+    await expect(add({})).rejects.toThrow(/disabled/);
   });
 
   it('teardown zeros state and logs', async () => {

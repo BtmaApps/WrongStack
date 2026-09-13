@@ -13,7 +13,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import { safeResolveProjectPath } from './_util.js';
 
 export interface SecurityFinding {
@@ -43,14 +42,13 @@ export interface SecurityScanInput {
 }
 
 export interface SecurityScanOutput {
-  status: 'clean' | 'findings_detected' | 'error';
+  status: 'clean' | 'findings_detected';
   filesScanned: number;
   totalFindings: number;
   criticalCount: number;
   warningCount: number;
   findings: SecurityFinding[];
   summary: string;
-  error?: string | undefined;
 }
 
 // ─── Secret & Token Patterns ────────────────────────────────────────────────
@@ -268,72 +266,62 @@ export const securityAstScanTool: Tool<SecurityScanInput, SecurityScanOutput> = 
     },
     additionalProperties: false,
   },
+  // Failures THROW so the executor marks the call is_error. The old catch
+  // returned `status: 'error'`, which the executor recorded as a successful
+  // call — for a scanner that reads as "ran fine", the worst possible lie.
   async execute(input, ctx) {
-    try {
-      const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
-      let targetFile = input.file ?? 'inline-code.ts';
-      let content = input.content;
+    const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
+    let targetFile = input.file ?? 'inline-code.ts';
+    let content = input.content;
 
-      if (!content && input.file) {
-        // H-6 (security report VF-06): same fix as codebase-skeleton — this
-        // tool is `permission: 'auto'`, so a bare isAbsolute passthrough read
-        // arbitrary files (and echoed matched secret lines verbatim) without
-        // a prompt. safeResolveProjectPath preserves the schema-documented
-        // "relative to project root" contract while enforcing containment.
-        const absPath = await safeResolveProjectPath(input.file, ctx);
-        targetFile = path.relative(projectRoot, absPath).replace(/\\/g, '/');
-        content = await fs.readFile(absPath, 'utf8');
-      }
+    if (!content && input.file) {
+      // H-6 (security report VF-06): same fix as codebase-skeleton — this
+      // tool is `permission: 'auto'`, so a bare isAbsolute passthrough read
+      // arbitrary files (and echoed matched secret lines verbatim) without
+      // a prompt. safeResolveProjectPath preserves the schema-documented
+      // "relative to project root" contract while enforcing containment.
+      const absPath = await safeResolveProjectPath(input.file, ctx);
+      targetFile = path.relative(projectRoot, absPath).replace(/\\/g, '/');
+      content = await fs.readFile(absPath, 'utf8');
+    }
 
-      if (!content) {
-        return {
-          status: 'clean',
-          filesScanned: 0,
-          totalFindings: 0,
-          criticalCount: 0,
-          warningCount: 0,
-          findings: [],
-          summary: 'No content or file provided to scan.',
-        };
-      }
-
-      let findings = analyzeSecurityAndPerformance(targetFile, content);
-
-      if (input.rules && input.rules.length > 0) {
-        const ruleSet = new Set(input.rules);
-        findings = findings.filter((f) => ruleSet.has(f.ruleId));
-      }
-
-      const criticalCount = findings.filter((f) => f.severity === 'critical').length;
-      const warningCount = findings.filter((f) => f.severity === 'warning').length;
-      const totalFindings = findings.length;
-
-      const status = totalFindings === 0 ? 'clean' : 'findings_detected';
-      const summary =
-        totalFindings === 0
-          ? `Security & Performance AST Scan: CLEAN (${targetFile})`
-          : `Security & Performance AST Scan: ${totalFindings} issue(s) detected (${criticalCount} critical, ${warningCount} warning).`;
-
+    if (!content) {
       return {
-        status,
-        filesScanned: 1,
-        totalFindings,
-        criticalCount,
-        warningCount,
-        findings,
-        summary,
-      };
-    } catch (err) {
-      return {
-        status: 'error',
+        status: 'clean',
         filesScanned: 0,
         totalFindings: 0,
         criticalCount: 0,
         warningCount: 0,
         findings: [],
-        summary: '',
-        error: toErrorMessage(err),
+        summary: 'No content or file provided to scan.',
       };
     }
+
+    let findings = analyzeSecurityAndPerformance(targetFile, content);
+
+    if (input.rules && input.rules.length > 0) {
+      const ruleSet = new Set(input.rules);
+      findings = findings.filter((f) => ruleSet.has(f.ruleId));
+    }
+
+    const criticalCount = findings.filter((f) => f.severity === 'critical').length;
+    const warningCount = findings.filter((f) => f.severity === 'warning').length;
+    const totalFindings = findings.length;
+
+    const status = totalFindings === 0 ? 'clean' : 'findings_detected';
+    const summary =
+      totalFindings === 0
+        ? `Security & Performance AST Scan: CLEAN (${targetFile})`
+        : `Security & Performance AST Scan: ${totalFindings} issue(s) detected (${criticalCount} critical, ${warningCount} warning).`;
+
+    return {
+      status,
+      filesScanned: 1,
+      totalFindings,
+      criticalCount,
+      warningCount,
+      findings,
+      summary,
+    };
   },
 };

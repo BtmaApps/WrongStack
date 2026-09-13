@@ -21,7 +21,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const NEW_API_VERSION = '^0.1.10';
 
@@ -213,7 +213,8 @@ const plugin: Plugin = {
         to?: string;
         apply?: boolean;
       }) {
-        if (!cfg.enabled) return { ok: false, error: 'smart-rename is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('smart-rename is disabled');
 
         const inp = (input ?? {}) as Record<string, unknown>;
         const rawPath =
@@ -227,13 +228,13 @@ const plugin: Plugin = {
         const newName = inp['newName'] ?? inp['new_name'] ?? inp['to'];
 
         if (!rawPath || typeof rawPath !== 'string') {
-          return { ok: false, error: 'path is required' };
+          throw new ToolValidationError({ message: 'path is required', field: 'path' });
         }
         if (!oldName || typeof oldName !== 'string' || oldName.length === 0) {
-          return { ok: false, error: 'oldName is required' };
+          throw new ToolValidationError({ message: 'oldName is required', field: 'oldName' });
         }
         if (!newName || typeof newName !== 'string' || newName.length === 0) {
-          return { ok: false, error: 'newName is required' };
+          throw new ToolValidationError({ message: 'newName is required', field: 'newName' });
         }
         // Both names must be plain identifiers. `newName` is substituted
         // directly into source, so accepting arbitrary text would let a
@@ -241,18 +242,30 @@ const plugin: Plugin = {
         // to build the match, where non-identifier text makes the word
         // boundaries meaningless.
         if (!isIdentifier(oldName)) {
-          return { ok: false, error: `oldName "${oldName}" is not a valid identifier` };
+          throw new ToolValidationError({
+            message: `oldName "${oldName}" is not a valid identifier`,
+            field: 'oldName',
+          });
         }
         if (!isIdentifier(newName)) {
-          return { ok: false, error: `newName "${newName}" is not a valid identifier` };
+          throw new ToolValidationError({
+            message: `newName "${newName}" is not a valid identifier`,
+            field: 'newName',
+          });
         }
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'path is outside the project root',
+            field: 'path',
+          });
         }
 
         const ext = extname(rawPath).toLowerCase();
         if (!cfg.extensions.includes(ext)) {
-          return { ok: false, error: `extension ${ext} is not allowed for rename` };
+          throw new ToolValidationError({
+            message: `extension ${ext} is not allowed for rename`,
+            field: 'path',
+          });
         }
 
         const resolved = resolve(process.cwd(), rawPath);
@@ -261,7 +274,7 @@ const plugin: Plugin = {
           content = readFileSync(resolved, 'utf-8');
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(`Could not read ${rawPath}: ${String(err)}`, { cause: err });
         }
 
         const { preview, replacements } = renameInContent(content, oldName, newName);
@@ -281,7 +294,7 @@ const plugin: Plugin = {
             writeFileSync(resolved, preview, 'utf-8');
           } catch (err) {
             state.errorCount += 1;
-            return { ok: false, error: String(err) };
+            throw new Error(`Could not write ${rawPath}: ${String(err)}`, { cause: err });
           }
         }
 

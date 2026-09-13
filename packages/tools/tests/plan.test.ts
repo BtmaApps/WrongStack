@@ -95,22 +95,31 @@ describe('planTool', () => {
     expect(JSON.parse(await fs.readFile(sb.planPath, 'utf8')).items[0]?.status).toBe('open');
   });
 
-  it('add without title returns ok=false', async () => {
-    const out = await planTool.execute({ action: 'add' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/title/i);
+  it('add without title throws a validation error', async () => {
+    await expect(
+      planTool.execute({ action: 'add' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/title/i);
   });
 
-  it('returns failure when plan path is not configured', async () => {
+  it('throws when plan path is not configured', async () => {
     const noMetaCtx = {
       cwd: sb.dir,
       projectRoot: sb.dir,
       session: { id: 'x', append: async () => undefined, close: async () => undefined },
       meta: {},
     } as never as Context;
-    const out = await planTool.execute({ action: 'show' }, noMetaCtx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/path is not configured/i);
+    await expect(
+      planTool.execute({ action: 'show' }, noMetaCtx, { signal: newSignal() }),
+    ).rejects.toThrow(/path is not configured/i);
+  });
+
+  it('throws when the target matches no plan item', async () => {
+    await planTool.execute({ action: 'add', title: 'one' }, sb.ctx, { signal: newSignal() });
+    await expect(
+      planTool.execute({ action: 'done', target: 'no-such-item' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/No plan item matched/);
   });
 
   it('clear empties the plan', async () => {
@@ -126,16 +135,15 @@ describe('planTool', () => {
       signal: newSignal(),
     });
 
-    const removed = await planTool.execute({ action: 'remove', target: '1' }, sb.ctx, {
-      signal: newSignal(),
-    });
-    const cleared = await planTool.execute({ action: 'clear' }, sb.ctx, { signal: newSignal() });
+    await expect(
+      planTool.execute({ action: 'remove', target: '1' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/is not done/);
+    await expect(
+      planTool.execute({ action: 'clear' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/unfinished items/);
 
-    expect(removed.ok).toBe(false);
-    expect(removed.message).toContain('is not done');
-    expect(cleared.ok).toBe(false);
-    expect(cleared.message).toContain('unfinished items');
-    expect(cleared.count).toBe(1);
+    const shown = await planTool.execute({ action: 'show' }, sb.ctx, { signal: newSignal() });
+    expect(shown.count).toBe(1);
   });
 
   it('template_use applies a template', async () => {
@@ -153,14 +161,12 @@ describe('planTool', () => {
     expect(raw.items[0]!.title).toBeDefined();
   });
 
-  it('template_use with unknown template returns ok=false', async () => {
-    const out = await planTool.execute(
-      { action: 'template_use', template: 'nonexistent' },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    expect(out.ok).toBe(false);
-    expect(out.message).toContain('Unknown template');
+  it('template_use with unknown template throws', async () => {
+    await expect(
+      planTool.execute({ action: 'template_use', template: 'nonexistent' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/Unknown template/);
   });
 
   it('promote creates todos and updates plan', async () => {
@@ -222,10 +228,10 @@ describe('planTool', () => {
     expect(raw.tasks[0]?.status).toBe('pending');
   });
 
-  it('taskify without target returns ok=false', async () => {
-    const out = await planTool.execute({ action: 'taskify' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/target/i);
+  it('taskify without target throws', async () => {
+    await expect(
+      planTool.execute({ action: 'taskify' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/target/i);
   });
 
   it('mirrors plan items onto the unified session kanban board when enabled', async () => {

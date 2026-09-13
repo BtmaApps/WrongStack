@@ -35,35 +35,33 @@ describe('patchTool', () => {
     await expect(patchTool.execute({ patch: null as any }, ctx, makeOpts())).rejects.toThrow();
   });
 
-  it('applies dry_run correctly', async () => {
+  it('refuses (throws) a dry run whose targets strip to nothing', async () => {
     const ctx = makeCtx();
-    const result = await patchTool.execute(
-      { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
-      ctx,
-      makeOpts(),
-    );
-    expect(result).toHaveProperty('dry_run');
+    await expect(
+      patchTool.execute(
+        { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
+        ctx,
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/patch refused/);
   });
 
-  it('handles strip option', async () => {
+  it('refuses (throws) when strip removes every path component', async () => {
     const ctx = makeCtx();
-    const result = await patchTool.execute(
-      { patch: '--- a\n+++ b\n@@ -1 @@\n-old\n+new', strip: 2 },
-      ctx,
-      makeOpts(),
-    );
-    expect(result).toHaveProperty('message');
+    await expect(
+      patchTool.execute({ patch: '--- a\n+++ b\n@@ -1 @@\n-old\n+new', strip: 2 }, ctx, makeOpts()),
+    ).rejects.toThrow(/patch refused/);
   });
 
-  it('returns applied=0 when patch fails', async () => {
+  it('throws when the patch fails to apply (target file missing)', async () => {
     const ctx = makeCtx();
-    const result = await patchTool.execute(
-      { patch: '--- fake\n+++ fake\n@@ -1 @@\n-old\n+new' },
-      ctx,
-      makeOpts(),
-    );
-    // patch will fail because the file doesn't exist - applied should be 0
-    expect(result).toHaveProperty('applied');
+    await expect(
+      patchTool.execute(
+        { patch: '--- a/fake.txt\n+++ b/fake.txt\n@@ -1 @@\n-old\n+new' },
+        ctx,
+        makeOpts(),
+      ),
+    ).rejects.toThrow();
   });
 
   it('rejects a diff whose target resolves outside the project root', async () => {
@@ -71,10 +69,9 @@ describe('patchTool', () => {
     // strip=1 trims one component; the remaining path "../../etc/passwd"
     // resolves outside tmpDir.
     const evilPatch = '--- a/foo\n+++ b/../../etc/passwd\n@@ -1 @@\n-old\n+new';
-    const result = await patchTool.execute({ patch: evilPatch }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toMatch(/outside project root/);
+    await expect(patchTool.execute({ patch: evilPatch }, ctx, makeOpts())).rejects.toThrow(
+      /outside project root/,
+    );
   });
 
   it('forces strip >= 1 — strip=0 is treated as 1', async () => {
@@ -85,8 +82,9 @@ describe('patchTool', () => {
     // /tmp/absolute as the target and confirm rejection.
     const ctx = makeCtx();
     const evilPatch = '--- /etc/passwd\n+++ /etc/passwd\n@@ -1 @@\n-old\n+new';
-    const result = await patchTool.execute({ patch: evilPatch, strip: 0 }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
+    await expect(
+      patchTool.execute({ patch: evilPatch, strip: 0 }, ctx, makeOpts()),
+    ).rejects.toThrow(/patch refused/);
   });
 
   it('rejects targets where GNU patch -pN yields a ../ escape (leading-slash divergence)', async () => {
@@ -97,10 +95,9 @@ describe('patchTool', () => {
     // etc/passwd (in-root) — a containment bypass.
     const ctx = makeCtx();
     const evilPatch = '--- a/foo\n+++ /../etc/passwd\n@@ -1 @@\n-old\n+new';
-    const result = await patchTool.execute({ patch: evilPatch }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toMatch(/outside project root/);
+    await expect(patchTool.execute({ patch: evilPatch }, ctx, makeOpts())).rejects.toThrow(
+      /outside project root/,
+    );
   });
 
   it('rejects out-of-root target after a hunk ending with a stripped-blank context line', async () => {
@@ -121,10 +118,9 @@ describe('patchTool', () => {
       '--- a/bar.txt\n' +
       '+++ b/../../etc/passwd\n' +
       '@@ -1 @@\n-old\n+evil';
-    const result = await patchTool.execute({ patch: evilPatch }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toMatch(/outside project root/);
+    await expect(patchTool.execute({ patch: evilPatch }, ctx, makeOpts())).rejects.toThrow(
+      /outside project root/,
+    );
   });
 
   it('does not misparse hunk-body content lines as file headers', async () => {
@@ -141,8 +137,13 @@ describe('patchTool', () => {
       ' line1\n' +
       '+++ ../../etc/passwd\n' +
       ' line2\n';
-    const result = await patchTool.execute({ patch: patchBody }, ctx, makeOpts());
-    expect(result.message).not.toMatch(/outside project root/);
+    // code.txt does not exist, so the engine may fail — but never with a
+    // containment refusal caused by a phantom target.
+    const outcome = await patchTool.execute({ patch: patchBody }, ctx, makeOpts()).then(
+      (r) => r.message,
+      (e: Error) => e.message,
+    );
+    expect(outcome).not.toMatch(/outside project root/);
   });
 
   it('correctly parses and applies patches with quoted file targets', async () => {
@@ -220,44 +221,55 @@ describe('patchTool — bookkeeping on every outcome', () => {
     await fs.writeFile(file, 'line1\nDIVERGED\nline3\n');
     const { ctx, changes } = makeTrackingCtx();
 
-    const result = await patchTool.execute(
-      {
-        patch:
-          '--- a/conflict.txt\n' +
-          '+++ b/conflict.txt\n' +
-          '@@ -1,3 +1,3 @@\n' +
-          ' line1\n' +
-          '-line2\n' +
-          '+CHANGED\n' +
-          ' line3\n',
-      },
-      ctx,
-      makeOpts(),
-    );
+    // The conflict fails the call; the bookkeeping must still have run.
+    const error = await patchTool
+      .execute(
+        {
+          patch:
+            '--- a/conflict.txt\n' +
+            '+++ b/conflict.txt\n' +
+            '@@ -1,3 +1,3 @@\n' +
+            ' line1\n' +
+            '-line2\n' +
+            '+CHANGED\n' +
+            ' line3\n',
+        },
+        ctx,
+        makeOpts(),
+      )
+      .then(
+        () => undefined,
+        (e: Error) => e,
+      );
+    expect(error, 'a conflicting hunk must fail the call').toBeInstanceOf(Error);
 
     const after = await fs.readFile(file, 'utf8');
     if (after !== 'line1\nDIVERGED\nline3\n') {
       // GNU patch touched the file — the tool must have said so.
       expect(changes.length).toBeGreaterThan(0);
-      expect(result.files.length).toBeGreaterThan(0);
+      expect(error?.message).toContain('conflict.txt');
     }
   });
 
   it('safely executes without opts and falls back to ctx.signal or default signal', async () => {
     const ctx = makeCtx();
-    const result = await patchTool.execute(
-      { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
-      ctx,
-    );
-    expect(result).toHaveProperty('dry_run');
+    // Unparseable targets are refused before any signal is consulted by an
+    // engine; the call must fail cleanly (not crash) with or without opts.
+    await expect(
+      patchTool.execute(
+        { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
+        ctx,
+      ),
+    ).rejects.toThrow(/patch refused/);
 
     const ac = new AbortController();
     const ctxWithSignal = { ...ctx, signal: ac.signal };
-    const resultWithSignal = await patchTool.execute(
-      { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
-      ctxWithSignal,
-    );
-    expect(resultWithSignal).toHaveProperty('dry_run');
+    await expect(
+      patchTool.execute(
+        { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
+        ctxWithSignal,
+      ),
+    ).rejects.toThrow(/patch refused/);
   });
 });
 
@@ -295,10 +307,9 @@ describe('patchTool — VULN-001 containment (git extended headers, fail-closed)
       'diff --git a/inside.txt b/../vuln-001-esc-rename.txt\n' +
       'rename from a/inside.txt\n' +
       'rename to b/../vuln-001-esc-rename.txt\n';
-    const result = await patchTool.execute({ patch: evil }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toContain('patch refused');
+    await expect(patchTool.execute({ patch: evil }, ctx, makeOpts())).rejects.toThrow(
+      'patch refused',
+    );
     await expectGone('vuln-001-esc-rename.txt');
   });
 
@@ -308,30 +319,27 @@ describe('patchTool — VULN-001 containment (git extended headers, fail-closed)
       'diff --git a/inside.txt b/../vuln-001-esc-copy.txt\n' +
       'copy from a/inside.txt\n' +
       'copy to b/../vuln-001-esc-copy.txt\n';
-    const result = await patchTool.execute({ patch: evil }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toContain('patch refused');
+    await expect(patchTool.execute({ patch: evil }, ctx, makeOpts())).rejects.toThrow(
+      'patch refused',
+    );
     await expectGone('vuln-001-esc-copy.txt');
   });
 
   it('refuses an unquoted `diff --git` header whose b-side escapes the root', async () => {
     const ctx = makeCtx();
     const evil = 'diff --git a/ok.txt b/../vuln-001-esc-unq.txt\n';
-    const result = await patchTool.execute({ patch: evil }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toContain('patch refused');
+    await expect(patchTool.execute({ patch: evil }, ctx, makeOpts())).rejects.toThrow(
+      'patch refused',
+    );
     await expectGone('vuln-001-esc-unq.txt');
   });
 
   it('refuses a quoted `diff --git` header whose quoted b-side escapes the root', async () => {
     const ctx = makeCtx();
     const evil = 'diff --git "a/ok.txt" "b/../vuln-001-esc-q.txt"\n';
-    const result = await patchTool.execute({ patch: evil }, ctx, makeOpts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toContain('patch refused');
+    await expect(patchTool.execute({ patch: evil }, ctx, makeOpts())).rejects.toThrow(
+      'patch refused',
+    );
     await expectGone('vuln-001-esc-q.txt');
   });
 
@@ -339,14 +347,13 @@ describe('patchTool — VULN-001 containment (git extended headers, fail-closed)
     // An unparsed diff is an unchecked diff. Before the fix this sailed
     // past the preflight (empty target list) straight into the engines.
     const ctx = makeCtx();
-    const result = await patchTool.execute(
-      { patch: 'just some text\nwith no diff headers at all\n' },
-      ctx,
-      makeOpts(),
-    );
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toContain('patch refused');
+    await expect(
+      patchTool.execute(
+        { patch: 'just some text\nwith no diff headers at all\n' },
+        ctx,
+        makeOpts(),
+      ),
+    ).rejects.toThrow('patch refused');
   });
 
   it('does not spuriously refuse a legitimate in-root header-only rename (no over-blocking)', async () => {
@@ -361,13 +368,15 @@ describe('patchTool — VULN-001 containment (git extended headers, fail-closed)
     const oldFile = path.join(tmpDir, 'ren.txt');
     await fs.writeFile(oldFile, 'keep me\n');
     const legit =
-      'diff --git a/ren.txt b/ren2.txt\n' +
-      'rename from a/ren.txt\n' +
-      'rename to b/ren2.txt\n';
-    const result = await patchTool.execute({ patch: legit }, ctx, makeOpts());
-    expect(result.message).not.toContain('patch refused');
-    expect(result.message).not.toMatch(/outside project root/);
-    expect(result.applied, `patch reported: ${JSON.stringify(result)}`).toBeGreaterThanOrEqual(0);
+      'diff --git a/ren.txt b/ren2.txt\n' + 'rename from a/ren.txt\n' + 'rename to b/ren2.txt\n';
+    // Engine outcome (apply vs. "Only garbage" failure) is environment-dependent;
+    // only the containment verdict is asserted, on whichever path settled.
+    const outcome = await patchTool.execute({ patch: legit }, ctx, makeOpts()).then(
+      (r) => r.message,
+      (e: Error) => e.message,
+    );
+    expect(outcome).not.toContain('patch refused');
+    expect(outcome).not.toMatch(/outside project root/);
   });
 
   it('still applies a quoted combined diff (--git + ---/+++ + hunk) in-root', async () => {

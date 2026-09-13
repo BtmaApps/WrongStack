@@ -9,8 +9,8 @@ import {
   readDocumentContent,
   requireServer,
   resolveInputPath,
-  stringifyToolError,
   type ToolDeps,
+  toToolError,
 } from './shared.js';
 
 interface CompletionInput {
@@ -88,7 +88,7 @@ export function createCompletionTool(deps: ToolDeps): Tool<CompletionInput, stri
         }
         return formatCompletionItems(items, result);
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

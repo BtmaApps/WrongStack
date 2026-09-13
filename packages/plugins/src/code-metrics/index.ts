@@ -24,9 +24,9 @@
  * @public
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { collectSourceFilesAsync, matchesExtension, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -393,7 +393,7 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path?: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'code-metrics is disabled' };
+        if (!cfg.enabled) throw new Error('code-metrics is disabled');
 
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawPath =
@@ -410,16 +410,24 @@ const plugin: Plugin = {
           (typeof raw['file'] === 'string' ? raw['file'] : undefined) ??
           '.';
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'path is outside the project root',
+            field: 'path',
+          });
         }
 
         state.measureCount += 1;
         let result: { files: FileMetrics[]; totalFiles: number };
         try {
+          // A missing path would otherwise walk nothing and read as zero files.
+          await stat(resolve(process.cwd(), rawPath));
           result = await measurePath(rawPath, cfg);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(
+            `measure_code_metrics failed for ${rawPath}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
         state.fileCount += result.files.length;
 

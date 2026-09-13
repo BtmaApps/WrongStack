@@ -8,6 +8,8 @@ import {
   codebaseSkeletonTool,
   securityAstScanTool,
 } from '../src/index.js';
+import { deadCodeScanTool } from '../src/codebase-index/dead-code-scan.js';
+import { indexStorePool } from '../src/codebase-index/writer.js';
 
 // H-5/H-6 (security report VF-06/VF-07): the four codebase tools that resolved
 // input paths with a bare `path.isAbsolute(input…) ? input : resolve(root, …)`
@@ -54,29 +56,58 @@ describe('codebase tool path confinement (H-5/H-6 / VF-06, VF-07)', () => {
     expect(result.isDir).toBe(false);
   });
 
+  // These THROW rather than return an error payload: a returned payload is a
+  // successful call to the executor (is_error:false), so a refused path read
+  // as "ok" in the UI and the audit log.
   it('security-ast-scan errors on an out-of-root path', async () => {
-    const result = await securityAstScanTool.execute({ file: outside() }, ctx(), execOpts);
-    expect(result.status).toBe('error');
-    expect(result.error).toContain('outside project root');
+    await expect(securityAstScanTool.execute({ file: outside() }, ctx(), execOpts)).rejects.toThrow(
+      /outside project root/,
+    );
   });
 
   it('codebase-invariant-check errors on an out-of-root path', async () => {
-    const result = await codebaseInvariantCheckTool.execute(
-      { file: outside(), modifiedCode: 'export const a = 2;\n' },
-      ctx(),
-      execOpts,
-    );
-    expect(result.error).toContain('outside project root');
+    await expect(
+      codebaseInvariantCheckTool.execute(
+        { file: outside(), modifiedCode: 'export const a = 2;\n' },
+        ctx(),
+        execOpts,
+      ),
+    ).rejects.toThrow(/outside project root/);
   });
 
   it('codebase-ast-replace errors on an out-of-root path', async () => {
-    const result = await codebaseAstReplaceTool.execute(
-      { file: outside(), symbol: 'a', newBody: '2' },
-      ctx(),
-      execOpts,
-    );
-    expect(result.status).toBe('error');
-    expect(result.error).toContain('outside project root');
+    await expect(
+      codebaseAstReplaceTool.execute(
+        { file: outside(), symbol: 'a', newBody: '2' },
+        ctx(),
+        execOpts,
+      ),
+    ).rejects.toThrow(/outside project root/);
+  });
+
+  it('dead-code-scan refuses an out-of-root projectRoot and entry point', async () => {
+    await expect(
+      deadCodeScanTool.execute({ projectRoot: outsideDir }, ctx(), execOpts),
+    ).rejects.toThrow(/outside project root/);
+    await expect(
+      deadCodeScanTool.execute({ entryPoints: [outside()] }, ctx(), execOpts),
+    ).rejects.toThrow(/outside project root/);
+  });
+
+  it('dead-code-scan fails on a missing entry point and on an empty index', async () => {
+    await expect(
+      deadCodeScanTool.execute({ entryPoints: ['missing.ts'] }, ctx(), execOpts),
+    ).rejects.toThrow(/entry point not found: "missing.ts"/);
+
+    // An empty index used to report "0 dead symbols" as a real answer.
+    const indexDir = path.join(projectDir, '.idx');
+    try {
+      await expect(deadCodeScanTool.execute({ indexDir }, ctx(), execOpts)).rejects.toThrow(
+        /has no symbols\. Run codebase-index/,
+      );
+    } finally {
+      indexStorePool.evict(projectDir, indexDir);
+    }
   });
 
   it('in-root targets still resolve (skeleton reads the project file)', async () => {

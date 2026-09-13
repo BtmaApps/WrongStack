@@ -9,6 +9,7 @@
  */
 
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import {
   codebaseIndexDirOverride,
   internalKindToLspKind,
@@ -20,8 +21,9 @@ import type { SymbolInformation } from 'vscode-languageserver-protocol';
 import { LSP_CONSTANTS } from '../constants.js';
 import { formatCodebaseLspResults } from '../formatters/symbols.js';
 import { supportsWorkspaceSymbol } from '../server/capabilities.js';
+import { LSPError, LSPErrorCode } from '../types.js';
 import { uriToPath } from '../utils/uri.js';
-import { stringifyToolError, type ToolDeps } from './shared.js';
+import { type ToolDeps, toToolError } from './shared.js';
 
 // ─── Input / Output types ───────────────────────────────────────────────────────
 
@@ -83,9 +85,15 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
     mutating: false,
     timeoutMs: LSP_CONSTANTS.TOOL_TIMEOUT_MS * 2, // Allow extra time for LSP round-robins
     async execute(input, ctx, opts) {
+      const query = typeof input.query === 'string' ? input.query.trim() : '';
+      if (!query) {
+        throw new ToolValidationError({
+          message: 'codebase-lsp-search: query is required and cannot be empty',
+          field: 'query',
+        });
+      }
       try {
         const limit = Math.min(input.limit ?? 20, 100);
-        const query = input.query ?? '';
 
         const signal = opts?.signal ?? ctx?.signal;
         let indexResults: CodebaseLspResult[] = [];
@@ -94,24 +102,36 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
         let usedLsp = false;
         let lspResults: CodebaseLspResult[] = [];
         let totalLsp = 0;
+        // Why the index could not answer (outage or never built). Only fatal
+        // when LSP cannot answer either — otherwise "no symbols" would hide it.
+        let indexUnavailable: string | undefined;
 
         // ── Step 1: Query index (unless preferLsp is set) ──────────────────────
         if (!input.preferLsp) {
-          const indexOutcome = await searchIndex(
-            ctx.projectRoot,
-            query,
-            limit,
-            codebaseIndexDirOverride(ctx),
-          );
-          indexResults = indexOutcome.results;
-          totalIndex = indexOutcome.total;
-          usedIndex = true;
+          try {
+            const indexOutcome = await searchIndex(
+              ctx.projectRoot,
+              query,
+              limit,
+              codebaseIndexDirOverride(ctx),
+              signal,
+            );
+            indexResults = indexOutcome.results;
+            totalIndex = indexOutcome.total;
+            usedIndex = true;
+            if (indexOutcome.missing) {
+              indexUnavailable = 'no persisted codebase index (run codebase-index)';
+            }
+          } catch (err) {
+            if (signal?.aborted) throw err;
+            indexUnavailable = `index query failed: ${err instanceof Error ? err.message : String(err)}`;
+          }
         }
 
         // ── Step 2: LSP fallback ───────────────────────────────────────────────
         // Fall back to LSP when:
         //  - preferLsp is true (user wants live data), OR
-        //  - index returned 0 results
+        //  - index returned 0 results (or could not be queried)
         const needsLsp = input.preferLsp || indexResults.length === 0;
 
         if (needsLsp) {
@@ -119,6 +139,18 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
           lspResults = lspOutcome.results;
           totalLsp = lspOutcome.total;
           usedLsp = true;
+          // No server answered: an empty result would read as "no symbols"
+          // while nothing was actually searched.
+          if (lspOutcome.answered === 0 && (input.preferLsp || indexUnavailable)) {
+            const lspReason =
+              lspOutcome.failures.length > 0
+                ? `every LSP workspace-symbol request failed (${lspOutcome.failures.join('; ')})`
+                : 'no ready LSP server supports workspace symbols';
+            throw new LSPError(
+              LSPErrorCode.ServerNotReady,
+              `codebase-lsp-search could not search: ${[indexUnavailable, lspReason].filter(Boolean).join('; ')}`,
+            );
+          }
         }
 
         // ── Step 3: Merge & deduplicate ────────────────────────────────────────
@@ -135,7 +167,7 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
 
         return formatCodebaseLspResults(fullOutput, ctx.cwd);
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };
@@ -147,13 +179,24 @@ async function searchIndex(
   projectRoot: string,
   query: string,
   limit: number,
-  indexDir?: string | undefined,
-): Promise<{ results: CodebaseLspResult[]; total: number }> {
+  indexDir: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<{ results: CodebaseLspResult[]; total: number; missing: boolean }> {
   // Ranked FTS5 query via the index host — runs in the index worker thread
   // when available, so a contended index can never block this process.
-  const { results, total } = await searchCodebaseIndex({ projectRoot, indexDir, query, limit });
+  const { results, total, indexSummary } = await searchCodebaseIndex(
+    { projectRoot, indexDir, query, limit },
+    { signal },
+  );
 
   return {
+    // Zero-hit responses carry the index summary: an empty, never-built index
+    // is not the same answer as "no symbol matched".
+    missing:
+      total === 0 &&
+      indexSummary !== undefined &&
+      indexSummary.totalFiles === 0 &&
+      indexSummary.lastIndexed === null,
     results: results.map((c) => ({
       name: c.name,
       kind: c.kind,
@@ -175,8 +218,16 @@ async function searchLsp(
   query: string,
   limit: number,
   signal: AbortSignal,
-): Promise<{ results: CodebaseLspResult[]; total: number }> {
+): Promise<{
+  results: CodebaseLspResult[];
+  total: number;
+  /** Servers whose request completed (with or without hits). */
+  answered: number;
+  failures: string[];
+}> {
   const merged: SymbolInformation[] = [];
+  let answered = 0;
+  const failures: string[] = [];
 
   await deps.registry.ensureProjectServersReady(signal);
   const servers = deps.registry.list();
@@ -194,13 +245,17 @@ async function searchLsp(
             LSP_CONSTANTS.TOOL_TIMEOUT_MS,
             signal,
           );
+          answered++;
           if (result) {
             for (const sym of result) {
               merged.push(sym);
             }
           }
-        } catch {
-          // Individual server errors are non-fatal; skip this server's results
+        } catch (err) {
+          // One server failing is non-fatal while another answers; the caller
+          // decides when "nobody answered" is an error.
+          if (signal?.aborted) throw err;
+          failures.push(`${server.name}: ${err instanceof Error ? err.message : String(err)}`);
         }
       })(),
     );
@@ -223,6 +278,8 @@ async function searchLsp(
   return {
     results: deduplicated.slice(0, limit),
     total: deduplicated.length,
+    answered,
+    failures,
   };
 }
 

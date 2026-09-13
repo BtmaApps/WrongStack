@@ -120,18 +120,47 @@ describe('clarify tool', () => {
     expect(output.answers?.[1]?.selectedOptions).toEqual(['AWS ECS']);
   });
 
-  it('handles invalid option count defensively', async () => {
+  it('throws (not an ok-looking skip) on an invalid option count', async () => {
+    await expect(
+      clarifyTool.execute(
+        {
+          question: 'Single option?',
+          options: ['Only one'],
+        },
+        {} as never,
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/at least 2/);
+  });
+
+  it('propagates a host input failure instead of reporting a skip', async () => {
+    const requestUserInput = vi.fn(async () => {
+      throw new Error('ui bridge disconnected');
+    });
+    await expect(
+      clarifyTool.execute(
+        { question: 'Database?', options: ['PostgreSQL', 'SQLite'] },
+        { signal: makeOpts().signal, requestUserInput } as never,
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/ui bridge disconnected/);
+  });
+
+  it('still reports a user cancellation as a skipped result', async () => {
+    const requestUserInput = vi.fn(
+      async (request: import('@wrongstack/core/types').UserInputRequest) => ({
+        requestId: request.id,
+        status: 'cancelled' as const,
+        answers: [],
+      }),
+    );
     const output = await clarifyTool.execute(
-      {
-        question: 'Single option?',
-        options: ['Only one'],
-      },
-      {} as never,
+      { question: 'Database?', options: ['PostgreSQL', 'SQLite'] },
+      { signal: makeOpts().signal, requestUserInput } as never,
       makeOpts(),
     );
-
     expect(output.status).toBe('skipped');
-    expect(output.error).toContain('at least 2');
+    expect(output.error).toContain('cancelled');
   });
 
   it('submits a tabbed mixed form once and reports recommended-answer usage', async () => {
@@ -276,36 +305,34 @@ describe('clarify tool', () => {
     );
     expect(output.answers?.[0]?.usedRecommendation).toBe(true);
 
-    const conflict = await clarifyTool.execute(
-      {
-        question: 'Choose?',
-        type: 'multi_select',
-        isMultiSelect: false,
-        options: ['A', 'B'],
-      },
-      {} as never,
-      makeOpts(),
-    );
-    expect(conflict.status).toBe('skipped');
-    expect(conflict.error).toContain('conflicting');
+    await expect(
+      clarifyTool.execute(
+        {
+          question: 'Choose?',
+          type: 'multi_select',
+          isMultiSelect: false,
+          options: ['A', 'B'],
+        },
+        {} as never,
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/conflicting/);
   });
 
-  it('returns explicit validation errors for structurally unusable forms', async () => {
-    const descriptionOnly = await clarifyTool.execute(
-      {
-        question: 'Choose?',
-        options: [{ description: 'No visible choice' } as never, 'Valid'],
-      },
-      {} as never,
-      makeOpts(),
-    );
-    expect(descriptionOnly.error).toContain('requires a non-empty `label`');
+  it('throws explicit validation errors for structurally unusable forms', async () => {
+    await expect(
+      clarifyTool.execute(
+        {
+          question: 'Choose?',
+          options: [{ description: 'No visible choice' } as never, 'Valid'],
+        },
+        {} as never,
+        makeOpts(),
+      ),
+    ).rejects.toThrow('requires a non-empty `label`');
 
-    const emptyTab = await clarifyTool.execute(
-      { tabs: [{ label: 'Empty', questions: [] }] },
-      {} as never,
-      makeOpts(),
-    );
-    expect(emptyTab.error).toContain('requires at least one question');
+    await expect(
+      clarifyTool.execute({ tabs: [{ label: 'Empty', questions: [] }] }, {} as never, makeOpts()),
+    ).rejects.toThrow('requires at least one question');
   });
 });

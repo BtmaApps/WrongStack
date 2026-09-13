@@ -233,16 +233,26 @@ describe('test-flake-detector plugin', () => {
     expect(result.runErrors!.length).toBe(2);
   });
 
+  it('throws when every run fails without producing any test result', async () => {
+    mockExecFileSync.mockImplementation(() => {
+      throw Object.assign(new Error('spawn failed'), { stdout: '', stderr: 'boom' });
+    });
+
+    const api = makeApi();
+    flakePlugin.setup(api as never);
+    const detect = getTool(api, 'flake_detect');
+    await expect(detect.execute({ testPattern: 'y', runs: 2 })).rejects.toThrow(
+      /produced no test results in 2 run\(s\): run 1: spawn failed/,
+    );
+  });
+
   it('rejects test paths embedded in the command string', async () => {
     const api = makeApi();
     flakePlugin.setup(api as never);
     const detect = getTool(api, 'flake_detect');
-    const result = (await detect.execute({
-      command: 'npx vitest run src/foo.test.ts',
-    })) as { ok: boolean; error: string };
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('Unsupported test command');
+    await expect(detect.execute({ command: 'npx vitest run src/foo.test.ts' })).rejects.toThrow(
+      /Unsupported test command/,
+    );
     expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 
@@ -258,13 +268,9 @@ describe('test-flake-detector plugin', () => {
     const api = makeApi();
     flakePlugin.setup(api as never);
     const detect = getTool(api, 'flake_detect');
-    const result = (await detect.execute({ command, testPattern })) as {
-      ok: boolean;
-      error: string;
-    };
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/Unsupported test command|unsafe testPattern/);
+    await expect(detect.execute({ command, testPattern })).rejects.toThrow(
+      /Unsupported test command|unsafe testPattern/,
+    );
     expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 
@@ -272,9 +278,7 @@ describe('test-flake-detector plugin', () => {
     const api = makeApi({ extensions: { 'test-flake-detector': { enabled: false } } });
     flakePlugin.setup(api as never);
     const detect = getTool(api, 'flake_detect');
-    const result = (await detect.execute({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(detect.execute({})).rejects.toThrow(/disabled/);
     expect(mockExecFileSync).not.toHaveBeenCalled();
   });
 

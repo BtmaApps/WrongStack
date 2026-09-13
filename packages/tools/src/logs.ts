@@ -79,15 +79,7 @@ export const logsTool: Tool<LogsInput, LogsOutput> = {
   async execute(input, ctx, opts) {
     const cwd = input.cwd ? await safeResolveReal(input.cwd, ctx) : ctx.cwd;
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
-    if (signal.aborted) {
-      return {
-        source: 'none',
-        entries: [],
-        total: 0,
-        truncated: false,
-        stream_mode: false,
-      };
-    }
+    signal.throwIfAborted();
     const VALID_SINCE: ReadonlySet<string> = new Set(['1h', '6h', '24h', 'all']);
     if (input.since !== undefined && !VALID_SINCE.has(input.since)) {
       throw new ToolValidationError({
@@ -96,7 +88,8 @@ export const logsTool: Tool<LogsInput, LogsOutput> = {
       });
     }
 
-    const rawLines = typeof input.lines === 'number' && !Number.isNaN(input.lines) ? input.lines : 100;
+    const rawLines =
+      typeof input.lines === 'number' && !Number.isNaN(input.lines) ? input.lines : 100;
     const lines = Math.max(0, Math.floor(rawLines));
 
     let filterRe: RegExp | null = null;
@@ -151,13 +144,10 @@ export const logsTool: Tool<LogsInput, LogsOutput> = {
       return await fileLogs(resolved, lines, filterRe);
     }
 
-    return {
-      source: 'none',
-      entries: [],
-      total: 0,
-      truncated: false,
-      stream_mode: false,
-    };
+    throw new ToolValidationError({
+      message: 'logs: provide `service` (Docker container) or `path` (log file)',
+      field: 'path',
+    });
   },
 };
 
@@ -169,6 +159,16 @@ async function dockerLogs(
   signal: AbortSignal,
   since?: string | undefined,
 ): Promise<LogsOutput> {
+  // Validate service name to prevent container name injection.
+  // Docker container names are limited to [a-zA-Z0-9][a-zA-Z0-9._-]+.
+  // Every failure in this function throws: an empty `entries: []` result is
+  // indistinguishable from "the container logged nothing".
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]+$/.test(service)) {
+    throw new ToolValidationError({
+      message: `logs: invalid Docker container name "${service}"`,
+      field: 'service',
+    });
+  }
   const args = ['logs'];
   if (lines > 0) args.push('--tail', String(lines));
   // `since: 'all'` (and absent) = no --since flag; the durations pass through
@@ -177,30 +177,11 @@ async function dockerLogs(
     const sinceMap: Record<string, string> = { '1h': '1h', '6h': '6h', '24h': '24h' };
     args.push('--since', sinceMap[since] ?? '1h');
   }
-  // Validate service name to prevent container name injection.
-  // Docker container names are limited to [a-zA-Z0-9][a-zA-Z0-9._-]+.
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]+$/.test(service)) {
-    return {
-      source: `docker:${service}`,
-      entries: [],
-      total: 0,
-      truncated: false,
-      stream_mode: false,
-    };
-  }
   args.push('--timestamps', service);
 
-  if (signal.aborted) {
-    return Promise.resolve({
-      source: `docker:${service}`,
-      entries: [],
-      total: 0,
-      truncated: false,
-      stream_mode: false,
-    });
-  }
+  signal.throwIfAborted();
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
     const MAX = 200_000;
@@ -208,19 +189,14 @@ async function dockerLogs(
     const stderrDecoder = new StringDecoder('utf8');
     let settled = false;
 
-    const empty = (): LogsOutput => ({
-      source: `docker:${service}`,
-      entries: [],
-      total: 0,
-      truncated: false,
-      stream_mode: false,
-    });
-    const finish = (result: LogsOutput) => {
+    const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve(result);
+      fn();
     };
+    const finish = (result: LogsOutput) => settle(() => resolve(result));
+    const fail = (err: Error) => settle(() => reject(err));
 
     const child = spawn('docker', args, {
       cwd,
@@ -233,11 +209,15 @@ async function dockerLogs(
     // `docker logs --tail N` reads recent lines and exits — fast when the
     // daemon is up. But if the daemon is unreachable (common on CI runners
     // with no running Docker), the CLI can hang on the socket connection and
-    // emit neither `close` nor `error`. Kill it and return empty so the tool
-    // (and its tests) never hang.
+    // emit neither `close` nor `error`. Kill it and fail so the tool (and its
+    // tests) never hang.
     const timer = setTimeout(() => {
       child.kill('SIGTERM');
-      finish(empty());
+      fail(
+        new Error(
+          `logs: docker logs did not finish within ${DOCKER_LOGS_TIMEOUT_MS}ms (is the Docker daemon running?)`,
+        ),
+      );
     }, DOCKER_LOGS_TIMEOUT_MS);
 
     child.stdout?.on('data', (c: Buffer) => {
@@ -266,7 +246,17 @@ async function dockerLogs(
         JSON.stringify({ level: 'debug', event: 'pipe_error', stream: 'stderr', error: e.message }),
       );
     });
-    child.on('close', () => {
+    child.on('close', (code: number | null) => {
+      // Non-zero = docker itself failed (no such container, daemon error);
+      // its message would otherwise be parsed into a fake "info" log entry.
+      if (code !== 0) {
+        fail(
+          new Error(
+            `logs: docker logs exited with code ${code ?? 'null'}: ${stderr.trim() || 'no output'}`,
+          ),
+        );
+        return;
+      }
       const output = stdout + stderr;
       const entries = parseLogLines(output, filterRe);
       finish({
@@ -277,7 +267,9 @@ async function dockerLogs(
         stream_mode: false,
       });
     });
-    child.on('error', () => finish(empty()));
+    child.on('error', (err) =>
+      fail(new Error(`logs: could not run docker: ${err.message}`, { cause: err })),
+    );
   });
 }
 

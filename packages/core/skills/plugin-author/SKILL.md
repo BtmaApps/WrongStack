@@ -200,10 +200,16 @@ api.tools.register({
   async execute(input: Record<string, unknown>) {
     const path = input['path'] as string;
     // ... do the work ...
-    return { ok: true, path, result: '...' };
+    return { path, result: '...' };
   },
 });
 ```
+
+**Signal failure by throwing.** The executor marks a call failed only when
+`execute()` throws (throw a `ToolValidationError` for bad input). A returned
+`{ ok: false }`, `{ status: 'error' }`, or `"Error: ..."` string is recorded
+and shown as a SUCCESS. Return normally only for real data outcomes (zero
+results, a check that computed "no").
 
 ### Permission levels
 

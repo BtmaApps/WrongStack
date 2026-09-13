@@ -265,26 +265,22 @@ describe('makeMailSendTool', () => {
 
   it('rejects missing required fields', async () => {
     const ctx = mockContext();
-    // Missing to
-    const r1 = await tool.execute({ subject: 's', body: 'b' }, ctx);
-    expect(r1.ok).toBe(false);
-    expect(r1.error).toContain('required');
-
-    // Missing subject
-    const r2 = await tool.execute({ to: 'x', body: 'b' }, ctx);
-    expect(r2.ok).toBe(false);
-    expect(r2.error).toContain('required');
-
-    // Missing body
-    const r3 = await tool.execute({ to: 'x', subject: 's' }, ctx);
-    expect(r3.ok).toBe(false);
-    expect(r3.error).toContain('required');
+    // Missing fields are failed tool calls, not ok:false payloads.
+    await expect(tool.execute({ subject: 's', body: 'b' }, ctx)).rejects.toThrow(/required/);
+    await expect(tool.execute({ to: 'x', body: 'b' }, ctx)).rejects.toThrow(/required/);
+    await expect(tool.execute({ to: 'x', subject: 's' }, ctx)).rejects.toThrow(/required/);
   });
 
   it('handles null/undefined body gracefully', async () => {
-    const r = await tool.execute({ to: 'x', subject: 's', body: null }, mockContext());
-    expect(r.ok).toBe(false);
-    expect(r.error).toContain('required');
+    await expect(
+      tool.execute({ to: 'x', subject: 's', body: null }, mockContext()),
+    ).rejects.toThrow(/required/);
+  });
+
+  it('throws when the codec rejects a trust-relevant field', async () => {
+    await expect(
+      tool.execute({ to: 'x', subject: 's', body: 'b', from: 'spoofed' }, mockContext()),
+    ).rejects.toThrow();
   });
 });
 
@@ -323,6 +319,15 @@ describe('makeMailInboxTool', () => {
     expect(result.ok).toBe(true);
     expect(result.count).toBe(0);
     expect(result.summary).toContain('Inbox empty');
+  });
+
+  it('throws instead of reporting an empty inbox when the mailbox is unreachable', async () => {
+    const broken = Object.create(mailbox) as Mailbox;
+    broken.query = async () => {
+      throw new Error('ipc down');
+    };
+    const tool = makeMailInboxTool({ resolveMailbox: () => broken });
+    await expect(tool.execute({}, mockContext())).rejects.toThrow(/ipc down/);
   });
 
   it('returns messages addressed to the caller', async () => {

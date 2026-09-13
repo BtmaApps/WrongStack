@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -33,6 +34,9 @@ beforeEach(async () => {
     'function demo(input: string) {\n  return input;\n}\n',
   );
   await fs.mkdir(path.join(tmpDir, '.state'), { recursive: true });
+  // `git status` is part of the success path; outside a repository the git
+  // tool now (correctly) fails the call instead of returning an error payload.
+  execFileSync('git', ['init', '-q'], { cwd: tmpDir, windowsHide: true, stdio: 'ignore' });
 });
 
 afterEach(async () => {
@@ -160,6 +164,9 @@ describe('builtin tools through ToolExecutor smoke', () => {
     await runTool('json', { data: '{"ok":true}', query: 'ok' }, ctx);
     await runTool('diff', { files: 'sample.txt' }, ctx);
     await runTool('tree', { path: '.', depth: 1 }, ctx);
+    // Build the index first: searching a never-built index now fails the call
+    // instead of returning an empty result that reads like "no matches".
+    await runTool('codebase-index', {}, ctx);
     await runTool('codebase-search', { query: 'demo', limit: 5 }, ctx);
     await runTool('codebase-stats', {}, ctx);
   });

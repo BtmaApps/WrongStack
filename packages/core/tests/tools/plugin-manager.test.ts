@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ToolRegistry } from '../../src/registry/tool-registry.js';
 import { createPluginManagerTool } from '../../src/tools/plugin-manager.js';
 import type { Config } from '../../src/types/config.js';
+import { ToolValidationError } from '../../src/types/errors.js';
 import type { Tool } from '../../src/types/tool.js';
 
 const catalog = [
@@ -150,7 +151,6 @@ describe('plugin_manager', () => {
     });
 
     const described = await execute(tool, { action: 'describe', plugin: 'alpha-plugin' });
-    const changed = await execute(tool, { action: 'disable', plugin: 'alpha-plugin' });
 
     expect(described).toEqual(
       expect.objectContaining({
@@ -158,10 +158,44 @@ describe('plugin_manager', () => {
         plugin: expect.objectContaining({ managerControl: 'locked' }),
       }),
     );
-    expect(changed).toEqual(
-      expect.objectContaining({ status: 'error', code: 'plugin_manager_locked' }),
+    // A refused change must THROW — a returned { status: 'error' } is recorded
+    // by the executor as a successful call.
+    await expect(execute(tool, { action: 'disable', plugin: 'alpha-plugin' })).rejects.toThrow(
+      'plugin_manager_locked',
     );
     expect(setEnabled).not.toHaveBeenCalled();
+  });
+
+  it('throws for an unknown plugin and a host-refused state change', async () => {
+    const tool = createPluginManagerTool({
+      getConfig: () => config(),
+      catalog,
+      toolRegistry: new ToolRegistry(),
+      setEnabled: vi.fn(async () => ({ ok: false, message: 'config write failed' })),
+    });
+
+    await expect(execute(tool, { action: 'describe', plugin: 'nope' })).rejects.toThrow(
+      'was not found',
+    );
+    await expect(execute(tool, { action: 'enable', plugin: 'beta' })).rejects.toThrow(
+      'config write failed',
+    );
+  });
+
+  it('throws when use targets a disabled plugin or an unregistered tool', async () => {
+    const tool = createPluginManagerTool({
+      getConfig: () => config(),
+      catalog,
+      toolRegistry: new ToolRegistry(),
+      setEnabled: vi.fn(),
+    });
+
+    await expect(
+      execute(tool, { action: 'use', plugin: 'beta', tool: 'x', input: {} }),
+    ).rejects.toThrow('is disabled');
+    await expect(
+      execute(tool, { action: 'use', plugin: 'alpha', tool: 'ghost', input: {} }),
+    ).rejects.toThrow('is not registered by plugin');
   });
 
   it('supports a wildcard lock for every plugin', async () => {
@@ -205,12 +239,14 @@ describe('plugin_manager', () => {
       setEnabled: vi.fn(),
     });
 
-    const invalid = await execute(tool, {
+    const invalid = execute(tool, {
       action: 'use',
       plugin: 'alpha',
       tool: 'alpha_scan',
       input: {},
     });
+    await expect(invalid).rejects.toBeInstanceOf(ToolValidationError);
+    await expect(invalid).rejects.toThrow(/Invalid input for plugin tool "alpha_scan"/);
     const valid = await execute(tool, {
       action: 'use',
       plugin: 'alpha',
@@ -218,7 +254,6 @@ describe('plugin_manager', () => {
       input: { path: 'src' },
     });
 
-    expect(invalid).toEqual(expect.objectContaining({ status: 'error' }));
     expect(run).toHaveBeenCalledTimes(1);
     expect(valid).toEqual(
       expect.objectContaining({
@@ -437,16 +472,16 @@ describe('plugin_manager use — permission pipeline alignment', () => {
       getHookRunner: () => ({ preToolUse }),
     });
 
-    const result = await execute(tool, {
-      action: 'use',
-      plugin: 'alpha-plugin',
-      tool: 'alpha_write',
-      input: { target: 'x' },
-    });
+    await expect(
+      execute(tool, {
+        action: 'use',
+        plugin: 'alpha-plugin',
+        tool: 'alpha_write',
+        input: { target: 'x' },
+      }),
+    ).rejects.toThrow('path-guard: protected path');
 
     expect(run, 'a hook-denied tool still executed').not.toHaveBeenCalled();
-    expect(result).toEqual(expect.objectContaining({ status: 'error' }));
-    expect((result as { message: string }).message).toContain('path-guard: protected path');
     // The hook must receive the tool's own declaration so capability-keyed
     // policies (path-guard) can rule without knowing the name in advance.
     expect(preToolUse).toHaveBeenCalledWith(

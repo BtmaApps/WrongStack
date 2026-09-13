@@ -34,7 +34,7 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 
 const API_VERSION = '^0.1.10';
@@ -760,8 +760,9 @@ const plugin: Plugin = {
       riskTier: 'safe',
       icon: 'search',
       async execute(input: { query?: string; limit?: number; path?: string }) {
+        // Failures throw: the executor only flags a call as failed when execute rejects.
         if (!cfg.enabled) {
-          return { ok: false, error: 'semantic-search-indexer is disabled' };
+          throw new Error('semantic-search-indexer is disabled');
         }
 
         const rawPath =
@@ -776,10 +777,8 @@ const plugin: Plugin = {
           (input as Record<string, unknown>)['file'];
         const resolved = resolveProjectPath(typeof rawPath === 'string' ? rawPath : undefined);
         if (!resolved) {
-          return { ok: false, error: 'path outside project root' };
+          throw new ToolValidationError({ message: 'path outside project root', field: 'path' });
         }
-
-        await ensureIndex(resolved, cfg);
 
         const rawQuery =
           input.query ??
@@ -790,6 +789,25 @@ const plugin: Plugin = {
           (input as Record<string, unknown>)['search'] ??
           '';
         const query = String(rawQuery);
+        if (tokenize(query, cfg.minTokenLength).length === 0) {
+          throw new ToolValidationError({
+            message: `query must contain at least one keyword of ${cfg.minTokenLength}+ characters`,
+            field: 'query',
+          });
+        }
+
+        // buildIndex treats a missing root as an empty index, which read as "no matches".
+        try {
+          await fs.stat(resolved);
+        } catch (err) {
+          throw new ToolValidationError({
+            message: `path does not exist or cannot be read: ${typeof rawPath === 'string' ? rawPath : resolved}`,
+            field: 'path',
+            cause: err,
+          });
+        }
+
+        await ensureIndex(resolved, cfg);
         const limit =
           typeof input.limit === 'number' && input.limit >= 1
             ? Math.floor(input.limit)

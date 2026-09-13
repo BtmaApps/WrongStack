@@ -81,7 +81,8 @@ export interface TaskInput {
 }
 
 export interface TaskOutput {
-  ok: boolean;
+  /** Always true: refused operations and persistence failures are thrown. */
+  ok: true;
   message: string;
   count: number;
   completed: number;
@@ -223,13 +224,10 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
       'planify',
     ]);
     if (!input?.action || !VALID_ACTIONS.has(input.action)) {
-      return {
-        ok: false,
-        message: `Unknown action "${(input as { action: string })?.action}". Use replace | add | status | show | promote | planify.`,
-        count: 0,
-        completed: 0,
-        inProgress: 0,
-      };
+      throw new ToolValidationError({
+        message: `task: Unknown action "${(input as { action: string })?.action}". Use replace | add | status | show | promote | planify.`,
+        field: 'action',
+      });
     }
 
     if (input.scope !== undefined && input.scope !== 'session' && input.scope !== 'project') {
@@ -264,13 +262,7 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
     }
 
     if (typeof taskPath !== 'string' || !taskPath) {
-      return {
-        ok: false,
-        message: 'Task storage path not configured.',
-        count: 0,
-        completed: 0,
-        inProgress: 0,
-      };
+      throw new Error('task: Task storage path not configured.');
     }
     const sessionId = ctx.session?.id ?? 'unknown';
 
@@ -288,10 +280,15 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
       };
     }
 
-    // Early-return result for validation errors that happen before or
-    // during the critical section. The lock callback sets this instead of
-    // mutating the file, and we return it after the lock releases.
-    let early: TaskOutput | null = null;
+    // A refused operation is recorded here inside the lock (leaving the file
+    // untouched) and THROWN after it releases: a returned `ok: false` would be
+    // logged by the executor as a successful call.
+    let failure: Error | undefined;
+    const refuse = (message: string, field?: string): void => {
+      failure = field
+        ? new ToolValidationError({ message: `task: ${message}`, field })
+        : new Error(`task: ${message}`);
+    };
     // Track promote output for the custom message
     const promoteMeta = { count: 0, title: '' };
     // Track planify data — written to plan file after the task lock releases
@@ -317,13 +314,7 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
 
           case 'replace': {
             if (!Array.isArray(input.tasks)) {
-              early = {
-                ok: false,
-                message: 'action=replace requires `tasks` array.',
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse('action=replace requires `tasks` array.', 'tasks');
               return f;
             }
             // Validate id uniqueness: findTaskIndex / status resolve a task by
@@ -342,25 +333,20 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
                     }),
                 ),
               ];
-              early = {
-                ok: false,
-                message: `action=replace has duplicate task IDs: ${dupes.join(', ')}. Each task id must be unique.`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(
+                `action=replace has duplicate task IDs: ${dupes.join(', ')}. Each task id must be unique.`,
+                'tasks',
+              );
               return f;
             }
             const omittedUnfinished = f.tasks.filter(
               (task) => task.status !== 'completed' && !newIds.has(task.id),
             );
             if (omittedUnfinished.length > 0) {
-              early = {
-                ok: false,
-                message: `action=replace cannot omit unfinished tasks: ${omittedUnfinished.map((task) => task.id).join(', ')}. Complete them first.`,
-                count: f.tasks.length,
-                ...computeTaskItemProgress(f.tasks),
-              };
+              refuse(
+                `action=replace cannot omit unfinished tasks: ${omittedUnfinished.map((task) => task.id).join(', ')}. Complete them first.`,
+                'tasks',
+              );
               return f;
             }
             // Validate dependsOn references: must point to IDs within the new batch
@@ -369,13 +355,10 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
               if (t.dependsOn && t.dependsOn.length > 0) {
                 const missing = t.dependsOn.filter((d) => !newIds.has(d));
                 if (missing.length > 0) {
-                  early = {
-                    ok: false,
-                    message: `dependsOn validation failed: task "${t.id}" references unknown IDs: ${missing.join(', ')}`,
-                    count: 0,
-                    completed: 0,
-                    inProgress: 0,
-                  };
+                  refuse(
+                    `dependsOn validation failed: task "${t.id}" references unknown IDs: ${missing.join(', ')}`,
+                    'tasks',
+                  );
                   return f;
                 }
               }
@@ -384,12 +367,9 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
                   (dependencyId) => taskStatusById.get(dependencyId) !== 'completed',
                 );
                 if (unmet.length > 0) {
-                  early = {
-                    ok: false,
-                    message: `dependency status validation failed: task "${t.id}" cannot be ${t.status} before completion of ${unmet.join(', ')}.`,
-                    count: f.tasks.length,
-                    ...computeTaskItemProgress(f.tasks),
-                  };
+                  refuse(
+                    `dependency status validation failed: task "${t.id}" cannot be ${t.status} before completion of ${unmet.join(', ')}.`,
+                  );
                   return f;
                 }
               }
@@ -406,13 +386,7 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           case 'add': {
             const t = input.task;
             if (!t?.title) {
-              early = {
-                ok: false,
-                message: 'action=add requires `task` with at least `title`.',
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse('action=add requires `task` with at least `title`.', 'task');
               return f;
             }
             // Validate dependsOn: all referenced IDs must exist in the current task list
@@ -420,13 +394,10 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
               const existingIds = new Set(f.tasks.map((e: TaskItem) => e.id));
               const missing = t.dependsOn.filter((d) => !existingIds.has(d));
               if (missing.length > 0) {
-                early = {
-                  ok: false,
-                  message: `dependsOn validation failed: unknown task IDs: ${missing.join(', ')}`,
-                  count: 0,
-                  completed: 0,
-                  inProgress: 0,
-                };
+                refuse(
+                  `dependsOn validation failed: unknown task IDs: ${missing.join(', ')}`,
+                  'task',
+                );
                 return f;
               }
             }
@@ -459,33 +430,19 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
               'completed',
             ]);
             if (!input.id || !input.status) {
-              early = {
-                ok: false,
-                message: 'action=status requires `id` and `status`.',
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse('action=status requires `id` and `status`.', input.id ? 'status' : 'id');
               return f;
             }
             if (!VALID_TASK_STATUSES.has(input.status)) {
-              early = {
-                ok: false,
-                message: `action=status requires valid status ('pending' | 'in_progress' | 'blocked' | 'failed' | 'review' | 'completed'), got "${input.status}".`,
-                count: f.tasks.length,
-                ...computeTaskItemProgress(f.tasks),
-              };
+              refuse(
+                `action=status requires valid status ('pending' | 'in_progress' | 'blocked' | 'failed' | 'review' | 'completed'), got "${input.status}".`,
+                'status',
+              );
               return f;
             }
             const task = f.tasks.find((t: TaskItem) => t.id === input.id);
             if (!task) {
-              early = {
-                ok: false,
-                message: `Task "${input.id}" not found.`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(`Task "${input.id}" not found.`, 'id');
               return f;
             }
             if (input.status === 'in_progress' || input.status === 'completed') {
@@ -495,12 +452,9 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
                   'completed',
               );
               if (unmet.length > 0) {
-                early = {
-                  ok: false,
-                  message: `Task "${task.id}" cannot be ${input.status} before dependencies complete: ${unmet.join(', ')}.`,
-                  count: f.tasks.length,
-                  ...computeTaskItemProgress(f.tasks),
-                };
+                refuse(
+                  `Task "${task.id}" cannot be ${input.status} before dependencies complete: ${unmet.join(', ')}.`,
+                );
                 return f;
               }
             }
@@ -512,36 +466,16 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           case 'promote': {
             const target = (input.target ?? input.id)?.trim();
             if (!target) {
-              early = {
-                ok: false,
-                message: 'action=promote requires `target` (task id, index, or title substring).',
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(
+                'action=promote requires `target` (task id, index, or title substring).',
+                'target',
+              );
               return f;
             }
             const idx = findTaskIndex(f.tasks, target);
-            if (idx === -1) {
-              early = {
-                ok: false,
-                message: `No task matched "${target}".`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
-              return f;
-            }
-            const match = f.tasks[idx];
-            /* v8 ignore next 4 -- findTaskIndex returned a valid in-range idx, so match is always defined; defensive. */
+            const match = idx === -1 ? undefined : f.tasks[idx];
             if (!match) {
-              early = {
-                ok: false,
-                message: `No task matched "${target}".`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(`No task matched "${target}".`, 'target');
               return f;
             }
 
@@ -598,36 +532,16 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           case 'planify': {
             const target = (input.target ?? input.id)?.trim();
             if (!target) {
-              early = {
-                ok: false,
-                message: 'action=planify requires `target` (task id, index, or title substring).',
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(
+                'action=planify requires `target` (task id, index, or title substring).',
+                'target',
+              );
               return f;
             }
             const idx = findTaskIndex(f.tasks, target);
-            if (idx === -1) {
-              early = {
-                ok: false,
-                message: `No task matched "${target}".`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
-              return f;
-            }
-            const match = f.tasks[idx];
-            /* v8 ignore next 4 -- findTaskIndex returned a valid in-range idx, so match is always defined; defensive. */
+            const match = idx === -1 ? undefined : f.tasks[idx];
             if (!match) {
-              early = {
-                ok: false,
-                message: `No task matched "${target}".`,
-                count: 0,
-                completed: 0,
-                inProgress: 0,
-              };
+              refuse(`No task matched "${target}".`, 'target');
               return f;
             }
             // Extract data — plan write happens after the task lock releases
@@ -639,29 +553,24 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           }
 
           default:
-            early = {
-              ok: false,
-              message: `Unknown action "${(input as { action: string }).action}". Use replace | add | status | show | promote | planify.`,
-              count: 0,
-              completed: 0,
-              inProgress: 0,
-            };
+            refuse(
+              `Unknown action "${(input as { action: string }).action}". Use replace | add | status | show | promote | planify.`,
+              'action',
+            );
             return f;
         }
 
         return f;
       });
     } catch (err) {
-      // Persist failed (mutateTasks throws on a failed save) — report ok:false
-      // instead of falsely claiming the tasks were saved.
-      return {
-        ok: false,
-        message: `Task change not saved — ${err instanceof Error ? err.message : String(err)}`,
-        count: 0,
-        completed: 0,
-        inProgress: 0,
-      };
+      // Persist failed (mutateTasks throws on a failed save) — fail the call
+      // instead of claiming the tasks were saved.
+      throw new Error(
+        `task: change not saved — ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
     }
+    if (failure) throw failure;
 
     // Record the path this call ACTUALLY wrote (session or derived project
     // backlog) so todo's promotedFromTask rollup follows the real file. The
@@ -681,59 +590,43 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
     // bounded mirror queue logs failures and retries the newest snapshot.
     mirrorSessionTasksToKanban(ctx.projectRoot, file.tasks, sessionId);
 
-    // If the callback set an early-return result, use it
-    if (early) return early;
-
     // If planify copied task data, write it to the plan file now
     if (didPlanify) {
       const { title, details } = planifyMeta;
       const planPathRaw = (ctx.meta as Record<string, unknown>)['plan.path'];
       const prog = computeTaskItemProgress(file.tasks);
-      if (typeof planPathRaw === 'string' && planPathRaw) {
-        let planPath: string = planPathRaw;
-        // Honor project scope for the PLAN file too (mirror of plan.ts taskify);
-        // handle both separators.
-        if (input.scope === 'project') {
-          const lastSep = Math.max(planPath.lastIndexOf('/'), planPath.lastIndexOf('\\'));
-          planPath =
-            lastSep >= 0
-              ? planPath.slice(0, lastSep + 1) + 'backlog.plan.json'
-              : 'backlog.plan.json';
-        }
-        // Mutate the cross-file under ITS OWN lock so a concurrent plan tool
-        // call in the same batch can't clobber the write.
-        let formatted = '';
-        try {
-          await mutatePlan(planPath, sessionId, (pf) => {
-            const { plan: updated } = addPlanItem(pf, title, details || undefined);
-            formatted = formatPlan(updated);
-            return updated;
-          });
-          // Same contract as 'task.path.resolved': the plan rollup follows the
-          // file this call actually wrote.
-          (ctx.meta as Record<string, unknown>)['plan.path.resolved'] = planPath;
-        } catch (err) {
-          return {
-            ok: false,
-            message: `planify: plan not saved — ${err instanceof Error ? err.message : String(err)}`,
-            count: file.tasks.length,
-            completed: prog.completed,
-            inProgress: prog.inProgress,
-          };
-        }
-        return {
-          ok: true,
-          message: `planify ok — added "${title}" to plan.\n${formatted}`,
-          count: file.tasks.length,
-          completed: prog.completed,
-          inProgress: prog.inProgress,
-        };
+      if (typeof planPathRaw !== 'string' || !planPathRaw) {
+        throw new Error('task: Plan storage path not configured — cannot planify.');
       }
-      // Plan path missing — still report the REAL task counts (the task file was
-      // loaded and may be non-empty), not zeros.
+      let planPath: string = planPathRaw;
+      // Honor project scope for the PLAN file too (mirror of plan.ts taskify);
+      // handle both separators.
+      if (input.scope === 'project') {
+        const lastSep = Math.max(planPath.lastIndexOf('/'), planPath.lastIndexOf('\\'));
+        planPath =
+          lastSep >= 0 ? planPath.slice(0, lastSep + 1) + 'backlog.plan.json' : 'backlog.plan.json';
+      }
+      // Mutate the cross-file under ITS OWN lock so a concurrent plan tool
+      // call in the same batch can't clobber the write.
+      let formatted = '';
+      try {
+        await mutatePlan(planPath, sessionId, (pf) => {
+          const { plan: updated } = addPlanItem(pf, title, details || undefined);
+          formatted = formatPlan(updated);
+          return updated;
+        });
+      } catch (err) {
+        throw new Error(
+          `task: planify: plan not saved — ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
+      }
+      // Same contract as 'task.path.resolved': the plan rollup follows the
+      // file this call actually wrote.
+      (ctx.meta as Record<string, unknown>)['plan.path.resolved'] = planPath;
       return {
-        ok: false,
-        message: 'Plan storage path not configured — cannot planify.',
+        ok: true,
+        message: `planify ok — added "${title}" to plan.\n${formatted}`,
         count: file.tasks.length,
         completed: prog.completed,
         inProgress: prog.inProgress,

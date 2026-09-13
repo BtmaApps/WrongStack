@@ -58,16 +58,24 @@ afterEach(() => {
 describe('cron_schedule', () => {
   it('rejects an empty name', async () => {
     const tools = setup();
-    expect(
-      (await tools.cron_schedule!.execute({ name: '  ', intervalMs: 1000, action: 'x' })).ok,
-    ).toBe(false);
+    await expect(
+      tools.cron_schedule!.execute({ name: '  ', intervalMs: 1000, action: 'x' }),
+    ).rejects.toThrow(/name is required/);
   });
 
   it('rejects a non-numeric interval', async () => {
     const tools = setup();
-    const res = await tools.cron_schedule!.execute({ name: 'j', intervalMs: 'abc', action: 'x' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/must be a number/);
+    await expect(
+      tools.cron_schedule!.execute({ name: 'j', intervalMs: 'abc', action: 'x' }),
+    ).rejects.toThrow(/must be a number/);
+  });
+
+  it('rejects a missing action instead of scheduling an empty job', async () => {
+    const tools = setup();
+    await expect(tools.cron_schedule!.execute({ name: 'j', intervalMs: 1000 })).rejects.toThrow(
+      /action is required/,
+    );
+    expect((await tools.cron_list!.execute({})).count).toBe(0);
   });
 
   it('schedules a job and reports the next run', async () => {
@@ -87,15 +95,17 @@ describe('cron_schedule', () => {
   it('rejects a duplicate job name', async () => {
     const tools = setup();
     await tools.cron_schedule!.execute({ name: 'j', intervalMs: 1000, action: 'x' });
-    const res = await tools.cron_schedule!.execute({ name: 'j', intervalMs: 1000, action: 'x' });
-    expect(res.error).toMatch(/already exists/);
+    await expect(
+      tools.cron_schedule!.execute({ name: 'j', intervalMs: 1000, action: 'x' }),
+    ).rejects.toThrow(/already exists/);
   });
 
   it('enforces the max concurrent jobs limit', async () => {
     const tools = setup({ maxConcurrentJobs: 1 });
     await tools.cron_schedule!.execute({ name: 'a', intervalMs: 1000, action: 'x' });
-    const res = await tools.cron_schedule!.execute({ name: 'b', intervalMs: 1000, action: 'x' });
-    expect(res.error).toMatch(/Maximum concurrent jobs/);
+    await expect(
+      tools.cron_schedule!.execute({ name: 'b', intervalMs: 1000, action: 'x' }),
+    ).rejects.toThrow(/Maximum concurrent jobs/);
   });
 
   it('fires the job timer, emitting an event and rescheduling', async () => {
@@ -155,9 +165,7 @@ describe('cron_cancel', () => {
 
   it('errors for an unknown job', async () => {
     const tools = setup();
-    const res = await tools.cron_cancel!.execute({ name: 'ghost' });
-    expect(res).toMatchObject({ ok: false });
-    expect(res.error).toMatch(/No cron job/);
+    await expect(tools.cron_cancel!.execute({ name: 'ghost' })).rejects.toThrow(/No cron job/);
   });
 
   it('cancels a disabled job that has no timer', async () => {

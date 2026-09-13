@@ -11,20 +11,18 @@
 
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import { safeResolveProjectPath } from '../_util.js';
 import { type MutateSymbolOptions, replaceSymbolInFile } from './ast-symbol-mutator.js';
 
 export interface CodebaseAstReplaceInput extends MutateSymbolOptions {}
 
 export interface CodebaseAstReplaceOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   file: string;
   symbol: string;
-  originalRange?: { startLine: number; endLine: number } | undefined;
-  newRange?: { startLine: number; endLine: number } | undefined;
+  originalRange: { startLine: number; endLine: number };
+  newRange: { startLine: number; endLine: number };
   violations?: string[] | undefined;
-  error?: string | undefined;
 }
 
 export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstReplaceOutput> = {
@@ -36,7 +34,8 @@ export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstRe
   mutating: true,
   capabilities: ['fs.write', 'fs.read'],
   description:
-    'Surgically replace the implementation body or full definition of a function, method, class, or type alias using AST parsing. ' +
+    'Surgically replace the implementation body or full definition of a named declaration (function, method, class, interface, type alias, enum, variable) using AST parsing. ' +
+    'Test cases (`it(...)`/`test(...)` titles) are call arguments, not declarations — use the edit tool for those. ' +
     'Guarantees zero string-matching errors, regex escape bugs, or whitespace indentation mismatches. ' +
     'Automatically verifies AST backward-compatibility invariants (no mandatory param addition, no export deletion, no interface breaking).',
   usageHint:
@@ -55,7 +54,9 @@ export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstRe
       },
       symbol: {
         type: 'string',
-        description: 'Name of the function, method, class, interface, or variable to replace.',
+        description:
+          'Declaration name (function, method, class, interface, type, enum, variable). ' +
+          'Qualify nested members as "ClassName.method" when the bare name is ambiguous. Not a test-case title.',
       },
       newBody: {
         type: 'string',
@@ -81,33 +82,27 @@ export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstRe
     required: ['file', 'symbol', 'newBody'],
     additionalProperties: false,
   },
+  // Failures THROW. A returned `{ status: 'error' }` is a successful tool call
+  // to the executor (is_error:false) — the UI showed "ok", the audit log and
+  // spans recorded success, and only a model reading the payload noticed.
   async execute(input, ctx) {
-    try {
-      const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
-      // H-5 (security report VF-07): this was the only MUTATING file tool that
-      // resolved its target with a bare isAbsolute passthrough — an absolute
-      // or ../ path wrote outside the project root (unprompted under YOLO).
-      // safeResolveProjectPath keeps the project-root-relative contract while
-      // enforcing containment; the mutator then receives an already-canonical
-      // absolute path.
-      const file = await safeResolveProjectPath(input.file, ctx);
-      const result = await replaceSymbolInFile({ ...input, file }, projectRoot);
+    const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
+    // H-5 (security report VF-07): this was the only MUTATING file tool that
+    // resolved its target with a bare isAbsolute passthrough — an absolute
+    // or ../ path wrote outside the project root (unprompted under YOLO).
+    // safeResolveProjectPath keeps the project-root-relative contract while
+    // enforcing containment; the mutator then receives an already-canonical
+    // absolute path.
+    const file = await safeResolveProjectPath(input.file, ctx);
+    const result = await replaceSymbolInFile({ ...input, file }, projectRoot);
 
-      return {
-        status: 'ok',
-        file: path.relative(projectRoot, result.file).replace(/\\/g, '/'),
-        symbol: result.symbol,
-        originalRange: result.originalRange,
-        newRange: result.newRange,
-        violations: result.violations?.map((v) => `[${v.ruleId}] ${v.message}`),
-      };
-    } catch (err) {
-      return {
-        status: 'error',
-        file: input.file,
-        symbol: input.symbol,
-        error: toErrorMessage(err),
-      };
-    }
+    return {
+      status: 'ok',
+      file: path.relative(projectRoot, result.file).replace(/\\/g, '/'),
+      symbol: result.symbol,
+      originalRange: result.originalRange,
+      newRange: result.newRange,
+      violations: result.violations?.map((v) => `[${v.ruleId}] ${v.message}`),
+    };
   },
 };

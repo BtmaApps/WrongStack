@@ -145,21 +145,15 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
         circuit.state === 'open'
           ? `Indexing is paused (circuit open, retry in ${Math.ceil(circuit.cooldownRemainingMs / 1000)}s); the user can run /codebase-reindex to retry now.`
           : 'Try /codebase-reindex.';
-      return {
-        results: [],
-        total: 0,
-        query: input.query,
-        indexStatus: `Index build failed: ${state.lastError}. ${retryHint}`,
-      };
+      throw new Error(`Index build failed: ${state.lastError}. ${retryHint}`);
     }
 
     const limit = Math.max(1, Math.min(Math.trunc(input.limit ?? 20), 100));
-    // Degrade infrastructure failures (daemon down, invalid endpoint, index
-    // read timeout) to the tool's empty-results + indexStatus contract instead
-    // of a raw throw — mirrors codebase-stats-tool.ts. A user cancel still
-    // propagates unchanged. A refresh in progress is NOT a failure: the
-    // project server serves previous-generation answers flagged `stale`, and
-    // only refuses when it has no cached answer for this query.
+    // Infrastructure failures (daemon down, invalid endpoint, index read
+    // timeout, never-built index) THROW so the executor marks the call failed;
+    // an empty `results` payload read as "nothing matched". A refresh in
+    // progress with a cached answer is served `stale`; without one the server
+    // refuses and that refusal is a failure too.
     let searched: Awaited<ReturnType<typeof searchCodebaseIndex>>;
     try {
       searched = await searchCodebaseIndex(
@@ -180,19 +174,15 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
         signal.throwIfAborted();
       }
       if ((err as { name?: string }).name === 'IndexRefreshInProgressError') {
-        return {
-          results: [],
-          total: 0,
-          query: input.query,
-          indexStatus: `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); this query has no cached answer yet — retry after the completed generation is published.`,
-        };
+        throw new Error(
+          `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); this query has no cached answer yet — retry after the completed generation is published.`,
+          { cause: err },
+        );
       }
-      return {
-        results: [],
-        total: 0,
-        query: input.query,
-        indexStatus: `Index query failed: ${toErrorMessage(err)}. Fall back to grep/glob for this lookup.`,
-      };
+      throw new Error(
+        `Index query failed: ${toErrorMessage(err)}. Fall back to grep/glob for this lookup.`,
+        { cause: err },
+      );
     }
     const { results, total, stale, indexSummary } = searched;
     // Process-local readiness resets on launch while the SQLite index persists.
@@ -213,10 +203,19 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
           { signal },
         );
         hasPersistedIndex = stats.totalFiles > 0 || stats.lastIndexed !== null;
-      } catch {
-        // Search already completed successfully. Keep the conservative missing
-        // hint rather than failing the whole tool because the stats probe failed.
+      } catch (err) {
+        if (signal?.aborted) signal.throwIfAborted();
+        // Zero hits with an unverifiable index is not "nothing matched".
+        throw new Error(
+          `codebase-search found no results and could not verify the persisted index: ${toErrorMessage(err)}. Try /codebase-reindex or fall back to grep/glob.`,
+          { cause: err },
+        );
       }
+    }
+    if (!hasPersistedIndex) {
+      throw new Error(
+        'No persisted index data found. Run codebase-index to build it, then retry codebase-search.',
+      );
     }
     return {
       results,
@@ -228,9 +227,6 @@ export const codebaseSearchTool: Tool<CodebaseSearchInput, CodebaseSearchOutput>
             indexStatus: `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); results served from the previous generation — symbols from files being indexed may lag.`,
           }
         : {}),
-      ...(hasPersistedIndex
-        ? {}
-        : { indexStatus: 'No persisted index data found. Run codebase-index to build it.' }),
     };
   },
 };
@@ -261,6 +257,6 @@ export interface CodebaseSearchOutput {
    * the files currently being indexed.
    */
   stale?: boolean | undefined;
-  /** Non-empty when the index blocked the search (not ready, indexing, failed). */
+  /** Advisory note when a stale previous-generation answer was served. */
   indexStatus?: string | undefined;
 }

@@ -2,6 +2,7 @@ import {
   GOVERNED_TOOL_EXECUTOR_META_KEY,
   type GovernedToolExecutor,
   type Tool,
+  ToolValidationError,
 } from '@wrongstack/core/types';
 
 export interface ToolUseInput {
@@ -11,9 +12,9 @@ export interface ToolUseInput {
 
 export interface ToolUseOutput {
   tool: string;
-  success: boolean;
+  /** Always true: any refusal or nested failure is thrown, not returned. */
+  success: true;
   result?: unknown | undefined;
-  error?: string | undefined;
   executionMs: number;
 }
 
@@ -56,74 +57,50 @@ export const toolUseTool: Tool<ToolUseInput, ToolUseOutput> = {
   async execute(input, ctx) {
     const start = Date.now();
 
+    // Every refusal and every nested failure THROWS: the executor marks a call
+    // failed only when execute() throws, so a returned `success: false` payload
+    // would surface a failed nested tool as a successful `tool_use` call.
     if (!input?.tool) {
-      return {
-        tool: 'unknown',
-        success: false,
-        error: 'tool_use: tool name is required',
-        executionMs: 0,
-      };
+      throw new ToolValidationError({ message: 'tool_use: tool name is required', field: 'tool' });
     }
 
     const tool = (ctx.catalogTools ?? ctx.tools).find((t: Tool) => t.name === input.tool);
     if (!tool) {
-      return {
-        tool: input.tool,
-        success: false,
-        error: `tool_use: tool "${input.tool}" not found`,
-        executionMs: Date.now() - start,
-      };
+      throw new ToolValidationError({
+        message: `tool_use: tool "${input.tool}" not found`,
+        field: 'tool',
+      });
     }
     if (tool.name === toolUseTool.name) {
-      return {
-        tool: input.tool,
-        success: false,
-        error: 'tool_use: recursive meta-tool execution is not allowed',
-        executionMs: Date.now() - start,
-      };
+      throw new ToolValidationError({
+        message: 'tool_use: recursive meta-tool execution is not allowed',
+        field: 'tool',
+      });
     }
 
     // `deny` is a hard policy gate — bypassing it through a meta-tool
     // would defeat the whole point of the permission system. Keep this
     // check even though the outer `tool_use` already requires `confirm`.
     if (tool.permission === 'deny') {
-      return {
-        tool: input.tool,
-        success: false,
-        error: `tool_use: tool "${input.tool}" is denied by policy`,
-        executionMs: Date.now() - start,
-      };
+      throw new Error(`tool_use: tool "${input.tool}" is denied by policy`);
     }
 
     const governedExecute = ctx.meta?.[GOVERNED_TOOL_EXECUTOR_META_KEY] as
       | GovernedToolExecutor
       | undefined;
     if (typeof governedExecute !== 'function') {
-      return {
-        tool: input.tool,
-        success: false,
-        error: 'tool_use: governed nested execution is unavailable; call the tool directly',
-        executionMs: Date.now() - start,
-      };
+      throw new Error('tool_use: governed nested execution is unavailable; call the tool directly');
     }
 
-    try {
-      const result = await governedExecute(input.tool, input.input ?? {});
-      return {
-        tool: input.tool,
-        success: result.success,
-        ...(result.success
-          ? { result: result.result }
-          : { error: result.error ?? 'nested tool failed' }),
-        executionMs: Date.now() - start,
-      };
-    } catch (e) {
-      return {
-        tool: input.tool,
-        success: false,
-        error: e instanceof Error ? e.message : String(e),
-        executionMs: Date.now() - start,
-      };
+    const result = await governedExecute(input.tool, input.input ?? {});
+    if (!result.success) {
+      throw new Error(`tool_use: "${input.tool}" failed: ${result.error ?? 'nested tool failed'}`);
     }
+    return {
+      tool: input.tool,
+      success: true,
+      result: result.result,
+      executionMs: Date.now() - start,
+    };
   },
 };

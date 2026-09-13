@@ -28,7 +28,7 @@
 
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { BoundedMap, collectSourceFilesAsync, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -737,7 +737,7 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path?: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'duplicate-code-detector is disabled' };
+        if (!cfg.enabled) throw new Error('duplicate-code-detector is disabled');
 
         const raw = input as Record<string, unknown>;
         const rawPath =
@@ -752,16 +752,24 @@ const plugin: Plugin = {
           (typeof raw['file'] === 'string' ? raw['file'] : undefined) ??
           '.';
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'scan path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'scan path is outside the project root',
+            field: 'path',
+          });
         }
 
         state.scanCount += 1;
         let result: { findings: DuplicateFinding[]; scannedFiles: number };
         try {
+          // A missing path would otherwise walk nothing and read as no duplicates.
+          await stat(resolve(process.cwd(), rawPath));
           result = await scanPath(rawPath, cfg);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(
+            `detect_duplicate_code failed for ${rawPath}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
 
         state.findingCount += result.findings.length;

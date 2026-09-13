@@ -332,9 +332,16 @@ describe('detect_duplicate_code tool', () => {
     plugin.setup(api as never);
     const detect = getTool(api, 'detect_duplicate_code');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await detect({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(detect({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws for a missing path instead of reporting no duplicates', async () => {
+    const api = makeApi({ enabled: true });
+    plugin.setup(api as never);
+    const detect = getTool(api, 'detect_duplicate_code');
+    await expect(detect({ path: 'definitely-missing-dup-dir' })).rejects.toThrow(
+      /detect_duplicate_code failed/,
+    );
   });
 
   it('enabled:false disables the scan tool', async () => {
@@ -343,9 +350,7 @@ describe('detect_duplicate_code tool', () => {
     });
     plugin.setup(api as never);
     const detect = getTool(api, 'detect_duplicate_code');
-    const result = (await detect({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(detect({})).rejects.toThrow(/disabled/);
   });
 });
 

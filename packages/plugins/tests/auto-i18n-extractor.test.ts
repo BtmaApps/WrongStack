@@ -117,9 +117,7 @@ describe('auto-i18n-extractor plugin', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const extract = getTool(api, 'i18n_extract');
-    const result = (await extract({ path: 'README.md' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('unsupported extension');
+    await expect(extract({ path: 'README.md' })).rejects.toThrow(/unsupported extension/);
   });
 
   it('i18n_extract rejects paths outside the project', async () => {
@@ -127,12 +125,7 @@ describe('auto-i18n-extractor plugin', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const extract = getTool(api, 'i18n_extract');
-    const result = (await extract({ path: '../../../etc/passwd' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('inside the project');
+    await expect(extract({ path: '../../../etc/passwd' })).rejects.toThrow(/inside the project/);
   });
 
   it('i18n_status reports counters and config', async () => {
@@ -213,8 +206,7 @@ const d = "./image.png";`);
     const api = makeApi({ extensions: { 'auto-i18n-extractor': { enabled: false } } });
     plugin.setup(api as never);
     const extract = getTool(api, 'i18n_extract');
-    const result = (await extract({ path: 'src/A.tsx' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
+    await expect(extract({ path: 'src/A.tsx' })).rejects.toThrow(/disabled/);
 
     const hook = getHook(api);
     const hookResult = await hook({

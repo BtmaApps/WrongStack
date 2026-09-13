@@ -423,12 +423,18 @@ describe('migration-planner plugin', () => {
     const api = makeApi({ extensions: { 'migration-planner': { enabled: false } } });
     migrationPlannerPlugin.setup(api as never);
     const plan = getTool(api, 'migration_plan');
-    const result = (await plan({
-      packageName: 'x',
-      fromVersion: '1.0.0',
-      toVersion: '2.0.0',
-    })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
+    await expect(
+      plan({ packageName: 'x', fromVersion: '1.0.0', toVersion: '2.0.0' }),
+    ).rejects.toThrow(/disabled/);
+  });
+
+  it('migration_plan throws when a required field is missing', async () => {
+    const api = makeApi();
+    migrationPlannerPlugin.setup(api as never);
+    const plan = getTool(api, 'migration_plan');
+    await expect(plan({ packageName: 'x', fromVersion: '1.0.0' })).rejects.toThrow(
+      /packageName, fromVersion, and toVersion are required/,
+    );
   });
 
   it('PostToolUse hook reminds about migration planning on package.json edits', async () => {

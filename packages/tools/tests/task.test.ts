@@ -120,12 +120,9 @@ describe('taskTool', () => {
       { signal: newSignal() },
     );
 
-    const out = await taskTool.execute({ action: 'replace', tasks: [] }, sb.ctx, {
-      signal: newSignal(),
-    });
-
-    expect(out.ok).toBe(false);
-    expect(out.message).toContain('cannot omit unfinished tasks: keep');
+    await expect(
+      taskTool.execute({ action: 'replace', tasks: [] }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow('cannot omit unfinished tasks: keep');
     expect(await readTasksOnDisk(sb.taskPath)).toHaveLength(1);
   });
 
@@ -155,20 +152,18 @@ describe('taskTool', () => {
       { signal: newSignal() },
     );
 
-    const started = await taskTool.execute(
-      { action: 'status', id: 'dependent', status: 'in_progress' },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    const completed = await taskTool.execute(
-      { action: 'status', id: 'dependent', status: 'completed' },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-
-    expect(started.ok).toBe(false);
-    expect(completed.ok).toBe(false);
-    expect(started.message).toContain('dependencies complete: dependency');
+    await expect(
+      taskTool.execute({ action: 'status', id: 'dependent', status: 'in_progress' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow('dependencies complete: dependency');
+    await expect(
+      taskTool.execute({ action: 'status', id: 'dependent', status: 'completed' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/dependencies complete/);
+    const onDisk = await readTasksOnDisk(sb.taskPath);
+    expect(onDisk.find((t) => t.id === 'dependent')?.status).toBe('pending');
   });
 
   // -------------------------------------------------------------------
@@ -220,27 +215,27 @@ describe('taskTool', () => {
     expect(child!.dependsOn).toEqual(['p1']);
   });
 
-  it('add without title returns ok=false', async () => {
-    const out = await taskTool.execute(
-      { action: 'add', task: { title: '', type: 'feature', priority: 'medium' } },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/requires/i);
+  it('add without title throws a validation error', async () => {
+    await expect(
+      taskTool.execute(
+        { action: 'add', task: { title: '', type: 'feature', priority: 'medium' } },
+        sb.ctx,
+        { signal: newSignal() },
+      ),
+    ).rejects.toThrow(/requires/i);
   });
 
   it('add rejects dependsOn referencing non-existent task IDs', async () => {
-    const out = await taskTool.execute(
-      {
-        action: 'add',
-        task: { title: 'Orphan', type: 'feature', priority: 'medium', dependsOn: ['ghost_id'] },
-      },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/dependsOn/i);
+    await expect(
+      taskTool.execute(
+        {
+          action: 'add',
+          task: { title: 'Orphan', type: 'feature', priority: 'medium', dependsOn: ['ghost_id'] },
+        },
+        sb.ctx,
+        { signal: newSignal() },
+      ),
+    ).rejects.toThrow(/dependsOn/i);
   });
 
   // -------------------------------------------------------------------
@@ -279,19 +274,18 @@ describe('taskTool', () => {
     expect(onDisk[0]?.status).toBe('completed');
   });
 
-  it('status with ghost id returns ok=false', async () => {
-    const out = await taskTool.execute(
-      { action: 'status', id: 'ghost', status: 'in_progress' },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/not found/i);
+  it('status with ghost id throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'status', id: 'ghost', status: 'in_progress' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/not found/i);
   });
 
-  it('status without id or status returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'status' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
+  it('status without id or status throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'status' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/requires `id` and `status`/);
   });
 
   // -------------------------------------------------------------------
@@ -406,62 +400,62 @@ describe('taskTool', () => {
     expect(raw.items[0]?.details).toBe('Big picture goal');
   });
 
-  it('planify without target returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'planify' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/target/i);
+  it('planify without target throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'planify' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/target/i);
   });
 
   // -------------------------------------------------------------------
   // error paths
   // -------------------------------------------------------------------
-  it('returns failure when task path is not configured', async () => {
+  it('throws when task path is not configured', async () => {
     const noMetaCtx = {
       cwd: sb.dir,
       projectRoot: sb.dir,
       session: { id: 'x', append: async () => undefined, close: async () => undefined },
       meta: {},
     } as never as Context;
-    const out = await taskTool.execute({ action: 'show' }, noMetaCtx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/not configured/i);
+    await expect(
+      taskTool.execute({ action: 'show' }, noMetaCtx, { signal: newSignal() }),
+    ).rejects.toThrow(/not configured/i);
   });
 
-  it('replace without tasks array returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'replace' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
+  it('replace without tasks array throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'replace' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/requires `tasks` array/);
   });
 
-  it('unknown action returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'bogus' as 'show' }, sb.ctx, {
-      signal: newSignal(),
-    });
-    expect(out.ok).toBe(false);
+  it('unknown action throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'bogus' as 'show' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/Unknown action/);
   });
 
   // -------------------------------------------------------------------
   // additional branch coverage
   // -------------------------------------------------------------------
   it('replace rejects dependsOn referencing IDs outside the new batch', async () => {
-    const out = await taskTool.execute(
-      {
-        action: 'replace',
-        tasks: [
-          {
-            id: 't1',
-            title: 'A',
-            type: 'feature',
-            priority: 'high',
-            status: 'pending',
-            dependsOn: ['nope'],
-          },
-        ],
-      },
-      sb.ctx,
-      { signal: newSignal() },
-    );
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/dependsOn validation failed/);
+    await expect(
+      taskTool.execute(
+        {
+          action: 'replace',
+          tasks: [
+            {
+              id: 't1',
+              title: 'A',
+              type: 'feature',
+              priority: 'high',
+              status: 'pending',
+              dependsOn: ['nope'],
+            },
+          ],
+        },
+        sb.ctx,
+        { signal: newSignal() },
+      ),
+    ).rejects.toThrow(/dependsOn validation failed/);
   });
 
   it('promote includes the description as a second todo and matches by index/substring', async () => {
@@ -500,21 +494,21 @@ describe('taskTool', () => {
     expect(bySubstring.ok).toBe(true);
   });
 
-  it('promote without a target returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'promote' }, sb.ctx, { signal: newSignal() });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/requires `target`/);
+  it('promote without a target throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'promote' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/requires `target`/);
   });
 
-  it('promote with a non-matching target returns ok=false', async () => {
-    const out = await taskTool.execute({ action: 'promote', target: 'no-such-task' }, sb.ctx, {
-      signal: newSignal(),
-    });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/No task matched/);
+  it('promote with a non-matching target throws', async () => {
+    await expect(
+      taskTool.execute({ action: 'promote', target: 'no-such-task' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/No task matched/);
   });
 
-  it('planify with a non-matching target returns ok=false', async () => {
+  it('planify with a non-matching target throws', async () => {
     await taskTool.execute(
       {
         action: 'replace',
@@ -523,14 +517,12 @@ describe('taskTool', () => {
       sb.ctx,
       { signal: newSignal() },
     );
-    const out = await taskTool.execute({ action: 'planify', target: 'ghost' }, sb.ctx, {
-      signal: newSignal(),
-    });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/No task matched/);
+    await expect(
+      taskTool.execute({ action: 'planify', target: 'ghost' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/No task matched/);
   });
 
-  it('planify returns ok=false when no plan path is configured', async () => {
+  it('planify throws when no plan path is configured', async () => {
     const noPlanCtx = {
       cwd: sb.dir,
       projectRoot: sb.dir,
@@ -545,11 +537,9 @@ describe('taskTool', () => {
       noPlanCtx,
       { signal: newSignal() },
     );
-    const out = await taskTool.execute({ action: 'planify', target: 't1' }, noPlanCtx, {
-      signal: newSignal(),
-    });
-    expect(out.ok).toBe(false);
-    expect(out.message).toMatch(/Plan storage path not configured/);
+    await expect(
+      taskTool.execute({ action: 'planify', target: 't1' }, noPlanCtx, { signal: newSignal() }),
+    ).rejects.toThrow(/Plan storage path not configured/);
   });
 
   it('promote leaves a completed task status unchanged', async () => {

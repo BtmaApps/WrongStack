@@ -60,6 +60,13 @@ export interface VectorSearchOptions {
    * build the pairwise-similarity heatmap.
    */
   includeVectors?: boolean | undefined;
+  /**
+   * When true, a failed query embedding THROWS
+   * `VectorMemoryProviderUnavailableError` instead of returning `[]`. The
+   * default (fail-open) suits fusion callers; the agent tool sets it so an
+   * outage is not reported as "no matches".
+   */
+  failOnEmbeddingError?: boolean | undefined;
 }
 
 export interface VectorSearchHit {

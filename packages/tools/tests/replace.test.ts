@@ -227,6 +227,19 @@ describe('replaceTool', () => {
     expect(result.total_replacements).toBe(0);
   });
 
+  it('throws when a literally listed file does not exist (not a silent 0-replacement result)', async () => {
+    const filePath = path.join(tmpDir, 'exists.txt');
+    await fs.writeFile(filePath, 'hello world', 'utf8');
+    const ctx = makeCtx();
+    await expect(
+      replaceTool.execute(
+        { pattern: 'hello', replacement: 'hi', files: `${filePath},missing-file.txt` },
+        ctx,
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/file not found "missing-file.txt"/);
+  });
+
   it('handles glob pattern', async () => {
     const filePath = path.join(tmpDir, 'file.txt');
     await fs.writeFile(filePath, 'foo bar', 'utf8');
@@ -477,4 +490,3 @@ describe('replace relative single-star globs (regression)', () => {
     expect(await fs.readFile(subFile, 'utf8')).toBe('SUB_UPDATED');
   });
 });
-

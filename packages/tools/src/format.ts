@@ -129,6 +129,16 @@ export const formatTool: Tool<FormatInput, FormatOutput> = {
       });
       if (bridge?.run) {
         const run = bridge.run;
+        // A formatter that never ran must not read as a clean format pass.
+        if (
+          run.status === 'unavailable' ||
+          run.status === 'cancelled' ||
+          run.status === 'timed_out'
+        ) {
+          throw new Error(
+            `format: ${bridge.language} formatter did not run (${run.status})${run.error ? `: ${run.error}` : ''}`,
+          );
+        }
         yield {
           type: 'final',
           output: {
@@ -224,6 +234,11 @@ export const formatTool: Tool<FormatInput, FormatOutput> = {
       signal,
       maxBytes: 100_000,
     });
+    // Spawn failure (formatter not installed / not on PATH): nothing was
+    // formatted, so throw instead of returning the error text as output.
+    if (result.error) {
+      throw new Error(`format: could not run ${detected}: ${result.error}`);
+    }
 
     const combinedOut = `${result.stdout}\n${result.stderr}`;
     const counts = parseFormatterCounts(detected, combinedOut, !!input.check);

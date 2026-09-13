@@ -68,6 +68,8 @@ function survivorIdsOf(desc: string): string[] {
   return [...desc.matchAll(/^- ([\w-]+#\d+#\d+) \|/gm)].map((m) => m[1]!);
 }
 
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -89,30 +91,60 @@ describe('makeMutationTestTool', () => {
         }),
     });
     const tool = makeMutationTestTool(director, undefined, { projectRoot: WORKSPACE_ROOT });
-    const out = (await tool.execute(
-      { targets: [TARGET_FILE], testCommand: 'pnpm test' },
-      { projectRoot: WORKSPACE_ROOT } as never,
-      { signal: new AbortController().signal },
-    )) as Record<string, unknown>;
-
-    expect(out['verdict']).toBe('inconclusive');
-    expect(out['passed']).toBe(false);
-    expect(out['error']).toMatch(/chaos-monkey role missing from the roster/);
+    await expect(
+      tool.execute(
+        { targets: [TARGET_FILE], testCommand: 'pnpm test' },
+        { projectRoot: WORKSPACE_ROOT } as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/chaos-monkey role missing from the roster/);
     // Loud failure means preflight: nothing may have been spawned or assigned.
     expect(spawns).toHaveLength(0);
     expect(assigns).toHaveLength(0);
   });
 
-  it('errors cleanly when no mutable sites exist', async () => {
+  it('throws when no target can be read instead of reporting "no mutable sites"', async () => {
+    const { director, spawns } = makeFakeDirector({ chaos: () => '{}' });
+    const tool = makeMutationTestTool(director, FLEET_ROSTER, { projectRoot: WORKSPACE_ROOT });
+    await expect(
+      tool.execute(
+        { targets: ['no/such/file.ts'], testCommand: 'vitest' },
+        { projectRoot: WORKSPACE_ROOT } as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/could not read any target: no\/such\/file\.ts/);
+    expect(spawns).toHaveLength(0);
+  });
+
+  it('rejects empty targets or testCommand', async () => {
     const { director } = makeFakeDirector({ chaos: () => '{}' });
     const tool = makeMutationTestTool(director, FLEET_ROSTER, { projectRoot: WORKSPACE_ROOT });
-    const out = (await tool.execute(
-      { targets: ['no/such/file.ts'], testCommand: 'vitest' },
-      { projectRoot: WORKSPACE_ROOT } as never,
-      { signal: new AbortController().signal },
-    )) as Record<string, unknown>;
-    expect(out['verdict']).toBe('inconclusive');
-    expect(out['error']).toMatch(/No mutable sites/i);
+    const signal = new AbortController().signal;
+    await expect(
+      tool.execute({ targets: [], testCommand: 'vitest' }, {} as never, { signal }),
+    ).rejects.toThrow(/at least one entry in `targets`/);
+    await expect(
+      tool.execute({ targets: [TARGET_FILE], testCommand: '  ' }, {} as never, { signal }),
+    ).rejects.toThrow(/non-empty `testCommand`/);
+  });
+
+  it('returns inconclusive (data) when readable targets have no mutable sites', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'mut-empty-'));
+    const file = path.join(dir, 'empty.ts');
+    writeFileSync(file, '// nothing to mutate\n');
+    try {
+      const { director } = makeFakeDirector({ chaos: () => '{}' });
+      const tool = makeMutationTestTool(director, FLEET_ROSTER, { projectRoot: WORKSPACE_ROOT });
+      const out = (await tool.execute(
+        { targets: [file], testCommand: 'vitest' },
+        { projectRoot: WORKSPACE_ROOT } as never,
+        { signal: new AbortController().signal },
+      )) as Record<string, unknown>;
+      expect(out['verdict']).toBe('inconclusive');
+      expect(out['error']).toMatch(/No mutable sites/i);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('reports killed mutants and passes without repair', async () => {
@@ -984,26 +1016,26 @@ describe('makeMutationTestTool', () => {
     expect(firstIdCount).toBeGreaterThanOrEqual(4); // 2 per file × 2 files
   });
 
-  it('returns `inconclusive` when no mutable sites exist across all targets', async () => {
-    // Two unreadable targets + one masked target → empty plan → inconclusive.
-    const { director } = makeFakeDirector({ chaos: () => '{}' });
+  it('throws naming every target when none of them can be read', async () => {
+    // All three resolve against WORKSPACE_ROOT (packages/), so none exists —
+    // this used to flatten into an 'inconclusive' result that hid the typo.
+    const { director, spawns } = makeFakeDirector({ chaos: () => '{}' });
     const tool = makeMutationTestTool(director, FLEET_ROSTER, { projectRoot: WORKSPACE_ROOT });
-    const out = (await tool.execute(
-      {
-        targets: [
-          'no/such/file.ts',
-          'also/missing.ts',
-          // An empty fixture file: zero mutants.
-          'packages/core/tests/coordination/__mutation_fixture__/subject.ts',
-        ],
-        testCommand: 'pnpm test',
-      },
-      { projectRoot: WORKSPACE_ROOT } as never,
-      { signal: new AbortController().signal },
-    )) as Record<string, unknown>;
-    // Fixture file has mutants, so this won't be inconclusive. Pin that
-    // the tool still executed (verdict is one of the four documented).
-    expect(['pass', 'fail', 'partial', 'inconclusive']).toContain(out['verdict']);
+    await expect(
+      tool.execute(
+        {
+          targets: [
+            'no/such/file.ts',
+            'also/missing.ts',
+            'packages/core/tests/coordination/__mutation_fixture__/subject.ts',
+          ],
+          testCommand: 'pnpm test',
+        },
+        { projectRoot: WORKSPACE_ROOT } as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/could not read any target: no\/such\/file\.ts, also\/missing\.ts, packages/);
+    expect(spawns).toHaveLength(0);
   });
 
   it('emits a chaos task that includes cwd when supplied', async () => {

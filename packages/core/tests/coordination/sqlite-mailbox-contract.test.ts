@@ -584,13 +584,12 @@ describe('makeMailboxTool', () => {
   });
 
   it('send validates required fields', async () => {
-    const r1 = await toolForSender.execute({ action: 'send' }, mockCtx() as any);
-    expect(r1.ok).toBe(false);
-    expect(r1.error).toContain('"to" is required');
-
-    const r2 = await toolForSender.execute({ action: 'send', to: 'r' }, mockCtx() as any);
-    expect(r2.ok).toBe(false);
-    expect(r2.error).toContain('"type" is required');
+    await expect(toolForSender.execute({ action: 'send' }, mockCtx() as any)).rejects.toThrow(
+      '"to" is required',
+    );
+    await expect(
+      toolForSender.execute({ action: 'send', to: 'r' }, mockCtx() as any),
+    ).rejects.toThrow('"type" is required');
   });
 
   it('send with broadcast goes to all', async () => {
@@ -662,10 +661,26 @@ describe('makeMailboxTool', () => {
     expect(worker?.status).toBe('running');
   });
 
-  it('unknown action returns error', async () => {
-    const result = await makeTestTool('x').execute({ action: 'invalid' }, mockCtx() as any);
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('Unknown action');
+  it('unknown action throws', async () => {
+    await expect(
+      makeTestTool('x').execute({ action: 'invalid' }, mockCtx() as any),
+    ).rejects.toThrow('Unknown action');
+  });
+
+  it('ack of a missing message throws', async () => {
+    await expect(
+      makeTestTool('x').execute({ action: 'ack', messageId: 'no-such-id' }, mockCtx() as any),
+    ).rejects.toThrow('not found');
+  });
+
+  it('check/unread throw when every mailbox query fails', async () => {
+    const broken = Object.create(mailbox) as SqliteMailbox;
+    broken.query = async () => {
+      throw new Error('ipc down');
+    };
+    const tool = makeMailboxTool({ resolveMailbox: () => broken, agentId: 'x' });
+    await expect(tool.execute({ action: 'check' }, mockCtx() as any)).rejects.toThrow('ipc down');
+    await expect(tool.execute({ action: 'unread' }, mockCtx() as any)).rejects.toThrow('ipc down');
   });
 });
 
@@ -1098,8 +1113,7 @@ describe('mail_send + mail_inbox tools', () => {
   it('mail_send validates required fields', async () => {
     const { makeMailSendTool } = await import('../../src/coordination/mail-tools.js');
     const send = makeMailSendTool({ resolveMailbox: () => mailbox });
-    const res = await send.execute({ to: '*' }, mockCtx() as never);
-    expect(res.ok).toBe(false);
+    await expect(send.execute({ to: '*' }, mockCtx() as never)).rejects.toThrow(/required/);
   });
 });
 

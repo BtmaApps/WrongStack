@@ -114,10 +114,11 @@ describe('LSP tools with mock server', () => {
       });
     expect(JSON.parse(String(custom))).toEqual({ useful: true });
 
-    const blocked = await tools
-      .get('lsp_request')!
-      .execute({ path: source, method: 'shutdown' }, ctx as never, { signal });
-    expect(String(blocked)).toContain('LSP_INVALID_REQUEST');
+    await expect(
+      tools.get('lsp_request')!.execute({ path: source, method: 'shutdown' }, ctx as never, {
+        signal,
+      }),
+    ).rejects.toThrow(/LSP_INVALID_REQUEST/);
 
     const rename = await tools
       .get('lsp_rename')!

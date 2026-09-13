@@ -28,7 +28,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const API_VERSION = '^0.1.10';
 
@@ -172,13 +172,16 @@ function flattenResults(results: BenchResults): FlatBenchmark[] {
   return flat;
 }
 
+/** null = file absent; throws when the file exists but cannot be read or parsed. */
 function loadResults(path: string): BenchResults | null {
   if (!path || !existsSync(path)) return null;
   try {
-    const raw = JSON.parse(readFileSync(path, 'utf-8')) as BenchResults;
-    return raw;
-  } catch {
-    return null;
+    return JSON.parse(readFileSync(path, 'utf-8')) as BenchResults;
+  } catch (err) {
+    // Used to return null, reporting a corrupt file as "no results found".
+    throw new Error(`Could not read benchmark results at ${path}: ${String(err)}`, {
+      cause: err,
+    });
   }
 }
 
@@ -341,8 +344,9 @@ const plugin: Plugin = {
         baselinePath?: string | undefined;
         thresholdPercent?: number | undefined;
       }) {
+        // Failures throw: the executor only flags a call as failed when execute rejects.
         if (!cfg.enabled) {
-          return { ok: false, error: 'performance-regression-gate is disabled' };
+          throw new Error('performance-regression-gate is disabled');
         }
 
         state.invocationCount += 1;
@@ -376,12 +380,25 @@ const plugin: Plugin = {
         const resultsPath = resolveProjectPath(resultsPathStr) ?? '';
         if (!resultsPath) {
           state.errorCount += 1;
-          return { ok: false, error: 'invalid results path (must be inside project)' };
+          throw new ToolValidationError({
+            message: 'invalid results path (must be inside project)',
+            field: 'resultsPath',
+          });
         }
 
-        const results = loadResults(resultsPath);
+        let results: BenchResults | null;
+        try {
+          results = loadResults(resultsPath);
+        } catch (err) {
+          state.errorCount += 1;
+          throw err;
+        }
         if (!results) {
           state.missingResultsCount += 1;
+          // An explicitly named file that is missing is a failure; the default may legitimately be absent.
+          if (resultsPathStr !== 'bench-results.json' || rawResultsPath !== 'bench-results.json') {
+            throw new Error(`No benchmark results found at ${resultsPathStr}.`);
+          }
           return {
             ok: true,
             hasResults: false,
@@ -421,15 +438,21 @@ const plugin: Plugin = {
           const baselineResolved = resolveProjectPath(baselinePathStr) ?? '';
           if (!baselineResolved) {
             state.errorCount += 1;
-            return { ok: false, error: 'invalid baseline path (must be inside project)' };
+            throw new ToolValidationError({
+              message: 'invalid baseline path (must be inside project)',
+              field: 'baselinePath',
+            });
           }
-          const baselineResults = loadResults(baselineResolved);
+          let baselineResults: BenchResults | null;
+          try {
+            baselineResults = loadResults(baselineResolved);
+          } catch (err) {
+            state.errorCount += 1;
+            throw err;
+          }
           if (!baselineResults) {
             state.errorCount += 1;
-            return {
-              ok: false,
-              error: `Could not read baseline results at ${baselinePathStr}.`,
-            };
+            throw new Error(`Could not read baseline results at ${baselinePathStr}.`);
           }
           const baseline = flattenResults(baselineResults);
           pairs = pairCrossFile(baseline, current);

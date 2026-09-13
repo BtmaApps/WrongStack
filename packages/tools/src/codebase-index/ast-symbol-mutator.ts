@@ -36,6 +36,31 @@ export interface MutateSymbolResult {
   violations?: InvariantViolation[] | undefined;
 }
 
+interface TsMatch {
+  node: TS.Node;
+  body: TS.Node | null;
+  /** Dotted path through enclosing named declarations, e.g. `Cart.total`. */
+  qualified: string;
+  line: number;
+}
+
+/** Leading whitespace of the line containing `pos`. */
+function indentAt(content: string, pos: number): string {
+  const lineStart = content.lastIndexOf('\n', pos - 1) + 1;
+  return /^[ \t]*/.exec(content.slice(lineStart, pos))?.[0] ?? '';
+}
+
+/** Strip the common indent of `text`, then prefix every non-blank line with `indent`. */
+function reindent(text: string, indent: string): string {
+  const lines = text
+    .replace(/^\s*\n/, '')
+    .trimEnd()
+    .split('\n');
+  const widths = lines.filter((l) => l.trim()).map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0);
+  const common = widths.length > 0 ? Math.min(...widths) : 0;
+  return lines.map((l) => (l.trim() ? `${indent}${l.slice(common)}` : '')).join('\n');
+}
+
 /**
  * Replace a symbol's body or full declaration using TypeScript Compiler AST.
  */
@@ -64,68 +89,141 @@ async function mutateTsSymbol(
     scriptKind,
   );
 
-  let targetNode: TS.Node | null = null;
-  let bodyNode: TS.Node | null = null;
+  const nameOf = (node: TS.Node): string | undefined => {
+    const n = (node as { name?: TS.Node }).name;
+    if (!n) return undefined;
+    return ts.isIdentifier(n) || ts.isPrivateIdentifier(n) || ts.isStringLiteral(n)
+      ? n.text
+      : undefined;
+  };
+
+  // Collect EVERY named declaration. The old walker stopped at the first
+  // same-named node in pre-order, so `Cart.total` vs `Invoice.total` silently
+  // rewrote whichever came first.
+  const matches: TsMatch[] = [];
+  const scope: string[] = [];
 
   function visit(node: TS.Node) {
-    if (targetNode) return;
+    let declared: string | undefined;
+    let body: TS.Node | null = null;
 
     if (
       ts.isFunctionDeclaration(node) ||
       ts.isMethodDeclaration(node) ||
-      ts.isConstructorDeclaration(node) ||
       ts.isGetAccessor(node) ||
-      ts.isSetAccessor(node) ||
-      ts.isClassDeclaration(node) ||
-      ts.isInterfaceDeclaration(node)
+      ts.isSetAccessor(node)
     ) {
-      let name: string | undefined;
-      if ('name' in node && node.name && ts.isIdentifier(node.name as TS.Node)) {
-        name = (node.name as TS.Identifier).text;
-      }
-
-      if (name === symbolName) {
-        targetNode = node;
-        if ('body' in node && node.body) {
-          bodyNode = node.body as TS.Node;
-        }
-        return;
-      }
-    } else if (ts.isVariableStatement(node)) {
-      for (const decl of node.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name) && decl.name.text === symbolName) {
-          targetNode = decl;
-          if (
-            decl.initializer &&
-            (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))
-          ) {
-            bodyNode = decl.initializer.body;
-          }
-          return;
-        }
+      declared = nameOf(node);
+      body = node.body ?? null;
+    } else if (ts.isConstructorDeclaration(node)) {
+      declared = 'constructor';
+      body = node.body ?? null;
+    } else if (
+      ts.isClassDeclaration(node) ||
+      ts.isInterfaceDeclaration(node) ||
+      ts.isEnumDeclaration(node) ||
+      ts.isModuleDeclaration(node)
+    ) {
+      declared = nameOf(node);
+    } else if (ts.isTypeAliasDeclaration(node)) {
+      declared = nameOf(node);
+      body = node.type;
+    } else if (ts.isVariableDeclaration(node) || ts.isPropertyDeclaration(node)) {
+      declared = nameOf(node);
+      const init = node.initializer;
+      if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) {
+        body = init.body;
       }
     }
 
+    if (declared === undefined) {
+      ts.forEachChild(node, visit);
+      return;
+    }
+
+    matches.push({
+      node,
+      body,
+      qualified: [...scope, declared].join('.'),
+      line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+    });
+    scope.push(declared);
     ts.forEachChild(node, visit);
+    scope.pop();
   }
 
   ts.forEachChild(sourceFile, visit);
 
-  if (!targetNode) return null;
+  // `total` matches `Cart.total`; `Cart.total` matches `ns.Cart.total`.
+  let candidates = matches.filter(
+    (m) => m.qualified === symbolName || m.qualified.endsWith(`.${symbolName}`),
+  );
+  if (candidates.length === 0) return null;
 
-  const replaceTarget: TS.Node = target === 'full' || !bodyNode ? targetNode : bodyNode;
+  // Overloads: N signatures + one implementation share a qualified name —
+  // that is one symbol, and the implementation is the only editable body.
+  if (candidates.length > 1) {
+    const first = candidates[0]?.qualified;
+    const overloadable = candidates.every(
+      (m) =>
+        m.qualified === first &&
+        (ts.isFunctionDeclaration(m.node) ||
+          ts.isMethodDeclaration(m.node) ||
+          ts.isConstructorDeclaration(m.node)),
+    );
+    const implemented = candidates.filter((m) => m.body !== null);
+    if (overloadable && implemented.length === 1) candidates = implemented;
+  }
+
+  if (candidates.length > 1) {
+    const listed = candidates.map((m) => `${m.qualified} (L${m.line})`).join(', ');
+    const example = candidates.find((m) => m.qualified.includes('.'))?.qualified;
+    throw new Error(
+      `Symbol '${symbolName}' is ambiguous: ${candidates.length} declarations match — ${listed}. ` +
+        (example
+          ? `Pass a qualified name, e.g. symbol: "${example}".`
+          : 'Rename-free disambiguation is impossible here; use the edit tool.'),
+    );
+  }
+
+  const match = candidates[0] as TsMatch;
+
+  // A `full` replacement of a single-declarator variable must cover the whole
+  // statement — the declarator alone starts after `export const`, so a new
+  // `export const x = …` doubled the keywords.
+  let fullNode: TS.Node = match.node;
+  if (ts.isVariableDeclaration(match.node)) {
+    const list = match.node.parent;
+    const stmt = list?.parent;
+    if (
+      list &&
+      ts.isVariableDeclarationList(list) &&
+      list.declarations.length === 1 &&
+      stmt &&
+      ts.isVariableStatement(stmt)
+    ) {
+      fullNode = stmt;
+    }
+  }
+
+  const replaceTarget: TS.Node = target === 'full' || !match.body ? fullNode : match.body;
   const startPos = replaceTarget.getStart(sourceFile);
   const endPos = replaceTarget.getEnd();
 
   const startLine = sourceFile.getLineAndCharacterOfPosition(startPos).line + 1;
   const endLine = sourceFile.getLineAndCharacterOfPosition(endPos).line + 1;
 
-  // Format new body
   let formattedReplacement = newBody.trim();
-  if (target === 'body' && bodyNode && ts.isBlock(bodyNode)) {
-    if (!formattedReplacement.startsWith('{')) {
-      formattedReplacement = `{\n  ${formattedReplacement.split('\n').join('\n  ')}\n}`;
-    }
+  if (
+    target === 'body' &&
+    match.body &&
+    ts.isBlock(match.body) &&
+    !formattedReplacement.startsWith('{')
+  ) {
+    // Indent relative to the declaration, not a hard-coded two spaces: a
+    // class method at depth 1 needs its statements at depth 2.
+    const baseIndent = indentAt(content, fullNode.getStart(sourceFile));
+    formattedReplacement = `{\n${reindent(newBody, `${baseIndent}  `)}\n${baseIndent}}`;
   }
 
   const updatedContent = content.slice(0, startPos) + formattedReplacement + content.slice(endPos);
@@ -227,6 +325,35 @@ async function mutateTreeSitterSymbol(
   }
 }
 
+const TEST_CALLEES = String.raw`(?:it|test|describe|suite|bench|context|specify)`;
+
+/**
+ * Explain WHY a lookup failed. The bare "could not be located" gave a model
+ * that passed an `it('…')` title no way to learn the tool only resolves
+ * declarations — it retried the same shape.
+ */
+function notFoundMessage(symbol: string, relPath: string, content: string): string {
+  const base = `Symbol '${symbol}' could not be located in AST of '${relPath}'`;
+  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const testCall = new RegExp(
+    String.raw`\b${TEST_CALLEES}(?:\.\w+)*\s*\(\s*(['"\x60])${escaped}\1`,
+  );
+  if (testCall.test(content)) {
+    return (
+      `${base}: that is a test-case title, not a declaration. codebase-ast-replace only ` +
+      'resolves named declarations (function, method, class, interface, type, enum, variable); ' +
+      'use the edit tool to change a test case.'
+    );
+  }
+  if (!/^[\p{L}_$#][\p{L}\p{N}_$]*(?:\.[\p{L}_$#][\p{L}\p{N}_$]*)*$/u.test(symbol)) {
+    return (
+      `${base}: '${symbol}' is not a declaration name. Pass an identifier such as ` +
+      '"calculateTotal", or a qualified "ClassName.method" for a nested member.'
+    );
+  }
+  return `${base}. Check the name with codebase-search, or qualify a nested member as "Outer.inner".`;
+}
+
 /**
  * Surgically replace a symbol's body or definition inside a source file.
  */
@@ -252,9 +379,7 @@ export async function replaceSymbolInFile(
   }
 
   if (!result) {
-    throw new Error(
-      `Symbol '${opts.symbol}' could not be located in AST of '${path.relative(projectRoot, resolved)}'`,
-    );
+    throw new Error(notFoundMessage(opts.symbol, path.relative(projectRoot, resolved), content));
   }
 
   result.file = resolved;

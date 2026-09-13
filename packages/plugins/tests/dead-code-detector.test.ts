@@ -272,9 +272,16 @@ describe('dead-code-detector plugin', () => {
     const scan = getTool(api, 'dead_code_scan');
     const outside =
       process.platform === 'win32' ? 'C:\\Windows\\System32\\evil.ts' : '/etc/evil.ts';
-    const result = (await scan({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(scan({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('dead_code_scan throws for a missing path instead of reporting no dead code', async () => {
+    const api = makeApi({ enabled: true });
+    deadCodePlugin.setup(api as never);
+    const scan = getTool(api, 'dead_code_scan');
+    await expect(scan({ path: 'definitely-missing-dead-code-dir' })).rejects.toThrow(
+      /dead_code_scan failed/,
+    );
   });
 
   it('enabled:false disables the scan tool', async () => {
@@ -283,9 +290,7 @@ describe('dead-code-detector plugin', () => {
     });
     deadCodePlugin.setup(api as never);
     const scan = getTool(api, 'dead_code_scan');
-    const result = (await scan({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(scan({})).rejects.toThrow(/disabled/);
   });
 });
 

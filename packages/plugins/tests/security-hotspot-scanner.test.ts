@@ -203,12 +203,7 @@ describe('security-hotspot-scanner plugin', () => {
     const api = makeApi({ enabled: true });
     plugin.setup(api as never);
     const tool = getRegisteredTool(api, 'security_hotspot_scan');
-    const result = (await tool.execute({ path: '/etc/passwd' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(tool.execute({ path: '/etc/passwd' })).rejects.toThrow(/outside/);
   });
 
   it('scan tool handles missing paths gracefully', async () => {
@@ -218,12 +213,7 @@ describe('security-hotspot-scanner plugin', () => {
     const api = makeApi({ enabled: true });
     plugin.setup(api as never);
     const tool = getRegisteredTool(api, 'security_hotspot_scan');
-    const result = (await tool.execute({ path: 'src/missing.js' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('does not exist');
+    await expect(tool.execute({ path: 'src/missing.js' })).rejects.toThrow(/does not exist/);
   });
 
   it('scan tool recurses into directories', async () => {
@@ -346,12 +336,7 @@ describe('security-hotspot-scanner plugin', () => {
     expect(hookResult).toBeUndefined();
 
     const tool = getRegisteredTool(api, 'security_hotspot_scan');
-    const scanResult = (await tool.execute({ path: 'src/bad.js' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(scanResult.ok).toBe(false);
-    expect(scanResult.error).toContain('disabled');
+    await expect(tool.execute({ path: 'src/bad.js' })).rejects.toThrow(/disabled/);
   });
 
   it('teardown unregisters the hook and zeros state', async () => {

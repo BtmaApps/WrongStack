@@ -6,8 +6,7 @@
  */
 
 import * as fs from 'node:fs/promises';
-import type { Tool } from '@wrongstack/core/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import { type Tool, ToolValidationError } from '@wrongstack/core/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { type InvariantViolation, polyglotInvariantEngine } from './ast-invariant-engine.js';
 import { detectLang } from './languages.js';
@@ -24,7 +23,6 @@ export interface CodebaseInvariantCheckOutput {
   valid: boolean;
   violations: InvariantViolation[];
   summary: string;
-  error?: string | undefined;
 }
 
 export const codebaseInvariantCheckTool: Tool<
@@ -69,55 +67,47 @@ export const codebaseInvariantCheckTool: Tool<
     required: ['modifiedCode'],
     additionalProperties: false,
   },
+  // Failures THROW. The old catch returned `valid: false` — a successful call
+  // (is_error:false) whose payload was indistinguishable from "this change
+  // breaks compatibility", so an unreadable file read as a real violation.
   async execute(input, ctx) {
-    try {
-      let originalCode = input.originalCode;
-      let lang = input.lang;
+    let originalCode = input.originalCode;
+    let lang = input.lang;
 
-      if (!originalCode && input.file) {
-        // H-5 (security report VF-06 family): shared realpath containment
-        // instead of a bare isAbsolute passthrough — same gap as the
-        // skeleton tool, same fix (project-root-relative contract kept).
-        const resolved = await safeResolveProjectPath(input.file, ctx);
-        originalCode = await fs.readFile(resolved, 'utf8');
-        if (!lang) {
-          lang = detectLang(resolved) ?? 'ts';
-        }
+    if (!originalCode && input.file) {
+      // H-5 (security report VF-06 family): shared realpath containment
+      // instead of a bare isAbsolute passthrough — same gap as the
+      // skeleton tool, same fix (project-root-relative contract kept).
+      const resolved = await safeResolveProjectPath(input.file, ctx);
+      originalCode = await fs.readFile(resolved, 'utf8');
+      if (!lang) {
+        lang = detectLang(resolved) ?? 'ts';
       }
-
-      if (originalCode === undefined) {
-        return {
-          valid: false,
-          violations: [],
-          summary: 'Neither originalCode nor file was provided for invariant comparison.',
-          error: 'Missing originalCode or file path.',
-        };
-      }
-
-      const res = await polyglotInvariantEngine.evaluate({
-        originalCode,
-        modifiedCode: input.modifiedCode,
-        lang,
-        filePath: input.file,
-      });
-
-      const summary = res.valid
-        ? 'AST Invariants PASSED. Mutation is 100% backward compatible.'
-        : `AST Invariants FAILED with ${res.violations.length} violation(s):\n` +
-          res.violations.map((v) => ` - [${v.ruleId}] ${v.symbolName}: ${v.message}`).join('\n');
-
-      return {
-        valid: res.valid,
-        violations: res.violations,
-        summary,
-      };
-    } catch (err) {
-      return {
-        valid: false,
-        violations: [],
-        summary: `Error during invariant evaluation: ${toErrorMessage(err)}`,
-        error: toErrorMessage(err),
-      };
     }
+
+    if (originalCode === undefined) {
+      throw new ToolValidationError({
+        message: 'Neither originalCode nor file was provided for invariant comparison.',
+        field: 'originalCode',
+      });
+    }
+
+    const res = await polyglotInvariantEngine.evaluate({
+      originalCode,
+      modifiedCode: input.modifiedCode,
+      lang,
+      filePath: input.file,
+    });
+
+    const summary = res.valid
+      ? 'AST Invariants PASSED. Mutation is 100% backward compatible.'
+      : `AST Invariants FAILED with ${res.violations.length} violation(s):\n` +
+        res.violations.map((v) => ` - [${v.ruleId}] ${v.symbolName}: ${v.message}`).join('\n');
+
+    return {
+      valid: res.valid,
+      violations: res.violations,
+      summary,
+    };
   },
 };

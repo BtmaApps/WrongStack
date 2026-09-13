@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -131,8 +131,36 @@ describe('checkpoint plugin', () => {
     checkpointPlugin.setup(api as never);
     const big = join(tmp, 'big.txt');
     writeFileSync(big, 'x'.repeat(4096));
-    const result = await getTool(api, 'checkpoint_create').execute({ paths: [big] });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'checkpoint_create').execute({ paths: [big] })).rejects.toThrow(
+      /all files were skipped/,
+    );
+  });
+
+  it('throws when a path cannot be read instead of recording it as missing', async () => {
+    const api = makeApi();
+    checkpointPlugin.setup(api as never);
+    const dir = join(tmp, 'a-directory');
+    mkdirSync(dir);
+    await expect(getTool(api, 'checkpoint_create').execute({ paths: [dir] })).rejects.toThrow(
+      /could not snapshot/,
+    );
+    const list = await getTool(api, 'checkpoint_list').execute({});
+    expect(list['total']).toBe(0);
+  });
+
+  it('checkpoint_restore throws when a file fails to restore', async () => {
+    const api = makeApi();
+    checkpointPlugin.setup(api as never);
+    mkdirSync(join(tmp, 'sub'));
+    const file = join(tmp, 'sub', 'a.txt');
+    writeFileSync(file, 'original');
+    await getTool(api, 'checkpoint_create').execute({ paths: [file] });
+    // Replace the parent dir with a plain file so the restore write cannot succeed.
+    rmSync(join(tmp, 'sub'), { recursive: true, force: true });
+    writeFileSync(join(tmp, 'sub'), 'blocker');
+    await expect(getTool(api, 'checkpoint_restore').execute({})).rejects.toThrow(
+      /failed to restore/,
+    );
   });
 
   it('rejects manual snapshots outside the project directory', async () => {
@@ -141,10 +169,9 @@ describe('checkpoint plugin', () => {
     const outside = join(tmpdir(), `checkpoint-outside-${Date.now()}.txt`);
     writeFileSync(outside, 'outside');
     try {
-      const result = await getTool(api, 'checkpoint_create').execute({ paths: [outside] });
-      expect(result['ok']).toBe(false);
-      expect(result['error']).toMatch(/current project directory/);
-      expect(result['rejectedOutsideProject']).toContain(outside);
+      await expect(getTool(api, 'checkpoint_create').execute({ paths: [outside] })).rejects.toThrow(
+        /current project directory/,
+      );
     } finally {
       rmSync(outside, { force: true });
     }
@@ -163,19 +190,15 @@ describe('checkpoint plugin', () => {
     }
     try {
       // Existing file THROUGH the link: lexically inside, real target outside.
-      const existing = await getTool(api, 'checkpoint_create').execute({
-        paths: ['out-link/secret.txt'],
-      });
-      expect(existing['ok']).toBe(false);
-      expect(existing['rejectedOutsideProject']).toContain('out-link/secret.txt');
+      await expect(
+        getTool(api, 'checkpoint_create').execute({ paths: ['out-link/secret.txt'] }),
+      ).rejects.toThrow(/out-link\/secret\.txt/);
 
       // Not-yet-existing leaf under the link must be rejected the same way
       // (resolveProjectPath canonicalizes the nearest existing ancestor).
-      const missing = await getTool(api, 'checkpoint_create').execute({
-        paths: ['out-link/newly.txt'],
-      });
-      expect(missing['ok']).toBe(false);
-      expect(missing['rejectedOutsideProject']).toContain('out-link/newly.txt');
+      await expect(
+        getTool(api, 'checkpoint_create').execute({ paths: ['out-link/newly.txt'] }),
+      ).rejects.toThrow(/out-link\/newly\.txt/);
 
       // Auto-capture hook must not snapshot behind the link either.
       await getHook(api)({ toolName: 'write', toolInput: { path: 'out-link/secret.txt' } });
@@ -229,8 +252,9 @@ describe('checkpoint plugin', () => {
     const api = makeApi({ extensions: { checkpoint: { enabled: false } } });
     checkpointPlugin.setup(api as never);
     expect(api.registerHook).not.toHaveBeenCalled();
-    const result = await getTool(api, 'checkpoint_create').execute({ paths: ['x'] });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'checkpoint_create').execute({ paths: ['x'] })).rejects.toThrow(
+      /disabled/,
+    );
   });
 
   it('teardown drops snapshots and logs', async () => {

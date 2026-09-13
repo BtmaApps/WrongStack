@@ -115,9 +115,9 @@ describe('semver-bump plugin', () => {
     const tool = mockApi.tools.register.mock.calls.find(
       ([tool]: any[]) => tool.name === 'semver_bump',
     )?.[0];
-    const result = await tool.execute({ cwd: '../escape', dry_run: true });
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/current project directory/);
+    await expect(tool.execute({ cwd: '../escape', dry_run: true })).rejects.toThrow(
+      /current project directory/,
+    );
   });
 
   it('rejects cwd outside the project directory in /semver slash command', async () => {

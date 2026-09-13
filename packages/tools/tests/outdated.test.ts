@@ -159,16 +159,15 @@ describe('outdatedTool', () => {
     expect(result.output).toBe('not-json{');
   });
 
-  it('reports an error result when spawn emits error', async () => {
+  it('throws when the package manager cannot be spawned', async () => {
     spawnMocks.spawn.mockImplementation(() => {
       const c = new FakeChild();
       setImmediate(() => c.emit('error', new Error('spawn ENOENT')));
       return c;
     });
-    const result = await outdatedTool.execute({}, makeCtx(), makeOpts());
-    expect(result.exit_code).toBe(1);
-    expect(result.output).toContain('ENOENT');
-    expect(result.total).toBe(0);
+    await expect(outdatedTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
+      /outdated: failed to run .*ENOENT/,
+    );
   });
 
   it('marks output as truncated when stdout reaches the 100 KB cap', async () => {

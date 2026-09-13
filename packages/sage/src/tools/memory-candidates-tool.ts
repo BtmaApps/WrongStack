@@ -18,6 +18,12 @@ import {
   stringSchema,
 } from './tool-schema-helpers.js';
 
+function notPending(candidateId: string): Error {
+  return new Error(
+    `Memory candidate "${candidateId}" not found or no longer pending. Use memory_candidates({ action: "list" }) to see pending candidates.`,
+  );
+}
+
 export function memoryCandidatesTool(memory: SageServiceLike): Tool<
   {
     action?: 'list' | 'accept' | 'reject' | 'propose' | 'resolve';
@@ -34,12 +40,7 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
     memory_id?: string;
     decision?: CandidateDecision;
   },
-  | MemoryCandidate[]
-  | MemoryCandidate
-  | MemoryCandidateResolution
-  | Sage
-  | { rejected: boolean }
-  | undefined
+  MemoryCandidate[] | MemoryCandidate | MemoryCandidateResolution | Sage | { rejected: true }
 > {
   return {
     name: 'memory_candidates',
@@ -92,17 +93,31 @@ export function memoryCandidatesTool(memory: SageServiceLike): Tool<
     async execute(input, ctx, opts) {
       const signal = opts?.signal ?? ctx?.signal;
       signal?.throwIfAborted();
-      if (input.action === 'accept') return memory.acceptCandidate(input.candidate_id!);
+      // An unknown / non-pending candidate THROWS: `undefined` and
+      // `{ rejected: false }` were recorded as successful calls.
+      if (input.action === 'accept') {
+        const accepted = await memory.acceptCandidate(input.candidate_id!);
+        if (!accepted) throw notPending(input.candidate_id!);
+        return accepted;
+      }
       if (input.action === 'reject') {
-        return {
-          rejected: await memory.rejectCandidate(
-            input.candidate_id!,
-            input.reason ?? 'Rejected by user or agent.',
-          ),
-        };
+        const rejected = await memory.rejectCandidate(
+          input.candidate_id!,
+          input.reason ?? 'Rejected by user or agent.',
+        );
+        if (!rejected) throw notPending(input.candidate_id!);
+        return { rejected: true };
       }
       if (input.action === 'resolve') {
-        return memory.resolveCandidate(input.candidate_id!, input.decision!, input.reason);
+        const resolution = await memory.resolveCandidate(
+          input.candidate_id!,
+          input.decision!,
+          input.reason,
+        );
+        if (!resolution) {
+          throw new Error(`Memory candidate "${input.candidate_id}" not found.`);
+        }
+        return resolution;
       }
       if (input.action === 'propose') {
         // Proposal metadata lives in typed fields (targetMemoryId /

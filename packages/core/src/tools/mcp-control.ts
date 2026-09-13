@@ -125,23 +125,31 @@ async function mcpControlDispatch(
 ): Promise<string> {
   const { action, query, server } = input;
 
+  // Operational failures THROW so the executor records a failed call; a
+  // returned error string was recorded (and shown) as success.
+  const need = (verb: string): string => {
+    if (!server) throw new Error(`\`server\` is required for ${verb}.`);
+    return server;
+  };
   switch (action) {
     case 'list':
       return renderList(deps);
     case 'search':
       return renderSearch(query ?? '', deps);
     case 'enable':
-      return server ? runEnable(server, deps) : '`server` is required for enable.';
+      return runEnable(need('enable'), deps);
     case 'disable':
-      return server ? runDisable(server, deps) : '`server` is required for disable.';
+      return runDisable(need('disable'), deps);
     case 'restart':
-      return server ? runRestart(server, deps) : '`server` is required for restart.';
+      return runRestart(need('restart'), deps);
     case 'activate':
-      return server ? runActivate(server, deps) : '`server` is required for activate.';
+      return runActivate(need('activate'), deps);
     case 'deactivate':
-      return server ? runDeactivate(server, deps) : '`server` is required for deactivate.';
+      return runDeactivate(need('deactivate'), deps);
     default:
-      return `Unknown action "${action}". Use one of: list, search, enable, disable, restart, activate, deactivate.`;
+      throw new Error(
+        `Unknown action "${action}". Use one of: list, search, enable, disable, restart, activate, deactivate.`,
+      );
   }
 }
 
@@ -253,7 +261,7 @@ async function runEnable(
   const cfg = fromConfig ?? (Object.hasOwn(all, name) ? all[name] : undefined);
   if (!cfg) {
     const known = Object.keys(all).join(', ');
-    return `Unknown server "${name}". Available presets: ${known}`;
+    throw new Error(`Unknown server "${name}". Available presets: ${known}`);
   }
 
   // Persist enabled:true using the shared JSON path helper. Called only
@@ -278,7 +286,10 @@ async function runEnable(
     const updated = deps.registry.describe().find((s) => s.name === name);
     return `Enabled and started "${name}"${updated ? ` (${updated.toolCount} tools registered).` : '.'}`;
   } catch (err) {
-    return `Failed to start "${name}": ${toErrorMessage(err)}. Config was left unchanged (server stays disabled).`;
+    throw new Error(
+      `Failed to start "${name}": ${toErrorMessage(err)}. Config was left unchanged (server stays disabled).`,
+      { cause: err },
+    );
   }
 }
 
@@ -294,7 +305,9 @@ async function runDisable(
   // record is JSON-derived.
   const existingEntry = Object.hasOwn(configured, name) ? configured[name] : undefined;
   if (!existingEntry) {
-    return `Server "${name}" is not in config. Add it with \`mcp_control({ action: "enable", server: "${name}" })\`.`;
+    throw new Error(
+      `Server "${name}" is not in config. Add it with \`mcp_control({ action: "enable", server: "${name}" })\`.`,
+    );
   }
 
   // Write to config using the shared JSON path helper. hasOwn-derived value:
@@ -326,16 +339,20 @@ async function runRestart(
   // Phase 3 truthiness sweep: hasOwn guard on the JSON-derived record.
   const configuredEntry = Object.hasOwn(configured, name) ? configured[name] : undefined;
   if (!configuredEntry) {
-    return `Server "${name}" is not configured. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`;
+    throw new Error(
+      `Server "${name}" is not configured. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`,
+    );
   }
 
   try {
     await deps.registry.restart(name);
-    const updated = deps.registry.describe().find((s) => s.name === name);
-    return `${green('✓ Restarted')} "${name}"${updated ? ` (${updated.toolCount} tools registered).` : '.'}`;
   } catch (err) {
-    return `${red('✗ Restart failed')} for "${name}": ${toErrorMessage(err)}`;
+    throw new Error(`${red('✗ Restart failed')} for "${name}": ${toErrorMessage(err)}`, {
+      cause: err,
+    });
   }
+  const updated = deps.registry.describe().find((s) => s.name === name);
+  return `${green('✓ Restarted')} "${name}"${updated ? ` (${updated.toolCount} tools registered).` : '.'}`;
 }
 
 /**
@@ -350,14 +367,20 @@ async function runActivate(
 ): Promise<string> {
   if (!name) return '`server` is required for activate.';
   if (!deps.registry.activateServer) {
-    return `Registry does not support ephemeral activation. Use \`enable\` to start "${name}" instead.`;
+    throw new Error(
+      `Registry does not support ephemeral activation. Use \`enable\` to start "${name}" instead.`,
+    );
   }
   const live = deps.registry.describe().find((s) => s.name === name);
   if (!live) {
-    return `Server "${name}" is not registered. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`;
+    throw new Error(
+      `Server "${name}" is not registered. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`,
+    );
   }
   if (live.state !== 'connected') {
-    return `Server "${name}" is not connected (state: ${live.state}). Use \`enable\` to start it first.`;
+    throw new Error(
+      `Server "${name}" is not connected (state: ${live.state}). Use \`enable\` to start it first.`,
+    );
   }
   if (deps.registry.isActivated?.(name)) {
     return `${green('●')} Server "${name}" tools are already active. Use \`deactivate\` to hide them.`;
@@ -377,7 +400,9 @@ async function runDeactivate(
 ): Promise<string> {
   if (!name) return '`server` is required for deactivate.';
   if (!deps.registry.deactivateServer) {
-    return `Registry does not support ephemeral deactivation. Use \`disable\` to stop "${name}" instead.`;
+    throw new Error(
+      `Registry does not support ephemeral deactivation. Use \`disable\` to stop "${name}" instead.`,
+    );
   }
   if (!deps.registry.isActivated?.(name)) {
     return `Server "${name}" tools are not currently active.`;

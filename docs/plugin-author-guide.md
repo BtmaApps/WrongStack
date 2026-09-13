@@ -314,6 +314,10 @@ api.tools.register({
 });
 ```
 
+To report a failure, **throw** from `execute()` (`ToolValidationError` for bad
+input). Only a throw marks the call failed; a returned `{ ok: false }`,
+`{ status: 'error' }`, or error string is recorded and displayed as success.
+
 See [tool-author-guide.md](tool-author-guide.md) for the full Tool contract
 (streaming, cleanup, permission semantics).
 

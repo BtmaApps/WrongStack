@@ -184,13 +184,16 @@ describe('smart_rename tool', () => {
     plugin.setup(api as never);
     const rename = getTool(api, 'smart_rename');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await rename({
-      path: outside,
-      oldName: 'x',
-      newName: 'y',
-    })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(rename({ path: outside, oldName: 'x', newName: 'y' })).rejects.toThrow(/outside/);
+  });
+
+  it('throws when the source file cannot be read', async () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const rename = getTool(api, 'smart_rename');
+    await expect(rename({ path: 'src/missing.ts', oldName: 'x', newName: 'y' })).rejects.toThrow(
+      /Could not read src\/missing\.ts: .*ENOENT/,
+    );
   });
 
   it('rejects disallowed extensions', async () => {
@@ -199,12 +202,9 @@ describe('smart_rename tool', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const rename = getTool(api, 'smart_rename');
-    const result = (await rename({ path: 'README.md', oldName: 'hello', newName: 'world' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('extension');
+    await expect(rename({ path: 'README.md', oldName: 'hello', newName: 'world' })).rejects.toThrow(
+      /extension/,
+    );
   });
 
   it('requires oldName and newName', async () => {
@@ -213,31 +213,17 @@ describe('smart_rename tool', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const rename = getTool(api, 'smart_rename');
-    const missingOld = (await rename({ path: 'src/util.ts', newName: 'y' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(missingOld.ok).toBe(false);
-    expect(missingOld.error).toContain('oldName');
-
-    const missingNew = (await rename({ path: 'src/util.ts', oldName: 'x' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(missingNew.ok).toBe(false);
-    expect(missingNew.error).toContain('newName');
+    await expect(rename({ path: 'src/util.ts', newName: 'y' })).rejects.toThrow(/oldName/);
+    await expect(rename({ path: 'src/util.ts', oldName: 'x' })).rejects.toThrow(/newName/);
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'smart-rename': { enabled: false } } });
     plugin.setup(api as never);
     const rename = getTool(api, 'smart_rename');
-    const result = (await rename({ path: 'src/util.ts', oldName: 'x', newName: 'y' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(rename({ path: 'src/util.ts', oldName: 'x', newName: 'y' })).rejects.toThrow(
+      /disabled/,
+    );
   });
 });
 
@@ -270,11 +256,8 @@ describe('config parsing', () => {
     plugin.setup(api as never);
     const rename = getTool(api, 'smart_rename');
     setFilesystem({ '/project/src/util.tsx': 'const x = 1;\n' });
-    const result = (await rename({ path: 'src/util.tsx', oldName: 'x', newName: 'y' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('extension');
+    await expect(rename({ path: 'src/util.tsx', oldName: 'x', newName: 'y' })).rejects.toThrow(
+      /extension/,
+    );
   });
 });

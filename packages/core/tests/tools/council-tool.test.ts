@@ -113,6 +113,23 @@ describe('createCouncilTool', () => {
     expect(prompts[3]).toContain('Round 2 of 2');
   });
 
+  it('throws when every seat call fails instead of returning a verdict-shaped result', async () => {
+    const tool = createCouncilTool({
+      defaultProfile: 'fast',
+      caller: {
+        async call() {
+          throw new Error('provider unreachable');
+        },
+      },
+    });
+
+    await expect(
+      tool.execute({ question: 'What should we do?' }, {} as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Council failed[\s\S]*provider unreachable/);
+  });
+
   it('rejects empty, duplicate, and oversized inputs before execution', () => {
     const tool = createCouncilTool({ caller: caller() });
     expect(tool.validate?.({ question: '   ' })).toContain('`question` must not be empty.');

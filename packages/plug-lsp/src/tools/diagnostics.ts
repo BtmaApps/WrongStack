@@ -3,7 +3,7 @@ import { LSP_CONSTANTS } from '../constants.js';
 import { formatDiagnostics } from '../formatters/diagnostics.js';
 import { supportsPullDiagnostics } from '../server/capabilities.js';
 import { pathToUri, uriToPath } from '../utils/uri.js';
-import { requireServer, resolveInputPath, stringifyToolError, type ToolDeps } from './shared.js';
+import { requireServer, resolveInputPath, type ToolDeps, toToolError } from './shared.js';
 
 interface DiagnosticsInput {
   path?: string | undefined;
@@ -60,7 +60,7 @@ export function createDiagnosticsTool(deps: ToolDeps): Tool<DiagnosticsInput, st
           maxTotal: input.limit ?? deps.cfg.maxDiagnosticsTotal,
         });
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

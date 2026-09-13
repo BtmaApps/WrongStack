@@ -24,7 +24,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -387,8 +387,9 @@ const plugin: Plugin = {
         runs?: number | undefined;
         command?: string | undefined;
       }) {
+        // Failures throw: the executor only flags a call as failed when execute rejects.
         if (!cfg.enabled) {
-          return { ok: false, error: 'test-flake-detector is disabled' };
+          throw new Error('test-flake-detector is disabled');
         }
 
         const raw = input as Record<string, unknown>;
@@ -419,11 +420,11 @@ const plugin: Plugin = {
             : 5;
         const command = resolveTestCommand(commandString, testPattern);
         if (!command) {
-          return {
-            ok: false,
-            error:
+          throw new ToolValidationError({
+            message:
               'Unsupported test command or unsafe testPattern. Use vitest, jest, or mocha through a supported package runner, and keep patterns inside the project.',
-          };
+            field: 'command',
+          });
         }
 
         state.invocationCount += 1;
@@ -456,6 +457,12 @@ const plugin: Plugin = {
         }
 
         const all = Array.from(records.values());
+        // Every run failed and no test result was parsed: the command never really ran.
+        if (all.length === 0 && runErrors.length === requestedRuns) {
+          throw new Error(
+            `test command produced no test results in ${requestedRuns} run(s): ${runErrors.slice(0, 3).join('; ')}`,
+          );
+        }
         const flakyTests = all.filter((r) => r.passCount > 0 && r.failCount > 0);
         const alwaysFailing = all.filter((r) => r.passCount === 0 && r.failCount > 0);
         const alwaysPassing = all.filter((r) => r.passCount > 0 && r.failCount === 0);

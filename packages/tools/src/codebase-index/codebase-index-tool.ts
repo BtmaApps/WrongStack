@@ -75,16 +75,13 @@ export const codebaseIndexTool: Tool<CodebaseIndexInput, CodebaseIndexOutput> = 
     }
 
     // If the startup index is still running, tell the agent to wait instead of
-    // firing a second reindex that would just queue behind the mutex.
+    // firing a second reindex that would just queue behind the mutex. The
+    // refusals below THROW: a zero-count payload was recorded as a successful
+    // (empty) index run.
     if (isIndexing()) {
-      return {
-        filesIndexed: 0,
-        symbolsIndexed: 0,
-        langStats: {},
-        durationMs: 0,
-        errors: [],
-        note: 'A full index is already in progress. Retry codebase-index after it completes (check codebase-stats).',
-      };
+      throw new Error(
+        'A full index is already in progress. Retry codebase-index after it completes (check codebase-stats).',
+      );
     }
 
     // Circuit breaker: after repeated failures/timeouts indexing is paused.
@@ -94,16 +91,10 @@ export const codebaseIndexTool: Tool<CodebaseIndexInput, CodebaseIndexOutput> = 
     } else {
       const circuit = indexCircuitBreaker.snapshot();
       if (circuit.state === 'open' && circuit.cooldownRemainingMs > 0) {
-        return {
-          filesIndexed: 0,
-          symbolsIndexed: 0,
-          langStats: {},
-          durationMs: 0,
-          errors: [],
-          note:
-            `Codebase indexing is paused after repeated failures (last: ${circuit.lastFailure ?? 'unknown'}). ` +
+        throw new Error(
+          `Codebase indexing is paused after repeated failures (last: ${circuit.lastFailure ?? 'unknown'}). ` +
             `Auto-retry possible in ${Math.max(1, Math.ceil(circuit.cooldownRemainingMs / 1000))}s; use force: true or run /codebase-reindex to retry immediately.`,
-        };
+        );
       }
     }
 
@@ -150,6 +141,4 @@ export interface CodebaseIndexOutput {
   langStats: Record<string, number>;
   durationMs: number;
   errors: string[];
-  /** Advisory note when the indexer was skipped (e.g. another index in progress). */
-  note?: string | undefined;
 }

@@ -343,8 +343,8 @@ const plugin: Plugin = {
         todos?: unknown;
         result?: unknown;
       }) {
-        if (!cfg.enabled) return { ok: false, error: 'agent-handoff is disabled' };
-        if (!mailbox) return { ok: false, error: 'mailbox not available' };
+        if (!cfg.enabled) throw new Error('agent-handoff is disabled');
+        if (!mailbox) throw new Error('mailbox not available');
         const raw = input as Record<string, unknown>;
         const summary =
           (typeof raw['summary'] === 'string' ? raw['summary'] : undefined) ??
@@ -390,10 +390,10 @@ const plugin: Plugin = {
           return { ok: true, messageId: result.id, to: recipient };
         } catch (err: unknown) {
           state.errorCount += 1;
-          return {
-            ok: false,
-            error: err instanceof Error ? err.message : String(err),
-          };
+          throw new Error(
+            `handoff_note: mailbox send to "${recipient}" failed: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
       },
     });

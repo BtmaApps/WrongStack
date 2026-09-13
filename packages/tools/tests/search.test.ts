@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { searchTool, __clearSearchCache } from '../src/search.js';
+import { searchTool, __clearSearchCache, __getSearchCacheSizeForTest } from '../src/search.js';
 
 /**
  * Mocked-fetch tests for the search tool.
@@ -255,28 +255,33 @@ describe('search engine parsers (realistic fixtures)', () => {
     expect(result.results[0]?.snippet).toContain('WrongStack/WrongStack development');
   });
 
-  it('reports an explicit error with empty results when Google and fallback fetch both fail', async () => {
+  it('throws when Google and the duckduckgo fallback both fail', async () => {
     globalThis.fetch = vi.fn(async () => {
       throw new Error('net down');
     }) as never as typeof globalThis.fetch;
-    const result = await searchTool.execute(
-      { query: 'q', source: 'google' },
-      {} as any,
-      makeOpts(),
-    );
-    expect(result.source).toBe('duckduckgo');
-    expect(result.results).toHaveLength(0);
-    expect(result.error).toMatch(/duckduckgo unreachable/);
+    await expect(
+      searchTool.execute({ query: 'q', source: 'google' }, {} as any, makeOpts()),
+    ).rejects.toThrow(/duckduckgo unreachable/);
   });
 
-  it('reports an explicit error with empty results when Bing and fallback fetch both fail', async () => {
+  it('throws when Bing and the duckduckgo fallback both fail', async () => {
     globalThis.fetch = vi.fn(async () => {
       throw new Error('net down');
     }) as never as typeof globalThis.fetch;
-    const result = await searchTool.execute({ query: 'q', source: 'bing' }, {} as any, makeOpts());
-    expect(result.source).toBe('duckduckgo');
-    expect(result.results).toHaveLength(0);
-    expect(result.error).toMatch(/duckduckgo unreachable/);
+    await expect(
+      searchTool.execute({ query: 'q', source: 'bing' }, {} as any, makeOpts()),
+    ).rejects.toThrow(/duckduckgo unreachable/);
+  });
+
+  it('does not cache a failed search', async () => {
+    __clearSearchCache();
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('net down');
+    }) as never as typeof globalThis.fetch;
+    await expect(
+      searchTool.execute({ query: 'uncached', source: 'duckduckgo' }, {} as any, makeOpts()),
+    ).rejects.toThrow();
+    expect(__getSearchCacheSizeForTest()).toBe(0);
   });
 });
 
@@ -300,14 +305,11 @@ describe('fetchWithTimeout error path', () => {
     }) as never as typeof globalThis.fetch;
 
     const ctx = {} as any;
-    const result = await searchTool.execute(
-      { query: 'test', source: 'duckduckgo' },
-      ctx,
-      makeOpts(),
-    );
-    // Should degrade to empty results + error from the catch block, not throw
-    expect(result.results).toHaveLength(0);
-    expect(result.error).toMatch(/duckduckgo unreachable/);
+    // The fetch failure must surface as a thrown tool error (not an empty,
+    // successful-looking result set).
+    await expect(
+      searchTool.execute({ query: 'test', source: 'duckduckgo' }, ctx, makeOpts()),
+    ).rejects.toThrow(/duckduckgo unreachable/);
   });
 });
 
@@ -326,12 +328,10 @@ describe('anySignal already-aborted', () => {
     ac.abort(); // abort BEFORE passing to execute
 
     const ctx = {} as any;
-    const result = await searchTool.execute({ query: 'test', source: 'duckduckgo' }, ctx, {
-      signal: ac.signal,
-    });
-    // Should degrade to empty results + error, not throw, because anySignal immediately aborted
-    expect(result.results).toHaveLength(0);
-    expect(result.error).toMatch(/duckduckgo unreachable/);
+    // An already-aborted signal fails the fetch, which surfaces as a thrown error.
+    await expect(
+      searchTool.execute({ query: 'test', source: 'duckduckgo' }, ctx, { signal: ac.signal }),
+    ).rejects.toThrow(/duckduckgo unreachable/);
   });
 });
 

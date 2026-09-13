@@ -184,13 +184,9 @@ describe('git-autocommit regressions', () => {
     fsm.existsSync.mockReturnValue(false);
     gitHandler = () => ''; // `git ls-files` finds nothing
     const tools = setup();
-    const res = await tools.git_autocommit!.execute({
-      type: 'fix',
-      message: 'x',
-      files: ['never-existed.ts'],
-    });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/none of the specified files exist/);
+    await expect(
+      tools.git_autocommit!.execute({ type: 'fix', message: 'x', files: ['never-existed.ts'] }),
+    ).rejects.toThrow(/none of the specified files exist/);
   });
 
   it('F4: the trimmed first status line is reported as an external change', async () => {

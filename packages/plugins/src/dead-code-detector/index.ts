@@ -29,7 +29,7 @@
 
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { extname, join, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -299,15 +299,9 @@ async function scan(root: string, depth: number, cfg: DeadCodeDetectorConfig): P
 
 async function resolveScanRoot(rawPath: string): Promise<string> {
   const resolved = resolve(process.cwd(), rawPath);
-  try {
-    const stats = await stat(resolved);
-    if (!stats.isDirectory()) {
-      return resolve(resolved, '..');
-    }
-  } catch {
-    // fall through
-  }
-  return resolved;
+  // A missing path must not silently scan nothing and report no dead code.
+  const stats = await stat(resolved);
+  return stats.isDirectory() ? resolved : resolve(resolved, '..');
 }
 
 function toPosix(p: string): string {
@@ -468,7 +462,7 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path?: string; depth?: number }) {
-        if (!cfg.enabled) return { ok: false, error: 'dead-code-detector is disabled' };
+        if (!cfg.enabled) throw new Error('dead-code-detector is disabled');
 
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawPath =
@@ -488,18 +482,25 @@ const plugin: Plugin = {
         const depth = Math.max(0, Math.min(Math.floor(rawDepth), cfg.maxDepth));
 
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'scan path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'scan path is outside the project root',
+            field: 'path',
+          });
         }
 
         state.scanCount += 1;
 
-        const scanRoot = await resolveScanRoot(rawPath);
         let result: ScanResult;
+        let scanRoot: string;
         try {
+          scanRoot = await resolveScanRoot(rawPath);
           result = await scan(scanRoot, depth, cfg);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(
+            `dead_code_scan failed for ${rawPath}: ${err instanceof Error ? err.message : String(err)}`,
+            { cause: err },
+          );
         }
 
         return {

@@ -37,22 +37,32 @@ describe('jsonTool', () => {
     expect(jsonTool.mutating).toBe(false);
   });
 
-  it('returns error when no file or data provided', async () => {
-    const result = await jsonTool.execute({});
-    expect(result.error).toBe('Provide file or data');
+  it('throws when no file or data provided', async () => {
+    await expect(jsonTool.execute({})).rejects.toThrow(/provide `file` or `data`/);
   });
 
   it('parses valid JSON from data', async () => {
     const result = await jsonTool.execute({ data: '{"foo":123}' });
     expect(result.data).toEqual({ foo: 123 });
     expect(result.type).toBe('object');
-    expect(result.error).toBeUndefined();
   });
 
-  it('returns parse error for invalid JSON', async () => {
-    const result = await jsonTool.execute({ data: '{invalid}' });
-    expect(result.error).toContain('Parse failed');
-    expect(result.data).toBeNull();
+  it('throws a parse error for invalid JSON', async () => {
+    await expect(jsonTool.execute({ data: '{invalid}' })).rejects.toThrow(/parse failed/i);
+  });
+
+  it('reports invalid JSON as valid:false (not a failure) in syntax-check mode', async () => {
+    const bad = await jsonTool.execute({ data: '{invalid}', validate: true });
+    expect(bad.valid).toBe(false);
+    expect(bad.errors?.[0]).toContain('Parse failed');
+    const good = await jsonTool.execute({ data: '{"a":1}', validate: true });
+    expect(good.valid).toBe(true);
+  });
+
+  it('throws on an unknown action', async () => {
+    await expect(jsonTool.execute({ action: 'explode' as never, data: '{}' })).rejects.toThrow(
+      /unknown action/,
+    );
   });
 
   it('reads from file', async () => {
@@ -61,9 +71,10 @@ describe('jsonTool', () => {
     expect(result.data).toEqual({ a: 1 });
   });
 
-  it('returns error for non-existent file', async () => {
-    const result = await jsonTool.execute({ file: '/nonexistent.json' }, makeCtx());
-    expect(result.error).toContain('Could not read file');
+  it('throws for a non-existent file', async () => {
+    await expect(
+      jsonTool.execute({ file: path.join(tmpDir, 'nonexistent.json') }, makeCtx()),
+    ).rejects.toThrow(/could not read file/);
   });
 
   it('extracts keys', async () => {
@@ -198,9 +209,10 @@ describe('jsonTool action: query', () => {
     expect(type.query_result).toBe('null');
   });
 
-  it('returns error when query is missing', async () => {
-    const result = await jsonTool.execute({ action: 'query', data: '{}' });
-    expect(result.error).toContain('query is required');
+  it('throws when query is missing', async () => {
+    await expect(jsonTool.execute({ action: 'query', data: '{}' })).rejects.toThrow(
+      'query is required',
+    );
   });
 });
 
@@ -304,9 +316,10 @@ describe('jsonTool action: validate', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('returns error when schema is missing', async () => {
-    const result = await jsonTool.execute({ action: 'validate', data: '{}' });
-    expect(result.error).toContain('schema is required');
+  it('throws when schema is missing', async () => {
+    await expect(jsonTool.execute({ action: 'validate', data: '{}' })).rejects.toThrow(
+      'schema is required',
+    );
   });
 
   // Security scan 2026-08-04, finding M4. `schema.pattern` reached a bare
@@ -379,9 +392,10 @@ describe('jsonTool action: transform', () => {
     expect(result.steps?.length).toBe(2);
   });
 
-  it('returns error when transforms is missing', async () => {
-    const result = await jsonTool.execute({ action: 'transform', data: '{}' });
-    expect(result.error).toContain('transforms array is required');
+  it('throws when transforms is missing', async () => {
+    await expect(jsonTool.execute({ action: 'transform', data: '{}' })).rejects.toThrow(
+      'transforms array is required',
+    );
   });
 });
 
@@ -419,9 +433,10 @@ describe('jsonTool action: merge', () => {
     expect(result.result).toBe(10);
   });
 
-  it('returns error when base or patch is missing', async () => {
-    const result = await jsonTool.execute({ action: 'merge', base: {} });
-    expect(result.error).toContain('base and patch are required');
+  it('throws when base or patch is missing', async () => {
+    await expect(jsonTool.execute({ action: 'merge', base: {} })).rejects.toThrow(
+      'base and patch are required',
+    );
   });
 
   describe('path containment (CWE-22)', () => {
@@ -434,23 +449,25 @@ describe('jsonTool action: merge', () => {
       const sub = path.join(tmpDir, 'sub');
       await fs.mkdir(sub, { recursive: true });
 
-      const result = await jsonTool.execute({ file: secret }, {
-        cwd: sub,
-        workingDir: sub,
-        tools: [],
-        projectRoot: sub,
-      } as never);
-      expect(result.data).toBeNull();
-      expect(result.error).toBeTruthy();
+      await expect(
+        jsonTool.execute({ file: secret }, {
+          cwd: sub,
+          workingDir: sub,
+          tools: [],
+          projectRoot: sub,
+        } as never),
+      ).rejects.toThrow(/outside project root/);
     });
 
     it('blocks a ../ traversal escape for the query action', async () => {
-      const result = await jsonTool.execute(
-        { action: 'query', file: '../../../../etc/passwd', query: 'a' },
-        { cwd: tmpDir, workingDir: tmpDir, tools: [], projectRoot: tmpDir } as never,
-      );
-      expect(result.data).toBeNull();
-      expect(result.error).toBeTruthy();
+      await expect(
+        jsonTool.execute({ action: 'query', file: '../../../../etc/passwd', query: 'a' }, {
+          cwd: tmpDir,
+          workingDir: tmpDir,
+          tools: [],
+          projectRoot: tmpDir,
+        } as never),
+      ).rejects.toThrow(/outside project root/);
     });
   });
 });
@@ -465,46 +482,39 @@ describe('jsonTool RAM guard (file-size cap)', () => {
     const big = '{"x":"' + ' '.repeat(17 * 1024 * 1024) + '"}';
     const filePath = path.join(tmpDir, 'big.json');
     await fs.writeFile(filePath, big, 'utf8');
-    const result = await jsonTool.execute({ file: filePath }, makeCtx());
-    expect(result.data).toBeNull();
-    expect(result.error).toContain('exceeds the');
-    expect(result.error).toContain('16 MiB');
+    await expect(jsonTool.execute({ file: filePath }, makeCtx())).rejects.toThrow(
+      /exceeds the 16 MiB/,
+    );
   });
 
   it('query action rejects a file exceeding the size limit', async () => {
     const big = '{"x":"' + ' '.repeat(17 * 1024 * 1024) + '"}';
     const filePath = path.join(tmpDir, 'big-query.json');
     await fs.writeFile(filePath, big, 'utf8');
-    const result = await jsonTool.execute(
-      { action: 'query', file: filePath, query: 'x' },
-      makeCtx(),
-    );
-    expect(result.data).toBeNull();
-    expect(result.error).toContain('exceeds the');
+    await expect(
+      jsonTool.execute({ action: 'query', file: filePath, query: 'x' }, makeCtx()),
+    ).rejects.toThrow('exceeds the');
   });
 
   it('validate action rejects a file exceeding the size limit', async () => {
     const big = '{"x":"' + ' '.repeat(17 * 1024 * 1024) + '"}';
     const filePath = path.join(tmpDir, 'big-validate.json');
     await fs.writeFile(filePath, big, 'utf8');
-    const result = await jsonTool.execute(
-      { action: 'validate', file: filePath, schema: { type: 'object' } },
-      makeCtx(),
-    );
-    expect(result.data).toBeNull();
-    expect(result.error).toContain('exceeds the');
+    await expect(
+      jsonTool.execute(
+        { action: 'validate', file: filePath, schema: { type: 'object' } },
+        makeCtx(),
+      ),
+    ).rejects.toThrow('exceeds the');
   });
 
   it('transform action rejects a file exceeding the size limit', async () => {
     const big = '{"x":"' + ' '.repeat(17 * 1024 * 1024) + '"}';
     const filePath = path.join(tmpDir, 'big-transform.json');
     await fs.writeFile(filePath, big, 'utf8');
-    const result = await jsonTool.execute(
-      { action: 'transform', file: filePath, transforms: ['x'] },
-      makeCtx(),
-    );
-    expect(result.data).toBeNull();
-    expect(result.error).toContain('exceeds the');
+    await expect(
+      jsonTool.execute({ action: 'transform', file: filePath, transforms: ['x'] }, makeCtx()),
+    ).rejects.toThrow('exceeds the');
   });
 
   it('parse action succeeds on a file just under the size limit', async () => {

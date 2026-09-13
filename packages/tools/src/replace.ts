@@ -414,6 +414,16 @@ async function resolveFiles(
     const stat = await fs.stat(absPath).catch(() => null);
     if (stat?.isFile()) {
       resolved.push(absPath);
+      continue;
+    }
+    // A literally named file that does not exist at all is a bad input, not
+    // "0 replacements": silently dropping it reads as a successful no-op.
+    // (A dangling symlink still exists via lstat and stays a silent skip.)
+    if (!stat && !(await fs.lstat(absPath).catch(() => null))) {
+      throw new ToolValidationError({
+        message: `replace: file not found "${p}"`,
+        field: 'files',
+      });
     }
   }
 

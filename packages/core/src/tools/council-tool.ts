@@ -111,7 +111,17 @@ export function createCouncilTool(
         ...(input.profile ? { profile: input.profile } : {}),
         signal,
       };
-      return orchestrator.ask(question);
+      const result = await orchestrator.ask(question);
+      // abstained/denied/decided are verdicts; failed/cancelled, or a panel
+      // where no seat produced a usable ballot, mean the Council never ran.
+      const noSeatRan = result.validVoteCount === 0 && (result.errors?.length ?? 0) > 0;
+      if (result.status === 'failed' || result.status === 'cancelled' || noSeatRan) {
+        const detail = result.errors?.length ? ` Errors: ${result.errors.join('; ')}` : '';
+        throw new Error(
+          `Council ${result.status === 'cancelled' ? 'was cancelled' : 'failed'}: ${result.reason ?? 'no valid votes'}.${detail}`,
+        );
+      }
+      return result;
     },
     validate: (input) => validateCouncilToolInput(input, profileIds),
   };

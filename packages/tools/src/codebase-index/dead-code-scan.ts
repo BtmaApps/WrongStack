@@ -21,6 +21,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
+import { safeResolveProjectPath } from '../_util.js';
 import { detectLang } from './languages.js';
 import type { SymbolKind, SymbolLang } from './schema.js';
 import { codebaseIndexDirOverride, type IndexStore, indexStorePool } from './writer.js';
@@ -121,13 +123,47 @@ export const deadCodeScanTool: Tool<DeadCodeScanInput, DeadCodeScanOutput> = {
   },
   async execute(input, ctx, _execOpts) {
     const startMs = Date.now();
-    const projectRoot = input.projectRoot ?? ctx.projectRoot ?? ctx.cwd ?? process.cwd();
+    // `permission: 'auto'`: model-supplied paths must stay inside the project
+    // (the scan reads package.json and barrel files under them).
+    const projectRoot =
+      input.projectRoot !== undefined
+        ? await safeResolveProjectPath(input.projectRoot, ctx)
+        : (ctx.projectRoot ?? ctx.cwd ?? process.cwd());
     const indexDir = input.indexDir ?? codebaseIndexDirOverride(ctx) ?? undefined;
 
-    const result = runDeadCodeScan(projectRoot, {
-      indexDir,
-      userEntryPoints: input.entryPoints,
-    });
+    let userEntryPoints: string[] | undefined;
+    if (input.entryPoints) {
+      userEntryPoints = [];
+      for (const ep of input.entryPoints) {
+        const resolved = await safeResolveProjectPath(
+          path.isAbsolute(ep) ? ep : path.resolve(projectRoot, ep),
+          ctx,
+        );
+        // A missing seed used to be dropped silently, widening the "dead" set.
+        if (!fs.existsSync(resolved)) {
+          throw new ToolValidationError({
+            message: `dead-code-scan: entry point not found: "${ep}"`,
+            field: 'entryPoints',
+          });
+        }
+        userEntryPoints.push(resolved);
+      }
+    }
+
+    const result = runDeadCodeScan(projectRoot, { indexDir, userEntryPoints });
+
+    // An empty index reported "0 dead symbols" and a seedless scan reported
+    // EVERYTHING dead — both looked like real answers.
+    if (result.stats.totalSymbols === 0) {
+      throw new Error(
+        `dead-code-scan: the codebase index for "${projectRoot}" has no symbols. Run codebase-index, then retry.`,
+      );
+    }
+    if (result.stats.alive === 0) {
+      throw new Error(
+        `dead-code-scan: no indexed entry point was found under "${projectRoot}" (package.json main/bin/exports/types or src/index.ts), so reachability cannot be computed. Pass \`entryPoints\`.`,
+      );
+    }
 
     return {
       ...result,

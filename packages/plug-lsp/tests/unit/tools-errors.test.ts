@@ -42,7 +42,7 @@ describe('tool error and edge paths', () => {
     expect(stringifyToolError('wat')).toContain('wat');
   });
 
-  it('returns capability and not-found errors from kept tools', async () => {
+  it('throws capability and not-found errors from kept tools', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'plug-lsp-tools-'));
     const file = path.join(root, 'a.ts');
     await fs.writeFile(file, 'const a = 1;');
@@ -50,15 +50,19 @@ describe('tool error and edge paths', () => {
     const deps = makeDeps(server);
     const ctx = { cwd: root } as never;
     const opts = { signal: new AbortController().signal };
-    expect(
-      await createDefinitionTool(deps).execute({ path: file, line: 1, character: 1 }, ctx, opts),
-    ).toContain('does not support definition');
-    expect(
-      await createCompletionTool(deps).execute({ path: file, line: 1, character: 1 }, ctx, opts),
-    ).toContain('does not support completion');
-    expect(
-      await createDiagnosticsTool(makeDeps(null)).execute({ path: file }, ctx, opts),
-    ).toContain('LSP_SERVER_NOT_FOUND');
+    // A returned error string was recorded by the executor as a successful call.
+    await expect(
+      createDefinitionTool(deps).execute({ path: file, line: 1, character: 1 }, ctx, opts),
+    ).rejects.toThrow('does not support definition');
+    await expect(
+      createCompletionTool(deps).execute({ path: file, line: 1, character: 1 }, ctx, opts),
+    ).rejects.toThrow('does not support completion');
+    await expect(
+      createDiagnosticsTool(makeDeps(null)).execute({ path: file }, ctx, opts),
+    ).rejects.toMatchObject({
+      code: LSPErrorCode.ServerNotFound,
+      message: expect.stringContaining('LSP_SERVER_NOT_FOUND'),
+    });
   });
 
   it('covers diagnostics workspace mode and rename no-edit edge cases', async () => {
@@ -108,13 +112,13 @@ describe('tool error and edge paths', () => {
     ).toBe('Rename produced no edits.');
 
     server.capabilities = {};
-    expect(
-      await createRenameTool(deps).execute(
+    await expect(
+      createRenameTool(deps).execute(
         { path: file, line: 1, character: 1, new_name: 'b' },
         ctx,
         opts,
       ),
-    ).toContain('does not support rename');
+    ).rejects.toThrow('does not support rename');
 
     const missingDeps = makeDeps(null, [{ path: file, uri }]);
     expect(await createDiagnosticsTool(missingDeps).execute({}, ctx, opts)).toBe(

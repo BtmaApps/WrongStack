@@ -24,9 +24,9 @@
  * @public
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import {
   BoundedMap,
   collectSourceFilesAsync,
@@ -482,7 +482,8 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path?: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'refactor-suggester is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('refactor-suggester is disabled');
 
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawPath =
@@ -497,7 +498,20 @@ const plugin: Plugin = {
           (typeof raw['targetFile'] === 'string' ? raw['targetFile'] : undefined) ??
           '.';
         if (!withinProject(rawPath)) {
-          return { ok: false, error: 'path is outside the project root' };
+          throw new ToolValidationError({
+            message: 'path is outside the project root',
+            field: 'path',
+          });
+        }
+        // The file walk treats a missing root as an empty tree, which read as a clean scan.
+        try {
+          await stat(resolve(process.cwd(), rawPath));
+        } catch (err) {
+          throw new ToolValidationError({
+            message: `path does not exist or cannot be read: ${rawPath}`,
+            field: 'path',
+            cause: err,
+          });
         }
 
         state.scanCount += 1;
@@ -506,7 +520,7 @@ const plugin: Plugin = {
           result = await scanPath(rawPath, cfg);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(`refactor scan failed: ${String(err)}`, { cause: err });
         }
         state.suggestionCount += result.suggestions.length;
 

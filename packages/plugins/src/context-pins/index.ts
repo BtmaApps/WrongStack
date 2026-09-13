@@ -34,7 +34,7 @@
 
 import * as fs from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ const plugin: Plugin = {
       category: 'Memory',
       mutating: true,
       async execute(input: { text: string; label?: string | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'context-pins is disabled' };
+        if (!cfg.enabled) throw new Error('context-pins is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawText =
           input.text ??
@@ -277,12 +277,13 @@ const plugin: Plugin = {
           raw['fact'] ??
           raw['data'];
         const text = String(rawText ?? '').trim();
-        if (!text) return { ok: false, error: 'pin text must not be empty' };
+        if (!text) {
+          throw new ToolValidationError({ message: 'pin text must not be empty', field: 'text' });
+        }
         if (state.pins.length >= cfg.maxPins) {
-          return {
-            ok: false,
-            error: `pin limit reached (${cfg.maxPins}). Remove a pin first with pin_remove.`,
-          };
+          throw new Error(
+            `pin limit reached (${cfg.maxPins}). Remove a pin first with pin_remove.`,
+          );
         }
         const pin: Pin = {
           id: `pin-${state.nextId++}`,
@@ -313,7 +314,7 @@ const plugin: Plugin = {
       category: 'Memory',
       mutating: true,
       async execute(input: { id?: string | undefined; label?: string | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'context-pins is disabled' };
+        if (!cfg.enabled) throw new Error('context-pins is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const key = String(
           input.id ??
@@ -324,11 +325,12 @@ const plugin: Plugin = {
             raw['key'] ??
             '',
         ).trim();
-        if (!key) return { ok: false, error: 'id or label is required' };
+        if (!key)
+          throw new ToolValidationError({ message: 'id or label is required', field: 'id' });
         const before = state.pins.length;
         state.pins = state.pins.filter((p) => p.id !== key && p.label !== key);
         const removed = before - state.pins.length;
-        if (removed === 0) return { ok: false, error: `no pin matches "${key}"` };
+        if (removed === 0) throw new Error(`no pin matches "${key}"`);
         state.removals += removed;
         api.metrics.counter('removals', removed);
         const persisted = await persistPins(cfg.filePath);

@@ -1,5 +1,6 @@
 import * as dns from 'node:dns/promises';
 import * as net from 'node:net';
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { embeddedIPv4, expandIPv6 } from '../utils/ip-guard.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
@@ -74,7 +75,7 @@ interface ProviderManageInput {
 }
 
 interface ProviderManageOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
   providers?: string[];
 }
@@ -287,23 +288,23 @@ export function createProviderManageTool(
 
       if (input.action === 'add') {
         if (!input.provider || !input.type) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: 'Provide "provider" (id) and "type" to add a provider.',
-          };
+            field: !input.provider ? 'provider' : 'type',
+          });
         }
         if (providers[input.provider]) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: `Provider "${input.provider}" already exists. Use "configure" to update.`,
-          };
+            field: 'provider',
+          });
         }
         if (input.baseUrl) {
           const invalid = await validateProviderBaseUrl(input.baseUrl);
-          if (invalid) return { status: 'error', message: invalid };
+          if (invalid) throw new ToolValidationError({ message: invalid, field: 'baseUrl' });
         }
         const borrowed = rejectBorrowedEnvVars(providers, input.provider, input.envVars);
-        if (borrowed) return { status: 'error', message: borrowed };
+        if (borrowed) throw new ToolValidationError({ message: borrowed, field: 'envVars' });
         const entry: Record<string, unknown> = { type: input.type };
         if (input.models) entry.models = input.models;
         if (input.baseUrl) entry.baseUrl = input.baseUrl;
@@ -324,17 +325,20 @@ export function createProviderManageTool(
 
       if (input.action === 'configure') {
         if (!input.provider) {
-          return { status: 'error', message: 'Provide "provider" id to configure.' };
+          throw new ToolValidationError({
+            message: 'Provide "provider" id to configure.',
+            field: 'provider',
+          });
         }
         if (!providers[input.provider]) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: `Provider "${input.provider}" not found. Use "add" first or check "list".`,
-          };
+            field: 'provider',
+          });
         }
         if (input.baseUrl) {
           const invalid = await validateProviderBaseUrl(input.baseUrl);
-          if (invalid) return { status: 'error', message: invalid };
+          if (invalid) throw new ToolValidationError({ message: invalid, field: 'baseUrl' });
         }
         const previous: Record<string, unknown> = { ...providers[input.provider] };
         const entry: Record<string, unknown> = { ...previous };
@@ -368,7 +372,7 @@ export function createProviderManageTool(
         }
 
         const borrowed = rejectBorrowedEnvVars(providers, input.provider, input.envVars);
-        if (borrowed) return { status: 'error', message: borrowed };
+        if (borrowed) throw new ToolValidationError({ message: borrowed, field: 'envVars' });
 
         providers[input.provider] = entry;
         await opts.updateConfig((cfg) => {
@@ -386,16 +390,22 @@ export function createProviderManageTool(
 
       if (input.action === 'remove') {
         if (!input.provider) {
-          return { status: 'error', message: 'Provide "provider" id to remove.' };
+          throw new ToolValidationError({
+            message: 'Provide "provider" id to remove.',
+            field: 'provider',
+          });
         }
         if (!providers[input.provider]) {
-          return { status: 'error', message: `Provider "${input.provider}" not found.` };
+          throw new ToolValidationError({
+            message: `Provider "${input.provider}" not found.`,
+            field: 'provider',
+          });
         }
         if (input.provider === leaderProvider) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: `Cannot remove the active leader provider "${input.provider}". Switch the leader first.`,
-          };
+            field: 'provider',
+          });
         }
         delete providers[input.provider];
         await opts.updateConfig((cfg) => {
@@ -404,7 +414,10 @@ export function createProviderManageTool(
         return { status: 'ok', message: `✓ Removed provider: ${input.provider}` };
       }
 
-      return { status: 'error', message: `Unknown action: "${input.action}".` };
+      throw new ToolValidationError({
+        message: `Unknown action: "${input.action}".`,
+        field: 'action',
+      });
     },
   };
 }

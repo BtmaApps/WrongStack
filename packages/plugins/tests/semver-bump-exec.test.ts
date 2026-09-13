@@ -162,7 +162,7 @@ describe('semver_bump', () => {
   it('errors when there is no package.json', async () => {
     fsm.existsSync.mockReturnValue(false);
     const { tools } = setup();
-    expect((await tools.semver_bump!.execute({})).error).toMatch(/No package.json/);
+    await expect(tools.semver_bump!.execute({})).rejects.toThrow(/No package.json/);
   });
 
   it('dry-runs an explicit patch bump', async () => {
@@ -227,9 +227,9 @@ describe('semver_bump', () => {
       return '';
     };
     const { tools } = setup();
-    const res = await tools.semver_bump!.execute({ part: 'auto', dry_run: true });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Git error/);
+    await expect(tools.semver_bump!.execute({ part: 'auto', dry_run: true })).rejects.toThrow(
+      /Git error/,
+    );
   });
 
   it('applies the bump by writing manifests when no bump script exists', async () => {
@@ -284,9 +284,31 @@ describe('semver_bump', () => {
       return '';
     });
     const { tools } = setup();
+    await expect(tools.semver_bump!.execute({ part: 'patch' })).rejects.toThrow(
+      /bump script failed/,
+    );
+  });
+
+  it('does not claim a tag or commit that git failed to create', async () => {
+    fsm.existsSync.mockImplementation((p: string) => {
+      const s = String(p);
+      return s.endsWith('package.json') || s.endsWith('bump-version.mjs');
+    });
+    gitHandler = (args) => {
+      if (args[0] === 'commit') throw new Error('pre-commit hook failed');
+      if (args[0] === 'tag') throw new Error('tag v1.2.4 already exists');
+      return '';
+    };
+    const { tools } = setup();
     const res = await tools.semver_bump!.execute({ part: 'patch' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/bump script failed/);
+    expect(res.ok).toBe(true);
+    expect(res.tag).toBeNull();
+    expect(res.tagged).toBe(false);
+    expect(res.committed).toBe(false);
+    expect(res.warnings as string[]).toEqual([
+      expect.stringMatching(/commit failed: .*pre-commit hook failed/),
+      expect.stringMatching(/tag failed: .*already exists/),
+    ]);
   });
 
   it('resolves auto to patch when there are no commits (empty log)', async () => {
@@ -435,9 +457,36 @@ describe('semver_changelog', () => {
       throw new Error('bad range');
     };
     const { tools } = setup();
-    const res = await tools.semver_changelog!.execute({ from: 'a', to: 'b' });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Failed to get git log/);
+    await expect(tools.semver_changelog!.execute({ from: 'a', to: 'b' })).rejects.toThrow(
+      /Failed to get git log/,
+    );
+  });
+
+  it('refuses refs that git would parse as options', async () => {
+    const calls: string[][] = [];
+    gitHandler = (args) => {
+      calls.push(args);
+      return '';
+    };
+    const { tools } = setup();
+    await expect(
+      tools.semver_changelog!.execute({ from: '--output=pwned.txt', to: 'HEAD' }),
+    ).rejects.toThrow(/from is not a valid git ref/);
+    await expect(tools.semver_changelog!.execute({ to: '--output=pwned.txt' })).rejects.toThrow(
+      /to is not a valid git ref/,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  it('honours `to` when `from` is omitted', async () => {
+    const calls: string[][] = [];
+    gitHandler = (args) => {
+      calls.push(args);
+      return 'h1 fix: x';
+    };
+    const { tools } = setup();
+    await tools.semver_changelog!.execute({ to: 'v2.0.0' });
+    expect(calls[0]).toEqual(['log', '-30', 'v2.0.0', '--format=%H%x1f%s%x1f%b%x1e']);
   });
 });
 

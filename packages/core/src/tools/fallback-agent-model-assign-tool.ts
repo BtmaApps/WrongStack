@@ -1,4 +1,5 @@
 import { isValidMatrixKey } from '../coordination/model-matrix.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { isFavoriteRef, notFavoriteError, profileList } from './fallback-manage-helpers.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
@@ -51,7 +52,7 @@ interface AgentModelAssignInput {
 }
 
 interface AgentModelAssignOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
   role?: string;
 }
@@ -86,12 +87,11 @@ export function createAgentModelAssignTool(
         input.model ? 'model' : null,
       ].filter(Boolean);
       if (modes.length > 1) {
-        return {
-          status: 'error',
+        throw new ToolValidationError({
           message:
             `Conflicting assignment modes: ${modes.join(' + ')}. ` +
             'Use exactly one: clear=true, profile="name", or model="name" (optionally with provider).',
-        };
+        });
       }
 
       if (input.role === 'list') {
@@ -111,12 +111,12 @@ export function createAgentModelAssignTool(
       }
 
       if (!isValidMatrixKey(input.role)) {
-        return {
-          status: 'error',
+        throw new ToolValidationError({
           message:
             `"${input.role}" is not a valid matrix key. Use a catalog role (e.g. "security-scanner"), ` +
             'a phase (e.g. "review"), or "*" for the fleet-wide default.',
-        };
+          field: 'role',
+        });
       }
 
       if (input.clear) {
@@ -146,10 +146,10 @@ export function createAgentModelAssignTool(
       if (input.profile && !input.model) {
         const profiles = profileList(config);
         if (!profiles[input.profile]) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: `Profile "${input.profile}" not found. Create it with fallback_profile_manage first.`,
-          };
+            field: 'profile',
+          });
         }
         const matrix = { ...((config.modelMatrix ?? {}) as Record<string, unknown>) };
         matrix[input.role] = { fallbackProfile: input.profile };
@@ -163,7 +163,7 @@ export function createAgentModelAssignTool(
         const effectiveProvider = input.provider ?? config.provider;
         const ref = `${effectiveProvider}/${input.model}`;
         if (!isFavoriteRef(ref, config)) {
-          return { status: 'error', message: notFavoriteError(ref, config) };
+          throw new ToolValidationError({ message: notFavoriteError(ref, config), field: 'model' });
         }
         const matrix = { ...((config.modelMatrix ?? {}) as Record<string, unknown>) };
         const previousRuntime = (matrix[input.role] as Record<string, unknown>)?.modelRuntime;
@@ -189,7 +189,10 @@ export function createAgentModelAssignTool(
       if (input.provider) {
         const ref = `${input.provider}/`;
         if (!isFavoriteRef(ref, config)) {
-          return { status: 'error', message: notFavoriteError(ref, config) };
+          throw new ToolValidationError({
+            message: notFavoriteError(ref, config),
+            field: 'provider',
+          });
         }
         const matrix = { ...((config.modelMatrix ?? {}) as Record<string, unknown>) };
         const previousRuntime = (matrix[input.role] as Record<string, unknown>)?.modelRuntime;
@@ -203,10 +206,9 @@ export function createAgentModelAssignTool(
         return { status: 'ok', message: `✓ "${input.role}" → ${input.provider} (provider only)` };
       }
 
-      return {
-        status: 'error',
+      throw new ToolValidationError({
         message: 'Provide model, profile, or clear=true for the role assignment.',
-      };
+      });
     },
   };
 }

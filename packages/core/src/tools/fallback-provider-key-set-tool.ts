@@ -1,3 +1,4 @@
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 import { storeProviderKey } from './fallback-provider-key-store.js';
@@ -48,7 +49,7 @@ interface ProviderKeySetInput {
 }
 
 interface ProviderKeySetOutput {
-  status: 'ok' | 'error' | 'needs_key';
+  status: 'ok' | 'needs_key';
   message: string;
 }
 
@@ -81,30 +82,31 @@ export function createProviderKeySetTool(
       };
 
       if (input.key && input.envVar) {
-        return {
-          status: 'error',
+        throw new ToolValidationError({
           message:
             'Provide either key (direct, visible to LLM) OR envVar (reads from environment, ' +
             'never visible to LLM), not both. Use envVar for security.',
-        };
+          field: 'key',
+        });
       }
 
       if (!input.key && !input.envVar) {
         if (opts.requestInput) {
+          let value: string;
           try {
-            const value = await opts.requestInput(
+            value = await opts.requestInput(
               `Enter API key for "${input.provider}" (will be stored securely, LLM will not see it):`,
             );
-            if (!value || value.trim().length === 0) {
-              return { status: 'error', message: 'No key was entered. Operation cancelled.' };
-            }
-            return storeProviderKey(providers, input, value.trim(), opts);
           } catch (err) {
-            return {
-              status: 'error',
-              message: `Interactive input failed or was cancelled: ${err instanceof Error ? err.message : String(err)}`,
-            };
+            throw new Error(
+              `Interactive input failed or was cancelled: ${err instanceof Error ? err.message : String(err)}`,
+              { cause: err },
+            );
           }
+          if (!value || value.trim().length === 0) {
+            throw new Error('No key was entered. Operation cancelled.');
+          }
+          return storeProviderKey(providers, input, value.trim(), opts);
         }
         return {
           status: 'needs_key',
@@ -120,21 +122,17 @@ export function createProviderKeySetTool(
       if (input.envVar) {
         const envValue = process.env[input.envVar];
         if (!envValue) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message:
               `Environment variable "${input.envVar}" is not set or empty. ` +
               `Set it first or use a different envVar.`,
-          };
+            field: 'envVar',
+          });
         }
         return storeProviderKey(providers, input, envValue, opts);
       }
 
-      if (input.key) {
-        return storeProviderKey(providers, input, input.key, opts);
-      }
-
-      return { status: 'error', message: 'Unexpected — no key source available.' };
+      return storeProviderKey(providers, input, input.key!, opts);
     },
   };
 }

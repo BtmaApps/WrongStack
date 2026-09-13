@@ -283,34 +283,18 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
     const isBackground = !!(input.run_in_background || input.background);
     const registry = getProcessRegistry();
 
+    // Refusals and launch failures below THROW: a returned `error` field is
+    // recorded by the executor as a successful call. Non-zero exits, timeouts
+    // and aborts remain data (the command did run).
     if (!registry.beforeCall(isBackground)) {
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error:
-            'pwsh: circuit breaker open — too many consecutive failures or slow calls. Use /kill to inspect or /kill reset to recover.',
-        },
-      };
-      return;
+      throw new Error(
+        'pwsh: circuit breaker open — too many consecutive failures or slow calls. Use /kill to inspect or /kill reset to recover.',
+      );
     }
 
     const killCheck = await checkAndBlockKillCommand(input.command);
     if (killCheck.blocked) {
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error: `pwsh: ${killCheck.reason}`,
-        },
-      };
-      return;
+      throw new Error(`pwsh: ${killCheck.reason}`);
     }
 
     const isWin = os.platform() === 'win32';
@@ -325,17 +309,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
     try {
       targetCwd = await safeResolveReal(input.workdir ?? ctx.workingDir ?? ctx.projectRoot, ctx);
     } catch (err) {
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error: `pwsh: ${(err as Error).message}`,
-        },
-      };
-      return;
+      throw new Error(`pwsh: ${(err as Error).message}`, { cause: err });
     }
 
     const startedAt = Date.now();
@@ -372,17 +346,9 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
           timedOut: false,
           endedAt: new Date().toISOString(),
         });
-        yield {
-          type: 'final',
-          output: {
-            output: '',
-            exit_code: 1,
-            timed_out: false,
-            pid: null,
-            error: `pwsh: spawn failed: ${err instanceof Error ? err.message : String(err)}`,
-          },
-        };
-        return;
+        throw new Error(`pwsh: spawn failed: ${err instanceof Error ? err.message : String(err)}`, {
+          cause: err,
+        });
       }
 
       const pid = child.pid;
@@ -476,17 +442,7 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       }
 
       completeBackground(1);
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error: 'pwsh: failed to obtain PID for background process',
-        },
-      };
-      return;
+      throw new Error('pwsh: failed to obtain PID for background process');
     }
 
     // Foreground / Synchronous execution
@@ -521,17 +477,9 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
         timedOut: false,
         endedAt: new Date().toISOString(),
       });
-      yield {
-        type: 'final',
-        output: {
-          output: '',
-          exit_code: 1,
-          timed_out: false,
-          pid: null,
-          error: `pwsh: spawn failed: ${err instanceof Error ? err.message : String(err)}`,
-        },
-      };
-      return;
+      throw new Error(`pwsh: spawn failed: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err,
+      });
     }
 
     const pid = child.pid;
@@ -760,22 +708,13 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
         const c = await next();
         resumeIfDrained();
         if (c.kind === 'error') {
-          const isAbort = (c.err as { code?: string })?.code === 'ABORT_ERR' || callerSignal.aborted;
+          const isAbort =
+            (c.err as { code?: string })?.code === 'ABORT_ERR' || callerSignal.aborted;
           const remainder = flush();
           if (remainder !== null) {
             yield { type: 'partial_output', text: remainder };
           }
           const spooled = spool.finalize();
-          yield {
-            type: 'final',
-            output: {
-              output: normalizeCommandOutput(buf) + (spooled ? spoolNote(spooled) : ''),
-              exit_code: isAbort ? 124 : 1,
-              timed_out: isAbort,
-              pid: pid ?? null,
-              error: isAbort ? 'Command aborted by user or signal' : c.err.message,
-            },
-          };
           ctx.recordSideEffect?.({
             toolUseId: `pwsh-${Date.now()}`,
             toolName: 'pwsh',
@@ -784,6 +723,21 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
             outcome: isAbort ? 'aborted' : `error (${c.err.message})`,
             risk: 'shell',
           });
+          if (!isAbort) {
+            // The child process failed at the OS level (e.g. pwsh not
+            // installed): a failed call, not an exit-code result.
+            throw new Error(`pwsh: process error: ${c.err.message}`, { cause: c.err });
+          }
+          yield {
+            type: 'final',
+            output: {
+              output: normalizeCommandOutput(buf) + (spooled ? spoolNote(spooled) : ''),
+              exit_code: 124,
+              timed_out: true,
+              pid: pid ?? null,
+              error: 'Command aborted by user or signal',
+            },
+          };
           return;
         }
         if (c.kind === 'end') {

@@ -120,6 +120,17 @@ export const auditTool = {
     });
     if (bridge?.outcome) {
       const outcome = bridge.outcome;
+      // An audit that never ran must not read as "No vulnerabilities found".
+      if (
+        outcome.status === 'unavailable' ||
+        outcome.status === 'cancelled' ||
+        outcome.status === 'timed_out'
+      ) {
+        throw new Error(
+          `audit: ${bridge.language} audit did not run (${outcome.status})` +
+            `${outcome.run?.error ? `: ${outcome.run.error}` : ''}`,
+        );
+      }
       const vulns = outcome.vulnerabilities.map((v) => ({
         severity: v.severity,
         package: v.package,
@@ -181,12 +192,22 @@ function parseAuditOutput(
   opts: { level?: AuditInput['level']; spawnTruncated?: boolean; rawError?: string } = {},
 ): AuditOutput {
   if (!json) {
+    // No report at all plus a non-zero exit means the audit itself failed
+    // (package manager missing, crashed, …) — throw rather than return an
+    // empty "0 vulnerabilities" result the executor would record as success.
+    if (exitCode !== 0) {
+      const detail = normalizeCommandOutput(opts.rawError || '').trim();
+      throw new Error(
+        `audit: the audit command failed (exit ${exitCode}) without producing a report` +
+          `${detail ? `: ${detail}` : ''}`,
+      );
+    }
     return {
       exit_code: exitCode,
       vulnerabilities: [],
       total: 0,
-      summary: exitCode === 0 ? 'No vulnerabilities found' : 'Audit failed',
-      output: normalizeCommandOutput(opts.rawError || ''),
+      summary: 'No vulnerabilities found',
+      output: '',
       truncated: false,
     };
   }
@@ -195,44 +216,9 @@ function parseAuditOutput(
   const truncated =
     opts.spawnTruncated === true || Buffer.byteLength(json, 'utf8') > COMMAND_OUTPUT_MAX_BYTES;
 
+  let data: Record<string, unknown>;
   try {
-    const data = JSON.parse(json) as Record<string, unknown>;
-    let advisories = extractAdvisories(data);
-
-    // Minimum-severity filter. npm/pnpm already honor --audit-level on the
-    // process side, but the JSON they emit can still include lower-severity
-    // entries (npm's --audit-level only gates the exit code), so filter here.
-    const minRank = opts.level ? (SEVERITY_RANK[opts.level] ?? 0) : 0;
-    if (minRank > 0) {
-      advisories = advisories.filter((a) => (SEVERITY_RANK[a.severity] ?? 0) >= minRank);
-    }
-
-    const total = advisories.length;
-    let summary: string;
-    if (total === 0) {
-      if (exitCode !== 0) {
-        const errObj = data.error as Record<string, unknown> | undefined;
-        summary =
-          typeof errObj?.summary === 'string'
-            ? errObj.summary
-            : typeof errObj?.code === 'string'
-              ? `Audit failed (${errObj.code})`
-              : 'Audit failed';
-      } else {
-        summary = 'No vulnerabilities found';
-      }
-    } else {
-      summary = `Found ${total} vulnerabilities: ${advisories.filter((a) => a.severity === 'critical').length} critical, ${advisories.filter((a) => a.severity === 'high').length} high`;
-    }
-
-    return {
-      exit_code: exitCode,
-      vulnerabilities: advisories,
-      total,
-      summary,
-      output: cappedOutput,
-      truncated,
-    };
+    data = JSON.parse(json) as Record<string, unknown>;
   } catch {
     return {
       exit_code: exitCode,
@@ -243,6 +229,49 @@ function parseAuditOutput(
       truncated,
     };
   }
+
+  let advisories = extractAdvisories(data);
+
+  // Minimum-severity filter. npm/pnpm already honor --audit-level on the
+  // process side, but the JSON they emit can still include lower-severity
+  // entries (npm's --audit-level only gates the exit code), so filter here.
+  const minRank = opts.level ? (SEVERITY_RANK[opts.level] ?? 0) : 0;
+  if (minRank > 0) {
+    advisories = advisories.filter((a) => (SEVERITY_RANK[a.severity] ?? 0) >= minRank);
+  }
+
+  const total = advisories.length;
+  let summary: string;
+  if (total === 0) {
+    if (exitCode !== 0) {
+      const errObj = data['error'] as Record<string, unknown> | undefined;
+      // npm/pnpm report their own failures (no lockfile, registry error, …)
+      // as a JSON `error` object: the audit did not run, so throw.
+      if (errObj && typeof errObj === 'object') {
+        const reason =
+          typeof errObj['summary'] === 'string'
+            ? errObj['summary']
+            : typeof errObj['code'] === 'string'
+              ? errObj['code']
+              : 'unknown error';
+        throw new Error(`audit: the audit command failed (exit ${exitCode}): ${reason}`);
+      }
+      summary = 'Audit failed';
+    } else {
+      summary = 'No vulnerabilities found';
+    }
+  } else {
+    summary = `Found ${total} vulnerabilities: ${advisories.filter((a) => a.severity === 'critical').length} critical, ${advisories.filter((a) => a.severity === 'high').length} high`;
+  }
+
+  return {
+    exit_code: exitCode,
+    vulnerabilities: advisories,
+    total,
+    summary,
+    output: cappedOutput,
+    truncated,
+  };
 }
 
 /**

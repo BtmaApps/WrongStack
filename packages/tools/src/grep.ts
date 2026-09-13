@@ -144,6 +144,14 @@ export const grepTool: Tool<GrepInput, GrepOutput> = {
     // upgraded and carries a regression test for exactly this case
     // (glob.test.ts:183); grep was missed.
     const base = input.path ? await safeResolveReal(input.path, ctx) : ctx.cwd;
+    // A missing path used to search nothing and report zero matches — a
+    // misleading "not found" for what is really a wrong path.
+    if (input.path && !(await fs.stat(base).catch(() => null))) {
+      throw new ToolValidationError({
+        message: `grep: path "${input.path}" does not exist`,
+        field: 'path',
+      });
+    }
     const ignoreRoot = await fs
       .realpath(ctx.projectRoot ?? ctx.cwd)
       .catch(() => path.resolve(ctx.projectRoot ?? ctx.cwd));
@@ -350,7 +358,9 @@ async function* runRgStream(
     queue.push({ kind: 'error', data: e.message });
     wake();
   };
-  const onClose = (): void => {
+  let rgExitCode: number | null = null;
+  const onClose = (code: number | null): void => {
+    rgExitCode = code;
     // Flush a partial trailing sequence so the final match line is complete.
     const tail = stdoutDecoder.end();
     if (tail.length > 0) {
@@ -447,6 +457,13 @@ async function* runRgStream(
       };
     }
     if (errored) throw new Error('rg: spawn error');
+    // rg exits 2 on an error (a pattern its engine rejects — e.g. JS lookaround
+    // or backreferences that compileUserRegex accepted — or an unreadable
+    // path). With no output that used to surface as "0 matches"; throwing
+    // routes the search to the native JS engine instead.
+    if (rgExitCode === 2 && totalLines === 0 && !bufOverflow) {
+      throw new Error('rg: exited with an error and produced no matches');
+    }
 
     yield {
       type: 'final',

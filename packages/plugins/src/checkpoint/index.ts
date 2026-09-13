@@ -38,7 +38,7 @@
 
 import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -212,7 +212,15 @@ async function captureFile(
     if (st.size > maxBytes) return 'too-large';
     const content = await readFile(path, 'utf-8');
     return { path, content, bytes: st.size };
-  } catch {
+  } catch (err) {
+    // Any failure other than "missing" (EACCES, EISDIR…) must not be recorded
+    // as "did not exist" — restore would then silently skip the file.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new Error(
+        `could not snapshot ${path}: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
+    }
     // File does not exist yet — record that so restore knows the file
     // was created by the tool call (restore reports it, never deletes).
     return { path, content: null, bytes: 0 };
@@ -400,7 +408,7 @@ const plugin: Plugin = {
       category: 'Safety',
       mutating: false,
       async execute(input: { paths: string[]; label?: string | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'checkpoint is disabled' };
+        if (!cfg.enabled) throw new Error('checkpoint is disabled');
         let paths: string[] = [];
         const rawInput = input as unknown as Record<string, unknown>;
         const raw =
@@ -417,16 +425,25 @@ const plugin: Plugin = {
         } else if (Array.isArray(raw)) {
           paths = raw.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
         }
-        if (paths.length === 0) return { ok: false, error: 'paths must not be empty' };
-        const files: Snapshot['files'] = [];
+        if (paths.length === 0) {
+          throw new ToolValidationError({ message: 'paths must not be empty', field: 'paths' });
+        }
         const rejectedOutsideProject: string[] = [];
-        let skipped = 0;
+        const safePaths: string[] = [];
         for (const p of paths) {
           const safePath = await resolveProjectPath(p);
-          if (!safePath) {
-            rejectedOutsideProject.push(p);
-            continue;
-          }
+          if (safePath) safePaths.push(safePath);
+          else rejectedOutsideProject.push(p);
+        }
+        if (rejectedOutsideProject.length > 0) {
+          throw new ToolValidationError({
+            message: `paths must stay within the current project directory: ${rejectedOutsideProject.join(', ')}`,
+            field: 'paths',
+          });
+        }
+        const files: Snapshot['files'] = [];
+        let skipped = 0;
+        for (const safePath of safePaths) {
           const captured = await captureFile(safePath, cfg.maxFileBytes);
           if (captured === 'too-large') {
             skipped += 1;
@@ -435,15 +452,10 @@ const plugin: Plugin = {
           }
           files.push(captured);
         }
-        if (rejectedOutsideProject.length > 0) {
-          return {
-            ok: false,
-            error: 'paths must stay within the current project directory',
-            rejectedOutsideProject,
-          };
-        }
         if (files.length === 0) {
-          return { ok: false, error: 'all files were skipped (too large)' };
+          throw new Error(
+            `all files were skipped (larger than maxFileBytes=${cfg.maxFileBytes}); nothing was snapshotted`,
+          );
         }
         const snapshot: Snapshot = {
           id: `cp-${state.nextId++}`,
@@ -527,7 +539,7 @@ const plugin: Plugin = {
       category: 'Safety',
       mutating: true,
       async execute(input: { id?: string | undefined; path?: string | undefined }) {
-        if (!cfg.enabled) return { ok: false, error: 'checkpoint is disabled' };
+        if (!cfg.enabled) throw new Error('checkpoint is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawId =
           (typeof input.id === 'string' && input.id.trim().length > 0
@@ -548,17 +560,14 @@ const plugin: Plugin = {
           ? state.snapshots.find((s) => s.id === rawId)
           : state.snapshots[state.snapshots.length - 1];
         if (!snapshot) {
-          return {
-            ok: false,
-            error: rawId ? `no snapshot with id "${rawId}"` : 'no snapshots captured yet',
-          };
+          throw new Error(rawId ? `no snapshot with id "${rawId}"` : 'no snapshots captured yet');
         }
         const targetPath = rawPath ? ((await resolveProjectPath(rawPath)) ?? rawPath) : null;
         const targets = targetPath
           ? snapshot.files.filter((f) => f.path === targetPath || f.path === rawPath)
           : snapshot.files;
         if (targets.length === 0) {
-          return { ok: false, error: `snapshot ${snapshot.id} has no entry for "${rawPath}"` };
+          throw new Error(`snapshot ${snapshot.id} has no entry for "${rawPath}"`);
         }
         const restored: string[] = [];
         const createdByTool: string[] = [];
@@ -582,8 +591,15 @@ const plugin: Plugin = {
           state.restores += 1;
           api.metrics.counter('restores');
         }
+        if (errors.length > 0) {
+          const failed = errors.map((e) => `${e.path} (${e.error})`).join('; ');
+          throw new Error(
+            `checkpoint_restore ${snapshot.id}: ${errors.length} file(s) failed to restore: ${failed}` +
+              (restored.length > 0 ? `. Restored: ${restored.join(', ')}` : ''),
+          );
+        }
         return {
-          ok: errors.length === 0,
+          ok: true,
           snapshotId: snapshot.id,
           restored,
           notRestoredFileDidNotExist: createdByTool,

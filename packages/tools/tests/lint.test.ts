@@ -2,7 +2,30 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Fake the linter process: these tests cover detection/argv/result handling,
+// and must not depend on which linters happen to be installed on PATH.
+const spawnStreamMocks = vi.hoisted(() => ({
+  result: { stdout: '', stderr: '', exitCode: 0, truncated: false } as {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+    truncated: boolean;
+    error?: string;
+  },
+}));
+vi.mock('../src/_spawn-stream.js', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>;
+  return {
+    ...actual,
+    // biome-ignore lint/correctness/useYield: test mock doesn't need actual yield
+    spawnStream: async function* () {
+      return spawnStreamMocks.result;
+    },
+  };
+});
+
 import { lintTool } from '../src/lint.js';
 
 const makeCtx = (cwd: string) => ({ cwd, tools: [], projectRoot: cwd }) as never as Context;
@@ -11,6 +34,7 @@ const makeOpts = () => ({ signal: new AbortController().signal });
 let tmpDir: string;
 
 beforeEach(async () => {
+  spawnStreamMocks.result = { stdout: '', stderr: '', exitCode: 0, truncated: false };
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lint-tool-'));
 });
 
@@ -164,7 +188,46 @@ describe('detectLinter config detection', () => {
       lintTool.execute({ files: ['--config=.cache/evil.js'] }, makeCtx(tmpDir), makeOpts()),
     ).rejects.toThrow(/flag injection/);
     await expect(
-      lintTool.execute({ files: ['src/index.ts', '-R', 'src/util.ts'] }, makeCtx(tmpDir), makeOpts()),
+      lintTool.execute(
+        { files: ['src/index.ts', '-R', 'src/util.ts'] },
+        makeCtx(tmpDir),
+        makeOpts(),
+      ),
     ).rejects.toThrow(/flag injection/);
+  });
+
+  it('throws when the linter cannot be started (not a lint report with errors: 1)', async () => {
+    spawnStreamMocks.result = {
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+      truncated: false,
+      error: 'spawn biome ENOENT',
+    };
+    await expect(
+      lintTool.execute({ linter: 'biome' }, makeCtx(tmpDir), makeOpts()),
+    ).rejects.toThrow(/could not run biome: spawn biome ENOENT/);
+  });
+
+  it('still returns lint findings (non-zero exit) as data', async () => {
+    spawnStreamMocks.result = {
+      stdout: 'Found 2 errors and 1 warning',
+      stderr: '',
+      exitCode: 1,
+      truncated: false,
+    };
+    const result = await lintTool.execute({ linter: 'biome' }, makeCtx(tmpDir), makeOpts());
+    expect(result.errors).toBe(2);
+    expect(result.warnings).toBe(1);
+  });
+
+  it('refuses files outside the project root (fix: true would rewrite them)', async () => {
+    await expect(
+      lintTool.execute(
+        { linter: 'biome', fix: true, files: ['../../outside.ts'] },
+        makeCtx(tmpDir),
+        makeOpts(),
+      ),
+    ).rejects.toThrow(/outside project root/);
   });
 });

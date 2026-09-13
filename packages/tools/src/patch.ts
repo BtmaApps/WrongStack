@@ -33,9 +33,10 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
     'Best used when you already have a diff (from generation, external source, or previous step).\n' +
     '- Use `dry_run: true` to see what would happen without modifying files.\n' +
     '- Applied with `--merge`: a conflicting hunk writes git-style conflict\n' +
-    '  markers (<<<<<<< / ======= / >>>>>>>) INTO the file and reports failure.\n' +
-    '  It does NOT create .rej/.orig files. `files` lists what changed on disk\n' +
-    '  even when the patch failed, so read those back before retrying.\n' +
+    '  markers (<<<<<<< / ======= / >>>>>>>) INTO the file and the call fails.\n' +
+    '  It does NOT create .rej/.orig files. The failure message lists every file\n' +
+    '  changed on disk anyway, so read those back before retrying.\n' +
+    '- A dry run that would conflict is reported (not thrown) with `rejected: 1`.\n' +
     'Often cleaner than many small `edit` operations for larger changes.',
   selection: {
     doNotUseWhen: 'you do not already have a unified diff or only need one precise replacement.',
@@ -88,7 +89,10 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
 
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     signal.throwIfAborted();
-    if (input.strip !== undefined && (typeof input.strip !== 'number' || !Number.isFinite(input.strip) || input.strip < 0)) {
+    if (
+      input.strip !== undefined &&
+      (typeof input.strip !== 'number' || !Number.isFinite(input.strip) || input.strip < 0)
+    ) {
       throw new ToolValidationError({
         message: 'patch: strip must be a non-negative integer',
         field: 'strip',
@@ -99,13 +103,11 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
         ? Math.floor(input.strip)
         : 1;
     const dryRun = input.dry_run ?? false;
-    const refuse = (message: string): PatchOutput => ({
-      applied: 0,
-      rejected: 1,
-      files: [],
-      dry_run: dryRun,
-      message,
-    });
+    // A refused patch THROWS: a returned `rejected: 1` payload is recorded by
+    // the executor as a successful call.
+    const refuse = (message: string, field = 'patch'): never => {
+      throw new ToolValidationError({ message, field });
+    };
 
     // `safeResolve` is the SYNTACTIC `../` check only. Every sibling file tool
     // was upgraded to the realpath form (read.ts, write.ts, edit.ts, glob.ts);
@@ -116,7 +118,7 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
     try {
       dir = input.directory ? await safeResolveReal(input.directory, ctx) : ctx.cwd;
     } catch (err) {
-      return refuse(`patch refused: ${toErrorMessage(err)}`);
+      return refuse(`patch refused: ${toErrorMessage(err)}`, 'directory');
     }
 
     // Compare against the REAL project root: the root may itself be a symlink,
@@ -202,6 +204,11 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
         strip,
         dryRun,
       });
+      if (result.unavailable) {
+        throw new Error(
+          `patch: no patch engine could be started (GNU patch and git both unavailable): ${result.stderr}`,
+        );
+      }
 
       // Record what actually changed: mtime + hash (tagged 'write' so the
       // permission bypass does not widen) so a later `edit` doesn't trip the
@@ -263,23 +270,17 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
 
       if (result.exitCode !== 0) {
         if (!dryRun) {
+          // `touched` entries are realpaths from resolveRealInsideRoot, and
+          // realRoot is also a realpath, so path.relative is like-for-like.
           const partial =
             touched.length > 0
               ? ` ${touched.length} file(s) were still modified on disk and have been recorded for rewind: ${touched
                   .map((p) => path.relative(realRoot, p) || p)
-                  .join(', ')}.`
+                  .join(', ')}. Read them back before retrying.`
               : '';
-          return {
-            applied: touched.length,
-            rejected: 1,
-            // Normalize to relative-to-realRoot for API consistency with the
-            // success path (which returns GNU patch's dir-relative names).
-            // `touched` entries are realpaths from resolveRealInsideRoot, and
-            // realRoot is also a realpath, so path.relative is like-for-like.
-            files: touched.map((p) => path.relative(realRoot, p) || p),
-            dry_run: dryRun,
-            message: `patch failed: ${result.stderr || result.stdout}${partial}`,
-          };
+          // A failed apply is a failed call. Bookkeeping above already ran, and
+          // the message names every file left modified (e.g. conflict markers).
+          throw new Error(`patch failed: ${result.stderr || result.stdout}${partial}`);
         }
         // Dry-run with a non-zero exit: GNU patch --dry-run still exits
         // non-zero when the patch would conflict. Without this branch the code
@@ -504,7 +505,13 @@ function runPatch(
   cwd: string,
   signal: AbortSignal,
   fallback: { patchFile: string; strip: number; dryRun: boolean },
-): Promise<{ exitCode: number; stdout: string; stderr: string; engine: 'patch' | 'git' }> {
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  unavailable: boolean;
+  engine: 'patch' | 'git';
+}> {
   return runPatchProcess('patch', args, cwd, signal).then(async (result) => {
     if (!result.unavailable) return { ...result, engine: 'patch' };
 

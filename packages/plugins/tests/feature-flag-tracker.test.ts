@@ -243,18 +243,23 @@ describe('scan_feature_flags tool', () => {
     plugin.setup(api as never);
     const scan = getTool(api, 'scan_feature_flags');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await scan({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(scan({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws for a missing path instead of reporting no flags', async () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const scan = getTool(api, 'scan_feature_flags');
+    await expect(scan({ path: 'definitely-missing-flags-dir' })).rejects.toThrow(
+      /scan_feature_flags failed/,
+    );
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'feature-flag-tracker': { enabled: false } } });
     plugin.setup(api as never);
     const scan = getTool(api, 'scan_feature_flags');
-    const result = (await scan({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(scan({})).rejects.toThrow(/disabled/);
   });
 });
 

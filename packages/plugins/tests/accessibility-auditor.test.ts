@@ -176,9 +176,14 @@ describe('accessibility-auditor plugin', () => {
     const api = makeApi();
     accessibilityAuditorPlugin.setup(api as never);
     const audit = getTool(api, 'a11y_audit');
-    const result = (await audit({ path: '../../outside' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('inside the project');
+    await expect(audit({ path: '../../outside' })).rejects.toThrow(/inside the project/);
+  });
+
+  it('a11y_audit throws for a missing path instead of reporting a clean audit', async () => {
+    const api = makeApi();
+    accessibilityAuditorPlugin.setup(api as never);
+    const audit = getTool(api, 'a11y_audit');
+    await expect(audit({ path: 'definitely-missing-a11y-dir' })).rejects.toThrow(/path not found/);
   });
 
   it('a11y_status reports counters', async () => {
@@ -373,9 +378,7 @@ describe('accessibility-auditor plugin', () => {
     const api = makeApi({ extensions: { 'accessibility-auditor': { enabled: false } } });
     accessibilityAuditorPlugin.setup(api as never);
     const audit = getTool(api, 'a11y_audit');
-    const result = (await audit({ path: FIXTURE_DIR })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(audit({ path: FIXTURE_DIR })).rejects.toThrow(/disabled/);
   });
 
   it('severity:block returns a block decision', async () => {

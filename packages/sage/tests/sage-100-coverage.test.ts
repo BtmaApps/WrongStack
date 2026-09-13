@@ -742,13 +742,12 @@ describe('sage 100% coverage suite', () => {
       const gatherWithFailingGraph = createSageTools(mockStore as any).find(
         (t) => t.name === 'memory_gather_batch',
       )!;
-      // Not aborted -> ignores error
-      const gRes1 = await gatherWithFailingGraph.execute(
-        { includeRelations: true } as any,
-        {} as any,
-        {} as any,
-      );
-      expect(gRes1).toBeDefined();
+      // Not aborted, but EVERY relation lookup failed -> fails the call (a
+      // partial failure stays best-effort; a total one used to return an
+      // empty-relations result indistinguishable from "no relations").
+      await expect(
+        gatherWithFailingGraph.execute({ includeRelations: true } as any, {} as any, {} as any),
+      ).rejects.toThrow(/relation lookup failed for all 1 memories/);
 
       // Aborted -> rethrows
       const controller = new AbortController();

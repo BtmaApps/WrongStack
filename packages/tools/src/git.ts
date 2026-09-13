@@ -171,21 +171,24 @@ export const gitTool = {
       });
     }
 
-    if (input.limit !== undefined && (typeof input.limit !== 'number' || !Number.isFinite(input.limit) || input.limit <= 0)) {
+    if (
+      input.limit !== undefined &&
+      (typeof input.limit !== 'number' || !Number.isFinite(input.limit) || input.limit <= 0)
+    ) {
       throw new ToolValidationError({
         message: 'git: limit must be a positive integer',
         field: 'limit',
       });
     }
 
+    // Refusals below THROW. A returned `{ exitCode: 1, stderr }` was recorded
+    // by the executor as a successful call; the exit-code result shape is only
+    // for git invocations that actually ran.
     if (input.command === 'commit' && !input.message) {
-      return {
-        command: 'commit',
-        stdout: '',
-        stderr: 'git commit requires a message (-m flag)',
-        exitCode: 1,
-        truncated: false,
-      };
+      throw new ToolValidationError({
+        message: 'git: commit requires a message',
+        field: 'message',
+      });
     }
 
     // A flag-shaped `branch` is rejected for EVERY command, not just worktree.
@@ -195,27 +198,19 @@ export const gitTool = {
     // already denylists exactly those flags for the `git` binary; the git tool
     // did not reuse it. Checked centrally so the next command that forwards a
     // branch cannot reintroduce the gap (WS-090).
-    const branchGuard = validateBranchInput(input);
-    if (branchGuard) return branchGuard;
+    assertSafeBranch(input);
 
     // Validate worktree paths before touching the filesystem: reject any path
     // that escapes the project root.
     if (input.command === 'worktree') {
-      const guard = validateWorktreeInput(input, ctx.projectRoot);
-      if (guard) return guard;
+      assertSafeWorktreeInput(input, ctx.projectRoot);
     }
 
     // Bound the search at projectRoot so a non-git project doesn't drift
     // into a parent repo (e.g. ~/repos/.git) and operate on the wrong tree.
     const gitDir = findGitDir(ctx.cwd, ctx.projectRoot);
     if (!gitDir) {
-      return {
-        command: input.command,
-        stdout: '',
-        stderr: 'Not in a git repository (within project root)',
-        exitCode: 128,
-        truncated: false,
-      };
+      throw new Error(`git: Not in a git repository (within project root ${ctx.projectRoot})`);
     }
 
     const args = buildArgs(input);
@@ -274,10 +269,6 @@ export const gitTool = {
 } satisfies Tool<GitInput, GitOutput>;
 
 /**
- * Reject worktree inputs that could inject git flags or escape the project
- * root. Returns a `GitOutput` describing the rejection, or `null` if safe.
- */
-/**
  * Reject a `branch` that git would parse as an option, for every command.
  *
  * `git fetch --upload-pack=<prog>` (and `--exec=`, `--receive-pack=`) makes git
@@ -286,32 +277,33 @@ export const gitTool = {
  * `main --upload-pack=x` splits into extra argv entries in any path that later
  * word-splits the branch.
  */
-function validateBranchInput(input: GitInput): GitOutput | null {
+function assertSafeBranch(input: GitInput): void {
   const branch = input.branch;
-  if (branch === undefined) return null;
-  if (!branch.startsWith('-') && !branch.includes(' --')) return null;
-  return {
-    command: input.command,
-    stdout: '',
-    stderr: `unsafe branch name (parsed as a git option): ${branch}`,
-    exitCode: 1,
-    truncated: false,
-  };
+  if (branch === undefined) return;
+  if (!branch.startsWith('-') && !branch.includes(' --')) return;
+  throw new ToolValidationError({
+    message: `git: unsafe branch name (parsed as a git option): ${branch}`,
+    field: 'branch',
+  });
 }
 
-function validateWorktreeInput(input: GitInput, projectRoot: string): GitOutput | null {
-  const reject = (stderr: string): GitOutput => ({
-    command: 'worktree',
-    stdout: '',
-    stderr,
-    exitCode: 1,
-    truncated: false,
-  });
+/**
+ * Reject worktree inputs that could inject git flags or escape the project
+ * root, and an `add` with no path (which used to silently run `worktree list`).
+ */
+function assertSafeWorktreeInput(input: GitInput, projectRoot: string): void {
+  const reject = (message: string): never => {
+    throw new ToolValidationError({ message: `git: ${message}`, field: 'worktreePath' });
+  };
 
   // Flag injection on the path. Branch names are handled centrally by
-  // validateBranchInput before this runs (WS-090).
+  // assertSafeBranch before this runs (WS-090).
   if (input.worktreePath?.startsWith('-')) {
-    return reject(`unsafe worktree path: ${input.worktreePath}`);
+    reject(`unsafe worktree path: ${input.worktreePath}`);
+  }
+
+  if (input.worktreeAction === 'add' && !input.worktreePath) {
+    reject('worktree add requires worktreePath');
   }
 
   // Path escape: add/remove targets must resolve inside the project root.
@@ -319,11 +311,9 @@ function validateWorktreeInput(input: GitInput, projectRoot: string): GitOutput 
     const root = resolve(projectRoot);
     const abs = resolve(root, input.worktreePath);
     if (abs !== root && !abs.startsWith(root + sep)) {
-      return reject(`unsafe worktree path (escapes project root): ${input.worktreePath}`);
+      reject(`unsafe worktree path (escapes project root): ${input.worktreePath}`);
     }
   }
-
-  return null;
 }
 
 function findGitDir(cwd: string, projectRoot: string): string | null {
@@ -460,16 +450,10 @@ function buildArgs(input: GitInput): string[] {
 
 function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOutput> {
   if (signal.aborted) {
-    return Promise.resolve({
-      command: args[0] as GitSubcommand,
-      stdout: '',
-      stderr: 'Aborted',
-      exitCode: 124,
-      truncated: false,
-    });
+    return Promise.reject(signal.reason ?? new Error('git: aborted'));
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
     let stdoutBytes = 0;
@@ -502,23 +486,14 @@ function runGit(args: string[], cwd: string, signal: AbortSignal): Promise<GitOu
       }
     });
 
+    // 'error' means git could not be run (missing binary, bad cwd) or was
+    // aborted — there is no git exit code to report, so reject.
     child.on('error', (err) => {
-      const stdoutTail = stdoutDecoder.end();
-      if (stdoutTail && stdout.length < MAX_OUTPUT) {
-        stdout += stdoutTail.slice(0, MAX_OUTPUT - stdout.length);
-      }
-      const stderrTail = stderrDecoder.end();
-      if (stderrTail && stderr.length < MAX_OUTPUT) {
-        stderr += stderrTail.slice(0, MAX_OUTPUT - stderr.length);
-      }
-      resolve({
-        command: args[0] as GitSubcommand,
-        stdout: normalizeCommandOutput(stdout),
-        stderr: err.message,
-        exitCode: 1,
-        truncated:
-          stdoutBytes > MAX_OUTPUT || Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES,
-      });
+      reject(
+        (err as NodeJS.ErrnoException).code === 'ABORT_ERR'
+          ? err
+          : new Error(`git: could not run git ${args[0] ?? ''}: ${err.message}`, { cause: err }),
+      );
     });
 
     child.on('close', (code) => {

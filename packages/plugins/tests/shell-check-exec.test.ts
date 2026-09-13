@@ -138,13 +138,10 @@ describe('shellcheck tool execute', () => {
     expect(res.recommendation).toBe('No issues found.');
   });
 
-  it('returns ok:false when shellcheck is not installed', async () => {
+  it('throws when shellcheck is not installed', async () => {
     cp.probeFails.value = true;
     const { tools } = setup();
-    const res = await tools.shellcheck!.execute({ files: ['a.sh'] });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/not installed/);
-    expect(res.issues).toEqual([]);
+    await expect(tools.shellcheck!.execute({ files: ['a.sh'] })).rejects.toThrow(/not installed/);
   });
 
   it('continues when the async PATH probe resolves', async () => {
@@ -170,13 +167,25 @@ describe('shellcheck tool execute', () => {
     expect((res.summary as { errors: number }).errors).toBe(1);
   });
 
-  it('returns no issues when the error has no usable stderr', async () => {
+  it('throws when shellcheck reports a non-JSON error instead of findings', async () => {
+    // e.g. `a.sh: openBinaryFile: does not exist` — used to read as "No issues found."
     cp.execFileSync.mockImplementation(() => {
       throw { stderr: 'shellcheck: fatal' };
     });
     const { tools } = setup();
-    const res = await tools.shellcheck!.execute({ files: ['a.sh'] });
-    expect(res.summary).toMatchObject({ total: 0 });
+    await expect(tools.shellcheck!.execute({ files: ['a.sh'] })).rejects.toThrow(
+      /unparseable output: shellcheck: fatal/,
+    );
+  });
+
+  it('throws when shellcheck fails with no output at all', async () => {
+    cp.execFileSync.mockImplementation(() => {
+      throw Object.assign(new Error('timed out'), { stdout: '', stderr: '' });
+    });
+    const { tools } = setup();
+    await expect(tools.shellcheck!.execute({ files: ['a.sh'] })).rejects.toThrow(
+      /failed without output: timed out/,
+    );
   });
 
   it('returns no issues when output is blank', async () => {
@@ -186,11 +195,12 @@ describe('shellcheck tool execute', () => {
     expect(res.summary).toMatchObject({ total: 0 });
   });
 
-  it('returns no issues when output is not valid JSON', async () => {
+  it('throws when output is not valid JSON', async () => {
     cp.execFileSync.mockReturnValue('not json at all');
     const { tools } = setup();
-    const res = await tools.shellcheck!.execute({ files: ['a.sh'] });
-    expect(res.summary).toMatchObject({ total: 0 });
+    await expect(tools.shellcheck!.execute({ files: ['a.sh'] })).rejects.toThrow(
+      /unparseable output/,
+    );
   });
 
   it('defaults severity to warning when omitted', async () => {
@@ -258,22 +268,33 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
     expect(res.filesScanned).toBe(1);
   });
 
-  it('tolerates unreadable directories', async () => {
+  it('throws when the scan root cannot be read', async () => {
     fsm.readdir.mockImplementation(async () => {
+      throw new Error('ENOENT');
+    });
+    const { tools } = setup();
+    await expect(tools.shellcheck!.execute({ directory: 'missing' })).rejects.toThrow(
+      /directory does not exist or cannot be read: missing/,
+    );
+  });
+
+  it('skips unreadable subdirectories', async () => {
+    fsm.readdir.mockImplementation(async (dir: string) => {
+      if (dir === tmpRoot) return [dirent('locked', true)];
       throw new Error('EACCES');
     });
     const { tools } = setup();
-    const res = await tools.shellcheck!.execute({ directory: 'unreadable' });
+    const res = await tools.shellcheck!.execute({ directory: tmpRoot });
     expect(res).toMatchObject({ ok: true, filesScanned: 0 });
   });
 
-  it('returns ok:false when shellcheck fails during a directory scan', async () => {
+  it('throws when shellcheck fails during a directory scan', async () => {
     fsm.readdir.mockResolvedValue([dirent('a.sh', false)]);
     cp.probeFails.value = true;
     const { tools } = setup();
-    const res = await tools.shellcheck!.execute({ directory: tmpRoot });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/not installed/);
+    await expect(tools.shellcheck!.execute({ directory: tmpRoot })).rejects.toThrow(
+      /not installed/,
+    );
   });
 
   it('defaults directory to "." when omitted', async () => {
@@ -296,20 +317,18 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
   it('rejects directory paths outside the project root', async () => {
     const { tools } = setup();
     const outside = process.platform === 'win32' ? 'C:\\Windows\\System32' : '/etc';
-    const res = await tools.shellcheck!.execute({ directory: outside });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/outside the project root/);
-    expect(res.rejectedOutsideProject).toBe(true);
+    await expect(tools.shellcheck!.execute({ directory: outside })).rejects.toThrow(
+      /outside the project root/,
+    );
     expect(cp.execFileSync).not.toHaveBeenCalled();
   });
 
   it('rejects file paths outside the project root', async () => {
     const { tools } = setup();
     const outside = process.platform === 'win32' ? 'C:\\Windows\\System32\\evil.sh' : '/etc/passwd';
-    const res = await tools.shellcheck!.execute({ files: [outside] });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/outside the project root/);
-    expect(res.rejectedOutsideProject).toBe(true);
+    await expect(tools.shellcheck!.execute({ files: [outside] })).rejects.toThrow(
+      /outside the project root/,
+    );
     expect(cp.execFileSync).not.toHaveBeenCalled();
   });
 
@@ -318,9 +337,9 @@ describe('shellcheck tool — directory scan mode (merged from shellcheck_scan)'
     // `..` from cwd = just inside; double `..` lands at os.tmpdir() parent
     // which is outside the chdir'd tmpRoot sandbox.
     const escapedPath = join(tmpRoot, '..', '..', 'escape.sh');
-    const res = await tools.shellcheck!.execute({ files: [escapedPath] });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/outside the project root/);
+    await expect(tools.shellcheck!.execute({ files: [escapedPath] })).rejects.toThrow(
+      /outside the project root/,
+    );
     expect(cp.execFileSync).not.toHaveBeenCalled();
   });
 });

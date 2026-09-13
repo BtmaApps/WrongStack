@@ -8,8 +8,8 @@ import {
   readDocumentContent,
   requireServer,
   resolveInputPath,
-  stringifyToolError,
   type ToolDeps,
+  toToolError,
 } from './shared.js';
 import { applyWorkspaceEdit } from './workspace-edit.js';
 
@@ -68,7 +68,7 @@ export function createRenameTool(deps: ToolDeps): Tool<RenameInput, string> {
         const applied = await applyWorkspaceEdit(edit, deps.tracker);
         return `${summary}\nApplied: ${applied.edits} edits across ${applied.files.length} files.`;
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

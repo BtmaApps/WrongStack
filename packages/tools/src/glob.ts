@@ -84,6 +84,23 @@ export const globTool: Tool<GlobInput, GlobOutput> = {
     // Throws on escape, matching how single-file tools (`read`, `edit`,
     // `write`) reject out-of-root paths: the caller named the base explicitly.
     const base = input.path ? await safeResolveReal(input.path, ctx) : ctx.cwd;
+    if (input.path) {
+      // A missing base used to walk nothing and return `files: []` — a
+      // misleading "no matches" for what is really a wrong path.
+      const baseStat = await fs.stat(base).catch(() => null);
+      if (!baseStat) {
+        throw new ToolValidationError({
+          message: `glob: path "${input.path}" does not exist`,
+          field: 'path',
+        });
+      }
+      if (!baseStat.isDirectory()) {
+        throw new ToolValidationError({
+          message: `glob: path "${input.path}" is not a directory`,
+          field: 'path',
+        });
+      }
+    }
     const rawLimit =
       typeof input.limit === 'number' && !Number.isNaN(input.limit) ? input.limit : 1000;
     const limit = Math.max(1, Math.min(Math.floor(rawLimit), 5000));

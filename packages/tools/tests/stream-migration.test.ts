@@ -26,31 +26,51 @@ async function collect<O>(
   return { events, final };
 }
 
+/**
+ * Collect events until the stream settles; returns the rejection (if any).
+ * `ctx.cwd` is a non-existent directory, so tools that spawn a process fail to
+ * start — and a spawn failure must reject the stream (a returned final would be
+ * recorded as a successful call), after the progress logs already emitted.
+ */
+async function collectUntilSettled<O>(
+  iter: AsyncIterable<ToolStreamEvent<O>>,
+): Promise<{ events: ToolStreamEvent<O>[]; error?: unknown }> {
+  const events: ToolStreamEvent<O>[] = [];
+  try {
+    for await (const ev of iter) events.push(ev);
+    return { events };
+  } catch (error) {
+    return { events, error };
+  }
+}
+
 function assertExactlyOneFinal<O>(events: ToolStreamEvent<O>[]) {
   const finals = events.filter((e) => e.type === 'final');
   expect(finals).toHaveLength(1);
 }
 
 describe('L0-A executeStream migration', () => {
-  it('lint emits log + final when no linter detected', async () => {
-    const { events, final } = await collect(lintTool.executeStream!({}, ctx, opts()));
-    // when no linter is detected the tool short-circuits to a "none" final
-    // without launching a process — just verify exactly one final.
-    assertExactlyOneFinal(events);
-    expect(final).toBeDefined();
-  });
-
-  it('format short-circuits with exactly one final when no fixer', async () => {
-    const { events, final } = await collect(formatTool.executeStream!({}, ctx, opts()));
-    assertExactlyOneFinal(events);
-    expect(final).toBeDefined();
-  });
-
-  it('typecheck emits log + final', async () => {
-    const { events, final } = await collect(typecheckTool.executeStream!({}, ctx, opts()));
-    assertExactlyOneFinal(events);
+  it('lint emits a log, then rejects (no final) when the linter cannot start', async () => {
+    const { events, error } = await collectUntilSettled(lintTool.executeStream!({}, ctx, opts()));
     expect(events.some((e) => e.type === 'log')).toBe(true);
-    expect(final).toBeDefined();
+    expect(events.some((e) => e.type === 'final')).toBe(false);
+    expect(String(error)).toMatch(/lint: could not run/);
+  });
+
+  it('format emits a log, then rejects (no final) when the formatter cannot start', async () => {
+    const { events, error } = await collectUntilSettled(formatTool.executeStream!({}, ctx, opts()));
+    expect(events.some((e) => e.type === 'log')).toBe(true);
+    expect(events.some((e) => e.type === 'final')).toBe(false);
+    expect(String(error)).toMatch(/format: could not run/);
+  });
+
+  it('typecheck emits a log, then rejects (no final) when the checker cannot start', async () => {
+    const { events, error } = await collectUntilSettled(
+      typecheckTool.executeStream!({}, ctx, opts()),
+    );
+    expect(events.some((e) => e.type === 'log')).toBe(true);
+    expect(events.some((e) => e.type === 'final')).toBe(false);
+    expect(String(error)).toMatch(/typecheck: failed to start/);
   });
 
   it('test short-circuits to none final without runner', async () => {
@@ -61,24 +81,24 @@ describe('L0-A executeStream migration', () => {
     expect(final).toBeDefined();
   });
 
-  it('audit emits log + final', async () => {
-    const { events, final } = await collect(auditTool.executeStream!({}, ctx, opts()));
-    assertExactlyOneFinal(events);
+  it('audit emits a log, then rejects (no final) when the audit cannot run', async () => {
+    const { events, error } = await collectUntilSettled(auditTool.executeStream!({}, ctx, opts()));
     expect(events.some((e) => e.type === 'log')).toBe(true);
-    expect(final).toBeDefined();
+    expect(events.some((e) => e.type === 'final')).toBe(false);
+    expect(String(error)).toMatch(/audit: the audit command failed/);
   });
 
-  it('install emits resolve + fetch logs + final', async () => {
-    const { events, final } = await collect(
+  it('install emits resolve + fetch logs, then rejects when the package manager cannot start', async () => {
+    const { events, error } = await collectUntilSettled(
       installTool.executeStream!({ dry_run: true }, ctx, opts()),
     );
-    assertExactlyOneFinal(events);
     const logPhases = events
       .filter((e) => e.type === 'log')
       .map((e) => (e.data as { phase?: string } | undefined)?.phase);
     expect(logPhases).toContain('resolve');
     expect(logPhases).toContain('fetch');
-    expect(final).toBeDefined();
+    expect(events.some((e) => e.type === 'final')).toBe(false);
+    expect(String(error)).toMatch(/install: could not run/);
   });
 
   it('tree emits final with cwd traversal', async () => {

@@ -21,6 +21,8 @@ import { atomicWrite } from '@wrongstack/core/utils';
 
 type Overrides = Record<string, string>;
 
+const NO_ACTIVE_KIT = 'design: no active kit. Pick one first: `design {action:"use", kit:"<id>"}`.';
+
 /**
  * Canonicalize `p` through `fs.realpath` so symlinks / bind mounts don't
  * hide out-of-root writes. Falls back to `path.resolve(p)` when the path
@@ -212,16 +214,24 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       return { action, stack, output: text || 'No foundations document is installed.' };
     }
 
+    // Failures below throw (with the same guidance text) instead of returning
+    // it as `output`: a returned value is recorded as a successful call.
     if (action === 'use') {
       const kitId = input.kit?.trim();
       if (!kitId) {
         const menu = await loader.menuText();
-        return { action, output: `No kit id provided.\n\n${menu}` };
+        throw new ToolValidationError({
+          message: `design: "use" requires a kit id.\n\n${menu}`,
+          field: 'kit',
+        });
       }
       const manifest = await loader.find(kitId);
       if (!manifest) {
         const menu = await loader.menuText();
-        return { action, kit: kitId, output: `Kit "${kitId}" not found.\n\n${menu}` };
+        throw new ToolValidationError({
+          message: `design: kit "${kitId}" not found.\n\n${menu}`,
+          field: 'kit',
+        });
       }
       const resolvedStack = stack ?? manifest.stacks[0] ?? 'web';
       const body = await loader.readBody(manifest.id, resolvedStack);
@@ -266,15 +276,13 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     if (action === 'set') {
       const patch = normalizeOverrides(input.set);
       if (Object.keys(patch).length === 0) {
-        return { action, output: 'No overrides given. Pass set:{ "primary": "oklch(…)" }.' };
+        throw new ToolValidationError({
+          message: 'design: no overrides given. Pass set:{ "primary": "oklch(…)" }.',
+          field: 'set',
+        });
       }
       const merged = await recordOverrides(ctx.projectRoot, patch, new Date().toISOString());
-      if (!merged) {
-        return {
-          action,
-          output: 'No active kit. Pick one first: `design {action:"use", kit:"<id>"}`.',
-        };
-      }
+      if (!merged) throw new Error(NO_ACTIVE_KIT);
       setDesignOverrides(ctx, merged);
       return {
         action,
@@ -289,19 +297,14 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     if (action === 'tune') {
       const patch = resolveSemanticTune(input.tune ?? {});
       if (Object.keys(patch).length === 0) {
-        return {
-          action,
-          output:
-            'No recognized knobs. Pass tune:{ radius:"lg", density:"compact", font:"…", motion:"snappy" }.',
-        };
+        throw new ToolValidationError({
+          message:
+            'design: no recognized knobs. Pass tune:{ radius:"lg", density:"compact", font:"…", motion:"snappy" }.',
+          field: 'tune',
+        });
       }
       const merged = await recordOverrides(ctx.projectRoot, patch, new Date().toISOString());
-      if (!merged) {
-        return {
-          action,
-          output: 'No active kit. Pick one first: `design {action:"use", kit:"<id>"}`.',
-        };
-      }
+      if (!merged) throw new Error(NO_ACTIVE_KIT);
       setDesignOverrides(ctx, merged);
       return {
         action,
@@ -315,18 +318,11 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
 
     if (action === 'materialize') {
       const active = await loadActiveKit(ctx.projectRoot);
-      if (!active) {
-        return {
-          action,
-          output: 'No active kit. Pick one first: `design {action:"use", kit:"<id>"}`.',
-        };
-      }
+      if (!active) throw new Error(NO_ACTIVE_KIT);
       const resolvedStack: DesignStack =
         stack ?? (active.stack && isDesignStack(active.stack) ? active.stack : 'web');
       const rawTokens = await loader.readTokens(active.kit);
-      if (!rawTokens) {
-        return { action, kit: active.kit, output: `Kit "${active.kit}" has no tokens.json.` };
-      }
+      if (!rawTokens) throw new Error(`design: kit "${active.kit}" has no tokens.json.`);
       const tokens = applyTokenOverrides(rawTokens, active.overrides);
       const result = materializeTokens({
         tokens,
@@ -372,15 +368,10 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         // does not exist — safe to write
       }
       if (exists && !input.force) {
-        return {
-          action,
-          kit: active.kit,
-          stack: resolvedStack,
-          path: result.path,
-          output:
-            `${result.path} already exists. Re-run with force:true to overwrite, or write this ` +
-            `${result.format} yourself:\n\n\`\`\`\n${result.content}\n\`\`\``,
-        };
+        throw new Error(
+          `design: ${result.path} already exists — nothing was written. Re-run with force:true to ` +
+            `overwrite, or write this ${result.format} yourself:\n\n\`\`\`\n${result.content}\n\`\`\``,
+        );
       }
       await fs.mkdir(path.dirname(abs), { recursive: true });
       await atomicWrite(abs, result.content);
@@ -398,17 +389,10 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
     if (action === 'verify') {
       signal?.throwIfAborted();
       const active = await loadActiveKit(ctx.projectRoot);
-      if (!active) {
-        return {
-          action,
-          output: 'No active kit to verify against. Pick one: `design {action:"use", kit:"<id>"}`.',
-        };
-      }
+      if (!active) throw new Error(NO_ACTIVE_KIT);
       signal?.throwIfAborted();
       const rawTokens = await loader.readTokens(active.kit);
-      if (!rawTokens) {
-        return { action, kit: active.kit, output: `Kit "${active.kit}" has no tokens.json.` };
-      }
+      if (!rawTokens) throw new Error(`design: kit "${active.kit}" has no tokens.json.`);
       signal?.throwIfAborted();
       const tokens = applyTokenOverrides(rawTokens, active.overrides);
       const normalizedFiles = input.files

@@ -217,7 +217,7 @@ describe('@wrongstack/plugins — smoke tests', () => {
         }
       });
 
-      it('each tool execute() returns a result without throwing', async () => {
+      it('each tool execute() returns a result or rejects the placeholder input', async () => {
         const mod = await import(/* @vite-ignore */ filePath);
         const plugin: FakePlugin = mod.default;
         const api = createMockAPI();
@@ -230,7 +230,20 @@ describe('@wrongstack/plugins — smoke tests', () => {
           // a real "feat: update code" commit on every `pnpm test` run (even
           // its dryRun stages files). Smoke-execute read-only tools only.
           if (tool.mutating) continue;
-          await expect(tool.execute({ dryRun: true }, { log: api.log })).resolves.toBeDefined();
+          // `{ dryRun: true }` omits required fields; a tool may reject it, but only with
+          // a real Error (the executor's failure signal).
+          let result: unknown;
+          let error: unknown;
+          try {
+            result = await tool.execute({ dryRun: true }, { log: api.log });
+          } catch (err) {
+            error = err;
+          }
+          if (error === undefined) {
+            expect(result).toBeDefined();
+          } else {
+            expect(error, `${tool.name}: ${String(error)}`).toBeInstanceOf(Error);
+          }
         }
       });
     });

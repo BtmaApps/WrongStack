@@ -1,7 +1,12 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool, ToolProgressEvent, ToolStreamEvent } from '@wrongstack/core/types';
-import { compileGlob, DEFAULT_WALK_IGNORE_DIRS, expectDefined } from '@wrongstack/core/utils';
+import {
+  compileGlob,
+  DEFAULT_WALK_IGNORE_DIRS,
+  expectDefined,
+  toErrorMessage,
+} from '@wrongstack/core/utils';
 import { safeResolveReal } from './_util.js';
 
 // Shared artifact/dependency dirs, plus tree-specific privacy dirs — tree can
@@ -126,13 +131,7 @@ export const treeTool: Tool<TreeInput, TreeOutput> = {
       ...DEFAULT_IGNORE,
       ...rawExclude
         .filter((s): s is string => typeof s === 'string')
-        .map((s) =>
-          s
-            .trim()
-            .replace(/\\/g, '/')
-            .replace(/\/+$/, '')
-            .replace(/^\.\//, ''),
-        )
+        .map((s) => s.trim().replace(/\\/g, '/').replace(/\/+$/, '').replace(/^\.\//, ''))
         .filter(Boolean),
     ]);
     const globRe = input.glob ? compileGlob(input.glob) : undefined;
@@ -277,9 +276,14 @@ interface WalkOptions {
 async function walkDir(dir: string, depth: number, opts: WalkOptions): Promise<void> {
   opts.signal.throwIfAborted();
   if (opts.retention.truncated) return;
-  const entries = await fs
-    .readdir(dir, { withFileTypes: true })
-    .catch(() => [] as import('node:fs').Dirent[]);
+  const entries = await fs.readdir(dir, { withFileTypes: true }).catch((err: unknown) => {
+    // An unreadable ROOT (missing, not a directory, EACCES) is a failed call,
+    // not an empty tree; unreadable subdirectories are skipped best-effort.
+    if (depth === 0) {
+      throw new Error(`tree: cannot list "${dir}": ${toErrorMessage(err)}`, { cause: err });
+    }
+    return [] as import('node:fs').Dirent[];
+  });
 
   const filtered = entries.filter((e) => {
     if (!opts.showHidden && e.name.startsWith('.')) return false;

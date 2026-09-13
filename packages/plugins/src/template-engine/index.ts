@@ -10,7 +10,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { releaseHandle, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -314,33 +314,32 @@ const plugin: Plugin = {
             : undefined;
         const raw = (input['raw'] as boolean | undefined) ?? false;
 
+        // Failures throw: the executor only flags a call as failed when execute rejects.
         if (!template || typeof template !== 'string') {
-          return { ok: false, error: 'template is required and must be a string' };
+          throw new ToolValidationError({
+            message: 'template is required and must be a string',
+            field: 'template',
+          });
         }
         if (!variables || typeof variables !== 'object') {
-          return { ok: false, error: 'variables is required and must be an object' };
+          throw new ToolValidationError({
+            message: 'variables is required and must be an object',
+            field: 'variables',
+          });
         }
 
-        let result: string;
-        /* v8 ignore start -- the render pipeline (regex replaces) does not throw; this guard is defensive. */
-        try {
-          result = raw
-            ? renderTemplateRaw(template, variables)
-            : renderTemplate(template, variables, autoEscapeHtml);
-        } catch (err: unknown) {
-          return { ok: false, error: String(err) };
-        }
-        /* v8 ignore stop */
+        const result = raw
+          ? renderTemplateRaw(template, variables)
+          : renderTemplate(template, variables, autoEscapeHtml);
 
         if (output_path) {
           const pathError = validateWritableTemplateTarget('output_path', output_path);
-          if (pathError) return { ok: false, error: pathError };
-          // Every other failure in this tool returns `{ok:false}`; an EACCES /
-          // ENOSPC here used to reject out of `execute` instead.
+          if (pathError)
+            throw new ToolValidationError({ message: pathError, field: 'output_path' });
           try {
             await writeFile(output_path, result, 'utf-8');
           } catch (err: unknown) {
-            return { ok: false, error: `Could not write ${output_path}: ${String(err)}` };
+            throw new Error(`Could not write ${output_path}: ${String(err)}`, { cause: err });
           }
           return {
             ok: true,
@@ -420,39 +419,41 @@ const plugin: Plugin = {
         const raw = (input['raw'] as boolean | undefined) ?? false;
 
         if (!template_path || typeof template_path !== 'string') {
-          return { ok: false, error: 'template_path is required and must be a string' };
+          throw new ToolValidationError({
+            message: 'template_path is required and must be a string',
+            field: 'template_path',
+          });
         }
         const templatePathError = validateRelativeTemplatePath('template_path', template_path);
-        if (templatePathError) return { ok: false, error: templatePathError };
+        if (templatePathError) {
+          throw new ToolValidationError({ message: templatePathError, field: 'template_path' });
+        }
         if (!variables || typeof variables !== 'object') {
-          return { ok: false, error: 'variables is required and must be an object' };
+          throw new ToolValidationError({
+            message: 'variables is required and must be an object',
+            field: 'variables',
+          });
         }
 
         let content: string;
         try {
           content = await readFile(template_path, 'utf-8');
         } catch (err: unknown) {
-          return { ok: false, error: `Could not read template file: ${err}` };
+          throw new Error(`Could not read template file: ${String(err)}`, { cause: err });
         }
 
-        let result: string;
-        /* v8 ignore start -- the render pipeline (regex replaces) does not throw; this guard is defensive. */
-        try {
-          result = raw
-            ? renderTemplateRaw(content, variables)
-            : renderTemplate(content, variables, autoEscapeHtml);
-        } catch (err: unknown) {
-          return { ok: false, error: `Template rendering failed: ${err}` };
-        }
-        /* v8 ignore stop */
+        const result = raw
+          ? renderTemplateRaw(content, variables)
+          : renderTemplate(content, variables, autoEscapeHtml);
 
         if (output_path) {
           const pathError = validateWritableTemplateTarget('output_path', output_path);
-          if (pathError) return { ok: false, error: pathError };
+          if (pathError)
+            throw new ToolValidationError({ message: pathError, field: 'output_path' });
           try {
             await writeFile(output_path, result, 'utf-8');
           } catch (err: unknown) {
-            return { ok: false, error: `Could not write ${output_path}: ${String(err)}` };
+            throw new Error(`Could not write ${output_path}: ${String(err)}`, { cause: err });
           }
           return {
             ok: true,
@@ -518,31 +519,40 @@ const plugin: Plugin = {
         const description = typeof rawDesc === 'string' ? rawDesc : undefined;
 
         if (!name || typeof name !== 'string' || name.trim() === '') {
-          return { ok: false, error: 'name is required and must be a non-empty string' };
+          throw new ToolValidationError({
+            message: 'name is required and must be a non-empty string',
+            field: 'name',
+          });
         }
         if (!content || typeof content !== 'string') {
-          return { ok: false, error: 'content is required and must be a string' };
+          throw new ToolValidationError({
+            message: 'content is required and must be a string',
+            field: 'content',
+          });
         }
         if (name.length > MAX_TEMPLATE_NAME_CHARS) {
-          return { ok: false, error: `name exceeds ${MAX_TEMPLATE_NAME_CHARS} characters` };
+          throw new ToolValidationError({
+            message: `name exceeds ${MAX_TEMPLATE_NAME_CHARS} characters`,
+            field: 'name',
+          });
         }
         if (content.length > MAX_TEMPLATE_CONTENT_CHARS) {
-          return {
-            ok: false,
-            error: `content exceeds ${MAX_TEMPLATE_CONTENT_CHARS} characters`,
-          };
+          throw new ToolValidationError({
+            message: `content exceeds ${MAX_TEMPLATE_CONTENT_CHARS} characters`,
+            field: 'content',
+          });
         }
         if (description && description.length > MAX_TEMPLATE_DESCRIPTION_CHARS) {
-          return {
-            ok: false,
-            error: `description exceeds ${MAX_TEMPLATE_DESCRIPTION_CHARS} characters`,
-          };
+          throw new ToolValidationError({
+            message: `description exceeds ${MAX_TEMPLATE_DESCRIPTION_CHARS} characters`,
+            field: 'description',
+          });
         }
 
         const now = new Date().toISOString();
         const existing = templates.get(name);
         if (!existing && templates.size >= MAX_TEMPLATES) {
-          return { ok: false, error: `template limit reached (${MAX_TEMPLATES})` };
+          throw new Error(`template limit reached (${MAX_TEMPLATES})`);
         }
 
         const tmpl: StoredTemplate = {
@@ -558,10 +568,7 @@ const plugin: Plugin = {
         const nextChars =
           retainedChars - (existing ? templateChars(existing) : 0) + templateChars(tmpl);
         if (nextChars > MAX_TOTAL_TEMPLATE_CHARS) {
-          return {
-            ok: false,
-            error: `template store exceeds ${MAX_TOTAL_TEMPLATE_CHARS} retained characters`,
-          };
+          throw new Error(`template store exceeds ${MAX_TOTAL_TEMPLATE_CHARS} retained characters`);
         }
 
         templates.set(name, tmpl);

@@ -252,18 +252,23 @@ describe('suggest_refactors tool', () => {
     plugin.setup(api as never);
     const suggest = getTool(api, 'suggest_refactors');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await suggest({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(suggest({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws for a path that does not exist instead of reporting a clean scan', async () => {
+    const api = makeApi({ enabled: true });
+    plugin.setup(api as never);
+    const suggest = getTool(api, 'suggest_refactors');
+    await expect(suggest({ path: 'src/nope.ts' })).rejects.toThrow(
+      /path does not exist or cannot be read: src\/nope\.ts/,
+    );
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'refactor-suggester': { enabled: false } } });
     plugin.setup(api as never);
     const suggest = getTool(api, 'suggest_refactors');
-    const result = (await suggest({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(suggest({})).rejects.toThrow(/disabled/);
   });
 });
 

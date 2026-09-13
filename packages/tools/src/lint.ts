@@ -1,7 +1,8 @@
+import * as path from 'node:path';
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
 import { spawnStream } from './_spawn-stream.js';
-import { normalizeCommandOutput, safeResolveReal } from './_util.js';
+import { ensureInsideRoot, normalizeCommandOutput, safeResolveReal } from './_util.js';
 import { tryLegacyCodeOperation } from './languages/legacy-bridge.js';
 
 export type LinterName = 'biome' | 'eslint' | 'tslint' | 'auto';
@@ -89,6 +90,16 @@ export const lintTool: Tool<LintInput, LintOutput> = {
       });
       if (bridge?.run) {
         const run = bridge.run;
+        // A linter that never ran must not read as "0 errors".
+        if (
+          run.status === 'unavailable' ||
+          run.status === 'cancelled' ||
+          run.status === 'timed_out'
+        ) {
+          throw new Error(
+            `lint: ${bridge.language} lint did not run (${run.status})${run.error ? `: ${run.error}` : ''}`,
+          );
+        }
         yield {
           type: 'final',
           output: {
@@ -149,6 +160,19 @@ export const lintTool: Tool<LintInput, LintOutput> = {
       }
     }
 
+    // Containment, mirroring `format`: with `fix: true` the linter rewrites
+    // these paths, so an out-of-root target must be refused up front.
+    for (const f of files) {
+      try {
+        ensureInsideRoot(path.resolve(cwd, f), ctx);
+      } catch (err) {
+        throw new ToolValidationError({
+          message: `lint: file "${f}" ${(err as Error).message}`,
+          field: 'files',
+        });
+      }
+    }
+
     const args: string[] = [];
     if (detected === 'eslint') {
       if (input.fix) args.push('--fix');
@@ -161,6 +185,11 @@ export const lintTool: Tool<LintInput, LintOutput> = {
 
     const cmd = detected === 'biome' ? 'biome' : detected;
     const result = yield* spawnStream({ cmd, args, cwd, signal, maxBytes: 100_000 });
+    // Spawn failure (linter not installed / not on PATH): nothing was linted,
+    // so this is a failure, not a lint report with errors: 1.
+    if (result.error) {
+      throw new Error(`lint: could not run ${cmd}: ${result.error}`);
+    }
 
     const combined = `${result.stdout}\n${result.stderr}`;
     let errors = 0;

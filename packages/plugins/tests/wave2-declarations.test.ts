@@ -48,13 +48,11 @@ describe('generate_unit_tests only reads source files', () => {
       const tool = collectTools(testGeneratorPlugin as never).find(
         (t) => t['name'] === 'generate_unit_tests',
       );
-      const execute = tool?.['execute'] as (i: unknown) => Promise<{ ok: boolean; error?: string }>;
+      const execute = tool?.['execute'] as (i: unknown) => Promise<unknown>;
       // `use_llm` is a model-controlled input that overrides config, and the
       // prompt embeds the file contents — so containment alone let `.env` be
       // shipped to the provider.
-      const res = await execute({ path: target, use_llm: true });
-      expect(res.ok).toBe(false);
-      expect(String(res.error)).toContain('source files');
+      await expect(execute({ path: target, use_llm: true })).rejects.toThrow(/source files/);
     },
   );
 });

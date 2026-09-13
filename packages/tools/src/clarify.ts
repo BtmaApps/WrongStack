@@ -8,6 +8,7 @@ import type {
   UserInputResponse,
   UserInputTab,
 } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 
 export interface ClarifyOptionInput {
@@ -113,42 +114,45 @@ export const clarifyTool: Tool<ClarifyQuestionInput, ClarifyOutput> = {
     additionalProperties: false,
   },
   async execute(input, ctx, opts) {
+    const signal = opts?.signal ?? ctx.signal;
+    signal?.throwIfAborted();
+    let request: UserInputRequest;
     try {
-      const signal = opts?.signal ?? ctx.signal;
-      signal.throwIfAborted();
-      const request = normalizeRequest(input);
-      let response: UserInputResponse | undefined;
-      if (typeof ctx.requestUserInput === 'function')
-        response = await ctx.requestUserInput(request, signal);
-      else response = await legacyHostResponse(ctx, request);
-      const autoDecided = response === undefined;
-      const resolved = response ?? recommendedResponse(request);
-      if (resolved.status === 'cancelled')
-        return skipped(request, 'User cancelled the clarification form.');
-      const answers = materializeAnswers(request, resolved.answers);
-      const primary = answers[0]!;
-      const decisionSummary = `${autoDecided ? 'Auto-selected recommended answers in non-interactive mode' : 'User clarified'}: ${answers
-        .map((answer) => {
-          if (answer.delegatedToModel)
-            return `"${answer.question}": model should decide (user delegated)`;
-          const values = [
-            ...answer.selectedOptions,
-            ...(answer.customResponse ? [answer.customResponse] : []),
-          ];
-          return `"${answer.question}": ${values.join(', ') || '(blank)'}`;
-        })
-        .join('; ')}`;
-      return {
-        status: autoDecided ? 'auto_decided' : 'answered',
-        question: primary.question,
-        selectedOptions: primary.selectedOptions,
-        customResponse: primary.customResponse,
-        answers,
-        decisionSummary,
-      };
+      request = normalizeRequest(input);
     } catch (error) {
-      return skippedFromInput(input, toErrorMessage(error));
+      // A malformed form is an input error, not a user "skip": throw so the
+      // executor records a failed call instead of an ok-looking result.
+      throw new ToolValidationError({ message: `clarify: ${toErrorMessage(error)}`, cause: error });
     }
+    let response: UserInputResponse | undefined;
+    if (typeof ctx.requestUserInput === 'function')
+      response = await ctx.requestUserInput(request, signal);
+    else response = await legacyHostResponse(ctx, request);
+    const autoDecided = response === undefined;
+    const resolved = response ?? recommendedResponse(request);
+    if (resolved.status === 'cancelled')
+      return skipped(request, 'User cancelled the clarification form.');
+    const answers = materializeAnswers(request, resolved.answers);
+    const primary = answers[0]!;
+    const decisionSummary = `${autoDecided ? 'Auto-selected recommended answers in non-interactive mode' : 'User clarified'}: ${answers
+      .map((answer) => {
+        if (answer.delegatedToModel)
+          return `"${answer.question}": model should decide (user delegated)`;
+        const values = [
+          ...answer.selectedOptions,
+          ...(answer.customResponse ? [answer.customResponse] : []),
+        ];
+        return `"${answer.question}": ${values.join(', ') || '(blank)'}`;
+      })
+      .join('; ')}`;
+    return {
+      status: autoDecided ? 'auto_decided' : 'answered',
+      question: primary.question,
+      selectedOptions: primary.selectedOptions,
+      customResponse: primary.customResponse,
+      answers,
+      decisionSummary,
+    };
   },
 };
 
@@ -458,19 +462,6 @@ function skipped(request: UserInputRequest, error: string): ClarifyOutput {
   return {
     status: 'skipped',
     question: request.tabs[0]?.questions[0]?.prompt ?? '',
-    selectedOptions: [],
-    decisionSummary: '',
-    error,
-  };
-}
-function skippedFromInput(input: ClarifyQuestionInput, error: string): ClarifyOutput {
-  return {
-    status: 'skipped',
-    question:
-      input.question ??
-      input.questions?.[0]?.question ??
-      input.tabs?.[0]?.questions[0]?.question ??
-      '',
     selectedOptions: [],
     decisionSummary: '',
     error,

@@ -66,15 +66,13 @@ async function runAutoDocTool(input: Record<string, unknown>) {
 
 describe('runAutoDoc input validation', () => {
   it('rejects non-array files', async () => {
-    const result = await runAutoDocTool({ files: 'not-an-array' } as any);
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch('must be an array');
+    await expect(runAutoDocTool({ files: 'not-an-array' } as any)).rejects.toThrow(
+      /must be an array/,
+    );
   });
 
   it('rejects empty files array', async () => {
-    const result = await runAutoDocTool({ files: [] });
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch('empty');
+    await expect(runAutoDocTool({ files: [] })).rejects.toThrow(/empty/);
   });
 });
 
@@ -159,8 +157,9 @@ describe('runAutoDoc doc generation', () => {
   });
 
   it('logs warning for unreadable files', async () => {
-    const result = await runAutoDocTool({ files: ['/nonexistent/file.ts'], dry_run: true });
-    expect(result.ok).toBe(true);
+    await expect(
+      runAutoDocTool({ files: ['/nonexistent/file.ts'], dry_run: true }),
+    ).rejects.toThrow(/processed no files/);
     expect(mockApi.log.warn).toHaveBeenCalled();
   });
 
@@ -169,9 +168,9 @@ describe('runAutoDoc doc generation', () => {
     const outsideFile = path.join(outsideDir, 'outside.ts');
     await fs.writeFile(outsideFile, 'export function skip(): void {}\n');
     try {
-      const result = await runAutoDocTool({ files: [outsideFile], dry_run: true });
-      expect(result.ok).toBe(true);
-      expect(result.changes).toEqual([]);
+      await expect(runAutoDocTool({ files: [outsideFile], dry_run: true })).rejects.toThrow(
+        /outside project directory/,
+      );
       expect(mockApi.log.warn).toHaveBeenCalledWith(
         expect.stringContaining('skipped file outside project directory'),
       );

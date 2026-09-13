@@ -1,3 +1,4 @@
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
 import { parseRefInternal } from './fallback-model-ref-parse.js';
@@ -50,7 +51,7 @@ interface LeaderModelSetInput {
 }
 
 interface LeaderModelSetOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
 }
 
@@ -94,15 +95,17 @@ export function createLeaderModelSetTool(
 
       if (input.action === 'set') {
         if (!input.provider || !input.model) {
-          return { status: 'error', message: 'Provide "provider" and "model" for the leader.' };
+          throw new ToolValidationError({
+            message: 'Provide "provider" and "model" for the leader.',
+            field: !input.provider ? 'provider' : 'model',
+          });
         }
         if (opts.switchProviderAndModel) {
           const switchError = await opts.switchProviderAndModel(input.provider, input.model);
           if (switchError) {
-            return {
-              status: 'error',
-              message: `Could not switch to ${input.provider}/${input.model}: ${switchError}. Config was not changed.`,
-            };
+            throw new Error(
+              `Could not switch to ${input.provider}/${input.model}: ${switchError}. Config was not changed.`,
+            );
           }
         }
         await opts.updateConfig((cfg) => {
@@ -117,31 +120,36 @@ export function createLeaderModelSetTool(
 
       if (input.action === 'profile') {
         if (!input.profile) {
-          return { status: 'error', message: 'Provide "profile" name to derive the leader from.' };
+          throw new ToolValidationError({
+            message: 'Provide "profile" name to derive the leader from.',
+            field: 'profile',
+          });
         }
         const profiles = (config.fallbackProfiles ?? {}) as Record<string, string[]>;
         const chain = profiles[input.profile];
         if (!chain || chain.length === 0) {
-          return { status: 'error', message: `Profile "${input.profile}" not found or empty.` };
+          throw new ToolValidationError({
+            message: `Profile "${input.profile}" not found or empty.`,
+            field: 'profile',
+          });
         }
         const first = chain[0]!;
         const p = parseRefInternal(first);
         const provider = p.provider ?? config.provider;
         const model = p.model;
         if (!model) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: `Cannot parse "${first}" as a valid model reference.`,
-          };
+            field: 'profile',
+          });
         }
         const rest = chain.slice(1);
         if (opts.switchProviderAndModel) {
           const switchError = await opts.switchProviderAndModel(provider, model);
           if (switchError) {
-            return {
-              status: 'error',
-              message: `Could not switch to ${provider}/${model}: ${switchError}. Config was not changed.`,
-            };
+            throw new Error(
+              `Could not switch to ${provider}/${model}: ${switchError}. Config was not changed.`,
+            );
           }
         }
         await opts.updateConfig((cfg) => {
@@ -163,10 +171,10 @@ export function createLeaderModelSetTool(
 
       if (input.action === 'toggle') {
         if (!input.toggle || input.value === undefined) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: 'Provide "toggle" (fallbackAuto | favoriteModelsOnly) and "value" (boolean).',
-          };
+            field: !input.toggle ? 'toggle' : 'value',
+          });
         }
         await opts.updateConfig((cfg) => {
           if (input.toggle === 'fallbackAuto') {
@@ -181,7 +189,10 @@ export function createLeaderModelSetTool(
         };
       }
 
-      return { status: 'error', message: `Unknown action: "${input.action}".` };
+      throw new ToolValidationError({
+        message: `Unknown action: "${input.action}".`,
+        field: 'action',
+      });
     },
   };
 }

@@ -28,37 +28,32 @@ describe('gitTool', () => {
     );
   });
 
-  it('returns error when not in a git repo', async () => {
+  it('throws (not an ok exitCode result) when not in a git repo', async () => {
     const ctx = makeCtx('/');
-    const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
-    expect(result.exitCode).toBe(128);
-    expect(result.stderr).toMatch(/Not in a git repository/);
-  });
-
-  it('handles raw args', async () => {
-    const ctx = makeCtx('/');
-    const result = await gitTool.execute(
-      { command: 'status', args: '--porcelain' } as never,
-      ctx,
-      makeOpts(),
+    await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+      /Not in a git repository/,
     );
-    expect(result).toHaveProperty('exitCode');
   });
 
-  it('respects dry_run for commit', async () => {
+  it('throws for raw args outside a git repo', async () => {
     const ctx = makeCtx('/');
-    const result = await gitTool.execute(
-      { command: 'commit', dry_run: true, message: 'test' },
-      ctx,
-      makeOpts(),
-    );
-    expect(result).toHaveProperty('exitCode');
+    await expect(
+      gitTool.execute({ command: 'status', args: '--porcelain' } as never, ctx, makeOpts()),
+    ).rejects.toThrow(/Not in a git repository/);
   });
 
-  it('handles stash with message', async () => {
+  it('throws for dry_run commit outside a git repo', async () => {
     const ctx = makeCtx('/');
-    const result = await gitTool.execute({ command: 'stash', message: 'wip' }, ctx, makeOpts());
-    expect(result).toHaveProperty('exitCode');
+    await expect(
+      gitTool.execute({ command: 'commit', dry_run: true, message: 'test' }, ctx, makeOpts()),
+    ).rejects.toThrow(/Not in a git repository/);
+  });
+
+  it('throws for stash outside a git repo', async () => {
+    const ctx = makeCtx('/');
+    await expect(
+      gitTool.execute({ command: 'stash', message: 'wip' }, ctx, makeOpts()),
+    ).rejects.toThrow(/Not in a git repository/);
   });
 });
 
@@ -145,8 +140,9 @@ describe('gitTool — shared-worktree commit warning', () => {
 });
 
 describe('buildArgs (via execute in non-git dir)', () => {
-  // These test the arg building logic through the tool, even though
-  // they all return 128 (not in git repo). The key is they don't crash.
+  // Outside a git repo every command fails with a thrown error (never a crash,
+  // never an ok-looking result). A commit without a message fails validation
+  // before the repo lookup.
 
   const commands = [
     { command: 'status' as const },
@@ -179,21 +175,17 @@ describe('buildArgs (via execute in non-git dir)', () => {
   for (const input of commands) {
     it(`builds args for ${JSON.stringify(input)}`, async () => {
       const ctx = makeCtx('/');
-      const result = await gitTool.execute({ ...input }, ctx, makeOpts());
-      expect(result).toHaveProperty('exitCode');
-      expect(result).toHaveProperty('stdout');
-      expect(result).toHaveProperty('stderr');
+      await expect(gitTool.execute({ ...input }, ctx, makeOpts())).rejects.toThrow(
+        /Not in a git repository|requires a message/,
+      );
     });
   }
 
   it('handles array files', async () => {
     const ctx = makeCtx('/');
-    const result = await gitTool.execute(
-      { command: 'status', files: ['a.ts', 'b.ts'] },
-      ctx,
-      makeOpts(),
-    );
-    expect(result).toHaveProperty('exitCode');
+    await expect(
+      gitTool.execute({ command: 'status', files: ['a.ts', 'b.ts'] }, ctx, makeOpts()),
+    ).rejects.toThrow(/Not in a git repository/);
   });
 });
 
@@ -222,11 +214,8 @@ describe('gitTool live execution (uses the test repo itself)', () => {
   it('aborts when the signal is fired before spawn', async () => {
     const ac = new AbortController();
     ac.abort();
-    const result = await gitTool.execute({ command: 'log' }, ctx, { signal: ac.signal });
-    // Aborted signal causes ENOENT / AbortError; exitCode comes from
-    // child.on('error') path. We just verify the tool resolves rather than
-    // throws.
-    expect(result.exitCode).not.toBe(0);
+    // An aborted run has no git exit code to report — it rejects.
+    await expect(gitTool.execute({ command: 'log' }, ctx, { signal: ac.signal })).rejects.toThrow();
   });
 });
 
@@ -235,11 +224,9 @@ describe('gitTool live execution (uses the test repo itself)', () => {
 describe('gitTool runGit error paths', () => {
   it('handles child spawn error via child.on(error)', async () => {
     const ctx = makeCtx('/non/existent/path');
-    // Use a command that should fail to spawn
-    const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
-    // Should not throw, returns error result
-    expect(result).toHaveProperty('exitCode');
-    expect(result).toHaveProperty('stderr');
+    await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+      /Not in a git repository/,
+    );
   });
 
   it('handles truncated output in runGit', async () => {
@@ -275,9 +262,10 @@ describe('gitTool findGitDir bounds', () => {
       await fs.mkdir(path.join(gitDir, 'refs'), { recursive: true });
 
       const ctx = { cwd: path.join(projectRoot, 'subdir'), tools: [], projectRoot } as any;
-      const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
-      // Should return 128 because projectRoot has no git
-      expect(result.exitCode).toBe(128);
+      // projectRoot has no git → refuses instead of drifting to a parent repo
+      await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+        /Not in a git repository/,
+      );
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -287,8 +275,9 @@ describe('gitTool findGitDir bounds', () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'no-git-'));
     try {
       const ctx = { cwd: dir, tools: [], projectRoot: dir } as any;
-      const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
-      expect(result.exitCode).toBe(128);
+      await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+        /Not in a git repository/,
+      );
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
@@ -299,13 +288,9 @@ describe('gitTool buildArgs edge cases', () => {
   it('branch rejects names starting with dash', async () => {
     const ctx = makeCtx('/');
     // branch name starting with '-' is rejected (flag injection prevention)
-    const result = await gitTool.execute(
-      { command: 'branch', branch: '-f' } as any,
-      ctx,
-      makeOpts(),
-    );
-    // Should not crash, just not include the branch arg
-    expect(result).toHaveProperty('exitCode');
+    await expect(
+      gitTool.execute({ command: 'branch', branch: '-f' } as any, ctx, makeOpts()),
+    ).rejects.toThrow(/unsafe branch/);
   });
 
   it('checkout works with just files (no branch)', async () => {
@@ -322,9 +307,9 @@ describe('gitTool buildArgs edge cases', () => {
 
   it('commit handles missing message gracefully', async () => {
     const ctx = makeCtx(process.cwd());
-    const result = await gitTool.execute({ command: 'commit' } as any, ctx, makeOpts());
-    // git commit without message should fail with non-zero exitCode
-    expect(result.exitCode).not.toBe(0);
+    await expect(gitTool.execute({ command: 'commit' } as any, ctx, makeOpts())).rejects.toThrow(
+      /requires a message/,
+    );
   });
 });
 
@@ -335,8 +320,12 @@ describe('gitTool runGit close handling', () => {
     const ac = new AbortController();
     // Abort immediately after starting
     setTimeout(() => ac.abort(), 10);
-    const result = await gitTool.execute({ command: 'status' }, ctx, { signal: ac.signal });
-    expect(result).toHaveProperty('exitCode');
+    // Either git finishes first (a result) or the abort wins (a rejection).
+    const outcome = await gitTool.execute({ command: 'status' }, ctx, { signal: ac.signal }).then(
+      (r) => r.exitCode,
+      (e: unknown) => e,
+    );
+    expect(outcome).toBeDefined();
   });
 });
 
@@ -398,10 +387,11 @@ describe('gitTool findGitDir bounds via real fs', () => {
       await fs.mkdir(cwd, { recursive: true });
 
       const ctx = { cwd, tools: [], projectRoot } as any;
-      const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
       // projectRoot has no .git, sibling does but is outside projectRoot
-      // → findGitDir returns null, exitCode 128
-      expect(result.exitCode).toBe(128);
+      // → findGitDir returns null, the call fails
+      await expect(gitTool.execute({ command: 'status' }, ctx, makeOpts())).rejects.toThrow(
+        /Not in a git repository/,
+      );
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -465,19 +455,19 @@ describe('gitTool worktree hardening', () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'wt-escape-'));
     try {
       const ctx = { cwd: base, tools: [], projectRoot: base } as any;
-      const result = await gitTool.execute(
-        {
-          command: 'worktree',
-          worktreeAction: 'add',
-          worktreePath: '../../etc/evil',
-          newBranch: true,
-          branch: 'x',
-        },
-        ctx,
-        makeOpts(),
-      );
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/escapes project root/);
+      await expect(
+        gitTool.execute(
+          {
+            command: 'worktree',
+            worktreeAction: 'add',
+            worktreePath: '../../etc/evil',
+            newBranch: true,
+            branch: 'x',
+          },
+          ctx,
+          makeOpts(),
+        ),
+      ).rejects.toThrow(/escapes project root/);
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -487,19 +477,19 @@ describe('gitTool worktree hardening', () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'wt-flag-'));
     try {
       const ctx = { cwd: base, tools: [], projectRoot: base } as any;
-      const result = await gitTool.execute(
-        {
-          command: 'worktree',
-          worktreeAction: 'add',
-          worktreePath: 'wt',
-          branch: '--upload-pack=evil',
-          newBranch: true,
-        },
-        ctx,
-        makeOpts(),
-      );
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/unsafe branch/);
+      await expect(
+        gitTool.execute(
+          {
+            command: 'worktree',
+            worktreeAction: 'add',
+            worktreePath: 'wt',
+            branch: '--upload-pack=evil',
+            newBranch: true,
+          },
+          ctx,
+          makeOpts(),
+        ),
+      ).rejects.toThrow(/unsafe branch/);
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -518,9 +508,9 @@ describe('gitTool worktree hardening', () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'git-fetch-flag-'));
     try {
       const ctx = { cwd: base, tools: [], projectRoot: base } as any;
-      const result = await gitTool.execute({ command: 'fetch', branch }, ctx, makeOpts());
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/unsafe branch/);
+      await expect(gitTool.execute({ command: 'fetch', branch }, ctx, makeOpts())).rejects.toThrow(
+        /unsafe branch/,
+      );
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -530,14 +520,11 @@ describe('gitTool worktree hardening', () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'git-fetch-ok-'));
     try {
       const ctx = { cwd: base, tools: [], projectRoot: base } as any;
-      const result = await gitTool.execute(
-        { command: 'fetch', branch: 'feature/my-branch' },
-        ctx,
-        makeOpts(),
-      );
       // Not a git repo, so this fails downstream — the point is that it is NOT
       // rejected by the branch guard.
-      expect(result.stderr).not.toMatch(/unsafe branch/);
+      await expect(
+        gitTool.execute({ command: 'fetch', branch: 'feature/my-branch' }, ctx, makeOpts()),
+      ).rejects.toThrow(/Not in a git repository/);
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }
@@ -547,19 +534,19 @@ describe('gitTool worktree hardening', () => {
     const base = await fs.mkdtemp(path.join(os.tmpdir(), 'wt-flagp-'));
     try {
       const ctx = { cwd: base, tools: [], projectRoot: base } as any;
-      const result = await gitTool.execute(
-        {
-          command: 'worktree',
-          worktreeAction: 'add',
-          worktreePath: '--force',
-          newBranch: true,
-          branch: 'x',
-        },
-        ctx,
-        makeOpts(),
-      );
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr).toMatch(/unsafe worktree path/);
+      await expect(
+        gitTool.execute(
+          {
+            command: 'worktree',
+            worktreeAction: 'add',
+            worktreePath: '--force',
+            newBranch: true,
+            branch: 'x',
+          },
+          ctx,
+          makeOpts(),
+        ),
+      ).rejects.toThrow(/unsafe worktree path/);
     } finally {
       await fs.rm(base, { recursive: true, force: true });
     }

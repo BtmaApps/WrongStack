@@ -25,7 +25,7 @@
 
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { BoundedSet, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -480,7 +480,8 @@ const plugin: Plugin = {
       category: 'Security',
       mutating: false,
       async execute(input: { path: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'security-hotspot-scanner is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('security-hotspot-scanner is disabled');
         const raw = input as Record<string, unknown>;
         const targetPath =
           (typeof input.path === 'string' ? input.path : undefined) ??
@@ -496,7 +497,10 @@ const plugin: Plugin = {
         state.fileScanCount += result.filesScanned;
         state.findingCount += result.findings.length;
         if (!result.scanned) {
-          return { ok: false, error: result.error, path: targetPath };
+          throw new ToolValidationError({
+            message: `cannot scan ${targetPath}: ${result.error ?? 'unknown error'}`,
+            field: 'path',
+          });
         }
         state.lastResult = {
           path: result.path,

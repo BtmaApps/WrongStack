@@ -106,7 +106,7 @@ function vectorMemorySearchTool(store: VectorMemoryStore): Tool<SearchInput, Sea
     name: 'vector_memory_search',
     category: 'Memory',
     description:
-      'Semantic search over the vector memory store. Embeds the query with the active provider and returns the top-k entries ranked by cosine similarity. Returns an empty list when the embedding provider is unavailable — callers should fall back to lexical search.',
+      'Semantic search over the vector memory store. Embeds the query with the active provider and returns the top-k entries ranked by cosine similarity. Fails when the embedding provider is unavailable — fall back to lexical search (sage `memory_search`) in that case.',
     usageHint:
       'Use when you want results ranked by meaning. Pairs well with sage `memory_search` for keyword precision.',
     permission: 'auto',
@@ -151,6 +151,8 @@ function vectorMemorySearchTool(store: VectorMemoryStore): Tool<SearchInput, Sea
         threshold: input.threshold !== undefined ? input.threshold : undefined,
         scope: input.scope,
         kind: input.kind,
+        // An embedding outage must fail the call, not look like "no matches".
+        failOnEmbeddingError: true,
       });
       return {
         hits: hits.map((h) => ({
@@ -226,6 +228,12 @@ function vectorMemoryForgetTool(store: VectorMemoryStore): Tool<ForgetInput, For
       required: ['id'],
       additionalProperties: false,
     },
-    execute: async (input) => ({ removed: await store.forget(input.id) }),
+    execute: async (input) => {
+      // An unknown id THROWS: `{ removed: false }` was recorded as a success.
+      if (!(await store.forget(input.id))) {
+        throw new Error(`vector_memory_forget: no entry with id "${input.id}".`);
+      }
+      return { removed: true };
+    },
   };
 }

@@ -7,11 +7,13 @@ const cfg: {
   stdout: string;
   stderr: string;
   emit: 'close' | 'error' | 'none';
+  code: number;
   pipeError?: boolean;
 } = {
   stdout: '',
   stderr: '',
   emit: 'close',
+  code: 0,
 };
 let lastKill: string | undefined;
 let lastSpawnArgs: string[] = [];
@@ -39,7 +41,7 @@ vi.mock('node:child_process', async (orig) => {
           child.stdout.emit('error', new Error('EPIPE'));
           child.stderr.emit('error', new Error('EPIPE'));
         }
-        if (cfg.emit === 'close') child.emit('close', 0);
+        if (cfg.emit === 'close') child.emit('close', cfg.code);
         else if (cfg.emit === 'error') child.emit('error', new Error('spawn docker ENOENT'));
         // 'none' → never settles; the tool's internal timeout must fire.
       });
@@ -57,6 +59,7 @@ beforeEach(() => {
   cfg.stdout = '';
   cfg.stderr = '';
   cfg.emit = 'close';
+  cfg.code = 0;
   cfg.pipeError = false;
   lastKill = undefined;
   lastSpawnArgs = [];
@@ -70,6 +73,7 @@ describe('logsTool docker path (faked docker process)', () => {
     expect(result.source).toBe('docker:myapp');
     expect(result.entries.length).toBe(2);
     expect(result.entries.map((e) => e.level)).toContain('error');
+    expect(result.stream_mode).toBe(false);
   });
 
   it('applies the regex filter to docker output', async () => {
@@ -86,17 +90,26 @@ describe('logsTool docker path (faked docker process)', () => {
     expect(result.source).toBe('docker:myapp');
   });
 
-  it('returns empty on a docker spawn error', async () => {
+  it('throws on a docker spawn error (not an empty ok result)', async () => {
     cfg.emit = 'error';
-    const result = await logsTool.execute({ service: 'myapp' }, ctx(), opts());
-    expect(result.entries).toEqual([]);
-    expect(result.total).toBe(0);
+    await expect(logsTool.execute({ service: 'myapp' }, ctx(), opts())).rejects.toThrow(
+      /could not run docker.*ENOENT/,
+    );
   });
 
-  it('kills the child and returns empty when docker never settles (timeout)', async () => {
+  it('throws when docker exits non-zero instead of parsing its error as a log line', async () => {
+    cfg.code = 1;
+    cfg.stderr = 'Error response from daemon: No such container: myapp\n';
+    await expect(logsTool.execute({ service: 'myapp' }, ctx(), opts())).rejects.toThrow(
+      /exited with code 1: Error response from daemon: No such container/,
+    );
+  });
+
+  it('kills the child and throws when docker never settles (timeout)', async () => {
     cfg.emit = 'none';
-    const result = await logsTool.execute({ service: 'myapp' }, ctx(), opts());
-    expect(result.entries).toEqual([]);
+    await expect(logsTool.execute({ service: 'myapp' }, ctx(), opts())).rejects.toThrow(
+      /did not finish within/,
+    );
     expect(lastKill).toBe('SIGTERM');
   }, 10_000);
 

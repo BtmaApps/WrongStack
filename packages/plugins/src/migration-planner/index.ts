@@ -27,7 +27,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { releaseHandle, withinProject } from '../runtime/index.js';
 import { parseLlmJsonObject, runOptionalPluginCouncil } from '../runtime/llm.js';
 
@@ -557,7 +557,8 @@ const plugin: Plugin = {
         _ctx: unknown,
         execOpts?: { signal?: AbortSignal },
       ) {
-        if (!cfg.enabled) return { ok: false, error: 'migration-planner is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('migration-planner is disabled');
         execOpts?.signal?.throwIfAborted();
 
         const raw = (input ?? {}) as Record<string, unknown>;
@@ -592,7 +593,10 @@ const plugin: Plugin = {
         const fromVersion = String(rawFrom ?? '').trim();
         const toVersion = String(rawTo ?? '').trim();
         if (!packageName || !fromVersion || !toVersion) {
-          return { ok: false, error: 'packageName, fromVersion, and toVersion are required' };
+          throw new ToolValidationError({
+            message: 'packageName, fromVersion, and toVersion are required',
+            field: !packageName ? 'packageName' : !fromVersion ? 'fromVersion' : 'toVersion',
+          });
         }
 
         const changelog = readChangelog(packageName, cfg);

@@ -49,61 +49,36 @@ describe('knowledge-graph plugin - additional coverage', () => {
     const api = makeApi({ extensions: { 'knowledge-graph': { enabled: false, filePath: '' } } });
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
-    const result = (await add({ subject: 'a', relation: 'b', object: 'c' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(add({ subject: 'a', relation: 'b', object: 'c' })).rejects.toThrow(/disabled/);
   });
 
-  it('kg_add_fact returns error when subject is empty', async () => {
+  it('kg_add_fact throws when subject is empty', async () => {
     const api = makeApi();
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
-    const result = (await add({ subject: '', relation: 'b', object: 'c' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('required');
+    await expect(add({ subject: '', relation: 'b', object: 'c' })).rejects.toThrow(/required/);
   });
 
-  it('kg_add_fact returns error when relation is empty', async () => {
+  it('kg_add_fact throws when relation is empty', async () => {
     const api = makeApi();
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
-    const result = (await add({ subject: 'a', relation: '', object: 'c' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('required');
+    await expect(add({ subject: 'a', relation: '', object: 'c' })).rejects.toThrow(/required/);
   });
 
-  it('kg_add_fact returns error when object is empty', async () => {
+  it('kg_add_fact throws when object is empty', async () => {
     const api = makeApi();
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
-    const result = (await add({ subject: 'a', relation: 'b', object: '' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('required');
+    await expect(add({ subject: 'a', relation: 'b', object: '' })).rejects.toThrow(/required/);
   });
 
-  it('kg_add_fact returns error when fact limit is reached', async () => {
+  it('kg_add_fact throws when fact limit is reached', async () => {
     const api = makeApi({ extensions: { 'knowledge-graph': { maxFacts: 1, filePath: '' } } });
     knowledgeGraphPlugin.setup(api as never);
     const add = getTool(api, 'kg_add_fact');
     await add({ subject: 'a', relation: 'b', object: 'c' });
-    const result = (await add({ subject: 'd', relation: 'e', object: 'f' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('limit');
+    await expect(add({ subject: 'd', relation: 'e', object: 'f' })).rejects.toThrow(/limit/);
   });
 
   it('kg_status returns correct state', async () => {
@@ -118,13 +93,18 @@ describe('knowledge-graph plugin - additional coverage', () => {
     expect(result.enabled).toBe(true);
   });
 
-  it('kg_remove_fact returns error when id is missing', async () => {
+  it('kg_remove_fact throws when id is missing', async () => {
     const api = makeApi();
     knowledgeGraphPlugin.setup(api as never);
     const remove = getTool(api, 'kg_remove_fact');
-    const result = (await remove({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('no fact matches');
+    await expect(remove({})).rejects.toThrow(/id is required/);
+  });
+
+  it('kg_remove_fact throws when no fact matches', async () => {
+    const api = makeApi();
+    knowledgeGraphPlugin.setup(api as never);
+    const remove = getTool(api, 'kg_remove_fact');
+    await expect(remove({ id: 'kg-404' })).rejects.toThrow(/no fact matches/);
   });
 
   it('system prompt contributor is registered when enabled', async () => {

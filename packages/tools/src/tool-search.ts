@@ -17,6 +17,8 @@ export interface ToolSearchOutput {
   }[];
   total: number;
   truncated: boolean;
+  /** Guidance returned when a query matched nothing. */
+  hint?: string | undefined;
   /** Total count of tools in the registry (for "no results" hints). */
   _available?: number;
 }

@@ -59,3 +59,20 @@ export function stringifyToolError(err: unknown): string {
   if (err instanceof Error) return `[${LSPErrorCode.ProtocolError}] ${err.message}`;
   return `[${LSPErrorCode.ProtocolError}] ${String(err)}`;
 }
+
+/**
+ * The error a tool THROWS for a failure. Tools used to RETURN
+ * `stringifyToolError(err)`, which the executor recorded as a successful call
+ * (is_error:false). The `[code]` prefix is kept in the message; aborts
+ * propagate unchanged so a cancel stays a cancel.
+ */
+export function toToolError(err: unknown): Error {
+  if (err instanceof Error && err.name === 'AbortError') return err;
+  const wrapped = new LSPError(
+    err instanceof LSPError ? err.code : LSPErrorCode.ProtocolError,
+    stringifyToolError(err),
+    err instanceof LSPError ? err.details : undefined,
+  );
+  (wrapped as { cause?: unknown }).cause = err;
+  return wrapped;
+}

@@ -418,6 +418,14 @@ describe('secret_scanner_test tool', () => {
     expect(result.count).toBeGreaterThanOrEqual(1);
   });
 
+  it('throws when text is missing instead of reporting a clean scan', async () => {
+    const api = makeApi();
+    secretScannerPlugin.setup(api as any);
+    const tool = getRegisteredTool(api, 'secret_scanner_test');
+    await expect(tool.execute({})).rejects.toThrow(/text is required/);
+    await expect(tool.execute({ text: 42 })).rejects.toThrow(/text is required/);
+  });
+
   it('returns an empty match list for a clean string', async () => {
     const api = makeApi();
     secretScannerPlugin.setup(api as any);

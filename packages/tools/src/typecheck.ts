@@ -94,6 +94,13 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
     });
     if (bridge?.run) {
       const run = bridge.run;
+      // Checker could not be launched: exitCode is null and `?? 0` below would
+      // report a clean typecheck.
+      if (run.status === 'unavailable') {
+        throw new Error(
+          `typecheck: ${bridge.language} checker unavailable: ${run.error || run.output || 'no detail'}`,
+        );
+      }
       yield {
         type: 'final',
         output: {
@@ -149,12 +156,18 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
       maxBytes: 200_000,
     });
 
+    // Spawn failure (npx/pnpm missing, EACCES…): no type check ran, so this is a
+    // failed call rather than a fabricated "1 error" result.
+    if (result.error) {
+      throw new Error(`typecheck: failed to start ${cmd}: ${result.error}`);
+    }
+
     // Count real tsc diagnostic lines ("file(1,2): error TS1234: …"), not every
     // occurrence of the word "error" — messages quoting the word inflated the
-    // old \berror\b count. Include result.error if present (e.g. spawn failure).
-    const combined = [result.stdout, result.stderr, result.error].filter(Boolean).join('\n');
-    let errors = [...combined.matchAll(/^.*\berror TS\d+:/gmi)].length;
-    const warnings = [...combined.matchAll(/^.*\bwarning TS\d+:/gmi)].length;
+    // old \berror\b count.
+    const combined = [result.stdout, result.stderr].filter(Boolean).join('\n');
+    let errors = [...combined.matchAll(/^.*\berror TS\d+:/gim)].length;
+    const warnings = [...combined.matchAll(/^.*\bwarning TS\d+:/gim)].length;
     if (errors === 0 && result.exitCode !== 0) {
       errors = 1;
     }
@@ -162,7 +175,7 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
     const rawOutput =
       result.stdout && result.stderr
         ? `${result.stdout}\n${result.stderr}`
-        : result.stdout || result.stderr || result.error || '';
+        : result.stdout || result.stderr || '';
 
     yield {
       type: 'final',

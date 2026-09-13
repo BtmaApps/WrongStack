@@ -8,7 +8,7 @@
  * via the `directory` + `pattern` parameters. Pass `files` for specific
  * files, or `directory` (optionally with `pattern`) for recursive scanning.
  */
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { execFile } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
@@ -147,9 +147,7 @@ async function runShellCheck(
               resolvePromise(diagnostic);
               return;
             }
-            // shellcheck exited non-zero with no diagnostic stderr → not
-            // a runtime error, just no JSON to parse. Reject so the
-            // outer try/catch returns [].
+            // Non-zero exit with no output at all (timeout, kill, spawn failure).
             rejectPromise(err);
             return;
           }
@@ -157,9 +155,12 @@ async function runShellCheck(
         },
       );
     });
-  } catch {
-    // shellcheck returns non-zero when issues are found, which is not an error
-    return [];
+  } catch (err) {
+    // Findings exit non-zero WITH output (handled above); this is a real failure.
+    throw new Error(
+      `shellcheck failed without output: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
 
   if (!raw.trim()) return [];
@@ -181,23 +182,34 @@ async function runShellCheck(
       code: item.code,
       message: item.message,
     }));
-  } catch {
-    return [];
+  } catch (err) {
+    // Non-JSON output is shellcheck's own error text (e.g. a missing file), not "no issues".
+    throw new Error(`shellcheck returned unparseable output: ${raw.trim().slice(0, 500)}`, {
+      cause: err,
+    });
   }
 }
 
-async function findShellFiles(dir: string, pattern: string): Promise<string[]> {
+async function findShellFiles(dir: string, pattern: string, isRoot = true): Promise<string[]> {
   const results: string[] = [];
   let entries: import('node:fs').Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return results; // ignore access errors
+  } catch (err) {
+    // A missing/unreadable scan root used to read as "0 files, no issues".
+    if (isRoot) {
+      throw new ToolValidationError({
+        message: `directory does not exist or cannot be read: ${dir}`,
+        field: 'directory',
+        cause: err,
+      });
+    }
+    return results; // unreadable subdirectories are skipped
   }
   for (const entry of entries) {
     const full = join(dir, entry.name);
     if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '.git') {
-      results.push(...(await findShellFiles(full, pattern)));
+      results.push(...(await findShellFiles(full, pattern, false)));
     } else if (
       entry.isFile() &&
       (entry.name.endsWith('.sh') ||
@@ -294,11 +306,7 @@ const plugin: Plugin = {
             default: 'warning',
             description: 'Minimum severity level to report',
           },
-          fix: {
-            type: 'boolean',
-            default: false,
-            description: 'Apply safe automatic fixes where possible',
-          },
+          // `fix` was declared ("apply safe automatic fixes") but never implemented.
         },
       },
       permission: 'auto',
@@ -350,23 +358,18 @@ const plugin: Plugin = {
         // injected LLM) could sweep /etc, $HOME, C:\Windows, etc.
         const pathIsSafe = (p: string): boolean =>
           typeof p === 'string' && p.length > 0 && p.length <= MAX_PATH_LEN && withinProject(p);
+        // Failures throw: the executor only flags a call as failed when execute rejects.
         if (!pathIsSafe(directory)) {
-          return {
-            ok: false,
-            error: `directory path is outside the project root: ${directory}`,
-            issues: [],
-            filesScanned: 0,
-            rejectedOutsideProject: true,
-          };
+          throw new ToolValidationError({
+            message: `directory path is outside the project root: ${directory}`,
+            field: 'directory',
+          });
         }
         if (files?.some((f) => !pathIsSafe(f))) {
-          return {
-            ok: false,
-            error: 'one or more file paths are outside the project root',
-            issues: [],
-            filesScanned: 0,
-            rejectedOutsideProject: true,
-          };
+          throw new ToolValidationError({
+            message: 'one or more file paths are outside the project root',
+            field: 'files',
+          });
         }
 
         // Resolve the file list: explicit files, or recursive directory scan.
@@ -397,20 +400,7 @@ const plugin: Plugin = {
           };
         }
 
-        let issues: ShellCheckIssue[];
-        try {
-          issues = await runShellCheck(checkFiles, severity);
-        } catch (err: unknown) {
-          /* v8 ignore next -- runShellCheck only throws Error; the String(err) branch is defensive. */
-          const msg = err instanceof Error ? err.message : String(err);
-          return {
-            ok: false,
-            error: msg,
-            issues: [],
-            filesScanned: 0,
-            mode: scannedDirectories ? 'directory' : 'files',
-          };
-        }
+        const issues = await runShellCheck(checkFiles, severity);
 
         const byFile: Record<string, ShellCheckIssue[]> = {};
         for (const issue of issues) {

@@ -247,13 +247,7 @@ describe('generate_release_notes tool', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_release_notes');
-    const result = (await generate({ from: 'v1', to: 'HEAD' })) as {
-      ok: boolean;
-      error: string;
-    };
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('invalid commit id');
+    await expect(generate({ from: 'v1', to: 'HEAD' })).rejects.toThrow(/invalid commit id/);
     expect(vi.mocked(execFile).mock.calls).toHaveLength(1);
   });
 
@@ -261,9 +255,7 @@ describe('generate_release_notes tool', () => {
     const api = makeApi({ extensions: { 'release-notes-generator': { enabled: false } } });
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_release_notes');
-    const result = (await generate({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(generate({})).rejects.toThrow(/disabled/);
   });
 
   it('surfaces git errors gracefully', async () => {
@@ -281,12 +273,9 @@ describe('generate_release_notes tool', () => {
     const api = makeApi();
     plugin.setup(api as never);
     const generate = getTool(api, 'generate_release_notes');
-    const result = (await generate({ from: 'bad-ref', to: 'HEAD' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('git exploded');
+    await expect(generate({ from: 'bad-ref', to: 'HEAD' })).rejects.toThrow(
+      /Could not read git history: .*git exploded/,
+    );
   });
 
   it('optionally polishes notes through api.llm while preserving traceable hashes', async () => {

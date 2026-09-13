@@ -28,6 +28,21 @@ describe('glob tool', () => {
     expect(out.files.some((f) => f.endsWith('b.js'))).toBe(false);
   });
 
+  it('throws for a non-existent base path instead of returning no files', async () => {
+    await expect(
+      globTool.execute({ pattern: '*.ts', path: 'does-not-exist' }, sb.ctx, {
+        signal: newSignal(),
+      }),
+    ).rejects.toThrow(/does not exist/);
+  });
+
+  it('throws when the base path is a file, not a directory', async () => {
+    await fs.writeFile(path.join(sb.dir, 'plain.txt'), '');
+    await expect(
+      globTool.execute({ pattern: '*', path: 'plain.txt' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/is not a directory/);
+  });
+
   it('recurses with **', async () => {
     await fs.mkdir(path.join(sb.dir, 'src', 'deep'), { recursive: true });
     await fs.writeFile(path.join(sb.dir, 'src', 'deep', 'a.ts'), '');
@@ -66,14 +81,6 @@ describe('glob tool', () => {
     const out = await globTool.execute({ pattern: '**/*.ts' }, sb.ctx, { signal: ctrl.signal });
     expect(out.files).toEqual([]);
     expect(out.truncated).toBe(true);
-  });
-
-  it('returns no files when the base path is not a directory (readdir fails)', async () => {
-    await fs.writeFile(path.join(sb.dir, 'afile.ts'), '');
-    const out = await globTool.execute({ pattern: '*', path: 'afile.ts' }, sb.ctx, {
-      signal: newSignal(),
-    });
-    expect(out.files).toEqual([]);
   });
 
   it('reads and applies .gitignore entries', async () => {

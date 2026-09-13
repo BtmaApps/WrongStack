@@ -9,7 +9,7 @@
 
 import { watch as fsWatch } from 'node:fs';
 import { join } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -297,11 +297,10 @@ const plugin: Plugin = {
         let rawPaths: unknown;
         if (explicitPaths !== undefined) {
           if (!Array.isArray(explicitPaths)) {
-            return {
-              ok: false,
-              error: 'paths must be an array of file/directory paths',
-              watch_id: null,
-            };
+            throw new ToolValidationError({
+              message: 'paths must be an array of file/directory paths',
+              field: 'paths',
+            });
           }
           rawPaths = explicitPaths;
         } else {
@@ -318,44 +317,37 @@ const plugin: Plugin = {
               : undefined;
         }
         if (!rawPaths || !Array.isArray(rawPaths)) {
-          return {
-            ok: false,
-            error: 'paths must be an array of file/directory paths',
-            watch_id: null,
-          };
+          throw new ToolValidationError({
+            message: 'paths must be an array of file/directory paths',
+            field: 'paths',
+          });
         }
         const paths = [...new Set(rawPaths as string[])];
         if (paths.length === 0) {
-          return {
-            ok: false,
-            error: 'paths array is empty — provide at least one path',
-            watch_id: null,
-          };
+          throw new ToolValidationError({
+            message: 'paths array is empty — provide at least one path',
+            field: 'paths',
+          });
         }
         if (paths.length > MAX_PATHS_PER_WATCH) {
-          return {
-            ok: false,
-            error: `a watch may contain at most ${MAX_PATHS_PER_WATCH} unique paths`,
-            watch_id: null,
-          };
+          throw new ToolValidationError({
+            message: `a watch may contain at most ${MAX_PATHS_PER_WATCH} unique paths`,
+            field: 'paths',
+          });
         }
         if (watches.size >= MAX_WATCH_GROUPS) {
-          return {
-            ok: false,
-            error: `active watch group limit reached (${MAX_WATCH_GROUPS})`,
-            watch_id: null,
-          };
+          throw new Error(
+            `active watch group limit reached (${MAX_WATCH_GROUPS}); stop a watch with watch_stop first`,
+          );
         }
         const activeFilesystemWatchers = [...watches.values()].reduce(
           (total, handle) => total + handle.watchers.length,
           0,
         );
         if (activeFilesystemWatchers + paths.length > MAX_FILESYSTEM_WATCHERS) {
-          return {
-            ok: false,
-            error: `filesystem watcher limit reached (${MAX_FILESYSTEM_WATCHERS})`,
-            watch_id: null,
-          };
+          throw new Error(
+            `filesystem watcher limit reached (${MAX_FILESYSTEM_WATCHERS}); stop a watch with watch_stop first`,
+          );
         }
         const events = (input['events'] as string[] | undefined) ?? ['change', 'add', 'delete'];
         const recursive = (input['recursive'] as boolean | undefined) ?? true;
@@ -365,12 +357,10 @@ const plugin: Plugin = {
         // some watchers would silently leave unsafe paths unmonitored.
         const bad = paths.find((p) => !withinProject(p));
         if (bad !== undefined) {
-          return {
-            ok: false,
-            error: `path is outside the project root: ${bad}`,
-            watch_id: null,
-            rejectedOutsideProject: true,
-          };
+          throw new ToolValidationError({
+            message: `path is outside the project root: ${bad}`,
+            field: 'paths',
+          });
         }
 
         const id = nextId();
@@ -384,8 +374,17 @@ const plugin: Plugin = {
         };
 
         const watchedPaths: string[] = [];
+        const failedPaths: string[] = [];
         for (const p of paths) {
           if (safeWatchDir(p, recursive, handle)) watchedPaths.push(p);
+          else failedPaths.push(p);
+        }
+
+        // Nothing could be watched: no watch exists, so this is a failure.
+        if (watchedPaths.length === 0) {
+          throw new Error(
+            `could not watch any of the requested paths: ${failedPaths.join(', ')} (missing path or OS watcher limit)`,
+          );
         }
 
         // Only report paths for which fs.watch successfully opened a handle.
@@ -406,9 +405,12 @@ const plugin: Plugin = {
           ok: true,
           watch_id: id,
           paths: watchedPaths,
+          ...(failedPaths.length > 0 ? { failedPaths } : {}),
           events,
           recursive,
-          message: `Started watching ${watchedPaths.length} path(s). Use watch_stop to cancel.`,
+          message:
+            `Started watching ${watchedPaths.length} path(s). Use watch_stop to cancel.` +
+            (failedPaths.length > 0 ? ` Could not watch: ${failedPaths.join(', ')}.` : ''),
         };
       },
     });
@@ -433,7 +435,7 @@ const plugin: Plugin = {
         const handle = watches.get(watch_id);
 
         if (!handle) {
-          return { ok: false, error: `No active watch with ID: ${watch_id}` };
+          throw new Error(`No active watch with ID: ${watch_id}`);
         }
 
         for (const w of handle.watchers) {

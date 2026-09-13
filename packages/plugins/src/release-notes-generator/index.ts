@@ -413,7 +413,8 @@ const plugin: Plugin = {
         _ctx: unknown,
         execOpts?: { signal?: AbortSignal },
       ) {
-        if (!cfg.enabled) return { ok: false, error: 'release-notes-generator is disabled' };
+        // Failures throw: the executor only flags a call as failed when execute rejects.
+        if (!cfg.enabled) throw new Error('release-notes-generator is disabled');
         execOpts?.signal?.throwIfAborted();
 
         const raw = (input ?? {}) as Record<string, unknown>;
@@ -432,7 +433,7 @@ const plugin: Plugin = {
           commits = await getCommits(fromRef, toRef, execOpts?.signal);
         } catch (err) {
           state.errorCount += 1;
-          return { ok: false, error: String(err) };
+          throw new Error(`Could not read git history: ${String(err)}`, { cause: err });
         }
         state.commitCount += commits.length;
         execOpts?.signal?.throwIfAborted();

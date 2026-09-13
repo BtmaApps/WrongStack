@@ -162,21 +162,21 @@ describe('createMcpControlTool', () => {
 
   // ── enable action ──────────────────────────────────────────────────────────
 
-  it('enable: missing server name returns error', async () => {
-    const result = await tool.execute({ action: 'enable' }, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('server` is required');
+  // Failures must THROW: the executor records a returned string as success.
+  it('enable: missing server name throws', async () => {
+    await expect(
+      tool.execute({ action: 'enable' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('server` is required');
   });
 
-  it('enable: unknown server returns error with known list', async () => {
-    const result = await tool.execute(
-      { action: 'enable', server: 'nonexistent' },
-      undefined as never,
-      { signal: new AbortController().signal },
-    );
-    expect(result).toContain('Unknown server');
-    expect(result).toContain('nonexistent');
+  it('enable: unknown server throws with known list', async () => {
+    await expect(
+      tool.execute({ action: 'enable', server: 'nonexistent' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Unknown server "nonexistent"/);
   });
 
   it('enable: starts a preset server and writes to config', async () => {
@@ -201,18 +201,20 @@ describe('createMcpControlTool', () => {
 
   // ── disable action ────────────────────────────────────────────────────────
 
-  it('disable: missing server name returns error', async () => {
-    const result = await tool.execute({ action: 'disable' }, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('server` is required');
+  it('disable: missing server name throws', async () => {
+    await expect(
+      tool.execute({ action: 'disable' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('server` is required');
   });
 
-  it('disable: unknown server returns helpful error', async () => {
-    const result = await tool.execute({ action: 'disable', server: 'github' }, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('not in config');
+  it('disable: unknown server throws a helpful error', async () => {
+    await expect(
+      tool.execute({ action: 'disable', server: 'github' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('not in config');
   });
 
   it('disable: stops server and updates config', async () => {
@@ -239,18 +241,20 @@ describe('createMcpControlTool', () => {
 
   // ── restart action ───────────────────────────────────────────────────────
 
-  it('restart: missing server name returns error', async () => {
-    const result = await tool.execute({ action: 'restart' }, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('server` is required');
+  it('restart: missing server name throws', async () => {
+    await expect(
+      tool.execute({ action: 'restart' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('server` is required');
   });
 
-  it('restart: unknown server returns helpful error', async () => {
-    const result = await tool.execute({ action: 'restart', server: 'github' }, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('not configured');
+  it('restart: unknown server throws a helpful error', async () => {
+    await expect(
+      tool.execute({ action: 'restart', server: 'github' }, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('not configured');
   });
 
   it('restart: calls registry.restart for configured server', async () => {
@@ -279,11 +283,11 @@ describe('createMcpControlTool', () => {
 
   // ── unknown action ────────────────────────────────────────────────────────
 
-  it('unknown action returns helpful error', async () => {
-    const result = await tool.execute({ action: 'frobnicate' } as never, undefined as never, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toContain('Unknown action');
-    expect(result).toContain('frobnicate');
+  it('unknown action throws a helpful error', async () => {
+    await expect(
+      tool.execute({ action: 'frobnicate' } as never, undefined as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Unknown action "frobnicate"/);
   });
 });

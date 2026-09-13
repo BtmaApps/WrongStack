@@ -259,18 +259,23 @@ describe('measure_code_metrics tool', () => {
     plugin.setup(api as never);
     const measure = getTool(api, 'measure_code_metrics');
     const outside = process.platform === 'win32' ? 'C:\\Windows\\evil.ts' : '/etc/evil.ts';
-    const result = (await measure({ path: outside })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('outside');
+    await expect(measure({ path: outside })).rejects.toThrow(/outside/);
+  });
+
+  it('throws for a missing path instead of reporting zero files', async () => {
+    const api = makeApi();
+    plugin.setup(api as never);
+    const measure = getTool(api, 'measure_code_metrics');
+    await expect(measure({ path: 'definitely-missing-metrics-dir' })).rejects.toThrow(
+      /measure_code_metrics failed/,
+    );
   });
 
   it('enabled:false disables the tool', async () => {
     const api = makeApi({ extensions: { 'code-metrics': { enabled: false } } });
     plugin.setup(api as never);
     const measure = getTool(api, 'measure_code_metrics');
-    const result = (await measure({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(measure({})).rejects.toThrow(/disabled/);
   });
 });
 

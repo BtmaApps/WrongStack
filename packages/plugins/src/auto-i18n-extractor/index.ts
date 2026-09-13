@@ -30,7 +30,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -364,7 +364,7 @@ const plugin: Plugin = {
       category: 'Diagnostics',
       mutating: false,
       async execute(input: { path: string }) {
-        if (!cfg.enabled) return { ok: false, error: 'auto-i18n-extractor is disabled' };
+        if (!cfg.enabled) throw new Error('auto-i18n-extractor is disabled');
         const raw = input as Record<string, unknown>;
         const rawPath =
           (typeof input.path === 'string' && input.path.trim().length > 0
@@ -387,25 +387,28 @@ const plugin: Plugin = {
             : undefined);
         const filePath = typeof rawPath === 'string' ? rawPath.trim() : '';
         if (!filePath) {
-          return { ok: false, error: 'path is required' };
+          throw new ToolValidationError({ message: 'path is required', field: 'path' });
         }
         if (!withinProject(filePath)) {
-          return { ok: false, error: 'path must be inside the project' };
+          throw new ToolValidationError({
+            message: 'path must be inside the project',
+            field: 'path',
+          });
         }
 
         const ext = fileExtension(filePath);
         if (!cfg.fileExtensions.includes(ext)) {
-          return {
-            ok: false,
-            error: `unsupported extension "${ext}"; allowed: ${cfg.fileExtensions.join(', ')}`,
-          };
+          throw new ToolValidationError({
+            message: `unsupported extension "${ext}"; allowed: ${cfg.fileExtensions.join(', ')}`,
+            field: 'path',
+          });
         }
 
         state.filesScanned += 1;
         const content = readSourceFile(filePath);
         if (content === null) {
           state.readErrors += 1;
-          return { ok: false, error: `could not read ${filePath}` };
+          throw new Error(`could not read ${filePath}`);
         }
 
         const extracted = extractStrings(content, cfg);

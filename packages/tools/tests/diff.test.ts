@@ -26,9 +26,7 @@ describe('diffTool', () => {
 
   it('rejects when no files specified for file diff', async () => {
     const ctx = makeCtx();
-    const result = await diffTool.execute({}, ctx, makeOpts());
-    expect(result.diff).toBe('No files specified');
-    expect(result.files).toEqual([]);
+    await expect(diffTool.execute({}, ctx, makeOpts())).rejects.toThrow(/no files specified/);
   });
 
   it('resolves files relative to input.path when provided', async () => {
@@ -41,16 +39,16 @@ describe('diffTool', () => {
     expect(result.mode).toBe('dump');
   });
 
-  it('returns error when not in git repo for git diff', async () => {
+  it('throws when not in git repo for git diff', async () => {
     const ctx = { cwd: '/', tools: [], projectRoot: '/' } as any;
-    const result = await diffTool.execute({ a: 'HEAD~1', b: 'HEAD' }, ctx, makeOpts());
-    expect(result.diff).toBe('');
-    expect(result.files).toEqual([]);
+    await expect(diffTool.execute({ a: 'HEAD~1', b: 'HEAD' }, ctx, makeOpts())).rejects.toThrow(
+      /not a git repository/,
+    );
   });
 
   it('handles staged diff', async () => {
-    const ctx = { cwd: '/', tools: [], projectRoot: '/' } as any;
-    const result = await diffTool.execute({ staged: true }, ctx, makeOpts());
+    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const result = await diffTool.execute({ staged: true }, gitCtx, makeOpts());
     expect(result).toHaveProperty('mode');
   });
 
@@ -136,31 +134,36 @@ describe('diffTool', () => {
 
   // ─── new coverage tests ─────────────────────────────────────────────────────
 
-  it('fileDiff skips non-existent files in diff output', async () => {
+  it('fileDiff throws (not an empty ok dump) when the only file does not exist', async () => {
     const ctx = makeCtx();
-    const result = await diffTool.execute({ files: 'nonexistent.txt' }, ctx, makeOpts());
-    // files field preserves original input
-    expect(result.files).toContain('nonexistent.txt');
-    // but diff is empty since file doesn't exist
-    expect(result.diff).toBe('');
+    await expect(diffTool.execute({ files: 'nonexistent.txt' }, ctx, makeOpts())).rejects.toThrow(
+      /none of the requested files exist.*nonexistent\.txt/,
+    );
   });
 
-  it('fileDiff skips directories in diff output', async () => {
+  it('fileDiff throws when the only target is a directory', async () => {
     await fs.mkdir(path.join(tmpDir, 'subdir'), { recursive: true });
     const ctx = makeCtx();
-    const result = await diffTool.execute({ files: 'subdir' }, ctx, makeOpts());
-    // files field preserves original input
-    expect(result.files).toContain('subdir');
-    // but diff is empty since it's a directory
-    expect(result.diff).toBe('');
+    await expect(diffTool.execute({ files: 'subdir' }, ctx, makeOpts())).rejects.toThrow(
+      /none of the requested files/,
+    );
   });
 
-  it('fileDiff handles comma-separated files list', async () => {
+  it('fileDiff refuses a file outside the project root instead of skipping it', async () => {
+    const ctx = makeCtx();
+    await expect(
+      diffTool.execute({ files: '../../outside-root.txt' }, ctx, makeOpts()),
+    ).rejects.toThrow(/outside project root/);
+  });
+
+  it('fileDiff handles comma-separated files list and notes skipped entries', async () => {
     const filePath = path.join(tmpDir, 'a.txt');
     await fs.writeFile(filePath, 'line1\nline2');
     const ctx = makeCtx();
     const result = await diffTool.execute({ files: 'a.txt,nonExistent.txt' }, ctx, makeOpts());
     expect(result.files).toContain('a.txt');
+    expect(result.diff).toContain('line1');
+    expect(result.note).toMatch(/Skipped.*nonExistent\.txt/);
   });
 
   it('fileDiff handles array of files', async () => {
@@ -232,11 +235,12 @@ describe('diffTool', () => {
     expect(result).toHaveProperty('diff');
   });
 
-  it('gitDiff resolves (capturing git stderr) on an invalid ref', async () => {
+  it('gitDiff throws with git stderr on an invalid ref', async () => {
     const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
-    // A bogus revision makes git write to stderr (exercises the stderr handler).
-    const result = await diffTool.execute({ a: 'HEAD~99999999', b: 'HEAD' }, gitCtx, makeOpts());
-    expect(result).toHaveProperty('diff');
+    // A bogus revision makes git exit non-zero — a failed call, not an ok diff.
+    await expect(
+      diffTool.execute({ a: 'HEAD~99999999', b: 'HEAD' }, gitCtx, makeOpts()),
+    ).rejects.toThrow(/git diff exited with code/);
   });
 
   it('findGitDir returns null when no git repo exists up the tree', async () => {
@@ -244,10 +248,9 @@ describe('diffTool', () => {
     const isolatedDir = await fs.mkdtemp(path.join(os.tmpdir(), 'no-git-'));
     try {
       const ctx = { cwd: isolatedDir, tools: [], projectRoot: isolatedDir } as any;
-      const result = await diffTool.execute({ a: 'HEAD' }, ctx, makeOpts());
-      // Should return empty diff since no git repo
-      expect(result.diff).toBe('');
-      expect(result.files).toEqual([]);
+      await expect(diffTool.execute({ a: 'HEAD' }, ctx, makeOpts())).rejects.toThrow(
+        /not a git repository/,
+      );
     } finally {
       await fs.rm(isolatedDir, { recursive: true, force: true });
     }
@@ -310,14 +313,15 @@ describe('diffTool', () => {
   });
 
   it('safely executes without opts and falls back to ctx.signal or default signal', async () => {
+    const filePath = path.join(tmpDir, 'nosignal.txt');
+    await fs.writeFile(filePath, 'x');
     const ctx = makeCtx();
-    const result = await diffTool.execute({}, ctx);
-    expect(result.diff).toBe('No files specified');
-    expect(result.files).toEqual([]);
+    const result = await diffTool.execute({ files: 'nosignal.txt' }, ctx);
+    expect(result.mode).toBe('dump');
 
     const ac = new AbortController();
     const ctxWithSignal = { ...ctx, signal: ac.signal };
-    const resultWithSignal = await diffTool.execute({ staged: true }, ctxWithSignal);
+    const resultWithSignal = await diffTool.execute({ files: 'nosignal.txt' }, ctxWithSignal);
     expect(resultWithSignal).toHaveProperty('mode');
   });
 });

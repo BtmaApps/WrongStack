@@ -68,7 +68,8 @@ export interface PlanInput {
 }
 
 export interface PlanOutput {
-  ok: boolean;
+  /** Always true: refused operations and persistence failures are thrown. */
+  ok: true;
   message: string;
   /** Formatted plan after the operation. Same string the user sees from `/plan show`. */
   plan: string;
@@ -220,13 +221,9 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           // file to; silently deriving a CWD-relative 'backlog.plan.json' would
           // scatter project plans across whatever directory the process happens
           // to run in. Refuse explicitly instead.
-          return {
-            ok: false,
-            message: `Cannot derive the project-scoped plan path: session plan path "${sessionPlanPath}" has no directory component.`,
-            plan: '',
-            count: 0,
-            open: 0,
-          };
+          throw new Error(
+            `plan: cannot derive the project-scoped plan path: session plan path "${sessionPlanPath}" has no directory component.`,
+          );
         }
         planPath = sessionPlanPath.slice(0, lastSep + 1) + 'backlog.plan.json';
       }
@@ -234,13 +231,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
       planPath = sessionPlanPath;
     }
     if (typeof planPath !== 'string' || !planPath) {
-      return {
-        ok: false,
-        message: 'Plan storage path is not configured for this session.',
-        plan: '',
-        count: 0,
-        open: 0,
-      };
+      throw new Error('plan: Plan storage path is not configured for this session.');
     }
     const sessionId = ctx.session?.id ?? 'unknown';
 
@@ -252,10 +243,18 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
         updatedAt: new Date().toISOString(),
         items: [],
       };
-      return mkResult(plan, true, 'Plan show ok.');
+      return mkResult(plan, 'Plan show ok.');
     }
 
     let early: PlanOutput | null = null;
+    // A refused operation is recorded here inside the lock and THROWN after it
+    // releases: a returned `ok: false` would be logged as a successful call.
+    let failure: Error | undefined;
+    const refuse = (message: string, field?: string): void => {
+      failure = field
+        ? new ToolValidationError({ message: `plan: ${message}`, field })
+        : new Error(`plan: ${message}`);
+    };
     // Track taskify data — task write happens after the plan lock releases
     const taskifyMeta = { title: '', details: '' };
     let didTaskify = false;
@@ -271,7 +270,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           case 'add': {
             const title = input.title?.trim();
             if (!title) {
-              early = mkResult(p, false, 'add requires `title`.');
+              refuse('add requires `title`.', 'title');
               return p;
             }
             const { plan: updated } = addPlanItem(p, title, input.details?.trim() || undefined);
@@ -281,11 +280,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           case 'start':
           case 'done': {
             if (!input.target) {
-              early = mkResult(
-                p,
-                false,
-                `${input.action} requires \`target\` (id|index|substring).`,
-              );
+              refuse(`${input.action} requires \`target\` (id|index|substring).`, 'target');
               return p;
             }
             const next = setPlanItemStatus(
@@ -294,33 +289,35 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
               input.action === 'start' ? 'in_progress' : 'done',
             );
             if (next === p) {
-              early = mkResult(p, false, `No plan item matched "${input.target}".`);
+              refuse(`No plan item matched "${input.target}".`, 'target');
               return p;
             }
             return next;
           }
 
           case 'status': {
-            const VALID_PLAN_STATUSES: ReadonlySet<string> = new Set(['open', 'in_progress', 'done']);
+            const VALID_PLAN_STATUSES: ReadonlySet<string> = new Set([
+              'open',
+              'in_progress',
+              'done',
+            ]);
             if (!input.target || !input.status) {
-              early = mkResult(
-                p,
-                false,
+              refuse(
                 'status requires `target` (id|index|substring) and `status`.',
+                input.target ? 'status' : 'target',
               );
               return p;
             }
             if (!VALID_PLAN_STATUSES.has(input.status)) {
-              early = mkResult(
-                p,
-                false,
+              refuse(
                 `status requires valid status ('open' | 'in_progress' | 'done'), got "${input.status}".`,
+                'status',
               );
               return p;
             }
             const next = setPlanItemStatus(p, input.target, input.status);
             if (next === p) {
-              early = mkResult(p, false, `No plan item matched "${input.target}".`);
+              refuse(`No plan item matched "${input.target}".`, 'target');
               return p;
             }
             return next;
@@ -328,20 +325,18 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
 
           case 'remove': {
             if (!input.target) {
-              early = mkResult(p, false, 'remove requires `target` (id|index|substring).');
+              refuse('remove requires `target` (id|index|substring).', 'target');
               return p;
             }
             const next = removePlanItem(p, input.target);
             if (next === p) {
-              early = mkResult(p, false, `No plan item matched "${input.target}".`);
+              refuse(`No plan item matched "${input.target}".`, 'target');
               return p;
             }
             const nextIds = new Set(next.items.map((item) => item.id));
             const removed = p.items.find((item) => !nextIds.has(item.id));
             if (removed?.status !== 'done') {
-              early = mkResult(
-                p,
-                false,
+              refuse(
                 `Plan item "${removed?.title ?? input.target}" is not done and cannot be removed. Complete it first.`,
               );
               return p;
@@ -351,22 +346,17 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
 
           case 'promote': {
             if (!input.target) {
-              early = mkResult(
-                p,
-                false,
-                `${input.action} requires \`target\` (id|index|substring).`,
-              );
+              refuse(`${input.action} requires \`target\` (id|index|substring).`, 'target');
               return p;
             }
             const derived = deriveTodosFromPlanItem(p, input.target, input.subtasks);
             if (!derived) {
-              early = mkResult(p, false, `No plan item matched "${input.target}".`);
+              refuse(`No plan item matched "${input.target}".`, 'target');
               return p;
             }
             todosToReplace = derived.todos;
             early = mkResult(
               derived.plan,
-              true,
               `${input.action} ok — ${derived.todos.length} todo(s) created.`,
               derived.todos,
             );
@@ -376,12 +366,12 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           case 'template_use': {
             const templateName = input.template?.trim();
             if (!templateName) {
-              early = mkResult(p, false, 'template_use requires `template` name.');
+              refuse('template_use requires `template` name.', 'template');
               return p;
             }
             const template = getPlanTemplate(templateName);
             if (!template) {
-              early = mkResult(p, false, `Unknown template "${templateName}".`);
+              refuse(`Unknown template "${templateName}".`, 'template');
               return p;
             }
             let updated = p;
@@ -390,7 +380,6 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
             }
             early = mkResult(
               updated,
-              true,
               `Applied template "${template.name}" — ${template.items.length} items added.`,
             );
             return updated;
@@ -398,22 +387,14 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
 
           case 'clear':
             if (p.items.some((item) => item.status !== 'done')) {
-              early = mkResult(
-                p,
-                false,
-                'Plan contains unfinished items and cannot be cleared. Complete them first.',
-              );
+              refuse('Plan contains unfinished items and cannot be cleared. Complete them first.');
               return p;
             }
             return clearPlan(p);
 
           case 'taskify': {
             if (!input.target) {
-              early = mkResult(
-                p,
-                false,
-                'taskify requires `target` (plan item id|index|substring).',
-              );
+              refuse('taskify requires `target` (plan item id|index|substring).', 'target');
               return p;
             }
             // Find plan item by exact id, 1-based index, or title substring
@@ -429,7 +410,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
               itemIdx = p.items.findIndex((it) => it.title.toLowerCase().includes(lower));
             }
             if (itemIdx === -1 || !p.items[itemIdx]) {
-              early = mkResult(p, false, `No plan item matched "${input.target}".`);
+              refuse(`No plan item matched "${input.target}".`, 'target');
               return p;
             }
             const item = p.items[itemIdx]!;
@@ -441,23 +422,21 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           }
 
           default:
-            early = mkResult(p, false, `Unknown action "${(input as { action: string }).action}".`);
+            refuse(`Unknown action "${(input as { action: string }).action}".`, 'action');
             return p;
         }
 
         return p;
       });
     } catch (err) {
-      // Persist failed (mutatePlan throws on a failed save) — report ok:false
-      // with the real reason instead of falsely claiming the plan was saved.
-      return {
-        ok: false,
-        message: `Plan change not saved — ${err instanceof Error ? err.message : String(err)}`,
-        plan: '',
-        count: 0,
-        open: 0,
-      };
+      // Persist failed (mutatePlan throws on a failed save) — fail the call
+      // with the real reason instead of claiming the plan was saved.
+      throw new Error(
+        `plan: change not saved — ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
     }
+    if (failure) throw failure;
 
     // Record the path this call ACTUALLY wrote (session or derived project
     // backlog) so todo's promotedFromPlan rollup follows the real file. The
@@ -481,7 +460,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
     if (didTaskify) {
       const taskPathRaw = (ctx.meta as Record<string, unknown>)['task.path'];
       if (typeof taskPathRaw !== 'string' || !taskPathRaw) {
-        return mkResult(plan, false, 'Task storage path not configured — cannot taskify.');
+        throw new Error('plan: Task storage path not configured — cannot taskify.');
       }
       let taskPath: string = taskPathRaw;
       // Honor project scope for the TASK file too: a project-scoped taskify must
@@ -517,35 +496,28 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
         (ctx.meta as Record<string, unknown>)['task.path.resolved'] = taskPath;
         return mkResult(
           plan,
-          true,
           `taskify ok — added "${taskifyMeta.title}" to tasks.\n${formatTaskList(taskFile.tasks)}`,
         );
       } catch (err) {
-        // The plan item was saved, but copying it into the task file failed.
-        return mkResult(
-          plan,
-          false,
-          `taskify: task not saved — ${err instanceof Error ? err.message : String(err)}`,
+        // Copying the plan item into the task file failed.
+        throw new Error(
+          `plan: taskify: task not saved — ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
         );
       }
     }
 
-    return mkResult(plan, true, `Plan ${input.action} ok.`);
+    return mkResult(plan, `Plan ${input.action} ok.`);
   },
 };
 
-function mkResult(
-  plan: PlanFile,
-  ok: boolean,
-  message: string,
-  todos?: PlanOutput['todos'],
-): PlanOutput {
+function mkResult(plan: PlanFile, message: string, todos?: PlanOutput['todos']): PlanOutput {
   let open = 0;
   for (let i = 0; i < plan.items.length; i++) {
     if (plan.items[i]!.status !== 'done') open++;
   }
   const result: PlanOutput = {
-    ok,
+    ok: true,
     message,
     plan: formatPlan(plan),
     count: plan.items.length,

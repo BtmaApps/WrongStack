@@ -26,7 +26,7 @@
  * They share the same threat model but act at different points in the
  * pipeline.
  */
-import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
 import { cloneCredentialPatterns } from '../runtime/credential-patterns.js';
 import { releaseHandle } from '../runtime/index.js';
 
@@ -848,10 +848,15 @@ const plugin: Plugin = {
           input['string'] ??
           input['input'] ??
           input['code'] ??
-          input['value'] ??
-          '';
-        const text = typeof rawText === 'string' ? rawText : '';
-        const matched = findMatches(text);
+          input['value'];
+        // A missing/non-string text used to scan '' and report a clean result.
+        if (typeof rawText !== 'string') {
+          throw new ToolValidationError({
+            message: 'text is required and must be a string',
+            field: 'text',
+          });
+        }
+        const matched = findMatches(rawText);
         return {
           ok: true,
           matched,

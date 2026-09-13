@@ -30,50 +30,15 @@ describe('logsTool', () => {
     expect(logsTool.mutating).toBe(false);
   });
 
-  it('returns none when no service or path provided', async () => {
+  it('throws when no service or path provided', async () => {
     const ctx = makeCtx();
-    const result = await logsTool.execute({}, ctx, makeOpts());
-    expect(result.source).toBe('none');
-    expect(result.entries).toEqual([]);
+    await expect(logsTool.execute({}, ctx, makeOpts())).rejects.toThrow(
+      /provide `service`.*or `path`/,
+    );
   });
 
-  it('handles service param (docker)', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp' }, ctx, makeOpts());
-    expect(result).toHaveProperty('source');
-    expect(result).toHaveProperty('entries');
-  });
-
-  it('handles lines default', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp' }, ctx, makeOpts());
-    expect(result).toHaveProperty('total');
-  });
-
-  it('returns entries for service docker', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp' }, ctx, makeOpts());
-    expect(result).toHaveProperty('source');
-    expect(result).toHaveProperty('total');
-  });
-
-  it('always reports stream_mode false (streaming is not supported)', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp' }, ctx, makeOpts());
-    expect(result.stream_mode).toBe(false);
-  });
-
-  it('handles filter for service', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp', filter: 'error' }, ctx, makeOpts());
-    expect(result).toHaveProperty('total');
-  });
-
-  it('handles since for service', async () => {
-    const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'myapp', since: '1h' }, ctx, makeOpts());
-    expect(result).toHaveProperty('total');
-  });
+  // The docker (`service`) path is covered against a faked docker process in
+  // logs-docker.test.ts; real docker availability is environment-dependent.
 
   it('reports stream_mode false for file paths too', async () => {
     const filePath = path.join(tmpDir, 'app.log');
@@ -128,11 +93,11 @@ describe('logsTool', () => {
     expect(result.entries.length).toBeLessThanOrEqual(2);
   });
 
-  it('returns empty for an invalid docker service name', async () => {
+  it('throws for an invalid docker service name', async () => {
     const ctx = makeCtx();
-    const result = await logsTool.execute({ service: 'bad;name|rm' }, ctx, makeOpts());
-    expect(result.source).toBe('docker:bad;name|rm');
-    expect(result.entries).toEqual([]);
+    await expect(logsTool.execute({ service: 'bad;name|rm' }, ctx, makeOpts())).rejects.toThrow(
+      /invalid Docker container name/,
+    );
   });
 
   it('rejects an unsafe filter regex', async () => {

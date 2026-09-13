@@ -26,25 +26,25 @@ describe('submit_result tool', () => {
 
   it('rejects malformed or out-of-range reports even when called directly', async () => {
     const ctx = { meta: {} as Record<string, unknown> };
-    const result = await makeSubagentResultTool().execute(
-      { ...validReport, confidence: 2 },
-      ctx as never,
-      {} as never,
-    );
-
-    expect(result).toMatchObject({ ok: false });
+    await expect(
+      makeSubagentResultTool().execute(
+        { ...validReport, confidence: 2 },
+        ctx as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/Invalid report/);
     expect(ctx.meta).toEqual({});
   });
 
   it('rejects an oversized report instead of polluting the parent context', async () => {
     const ctx = { meta: {} as Record<string, unknown> };
-    const result = await makeSubagentResultTool().execute(
-      { ...validReport, findings: Array.from({ length: 17 }, (_, i) => `finding ${i}`) },
-      ctx as never,
-      {} as never,
-    );
-
-    expect(result).toMatchObject({ ok: false });
+    await expect(
+      makeSubagentResultTool().execute(
+        { ...validReport, findings: Array.from({ length: 17 }, (_, i) => `finding ${i}`) },
+        ctx as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/Invalid report/);
     expect(ctx.meta).toEqual({});
   });
 
@@ -62,13 +62,14 @@ describe('submit_result tool', () => {
     expect(readSubagentStructuredReport(ctx)).toMatchObject(partial);
 
     const invalidCtx = { meta: {} as Record<string, unknown> };
-    expect(
-      await makeSubagentResultTool().execute(
+    await expect(
+      makeSubagentResultTool().execute(
         { ...validReport, completion: 'partial' },
         invalidCtx as never,
         {} as never,
       ),
-    ).toMatchObject({ ok: false });
+    ).rejects.toThrow(/remaining_work/);
+    expect(invalidCtx.meta).toEqual({});
   });
 
   it('renders a stable compact handoff for roll-up and mailbox surfaces', () => {

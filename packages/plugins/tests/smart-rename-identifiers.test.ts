@@ -128,20 +128,20 @@ describe('input validation', () => {
     ['a name with a dot', 'obj.prop'],
     ['a name with a hyphen', 'kebab-case'],
   ])('rejects %s as newName', async (_label, badName) => {
-    const res = await rename('const foo = 1;\n', 'foo', badName);
-    expect(res.ok).toBe(false);
-    expect(res.error).toContain('not a valid identifier');
+    await expect(rename('const foo = 1;\n', 'foo', badName)).rejects.toThrow(
+      /not a valid identifier/,
+    );
   });
 
   it('rejects a non-identifier oldName', async () => {
-    const res = await rename('const foo = 1;\n', 'foo(', 'bar');
-    expect(res.ok).toBe(false);
-    expect(res.error).toContain('not a valid identifier');
+    await expect(rename('const foo = 1;\n', 'foo(', 'bar')).rejects.toThrow(
+      /not a valid identifier/,
+    );
   });
 
   it('leaves the file untouched when validation fails', async () => {
     const source = 'const foo = 1;\n';
-    await rename(source, 'foo', 'evil(); drop()');
+    await expect(rename(source, 'foo', 'evil(); drop()')).rejects.toThrow();
     expect(await fs.readFile(path.join(tmpDir, 'src.ts'), 'utf8')).toBe(source);
   });
 });

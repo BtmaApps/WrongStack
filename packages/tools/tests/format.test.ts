@@ -211,10 +211,19 @@ describe('formatTool', () => {
     expect(receivedArgs).toContain('y.ts');
   });
 
-  it('falls back to stderr or error when stdout is empty', async () => {
+  it('falls back to stderr when stdout is empty', async () => {
     spawnStreamMocks.spawnStream.mockImplementation(fakeSpawn('', { stderr: 'permission denied' }));
     const result = await formatTool.execute({ fixer: 'biome' }, makeCtx(), makeOpts());
     expect(result.output).toBe('permission denied');
+  });
+
+  it('throws when the formatter cannot be started', async () => {
+    spawnStreamMocks.spawnStream.mockImplementation(
+      fakeSpawn('', { error: 'spawn prettier ENOENT', exitCode: 1 }),
+    );
+    await expect(formatTool.execute({ fixer: 'prettier' }, makeCtx(), makeOpts())).rejects.toThrow(
+      /could not run prettier: spawn prettier ENOENT/,
+    );
   });
 
   it('throws when executeStream is unavailable', async () => {
@@ -276,7 +285,10 @@ describe('formatTool', () => {
   // guard is the only thing that closes the injection.
   it('rejects file paths beginning with "-" (flag injection)', async () => {
     await expect(
-      (formatTool.execute as any)({ fixer: 'prettier', files: ['--config=.cache/evil.js'] }, makeCtx()),
+      (formatTool.execute as any)(
+        { fixer: 'prettier', files: ['--config=.cache/evil.js'] },
+        makeCtx(),
+      ),
     ).rejects.toThrow(/flag injection/);
   });
 });

@@ -53,12 +53,12 @@ beforeEach(() => {
 describe('template_expand', () => {
   it('validates template and variables', async () => {
     const tools = setup();
-    expect((await tools.template_expand!.execute({ variables: {} })).error).toMatch(
+    await expect(tools.template_expand!.execute({ variables: {} })).rejects.toThrow(
       /template is required/,
     );
-    expect(
-      (await tools.template_expand!.execute({ template: 'x', variables: 'no' })).error,
-    ).toMatch(/variables is required/);
+    await expect(
+      tools.template_expand!.execute({ template: 'x', variables: 'no' }),
+    ).rejects.toThrow(/variables is required/);
   });
 
   it('substitutes variables and leaves unresolved placeholders', async () => {
@@ -135,36 +135,34 @@ describe('template_expand', () => {
 
   it('rejects absolute or traversing output paths', async () => {
     const tools = setup();
-    expect(
-      (
-        await tools.template_expand!.execute({
-          template: 'x',
-          variables: {},
-          output_path: '/etc/passwd',
-        })
-      ).error,
-    ).toMatch(/relative path/);
-    expect(
-      (
-        await tools.template_expand!.execute({
-          template: 'x',
-          variables: {},
-          output_path: '../escape',
-        })
-      ).error,
-    ).toMatch(/relative path/);
+    await expect(
+      tools.template_expand!.execute({ template: 'x', variables: {}, output_path: '/etc/passwd' }),
+    ).rejects.toThrow(/relative path/);
+    await expect(
+      tools.template_expand!.execute({ template: 'x', variables: {}, output_path: '../escape' }),
+    ).rejects.toThrow(/relative path/);
+  });
+
+  it('throws when the output file cannot be written', async () => {
+    fsm.writeFileSync.mockImplementation(() => {
+      throw new Error('EACCES');
+    });
+    const tools = setup();
+    await expect(
+      tools.template_expand!.execute({ template: 'x', variables: {}, output_path: 'out.txt' }),
+    ).rejects.toThrow(/Could not write out\.txt: .*EACCES/);
   });
 });
 
 describe('template_render', () => {
   it('validates template_path and variables', async () => {
     const tools = setup();
-    expect((await tools.template_render!.execute({ variables: {} })).error).toMatch(
+    await expect(tools.template_render!.execute({ variables: {} })).rejects.toThrow(
       /template_path is required/,
     );
-    expect(
-      (await tools.template_render!.execute({ template_path: 'a', variables: 5 })).error,
-    ).toMatch(/variables is required/);
+    await expect(
+      tools.template_render!.execute({ template_path: 'a', variables: 5 }),
+    ).rejects.toThrow(/variables is required/);
   });
 
   it('reads, renders and returns the result', async () => {
@@ -183,20 +181,19 @@ describe('template_render', () => {
       throw new Error('ENOENT');
     });
     const tools = setup();
-    const res = await tools.template_render!.execute({ template_path: 'missing', variables: {} });
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/Could not read template file/);
+    await expect(
+      tools.template_render!.execute({ template_path: 'missing', variables: {} }),
+    ).rejects.toThrow(/Could not read template file/);
   });
 
   it('rejects absolute or traversing template paths before reading', async () => {
     const tools = setup();
-    expect(
-      (await tools.template_render!.execute({ template_path: '/etc/passwd', variables: {} })).error,
-    ).toMatch(/relative path/);
-    expect(
-      (await tools.template_render!.execute({ template_path: '../secret.tmpl', variables: {} }))
-        .error,
-    ).toMatch(/relative path/);
+    await expect(
+      tools.template_render!.execute({ template_path: '/etc/passwd', variables: {} }),
+    ).rejects.toThrow(/relative path/);
+    await expect(
+      tools.template_render!.execute({ template_path: '../secret.tmpl', variables: {} }),
+    ).rejects.toThrow(/relative path/);
     expect(fsm.readFileSync).not.toHaveBeenCalled();
   });
 
@@ -216,28 +213,24 @@ describe('template_render', () => {
   it('rejects a traversing output path on render', async () => {
     fsm.readFileSync.mockReturnValue('x');
     const tools = setup();
-    const res = await tools.template_render!.execute({
-      template_path: 't',
-      variables: {},
-      output_path: '../x',
-    });
-    expect(res.error).toMatch(/relative path/);
+    await expect(
+      tools.template_render!.execute({ template_path: 't', variables: {}, output_path: '../x' }),
+    ).rejects.toThrow(/relative path/);
   });
 });
 
 describe('template_create / template_list', () => {
   it('validates name and content', async () => {
     const tools = setup();
-    expect((await tools.template_create!.execute({ content: 'x' })).error).toMatch(
+    await expect(tools.template_create!.execute({ content: 'x' })).rejects.toThrow(
       /name is required/,
     );
-    expect((await tools.template_create!.execute({ name: 'n', content: 5 })).error).toMatch(
+    await expect(tools.template_create!.execute({ name: 'n', content: 5 })).rejects.toThrow(
       /content is required/,
     );
-    expect(
-      (await tools.template_create!.execute({ name: 'n', content: 'x'.repeat(256 * 1024 + 1) }))
-        .error,
-    ).toMatch(/content exceeds/);
+    await expect(
+      tools.template_create!.execute({ name: 'n', content: 'x'.repeat(256 * 1024 + 1) }),
+    ).rejects.toThrow(/content exceeds/);
   });
 
   it('caps the number of retained templates', async () => {
@@ -249,7 +242,7 @@ describe('template_create / template_list', () => {
     }
     await expect(
       tools.template_create!.execute({ name: 'overflow', content: 'x' }),
-    ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/template limit/) });
+    ).rejects.toThrow(/template limit/);
   });
 
   it('creates then updates a template, and lists it', async () => {

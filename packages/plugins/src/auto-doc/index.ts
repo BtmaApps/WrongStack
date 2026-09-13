@@ -16,7 +16,7 @@
  */
 
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
 
 const AUTO_DOC_API_VERSION = '^0.1.10';
 
@@ -290,12 +290,10 @@ function injectDocComment(content: string, entity: ParsedEntity, doc: string): s
 async function runAutoDoc(input: AutoDocInput, api: Parameters<Plugin['setup']>[0]) {
   const rawInput = input as unknown as Record<string, unknown>;
   if (rawInput['files'] !== undefined && !Array.isArray(rawInput['files'])) {
-    return {
-      ok: false,
-      error: 'input.files must be an array of file paths',
-      filesProcessed: 0,
-      changes: [],
-    };
+    throw new ToolValidationError({
+      message: 'input.files must be an array of file paths',
+      field: 'files',
+    });
   }
   const rawFiles =
     rawInput['files'] ??
@@ -313,20 +311,16 @@ async function runAutoDoc(input: AutoDocInput, api: Parameters<Plugin['setup']>[
       : undefined;
 
   if (!files || !Array.isArray(files)) {
-    return {
-      ok: false,
-      error: 'input.files must be an array of file paths',
-      filesProcessed: 0,
-      changes: [],
-    };
+    throw new ToolValidationError({
+      message: 'input.files must be an array of file paths',
+      field: 'files',
+    });
   }
   if (files.length === 0) {
-    return {
-      ok: false,
-      error: 'input.files is empty — provide at least one file path',
-      filesProcessed: 0,
-      changes: [],
-    };
+    throw new ToolValidationError({
+      message: 'input.files is empty — provide at least one file path',
+      field: 'files',
+    });
   }
   const extConfig = (api.config.extensions?.['auto-doc'] as Record<string, unknown>) ?? {};
   const includeTypes = (extConfig['includeTypes'] as boolean) ?? false;
@@ -343,12 +337,16 @@ async function runAutoDoc(input: AutoDocInput, api: Parameters<Plugin['setup']>[
       ? (extConfig['maxLlmEntities'] as number)
       : 25;
   const results: Array<{ file: string; entity: string; source: 'llm' | 'template' }> = [];
+  // Per-file failures are surfaced, not just logged: a batch that silently
+  // dropped files must not read as fully processed.
+  const skipped: Array<{ file: string; reason: string }> = [];
   let llmBudget = maxLlmEntities;
 
   for (const rawFile of files) {
     const safeFile = resolveProjectPath(rawFile);
     if (!safeFile) {
       api.log.warn(`auto-doc: skipped file outside project directory: ${rawFile}`);
+      skipped.push({ file: rawFile, reason: 'outside project directory' });
       continue;
     }
     try {
@@ -356,8 +354,12 @@ async function runAutoDoc(input: AutoDocInput, api: Parameters<Plugin['setup']>[
       let content: string;
       try {
         content = readFileSync(safeFile, 'utf-8');
-      } catch {
+      } catch (err) {
         api.log.warn(`auto-doc: could not read file ${safeFile}`);
+        skipped.push({
+          file: safeFile,
+          reason: `could not read: ${err instanceof Error ? err.message : String(err)}`,
+        });
         continue;
       }
 
@@ -414,12 +416,23 @@ async function runAutoDoc(input: AutoDocInput, api: Parameters<Plugin['setup']>[
       }
     } catch (err) {
       api.log.error(`auto-doc: error processing ${safeFile}: ${err}`);
+      skipped.push({
+        file: safeFile,
+        reason: err instanceof Error ? err.message : String(err),
+      });
     }
+  }
+
+  if (skipped.length === files.length) {
+    throw new Error(
+      `auto_doc processed no files: ${skipped.map((s) => `${s.file} (${s.reason})`).join('; ')}`,
+    );
   }
 
   return {
     ok: true,
-    filesProcessed: files.length,
+    filesProcessed: files.length - skipped.length,
+    ...(skipped.length > 0 ? { skipped } : {}),
     changes: results,
     llm: useLlm ? { docs: state.llmDocs, fallbacks: state.llmFallbacks } : undefined,
   };

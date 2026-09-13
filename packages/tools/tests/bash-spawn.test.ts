@@ -169,25 +169,21 @@ describe('bashTool foreground (faked shell)', () => {
     expect(out.exit_code).toBe(0);
   });
 
-  it('surfaces a foreground spawn error as a final error output', async () => {
-    // Contract (post error-path rework): a child 'error' event no longer
-    // rejects the stream — it yields a final output with exit_code 1 and
-    // the error message, and the registry reservation is released.
+  // Launch failures and refusals REJECT the stream: a final `{ exit_code: 1,
+  // error }` was recorded by the executor as a successful call ("ok" in the UI).
+  it('fails the call when the foreground child emits an OS-level error', async () => {
     cfg.mode = 'error';
     const afterCall = vi.spyOn(getProcessRegistry(), 'afterCall');
-    const out = await runFinal({ command: 'nope' });
-    expect(out.exit_code).toBe(1);
-    expect(out.error).toBe('spawn EACCES');
-    expect(out.timed_out).toBe(false);
+    await expect(runFinal({ command: 'nope' })).rejects.toThrow(
+      /bash: process error: spawn EACCES/,
+    );
     expect(afterCall).toHaveBeenCalledWith(expect.any(Number), true);
   });
 
-  it('releases the breaker reservation when spawn() throws synchronously', async () => {
+  it('releases the breaker reservation and fails when spawn() throws synchronously', async () => {
     cfg.throwOnSpawn = true;
     const afterCall = vi.spyOn(getProcessRegistry(), 'afterCall');
-    const out = await runFinal({ command: 'nope' });
-    expect(out.exit_code).toBe(1);
-    expect(out.error).toMatch(/spawn failed/);
+    await expect(runFinal({ command: 'nope' })).rejects.toThrow(/bash: spawn failed/);
     expect(afterCall).toHaveBeenCalledWith(expect.any(Number), true, false);
   });
 
@@ -203,14 +199,13 @@ describe('bashTool foreground (faked shell)', () => {
     expect(out.exit_code).toBe(0);
   });
 
-  it('returns a circuit-breaker-open error when the breaker is open', async () => {
+  it('fails the call when the circuit breaker is open', async () => {
     // The registry disables the breaker by default (users opt in via /settings).
     // Enable it so beforeCall() honours the open state.
     getProcessRegistry().setBreakerConfig({ enabled: true });
     getProcessRegistry().forceBreakerOpen();
-    const out = await runFinal({ command: 'echo blocked' });
-    expect(out.exit_code).toBe(1);
-    expect(out.error).toMatch(/circuit breaker open/);
+    await expect(runFinal({ command: 'echo blocked' })).rejects.toThrow(/circuit breaker open/);
+    expect(cfg.spawnCalls).toHaveLength(0);
   });
 });
 
@@ -222,13 +217,18 @@ describe('bashTool background (faked shell)', () => {
     expect(out.exit_code).toBeNull();
   });
 
-  it('releases the breaker reservation when spawn() throws synchronously', async () => {
+  it('releases the breaker reservation and fails when spawn() throws synchronously', async () => {
     cfg.throwOnSpawn = true;
     const afterCall = vi.spyOn(getProcessRegistry(), 'afterCall');
-    const out = await runFinal({ command: 'nope', background: true });
-    expect(out.exit_code).toBe(1);
-    expect(out.error).toMatch(/spawn failed/);
+    await expect(runFinal({ command: 'nope', background: true })).rejects.toThrow(
+      /bash: spawn failed/,
+    );
     expect(afterCall).toHaveBeenCalledWith(expect.any(Number), true, true);
+  });
+
+  it('fails the call when the background child has no PID', async () => {
+    cfg.pid = undefined;
+    await expect(runFinal({ command: 'server', background: true })).rejects.toThrow(/invalid PID/);
   });
 
   it('disconnects background stdout/stderr so the job survives host exit', async () => {

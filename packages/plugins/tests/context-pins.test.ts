@@ -138,8 +138,9 @@ describe('context-pins plugin', () => {
   it('pin_remove reports unknown keys', async () => {
     const api = makeApi();
     contextPinsPlugin.setup(api as never);
-    const result = await getTool(api, 'pin_remove').execute({ id: 'nope' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'pin_remove').execute({ id: 'nope' })).rejects.toThrow(
+      /no pin matches/,
+    );
   });
 
   it('enforces maxPins', async () => {
@@ -148,9 +149,7 @@ describe('context-pins plugin', () => {
     const add = getTool(api, 'pin_add');
     await add.execute({ text: 'a' });
     await add.execute({ text: 'b' });
-    const third = await add.execute({ text: 'c' });
-    expect(third['ok']).toBe(false);
-    expect(String(third['error'])).toContain('limit');
+    await expect(add.execute({ text: 'c' })).rejects.toThrow(/limit/);
   });
 
   it('persists pins to filePath and reloads them on next setup', async () => {
@@ -182,8 +181,7 @@ describe('context-pins plugin', () => {
     const api = makeApi({ extensions: { 'context-pins': { enabled: false } } });
     contextPinsPlugin.setup(api as never);
     expect(api.registerSystemPromptContributor).not.toHaveBeenCalled();
-    const result = await getTool(api, 'pin_add').execute({ text: 'x' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'pin_add').execute({ text: 'x' })).rejects.toThrow(/disabled/);
   });
 
   it('teardown clears pins and logs', async () => {

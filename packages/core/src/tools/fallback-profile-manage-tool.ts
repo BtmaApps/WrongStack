@@ -1,3 +1,4 @@
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { isFavoriteRef, profileList } from './fallback-manage-helpers.js';
 import type { FallbackManageToolOptions } from './fallback-manage-tool-options.js';
@@ -37,7 +38,7 @@ interface FallbackProfileInput {
 }
 
 interface FallbackProfileOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
   profiles?: Record<string, string[]>;
 }
@@ -84,13 +85,16 @@ export function createFallbackProfileManageTool(
 
       if (input.action === 'set') {
         if (!input.name) {
-          return { status: 'error', message: 'Provide "name" for the profile (e.g. "fast").' };
+          throw new ToolValidationError({
+            message: 'Provide "name" for the profile (e.g. "fast").',
+            field: 'name',
+          });
         }
         if (!input.chain || input.chain.length === 0) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: 'Provide "chain" — a non-empty array of model references.',
-          };
+            field: 'chain',
+          });
         }
         const invalid: string[] = [];
         for (const ref of input.chain) {
@@ -99,12 +103,12 @@ export function createFallbackProfileManageTool(
           }
         }
         if (invalid.length > 0) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message:
               `The following entries are not in your favorites list:\n  ${invalid.join('\n  ')}\n\n` +
               'Add them first with favorite_manage({ action: "add", model: "<ref>" }).',
-          };
+            field: 'chain',
+          });
         }
         profiles[input.name] = [...input.chain];
         await opts.updateConfig((cfg) => {
@@ -119,10 +123,16 @@ export function createFallbackProfileManageTool(
 
       if (input.action === 'delete') {
         if (!input.name) {
-          return { status: 'error', message: 'Provide "name" of the profile to delete.' };
+          throw new ToolValidationError({
+            message: 'Provide "name" of the profile to delete.',
+            field: 'name',
+          });
         }
         if (!(input.name in profiles)) {
-          return { status: 'error', message: `Profile "${input.name}" not found.` };
+          throw new ToolValidationError({
+            message: `Profile "${input.name}" not found.`,
+            field: 'name',
+          });
         }
         delete profiles[input.name];
         await opts.updateConfig((cfg) => {
@@ -135,7 +145,10 @@ export function createFallbackProfileManageTool(
         };
       }
 
-      return { status: 'error', message: `Unknown action: "${input.action}".` };
+      throw new ToolValidationError({
+        message: `Unknown action: "${input.action}".`,
+        field: 'action',
+      });
     },
   };
 }

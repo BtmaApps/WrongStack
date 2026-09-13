@@ -72,13 +72,14 @@ describe('tool capability guards', () => {
   it('refuses hover on a server that advertises no hover support', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({ capabilities: { renameProvider: true } });
-    const out = await createHoverTool(makeDeps(server)).execute(
-      { path: file, line: 1, character: 7 },
-      { cwd: root } as never,
-      opts(),
-    );
-    expect(out).toContain('LSP_CAPABILITY_MISSING');
-    expect(out).toContain('does not support hover');
+    // Refusals THROW: a returned error string was recorded as a successful call.
+    await expect(
+      createHoverTool(makeDeps(server)).execute(
+        { path: file, line: 1, character: 7 },
+        { cwd: root } as never,
+        opts(),
+      ),
+    ).rejects.toThrow(/LSP_CAPABILITY_MISSING.*does not support hover/);
     expect(server.hover).not.toHaveBeenCalled();
   });
 
@@ -115,7 +116,7 @@ describe('tool capability guards', () => {
     ).toBe('const a: 1');
   });
 
-  it('reports hover failures instead of throwing out of the tool', async () => {
+  it('fails the call when hover throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       capabilities: { hoverProvider: true },
@@ -123,24 +124,43 @@ describe('tool capability guards', () => {
         throw new Error('transport closed');
       }),
     });
-    expect(
-      await createHoverTool(makeDeps(server)).execute(
+    await expect(
+      createHoverTool(makeDeps(server)).execute(
         { path: file, line: 1, character: 7 },
         { cwd: root } as never,
         opts(),
       ),
-    ).toContain('transport closed');
+    ).rejects.toThrow(/LSP_PROTOCOL_ERROR.*transport closed/);
+  });
+
+  it('propagates an abort unchanged instead of wrapping it', async () => {
+    const { root, file } = await fixture();
+    const abort = new DOMException('aborted', 'AbortError');
+    const server = fakeServer({
+      capabilities: { hoverProvider: true },
+      hover: vi.fn(async () => {
+        throw abort;
+      }),
+    });
+    await expect(
+      createHoverTool(makeDeps(server)).execute(
+        { path: file, line: 1, character: 7 },
+        { cwd: root } as never,
+        opts(),
+      ),
+    ).rejects.toBe(abort);
   });
 
   it('refuses references on a server that advertises no references support', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({ capabilities: { hoverProvider: true } });
-    const out = await createReferencesTool(makeDeps(server)).execute(
-      { path: file, line: 1, character: 7 },
-      { cwd: root } as never,
-      opts(),
-    );
-    expect(out).toContain('does not support references');
+    await expect(
+      createReferencesTool(makeDeps(server)).execute(
+        { path: file, line: 1, character: 7 },
+        { cwd: root } as never,
+        opts(),
+      ),
+    ).rejects.toThrow(/does not support references/);
     expect(server.references).not.toHaveBeenCalled();
   });
 
@@ -179,7 +199,7 @@ describe('tool capability guards', () => {
     );
   });
 
-  it('reports reference failures instead of throwing out of the tool', async () => {
+  it('fails the call when references throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       capabilities: { referencesProvider: true },
@@ -187,24 +207,21 @@ describe('tool capability guards', () => {
         throw new Error('references crashed');
       }),
     });
-    expect(
-      await createReferencesTool(makeDeps(server)).execute(
+    await expect(
+      createReferencesTool(makeDeps(server)).execute(
         { path: file, line: 1, character: 7 },
         { cwd: root } as never,
         opts(),
       ),
-    ).toContain('references crashed');
+    ).rejects.toThrow(/references crashed/);
   });
 
   it('refuses document symbols on a server that advertises no symbol support', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({ capabilities: { hoverProvider: true } });
-    const out = await createSymbolsTool(makeDeps(server)).execute(
-      { path: file },
-      { cwd: root } as never,
-      opts(),
-    );
-    expect(out).toContain('does not support document symbols');
+    await expect(
+      createSymbolsTool(makeDeps(server)).execute({ path: file }, { cwd: root } as never, opts()),
+    ).rejects.toThrow(/does not support document symbols/);
     expect(server.documentSymbol).not.toHaveBeenCalled();
   });
 
@@ -250,7 +267,7 @@ describe('tool capability guards', () => {
     ).toBe('flat [13] line 5');
   });
 
-  it('reports document symbol failures instead of throwing out of the tool', async () => {
+  it('fails the call when document symbols throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       capabilities: { documentSymbolProvider: true },
@@ -258,24 +275,21 @@ describe('tool capability guards', () => {
         throw new Error('symbols crashed');
       }),
     });
-    expect(
-      await createSymbolsTool(makeDeps(server)).execute(
-        { path: file },
-        { cwd: root } as never,
-        opts(),
-      ),
-    ).toContain('symbols crashed');
+    await expect(
+      createSymbolsTool(makeDeps(server)).execute({ path: file }, { cwd: root } as never, opts()),
+    ).rejects.toThrow(/symbols crashed/);
   });
 
   it('refuses code actions on a server that advertises no code-action support', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({ capabilities: { hoverProvider: true } });
-    const out = await createCodeActionsTool(makeDeps(server)).execute(
-      { path: file },
-      { cwd: root } as never,
-      opts(),
-    );
-    expect(out).toContain('does not support code actions');
+    await expect(
+      createCodeActionsTool(makeDeps(server)).execute(
+        { path: file },
+        { cwd: root } as never,
+        opts(),
+      ),
+    ).rejects.toThrow(/does not support code actions/);
     expect(server.codeAction).not.toHaveBeenCalled();
   });
 
@@ -317,7 +331,7 @@ describe('tool capability guards', () => {
     );
   });
 
-  it('reports code-action failures instead of throwing out of the tool', async () => {
+  it('fails the call when code actions throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       capabilities: { codeActionProvider: true },
@@ -325,13 +339,13 @@ describe('tool capability guards', () => {
         throw new Error('code actions crashed');
       }),
     });
-    expect(
-      await createCodeActionsTool(makeDeps(server)).execute(
+    await expect(
+      createCodeActionsTool(makeDeps(server)).execute(
         { path: file },
         { cwd: root } as never,
         opts(),
       ),
-    ).toContain('code actions crashed');
+    ).rejects.toThrow(/code actions crashed/);
   });
 
   it('refuses a command the server does not expose', async () => {
@@ -339,24 +353,25 @@ describe('tool capability guards', () => {
     const ctx = { cwd: root } as never;
 
     // No executeCommandProvider at all.
-    expect(
-      await createExecuteCommandTool(makeDeps(fakeServer())).execute(
+    await expect(
+      createExecuteCommandTool(makeDeps(fakeServer())).execute(
         { path: file, command: '_typescript.organizeImports' },
         ctx,
         opts(),
       ),
-    ).toContain('does not expose command "_typescript.organizeImports"');
+    ).rejects.toThrow('does not expose command "_typescript.organizeImports"');
 
     // Provider present, but this command is not in its list.
     const server = fakeServer({
       capabilities: { executeCommandProvider: { commands: ['other.command'] } },
     });
-    const out = await createExecuteCommandTool(makeDeps(server)).execute(
-      { path: file, command: '_typescript.organizeImports' },
-      ctx,
-      opts(),
-    );
-    expect(out).toContain('LSP_CAPABILITY_MISSING');
+    await expect(
+      createExecuteCommandTool(makeDeps(server)).execute(
+        { path: file, command: '_typescript.organizeImports' },
+        ctx,
+        opts(),
+      ),
+    ).rejects.toThrow(/LSP_CAPABILITY_MISSING/);
     expect(server.executeCommand).not.toHaveBeenCalled();
   });
 
@@ -397,7 +412,7 @@ describe('tool capability guards', () => {
     );
   });
 
-  it('reports execute-command failures instead of throwing out of the tool', async () => {
+  it('fails the call when execute-command throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       capabilities: { executeCommandProvider: { commands: ['do.thing'] } },
@@ -405,13 +420,13 @@ describe('tool capability guards', () => {
         throw new Error('command crashed');
       }),
     });
-    expect(
-      await createExecuteCommandTool(makeDeps(server)).execute(
+    await expect(
+      createExecuteCommandTool(makeDeps(server)).execute(
         { path: file, command: 'do.thing' },
         { cwd: root } as never,
         opts(),
       ),
-    ).toContain('command crashed');
+    ).rejects.toThrow(/command crashed/);
   });
 
   it('blocks lifecycle methods and empty methods from lsp_request', async () => {
@@ -421,14 +436,14 @@ describe('tool capability guards', () => {
     const ctx = { cwd: root } as never;
 
     for (const method of ['initialize', 'initialized', 'shutdown', 'exit']) {
-      const out = await createRequestTool(deps).execute({ path: file, method }, ctx, opts());
-      expect(out).toContain('LSP_INVALID_REQUEST');
-      expect(out).toContain(`"${method}" cannot be invoked`);
+      await expect(
+        createRequestTool(deps).execute({ path: file, method }, ctx, opts()),
+      ).rejects.toThrow(`[LSP_INVALID_REQUEST] LSP lifecycle method "${method}" cannot be invoked`);
     }
 
-    expect(
-      await createRequestTool(deps).execute({ path: file, method: '   ' }, ctx, opts()),
-    ).toContain('"(empty)" cannot be invoked');
+    await expect(
+      createRequestTool(deps).execute({ path: file, method: '   ' }, ctx, opts()),
+    ).rejects.toThrow('"(empty)" cannot be invoked');
     expect(server.customRequest).not.toHaveBeenCalled();
   });
 
@@ -464,20 +479,20 @@ describe('tool capability guards', () => {
     );
   });
 
-  it('reports custom request failures instead of throwing out of the tool', async () => {
+  it('fails the call when a custom request throws', async () => {
     const { root, file } = await fixture();
     const server = fakeServer({
       customRequest: vi.fn(async () => {
         throw new Error('request crashed');
       }),
     });
-    expect(
-      await createRequestTool(makeDeps(server)).execute(
+    await expect(
+      createRequestTool(makeDeps(server)).execute(
         { path: file, method: 'vendor/ping' },
         { cwd: root } as never,
         opts(),
       ),
-    ).toContain('request crashed');
+    ).rejects.toThrow(/request crashed/);
   });
 
   it('renders every hover content shape servers are allowed to return', () => {

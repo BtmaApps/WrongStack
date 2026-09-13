@@ -7,7 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Drive runPatch deterministically by faking the `patch` child process, so the
 // success path (extractPatchedFiles) and the error/non-zero paths run without
 // depending on a GNU `patch` binary being installed.
-const cfg: { stdout: string; stderr: string; code: number; error?: string } = {
+const cfg: {
+  stdout: string;
+  stderr: string;
+  code: number;
+  error?: string | undefined;
+  errorCode?: string | undefined;
+} = {
   stdout: '',
   stderr: '',
   code: 0,
@@ -26,7 +32,7 @@ vi.mock('node:child_process', async (orig) => {
       child.stderr = new EventEmitter();
       process.nextTick(() => {
         if (cfg.error) {
-          child.emit('error', new Error(cfg.error));
+          child.emit('error', Object.assign(new Error(cfg.error), { code: cfg.errorCode }));
           return;
         }
         if (cfg.stdout) child.stdout.emit('data', Buffer.from(cfg.stdout));
@@ -47,6 +53,7 @@ beforeEach(async () => {
   cfg.stderr = '';
   cfg.code = 0;
   cfg.error = undefined;
+  cfg.errorCode = undefined;
 });
 afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
@@ -67,14 +74,13 @@ describe('patchTool (faked patch process)', () => {
     expect(result.rejected).toBe(0);
   });
 
-  it('returns rejected=1 with the error message on non-zero exit (non dry-run)', async () => {
+  it('throws with the engine message on non-zero exit (non dry-run)', async () => {
     cfg.stdout = '';
     cfg.stderr = 'patch: **** malformed patch';
     cfg.code = 1;
-    const result = await patchTool.execute({ patch: goodPatch }, ctx(), opts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
-    expect(result.message).toMatch(/patch failed/);
+    await expect(patchTool.execute({ patch: goodPatch }, ctx(), opts())).rejects.toThrow(
+      /patch failed: patch: \*\*\*\* malformed patch/,
+    );
   });
 
   it('still reports patched files in dry-run even on a non-zero exit', async () => {
@@ -117,10 +123,18 @@ describe('patchTool (faked patch process)', () => {
     expect(result.applied).toBe(1);
   });
 
-  it('handles a spawn error (patch binary missing)', async () => {
-    cfg.error = 'spawn patch ENOENT';
-    const result = await patchTool.execute({ patch: goodPatch }, ctx(), opts());
-    expect(result.applied).toBe(0);
-    expect(result.rejected).toBe(1);
+  it('throws on a spawn error (non-ENOENT process failure)', async () => {
+    cfg.error = 'spawn patch EACCES';
+    await expect(patchTool.execute({ patch: goodPatch }, ctx(), opts())).rejects.toThrow(
+      /patch failed: spawn patch EACCES/,
+    );
+  });
+
+  it('throws when neither GNU patch nor git can be started — even in dry-run', async () => {
+    cfg.error = 'spawn ENOENT';
+    cfg.errorCode = 'ENOENT';
+    await expect(
+      patchTool.execute({ patch: goodPatch, dry_run: true }, ctx(), opts()),
+    ).rejects.toThrow(/no patch engine could be started/);
   });
 });

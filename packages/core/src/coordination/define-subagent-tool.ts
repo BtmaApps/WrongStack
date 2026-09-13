@@ -128,6 +128,12 @@ export function createDefineSubagentTool(
       'After defining, call `delegate({ role: name, task, scope, outOfScope })` or `spawn_subagent({ role: name, ... })`.',
     inputSchema,
     async execute(input) {
+      // Without a roster nothing is registered, so a "defined" result would lie.
+      if (!opts.roster) {
+        throw new Error(
+          'define_subagent is unavailable: no session roster is attached, so the subagent cannot be registered.',
+        );
+      }
       const rawName = input.name?.trim();
       if (!rawName || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(rawName)) {
         throw new Error(
@@ -190,14 +196,15 @@ export function createDefineSubagentTool(
           summary: input.description,
           keywords: [
             rawName.toLowerCase(),
-            ...input.description.toLowerCase().split(/\W+/).filter((w) => w.length > 3),
+            ...input.description
+              .toLowerCase()
+              .split(/\W+/)
+              .filter((w) => w.length > 3),
           ],
         },
       };
 
-      if (opts.roster) {
-        opts.roster[rawName] = subagentConfig;
-      }
+      opts.roster[rawName] = subagentConfig;
 
       return {
         success: true,

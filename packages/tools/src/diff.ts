@@ -200,15 +200,11 @@ async function gitDiff(
       field: 'path',
     });
   }
+  // A diff that could not be produced must throw: a returned value (even with
+  // a `note`) is recorded by the executor as a successful call.
   const gitDir = findGitDir(basePath);
   if (!gitDir) {
-    return {
-      diff: '',
-      files: [],
-      truncated: false,
-      mode: effectiveMode,
-      note: 'Not a git repository (or any parent up to root).',
-    };
+    throw new Error(`diff: not a git repository (or any parent up to root): ${basePath}`);
   }
 
   const args: string[] = ['diff', '--no-color'];
@@ -243,6 +239,13 @@ async function gitDiff(
   }
 
   const result = await runGit(args, gitDir, signal);
+  // `git diff` (without --exit-code) exits 0 whether or not there are
+  // differences, so any non-zero exit is a real failure (bad ref, bad path…).
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `diff: git diff exited with code ${result.exitCode}: ${result.stderr.trim() || 'command failed'}`,
+    );
+  }
   // Honest truncation: actually clip the payload (at a line boundary) when it
   // exceeds the cap, and only then report truncated=true.
   let diff = result.stdout;
@@ -254,17 +257,12 @@ async function gitDiff(
     diff = `${clipped}\n…[git diff truncated: ${result.stdout.length - clipped.length} of ${result.stdout.length} characters omitted]`;
     truncated = true;
   }
-  const exitNote =
-    result.exitCode !== 0
-      ? `git diff exited with code ${result.exitCode}: ${result.stderr.trim() || 'command failed'}`
-      : undefined;
-  const combinedNote = [sideBySideNote, exitNote].filter(Boolean).join('\n') || undefined;
   return {
     diff,
     files: effectiveFiles,
     truncated,
     mode: effectiveMode,
-    note: combinedNote,
+    note: sideBySideNote,
   };
 }
 
@@ -353,12 +351,10 @@ async function fileDiff(
   ];
 
   if (files.length === 0) {
-    return {
-      diff: 'No files specified',
-      files: [],
-      truncated: false,
-      mode: 'dump',
-    };
+    throw new ToolValidationError({
+      message: 'diff: no files specified — pass `files`, or `a`/`b`/`staged` for a git diff',
+      field: 'files',
+    });
   }
 
   let basePath: string;
@@ -379,11 +375,16 @@ async function fileDiff(
     let absPath: string;
     try {
       absPath = await safeResolveReal(fileToResolve, ctx);
-    } catch {
-      return null;
+    } catch (err) {
+      // A refused path is an error, not a silently-skipped file.
+      throw new ToolValidationError({
+        message: `diff: file "${file}": ${(err as Error).message}`,
+        field: 'files',
+        cause: err,
+      });
     }
     const stat = await fs.stat(absPath).catch(() => null);
-    if (!stat?.isFile()) return null;
+    if (!stat?.isFile()) return { missing: file };
 
     if (stat.size > MAX_FILE_DUMP_BYTES) {
       return {
@@ -401,12 +402,33 @@ async function fileDiff(
   });
 
   const results: string[] = [];
+  const missing: string[] = [];
   let truncated = false;
   for (const entry of fileEntries) {
-    if (!entry) continue;
+    if ('missing' in entry) {
+      missing.push(entry.missing);
+      continue;
+    }
     if (entry.truncated) truncated = true;
     results.push(entry.output);
   }
+
+  // Nothing could be shown: an empty "successful" dump would read as "these
+  // files are empty". Globs are only expanded on the git path (`a`/`b`).
+  if (results.length === 0) {
+    throw new Error(
+      `diff: none of the requested files exist or are regular files: ${missing.join(', ')}`,
+    );
+  }
+
+  const notes = [
+    input.mode !== undefined
+      ? 'The `files`-only path is a line-numbered dump; `mode` only affects the git-diff path (`a`/`b`).'
+      : undefined,
+    missing.length > 0
+      ? `Skipped (not found or not a regular file): ${missing.join(', ')}`
+      : undefined,
+  ].filter(Boolean);
 
   return {
     diff: results.join('\n\n'),
@@ -415,10 +437,7 @@ async function fileDiff(
     // Honest mode: this path always produces a line-numbered dump — it never
     // honors `mode`, so it must not echo the requested value back.
     mode: 'dump',
-    note:
-      input.mode !== undefined
-        ? 'The `files`-only path is a line-numbered dump; `mode` only affects the git-diff path (`a`/`b`).'
-        : undefined,
+    note: notes.length > 0 ? notes.join('\n') : undefined,
   };
 }
 

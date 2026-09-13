@@ -42,20 +42,56 @@ describe('createOneShotLLMTool', () => {
     expect(tool.name).toBe('llm');
   });
 
-  it('returns an error when no model/providerId and no defaults configured', async () => {
+  it('throws when no model/providerId and no defaults configured', async () => {
     const tool = createOneShotLLMTool({
       buildProvider: async () => fakeProvider('test'),
       getConfig: () => makeFakeConfig(),
       fallbackProfileManager: new FallbackProfileManager(makeFakeConfig()),
     });
 
-    const result = await tool.execute({ system: 'hello', userPrompt: 'world' }, {} as never, {
-      signal: new AbortController().signal,
+    await expect(
+      tool.execute({ system: 'hello', userPrompt: 'world' }, {} as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/provide `model`[\s\S]*providerId/);
+  });
+
+  it('throws when the provider call fails instead of returning an error-shaped result', async () => {
+    const provider = fakeProvider('default-prov');
+    provider.complete = vi.fn(async () => {
+      throw new Error('upstream 500');
+    });
+    const tool = createOneShotLLMTool({
+      buildProvider: async () => provider,
+      getConfig: () => makeFakeConfig(),
+      fallbackProfileManager: new FallbackProfileManager(makeFakeConfig()),
+      defaultProvider: 'default-prov',
+      defaultModel: 'default-model',
     });
 
-    expect(result.text).toBe('');
-    expect(result.error).toContain('provide `model`');
-    expect(result.error).toContain('providerId');
+    await expect(
+      tool.execute({ userPrompt: 'hello' }, {} as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/llm call failed[\s\S]*upstream 500/);
+  });
+
+  it('throws when the provider cannot be built', async () => {
+    const tool = createOneShotLLMTool({
+      buildProvider: async () => {
+        throw new Error('no credentials');
+      },
+      getConfig: () => makeFakeConfig(),
+      fallbackProfileManager: new FallbackProfileManager(makeFakeConfig()),
+      defaultProvider: 'default-prov',
+      defaultModel: 'default-model',
+    });
+
+    await expect(
+      tool.execute({ userPrompt: 'hello' }, {} as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Cannot build provider[\s\S]*no credentials/);
   });
 
   it('produces a response when model and providerId are provided explicitly', async () => {

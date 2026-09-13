@@ -205,13 +205,20 @@ describe('treeTool', () => {
     }
   });
 
-  it('handles a base path that is not a directory (readdir error → empty)', async () => {
+  it('throws when the base path is not a directory (not an empty tree)', async () => {
     const file = path.join(tmpDir, 'afile.txt');
     await fs.writeFile(file, 'hi');
     const ctx = makeCtx();
-    const result = await treeTool.execute({ path: 'afile.txt' }, ctx, makeOpts());
-    expect(result.total_files).toBe(0);
-    expect(result.total_dirs).toBe(0);
+    await expect(treeTool.execute({ path: 'afile.txt' }, ctx, makeOpts())).rejects.toThrow(
+      /tree: cannot list/,
+    );
+  });
+
+  it('throws when the base path does not exist', async () => {
+    const ctx = makeCtx();
+    await expect(treeTool.execute({ path: 'no-such-dir-xyz' }, ctx, makeOpts())).rejects.toThrow(
+      /tree: cannot list/,
+    );
   });
 
   it('filters files by glob pattern', async () => {

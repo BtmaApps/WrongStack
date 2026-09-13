@@ -9,8 +9,8 @@ import {
   readDocumentContent,
   requireServer,
   resolveInputPath,
-  stringifyToolError,
   type ToolDeps,
+  toToolError,
 } from './shared.js';
 
 interface PositionInput {
@@ -58,7 +58,7 @@ export function createDefinitionTool(deps: ToolDeps): Tool<PositionInput, string
         );
         return formatLocations(locs, ctx.cwd);
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

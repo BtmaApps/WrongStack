@@ -221,13 +221,44 @@ describe('performance-regression-gate plugin', () => {
     expect(result.regressions).toHaveLength(0);
   });
 
+  it('throws when an explicitly named results file is missing', async () => {
+    mocks.existsSync.mockReturnValue(false);
+    const api = makeApi();
+    perfPlugin.setup(api as never);
+    const status = getTool(api, 'perf_regression_status');
+    await expect(status({ resultsPath: 'custom-bench.json' })).rejects.toThrow(
+      /No benchmark results found at custom-bench\.json/,
+    );
+  });
+
+  it('throws when the results file exists but is not valid JSON', async () => {
+    // Used to be reported as "No benchmark results found" with ok:true.
+    mocks.existsSync.mockReturnValue(true);
+    mocks.readFileSync.mockReturnValue('{ truncated');
+    const api = makeApi();
+    perfPlugin.setup(api as never);
+    const status = getTool(api, 'perf_regression_status');
+    await expect(status({})).rejects.toThrow(/Could not read benchmark results/);
+  });
+
+  it('throws when the baseline cannot be read', async () => {
+    mocks.existsSync.mockImplementation((p: string) => p.includes('bench-results.json'));
+    mocks.readFileSync.mockReturnValue(
+      JSON.stringify(makeBenchResults([{ name: 'task', mean: 10 }])),
+    );
+    const api = makeApi();
+    perfPlugin.setup(api as never);
+    const status = getTool(api, 'perf_regression_status');
+    await expect(status({ baselinePath: 'baseline.json' })).rejects.toThrow(
+      /Could not read baseline results at baseline\.json/,
+    );
+  });
+
   it('returns disabled error when enabled:false', async () => {
     const api = makeApi({ extensions: { 'performance-regression-gate': { enabled: false } } });
     perfPlugin.setup(api as never);
     const status = getTool(api, 'perf_regression_status');
-    const result = (await status({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(status({})).rejects.toThrow(/disabled/);
   });
 
   it('teardown zeros state and logs', async () => {

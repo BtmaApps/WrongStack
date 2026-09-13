@@ -8,11 +8,29 @@ import { toErrorMessage } from '@wrongstack/core/utils';
  * - semver_current: Show the current version from package.json
  * - semver_changelog: Generate a changelog between two versions
  */
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { execFile } from 'node:child_process';
 import { access, readFile, readdir, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 const API_VERSION = '^0.1.10';
+
+function requireProjectRoot(rawCwd: string | undefined): string {
+  const safeCwd = resolveProjectRoot(rawCwd);
+  if (!safeCwd) {
+    throw new ToolValidationError({
+      message: 'cwd must stay within the current project directory',
+      field: 'cwd',
+    });
+  }
+  return safeCwd;
+}
+
+/** A git ref starting with `-` would be parsed as an option (e.g. `--output=<file>`). */
+function requireGitRef(field: string, ref: string | undefined): void {
+  if (ref !== undefined && (typeof ref !== 'string' || ref.startsWith('-'))) {
+    throw new ToolValidationError({ message: `${field} is not a valid git ref`, field });
+  }
+}
 
 function resolveProjectRoot(rawCwd: string | undefined, root = process.cwd()): string | null {
   if (typeof rawCwd !== 'string' || rawCwd.length === 0) return root;
@@ -361,15 +379,12 @@ const plugin: Plugin = {
       dryRun: boolean,
       cwd?: string,
     ): Promise<Record<string, unknown>> {
-      const safeCwd = resolveProjectRoot(cwd);
-      if (!safeCwd) {
-        return { ok: false, error: 'cwd must stay within the current project directory' };
-      }
-      cwd = safeCwd;
+      // Failures throw: the executor only flags a call as failed when execute rejects.
+      cwd = requireProjectRoot(cwd);
       // Get current version
       const pkg = await getPackageJson(cwd);
       if (!pkg) {
-        return { ok: false, error: 'No package.json found' };
+        throw new Error('No package.json found');
       }
 
       const currentVersion = pkg.version;
@@ -391,9 +406,7 @@ const plugin: Plugin = {
         try {
           commits = await getRecentCommits(lastTag, cwd);
         } catch (err: unknown) {
-          /* v8 ignore next -- getRecentCommits only throws Error; the String(err) branch is defensive. */
-          const msg = toErrorMessage(err);
-          return { ok: false, error: `Git error: ${msg}`, bumpPart: 'patch' };
+          throw new Error(`Git error: ${toErrorMessage(err)}`, { cause: err });
         }
         bumpPart = determineBump(commits);
       } else {
@@ -433,9 +446,7 @@ const plugin: Plugin = {
         try {
           await runCommand(process.execPath, [bumpScript, 'set', newVersion], root);
         } catch (err: unknown) {
-          /* v8 ignore next -- child process failures are Errors; the String(err) branch is defensive. */
-          const msg = toErrorMessage(err);
-          return { ok: false, error: `bump script failed: ${msg}` };
+          throw new Error(`bump script failed: ${toErrorMessage(err)}`, { cause: err });
         }
         for (const rel of ['package.json', 'package-lock.json', 'src/lib/utils.ts', 'index.html']) {
           const p = join(root, 'website', rel);
@@ -459,18 +470,16 @@ const plugin: Plugin = {
           try {
             pkgData = JSON.parse(await readFile(manifest, 'utf-8')) as { version?: string };
           } catch (err: unknown) {
-            return {
-              ok: false,
-              error:
-                `cannot bump: ${manifest} is not readable as JSON (${toErrorMessage(err)}). ` +
+            throw new Error(
+              `cannot bump: ${manifest} is not readable as JSON (${toErrorMessage(err)}). ` +
                 'No manifests were modified.',
-            };
+              { cause: err },
+            );
           }
           if (!pkgData || typeof pkgData !== 'object') {
-            return {
-              ok: false,
-              error: `cannot bump: ${manifest} does not contain a JSON object. No manifests were modified.`,
-            };
+            throw new Error(
+              `cannot bump: ${manifest} does not contain a JSON object. No manifests were modified.`,
+            );
           }
           pkgData.version = newVersion;
           pending.push({ path: manifest, contents: `${JSON.stringify(pkgData, null, 2)}\n` });
@@ -481,20 +490,23 @@ const plugin: Plugin = {
       }
 
       // 2. Git commit the version bump (stage only the files we touched)
+      let commitError: string | undefined;
       try {
         await runGit(['add', '--', ...changed], cwd);
         await runGit(['commit', '-m', `chore: bump version to ${newVersion}`], cwd);
-      } catch {
-        // commit might fail if nothing changed, that's OK
+      } catch (err: unknown) {
+        // Manifests are already written, so report rather than throw.
+        commitError = toErrorMessage(err);
       }
 
       // 3. Create git tag
+      let tagError: string | undefined;
       if (autoTag) {
         try {
           const msg = tagMessage.replace('{{version}}', newVersion);
           await runGit(['tag', '-a', `${tagPrefix}${newVersion}`, '-m', msg], cwd);
-        } catch {
-          // tag might already exist
+        } catch (err: unknown) {
+          tagError = toErrorMessage(err);
         }
       }
 
@@ -522,13 +534,24 @@ const plugin: Plugin = {
         breakingCount: commits.filter((c) => c.breaking).length,
       };
 
+      const tagged = autoTag && tagError === undefined;
+      const warnings = [
+        ...(commitError ? [`commit failed: ${commitError}`] : []),
+        ...(tagError ? [`tag failed: ${tagError}`] : []),
+      ];
       return {
         ok: true,
         currentVersion,
         newVersion,
         bump: bumpPart,
-        tag: `${tagPrefix}${newVersion}`,
-        message: `Bumped ${currentVersion} → ${newVersion} (${bumpPart})`,
+        // Only name the tag when it was actually created.
+        tag: tagged ? `${tagPrefix}${newVersion}` : null,
+        committed: commitError === undefined,
+        tagged,
+        ...(warnings.length > 0 ? { warnings } : {}),
+        message:
+          `Bumped ${currentVersion} → ${newVersion} (${bumpPart})` +
+          (warnings.length > 0 ? ` — ${warnings.join('; ')}` : ''),
       };
     }
 
@@ -644,9 +667,13 @@ const plugin: Plugin = {
         if (!safeCwd) {
           return { message: 'cwd must stay within the current project directory' };
         }
-        const result = await performBump(mode, dry, safeCwd);
-        /* v8 ignore next -- performBump always returns a message or an error; the JSON.stringify fallback is defensive. */
-        return { message: String(result['message'] ?? result['error'] ?? JSON.stringify(result)) };
+        try {
+          const result = await performBump(mode, dry, safeCwd);
+          /* v8 ignore next -- performBump always returns a message; the JSON.stringify fallback is defensive. */
+          return { message: String(result['message'] ?? JSON.stringify(result)) };
+        } catch (err: unknown) {
+          return { message: toErrorMessage(err) };
+        }
       },
     });
 
@@ -665,11 +692,7 @@ const plugin: Plugin = {
       async execute(input: Record<string, unknown>) {
         state.invocationCount += 1;
         state.perTool['semver_current'] = (state.perTool['semver_current'] ?? 0) + 1;
-        const cwdInput = input['cwd'] as string | undefined;
-        const safeCwd = resolveProjectRoot(cwdInput);
-        if (!safeCwd) {
-          return { ok: false, error: 'cwd must stay within the current project directory' };
-        }
+        const safeCwd = requireProjectRoot(input['cwd'] as string | undefined);
 
         const pkg = await getPackageJson(safeCwd);
         const currentVersion = pkg?.version ?? 'unknown';
@@ -722,24 +745,23 @@ const plugin: Plugin = {
         state.perTool['semver_changelog'] = (state.perTool['semver_changelog'] ?? 0) + 1;
         const from = input['from'] as string | undefined;
         const to = (input['to'] as string) ?? 'HEAD';
-        const cwd = input['cwd'] as string | undefined;
-        const safeCwd = resolveProjectRoot(cwd);
-        if (!safeCwd) {
-          return { ok: false, error: 'cwd must stay within the current project directory' };
-        }
+        requireGitRef('from', from);
+        requireGitRef('to', to);
+        const safeCwd = requireProjectRoot(input['cwd'] as string | undefined);
         const format = (input['format'] as 'markdown' | 'json') ?? 'markdown';
 
-        const range = from ? `${from}..${to}` : to;
+        // Without `from`, the last 30 commits reachable from `to` (it was ignored before).
+        const rangeArgs = from ? [`${from}..${to}`] : ['-30', to];
 
         let commits: ConventionalCommit[];
         try {
           const output = await runGit(
-            ['log', range === to ? '-30' : range, '--format=%H%x1f%s%x1f%b%x1e'],
+            ['log', ...rangeArgs, '--format=%H%x1f%s%x1f%b%x1e'],
             safeCwd,
           );
           commits = parseGitLogOutput(output);
         } catch (err: unknown) {
-          return { ok: false, error: `Failed to get git log: ${err}` };
+          throw new Error(`Failed to get git log: ${toErrorMessage(err)}`, { cause: err });
         }
 
         if (format === 'json') {

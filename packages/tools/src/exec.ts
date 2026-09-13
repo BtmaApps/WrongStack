@@ -300,21 +300,19 @@ export interface ExecOutput {
   stderr: string;
   exitCode: number;
   truncated: boolean;
+  /**
+   * Always true on a returned result: refusals (allowlist miss, blocked args,
+   * kill guard, cwd containment, circuit breaker) THROW instead, so the
+   * executor records them as failed calls. Kept for output-shape stability.
+   */
   allowed: boolean;
   /**
    * Heuristic danger assessment of the (cmd, args) pair. Populated for every
-   * call (not just blocked ones) so the UI/TUI can render a banner when the
-   * level is 'caution' or 'destructive'. See `_danger-detect.ts` for the
-   * rule set.
-   *
-   * Pre-execution error returns (allowlist miss, circuit breaker, etc.)
-   * report `level: 'safe'` because the command never actually ran; the UI
-   * should surface the error separately and not also a danger warning.
+   * call that ran so the UI/TUI can render a banner when the level is
+   * 'caution' or 'destructive'. See `_danger-detect.ts` for the rule set.
    */
   danger: DangerAssessment;
 }
-
-const SAFE_DANGER: DangerAssessment = { level: 'safe', reasons: [] };
 
 export const execTool: Tool<ExecInput, ExecOutput> = {
   name: 'exec',
@@ -381,50 +379,28 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     },
     required: ['command'],
   },
+  // Refusals (breaker, allowlist, blocked args, kill guard, cwd containment)
+  // and launch failures THROW: a returned `allowed: false` / `exitCode: 1`
+  // payload was recorded by the executor as a successful call. Non-zero
+  // exits, timeouts and aborts remain data (the command did run).
   async execute(input, ctx, opts) {
     const registry = getProcessRegistry();
     if (!registry.canProceed) {
-      return {
-        command: input.command,
-        args: input.args ?? [],
-        stdout: '',
-        stderr:
-          'Circuit breaker is open — too many consecutive failures. Use /kill reset to recover.',
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger: SAFE_DANGER,
-      };
+      throw new Error(
+        'exec: circuit breaker is open — too many consecutive failures. Use /kill reset to recover.',
+      );
     }
 
-    const cmd = input.command.trim();
-    if (!cmd)
-      return {
-        command: cmd,
-        args: [],
-        stdout: '',
-        stderr: 'Empty command',
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger: SAFE_DANGER,
-      };
+    const cmd = (input.command ?? '').trim();
+    if (!cmd) throw new Error('exec: empty command');
 
     if (!isExecCommandAllowed(cmd)) {
-      return {
-        command: cmd,
-        args: input.args ?? [],
-        stdout: '',
-        stderr:
-          `Command "${cmd}" not in allowlist. ` +
+      throw new Error(
+        `exec: command "${cmd}" not in allowlist. ` +
           `Add it to your active profile config (~/.wrongstack/profiles/<name>/config.json) ` +
           `under "tools": { "exec": { "allow": ["${cmd}"] } }, ` +
           `or use the bash tool for one-off arbitrary commands.`,
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger: SAFE_DANGER,
-      };
+      );
     }
 
     const args = (input.args ?? []).slice(0, MAX_ARGS);
@@ -445,31 +421,15 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     // (taskkill /F /IM node.exe, Stop-Process -Name node, wmic process delete, etc.)
     const killCheck = await checkExecKillCommand(cmd, args);
     if (killCheck.blocked) {
-      return {
-        command: cmd,
-        args,
-        stdout: '',
-        stderr: killCheck.reason ?? 'Kill command blocked: targets a protected WrongStack process.',
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger,
-      };
+      throw new Error(
+        `exec: ${killCheck.reason ?? 'Kill command blocked: targets a protected WrongStack process.'}`,
+      );
     }
 
     // Validate args against per-command security patterns
     const argError = validateArgs(cmd, args);
     if (argError) {
-      return {
-        command: cmd,
-        args,
-        stdout: '',
-        stderr: argError,
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger,
-      };
+      throw new Error(`exec: ${argError}`);
     }
 
     // Default cwd is the SESSION working dir (set via `set_working_dir`),
@@ -483,17 +443,10 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
       cwd = input.cwd
         ? await safeResolveReal(input.cwd, ctx)
         : await safeResolveReal(defaultCwd, ctx);
-    } catch {
-      return {
-        command: cmd,
-        args,
-        stdout: '',
-        stderr: `cwd "${input.cwd ?? defaultCwd}" resolves outside project root`,
-        exitCode: 1,
-        truncated: false,
-        allowed: false,
-        danger,
-      };
+    } catch (err) {
+      throw new Error(`exec: cwd "${input.cwd ?? defaultCwd}" resolves outside project root`, {
+        cause: err,
+      });
     }
     const signal = opts?.signal ?? ctx.signal ?? new AbortController().signal;
     if (signal.aborted) {
@@ -534,7 +487,7 @@ function runCommand(
   sessionId: string | undefined,
   danger: DangerAssessment,
 ): Promise<ExecOutput> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
     let killed = false;
@@ -547,6 +500,13 @@ function runCommand(
       if (resolvedOnce.value) return;
       resolvedOnce.value = true;
       resolve(result);
+    };
+    // A process that never ran (spawn threw, binary missing, EACCES) is a
+    // failed call, not an exit-code result — reject so the executor records it.
+    const fail = (err: Error): void => {
+      if (resolvedOnce.value) return;
+      resolvedOnce.value = true;
+      reject(err);
     };
     const startedAt = Date.now();
     let stdoutBytes = 0;
@@ -637,16 +597,7 @@ function runCommand(
         startedAt: new Date(startedAt).toISOString(),
       });
       emitCompletedOnce(1, undefined);
-      finish({
-        command: cmd,
-        args,
-        stdout: '',
-        stderr: `spawn failed: ${toErrorMessage(err)}`,
-        exitCode: 1,
-        truncated: false,
-        allowed: true,
-        danger,
-      });
+      fail(new Error(`exec: spawn failed: ${toErrorMessage(err)}`, { cause: err }));
       return;
     }
 
@@ -683,19 +634,22 @@ function runCommand(
       // The signal passed to spawn() is an AbortSignal; Node internally
       // converts the abort into an AbortError with `code: 'ABORT_ERR'`.
       const isAbort = err && (err as NodeJS.ErrnoException).code === 'ABORT_ERR';
-      const stderrText = isAbort ? `Aborted: ${err.message}` : err.message;
       if (timer !== undefined) clearTimeout(timer);
       if (isWin) signal.removeEventListener('abort', onAbort);
       if (typeof pid === 'number') registry.unregister(pid);
       registry.afterCall(Date.now() - startedAt, true);
       spool.finalize();
       emitCompletedOnce(isAbort ? 124 : 1, child.pid, isAbort ? 'ABORT' : undefined);
+      if (!isAbort) {
+        fail(new Error(`exec: process error: ${err.message}`, { cause: err }));
+        return;
+      }
       finish({
         command: cmd,
         args,
         stdout: normalizeCommandOutput(stdout),
-        stderr: stderrText,
-        exitCode: isAbort ? 124 : 1,
+        stderr: `Aborted: ${err.message}`,
+        exitCode: 124,
         truncated: Buffer.byteLength(stdout, 'utf8') > COMMAND_OUTPUT_MAX_BYTES,
         allowed: true,
         danger,

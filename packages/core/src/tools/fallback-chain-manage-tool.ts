@@ -1,3 +1,4 @@
+import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import {
   chainList,
@@ -44,7 +45,7 @@ interface FallbackChainInput {
 }
 
 interface FallbackChainOutput {
-  status: 'ok' | 'error';
+  status: 'ok';
   message: string;
   chain?: string[];
 }
@@ -91,17 +92,20 @@ export function createFallbackChainManageTool(
 
       if (input.action === 'add') {
         if (!input.model) {
-          return {
-            status: 'error',
+          throw new ToolValidationError({
             message: 'Provide "model" (e.g. "anthropic/claude-haiku-3") to add to the chain.',
-          };
+            field: 'model',
+          });
         }
         const ref = normalizeRef(input.model);
         if (!isFavoriteRef(ref, config)) {
-          return { status: 'error', message: notFavoriteError(ref, config) };
+          throw new ToolValidationError({ message: notFavoriteError(ref, config), field: 'model' });
         }
         if (chain.some((e) => normalizeRef(e) === ref)) {
-          return { status: 'error', message: `"${ref}" is already in the chain.` };
+          throw new ToolValidationError({
+            message: `"${ref}" is already in the chain.`,
+            field: 'model',
+          });
         }
         chain.push(ref);
         await opts.updateConfig((cfg) => {
@@ -116,14 +120,20 @@ export function createFallbackChainManageTool(
 
       if (input.action === 'insert') {
         if (!input.model) {
-          return { status: 'error', message: 'Provide "model" to insert into the chain.' };
+          throw new ToolValidationError({
+            message: 'Provide "model" to insert into the chain.',
+            field: 'model',
+          });
         }
         const ref = normalizeRef(input.model);
         if (!isFavoriteRef(ref, config)) {
-          return { status: 'error', message: notFavoriteError(ref, config) };
+          throw new ToolValidationError({ message: notFavoriteError(ref, config), field: 'model' });
         }
         if (chain.some((e) => normalizeRef(e) === ref)) {
-          return { status: 'error', message: `"${ref}" is already in the chain.` };
+          throw new ToolValidationError({
+            message: `"${ref}" is already in the chain.`,
+            field: 'model',
+          });
         }
         let pos = chain.length;
         if (input.index !== undefined) {
@@ -142,15 +152,15 @@ export function createFallbackChainManageTool(
 
       if (input.action === 'remove') {
         if (chain.length === 0) {
-          return { status: 'error', message: 'Chain is empty — nothing to remove.' };
+          throw new ToolValidationError({ message: 'Chain is empty — nothing to remove.' });
         }
         if (input.index !== undefined) {
           const idx = input.index - 1;
           if (idx < 0 || idx >= chain.length) {
-            return {
-              status: 'error',
+            throw new ToolValidationError({
               message: `Index ${input.index} is out of range (1–${chain.length}).`,
-            };
+              field: 'index',
+            });
           }
           const [removed] = chain.splice(idx, 1);
           await opts.updateConfig((cfg) => {
@@ -162,7 +172,10 @@ export function createFallbackChainManageTool(
           const ref = normalizeRef(input.model);
           const idx = chain.findIndex((e) => normalizeRef(e) === ref);
           if (idx === -1) {
-            return { status: 'error', message: `"${ref}" not found in chain.` };
+            throw new ToolValidationError({
+              message: `"${ref}" not found in chain.`,
+              field: 'model',
+            });
           }
           const [removed] = chain.splice(idx, 1);
           await opts.updateConfig((cfg) => {
@@ -170,7 +183,9 @@ export function createFallbackChainManageTool(
           });
           return { status: 'ok', message: `✓ Removed: ${removed}`, chain: [...chain] };
         }
-        return { status: 'error', message: 'Provide "index" or "model" to remove from the chain.' };
+        throw new ToolValidationError({
+          message: 'Provide "index" or "model" to remove from the chain.',
+        });
       }
 
       if (input.action === 'clear') {
@@ -186,7 +201,10 @@ export function createFallbackChainManageTool(
         };
       }
 
-      return { status: 'error', message: `Unknown action: "${input.action}".` };
+      throw new ToolValidationError({
+        message: `Unknown action: "${input.action}".`,
+        field: 'action',
+      });
     },
   };
 }

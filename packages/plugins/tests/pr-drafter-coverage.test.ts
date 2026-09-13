@@ -53,6 +53,29 @@ function getStopHook(api: MockApi): (...args: unknown[]) => Promise<void> {
   return call[2] as (...args: unknown[]) => Promise<void>;
 }
 
+type PostHook = (input: {
+  toolName?: string;
+  toolInput?: unknown;
+  toolResult?: { content: string; isError: boolean };
+}) => void;
+
+function getPostHook(api: MockApi): PostHook {
+  const call = api.registerHook.mock.calls.find((c) => c[0] === 'PostToolUse');
+  if (!call) throw new Error('PostToolUse hook not registered');
+  return call[2] as PostHook;
+}
+
+/** git_autocommit's real success result, serialized the way the executor does. */
+function autocommitResult(message: string): string {
+  return JSON.stringify({
+    ok: true,
+    hash: 'deadbeefcafe0123456789abcdef0123456789ab',
+    message,
+    stagedFiles: ['src/a.ts'],
+    diff: '\n## Staged diff',
+  });
+}
+
 function getHealthCounters(value: unknown): Record<string, unknown> {
   if (
     typeof value !== 'object' ||
@@ -80,9 +103,7 @@ describe('pr-drafter coverage', () => {
     const api = makeApi({ extensions: { 'pr-drafter': { enabled: false } } });
     prDrafterPlugin.setup(api as never);
     const tool = getTool(api, 'pr_draft');
-    const result = (await tool({})) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('disabled');
+    await expect(tool({})).rejects.toThrow(/disabled/);
   });
 
   it('pr_draft tool writes to disk when preview is false', async () => {
@@ -97,34 +118,46 @@ describe('pr-drafter coverage', () => {
     expect(result.title).toBeTruthy();
   });
 
-  it('pr_draft tool writing handles filesystem errors', async () => {
+  it('pr_draft tool rejects an outputPath outside the project', async () => {
+    const api = makeApi({
+      extensions: { 'pr-drafter': { outputPath: '../outside/draft.md', includeDiff: false } },
+    });
+    prDrafterPlugin.setup(api as never);
+    const tool = getTool(api, 'pr_draft');
+    await expect(tool({ preview: false })).rejects.toThrow(/outputPath resolves outside project/);
+  });
+
+  it('pr_draft tool throws when the draft cannot be written', async () => {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    // A regular file where the parent directory should be makes mkdir fail.
+    await mkdir(TEST_OUTPUT_DIR, { recursive: true });
+    await writeFile(`${TEST_OUTPUT_DIR}/blocker`, 'x');
     const api = makeApi({
       extensions: {
-        'pr-drafter': { outputPath: 'Z:\\invalid\\path\\draft.md', includeDiff: false },
+        'pr-drafter': { outputPath: `${TEST_OUTPUT_DIR}/blocker/draft.md`, includeDiff: false },
       },
     });
     prDrafterPlugin.setup(api as never);
     const tool = getTool(api, 'pr_draft');
-    const result = (await tool({ preview: false })) as { ok: boolean; error: string };
-    // On Windows the path may resolve differently; either way, result should be ok: false
-    // if the path is invalid, or ok: true if it happens to be writable.
-    // The key is that it doesn't throw.
-    expect(typeof result.ok).toBe('boolean');
+    await expect(tool({ preview: false })).rejects.toThrow(/Could not write PR draft to/);
+    const counters = getHealthCounters(await prDrafterPlugin.health!());
+    expect(counters['draftErrors']).toBe(1);
   });
 
   it('pr_draft tool handles preview mode correctly with session data', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);
-    const onPatternHandler = api.onPattern.mock.calls[0]?.[1] as (
-      event: string,
-      payload: unknown,
-    ) => void;
+    const postHook = getPostHook(api);
     // Add some session data
-    onPatternHandler('tool.completed', {
-      tool: 'git_autocommit',
-      result: { committed: true, commitMessage: 'feat: add new feature' },
+    postHook({
+      toolName: 'git_autocommit',
+      toolResult: { content: autocommitResult('feat: add new feature'), isError: false },
     });
-    onPatternHandler('tool.completed', { tool: 'write', input: { path: 'src/new.ts' } });
+    postHook({
+      toolName: 'write',
+      toolInput: { path: 'src/new.ts' },
+      toolResult: { content: 'ok', isError: false },
+    });
 
     const tool = getTool(api, 'pr_draft');
     const result = (await tool({ preview: true })) as {
@@ -200,13 +233,9 @@ describe('pr-drafter coverage', () => {
     });
     prDrafterPlugin.setup(api as never);
     // Add some session data so LLM has context
-    const onPatternHandler = api.onPattern.mock.calls[0]?.[1] as (
-      event: string,
-      payload: unknown,
-    ) => void;
-    onPatternHandler('tool.completed', {
-      tool: 'git_autocommit',
-      result: { committed: true, commitMessage: 'fix: resolve bug' },
+    getPostHook(api)({
+      toolName: 'git_autocommit',
+      toolResult: { content: autocommitResult('fix: resolve bug'), isError: false },
     });
 
     const tool = getTool(api, 'pr_draft');
@@ -240,12 +269,25 @@ describe('pr-drafter coverage', () => {
       event: string,
       payload: unknown,
     ) => void;
-    onPatternHandler('tool.completed', {
-      tool: 'git_autocommit',
-      result: { committed: true, commitMessage: 'fix: issue' },
+    const postHook = getPostHook(api);
+    postHook({
+      toolName: 'git_autocommit',
+      toolResult: { content: autocommitResult('fix: issue'), isError: false },
     });
-    onPatternHandler('tool.completed', { tool: 'write', input: { path: 'src/a.ts' } });
-    onPatternHandler('tool.completed', { tool: 'edit', input: { path: 'src/b.ts' } });
+    for (const [name, path] of [
+      ['git_autocommit', undefined],
+      ['write', 'src/a.ts'],
+      ['edit', 'src/b.ts'],
+    ] as const) {
+      if (path) {
+        postHook({
+          toolName: name,
+          toolInput: { path },
+          toolResult: { content: 'ok', isError: false },
+        });
+      }
+      onPatternHandler('tool.completed', { name, id: name, durationMs: 1, outputChars: 2 });
+    }
 
     const tool = getTool(api, 'pr_draft');
     (await tool({ preview: false })) as { ok: boolean };

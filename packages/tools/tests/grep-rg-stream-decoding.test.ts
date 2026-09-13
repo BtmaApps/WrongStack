@@ -37,6 +37,7 @@ interface FakeChild {
 const H = vi.hoisted(() => ({
   chunks: [] as Buffer[],
   spawnCalls: [] as unknown[][],
+  closeCode: 0,
 }));
 
 vi.mock('node:child_process', async (importOriginal) => {
@@ -61,8 +62,8 @@ vi.mock('node:child_process', async (importOriginal) => {
       // Emit after runRgStream has attached its handlers.
       setImmediate(() => {
         for (const chunk of H.chunks) stdout.emit('data', chunk);
-        child.exitCode = 0;
-        child.emit('close', 0);
+        child.exitCode = H.closeCode;
+        child.emit('close', H.closeCode);
       });
       return child;
     },
@@ -75,6 +76,7 @@ describe('grep rg path — stream chunk decoding', () => {
   beforeEach(async () => {
     H.chunks = [];
     H.spawnCalls = [];
+    H.closeCode = 0;
     __setRgAvailableForTests(true); // route through runRgStream (no real rg needed)
     sb = await mkSandbox();
   });
@@ -134,6 +136,28 @@ describe('grep rg path — stream chunk decoding', () => {
     expect(out.matches).toEqual(['c.txt:1:alpha', 'c.txt:2:beta', 'c.txt:3:gamma']);
     expect(out.count).toBe(3);
     expect(out.truncated).toBe(false);
+  });
+
+  it('falls back to the native engine when rg exits 2 with no output (e.g. rejected pattern)', async () => {
+    // A JS lookbehind passes compileUserRegex but default rg rejects it (exit 2).
+    // That used to surface as "0 matches" from rg.
+    const fs = await import('node:fs/promises');
+    await fs.writeFile(path.join(sb.dir, 'look.txt'), 'foobar\n');
+    H.closeCode = 2;
+
+    const out = await grepTool.execute({ pattern: '(?<=foo)bar', output_mode: 'content' }, sb.ctx, {
+      signal: newSignal(),
+    });
+
+    expect(out.used).toBe('native');
+    expect(out.matches).toHaveLength(1);
+    expect(out.matches[0]).toContain('look.txt:1:foobar');
+  });
+
+  it('throws for a non-existent path instead of reporting zero matches', async () => {
+    await expect(
+      grepTool.execute({ pattern: 'x', path: 'no-such-dir' }, sb.ctx, { signal: newSignal() }),
+    ).rejects.toThrow(/does not exist/);
   });
 
   it('count mode parses per-file tallies streamed in separate chunks', async () => {

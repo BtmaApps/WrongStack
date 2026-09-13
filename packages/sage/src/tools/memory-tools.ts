@@ -542,7 +542,7 @@ function memoryBackfillRecoverableTool(
       'Find status="deleted" memories that are still recoverable and either preview them (default) or restore them as fresh active versions.',
     usageHint:
       'Use when you want to undo legacy hygiene-driven deletions. Default is `dryRun: true` — the tool returns a report without writing anything.\n' +
-      '- Pass `--apply` (or `apply: false`) to actually create fresh active versions for each recoverable memory. The original `deleted` records are preserved (audit trail); a new active version is created and linked via `supersedes`.\n' +
+      '- Pass `apply: true` (CLI: `--apply`) to actually create fresh active versions for each recoverable memory. The original `deleted` records are preserved (audit trail); a new active version is created and linked via `supersedes`.\n' +
       '- Use `filter.kinds` / `filter.scopes` / `filter.updatedAfter` / `filter.updatedBefore` to narrow scope. `filter.requireText: false` lets in records with empty text; `filter.requireProvenance: false` lets in records with neither sources nor anchors.\n' +
       '- The audit log records every run (`memory.backfill_dry_run` or `memory.backfill_applied`).',
     permission: 'confirm',
@@ -938,6 +938,8 @@ function memoryGatherBatchTool(memory: SageServiceLike): Tool<
       // Optionally gather graph relations for the first N memories
       const relations: MemoryGraphEdge[] = [];
       let scannedCount = 0;
+      let graphFailures = 0;
+      let firstGraphError: unknown;
       if (input.includeRelations !== false && page.memories.length > 0) {
         const seen = new Set<string>();
         const idsToScan = page.memories.slice(0, BATCH_GRAPH_SCAN_LIMIT);
@@ -956,7 +958,18 @@ function memoryGatherBatchTool(memory: SageServiceLike): Tool<
             // Best-effort: one memory's graph failure does not fail the batch;
             // rethrow abort so the caller can cancel promptly.
             if (signal?.aborted) throw err;
+            graphFailures++;
+            firstGraphError ??= err;
           }
+        }
+        // Every lookup failing is a graph outage, not "no relations".
+        if (graphFailures > 0 && graphFailures === scannedCount) {
+          const detail =
+            firstGraphError instanceof Error ? firstGraphError.message : String(firstGraphError);
+          throw new Error(
+            `memory_gather_batch: relation lookup failed for all ${scannedCount} memories (${detail}). Retry with includeRelations: false to skip relations.`,
+            { cause: firstGraphError },
+          );
         }
       }
       return {
@@ -990,6 +1003,14 @@ function memoryVerifyTool(
     async execute(input, ctx, opts) {
       const signal = opts?.signal ?? ctx?.signal;
       signal?.throwIfAborted();
+      // verify(id) returns [] for an unknown id — indistinguishable from
+      // "nothing to check". A named target that does not exist is a failure.
+      if (input.memory_id) {
+        const target = await memory.getSage(input.memory_id);
+        if (!target || target.status === 'deleted') {
+          throw new Error(`SAGE "${input.memory_id}" not found.`);
+        }
+      }
       return memory.verify(input.memory_id, signal);
     },
   };

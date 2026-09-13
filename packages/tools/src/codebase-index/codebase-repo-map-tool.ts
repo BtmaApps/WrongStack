@@ -8,7 +8,6 @@
  */
 
 import type { Tool } from '@wrongstack/core/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import { generateRepoMap, type RepoMapResult } from './repo-map.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -20,8 +19,7 @@ export interface CodebaseRepoMapInput {
 }
 
 export interface CodebaseRepoMapOutput extends RepoMapResult {
-  status: 'ok' | 'error';
-  error?: string | undefined;
+  status: 'ok';
 }
 
 export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutput> = {
@@ -59,32 +57,22 @@ export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutp
     },
     additionalProperties: false,
   },
+  // Failures THROW so the executor marks the call is_error (a returned
+  // `status: 'error'` payload was recorded as a successful call).
   async execute(input, ctx) {
-    try {
-      const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
-      const result = await generateRepoMap({
-        projectRoot,
-        maxTokens: input.maxTokens,
-        focusFiles: input.focusFiles,
-        // Honour a caller-supplied index location so the map reads the same
-        // index the other codebase-* tools do.
-        indexDir: codebaseIndexDirOverride(ctx),
-      });
+    const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
+    const result = await generateRepoMap({
+      projectRoot,
+      maxTokens: input.maxTokens,
+      focusFiles: input.focusFiles,
+      // Honour a caller-supplied index location so the map reads the same
+      // index the other codebase-* tools do.
+      indexDir: codebaseIndexDirOverride(ctx),
+    });
 
-      return {
-        status: 'ok',
-        ...result,
-      };
-    } catch (err) {
-      return {
-        status: 'error',
-        map: '',
-        filesCount: 0,
-        totalFilesScanned: 0,
-        estimatedTokens: 0,
-        rankedFiles: [],
-        error: toErrorMessage(err),
-      };
-    }
+    return {
+      status: 'ok',
+      ...result,
+    };
   },
 };

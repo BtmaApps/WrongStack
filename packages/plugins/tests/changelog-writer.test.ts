@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -162,8 +162,17 @@ describe('changelog-writer plugin', () => {
     expect(content).toContain('- dark mode');
     expect(content).toContain('### Fixed');
     // pending cleared:
-    const again = await getTool(api, 'changelog_write').execute({});
-    expect(again['ok']).toBe(false);
+    await expect(getTool(api, 'changelog_write').execute({})).rejects.toThrow(/no pending entries/);
+  });
+
+  it('throws instead of overwriting when the existing changelog cannot be read', async () => {
+    // A directory at filePath: read fails with EISDIR, not ENOENT.
+    const filePath = join(tmp, 'CHANGELOG.md');
+    mkdirSync(filePath);
+    const api = makeApi({ extensions: { 'changelog-writer': { filePath } } });
+    changelogWriterPlugin.setup(api as never);
+    await getTool(api, 'changelog_add').execute({ text: 'x', section: 'Added' });
+    await expect(getTool(api, 'changelog_write').execute({})).rejects.toThrow(/failed to read/);
   });
 
   it('rejects changelog writes outside the project directory', async () => {
@@ -171,9 +180,9 @@ describe('changelog-writer plugin', () => {
     const api = makeApi({ extensions: { 'changelog-writer': { filePath } } });
     changelogWriterPlugin.setup(api as never);
     await getTool(api, 'changelog_add').execute({ text: 'dark mode', section: 'Added' });
-    const write = await getTool(api, 'changelog_write').execute({});
-    expect(write['ok']).toBe(false);
-    expect(write['error']).toMatch(/current project directory/);
+    await expect(getTool(api, 'changelog_write').execute({})).rejects.toThrow(
+      /current project directory/,
+    );
   });
 
   it('merges into an existing changelog without clobbering it', async () => {
@@ -203,8 +212,7 @@ describe('changelog-writer plugin', () => {
     const api = makeApi({ extensions: { 'changelog-writer': { enabled: false } } });
     changelogWriterPlugin.setup(api as never);
     expect(api.onPattern).not.toHaveBeenCalled();
-    const result = await getTool(api, 'changelog_add').execute({ text: 'x' });
-    expect(result['ok']).toBe(false);
+    await expect(getTool(api, 'changelog_add').execute({ text: 'x' })).rejects.toThrow(/disabled/);
   });
 
   it('polish rewrites the block via api.llm and falls back on failure', async () => {

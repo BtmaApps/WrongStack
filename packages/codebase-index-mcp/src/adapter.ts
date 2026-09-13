@@ -140,6 +140,15 @@ function createContext(projectRoot: string, indexDir?: string): Context {
   } as unknown as Context;
 }
 
+function isDegradedFailure(content: unknown): boolean {
+  return (
+    !!content &&
+    typeof content === 'object' &&
+    !Array.isArray(content) &&
+    (content as Record<string, unknown>)['indexStatus'] === 'error'
+  );
+}
+
 function nonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -214,7 +223,9 @@ export function createCodebaseIndexMcpToolHost(
             }
           }
           const content = await executeTool(builtin, args, context, new AbortController().signal);
-          return { content, isError: false };
+          // codebase_context degrades a failed query to `indexStatus: 'error'`
+          // instead of throwing; an MCP client must still see a failure.
+          return { content, isError: isDegradedFailure(content) };
         }
 
         const base = {

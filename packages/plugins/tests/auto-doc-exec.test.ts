@@ -67,8 +67,8 @@ beforeEach(() => {
 describe('auto_doc', () => {
   it('rejects non-array and empty files', async () => {
     const tools = setup();
-    expect((await tools.auto_doc!.execute({ files: 'x' })).ok).toBe(false);
-    expect((await tools.auto_doc!.execute({ files: [] })).ok).toBe(false);
+    await expect(tools.auto_doc!.execute({ files: 'x' })).rejects.toThrow(/must be an array/);
+    await expect(tools.auto_doc!.execute({ files: [] })).rejects.toThrow(/empty/);
   });
 
   it('documents all entity kinds and writes the file (tsdoc default)', async () => {
@@ -118,23 +118,38 @@ describe('auto_doc', () => {
     expect((forced.changes as unknown[]).length).toBe(1); // force overrides
   });
 
-  it('warns and continues when a file cannot be read', async () => {
+  it('throws when the only file cannot be read', async () => {
     fsm.readFileSync.mockImplementation(() => {
       throw new Error('ENOENT');
     });
     const tools = setup();
-    const res = await tools.auto_doc!.execute({ files: ['missing.ts'] });
-    expect(res.ok).toBe(true);
-    expect(res.filesProcessed).toBe(1);
+    await expect(tools.auto_doc!.execute({ files: ['missing.ts'] })).rejects.toThrow(
+      /processed no files.*could not read/,
+    );
     expect(log.warn).toHaveBeenCalledWith(expect.stringMatching(/could not read file/));
   });
 
-  it('logs an error when writing the file fails', async () => {
+  it('reports unreadable files in `skipped` when others succeed', async () => {
+    fsm.readFileSync.mockImplementation((p: string) => {
+      if (String(p).endsWith('missing.ts')) throw new Error('ENOENT');
+      return SOURCE;
+    });
+    const tools = setup();
+    const res = await tools.auto_doc!.execute({ files: ['a.ts', 'missing.ts'], dry_run: true });
+    expect(res.ok).toBe(true);
+    expect(res.filesProcessed).toBe(1);
+    const skipped = res.skipped as Array<{ file: string; reason: string }>;
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]!.file).toMatch(/missing\.ts$/);
+    expect(skipped[0]!.reason).toMatch(/could not read/);
+  });
+
+  it('throws when writing the only file fails', async () => {
     fsm.writeFileSync.mockImplementation(() => {
       throw new Error('EACCES');
     });
     const tools = setup();
-    await tools.auto_doc!.execute({ files: ['a.ts'] });
+    await expect(tools.auto_doc!.execute({ files: ['a.ts'] })).rejects.toThrow(/EACCES/);
     expect(log.error).toHaveBeenCalledWith(expect.stringMatching(/error processing/));
   });
 

@@ -28,7 +28,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const API_VERSION = '^0.1.10';
 
@@ -684,7 +684,10 @@ const plugin: Plugin = {
           const rawFiles = input['files'] ?? input['fileList'] ?? input['file_list'];
           if (rawFiles !== undefined) {
             if (!Array.isArray(rawFiles)) {
-              return { ok: false, error: 'files must be an array of file paths' };
+              throw new ToolValidationError({
+                message: 'files must be an array of file paths',
+                field: 'files',
+              });
             }
             files = rawFiles;
           } else if (
@@ -706,11 +709,17 @@ const plugin: Plugin = {
           const rawPaths = input['paths'] ?? input['pathList'] ?? input['path_list'];
           if (rawPaths !== undefined) {
             if (!Array.isArray(rawPaths)) {
-              return { ok: false, error: 'paths must be an array of pathspec patterns' };
+              throw new ToolValidationError({
+                message: 'paths must be an array of pathspec patterns',
+                field: 'paths',
+              });
             }
             pathspecs = rawPaths.filter((p): p is string => typeof p === 'string' && p.length > 0);
             if (pathspecs.length === 0) {
-              return { ok: false, error: 'paths must contain at least one non-empty pattern' };
+              throw new ToolValidationError({
+                message: 'paths must contain at least one non-empty pattern',
+                field: 'paths',
+              });
             }
           } else if (typeof input['path'] === 'string' && input['path'].trim().length > 0) {
             pathspecs = [input['path'].trim()];
@@ -718,11 +727,11 @@ const plugin: Plugin = {
 
           // Reject the combination rather than silently dropping one side:
           if (rawPaths !== undefined && files && files.length > 0) {
-            return {
-              ok: false,
-              error:
+            throw new ToolValidationError({
+              message:
                 'Pass either files (exact paths) or paths (pathspec globs), not both — the other would be silently ignored.',
-            };
+              field: 'paths',
+            });
           }
 
           // --- Scope guard: resolve what this call owns before touching git.
@@ -738,10 +747,10 @@ const plugin: Plugin = {
             try {
               await stageFiles(pathspecs);
             } catch (err: unknown) {
-              return {
-                ok: false,
-                error: `Failed to stage files matching paths: ${err instanceof Error ? err.message : String(err)}`,
-              };
+              throw new Error(
+                `Failed to stage files matching paths: ${err instanceof Error ? err.message : String(err)}`,
+                { cause: err },
+              );
             }
             try {
               staged = await getScopedStagedFiles(pathspecs);
@@ -749,10 +758,9 @@ const plugin: Plugin = {
               staged = [];
             }
             if (staged.length === 0) {
-              return {
-                ok: false,
-                error: 'No changed files match the given paths — refusing to commit anything else.',
-              };
+              throw new Error(
+                'No changed files match the given paths — refusing to commit anything else.',
+              );
             }
             commitScope = staged;
             // Read the FULL index for the scope-guard warning below. The
@@ -772,10 +780,10 @@ const plugin: Plugin = {
               commitScope = await stageFiles(files);
             } catch (err: unknown) {
               /* v8 ignore next -- stageFiles only throws Error; the String(err) branch is defensive. */
-              return {
-                ok: false,
-                error: `Failed to stage files: ${err instanceof Error ? err.message : String(err)}`,
-              };
+              throw new Error(
+                `Failed to stage files: ${err instanceof Error ? err.message : String(err)}`,
+                { cause: err },
+              );
             }
             try {
               staged = await getStagedFiles();
@@ -865,20 +873,18 @@ const plugin: Plugin = {
                 message: `Would create: ${summary || 'update code'}`,
               };
             }
-            return {
-              ok: false,
-              error: 'type is required and must be a valid conventional commit type',
-            };
+            throw new ToolValidationError({
+              message: 'type is required and must be a valid conventional commit type',
+              field: 'type',
+            });
           }
 
           const msg = generateCommitMessage(type, scope, summary || 'update code', body);
 
           if (staged.length === 0) {
-            return {
-              ok: false,
-              error:
-                'Nothing staged. Pass files (exact paths) or paths (pathspec globs) to scope this commit, stage with git add beforehand, or set extensions["git-autocommit"].autoStage=true to allow staging every changed file (legacy whole-tree behavior).',
-            };
+            throw new Error(
+              'Nothing staged. Pass files (exact paths) or paths (pathspec globs) to scope this commit, stage with git add beforehand, or set extensions["git-autocommit"].autoStage=true to allow staging every changed file (legacy whole-tree behavior).',
+            );
           }
 
           // Scope-guard report: when other staged files exist OUTSIDE this
@@ -937,14 +943,12 @@ const plugin: Plugin = {
             if (drifted.length > 0) {
               const preview = drifted.slice(0, 10).join(', ');
               const suffix = drifted.length > 10 ? ` and ${drifted.length - 10} more` : '';
-              return {
-                ok: false,
-                error:
-                  `Working tree changed after staging for: ${preview}${suffix}. ` +
+              throw new Error(
+                `Working tree changed after staging for: ${preview}${suffix}. ` +
                   'A scoped commit takes working-tree content, so committing now could include ' +
                   'changes that were never staged or previewed. Re-run the tool to re-stage the ' +
                   'current content.',
-              };
+              );
             }
           }
 
@@ -954,10 +958,10 @@ const plugin: Plugin = {
             hash = await commitWithMessage(msg, undefined, commitScope);
           } catch (err: unknown) {
             /* v8 ignore next -- commitWithMessage only throws Error; the String(err) branch is defensive. */
-            return {
-              ok: false,
-              error: `Failed to commit: ${err instanceof Error ? err.message : String(err)}`,
-            };
+            throw new Error(
+              `Failed to commit: ${err instanceof Error ? err.message : String(err)}`,
+              { cause: err },
+            );
           }
 
           api.log.info('git-autocommit: created commit', { hash, type, scope });
@@ -996,10 +1000,10 @@ const plugin: Plugin = {
           };
           /* v8 ignore start -- top-level safety net: inner try/catches already handle the realistic failures. */
         } catch (err: unknown) {
-          return {
-            ok: false,
-            error: `Uncaught error in git_autocommit: ${err instanceof Error ? err.message : String(err)}`,
-          };
+          // Deliberate failures above already carry a clear message; only
+          // wrap non-Error throwables.
+          if (err instanceof Error) throw err;
+          throw new Error(`Uncaught error in git_autocommit: ${String(err)}`, { cause: err });
         }
         /* v8 ignore stop */
       },

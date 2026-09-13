@@ -92,17 +92,18 @@ describe('createModeTool', () => {
   it('set action requires mode', async () => {
     const store = mockModeStore();
     const tool = createModeTool(store);
-    const result = await tool.execute({ action: 'set' }, {} as any, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('mode is required');
+    await expect(tool.execute({ action: 'set' }, {} as any, makeOpts())).rejects.toThrow(
+      /mode is required/,
+    );
   });
 
-  it('set action fails for unknown mode', async () => {
+  it('set action throws for unknown mode and does not switch', async () => {
     const store = mockModeStore([{ id: 'dev', name: 'Dev', description: '' }]);
     const tool = createModeTool(store);
-    const result = await tool.execute({ action: 'set', mode: 'unknown' }, {} as any, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('not found');
+    await expect(
+      tool.execute({ action: 'set', mode: 'unknown' }, {} as any, makeOpts()),
+    ).rejects.toThrow(/not found/);
+    expect(store.setActiveMode).not.toHaveBeenCalled();
   });
 
   it('set action succeeds for valid mode', async () => {
@@ -122,12 +123,12 @@ describe('createModeTool', () => {
     expect(store.setActiveMode).toHaveBeenCalledWith(null);
   });
 
-  it('returns error for unknown action', async () => {
+  it('throws for unknown action', async () => {
     const store = mockModeStore();
     const tool = createModeTool(store);
-    const result = await tool.execute({ action: 'unknown' } as any, {} as any, makeOpts());
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('Unknown action');
+    await expect(tool.execute({ action: 'unknown' } as any, {} as any, makeOpts())).rejects.toThrow(
+      /Unknown action/,
+    );
   });
 
   it('modeFamily returns custom for modes without tags and non-default id', async () => {

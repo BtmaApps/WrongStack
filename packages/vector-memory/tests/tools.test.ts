@@ -98,4 +98,39 @@ describe('createVectorMemoryTools', () => {
     })) as { removed: boolean };
     expect(result.removed).toBe(true);
   });
+
+  it('fails vector_memory_forget for an unknown id instead of returning removed:false', async () => {
+    const tools = createVectorMemoryTools(store);
+    const forget = tools.find((t) => t.name === 'vector_memory_forget')!;
+    await expect(
+      forget.execute!({ id: 'no-such-id' }, {} as never, { signal: new AbortController().signal }),
+    ).rejects.toThrow(/no entry with id "no-such-id"/);
+  });
+
+  it('fails vector_memory_search when the embedding provider fails instead of returning no hits', async () => {
+    const broken = new VectorMemoryStore({
+      provider: {
+        id: 'broken',
+        dimensions: 32,
+        embed: async () => {
+          throw new Error('model not installed');
+        },
+      } as never,
+      projectRoot: path.join(os.tmpdir(), `wrongstack-vm-broken-${testRunId}`),
+    });
+    try {
+      const search = createVectorMemoryTools(broken).find(
+        (t) => t.name === 'vector_memory_search',
+      )!;
+      await expect(
+        search.execute!({ query: 'anything' }, {} as never, {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow(/Embedding provider "broken" failed: model not installed/);
+      // The library default stays fail-open for fusion callers.
+      expect(await broken.search('anything')).toEqual([]);
+    } finally {
+      broken.close();
+    }
+  });
 });

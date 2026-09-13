@@ -6,7 +6,7 @@
  * - cron_list: List all scheduled jobs
  * - cron_cancel: Cancel a scheduled job
  */
-import type { Plugin } from '@wrongstack/core/types';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const COORDINATION_CRON_CAPABILITY = 'coordination.cron';
 
@@ -286,18 +286,31 @@ const plugin: Plugin = {
         const enabled = (input['enabled'] as boolean | undefined) ?? true;
 
         if (!name || typeof name !== 'string' || name.trim() === '') {
-          return { ok: false, error: 'name is required and must be a non-empty string' };
+          throw new ToolValidationError({
+            message: 'name is required and must be a non-empty string',
+            field: 'name',
+          });
         }
         if (Number.isNaN(intervalMs) || rawInterval === undefined || rawInterval === null) {
-          return { ok: false, error: 'intervalMs must be a number >= 1000' };
+          throw new ToolValidationError({
+            message: 'intervalMs must be a number >= 1000',
+            field: 'intervalMs',
+          });
+        }
+        // `action` is required by the schema; a job without one fires an empty event.
+        if (typeof action !== 'string' || action.trim() === '') {
+          throw new ToolValidationError({
+            message: 'action is required and must be a non-empty string',
+            field: 'action',
+          });
         }
 
         if (state.jobs.has(name)) {
-          return { ok: false, error: `Cron job '${name}' already exists. Use cron_cancel first.` };
+          throw new Error(`Cron job '${name}' already exists. Use cron_cancel first.`);
         }
 
         if (state.jobs.size >= maxConcurrent) {
-          return { ok: false, error: `Maximum concurrent jobs (${maxConcurrent}) reached.` };
+          throw new Error(`Maximum concurrent jobs (${maxConcurrent}) reached.`);
         }
 
         const job: CronJob = {
@@ -380,7 +393,7 @@ const plugin: Plugin = {
           input['id']) as string;
 
         if (!name || typeof name !== 'string' || !state.jobs.has(name)) {
-          return { ok: false, error: `No cron job named '${name}'` };
+          throw new Error(`No cron job named '${name}'`);
         }
 
         cancelJob(name);

@@ -4,7 +4,7 @@ import { LSP_CONSTANTS } from '../constants.js';
 import { supportsDocumentSymbol } from '../server/capabilities.js';
 import { LSPError, LSPErrorCode } from '../types.js';
 import { pathToUri } from '../utils/uri.js';
-import { requireServer, resolveInputPath, stringifyToolError, type ToolDeps } from './shared.js';
+import { requireServer, resolveInputPath, type ToolDeps, toToolError } from './shared.js';
 
 interface Input {
   path: string;
@@ -40,7 +40,7 @@ export function createSymbolsTool(deps: ToolDeps): Tool<Input, string> {
           ),
         );
       } catch (err) {
-        return stringifyToolError(err);
+        throw toToolError(err);
       }
     },
   };

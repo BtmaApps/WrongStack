@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // WITHOUT running real git: the spawn mock captures args and returns a fake
 // child. Side-effecting commands therefore never touch the real repo.
 let capturedArgs: string[] = [];
-const cfg: { stdout: string; code: number } = { stdout: '', code: 0 };
+const cfg: { stdout: string; code: number; spawnError?: string } = { stdout: '', code: 0 };
 
 vi.mock('node:child_process', async (orig) => {
   const actual = await orig<typeof import('node:child_process')>();
@@ -22,6 +22,10 @@ vi.mock('node:child_process', async (orig) => {
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
       process.nextTick(() => {
+        if (cfg.spawnError) {
+          child.emit('error', new Error(cfg.spawnError));
+          return;
+        }
         if (cfg.stdout) child.stdout.emit('data', Buffer.from(cfg.stdout));
         child.emit('close', cfg.code);
       });
@@ -44,6 +48,7 @@ beforeEach(() => {
   capturedArgs = [];
   cfg.stdout = '';
   cfg.code = 0;
+  cfg.spawnError = undefined;
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -57,10 +62,8 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
     // nothing and got a different command than it asked for. It is now
     // rejected before spawn, so no git process runs at all.
     capturedArgs = [];
-    const rejected = await run({ command: 'branch', branch: '-D evil' });
+    await expect(run({ command: 'branch', branch: '-D evil' })).rejects.toThrow(/unsafe branch/);
     expect(capturedArgs).toEqual([]);
-    expect(rejected.exitCode).toBe(1);
-    expect(rejected.stderr).toMatch(/unsafe branch/);
 
     await run({ command: 'branch' });
     expect(capturedArgs).toEqual(['branch']);
@@ -130,9 +133,12 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
     expect(capturedArgs).toEqual(['worktree', 'add', 'wt', 'main']);
   });
 
-  it('falls back to worktree list when add has no path / action is unknown', async () => {
-    await run({ command: 'worktree', worktreeAction: 'add' }); // no worktreePath
-    expect(capturedArgs).toEqual(['worktree', 'list']);
+  it('rejects worktree add without a path; defaults to list when no action', async () => {
+    // Used to silently run `worktree list` and report success.
+    await expect(run({ command: 'worktree', worktreeAction: 'add' })).rejects.toThrow(
+      /requires worktreePath/,
+    );
+    expect(capturedArgs).toEqual([]);
     await run({ command: 'worktree' }); // no worktreeAction → default
     expect(capturedArgs).toEqual(['worktree', 'list']);
   });
@@ -163,5 +169,10 @@ describe('gitTool buildArgs (mocked spawn, real .git)', () => {
     cfg.code = 3;
     const result = await run({ command: 'status' });
     expect(result.exitCode).toBe(3);
+  });
+
+  it('throws when git cannot be spawned (no exit code to report)', async () => {
+    cfg.spawnError = 'spawn git ENOENT';
+    await expect(run({ command: 'status' })).rejects.toThrow(/could not run git status.*ENOENT/);
   });
 });
