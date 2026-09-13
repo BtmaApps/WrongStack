@@ -285,7 +285,17 @@ export function createConversationOperations(
       }
       settle(true);
       const { agent, input } = prepared;
-      const maxIterations = ctx.getMaxIterations?.(originSessionId);
+      // The ceiling is a preference, not a correctness input: a throwing host
+      // callback must degrade to the default (no ceiling) rather than skip
+      // `ran = true` — an unset ran would skip onRunEnded in the finally
+      // below, leaving the auto-wake host's turn bookkeeping dangling so its
+      // scheduler re-enters the same prompt.
+      let maxIterations: number | undefined;
+      try {
+        maxIterations = ctx.getMaxIterations?.(originSessionId);
+      } catch {
+        maxIterations = undefined;
+      }
       ran = true;
       const runResult = await agent.run(input, {
         signal: prepared.signal,

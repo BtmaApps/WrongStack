@@ -11,6 +11,15 @@ import {
 
 const dirs: string[] = [];
 
+// Module-scope hoisting contract (vitest): `vi.hoisted`/`vi.mock` are lifted to
+// the top of the module regardless of where they appear, so they must sit at
+// the top level — declaring them inside a describe() made the transforms fail
+// with "calls were defined outside of the module's top level scope".
+const resolver = vi.hoisted(() => ({ resolve: vi.fn() }));
+vi.mock('../../src/utils/command-resolver.js', () => ({
+  resolveServerCommand: (command: string) => resolver.resolve(command),
+}));
+
 afterEach(async () => {
   vi.restoreAllMocks();
   for (const dir of dirs.splice(0)) await fs.rm(dir, { recursive: true, force: true });
@@ -73,11 +82,6 @@ describe('typeScriptPresetFor', () => {
 });
 
 describe('autoDiscoverServers TypeScript selection', () => {
-  const resolver = vi.hoisted(() => ({ resolve: vi.fn() }));
-  vi.mock('../../src/utils/command-resolver.js', () => ({
-    resolveServerCommand: (command: string) => resolver.resolve(command),
-  }));
-
   it('discovers only the native server on a TypeScript 7 workspace', async () => {
     resolver.resolve.mockImplementation(async (command: string) =>
       command === 'tsc' || command === 'typescript-language-server' ? `/bin/${command}` : null,

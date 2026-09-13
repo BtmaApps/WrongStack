@@ -309,7 +309,10 @@ describe('ACPSession', () => {
 
     await new Promise((r) => setImmediate(r));
     const newMsg = t.sent.find((m) => m.method === 'session/new');
-    t.respondError(newMsg!.id!, 'session/new', { code: -32000, message: 'Authentication required' });
+    t.respondError(newMsg!.id!, 'session/new', {
+      code: -32000,
+      message: 'Authentication required',
+    });
 
     await new Promise((r) => setImmediate(r));
     const authMsg = t.sent.find((m) => m.method === 'authenticate');
@@ -402,7 +405,7 @@ describe('ACPSession', () => {
     await session.close();
   });
 
-  it('returns stopReason=cancelled and a session/cancel notification when aborted', async () => {
+  it('abort mid-turn sends session/cancel and returns stopReason=cancelled', async () => {
     const session = await startSession();
     const t = lastTransport();
     const ac = new AbortController();
@@ -414,18 +417,14 @@ describe('ACPSession', () => {
     await new Promise((r) => setImmediate(r));
     const promptMsg = t.sent.find((m) => m.method === 'session/prompt');
 
-    // Abort mid-turn
+    // Abort mid-turn — onTurnAbort rejects the race, and onAbort (session id
+    // already assigned) sends session/cancel on the wire.
     ac.abort();
-    // Let the abort handler fire
-    await new Promise((r) => setImmediate(r));
-    // The session should have sent a session/cancel notification
-    const cancel = t.sent.find((m) => m.method === 'session/cancel');
-    expect(cancel).toBeDefined();
-    // The agent eventually responds with stopReason=cancelled
-    t.respond(promptMsg!.id!, 'session/prompt', { stopReason: 'cancelled' });
-
+    // The turn must resolve with 'cancelled': the raced rejection surfaces a
+    // clean cancellation even though sendRequest is still in flight.
     const result = await promptP;
-    expect(result.stopReason).toBe('cancelled');
+    expect(result).toMatchObject({ stopReason: 'cancelled' });
+    expect(t.sent.some((m) => m.method === 'session/cancel')).toBe(true);
 
     await session.close();
   });
@@ -434,9 +433,9 @@ describe('ACPSession', () => {
     const session = await startSession();
     const ac = new AbortController();
     ac.abort();
+    // Pre-aborted signal: early guard at line 465 returns immediately.
+    // No wire activity (no session/new, no session/cancel).
     const result = await session.prompt([textContent('x')], ac.signal);
-    // A pre-aborted prompt is a normal cancelled outcome per spec;
-    // session/cancel is only sent for in-flight prompts.
     expect(result.stopReason).toBe('cancelled');
     expect(result.text).toBe('');
     expect(result.hasText).toBe(false);
@@ -464,12 +463,93 @@ describe('ACPSession', () => {
     // The cancelled turn must never reach the wire.
     expect(t.sent.some((m) => m.method === 'session/prompt')).toBe(false);
 
-    const result = await promptP;
-    expect(result.stopReason).toBe('cancelled');
-    expect(result.text).toBe('');
-    expect(result.hasText).toBe(false);
+    // Abort fired during createSessionWithAuth — the race rejected, catch returns
+    // emptyRunResult('cancelled') without ever calling sendRequest.
+    await expect(promptP).resolves.toMatchObject({ stopReason: 'cancelled' });
 
     await session.close();
+  });
+
+  it('cancels a late-arriving session after an abort-during-creation race loss', async () => {
+    const session = await startSession();
+    const t = lastTransport();
+    const ac = new AbortController();
+
+    const promptP = session.prompt([textContent('hello')], ac.signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    expect(newMsg).toBeDefined();
+
+    // Abort wins the race; the server confirms the session afterwards. The
+    // late arrival must be cancelled instead of leaking server-side.
+    ac.abort();
+    await new Promise((r) => setImmediate(r));
+    t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_late' });
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    const cancelMsg = t.sent.find((m) => m.method === 'session/cancel');
+    expect(cancelMsg?.params).toMatchObject({ sessionId: 'sess_late' });
+    await expect(promptP).resolves.toMatchObject({ stopReason: 'cancelled' });
+
+    await session.close();
+  });
+
+  it('surfaces a failed late-cancel send on the warn channel', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const session = await startSession();
+    const t = lastTransport();
+    const ac = new AbortController();
+
+    const promptP = session.prompt([textContent('hello')], ac.signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    expect(newMsg).toBeDefined();
+
+    ac.abort();
+    await new Promise((r) => setImmediate(r));
+    // Break the outbound wire: the late cancel cannot be delivered.
+    (lastTransport() as unknown as { send: () => Promise<void> }).send = () =>
+      Promise.reject(new Error('transport gone'));
+    t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_late' });
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('acp_session.late_cancel_failed');
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('sess_late');
+
+    await expect(promptP).resolves.toMatchObject({ stopReason: 'cancelled' });
+    await session.close();
+    warnSpy.mockRestore();
+  });
+
+  it('warns when the abandoned creation rejects after the race was lost', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const session = await startSession();
+    const t = lastTransport();
+    const ac = new AbortController();
+
+    const promptP = session.prompt([textContent('hello')], ac.signal);
+    await new Promise((r) => setImmediate(r));
+    const newMsg = t.sent.find((m) => m.method === 'session/new');
+    expect(newMsg).toBeDefined();
+
+    // Abort wins the race; the server then REFUSES the abandoned creation.
+    // Nothing is left to cancel, but the refusal must be observable.
+    ac.abort();
+    await new Promise((r) => setImmediate(r));
+    t.respondError(newMsg!.id!, 'session/new', { code: -32000, message: 'nope' });
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('acp_session.late_cancel_failed');
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('nope');
+
+    await expect(promptP).resolves.toMatchObject({ stopReason: 'cancelled' });
+    await session.close();
+    warnSpy.mockRestore();
   });
 
   it('throws ACPSessionError(init_failed) when the agent speaks a different version', async () => {

@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 584,
+      "files": 585,
       "typeOnly": 55,
-      "runtimeOrMixed": 557
+      "runtimeOrMixed": 558
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -20905,6 +20905,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/tests/worklist-session-context.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "scripts/check-npm-package-install.mjs",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

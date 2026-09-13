@@ -45,21 +45,25 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.7
+### What's new in 1.0.9
 
-- **Cold start is 75% faster.** Granular session-shell subpath loading cuts
-  roughly 313 ms off CLI startup.
-- **The TUI sidebar reaches bottom-panel quality.** Every sidebar twin gains
-  direct scrolling and a persistent scrollbar rail, and the sidebar stays pinned
-  while a routed panel needs it.
-- **`/resume` opens the session picker directly**, and WebUI activity-bar icons
-  are drag-reorderable with the order persisted.
-- **The LSP plugin validates its options** and handles lazy-start faults instead
-  of failing silently.
-- **Security fixes:** two open-mode credential paths closed, HQ password
-  rotation now requires a real authentication factor, the desktop trust boundary
-  receives the real actor so its gates can deny, and every project-supplied
-  prompt fence routes through a single helper.
+- **Delegation no longer freezes the leader.** `delegate` returns as soon as a
+  background worker starts, delivers its result at the leader's next iteration
+  boundary, and can auto-wake an idle interactive leader. Use `wait: true` when
+  the result must gate the next step.
+- **Releases are quicker to iterate on and safer to install.** `pnpm
+  release:fast` skips only the audit and instrumented-coverage gates CI covers,
+  while the release matrix now verifies that the packed providers package
+  installs with npm 10.
+- **Long-running sessions recover more cleanly.** ACP cancellation covers
+  session startup as well as an active prompt; clearing history leaves the
+  writer usable; active sessions cannot be renamed underneath their writer.
+- **TUI and WebUI state stays bounded.** Picker lists use their actual terminal
+  height, and turn undo removes the execution records belonging to discarded
+  messages.
+- **Provider compatibility is restored for npm users.** Cloudflare gateway
+  routing uses the compatible AI SDK 7 providers, avoiding npm's peer-dependency
+  replacement loop.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -556,8 +560,8 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.8** — production-ready; semver from 1.0.0 onward
-- Full test suite passing in the release gate
+- **v1.0.9** — current release; semver from 1.0.0 onward
+- Full release verification: `pnpm release:check` (18 gates) before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`
 - Node 22.19+ only, ESM-only, no CommonJS bundles

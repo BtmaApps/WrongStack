@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { buildInvertedIndex, searchIndex } from '../../src/storage/memory-backend.js';
 import type { MemoryEntry } from '../../src/types/memory.js';
 
@@ -64,14 +64,20 @@ const NO_MATCH = 'zzqqxnomatch';
 describe('searchIndex — exact whole-word lookup (O(1) fast path)', () => {
   // These two should be within the same order of magnitude. A 10× blow-up
   // between them signals the full-vocabulary walk has returned.
-  bench('1K vocabulary, exact hit', () => {
-    searchIndex(index1k, EXACT_HIT_1K, 8);
+  test('1K vocabulary, exact hit', async ({ bench }) => {
+    await bench('1K vocabulary, exact hit', () => {
+      searchIndex(index1k, EXACT_HIT_1K, 8);
+    }).run();
   });
-  bench('10K vocabulary, exact hit', () => {
-    searchIndex(index10k, EXACT_HIT_10K, 8);
+  test('10K vocabulary, exact hit', async ({ bench }) => {
+    await bench('10K vocabulary, exact hit', () => {
+      searchIndex(index10k, EXACT_HIT_10K, 8);
+    }).run();
   });
-  bench('10K vocabulary, exact miss (no such word)', () => {
-    searchIndex(index10k, NO_MATCH, 8);
+  test('10K vocabulary, exact miss (no such word)', async ({ bench }) => {
+    await bench('10K vocabulary, exact miss (no such word)', () => {
+      searchIndex(index10k, NO_MATCH, 8);
+    }).run();
   });
 });
 
@@ -79,18 +85,24 @@ describe('searchIndex — substring fallback (deliberate worst case)', () => {
   // No exact hit + ≥3-char needle → bounded full-vocabulary substring scan.
   // This is the path that stays O(vocabulary) by design; benched so the
   // contrast with the exact path is visible and the cost is tracked.
-  bench('1K vocabulary, substring needle', () => {
-    searchIndex(index1k, SUBSTRING_NEEDLE, 8);
+  test('1K vocabulary, substring needle', async ({ bench }) => {
+    await bench('1K vocabulary, substring needle', () => {
+      searchIndex(index1k, SUBSTRING_NEEDLE, 8);
+    }).run();
   });
-  bench('10K vocabulary, substring needle', () => {
-    searchIndex(index10k, SUBSTRING_NEEDLE, 8);
+  test('10K vocabulary, substring needle', async ({ bench }) => {
+    await bench('10K vocabulary, substring needle', () => {
+      searchIndex(index10k, SUBSTRING_NEEDLE, 8);
+    }).run();
   });
 });
 
 describe('searchIndex — multi-needle query', () => {
   // Realistic shape: a few exact words from a task description.
   const multi = `${makeWord(100)} ${makeWord(500)} ${makeWord(9_500)}`;
-  bench('10K vocabulary, 3 exact needles', () => {
-    searchIndex(index10k, multi, 8);
+  test('10K vocabulary, 3 exact needles', async ({ bench }) => {
+    await bench('10K vocabulary, 3 exact needles', () => {
+      searchIndex(index10k, multi, 8);
+    }).run();
   });
 });

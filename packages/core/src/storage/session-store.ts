@@ -716,6 +716,7 @@ export class DefaultSessionStore implements SessionStore {
       readSummaryManifest: (sid) => this.readSummaryManifest(sid),
       summaryFor: (sid) => this.summaryFor(sid),
       appendToIndexStrict: (sum) => this.appendToIndexStrict(sum),
+      isSessionInUse: this.isSessionInUse,
     });
     this.clearLoadCache(id);
     return updated;

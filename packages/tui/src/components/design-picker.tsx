@@ -1,12 +1,21 @@
 import type { DesignKitEntry } from '@wrongstack/core/types';
 import type React from 'react';
-import { Box, Text } from '../ink.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 interface DesignPickerProps {
   kits: DesignKitEntry[];
   selected: number;
   stack: string;
+  /**
+   * Measured vertical budget for the whole picker box (terminal rows minus
+   * status bar, input, and margins — see `pickerMaxRows` in app-view.tsx).
+   * When provided the window math uses it instead of the
+   * `rows - shellReservedRows` guess, which under-reserves whenever the
+   * status bar or input bar grows — the same overflow class the resume
+   * panel had before it consumed this budget.
+   */
+  maxRows?: number | undefined;
 }
 
 /**
@@ -17,7 +26,12 @@ interface DesignPickerProps {
  * Windowed via {@link useWindowedPicker} so 50+ installed kits stay
  * navigable on small terminals.
  */
-export function DesignPicker({ kits, selected, stack }: DesignPickerProps): React.ReactElement {
+export function DesignPicker({
+  kits,
+  selected,
+  stack,
+  maxRows,
+}: DesignPickerProps): React.ReactElement {
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: kits.length,
     selected,
@@ -26,6 +40,7 @@ export function DesignPicker({ kits, selected, stack }: DesignPickerProps): Reac
     // and hint but were never counted in the chrome, so a windowed list
     // overflowed its own budget by 2 rows on short terminals.
     markerRows: 2,
+    maxRows,
   });
   const visibleKits = kits.slice(start, end);
   return (

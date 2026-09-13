@@ -6,8 +6,12 @@ import { getVitestMaxWorkers } from './vitest.workers.ts';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Separate config for `vitest bench` so the runner picks up `*.bench.ts`
- * files only when invoked explicitly (`pnpm bench`). Sharing the main
+ * Separate config for the benchmark suite so the runner picks up `*.bench.ts`
+ * files only when invoked explicitly (`pnpm bench`, i.e.
+ * `vitest run --config vitest.bench.config.ts`). Since Vitest 5, benchmarks
+ * are ordinary tests using the `bench` test-context fixture
+ * (`test(name, async ({ bench }) => { await bench(name, fn).run(); })`);
+ * the old `vitest bench` CLI and `test.benchmark` options are gone. Sharing the main
  * `vitest.config.ts` would either (a) run benches during `pnpm test`,
  * skewing wall-clock measurements, or (b) require an `exclude` pattern
  * that drifts every time a new bench file lands. Keeping it separate is
@@ -38,7 +42,17 @@ export default defineConfig({
     environment: 'node',
     // Hermetic ~/.wrongstack per worker (see vitest.setup.ts).
     setupFiles: ['./vitest.setup.ts'],
-    include: ['packages/**/bench/**/*.bench.ts', 'packages/**/tests/**/*.bench.ts'],
+    // The `bench` fixture only works inside Vitest's dedicated benchmark
+    // project, which is derived from this config when `benchmark.enabled` is
+    // set and collects files from `benchmark.include` (not `test.include`).
+    // The regular project therefore includes nothing, so bench files are not
+    // also collected as plain tests (where the fixture throws).
+    include: [],
+    benchmark: {
+      enabled: true,
+      include: ['packages/**/bench/**/*.bench.ts', 'packages/**/tests/**/*.bench.ts'],
+      exclude: ['**/node_modules/**', '**/dist/**'],
+    },
     exclude: ['**/node_modules/**', '**/dist/**'],
     pool: 'forks',
     maxWorkers: getVitestMaxWorkers(),
@@ -46,11 +60,5 @@ export default defineConfig({
     // just has to be generous enough for a slow CI worker to finish.
     testTimeout: 120_000,
     hookTimeout: 60_000,
-    benchmark: {
-      // JSON output so CI can upload as an artifact and a follow-up
-      // workflow can diff against the main-branch baseline.
-      outputJson: './bench-results.json',
-      reporters: ['default'],
-    },
   },
 });

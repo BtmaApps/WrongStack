@@ -134,6 +134,7 @@ export function AppViewPickers({
           options={state.autonomyPicker.options}
           selected={state.autonomyPicker.selected}
           hint={state.autonomyPicker.hint}
+          maxRows={pickerMaxRows}
         />
       ) : null}
       {state.modePicker.open ? (
@@ -179,6 +180,7 @@ export function AppViewPickers({
           kits={state.designPicker.kits}
           selected={state.designPicker.selected}
           stack={state.designPicker.stack}
+          maxRows={pickerMaxRows}
         />
       ) : null}
       {state.promptPicker.open ? (
@@ -203,6 +205,7 @@ export function AppViewPickers({
           busy={state.resumePicker.busy}
           error={state.resumePicker.error}
           hint={state.resumePicker.hint}
+          maxRows={pickerMaxRows}
         />
       ) : null}
       {state.settingsPicker.open ? (

@@ -1017,10 +1017,9 @@ printMTierSweepTable(results.benchmarks.mTierSweep);
 
 // Write CI artifact.
 //
-// NOT `bench-results.json`: that name belongs to `pnpm bench` (vitest bench,
-// via `outputJson` in vitest.bench.config.ts), and the
-// `performance-regression-gate` plugin reads it expecting the Vitest bench
-// shape. This suite emits a different shape entirely (`{meta, benchmarks}`),
+// NOT `bench-results.json`: that name belongs to the Vitest bench format (the
+// old `vitest bench` `outputJson` artifact, removed in Vitest 5), and the
+// `performance-regression-gate` plugin reads it expecting that shape. This suite emits a different shape entirely (`{meta, benchmarks}`),
 // so sharing the filename meant whichever command ran last silently fed the
 // gate a document it cannot parse.
 writeFileSync('bench-perf-results.json', JSON.stringify(results, null, 2));

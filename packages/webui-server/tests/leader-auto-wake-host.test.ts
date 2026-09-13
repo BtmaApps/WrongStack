@@ -66,7 +66,8 @@ function setup(
   } = {},
 ) {
   const events = new EventBus();
-  const hub = new LeaderDeliveryHub({ events });
+  // The hub takes no constructor options; `events` rides on each enqueue call.
+  const hub = new LeaderDeliveryHub();
   const controller = new LeaderAutoWakeController({
     events,
     hub,

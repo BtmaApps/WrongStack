@@ -1,8 +1,8 @@
 import { closeSync, fsyncSync, openSync, writeSync } from 'node:fs';
 import * as fsp from 'node:fs/promises';
-import type { EventBus } from './event-bus-port.js';
 import type { SessionEvent } from '../types/session.js';
 import { toErrorMessage } from '../utils/index.js';
+import type { EventBus } from './event-bus-port.js';
 
 function isClosedHandleError(err: unknown): boolean {
   const code = (err as NodeJS.ErrnoException | undefined)?.code;
@@ -41,6 +41,8 @@ interface InFlightBatch {
   data: string;
   stolen: boolean;
   started: boolean;
+  /** Set synchronously by the finally block of enqueueFlight, including after reopen-retry. */
+  settled: boolean;
 }
 
 export class SessionWriteBuffer {
@@ -154,25 +156,33 @@ export class SessionWriteBuffer {
   }
 
   enqueueWrite(data: string): Promise<void> {
-    return this.enqueueFlight({ data, stolen: false, started: false });
+    return this.enqueueFlight({ data, stolen: false, started: false, settled: false });
   }
 
   private enqueueFlight(flight: InFlightBatch): Promise<void> {
-    const write = this.writeChain.then(async () => {
-      if (flight.stolen) return;
-      flight.started = true;
-      if (flight.stolen) return;
-      try {
-        await this.opts.getHandle().appendFile(flight.data, 'utf8');
-      } catch (err: unknown) {
-        if (isClosedHandleError(err)) {
-          const reloaded = await fsp.open(this.opts.filePath, 'a', 0o600);
-          this.opts.setHandle(reloaded);
-          return await reloaded.appendFile(flight.data, 'utf8');
+    const write = this.writeChain
+      .then(async () => {
+        if (flight.stolen) return;
+        flight.started = true;
+        if (flight.stolen) return;
+        try {
+          await this.opts.getHandle().appendFile(flight.data, 'utf8');
+        } catch (err: unknown) {
+          if (isClosedHandleError(err)) {
+            const reloaded = await fsp.open(this.opts.filePath, 'a', 0o600);
+            this.opts.setHandle(reloaded);
+            await reloaded.appendFile(flight.data, 'utf8');
+            return;
+          }
+          throw err;
         }
-        throw err;
-      }
-    });
+      })
+      .finally(() => {
+        // Set synchronously when the promise resolves/rejects, before
+        // flushSync's await on this chain returns. Covers all exit paths
+        // including thrown errors (closed-handle retry also ends here).
+        flight.settled = true;
+      });
     this.writeChain = write.then(
       () => undefined,
       () => undefined,
@@ -244,7 +254,7 @@ export class SessionWriteBuffer {
     const batch = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
     this.writeBuffer = [];
     this.writeBufferBytes = 0;
-    const flight: InFlightBatch = { data: batch, stolen: false, started: false };
+    const flight: InFlightBatch = { data: batch, stolen: false, started: false, settled: false };
     this.inFlight = flight;
     const t0 = Date.now();
     let outcome: 'success' | 'failure' = 'success';
@@ -342,7 +352,7 @@ export class SessionWriteBuffer {
     // `started` cannot flip while this synchronous method runs (it is set in a
     // microtask), so `stole` stays an accurate record for the rollback below.
     const stole = flight !== null && !flight.started && !flight.stolen;
-    if (flight?.started && !flight.stolen) {
+    if (flight?.started && !flight.stolen && !flight.settled) {
       // A started async append owns the file until it settles, and a
       // synchronous teardown function cannot wait for it: waiting requires
       // event-loop progress, which cannot happen while this call blocks the

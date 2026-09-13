@@ -1,7 +1,7 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
 import type { ResumeSessionEntry } from '../app-state.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 interface ResumePickerProps {
   sessions: ResumeSessionEntry[];
@@ -9,6 +9,15 @@ interface ResumePickerProps {
   busy: boolean;
   error?: string | undefined;
   hint?: string | undefined;
+  /**
+   * Measured vertical budget for the whole picker box (terminal rows minus
+   * status bar, input, and margins — see `pickerMaxRows` in app-view.tsx).
+   * When provided the window math uses it instead of the legacy
+   * `rows - shellReservedRows` guess, which reserved less than the real
+   * status bar + input bar chrome — the resume panel could then grow past
+   * the terminal on ordinary session counts.
+   */
+  maxRows?: number | undefined;
 }
 
 /**
@@ -26,15 +35,21 @@ export function ResumePicker({
   busy,
   error,
   hint,
+  maxRows,
 }: ResumePickerProps): React.ReactElement {
-  // Each session occupies 3 visual rows (title + meta + preview). Tell the
-  // hook that so a 24-row terminal reserves enough chrome for the 4-row
-  // picker shell + input bar / status bar outside it.
+  // Each session occupies 3 visual rows (title + meta + preview). The window
+  // is sized against the caller's measured `maxRows` budget when provided;
+  // the legacy `rows - 10` guess under-reserved the real status bar + input
+  // bar chrome, so the panel overflowed the terminal. `markerRows` = 2 scroll
+  // markers + 1 conditional hint/error row — worst case, so the window never
+  // overflows whether or not those rows actually render.
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: sessions.length,
     selected,
     rowSpan: 3,
     chromeRows: 4,
+    markerRows: 3,
+    maxRows,
   });
   const visibleSessions = sessions.slice(start, end);
   return (

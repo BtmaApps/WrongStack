@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import type { JSONSchema } from '../../src/types/tool.js';
 import { validateAgainstSchema } from '../../src/utils/json-schema-validate.js';
 
@@ -52,13 +52,19 @@ for (let i = 0; i < 20; i++) {
 }
 
 describe('validateAgainstSchema', () => {
-  bench('5-prop schema, valid input', () => {
-    validateAgainstSchema(smallValid, smallSchema);
+  test('5-prop schema, valid input', async ({ bench }) => {
+    await bench('5-prop schema, valid input', () => {
+      validateAgainstSchema(smallValid, smallSchema);
+    }).run();
   });
-  bench('5-prop schema, invalid input', () => {
-    validateAgainstSchema(smallInvalid, smallSchema);
+  test('5-prop schema, invalid input', async ({ bench }) => {
+    await bench('5-prop schema, invalid input', () => {
+      validateAgainstSchema(smallInvalid, smallSchema);
+    }).run();
   });
-  bench('20-prop schema with nesting, valid input', () => {
-    validateAgainstSchema(largeValid, largeSchema);
+  test('20-prop schema with nesting, valid input', async ({ bench }) => {
+    await bench('20-prop schema with nesting, valid input', () => {
+      validateAgainstSchema(largeValid, largeSchema);
+    }).run();
   });
 });

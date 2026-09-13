@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:affected": "node scripts/test-affected.mjs",
     "test:affected:all": "node scripts/test-affected.mjs --all",
-    "bench": "vitest bench --run --config vitest.bench.config.ts",
+    "bench": "vitest run --config vitest.bench.config.ts",
     "bench:perf": "node scripts/bench.mjs",
     "perf:guard": "node scripts/perf-guard.mjs",
     "perf:guard:write": "node scripts/perf-guard.mjs --write",
@@ -105,7 +105,7 @@
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "typescript-language-server": "^6.0.0",
-    "typescript5": "npm:typescript@7.0.2",
+    "typescript5": "npm:typescript@5.9.3",
     "undici-types": "^8.10.2",
     "vitest": "^5.0.0"
   },

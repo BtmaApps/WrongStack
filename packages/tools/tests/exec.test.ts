@@ -1,17 +1,18 @@
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  execTool,
-  configureExecPolicy,
-  resetExecPolicy,
-  isExecCommandAllowed,
-  getExecAllowlist,
   configureDangerBypass,
-  resetDangerBypass,
+  configureExecPolicy,
+  execTool,
   getDangerBypass,
+  getExecAllowlist,
+  isExecCommandAllowed,
+  resetDangerBypass,
+  resetExecPolicy,
 } from '../src/exec.js';
 import { getProcessRegistry } from '../src/process-registry.js';
 
@@ -23,6 +24,11 @@ const makeCtx = () => ({ cwd: '/fake', tools: [], projectRoot: '/fake' }) as any
 // fail to launch on this machine (e.g. `echo` is a cmd builtin on Windows), so
 // gate-passes tests assert the failure — if any — is not a policy refusal.
 const REFUSAL = /not in allowlist|Blocked (option|argument|subcommand)|outside project root/;
+// The danger-banner tests need a real `rm` to spawn: a launch failure now
+// throws, so no result carries the assessment. Windows has `rm` only when Git's
+// usr/bin is on PATH (Git Bash yes, a plain PowerShell `pnpm` run no).
+const HAS_RM =
+  process.platform !== 'win32' || spawnSync('where.exe', ['rm'], { stdio: 'ignore' }).status === 0;
 async function settle<T>(p: Promise<T>): Promise<{ result?: T; error?: Error }> {
   try {
     return { result: await p };
@@ -747,7 +753,7 @@ describe('exec command policy (configurable allowlist)', () => {
     }
   });
 
-  it('attaches a danger assessment to every exec return', async () => {
+  it.skipIf(!HAS_RM)('attaches a danger assessment to every exec return', async () => {
     // Integration: verify that the danger-detection layer is wired into the
     // exec tool. This is the contract that UI/TUI consumers rely on to
     // render a banner. We test three categories:
@@ -789,33 +795,48 @@ describe('exec command policy (configurable allowlist)', () => {
     }
   });
 
-  it('honors configureDangerBypass: a bypassed rule is suppressed in danger output', async () => {
-    configureExecPolicy({ allow: ['rm'] });
-    const sb = await mkRealSandbox();
-    try {
-      // Relative targets: absolute paths are BLOCKED by rm's security patterns
-      // and a refusal now throws before any danger assessment is returned.
-      // Without bypass: rm -rf is destructive.
-      configureDangerBypass({ bypass: [] });
-      const r1 = await execTool.execute({ command: 'rm', args: ['-rf', 'a'] }, sb.ctx, makeOpts2());
-      expect(r1.danger.level).toBe('destructive');
-      expect(r1.danger.matchedRule).toBe('rm-recursive');
+  it.skipIf(!HAS_RM)(
+    'honors configureDangerBypass: a bypassed rule is suppressed in danger output',
+    async () => {
+      configureExecPolicy({ allow: ['rm'] });
+      const sb = await mkRealSandbox();
+      try {
+        // Relative targets: absolute paths are BLOCKED by rm's security patterns
+        // and a refusal now throws before any danger assessment is returned.
+        // Without bypass: rm -rf is destructive.
+        configureDangerBypass({ bypass: [] });
+        const r1 = await execTool.execute(
+          { command: 'rm', args: ['-rf', 'a'] },
+          sb.ctx,
+          makeOpts2(),
+        );
+        expect(r1.danger.level).toBe('destructive');
+        expect(r1.danger.matchedRule).toBe('rm-recursive');
 
-      // With bypass on the rule: level drops to safe.
-      configureDangerBypass({ bypass: ['rm-recursive'] });
-      expect(getDangerBypass().has('rm-recursive')).toBe(true);
-      const r2 = await execTool.execute({ command: 'rm', args: ['-rf', 'b'] }, sb.ctx, makeOpts2());
-      expect(r2.danger.level).toBe('safe');
-      expect(r2.danger.reasons).toEqual([]);
-      expect(r2.danger.matchedRule).toBeUndefined();
+        // With bypass on the rule: level drops to safe.
+        configureDangerBypass({ bypass: ['rm-recursive'] });
+        expect(getDangerBypass().has('rm-recursive')).toBe(true);
+        const r2 = await execTool.execute(
+          { command: 'rm', args: ['-rf', 'b'] },
+          sb.ctx,
+          makeOpts2(),
+        );
+        expect(r2.danger.level).toBe('safe');
+        expect(r2.danger.reasons).toEqual([]);
+        expect(r2.danger.matchedRule).toBeUndefined();
 
-      // Bypass on a different rule does NOT affect rm-recursive.
-      configureDangerBypass({ bypass: ['inline-eval'] });
-      const r3 = await execTool.execute({ command: 'rm', args: ['-rf', 'c'] }, sb.ctx, makeOpts2());
-      expect(r3.danger.level).toBe('destructive');
-      expect(r3.danger.matchedRule).toBe('rm-recursive');
-    } finally {
-      await sb.cleanup();
-    }
-  });
+        // Bypass on a different rule does NOT affect rm-recursive.
+        configureDangerBypass({ bypass: ['inline-eval'] });
+        const r3 = await execTool.execute(
+          { command: 'rm', args: ['-rf', 'c'] },
+          sb.ctx,
+          makeOpts2(),
+        );
+        expect(r3.danger.level).toBe('destructive');
+        expect(r3.danger.matchedRule).toBe('rm-recursive');
+      } finally {
+        await sb.cleanup();
+      }
+    },
+  );
 });

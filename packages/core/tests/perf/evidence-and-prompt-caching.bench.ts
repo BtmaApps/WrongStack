@@ -1,13 +1,13 @@
-import { bench, describe } from 'vitest';
-import { DefaultSystemPromptBuilder } from '../../src/core/system-prompt-builder.js';
+import { describe, test } from 'vitest';
 import type { Context } from '../../src/core/context.js';
+import { DefaultSystemPromptBuilder } from '../../src/core/system-prompt-builder.js';
+import type { ToolOutputMetadata } from '../../src/types/context-evidence.js';
+import type { Tool } from '../../src/types/tool.js';
 import {
   createContextEvidenceState,
   markAssistantReferencedEvidence,
   recordToolOutputEvidence,
 } from '../../src/utils/context-evidence.js';
-import type { ToolOutputMetadata } from '../../src/types/context-evidence.js';
-import type { Tool } from '../../src/types/tool.js';
 
 // ── B6: buildToolUsage + renderOnlineAgents cache — fingerprint vs reference ─
 //
@@ -79,14 +79,41 @@ describe('B6 — buildToolUsage + renderOnlineAgents cache (fingerprint key)', (
   // Primed builder — the cache is populated on the first call inside bench.
   let builder: DefaultSystemPromptBuilder;
 
-  bench('cache hit — same content, fresh array (new)', async () => {
-    // Ensure the builder is primed and its cache populated from a prior call.
-    // The mailbox passes a fresh array object every time — the fingerprint
-    // detects content equality and returns the cached string.
-    if (!builder) {
-      builder = new DefaultSystemPromptBuilder();
-      // First call populates the cache (cache miss).
+  test('cache hit — same content, fresh array (new)', async ({ bench }) => {
+    await bench('cache hit — same content, fresh array (new)', async () => {
+      // Ensure the builder is primed and its cache populated from a prior call.
+      // The mailbox passes a fresh array object every time — the fingerprint
+      // detects content equality and returns the cached string.
+      if (!builder) {
+        builder = new DefaultSystemPromptBuilder();
+        // First call populates the cache (cache miss).
+        await builder.build({
+          cwd: '/tmp/project',
+          projectRoot: '/tmp/project',
+          tools: BENCH_TOOLS,
+          provider: 'anthropic',
+          model: 'anthropic-test-model',
+          onlineAgents: makeAgents(),
+        } as never);
+      }
+      // Second+ calls: fresh array, same content → fingerprint cache hit.
       await builder.build({
+        cwd: '/tmp/project',
+        projectRoot: '/tmp/project',
+        tools: BENCH_TOOLS,
+        provider: 'anthropic',
+        model: 'anthropic-test-model',
+        onlineAgents: makeAgents(), // fresh array, same content
+      } as never);
+    }).run();
+  });
+
+  // Cold builder — simulates the old behavior where every build was a full
+  // rebuild because reference equality always missed.
+  test('cache miss — full rebuild every iteration (old baseline)', async ({ bench }) => {
+    await bench('cache miss — full rebuild every iteration (old baseline)', async () => {
+      const cold = new DefaultSystemPromptBuilder();
+      await cold.build({
         cwd: '/tmp/project',
         projectRoot: '/tmp/project',
         tools: BENCH_TOOLS,
@@ -94,30 +121,7 @@ describe('B6 — buildToolUsage + renderOnlineAgents cache (fingerprint key)', (
         model: 'anthropic-test-model',
         onlineAgents: makeAgents(),
       } as never);
-    }
-    // Second+ calls: fresh array, same content → fingerprint cache hit.
-    await builder.build({
-      cwd: '/tmp/project',
-      projectRoot: '/tmp/project',
-      tools: BENCH_TOOLS,
-      provider: 'anthropic',
-      model: 'anthropic-test-model',
-      onlineAgents: makeAgents(), // fresh array, same content
-    } as never);
-  });
-
-  // Cold builder — simulates the old behavior where every build was a full
-  // rebuild because reference equality always missed.
-  bench('cache miss — full rebuild every iteration (old baseline)', async () => {
-    const cold = new DefaultSystemPromptBuilder();
-    await cold.build({
-      cwd: '/tmp/project',
-      projectRoot: '/tmp/project',
-      tools: BENCH_TOOLS,
-      provider: 'anthropic',
-      model: 'anthropic-test-model',
-      onlineAgents: makeAgents(),
-    } as never);
+    }).run();
   });
 });
 
@@ -171,14 +175,18 @@ describe('B7 — markAssistantReferencedEvidence scan window', () => {
   const response80 = 'reviewed ' + matching80.map((c) => c.files[0]).join(' ');
   const response20 = 'reviewed ' + matching20.map((c) => c.files[0]).join(' ');
 
-  bench('80 entries all match — scans last 20 (new cap)', () => {
-    const ctx = makeEvidenceContext(matching80);
-    markAssistantReferencedEvidence(ctx, response80);
+  test('80 entries all match — scans last 20 (new cap)', async ({ bench }) => {
+    await bench('80 entries all match — scans last 20 (new cap)', () => {
+      const ctx = makeEvidenceContext(matching80);
+      markAssistantReferencedEvidence(ctx, response80);
+    }).run();
   });
 
-  bench('20 entries all match — equivalent workload', () => {
-    const ctx = makeEvidenceContext(matching20);
-    markAssistantReferencedEvidence(ctx, response20);
+  test('20 entries all match — equivalent workload', async ({ bench }) => {
+    await bench('20 entries all match — equivalent workload', () => {
+      const ctx = makeEvidenceContext(matching20);
+      markAssistantReferencedEvidence(ctx, response20);
+    }).run();
   });
 });
 
@@ -217,25 +225,29 @@ describe('B8 — recordToolOutputEvidence regex extraction cap', () => {
   const largeContent = makeLargeToolOutput(50);
   const input = { path: 'src/large-file.ts' };
 
-  bench('50KB output — capped extraction (new, 10KB + 200 lines)', () => {
-    const ctx = makeEvidenceContext([]);
-    recordToolOutputEvidence(ctx, {
-      toolUseId: `tu-bench-${Math.random().toString(36).slice(2, 8)}`,
-      toolName: 'read',
-      input,
-      content: largeContent,
-      ok: true,
-    });
+  test('50KB output — capped extraction (new, 10KB + 200 lines)', async ({ bench }) => {
+    await bench('50KB output — capped extraction (new, 10KB + 200 lines)', () => {
+      const ctx = makeEvidenceContext([]);
+      recordToolOutputEvidence(ctx, {
+        toolUseId: `tu-bench-${Math.random().toString(36).slice(2, 8)}`,
+        toolName: 'read',
+        input,
+        content: largeContent,
+        ok: true,
+      });
+    }).run();
   });
 
-  bench('10KB output — under cap (baseline, no slicing overhead)', () => {
-    const ctx = makeEvidenceContext([]);
-    recordToolOutputEvidence(ctx, {
-      toolUseId: `tu-bench-${Math.random().toString(36).slice(2, 8)}`,
-      toolName: 'read',
-      input,
-      content: largeContent.slice(0, 10_000),
-      ok: true,
-    });
+  test('10KB output — under cap (baseline, no slicing overhead)', async ({ bench }) => {
+    await bench('10KB output — under cap (baseline, no slicing overhead)', () => {
+      const ctx = makeEvidenceContext([]);
+      recordToolOutputEvidence(ctx, {
+        toolUseId: `tu-bench-${Math.random().toString(36).slice(2, 8)}`,
+        toolName: 'read',
+        input,
+        content: largeContent.slice(0, 10_000),
+        ok: true,
+      });
+    }).run();
   });
 });

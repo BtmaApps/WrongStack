@@ -20,6 +20,7 @@ const executableScripts = [
   'scripts/check-i18n-completeness.mjs',
   'scripts/check-lint-warnings.mjs',
   'scripts/check-node-pty.mjs',
+  'scripts/check-npm-package-install.mjs',
   'scripts/check-package-contracts.mjs',
   'scripts/check-test-inventory.mjs',
   'scripts/check-test-skips.mjs',

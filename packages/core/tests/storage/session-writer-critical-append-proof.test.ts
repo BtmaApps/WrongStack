@@ -48,7 +48,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
       TEST_ID,
       handle as any,
       STARTED_AT,
-      { model: 'test-model', provider: 'test-provider' },
+      { id: TEST_ID, model: 'test-model', provider: 'test-provider' },
       events as unknown as EventBus,
       { filePath: '/tmp/test.jsonl' },
     );
@@ -76,7 +76,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
       TEST_ID,
       handle as any,
       STARTED_AT,
-      { model: 'test-model', provider: 'test-provider' },
+      { id: TEST_ID, model: 'test-model', provider: 'test-provider' },
       events as unknown as EventBus,
       { filePath: '/tmp/test.jsonl' },
     );
@@ -104,7 +104,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
       TEST_ID,
       handle as any,
       STARTED_AT,
-      { model: 'test-model', provider: 'test-provider' },
+      { id: TEST_ID, model: 'test-model', provider: 'test-provider' },
       events as unknown as EventBus,
       { filePath: '/tmp/test.jsonl' },
     );
@@ -121,7 +121,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
         type: 'checkpoint',
         ts: new Date().toISOString(),
         promptIndex: 0,
-        messageCount: 10,
+        promptPreview: 'critical checkpoint',
       }),
     ).rejects.toThrow('EFSCORRUPTED');
   });
@@ -131,7 +131,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
       TEST_ID,
       handle as any,
       STARTED_AT,
-      { model: 'test-model', provider: 'test-provider' },
+      { id: TEST_ID, model: 'test-model', provider: 'test-provider' },
       events as unknown as EventBus,
       { filePath: '/tmp/test.jsonl' },
     );
@@ -160,7 +160,7 @@ describe('critical append propagates flush failures (regression for silent-sweep
       TEST_ID,
       handle as any,
       STARTED_AT,
-      { model: 'test-model', provider: 'test-provider' },
+      { id: TEST_ID, model: 'test-model', provider: 'test-provider' },
       events as unknown as EventBus,
       { filePath: '/tmp/test.jsonl' },
     );

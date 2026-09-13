@@ -115,7 +115,11 @@ export class SddBoardStore {
   async load(runId: string): Promise<SddBoardSnapshot | null> {
     try {
       const raw = await fsp.readFile(this.snapshotPath(runId), 'utf8');
-      return JSON.parse(raw) as SddBoardSnapshot;
+      const value = JSON.parse(raw);
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return value as SddBoardSnapshot;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -270,26 +274,39 @@ export class SddBoardStore {
       } catch {
         return [];
       }
+      const parseCommands = (s: string) =>
+        s
+          .split('\n')
+          .filter((line) => line.trim())
+          .map((line) => {
+            try {
+              return JSON.parse(line) as { ts: number; type: string; payload?: unknown };
+            } catch {
+              return null;
+            }
+          })
+          .filter(
+            (command): command is { ts: number; type: string; payload?: unknown } =>
+              command !== null,
+          );
       try {
         await this.controlFileIO.truncate(filePath, 0);
       } catch {
-        // Leave the commands on disk for the next drain instead of applying
-        // them repeatedly from a queue that could not be acknowledged.
-        return [];
+        // Truncate failed — the file still holds every command we just read.
+        // Returning them now would re-deliver the identical batch on the next
+        // drain (the file was NOT emptied; "the next drain finds an empty
+        // file" only holds if the truncate had succeeded). Retry once through
+        // the atomic-replace path, which clears the file under lock conditions
+        // that defeat in-place truncation. If that also fails, leave the
+        // commands queued in the file: a later drain delivers them — delayed,
+        // never duplicated.
+        try {
+          await atomicWrite(filePath, '', { mode: 0o600 });
+        } catch {
+          return [];
+        }
       }
-      return raw
-        .split('\n')
-        .filter((line) => line.trim())
-        .map((line) => {
-          try {
-            return JSON.parse(line) as { ts: number; type: string; payload?: unknown };
-          } catch {
-            return null;
-          }
-        })
-        .filter(
-          (command): command is { ts: number; type: string; payload?: unknown } => command !== null,
-        );
+      return parseCommands(raw);
     });
   }
 
@@ -316,27 +333,29 @@ export class SddBoardStore {
   }
 
   private async updateIndex(snapshot: SddBoardSnapshot): Promise<void> {
-    const current = await this.readIndex();
-    const index: SddBoardIndex = {
-      version: 1,
-      entries: current.entries.map((entry) => ({ ...entry })),
-    };
-    const entry: SddBoardIndexEntry = {
-      runId: snapshot.runId,
-      specId: snapshot.specId,
-      title: snapshot.title,
-      status: snapshot.status,
-      total: snapshot.progress.total,
-      completed: snapshot.progress.completed,
-      updatedAt: snapshot.updatedAt,
-    };
-    const idx = index.entries.findIndex((e) => e.runId === snapshot.runId);
-    if (idx >= 0) index.entries[idx] = entry;
-    else index.entries.push(entry);
-    index.entries.sort((a, b) => b.updatedAt - a.updatedAt);
-    await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
-    this.cachedIndex = index;
-    this.cachedIndexSignature = await this.indexSignature();
+    await withFileLock(this.indexPath, async () => {
+      const current = await this.readIndex();
+      const index: SddBoardIndex = {
+        version: 1,
+        entries: current.entries.map((entry) => ({ ...entry })),
+      };
+      const entry: SddBoardIndexEntry = {
+        runId: snapshot.runId,
+        specId: snapshot.specId,
+        title: snapshot.title,
+        status: snapshot.status,
+        total: snapshot.progress.total,
+        completed: snapshot.progress.completed,
+        updatedAt: snapshot.updatedAt,
+      };
+      const idx = index.entries.findIndex((e) => e.runId === snapshot.runId);
+      if (idx >= 0) index.entries[idx] = entry;
+      else index.entries.push(entry);
+      index.entries.sort((a, b) => b.updatedAt - a.updatedAt);
+      await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
+      this.cachedIndex = index;
+      this.cachedIndexSignature = await this.indexSignature();
+    });
   }
 
   private async removeFromIndex(runId: string): Promise<void> {

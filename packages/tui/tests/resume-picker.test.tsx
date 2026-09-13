@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
-import { ResumePicker } from '../src/components/resume-picker.js';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import type { ResumeSessionEntry } from '../src/app.js';
+import { ResumePicker } from '../src/components/resume-picker.js';
 
 describe('ResumePicker', () => {
   const sampleSessions: ResumeSessionEntry[] = [
@@ -406,6 +406,61 @@ describe('ResumePicker — sessions open elsewhere', () => {
       React.createElement(ResumePicker, { sessions, selected: 3, busy: false } as never),
     );
     expect(lastFrame() ?? '').toContain('4/40');
+    unmount();
+  });
+});
+
+describe('ResumePicker — windowed height cap', () => {
+  const manySessions: ResumeSessionEntry[] = Array.from({ length: 30 }, (_unused, i) => ({
+    id: `sess_${i}`,
+    startedAt: '2026-07-19T10:00:00.000Z',
+    title: `session ${i}`,
+    tokenTotal: 1000,
+    toolCallCount: 1,
+    iterationCount: 1,
+    toolErrorCount: 0,
+    outcome: 'completed',
+    isCurrent: false,
+  }));
+
+  const frameHeight = (frame: string): number => frame.replace(/\n+$/, '').split('\n').length;
+
+  it('caps the panel height at the measured maxRows budget', () => {
+    const { lastFrame, unmount } = render(
+      React.createElement(ResumePicker, {
+        sessions: manySessions,
+        selected: 0,
+        busy: false,
+        maxRows: 19,
+      } as never),
+    );
+    const frame = lastFrame() ?? '';
+    // Regression: without a measured budget the window was sized against the
+    // legacy `rows - 10` guess, which reserved less than the real status bar
+    // + input bar chrome, so the panel could outgrow the terminal. With
+    // maxRows=19: 4 chrome rows + up to 3 marker/hint rows + visible*3 ≤ 19.
+    expect(frameHeight(frame)).toBeLessThanOrEqual(19);
+    expect(frame).toContain('more below');
+    // The window shows the head of the list; the deep tail stays off-screen.
+    expect(frame).not.toContain('session 29');
+    unmount();
+  });
+
+  it('re-centers the window on deep selections so old sessions stay reachable', () => {
+    const { lastFrame, unmount } = render(
+      React.createElement(ResumePicker, {
+        sessions: manySessions,
+        selected: 29,
+        busy: false,
+        maxRows: 19,
+      } as never),
+    );
+    const frame = lastFrame() ?? '';
+    // Same cap holds mid-list, and the last session is on screen: scrolling
+    // (window re-centering + markers) reaches every entry, not just the head.
+    expect(frameHeight(frame)).toBeLessThanOrEqual(19);
+    expect(frame).toContain('more above');
+    expect(frame).toContain('session 29');
     unmount();
   });
 });

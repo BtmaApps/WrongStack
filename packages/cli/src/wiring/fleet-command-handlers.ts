@@ -286,7 +286,10 @@ async function killFleet(director: Director | null): Promise<number> {
   for (const subagent of director.status().subagents) {
     if (subagent.status === 'running' || subagent.status === 'idle') {
       try {
-        await director.remove(subagent.id);
+        // Use terminate() — not remove() — to stop the coordinator AND remove the
+        // slot. remove() only frees the slot; the runner keeps running until it
+        // naturally finishes, leaving orphaned work on disk and zombie processes.
+        await director.terminate(subagent.id);
         killed++;
       } catch {
         // Best-effort fleet cleanup.

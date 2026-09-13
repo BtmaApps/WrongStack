@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [1.0.9] — 2026-09-13
+
+### Added
 
 - **`delegate` no longer blocks the leader.** The tool now runs its worker in
   the background by default and returns at once with
@@ -30,11 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `delegate` through `tools.disabledTools` because it froze the leader, you can
   re-enable it with `/tool enable delegate`.
 
+### Changed
+
 - **`pnpm release:fast` skips the two gates CI already covers.** The new
   `release-fast` gate profile swaps the coverage gate for a plain `pnpm test`
   run — the same suite, without V8 instrumentation or threshold accounting —
   and drops the network `audit` gate. Both are re-asserted by CI on the same
-  commit. `pnpm release` still runs the full 17-gate matrix.
+  commit. `pnpm release` still runs the full 18-gate matrix.
 - **A version bump no longer invalidates the release gate cache.** Every release
   begins with a version-only bump across all workspace manifests, and the cache
   fingerprint hashed those manifests verbatim — so the one run that most needs
@@ -44,6 +48,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Cancelling an ACP prompt is reliable at every phase.** An abort during
+  session creation, a running prompt, or a concurrent transport failure now
+  leaves the client reusable and sends the matching cancellation when a remote
+  session exists.
+- **Session history operations no longer race active writers or leave them
+  closed.** Clearing a session reopens its append handle and evicts stale
+  cached data; rename refuses a session that is in use; background-delegation
+  bookkeeping is durably flushed.
+- **SDD state is safer under partial filesystem failures.** Snapshot and
+  command input are validated, index updates are serialized, failed queue
+  acknowledgement cannot replay a batch, and resolved worktrees are released
+  on both successful and failed task paths.
+- **Small TUI terminals keep picker controls visible.** Autonomy, design, and
+  resume pickers all honor the measured vertical budget instead of overflowing
+  beneath the input and status bars.
+- **Undoing a WebUI turn also prunes its execution records**, preventing stale
+  tool state from accumulating after repeated turn rewinds.
+- **npm 10 can install and update WrongStack without an Arborist replacement
+  loop.** The published providers package no longer depends on
+  `ai-gateway-provider`, whose optional OpenRouter 2.x adapter requires AI SDK
+  6 while WrongStack requires AI SDK 7. Cloudflare gateway routing now uses the
+  compatible AI SDK 7 providers directly, and the release matrix installs the
+  packed package with npm 10.9.8 to prevent the invalid peer graph returning.
+- **The WebUI terminal opens on macOS regardless of package manager.**
+  node-pty 1.1.0 ships `prebuilds/darwin-*/spawn-helper` without the exec bit
+  (microsoft/node-pty#919), so npm, pnpm and bun installs all failed every pty
+  spawn with `posix_spawnp failed`. WrongStack now restores the bit when it
+  loads node-pty — a postinstall script would be skipped by bun's untrusted
+  lifecycle policy and by `--ignore-scripts`. If the install directory is
+  read-only, the terminal error prints the exact `chmod +x` command to run.
 - **Rotated-out HQ credentials no longer linger until restart.** Reloading the
   login-attempt store clears its in-memory entries before applying the
   persisted snapshot.

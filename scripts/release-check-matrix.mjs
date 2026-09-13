@@ -231,6 +231,12 @@ const GATES = [
     prereq: 'build',
   },
   {
+    id: 'npm-package-install',
+    label: 'Packed providers install with npm 10.9.8',
+    cmd: 'node scripts/check-npm-package-install.mjs',
+    prereq: 'build',
+  },
+  {
     id: 'build-manifest-write',
     label: 'Write build lineage manifest',
     cmd: 'pnpm write:build-manifest',

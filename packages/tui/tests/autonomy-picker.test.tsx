@@ -2,12 +2,14 @@ import { render } from 'ink-testing-library';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import {
-  AutonomyPicker,
   AUTONOMY_OPTIONS,
   type AutonomyOption,
+  AutonomyPicker,
 } from '../src/components/autonomy-picker.js';
 
 describe('AutonomyPicker', () => {
+  const frameHeight = (frame: string): number => frame.replace(/\n+$/, '').split('\n').length;
+
   it('renders the title and key hints', () => {
     const view = render(
       React.createElement(AutonomyPicker, {
@@ -142,6 +144,42 @@ describe('AutonomyPicker', () => {
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('DISABLED');
     expect(frame).toContain('Not running');
+    view.unmount();
+  });
+
+  it('caps the panel height at the measured maxRows budget', () => {
+    const view = render(
+      React.createElement(AutonomyPicker, {
+        options: AUTONOMY_OPTIONS,
+        selected: 0,
+        maxRows: 10,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    // Regression for the legacy rows-10 guess: 4 chrome rows + up to 3
+    // marker/hint rows + the visible options (1 row each) must fit the
+    // measured budget the caller hands in.
+    expect(frameHeight(frame)).toBeLessThanOrEqual(10);
+    expect(frame).toContain('more below');
+    // The window shows the head; the tail stays off-screen until scrolled.
+    expect(frame).not.toContain('PARALLEL');
+    view.unmount();
+  });
+
+  it('re-centers the window on deep selections so late options stay reachable', () => {
+    const view = render(
+      React.createElement(AutonomyPicker, {
+        options: AUTONOMY_OPTIONS,
+        selected: AUTONOMY_OPTIONS.length - 1,
+        maxRows: 10,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    // Same cap holds on the last page, and the focused option is on screen:
+    // the re-centering window + markers reach every entry.
+    expect(frameHeight(frame)).toBeLessThanOrEqual(10);
+    expect(frame).toContain('more above');
+    expect(frame).toContain('PARALLEL');
     view.unmount();
   });
 });

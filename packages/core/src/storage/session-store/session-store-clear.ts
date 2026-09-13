@@ -9,10 +9,18 @@ export interface ClearSessionHistoryParams {
   maintenanceHolderId: string;
   ensureShardDir: (id: string) => Promise<string>;
   sessionPath: (id: string, ext: '.jsonl' | '.summary.json') => string;
+  clearLoadCache?: ((id: string) => Promise<void>) | undefined;
 }
 
 export async function executeClearSessionHistory(params: ClearSessionHistoryParams): Promise<void> {
-  const { canonical, catalogClient, maintenanceHolderId, ensureShardDir, sessionPath } = params;
+  const {
+    canonical,
+    catalogClient,
+    maintenanceHolderId,
+    ensureShardDir,
+    sessionPath,
+    clearLoadCache,
+  } = params;
 
   const maintenance = catalogClient
     ? await catalogClient.call('acquire_maintenance', {
@@ -91,6 +99,16 @@ export async function executeClearSessionHistory(params: ClearSessionHistoryPara
       await catalogClient
         .call('release_maintenance', { lease: maintenance })
         .catch(() => undefined);
+    }
+    // Evict the now-stale session data graph from the load cache so the next
+    // load() sees the freshly rewritten JSONL instead of a cached copy.
+    // Must not throw: the finally block would propagate this error and mask
+    // the primary clear operation result (success or the original error).
+    try {
+      await clearLoadCache?.(canonical);
+    } catch {
+      // Swallow — cache eviction is best-effort; the mtime guard in loadCache
+      // will revalidate on next access and heal the stale entry automatically.
     }
   }
 }

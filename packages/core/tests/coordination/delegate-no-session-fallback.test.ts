@@ -15,6 +15,7 @@ import { leaderDeliveryHub } from '../../src/coordination/delegation/leader-deli
 import { Director } from '../../src/coordination/director.js';
 import { FLEET_ROSTER } from '../../src/coordination/fleet.js';
 import { EventBus } from '../../src/kernel/events.js';
+import type { AgentContext } from '../../src/types/context.js';
 import type {
   SubagentRunContext,
   SubagentRunOutcome,
@@ -81,7 +82,8 @@ describe('delegate — no owning session and no tracker', () => {
     const call = Promise.resolve(
       tool.execute(
         { role: 'bug-hunter', task: 'audit', ...BOUNDARY },
-        {},
+        // Deliberately session-less: no `ctx.session.id` to route a background result to.
+        {} as unknown as AgentContext,
         {
           signal: new AbortController().signal,
         },

@@ -1,6 +1,6 @@
-import { Box, Text } from '../ink.js';
-import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import type React from 'react';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 export interface AutonomyOption {
   mode: 'off' | 'suggest' | 'auto' | 'eternal' | 'eternal-parallel';
@@ -13,6 +13,15 @@ export interface AutonomyPickerProps {
   options: AutonomyOption[];
   selected: number;
   hint?: string | undefined;
+  /**
+   * Measured vertical budget for the whole picker box (terminal rows minus
+   * status bar, input, and margins — see `pickerMaxRows` in app-view.tsx).
+   * When provided the window math uses it instead of the
+   * `rows - shellReservedRows` guess, which under-reserves whenever the
+   * status bar or input bar grows — the same overflow class the resume
+   * panel had before it consumed this budget.
+   */
+  maxRows?: number | undefined;
 }
 
 export const AUTONOMY_OPTIONS: AutonomyOption[] = [
@@ -52,11 +61,16 @@ export function AutonomyPicker({
   options,
   selected,
   hint,
+  maxRows,
 }: AutonomyPickerProps): React.ReactElement {
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: options.length,
     selected,
     chromeRows: 4,
+    // 2 marker slots + 1 conditional hint slot — worst case, so the window
+    // never overflows whether or not those rows actually render.
+    markerRows: 3,
+    maxRows,
   });
   const visibleOptions = options.slice(start, end);
   return (

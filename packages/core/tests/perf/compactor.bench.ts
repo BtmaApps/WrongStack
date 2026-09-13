@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { HybridCompactor } from '../../src/execution/compactor.js';
 import { IntelligentCompactor } from '../../src/execution/intelligent-compactor.js';
@@ -86,45 +86,41 @@ describe('HybridCompactor', () => {
   // Heavy benches: each iteration runs a full compaction over thousands of
   // messages (the oversized case reprocesses ~42 MB of tool output). Bound
   // the sampling explicitly so the suite terminates in seconds, not minutes.
-  bench(
-    'aggressive over 1000 messages',
-    async () => {
+  test('aggressive over 1000 messages', async ({ bench }) => {
+    await bench('aggressive over 1000 messages', async () => {
       await new HybridCompactor({ preserveK: 5 }).compact(fakeContext([...MEDIUM]), {
         aggressive: true,
       });
-    },
-    { iterations: 10, warmupIterations: 2 },
-  );
-  bench(
-    'aggressive over 5000 messages',
-    async () => {
+    }).run({ iterations: 10, warmupIterations: 2 });
+  });
+  test('aggressive over 5000 messages', async ({ bench }) => {
+    await bench('aggressive over 5000 messages', async () => {
       await new HybridCompactor({ preserveK: 5 }).compact(fakeContext([...LARGE]), {
         aggressive: true,
       });
-    },
-    { iterations: 5, warmupIterations: 1 },
-  );
-  bench(
-    'full-pass elision with oversized tool_results',
-    async () => {
+    }).run({ iterations: 5, warmupIterations: 1 });
+  });
+  test('full-pass elision with oversized tool_results', async ({ bench }) => {
+    await bench('full-pass elision with oversized tool_results', async () => {
       // Every tool_result exceeds eliseThreshold → full pass must run
       await new HybridCompactor({ preserveK: 5 }).compact(
         fakeContext([...WITH_OVERSIZED_TOOL_RESULTS]),
         { aggressive: true },
       );
-    },
-    { iterations: 3, warmupIterations: 1 },
-  );
+    }).run({ iterations: 3, warmupIterations: 1 });
+  });
 });
 
 describe('IntelligentCompactor', () => {
-  bench(
-    'aggressive over 1000 messages',
-    async () => {
-      await new IntelligentCompactor({ preserveK: 5 }).compact(fakeContext([...MEDIUM]), {
+  test('aggressive over 1000 messages', async ({ bench }) => {
+    await bench('aggressive over 1000 messages', async () => {
+      // No provider (as before): the summarizer call throws and the compactor
+      // takes its lossless-digest fallback, so no LLM is involved.
+      await new IntelligentCompactor({ preserveK: 5 } as ConstructorParameters<
+        typeof IntelligentCompactor
+      >[0]).compact(fakeContext([...MEDIUM]), {
         aggressive: true,
       });
-    },
-    { iterations: 10, warmupIterations: 2 },
-  );
+    }).run({ iterations: 10, warmupIterations: 2 });
+  });
 });

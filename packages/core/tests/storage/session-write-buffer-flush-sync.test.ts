@@ -2,8 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionEvent } from '../../src/types/session.js';
 import { SessionWriteBuffer } from '../../src/storage/session-write-buffer.js';
+import type { SessionEvent } from '../../src/types/session.js';
 
 const now = () => new Date().toISOString();
 
@@ -213,5 +213,60 @@ describe('SessionWriteBuffer.flushSync', () => {
     }
     await flushing.catch(() => undefined);
     expect(await fs.readFile(asyncTarget, 'utf8')).toContain('"stolen then returned"');
+  });
+
+  it('appends the remaining buffer when the in-flight append has already settled', async () => {
+    const filePath = path.join(tmp, 'settled-window.jsonl');
+    await fs.writeFile(filePath, '');
+    let releaseDatasync: (() => void) | undefined;
+    const datasyncGate = new Promise<void>((resolve) => {
+      releaseDatasync = resolve;
+    });
+    let handleWrites = 0;
+    const handle = {
+      appendFile: async (data: string) => {
+        handleWrites += 1;
+        await fs.appendFile(filePath, `ASYNC:${data}`);
+      },
+      datasync: async () => {
+        await datasyncGate;
+      },
+    };
+    const buffer = new SessionWriteBuffer({
+      sessionId: 's',
+      filePath,
+      getHandle: () => handle as never,
+      setHandle: () => undefined,
+    });
+    expect(buffer.push(toolResult('landed'))).toBe(true);
+    const flushing = buffer.flushBuffer(true, { datasync: true });
+    // Suspend the flush inside its datasync await with the append attempt
+    // already finished (enqueueFlight's finally has run): the exact
+    // interleaving a SIGTERM handler would arrive into.
+    await vi.waitFor(() => expect(handleWrites).toBe(1));
+    await buffer.drainWriteChain();
+    expect(buffer.push(toolResult('tail'))).toBe(true);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let warnings: unknown[][] = [];
+    try {
+      buffer.flushSync();
+      warnings = warn.mock.calls.map((call) => [...call]);
+    } finally {
+      warn.mockRestore();
+    }
+    releaseDatasync?.();
+    await flushing.catch(() => undefined);
+
+    const text = await fs.readFile(filePath, 'utf8');
+    expect(text).toContain('"landed"');
+    expect(text).toContain('"tail"');
+    // A settled flight must not be re-written by the sync append: its bytes
+    // are already on disk exactly once.
+    expect(text.match(/ASYNC:/g)).toHaveLength(1);
+    expect(buffer.length).toBe(0);
+    expect(
+      warnings.some((call) => String(call[0]).includes('"event":"session.flush_sync_deferred"')),
+    ).toBe(false);
   });
 });

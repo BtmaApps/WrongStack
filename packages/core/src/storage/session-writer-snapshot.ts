@@ -19,6 +19,10 @@ export const CRITICAL_EVENT_TYPES: ReadonlySet<SessionEvent['type']> = new Set([
   'rewound',
   'in_flight_start',
   'in_flight_end',
+  // Background delegation bookkeeping: losing the completion or the delivery
+  // record makes a resumed session drop (or double-deliver) a worker's result.
+  'delegate_completed',
+  'delegation_delivered',
 ]);
 
 export function isCriticalEvent(event: SessionEvent): boolean {

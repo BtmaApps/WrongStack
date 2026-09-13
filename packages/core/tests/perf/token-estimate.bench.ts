@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import {
   estimateTextTokens,
   estimateToolInputTokens,
@@ -24,39 +24,57 @@ const largeToolInput = {
 };
 
 describe('estimateTextTokens', () => {
-  bench('one-line (≈40 chars)', () => {
-    estimateTextTokens(ONE_LINE);
+  test('one-line (≈40 chars)', async ({ bench }) => {
+    await bench('one-line (≈40 chars)', () => {
+      estimateTextTokens(ONE_LINE);
+    }).run();
   });
-  bench('10 KB', () => {
-    estimateTextTokens(TEN_KB);
+  test('10 KB', async ({ bench }) => {
+    await bench('10 KB', () => {
+      estimateTextTokens(TEN_KB);
+    }).run();
   });
-  bench('100 KB', () => {
-    estimateTextTokens(HUNDRED_KB);
+  test('100 KB', async ({ bench }) => {
+    await bench('100 KB', () => {
+      estimateTextTokens(HUNDRED_KB);
+    }).run();
   });
-  bench('1 MB', () => {
-    estimateTextTokens(ONE_MB);
+  test('1 MB', async ({ bench }) => {
+    await bench('1 MB', () => {
+      estimateTextTokens(ONE_MB);
+    }).run();
   });
 });
 
 describe('estimateToolInputTokens', () => {
   // Note: this function memoizes on the input object — clone per call so the
   // cache doesn't dominate the second iteration.
-  bench('small input (cold)', () => {
-    estimateToolInputTokens({ ...smallToolInput });
+  test('small input (cold)', async ({ bench }) => {
+    await bench('small input (cold)', () => {
+      estimateToolInputTokens({ ...smallToolInput });
+    }).run();
   });
-  bench('large input (cold)', () => {
-    estimateToolInputTokens({ ...largeToolInput });
+  test('large input (cold)', async ({ bench }) => {
+    await bench('large input (cold)', () => {
+      estimateToolInputTokens({ ...largeToolInput });
+    }).run();
   });
-  bench('small input (warm cache)', () => {
-    estimateToolInputTokens(smallToolInput);
+  test('small input (warm cache)', async ({ bench }) => {
+    await bench('small input (warm cache)', () => {
+      estimateToolInputTokens(smallToolInput);
+    }).run();
   });
 });
 
 describe('estimateToolResultTokens', () => {
-  bench('string result, 10 KB', () => {
-    estimateToolResultTokens(TEN_KB);
+  test('string result, 10 KB', async ({ bench }) => {
+    await bench('string result, 10 KB', () => {
+      estimateToolResultTokens(TEN_KB);
+    }).run();
   });
-  bench('object result, 200 entries', () => {
-    estimateToolResultTokens({ matches: Array.from({ length: 200 }, (_, i) => `m${i}`) });
+  test('object result, 200 entries', async ({ bench }) => {
+    await bench('object result, 200 entries', () => {
+      estimateToolResultTokens({ matches: Array.from({ length: 200 }, (_, i) => `m${i}`) });
+    }).run();
   });
 });

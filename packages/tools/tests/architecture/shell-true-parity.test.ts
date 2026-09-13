@@ -102,6 +102,11 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
       // arguments are all literals this script writes.
       'scripts/package-desktop.mjs',
       'scripts/publish-workspace.mjs',
+      'scripts/check-tools-package-smoke.mjs',
+      // Surfaced 2026-09-13: same shape as package-desktop/publish-workspace —
+      // `pnpm pack` / `tar -xzf` need a shell only because pnpm is a `.cmd`
+      // shim on Windows that `execFileSync` cannot exec directly; every
+      // argument is a literal this release-smoke script writes.
     ];
 
     // Skip prose / changelog / architecture docs — the rule is about runtime

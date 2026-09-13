@@ -103,8 +103,10 @@ describe('native catalog providers', () => {
     process.env['CLOUDFLARE_GATEWAY_ID'] = 'gateway-1';
     try {
       let capturedUrl = '';
-      const fetchImpl = vi.fn(async (input: unknown) => {
+      let capturedInit: RequestInit | undefined;
+      const fetchImpl = vi.fn(async (input: unknown, init?: RequestInit) => {
         capturedUrl = String(input);
+        capturedInit = init;
         return new Response('{"message":"stop"}', {
           status: 400,
           headers: { 'content-type': 'application/json' },
@@ -123,10 +125,63 @@ describe('native catalog providers', () => {
 
       await expect(drain(provider, { ...request, model })).rejects.toThrow();
       expect(capturedUrl).toContain('/account-1/gateway-1');
+      expect(new Headers(capturedInit?.headers).get('cf-aig-authorization')).toBe(
+        'Bearer cloudflare-key',
+      );
+      const gatewayBody = JSON.parse(String(capturedInit?.body)) as Array<{
+        provider: string;
+        endpoint: string;
+        headers: Record<string, string>;
+      }>;
+      expect(gatewayBody).toHaveLength(1);
+      expect(gatewayBody[0]).toMatchObject({
+        provider: 'openai',
+        endpoint: 'v1/responses',
+      });
+      expect(gatewayBody[0]?.headers).not.toHaveProperty('authorization');
     } finally {
       delete process.env['CLOUDFLARE_ACCOUNT_ID'];
       delete process.env['CLOUDFLARE_GATEWAY_ID'];
       vi.unstubAllGlobals();
+    }
+  });
+
+  it('routes native Anthropic models without forwarding the placeholder key', async () => {
+    process.env['CLOUDFLARE_ACCOUNT_ID'] = 'account-1';
+    process.env['CLOUDFLARE_GATEWAY_ID'] = 'gateway-1';
+    try {
+      let capturedInit: RequestInit | undefined;
+      const fetchImpl = vi.fn(async (_input: unknown, init?: RequestInit) => {
+        capturedInit = init;
+        return new Response('{"message":"stop"}', {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as never as typeof fetch;
+      const model = 'anthropic/claude-sonnet-4-6';
+      const provider = createNativeCatalogProvider({
+        id: 'cloudflare-ai-gateway',
+        npm: 'ai-gateway-provider',
+        apiKey: 'cloudflare-key',
+        capabilities,
+        models: [{ id: model, name: model, provider: { npm: '@ai-sdk/anthropic' } }],
+        fetchImpl,
+      });
+
+      await expect(drain(provider, { ...request, model })).rejects.toThrow();
+      const gatewayBody = JSON.parse(String(capturedInit?.body)) as Array<{
+        provider: string;
+        endpoint: string;
+        headers: Record<string, string>;
+      }>;
+      expect(gatewayBody[0]).toMatchObject({
+        provider: 'anthropic',
+        endpoint: 'v1/messages',
+      });
+      expect(gatewayBody[0]?.headers).not.toHaveProperty('x-api-key');
+    } finally {
+      delete process.env['CLOUDFLARE_ACCOUNT_ID'];
+      delete process.env['CLOUDFLARE_GATEWAY_ID'];
     }
   });
 });

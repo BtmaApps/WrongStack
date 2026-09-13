@@ -239,6 +239,54 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-line bg-surface">
+        <div className="mx-auto max-w-[1380px] px-4 py-12 sm:px-6 lg:px-10">
+          <div className="flex flex-col gap-6 rounded-2xl border border-line bg-card p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <Eyebrow>Now shipping · v{version}</Eyebrow>
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
+                Keep the leader moving while the work fans out.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-muted">
+                Background delegation delivers completed work back at a safe iteration boundary,
+                while release checks now prove the packed provider bundle installs with npm 10.
+              </p>
+            </div>
+            <a
+              href={`${repoUrl}/blob/main/CHANGELOG.md`}
+              className="group inline-flex shrink-0 items-center gap-2 text-sm font-bold text-fg"
+            >
+              Read 1.0.9 release notes
+              <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </a>
+          </div>
+          <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+            {[
+              [
+                'Background delegation',
+                'Return task identifiers immediately, then deliver the worker result without polling.',
+              ],
+              [
+                'Reliable session recovery',
+                'ACP cancellation, session clearing and durable background-work records handle interrupted work cleanly.',
+              ],
+              [
+                'Bounded interfaces',
+                'TUI pickers respect the real terminal height and WebUI undo removes discarded execution state.',
+              ],
+            ].map(([title, body], index) => (
+              <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
+                <span className="font-mono text-xs font-black text-brand-2">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3 className="mt-6 text-lg font-black tracking-[-0.025em] text-fg">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">{body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <FleetTopologyPreview />
 
       <CoordinationLitePreviews />

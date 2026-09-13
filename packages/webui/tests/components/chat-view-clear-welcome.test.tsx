@@ -8,6 +8,13 @@ globalThis.ResizeObserver = class {
   disconnect() {}
 } as never;
 
+// virtua also calls scrollTo() asynchronously when items land in the viewport
+// (it fires the rejection AFTER the tests settle, so it surfaces as an unhandled
+// rejection instead of a failure). jsdom does not implement it.
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = () => {};
+}
+
 const wsStub = {
   on: () => () => {},
   send: () => {},

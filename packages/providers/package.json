@@ -41,12 +41,16 @@
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "5.0.82",
+    "@ai-sdk/anthropic": "4.0.53",
     "@ai-sdk/azure": "4.0.70",
     "@ai-sdk/cohere": "4.0.41",
+    "@ai-sdk/google": "4.0.68",
     "@ai-sdk/google-vertex": "5.0.80",
+    "@ai-sdk/openai": "4.0.66",
+    "@ai-sdk/openai-compatible": "3.0.48",
+    "@ai-sdk/provider": "4.0.14",
     "@wrongstack/core": "workspace:*",
     "ai": "7.0.98",
-    "ai-gateway-provider": "4.0.1",
     "ws": "^8.21.3",
     "zod": "4.6.2"
   },

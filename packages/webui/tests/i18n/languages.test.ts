@@ -6,10 +6,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   detectLocale,
-  normalizeLocale,
-  SUPPORTED_LNGS,
   FALLBACK_LNG,
   LANGUAGES,
+  normalizeLocale,
+  SUPPORTED_LNGS,
 } from '../../src/i18n/languages';
 
 describe('SUPPORTED_LNGS', () => {
@@ -85,11 +85,21 @@ describe('detectLocale', () => {
   });
 
   it('returns en when navigator is undefined', () => {
-    // Simulate SSR: no navigator
-    const origNav = globalThis.navigator;
-    (globalThis as any).navigator = undefined;
-    expect(detectLocale()).toBe('en');
-    (globalThis as any).navigator = origNav;
+    // Simulate SSR: no navigator. jsdom's `navigator` is a getter-only own/
+    // prototype property, so plain assignment throws; shadow it with a
+    // configurable property and restore it in a finally so later cases (and
+    // the shared afterEach) still see a real navigator.
+    const navDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    try {
+      Object.defineProperty(globalThis, 'navigator', {
+        get: () => undefined,
+        configurable: true,
+      });
+      expect(detectLocale()).toBe('en');
+    } finally {
+      if (navDesc) Object.defineProperty(globalThis, 'navigator', navDesc);
+      else delete (globalThis as { navigator?: unknown }).navigator;
+    }
   });
 
   it('returns en when navigator.language is empty', () => {

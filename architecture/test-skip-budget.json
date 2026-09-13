@@ -327,6 +327,16 @@
       "fingerprint": "e9dd96a56b23b9cb"
     },
     {
+      "file": "packages/tools/tests/exec.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "5316582c703bd48e"
+    },
+    {
+      "file": "packages/tools/tests/exec.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "5d302b5384c529c4"
+    },
+    {
       "file": "packages/tools/tests/parser-worker-pool-failover.test.ts",
       "kind": "runIf",
       "fingerprint": "afe17d1aea5b792d"

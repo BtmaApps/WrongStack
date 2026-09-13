@@ -1,15 +1,15 @@
-import { bench, describe } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { describe, test } from 'vitest';
 import {
   DefaultSessionStore,
   estimateRequestTokens,
   estimateRequestTokensCalibrated,
   getCalibrationState,
+  type Message,
   recordActualUsage,
   type SessionEvent,
-  type Message,
 } from '../../src/index.js';
 import { repairToolUseAdjacency } from '../../src/utils/message-invariants.js';
 
@@ -113,7 +113,7 @@ async function runSimulatedSession(
       const hasTools = i % 3 !== 0; // ~67% of iterations have tool calls
       const assistantContent: Array<
         | { type: 'text'; text: string }
-        | { type: 'tool_use'; id: string; name: string; input: unknown }
+        | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
       > = [{ type: 'text', text: `iteration ${i} response `.repeat(80) }];
       if (hasTools) {
         for (let t = 0; t < toolsPerIteration; t++) {
@@ -154,12 +154,16 @@ async function runSimulatedSession(
 }
 
 describe('Simulated 50-iteration agent session (CPU hot path)', () => {
-  bench('50 iter × 300 msgs × 5 tools (optimized — B2+B3+B4)', async () => {
-    await runSimulatedSession(50, 300, 5);
+  test('50 iter × 300 msgs × 5 tools (optimized — B2+B3+B4)', async ({ bench }) => {
+    await bench('50 iter × 300 msgs × 5 tools (optimized — B2+B3+B4)', async () => {
+      await runSimulatedSession(50, 300, 5);
+    }).run();
   });
 
-  bench('100 iter × 500 msgs × 10 tools (heavy, optimized)', async () => {
-    await runSimulatedSession(100, 500, 10);
+  test('100 iter × 500 msgs × 10 tools (heavy, optimized)', async ({ bench }) => {
+    await bench('100 iter × 500 msgs × 10 tools (heavy, optimized)', async () => {
+      await runSimulatedSession(100, 500, 10);
+    }).run();
   });
 });
 
@@ -244,14 +248,20 @@ async function runOldPathSession(
 }
 
 describe('Old path comparison (pre-B2/B3/B4)', () => {
-  bench(
-    '50 iter × 300 msgs × 5 tools (old — always scan, double estimate, sequential appends)',
-    async () => {
-      await runOldPathSession(50, 300, 5);
-    },
-  );
+  test('50 iter × 300 msgs × 5 tools (old — always scan, double estimate, sequential appends)', async ({
+    bench,
+  }) => {
+    await bench(
+      '50 iter × 300 msgs × 5 tools (old — always scan, double estimate, sequential appends)',
+      async () => {
+        await runOldPathSession(50, 300, 5);
+      },
+    ).run();
+  });
 
-  bench('100 iter × 500 msgs × 10 tools (heavy, old path)', async () => {
-    await runOldPathSession(100, 500, 10);
+  test('100 iter × 500 msgs × 10 tools (heavy, old path)', async ({ bench }) => {
+    await bench('100 iter × 500 msgs × 10 tools (heavy, old path)', async () => {
+      await runOldPathSession(100, 500, 10);
+    }).run();
   });
 });

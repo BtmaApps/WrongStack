@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T12:16:09.135Z",
+  "generatedAt": "2026-09-13T13:53:00.816Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3783,
-    "testFiles": 3313,
-    "sourceLines": 919612,
+    "sourceFiles": 3784,
+    "testFiles": 3316,
+    "sourceLines": 919918,
     "workspaceEdges": 128,
-    "moduleEdges": 12096,
+    "moduleEdges": 12098,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -480,7 +480,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 70,
-      "testFiles": 63,
+      "testFiles": 64,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -493,7 +493,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 63
+          "testFiles": 64
         }
       ]
     },
@@ -617,7 +617,7 @@
       "name": "@wrongstack/sdd",
       "dir": "packages/sdd",
       "sourceFiles": 38,
-      "testFiles": 37,
+      "testFiles": 38,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -633,7 +633,7 @@
         {
           "path": "packages/sdd/tsconfig.test.json",
           "error": null,
-          "testFiles": 37
+          "testFiles": 38
         }
       ]
     },
@@ -888,8 +888,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 227,
-      "testFiles": 215,
+      "sourceFiles": 228,
+      "testFiles": 216,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -915,7 +915,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 215
+          "testFiles": 216
         }
       ]
     },
@@ -11265,6 +11265,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/cloudflare-ai-gateway.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/codex-websocket-live.test.ts",
         "projects": [
           "root-node"
@@ -12502,6 +12508,12 @@
       },
       {
         "file": "packages/sdd/tests/start-sdd-run.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sdd/tests/stores/kanban-store.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17961,6 +17973,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/node-pty-spawn-helper.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/open-browser-guard.test.ts",
         "projects": [
           "root-node"
@@ -21070,7 +21088,7 @@
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 890,
+      "lines": 1013,
       "relativeImports": 19
     },
     {
@@ -21921,6 +21939,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/acp/src/client/acp-session.ts",
+      "lines": 1013,
+      "relativeImports": 19
+    },
+    {
       "file": "packages/tools/src/codebase-index/indexer.ts",
       "lines": 1013,
       "relativeImports": 11
@@ -21999,11 +22022,6 @@
       "file": "packages/core/src/hq/auth-store.ts",
       "lines": 978,
       "relativeImports": 7
-    },
-    {
-      "file": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "lines": 973,
-      "relativeImports": 12
     }
   ],
   "testOnlyExports": [

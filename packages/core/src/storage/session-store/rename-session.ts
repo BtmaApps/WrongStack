@@ -17,6 +17,7 @@ export interface RenameSessionParams {
   readSummaryManifest: (id: string) => Promise<SessionSummary | null>;
   summaryFor: (id: string) => Promise<SessionSummary>;
   appendToIndexStrict: (summary: SessionSummary) => Promise<void>;
+  isSessionInUse?: ((sessionId: string) => Promise<string | null>) | undefined;
 }
 
 export async function executeRenameSession(params: RenameSessionParams): Promise<SessionSummary> {
@@ -48,6 +49,14 @@ export async function executeRenameSession(params: RenameSessionParams): Promise
   let errorMsg: string | undefined;
   let updated: SessionSummary;
   try {
+    // Guard: reject rename of an in-progress session so the manifest write
+    // cannot race with an active writer's own manifest updates.
+    if (params.isSessionInUse) {
+      const reason = await params.isSessionInUse(id);
+      if (reason) {
+        throw new Error(`Session ${id} is in use (${reason}) and cannot be renamed.`);
+      }
+    }
     updated = await withFileLock(manifest, async () => {
       const summary = (await readSummaryManifest(id)) ?? (await summaryFor(id));
       const { name: _drop, ...rest } = summary;

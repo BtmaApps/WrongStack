@@ -1,9 +1,10 @@
 import { spawn as spawnChild } from 'node:child_process';
 import { createRequire } from 'node:module';
-import type { Logger } from '@wrongstack/core/types';
 import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
+import type { Logger } from '@wrongstack/core/types';
 import { buildChildEnv, toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
+import { repairNodePtySpawnHelper, spawnHelperFailureHint } from './node-pty-spawn-helper.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
 import type { WSServerMessage } from './types.js';
 import { sendSerialized } from './ws-utils.js';
@@ -179,7 +180,8 @@ export class TerminalWebSocketHandler {
         ...windowsPtyOptions(),
       });
     } catch (err) {
-      const msg = `Integrated terminal failed to start: ${toErrorMessage(err)}`;
+      const hint = spawnHelperFailureHint(toErrorMessage(err));
+      const msg = `Integrated terminal failed to start: ${toErrorMessage(err)}${hint ? `\r\n${hint}` : ''}`;
       this.logger.warn?.(`terminal spawn failed: ${toErrorMessage(err)}`);
       this.send(ws, { type: 'terminal.output', payload: { id: payload.id, data: `${msg}\r\n` } });
       this.send(ws, { type: 'terminal.exit', payload: { id: payload.id, exitCode: -1 } });
@@ -292,6 +294,7 @@ function defaultLoadNodePty(): NodePtyApi | null {
   if (cachedNodePty !== undefined) return cachedNodePty;
   try {
     cachedNodePty = requireFromHere('node-pty') as NodePtyApi;
+    repairNodePtySpawnHelper(requireFromHere);
   } catch {
     cachedNodePty = null;
   }

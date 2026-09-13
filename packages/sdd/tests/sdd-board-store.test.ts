@@ -220,7 +220,12 @@ describe('SddBoardStore', () => {
         }),
       },
     });
-    expect(await truncateFailure.drainControl('run')).toEqual([]);
+    // Truncate failed after read succeeded — the drain retries the clear via
+    // the atomic-replace fallback and returns the batch only once the file is
+    // verifiably empty, so nothing is silently lost and nothing is delivered
+    // twice.
+    expect(await truncateFailure.drainControl('run')).toEqual([{ ts: 1, type: 'pause' }]);
+    expect(await fs.readFile(truncateFailure.controlPath('run'), 'utf8')).toBe('');
 
     const emptiedBeforeLock = new SddBoardStore({
       baseDir: directory,
@@ -234,6 +239,34 @@ describe('SddBoardStore', () => {
       },
     });
     expect(await emptiedBeforeLock.drainControl('run')).toEqual([]);
+  });
+
+  it('delivers truncate-failed commands exactly once across drains', async () => {
+    let truncateAttempts = 0;
+    const refusingStore = new SddBoardStore({
+      baseDir: directory,
+      controlFileIO: {
+        stat: async (p) => await fs.stat(p),
+        readFile: async (p) => await fs.readFile(p, 'utf8'),
+        truncate: async () => {
+          truncateAttempts += 1;
+          throw new Error('EBUSY: in-place truncation refused');
+        },
+      },
+    });
+    const filePath = refusingStore.controlPath('run');
+    await fs.writeFile(filePath, '{"ts":1,"type":"pause"}\n{"ts":2,"type":"resume"}\n', 'utf8');
+    // First drain: in-place truncation refuses, the atomic-replace fallback
+    // empties the file, and the read commands are delivered exactly once.
+    expect(await refusingStore.drainControl('run')).toEqual([
+      { ts: 1, type: 'pause' },
+      { ts: 2, type: 'resume' },
+    ]);
+    expect(await fs.readFile(filePath, 'utf8')).toBe('');
+    // Regression (chimera Medium): the truncate failure must never become
+    // duplicate delivery — the emptied file yields no commands on re-drain.
+    expect(await refusingStore.drainControl('run')).toEqual([]);
+    expect(truncateAttempts).toBe(1);
   });
 });
 

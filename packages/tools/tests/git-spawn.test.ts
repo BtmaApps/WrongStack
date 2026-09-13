@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
-import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Drive buildArgs for every git subcommand (incl. push/pull/reset/worktree)
@@ -48,7 +48,7 @@ beforeEach(() => {
   capturedArgs = [];
   cfg.stdout = '';
   cfg.code = 0;
-  cfg.spawnError = undefined;
+  delete cfg.spawnError;
 });
 afterEach(() => vi.restoreAllMocks());
 

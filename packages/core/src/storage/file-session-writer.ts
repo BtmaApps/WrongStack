@@ -720,6 +720,11 @@ export class FileSessionWriter implements SessionWriter {
         this.snapshotTracker.clear();
       },
     });
+    // Reopen the handle so the writer is immediately usable after clearSession.
+    // executeClearSession closes this.handle before the atomic write, and does not
+    // reopen it. Without this, the first post-clear append() hits a closed-handle
+    // error and the session is effectively corrupted.
+    this.handle = await fsp.open(this.filePath, 'a', 0o600);
   }
 
   /**

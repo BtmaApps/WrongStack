@@ -179,6 +179,58 @@ describe('createConversationOperations', () => {
     });
   });
 
+  it('omits the maxIterations key entirely when getMaxIterations throws, deferring to the agent default, and still fires onRunEnded', async () => {
+    const sent: Array<{ type: string; payload: unknown }> = [];
+    const controller = new AbortController();
+    const run = vi.fn(async () => ({ status: 'completed', iterations: 1, finalText: 'ok' }));
+    const end = vi.fn();
+    const onRunEnded = vi.fn();
+    const routes = createConversationOperations({
+      getAgent: () =>
+        ({
+          run,
+          ctx: {
+            provider: { id: 'provider', capabilities: { vision: true } },
+            model: 'model',
+            messages: [],
+            meta: {},
+          },
+          tools: { list: () => [] },
+        }) as never,
+      getSessionId: () => 'session-live',
+      runControl: { begin: () => controller, end, abort: vi.fn() },
+      pendingConfirms: new Map(),
+      submitUserInput: vi.fn(),
+      send: (_ws, message) => sent.push(message),
+      notifyAbort: vi.fn(),
+      // A hostile host callback must not skip `ran = true`: that would drop
+      // the onRunEnded signal the auto-wake scheduler needs to settle the
+      // turn — the double-run window from the 5-file chimera report.
+      getMaxIterations: () => {
+        throw new Error('host preference lookup exploded');
+      },
+      onRunEnded,
+    });
+
+    await routes.userMessage(ws, {
+      type: 'user_message',
+      payload: { content: 'hello' },
+    });
+
+    // The turn ran with NO maxIterations key at all: the preference is
+    // dropped (the agent's own default applies), not the turn.
+    expect(run).toHaveBeenCalledWith('hello', { signal: controller.signal });
+    // The post-run bookkeeping fired, so the scheduler settles the turn
+    // instead of re-entering the same prompt.
+    expect(onRunEnded).toHaveBeenCalledTimes(1);
+    expect(onRunEnded).toHaveBeenCalledWith('session-live', { aborted: false, origin: 'user' });
+    expect(end).toHaveBeenCalledWith(ws, 'session-live', controller);
+    expect(sent.at(-1)).toMatchObject({
+      type: 'run.result',
+      payload: { sessionId: 'session-live', finalText: 'ok' },
+    });
+  });
+
   it('rejects a stale session before acquiring run control', async () => {
     const h = harness();
     await h.routes.userMessage(ws, {

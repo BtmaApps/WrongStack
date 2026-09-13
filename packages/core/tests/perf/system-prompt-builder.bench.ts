@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { DefaultSystemPromptBuilder } from '../../src/core/system-prompt-builder.js';
 import type { Tool } from '../../src/types/tool.js';
 
@@ -45,23 +45,27 @@ const tools = TOOL_NAMES.map(makeTool);
 const builder = new DefaultSystemPromptBuilder();
 
 describe('DefaultSystemPromptBuilder.build', () => {
-  bench('15 tools, no memory/skills/mode', async () => {
-    await builder.build({
-      cwd: '/tmp/project',
-      projectRoot: '/tmp/project',
-      tools,
-      provider: 'anthropic',
-      model: 'anthropic-test-model',
-    });
+  test('15 tools, no memory/skills/mode', async ({ bench }) => {
+    await bench('15 tools, no memory/skills/mode', async () => {
+      await builder.build({
+        cwd: '/tmp/project',
+        projectRoot: '/tmp/project',
+        tools,
+        provider: 'anthropic',
+        model: 'anthropic-test-model',
+      });
+    }).run();
   });
 
-  bench('empty tools list', async () => {
-    await builder.build({
-      cwd: '/tmp/project',
-      projectRoot: '/tmp/project',
-      tools: [],
-      provider: 'anthropic',
-      model: 'anthropic-test-model',
-    });
+  test('empty tools list', async ({ bench }) => {
+    await bench('empty tools list', async () => {
+      await builder.build({
+        cwd: '/tmp/project',
+        projectRoot: '/tmp/project',
+        tools: [],
+        provider: 'anthropic',
+        model: 'anthropic-test-model',
+      });
+    }).run();
   });
 });

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   readFileSync: vi.fn(() => JSON.stringify({ authToken: 'owner-token' })),
   createConnection: vi.fn(),
   spawn: vi.fn(),
-  openDaemonLogFd: vi.fn(() => null),
+  openDaemonLogFd: vi.fn((): number | null => null),
   closeDaemonLogFd: vi.fn(),
 }));
 

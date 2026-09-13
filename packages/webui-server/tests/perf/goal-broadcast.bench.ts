@@ -1,6 +1,6 @@
 import type { PhaseGraph, PhaseNode } from '@wrongstack/core/goal';
 import type { TaskGraph, TaskNode } from '@wrongstack/core/types';
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { GoalWebSocketHandler } from '../../src/server/goal-ws-handler.js';
 
 function task(id: string): TaskNode {
@@ -99,11 +99,15 @@ describe('GoalWebSocketHandler state projection', () => {
   const medium = handler(ONE_THOUSAND, 0);
   const large = handler(TEN_THOUSAND, 0);
 
-  bench('buildState — 1K tasks', () => {
-    medium.buildState();
+  test('buildState — 1K tasks', async ({ bench }) => {
+    await bench('buildState — 1K tasks', () => {
+      medium.buildState();
+    }).run();
   });
-  bench('buildState — 10K tasks', () => {
-    large.buildState();
+  test('buildState — 10K tasks', async ({ bench }) => {
+    await bench('buildState — 10K tasks', () => {
+      large.buildState();
+    }).run();
   });
 });
 
@@ -111,6 +115,12 @@ describe('GoalWebSocketHandler broadcast fan-out', () => {
   const oneClient = handler(TEN_THOUSAND, 1);
   const oneHundredClients = handler(TEN_THOUSAND, 100);
 
-  bench('broadcastState — 10K tasks / 1 client', () => oneClient.broadcastState());
-  bench('broadcastState — 10K tasks / 100 clients', () => oneHundredClients.broadcastState());
+  test('broadcastState — 10K tasks / 1 client', async ({ bench }) => {
+    await bench('broadcastState — 10K tasks / 1 client', () => oneClient.broadcastState()).run();
+  });
+  test('broadcastState — 10K tasks / 100 clients', async ({ bench }) => {
+    await bench('broadcastState — 10K tasks / 100 clients', () =>
+      oneHundredClients.broadcastState(),
+    ).run();
+  });
 });

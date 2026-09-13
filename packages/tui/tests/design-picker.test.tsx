@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { DesignPicker } from '../src/components/design-picker.js';
 
 describe('DesignPicker', () => {
+  const frameHeight = (frame: string): number => frame.replace(/\n+$/, '').split('\n').length;
+
   const kits = [
     { id: 'minimal-clarity', aesthetic: 'Clean, modern — built for speed' },
     { id: 'neo-brutalist', aesthetic: 'Bold high-contrast industrial' },
@@ -90,6 +92,49 @@ describe('DesignPicker', () => {
     );
     const frame = lastFrame() ?? '';
     expect(frame).toContain(longId);
+    unmount();
+  });
+
+  it('caps the panel height at the measured maxRows budget', () => {
+    const manyKits = Array.from({ length: 6 }, (_unused, i) => ({
+      id: `kit-${i}`,
+      aesthetic: 'test',
+    }));
+    const { lastFrame, unmount } = render(
+      React.createElement(DesignPicker, {
+        kits: manyKits,
+        selected: 0,
+        stack: 'web',
+        maxRows: 10,
+      } as never),
+    );
+    const frame = lastFrame() ?? '';
+    // Regression for the legacy rows-10 guess: 4 chrome rows + up to 2
+    // marker rows + the visible kits (1 row each) must fit the measured
+    // budget the caller hands in.
+    expect(frameHeight(frame)).toBeLessThanOrEqual(10);
+    expect(frame).toContain('more below');
+    expect(frame).not.toContain('kit-5');
+    unmount();
+  });
+
+  it('re-centers the window on deep selections so late kits stay reachable', () => {
+    const manyKits = Array.from({ length: 6 }, (_unused, i) => ({
+      id: `kit-${i}`,
+      aesthetic: 'test',
+    }));
+    const { lastFrame, unmount } = render(
+      React.createElement(DesignPicker, {
+        kits: manyKits,
+        selected: 5,
+        stack: 'web',
+        maxRows: 10,
+      } as never),
+    );
+    const frame = lastFrame() ?? '';
+    expect(frameHeight(frame)).toBeLessThanOrEqual(10);
+    expect(frame).toContain('more above');
+    expect(frame).toContain('kit-5');
     unmount();
   });
 });

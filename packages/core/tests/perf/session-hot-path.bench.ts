@@ -1,7 +1,8 @@
-import { bench, describe } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { describe, test } from 'vitest';
+import type { Message, SessionEvent } from '../../src/index.js';
 import {
   DefaultSessionStore,
   estimateRequestTokens,
@@ -9,7 +10,6 @@ import {
   getCalibrationState,
 } from '../../src/index.js';
 import { repairToolUseAdjacency } from '../../src/utils/message-invariants.js';
-import type { Message, SessionEvent } from '../../src/index.js';
 
 // ── B1: Write buffer — session append/close throughput ───────────────────
 //
@@ -41,20 +41,28 @@ async function sessionThroughput(eventCount: number): Promise<void> {
 }
 
 describe('B1 — session write buffer throughput', () => {
-  bench('1 event → close', async () => {
-    await sessionThroughput(1);
+  test('1 event → close', async ({ bench }) => {
+    await bench('1 event → close', async () => {
+      await sessionThroughput(1);
+    }).run();
   });
 
-  bench('5 events → close', async () => {
-    await sessionThroughput(5);
+  test('5 events → close', async ({ bench }) => {
+    await bench('5 events → close', async () => {
+      await sessionThroughput(5);
+    }).run();
   });
 
-  bench('10 events → close', async () => {
-    await sessionThroughput(10);
+  test('10 events → close', async ({ bench }) => {
+    await bench('10 events → close', async () => {
+      await sessionThroughput(10);
+    }).run();
   });
 
-  bench('50 events → close', async () => {
-    await sessionThroughput(50);
+  test('50 events → close', async ({ bench }) => {
+    await bench('50 events → close', async () => {
+      await sessionThroughput(50);
+    }).run();
   });
 });
 
@@ -97,22 +105,26 @@ describe('B2 — batch vs sequential tool result appends', () => {
       makeToolResult(`tu-${i}`, `tool result ${i}: `.repeat(20)),
     );
 
-    bench(`${n} tools — sequential append()`, async () => {
-      const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-bench-'));
-      try {
-        await sequentialAppends(new DefaultSessionStore({ dir: tmp }), events);
-      } finally {
-        await fs.rm(tmp, { recursive: true, force: true });
-      }
+    test(`${n} tools — sequential append()`, async ({ bench }) => {
+      await bench(`${n} tools — sequential append()`, async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-bench-'));
+        try {
+          await sequentialAppends(new DefaultSessionStore({ dir: tmp }), events);
+        } finally {
+          await fs.rm(tmp, { recursive: true, force: true });
+        }
+      }).run();
     });
 
-    bench(`${n} tools — batch appendBatch()`, async () => {
-      const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-bench-'));
-      try {
-        await batchAppend(new DefaultSessionStore({ dir: tmp }), events);
-      } finally {
-        await fs.rm(tmp, { recursive: true, force: true });
-      }
+    test(`${n} tools — batch appendBatch()`, async ({ bench }) => {
+      await bench(`${n} tools — batch appendBatch()`, async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-bench-'));
+        try {
+          await batchAppend(new DefaultSessionStore({ dir: tmp }), events);
+        } finally {
+          await fs.rm(tmp, { recursive: true, force: true });
+        }
+      }).run();
     });
   }
 });
@@ -159,26 +171,30 @@ describe('B3 — preFlight token estimate reuse', () => {
   for (const n of messageCounts) {
     const messages = makeMessages(n);
 
-    bench(`${n} messages — double call (old)`, () => {
-      // Old pattern: two separate calls
-      const est1 = estimateRequestTokens(messages, systemPrompt, tools).total;
-      const est2 = estimateRequestTokensCalibrated(
-        messages,
-        systemPrompt,
-        tools,
-        'bench/probe',
-      ).total;
-      return est1 + est2; // prevent dead-code elimination
+    test(`${n} messages — double call (old)`, async ({ bench }) => {
+      await bench(`${n} messages — double call (old)`, () => {
+        // Old pattern: two separate calls
+        const est1 = estimateRequestTokens(messages, systemPrompt, tools).total;
+        const est2 = estimateRequestTokensCalibrated(
+          messages,
+          systemPrompt,
+          tools,
+          'bench/probe',
+        ).total;
+        return est1 + est2; // prevent dead-code elimination
+      }).run();
     });
 
-    bench(`${n} messages — preFlight reuse (new)`, () => {
-      // New pattern: one call, derive calibrated
-      const preFlight = estimateRequestTokens(messages, systemPrompt, tools);
-      const cal = getCalibrationState('bench/probe');
-      const calibratedTotal = cal.calibrated
-        ? Math.round(preFlight.total * Math.min(1.5, Math.max(0.5, cal.ratio)))
-        : preFlight.total;
-      return preFlight.total + calibratedTotal;
+    test(`${n} messages — preFlight reuse (new)`, async ({ bench }) => {
+      await bench(`${n} messages — preFlight reuse (new)`, () => {
+        // New pattern: one call, derive calibrated
+        const preFlight = estimateRequestTokens(messages, systemPrompt, tools);
+        const cal = getCalibrationState('bench/probe');
+        const calibratedTotal = cal.calibrated
+          ? Math.round(preFlight.total * Math.min(1.5, Math.max(0.5, cal.ratio)))
+          : preFlight.total;
+        return preFlight.total + calibratedTotal;
+      }).run();
     });
   }
 });
@@ -209,19 +225,23 @@ describe('B4 — repairToolUseAdjacency skip on clean messages', () => {
   for (const n of messageCounts) {
     const messages = makeCleanMessages(n);
 
-    bench(`${n} clean messages — always scan (old)`, () => {
-      const repaired = repairToolUseAdjacency(messages);
-      return repaired.messages.length; // prevent dead-code elimination
+    test(`${n} clean messages — always scan (old)`, async ({ bench }) => {
+      await bench(`${n} clean messages — always scan (old)`, () => {
+        const repaired = repairToolUseAdjacency(messages);
+        return repaired.messages.length; // prevent dead-code elimination
+      }).run();
     });
 
-    bench(`${n} clean messages — dirty flag skip (new)`, () => {
-      // Simulate the dirty-flag guard: skip the scan entirely
-      const dirty = false;
-      if (dirty) {
-        const repaired = repairToolUseAdjacency(messages);
-        return repaired.messages.length;
-      }
-      return messages.length;
+    test(`${n} clean messages — dirty flag skip (new)`, async ({ bench }) => {
+      await bench(`${n} clean messages — dirty flag skip (new)`, () => {
+        // Simulate the dirty-flag guard: skip the scan entirely
+        const dirty = false;
+        if (dirty) {
+          const repaired = repairToolUseAdjacency(messages);
+          return repaired.messages.length;
+        }
+        return messages.length;
+      }).run();
     });
   }
 });
@@ -257,23 +277,27 @@ describe('B5 — emitContextPct elision on idle autonomous loops', () => {
   for (const n of counts) {
     const messages = makeIdleMessages(n);
 
-    bench(`${n} msgs — always compute (old)`, () => {
-      // Old: unconditionally compute and emit
-      const { total } = estimateRequestTokens(messages, systemPrompt, IDLE_TOOLS);
-      return total; // prevent dead-code elimination
+    test(`${n} msgs — always compute (old)`, async ({ bench }) => {
+      await bench(`${n} msgs — always compute (old)`, () => {
+        // Old: unconditionally compute and emit
+        const { total } = estimateRequestTokens(messages, systemPrompt, IDLE_TOOLS);
+        return total; // prevent dead-code elimination
+      }).run();
     });
 
-    bench(`${n} msgs — skip on same count (new)`, () => {
-      // New: check dirty-guard first. In an idle loop the count is unchanged,
-      // so we return immediately. This bench simulates the HIT path (skip).
-      const msgCount = messages.length;
-      // Simulated cache — initialized before the idle loop
-      const cached = n; // same as current
-      if (msgCount === cached) {
-        return 0; // early return — no compute, no emit
-      }
-      const { total } = estimateRequestTokens(messages, systemPrompt, IDLE_TOOLS);
-      return total;
+    test(`${n} msgs — skip on same count (new)`, async ({ bench }) => {
+      await bench(`${n} msgs — skip on same count (new)`, () => {
+        // New: check dirty-guard first. In an idle loop the count is unchanged,
+        // so we return immediately. This bench simulates the HIT path (skip).
+        const msgCount = messages.length;
+        // Simulated cache — initialized before the idle loop
+        const cached = n; // same as current
+        if (msgCount === cached) {
+          return 0; // early return — no compute, no emit
+        }
+        const { total } = estimateRequestTokens(messages, systemPrompt, IDLE_TOOLS);
+        return total;
+      }).run();
     });
   }
 });

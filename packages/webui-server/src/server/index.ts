@@ -362,6 +362,11 @@ export {
   getExternalAddresses,
   type NetworkAddress,
 } from './network-info.js';
+export {
+  ensureSpawnHelperExecutable,
+  repairNodePtySpawnHelper,
+  type SpawnHelperRepair,
+} from './node-pty-spawn-helper.js';
 export { browserOpenCommand, openBrowser } from './open-browser.js';
 export { isPathInside, resolveWorkingDirInsideProject } from './path-containment.js';
 export type { ConfirmDecision, PendingConfirm } from './pending-confirms.js';

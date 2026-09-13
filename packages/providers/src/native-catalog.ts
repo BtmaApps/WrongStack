@@ -1,19 +1,19 @@
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { createBedrockMantle } from '@ai-sdk/amazon-bedrock/mantle';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createAzure } from '@ai-sdk/azure';
 import { createCohere } from '@ai-sdk/cohere';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createGoogleVertexAnthropic } from '@ai-sdk/google-vertex/anthropic';
 import { createGoogleVertexMaas } from '@ai-sdk/google-vertex/maas';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { Capabilities, ModelsDevModel, Provider } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
 import type { LanguageModel } from 'ai';
-import { createAiGateway as createCloudflareAiGateway } from 'ai-gateway-provider';
-import { createAnthropic } from 'ai-gateway-provider/providers/anthropic';
-import { createGoogleGenerativeAI } from 'ai-gateway-provider/providers/google';
-import { createOpenAI } from 'ai-gateway-provider/providers/openai';
-import { createUnified } from 'ai-gateway-provider/providers/unified';
 import { AiGatewayProvider } from './ai-gateway.js';
+import { createCloudflareGatewayModel } from './cloudflare-ai-gateway.js';
 
 export type NativeCatalogNpm =
   | '@ai-sdk/amazon-bedrock'
@@ -104,7 +104,8 @@ function createResolver(
       }
       const apiKey = requireApiKey(opts, npm);
       const apiBase = requireBaseUrl(baseUrl, opts.id, npm);
-      const sdk = createUnified({
+      const sdk = createOpenAICompatible({
+        name: opts.id,
         apiKey,
         baseURL: apiBase,
         ...(opts.headers ? { headers: opts.headers } : {}),
@@ -197,17 +198,37 @@ function createCloudflareResolver(
   const gatewayId = requireEnvironment(opts.id, 'CLOUDFLARE_GATEWAY_ID');
 
   if (modelNpm === '@ai-sdk/openai' || modelNpm === '@ai-sdk/anthropic') {
-    const gateway = createCloudflareAiGateway({ accountId, gateway: gatewayId, apiKey });
     if (modelNpm === '@ai-sdk/openai') {
-      const sdk = createOpenAI(opts.fetchImpl ? { fetch: opts.fetchImpl } : undefined);
-      return (modelId) => gateway(sdk.responses(stripProviderPrefix(modelId, 'openai/')));
+      const sdk = createOpenAI({
+        apiKey: 'cloudflare-ai-gateway',
+        ...(opts.fetchImpl ? { fetch: opts.fetchImpl } : {}),
+      });
+      return (modelId) =>
+        createCloudflareGatewayModel(sdk.responses(stripProviderPrefix(modelId, 'openai/')), {
+          accountId,
+          gatewayId,
+          apiKey,
+          provider: 'openai',
+          fetchImpl: opts.fetchImpl,
+        });
     }
-    const sdk = createAnthropic(opts.fetchImpl ? { fetch: opts.fetchImpl } : undefined);
-    return (modelId) => gateway(sdk(stripProviderPrefix(modelId, 'anthropic/')));
+    const sdk = createAnthropic({
+      apiKey: 'cloudflare-ai-gateway',
+      ...(opts.fetchImpl ? { fetch: opts.fetchImpl } : {}),
+    });
+    return (modelId) =>
+      createCloudflareGatewayModel(sdk(stripProviderPrefix(modelId, 'anthropic/')), {
+        accountId,
+        gatewayId,
+        apiKey,
+        provider: 'anthropic',
+        fetchImpl: opts.fetchImpl,
+      });
   }
 
   if (modelNpm === 'ai-gateway-provider') {
-    const sdk = createUnified({
+    const sdk = createOpenAICompatible({
+      name: opts.id,
       apiKey,
       baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
       headers: { ...opts.headers, 'cf-aig-gateway-id': gatewayId },

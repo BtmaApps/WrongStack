@@ -44,11 +44,17 @@ async function listSddSnapshots(
     // One-time compatibility migration for runs persisted before workflow state.
     const legacy = await loadLegacySnapshots(legacyStore);
     for (const snapshot of legacy) {
-      await writeKanbanWorkflowState(
-        projectRoot,
-        kanbanWorkflowId('sdd', snapshot.runId),
-        snapshot,
-      );
+      try {
+        await writeKanbanWorkflowState(
+          projectRoot,
+          kanbanWorkflowId('sdd', snapshot.runId),
+          snapshot,
+        );
+      } catch {
+        // Best-effort migration: a failed write leaves the snapshot in legacy
+        // store; it will be retried on the next call. Do not let one bad
+        // snapshot abort the migration of all remaining ones.
+      }
     }
     return legacy;
   }
@@ -65,7 +71,15 @@ async function loadSddSnapshot(
   if (transport !== 'kanban') return legacyStore.load(runId);
   const state = await readKanbanWorkflowState(projectRoot, kanbanWorkflowId('sdd', runId));
   if (isSddBoardSnapshot(state?.value)) return state.value;
-  const legacy = await legacyStore.load(runId);
+  let legacy;
+  try {
+    legacy = await legacyStore.load(runId);
+  } catch {
+    // Legacy store unavailable — return null rather than propagating the
+    // exception so callers that check kanban first are not broken by a
+    // corrupted legacy file.
+    return null;
+  }
   if (legacy) {
     await writeKanbanWorkflowState(projectRoot, kanbanWorkflowId('sdd', runId), legacy);
   }

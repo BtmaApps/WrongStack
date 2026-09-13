@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const prDrafterPlugin = (await import('../src/pr-drafter')).default;
+const prDrafterPlugin = (await import('../src/pr-drafter/index.js')).default;
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -120,7 +120,7 @@ describe('pr-drafter extra coverage', () => {
       onPatternHandler('tool.completed', { name, id: name, durationMs: 1, outputChars: 2 });
     }
 
-    const h = (await prDrafterPlugin.health!()) as {
+    const h = (await prDrafterPlugin.health!()) as unknown as {
       counters: Record<string, number>;
       message: string;
     };
@@ -156,13 +156,13 @@ describe('pr-drafter extra coverage', () => {
     });
     expect(() => postHook({ toolName: 'git_autocommit' })).not.toThrow();
 
-    const h = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    const h = (await prDrafterPlugin.health!()) as unknown as { counters: Record<string, number> };
     expect(h.counters.commits).toBe(0);
     expect(h.counters.files).toBe(0);
   });
 
   it('parses a commit out of a truncated git_autocommit result', async () => {
-    const { parseAutocommitResult } = await import('../src/pr-drafter');
+    const { parseAutocommitResult } = await import('../src/pr-drafter/index.js');
     const full = autocommitResult('feat(api): add "quoted" \\ thing');
     expect(parseAutocommitResult(full.slice(0, full.indexOf('"stagedFiles"') + 5))).toEqual({
       hash: 'a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a7b8c9d0',
@@ -185,7 +185,7 @@ describe('pr-drafter extra coverage', () => {
       usage: { input: 200, output: 100 },
     });
 
-    const h = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    const h = (await prDrafterPlugin.health!()) as unknown as { counters: Record<string, number> };
     // onEvent handler doesn't increment toolCalls, but records models/tokens
     expect(h.counters.toolCalls).toBe(0); // toolCalls is only for onPattern
   });
@@ -210,7 +210,7 @@ describe('pr-drafter extra coverage', () => {
     onPatternHandler('tool.completed', { tool: 'write' });
     onPatternHandler('tool.completed', { tool: 'edit', input: null });
 
-    const h = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    const h = (await prDrafterPlugin.health!()) as unknown as { counters: Record<string, number> };
     // The handler should have safely handled these
     expect(h.counters.toolCalls).toBe(2);
   });

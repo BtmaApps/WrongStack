@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { atomicWrite } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTodoTrackerPlugin } from '../src/todo-tracker';
+import { createTodoTrackerPlugin } from '../src/todo-tracker/index.js';
 
 function makeApi(filePath: string) {
   return {
@@ -89,7 +89,10 @@ describe('todo-tracker fault injection', () => {
       /ENOSPC/,
     );
     expect(readFileSync(filePath, 'utf8')).toBe(before);
-    const h = (await plugin.health!()) as { total: number; sessionCounts: { add: number } };
+    const h = (await plugin.health!()) as unknown as {
+      total: number;
+      sessionCounts: { add: number };
+    };
     expect(h.total).toBe(1);
     expect(h.sessionCounts.add).toBe(1);
 

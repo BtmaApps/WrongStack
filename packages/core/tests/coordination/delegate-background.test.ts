@@ -13,19 +13,25 @@ import {
   startDelegationAttempt,
   validateDelegationInput,
 } from '../../src/coordination/delegation/run-delegation.js';
-import { makeAwaitTasksTool } from '../../src/coordination/director-basic-tools.js';
 import { Director } from '../../src/coordination/director.js';
+import { makeAwaitTasksTool } from '../../src/coordination/director-basic-tools.js';
+import type { DirectorOptions } from '../../src/coordination/director-options.js';
 import { FLEET_ROSTER } from '../../src/coordination/fleet.js';
 import { EventBus } from '../../src/kernel/events.js';
-import type { SessionEvent } from '../../src/types/session.js';
+import type { AgentContext } from '../../src/types/context.js';
 import type {
   SubagentRunContext,
   SubagentRunOutcome,
   TaskSpec,
 } from '../../src/types/multi-agent.js';
+import type { SessionEvent } from '../../src/types/session.js';
 
 const SESSION = 'sess-bg';
-const CTX = { session: { id: SESSION } };
+/** The delegate tool only reads `ctx.session.id` to resolve the owning session. */
+function testCtx(ctx: { session?: { id: string } } | null): AgentContext {
+  return ctx as unknown as AgentContext;
+}
+const CTX = testCtx({ session: { id: SESSION } });
 const BOUNDARY = {
   scope: 'The named target only — read, verify, report.',
   outOfScope: ['Do not modify any files'],
@@ -46,7 +52,7 @@ interface Gate {
 }
 
 /** Real Director whose runner blocks until the test releases each task. */
-function gatedDirector(opts: { notifier?: ReturnType<typeof vi.fn> } = {}) {
+function gatedDirector(opts: { notifier?: DirectorOptions['taskResultNotifier'] } = {}) {
   const gates: Gate[] = [];
   const runner = vi.fn(
     (task: TaskSpec, ctx: SubagentRunContext) =>
@@ -354,7 +360,9 @@ describe('delegate — background mode (default)', () => {
     })) as Launch;
     await expect.poll(() => gates.length).toBe(1);
 
-    const awaited = makeAwaitTasksTool(director).execute({ taskIds: [launch.taskId] }) as Promise<{
+    const awaited = makeAwaitTasksTool(director).execute({ taskIds: [launch.taskId] }, CTX, {
+      signal: new AbortController().signal,
+    }) as Promise<{
       results: Array<{ taskId: string; delegationId?: string; delegationHint?: string }>;
     }>;
     gates[0]!.release();
@@ -379,9 +387,13 @@ describe('delegate — background mode (default)', () => {
       () => tracker.dispose(),
       () => director.shutdown(),
     );
-    const pending = tool.execute({ role: 'bug-hunter', task: 'audit', ...BOUNDARY }, null, {
-      signal: new AbortController().signal,
-    }) as Promise<{ ok: boolean; status?: string }>;
+    const pending = tool.execute(
+      { role: 'bug-hunter', task: 'audit', ...BOUNDARY },
+      testCtx(null),
+      {
+        signal: new AbortController().signal,
+      },
+    ) as Promise<{ ok: boolean; status?: string }>;
     await expect.poll(() => gates.length).toBe(1);
     gates[0]!.release();
     await expect(pending).resolves.toMatchObject({ ok: true, status: 'success' });
@@ -427,7 +439,7 @@ function fakeDirector(results: Array<(taskId: string) => unknown>) {
         return id;
       }),
       assign: vi.fn(async (task: { id: string }) => task.id),
-      awaitTasks: vi.fn(async ([taskId]: string[]) => [results[attempt++]!(taskId)]),
+      awaitTasks: vi.fn(async (taskIds: string[]) => [results[attempt++]!(taskIds[0]!)]),
       snapshot: vi.fn(() => ({ perSubagent: {} })),
       terminate: vi.fn(async () => {}),
     } as never as Director,
@@ -527,9 +539,9 @@ describe('DelegationTracker', () => {
     cleanups.push(() => tracker.dispose());
     const entry = tracker.begin({ sessionId: SESSION, target: 'w', task: 't' });
     const hooks = tracker.hooksFor(entry.delegationId);
-    hooks.onAttempt(attempt('t0', 0));
+    hooks.onAttempt!(attempt('t0', 0));
     tracker.noteLeaderConsumed('t0');
-    hooks.onAttempt(attempt('t1', 1));
+    hooks.onAttempt!(attempt('t1', 1));
     expect(entry.state).toBe('running');
     tracker.track(entry.delegationId, Promise.resolve({ ok: true, taskId: 't1', summary: 's' }));
     await expect.poll(() => hub.pending(SESSION)).toBe(1);
@@ -540,7 +552,7 @@ describe('DelegationTracker', () => {
     const tracker = new DelegationTracker({ hub });
     cleanups.push(() => tracker.dispose());
     const entry = tracker.begin({ sessionId: SESSION, target: 'w', task: 't' });
-    tracker.hooksFor(entry.delegationId).onAttempt(attempt('t0', 0));
+    tracker.hooksFor(entry.delegationId).onAttempt!(attempt('t0', 0));
     tracker.track(entry.delegationId, Promise.resolve({ ok: true, taskId: 't0', summary: 's' }));
     await expect.poll(() => hub.pending(SESSION)).toBe(1);
     expect(tracker.noteLeaderConsumed('t0')).toBe(true);

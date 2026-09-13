@@ -11,12 +11,12 @@ import { Director } from '../../src/coordination/director.js';
 import { FLEET_ROSTER } from '../../src/coordination/fleet.js';
 import { EventBus } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
-import type { Tool } from '../../src/types/tool.js';
 import type {
   SubagentRunContext,
   SubagentRunOutcome,
   TaskSpec,
 } from '../../src/types/multi-agent.js';
+import type { Tool } from '../../src/types/tool.js';
 
 /**
  * Every call in this file exercises the historical BLOCKING contract, so the
@@ -24,7 +24,11 @@ import type {
  * Background-mode behaviour lives in delegate-background.test.ts.
  */
 function exec(tool: Tool, input: unknown, ctx?: unknown, opts?: { signal?: AbortSignal }) {
-  return tool.execute({ wait: true, ...(input as Record<string, unknown>) }, ctx as never, opts);
+  return tool.execute(
+    { wait: true, ...(input as Record<string, unknown>) },
+    ctx as never,
+    opts as { signal: AbortSignal },
+  );
 }
 
 /** Owning session for coordinator-scoped work under test. */
@@ -785,7 +789,7 @@ describe('createDelegateTool', () => {
       completed.push({
         target: e.target,
         ok: e.ok,
-        status: e.status,
+        ...(e.status === undefined ? {} : { status: e.status }),
         summary: e.summary,
         iterations: e.iterations,
         toolCalls: e.toolCalls,
@@ -919,7 +923,9 @@ describe('createDelegateTool', () => {
     });
     const hostBus = new EventBus();
     const completed: Array<{ ok: boolean; status?: string }> = [];
-    hostBus.on('delegate.completed', (e) => completed.push({ ok: e.ok, status: e.status }));
+    hostBus.on('delegate.completed', (e) =>
+      completed.push({ ok: e.ok, ...(e.status === undefined ? {} : { status: e.status }) }),
+    );
     const tool = createDelegateTool({
       host: buildHost(director),
       roster: FLEET_ROSTER,
@@ -966,7 +972,9 @@ describe('createDelegateTool', () => {
     });
     const hostBus = new EventBus();
     const completed: Array<{ ok: boolean; status?: string }> = [];
-    hostBus.on('delegate.completed', (e) => completed.push({ ok: e.ok, status: e.status }));
+    hostBus.on('delegate.completed', (e) =>
+      completed.push({ ok: e.ok, ...(e.status === undefined ? {} : { status: e.status }) }),
+    );
     const tool = createDelegateTool({
       host: buildHost(director),
       roster: FLEET_ROSTER,

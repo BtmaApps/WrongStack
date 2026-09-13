@@ -1,20 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  DEPENDENCY_FILE_PATTERNS,
+  makeDependencyWatcherConfig,
+} from '../../src/coordination/dep-watcher.js';
+import { mailboxSessionTag, makeMailboxTool } from '../../src/coordination/mailbox-tool.js';
 import type {
   MailboxAgentStatus,
   MailboxMessage,
   MailboxMessageProjection,
 } from '../../src/coordination/mailbox-types.js';
-import { makeMailboxTool, mailboxSessionTag } from '../../src/coordination/mailbox-tool.js';
-import { createMailboxChecker, buildMailboxBlock } from '../../src/core/mailbox-loop.js';
-import {
-  makeDependencyWatcherConfig,
-  DEPENDENCY_FILE_PATTERNS,
-} from '../../src/coordination/dep-watcher.js';
+import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import { buildMailboxBlock, createMailboxChecker } from '../../src/core/mailbox-loop.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -678,7 +678,7 @@ describe('makeMailboxTool', () => {
     broken.query = async () => {
       throw new Error('ipc down');
     };
-    const tool = makeMailboxTool({ resolveMailbox: () => broken, agentId: 'x' });
+    const tool = makeTypedMailboxTool({ resolveMailbox: () => broken, agentId: 'x' });
     await expect(tool.execute({ action: 'check' }, mockCtx() as any)).rejects.toThrow('ipc down');
     await expect(tool.execute({ action: 'unread' }, mockCtx() as any)).rejects.toThrow('ipc down');
   });

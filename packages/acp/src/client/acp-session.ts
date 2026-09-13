@@ -88,6 +88,11 @@ interface PendingRequest {
 
 type State = 'init' | 'ready' | 'authenticated' | 'sessioning' | 'prompting' | 'done' | 'closed';
 
+/** Bound for the best-effort late session/cancel send. `session/cancel` is a
+ * notification — the server sends no response — so this only bounds a hung
+ * transport, not a protocol wait. */
+const LATE_CANCEL_SEND_TIMEOUT_MS = 10_000;
+
 export class ACPSession {
   private readonly transport: ACPClientTransport;
   private readonly fileServer: FileServer;
@@ -466,14 +471,118 @@ export class ACPSession {
       return emptyRunResult('cancelled');
     }
 
+    // Declared early so the onAbort closure captures it (must be before
+    // onAbort is defined — TDZ: const/let declarations are hoisted but
+    // accessing before the line throws ReferenceError in ESM strict mode).
+    let cancelled = false;
+
+    // Create the local abort controller BEFORE the first await so that any
+    // abort (user cancellation or session error) fires the listener below
+    // regardless of timing. Previously this was created after createSession
+    // WithAuth — an abort landing during that await was silently lost because
+    // the listener hadn't been registered yet.
+    this.promptCallbackAbort = new AbortController();
+    const onAbort = (): void => {
+      cancelled = true;
+      this.promptCallbackAbort?.abort();
+      if (this.sessionId) {
+        this.transport
+          .send({
+            jsonrpc: '2.0',
+            method: 'session/cancel',
+            params: { sessionId: this.sessionId },
+          } as never as ACPMessage)
+          .catch(() => {});
+      }
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+
+    // Abort rejectors for the two raced phases below. Both are removed on
+    // every exit path so run() never leaks a listener on the caller's signal.
+    let rejectCreate: ((err: ACPSessionError) => void) | undefined;
+    const onCreateAbort = (): void => {
+      // With no session yet there is nothing for onAbort to cancel — drop it
+      // so the catch below returns the clean cancelled result.
+      signal.removeEventListener('abort', onAbort);
+      rejectCreate?.(new ACPSessionError('aborted', 'prompt was aborted by the parent'));
+    };
+
     if (!this.sessionId) {
-      this.sessionId = await this.createSessionWithAuth();
+      // Race: if abort fires during session creation, reject immediately.
+      // Do NOT assign this.sessionId here — we use a local variable so the
+      // catch block can tell "aborted before session existed" from "other error".
+      // (If we assigned first and the race rejected, catch would try sendRequest
+      // with a valid-looking sessionId that was never confirmed by the server.)
+      let sessionId: string;
+      // Keep the creation promise: if the abort rejection wins the race, the
+      // server-side session/new may still complete afterwards. The late
+      // arrival is cancelled below instead of being orphaned on the server.
+      const createPromise = this.createSessionWithAuth();
+      try {
+        sessionId = await Promise.race([
+          createPromise,
+          new Promise<never>((_, reject) => {
+            rejectCreate = reject;
+            // Defensive: a listener registered on an already-aborted signal
+            // never fires, so an abort that landed inside the synchronous
+            // prefix above must reject here explicitly — otherwise the race
+            // would hang on createPromise, ignoring the cancellation.
+            if (signal.aborted) {
+              reject(new ACPSessionError('aborted', 'prompt was aborted by the parent'));
+              return;
+            }
+            signal.addEventListener('abort', onCreateAbort, { once: true });
+          }),
+        ]);
+      } catch (err) {
+        // Abort won the race — the session was never adopted on our side, but
+        // it may still be created server-side (cancelled below). Return a
+        // clean cancelled result without calling sendRequest for the run (it
+        // would throw protocol_error since this.sessionId was never set).
+        // Listener teardown and controller release run here: this catch exits
+        // before the turn-phase finally below ever executes — including the
+        // non-abort re-throw path, so onAbort detaches here too (a no-op
+        // when onCreateAbort already removed it).
+        signal.removeEventListener('abort', onAbort);
+        signal.removeEventListener('abort', onCreateAbort);
+        rejectCreate = undefined;
+        this.promptCallbackAbort?.abort();
+        this.promptCallbackAbort = null;
+        if (err instanceof ACPSessionError && err.kind === 'aborted') {
+          // Best-effort: if the abandoned creation still completes, cancel
+          // the late session so it does not leak server-side. The cancel is
+          // a bounded notification send; failures surface on the warn
+          // channel (cancelLateSession) instead of being swallowed.
+          this.cancelLateSession(createPromise);
+          return emptyRunResult('cancelled');
+        }
+        throw err;
+      }
+      signal.removeEventListener('abort', onCreateAbort);
+      rejectCreate = undefined;
+      // Per the ACP spec the session id is an opaque, non-empty string. This
+      // is the wire trust boundary — validate before branding instead of
+      // blindly casting whatever session/new returned.
+      if (typeof sessionId !== 'string' || sessionId.length === 0) {
+        // This throw sits between the two cleanup owners (the create-phase
+        // catch above and the turn-phase finally below), and neither runs
+        // for it: detach onAbort (it never fired on this path) and release
+        // the controller here, or every prompt() against a misbehaving
+        // agent leaks the listener — and the eventual abort fires it
+        // against whatever prompt is live at that time.
+        signal.removeEventListener('abort', onAbort);
+        this.promptCallbackAbort?.abort();
+        this.promptCallbackAbort = null;
+        throw new ACPSessionError('protocol_error', 'session/new returned no session id');
+      }
+      this.sessionId = sessionId as SessionId;
     }
 
-    // Re-check after the await: an abort landing during session/new never
-    // reaches the listener registered below — addEventListener on an
-    // already-aborted signal does not fire — so without this the prompt is
-    // sent anyway and the agent runs the whole turn despite the cancellation.
+    // Guard: an abort that raced session creation. session/new already went
+    // out and the id was adopted above; whether a matching session/cancel
+    // followed depends on when onAbort ran (it skips the wire send while the
+    // id is unassigned). Either way the turn is over — the adopted id stays
+    // for the next prompt() to reuse, and close() ends the session.
     if (signal.aborted) {
       return emptyRunResult('cancelled');
     }
@@ -482,45 +591,64 @@ export class ACPSession {
     this.progressHandler = onProgress ?? null;
 
     const promptId = this.allocId();
-    const turnPromise = this.sendRequest(
-      promptId,
-      'session/prompt',
-      {
-        sessionId: this.sessionId,
-        prompt: blocks,
-      },
-      this.timeoutMs,
-    );
-
-    let cancelled = false;
-    this.promptCallbackAbort = new AbortController();
-    const onAbort = (): void => {
-      cancelled = true;
-      this.promptCallbackAbort?.abort();
-      this.transport
-        .send({
-          jsonrpc: '2.0',
-          method: 'session/cancel',
-          params: { sessionId: this.sessionId },
-        } as never as ACPMessage)
-        .catch(() => {});
+    // Race the prompt request against the abort signal: if abort fires
+    // mid-turn, onTurnAbort rejects the race so the await surfaces a clean
+    // cancellation instead of the in-flight request's result — the
+    // session/cancel itself goes out from onAbort. The rejector handle is
+    // nullable so onTurnAbort is a no-op once the race has settled and the
+    // finally below has torn the listener down.
+    let rejectTurn: ((err: ACPSessionError) => void) | undefined;
+    const onTurnAbort = (): void => {
+      rejectTurn?.(new ACPSessionError('aborted', 'prompt was aborted by the parent'));
     };
-    signal.addEventListener('abort', onAbort, { once: true });
+    signal.addEventListener('abort', onTurnAbort, { once: true });
+    const turnPromise = Promise.race([
+      this.sendRequest(
+        promptId,
+        'session/prompt',
+        {
+          sessionId: this.sessionId,
+          prompt: blocks,
+        },
+        this.timeoutMs,
+      ),
+      new Promise<never>((_, reject) => {
+        rejectTurn = reject;
+      }),
+    ]);
 
     this.state = 'prompting';
     let response: unknown;
     try {
       response = await turnPromise;
     } catch (err) {
+      // Every failure ends this turn: the session must land in 'done' (which
+      // the entry guard admits for the next prompt), not stay stuck in
+      // 'prompting' — that would brick the session after one transient
+      // transport error.
       this.state = 'done';
-      signal.removeEventListener('abort', onAbort);
-      if (cancelled || signal.aborted) {
-        throw new ACPSessionError('aborted', 'prompt was aborted by the parent');
+      // `cancelled` means the outer onAbort fired during sendRequest; an
+      // aborted-kind error means the inner race rejector won. Both are clean
+      // cancellations, not protocol failures — return the cancelled result
+      // and let the `finally` below own the listener/callback teardown.
+      const abortedKind = err instanceof ACPSessionError && err.kind === 'aborted';
+      if (cancelled || abortedKind) {
+        return emptyRunResult('cancelled');
       }
       const msg = err instanceof Error ? err.message : String(err);
+      if (signal.aborted) {
+        // The signal aborted concurrently with a real sendRequest failure;
+        // report the cancellation but keep the original error as the cause
+        // instead of masking it.
+        throw new ACPSessionError('aborted', 'prompt was aborted by the parent', err);
+      }
       throw new ACPSessionError('prompt_failed', `session/prompt failed: ${msg}`, err);
     } finally {
       signal.removeEventListener('abort', onAbort);
+      signal.removeEventListener('abort', onTurnAbort);
+      signal.removeEventListener('abort', onCreateAbort);
+      rejectTurn = undefined;
+      rejectCreate = undefined;
       this.promptCallbackAbort?.abort();
       this.promptCallbackAbort = null;
       this.progressHandler = null;
@@ -542,6 +670,70 @@ export class ACPSession {
       diffs: this.scratch.diffs,
       thoughts: this.scratch.thoughts,
     };
+  }
+
+  /**
+   * Best-effort cancel for a session the server confirmed after we already
+   * stopped waiting (the abort-during-creation race). `session/cancel` is a
+   * JSON-RPC notification — the server sends no response, so this is a bare
+   * transport send bounded by a timer rather than sendRequest, whose
+   * pending-tracking would just expire waiting for a reply that never
+   * comes. A failure or timeout is surfaced on the warn channel instead of
+   * being silently swallowed.
+   */
+  private cancelLateSession(createPromise: Promise<SessionId>): void {
+    createPromise
+      .then(async (lateId) => {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => {
+              // Plain Error, not kind:'aborted' — the wire hung, nobody aborted.
+              reject(new Error('late session/cancel send timed out'));
+            }, LATE_CANCEL_SEND_TIMEOUT_MS);
+            Promise.resolve(
+              this.transport.send({
+                jsonrpc: '2.0',
+                method: 'session/cancel',
+                params: { sessionId: lateId },
+              } as never as ACPMessage),
+            ).then(
+              () => {
+                clearTimeout(timer);
+                resolve();
+              },
+              (sendErr: unknown) => {
+                clearTimeout(timer);
+                reject(sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
+              },
+            );
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          // eslint-disable-next-line no-console
+          console.warn(
+            JSON.stringify({
+              level: 'warn',
+              event: 'acp_session.late_cancel_failed',
+              sessionId: lateId,
+              message,
+            }),
+          );
+        }
+      })
+      .catch((reason: unknown) => {
+        // The abandoned creation itself failed after we stopped waiting
+        // (e.g. the server refused the late session/new): nothing is left
+        // to cancel, but the refusal is observable, not swallowed.
+        const message = reason instanceof Error ? reason.message : String(reason);
+        // eslint-disable-next-line no-console
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'acp_session.late_cancel_failed',
+            reason: message,
+          }),
+        );
+      });
   }
 
   private async closeSession(): Promise<void> {

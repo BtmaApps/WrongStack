@@ -1,4 +1,4 @@
-import { bench, describe, vi } from 'vitest';
+import { describe, test, vi } from 'vitest';
 
 vi.mock('node:fs/promises', () => ({
   readdir: vi.fn(),
@@ -7,7 +7,7 @@ vi.mock('node:fs/promises', () => ({
 }));
 
 const { readdir, readFile, stat } = await import('node:fs/promises');
-const plugin = (await import('../src/semantic-search-indexer')).default;
+const plugin = (await import('../src/semantic-search-indexer/index.js')).default;
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -154,11 +154,15 @@ async function buildIndexViaSearch(fileCount: number): Promise<void> {
 // These synthetic trees exercise the full build path without touching disk.
 
 describe('semantic-search-indexer — async batched index build', () => {
-  bench('1k synthetic .ts files', async () => {
-    await buildIndexViaSearch(1_000);
+  test('1k synthetic .ts files', async ({ bench }) => {
+    await bench('1k synthetic .ts files', async () => {
+      await buildIndexViaSearch(1_000);
+    }).run();
   });
 
-  bench('5k synthetic .ts files', async () => {
-    await buildIndexViaSearch(5_000);
+  test('5k synthetic .ts files', async ({ bench }) => {
+    await bench('5k synthetic .ts files', async () => {
+      await buildIndexViaSearch(5_000);
+    }).run();
   });
 });

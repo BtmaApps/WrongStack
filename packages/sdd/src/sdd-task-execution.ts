@@ -128,6 +128,7 @@ export async function executeSddTask(params: {
     if (merged.ok) {
       success = true;
       opts.tracker.updateNodeStatus(taskId, 'completed');
+      await params.resolveWorktrees([task]);
       params.emit('sdd.task.completed', {
         runId: params.runId,
         taskId,
@@ -167,6 +168,9 @@ export async function executeSddTask(params: {
         ? `${result.error.kind}: ${result.error.message}`
         : (result.error?.message ?? 'unknown error'));
     await params.applyTaskFailure(taskId, subagentId, errMsg);
+    // applyTaskFailure handles retry (re-allocation with fresh branch) vs
+    // terminal-fail (never retries). Both paths need the worktree released so
+    // it is not left in an allocated-but-untracked state.
     await params.resolveWorktrees([task]);
   }
 

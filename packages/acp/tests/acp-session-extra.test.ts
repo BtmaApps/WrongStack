@@ -418,9 +418,9 @@ describe('ACPSession — focused coverage', () => {
     await new Promise((r) => setImmediate(r));
     t.respondError(promptMsg!.id!, 'session/prompt', { code: -32603, message: 'killed' });
 
-    await expect(promptP).rejects.toMatchObject({
-      kind: 'aborted',
-      message: 'prompt was aborted by the parent',
+    await expect(promptP).resolves.toMatchObject({
+      stopReason: 'cancelled',
+      text: '',
     });
     await session.close();
   });
@@ -685,10 +685,14 @@ describe('ACPSession — focused coverage', () => {
     const promptP = session.prompt([textContent('test')], ac.signal);
     await new Promise((r) => setImmediate(r));
     const newMsg = t.sent.find((m) => m.method === 'session/new');
+    // Abort fires before session/new responds — the race detects it and
+    // returns emptyRunResult('cancelled') without calling sendRequest.
+    // No session/prompt reaches the wire.
     ac.abort();
     t.respond(newMsg!.id!, 'session/new', { sessionId: 'sess_123' });
     const result = await promptP;
     expect(result.stopReason).toBe('cancelled');
+    expect(t.sent.some((m) => m.method === 'session/prompt')).toBe(false);
     await session.close();
   });
 
