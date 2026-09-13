@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-13T11:46:49.450Z
+**Generated:** 2026-09-13T12:16:09.135Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,22 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 3782 |
-| Production source lines | 919413 |
+| Production source files | 3783 |
+| Production source lines | 919612 |
 | Test files | 3313 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12095 |
+| Relative module edges | 12096 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 7 |
+| Type-inclusive module cycles | 8 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-- 1 unexcepted module cycle(s)
-- ARCH-CYCLE-TYPE-11: exception no longer matches an active cycle
-- ARCH-CYCLE-TYPE-29: exception no longer matches an active cycle
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
@@ -45,7 +43,7 @@
 | @wrongstack/plugin-sdk | 11 | 3 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 83 | 125 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 6 | 5 | — |
-| @wrongstack/providers | 69 | 63 | @wrongstack/core |
+| @wrongstack/providers | 70 | 63 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 13 | 17 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
@@ -76,8 +74,9 @@ None.
 
 - packages/cli/src/fleet/host.ts ↔ packages/cli/src/fleet/routing.ts
 - packages/cli/src/subcommands/handlers/audit.ts ↔ packages/cli/src/subcommands/index.ts
-- packages/core/src/coordination/agent-subagent-runner.ts ↔ packages/core/src/coordination/agents/agent-prompts.ts ↔ packages/core/src/coordination/agents/index.ts ↔ packages/core/src/coordination/agents/phase1-discovery.ts ↔ packages/core/src/coordination/agents/phase2-planning.ts ↔ packages/core/src/coordination/agents/phase3-build.ts ↔ packages/core/src/coordination/agents/phase3-wave1-platform.ts ↔ packages/core/src/coordination/agents/phase3-wave2-meta.ts ↔ packages/core/src/coordination/agents/phase4-verify.ts ↔ packages/core/src/coordination/agents/phase5-review.ts ↔ packages/core/src/coordination/agents/phase6-domain.ts ↔ packages/core/src/coordination/agents/phase7-knowledge.ts ↔ packages/core/src/coordination/agents/phase8-delivery.ts ↔ packages/core/src/coordination/agents/phase8-wave3-products.ts ↔ packages/core/src/coordination/agents/phase9-meta.ts ↔ packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts ↔ packages/core/src/coordination/agents/project-agent-auto-optimize.ts ↔ packages/core/src/coordination/agents/project-agent-identity.ts ↔ packages/core/src/coordination/agents/project-agent-optimizer.ts ↔ packages/core/src/coordination/delegation/delegation-tracker.ts ↔ packages/core/src/coordination/delegation/run-delegation.ts ↔ packages/core/src/coordination/director-basic-tools.ts ↔ packages/core/src/coordination/director-collab-tools.ts ↔ packages/core/src/coordination/director-host-contracts.ts ↔ packages/core/src/coordination/director-mutation-test-tool.ts ↔ packages/core/src/coordination/director-options.ts ↔ packages/core/src/coordination/director-quality-gate-tool.ts ↔ packages/core/src/coordination/director-session.ts ↔ packages/core/src/coordination/director-spawn-model.ts ↔ packages/core/src/coordination/director-tools.ts ↔ packages/core/src/coordination/director.ts ↔ packages/core/src/coordination/director/director-toolset.ts ↔ packages/core/src/coordination/dispatcher.ts ↔ packages/core/src/coordination/fleet-manager.ts ↔ packages/core/src/coordination/fleet-spawn.ts ↔ packages/core/src/coordination/fleet.ts ↔ packages/core/src/coordination/model-matrix.ts ↔ packages/core/src/coordination/model-tier.ts ↔ packages/core/src/coordination/multi-agent-coordinator.ts ↔ packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/core/fallback-model.ts ↔ packages/core/src/execution/eternal-autonomy-types.ts ↔ packages/core/src/execution/eternal-autonomy.ts ↔ packages/core/src/execution/parallel-eternal-engine.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/kernel/tokens.ts ↔ packages/core/src/leader-delivery-attach.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/storage/file-session-writer.ts ↔ packages/core/src/storage/session-checkpoint-gc.ts ↔ packages/core/src/storage/session-resume-validation.ts ↔ packages/core/src/storage/session-store.ts ↔ packages/core/src/storage/session-store/create-session.ts ↔ packages/core/src/storage/session-store/delete-session-artifacts.ts ↔ packages/core/src/storage/session-store/load-session.ts ↔ packages/core/src/storage/session-store/prune-helpers.ts ↔ packages/core/src/storage/session-store/rename-session.ts ↔ packages/core/src/storage/session-store/resume-session.ts ↔ packages/core/src/storage/session-store/session-archive.ts ↔ packages/core/src/storage/session-store/summary-manifest.ts ↔ packages/core/src/storage/session-write-buffer.ts ↔ packages/core/src/storage/session-writer-checkpoint.ts ↔ packages/core/src/storage/session-writer-rewind.ts ↔ packages/core/src/storage/session-writer-snapshot.ts ↔ packages/core/src/types/autonomy.ts ↔ packages/core/src/types/index.ts ↔ packages/core/src/types/plugin.ts ↔ packages/core/src/utils/context-breakdown.ts ↔ packages/core/src/utils/index.ts
+- packages/core/src/coordination/agents/agent-prompts.ts ↔ packages/core/src/coordination/agents/index.ts ↔ packages/core/src/coordination/agents/phase1-discovery.ts ↔ packages/core/src/coordination/agents/phase2-planning.ts ↔ packages/core/src/coordination/agents/phase3-build.ts ↔ packages/core/src/coordination/agents/phase3-wave1-platform.ts ↔ packages/core/src/coordination/agents/phase3-wave2-meta.ts ↔ packages/core/src/coordination/agents/phase4-verify.ts ↔ packages/core/src/coordination/agents/phase5-review.ts ↔ packages/core/src/coordination/agents/phase6-domain.ts ↔ packages/core/src/coordination/agents/phase7-knowledge.ts ↔ packages/core/src/coordination/agents/phase8-delivery.ts ↔ packages/core/src/coordination/agents/phase8-wave3-products.ts ↔ packages/core/src/coordination/agents/phase9-meta.ts ↔ packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts ↔ packages/core/src/coordination/agents/project-agent-auto-optimize.ts ↔ packages/core/src/coordination/agents/project-agent-identity.ts ↔ packages/core/src/coordination/agents/project-agent-optimizer.ts ↔ packages/core/src/coordination/dispatcher.ts ↔ packages/core/src/coordination/fleet.ts ↔ packages/core/src/coordination/multi-agent-coordinator.ts ↔ packages/core/src/execution/parallel-eternal-engine.ts ↔ packages/core/src/types/autonomy.ts ↔ packages/core/src/types/index.ts
 - packages/core/src/coordination/brain-telemetry.ts ↔ packages/core/src/coordination/brain.ts ↔ packages/core/src/kernel/events.ts ↔ packages/core/src/kernel/events/brain-events.ts ↔ packages/core/src/kernel/events/session-events.ts
+- packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/types/plugin.ts
 - packages/core/src/hq/protocol/client.ts ↔ packages/core/src/hq/protocol/core.ts ↔ packages/core/src/hq/protocol/fleet.ts ↔ packages/core/src/hq/protocol/session.ts
 - packages/core/src/index.ts ↔ packages/core/src/plugins/prompts-plugin.ts ↔ packages/core/src/plugins/skills-plugin.ts ↔ packages/core/src/plugins/sync-plugin.ts ↔ packages/core/src/tools/mcp-control.ts ↔ packages/core/src/tools/mcp-use.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
