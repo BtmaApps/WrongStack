@@ -414,11 +414,19 @@ export class FileSessionWriter implements SessionWriter {
       // buffer-full both flush immediately. Cancel any pending timer so we
       // don't double-flush on the next tick.
       this.buffer.cancelTimer();
-      await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
-        // append() is intentionally best-effort. The failed batch remains at
-        // the front of writeBuffer; an explicit boundary flush can surface the
-        // error while ordinary audit appends do not abort the agent loop.
-      });
+      if (isCriticalEvent(scrubbed)) {
+        // Critical events MUST reach disk — a flush failure on a user prompt or
+        // model response makes the transcript unreliable for recovery, so we
+        // propagate the error rather than silently sweeping it.
+        await this.buffer.flushBuffer(this.closed, { datasync: true });
+      } else {
+        await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
+          // append() is intentionally best-effort for non-critical events. The
+          // failed batch remains at the front of writeBuffer; an explicit
+          // boundary flush can surface the error while ordinary audit appends do
+          // not abort the agent loop.
+        });
+      }
     } else {
       this.buffer.scheduleFlush(this.closed);
     }
@@ -441,7 +449,12 @@ export class FileSessionWriter implements SessionWriter {
       let pushed = this.buffer.push(scrubbed);
       if (!pushed) {
         this.buffer.cancelTimer();
-        await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => undefined);
+        // Same contract as the outer flush: critical events propagate errors.
+        if (isCriticalEvent(scrubbed)) {
+          await this.buffer.flushBuffer(this.closed, { datasync: true });
+        } else {
+          await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => undefined);
+        }
         pushed = this.buffer.push(scrubbed);
         if (!pushed) {
           // Serialized direct-write fallback (mirrors bufferSynchronousEvent):
@@ -474,9 +487,14 @@ export class FileSessionWriter implements SessionWriter {
     const hasCritical = scrubbedBatch.some(isCriticalEvent);
     if (hasCritical || this.buffer.shouldFlushNow()) {
       this.buffer.cancelTimer();
-      await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
-        // Same best-effort append contract as append(); batch is retained.
-      });
+      if (hasCritical) {
+        // At least one critical event is in the batch — must reach disk.
+        await this.buffer.flushBuffer(this.closed, { datasync: true });
+      } else {
+        await this.buffer.flushBuffer(this.closed, { datasync: true }).catch(() => {
+          // Best-effort for non-critical batch flushes.
+        });
+      }
     } else {
       this.buffer.scheduleFlush(this.closed);
     }

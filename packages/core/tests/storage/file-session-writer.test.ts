@@ -867,9 +867,9 @@ describe('FileSessionWriter', () => {
     expect((w as any).manifestFile).toBe(expected);
   });
 
-  // ── Edge: handles append failures in buffer flush ────────────────────
+  // ── Edge: non-critical appends handle flush failures gracefully (best-effort) ──
 
-  it('catches append errors in flushBufferOnce gracefully', async () => {
+  it('non-critical appends handle flush errors gracefully (best-effort contract)', async () => {
     const errHandle = mockHandle();
     errHandle.appendFile.mockRejectedValue(new Error('disk full'));
 
@@ -882,9 +882,18 @@ describe('FileSessionWriter', () => {
       { filePath: '/tmp/test.jsonl' },
     );
 
-    // Append enough events to trigger an auto-flush
+    // Non-critical events (tool_result) use best-effort: flush errors are silently
+    // swallowed so the agent loop is not aborted by audit-only failures.
+    // Critical events (user_input/llm_response/checkpoint) propagate errors — see
+    // session-writer-critical-append-proof.test.ts for that regression coverage.
     for (let i = 0; i < 50; i++) {
-      await w.append({ type: 'user_input', ts: now(), content: `msg${i}` } as SessionEvent);
+      await w.append({
+        type: 'tool_result',
+        ts: now(),
+        id: `tu-${i}`,
+        content: `ok${i}`,
+        isError: false,
+      } as SessionEvent);
     }
 
     // The flush error is caught and logged — no unhandled rejection
