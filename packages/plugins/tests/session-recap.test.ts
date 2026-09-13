@@ -217,7 +217,9 @@ describe('session-recap plugin', () => {
       expect(() => toolHandler?.('tool.started', { tool: 'read' })).not.toThrow();
       expect(() => toolHandler?.('tool.custom', { tool: 42 })).not.toThrow();
 
-      const health = (await sessionRecapPlugin.health!()) as { metrics: { toolCalls: number } };
+      const health = (await sessionRecapPlugin.health!()) as unknown as {
+        metrics: { toolCalls: number };
+      };
       expect(health.metrics.toolCalls).toBe(3);
     });
   });
