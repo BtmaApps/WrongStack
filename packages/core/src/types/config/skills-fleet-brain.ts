@@ -70,6 +70,26 @@ export interface FleetConfig {
         retireOnTaskComplete?: boolean | undefined;
       }
     | undefined;
+  /**
+   * `delegate` tool behaviour. Lives under `fleet` so it inherits the
+   * in-project denial: a repo config cannot turn on autonomous wakes.
+   */
+  delegate?:
+    | {
+        /**
+         * Default for the tool's `wait` input when the model omits it.
+         * Default false (background). Temporary rollback switch: set true to
+         * restore the historical blocking behaviour.
+         */
+        defaultWait?: boolean | undefined;
+        /** Start a leader turn when a background result arrives and the leader is idle. Default true. */
+        autoWake?: boolean | undefined;
+        /** Coalescing window for auto-wake. Default 1500. */
+        autoWakeDebounceMs?: number | undefined;
+        /** Consecutive woken turns without user input before holding results. Default 5. */
+        maxChainedWakes?: number | undefined;
+      }
+    | undefined;
   /** Fleet-wide hard ceilings. In-flight work may finish; new spawns are refused at the cap. */
   budget?:
     | {

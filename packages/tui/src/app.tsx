@@ -71,6 +71,7 @@ export { selectedSlashCommandLine } from './slash-command-search.js';
 export { buildSteeringPreamble } from './steering-preamble.js';
 
 import type { AppProps } from './app-props.js';
+import { useLeaderAutoWake } from './hooks/use-leader-auto-wake.js';
 
 export function App(props: AppProps): React.ReactElement {
   const {
@@ -894,6 +895,19 @@ export function App(props: AppProps): React.ReactElement {
   });
 
   const { stableOnKey } = useAppExecutionPipeline(pipelineArgs);
+
+  useLeaderAutoWake({
+    leaderAutoWake: props.leaderAutoWake,
+    events,
+    dispatch,
+    getSessionId: () => agent.ctx.session?.id,
+    activeController: activeCtrlRef,
+    eternalLoopRunning: eternalLoopRunningRef,
+    parallelLoopRunning: parallelLoopRunningRef,
+    enhanceAbort: enhanceAbortRef,
+    state: stateRef,
+    runBlocks: runBlocksRef,
+  });
 
   useInitialPrompt({ initialGoal, initialAsk, builderRef, runBlocksRef, dispatch });
 

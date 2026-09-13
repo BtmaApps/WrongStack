@@ -1346,6 +1346,56 @@ describe('worklists integration', () => {
   });
 });
 
+describe('background delegation notices', () => {
+  it('adds a system line for delivery_pending, auto_wake_started and a chain-cap hold without draining the queued user message', () => {
+    harness.mutableRefs.sessionIdRef.current = 'sess-1';
+    // Seed the queue BEFORE the frames: the queue assertion below claims the
+    // woken turn never drains it, and an empty fixture cannot detect a drain
+    // (toEqual([]) passes whether or not the head was consumed).
+    harness.mutableRefs.queueRef.current = [
+      { id: 'q1', text: 'held while delegating', mode: 'queue', addedAt: 1 },
+    ];
+    harness.handler({
+      type: 'delegation.delivery_pending',
+      payload: { sessionId: 'sess-1', count: 1, delegationIds: ['del_1'] },
+    });
+    harness.handler({
+      type: 'delegation.auto_wake_started',
+      payload: { sessionId: 'sess-1', delegationIds: ['del_1'], chain: 1 },
+    });
+    harness.handler({
+      type: 'delegation.auto_wake_suppressed',
+      payload: { sessionId: 'sess-1', reason: 'chain_cap', pending: 2 },
+    });
+    const lines = harness.state.messages.map((m) => ({ role: m.role, text: m.text }));
+    expect(lines).toHaveLength(3);
+    expect(lines.every((line) => line.role === 'system')).toBe(true);
+    expect(lines[0]?.text).toBe('Background delegation result ready (del_1).');
+    expect(lines[1]?.text).toContain('Auto-wake');
+    expect(lines[2]?.text).toContain('send a message to continue');
+    // The woken turn never drains the user queue: the seeded head is still
+    // the queue ref's source of truth, and none of these frames attempted a
+    // dispatch. (Assert the ref, not state.queue — with no drain there is no
+    // setQueue call, so the holder is not re-synced; same idiom as the
+    // dropped-drain tests in 'run lifecycle and queue drain'.)
+    expect(harness.mutableRefs.queueRef.current.map((entry) => entry.id)).toEqual(['q1']);
+    expect(harness.dispatchUserMessage).not.toHaveBeenCalled();
+  });
+
+  it('ignores another tab and an undisplayed hold', () => {
+    harness.mutableRefs.sessionIdRef.current = 'sess-1';
+    harness.handler({
+      type: 'delegation.auto_wake_started',
+      payload: { sessionId: 'sess-other', delegationIds: ['del_x'], chain: 1 },
+    });
+    harness.handler({
+      type: 'delegation.auto_wake_suppressed',
+      payload: { sessionId: 'sess-1', reason: 'undisplayed', pending: 1 },
+    });
+    expect(harness.state.messages).toEqual([]);
+  });
+});
+
 describe('status notice projection', () => {
   it('emits a notice for sessions.list errors but not on success', () => {
     harness.handler({

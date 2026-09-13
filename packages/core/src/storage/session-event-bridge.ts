@@ -102,6 +102,7 @@ export const STANDARD_AUDIT_EVENTS = new Set<SessionEvent['type']>([
   'agent_error',
   'delegate_started',
   'delegate_completed',
+  'delegation_delivered',
   'loop_detected',
   'model_switched',
   'task_created',

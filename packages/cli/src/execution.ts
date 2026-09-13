@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { effectiveFallbackChain, setQueuedMessagesSnapshot } from '@wrongstack/core/agent';
-import type { CoordinatorEvent } from '@wrongstack/core/coordination';
+import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/core/coordination';
 import { updateReviewReportEvidence } from '@wrongstack/core/plugin';
 import { attachTodosCheckpoint } from '@wrongstack/core/storage';
 import type { SessionLoadProgress } from '@wrongstack/core/types';
@@ -409,9 +409,23 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
         switchProjectInPlace,
       };
 
+      // Background-delegation auto-wake (TUI only — one-shot/print modes exit
+      // and never wake). Config is read live from the user config; `fleet` is
+      // denied in project config, so a repo cannot enable autonomous wakes.
+      const leaderAutoWake = new LeaderAutoWakeController({
+        events,
+        config: () => {
+          try {
+            return configStore.get()?.fleet?.delegate;
+          } catch {
+            return undefined;
+          }
+        },
+      });
       renderer.setTuiActive(true);
       try {
         code = await runTuiDispatch({
+          leaderAutoWake,
           agent,
           events,
           slashRegistry,
@@ -734,88 +748,109 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
         if (spawnResult !== null) return spawnResult;
       } finally {
         renderer.setTuiActive(false);
+        leaderAutoWake.dispose();
         offDirectorSpawned();
       }
     } else if (executionMode === 'webui') {
-      code = await runWebUIDispatch({
-        agent,
+      // The WebUI's auto-wake controller. Same live user-config read as the
+      // TUI branch above; the two branches are exclusive, so this process
+      // holds exactly one controller on the delivery hub (two would wake
+      // every session twice). The WebUI host binds its port and never
+      // creates its own.
+      const webuiLeaderAutoWake = new LeaderAutoWakeController({
         events,
-        session,
-        config,
-        flags,
-        projectRoot,
-        globalConfigPath: wpaths.globalConfig,
-        profileConfigPath: wpaths.profileConfig(profileName),
-        projectSessionsDir: wpaths.projectSessions,
-        modelsRegistry,
-        providerAuthRegistry,
-        mcpRegistry,
-        brain,
-        brainSettings,
-        brainRuntime,
-        getBrainLog,
-        subscribeEternalIteration,
-        sessionStore: activeSessionStore,
-        memoryStore,
-        getVectorMemoryStore: () => vectorMemoryStoreFromExecute,
-        vectorMemoryModelCacheDir: vectorMemoryModelCacheDirFromExecute,
-        skillLoader,
-        promptLoader,
-        modeStore,
-        modeId,
-        needsSetup,
-        renderer,
-        onAutonomy,
-        applyLiveSettings,
-        activateSessionIdentity,
-        rebindTodosCheckpoint,
-        agentTranscripts,
-        onModelContextResolved,
-        sddSubagentFactory,
-        statusTracker,
-        updateInfo: bootUpdateInfo,
-        webuiSessionChild,
-        // Stopping a tab's run stops the work that tab started — its
-        // subagents included. Aborting the leader's controller only unwinds
-        // workers it is BLOCKED on; anything started with `spawn_subagent` +
-        // `assign_task` keeps going unless asked to stop. Scoped to the
-        // session so one tab's Stop never reaches another tab's fleet.
-        stopSessionFleet: async (sessionId: string) => {
-          await getDirector?.()?.terminateSession(sessionId);
+        config: () => {
+          try {
+            return configStore.get()?.fleet?.delegate;
+          } catch {
+            return undefined;
+          }
         },
-        // Closing a tab is not stopping it. The run keeps going and keeps its
-        // fleet; what goes is the background help pinned to that conversation
-        // — the explore companion's poll timer and the shadow reviewer's
-        // bookkeeping — which nobody is watching any more.
-        ...(releaseSessionHelpers ? { onSessionRetired: releaseSessionHelpers } : {}),
-        getFleetBudget: () => {
-          const d = getDirector?.() ?? null;
-          if (!d) return null;
-          const snap = d.fleetManager?.budgetSnapshot?.();
-          const maxSpawns = snap?.maxSpawns ?? d.maxSpawns;
-          const usedSpawns = snap?.usedSpawns ?? d.spawnCount;
-          const remainingSpawns =
-            snap?.remainingSpawns ??
-            Math.max(
-              0,
-              (Number.isFinite(maxSpawns) ? maxSpawns : Number.POSITIVE_INFINITY) - usedSpawns,
-            );
-          const activeAgents = d
-            .status()
-            .subagents.filter((s) => s.status === 'running' || s.status === 'idle').length;
-          return {
-            maxSpawns,
-            usedSpawns,
-            remainingSpawns,
-            activeAgents,
-            ...(snap?.checkpointMaxSpawns !== undefined
-              ? { checkpointMaxSpawns: snap.checkpointMaxSpawns }
-              : {}),
-            ...(snap?.ceilingMismatch ? { ceilingMismatch: true } : {}),
-          };
-        },
-        ...createKanbanDispatchHandler({ config, events, skillLoader, sddSubagentFactory }),
       });
+      try {
+        code = await runWebUIDispatch({
+          leaderAutoWake: webuiLeaderAutoWake,
+          agent,
+          events,
+          session,
+          config,
+          flags,
+          projectRoot,
+          globalConfigPath: wpaths.globalConfig,
+          profileConfigPath: wpaths.profileConfig(profileName),
+          projectSessionsDir: wpaths.projectSessions,
+          modelsRegistry,
+          providerAuthRegistry,
+          mcpRegistry,
+          brain,
+          brainSettings,
+          brainRuntime,
+          getBrainLog,
+          subscribeEternalIteration,
+          sessionStore: activeSessionStore,
+          memoryStore,
+          getVectorMemoryStore: () => vectorMemoryStoreFromExecute,
+          vectorMemoryModelCacheDir: vectorMemoryModelCacheDirFromExecute,
+          skillLoader,
+          promptLoader,
+          modeStore,
+          modeId,
+          needsSetup,
+          renderer,
+          onAutonomy,
+          applyLiveSettings,
+          activateSessionIdentity,
+          rebindTodosCheckpoint,
+          agentTranscripts,
+          onModelContextResolved,
+          sddSubagentFactory,
+          statusTracker,
+          updateInfo: bootUpdateInfo,
+          webuiSessionChild,
+          // Stopping a tab's run stops the work that tab started — its
+          // subagents included. Aborting the leader's controller only unwinds
+          // workers it is BLOCKED on; anything started with `spawn_subagent` +
+          // `assign_task` keeps going unless asked to stop. Scoped to the
+          // session so one tab's Stop never reaches another tab's fleet.
+          stopSessionFleet: async (sessionId: string) => {
+            await getDirector?.()?.terminateSession(sessionId);
+          },
+          // Closing a tab is not stopping it. The run keeps going and keeps its
+          // fleet; what goes is the background help pinned to that conversation
+          // — the explore companion's poll timer and the shadow reviewer's
+          // bookkeeping — which nobody is watching any more.
+          ...(releaseSessionHelpers ? { onSessionRetired: releaseSessionHelpers } : {}),
+          getFleetBudget: () => {
+            const d = getDirector?.() ?? null;
+            if (!d) return null;
+            const snap = d.fleetManager?.budgetSnapshot?.();
+            const maxSpawns = snap?.maxSpawns ?? d.maxSpawns;
+            const usedSpawns = snap?.usedSpawns ?? d.spawnCount;
+            const remainingSpawns =
+              snap?.remainingSpawns ??
+              Math.max(
+                0,
+                (Number.isFinite(maxSpawns) ? maxSpawns : Number.POSITIVE_INFINITY) - usedSpawns,
+              );
+            const activeAgents = d
+              .status()
+              .subagents.filter((s) => s.status === 'running' || s.status === 'idle').length;
+            return {
+              maxSpawns,
+              usedSpawns,
+              remainingSpawns,
+              activeAgents,
+              ...(snap?.checkpointMaxSpawns !== undefined
+                ? { checkpointMaxSpawns: snap.checkpointMaxSpawns }
+                : {}),
+              ...(snap?.ceilingMismatch ? { ceilingMismatch: true } : {}),
+            };
+          },
+          ...createKanbanDispatchHandler({ config, events, skillLoader, sddSubagentFactory }),
+        });
+      } finally {
+        webuiLeaderAutoWake.dispose();
+      }
     } else {
       // Imported here rather than at module scope: this is the ONLY static
       // path from the always-loaded CLI graph into `@wrongstack/webui-server`

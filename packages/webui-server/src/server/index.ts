@@ -292,6 +292,13 @@ export {
   type KanbanSupervisorDeps,
   type KanbanSupervisorDispatchOptions,
 } from './kanban-supervisor.js';
+export {
+  createWebuiLeaderAutoWakeHost,
+  type RuntimeTurnStarter,
+  type WebuiLeaderAutoWakeController,
+  type WebuiLeaderAutoWakeHost,
+  type WebuiLeaderAutoWakeHostOptions,
+} from './leader-auto-wake-host.js';
 export { createShutdown, registerShutdownHandlers } from './lifecycle.js';
 export {
   getMailboxForDeps,

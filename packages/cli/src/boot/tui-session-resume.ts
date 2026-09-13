@@ -13,7 +13,7 @@ import {
   restoreSessionSubagentModelPlan,
   restoreSessionSubagentPolicy,
 } from '@wrongstack/core/coordination';
-import type { EventBus } from '@wrongstack/core/kernel';
+import { type EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { attachTodosCheckpoint, loadTodosCheckpoint } from '@wrongstack/core/storage';
 import type {
   ContextSnapshot,
@@ -370,6 +370,15 @@ export async function resumeSession(
       resumed.data.events,
       /* startId */ 1,
     );
+    // Re-queue background delegation results this session never received.
+    // Never wakes; the leader sees them on its next iteration.
+    try {
+      agent.container
+        ?.safeResolve?.(TOKENS.DelegationTracker)
+        ?.rehydrate(canonicalSessionId, resumed.data.events ?? []);
+    } catch (err) {
+      warn('delegation rehydrate', err);
+    }
     setStage('read_sidecars');
     const sessionsDir = state.wpaths.projectSessions;
     const resumedTodosPath = sessionScopedPath(sessionsDir, resumed.writer.id, '.todos.json');

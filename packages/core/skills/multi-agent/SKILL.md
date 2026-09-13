@@ -166,12 +166,20 @@ batch_tool_use([
 Dispatch the whole batch in a single turn. Firing them one at a time serializes
 the fleet and throws away the only thing parallelism was for.
 
+Each `delegate` call returns at once with a delegation id; the workers run in
+the background and every result is delivered to the leader automatically as a
+`[DELEGATION RESULT]` block as its worker finishes. Do not poll or re-await
+them — keep working, or end the turn; on hosts that support it a new turn
+starts when results arrive. Leave `wait` unset for fan-out: `wait: true` is
+for a single short task whose verdict gates the very next step.
+
 ### Fleet pattern — stateful, multiple turns
 
-Use when there are dependencies: worker 2 needs worker 1's artifact.
+Use when there are dependencies (worker 2 needs worker 1's artifact), or when
+you want to reuse workers and decide yourself when results are collected.
 
 ```
-delegate → spawn N subagents → assign_task per subagent → await_tasks
+spawn N subagents → assign_task per subagent → await_tasks
 ```
 
 Keep the dependency chain shallow. A four-deep chain of workers is a sequential

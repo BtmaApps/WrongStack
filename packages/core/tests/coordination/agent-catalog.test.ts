@@ -228,11 +228,12 @@ describe('catalog spawnability (real Director + spawn tool)', () => {
     expect(director.status().subagents.length).toBe(rosterSize);
   });
 
-  it('reports a clean error for an unknown role instead of throwing', async () => {
+  it('fails the call with a clear error for an unknown role', async () => {
+    // Throws (ToolValidationError) — a returned `{ error }` payload was recorded
+    // by the executor as a successful spawn.
     const director = makeDirector();
     const spawn = makeSpawnTool(director, FLEET_ROSTER);
-    const result = (await spawn.execute({ role: 'no-such-role' })) as { error?: string };
-    expect(result.error).toMatch(/unknown role/i);
+    await expect(spawn.execute({ role: 'no-such-role' })).rejects.toThrow(/unknown role/i);
   });
 });
 

@@ -1,5 +1,6 @@
 import type { RunController } from '../kernel/run-controller.js';
 import { TOKENS } from '../kernel/tokens.js';
+import { drainLeaderDeliveries } from '../leader-delivery-attach.js';
 import { attachFleetPulse, attachMailboxChecker } from '../mailbox-attach.js';
 import { recordPromptJournalEntry } from '../prompts/prompt-journal.js';
 import { attachSessionNotes } from '../session-note-attach.js';
@@ -19,7 +20,7 @@ import type { AgentResponseHandler } from './agent-response.js';
 import type { AgentToolHandler } from './agent-tools.js';
 import type { RunResult, UserInputPayload } from './agent-types.js';
 import { buildBtwBlock, consumeBtwNotes } from './btw.js';
-import { type RunOptions, resolveEventSessionId } from './context.js';
+import { type RunOptions, resolveEventSessionId, resolveOwningSessionId } from './context.js';
 import { consumeAutonomousContinue } from './continue-to-next-iteration.js';
 import { requestLimitExtension } from './iteration-limit.js';
 import { injectPendingMailboxMessages, removeInjectedMailboxBlocks } from './mailbox-loop.js';
@@ -146,6 +147,32 @@ export function createAgentLoopHandler(
     foldBlockIntoConversation({ type: 'text', text: buildSessionNoteBlock(notes) });
   }
 
+  /** Session ids this agent answers for: the run-pinned one and its owner. */
+  function ownSessionIds(): string[] {
+    const ids = new Set<string>();
+    try {
+      ids.add(resolveEventSessionId(a.ctx));
+    } catch {
+      /* no session bound */
+    }
+    try {
+      ids.add(resolveOwningSessionId(a.ctx));
+    } catch {
+      /* no session bound */
+    }
+    return [...ids].filter((id) => typeof id === 'string' && id.length > 0);
+  }
+
+  /**
+   * Fold results owed to this session's leader (settled background
+   * `delegate` calls) into the conversation. Leader only: workers share this
+   * loop handler, and a worker of the same session must never drain the
+   * leader's results. Bounded per iteration; the rest wait for the next one.
+   */
+  async function injectPendingDeliveries(): Promise<void> {
+    await drainLeaderDeliveries(a, ownSessionIds(), foldBlockIntoConversation);
+  }
+
   function injectQueueAwareness(): void {
     const items = consumeQueuedMessagesUpdate(a.ctx);
     if (!items) return;
@@ -266,7 +293,17 @@ export function createAgentLoopHandler(
       pendingLoopSteer = pendingLoopSteer ? `${pendingLoopSteer}\n${text}` : text;
     }
 
-    const onSubagentDone = ({ summary, ok }: { summary: string; ok: boolean }) => {
+    const onSubagentDone = ({
+      sessionId,
+      summary,
+      ok,
+    }: {
+      sessionId?: string | undefined;
+      summary: string;
+      ok: boolean;
+    }) => {
+      // The host bus is shared by every tab; only this run's session counts.
+      if (sessionId && !ownSessionIds().includes(sessionId)) return;
       delegateSummaries.push({ summary, ok });
     };
     const offSubagentDone = a.events.on('subagent.done', onSubagentDone);
@@ -354,6 +391,7 @@ export function createAgentLoopHandler(
 
         injectPendingBtwNotes((block) => pendingMailboxBlocks.push(block));
         injectPendingSessionNotes();
+        await injectPendingDeliveries();
         injectQueueAwareness();
 
         if (pendingLoopSteer) {

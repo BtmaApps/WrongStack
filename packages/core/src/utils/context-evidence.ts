@@ -18,7 +18,7 @@ const MAX_RECENT_USER_TURNS = 8;
 const MAX_USER_TURN_CHARS = 700;
 const MAX_CONTINUITY_CHARS = 3_600;
 const RUNTIME_CONTEXT_INPUT_PATTERN =
-  /^\[(?:kanban todo update|fleet pulse|loop-detector|todo-reconciliation|mailbox|btw|system|context_state)\b/i;
+  /^\[(?:kanban todo update|fleet pulse|loop-detector|todo-reconciliation|mailbox|btw|system|context_state|auto-wake)\b/i;
 /** Cap for the per-iteration reference scan — see markAssistantReferencedEvidence. */
 const RECENT_TOOL_CALL_SCAN_LIMIT = 20;
 /** Cap content fed to file/symbol regex extractors (first N chars). */
@@ -721,7 +721,12 @@ function metadataReferencedByText(metadata: ToolOutputMetadata, haystack: string
   }
   if (Array.isArray(metadata.symbols)) {
     for (const symbol of metadata.symbols) {
-      if (typeof symbol === 'string' && symbol.length >= 3 && haystack.includes(symbol.toLowerCase())) return true;
+      if (
+        typeof symbol === 'string' &&
+        symbol.length >= 3 &&
+        haystack.includes(symbol.toLowerCase())
+      )
+        return true;
     }
   }
   if (Array.isArray(metadata.errors)) {

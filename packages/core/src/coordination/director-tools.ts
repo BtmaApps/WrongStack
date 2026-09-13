@@ -1,15 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { ToolValidationError } from '../types/errors.js';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { DispatchLogEntry } from './agents/dispatch-log.js';
 import { type AgentDefinition, getAgentDefinition } from './agents/index.js';
-import {
-  FleetCostCapError,
-  FleetSpawnBudgetError,
-  FleetTokenCapError,
-} from './director/director-errors.js';
 import type * as Host from './director-host-contracts.js';
 import { instantiateRosterConfig } from './director-input-helpers.js';
 import {
@@ -192,8 +188,12 @@ export function makeSpawnTool(
 
       if (role && roster) {
         const base = roster[role];
-        if (!base)
-          return { error: `unknown role "${role}". roster has: ${Object.keys(roster).join(', ')}` };
+        if (!base) {
+          throw new ToolValidationError({
+            message: `unknown role "${role}". roster has: ${Object.keys(roster).join(', ')}`,
+            field: 'role',
+          });
+        }
         cfg = instantiateRosterConfig(role, base);
         routing = { at: new Date().toISOString(), role, source: 'explicit-role' };
       } else if (description && !role) {
@@ -301,44 +301,33 @@ export function makeSpawnTool(
       ) {
         cfg.worktree = i.worktree;
       }
-      try {
-        // The worker belongs to the conversation that asked for it, which the
-        // coordinator cannot read for itself once several tabs share one
-        // process — its own session names the boot tab. See
-        // `SubagentConfig.originSessionId`.
-        const origin = callerSessionId(ctx);
-        const subagentId = await director.spawn(origin ? { ...cfg, originSessionId: origin } : cfg);
-        // Recorded only once the spawn is admitted: a worker rejected by a
-        // budget cap never ran, and counting it would overstate exactly the
-        // routing volume this telemetry exists to measure.
-        if (routing && director.onSpawnRouted) {
-          director.onSpawnRouted(origin ? { ...routing, sessionId: origin } : routing);
-        }
-        // Report what the worker ACTUALLY got. The session model plan, the
-        // routing matrix and the tier layer all resolve inside `spawn()` on a
-        // copy of this config, so `cfg.provider` / `cfg.model` still hold the
-        // leader's own request — echoing that back would describe a worker
-        // that does not exist.
-        const resolved = director.resolvedModelFor?.(subagentId);
-        return {
-          subagentId,
-          provider: resolved?.provider ?? cfg.provider,
-          model: resolved?.model ?? cfg.model,
-          name: cfg.name,
-          role: cfg.role,
-        };
-      } catch (err) {
-        if (err instanceof FleetSpawnBudgetError) {
-          return { error: err.message, kind: err.kind, limit: err.limit, observed: err.observed };
-        }
-        if (err instanceof FleetCostCapError) {
-          return { error: err.message, kind: err.kind, limit: err.limit, observed: err.observed };
-        }
-        if (err instanceof FleetTokenCapError) {
-          return { error: err.message, kind: err.kind, limit: err.limit, observed: err.observed };
-        }
-        return { error: toErrorMessage(err) };
+      // The worker belongs to the conversation that asked for it, which the
+      // coordinator cannot read for itself once several tabs share one
+      // process — its own session names the boot tab. See
+      // `SubagentConfig.originSessionId`.
+      const origin = callerSessionId(ctx);
+      // A refused spawn (budget/cost/token cap, or any other failure) throws:
+      // the cap errors' messages already carry the limit and observed values.
+      const subagentId = await director.spawn(origin ? { ...cfg, originSessionId: origin } : cfg);
+      // Recorded only once the spawn is admitted: a worker rejected by a
+      // budget cap never ran, and counting it would overstate exactly the
+      // routing volume this telemetry exists to measure.
+      if (routing && director.onSpawnRouted) {
+        director.onSpawnRouted(origin ? { ...routing, sessionId: origin } : routing);
       }
+      // Report what the worker ACTUALLY got. The session model plan, the
+      // routing matrix and the tier layer all resolve inside `spawn()` on a
+      // copy of this config, so `cfg.provider` / `cfg.model` still hold the
+      // leader's own request — echoing that back would describe a worker
+      // that does not exist.
+      const resolved = director.resolvedModelFor?.(subagentId);
+      return {
+        subagentId,
+        provider: resolved?.provider ?? cfg.provider,
+        model: resolved?.model ?? cfg.model,
+        name: cfg.name,
+        role: cfg.role,
+      };
     },
   };
 }
@@ -418,10 +407,13 @@ export function makeKanbanQueueTool(
       const i = normalizeKanbanQueueInput(input);
       const rawAction = (input as { action?: unknown } | null | undefined)?.action;
       if (rawAction !== undefined && rawAction !== 'dispatch_ready') {
-        return { error: `Unknown kanban_queue action: ${String(rawAction)}` };
+        throw new ToolValidationError({
+          message: `Unknown kanban_queue action: ${String(rawAction)}. Valid: dispatch_ready.`,
+          field: 'action',
+        });
       }
       const projectRoot = ctx.projectRoot;
-      if (!projectRoot) return { error: 'kanban_queue requires ctx.projectRoot.' };
+      if (!projectRoot) throw new Error('kanban_queue requires ctx.projectRoot.');
       // The session that ran kanban_queue owns every board event this dispatch
       // pass emits — claims, starts, completions and failures alike — so a tab
       // can find (and stop) the queue work it started.

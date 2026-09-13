@@ -203,6 +203,17 @@ export interface SessionHandlersContext {
    * live, because a background run outlives the tab that started it.
    */
   onSessionsUndisplayed?: ((sessionIds: string[]) => void) | undefined;
+  /**
+   * Sessions a connection just started displaying (a newly declared tab, a
+   * resume or focus). The host releases background-delegation results it
+   * held for a session nobody was showing (auto-wake Q1 hold).
+   */
+  onSessionsDisplayed?: ((sessionIds: string[]) => void) | undefined;
+  /**
+   * Re-queue background delegation results a resumed session never received,
+   * from its journal events. Never wakes on its own.
+   */
+  rehydrateDelegations?: ((sessionId: string, events: readonly unknown[]) => void) | undefined;
   getAgent?: ((sessionId?: string) => Agent) | undefined;
   /**
    * Non-creating registry lookup for READ paths. `getAgent` CREATES on read

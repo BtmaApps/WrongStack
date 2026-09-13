@@ -111,7 +111,11 @@ describe('runBlocks busy guard', () => {
     const { host, run } = makeHost(refs);
     const onSuggestionsParsed = vi.fn();
     const predictNext = vi.fn();
-    run.mockResolvedValueOnce({ status: 'done', iterations: 1, finalText: '<nextsteps>noise</nextsteps>' });
+    run.mockResolvedValueOnce({
+      status: 'done',
+      iterations: 1,
+      finalText: '<nextsteps>noise</nextsteps>',
+    });
     Object.assign((host as { capabilities: Record<string, unknown> }).capabilities, {
       onSuggestionsParsed,
       predictNext,
@@ -155,6 +159,52 @@ describe('runBlocks busy guard', () => {
     // mock agent.run does not run the recorder, so the marker is still set.
     expect(run).toHaveBeenCalledTimes(2);
     expect(agent.ctx.meta[PROMPT_JOURNAL_RAW_MARKER]).toBe('raw original');
+  });
+
+  it('never queues an auto-wake turn while a run is in flight', async () => {
+    const refs = makeRefs();
+    const { host, run, dispatch } = makeHost(refs);
+    refs.activeController.current = new AbortController();
+
+    await createRunBlocksController(host)(textBlocks('[AUTO-WAKE] x'), { origin: 'auto_wake' });
+
+    expect(run).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'enqueue' }));
+  });
+
+  it('reports user runs (not auto-wake runs) and the idle-after-run check only when the queue is empty', async () => {
+    const refs = makeRefs([{ displayText: 'queued', blocks: textBlocks('queued') }]);
+    const { host } = makeHost(refs);
+    const onUserRun = vi.fn();
+    const onIdleAfterRun = vi.fn();
+    Object.assign((host as { capabilities: Record<string, unknown> }).capabilities, {
+      onUserRun,
+      onIdleAfterRun,
+    });
+    const runBlocks = createRunBlocksController(host);
+
+    await runBlocks(textBlocks('first'));
+    // first + drained queue item are both user runs; the check fires once, at the tail.
+    expect(onUserRun).toHaveBeenCalledTimes(2);
+    expect(onIdleAfterRun).toHaveBeenCalledTimes(1);
+
+    await runBlocks(textBlocks('[AUTO-WAKE] y'), { origin: 'auto_wake' });
+    expect(onUserRun).toHaveBeenCalledTimes(2);
+    expect(onIdleAfterRun).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips the idle-after-run check after a user abort', async () => {
+    const refs = makeRefs();
+    const { host, run } = makeHost(refs);
+    run.mockResolvedValueOnce({ status: 'aborted', iterations: 1 });
+    const onIdleAfterRun = vi.fn();
+    Object.assign((host as { capabilities: Record<string, unknown> }).capabilities, {
+      onIdleAfterRun,
+    });
+
+    await createRunBlocksController(host)(textBlocks('stopped'));
+
+    expect(onIdleAfterRun).not.toHaveBeenCalled();
   });
 
   it('carries a pending journal marker onto the re-enqueued item instead of orphaning it', async () => {

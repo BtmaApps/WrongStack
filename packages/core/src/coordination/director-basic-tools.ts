@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { ToolCapabilities } from '../security/capabilities.js';
+import { isWrongStackError, ToolValidationError } from '../types/errors.js';
 import type { TaskSpec } from '../types/multi-agent.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
+import { findDelegationForTask, noteLeaderConsumedTask } from './delegation/delegation-lookup.js';
 import type * as Host from './director-host-contracts.js';
 import {
   composeBoundedTaskDescription,
@@ -54,11 +56,10 @@ export function makeAssignTool(director: Pick<Host.DirectorAssignmentPort, 'assi
       // leader retries with the boundary stated.
       const boundary = parseTaskBoundary(i);
       if (!boundary.ok) {
-        return {
-          ok: false,
-          error: `assign_task rejected — task boundary incomplete: ${boundary.error}`,
-          hint: boundary.hint,
-        };
+        throw new ToolValidationError({
+          message: `assign_task rejected — task boundary incomplete: ${boundary.error} ${boundary.hint}`,
+          field: 'scope',
+        });
       }
       const task: TaskSpec = {
         id: randomUUID(),
@@ -70,6 +71,23 @@ export function makeAssignTool(director: Pick<Host.DirectorAssignmentPort, 'assi
       const taskId = await director.assign(task);
       return { taskId, subagentId: i.subagentId };
     },
+  };
+}
+
+/**
+ * A result handed to the leader in-band for a task a background `delegate`
+ * owns. Records the consumption (so the terminal result is not delivered a
+ * second time) and tells the model which delegation it belongs to. Returns a
+ * copy — registry results are shared cached objects.
+ */
+function annotateDelegationResult<T extends { taskId: string }>(result: T): T {
+  const tracked = findDelegationForTask(result.taskId);
+  if (!tracked) return result;
+  noteLeaderConsumedTask(result.taskId);
+  return {
+    ...result,
+    delegationId: tracked.delegationId,
+    delegationHint: `This task belongs to background delegation ${tracked.delegationId}. If it hands off to a continuation worker, that later result is delivered automatically under the same delegationId — do not re-await it.`,
   };
 }
 
@@ -117,7 +135,7 @@ export function makeAwaitTasksTool(director: Host.DirectorAssignmentPort): Tool 
         );
         return {
           mode: 'any',
-          completed: r.completed,
+          completed: r.completed.map(annotateDelegationResult),
           pending: r.pending,
           ...(r.timedOut ? { timedOut: true } : {}),
           ...(r.pending.length > 0
@@ -128,7 +146,7 @@ export function makeAwaitTasksTool(director: Host.DirectorAssignmentPort): Tool 
         };
       }
       const results = await director.awaitTasks(i.taskIds);
-      return { results };
+      return { results: results.map(annotateDelegationResult) };
     },
   };
 }
@@ -175,7 +193,10 @@ export function makeAskTool(
           _hint: 'Response was large and stored. Use ask_result with the key to retrieve it.',
         };
       } catch (err) {
-        return { ok: false, error: toErrorMessage(err) };
+        if (isWrongStackError(err)) throw err;
+        throw new Error(`ask_subagent failed for "${i.subagentId}": ${toErrorMessage(err)}`, {
+          cause: err,
+        });
       }
     },
   };
@@ -204,10 +225,10 @@ export function makeAskResultTool(director: Host.DirectorAnswerStorePort): Tool 
       const i = input as { key: string };
       const value = director.largeAnswerStore.retrieveAnswer(i.key);
       if (value === undefined) {
-        return {
-          ok: false,
-          error: `No stored answer found for key "${i.key}" — it may have been cleared or the key is invalid.`,
-        };
+        throw new ToolValidationError({
+          message: `No stored answer found for key "${i.key}" — it may have been cleared or the key is invalid.`,
+          field: 'key',
+        });
       }
       return { ok: true, value };
     },
@@ -385,25 +406,25 @@ export function makeFleetTool(director: Host.DirectorReadModelPort): Tool {
         case 'session': {
           const subagentId = i.subagentId;
           if (!subagentId) {
-            return {
-              action: 'session',
-              error: 'fleet: subagentId is required for action: "session"',
-            };
+            throw new ToolValidationError({
+              message: 'fleet: subagentId is required for action: "session"',
+              field: 'subagentId',
+            });
           }
           const result = await director.readSession(subagentId, i.tail);
           if (!result) {
-            return {
-              action: 'session',
-              error: `fleet: transcript unavailable for "${subagentId}". Is sessionsRoot configured?`,
-            };
+            throw new Error(
+              `fleet: transcript unavailable for "${subagentId}". Is sessionsRoot configured?`,
+            );
           }
           return { action: 'session', ...result };
         }
 
         default:
-          return {
-            error: `fleet: unknown action "${action}". Valid: status, usage, health, session.`,
-          };
+          throw new ToolValidationError({
+            message: `fleet: unknown action "${action}". Valid: status, usage, health, session.`,
+            field: 'action',
+          });
       }
     },
   };

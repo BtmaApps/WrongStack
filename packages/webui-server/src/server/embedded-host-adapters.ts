@@ -9,15 +9,19 @@ import type {
   ModelsRegistry,
   ModeStore,
   ProviderConfig,
+  SessionEvent,
   SessionStore,
   SessionWriter,
 } from '@wrongstack/core/types';
 import { toErrorMessage, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
-import { createConversationOperations } from './conversation-operations.js';
-import type { ConversationRouteHandlers } from './conversation-routes.js';
+import {
+  type ConversationOperations,
+  createConversationOperations,
+} from './conversation-operations.js';
 import type { CustomModeStore } from './custom-context-modes.js';
+import type { WebuiLeaderAutoWakeHost } from './leader-auto-wake-host.js';
 import type { PendingConfirm } from './pending-confirms.js';
 import { createProjectHandlers } from './project-handlers.js';
 import type { ProjectRouteHandlers } from './project-routes.js';
@@ -198,14 +202,31 @@ export interface EmbeddedConversationContext extends EmbeddedHostTransport {
    * outside it so four tabs still stream concurrently.
    */
   withSessionTransition?: (<T>(operation: () => Promise<T>) => Promise<T>) | undefined;
+  /**
+   * Background-delegation auto-wake binding (see `leader-auto-wake-host.ts`).
+   * The conversation path reports user submits and finished runs to it, and
+   * hands it the runtime-turn starter so a woken turn takes the exact path a
+   * user message does. Absent: no auto-wake on this host.
+   */
+  autoWake?:
+    | Pick<WebuiLeaderAutoWakeHost, 'onUserMessage' | 'onRunEnded' | 'bindRuntimeTurnStarter'>
+    | undefined;
 }
 
 export function createEmbeddedConversationRoutes(
   ctx: EmbeddedConversationContext,
-): ConversationRouteHandlers {
+): ConversationOperations {
   const resolveAgent = (sessionId?: string | undefined): Agent =>
     ctx.getAgent?.(sessionId) ?? ctx.agent;
-  return createConversationOperations({
+  const operations = createConversationOperations({
+    broadcast: ctx.broadcast,
+    ...(ctx.autoWake
+      ? {
+          onUserMessage: (sessionId: string) => ctx.autoWake?.onUserMessage(sessionId),
+          onRunEnded: (sessionId: string, info: { aborted: boolean }) =>
+            ctx.autoWake?.onRunEnded(sessionId, info),
+        }
+      : {}),
     getAgent: resolveAgent,
     getSessionId: () => ctx.agent.ctx.session?.id ?? '',
     // Four tabs share one socket, so "the runtime's current session" is only
@@ -270,6 +291,10 @@ export function createEmbeddedConversationRoutes(
     busyPhase: 'agent.run',
     busyMessage: 'A run is already in progress. Abort it first.',
   });
+  // A woken turn goes through `startRuntimeTurn` — the same run lock, gate,
+  // journaling and broadcasts as a user message, with runtime origin.
+  ctx.autoWake?.bindRuntimeTurnStarter(operations.startRuntimeTurn);
+  return operations;
 }
 
 /** Best-effort cascade of a session stop into the fleet it spawned. */
@@ -352,6 +377,13 @@ export interface EmbeddedSessionContext extends EmbeddedHostTransport {
     | undefined;
   /** Sessions no connection is displaying any more — retire their agents. */
   onSessionsUndisplayed?: ((sessionIds: string[]) => void) | undefined;
+  /** Sessions a connection just started displaying (auto-wake hold release). */
+  onSessionsDisplayed?: ((sessionIds: string[]) => void) | undefined;
+  /**
+   * Re-queue a resumed session's undelivered background delegation results.
+   * Defaults to the leader container's `DelegationTracker`, when one is bound.
+   */
+  rehydrateDelegations?: ((sessionId: string, events: readonly unknown[]) => void) | undefined;
   /** When sessionId is provided, abort only that session's run; otherwise abort all. */
   abortActiveRun?: ((sessionId?: string) => void) | undefined;
   /** True while an embedded agent run is active. */
@@ -473,6 +505,16 @@ export function createEmbeddedSessionRoutes(ctx: EmbeddedSessionContext): Sessio
     ...(ctx.isSessionLive ? { isSessionLive: ctx.isSessionLive } : {}),
     ...(ctx.loadAgentSessions ? { loadAgentSessions: ctx.loadAgentSessions } : {}),
     ...(ctx.onSessionsUndisplayed ? { onSessionsUndisplayed: ctx.onSessionsUndisplayed } : {}),
+    ...(ctx.onSessionsDisplayed ? { onSessionsDisplayed: ctx.onSessionsDisplayed } : {}),
+    // One tracker per process, bound in the leader's container next to the
+    // delegate tool; per-tab agents share that wiring.
+    rehydrateDelegations:
+      ctx.rehydrateDelegations ??
+      ((sessionId, events) => {
+        opts.agent.container
+          ?.safeResolve?.(TOKENS.DelegationTracker)
+          ?.rehydrate(sessionId, events as readonly SessionEvent[]);
+      }),
     // Structural: the handlers only read `sessionId`/`sessionIds` off these
     // records, and never broadcast through the map (this host passes its own
     // `broadcastMessage`).

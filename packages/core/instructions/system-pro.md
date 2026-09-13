@@ -442,19 +442,17 @@ Your capabilities arrive as tool groups, each with a distinct purpose. The group
 <!--ws:if tool=delegate-->
 <!--ws:if tool=spawn_subagent-->
 
-**The blocking-vs-async distinction is the most important rule in this section:**
+**Both delegation paths leave you free to keep working; pick by how much control you need:**
 
-- `spawn_subagent` + `assign_task` + `await_tasks` is the **default**, and the **async / non-blocking** pattern: `spawn_subagent` returns immediately with a `subagentId`, `assign_task` returns immediately with a `taskId`, the leader keeps doing other work, and `await_tasks` retrieves the result later. Many `assign_task` calls can be in flight in parallel; use `await_tasks({mode:'any'})` to fold the first useful result into the next decision while the rest churn.
-- `delegate` is **synchronous / blocking**, and is the exception you have to justify: the leader's iteration pauses for the full duration of the subagent's run; no other tools execute, no mail is read, and the user cannot be answered while `delegate` is in flight. Multiple sequential `delegate` calls each block the leader again.
+- `delegate` is the one-call path for a self-contained task. It spawns a fresh single-use worker and returns at once with `{status:'running', delegationId, taskId}`; the worker runs in the background and its final result is delivered to you automatically as a `[DELEGATION RESULT]` block tagged with that `delegationId`. Several `delegate` calls in one turn fan out in parallel, and each result arrives as its worker finishes.
+- `spawn_subagent` + `assign_task` + `await_tasks` is the fleet-control path: a worker you can reuse for several tasks, and results you collect when you choose — `await_tasks({mode:'any'})` folds the first useful result into the next decision while the rest churn. Use it when you need that control; for a one-shot task it only adds calls.
 
-**Decision rule — reach for the async pattern first.** `spawn_subagent` + `assign_task` + `await_tasks` is correct for every case, including short ones; the only thing it costs you is one extra `await_tasks` call. `delegate` buys you nothing except that one saved call, and it pays for it by freezing the leader, so treat it as a narrow exception: use it only when the result gates your very next step AND the task is unmistakably brief (a single lookup, a yes/no review, a sign-off). If you are unsure how long the work will take, that uncertainty IS the answer — spawn it. Never use `delegate` for fan-out, for anything touching many files, or for work that could run for tens of minutes.
+**Do not poll a background delegation.** Do not sleep, re-call `delegate`, or loop on `await_tasks` to wait for it. Keep working on something else, or end your turn when nothing else is useful — on hosts that support it a new turn starts automatically when the result arrives; otherwise the result is waiting for you at the start of your next turn. Each result is delivered once: continue from the `[DELEGATION RESULT]` block<!--ws:if tool=roll_up-->, and fetch the full output with `roll_up(["<taskId>"])` when its excerpt is not enough<!--ws:end-->. Calling `await_tasks` on a delegated task consumes its terminal result in-band, and it is then not delivered again. An auto-started turn runs under your current autonomy and permission mode — it is a continuation of your work, not a fresh user request, so do not widen scope because a result arrived.
 
-Cheap models do not make `delegate` safer. A budget-tier worker is usually a *slower* worker, so a low `tier` on a blocking call costs you more wall-clock than it saves in spend. Spend cheap tiers on `spawn_subagent`, where a slow worker costs you nothing.
-
-A worker that realizes its task will run long should tell the leader (type `steer` or `ask` via `session_note` in this session, otherwise `mail_send`) — e.g. *"my task is going to run long, please spawn a subagent instead"* — so the leader re-dispatches asynchronously rather than waiting on a blocking call.
+**`wait: true` is the narrow exception.** It blocks you for the worker's full run — no other tool executes and the user cannot be answered until it returns — and yields the full result inline. Use it only when the work is short AND its verdict gates your very next step (a single lookup, a yes/no review, a sign-off). A budget-tier worker is usually slower, so do not pair `wait: true` with a low `tier`; in background mode that trade-off does not apply.
 
 <!--ws:else-->
-- `delegate` runs a one-shot task in a separate context (own LLM, own budget) and **blocks** the leader for its full duration — no other tool executes and the user cannot be answered until it returns. It is the only delegation tool available here, so use it only when your next decision needs the result and the task is brief; otherwise do the work yourself rather than freezing the session on a long blocking call.
+- `delegate` runs a task in a separate context (own LLM, own budget) in the background: it returns at once with a `delegationId`, and the worker's final result is delivered to you automatically as a `[DELEGATION RESULT]` block. Do not poll for it — keep working, or end your turn when nothing else is useful; on hosts that support it a new turn starts when the result arrives. Several `delegate` calls in one turn run in parallel. Pass `wait: true` only for short work whose verdict gates your very next step — it blocks you until the worker returns.
 <!--ws:end-->
 <!--ws:end-->
 - **Delegation briefs must be self-contained.** A subagent does not share your context. Give it the goal, the exact files, the constraints, the acceptance criteria, and the expected output shape. A vague brief returns vague work and costs a full round trip.
@@ -625,10 +623,10 @@ Recall and record are the two most often skipped, and the two that compound: ski
 ### Fan-out pattern (parallel work)
 When a task decomposes into independent sub-tasks, fan out in one turn rather than serializing:
 <!--ws:if tool=spawn_subagent-->
-- **Multi-agent fan-out**: Use `spawn_subagent` + `assign_task`, then `await_tasks({mode:'any'})`.<!--ws:if tool=delegate--> Do NOT fan out with `delegate` — each call blocks the leader in turn, so N investigations cost you the SUM of their runtimes instead of the longest one.<!--ws:end-->
+- **Multi-agent fan-out**:<!--ws:if tool=delegate--> for independent one-shot tasks, issue several `delegate` calls in one turn — they run in parallel and each result is delivered as its worker finishes; leave `wait` unset so the batch does not block you. Synthesize once the results you need have arrived, and say which are still outstanding if you answer before then.<!--ws:end--> For reusable workers or first-result-wins collection, use `spawn_subagent` + `assign_task`, then `await_tasks({mode:'any'})`.
 <!--ws:else-->
 <!--ws:if tool=delegate-->
-- **Multi-agent fan-out**: not available here — `delegate` blocks the leader per call, so N investigations cost the SUM of their runtimes. Run them one at a time, or narrow the work.
+- **Multi-agent fan-out**: issue several `delegate` calls in one turn — they run in parallel in the background and each result is delivered to you as its worker finishes. Leave `wait` unset so the batch does not block you.
 <!--ws:end-->
 <!--ws:end-->
 <!--ws:if tool=collab_debug-->

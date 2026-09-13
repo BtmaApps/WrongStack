@@ -4,7 +4,7 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 import { routeImagesForModel } from '@wrongstack/runtime/vision';
 import type { Action, State } from './app-reducer.js';
 import { fmtTok } from './components/history.js';
-import type { RunBlocksCapabilities } from './tui-host-capabilities.js';
+import type { RunBlocksCapabilities, RunBlocksOptions } from './tui-host-capabilities.js';
 import type { MutableCell, StreamSegment } from './shared-types.js';
 
 export interface RunBlocksRefs {
@@ -35,9 +35,14 @@ interface RunBlocksHost {
  */
 export function createRunBlocksController(
   host: RunBlocksHost,
-): (blocks: ContentBlock[]) => Promise<void> {
-  const runBlocks = async (blocks: ContentBlock[]): Promise<void> => {
+): (blocks: ContentBlock[], opts?: RunBlocksOptions) => Promise<void> {
+  const runBlocks = async (blocks: ContentBlock[], opts?: RunBlocksOptions): Promise<void> => {
     const { capabilities, refs, dispatch } = host;
+    const origin = opts?.origin ?? 'user';
+    // An auto-wake turn is never queued: a busy leader drains the results
+    // itself, and an enqueued wake would masquerade as user input. The
+    // auto-wake controller re-checks after the run (onIdleAfterRun).
+    if (origin === 'auto_wake' && refs.activeController.current) return;
     const { agent } = capabilities;
     // Capture the pending prompt-journal raw marker for THIS invocation at
     // entry and clear the shared slot immediately. The marker must not sit in
@@ -95,7 +100,15 @@ export function createRunBlocksController(
     });
     const controller = new AbortController();
     refs.activeController.current = controller;
+    let finishedStatus: 'done' | 'aborted' | 'failed' | 'max_iterations' | undefined;
     refs.interrupts.current = 0;
+    if (origin === 'user') {
+      try {
+        capabilities.onUserRun?.();
+      } catch {
+        // Auto-wake bookkeeping must never block a user turn.
+      }
+    }
     dispatch({ type: 'resetInterrupts' });
     dispatch({ type: 'status', status: 'running' });
 
@@ -212,7 +225,11 @@ export function createRunBlocksController(
         });
       }
 
-      if (result.status === 'done' && capabilities.predictNext && !capabilities.shouldSuppressNextSteps?.()) {
+      if (
+        result.status === 'done' &&
+        capabilities.predictNext &&
+        !capabilities.shouldSuppressNextSteps?.()
+      ) {
         try {
           const userRequest = blocks
             .filter((block) => block.type === 'text')
@@ -234,8 +251,10 @@ export function createRunBlocksController(
           // Prediction is best-effort.
         }
       }
+      finishedStatus = result.status;
       capabilities.onRunFinished?.(result.status);
     } catch (error) {
+      finishedStatus = 'failed';
       if (runGeneration === refs.sessionGeneration.current) {
         dispatch({ type: 'addEntry', entry: { kind: 'error', text: toErrorMessage(error) } });
         capabilities.onRunFinished?.('failed');
@@ -269,6 +288,17 @@ export function createRunBlocksController(
         agent.ctx.meta[PROMPT_JOURNAL_RAW_MARKER] = head.journalRaw;
       }
       await runBlocks(head.blocks);
+      return;
+    }
+    // Nothing queued: the auto-wake post-run check. A background result that
+    // landed during the final iteration is still pending in the hub. Skipped
+    // after a user abort (Esc/Stop): waking right after the user stopped the
+    // leader is hostile — held results ride the next user turn or next result.
+    if (finishedStatus === 'aborted') return;
+    try {
+      capabilities.onIdleAfterRun?.();
+    } catch {
+      // The post-run check is best-effort.
     }
   };
 

@@ -150,6 +150,8 @@ export interface WebUIDispatchContext {
   getFleetBudget?: CliWebUIOptions['getFleetBudget'];
   stopSessionFleet?: CliWebUIOptions['stopSessionFleet'];
   onSessionRetired?: CliWebUIOptions['onSessionRetired'];
+  /** The process's single background-delegation auto-wake controller. */
+  leaderAutoWake?: CliWebUIOptions['leaderAutoWake'];
   /** Internal one-session child launch metadata, when --webui-session-child is active. */
   webuiSessionChild?: WebuiSessionChildOptions | undefined;
 }
@@ -199,6 +201,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     getFleetBudget,
     stopSessionFleet,
     onSessionRetired,
+    leaderAutoWake,
     webuiSessionChild,
   } = ctx;
   const isSessionChild = Boolean(webuiSessionChild);
@@ -349,6 +352,7 @@ export async function runWebUIDispatch(ctx: WebUIDispatchContext): Promise<numbe
     ...(getFleetBudget ? { getFleetBudget } : {}),
     ...(stopSessionFleet ? { stopSessionFleet } : {}),
     ...(onSessionRetired ? { onSessionRetired } : {}),
+    ...(leaderAutoWake ? { leaderAutoWake } : {}),
     sessionsDir: projectSessionsDir,
     claimSession: activateSessionIdentity
       ? async (sessionId: string) => {

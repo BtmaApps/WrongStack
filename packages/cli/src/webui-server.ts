@@ -31,6 +31,7 @@ import {
   createEmbeddedMessageRouter,
   createEmbeddedProviderOperations,
   createSessionAgentRegistry,
+  createWebuiLeaderAutoWakeHost,
   type EmbeddedProviderContext,
   envFlag,
   findFreePort,
@@ -588,6 +589,36 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   });
   sessionAgentsRef = sessionAgents;
 
+  /** Does any connected tab display this session right now? */
+  const isSessionDisplayed = (sessionId: string): boolean => {
+    for (const client of clients.values()) {
+      if (client.sessionId === sessionId) return true;
+      if (client.sessionIds?.has(sessionId) === true) return true;
+    }
+    return false;
+  };
+
+  /**
+   * Background-delegation auto-wake. The controller is the CLI's — one per
+   * process — and this host only binds its port: open = a session this
+   * process holds a live writer for, displayed = some tab shows it (else the
+   * results are held until a tab does), idle = no run lock. Woken turns run
+   * through the conversation path's runtime-turn starter, bound when the
+   * router builds the conversation routes.
+   */
+  const autoWakeHost = opts.leaderAutoWake
+    ? createWebuiLeaderAutoWakeHost({
+        controller: opts.leaderAutoWake,
+        events: opts.events,
+        abortControllers,
+        pendingConfirms,
+        isOpen: (sessionId) => sessionId === opts.session.id || sessionAgents.isLive(sessionId),
+        isDisplayed: isSessionDisplayed,
+        broadcast,
+        logger: { warn: (message) => consoleLogger.warn(message) },
+      })
+    : undefined;
+
   /**
    * Live rows for the terminal panel: every session a connected browser tab
    * displays (plus the boot session when none do), with its running state,
@@ -747,6 +778,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     getSessionAgent: (sessionId) => sessionAgents.get(sessionId),
     peekSessionAgent: (sessionId) => sessionAgents.peek(sessionId),
     onSessionsUndisplayed: retireUndisplayedSessions,
+    ...(autoWakeHost ? { autoWake: autoWakeHost } : {}),
     isSessionLive: (sessionId) => sessionAgents.isLive(sessionId),
     getForegroundSession: () => foregroundSession,
     setForegroundSession: (next) => {
@@ -909,6 +941,10 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
       },
       disposeResources: async () => {
         releaseSessionSalvage();
+        // Unbind the auto-wake port first: no woken turn may start while the
+        // tabs' journals are being closed. The controller itself belongs to
+        // the CLI, which disposes it after this server has stopped.
+        autoWakeHost?.dispose();
         await stopEmptySessionCleanup?.dispose();
         // End the journals of every tab that is not the leader's. `close()`
         // alone would flush them, but a journal with no trailing

@@ -193,6 +193,8 @@ function labelForEvent(e: SessionEvent): string {
       return `Delegated to ${e.target}`;
     case 'delegate_completed':
       return `Delegation ${e.ok ? 'finished' : 'failed'}: ${e.target}`;
+    case 'delegation_delivered':
+      return `Delegation result delivered: ${e.delegationId}`;
     case 'loop_detected':
       return `Loop detected (${e.action ?? 'cut'})`;
     case 'model_switched':
@@ -308,6 +310,8 @@ function detailForEvent(e: SessionEvent): string {
       return e.task.length > 80 ? `${e.task.slice(0, 79)}…` : e.task;
     case 'delegate_completed':
       return `${e.summary} · ${e.iterations} iterations · ${e.toolCalls} tools`;
+    case 'delegation_delivered':
+      return e.via ? `via ${e.via}` : e.delegationId;
     case 'loop_detected':
       return `${e.tools || 'message'} ×${e.repeatCount} at iteration ${e.iteration}`;
     case 'model_switched':

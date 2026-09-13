@@ -786,6 +786,36 @@ export class Director implements DirectorFleetHost, ICoordinator {
     return this.tasks.awaitTasks(taskIds);
   }
 
+  /**
+   * Declare a task delegation-owned before assigning it. Its settlement then
+   * never produces `taskResultNotifier` mail — the delegation publishes the
+   * outcome itself.
+   */
+  markTaskOwned(taskId: string): void {
+    this.tasks.markOwned(taskId);
+  }
+
+  private readonly sessionTerminateListeners = new Set<(sessionId: string) => void>();
+
+  /** Called at the start of every `terminateSession(sessionId)`. */
+  onSessionTerminate(listener: (sessionId: string) => void): () => void {
+    this.sessionTerminateListeners.add(listener);
+    return () => {
+      this.sessionTerminateListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Observe a task's settlement without registering as a waiter, so a leader
+   * `await_tasks` on the same id remains distinguishable (`leaderConsumed`).
+   */
+  observeTask(
+    taskId: string,
+    cb: (result: TaskResult, info: { leaderConsumed: boolean }) => void,
+  ): () => void {
+    return this.tasks.observe(taskId, cb);
+  }
+
   awaitTasksAny(taskIds: string[], opts?: { timeoutMs?: number }): Promise<AwaitAnyResult> {
     return this.tasks.awaitTasksAny(taskIds, opts);
   }
@@ -823,6 +853,15 @@ export class Director implements DirectorFleetHost, ICoordinator {
    */
   async terminateSession(sessionId: string): Promise<void> {
     if (!sessionId) return;
+    // Tell session-scoped owners first (the background delegation tracker),
+    // so the `stopped` settlements that follow are attributed to the user.
+    for (const listener of [...this.sessionTerminateListeners]) {
+      try {
+        listener(sessionId);
+      } catch (err) {
+        this.logger?.warn('[director] session terminate listener failed', { err });
+      }
+    }
     const ids = this.coordinator.subagentIdsForSession(sessionId);
     if (ids.length === 0) return;
     await this.coordinator.stopSession(sessionId);

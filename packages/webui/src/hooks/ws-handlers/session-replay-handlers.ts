@@ -5,6 +5,7 @@ import type {
   SessionToolMeta,
 } from '@wrongstack/core/types';
 import { projectSessionTimeline } from '@wrongstack/core/types/session-timeline';
+import { autoWakeNoticeText } from '@wrongstack/webui-protocol';
 import { isMobileViewport } from '@/hooks/useViewport';
 import { reconcileFileTabsAfterEnvChange } from '@/hooks/ws-handlers/files-mailbox-handlers';
 import { parseBugHuntMessage } from '@/lib/bug-hunt-message';
@@ -151,6 +152,14 @@ export function hydrateReplayMessages(
     const id = replayMessageId(messages.length);
     switch (item.kind) {
       case 'user': {
+        // A woken turn's `[AUTO-WAKE]` input is runtime text, not something
+        // the user typed: replay it as the same system line the live stream
+        // showed, never as a user bubble.
+        const autoWake = autoWakeNoticeText(item.text);
+        if (autoWake !== undefined) {
+          messages.push({ id, role: 'system', content: autoWake, timestamp });
+          break;
+        }
         const bugHunt = parseBugHuntMessage(item.text);
         const perfRun = parsePerfRunMessage(item.text);
         messages.push({

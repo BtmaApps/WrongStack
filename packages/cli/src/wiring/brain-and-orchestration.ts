@@ -6,6 +6,7 @@ import {
   BrainMonitor,
   BrainTraceRecorder,
   createDelegateTool,
+  DelegationTracker,
   EscalationRoutingBrainArbiter,
   ObservableBrainArbiter,
   terminalPolicyDecision,
@@ -472,6 +473,24 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
     },
   );
 
+  // Background delegation tracker — one per host process. Follows every
+  // non-blocking `delegate` to settlement and queues its result for the owning
+  // leader. Aborted on host teardown; a session fleet stop reaches it through
+  // `Director.terminateSession` (the tracker subscribes per director).
+  const delegationTracker = new DelegationTracker({ events });
+  container.bind(TOKENS.DelegationTracker, () => delegationTracker);
+  teardownHandlers.push(() => delegationTracker.dispose());
+  // Boot `--resume`: re-queue background results the previous process never
+  // delivered (never wakes — see DelegationTracker.rehydrate).
+  try {
+    const restoredEvents = (sessResult as { restoredEvents?: unknown }).restoredEvents;
+    if (Array.isArray(restoredEvents) && restoredEvents.length > 0) {
+      delegationTracker.rehydrate(session.id, restoredEvents);
+    }
+  } catch {
+    /* rehydration is best-effort; resume itself already succeeded */
+  }
+
   // Delegate tool — Director Mode is permanently on.
   toolRegistry.register(
     createDelegateTool({
@@ -480,6 +499,16 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
       sessionsRoot: subagentSessionsRoot,
       directorRunId: session.id,
       events,
+      tracker: delegationTracker,
+      // Temporary rollback switch (user config only — `fleet` is denied in
+      // project config). Read live so a settings change applies next call.
+      defaultWait: () => {
+        try {
+          return configStore.get()?.fleet?.delegate?.defaultWait;
+        } catch {
+          return undefined;
+        }
+      },
     }),
   );
   toolRegistry.exposeToProvider('delegate');

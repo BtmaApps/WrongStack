@@ -380,7 +380,11 @@ export function buildAcpServerAgentFactory(
 
     // Minimal session writer — ACP sessions don't persist to the JSONL
     // transcript store yet. A no-op writer keeps the Context contract happy.
-    const session = { append: async () => {} } as never;
+    // It carries the ACP session id: the run pins `activeRunSessionId` from
+    // it, and background `delegate` results are routed to (and drained for)
+    // the leader by that id. Without it the leader-delivery drain matched no
+    // session and a queued result could never reach this conversation.
+    const session = { id: sessionId, append: async () => {} } as never;
 
     const context = new Context({
       systemPrompt: [],
@@ -393,7 +397,10 @@ export function buildAcpServerAgentFactory(
       allowOutsideProjectRoot: config.features?.allowOutsideProjectRoot ?? false,
       model: config.model,
       tools: [...tools.listForProvider()] as Tool[],
-      agentId: 'acp-server',
+      // The per-session agent IS that ACP session's leader. Leader-only loop
+      // behaviour keys on this id — notably draining background delegation
+      // results (`isLeaderAgentId`), which never matched 'acp-server'.
+      agentId: 'leader',
       agentName: 'wrongstack-acp',
     });
 

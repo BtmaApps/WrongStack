@@ -211,6 +211,51 @@ export {
   createDelegateTool,
   type DelegateHost,
 } from './delegate-tool.js';
+export {
+  findDelegationForTask,
+  markDelegationDelivered,
+  noteLeaderConsumedTask,
+  type TrackedDelegationInfo,
+} from './delegation/delegation-lookup.js';
+export {
+  type DelegationCancelCause,
+  type DelegationEntry,
+  type DelegationState,
+  DelegationTracker,
+  type DelegationTrackerOptions,
+} from './delegation/delegation-tracker.js';
+export {
+  AUTO_WAKE_MARKER,
+  buildAutoWakePrompt,
+  DEFAULT_AUTO_WAKE_DEBOUNCE_MS,
+  DEFAULT_MAX_CHAINED_WAKES,
+  DEFAULT_MIN_WAKE_INTERVAL_MS,
+  type LeaderAutoWakeConfig,
+  LeaderAutoWakeController,
+  type LeaderAutoWakeControllerOptions,
+  type LeaderAutoWakeStartedEvent,
+  type LeaderAutoWakeSuppressedEvent,
+  type LeaderAutoWakeSuppressedReason,
+  type LeaderWakeDecision,
+  type LeaderWakePort,
+} from './delegation/leader-auto-wake.js';
+export {
+  DELEGATION_RESULT_MARKER,
+  type DelegationDeliveryPayload,
+  delegationDeliveryId,
+  type LeaderDelivery,
+  LeaderDeliveryHub,
+  type LeaderDeliveryPendingEvent,
+  leaderDeliveryHub,
+  renderLeaderDeliveryBlock,
+} from './delegation/leader-delivery-hub.js';
+export {
+  buildDelegationResultExcerpt,
+  type DelegateInput,
+  type DelegateMode,
+  type DelegateResult,
+  makeDelegateCompletedEmitter,
+} from './delegation/run-delegation.js';
 // ── Dependency watcher — file-change → mailbox bridge ────────────────────
 export {
   DEPENDENCY_FILE_PATTERNS,

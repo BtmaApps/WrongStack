@@ -43,6 +43,17 @@ import type {
  * own. `app.tsx` re-exports `AppProps` for consumers importing it from
  * '@wrongstack/tui' / '../src/app.js'.
  */
+/**
+ * The TUI's view of core's `LeaderAutoWakeController` (structural, so tests
+ * can pass a fake). The TUI binds a port for its foreground session.
+ */
+export interface TuiLeaderAutoWake {
+  attachPort(port: import('@wrongstack/core/coordination').LeaderWakePort): () => void;
+  onRunFinished(sessionId: string): unknown;
+  onSessionDisplayed(sessionId: string): unknown;
+  noteUserInput(sessionId: string): void;
+}
+
 export interface AppProps {
   agent: Agent;
   slashRegistry: SlashCommandRegistry;
@@ -73,6 +84,8 @@ export interface AppProps {
    * awareness — see core's queued-messages.ts). Display state is unaffected.
    */
   onQueueChange?: ((items: string[]) => void) | undefined;
+  /** Background-delegation auto-wake controller; see {@link TuiLeaderAutoWake}. */
+  leaderAutoWake?: TuiLeaderAutoWake | undefined;
   /** Reflects the policy's --yolo flag for the status bar's "⚠ YOLO" chip. */
   yolo?: boolean | undefined;
   /** Play terminal bell when an agent run completes. */

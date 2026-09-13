@@ -83,6 +83,9 @@ import type {
   WSContextRepaired,
   WSDelegateCompleted,
   WSDelegateStarted,
+  WSDelegationAutoWakeStarted,
+  WSDelegationAutoWakeSuppressed,
+  WSDelegationDeliveryPending,
   WSError,
   WSMemoryList,
   WSSessionStats,
@@ -196,6 +199,9 @@ export type WSServerMessage =
   | WSToolLoopDetected
   | WSDelegateStarted
   | WSDelegateCompleted
+  | WSDelegationDeliveryPending
+  | WSDelegationAutoWakeStarted
+  | WSDelegationAutoWakeSuppressed
   | WSContextDebug
   | WSContextCompacted
   | WSCompactionFailed

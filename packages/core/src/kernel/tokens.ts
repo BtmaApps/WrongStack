@@ -1,4 +1,5 @@
 import type { BrainArbiter } from '../coordination/brain.js';
+import type { DelegationTracker } from '../coordination/delegation/delegation-tracker.js';
 import type { FallbackProfileManager } from '../core/fallback-profile-manager.js';
 import type { ProviderModelStatusTracker } from '../coordination/provider-status-tracker.js';
 import type { HookRegistry } from '../hooks/registry.js';
@@ -78,4 +79,6 @@ export const TOKENS = {
   BrainArbiter: t<BrainArbiter>('BrainArbiter'),
   /** Lifecycle hook registry (shell + in-process hooks). */
   HookRegistry: t<HookRegistry>('HookRegistry'),
+  /** Process-wide background `delegate` tracker (one per host). */
+  DelegationTracker: t<DelegationTracker>('DelegationTracker'),
 } as const;

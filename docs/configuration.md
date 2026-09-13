@@ -1292,6 +1292,43 @@ the active profile config or the project-private `config.local.json`.
 
 ---
 
+## `fleet.delegate` — Background delegation and auto-wake
+
+```jsonc
+{
+  "fleet": {
+    "delegate": {
+      "autoWake": true,
+      "autoWakeDebounceMs": 1500,
+      "maxChainedWakes": 5,
+      "defaultWait": false
+    }
+  }
+}
+```
+
+The `delegate` tool runs its worker in the background and returns at once with
+a `delegationId`. When the worker settles, the result is delivered to the
+owning leader as a `[DELEGATION RESULT]` block at its next iteration boundary.
+A tool call that passes `wait: true` keeps the historical blocking behaviour.
+
+| Key | Default | Effect |
+|---|---|---|
+| `autoWake` | `true` | When a result arrives and the leader is idle, start a new leader turn for it. Held while no surface displays the session; never fired for user-caused outcomes (fleet stop) or for results recovered from the journal at boot. |
+| `autoWakeDebounceMs` | `1500` | Coalescing window: results landing within it share one woken turn. |
+| `maxChainedWakes` | `5` | Consecutive woken turns without user input. At the cap, results stay queued and the next user message delivers them. |
+| `defaultWait` | `false` | Default for the tool's `wait` input when the model omits it. `true` restores the old blocking `delegate` — a rollback switch. |
+
+With `autoWake: false` (and on ACP, which only starts turns on
+`session/prompt`), results stay queued and are injected at the start of the
+next turn. Esc/Stop on the leader does not cancel background delegations.
+
+**Security:** `fleet` is stripped from in-project config, so a repository cannot
+turn on autonomous wakes. Configure this under the active profile config or the
+project-private `config.local.json`.
+
+---
+
 ## `pluginManager` — LLM plugin-state policy
 
 ```jsonc

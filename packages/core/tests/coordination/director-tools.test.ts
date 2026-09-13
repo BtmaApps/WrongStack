@@ -13,6 +13,7 @@ import {
   makeCollabDebugTool,
   makeFleetEmitTool,
   makeFleetTool,
+  makeKanbanQueueTool,
   makeQualityGateTool,
   makeRollUpTool,
   makeSpawnTool,
@@ -21,6 +22,7 @@ import {
   makeWorkCompleteTool,
 } from '../../src/coordination/director-tools.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
+import { ToolValidationError } from '../../src/types/errors.js';
 
 const dispatchAgentMock = vi.fn();
 vi.mock('../../src/coordination/dispatcher.js', () => ({
@@ -128,12 +130,15 @@ describe('makeSpawnTool', () => {
     expect(director.spawn).toHaveBeenCalled();
   });
 
-  it('errors on an unknown roster role', async () => {
+  it('throws on an unknown roster role', async () => {
     const tool = makeSpawnTool(asDir(), { planner: {} as never });
-    const res = (await tool.execute({ role: 'nope' }, {} as never, {} as never)) as {
-      error: string;
-    };
-    expect(res.error).toMatch(/unknown role/);
+    await expect(tool.execute({ role: 'nope' }, {} as never, {} as never)).rejects.toThrow(
+      ToolValidationError,
+    );
+    await expect(tool.execute({ role: 'nope' }, {} as never, {} as never)).rejects.toThrow(
+      /unknown role "nope"/,
+    );
+    expect(director.spawn).not.toHaveBeenCalled();
   });
 
   it('dispatches by description to a matching roster entry', async () => {
@@ -208,36 +213,32 @@ describe('makeSpawnTool', () => {
       new FleetSpawnBudgetError('max_spawns', 3, 4),
     );
     const tool = makeSpawnTool(asDir(), { planner: { name: 'Planner', role: 'planner' } });
-    await tool.execute({ role: 'planner' }, {} as never, {} as never);
+    await expect(tool.execute({ role: 'planner' }, {} as never, {} as never)).rejects.toThrow(
+      FleetSpawnBudgetError,
+    );
     // A worker rejected by a budget cap never ran; counting it would overstate
     // the routing volume this telemetry exists to measure.
     expect(routed).not.toHaveBeenCalled();
   });
 
-  it('surfaces spawn, cost, token, and generic errors', async () => {
+  it('throws spawn, cost, token, and generic failures instead of returning them as success', async () => {
     const tool = makeSpawnTool(asDir());
+    const run = () => tool.execute({ name: 'x' }, {} as never, {} as never);
     (director.spawn as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new FleetSpawnBudgetError('max_spawns', 3, 4),
     );
-    expect(
-      (await tool.execute({ name: 'x' }, {} as never, {} as never)) as { kind: string },
-    ).toMatchObject({ kind: 'max_spawns', limit: 3, observed: 4 });
+    // The thrown message carries the limit and observed values the old result exposed.
+    await expect(run()).rejects.toThrow(/#4 but maxSpawns is 3/);
     (director.spawn as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new FleetCostCapError(10, 12),
     );
-    expect(
-      (await tool.execute({ name: 'x' }, {} as never, {} as never)) as { error: string },
-    ).toHaveProperty('error');
+    await expect(run()).rejects.toThrow(/12\.0000 exceeds maxCostUsd 10\.0000/);
     (director.spawn as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new FleetTokenCapError(1000, 1200),
     );
-    expect(
-      (await tool.execute({ name: 'x' }, {} as never, {} as never)) as { kind: string },
-    ).toMatchObject({ kind: 'max_tokens', limit: 1000, observed: 1200 });
+    await expect(run()).rejects.toThrow(/1200 tokens meets or exceeds maxTokens 1000/);
     (director.spawn as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
-    expect(
-      (await tool.execute({ name: 'x' }, {} as never, {} as never)) as { error: string },
-    ).toMatchObject({ error: 'boom' });
+    await expect(run()).rejects.toThrow('boom');
   });
 });
 
@@ -265,30 +266,29 @@ describe('task/ask tools', () => {
   });
 
   it('assign_task requires an explicit scope', async () => {
-    const res = (await makeAssignTool(asDir()).execute(
+    const run = makeAssignTool(asDir()).execute(
       { subagentId: 's1', description: 'do it', outOfScope: ['No edits'] },
       {} as never,
       {} as never,
-    )) as { ok?: boolean; error?: string; hint?: string };
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/boundary incomplete[\s\S]*scope/);
-    expect(res.hint).toBeTruthy();
+    );
+    // The teaching hint is folded into the thrown message.
+    await expect(run).rejects.toThrow(/boundary incomplete[\s\S]*scope[\s\S]*Example/);
     expect(director.assign).not.toHaveBeenCalled();
   });
 
   it('assign_task rejects placeholder outOfScope entries', async () => {
-    const res = (await makeAssignTool(asDir()).execute(
-      {
-        subagentId: 's1',
-        description: 'do it',
-        scope: 'Fix the flaky login test in packages/core/tests/login.test.ts.',
-        outOfScope: ['none', 'n/a'],
-      },
-      {} as never,
-      {} as never,
-    )) as { ok?: boolean; error?: string };
-    expect(res.ok).toBe(false);
-    expect(res.error).toMatch(/placeholder/);
+    await expect(
+      makeAssignTool(asDir()).execute(
+        {
+          subagentId: 's1',
+          description: 'do it',
+          scope: 'Fix the flaky login test in packages/core/tests/login.test.ts.',
+          outOfScope: ['none', 'n/a'],
+        },
+        {} as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(ToolValidationError);
     expect(director.assign).not.toHaveBeenCalled();
   });
 
@@ -367,17 +367,20 @@ describe('task/ask tools', () => {
     expect(res._answerKey).toBe('k1');
   });
 
-  it('ask_subagent returns an error on failure', async () => {
-    (director.ask as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('ask failed'));
-    const res = (await makeAskTool(asDir()).execute(
-      { subagentId: 's1', question: 'q?' },
-      {} as never,
-      {} as never,
-    )) as { ok: boolean };
-    expect(res.ok).toBe(false);
+  it('ask_subagent throws when the ask fails, keeping the cause', async () => {
+    const cause = new Error('ask failed');
+    (director.ask as ReturnType<typeof vi.fn>).mockRejectedValueOnce(cause);
+    const err = await makeAskTool(asDir())
+      .execute({ subagentId: 's1', question: 'q?' }, {} as never, {} as never)
+      .then(
+        () => undefined,
+        (e: unknown) => e as Error,
+      );
+    expect(err?.message).toMatch(/ask_subagent failed for "s1": ask failed/);
+    expect(err?.cause).toBe(cause);
   });
 
-  it('ask_result retrieves and reports missing keys', async () => {
+  it('ask_result retrieves a value and throws on a missing key', async () => {
     (
       director.largeAnswerStore as { retrieveAnswer: ReturnType<typeof vi.fn> }
     ).retrieveAnswer.mockReturnValueOnce('full value');
@@ -387,9 +390,9 @@ describe('task/ask tools', () => {
     (
       director.largeAnswerStore as { retrieveAnswer: ReturnType<typeof vi.fn> }
     ).retrieveAnswer.mockReturnValueOnce(undefined);
-    expect(
-      await makeAskResultTool(asDir()).execute({ key: 'missing' }, {} as never, {} as never),
-    ).toMatchObject({ ok: false });
+    await expect(
+      makeAskResultTool(asDir()).execute({ key: 'missing' }, {} as never, {} as never),
+    ).rejects.toThrow(/No stored answer found for key "missing"/);
   });
 
   it('roll_up aggregates results', async () => {
@@ -532,6 +535,29 @@ describe('makeQualityGateTool', () => {
 
     expect(res).toMatchObject({ verdict: 'inconclusive', passed: false });
   });
+
+  it('throws when both reviewer and verifier lanes are disabled', async () => {
+    await expect(
+      makeQualityGateTool(asDir()).execute(
+        { reviewer: false, verifier: false },
+        {} as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/requires reviewer, verifier, or both/);
+    expect(director.spawn).not.toHaveBeenCalled();
+  });
+});
+
+describe('makeKanbanQueueTool input failures', () => {
+  it('throws on an unknown action and on a missing projectRoot', async () => {
+    const tool = makeKanbanQueueTool(asDir());
+    await expect(
+      tool.execute({ action: 'drain' }, { projectRoot: '/p' } as never, {} as never),
+    ).rejects.toThrow(/Unknown kanban_queue action: drain/);
+    await expect(
+      tool.execute({ action: 'dispatch_ready' }, {} as never, {} as never),
+    ).rejects.toThrow(/requires ctx\.projectRoot/);
+  });
 });
 
 describe('lifecycle/status tools', () => {
@@ -575,7 +601,7 @@ describe('lifecycle/status tools', () => {
     expect(res).toMatchObject({ action: 'usage', perSubagent: expect.any(Object) });
   });
 
-  it('fleet action: session returns a transcript or an error when unavailable', async () => {
+  it('fleet action: session returns a transcript or throws when unavailable', async () => {
     const res = await makeFleetTool(asDir()).execute(
       { action: 'session', subagentId: 's1' },
       {} as never,
@@ -583,21 +609,19 @@ describe('lifecycle/status tools', () => {
     );
     expect(res).toMatchObject({ action: 'session', lastText: 'hi' });
     (director.readSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
-    const err = (await makeFleetTool(asDir()).execute(
-      { action: 'session', subagentId: 's1' },
-      {} as never,
-      {} as never,
-    )) as { error: string };
-    expect(err).toHaveProperty('error');
+    await expect(
+      makeFleetTool(asDir()).execute(
+        { action: 'session', subagentId: 's1' },
+        {} as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/transcript unavailable for "s1"/);
   });
 
   it('fleet action: session requires subagentId', async () => {
-    const res = (await makeFleetTool(asDir()).execute(
-      { action: 'session' },
-      {} as never,
-      {} as never,
-    )) as { error: string };
-    expect(res.error).toContain('subagentId is required');
+    await expect(
+      makeFleetTool(asDir()).execute({ action: 'session' }, {} as never, {} as never),
+    ).rejects.toThrow(/subagentId is required/);
   });
 
   it('fleet action: health maps per-subagent budget pressure', async () => {
@@ -612,13 +636,10 @@ describe('lifecycle/status tools', () => {
     });
   });
 
-  it('fleet action: unknown returns an error', async () => {
-    const res = (await makeFleetTool(asDir()).execute(
-      { action: 'nope' },
-      {} as never,
-      {} as never,
-    )) as { error: string };
-    expect(res.error).toContain('unknown action');
+  it('fleet action: unknown throws', async () => {
+    await expect(
+      makeFleetTool(asDir()).execute({ action: 'nope' }, {} as never, {} as never),
+    ).rejects.toThrow(/unknown action "nope"/);
   });
 
   it('fleet_emit validates known payloads and attributes the real caller/task', async () => {
@@ -653,41 +674,42 @@ describe('lifecycle/status tools', () => {
 
   it('fleet_emit rejects malformed known payloads and cross-role spoofing', async () => {
     const tool = makeFleetEmitTool(asDir());
-    const malformed = await tool.execute(
-      { type: 'bug.found', payload: { finding: { id: 'broken' } } },
-      { agentId: 'bug-hunter-1', meta: { agentRole: 'bug-hunter' } } as never,
-      {} as never,
-    );
-    const spoofed = await tool.execute(
-      { type: 'bug.found', payload: {} },
-      { agentId: 'critic-1', meta: { agentRole: 'critic' } } as never,
-      {} as never,
-    );
-
-    expect(malformed).toMatchObject({ ok: false });
-    expect(spoofed).toMatchObject({ ok: false, error: expect.stringContaining('bug-hunter') });
+    await expect(
+      tool.execute(
+        { type: 'bug.found', payload: { finding: { id: 'broken' } } },
+        { agentId: 'bug-hunter-1', meta: { agentRole: 'bug-hunter' } } as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(ToolValidationError);
+    await expect(
+      tool.execute(
+        { type: 'bug.found', payload: {} },
+        { agentId: 'critic-1', meta: { agentRole: 'critic' } } as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/bug-hunter/);
     expect((director.fleet as { emit: ReturnType<typeof vi.fn> }).emit).not.toHaveBeenCalled();
   });
 
   it('fleet_emit rejects known collab events when the caller has no role', async () => {
-    const result = await makeFleetEmitTool(asDir()).execute(
-      {
-        type: 'bug.found',
-        payload: {
-          finding: {
-            id: 'bug-1',
-            type: 'logic',
-            severity: 'medium',
-            location: { file: 'src/a.ts', line: 1 },
-            description: 'example',
+    await expect(
+      makeFleetEmitTool(asDir()).execute(
+        {
+          type: 'bug.found',
+          payload: {
+            finding: {
+              id: 'bug-1',
+              type: 'logic',
+              severity: 'medium',
+              location: { file: 'src/a.ts', line: 1 },
+              description: 'example',
+            },
           },
         },
-      },
-      { agentId: 'unscoped-agent', meta: {} } as never,
-      {} as never,
-    );
-
-    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('unknown') });
+        { agentId: 'unscoped-agent', meta: {} } as never,
+        {} as never,
+      ),
+    ).rejects.toThrow(/unknown/);
     expect((director.fleet as { emit: ReturnType<typeof vi.fn> }).emit).not.toHaveBeenCalled();
   });
 
@@ -701,13 +723,10 @@ describe('lifecycle/status tools', () => {
 
 describe('collab_debug tool', () => {
   it('rejects empty targetPaths', async () => {
-    expect(
-      (await makeCollabDebugTool(asDir()).execute(
-        { targetPaths: [] },
-        {} as never,
-        {} as never,
-      )) as { error: string },
-    ).toHaveProperty('error');
+    await expect(
+      makeCollabDebugTool(asDir()).execute({ targetPaths: [] }, {} as never, {} as never),
+    ).rejects.toThrow(/targetPaths is required/);
+    expect(director.spawnCollab).not.toHaveBeenCalled();
   });
 
   it('runs a collaborative debug session', async () => {
@@ -719,16 +738,12 @@ describe('collab_debug tool', () => {
     expect(res).toMatchObject({ sessionId: 'cs1', overallVerdict: 'approve', bugCount: 0 });
   });
 
-  it('reports a failure from spawnCollab', async () => {
+  it('throws a failure from spawnCollab', async () => {
     (director.spawnCollab as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error('collab boom'),
     );
-    expect(
-      (await makeCollabDebugTool(asDir()).execute(
-        { targetPaths: ['x'] },
-        {} as never,
-        {} as never,
-      )) as { error: string },
-    ).toMatchObject({ error: expect.stringContaining('collab boom') });
+    await expect(
+      makeCollabDebugTool(asDir()).execute({ targetPaths: ['x'] }, {} as never, {} as never),
+    ).rejects.toThrow(/collab_debug failed: collab boom/);
   });
 });

@@ -82,6 +82,12 @@ export interface RouteContextsParams {
   clients: Map<WebSocket, { sessionId: string | null; sessionIds?: Set<string> | undefined }>;
   /** Retire the per-tab agents of sessions nobody is displaying any more. */
   onSessionsUndisplayed: (sessionIds: string[]) => void;
+  /**
+   * Background-delegation auto-wake host, when the CLI passed a controller.
+   * Feeds the conversation path (submits, finished runs, runtime turns) and
+   * the session routes (a tab started displaying a session).
+   */
+  autoWake?: import('@wrongstack/webui-server').WebuiLeaderAutoWakeHost | undefined;
   /** Stop the subagents one session spawned, when that session is aborted. */
   stopSessionFleet?: ((sessionId: string) => void | Promise<void>) | undefined;
   send: (ws: WebSocket, msg: WSServerMessage) => void;
@@ -114,6 +120,7 @@ export function createWebuiRouteContexts({
   setForegroundSession,
   clients,
   onSessionsUndisplayed,
+  autoWake,
   stopSessionFleet,
   send,
   broadcast,
@@ -392,6 +399,11 @@ export function createWebuiRouteContexts({
     setForegroundSession,
     clients,
     onSessionsUndisplayed,
+    // A tab started showing a session: release background-delegation results
+    // held while nobody displayed it (auto-wake hold).
+    ...(autoWake
+      ? { onSessionsDisplayed: (ids: string[]) => autoWake.onSessionsDisplayed(ids) }
+      : {}),
     send,
     broadcast,
     log: (m) => console.log(m),
@@ -406,6 +418,7 @@ export function createWebuiRouteContexts({
     ...(peekSessionAgent ? { peekAgent: peekSessionAgent } : {}),
     abortControllers,
     pendingConfirms,
+    ...(autoWake ? { autoWake } : {}),
     ...(stopSessionFleet ? { stopSessionFleet } : {}),
     send,
     broadcast,

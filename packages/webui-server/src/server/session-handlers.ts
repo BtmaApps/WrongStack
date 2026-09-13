@@ -60,6 +60,20 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
     finalizeSession,
   } = shared;
 
+  /**
+   * A connection started showing these sessions. Best-effort: the host uses it
+   * to release background-delegation results held while no tab displayed the
+   * session, and a failure there must never fail the transition.
+   */
+  const notifyDisplayed = (sessionIds: string[]): void => {
+    if (!ctx.onSessionsDisplayed || sessionIds.length === 0) return;
+    try {
+      ctx.onSessionsDisplayed(sessionIds);
+    } catch {
+      // best-effort
+    }
+  };
+
   const contextHandlers = createSessionContextHandlers(shared);
   const modeHandlers = createSessionModeHandlers(shared);
   const checkpointHandlers = createSessionCheckpointHandlers(shared);
@@ -428,6 +442,9 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
               type: 'todos.updated',
               payload: { sessionId: canonicalId, todos: currentTodos },
             });
+            // The tab now shows this session: release background-delegation
+            // results held while nobody was displaying it.
+            notifyDisplayed([canonicalId]);
             result(ws, true, 'Session is already active');
             return;
           }
@@ -470,6 +487,14 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
             resumed.data.events,
             resumed.data.subagentsAllowed,
           );
+          // Re-queue background delegation results this session never
+          // received. Never wakes by itself; the tab displaying the session
+          // (below) or the next turn picks them up.
+          try {
+            ctx.rehydrateDelegations?.(resumed.writer.id, resumed.data.events ?? []);
+          } catch {
+            // best-effort: a bad journal tail must not fail the resume
+          }
           const client = ctx.clients?.get(ws);
           if (client) {
             client.sessionId = resumed.writer.id;
@@ -500,6 +525,9 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
           // The client resets todos to [] on session.start(reset); push the
           // restored board AFTER so the panel repopulates.
           sendTodosUpdated(ws, { sessionId: resumed.writer.id, todos: restoredTodos });
+          // Displayed only now, after its transcript: a woken turn must stream
+          // into a tab that already shows the conversation it continues.
+          notifyDisplayed([resumed.writer.id]);
           try {
             const list = await ctx.getSessionStore().list(200);
             broadcastToAll({
@@ -661,6 +689,10 @@ export function createSessionHandlers(ctx: SessionHandlersContext): SessionRoute
           },
         });
       }
+
+      // Every id this connection had not declared before is newly on screen:
+      // release background-delegation results held while no tab showed it.
+      notifyDisplayed([...next].filter((id) => !previous?.has(id)));
 
       if (!ctx.onSessionsUndisplayed || !previous) return;
       // Dropped by THIS connection and claimed by no other one. Computed after

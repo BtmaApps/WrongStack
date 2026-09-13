@@ -147,6 +147,7 @@ export function createRunTurnApi(
   sessionId: string,
   clientCapabilities: ClientCapabilities,
   request: (method: string, params: unknown) => Promise<unknown>,
+  sendSessionUpdate?: (update: unknown) => Promise<boolean>,
 ): RunTurnApi {
   return {
     clientCapabilities,
@@ -197,6 +198,7 @@ export function createRunTurnApi(
         }
       }
     },
+    ...(sendSessionUpdate ? { sendSessionUpdate } : {}),
   };
 }
 

@@ -61,6 +61,12 @@ export interface RunTuiOptions {
    * its next iteration boundary without the queue being delivered early.
    */
   onQueueChange?: ((items: string[]) => void) | undefined;
+  /**
+   * Background-delegation auto-wake controller (core
+   * `LeaderAutoWakeController`). When present the TUI binds a wake port for
+   * the foreground session and reports user runs / idle-after-run to it.
+   */
+  leaderAutoWake?: import('./app-props.js').TuiLeaderAutoWake | undefined;
   /** Surfaces the "⚠ YOLO" chip in the status bar. */
   yolo?: boolean | undefined;
   /** Query live YOLO state from the permission policy. */

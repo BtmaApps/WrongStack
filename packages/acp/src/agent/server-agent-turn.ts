@@ -37,6 +37,16 @@
  * `agent.run({signal})` and the underlying provider call observes
  * it. On abort, the adapter maps the resulting `AbortError` to
  * `{stopReason: 'cancelled'}`.
+ *
+ * Background delegations: a background `delegate` result is queued for the
+ * session's leader and injected by the core agent loop at its next iteration
+ * boundary — on ACP that is the next `session/prompt`, because ACP never
+ * starts a turn on its own. So the client is not left guessing, the adapter
+ * listens for `leader.delivery_pending` on the session agent's event bus and,
+ * while no turn is running, sends one coalesced unprompted `session/update`
+ * ("Background delegation <id> finished; send any message to continue.")
+ * through `RunTurnApi.sendSessionUpdate`. Nothing is sent after the session is
+ * disposed, and a notice failure never reaches the event bus.
  */
 import type { Agent, AgentInput } from '@wrongstack/core/agent';
 import type {
@@ -82,6 +92,30 @@ export interface ACPServerAgentTurnOptions {
   maxHistoryEntries?: number | undefined;
   /** Maximum serialized replay bytes retained per session. Default 8 MiB. */
   maxHistoryBytes?: number | undefined;
+  /**
+   * Coalescing window for the unprompted "background delegation finished"
+   * notice. Deliveries announced within it share one notice. Default 1500 ms.
+   */
+  deliveryNoticeDebounceMs?: number | undefined;
+  /**
+   * Live count of results still queued for the session's leader (the host
+   * wires the core leader-delivery hub here). When provided, a notice is sent
+   * only while something is actually still pending — so a result the agent
+   * loop already drained mid-turn is never announced. When omitted, results
+   * announced during a running turn are assumed drained by that turn.
+   */
+  pendingDeliveries?: ((sessionId: string) => number) | undefined;
+}
+
+/** Per-session state for the unprompted background-delegation notice. */
+interface DeliveryNotifier {
+  /** Latest turn's client API — its `sendSessionUpdate` outlives the turn. */
+  api: RunTurnApi | undefined;
+  /** Delivery ids announced as pending and not yet noticed. */
+  pending: Set<string>;
+  running: boolean;
+  timer: ReturnType<typeof setTimeout> | undefined;
+  unsubscribe: Array<() => void>;
 }
 
 /** A recorded conversation turn, replayable on `session/load`. */
@@ -135,6 +169,91 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
   const timeoutMs = opts.timeoutMs ?? 5 * 60_000;
   const maxHistoryEntries = finitePositiveLimit(opts.maxHistoryEntries, 1_000);
   const maxHistoryBytes = finitePositiveLimit(opts.maxHistoryBytes, 8 * 1024 * 1024);
+  const deliveryNoticeDebounceMs = finiteNonNegativeLimit(opts.deliveryNoticeDebounceMs, 1_500);
+  const notifiers = new Map<string, DeliveryNotifier>();
+
+  const stillPending = (sessionId: string): boolean => {
+    if (!opts.pendingDeliveries) return true;
+    try {
+      return opts.pendingDeliveries(sessionId) > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const flushDeliveryNotice = async (sessionId: string, state: DeliveryNotifier): Promise<void> => {
+    // Disposed, a turn started meanwhile (its loop injects the results), or
+    // nothing left to announce.
+    if (notifiers.get(sessionId) !== state || state.running || state.pending.size === 0) return;
+    const api = state.api;
+    if (!api?.sendSessionUpdate) return;
+    const ids = [...state.pending];
+    state.pending.clear();
+    if (!stillPending(sessionId)) return;
+    try {
+      await api.sendSessionUpdate({
+        sessionUpdate: 'agent_message_chunk',
+        content: { type: 'text', text: deliveryNoticeText(ids) },
+      });
+    } catch {
+      // Best-effort: the result itself stays queued for the next prompt.
+    }
+  };
+
+  const scheduleDeliveryNotice = (sessionId: string): void => {
+    const state = notifiers.get(sessionId);
+    if (!state || state.running || state.pending.size === 0 || state.timer) return;
+    // Not re-armed per event: a steady stream of results still yields a notice
+    // within one window instead of being postponed indefinitely.
+    state.timer = setTimeout(() => {
+      state.timer = undefined;
+      void flushDeliveryNotice(sessionId, state);
+    }, deliveryNoticeDebounceMs);
+    state.timer.unref?.();
+  };
+
+  const attachDeliveryNotifier = (
+    sessionId: string,
+    agent: Agent,
+  ): DeliveryNotifier | undefined => {
+    const existing = notifiers.get(sessionId);
+    if (existing) return existing;
+    const bus = (agent as { events?: { on?: typeof agent.events.on } }).events;
+    if (!bus?.on) return undefined;
+    const state: DeliveryNotifier = {
+      api: undefined,
+      pending: new Set(),
+      running: false,
+      timer: undefined,
+      unsubscribe: [],
+    };
+    notifiers.set(sessionId, state);
+    const owns = (eventSessionId: unknown): boolean =>
+      agentOwnsSession(agent, sessionId, eventSessionId);
+    state.unsubscribe.push(
+      bus.on('leader.delivery_pending', (e) => {
+        try {
+          if (notifiers.get(sessionId) !== state || !owns(e?.sessionId)) return;
+          for (const id of Array.isArray(e.deliveryIds) ? e.deliveryIds : []) {
+            if (typeof id === 'string' && id.length > 0) state.pending.add(id);
+          }
+          scheduleDeliveryNotice(sessionId);
+        } catch {
+          // A notice must never break the event bus.
+        }
+      }),
+      bus.on('delegation.delivered', (e) => {
+        try {
+          if (!owns(e?.sessionId) || typeof e.delegationId !== 'string') return;
+          state.pending.delete(e.delegationId);
+          state.pending.delete(`${DELEGATION_DELIVERY_PREFIX}${e.delegationId}`);
+        } catch {
+          // A notice must never break the event bus.
+        }
+      }),
+    );
+    return state;
+  };
 
   const turn = async (
     input: Parameters<RunTurn>[0],
@@ -156,6 +275,19 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
       if (pendingSeed.has(input.sessionId)) {
         pendingSeed.delete(input.sessionId);
         seedAgentContext(agent, history.get(input.sessionId)!);
+      }
+    }
+
+    // This turn's loop injects every result queued so far, so any notice still
+    // waiting is moot; announcements that land mid-turn are re-checked below.
+    const notifier = attachDeliveryNotifier(input.sessionId, agent);
+    if (notifier) {
+      if (api) notifier.api = api;
+      notifier.running = true;
+      notifier.pending.clear();
+      if (notifier.timer) {
+        clearTimeout(notifier.timer);
+        notifier.timer = undefined;
       }
     }
 
@@ -295,6 +427,15 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
       timeouts.delete(input.sessionId);
       input.signal.removeEventListener('abort', onParentAbort);
       for (const u of unsub) u();
+      if (notifier && notifiers.get(input.sessionId) === notifier) {
+        notifier.running = false;
+        // A result can settle during the final iteration, after the loop's
+        // last drain. With a live pending count that is detectable; without
+        // one, assume the turn consumed what it saw rather than announce a
+        // result the model already holds.
+        if (!opts.pendingDeliveries) notifier.pending.clear();
+        scheduleDeliveryNotice(input.sessionId);
+      }
     }
   };
 
@@ -321,6 +462,20 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
     const timer = timeouts.get(sessionId);
     if (timer) clearTimeout(timer);
     timeouts.delete(sessionId);
+    const notifier = notifiers.get(sessionId);
+    if (notifier) {
+      notifiers.delete(sessionId);
+      if (notifier.timer) clearTimeout(notifier.timer);
+      notifier.timer = undefined;
+      notifier.pending.clear();
+      for (const off of notifier.unsubscribe) {
+        try {
+          off();
+        } catch {
+          // teardown continues
+        }
+      }
+    }
     agents.delete(sessionId);
     history.delete(sessionId);
     historyBytes.delete(sessionId);
@@ -332,6 +487,51 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
 
 function finitePositiveLimit(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) && (value as number) > 0 ? Math.floor(value as number) : fallback;
+}
+
+function finiteNonNegativeLimit(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) && (value as number) >= 0 ? Math.floor(value as number) : fallback;
+}
+
+/**
+ * Prefix of a delegation's delivery id — mirrors core's
+ * `delegationDeliveryId` (`delegation:<delegationId>`). Kept local so this
+ * adapter does not pull the coordination runtime in for one string.
+ */
+const DELEGATION_DELIVERY_PREFIX = 'delegation:';
+const NOTICE_MAX_IDS = 5;
+
+function normalizeSessionKey(id: string): string {
+  return id.trim().replace(/\\/g, '/');
+}
+
+/**
+ * True when an event's session id belongs to this ACP session: the ACP id
+ * itself, or the id the agent's context is bound to.
+ */
+function agentOwnsSession(agent: Agent, acpSessionId: string, eventSessionId: unknown): boolean {
+  if (typeof eventSessionId !== 'string' || eventSessionId.trim().length === 0) return false;
+  const target = normalizeSessionKey(eventSessionId);
+  const ctx = (
+    agent as { ctx?: { session?: { id?: unknown }; meta?: Record<string, unknown> | undefined } }
+  ).ctx;
+  const candidates: unknown[] = [acpSessionId, ctx?.session?.id, ctx?.meta?.['sessionId']];
+  return candidates.some(
+    (c) => typeof c === 'string' && c.length > 0 && normalizeSessionKey(c) === target,
+  );
+}
+
+/** The client-facing notice for one or more finished background delegations. */
+function deliveryNoticeText(deliveryIds: readonly string[]): string {
+  const ids = deliveryIds.map((id) =>
+    id.startsWith(DELEGATION_DELIVERY_PREFIX) ? id.slice(DELEGATION_DELIVERY_PREFIX.length) : id,
+  );
+  if (ids.length === 1) {
+    return `Background delegation ${ids[0]} finished; send any message to continue.`;
+  }
+  const shown = ids.slice(0, NOTICE_MAX_IDS).join(', ');
+  const more = ids.length > NOTICE_MAX_IDS ? ` (+${ids.length - NOTICE_MAX_IDS} more)` : '';
+  return `Background delegations ${shown}${more} finished; send any message to continue.`;
 }
 
 function trimHistory(
@@ -585,6 +785,9 @@ function extractUsage(
 /** Internal deterministic seams used by the per-file coverage suite. */
 export const serverAgentTurnCoverage = {
   finitePositiveLimit,
+  finiteNonNegativeLimit,
+  agentOwnsSession,
+  deliveryNoticeText,
   trimHistory,
   replayEntryBytes,
   seedAgentContext,

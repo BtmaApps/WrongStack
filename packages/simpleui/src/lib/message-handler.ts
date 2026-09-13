@@ -16,7 +16,13 @@ import {
   isFinalTurnStopReason,
   type projectNextStepsToolInput,
 } from '@wrongstack/tools/next-steps';
-import { projectChatMessage, projectFleetMessage } from '@wrongstack/webui-protocol';
+import {
+  formatAutoWakeNotice,
+  formatAutoWakeSuppressedNotice,
+  formatDeliveryPendingNotice,
+  projectChatMessage,
+  projectFleetMessage,
+} from '@wrongstack/webui-protocol';
 import { projectFallbackPending } from '../fallback-modal.js';
 import type { AgentMode, ModelDescriptor, ServerMessage, SimpleSubagent } from '../types.js';
 import {
@@ -55,6 +61,37 @@ import { projectStatusNotice } from './status-notice.js';
 import { enqueuePendingUserInput, resolvePendingUserInput } from './user-input-queue.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+/**
+ * The transcript line for a background-delegation notice, or `null` when the
+ * frame carries nothing to show (an `undisplayed` hold never reaches a tab).
+ */
+export function delegationNoticeText(
+  type: string,
+  payload: Record<string, unknown>,
+): string | null {
+  const delegationIds = stringList(payload['delegationIds']);
+  if (type === 'delegation.delivery_pending') {
+    return formatDeliveryPendingNotice(
+      delegationIds,
+      finiteNumber(payload['count'], delegationIds.length || 1),
+    );
+  }
+  if (type === 'delegation.auto_wake_started') {
+    return formatAutoWakeNotice(delegationIds, finiteNumber(payload['chain'], 0));
+  }
+  if (type === 'delegation.auto_wake_suppressed') {
+    if (payload['reason'] !== 'chain_cap') return null;
+    return formatAutoWakeSuppressedNotice(finiteNumber(payload['pending'], 1));
+  }
+  return null;
+}
 
 function finiteNumber(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -535,6 +572,32 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
           break;
         }
         setActivity(message.type === 'delegate.started' ? 'Delegating' : 'Working');
+        break;
+      }
+      case 'delegation.delivery_pending':
+      case 'delegation.auto_wake_started':
+      case 'delegation.auto_wake_suppressed': {
+        if (
+          typeof payload['sessionId'] === 'string' &&
+          payload['sessionId'] !== sessionIdRef.current
+        ) {
+          break;
+        }
+        const text = delegationNoticeText(message.type, payload);
+        if (!text) break;
+        // A runtime line, never a user bubble: a woken turn is not something
+        // the user typed. The queue stays user-only — nothing here drains it.
+        setMessages((current) =>
+          retainSimpleChatMessages([
+            ...current,
+            {
+              id: messageId('delegation'),
+              role: 'system',
+              text: boundSimpleChatText(text),
+              ts: new Date().toISOString(),
+            },
+          ]),
+        );
         break;
       }
       case 'iteration.started':

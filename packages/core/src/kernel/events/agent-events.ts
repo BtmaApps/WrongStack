@@ -44,6 +44,12 @@ export interface AgentEventMap {
     task: string;
     /** Runtime identity for the spawned delegate, when creation succeeded. */
     subagentId?: string | undefined;
+    /** Stable id for the whole delegation (survives handoff continuations). */
+    delegationId?: string | undefined;
+    /** Task id of the first attempt. */
+    taskId?: string | undefined;
+    /** `background` (tracker-owned, leader not blocked) or `wait` (blocking). */
+    mode?: 'background' | 'wait' | undefined;
   };
   /**
    * Fired by the `delegate` tool once the subagent settles (success,
@@ -71,6 +77,15 @@ export interface AgentEventMap {
     /** Estimated subagent cost in USD, from the director usage snapshot when known. */
     costUsd?: number | undefined;
     subagentId?: string | undefined;
+    /** Stable id for the whole delegation (survives handoff continuations). */
+    delegationId?: string | undefined;
+    /** Task id of the terminal attempt (use with `roll_up`). */
+    taskId?: string | undefined;
+    /** The tool-level stop reason (`end_turn`, `aborted`, `host_timeout`, …). */
+    stopReason?: string | undefined;
+    /** Bounded result text (structured report first), ≤4k chars. */
+    resultExcerpt?: string | undefined;
+    mode?: 'background' | 'wait' | undefined;
   };
   // ── Agent Timeline Events ──────────────────────────────────────────
   /**
@@ -365,6 +380,53 @@ export interface AgentEventMap {
    *   - `webui-server` collab mirror forwards it to connected observers.
    */
   'subagent.done': { sessionId?: string | undefined; summary: string; ok: boolean };
+  /**
+   * A result owed to a session's leader was queued on the
+   * `LeaderDeliveryHub` (today: a settled background `delegate`). The leader
+   * loop drains it at its next iteration boundary. `wake` says whether an idle
+   * leader may be woken for it — false for user-caused outcomes (fleet stop)
+   * and journal-rehydrated items.
+   */
+  'leader.delivery_pending': {
+    sessionId: string;
+    /** Pending items for the session after this enqueue. */
+    count: number;
+    wake: boolean;
+    deliveryIds: string[];
+  };
+  /**
+   * The auto-wake controller started a new leader turn for wake-eligible
+   * background results (the leader was idle, displayed, and not rate/chain
+   * limited). The results themselves enter through the loop drain.
+   */
+  'leader.auto_wake_started': {
+    sessionId: string;
+    deliveryIds: string[];
+    delegationIds: string[];
+    /** 1-based position in the chain of woken turns since the last user input. */
+    chain: number;
+  };
+  /**
+   * Auto-wake is holding wake-eligible results: `chain_cap` (too many woken
+   * turns without user input — the next user message delivers them) or
+   * `undisplayed` (no surface shows the session — wakes when one does).
+   * Emitted once per hold episode.
+   */
+  'leader.auto_wake_suppressed': {
+    sessionId: string;
+    reason: 'chain_cap' | 'undisplayed';
+    pending: number;
+  };
+  /**
+   * A background delegation's result reached the leader. Emitted by the
+   * tracker when `await_tasks` already handed the terminal result over
+   * in-band; the agent loop journals its own drains directly.
+   */
+  'delegation.delivered': {
+    sessionId: string;
+    delegationId: string;
+    via: 'loop' | 'await_tasks';
+  };
   /**
    * Fired by MultiAgentHost when a subagent's context window load changes.
    * The leader agent's ctx.pct is emitted directly on the host EventBus;

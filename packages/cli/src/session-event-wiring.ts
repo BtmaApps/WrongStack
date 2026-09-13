@@ -438,6 +438,9 @@ export function wireSessionEvents(deps: WireSessionEventsDeps): WireSessionEvent
       task: string;
       target: string;
       subagentId?: string | undefined;
+      delegationId?: string | undefined;
+      taskId?: string | undefined;
+      mode?: 'background' | 'wait' | undefined;
     }) => {
       appendSessionEvent(e.sessionId, {
         type: 'delegate_started',
@@ -445,6 +448,23 @@ export function wireSessionEvents(deps: WireSessionEventsDeps): WireSessionEvent
         target: e.target,
         task: e.task,
         ...(e.subagentId ? { subagentId: e.subagentId } : {}),
+        ...(e.delegationId ? { delegationId: e.delegationId } : {}),
+        ...(e.taskId ? { taskId: e.taskId } : {}),
+        ...(e.mode ? { mode: e.mode } : {}),
+      });
+    },
+  );
+  // A background delegation's result reached the leader without the loop
+  // draining it (await_tasks got the terminal result in-band). Journaled so a
+  // resume does not re-deliver it. Loop drains journal themselves.
+  evOn(
+    'delegation.delivered',
+    (e: { sessionId?: string | undefined; delegationId: string; via?: 'loop' | 'await_tasks' }) => {
+      appendSessionEvent(e.sessionId, {
+        type: 'delegation_delivered',
+        ts: new Date().toISOString(),
+        delegationId: e.delegationId,
+        ...(e.via ? { via: e.via } : {}),
       });
     },
   );
@@ -462,8 +482,18 @@ export function wireSessionEvents(deps: WireSessionEventsDeps): WireSessionEvent
       toolCalls: number;
       costUsd?: number | undefined;
       subagentId?: string | undefined;
+      delegationId?: string | undefined;
+      taskId?: string | undefined;
+      stopReason?: string | undefined;
+      resultExcerpt?: string | undefined;
+      mode?: 'background' | 'wait' | undefined;
     }) => {
       appendSessionEvent(e.sessionId, {
+        ...(e.delegationId ? { delegationId: e.delegationId } : {}),
+        ...(e.taskId ? { taskId: e.taskId } : {}),
+        ...(e.stopReason ? { stopReason: e.stopReason } : {}),
+        ...(e.resultExcerpt ? { resultExcerpt: e.resultExcerpt } : {}),
+        ...(e.mode ? { mode: e.mode } : {}),
         type: 'delegate_completed',
         ts: new Date().toISOString(),
         target: e.target,

@@ -293,8 +293,18 @@ export async function handleSessionPromptOp(
   const onCancel = (): void => turnSignal.abort();
   session.abort.signal.addEventListener('abort', onCancel, { once: true });
 
-  const api = createRunTurnApi(sessionId, ctx.clientCapabilities ?? {}, (method, req) =>
-    ctx.request(method, req),
+  const api = createRunTurnApi(
+    sessionId,
+    ctx.clientCapabilities ?? {},
+    (method, req) => ctx.request(method, req),
+    async (update) => {
+      // Unprompted updates outlive this turn. Identity (not just the id) is
+      // checked so nothing reaches a client for a session it closed, deleted,
+      // or replaced with a fresh `session/load` state.
+      if (ctx.sessions.get(sessionId) !== session) return false;
+      await ctx.sendNotification({ sessionId, update });
+      return true;
+    },
   );
 
   let result: RunTurnResult;

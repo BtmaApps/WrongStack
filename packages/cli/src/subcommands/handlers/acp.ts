@@ -33,6 +33,7 @@ import {
   WrongStackACPServer,
   WsBridgeTransport,
 } from '@wrongstack/acp/agent';
+import { leaderDeliveryHub } from '@wrongstack/core/coordination';
 import { WebSocketServer } from 'ws';
 import { type AcpHqTelemetry, startAcpHqTelemetry } from '../../acp-hq-telemetry.js';
 import { formatAcpAgentList } from '../../acp-agent-list.js';
@@ -49,6 +50,15 @@ import {
 import { createGracefulShutdown } from '../../shutdown-cleanup.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 import { createAcpConnectionGate } from './acp-connection-gate.js';
+
+/**
+ * Live count of background `delegate` results queued for an ACP session's
+ * leader. The turn adapter announces a finished delegation to an idle client
+ * only while its result is still undelivered.
+ */
+function pendingLeaderDeliveries(sessionId: string): number {
+  return leaderDeliveryHub.pending(sessionId);
+}
 
 /** User-config ACP command overrides (never sourced from in-project config). */
 function acpOverrides(deps: SubcommandDeps): AcpAgentCommandOverrides | undefined {
@@ -217,7 +227,8 @@ async function runACPWebSocketServer(deps: SubcommandDeps, port: number): Promis
     });
     const tracked = hqTelemetry.wrapAgentFactory(agentFor);
     wsAgentFactory = agentFor;
-    turnFactory = () => makeACPServerAgentTurn({ agentFor: tracked });
+    turnFactory = () =>
+      makeACPServerAgentTurn({ agentFor: tracked, pendingDeliveries: pendingLeaderDeliveries });
     store = deps.paths?.projectDir
       ? new ACPSessionStore({ dir: path.join(deps.paths.projectDir, 'acp-sessions') })
       : undefined;
@@ -399,6 +410,7 @@ async function runACPServer(deps: SubcommandDeps): Promise<number> {
           const stdioAgentFactory = agentFor;
           const turn = makeACPServerAgentTurn({
             agentFor: stdioHqTelemetry.wrapAgentFactory(agentFor),
+            pendingDeliveries: pendingLeaderDeliveries,
           });
           // Persist sessions under the project's wstack dir so `session/load`
           // survives a server restart (project-scoped, not in the repo).

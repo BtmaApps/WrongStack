@@ -298,13 +298,10 @@ Use `fleet_status` to avoid duplicating active peer work when many agents are on
 <!--ws:if tool=delegate,spawn_subagent,define_subagent-->
 Use delegation only when it saves real time or adds independent review. Use `define_subagent` to configure specialized or ad-hoc subagents on the fly.
 <!--ws:if tool=delegate-->
-`delegate` blocks the leader for the entire run — no other tool executes and the user cannot be answered until it returns. Treat it as a narrow exception, not a default.
-<!--ws:if tool=spawn_subagent-->
-Prefer `spawn_subagent` + `assign_task` + `await_tasks` for everything except a task that is unmistakably brief AND gates your very next step. If you are unsure how long the work will take, spawn it.
-<!--ws:end-->
+`delegate` runs the worker in the background: it returns a `delegationId` at once and the result is delivered to you automatically — do not poll; keep working or end your turn. Several calls in one turn fan out in parallel. Use `wait: true` only for short work whose verdict gates your very next step; it blocks you until the worker returns.
 <!--ws:end-->
 <!--ws:if tool=spawn_subagent-->
-Use `spawn_subagent`, `assign_task`, and `await_tasks` for parallel independent work, and for any work that may run long (minutes to hours) so the leader stays free.
+Use `spawn_subagent`, `assign_task`, and `await_tasks` when you need reusable workers or want to choose when results are collected.
 <!--ws:end-->
 Give subagents exact files, goals, constraints, and expected output.
 <!--ws:end-->

@@ -44,6 +44,24 @@ export interface RunBlocksCapabilities {
     | undefined;
   /** Observes a completed foreground run after its result has been rendered. */
   onRunFinished?: ((status: 'done' | 'aborted' | 'failed' | 'max_iterations') => void) | undefined;
+  /**
+   * A user-originated run is starting (typed input, queue drain, steer). The
+   * auto-wake chain cap resets on it. Not called for auto-wake turns.
+   */
+  onUserRun?: (() => void) | undefined;
+  /**
+   * The controller went idle with an empty queue after a run — the auto-wake
+   * post-run check (a background result that landed during the last
+   * iteration).
+   */
+  onIdleAfterRun?: (() => void) | undefined;
+}
+
+/** Where a `runBlocks` invocation came from. Default `user`. */
+export type RunBlocksOrigin = 'user' | 'auto_wake';
+
+export interface RunBlocksOptions {
+  origin?: RunBlocksOrigin | undefined;
 }
 
 type ClearAction = Extract<

@@ -117,6 +117,28 @@ export interface WSDelegateCompleted {
   };
 }
 
+/** A background delegation result is waiting for the session's leader. */
+export interface WSDelegationDeliveryPending {
+  type: 'delegation.delivery_pending';
+  payload: SessionScopedPayload & {
+    count: number;
+    delegationIds: string[];
+    wake?: boolean | undefined;
+  };
+}
+
+/** The runtime started a leader turn because background results arrived. */
+export interface WSDelegationAutoWakeStarted {
+  type: 'delegation.auto_wake_started';
+  payload: SessionScopedPayload & { delegationIds: string[]; chain: number };
+}
+
+/** Auto-wake held results (chain cap) until the user sends a message. */
+export interface WSDelegationAutoWakeSuppressed {
+  type: 'delegation.auto_wake_suppressed';
+  payload: SessionScopedPayload & { reason: 'chain_cap' | 'undisplayed'; pending: number };
+}
+
 export interface WSModelSwitch {
   type: 'model.switch';
   payload: {

@@ -123,6 +123,15 @@ export interface RunTurnApi {
     args?: string[] | undefined;
     cwd?: string | undefined;
   }): Promise<{ output: string; exitCode: number | null }>;
+  /**
+   * Send a `session/update` notification OUTSIDE a prompt turn (e.g. "a
+   * background delegation finished; send any message to continue"). ACP only
+   * starts turns on `session/prompt`, so this is the agent's one way to tell
+   * an idle client something happened. Resolves `false` and sends nothing once
+   * the session was closed or deleted. Optional: embedders that build their
+   * own `RunTurnApi` may omit it.
+   */
+  sendSessionUpdate?(update: unknown): Promise<boolean>;
 }
 
 /**

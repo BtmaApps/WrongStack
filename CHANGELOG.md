@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`delegate` no longer blocks the leader.** The tool now runs its worker in
+  the background by default and returns at once with
+  `{status:'running', delegationId, taskId}`. When the worker settles, the
+  result is delivered to the owning leader automatically as a
+  `[DELEGATION RESULT]` block at its next iteration boundary — no polling, no
+  mailbox round-trip. If the leader is idle, the host starts a new leader turn
+  for it (auto-wake): held while no surface displays the session, never fired
+  for outcomes the user caused (fleet stop), and bounded by a rate limit and a
+  cap on consecutive woken turns. Esc/Stop on the leader does not cancel a
+  running background delegation. ACP sessions never start a turn on their own:
+  the client gets a "background delegation finished; send any message to
+  continue" notice and the result is injected on the next `session/prompt`.
+  `wait: true` restores the old blocking call and result shape for short work
+  whose verdict gates the next step, and `await_tasks` on a delegated task
+  still consumes the result in-band. Two trusted-config switches (user profile
+  or `config.local.json` only — `fleet` is stripped from in-project config):
+  `fleet.delegate.autoWake` (default `true`) and `fleet.delegate.defaultWait`
+  (default `false`; set `true` to roll back to blocking). If you disabled
+  `delegate` through `tools.disabledTools` because it froze the leader, you can
+  re-enable it with `/tool enable delegate`.
+
 - **`pnpm release:fast` skips the two gates CI already covers.** The new
   `release-fast` gate profile swaps the coverage gate for a plain `pnpm test`
   run — the same suite, without V8 instrumentation or threshold accounting —

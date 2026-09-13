@@ -290,6 +290,14 @@ export function buildAppPipelineArgs(params: {
         predictNext: props.predictNext,
         shouldSuppressNextSteps: shouldSuppressBugHuntNextSteps,
         onRunFinished: onBugHuntRunFinished,
+        ...(props.leaderAutoWake
+          ? {
+              onUserRun: () => props.leaderAutoWake?.noteUserInput(props.agent.ctx.session.id),
+              onIdleAfterRun: () => {
+                props.leaderAutoWake?.onRunFinished(props.agent.ctx.session.id);
+              },
+            }
+          : {}),
       },
       refs: {
         sessionGeneration: sessionGenerationRef,

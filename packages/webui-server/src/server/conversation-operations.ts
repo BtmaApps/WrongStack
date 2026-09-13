@@ -21,14 +21,26 @@ import { errMessage } from './ws-utils.js';
 
 type OutboundMessage = { type: string; payload: unknown };
 
+/** Who started a turn: a user message, or the runtime (background-delegation auto-wake). */
+export type ConversationTurnOrigin = 'user' | 'runtime';
+
+interface TurnPayload {
+  id?: unknown;
+  content?: unknown;
+  freshContext?: unknown;
+  images?: IncomingImagePayload[] | undefined;
+  imageBase64?: string | undefined;
+}
+
 export interface ConversationRunControl {
   /**
    * Acquire a run controller for the given session.
    * Return a controller when acquired, or undefined when this host is busy.
+   * `ws` is undefined for a runtime turn, which no socket asked for.
    */
-  begin(ws: WebSocket, sessionId: string): AbortController | undefined;
+  begin(ws: WebSocket | undefined, sessionId: string): AbortController | undefined;
   /** Release the controller for the given session after the run completes. */
-  end(ws: WebSocket, sessionId: string, controller: AbortController): void;
+  end(ws: WebSocket | undefined, sessionId: string, controller: AbortController): void;
   /** Abort only the run belonging to `sessionId`, leaving other sessions intact. */
   abort(ws: WebSocket, sessionId: string): void;
 }
@@ -60,6 +72,35 @@ export interface ConversationOperationsContext {
   withSessionTransition?: (<T>(operation: () => Promise<T>) => Promise<T>) | undefined;
   busyPhase?: string;
   busyMessage?: string;
+  /**
+   * Session-scoped broadcast. Used by runtime turns: they have no socket to
+   * answer, so their `run.result` / errors go to every page showing the
+   * session. Without it a runtime turn still runs, but reports nothing.
+   */
+  broadcast?: ((message: OutboundMessage) => void) | undefined;
+  /**
+   * A user message for `sessionId` arrived. May return a release, called once
+   * its turn claimed (or was refused) the run lock — the window in which the
+   * submit counts as pending user input to the auto-wake guard.
+   */
+  onUserMessage?: ((sessionId: string) => (() => void) | undefined) | undefined;
+  /**
+   * A turn that actually ran has ended and released its lock. `aborted` is
+   * true when its controller was aborted (user Stop, shutdown).
+   */
+  onRunEnded?:
+    | ((sessionId: string, info: { aborted: boolean; origin: ConversationTurnOrigin }) => void)
+    | undefined;
+}
+
+export interface ConversationOperations extends ConversationRouteHandlers {
+  /**
+   * Start a runtime-origin turn with `prompt` through the same path a user
+   * message takes. Resolves once setup finished: `true` when the run started,
+   * `false` when the session was busy, not ready, or setup failed. The run
+   * itself continues after the promise resolves.
+   */
+  startRuntimeTurn(sessionId: string, prompt: string): Promise<boolean>;
 }
 
 /**
@@ -81,7 +122,7 @@ function requestedSessionId(msg: WSClientMessage): string | undefined {
 
 export function createConversationOperations(
   ctx: ConversationOperationsContext,
-): ConversationRouteHandlers {
+): ConversationOperations {
   const topicShiftAdvisor = new TopicShiftAdvisor();
   const sessionPayload = (payload: Record<string, unknown>): Record<string, unknown> => {
     const provided = payload['sessionId'];
@@ -105,7 +146,226 @@ export function createConversationOperations(
     return false;
   };
 
+  /**
+   * The ONE turn path. A user message and a runtime turn (background
+   * delegation auto-wake) both go through it, so the run lock, the session
+   * transition gate, the placeholder-writer refusal, the iteration ceiling and
+   * the `run.result` envelope cannot drift between them. The differences: a
+   * runtime turn has no socket (replies are broadcast to its session), its
+   * refusals are silent, and it reaches `onRunEnded` with `origin: 'runtime'`.
+   */
+  const runTurn = async (turn: {
+    ws: WebSocket | undefined;
+    originSessionId: string;
+    payload: TurnPayload;
+    origin: ConversationTurnOrigin;
+    /** Setup finished: the lock was claimed and the run starts (`true`), or not (`false`). */
+    onSettled?: ((started: boolean) => void) | undefined;
+  }): Promise<void> => {
+    const { ws, originSessionId, payload, origin } = turn;
+    const requestId = typeof payload.id === 'string' ? payload.id : undefined;
+    const reply = (message: OutboundMessage): void => {
+      if (ws) ctx.send(ws, message);
+      else ctx.broadcast?.(message);
+    };
+    let settled = false;
+    const settle = (started: boolean): void => {
+      if (settled) return;
+      settled = true;
+      try {
+        turn.onSettled?.(started);
+      } catch {
+        // Host bookkeeping must never break a turn.
+      }
+    };
+
+    // Session setup (fresh-topic reset, image routing) reads and mutates the
+    // target agent's context, so it must not interleave with a session
+    // transition that is re-pointing contexts underneath it. The run itself
+    // is deliberately started OUTSIDE the gate: holding it for a whole turn
+    // would serialise the four tabs into one.
+    const gate: <T>(fn: () => Promise<T>) => Promise<T> =
+      ctx.withSessionTransition ?? (<T>(fn: () => Promise<T>) => fn());
+
+    // Claiming the run lock and preparing the turn both happen INSIDE the
+    // transition gate: the busy check, `getAgent(originSessionId)` and the
+    // fresh-topic reset all read runtime state that a concurrent
+    // session.new / session.resume is in the middle of re-pointing.
+    //
+    // `agent.run()` is deliberately started OUTSIDE the gate — holding it
+    // for a whole turn would serialise the four tabs back into one.
+    let controller: AbortController | undefined;
+    // Set once `agent.run` was entered: a refused or failed setup is not a
+    // finished run and must not trigger post-run checks.
+    let ran = false;
+    // Set when the turn was refused for a reason that already answered the
+    // client, so the generic "already processing" reply below stays quiet.
+    let refusedWithReason = false;
+    try {
+      const prepared = await gate(async () => {
+        const claimed = ctx.runControl.begin(ws, originSessionId);
+        if (!claimed) return null;
+        controller = claimed;
+        const agent = ctx.getAgent(originSessionId);
+        // A per-tab agent is born with a PLACEHOLDER writer; the real one is
+        // installed by the session transition that owns the id. Running
+        // against the placeholder fails deep inside the turn with an opaque
+        // "append is not a function" after tokens have already been spent,
+        // so say plainly what is missing instead. The client answers a
+        // `session_not_ready` by resuming that tab and resending the echo
+        // below once the session's `session.start` announces it live (see
+        // ws-client armNotReadyResend). The echo is the contract: the retry
+        // replays EXACTLY what was refused without reaching back into
+        // client lane state. Narrow on purpose: a session object that
+        // exists but cannot append is the placeholder. A missing one means
+        // the host keeps the writer somewhere else entirely, which is not
+        // this bug.
+        const writer = agent.ctx.session as { append?: unknown } | null | undefined;
+        if (writer && typeof writer.append !== 'function') {
+          ctx.runControl.end(ws, originSessionId, claimed);
+          controller = undefined;
+          refusedWithReason = true;
+          // A runtime turn has no composer to resend from: echoing its
+          // prompt would make the client replay `[AUTO-WAKE]` as user input.
+          if (origin === 'user') {
+            reply({
+              type: 'error',
+              payload: sessionPayload({
+                sessionId: originSessionId,
+                phase: 'user_message',
+                code: 'session_not_ready',
+                message: `Session ${originSessionId} is not open in this runtime yet. Resume it and send again.`,
+                ...(typeof payload.content === 'string' && payload.content
+                  ? { content: payload.content }
+                  : {}),
+                ...(payload.freshContext === true ? { freshContext: true } : {}),
+                ...(payload.images ? { images: payload.images } : {}),
+              }),
+            });
+          }
+          return null;
+        }
+        if (payload.freshContext === true) await startFreshTopicContext(agent.ctx);
+        const content = typeof payload.content === 'string' ? payload.content : '';
+        let input: string | ContentBlock[] = content;
+        const imageBlocks = parseIncomingImages(payload.images, payload.imageBase64);
+        if (imageBlocks.length > 0) {
+          const routed = await routeImagesForModel(buildUserContentBlocks(content, imageBlocks), {
+            supportsVision: agent.ctx.provider.capabilities.vision,
+            adapters: () => createToolVisionAdapters(agent.tools),
+            ctx: agent.ctx,
+            signal: claimed.signal,
+            providerId: agent.ctx.provider.id,
+            model: agent.ctx.model,
+          });
+          input = routed.blocks;
+        }
+        return { agent, input, signal: claimed.signal };
+      });
+      if (!prepared) {
+        settle(false);
+        if (refusedWithReason) return;
+        // A runtime turn that lost the lock to a user turn is not an error
+        // anyone should see: the running loop drains the results itself.
+        if (origin !== 'user') return;
+        reply({
+          type: 'error',
+          payload: sessionPayload({
+            // Stamped with the session that was refused. Falling back to the
+            // runtime's current session sent the "already processing" error
+            // to whichever tab was in front instead of the busy one.
+            sessionId: originSessionId,
+            phase: ctx.busyPhase ?? 'user_message',
+            message:
+              ctx.busyMessage ??
+              'Agent is already processing a request. Wait for the current run to finish.',
+          }),
+        });
+        return;
+      }
+      settle(true);
+      const { agent, input } = prepared;
+      const maxIterations = ctx.getMaxIterations?.(originSessionId);
+      ran = true;
+      const runResult = await agent.run(input, {
+        signal: prepared.signal,
+        ...(maxIterations !== undefined ? { maxIterations } : {}),
+      });
+      reply({
+        type: 'run.result',
+        payload: sessionPayload({
+          sessionId: originSessionId,
+          requestId,
+          status: runResult.status,
+          iterations: runResult.iterations,
+          finalText: runResult.finalText,
+          ...(origin === 'runtime' ? { origin: 'auto_wake' } : {}),
+          error: runResult.error
+            ? {
+                code: runResult.error.code,
+                message: runResult.error.message,
+                recoverable: runResult.error.recoverable,
+              }
+            : undefined,
+        }),
+      });
+    } catch (error) {
+      settle(false);
+      if (
+        error instanceof IncomingImageError ||
+        error instanceof ImageInputUnsupportedError ||
+        error instanceof VisionUrlBlockedError
+      ) {
+        reply({
+          type: 'error',
+          payload: sessionPayload({
+            sessionId: originSessionId,
+            phase: 'user_message',
+            ...(error instanceof ImageInputUnsupportedError ? { code: 'vision_unsupported' } : {}),
+            message: error.message,
+          }),
+        });
+      } else {
+        reply({
+          type: 'error',
+          payload: sessionPayload({
+            sessionId: originSessionId,
+            phase: 'agent.run',
+            message: errMessage(error),
+          }),
+        });
+      }
+    } finally {
+      // Undefined only when the lock was never claimed (busy session) —
+      // releasing then would hand another tab's controller back.
+      if (controller) {
+        const aborted = controller.signal.aborted;
+        ctx.runControl.end(ws, originSessionId, controller);
+        if (ran) {
+          try {
+            ctx.onRunEnded?.(originSessionId, { aborted, origin });
+          } catch {
+            // Post-run bookkeeping must never surface instead of the result.
+          }
+        }
+      }
+      settle(false);
+    }
+  };
+
+  const startRuntimeTurn = (sessionId: string, prompt: string): Promise<boolean> =>
+    new Promise<boolean>((resolve) => {
+      void runTurn({
+        ws: undefined,
+        originSessionId: sessionId,
+        payload: { content: prompt },
+        origin: 'runtime',
+        onSettled: resolve,
+      });
+    });
+
   return {
+    startRuntimeTurn,
     topicAdvice: async (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'topic.advice')) return;
       const payload = (msg.payload ?? {}) as { requestId?: unknown; prompt?: unknown };
@@ -153,167 +413,26 @@ export function createConversationOperations(
     },
     userMessage: async (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'user_message')) return;
-      const payload = (msg.payload ?? {}) as {
-        id?: unknown;
-        content?: unknown;
-        freshContext?: unknown;
-        sessionId?: unknown;
-        images?: IncomingImagePayload[] | undefined;
-        imageBase64?: string | undefined;
-      };
+      const payload = (msg.payload ?? {}) as TurnPayload & { sessionId?: unknown };
       const requested =
         typeof payload.sessionId === 'string' && payload.sessionId ? payload.sessionId : undefined;
       const originSessionId = requested ?? ctx.getSessionId();
-      const requestId = typeof payload.id === 'string' ? payload.id : undefined;
-
-      // Session setup (fresh-topic reset, image routing) reads and mutates the
-      // target agent's context, so it must not interleave with a session
-      // transition that is re-pointing contexts underneath it. The run itself
-      // is deliberately started OUTSIDE the gate: holding it for a whole turn
-      // would serialise the four tabs into one.
-      const gate: <T>(fn: () => Promise<T>) => Promise<T> =
-        ctx.withSessionTransition ?? (<T>(fn: () => Promise<T>) => fn());
-
-      // Claiming the run lock and preparing the turn both happen INSIDE the
-      // transition gate: the busy check, `getAgent(originSessionId)` and the
-      // fresh-topic reset all read runtime state that a concurrent
-      // session.new / session.resume is in the middle of re-pointing.
-      //
-      // `agent.run()` is deliberately started OUTSIDE the gate — holding it
-      // for a whole turn would serialise the four tabs back into one.
-      let controller: AbortController | undefined;
-      // Set when the turn was refused for a reason that already answered the
-      // client, so the generic "already processing" reply below stays quiet.
-      let refusedWithReason = false;
+      // Counted as pending user input until the turn claimed (or was refused)
+      // its run lock, so an auto-wake cannot slip in between a submit and its
+      // run while setup waits on the transition gate.
+      let release: (() => void) | undefined;
       try {
-        const prepared = await gate(async () => {
-          const claimed = ctx.runControl.begin(ws, originSessionId);
-          if (!claimed) return null;
-          controller = claimed;
-          const agent = ctx.getAgent(originSessionId);
-          // A per-tab agent is born with a PLACEHOLDER writer; the real one is
-          // installed by the session transition that owns the id. Running
-          // against the placeholder fails deep inside the turn with an opaque
-          // "append is not a function" after tokens have already been spent,
-          // so say plainly what is missing instead. The client answers a
-          // `session_not_ready` by resuming that tab and resending the echo
-          // below once the session's `session.start` announces it live (see
-          // ws-client armNotReadyResend). The echo is the contract: the retry
-          // replays EXACTLY what was refused without reaching back into
-          // client lane state. Narrow on purpose: a session object that
-          // exists but cannot append is the placeholder. A missing one means
-          // the host keeps the writer somewhere else entirely, which is not
-          // this bug.
-          const writer = agent.ctx.session as { append?: unknown } | null | undefined;
-          if (writer && typeof writer.append !== 'function') {
-            ctx.runControl.end(ws, originSessionId, claimed);
-            controller = undefined;
-            refusedWithReason = true;
-            ctx.send(ws, {
-              type: 'error',
-              payload: sessionPayload({
-                sessionId: originSessionId,
-                phase: 'user_message',
-                code: 'session_not_ready',
-                message: `Session ${originSessionId} is not open in this runtime yet. Resume it and send again.`,
-                ...(typeof payload.content === 'string' && payload.content
-                  ? { content: payload.content }
-                  : {}),
-                ...(payload.freshContext === true ? { freshContext: true } : {}),
-                ...(payload.images ? { images: payload.images } : {}),
-              }),
-            });
-            return null;
-          }
-          if (payload.freshContext === true) await startFreshTopicContext(agent.ctx);
-          const content = typeof payload.content === 'string' ? payload.content : '';
-          let input: string | ContentBlock[] = content;
-          const imageBlocks = parseIncomingImages(payload.images, payload.imageBase64);
-          if (imageBlocks.length > 0) {
-            const routed = await routeImagesForModel(buildUserContentBlocks(content, imageBlocks), {
-              supportsVision: agent.ctx.provider.capabilities.vision,
-              adapters: () => createToolVisionAdapters(agent.tools),
-              ctx: agent.ctx,
-              signal: claimed.signal,
-              providerId: agent.ctx.provider.id,
-              model: agent.ctx.model,
-            });
-            input = routed.blocks;
-          }
-          return { agent, input, signal: claimed.signal };
-        });
-        if (!prepared) {
-          if (refusedWithReason) return;
-          ctx.send(ws, {
-            type: 'error',
-            payload: sessionPayload({
-              // Stamped with the session that was refused. Falling back to the
-              // runtime's current session sent the "already processing" error
-              // to whichever tab was in front instead of the busy one.
-              sessionId: originSessionId,
-              phase: ctx.busyPhase ?? 'user_message',
-              message:
-                ctx.busyMessage ??
-                'Agent is already processing a request. Wait for the current run to finish.',
-            }),
-          });
-          return;
-        }
-        const { agent, input } = prepared;
-        const maxIterations = ctx.getMaxIterations?.(originSessionId);
-        const runResult = await agent.run(input, {
-          signal: prepared.signal,
-          ...(maxIterations !== undefined ? { maxIterations } : {}),
-        });
-        ctx.send(ws, {
-          type: 'run.result',
-          payload: sessionPayload({
-            sessionId: originSessionId,
-            requestId,
-            status: runResult.status,
-            iterations: runResult.iterations,
-            finalText: runResult.finalText,
-            error: runResult.error
-              ? {
-                  code: runResult.error.code,
-                  message: runResult.error.message,
-                  recoverable: runResult.error.recoverable,
-                }
-              : undefined,
-          }),
-        });
-      } catch (error) {
-        if (
-          error instanceof IncomingImageError ||
-          error instanceof ImageInputUnsupportedError ||
-          error instanceof VisionUrlBlockedError
-        ) {
-          ctx.send(ws, {
-            type: 'error',
-            payload: sessionPayload({
-              sessionId: originSessionId,
-              phase: 'user_message',
-              ...(error instanceof ImageInputUnsupportedError
-                ? { code: 'vision_unsupported' }
-                : {}),
-              message: error.message,
-            }),
-          });
-        } else {
-          ctx.send(ws, {
-            type: 'error',
-            payload: sessionPayload({
-              sessionId: originSessionId,
-              phase: 'agent.run',
-              message: errMessage(error),
-            }),
-          });
-        }
-      } finally {
-        // Undefined only when the lock was never claimed (busy session) —
-        // releasing then would hand another tab's controller back.
-        if (controller) ctx.runControl.end(ws, originSessionId, controller);
+        release = ctx.onUserMessage?.(originSessionId);
+      } catch {
+        release = undefined;
       }
+      await runTurn({
+        ws,
+        originSessionId,
+        payload,
+        origin: 'user',
+        ...(release ? { onSettled: () => release?.() } : {}),
+      });
     },
     abort: (ws, msg) => {
       if (!ensureCurrentSession(ws, msg, 'abort')) return;

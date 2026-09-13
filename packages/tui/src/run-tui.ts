@@ -194,6 +194,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         banner: opts.banner ?? true,
         queueStore: opts.queueStore,
         onQueueChange: opts.onQueueChange,
+        leaderAutoWake: opts.leaderAutoWake,
         yolo: opts.yolo,
         getYolo: opts.getYolo,
         onYolo: opts.onYolo,

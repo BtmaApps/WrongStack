@@ -11,11 +11,21 @@ import { Director } from '../../src/coordination/director.js';
 import { FLEET_ROSTER } from '../../src/coordination/fleet.js';
 import { EventBus } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
+import type { Tool } from '../../src/types/tool.js';
 import type {
   SubagentRunContext,
   SubagentRunOutcome,
   TaskSpec,
 } from '../../src/types/multi-agent.js';
+
+/**
+ * Every call in this file exercises the historical BLOCKING contract, so the
+ * helper pins `wait: true` (an explicit `wait` in the input still wins).
+ * Background-mode behaviour lives in delegate-background.test.ts.
+ */
+function exec(tool: Tool, input: unknown, ctx?: unknown, opts?: { signal?: AbortSignal }) {
+  return tool.execute({ wait: true, ...(input as Record<string, unknown>) }, ctx as never, opts);
+}
 
 /** Owning session for coordinator-scoped work under test. */
 const TEST_SESSION_ID = 'sess_test';
@@ -135,7 +145,8 @@ describe('createDelegateTool', () => {
   it('runs a delegated task end-to-end via roster role', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'audit src/parser.ts', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -153,12 +164,14 @@ describe('createDelegateTool', () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
 
-    const first = (await tool.execute(
+    const first = (await exec(
+      tool,
       { role: 'security-scanner', task: 'scan command injection', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
     )) as { ok: boolean; subagentId?: string };
-    const second = (await tool.execute(
+    const second = (await exec(
+      tool,
       { role: 'security-scanner', task: 'scan path traversal', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -174,7 +187,8 @@ describe('createDelegateTool', () => {
   it('accepts name + provider + model without a roster role', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       {
         name: 'oneoff',
         provider: 'anthropic',
@@ -193,33 +207,38 @@ describe('createDelegateTool', () => {
   it('rejects unknown role with a helpful error', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
-      { role: 'does-not-exist', task: 'x', ...BOUNDARY },
-      null as never,
-      { signal: new AbortController().signal },
-    )) as { ok: boolean; error?: string };
-    expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/Unknown role/);
+    const events = new EventBus();
+    const completed: unknown[] = [];
+    events.on('delegate.completed', (e) => completed.push(e));
+    const tool2 = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER, events });
+    await expect(
+      exec(tool2, { role: 'does-not-exist', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/Unknown role/);
+    // Input errors never started a delegation, so no outcome line is emitted.
+    expect(completed).toHaveLength(0);
+    expect(tool.name).toBe('delegate');
   });
 
   it('rejects when neither role nor name is provided', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute({ task: 'x', ...BOUNDARY }, null as never, {
-      signal: new AbortController().signal,
-    })) as { ok: boolean; error?: string };
-    expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/role.*name/i);
+    await expect(
+      exec(tool, { task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/role.*name/i);
   });
 
   it('rejects when task is missing or empty', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute({ role: 'bug-hunter' }, null as never, {
-      signal: new AbortController().signal,
-    })) as { ok: boolean; error?: string };
-    expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/task.*required/i);
+    await expect(
+      exec(tool, { role: 'bug-hunter' }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/task.*required/i);
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -231,14 +250,11 @@ describe('createDelegateTool', () => {
   it('rejects when the boundary is missing (no scope/outOfScope)', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
-      { role: 'bug-hunter', task: 'audit the parser', outOfScope: [] },
-      null as never,
-      { signal: new AbortController().signal },
-    )) as { ok: boolean; error?: string; hint?: string };
-    expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/boundary incomplete[\s\S]*`scope`/);
-    expect(out.hint).toBeTruthy();
+    await expect(
+      exec(tool, { role: 'bug-hunter', task: 'audit the parser', outOfScope: [] }, null as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/boundary incomplete[\s\S]*`scope`/);
     // Rejected before any spawn cost was incurred.
     expect(director.status().subagents).toHaveLength(0);
   });
@@ -246,24 +262,26 @@ describe('createDelegateTool', () => {
   it('rejects placeholder outOfScope entries with a teaching error', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
-      {
-        role: 'bug-hunter',
-        task: 'audit the parser',
-        scope: 'packages/core/src/parser only.',
-        outOfScope: ['none', 'n/a', '-'],
-      },
-      null as never,
-      { signal: new AbortController().signal },
-    )) as { ok: boolean; error?: string };
-    expect(out.ok).toBe(false);
-    expect(out.error).toMatch(/placeholder/);
+    await expect(
+      exec(
+        tool,
+        {
+          role: 'bug-hunter',
+          task: 'audit the parser',
+          scope: 'packages/core/src/parser only.',
+          outOfScope: ['none', 'n/a', '-'],
+        },
+        null as never,
+        { signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/placeholder/);
   });
 
   it('composes the boundary block into the brief the worker receives', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       {
         role: 'bug-hunter',
         task: 'audit src/parser.ts',
@@ -327,7 +345,8 @@ describe('createDelegateTool', () => {
       }) as never,
     });
     const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       {
         role: 'bug-hunter',
         task: 'Scan every package',
@@ -361,7 +380,8 @@ describe('createDelegateTool', () => {
     director = buildLiveDirector();
     const host = buildHost(null, director); // promoteToDirector will return the director
     const tool = createDelegateTool({ host, roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'scan', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -376,7 +396,7 @@ describe('createDelegateTool', () => {
       promoteToDirector: async () => null,
     };
     const tool = createDelegateTool({ host, roster: FLEET_ROSTER });
-    const out = (await tool.execute({ role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+    const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
       signal: new AbortController().signal,
     })) as { ok: boolean; error?: string };
     expect(out.ok).toBe(false);
@@ -406,7 +426,8 @@ describe('createDelegateTool', () => {
       roster: FLEET_ROSTER,
       defaultTimeoutMs: 60_000, // won't be hit; we override per-call below
     });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'wait forever', timeoutMs: 50, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -475,7 +496,8 @@ describe('createDelegateTool', () => {
       sessionsRoot: '/this/path/definitely/does/not/exist/abcd1234',
       directorRunId: 'phantom-run',
     });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'wait forever', timeoutMs: 30, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -564,7 +586,8 @@ describe('createDelegateTool', () => {
       directorRunId: runId,
     });
 
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'investigate', timeoutMs: 30, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -719,7 +742,8 @@ describe('createDelegateTool', () => {
       // NO directorRunId — forces the scan path (lines 411-420)
     });
 
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'scan', timeoutMs: 50, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -773,7 +797,8 @@ describe('createDelegateTool', () => {
       roster: FLEET_ROSTER,
       events: hostBus,
     });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'audit src/parser.ts', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -821,7 +846,7 @@ describe('createDelegateTool', () => {
       roster: FLEET_ROSTER,
       events: hostBus,
     });
-    await tool.execute({ role: 'bug-hunter', ...BOUNDARY, ...input }, null as never, {
+    await exec(tool, { role: 'bug-hunter', ...BOUNDARY, ...input }, null as never, {
       signal: new AbortController().signal,
     });
     return { completed, done };
@@ -870,7 +895,7 @@ describe('createDelegateTool', () => {
     const targets: string[] = [];
     hostBus.on('delegate.started', (e) => targets.push(e.target));
     const tool = createDelegateTool({ host: buildHost(director), events: hostBus });
-    await tool.execute({ name: 'oneoff', task: 'do the thing', ...BOUNDARY }, null as never, {
+    await exec(tool, { name: 'oneoff', task: 'do the thing', ...BOUNDARY }, null as never, {
       signal: new AbortController().signal,
     });
     expect(targets).toEqual(['oneoff']);
@@ -900,7 +925,8 @@ describe('createDelegateTool', () => {
       roster: FLEET_ROSTER,
       events: hostBus,
     });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'wait forever', timeoutMs: 30, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -948,7 +974,8 @@ describe('createDelegateTool', () => {
     });
 
     const ctrl = new AbortController();
-    const pending = tool.execute(
+    const pending = exec(
+      tool,
       { role: 'bug-hunter', task: 'long-running work', ...BOUNDARY },
       null as never,
       { signal: ctrl.signal },
@@ -973,7 +1000,7 @@ describe('createDelegateTool', () => {
     const tool = createDelegateTool({ host: buildHost(null) });
     const ctrl = new AbortController();
     ctrl.abort();
-    const out = (await tool.execute({ name: 'worker', task: 'x' }, null as never, {
+    const out = (await exec(tool, { name: 'worker', task: 'x' }, null as never, {
       signal: ctrl.signal,
     })) as { ok: boolean; stopReason?: string };
     expect(out.ok).toBe(false);
@@ -983,7 +1010,8 @@ describe('createDelegateTool', () => {
   it('does not throw when no events bus is wired (best-effort emits)', async () => {
     director = buildLiveDirector();
     const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'no bus here', ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -1015,7 +1043,8 @@ describe('createDelegateTool', () => {
       sessionsRoot: __filename, // It's a file, not a directory — readdir will throw
       // No directorRunId — tries to scan
     });
-    const out = (await tool.execute(
+    const out = (await exec(
+      tool,
       { role: 'bug-hunter', task: 'x', timeoutMs: 50, ...BOUNDARY },
       null as never,
       { signal: new AbortController().signal },
@@ -1085,7 +1114,8 @@ describe('createDelegateTool', () => {
         return origSpawn(cfg as never, price as never);
       }) as never;
       const tool = createDelegateTool({ host: buildHost(director), roster: FLEET_ROSTER });
-      await tool.execute(
+      await exec(
+        tool,
         {
           role: 'bug-hunter',
           task: 'x',
@@ -1143,7 +1173,7 @@ describe('createDelegateTool', () => {
         } as never,
       };
       const tool = createDelegateTool({ host: buildHost(director), roster: rosterWithOverride });
-      await tool.execute({ role: 'custom-with-override', task: 'x', ...BOUNDARY }, null as never, {
+      await exec(tool, { role: 'custom-with-override', task: 'x', ...BOUNDARY }, null as never, {
         signal: new AbortController().signal,
       });
       const cfg = captured[0]!;
@@ -1182,7 +1212,8 @@ describe('createDelegateTool', () => {
         } as never,
       };
       const tool = createDelegateTool({ host: buildHost(director), roster: rosterWithOverride });
-      await tool.execute(
+      await exec(
+        tool,
         {
           role: 'custom-with-override',
           task: 'x',
@@ -1214,11 +1245,9 @@ describe('createDelegateTool', () => {
     it('returns an empty-result error when awaitTasks resolves with []', async () => {
       const d = fakeDirector({ awaitTasks: vi.fn(async () => []) });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
-        { role: 'bug-hunter', task: 'x', ...BOUNDARY },
-        null as never,
-        { signal: new AbortController().signal },
-      )) as { ok: boolean; stopReason?: string; error?: string };
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string; error?: string };
       expect(out.ok).toBe(false);
       expect(out.stopReason).toBe('error');
       expect(out.error).toMatch(/no task result/i);
@@ -1229,11 +1258,9 @@ describe('createDelegateTool', () => {
         awaitTasks: vi.fn(async () => Promise.reject(new Error('fleet gone'))),
       });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
-        { role: 'bug-hunter', task: 'x', ...BOUNDARY },
-        null as never,
-        { signal: new AbortController().signal },
-      )) as { ok: boolean; stopReason?: string };
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string };
       expect(out.ok).toBe(false);
       expect(out.stopReason).toBe('host_timeout');
     });
@@ -1245,11 +1272,9 @@ describe('createDelegateTool', () => {
         roster: FLEET_ROSTER,
         events: new EventBus(),
       });
-      const out = (await tool.execute(
-        { role: 'bug-hunter', task: 'x', ...BOUNDARY },
-        null as never,
-        { signal: new AbortController().signal },
-      )) as { ok: boolean; stopReason?: string; error?: string };
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; stopReason?: string; error?: string };
       expect(out.ok).toBe(false);
       expect(out.stopReason).toBe('error');
       expect(out.error).toMatch(/spawn boom/);
@@ -1262,11 +1287,9 @@ describe('createDelegateTool', () => {
         }),
       });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
-        { role: 'bug-hunter', task: 'x', ...BOUNDARY },
-        null as never,
-        { signal: new AbortController().signal },
-      )) as { ok: boolean };
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean };
       expect(out.ok).toBe(true);
     });
 
@@ -1283,7 +1306,7 @@ describe('createDelegateTool', () => {
         roster: FLEET_ROSTER,
         defaultTimeoutMs: 60_000,
       });
-      const execP = tool.execute({ role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+      const execP = exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
         signal: new AbortController().signal,
       });
       // Let the delegate progress past spawn/assign/filter-registration to awaitTasks.
@@ -1342,11 +1365,9 @@ describe('createDelegateTool', () => {
         ]),
       });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
-        { role: 'bug-hunter', task: 'x', ...BOUNDARY },
-        null as never,
-        { signal: new AbortController().signal },
-      )) as { ok: boolean; summary?: string; hint?: string };
+      const out = (await exec(tool, { role: 'bug-hunter', task: 'x', ...BOUNDARY }, null as never, {
+        signal: new AbortController().signal,
+      })) as { ok: boolean; summary?: string; hint?: string };
       expect(out.ok).toBe(false);
       expect(out.summary).toMatch(/failed/);
       expect(out.hint).toMatch(/ok:false|tool inside/i);
@@ -1364,7 +1385,8 @@ describe('createDelegateTool', () => {
 
       expect(tool.managesOwnTimeout).toBe(true);
       expect(tool.inputSchema.properties?.['maxHandoffs']?.maximum).toBe(8);
-      await tool.execute(
+      await exec(
+        tool,
         { role: 'bug-hunter', task: 'audit the monorepo', ...BOUNDARY },
         null as never,
         { signal: new AbortController().signal },
@@ -1427,7 +1449,8 @@ describe('createDelegateTool', () => {
         }) as never,
       });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
+      const out = (await exec(
+        tool,
         { role: 'bug-hunter', task: 'Scan every package', maxHandoffs: 1, ...BOUNDARY },
         null as never,
         { signal: new AbortController().signal },
@@ -1483,7 +1506,8 @@ describe('createDelegateTool', () => {
         }) as never,
       });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
+      const out = (await exec(
+        tool,
         { role: 'architect', task: 'Review every package', maxHandoffs: 1, ...BOUNDARY },
         null as never,
         { signal: new AbortController().signal },
@@ -1516,7 +1540,8 @@ describe('createDelegateTool', () => {
       };
       const d = fakeDirector({ awaitTasks: vi.fn(async () => [partialResult]) });
       const tool = createDelegateTool({ host: buildHost(d), roster: FLEET_ROSTER });
-      const out = (await tool.execute(
+      const out = (await exec(
+        tool,
         { role: 'bug-hunter', task: 'large scan', maxHandoffs: 0, ...BOUNDARY },
         null as never,
         { signal: new AbortController().signal },

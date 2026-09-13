@@ -35,7 +35,19 @@ interface AnyWaiter {
 
 export interface SettledTask {
   internal: boolean;
+  /**
+   * True when the result must NOT be re-sent to the leader as notifier mail:
+   * a waiter consumed it, or the task is owned by a delegation (which
+   * publishes its own outcome).
+   */
   consumedInBand: boolean;
+  /** A leader-side in-band waiter (`await_tasks` all/any) received it. */
+  leaderConsumed: boolean;
+}
+
+/** Info handed to a `observe()` callback at settlement. */
+export interface TaskObservation {
+  leaderConsumed: boolean;
 }
 
 /** Owns task identity, result retention, ownership, and waiter semantics. */
@@ -51,11 +63,52 @@ export class DirectorTaskRegistry {
   private readonly descriptions = new Map<string, string>();
   private readonly owners = new Map<string, string>();
   private readonly internalTaskIds = new Set<string>();
+  /**
+   * Tasks a delegation owns. Marked BEFORE assign, so even the synchronous
+   * `stopped` settlement after `workComplete()` is recognised as owned and
+   * never produces a duplicate leader notifier mail.
+   */
+  private readonly ownedTaskIds = new Set<string>();
+  /** Non-waiter observers (delegation tracker). Not counted as consumers. */
+  private readonly observers = new Map<
+    string,
+    Set<(result: TaskResult, info: TaskObservation) => void>
+  >();
 
   constructor(private readonly deps: DirectorTaskRegistryDeps) {}
 
+  /** Declare `taskId` delegation-owned. Call before `assign`. */
+  markOwned(taskId: string): void {
+    if (taskId) this.ownedTaskIds.add(taskId);
+  }
+
+  /**
+   * Observe a task's settlement without registering as a waiter. Fires
+   * immediately (synchronously) when the result is already retained.
+   */
+  observe(taskId: string, cb: (result: TaskResult, info: TaskObservation) => void): () => void {
+    const cached = this.completed.get(taskId);
+    if (cached) {
+      cb(cached, { leaderConsumed: false });
+      return () => {};
+    }
+    let set = this.observers.get(taskId);
+    if (!set) {
+      set = new Set();
+      this.observers.set(taskId, set);
+    }
+    set.add(cb);
+    return () => {
+      const current = this.observers.get(taskId);
+      if (!current) return;
+      current.delete(cb);
+      if (current.size === 0) this.observers.delete(taskId);
+    };
+  }
+
   settle(result: TaskResult): SettledTask {
     const internal = this.internalTaskIds.delete(result.taskId);
+    const owned = this.ownedTaskIds.delete(result.taskId);
     if (!internal) {
       this.completed.set(result.taskId, result);
       this.trimCompletedResults();
@@ -75,7 +128,26 @@ export class DirectorTaskRegistry {
       entry.resolve(result);
       anyConsumed = true;
     }
-    return { internal, consumedInBand: waiter !== undefined || anyConsumed };
+    const leaderConsumed = waiter !== undefined || anyConsumed;
+    this.notifyObservers(result, { leaderConsumed });
+    return {
+      internal,
+      consumedInBand: leaderConsumed || owned,
+      leaderConsumed,
+    };
+  }
+
+  private notifyObservers(result: TaskResult, info: TaskObservation): void {
+    const set = this.observers.get(result.taskId);
+    if (!set) return;
+    this.observers.delete(result.taskId);
+    for (const cb of set) {
+      try {
+        cb(result, info);
+      } catch {
+        // An observer must never break settlement for the rest.
+      }
+    }
   }
 
   async assign(task: TaskSpec): Promise<string> {
@@ -253,6 +325,11 @@ export class DirectorTaskRegistry {
       waiter.resolve(this.makeStoppedResult(taskId, 'director'));
     }
     this.taskWaiters.clear();
+    for (const taskId of [...this.observers.keys()]) {
+      this.notifyObservers(this.makeStoppedResult(taskId, 'director'), { leaderConsumed: false });
+    }
+    this.observers.clear();
+    this.ownedTaskIds.clear();
   }
 
   /** A task the registry could still settle: completed, currently assigned, or internal. */

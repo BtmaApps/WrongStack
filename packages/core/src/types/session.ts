@@ -312,6 +312,12 @@ type SessionEventVariant =
       /** The instruction handed to the subagent. */
       task: string;
       subagentId?: string | undefined;
+      /** Stable delegation id (survives handoffs). Absent in older journals. */
+      delegationId?: string | undefined;
+      /** First attempt's task id. */
+      taskId?: string | undefined;
+      /** `background` (leader not blocked) or `wait` (blocking call). */
+      mode?: 'background' | 'wait' | undefined;
     }
   | {
       type: 'delegate_completed';
@@ -328,6 +334,31 @@ type SessionEventVariant =
       toolCalls: number;
       costUsd?: number | undefined;
       subagentId?: string | undefined;
+      delegationId?: string | undefined;
+      /** Terminal attempt's task id (the `roll_up` handle). */
+      taskId?: string | undefined;
+      /** Tool-level stop reason (`end_turn`, `aborted`, `host_timeout`, …). */
+      stopReason?: string | undefined;
+      /**
+       * Bounded result text (structured report first, ≤4k chars). Lets a
+       * resumed session re-deliver an undelivered background result after the
+       * in-memory task registry is gone.
+       */
+      resultExcerpt?: string | undefined;
+      mode?: 'background' | 'wait' | undefined;
+    }
+  | {
+      /**
+       * A background delegation's result reached the owning leader — folded
+       * into its conversation by the agent loop (`via: 'loop'`) or already
+       * received in-band through `await_tasks` (`via: 'await_tasks'`). On
+       * resume, a `delegate_completed` without this is re-delivered.
+       */
+      type: 'delegation_delivered';
+      ts: string;
+      delegationId: string;
+      deliveryId?: string | undefined;
+      via?: 'loop' | 'await_tasks' | undefined;
     }
   | {
       /**

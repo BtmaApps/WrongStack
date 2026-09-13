@@ -141,6 +141,20 @@ describe('buildAcpServerAgentFactory', () => {
     expect(a1.ctx.model).toBe('test-model');
   });
 
+  it('binds the agent as its ACP session leader so background delegation results can drain', async () => {
+    mockSetupProvider.mockResolvedValue({
+      provider: makeStubProvider(),
+      providerRegistry: { has: () => true } as never as ProviderRegistry,
+      resolvedProvider: {} as ResolvedProvider,
+    });
+    const agent = await buildAcpServerAgentFactory(makeDeps())('sess-lead', '/tmp');
+    // The leader-delivery drain runs only for agentId 'leader' and matches
+    // queued results against the context's session id. Under the previous
+    // 'acp-server' id with an id-less writer, neither held.
+    expect(agent.ctx.agentId).toBe('leader');
+    expect(agent.ctx.session.id).toBe('sess-lead');
+  });
+
   it('wires ACP-backed fs/terminal tools when the client advertises capabilities', async () => {
     const provider = makeStubProvider();
     const providerRegistry = { has: () => true } as never as ProviderRegistry;

@@ -89,6 +89,13 @@ export interface CliWebUIOptions {
    * before calling this. Absent for hosts with a single conversation.
    */
   onSessionRetired?: ((sessionId: string) => void) | undefined;
+  /**
+   * The process's ONE background-delegation auto-wake controller. The CLI
+   * creates it (it owns the delegate tool and the delivery hub) and the WebUI
+   * binds its port; the WebUI never creates a second one, which would wake
+   * every session twice. Absent: this WebUI host never auto-wakes.
+   */
+  leaderAutoWake?: import('@wrongstack/webui-server').WebuiLeaderAutoWakeController | undefined;
   /** Browser-facing HTTP URL, used when WebUI is exposed behind a tunnel/proxy. */
   publicUrl?: string | undefined;
   /** Browser-facing WebSocket URL injected into the frontend. */

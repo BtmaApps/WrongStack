@@ -1,4 +1,9 @@
 import { isFinalTurnStopReason } from '@wrongstack/tools/next-steps';
+import {
+  formatAutoWakeNotice,
+  formatAutoWakeSuppressedNotice,
+  formatDeliveryPendingNotice,
+} from '@wrongstack/webui-protocol';
 import { toast } from '@/components/Toaster';
 import { truncateDelegateTask } from '@/lib/delegate-format';
 import { streamCoalescer } from '@/lib/stream-coalescer';
@@ -525,6 +530,48 @@ export function handleDelegateCompleted(msg: WSServerMessage) {
     sessionId: chat.sessionId,
   });
   if (!p.ok) toastIfForeground(chat, () => toast.warn(`Delegate failed: ${p.target}`));
+}
+
+function delegationIdsOf(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+}
+
+/** A background delegation result is waiting for this session's leader. */
+export function handleDelegationDeliveryPending(msg: WSServerMessage) {
+  const chat = chatFor(msg);
+  if (!chat) return;
+  const p = msg.payload as { count?: unknown; delegationIds?: unknown };
+  const delegationIds = delegationIdsOf(p.delegationIds);
+  const count =
+    typeof p.count === 'number' && Number.isFinite(p.count) ? p.count : delegationIds.length || 1;
+  chat.addMessage({ role: 'system', content: formatDeliveryPendingNotice(delegationIds, count) });
+}
+
+/**
+ * The runtime woke the leader. Rendered as a system line BEFORE the woken
+ * turn's stream — never as a user bubble: nobody typed the `[AUTO-WAKE]`
+ * prompt that drives it.
+ */
+export function handleDelegationAutoWakeStarted(msg: WSServerMessage) {
+  const chat = chatFor(msg);
+  if (!chat) return;
+  const p = msg.payload as { delegationIds?: unknown; chain?: unknown };
+  const chain = typeof p.chain === 'number' ? p.chain : undefined;
+  chat.addMessage({
+    role: 'system',
+    content: formatAutoWakeNotice(delegationIdsOf(p.delegationIds), chain),
+  });
+}
+
+/** The chain cap is holding results until the user sends a message. */
+export function handleDelegationAutoWakeSuppressed(msg: WSServerMessage) {
+  const chat = chatFor(msg);
+  if (!chat) return;
+  const p = msg.payload as { reason?: unknown; pending?: unknown };
+  if (p.reason !== 'chain_cap') return;
+  const pending = typeof p.pending === 'number' ? p.pending : 1;
+  chat.addMessage({ role: 'system', content: formatAutoWakeSuppressedNotice(pending) });
+  toastIfForeground(chat, () => toast.info('Auto-wake paused — send a message to continue'));
 }
 
 export function handleSessionDamaged(msg: WSServerMessage) {

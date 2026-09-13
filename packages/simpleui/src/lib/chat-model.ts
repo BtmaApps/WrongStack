@@ -5,7 +5,7 @@ import type {
   SessionTimelineImage,
   SessionToolMeta,
 } from '@wrongstack/webui-protocol';
-import { projectSessionTimeline } from '@wrongstack/webui-protocol';
+import { autoWakeNoticeText, projectSessionTimeline } from '@wrongstack/webui-protocol';
 import type { ChatMessage, SimpleSubagent, ToolCallInfo } from '../types.js';
 
 /**
@@ -162,6 +162,19 @@ export function replayToMessages(
       continue;
     }
     if (!item.text && item.kind !== 'user') continue;
+    // A woken turn's `[AUTO-WAKE]` input is runtime text: replay it as the
+    // system line the live stream showed, never as a user bubble.
+    const autoWake = item.kind === 'user' ? autoWakeNoticeText(item.text) : undefined;
+    if (autoWake !== undefined) {
+      out.push({
+        id: `replay-${index}`,
+        role: 'system',
+        text: autoWake,
+        ts: item.ts,
+        replayOrder: index,
+      });
+      continue;
+    }
     out.push({
       id: `replay-${index}`,
       role: item.kind === 'assistant' ? 'assistant' : item.kind === 'system' ? 'system' : 'user',
