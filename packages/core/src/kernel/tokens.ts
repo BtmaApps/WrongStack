@@ -1,5 +1,4 @@
 import type { BrainArbiter } from '../coordination/brain.js';
-import type { DelegationTracker } from '../coordination/delegation/delegation-tracker.js';
 import type { FallbackProfileManager } from '../core/fallback-profile-manager.js';
 import type { ProviderModelStatusTracker } from '../coordination/provider-status-tracker.js';
 import type { HookRegistry } from '../hooks/registry.js';
@@ -18,12 +17,23 @@ import type { ProviderRunner } from '../types/provider-runner.js';
 import type { Renderer } from '../types/renderer.js';
 import type { RetryPolicy } from '../types/retry-policy.js';
 import type { SecretScrubber } from '../types/secret-scrubber.js';
-import type { SessionStore } from '../types/session.js';
+import type { SessionEvent, SessionStore } from '../types/session.js';
 import type { SkillLoader } from '../types/skill.js';
 import type { SystemPromptBuilder } from '../types/system-prompt.js';
 import type { TokenCounter } from '../types/token-counter.js';
 import type { WorktreeManager } from '../worktree/worktree-manager.js';
 import type { Token } from './container.js';
+
+/**
+ * Structural view of the background `delegate` tracker. The kernel must not
+ * import `DelegationTracker` itself: that class pulls run-delegation, the
+ * Director and the fleet roster into every module that reads a token.
+ */
+export interface DelegationTrackerPort {
+  rehydrate(sessionId: string, events: readonly SessionEvent[]): number;
+  cancelSession(sessionId: string): number;
+  dispose(): void;
+}
 
 // Tokens use the GLOBAL symbol registry (`Symbol.for`) rather than unique
 // per-call `Symbol()`s. If `@wrongstack/core` is ever evaluated twice in one
@@ -80,5 +90,5 @@ export const TOKENS = {
   /** Lifecycle hook registry (shell + in-process hooks). */
   HookRegistry: t<HookRegistry>('HookRegistry'),
   /** Process-wide background `delegate` tracker (one per host). */
-  DelegationTracker: t<DelegationTracker>('DelegationTracker'),
+  DelegationTracker: t<DelegationTrackerPort>('DelegationTracker'),
 } as const;

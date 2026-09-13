@@ -499,7 +499,7 @@
       "relativeImports": 7
     },
     "packages/webui/src/stores/chat-lanes.ts": {
-      "lines": 924,
+      "lines": 931,
       "relativeImports": 4
     },
     "packages/webui/src/stores/fleet-store.ts": {

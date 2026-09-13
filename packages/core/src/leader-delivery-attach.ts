@@ -18,8 +18,9 @@ import {
   renderLeaderDeliveryBlock,
 } from './coordination/delegation/leader-delivery-hub.js';
 import { isMailboxLeader } from './coordination/mailbox-predicates.js';
-import type { AgentInternals } from './core/agent-internals.js';
 import type { TextBlock } from './types/blocks.js';
+import type { AgentContext } from './types/context.js';
+import type { Logger } from './types/logger.js';
 import { recordCompletedWorkEvidence } from './utils/context-evidence.js';
 import { toErrorMessage } from './utils/error.js';
 
@@ -43,7 +44,9 @@ export function isLeaderAgentId(agentId: unknown): boolean {
  * @returns the number of items delivered.
  */
 export async function drainLeaderDeliveries(
-  a: AgentInternals,
+  // Structural on purpose: importing AgentInternals would pull this module
+  // into the agent-loop type cycle (architecture/exceptions.json TYPE-11).
+  a: { readonly ctx: AgentContext; readonly logger: Logger },
   sessionIds: readonly string[],
   fold: (block: TextBlock) => void,
 ): Promise<number> {
