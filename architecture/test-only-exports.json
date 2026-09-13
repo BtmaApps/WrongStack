@@ -782,6 +782,7 @@
       "hoverCoverage"
     ],
     "packages/plug-lsp/src/tools/shared.ts": [
+      "stringifyToolError",
       "textDocumentPosition"
     ],
     "packages/plug-lsp/src/tools/symbols.ts": [
@@ -869,6 +870,9 @@
     "packages/plugins/src/plugin-audit-catalog/index.ts": [
       "HOST_PLUGIN_AUDIT_ENTRIES"
     ],
+    "packages/plugins/src/pr-drafter/index.ts": [
+      "parseAutocommitResult"
+    ],
     "packages/plugins/src/prompt-firewall/index.ts": [
       "detectSecrets",
       "detectSecretsGuarded",
@@ -927,6 +931,9 @@
     "packages/sage/src/anchors/verify.ts": [
       "anchorVerificationCoverage"
     ],
+    "packages/sage/src/daemon-log.ts": [
+      "SAGE_DAEMON_LOG_MAX_BYTES"
+    ],
     "packages/sage/src/middleware/memory-injector-agent.ts": [
       "memoryInjectorAgentCoverage"
     ],
@@ -938,6 +945,11 @@
     ],
     "packages/sage/src/middleware/turn-memory.ts": [
       "turnMemoryCoverage"
+    ],
+    "packages/sage/src/mount-probe.ts": [
+      "mountFsTypeFor",
+      "NINEP_STORE_MOUNT_FS_TYPES",
+      "parseProcMounts"
     ],
     "packages/sage/src/paths.ts": [
       "clearProjectPathCache"
@@ -1159,7 +1171,8 @@
       "getGlobalProcessStatus"
     ],
     "packages/tools/src/search.ts": [
-      "__clearSearchCache"
+      "__clearSearchCache",
+      "__getSearchCacheSizeForTest"
     ],
     "packages/tools/src/session-kanban.ts": [
       "cleanupEmptySessionKanbanBoards",

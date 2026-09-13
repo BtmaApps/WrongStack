@@ -3,7 +3,7 @@
   "thresholdLines": 800,
   "files": {
     "packages/acp/src/client/acp-session.ts": {
-      "lines": 821,
+      "lines": 890,
       "relativeImports": 19
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
@@ -87,11 +87,11 @@
       "relativeImports": 10
     },
     "packages/core/src/coordination/delegate-tool.ts": {
-      "lines": 1075,
-      "relativeImports": 10
+      "lines": 1077,
+      "relativeImports": 11
     },
     "packages/core/src/coordination/director-tools.ts": {
-      "lines": 966,
+      "lines": 958,
       "relativeImports": 18
     },
     "packages/core/src/coordination/director.ts": {
@@ -211,11 +211,11 @@
       "relativeImports": 2
     },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
-      "lines": 872,
+      "lines": 880,
       "relativeImports": 1
     },
     "packages/plugins/src/git-autocommit/index.ts": {
-      "lines": 1062,
+      "lines": 1066,
       "relativeImports": 0
     },
     "packages/plugins/src/path-guard/shell-targets.ts": {
@@ -227,15 +227,15 @@
       "relativeImports": 2
     },
     "packages/plugins/src/secret-scanner/index.ts": {
-      "lines": 934,
+      "lines": 939,
       "relativeImports": 2
     },
     "packages/plugins/src/semantic-search-indexer/index.ts": {
-      "lines": 948,
+      "lines": 966,
       "relativeImports": 0
     },
     "packages/plugins/src/semver-bump/index.ts": {
-      "lines": 807,
+      "lines": 829,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {
@@ -259,15 +259,15 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 913,
-      "relativeImports": 6
+      "lines": 928,
+      "relativeImports": 7
     },
     "packages/sage/src/sqlite-store.ts": {
       "lines": 1033,
       "relativeImports": 43
     },
     "packages/sage/src/tools/memory-tools.ts": {
-      "lines": 1026,
+      "lines": 1047,
       "relativeImports": 4
     },
     "packages/sage/src/types.ts": {
@@ -291,12 +291,16 @@
       "relativeImports": 52
     },
     "packages/tools/src/bash.ts": {
-      "lines": 884,
+      "lines": 849,
       "relativeImports": 7
     },
     "packages/tools/src/codebase-index/background-indexer.ts": {
       "lines": 968,
       "relativeImports": 8
+    },
+    "packages/tools/src/codebase-index/dead-code-scan.ts": {
+      "lines": 828,
+      "relativeImports": 4
     },
     "packages/tools/src/codebase-index/indexer.ts": {
       "lines": 1013,
@@ -319,11 +323,11 @@
       "relativeImports": 24
     },
     "packages/tools/src/json.ts": {
-      "lines": 938,
+      "lines": 804,
       "relativeImports": 2
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 893,
+      "lines": 847,
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {

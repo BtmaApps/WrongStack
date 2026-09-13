@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T07:11:30.507Z",
+  "generatedAt": "2026-09-13T09:17:40.898Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3771,
-    "testFiles": 3291,
-    "sourceLines": 914340,
+    "sourceFiles": 3773,
+    "testFiles": 3295,
+    "sourceLines": 915003,
     "workspaceEdges": 128,
-    "moduleEdges": 12025,
+    "moduleEdges": 12049,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 916
+    "testOnlyExports": 923
   },
   "errors": [],
   "packageCycles": [],
@@ -103,7 +103,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 42,
-      "testFiles": 37,
+      "testFiles": 38,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -117,7 +117,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 37
+          "testFiles": 38
         }
       ]
     },
@@ -216,7 +216,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 854,
-      "testFiles": 745,
+      "testFiles": 746,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +231,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 745
+          "testFiles": 746
         }
       ]
     },
@@ -570,8 +570,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 104,
-      "testFiles": 87,
+      "sourceFiles": 106,
+      "testFiles": 89,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -586,7 +586,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 87
+          "testFiles": 89
         }
       ]
     },
@@ -1396,6 +1396,12 @@
       },
       {
         "file": "packages/acp/tests/session-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/signal-gap-proof.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8553,6 +8559,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/storage/session-writer-critical-append-proof.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/storage/session-writer-internals.test.ts",
         "projects": [
           "root-node"
@@ -11745,6 +11757,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/daemon-log.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/domain-term-extractor-commits.test.ts",
         "projects": [
           "root-node"
@@ -11878,6 +11896,12 @@
       },
       {
         "file": "packages/sage/tests/middleware/tool-call-memory-rejected-detail.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/mount-probe.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20933,7 +20957,7 @@
   "hotspotCandidates": [
     {
       "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 821,
+      "lines": 890,
       "relativeImports": 19
     },
     {
@@ -21038,12 +21062,12 @@
     },
     {
       "file": "packages/core/src/coordination/delegate-tool.ts",
-      "lines": 1075,
-      "relativeImports": 10
+      "lines": 1077,
+      "relativeImports": 11
     },
     {
       "file": "packages/core/src/coordination/director-tools.ts",
-      "lines": 966,
+      "lines": 958,
       "relativeImports": 18
     },
     {
@@ -21193,12 +21217,12 @@
     },
     {
       "file": "packages/plugins/src/duplicate-code-detector/index.ts",
-      "lines": 872,
+      "lines": 880,
       "relativeImports": 1
     },
     {
       "file": "packages/plugins/src/git-autocommit/index.ts",
-      "lines": 1062,
+      "lines": 1066,
       "relativeImports": 0
     },
     {
@@ -21213,17 +21237,17 @@
     },
     {
       "file": "packages/plugins/src/secret-scanner/index.ts",
-      "lines": 934,
+      "lines": 939,
       "relativeImports": 2
     },
     {
       "file": "packages/plugins/src/semantic-search-indexer/index.ts",
-      "lines": 948,
+      "lines": 966,
       "relativeImports": 0
     },
     {
       "file": "packages/plugins/src/semver-bump/index.ts",
-      "lines": 807,
+      "lines": 829,
       "relativeImports": 0
     },
     {
@@ -21253,8 +21277,8 @@
     },
     {
       "file": "packages/sage/src/project-server.ts",
-      "lines": 913,
-      "relativeImports": 6
+      "lines": 928,
+      "relativeImports": 7
     },
     {
       "file": "packages/sage/src/sqlite-store.ts",
@@ -21263,7 +21287,7 @@
     },
     {
       "file": "packages/sage/src/tools/memory-tools.ts",
-      "lines": 1026,
+      "lines": 1047,
       "relativeImports": 4
     },
     {
@@ -21293,13 +21317,18 @@
     },
     {
       "file": "packages/tools/src/bash.ts",
-      "lines": 884,
+      "lines": 849,
       "relativeImports": 7
     },
     {
       "file": "packages/tools/src/codebase-index/background-indexer.ts",
       "lines": 968,
       "relativeImports": 8
+    },
+    {
+      "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
+      "lines": 828,
+      "relativeImports": 4
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
@@ -21328,12 +21357,12 @@
     },
     {
       "file": "packages/tools/src/json.ts",
-      "lines": 938,
+      "lines": 804,
       "relativeImports": 2
     },
     {
       "file": "packages/tools/src/pwsh.ts",
-      "lines": 893,
+      "lines": 847,
       "relativeImports": 8
     },
     {
@@ -21610,8 +21639,8 @@
     },
     {
       "file": "packages/core/src/coordination/delegate-tool.ts",
-      "lines": 1075,
-      "relativeImports": 10
+      "lines": 1077,
+      "relativeImports": 11
     },
     {
       "file": "packages/core/src/coordination/director.ts",
@@ -21619,14 +21648,14 @@
       "relativeImports": 43
     },
     {
+      "file": "packages/plugins/src/git-autocommit/index.ts",
+      "lines": 1066,
+      "relativeImports": 0
+    },
+    {
       "file": "packages/mcp/src/client.ts",
       "lines": 1064,
       "relativeImports": 12
-    },
-    {
-      "file": "packages/plugins/src/git-autocommit/index.ts",
-      "lines": 1062,
-      "relativeImports": 0
     },
     {
       "file": "packages/webui-server/src/server/ws-payload-validation.ts",
@@ -21662,6 +21691,11 @@
       "file": "packages/plugins/src/path-guard/shell-targets.ts",
       "lines": 1048,
       "relativeImports": 1
+    },
+    {
+      "file": "packages/sage/src/tools/memory-tools.ts",
+      "lines": 1047,
+      "relativeImports": 4
     },
     {
       "file": "packages/webui/src/components/ContextDashboard.tsx",
@@ -21707,11 +21741,6 @@
       "file": "packages/core/src/hq/protocol/core.ts",
       "lines": 1032,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/sage/src/tools/memory-tools.ts",
-      "lines": 1026,
-      "relativeImports": 4
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
@@ -23383,6 +23412,10 @@
     },
     {
       "file": "packages/plug-lsp/src/tools/shared.ts",
+      "name": "stringifyToolError"
+    },
+    {
+      "file": "packages/plug-lsp/src/tools/shared.ts",
       "name": "textDocumentPosition"
     },
     {
@@ -23534,6 +23567,10 @@
       "name": "HOST_PLUGIN_AUDIT_ENTRIES"
     },
     {
+      "file": "packages/plugins/src/pr-drafter/index.ts",
+      "name": "parseAutocommitResult"
+    },
+    {
       "file": "packages/plugins/src/prompt-firewall/index.ts",
       "name": "detectSecrets"
     },
@@ -23646,6 +23683,10 @@
       "name": "anchorVerificationCoverage"
     },
     {
+      "file": "packages/sage/src/daemon-log.ts",
+      "name": "SAGE_DAEMON_LOG_MAX_BYTES"
+    },
+    {
       "file": "packages/sage/src/middleware/memory-injector-agent.ts",
       "name": "memoryInjectorAgentCoverage"
     },
@@ -23660,6 +23701,18 @@
     {
       "file": "packages/sage/src/middleware/turn-memory.ts",
       "name": "turnMemoryCoverage"
+    },
+    {
+      "file": "packages/sage/src/mount-probe.ts",
+      "name": "mountFsTypeFor"
+    },
+    {
+      "file": "packages/sage/src/mount-probe.ts",
+      "name": "NINEP_STORE_MOUNT_FS_TYPES"
+    },
+    {
+      "file": "packages/sage/src/mount-probe.ts",
+      "name": "parseProcMounts"
     },
     {
       "file": "packages/sage/src/paths.ts",
@@ -24076,6 +24129,10 @@
     {
       "file": "packages/tools/src/search.ts",
       "name": "__clearSearchCache"
+    },
+    {
+      "file": "packages/tools/src/search.ts",
+      "name": "__getSearchCacheSizeForTest"
     },
     {
       "file": "packages/tools/src/session-kanban.ts",

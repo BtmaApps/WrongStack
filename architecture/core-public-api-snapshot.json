@@ -1588,7 +1588,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 4992
+      "sourceLines": 5031
     },
     {
       "directory": "skills",
@@ -1609,7 +1609,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23426
+      "sourceLines": 23444
     },
     {
       "directory": "tasking",
