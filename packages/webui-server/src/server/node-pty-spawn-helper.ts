@@ -1,5 +1,6 @@
 import { chmodSync, statSync } from 'node:fs';
 import * as path from 'node:path';
+import { errMessage } from './ws-utils.js';
 
 /**
  * node-pty 1.1.0 ships `prebuilds/darwin-*\/spawn-helper` without the exec bit
@@ -69,7 +70,7 @@ export function ensureSpawnHelperExecutable(
       return {
         status: 'unrepairable',
         path: helper,
-        error: err instanceof Error ? err.message : String(err),
+        error: errMessage(err),
       };
     }
   }
