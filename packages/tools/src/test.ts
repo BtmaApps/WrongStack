@@ -20,7 +20,14 @@ export interface TestInput {
 
 export interface TestOutput {
   runner: string;
-  exit_code: number;
+  /**
+   * `passed`/`failed` — tests actually ran. `no_tests` — there was nothing to
+   * run (no runner configured, or the runner found no test files). "No tests"
+   * is a real answer, but it is NOT a pass: `exit_code` is null when no runner
+   * was launched, and callers must never read it as green.
+   */
+  status: 'passed' | 'failed' | 'no_tests';
+  exit_code: number | null;
   tests_run: number;
   passed: number;
   failed: number;
@@ -40,6 +47,7 @@ export const testTool: Tool<TestInput, TestOutput> = {
     'ESSENTIAL BEFORE CONSIDERING WORK DONE:\n\n' +
     '- Use `files` or `grep` to run only relevant tests during development.\n' +
     '- `coverage: true` is useful when working on critical paths.\n' +
+    '- Check `status`: `passed`, `failed`, or `no_tests` (no runner configured / no test files matched). `no_tests` is NOT a pass.\n' +
     'Run tests frequently. A clean test run is usually required before the task can be considered complete.',
   permission: 'confirm',
   mutating: false,
@@ -103,16 +111,28 @@ export const testTool: Tool<TestInput, TestOutput> = {
       });
       if (bridge?.run) {
         const run = bridge.run;
+        // The ecosystem's runner could not be launched: exitCode is null, and
+        // `?? 0` below would report it as a clean pass.
+        if (run.status === 'unavailable') {
+          throw new Error(
+            `test: ${bridge.language} test runner unavailable: ${run.error || run.output || 'no detail'}`,
+          );
+        }
+        const passed = run.summary.passed ?? 0;
+        const failed = run.summary.failed ?? 0;
+        const exitCode = run.exitCode ?? 0;
+        const rawOutput = run.output || run.error || '';
         yield {
           type: 'final',
           output: {
             runner: bridge.language,
-            exit_code: run.exitCode ?? 0,
-            tests_run: (run.summary.passed ?? 0) + (run.summary.failed ?? 0),
-            passed: run.summary.passed ?? 0,
-            failed: run.summary.failed ?? 0,
+            status: resolveStatus(exitCode, passed + failed, rawOutput),
+            exit_code: exitCode,
+            tests_run: passed + failed,
+            passed,
+            failed,
             duration_ms: run.durationMs,
-            output: normalizeCommandOutput(run.output || run.error || ''),
+            output: normalizeCommandOutput(rawOutput),
             truncated: run.truncated,
           },
         };
@@ -126,12 +146,15 @@ export const testTool: Tool<TestInput, TestOutput> = {
         type: 'final',
         output: {
           runner: 'none',
-          exit_code: 0,
+          // Nothing ran: not a pass, and no exit code to report.
+          status: 'no_tests',
+          exit_code: null,
           tests_run: 0,
           passed: 0,
           failed: 0,
           duration_ms: 0,
-          output: 'No test runner found (vitest.config.ts, jest.config.js, .mocharc.json)',
+          output:
+            'No tests: no test runner configured (looked for vitest.config.*, jest.config.*, .mocharc.*).',
           truncated: false,
         },
       };
@@ -151,6 +174,12 @@ export const testTool: Tool<TestInput, TestOutput> = {
       maxBytes: 200_000,
     });
     const duration = Date.now() - start;
+
+    // Spawn failure (runner binary missing, EACCES…): the tests never ran, so
+    // this is a failed call rather than an exit-code result.
+    if (result.error) {
+      throw new Error(`test: failed to start ${detected}: ${result.error}`);
+    }
 
     yield { type: 'final', output: parseResult(detected, result, duration) };
   },
@@ -233,6 +262,20 @@ function buildArgs(runner: string, input: TestInput): string[] {
   return args;
 }
 
+// Runner phrasings for "there was nothing to run": vitest/jest exit 1 with
+// these, mocha exits 0 with "0 passing", go/cargo print their own variants.
+const NO_TESTS_PATTERN =
+  /No test files found|No tests found|no test files|running 0 tests|^\s*0 passing/im;
+
+function resolveStatus(
+  exitCode: number | null,
+  testsRun: number,
+  output: string,
+): TestOutput['status'] {
+  if (testsRun === 0 && NO_TESTS_PATTERN.test(output)) return 'no_tests';
+  return exitCode === 0 ? 'passed' : 'failed';
+}
+
 function parseResult(
   runner: string,
   result: {
@@ -278,6 +321,7 @@ function parseResult(
 
   return {
     runner,
+    status: resolveStatus(result.exitCode, tests_run, out),
     exit_code: result.exitCode,
     tests_run,
     passed,

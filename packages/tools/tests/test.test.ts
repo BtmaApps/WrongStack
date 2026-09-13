@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { spawnStream } from '../src/_spawn-stream.js';
 import { testTool } from '../src/test.js';
 
 // We need to mock the spawnStream to avoid actual test execution
@@ -23,14 +24,18 @@ describe('testTool', () => {
     expect(testTool.mutating).toBe(false);
   });
 
-  it('returns none when no runner found', async () => {
+  it('returns none when no runner found — and says "no tests", never a pass', async () => {
     const ctx = { cwd: '/', tools: [], projectRoot: '/' } as any;
     // When no config file is found in the directory, detectRunner returns null
-    // and the tool short-circuits with runner: 'none'.
+    // and the tool short-circuits with runner: 'none'. It used to report
+    // exit_code 0, which every consumer read as a green run.
     const result = await testTool.execute({ runner: 'auto' }, ctx, {
       signal: new AbortController().signal,
     });
     expect(result.runner).toBe('none');
+    expect(result.status).toBe('no_tests');
+    expect(result.exit_code).toBeNull();
+    expect(result.output).toMatch(/^No tests:/);
   });
 
   it('short-circuits when auto-detect finds nothing', async () => {
@@ -82,6 +87,53 @@ describe('testTool', () => {
       signal: new AbortController().signal,
     });
     expect(result).toHaveProperty('duration_ms');
+  });
+
+  it('throws when the runner process cannot be spawned (not an exit-code result)', async () => {
+    vi.mocked(spawnStream).mockImplementationOnce(
+      // biome-ignore lint/correctness/useYield: mock returns no partial lines
+      async function* () {
+        return {
+          stdout: '',
+          stderr: '',
+          exitCode: 1,
+          truncated: false,
+          error: 'spawn vitest ENOENT',
+        };
+      },
+    );
+    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
+    await expect(
+      testTool.execute({ runner: 'vitest' }, ctx, { signal: new AbortController().signal }),
+    ).rejects.toThrow(/test: failed to start vitest: spawn vitest ENOENT/);
+  });
+
+  const runWith = async (runner: 'vitest' | 'jest' | 'mocha', stdout: string, exitCode: number) => {
+    vi.mocked(spawnStream).mockImplementationOnce(
+      // biome-ignore lint/correctness/useYield: mock returns no partial lines
+      async function* () {
+        return { stdout, stderr: '', exitCode, truncated: false };
+      },
+    );
+    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
+    return testTool.execute({ runner }, ctx, { signal: new AbortController().signal });
+  };
+
+  it('reports no_tests (not failed) when the runner finds no test files', async () => {
+    const vitest = await runWith('vitest', 'No test files found, exiting with code 1', 1);
+    expect(vitest.status).toBe('no_tests');
+    expect(vitest.tests_run).toBe(0);
+    const jest = await runWith('jest', 'No tests found, exiting with code 1', 1);
+    expect(jest.status).toBe('no_tests');
+    const mocha = await runWith('mocha', '\n  0 passing (2ms)\n', 0);
+    expect(mocha.status).toBe('no_tests');
+  });
+
+  it('reports passed / failed when tests actually ran', async () => {
+    const passed = await runWith('vitest', 'Tests  3 passed (3)', 0);
+    expect(passed).toMatchObject({ status: 'passed', passed: 3, tests_run: 3 });
+    const failed = await runWith('vitest', 'Tests  1 failed | 2 passed (3)', 1);
+    expect(failed).toMatchObject({ status: 'failed', failed: 1, tests_run: 3 });
   });
 });
 

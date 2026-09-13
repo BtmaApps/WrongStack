@@ -379,10 +379,11 @@ function renderToolObject(toolName: string, obj: RecordValue, input: unknown): s
 }
 
 function renderTestOutput(obj: RecordValue, input: unknown): string {
-  const exitCode = numberField(obj, 'exit_code') ?? 0;
+  const exitCode = numberField(obj, 'exit_code');
   const failed = numberField(obj, 'failed') ?? 0;
   const output = stringField(obj, 'output') ?? '';
   const header = renderHeader(`test: ${stringField(obj, 'runner') ?? 'runner'}`, {
+    status: obj['status'],
     exit_code: obj['exit_code'],
     tests_run: obj['tests_run'],
     passed: obj['passed'],
@@ -392,6 +393,15 @@ function renderTestOutput(obj: RecordValue, input: unknown): string {
     files: inputListSummary(input, 'files'),
     grep: stringFromInput(input, 'grep'),
   });
+
+  // "Nothing to run" must never be rendered as a pass (it used to fall into
+  // the exit-0 branch below and read `status=passed`).
+  if (stringField(obj, 'status') === 'no_tests') {
+    return joinSections([
+      header,
+      joinSections(['report:', 'status=no_tests', output || 'No tests to run.']),
+    ]);
+  }
 
   if (exitCode === 0 && failed === 0) {
     return joinSections([

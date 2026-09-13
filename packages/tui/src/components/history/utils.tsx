@@ -429,6 +429,7 @@ export function formatToolOutput(
     const duration = numOf(o['duration_ms']);
     const head: string[] = [];
     if (runner && runner !== 'none') head.push(runner);
+    if (o['status'] === 'no_tests') return [[...head, 'no tests'].join(' · ')];
     head.push(`${passed}/${total} passed`);
     if (failed > 0) head.push(`${failed} failed`);
     if (duration !== undefined) head.push(fmtDuration(duration));
@@ -986,7 +987,9 @@ function visualVerifier(toolName: string, text: string, ok: boolean): ToolVisual
       warnings > 0 ? `${warnings} warning${warnings === 1 ? '' : 's'}` : undefined,
       changed > 0 ? `${changed} changed` : undefined,
       toolName === 'test'
-        ? `${numOf(obj['passed']) ?? 0}/${numOf(obj['tests_run']) ?? 0} passed`
+        ? obj['status'] === 'no_tests'
+          ? 'no tests'
+          : `${numOf(obj['passed']) ?? 0}/${numOf(obj['tests_run']) ?? 0} passed`
         : undefined,
     ].filter(Boolean);
     return [
