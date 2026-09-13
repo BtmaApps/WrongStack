@@ -103,6 +103,14 @@ export async function renameSessionSummary(
     summary: SessionSummary,
     transcriptRelativePath?: string,
     summaryRelativePath?: string,
+    storage?: {
+      storageState?: 'hot' | 'cold' | undefined;
+      codec?: 'gzip' | undefined;
+      uncompressedSize?: number | undefined;
+      compressedSize?: number | undefined;
+      contentSha256?: string | undefined;
+      archivedAt?: string | null | undefined;
+    },
   ) => CatalogSessionRecord,
 ): Promise<CatalogSessionRecord> {
   const trimmed = name.trim();
@@ -126,11 +134,31 @@ export async function renameSessionSummary(
   const previous: SessionSummary = { ...summary };
   if (trimmed) summary.name = scrubber.scrub(trimmed).slice(0, 500);
   else delete summary.name;
+  // A rename must not mutate storage identity. ExecuteUpsertSummary re-derives
+  // contentSha256 (`storage?.contentSha256` -> null) and archivedAt
+  // (`storage?.archivedAt ?? now`) from the optional storage block, so those
+  // fields are forwarded verbatim from the current record: dropping them
+  // silently destroyed a cold session's integrity hash and reset its archive
+  // timestamp on every rename. The transcript itself is not moved by a rename,
+  // so the preserved sizes are still authoritative.
+  const storage = {
+    storageState: current.storageState,
+    codec: current.codec,
+    uncompressedSize: current.uncompressedSize,
+    compressedSize: current.compressedSize,
+    contentSha256: current.contentSha256,
+    archivedAt: current.archivedAt,
+  };
   const summaryPath = containedPath(current.summaryRelativePath);
   fs.mkdirSync(path.dirname(summaryPath), { recursive: true, mode: 0o700 });
   await atomicWrite(summaryPath, `${JSON.stringify(summary)}\n`, { mode: 0o600 });
   try {
-    return upsertSummary(summary, current.transcriptRelativePath, current.summaryRelativePath);
+    return upsertSummary(
+      summary,
+      current.transcriptRelativePath,
+      current.summaryRelativePath,
+      storage,
+    );
   } catch (error) {
     await atomicWrite(summaryPath, `${JSON.stringify(previous)}\n`, { mode: 0o600 }).catch(
       () => undefined,

@@ -36,6 +36,51 @@ function entry(sessionId: string, pid = process.pid): SessionRegistryEntry {
 }
 
 describe('SessionCatalogStore', () => {
+  it('rename preserves cold-record storage metadata (contentSha256, archivedAt, storageState)', async () => {
+    const { root, store } = await fixture();
+    const id = '2026-01-01/sess_sha';
+    const sha = 'deadbeefcafebabe0123456789abcdefdeadbeefcafebabe0123456789abcdef';
+    const archivedAt = '2026-02-02T10:00:00.000Z';
+
+    store.upsertSummary(
+      {
+        id,
+        title: 'archived session',
+        startedAt: '2026-01-01T00:00:00.000Z',
+        model: 'test-model',
+        provider: 'test-provider',
+        tokenTotal: 42,
+        lastActivityAt: '2026-01-01T09:00:00.000Z',
+      },
+      `${id}.jsonl.gz`,
+      `${id}.summary.json`,
+      {
+        storageState: 'cold',
+        codec: 'gzip',
+        uncompressedSize: 1000,
+        compressedSize: 400,
+        contentSha256: sha,
+        archivedAt,
+      },
+    );
+
+    const renamed = await store.rename(id, 'renamed session');
+
+    // Regression (bug-hunt round 2): renameSessionSummary previously called
+    // upsertSummary WITHOUT the storage block, which re-derived
+    // contentSha256 to null and archivedAt to the rename time — silently
+    // destroying a cold session's integrity hash.
+    expect(renamed.contentSha256).toBe(sha);
+    expect(renamed.archivedAt).toBe(archivedAt);
+    expect(renamed.storageState).toBe('cold');
+    expect(renamed.codec).toBe('gzip');
+    expect(renamed.compressedSize).toBe(400);
+    expect(renamed.uncompressedSize).toBe(1000);
+    expect(renamed.name).toBe('renamed session');
+    await store.close();
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
   it('preserves a failed transaction error when SQLite already ended the transaction', async () => {
     const { store } = await fixture();
     store.close();

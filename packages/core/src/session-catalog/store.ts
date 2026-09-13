@@ -347,8 +347,8 @@ export class SessionCatalogStore {
       name,
       this.scrubber,
       (rel) => this.containedPath(rel),
-      (summary, transcriptRel, summaryRel) =>
-        this.upsertSummary(summary, transcriptRel, summaryRel),
+      (summary, transcriptRel, summaryRel, storage) =>
+        this.upsertSummary(summary, transcriptRel, summaryRel, storage),
     );
   }
 
