@@ -165,8 +165,7 @@ describe('createAutonomyBrain — heuristics (quickDecide)', () => {
   it('skips deadlocked tasks blocked by failed dependencies', async () => {
     const brain = createAutonomyBrain({ provider: fakeProvider('x'), model: 'm' });
     const d = await brain.decide(req({ question: 'deadlock detected', context: 'failed tasks' }));
-    expect(d).toMatchObject({ type: 'answer' });
-    if (d.type === 'answer') expect(d.text).toContain('Skip deadlocked');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('Skip deadlocked') });
   });
 
   it('moves on when retries are exhausted', async () => {
@@ -174,7 +173,7 @@ describe('createAutonomyBrain — heuristics (quickDecide)', () => {
     const d = await brain.decide(
       req({ question: 'task failed again', context: 'retries exhausted' }),
     );
-    if (d.type === 'answer') expect(d.text).toContain('Mark as failed');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('Mark as failed') });
   });
 
   it('answers yes to a plain continue/proceed question without calling the LLM', async () => {
@@ -214,7 +213,7 @@ describe('createAutonomyBrain — heuristics (quickDecide)', () => {
     const brain = createAutonomyBrain({ provider, model: 'm' });
     const d = await brain.decide(req({ question: 'Should we continue or stop the run?' }));
     expect(provider.complete).toHaveBeenCalled();
-    if (d.type === 'answer') expect(d.text).toContain('Stop');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('Stop') });
   });
 
   it('does not auto-continue when the caller did not declare continue as fallback', async () => {
@@ -333,7 +332,7 @@ describe('createAutonomyBrain — LLM evaluation (llmDecide)', () => {
     const provider = fakeProvider('Continue, progress looks good.');
     const brain = createAutonomyBrain({ provider, model: 'm' });
     const d = await brain.decide(req({ question: 'goal complete check', risk: 'medium' }));
-    if (d.type === 'answer') expect(d.text).toContain('Continue');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('Continue') });
   });
 
   it('refuses to turn an empty LLM response into a decision', async () => {
@@ -355,11 +354,19 @@ describe('createAutonomyBrain — LLM evaluation (llmDecide)', () => {
     expect(d).toMatchObject({ type: 'answer', text: 'Continue execution.' });
   });
 
-  it('falls back to denial text when the LLM returns empty and fallback is not continue', async () => {
+  it('treats an empty response as unparseable even when fallback is deny', async () => {
     const provider = fakeProvider('');
     const brain = createAutonomyBrain({ provider, model: 'm' });
     const d = await brain.decide(req({ question: 'mission complete?', fallback: 'deny' }));
-    if (d.type === 'answer') expect(d.text).toContain('Denied by autonomy policy');
+    expect(d.type).toBe('deny');
+    expect(readLlmDenyKind(d)).toBe('unparseable');
+  });
+
+  it('produces the legacy denial text for an empty response when the uncertainty gate is off', async () => {
+    const provider = fakeProvider('');
+    const brain = createAutonomyBrain({ provider, model: 'm', rejectUncertain: false });
+    const d = await brain.decide(req({ question: 'mission complete?', fallback: 'deny' }));
+    expect(d).toMatchObject({ type: 'answer', text: 'Denied by autonomy policy.' });
   });
 
   it('reports an unreachable provider as unavailable, not as a continue answer', async () => {
@@ -398,7 +405,7 @@ describe('createAutonomyBrain — LLM evaluation (llmDecide)', () => {
     } as never as Provider;
     const brain = createAutonomyBrain({ provider, model: 'm' });
     const d = await brain.decide(req({ question: 'goal complete?', risk: 'medium' }));
-    if (d.type === 'answer') expect(d.text).toContain('text field');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('text field') });
   });
 
   it('handles a non-object provider response (extractText guard)', async () => {

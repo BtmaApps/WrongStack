@@ -303,12 +303,19 @@ describe('StreamableHTTPTransport — connection failure modes', () => {
 
   it('onDisconnect unsubscribe works', () => {
     const t = new StreamableHTTPTransport({ name: 'x', url: 'https://example.test' });
+    const handlers = (t as unknown as { disconnectHandlers: Array<() => void> }).disconnectHandlers;
     const cb = vi.fn();
+    const keep = vi.fn();
     const off = t.onDisconnect(cb);
+    t.onDisconnect(keep);
+    expect(handlers).toEqual([cb, keep]);
     off();
-    // Manually trigger to verify cb is no longer called
-    // We can't easily test the internal call since there's no disconnect() without connect()
-    // But we verified the unsubscribe function removes the handler
+    // Only the unsubscribed handler is removed; a repeat call is a no-op and
+    // must not splice out someone else's handler (indexOf === -1 guard).
+    expect(handlers).toEqual([keep]);
+    off();
+    expect(handlers).toEqual([keep]);
+    expect(cb).not.toHaveBeenCalled();
   });
 
   it('close is idempotent', async () => {
@@ -711,34 +718,6 @@ describe('SSETransport — mocked connect + callTool', () => {
       headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
     });
   }
-
-  it('callTool returns isError=true when server returns error in result', async () => {
-    const fetchImpl = mkFetch([
-      // connect — SSE init fetch
-      (_u, init) => {
-        const body = JSON.parse(init.body ?? '{}');
-        if (body.method === 'initialize') {
-          return jsonRes({ jsonrpc: '2.0', id: body.id, result: {} });
-        }
-        if (body.method === 'notifications/initialized') {
-          return jsonRes({ jsonrpc: '2.0' });
-        }
-        if (body.method === 'tools/list') {
-          return jsonRes({ jsonrpc: '2.0', id: body.id, result: { tools: [] } });
-        }
-        return jsonRes({ jsonrpc: '2.0' });
-      },
-    ]);
-    const origFetch = globalThis.fetch;
-    (globalThis as { fetch: typeof globalThis.fetch }).fetch = fetchImpl;
-    try {
-      new SSETransport({ name: 'x', url: 'https://m.test' });
-      // Can't fully test without mocking SSE stream, but we can test the
-      // callTool error path via the already-connected transport state.
-    } finally {
-      (globalThis as { fetch: typeof globalThis.fetch }).fetch = origFetch;
-    }
-  });
 
   it('SSETransport calls httpPost with correct JSON-RPC envelope', async () => {
     const calls: { method: string; body: string }[] = [];

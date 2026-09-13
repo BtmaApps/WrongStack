@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { DefaultTaskStore } from '@wrongstack/core/tasking';
-import { TaskGenerator, extractVerificationCommand } from '../src/task-generator.js';
-import { TaskTracker } from '../src/task-tracker.js';
-import type { TaskStore } from '../src/task-tracker.js';
+import type { Specification, SpecRequirement } from '@wrongstack/core/types/spec.js';
 import type { TaskGraph } from '@wrongstack/core/types/task-graph.js';
-import type { SpecRequirement, Specification } from '@wrongstack/core/types/spec.js';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { extractVerificationCommand, TaskGenerator } from '../src/task-generator.js';
+import type { TaskStore } from '../src/task-tracker.js';
+import { TaskTracker } from '../src/task-tracker.js';
 
 function makeRequirement(overrides: Partial<SpecRequirement> = {}): SpecRequirement {
   return {
@@ -306,7 +306,8 @@ describe('TaskGenerator', () => {
         specRequirementId: 'NONEXISTENT',
       }).id;
       await generator.generateSubtasks(taskId, spec);
-      // Should not throw
+      // Unknown requirement → no verification subtasks are invented.
+      expect(tracker.getAllNodes().map((n) => n.id)).toEqual([taskId]);
     });
 
     it('creates subtasks for each acceptance criterion', async () => {

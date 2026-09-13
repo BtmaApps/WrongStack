@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
 import { FallbackProfileManager } from '../../src/core/fallback-profile-manager.js';
 import {
-  PROVIDER_FAILURE_TRACKED,
   isProviderFailureTracked,
+  PROVIDER_FAILURE_TRACKED,
 } from '../../src/core/provider-runner.js';
 import { OneShotOrchestrator } from '../../src/execution/one-shot-llm.js';
 import type { Config } from '../../src/types/config.js';
@@ -536,7 +536,15 @@ describe('OneShotOrchestrator', () => {
       timeoutMs: 10, // Very short timeout
     });
 
-    expect(result.error).toBeTruthy();
+    // A timed-out call must surface as a timeout failure with no text — not
+    // just any truthy error (a config error would have passed before).
+    expect(result.text).toBe('');
+    const err = result.error as { message?: string; kind?: string } | string;
+    const errText = typeof err === 'string' ? err : `${err?.kind ?? ''} ${err?.message ?? ''}`;
+    expect(errText).toMatch(/timeout|timed out|abort/i);
+    // `timeout` is a retry/fallback-worthy kind, so more than one attempt is
+    // by design; the point is the slow provider was genuinely tried.
+    expect(slowProvider.complete).toHaveBeenCalled();
   });
 
   it('preserves error message when tryCall returns undefined (transient without fallback)', async () => {

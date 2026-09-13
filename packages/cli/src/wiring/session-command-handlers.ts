@@ -211,7 +211,8 @@ async function checkUncommittedChanges(projectRoot: string) {
       stdout += data;
     });
     child.on('error', reject);
-    child.on('close', (code) => resolve({ stdout, code: code ?? 0 }));
+    // `code` is null only when git was killed by a signal — never a success.
+    child.on('close', (code) => resolve({ stdout, code: code ?? 1 }));
   });
   if (!result.stdout.trim()) return undefined;
   const count = result.stdout.split('\n').filter(Boolean).length;

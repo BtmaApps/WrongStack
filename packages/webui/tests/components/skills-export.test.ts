@@ -265,29 +265,6 @@ describe('handleExportAll', () => {
     const msg = sent[0] as { type: string; payload: Record<string, unknown> };
     expect(msg.type).toBe('skills.export');
   });
-
-  it('does not trigger download if the response contains an error', async () => {
-    const clickSpy = vi.fn();
-    URL.createObjectURL = vi.fn(() => 'blob:test-url');
-    document.createElement = vi.fn((tagName: string) => {
-      if (tagName === 'a') {
-        return { href: '', download: '', click: clickSpy, style: {} } as never as HTMLAnchorElement;
-      }
-      return {} as never as HTMLElement;
-    }) as unknown as typeof document.createElement;
-
-    const response = { zipBase64: '', skillCount: 0, error: 'Skills not enabled' };
-
-    // Simulate the error handling path:
-    if (response.error) {
-      // Error path — should not download
-      expect(response.error).toBeTruthy();
-      expect(clickSpy).not.toHaveBeenCalled();
-    } else {
-      // Success path would trigger download
-      expect(true).toBe(false); // Should not reach here
-    }
-  });
 });
 
 // ── Export button visibility ─────────────────────────────────────────────

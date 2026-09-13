@@ -922,10 +922,12 @@ describe('sage 100% coverage suite', () => {
 
     it('covers paths.ts realpathCache eviction', async () => {
       const { normalizeProjectPath } = await import('../src/paths.js');
-      for (let i = 0; i < 4100; i++) {
+      const first = normalizeProjectPath(tempDir, 'fake_path_0');
+      for (let i = 1; i < 4100; i++) {
         normalizeProjectPath(tempDir, `fake_path_${i}`);
       }
-      expect(true).toBe(true);
+      // Evicted entries are recomputed, not served stale or dropped.
+      expect(normalizeProjectPath(tempDir, 'fake_path_0')).toBe(first);
     });
 
     it('covers project-server-endpoint.ts non-win32 platform branch', async () => {
@@ -988,7 +990,11 @@ describe('sage 100% coverage suite', () => {
          VALUES ('bad_mem', 'project', 'fact', 'active', 0.5, 0.5, 1, '2026-01-01', '2026-01-01', '{"id":"","text":"bad","scope":"project","kind":"fact","status":"active","importance":0.5,"confidence":0.5,"freshness":1,"createdAt":"","updatedAt":""}')`,
       );
       await store.clear('project-memory');
-      expect(true).toBe(true);
+      // The row with an empty id is skipped, not tombstoned.
+      const row = (store as any).db
+        .prepare(`SELECT status FROM memories WHERE id = 'bad_mem'`)
+        .get() as { status: string };
+      expect(row.status).toBe('active');
     });
 
     it('covers sqlite-store-legacy-list.ts tie breaks and createdAt ordering', async () => {
@@ -1027,17 +1033,28 @@ describe('sage 100% coverage suite', () => {
           supersedes: ['   ', m.id, 'other-id', 'other-id'],
         }),
       );
-      expect(true).toBe(true);
+      // Blank ids and the self-edge are skipped; the duplicate collapses.
+      const { memoryNodeId } = await import('../src/sqlite-store-graph-helpers.js');
+      const edges = (store as any).db
+        .prepare(
+          `SELECT to_node, relation FROM edges
+           WHERE from_node = ? AND relation IN ('supersedes', 'contradicts')`,
+        )
+        .all(memoryNodeId(m.id)) as Array<{ to_node: string; relation: string }>;
+      expect(edges).toEqual([{ to_node: memoryNodeId('other-id'), relation: 'supersedes' }]);
     });
 
     it('covers sqlite-store-statement-cache.ts cache eviction', async () => {
       const { SqliteStatementCache } = await import('../src/sqlite-store-statement-cache.js');
       const cache = new SqliteStatementCache(1);
       const db = (store as any).db;
-      cache.get(db, 'SELECT 1');
-      cache.get(db, 'SELECT 2');
+      const one = cache.get(db, 'SELECT 1');
+      expect(cache.get(db, 'SELECT 1')).toBe(one); // cache hit
+      cache.get(db, 'SELECT 2'); // evicts SELECT 1 (cap = 1)
+      expect(cache.get(db, 'SELECT 1')).not.toBe(one);
+      const again = cache.get(db, 'SELECT 1');
       cache.clear();
-      expect(true).toBe(true);
+      expect(cache.get(db, 'SELECT 1')).not.toBe(again);
     });
 
     it('covers sqlite-store-update.ts empty text error', async () => {

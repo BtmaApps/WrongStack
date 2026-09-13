@@ -132,25 +132,39 @@ describe('TaskFlow', () => {
     });
 
     it('executes pending tasks and updates status to completed', async () => {
-      const { flow } = createFlow();
+      const { flow, tracker } = createFlow();
       const specContent = `# Title\n\n## Overview\nContent\n\n## Requirements\n[critical] Feature\n\n## Acceptance\n\nDone`;
       await flow.fromSpec(specContent);
 
-      let executedTask: any = null;
-      const _result = await flow.execute({
+      const executedIds: string[] = [];
+      await flow.execute({
         executeTask: async (task) => {
-          executedTask = task;
+          executedIds.push(task.id);
           return 'task-result';
         },
       });
 
-      expect(executedTask).toBeDefined();
+      // The name promises "updates status to completed"; the old assertion was
+      // only that SOME task ran. Every node runs once and ends completed.
+      const nodes = tracker.getAllNodes();
+      expect(nodes.length).toBeGreaterThan(0);
+      expect([...executedIds].sort()).toEqual(nodes.map((n) => n.id).sort());
+      expect(nodes.every((n) => n.status === 'completed')).toBe(true);
     });
 
     it('calls onTaskComplete when task succeeds', async () => {
-      const { flow } = createFlow();
+      const { flow, tracker } = createFlow();
       const specContent = `# Title\n\n## Overview\nContent\n\n## Requirements\n[high] Feature\n\n## Acceptance\n\nDone`;
       await flow.fromSpec(specContent);
+      // The old "may be called" comment asserted nothing. Pin the contract:
+      // every task (generated + this manual one) completes exactly once.
+      const node = tracker.addNode({
+        title: 'Manual Task',
+        description: 'd',
+        type: 'feature',
+        priority: 'high',
+        status: 'pending',
+      });
 
       const onComplete = vi.fn();
       await flow.execute({
@@ -158,23 +172,44 @@ describe('TaskFlow', () => {
         onTaskComplete: onComplete,
       });
 
-      // onComplete may be called if tasks were executed
+      const completedIds = onComplete.mock.calls.map(([task]) => (task as TaskNode).id);
+      // No task may run twice — a re-executed task is duplicated agent work.
+      expect(new Set(completedIds).size).toBe(completedIds.length);
+      expect(completedIds).toContain(node.id);
+      expect(completedIds).toHaveLength(tracker.getAllNodes().length);
+      expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), 'result');
+      expect(tracker.getNode(node.id)?.status).toBe('completed');
     });
 
     it('calls onTaskFail when task fails', async () => {
-      const { flow } = createFlow();
+      const { flow, tracker } = createFlow();
       const specContent = `# Title\n\n## Overview\nContent\n\n## Requirements\n[critical] Feature\n\n## Acceptance\n\nDone`;
       await flow.fromSpec(specContent);
+      const node = tracker.addNode({
+        title: 'Manual Task',
+        description: 'd',
+        type: 'feature',
+        priority: 'critical',
+        status: 'pending',
+      });
 
       const onFail = vi.fn();
+      const onComplete = vi.fn();
       await flow.execute({
         executeTask: async () => {
           throw new Error('task failed');
         },
         onTaskFail: onFail,
+        onTaskComplete: onComplete,
       });
 
-      // Failed tasks should trigger onTaskFail
+      // A thrown task must be reported as a failure, never as a completion.
+      expect(onFail).toHaveBeenCalledWith(
+        expect.objectContaining({ id: node.id }),
+        expect.objectContaining({ message: 'task failed' }),
+      );
+      expect(onComplete).not.toHaveBeenCalled();
+      expect(tracker.getNode(node.id)?.status).toBe('failed');
     });
 
     it('updates phase to executing during execution', async () => {

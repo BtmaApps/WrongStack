@@ -70,8 +70,10 @@ describe('ws-auth', () => {
     it('decodes url-encoded values', () =>
       expect(extractTokenFromCookie('ws_token=secret%20value')).toBe('secret value'));
     it('handles malformed encoding', () => {
-      const result = extractTokenFromCookie('ws_token=secret%GG');
-      expect(result).toBeDefined();
+      // A bad %-escape must not throw or drop the credential: decoding falls
+      // back to the raw value, which the constant-time compare then rejects or
+      // accepts on its own. `toBeDefined()` accepted any value at all.
+      expect(extractTokenFromCookie('ws_token=secret%GG')).toBe('secret%GG');
     });
     it('handles empty cookie parts', () =>
       expect(extractTokenFromCookie(';; ws_token=val ;;')).toBe('val'));

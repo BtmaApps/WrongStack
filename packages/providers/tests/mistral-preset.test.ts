@@ -293,8 +293,10 @@ describe('Mistral preset', () => {
       ]),
     );
 
-    const text = events.find((e) => e.type === 'text_delta');
-    expect(text).toBeDefined();
+    // The malformed line is dropped; the valid chunk after it still streams.
+    const textDeltas = events.filter((e) => e.type === 'text_delta');
+    expect(textDeltas).toEqual([expect.objectContaining({ text: 'recovered' })]);
+    expect(events.filter((e) => e.type === 'message_stop')).toHaveLength(1);
   });
 
   it('preset declares the openai-compatible family and a stable id', () => {

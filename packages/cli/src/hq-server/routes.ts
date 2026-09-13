@@ -28,6 +28,7 @@ import type { WebSocket } from 'ws';
 import { HQ_HTML } from '../hq-recovery-html.js';
 import { resolveHqDistDir, serveHqStatic } from '../hq-static-serve.js';
 import * as HqServerAuth from './auth.js';
+import type { MailboxGatewayManager } from './mailbox-gateway-manager.js';
 import {
   type ApplyHqAuthFile,
   callerCanAdministerAuth,
@@ -65,6 +66,7 @@ import {
 import {
   handleApiAlerts,
   handleApiCommandsAudit,
+  handleApiMailboxHealth,
   handleApiSystemHealth,
   handleApiSystemUpdate,
 } from './routes/system-handlers.js';
@@ -148,6 +150,14 @@ export interface HqRouterDeps {
   agentMessages: Map<string, HqTranscriptEntry[]>;
   mailboxGateways: Map<string, HqRouterMailboxGateway>;
   mailboxGatewayRateLimiter: MailboxHttpRateLimiter;
+  /**
+   * W2 #14 (RFC hq-improvements-2026-09.md): mailbox gateway manager used
+   * by `/api/health/mailbox` to surface the cockpit "Mailbox gateway"
+   * card. Same manager that owns `mailboxGateways` and
+   * `mailboxGatewayRateLimiter` — passed explicitly so the handler can
+   * call `getHealth()` without reaching into a closure.
+   */
+  mailboxManager: MailboxGatewayManager;
   alertEngine: HqAlertEngine;
   auditLog: HqCommandAuditLog;
   persistence: ReturnType<typeof createHqPersistence>;
@@ -214,6 +224,7 @@ export function createHqRouter(
     secureCookies,
     authorizeMailboxGateway,
     getMailboxGateway,
+    mailboxManager,
     getTokenStats,
     trustBoundary,
     bootstrapStore,
@@ -493,6 +504,15 @@ export function createHqRouter(
 
       if (url.pathname === '/api/system/health' && req.method === 'GET') {
         await handleApiSystemHealth(res, clients, persistence, eventLog);
+        return;
+      }
+
+      // ── Mailbox gateway health (W2 #14) ──────────────────────────────
+      // GET only. The handler is a synchronous wrapper over
+      // `MailboxGatewayManager.getHealth()`; auth is gated by
+      // `requireBrowserAuth` upstream in the router, not duplicated here.
+      if (url.pathname === '/api/health/mailbox' && req.method === 'GET') {
+        handleApiMailboxHealth(res, mailboxManager);
         return;
       }
 

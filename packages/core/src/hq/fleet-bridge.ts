@@ -98,6 +98,12 @@ export function startFleetTelemetryBridge(opts: FleetTelemetryBridgeOptions): ()
   const publish = (payload: HqFleetSnapshotPayload): void => {
     try {
       publisher.publishFleetSnapshot(payload, {
+        // The run id IS the unit of work for a fleet: every snapshot and
+        // task event of one coordinator run shares it, so HQ can treat the
+        // run as one activity rather than a stream of unrelated counter
+        // updates. The bridge is per-run (`runId` is a constructor option),
+        // so this is constant for the bridge's whole lifetime.
+        correlationId: runId,
         ...ctx.sessionIdTag(),
         timestamp: ctx.now(),
       });

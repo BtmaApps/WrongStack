@@ -147,6 +147,33 @@ describe('loop-breaker plugin', () => {
     expect(last?.decision).toBe('allow');
   });
 
+  it.each([
+    ['no config at all', undefined],
+    ['a partial config without mode', { warnAfter: 3 }],
+    ['a misspelled mode', { mode: 'blcok' }],
+  ])('blocks a runaway repeat by default with %s', (_label, cfg) => {
+    const api = makeApi(cfg ? { extensions: { 'loop-breaker': cfg } } : {});
+    loopBreakerPlugin.setup(api as never);
+    const hook = getHook(api);
+    const call = { toolName: 'bash', toolInput: { command: 'npm test' } };
+    for (let i = 0; i < 4; i++) hook(call);
+    expect(hook(call)?.decision).toBe('block');
+  });
+
+  it('does not treat inputs that differ only below the canonicalize depth as repeats', () => {
+    const api = makeApi();
+    loopBreakerPlugin.setup(api as never);
+    const hook = getHook(api);
+    const deep = (leaf: number) => {
+      let node: Record<string, unknown> = { leaf };
+      for (let i = 0; i < 20; i++) node = { next: node };
+      return node;
+    };
+    for (let i = 0; i < 10; i++) {
+      expect(hook({ toolName: 'mcp__x__run', toolInput: deep(i) })).toBeUndefined();
+    }
+  });
+
   it('detects A-B-A-B oscillation', () => {
     const api = makeApi({ extensions: { 'loop-breaker': { oscillationWindow: 4 } } });
     loopBreakerPlugin.setup(api as never);

@@ -14,7 +14,8 @@ describe('OpenAIResponsesProvider', () => {
       baseUrl: 'https://api.openai.com/v1',
     });
     expect(p.id).toBe('my-openai');
-    expect(p.capabilities).toBeDefined();
+    const { capabilitiesForFamily } = await import('../src/family-capabilities.js');
+    expect(p.capabilities).toEqual(capabilitiesForFamily('openai', undefined));
   });
 
   it('buildUrl normalizes with /v1/responses suffix', async () => {
@@ -154,7 +155,9 @@ describe('OpenAIResponsesProvider', () => {
       },
       { capabilities: {} },
     );
-    expect(body.tools).toBeDefined();
+    expect(body.tools).toEqual([
+      expect.objectContaining({ type: 'function', name: 'calc', strict: false }),
+    ]);
     expect(body.parallel_tool_calls).toBe(true);
     expect(body.tool_choice).toBe('auto');
   });

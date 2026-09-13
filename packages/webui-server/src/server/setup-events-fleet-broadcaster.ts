@@ -31,6 +31,9 @@ export function registerSetupEventsFleetBroadcaster(
 
   const disposers: Array<() => void> = [];
   const broadcastSessions = async () => {
+    // A poll timer or event debounce can fire after the server is disposed;
+    // pushing status to torn-down clients is pointless.
+    if (isDisposed()) return;
     try {
       const { getSessionRegistry } = await import('@wrongstack/core/storage');
       const registry = getSessionRegistry(globalRoot);
@@ -78,6 +81,7 @@ export function registerSetupEventsFleetBroadcaster(
             lastActivityAt: a.lastActivityAt,
           })),
         }));
+      if (isDisposed()) return;
       broadcast(clients, { type: 'sessions.status_update', payload: { sessions: live } });
     } catch {
       // Best-effort — never crash for status broadcasting errors.

@@ -5,7 +5,7 @@
  * without navigation. Each one therefore ends in a jump to the surface that
  * can act on it, so the Cockpit is a starting point rather than a dead end.
  */
-import type { HqAlert, HqSnapshot } from '@wrongstack/core/hq';
+import type { HqAlert, HqCommandLatencySummary, HqSnapshot } from '@wrongstack/core/hq';
 import {
   Activity,
   ArrowUpRight,
@@ -73,6 +73,57 @@ function alertTone(severity: string): BadgeTone {
   if (severity === 'warn' || severity === 'warning' || severity === 'medium') return 'warn';
   if (severity === 'info' || severity === 'low') return 'info';
   return 'idle';
+}
+
+/**
+ * W4 #7/#19 — render a latency percentile at the precision an operator can act
+ * on. `undefined` means "no acked sample carried both timestamps", which is not
+ * the same as 0 ms and must not read as a healthy zero.
+ */
+function formatLatencyMs(ms: number | undefined): string {
+  if (ms === undefined) return '—';
+  return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
+}
+
+/**
+ * W4 #7/#19 — the command-plane `dispatched -> acknowledged` percentile
+ * read-out.
+ *
+ * Extracted from the Cockpit grid so it can be tested without mounting the
+ * whole dashboard, and so the "no samples" case has exactly one rendering: an
+ * unacked command has no latency, and showing `0 ms` for it would read as a
+ * perfectly healthy round-trip. `sampleCount === 0` therefore renders the empty
+ * state, not a zeroed row.
+ */
+export function CommandLatencyCard({
+  latency,
+}: {
+  latency: HqCommandLatencySummary | undefined;
+}): React.ReactElement {
+  if (latency === undefined || latency.sampleCount === 0) {
+    return (
+      <EmptyState
+        title="No acknowledged commands yet"
+        hint="Latency appears once a dispatched command is acknowledged."
+      />
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline gap-3 text-xs">
+        <span className="text-muted-foreground">p50</span>
+        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p50Ms)}</Mono>
+        <span className="text-muted-foreground">p95</span>
+        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p95Ms)}</Mono>
+        <span className="text-muted-foreground">p99</span>
+        <Mono className="tabular font-semibold">{formatLatencyMs(latency.p99Ms)}</Mono>
+      </div>
+      <div className="flex gap-3 text-[10px] text-muted-foreground">
+        <span>{latency.sampleCount} acked</span>
+        <span>max {formatLatencyMs(latency.maxMs)}</span>
+      </div>
+    </div>
+  );
 }
 
 function CockpitCard({
@@ -662,6 +713,10 @@ export function CockpitView(): React.ReactElement {
               ))}
             </div>
           )}
+        </CockpitCard>
+
+        <CockpitCard icon={Gauge} title="Command latency" cta="open console" view="console">
+          <CommandLatencyCard latency={snapshot?.commandLatency} />
         </CockpitCard>
 
         <CockpitCard

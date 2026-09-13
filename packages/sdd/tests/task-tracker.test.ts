@@ -1,6 +1,6 @@
+import type { TaskGraph, TaskStore } from '@wrongstack/core/types/task-graph.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TaskTracker } from '../src/task-tracker.js';
-import type { TaskGraph, TaskStore } from '@wrongstack/core/types/task-graph.js';
 
 function makeFakeStore(): TaskStore & { graphs: Map<string, TaskGraph> } {
   const graphs = new Map<string, TaskGraph>();
@@ -183,8 +183,10 @@ describe('TaskTracker', () => {
         status: 'pending',
       });
       tracker.addEdge(n1.id, n2.id);
-      const _nodes = tracker.getAllNodes();
-      // Edge should be persisted in store
+      // The default edge type is depends_on: n2 is blocked by n1.
+      expect(tracker.getBlockers(n2.id)).toEqual([n1.id]);
+      expect(tracker.getDependents(n1.id)).toEqual([n2.id]);
+      expect(tracker.canStart(n2.id)).toBe(false);
     });
 
     it('adds edge with custom type', async () => {
@@ -204,7 +206,10 @@ describe('TaskTracker', () => {
         status: 'pending',
       });
       tracker.addEdge(n1.id, n2.id, 'blocks');
-      // Verify edge added
+      // A non-dependency edge must not gate scheduling.
+      expect(tracker.getBlockers(n2.id)).toEqual([]);
+      expect(tracker.getDependents(n1.id)).toEqual([]);
+      expect(tracker.canStart(n2.id)).toBe(true);
     });
   });
 
@@ -254,8 +259,15 @@ describe('TaskTracker', () => {
         priority: 'high',
         status: 'pending',
       });
+      const before = Date.now();
+      expect(tracker.getNode(node.id)?.completedAt).toBeUndefined();
       tracker.updateNodeStatus(node.id, 'completed');
-      expect(tracker.getNode(node.id)?.completedAt).toBeDefined();
+      // A real completion timestamp, taken at completion time — not merely a
+      // field that exists (a stale or zero value would have passed before).
+      const completedAt = tracker.getNode(node.id)?.completedAt;
+      const stamp = typeof completedAt === 'number' ? completedAt : Date.parse(String(completedAt));
+      expect(stamp).toBeGreaterThanOrEqual(before);
+      expect(stamp).toBeLessThanOrEqual(Date.now());
     });
 
     it('auto-unblocks dependents when completed', async () => {

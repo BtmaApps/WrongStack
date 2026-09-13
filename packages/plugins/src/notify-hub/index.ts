@@ -116,7 +116,20 @@ function isPrivateIPv4(hostname: string): boolean {
   // was considered a public, sendable webhook host. Normalise the
   // mapped form down to its embedded IPv4 first; the rest of the
   // check is unchanged.
-  const normalised = hostname.replace(/^::ffff:/i, '');
+  //
+  // The WHATWG URL parser (what `normalizeWebhookUrl` goes through) never
+  // hands us the dotted form: it serialises `[::ffff:127.0.0.1]` as the
+  // hex form `::ffff:7f00:1`, which the dot-split alone would still miss.
+  // Convert that hex tail back to dotted IPv4 before checking.
+  const hexMapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(hostname);
+  const normalised = hexMapped
+    ? [
+        Number.parseInt(hexMapped[1]!, 16) >> 8,
+        Number.parseInt(hexMapped[1]!, 16) & 0xff,
+        Number.parseInt(hexMapped[2]!, 16) >> 8,
+        Number.parseInt(hexMapped[2]!, 16) & 0xff,
+      ].join('.')
+    : hostname.replace(/^::ffff:/i, '');
   const parts = normalised.split('.').map((p) => Number(p));
   if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
     return false;

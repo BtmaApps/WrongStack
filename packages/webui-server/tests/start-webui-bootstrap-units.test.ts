@@ -123,12 +123,25 @@ describe('start-webui-security: handleWebuiSecurityRejection', () => {
 
   it('handles mailbox send rejection gracefully', async () => {
     mockMailbox.send.mockRejectedValueOnce(new Error('mailbox error'));
-    handleWebuiSecurityRejection(
-      { projectRoot: 'D:/repo', agentId: 'lead' } as never,
-      {} as never,
-      { id: 'sess-1' },
-      { issueCode: 'ERR', issueMessage: 'msg' } as never,
-    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(() =>
+        handleWebuiSecurityRejection(
+          { projectRoot: 'D:/repo', agentId: 'lead' } as never,
+          {} as never,
+          { id: 'sess-1' },
+          { issueCode: 'ERR', issueMessage: 'msg' } as never,
+        ),
+      ).not.toThrow();
+      // The failed security note is reported, not silently lost.
+      await vi.waitFor(() =>
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining('webui.security_rejection_mailbox_note_failed'),
+        ),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
@@ -174,7 +187,10 @@ describe('start-webui-logging: setupWebuiTerminalLogging', () => {
     logging.stopLiveStatusLogger();
   });
 
-  it('handles empty activeIds falling back to currentId in getSessionList', () => {
+  it('handles empty activeIds falling back to currentId in getSessionList', async () => {
+    const { startWebUILiveStatusLogger } = await import('../src/server/webui-status-logger.js');
+    const logger = vi.mocked(startWebUILiveStatusLogger);
+    logger.mockClear();
     setupWebuiTerminalLogging({
       wsHost: '127.0.0.1',
       httpPort: 8080,
@@ -192,6 +208,12 @@ describe('start-webui-logging: setupWebuiTerminalLogging', () => {
           ({ ctx: { model: 'm-peek', provider: { id: 'p-peek' } } }) as never,
       } as never,
     });
+    // No connected tab owns a session → the server's current session is
+    // listed, with the live agent's model/provider winning over config.
+    const opts = logger.mock.calls.at(-1)?.[0] as { getSessionList: () => unknown };
+    expect(opts.getSessionList()).toEqual([
+      { id: 'fallback-s1', model: 'm-peek', provider: 'p-peek', isRunning: true },
+    ]);
   });
 });
 

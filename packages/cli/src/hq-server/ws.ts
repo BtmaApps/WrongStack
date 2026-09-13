@@ -377,8 +377,12 @@ export function handleClient(
         if (toSend.length > 0) {
           const batch = JSON.stringify({ type: 'hq.command_batch', commands: toSend });
           if (ws.readyState === WebSocket.OPEN) ws.send(batch);
+          // One stamp for the whole batch: they left the server together, and
+          // re-reading the clock per command would make a later command in the
+          // same batch look slower than an earlier one for no reason.
+          const dispatchedAt = Date.now();
           for (const cmd of toSend) {
-            auditLog?.update(cmd.commandId, { status: 'delivered' });
+            auditLog?.update(cmd.commandId, { status: 'delivered', dispatchedAt });
             const updated = auditLog?.get(cmd.commandId);
             if (updated !== undefined) broadcastCommandStatus(updated, browsers);
           }
@@ -399,6 +403,7 @@ export function handleClient(
       if (client) {
         const updated = auditLog?.updateForClient(frame.commandId, client.clientId, {
           status: 'acked',
+          acknowledgedAt: Date.now(),
           ackStatus: frame.status,
           ...(frame.message !== undefined ? { ackMessage: frame.message } : {}),
           ackedAt: new Date().toISOString(),

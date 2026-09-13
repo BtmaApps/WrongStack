@@ -38,57 +38,6 @@ describe('testTool', () => {
     expect(result.output).toMatch(/^No tests:/);
   });
 
-  it('short-circuits when auto-detect finds nothing', async () => {
-    const ctx = { cwd: '/', tools: [], projectRoot: '/' } as any;
-    const result = await testTool.execute({ runner: 'auto' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    // Short-circuits with runner: 'none', producing a valid TestOutput
-    expect(result).toHaveProperty('exit_code');
-  });
-
-  it('passes grep filter', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', grep: 'mytest' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('passes timeout', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', timeout: 5000 }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('exit_code');
-  });
-
-  it('handles files as array', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute(
-      { runner: 'vitest', files: ['a.test.ts', 'b.test.ts'] },
-      ctx,
-      { signal: new AbortController().signal },
-    );
-    expect(result).toHaveProperty('output');
-  });
-
-  it('respects coverage flag', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', coverage: true }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('respects watch flag', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', watch: true }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('duration_ms');
-  });
-
   it('throws when the runner process cannot be spawned (not an exit-code result)', async () => {
     vi.mocked(spawnStream).mockImplementationOnce(
       // biome-ignore lint/correctness/useYield: mock returns no partial lines
@@ -220,98 +169,109 @@ describe('detectRunner (via executeStream in temp dirs)', () => {
   });
 });
 
-describe('buildArgs coverage', () => {
-  it('mocha builds correct args', async () => {
+describe('buildArgs — the flags that actually reach the runner', () => {
+  // These used to assert only `toHaveProperty('output')`, which the mocked
+  // spawn returns no matter what argv was built.
+  const argvFor = async (input: Record<string, unknown>) => {
+    vi.mocked(spawnStream).mockClear();
     const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute(
+    await testTool.execute(input as never, ctx, { signal: new AbortController().signal });
+    const call = vi.mocked(spawnStream).mock.calls[0]?.[0] as { cmd: string; args: string[] };
+    return call;
+  };
+
+  it.each([
+    [
+      'vitest grep + coverage',
+      { runner: 'vitest', grep: 'mytest', coverage: true },
+      ['run', '--coverage', '--testNamePattern', 'mytest', '--testTimeout', '30000'],
+    ],
+    ['vitest timeout', { runner: 'vitest', timeout: 5000 }, ['run', '--testTimeout', '5000']],
+    [
+      'vitest files array (normalised separators)',
+      { runner: 'vitest', files: ['a.test.ts', 'src\\b.test.ts'] },
+      ['run', '--testTimeout', '30000', '--', 'a.test.ts', 'src/b.test.ts'],
+    ],
+    [
+      'mocha files string + timeout',
       { runner: 'mocha', files: 'test.ts', timeout: 10000 },
-      ctx,
-      { signal: new AbortController().signal },
-    );
-    expect(result).toHaveProperty('output');
+      ['--reporter', 'spec', '--timeout', '10000', '--', 'test.ts'],
+    ],
+    [
+      'mocha grep',
+      { runner: 'mocha', grep: 'pattern' },
+      ['--reporter', 'spec', '--grep', 'pattern', '--timeout', '30000'],
+    ],
+    [
+      'jest files',
+      { runner: 'jest', files: 'test.spec.ts' },
+      ['--testTimeout', '30000', '--', 'test.spec.ts'],
+    ],
+    [
+      'jest coverage + grep',
+      { runner: 'jest', coverage: true, grep: 'testpattern' },
+      ['--coverage', '--testNamePattern', 'testpattern', '--testTimeout', '30000'],
+    ],
+    ['timeout floor', { runner: 'jest', timeout: 5 }, ['--testTimeout', '100']],
+  ])('%s', async (_label, input, expected) => {
+    const call = await argvFor(input);
+    expect(call.cmd).toBe(input.runner);
+    expect(call.args).toEqual(expected);
   });
 
-  it('mocha passes grep filter', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'mocha', grep: 'pattern' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('jest builds correct args', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'jest', files: 'test.spec.ts' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('jest respects watch mode', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'jest', watch: true }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('jest respects coverage', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'jest', coverage: true }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('jest respects grep filter', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'jest', grep: 'testpattern' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('vitest watch mode changes args correctly', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', watch: true }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
-
-  it('vitest respects testTimeout', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'vitest', timeout: 60000 }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('output');
-  });
+  it.each([
+    ['vitest', ['run', '--testTimeout', '30000']],
+    ['jest', ['--testTimeout', '30000']],
+  ])(
+    '%s ignores watch — a watch-mode runner never exits inside a tool call',
+    async (runner, expected) => {
+      const call = await argvFor({ runner, watch: true });
+      expect(call.args).toEqual(expected);
+    },
+  );
 });
 
-describe('parseResult coverage', () => {
-  it('parses vitest passed and failed output', async () => {
+describe('parseResult — real runner output', () => {
+  const runWithOutput = async (
+    runner: 'vitest' | 'jest' | 'mocha',
+    stdout: string,
+    exitCode: number,
+  ) => {
+    vi.mocked(spawnStream).mockImplementationOnce(
+      // biome-ignore lint/correctness/useYield: mock returns no partial lines
+      async function* () {
+        return { stdout, stderr: '', exitCode, truncated: false };
+      },
+    );
     const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    // The mock makes spawnStream return empty, but we can test result structure
-    const result = await testTool.execute({ runner: 'vitest' }, ctx, {
-      signal: new AbortController().signal,
+    return testTool.execute({ runner }, ctx, { signal: new AbortController().signal });
+  };
+
+  it('parses a jest summary with failures', async () => {
+    const result = await runWithOutput('jest', 'Tests:       1 failed, 2 passed, 3 total', 1);
+    expect(result).toMatchObject({
+      runner: 'jest',
+      status: 'failed',
+      exit_code: 1,
+      tests_run: 3,
+      passed: 2,
+      failed: 1,
     });
-    expect(result).toHaveProperty('runner', 'vitest');
   });
 
-  it('parses jest output correctly', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'jest' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('runner', 'jest');
+  it('parses a clean jest run', async () => {
+    const result = await runWithOutput('jest', 'Tests:       4 passed, 4 total', 0);
+    expect(result).toMatchObject({ status: 'passed', tests_run: 4, passed: 4, failed: 0 });
   });
 
-  it('mocha returns result with output', async () => {
-    const ctx = { cwd: '/fake', tools: [], projectRoot: '/fake' } as any;
-    const result = await testTool.execute({ runner: 'mocha' }, ctx, {
-      signal: new AbortController().signal,
-    });
-    expect(result).toHaveProperty('runner', 'mocha');
-    expect(result).toHaveProperty('output');
+  it('parses mocha passing/failing counts', async () => {
+    const result = await runWithOutput('mocha', '\n  2 passing (5ms)\n  1 failing\n', 1);
+    expect(result).toMatchObject({ status: 'failed', tests_run: 3, passed: 2, failed: 1 });
+  });
+
+  it('never reports a non-zero exit as passed, even when every parsed test passed', async () => {
+    // e.g. coverage threshold or a crash after the summary printed.
+    const result = await runWithOutput('vitest', 'Tests  3 passed (3)', 1);
+    expect(result.status).toBe('failed');
   });
 });

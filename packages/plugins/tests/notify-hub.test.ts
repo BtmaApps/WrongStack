@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { lookup } from 'node:dns/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock DNS lookup so the async SSRF check in setup() resolves instantly.
 // The default mock returns a public IP so setup() proceeds normally for
@@ -243,33 +243,33 @@ describe('notify-hub plugin', () => {
   // classified as a public, sendable host, and every `session.stop`
   // / `tool.error` event would POST there. The normalised check
   // strips `::ffff:` first and then runs the standard IPv4 check.
-  it('blocks IPv4-mapped IPv6 loopback as a private host (S8/J1)', () => {
-    // The local isPrivate check is internal, but the public surface
-    // is the health snapshot. We assert via the registration path:
-    // a URL with an IPv4-mapped IPv6 loopback host must be refused
-    // at config time and the webhook counter must never advance.
+  it('blocks IPv4-mapped IPv6 loopback as a private host (S8/J1)', async () => {
+    // The classifier is internal, so assert through the config path.
+    // Note the WHATWG URL parser serialises `[::ffff:127.0.0.1]` as the hex
+    // form `[::ffff:7f00:1]` — the previous version of this test passed the
+    // URL under a wrong config key and asserted `>= 0`, so it could never
+    // fail and hid that the hex form slipped through.
+    for (const webhookUrl of [
+      'http://[::ffff:127.0.0.1]:3456/x',
+      'http://[::ffff:10.0.0.1]/x',
+      'http://[::ffff:192.168.1.20]/x',
+    ]) {
+      const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
+      await notifyHubPlugin.setup(api as never);
+      await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
+        /no webhookUrl configured/,
+      );
+      expect(api.registerHook).not.toHaveBeenCalled();
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still accepts an IPv4-mapped IPv6 PUBLIC host', async () => {
     const api = makeApi({
-      extensions: { 'notify-hub.webhookUrl': 'http://[::ffff:127.0.0.1]:3456/x' },
+      extensions: { 'notify-hub': { webhookUrl: 'http://[::ffff:8.8.8.8]/x' } },
     });
-    return notifyHubPlugin.setup(api as never).then(() => {
-      // The plugin should either reject the URL outright, or
-      // accept it but never deliver. Either way, the webhook is
-      // never used as a public, sendable host.
-      const counters = (notifyHubPlugin as { counters?: { blocked: number } }).counters;
-      // Direct test of the underlying classifier: an embedded-127
-      // mapped host is private, so a public send is blocked.
-      const { isPrivateIPv4 } = notifyHubPlugin as unknown as {
-        isPrivateIPv4: (h: string) => boolean;
-      };
-      // Function may not be exported; fall through to the delivery
-      // assertion that the URL is not honoured as a public host.
-      if (typeof isPrivateIPv4 === 'function') {
-        expect(isPrivateIPv4('::ffff:127.0.0.1')).toBe(true);
-        expect(isPrivateIPv4('::ffff:10.0.0.1')).toBe(true);
-        expect(isPrivateIPv4('::ffff:8.8.8.8')).toBe(false);
-      } else {
-        expect(counters?.blocked ?? 0).toBeGreaterThanOrEqual(0);
-      }
-    });
+    await notifyHubPlugin.setup(api as never);
+    await getTool(api, 'notify_send').execute({ message: 'x' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

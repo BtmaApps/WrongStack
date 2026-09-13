@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { HybridCompactor } from '../../src/execution/compactor.js';
 import type { Message } from '../../src/types/messages.js';
+import { checkCompactionQuality } from '../../src/utils/context-evidence.js';
 
 function fakeContext(messages: Message[]): Context {
   const ctx = { messages } as never as Context;
@@ -160,9 +161,11 @@ describe('HybridCompactor — extra', () => {
     it('reports quality issues when intent and path trail missing after reduction', async () => {
       // Generate many messages with no intent/goal content
       const messages: Message[] = [];
+      // Bulky turns: with tiny ones the collapse digest's own overhead made the
+      // transcript LARGER, so nothing was "reduced" and no issue could be raised.
       for (let i = 0; i < 30; i++) {
-        messages.push({ role: 'user', content: `query ${i}` });
-        messages.push({ role: 'assistant', content: `response ${i}` });
+        messages.push({ role: 'user', content: `query ${i} ${'lorem '.repeat(80)}` });
+        messages.push({ role: 'assistant', content: `response ${i} ${'ipsum '.repeat(80)}` });
       }
       const ctx = fakeContext(messages);
       ctx.contextEvidence = {
@@ -179,13 +182,24 @@ describe('HybridCompactor — extra', () => {
       } as never;
       const c = new HybridCompactor({ preserveK: 2 });
       const report = await c.compact(ctx, { aggressive: true });
-      if (report.quality) {
-        // The quality check may or may not flag issues depending on digest content
-        expect(report.quality).toHaveProperty('ok');
-        expect(report.quality).toHaveProperty('hasIntent');
-        expect(report.quality).toHaveProperty('hasPathTrail');
-        expect(report.quality).toHaveProperty('issues');
-      }
+      // The old `if (report.quality)` guard plus field-presence checks let a
+      // check that never flagged anything pass. Two real contracts instead:
+      //
+      // 1. No false alarm. The ancient-turn collapse is LOSSLESS for text (only
+      //    raw tool I/O is dropped), so a text-only history is not reduced —
+      //    it even grows by the digest framing — and quality must stay ok.
+      expect(report.after).toBeGreaterThanOrEqual(report.before);
+      expect(report.quality).toMatchObject({ ok: true, issues: [] });
+
+      // 2. Real detection. After an actual reduction with no intent, no
+      //    file/tool evidence and a keyword-free digest, both anchors are
+      //    reported missing (these drive the evidence-floor re-injection).
+      const quality = checkCompactionQuality(ctx, {
+        collapsedDigest: 'query 1\nresponse 1',
+        reduced: true,
+      });
+      expect(quality).toMatchObject({ ok: false, hasIntent: false, hasPathTrail: false });
+      expect(quality?.issues).toHaveLength(2);
     });
 
     it('reports quality ok when digest contains intent keywords', async () => {
@@ -247,20 +261,33 @@ describe('HybridCompactor — extra', () => {
         { role: 'user', content: 'old query' },
         {
           role: 'assistant',
-          content: [{ type: 'tool_use', id: 'orphan', name: 'read', input: {} }],
+          content: [
+            { type: 'text', text: 'looking into it' },
+            { type: 'tool_use', id: 'orphan', name: 'read', input: {} },
+          ],
         },
         { role: 'user', content: 'recent query' },
         { role: 'assistant', content: 'recent answer' },
       ];
       const ctx = fakeContext(messages);
       const c = new HybridCompactor({ preserveK: 1, eliseThreshold: 1 });
-      const report = await c.compact(ctx, { aggressive: true });
-      // Check the report mentions repair
-      if (report.repaired) {
-        expect(report.repaired).toHaveProperty('removedToolUses');
-        expect(report.repaired).toHaveProperty('removedToolResults');
-        expect(report.repaired).toHaveProperty('removedMessages');
-      }
+      // NOT aggressive: the aggressive collapse already swallows old turns, so
+      // the orphan vanished even with the repair step disabled (mutation-proven).
+      // Here only the repair can remove it.
+      const report = await c.compact(ctx);
+      expect(report.repaired?.removedToolUses).toEqual(['orphan']);
+      // Only the protocol block is dropped; the assistant's prose survives.
+      expect(JSON.stringify(ctx.messages)).toContain('looking into it');
+      // And the invariant itself: after compaction no tool_use may be left
+      // without its tool_result (providers reject such a transcript outright).
+      const blocks = ctx.messages.flatMap((m) => (Array.isArray(m.content) ? m.content : []));
+      const useIds = blocks.flatMap((b) => (b.type === 'tool_use' ? [b.id] : []));
+      const resultIds = new Set(
+        blocks.flatMap((b) => (b.type === 'tool_result' ? [b.tool_use_id] : [])),
+      );
+      expect(useIds.filter((id) => !resultIds.has(id))).toEqual([]);
+      // The recent exchange survives the repair.
+      expect(JSON.stringify(ctx.messages)).toContain('recent answer');
     });
   });
 });

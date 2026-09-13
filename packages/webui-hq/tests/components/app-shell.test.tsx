@@ -63,9 +63,9 @@ afterEach(() => {
 });
 
 describe('view registry', () => {
-  it('defines thirteen surfaces with unique ids', () => {
-    expect(HQ_VIEWS).toHaveLength(13);
-    expect(new Set(HQ_VIEWS.map((view) => view.id)).size).toBe(13);
+  it('defines fourteen surfaces with unique ids', () => {
+    expect(HQ_VIEWS).toHaveLength(14);
+    expect(new Set(HQ_VIEWS.map((view) => view.id)).size).toBe(14);
   });
 
   it('assigns ten non-conflicting numeric shortcuts', () => {
@@ -98,7 +98,7 @@ describe('AppShell', () => {
   it('mounts and renders one nav item per surface', () => {
     const mounted = mount();
     expect(mounted.querySelector('[data-testid="hq-workbench"]')).not.toBeNull();
-    expect(mounted.querySelectorAll('[data-testid="nav-item"]')).toHaveLength(13);
+    expect(mounted.querySelectorAll('[data-testid="nav-item"]')).toHaveLength(14);
   });
 
   it('marks the active surface as the current page', () => {
@@ -168,7 +168,7 @@ describe('AppShell', () => {
     const items = document.querySelectorAll<HTMLButtonElement>(
       '[data-testid="command-palette-item"]',
     );
-    expect(items.length).toBe(13);
+    expect(items.length).toBe(14);
     act(() => items[2]?.click());
     expect(useHqStore.getState().activeView).toBe(HQ_VIEWS[2]!.id);
     expect(mounted.isConnected).toBe(true);

@@ -2,17 +2,18 @@
  * Tests for utility modules with no previous coverage.
  * Covers: sleep, tool-subject, session-scoped-path, merge-custom-models
  */
-import { describe, it, expect } from 'vitest';
+
 import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { mergeCustomModelDefs } from '../../src/utils/merge-custom-models.js';
+import { sessionScopedPath } from '../../src/utils/session-scoped-path.js';
 import { sleep } from '../../src/utils/sleep.js';
 import {
   escapeGlobSubject,
-  normalizePathSubject,
   isPathSubjectKey,
+  normalizePathSubject,
   subjectForToolInput,
 } from '../../src/utils/tool-subject.js';
-import { sessionScopedPath } from '../../src/utils/session-scoped-path.js';
-import { mergeCustomModelDefs } from '../../src/utils/merge-custom-models.js';
 
 // ============================================================================
 // sleep
@@ -145,10 +146,13 @@ describe('sessionScopedPath', () => {
     expect(() => sessionScopedPath('/tmp', 'a\\b', '.txt')).toThrow();
   });
 
-  it('should throw when resolved path escapes parent dir (containment check)', () => {
-    // SessionId without .. or \\ that still resolves outside dir
-    // On Windows, using alternate drive references triggers absolute path check
-    expect(() => sessionScopedPath('/tmp', 'valid-sess', '')).not.toThrow();
+  // Was named "should throw when resolved path escapes parent dir" while only
+  // asserting a VALID id does not throw — the name promised a check it never
+  // made. The escape cases are the `..` / backslash tests above.
+  it('keeps a plain session id inside the parent dir (containment check)', () => {
+    const resolved = sessionScopedPath('/tmp', 'valid-sess', '');
+    expect(path.dirname(resolved)).toBe(path.resolve('/tmp'));
+    expect(path.basename(resolved)).toBe('valid-sess');
   });
 
   it('should handle empty suffix', () => {

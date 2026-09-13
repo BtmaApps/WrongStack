@@ -3,7 +3,7 @@
  * Covers: markdown.tsx (parseInline cache, edge cases), additional edge coverage.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseInline } from '../src/markdown.js';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -148,13 +148,32 @@ describe('heap-watchdog.ts — warning paths', () => {
 
   it('startHeapWatchdog uses collectStats returning values', async () => {
     const { startHeapWatchdog } = await import('../src/heap-watchdog.js');
+    const fsp = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-heapwd-'));
+    const logPath = path.join(dir, 'heap.jsonl');
+    const collectStats = vi.fn(() => ({ entries: 42 }));
     const stop = startHeapWatchdog({
       sampleEveryMs: 100000,
       logEveryMs: 1, // immediate log
-      collectStats: () => ({ entries: 42 }),
+      logPath,
+      collectStats,
       onWarn: () => {},
     });
-    stop();
+    try {
+      // The caller's structure sizes must reach the diagnostic line — that is
+      // the whole point of collectStats (sizing leaks in the heap log).
+      await vi.waitFor(async () => {
+        const text = await fsp.readFile(logPath, 'utf8').catch(() => '');
+        expect(text).toContain('entries');
+        expect(text).toContain('42');
+      });
+      expect(collectStats).toHaveBeenCalled();
+    } finally {
+      stop();
+      await fsp.rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

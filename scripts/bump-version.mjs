@@ -152,6 +152,20 @@ assertNoConflictMarkers([rootPath]); // guards the first JSON.parse below
 const rootPkg = JSON.parse(readFileSync(rootPath, 'utf8'));
 const parts = rootPkg.version.split('.').map(Number);
 
+// The bump arithmetic below indexes and re-joins exactly three numeric
+// components. A root version carrying a prerelease/build suffix (e.g.
+// `1.2.3-beta.1`, which `set` deliberately accepts) splits into a NaN
+// component, and this script would then silently write `1.2.NaN...` into
+// EVERY manifest in one pass — a corruption the version-drift check in
+// publish-workspace.mjs cannot catch, because all manifests drift together.
+if (type !== 'set' && !(parts.length === 3 && parts.every((n) => Number.isInteger(n) && n >= 0))) {
+  console.error(
+    `error: cannot ${type}-bump "${rootPkg.version}" — version bumps require exactly X.Y.Z. ` +
+      'Use `set <version>` explicitly to carry a prerelease or build suffix.',
+  );
+  process.exit(1);
+}
+
 let newVersion;
 if (type === 'patch') {
   parts[2] += 1;

@@ -10,6 +10,7 @@ export type TestRunnerName = 'vitest' | 'jest' | 'mocha' | 'auto';
 export interface TestInput {
   files?: string | string[] | undefined;
   runner?: TestRunnerName | undefined;
+  /** @deprecated Ignored — a watch-mode runner never exits inside a tool call. */
   watch?: boolean | undefined;
   coverage?: boolean | undefined;
   cwd?: string | undefined;
@@ -66,7 +67,6 @@ export const testTool: Tool<TestInput, TestOutput> = {
         enum: ['vitest', 'jest', 'mocha', 'auto'],
         description: 'Test runner (default: auto-detect)',
       },
-      watch: { type: 'boolean', description: 'Run in watch mode (default: false)' },
       coverage: { type: 'boolean', description: 'Generate coverage report (default: false)' },
       cwd: { type: 'string', description: 'Working directory (default: cwd)' },
       grep: { type: 'string', description: 'Filter tests by name pattern (default: none)' },
@@ -118,21 +118,41 @@ export const testTool: Tool<TestInput, TestOutput> = {
             `test: ${bridge.language} test runner unavailable: ${run.error || run.output || 'no detail'}`,
           );
         }
+        // A user abort is not a test result.
+        if (run.status === 'cancelled') {
+          signal.throwIfAborted();
+          throw new Error(`test: ${bridge.language} test run was cancelled`);
+        }
+        // `failed` with no exit code means the run crashed before producing
+        // one (spawn error) — an operational failure, same as the JS path.
+        if (run.status === 'failed' && run.exitCode === null) {
+          throw new Error(
+            `test: ${bridge.language} test runner failed to run: ${run.error || 'no detail'}`,
+          );
+        }
         const passed = run.summary.passed ?? 0;
         const failed = run.summary.failed ?? 0;
-        const exitCode = run.exitCode ?? 0;
         const rawOutput = run.output || run.error || '';
+        // The run's own status is authoritative. `exitCode ?? 0` used to turn
+        // a timed-out run (exitCode null) into exit 0 → "passed": an agent
+        // would report green tests that never finished.
+        const status: TestOutput['status'] =
+          run.status === 'passed' && run.exitCode === 0
+            ? resolveStatus(0, passed + failed, rawOutput)
+            : 'failed';
+        const timedOutNote =
+          run.status === 'timed_out' ? `Test run timed out before completing.\n` : '';
         yield {
           type: 'final',
           output: {
             runner: bridge.language,
-            status: resolveStatus(exitCode, passed + failed, rawOutput),
-            exit_code: exitCode,
+            status,
+            exit_code: run.exitCode,
             tests_run: passed + failed,
             passed,
             failed,
             duration_ms: run.durationMs,
-            output: normalizeCommandOutput(rawOutput),
+            output: normalizeCommandOutput(timedOutNote + rawOutput),
             truncated: run.truncated,
           },
         };
@@ -230,7 +250,10 @@ function buildArgs(runner: string, input: TestInput): string[] {
       // to be buffered, spooled, and truncated. The default reporter prints
       // per-file summaries + full failure details, which is what the agent
       // acts on. Opt back in per call with `verbose: true`.
-      args.push(input.watch ? 'watch' : 'run');
+      // `watch` is deliberately ignored: a watch-mode runner never exits, so
+      // an agent tool call would burn its whole timeout and never return a
+      // test result. Always run the suite once.
+      args.push('run');
       if (input.verbose) args.push('--reporter=verbose');
       if (input.coverage) args.push('--coverage');
       if (input.grep) args.push('--testNamePattern', input.grep);
@@ -238,7 +261,7 @@ function buildArgs(runner: string, input: TestInput): string[] {
       break;
     case 'jest':
       if (input.verbose) args.push('--verbose');
-      if (input.watch) args.push('--watch');
+      // No `--watch`: see the vitest branch.
       if (input.coverage) args.push('--coverage');
       if (input.grep) args.push('--testNamePattern', input.grep);
       args.push('--testTimeout', String(timeout));

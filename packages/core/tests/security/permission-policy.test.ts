@@ -865,14 +865,24 @@ describe('AutoApprovePermissionPolicy', () => {
 
   it('trust / deny / denyOnce / allowOnce / reload are all no-ops', async () => {
     const p = new AutoApprovePermissionPolicy();
-    // These should resolve / return without throwing
+    const tool = {
+      name: 'danger',
+      description: '',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      mutating: true,
+      async execute() {
+        return 'x';
+      },
+    } as Tool;
+    const before = await p.evaluate(tool);
     await p.trust();
     await p.deny();
     p.denyOnce();
     p.allowOnce();
     await p.reload();
-    // No state change observable — the policy is stateless
-    expect(true).toBe(true);
+    // The policy is stateless: none of these may change a later decision.
+    expect(await p.evaluate(tool)).toEqual(before);
   });
 
   // --- 2026-06 Capability-based tests ---

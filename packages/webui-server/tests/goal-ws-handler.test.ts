@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 
 // Mock ws module (matches ws-utils.test.ts style)
@@ -125,6 +125,11 @@ function makeMockLogger() {
   } as any;
 }
 
+/** Decoded frames the handler wrote to a mock client, in send order. */
+function sentMessages(ws: { send: ReturnType<typeof vi.fn> }): unknown[] {
+  return ws.send.mock.calls.map((call) => JSON.parse(String(call[0])));
+}
+
 function makeMockWs(): any {
   const handlers: Record<string, Array<(...args: any[]) => void>> = {};
   return {
@@ -221,18 +226,18 @@ describe('GoalWebSocketHandler', () => {
 
       await handler.handleMessage(ws, { type: 'goal.pause', payload: {} });
 
-      // Without an orchestrator, no goal.paused broadcast fires — confirm no exception.
-      expect(() => undefined).not.toThrow();
+      // The broadcast is unconditional; only the orchestrator call is optional.
+      expect(sentMessages(ws)).toEqual([{ type: 'goal.paused', payload: {} }]);
     });
 
-    it('goal.resume without orchestrator: handles silently', async () => {
+    it('goal.resume without orchestrator: broadcast emits goal.resumed to clients', async () => {
       const handler = new GoalWebSocketHandler(agent, context, logger, '/tmp/store');
       const ws = makeMockWs();
       handler.addClient(ws);
 
       await handler.handleMessage(ws, { type: 'goal.resume', payload: {} });
 
-      expect(true).toBe(true);
+      expect(sentMessages(ws)).toEqual([{ type: 'goal.resumed', payload: {} }]);
     });
 
     it('goal.status without graph: no broadcast fires', async () => {
@@ -252,12 +257,9 @@ describe('GoalWebSocketHandler', () => {
 
       await handler.handleMessage(ws, { type: 'goal.list', payload: {} });
 
-      // The mock PhaseStore.list returns [] → broadcast goal.list with empty graphs.
-      // Since buildState has no graph, the broadcast is suppressed on goal.state,
-      // but goal.list has its own unconditional broadcast branch.
-      // We don't assert the call here (broadcast helper may bail); we just confirm
-      // the handler does not throw.
-      expect(true).toBe(true);
+      // The mock PhaseStore.list returns [] → goal.list has its own
+      // unconditional broadcast branch, independent of any loaded graph.
+      expect(sentMessages(ws)).toEqual([{ type: 'goal.list', payload: { graphs: [] } }]);
     });
 
     it('goal.load with unknown id: broadcasts goal.error', async () => {
@@ -268,7 +270,9 @@ describe('GoalWebSocketHandler', () => {
       await handler.handleMessage(ws, { type: 'goal.load', payload: { graphId: 'missing' } });
 
       // Mock PhaseStore.load returns null → broadcast goal.error.
-      expect(true).toBe(true);
+      expect(sentMessages(ws)).toEqual([
+        { type: 'goal.error', payload: { message: 'Graph not found: missing' } },
+      ]);
     });
 
     it('goal.load with missing graphId: silent no-op', async () => {

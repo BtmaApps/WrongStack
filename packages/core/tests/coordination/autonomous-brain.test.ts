@@ -357,20 +357,45 @@ describe('AutonomousBrain', () => {
   });
 
   describe('recordOutcome', () => {
-    it('records success outcome', () => {
+    // recordOutcome feeds the self-improvement hints: repeated failures of a
+    // decision type must warn the next decision, and a success clears that.
+    const hintsFor = (brain: AutonomousBrain, type: string): string[] =>
+      (brain as never as { _getSelfImproveHints: (t: string) => string[] })._getSelfImproveHints(
+        type,
+      );
+
+    it('records failure outcomes and surfaces hints after repeated failures', () => {
+      vi.mocked(graph.get).mockReturnValue({ id: 'decision-1', decisionType: 'spawn' } as never);
       const llm = createMockLlmProvider({ optionId: 'yes', rationale: 'Test' });
       const brain = new AutonomousBrain({ llmProvider: llm, graph, fleet });
 
-      // Should not throw
-      brain.recordOutcome('decision-1', 'success');
+      brain.recordOutcome('decision-1', 'failure');
+      expect(hintsFor(brain, 'spawn')).toEqual([]); // one failure is not a pattern
+      brain.recordOutcome('decision-1', 'failure');
+      expect(hintsFor(brain, 'spawn')[0]).toContain('spawn decisions have failed 2 times');
+      expect(graph.update).toHaveBeenCalledWith(
+        'decision-1',
+        expect.objectContaining({ decisionType: 'spawn' }),
+      );
     });
 
-    it('records failure outcome', () => {
+    it('records success outcome and clears the failure pattern', () => {
+      vi.mocked(graph.get).mockReturnValue({ id: 'decision-1', decisionType: 'spawn' } as never);
       const llm = createMockLlmProvider({ optionId: 'yes', rationale: 'Test' });
       const brain = new AutonomousBrain({ llmProvider: llm, graph, fleet });
 
-      // Should not throw
       brain.recordOutcome('decision-1', 'failure');
+      brain.recordOutcome('decision-1', 'failure');
+      brain.recordOutcome('decision-1', 'success');
+      expect(hintsFor(brain, 'spawn')).toEqual([]);
+    });
+
+    it('ignores outcomes for unknown decisions', () => {
+      const llm = createMockLlmProvider({ optionId: 'yes', rationale: 'Test' });
+      const brain = new AutonomousBrain({ llmProvider: llm, graph, fleet });
+
+      brain.recordOutcome('missing', 'failure');
+      expect(graph.update).not.toHaveBeenCalled();
     });
   });
 });

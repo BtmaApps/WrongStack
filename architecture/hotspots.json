@@ -63,7 +63,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/subcommands/handlers/hq.ts": {
-      "lines": 906,
+      "lines": 1088,
       "relativeImports": 10
     },
     "packages/cli/src/subcommands/handlers/providers-models.ts": {
@@ -143,11 +143,11 @@
       "relativeImports": 8
     },
     "packages/core/src/hq/auth-store.ts": {
-      "lines": 978,
+      "lines": 1039,
       "relativeImports": 7
     },
     "packages/core/src/hq/protocol/core.ts": {
-      "lines": 1032,
+      "lines": 1034,
       "relativeImports": 13
     },
     "packages/core/src/index.ts": {
@@ -543,7 +543,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/routes.ts": {
-      "lines": 1050,
+      "lines": 1054,
       "relativeImports": 47
     },
     "packages/webui-server/src/server/ws-payload-validation.ts": {

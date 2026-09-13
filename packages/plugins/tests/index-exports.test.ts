@@ -65,9 +65,7 @@ describe('plugin barrel exports', () => {
     const plugins = await import('../src/index.js');
     for (const [, value] of Object.entries(plugins)) {
       const p = value as { capabilities?: { tools?: boolean; hooks?: boolean } };
-      if (p.capabilities) {
-        expect(typeof p.capabilities).toBe('object');
-      }
+      expect(p.capabilities).toStrictEqual(expect.any(Object));
     }
   });
 });

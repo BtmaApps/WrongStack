@@ -3,16 +3,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  HQ_EVENT_LOG_PRESETS,
+  type HqEventLogPreset,
+  hqEventLogPresetFields,
+} from '../../src/hq/persistence/event-log.js';
+import {
   createHqPersistence,
   HqEventLog,
   HqSnapshotStore,
   HqTimeseriesStore,
 } from '../../src/hq/persistence.js';
-import {
-  HQ_EVENT_LOG_PRESETS,
-  hqEventLogPresetFields,
-  type HqEventLogPreset,
-} from '../../src/hq/persistence/event-log.js';
 import type { HqEventEnvelope, HqSnapshot } from '../../src/hq/protocol.js';
 
 let dataDir: string;
@@ -130,9 +130,14 @@ describe('HqEventLog', () => {
     const log = new HqEventLog({ dataDir: blocker });
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      log.append(makeEvent(1));
-      log.append(makeEvent(2)); // must not throw synchronously
-      await log.drain();
+      expect(() => {
+        log.append(makeEvent(1));
+        log.append(makeEvent(2));
+      }).not.toThrow();
+      // The chain settles instead of rejecting, and the failure is reported
+      // rather than silently dropped.
+      await expect(log.drain()).resolves.toBeUndefined();
+      expect(spy).toHaveBeenCalled();
     } finally {
       spy.mockRestore();
     }

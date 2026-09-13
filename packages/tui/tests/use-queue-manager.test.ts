@@ -1,13 +1,13 @@
-import { render } from 'ink-testing-library';
-import React, { act } from 'react';
-import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type { ContentBlock } from '@wrongstack/core/types';
-import { Text } from '../src/ink.js';
-import { useQueueManager, type UseQueueManagerOptions } from '../src/hooks/use-queue-manager.js';
+import { render } from 'ink-testing-library';
+import React, { act } from 'react';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { Action, State } from '../src/app-reducer.js';
 import type { Settings } from '../src/app-state.js';
+import { type UseQueueManagerOptions, useQueueManager } from '../src/hooks/use-queue-manager.js';
+import { Text } from '../src/ink.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -273,11 +273,24 @@ describe('useQueueManager', () => {
     });
   });
 
-  it('does not persist when queueStore is undefined', () => {
+  it('does not persist when queueStore is undefined', async () => {
     const refs = buildHarness();
     refs.queueStore = undefined;
-    render(React.createElement(Harness, { refs }));
-    // Should not throw or error
+    const view = render(React.createElement(Harness, { refs }));
+    // A queue change with no store: nothing to restore, nothing to write, and
+    // no "Restored N queued messages" entry invented.
+    refs.stateRef.current = {
+      queue: [{ displayText: 'q', blocks: [{ type: 'text' as const, text: 'q' }] }],
+    } as unknown as State;
+    act(() => {
+      view.rerender(React.createElement(Harness, { refs }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(refs.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'enqueue' }));
+    expect(refs.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'addEntry' }));
+    view.unmount();
   });
 
   it('calls onQueueChange when queue changes', async () => {

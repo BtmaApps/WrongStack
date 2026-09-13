@@ -1,26 +1,27 @@
-import { describe, it, expect } from 'vitest';
-import { slugify } from '../../src/utils/slug.js';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { assertNever } from '../../src/utils/assert-never.js';
 import { stripAnsi } from '../../src/utils/color.js';
+import {
+  getJsonPath,
+  isJsonObject,
+  readJsonObjectFile,
+  removeJsonPath,
+  setJsonPath,
+  writeJsonObjectFile,
+} from '../../src/utils/config-json.js';
+import { sessionScopedPath } from '../../src/utils/session-scoped-path.js';
 import { sleep } from '../../src/utils/sleep.js';
+import { slugify } from '../../src/utils/slug.js';
 import { truncate } from '../../src/utils/string.js';
 import {
   escapeGlobSubject,
-  normalizePathSubject,
   isPathSubjectKey,
+  normalizePathSubject,
   subjectForToolInput,
 } from '../../src/utils/tool-subject.js';
-import {
-  isJsonObject,
-  getJsonPath,
-  setJsonPath,
-  removeJsonPath,
-} from '../../src/utils/config-json.js';
-import { sessionScopedPath } from '../../src/utils/session-scoped-path.js';
-import * as path from 'node:path';
-import * as os from 'node:os';
-import * as fs from 'node:fs';
-import { writeJsonObjectFile, readJsonObjectFile } from '../../src/utils/config-json.js';
 
 // ── slugify ─────────────────────────────────────────────────────────────
 
@@ -54,11 +55,9 @@ describe('assertNever', () => {
     expect(() => assertNever('y' as never, 'custom error')).toThrow('custom error');
   });
   it('sets error name to AssertNeverError', () => {
-    try {
-      assertNever('z' as never);
-    } catch (e) {
-      expect((e as Error).name).toBe('AssertNeverError');
-    }
+    expect(() => assertNever('z' as never)).toThrow(
+      expect.objectContaining({ name: 'AssertNeverError' }),
+    );
   });
 });
 

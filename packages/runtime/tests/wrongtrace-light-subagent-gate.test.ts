@@ -241,7 +241,8 @@ describe('runtime light-subagent WrongTrace gate (SDD-path threading contract)',
 
     const locks = await wt.listLocks();
     const held = locks.find((l) => l.path === PROBE);
-    if (held) expect(held.owner).toBe(`wrongstack:${SESSION}`);
+    // The lock must actually be claimed; `if (held)` let a missing claim pass.
+    expect(held?.owner).toBe(`wrongstack:${SESSION}`);
 
     await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     const after = (await wt.listLocks()).filter((l) => l.path === PROBE);

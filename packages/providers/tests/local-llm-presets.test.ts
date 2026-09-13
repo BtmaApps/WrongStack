@@ -313,8 +313,10 @@ describe('vLLM preset', () => {
       sseBody([JSON.stringify({ model: 'm', choices: [{ delta: { content: 'x' } }] })]),
       'm',
     );
-    const stop = events.find((e) => e.type === 'message_stop');
-    expect(stop).toBeDefined();
+    const stops = events.filter((e) => e.type === 'message_stop');
+    // Exactly one synthesized stop, with the default reason (no finish_reason seen).
+    expect(stops).toHaveLength(1);
+    expect((stops[0] as { stopReason: string }).stopReason).toBe('end_turn');
   });
 });
 
@@ -397,8 +399,9 @@ describe('Local-LLM presets - common edge cases', () => {
           ]),
           'm',
         );
-        const text = events.find((e) => e.type === 'text_delta');
-        expect(text).toBeDefined();
+        // The malformed line is dropped; the valid chunk after it still streams.
+        const textDeltas = events.filter((e) => e.type === 'text_delta');
+        expect(textDeltas).toEqual([expect.objectContaining({ text: 'ok' })]);
       });
 
       it('emits a final message_stop on the [DONE] sentinel (terminal chunk)', async () => {

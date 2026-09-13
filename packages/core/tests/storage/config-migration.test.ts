@@ -129,12 +129,7 @@ describe('runConfigMigrations (L2-D)', () => {
     // which would loop. Since the chain doesn't reach v2, we expect either
     // the loop guard OR the "no migration found" error — both are
     // acceptable safety nets. We assert the framework throws *something*.
-    try {
-      runConfigMigrations({ version: 1 }, 2, [looper]);
-      expect.fail('should have thrown');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConfigMigrationError);
-    }
+    expect(() => runConfigMigrations({ version: 1 }, 2, [looper])).toThrow(ConfigMigrationError);
   });
 
   it('treats missing `version` as 1', () => {

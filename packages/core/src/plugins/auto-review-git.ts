@@ -42,7 +42,8 @@ export async function runGit(
       stderr += d;
     });
     child.on('error', () => resolve({ stdout, stderr, code: 1 }));
-    child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 0 }));
+    // `code` is null only when git was killed by a signal — never a success.
+    child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 1 }));
   });
 }
 

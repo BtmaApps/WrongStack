@@ -69,51 +69,8 @@ describe('chimera session.close ordering', () => {
   }
 
   /**
-   * Simulates the fixed chimera handler + finally block logic.
-   * This mirrors packages/cli/src/execution.ts lines ~256-360 and ~1489-1494.
-   */
-  function runSessionEndFlow(
-    events: EventBus,
-    session: SessionWriter,
-    director: ReturnType<typeof makeDirector>,
-  ) {
-    let pendingChimeraWork: Promise<void> | undefined;
-
-    // Chimera handler (mirrors execution.ts:261-361)
-    events.onPattern('chimera.review_needed', (_event, payload) => {
-      const p = payload as ChimeraReviewNeededPayload;
-      if (p.files.length === 0) return;
-
-      pendingChimeraWork = (async () => {
-        const results = await director.awaitTasks(['task-1']);
-        const result = results[0];
-        if (result?.status === 'success') {
-          const reviewText =
-            typeof result.result === 'string'
-              ? result.result.trim()
-              : JSON.stringify(result.result);
-          if (reviewText) {
-            await session.append({
-              type: 'llm_response',
-              ts: new Date().toISOString(),
-              content: [{ type: 'text', text: reviewText }],
-              stopReason: 'end_turn',
-              usage: { input: 0, output: 0 },
-            });
-          }
-        }
-      })();
-    });
-
-    // Simulate finally block (mirrors execution.ts:1489-1494)
-    events.emit('session.ended', { id: session.id, usage: { input: 0, output: 0 } });
-    // await pendingChimeraWork;  // <-- the fix: await before close
-    if (pendingChimeraWork) void pendingChimeraWork; // BUG: fire-and-forget (old behavior)
-    void session.close();
-  }
-
-  /**
-   * Same as above but with the FIX applied — pendingChimeraWork is awaited.
+   * Simulates the chimera handler + finally block with the FIX applied —
+   * pendingChimeraWork is awaited before close().
    *
    * The real event flow is:
    *   1. events.emit('session.ended') fires synchronously
@@ -179,21 +136,6 @@ describe('chimera session.close ordering', () => {
 
   beforeEach(() => {
     callLog.length = 0;
-  });
-
-  it('OLD (bug): close() races ahead of chimera append — review dropped', async () => {
-    const events = new EventBus();
-    const session = makeSessionWriter();
-    const director = makeDirector();
-
-    runSessionEndFlow(events, session, director);
-
-    // Without the fix, close() fires immediately (fire-and-forget)
-    // The append may or may not have started, and since append is async with delay,
-    // close() wins the race most of the time.
-    // We cannot reliably assert callLog here because the race is non-deterministic.
-    // Instead, this test documents the OLD buggy behavior.
-    expect(true).toBe(true); // Placeholder — the real assertion is in the fixed test below
   });
 
   it('FIXED: append is called and resolved before close()', async () => {

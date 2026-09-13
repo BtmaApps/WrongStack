@@ -21,10 +21,26 @@ export interface HqBrowserCommandStatusMessage {
   command: HqCommandAuditEntry;
 }
 
+/**
+ * Sent when the operator revokes browser tokens. The affected session no
+ * longer authenticates and its socket is about to close, so the surface should
+ * clear its stored credential and show the auth gate rather than sit on a
+ * connection that will silently stop delivering telemetry.
+ *
+ * Carries token KEYS (stored verifiers) only, never the secret. A key is not a
+ * credential — it is the hash HQ keeps at rest and already writes to the auth
+ * audit log — so putting it on the wire cannot be replayed as a login.
+ */
+export interface HqBrowserAuthRevokedMessage {
+  type: 'hq.auth_revoked';
+  revokedTokenKeys: readonly string[];
+}
+
 export type HqBrowserMessage =
   | HqBrowserSnapshotMessage
   | HqBrowserEventMessage
   | HqBrowserCommandStatusMessage
+  | HqBrowserAuthRevokedMessage
   | HqResumeMessage
   | HqAlertMessage
   | HqHeartbeatMessage;

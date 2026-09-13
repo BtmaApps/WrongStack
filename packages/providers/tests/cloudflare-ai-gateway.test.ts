@@ -37,20 +37,50 @@ function fakeProviderModel(realFetch: ModelFetch): {
   return { model: model as unknown as LanguageModelV4, config };
 }
 
+interface GatewayCall {
+  url: string;
+  headers: Headers;
+  body: unknown;
+}
+
+/**
+ * Gateway options whose fetch records every gateway call and answers the Nth
+ * call with status 200 + N, so each dispatch's replayed result proves which
+ * gateway response it was handed.
+ */
 function gatewayOptions(): {
-  accountId: string;
-  gatewayId: string;
-  apiKey: string;
-  provider: 'openai';
-  fetchImpl: typeof fetch;
-} {
-  return {
-    accountId: 'account-1',
-    gatewayId: 'gateway-1',
-    apiKey: 'gateway-key',
-    provider: 'openai',
-    fetchImpl: (async () => new Response('{}', { status: 200 })) as typeof fetch,
+  options: {
+    accountId: string;
+    gatewayId: string;
+    apiKey: string;
+    provider: 'openai';
+    fetchImpl: typeof fetch;
   };
+  calls: GatewayCall[];
+} {
+  const calls: GatewayCall[] = [];
+  const fetchImpl = (async (url: string, init?: RequestInit) => {
+    calls.push({
+      url: String(url),
+      headers: new Headers(init?.headers),
+      body: JSON.parse(String(init?.body)),
+    });
+    return new Response('{}', { status: 200 + calls.length });
+  }) as unknown as typeof fetch;
+  return {
+    options: {
+      accountId: 'account-1',
+      gatewayId: 'gateway-1',
+      apiKey: 'gateway-key',
+      provider: 'openai',
+      fetchImpl,
+    },
+    calls,
+  };
+}
+
+function textOf(result: unknown): string {
+  return (result as { content: Array<{ text: string }> }).content[0]!.text;
 }
 
 const callOptions = {
@@ -71,29 +101,57 @@ describe('createCloudflareGatewayModel dispatch serialization', () => {
   it('restores config.fetch after two interleaved dispatches instead of poisoning the model', async () => {
     const realFetch = neverRoutedRealFetch();
     const { model, config } = fakeProviderModel(realFetch);
-    const gateway = createCloudflareGatewayModel(model, gatewayOptions());
+    const { options, calls } = gatewayOptions();
+    const gateway = createCloudflareGatewayModel(model, options);
 
     const [first, second] = await Promise.all([
       gateway.doGenerate(callOptions),
       gateway.doGenerate(callOptions),
     ]);
 
-    expect(first).toBeDefined();
-    expect(second).toBeDefined();
+    // Serialized: each dispatch replays its OWN gateway response, in order.
+    expect(textOf(first)).toBe('201');
+    expect(textOf(second)).toBe('202');
+    expect(calls).toHaveLength(2);
     // A poisoned restore would leave a CaptureRequest stub in place.
     expect(config.fetch).toBe(realFetch);
 
     // A third dispatch on the same model still works — the exact operation
     // the poisoning race breaks.
-    await expect(gateway.doGenerate(callOptions)).resolves.toBeDefined();
+    expect(textOf(await gateway.doGenerate(callOptions))).toBe('203');
+    expect(config.fetch).toBe(realFetch);
   });
 
-  it('restores the original config.fetch after a successful single dispatch', async () => {
+  it('routes the captured provider request through the universal gateway endpoint', async () => {
     const realFetch = neverRoutedRealFetch();
     const { model, config } = fakeProviderModel(realFetch);
-    const gateway = createCloudflareGatewayModel(model, gatewayOptions());
+    const { options, calls } = gatewayOptions();
+    const gateway = createCloudflareGatewayModel(model, options);
 
-    await expect(gateway.doGenerate(callOptions)).resolves.toBeDefined();
+    expect(textOf(await gateway.doGenerate(callOptions))).toBe('201');
     expect(config.fetch).toBe(realFetch);
+
+    expect(calls).toHaveLength(1);
+    const [call] = calls;
+    expect(call!.url).toBe('https://gateway.ai.cloudflare.com/v1/account-1/gateway-1');
+    expect(call!.headers.get('cf-aig-authorization')).toBe('Bearer gateway-key');
+    expect(call!.body).toEqual([
+      {
+        provider: 'openai',
+        endpoint: 'v1/chat/completions',
+        headers: {},
+        query: { model: 'test-model' },
+      },
+    ]);
+  });
+
+  it('refuses a model whose config exposes no interceptable fetch', async () => {
+    const { model } = fakeProviderModel(neverRoutedRealFetch());
+    delete (model as unknown as { config: { fetch?: unknown } }).config.fetch;
+    const { options, calls } = gatewayOptions();
+    const gateway = createCloudflareGatewayModel(model, options);
+
+    await expect(gateway.doGenerate(callOptions)).rejects.toThrow(/cannot intercept provider/);
+    expect(calls).toHaveLength(0);
   });
 });

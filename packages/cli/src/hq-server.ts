@@ -170,8 +170,14 @@ async function startHqServerWithAuth(
     }
   };
 
+  // W4 #15: the revocation handler needs the browser socket set, which is
+  // constructed further down — so it is late-bound here rather than
+  // reordering the whole server start-up around one callback.
+  let revokeBrowserSessions: ((keys: readonly string[]) => void) | undefined;
+
   const authState = createHqAuthState(authFile, dataDir, {
     onApplied: (live) => reassessExposureFloor(live),
+    onTokensRevoked: (keys) => revokeBrowserSessions?.(keys),
     requireBrowserAuth: options.requireBrowserAuth,
   });
   const { mutableAuth } = authState;
@@ -228,6 +234,24 @@ async function startHqServerWithAuth(
     const clientSocketTokens = new Map<WebSocket, HqToken | undefined>();
     const browsers = new Set<WebSocket>();
     const sessions = new Map<string, HqSessionEntry>();
+    // W4 #15: a revoked browser token has to evacuate sockets that are ALREADY
+    // open — failing the next handshake is not enough, because an open socket
+    // never presents its credential again and would keep streaming telemetry.
+    //
+    // This ONLY announces; it deliberately does not close. The watcher below
+    // owns eviction and does it precisely (it deletes the sessions whose
+    // `tokenId` is no longer live, and distinguishes a password change from a
+    // token change). A second close here would race that one with a different
+    // close code — but because `onTokensRevoked` fires from `authState.apply`,
+    // which the watcher calls before its close loop, the browser still learns
+    // why it is about to be disconnected.
+    revokeBrowserSessions = (keys) => {
+      const frame = JSON.stringify({ type: 'hq.auth_revoked', revokedTokenKeys: keys });
+      for (const ws of browsers) {
+        if (ws.readyState !== WebSocket.OPEN) continue;
+        ws.send(frame);
+      }
+    };
     const eventLog: HqEventEnvelope[] = [];
     const transcripts = new Map<string, TranscriptRing>();
     const agentMessages = new Map<string, HqTranscriptEntry[]>();
@@ -346,6 +370,9 @@ async function startHqServerWithAuth(
       clients,
       browsers,
       persistence,
+      // W4 #7: the ring is the read path for `/api/commands`, so the browser
+      // snapshot's latency roll-up is computed from the same window.
+      { commandAudit: () => auditLog.recent(200) },
     );
     snapshotBroadcaster.currentSerialized();
 
@@ -422,6 +449,7 @@ async function startHqServerWithAuth(
       agentMessages,
       mailboxGateways: mailboxManager.mailboxGateways,
       mailboxGatewayRateLimiter: mailboxManager.mailboxGatewayRateLimiter,
+      mailboxManager,
       alertEngine,
       auditLog,
       persistence,

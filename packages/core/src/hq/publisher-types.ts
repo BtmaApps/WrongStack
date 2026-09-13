@@ -70,6 +70,8 @@ export interface HqPublishEventOptions {
   payload: unknown;
   sessionId?: string;
   runId?: string;
+  /** Groups several envelopes into one logical activity (see HqEventEnvelope). */
+  correlationId?: string;
   timestamp?: string;
   maxSummaryLength?: number;
 }

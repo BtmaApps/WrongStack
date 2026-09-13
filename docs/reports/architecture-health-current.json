@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T17:55:40.113Z",
+  "generatedAt": "2026-09-13T23:46:18.039Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,22 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3784,
-    "testFiles": 3328,
-    "sourceLines": 920090,
+    "sourceFiles": 3790,
+    "testFiles": 3340,
+    "sourceLines": 922203,
     "workspaceEdges": 128,
-    "moduleEdges": 12099,
+    "moduleEdges": 12114,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 8,
+    "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
-    "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 928
+    "testsWithMultipleTypechecks": 2,
+    "testOnlyExports": 935
   },
-  "errors": [],
+  "errors": [
+    "2 unexcepted module cycle(s)",
+    "ARCH-CYCLE-TYPE-13: exception no longer matches an active cycle"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -145,8 +148,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 493,
-      "testFiles": 494,
+      "sourceFiles": 494,
+      "testFiles": 498,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -185,7 +188,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 494
+          "testFiles": 498
         }
       ]
     },
@@ -215,8 +218,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 860,
-      "testFiles": 755,
+      "sourceFiles": 863,
+      "testFiles": 761,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +234,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 755
+          "testFiles": 761
         }
       ]
     },
@@ -735,7 +738,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 213,
-      "testFiles": 221,
+      "testFiles": 223,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,7 +754,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 221
+          "testFiles": 223
         }
       ]
     },
@@ -759,7 +762,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 393,
-      "testFiles": 354,
+      "testFiles": 352,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -782,7 +785,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 354
+          "testFiles": 352
         }
       ]
     },
@@ -843,8 +846,8 @@
     {
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
-      "sourceFiles": 119,
-      "testFiles": 39,
+      "sourceFiles": 121,
+      "testFiles": 41,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -855,12 +858,12 @@
         {
           "path": "packages/webui-hq/tsconfig.json",
           "error": null,
-          "testFiles": 0
+          "testFiles": 2
         },
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 39
+          "testFiles": 41
         }
       ]
     },
@@ -978,6 +981,14 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/cli/src/hq-server/mailbox-gateway-manager.ts",
+          "packages/cli/src/hq-server/routes.ts",
+          "packages/cli/src/hq-server/routes/system-handlers.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
           "packages/cli/src/subcommands/handlers/audit.ts",
           "packages/cli/src/subcommands/index.ts"
         ]
@@ -1042,6 +1053,7 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/core/src/hq/commands.ts",
           "packages/core/src/hq/protocol/client.ts",
           "packages/core/src/hq/protocol/core.ts",
           "packages/core/src/hq/protocol/fleet.ts",
@@ -1079,12 +1091,30 @@
       "ARCH-CYCLE-TYPE-09",
       "ARCH-CYCLE-TYPE-11",
       "ARCH-CYCLE-TYPE-12",
-      "ARCH-CYCLE-TYPE-13",
       "ARCH-CYCLE-TYPE-14",
       "ARCH-CYCLE-TYPE-29",
       "ARCH-CYCLE-TYPE-30"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/cli/src/hq-server/mailbox-gateway-manager.ts",
+          "packages/cli/src/hq-server/routes.ts",
+          "packages/cli/src/hq-server/routes/system-handlers.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/core/src/hq/commands.ts",
+          "packages/core/src/hq/protocol/client.ts",
+          "packages/core/src/hq/protocol/core.ts",
+          "packages/core/src/hq/protocol/fleet.ts",
+          "packages/core/src/hq/protocol/session.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -2661,6 +2691,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/hq-alerts-eval.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/hq-approval-roundtrip-e2e.test.ts",
         "projects": [
           "root-node"
@@ -2692,6 +2728,12 @@
       },
       {
         "file": "packages/cli/tests/hq-auth-phase4.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-auth-revocation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -2776,6 +2818,18 @@
       },
       {
         "file": "packages/cli/tests/hq-mailbox-actions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-mailbox-gateway-health.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-mailbox-gateway-http.test.ts",
         "projects": [
           "root-node"
         ]
@@ -4822,6 +4876,12 @@
       },
       {
         "file": "packages/core/tests/architecture/build-output-cleanup.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/bump-version-script.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7095,6 +7155,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/hq/alerts-config.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/hq/alerts.test.ts",
         "projects": [
           "root-node"
@@ -7108,6 +7174,12 @@
       },
       {
         "file": "packages/core/tests/hq/auth-audit.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/auth-revocation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7143,7 +7215,19 @@
         ]
       },
       {
+        "file": "packages/core/tests/hq/command-latency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/hq/commands.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/correlation-id.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7180,6 +7264,12 @@
       },
       {
         "file": "packages/core/tests/hq/kanban-sync.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/lru.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14835,6 +14925,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/test-language-bridge-status.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/test.test.ts",
         "projects": [
           "root-node"
@@ -14908,6 +15004,12 @@
       },
       {
         "file": "packages/tools/tests/tree.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/typecheck-language-bridge-status.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15088,12 +15190,6 @@
       },
       {
         "file": "packages/tui/tests/autonomy-picker.test.tsx",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/tui/tests/banner-visual-dump.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -15298,12 +15394,6 @@
       },
       {
         "file": "packages/tui/tests/ctrl-letter-shortcut.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
-        "file": "packages/tui/tests/debug-dump.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -17176,6 +17266,18 @@
       },
       {
         "file": "packages/vector-memory/tests/vector-recall-survives-ipc.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/src/views/__tests__/cockpit-latency.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/src/views/__tests__/events.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -21059,7 +21161,28 @@
     ],
     "invalidRuntime": [],
     "withoutTypecheck": [],
-    "multipleTypechecks": []
+    "multipleTypechecks": [
+      {
+        "file": "packages/webui-hq/src/views/__tests__/cockpit-latency.test.tsx",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": [
+          "packages/webui-hq/tsconfig.json",
+          "packages/webui-hq/tsconfig.test.json"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/src/views/__tests__/events.test.tsx",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": [
+          "packages/webui-hq/tsconfig.json",
+          "packages/webui-hq/tsconfig.test.json"
+        ]
+      }
+    ]
   },
   "unresolvedRelativeImports": [
     {
@@ -21230,7 +21353,7 @@
     },
     {
       "file": "packages/cli/src/subcommands/handlers/hq.ts",
-      "lines": 906,
+      "lines": 1088,
       "relativeImports": 10
     },
     {
@@ -21330,12 +21453,12 @@
     },
     {
       "file": "packages/core/src/hq/auth-store.ts",
-      "lines": 978,
+      "lines": 1039,
       "relativeImports": 7
     },
     {
       "file": "packages/core/src/hq/protocol/core.ts",
-      "lines": 1032,
+      "lines": 1034,
       "relativeImports": 13
     },
     {
@@ -21830,7 +21953,7 @@
     },
     {
       "file": "packages/webui-server/src/server/routes.ts",
-      "lines": 1050,
+      "lines": 1054,
       "relativeImports": 47
     },
     {
@@ -21866,6 +21989,11 @@
       "relativeImports": 43
     },
     {
+      "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "lines": 1088,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
       "lines": 1078,
       "relativeImports": 52
@@ -21891,6 +22019,11 @@
       "relativeImports": 5
     },
     {
+      "file": "packages/webui-server/src/server/routes.ts",
+      "lines": 1054,
+      "relativeImports": 47
+    },
+    {
       "file": "packages/core/src/index.ts",
       "lines": 1051,
       "relativeImports": 164
@@ -21899,11 +22032,6 @@
       "file": "packages/webui/src/components/SkillDetailView.tsx",
       "lines": 1051,
       "relativeImports": 3
-    },
-    {
-      "file": "packages/webui-server/src/server/routes.ts",
-      "lines": 1050,
-      "relativeImports": 47
     },
     {
       "file": "packages/webui/src/components/OfficeMapCanvas.tsx",
@@ -21941,6 +22069,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/core/src/hq/auth-store.ts",
+      "lines": 1039,
+      "relativeImports": 7
+    },
+    {
       "file": "packages/webui-server/src/server/context-editor.ts",
       "lines": 1039,
       "relativeImports": 1
@@ -21956,6 +22089,11 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/core/src/hq/protocol/core.ts",
+      "lines": 1034,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/core/src/types/session.ts",
       "lines": 1034,
       "relativeImports": 4
@@ -21969,11 +22107,6 @@
       "file": "packages/sage/src/sqlite-store.ts",
       "lines": 1033,
       "relativeImports": 43
-    },
-    {
-      "file": "packages/core/src/hq/protocol/core.ts",
-      "lines": 1032,
-      "relativeImports": 13
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
@@ -22084,16 +22217,6 @@
       "file": "packages/webui/src/components/KanbanTaskInspector.tsx",
       "lines": 980,
       "relativeImports": 16
-    },
-    {
-      "file": "packages/core/src/execution/eternal-autonomy.ts",
-      "lines": 978,
-      "relativeImports": 8
-    },
-    {
-      "file": "packages/core/src/hq/auth-store.ts",
-      "lines": 978,
-      "relativeImports": 7
     }
   ],
   "testOnlyExports": [
@@ -23036,6 +23159,30 @@
     {
       "file": "packages/core/src/execution/tool-error-taxonomy.ts",
       "name": "getToolErrorInfo"
+    },
+    {
+      "file": "packages/core/src/hq/alerts-config.ts",
+      "name": "emptyHqAlertsConfig"
+    },
+    {
+      "file": "packages/core/src/hq/alerts-config.ts",
+      "name": "HQ_ALERTS_CONFIG_VERSION"
+    },
+    {
+      "file": "packages/core/src/hq/alerts-config.ts",
+      "name": "hqAlertsConfigFilePath"
+    },
+    {
+      "file": "packages/core/src/hq/alerts-config.ts",
+      "name": "mutateHqAlertsConfig"
+    },
+    {
+      "file": "packages/core/src/hq/alerts-config.ts",
+      "name": "writeHqAlertsConfig"
+    },
+    {
+      "file": "packages/core/src/hq/auth-revocation.ts",
+      "name": "sessionAffectedByRevocation"
     },
     {
       "file": "packages/core/src/hq/auth-store.ts",
@@ -25072,6 +25219,10 @@
     {
       "file": "packages/webui-hq/src/mobile/mobile-kanban.tsx",
       "name": "suggestedKanbanStage"
+    },
+    {
+      "file": "packages/webui-hq/src/views/cockpit.tsx",
+      "name": "CommandLatencyCard"
     },
     {
       "file": "packages/webui-server/src/server/chimera-routes.ts",

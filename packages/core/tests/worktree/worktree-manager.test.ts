@@ -568,7 +568,8 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       expect(m.ok).toBe(true);
       expect(m.resolved).toBe(true);
       expect(h.status).toBe('merged');
-      if (sawConflict && sawConflict.length > 0) expect(sawConflict).toContain('seed.txt');
+      // `resolved: true` only comes from opts.resolve, so the callback ran.
+      expect(sawConflict).toContain('seed.txt');
       const onBase = await fs.readFile(path.join(base, 'seed.txt'), 'utf8');
       expect(onBase.replace(/\r/g, '')).toBe('line1\nBASE+WORKTREE\nline3\n');
     } finally {

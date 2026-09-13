@@ -66,22 +66,31 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
   const { events } = opts;
   const ctx = createBridgeContext(opts);
 
+  /**
+   * `correlationId` groups the envelopes of one Brain activity: every event
+   * carrying the same decision request id is that one request observed over
+   * time, so HQ can render requested → answered → intervened as a chain rather
+   * than N unrelated rows. It is not a dedup key — the same id legitimately
+   * appears on several distinct envelopes.
+   */
   function publish(
     kind: HqBrainEventKind,
     payload: Partial<HqBrainEventPayload>,
     at: number,
+    correlationId?: string,
   ): void {
     ctx.safePublish({
       type: 'brain.event',
       payload: { kind, at, ...payload } as HqBrainEventPayload,
       ...ctx.sessionIdTag(),
+      ...(correlationId !== undefined ? { correlationId } : {}),
       timestamp: ctx.now(),
     });
   }
 
   ctx.track(
     events.on('brain.decision_requested', (p) => {
-      publish('decision_requested', extractRequestFields(p.request), p.at);
+      publish('decision_requested', extractRequestFields(p.request), p.at, p.request?.id);
     }),
   );
   ctx.track(
@@ -95,6 +104,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           ...(p.tier ? { tier: p.tier } : {}),
         },
         p.at,
+        p.request?.id,
       );
     }),
   );
@@ -111,6 +121,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           ...(p.pending ? { pending: true } : {}),
         },
         p.at,
+        p.request?.id,
       );
     }),
   );
@@ -124,6 +135,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           ...(p.tier ? { tier: p.tier } : {}),
         },
         p.at,
+        p.request?.id,
       );
     }),
   );
@@ -152,6 +164,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           ...(p.warnings?.length ? { warnings: [...p.warnings] } : {}),
         },
         p.at,
+        p.requestId,
       );
     }),
   );
@@ -166,6 +179,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           ...(p.deny === true ? { decision: 'deny' } : {}),
         },
         p.at,
+        p.id,
       );
     }),
   );
@@ -180,6 +194,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
           intervened: p.intervened,
         },
         p.at,
+        p.request?.id,
       );
     }),
   );

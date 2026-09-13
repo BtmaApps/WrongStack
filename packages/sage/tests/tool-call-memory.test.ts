@@ -504,40 +504,39 @@ describe('SageToolCallMiddleware — result path extraction', () => {
 
 describe('SageToolCallMiddleware — content already visible', () => {
   it('skips memory text already present in system prompt', async () => {
+    // The old version planted the memory through `store.loaded`/`initialized`
+    // internals, which retrieval never reads — so the memory was never found
+    // and "not injected" held trivially (proven: a control run injected
+    // nothing). It also only checked that result.content existed.
     const store = makeStore();
-    const mw = createSageToolCallMiddleware({ memory: store });
-    // Make a payload where the system prompt already mentions the memory text
-    const payload = makePayload({
-      result: {
-        type: 'tool_result',
-        tool_use_id: 'tu1',
-        name: 'read',
-        content: 'Memory for src/file.ts',
-      },
+    await store.rememberSage({
+      text: 'Visible-already memory for src/visible.ts',
+      importance: 1,
+      confidence: 1,
+      anchors: [{ type: 'file', path: 'src/visible.ts' }],
     });
-    const existingMemory = {
-      id: 'mem_1',
-      text: 'Memory for src/file.ts',
-      revision: 1,
-      scope: 'project',
-      kind: 'fact',
-      status: 'active',
-      importance: 0.95,
-      confidence: 0.95,
-      freshness: 1,
-      tags: [] as string[],
-      anchors: [{ type: 'file', path: 'src/file.ts' }],
-      sources: [] as never[],
-      createdAt: '',
-      updatedAt: '',
-    };
-    (store as any).loaded = [existingMemory];
-    (store as any).initialized = true;
+    const readVisible = (content: string) =>
+      makePayload({
+        toolUse: { type: 'tool_use', id: 'tu1', name: 'read', input: { path: 'src/visible.ts' } },
+        result: { type: 'tool_result', tool_use_id: 'tu1', name: 'read', content },
+      });
 
-    await mw.handler(payload, async (p) => p);
-    // Skip injection check - content already visible
-    // Just check it doesn't crash
-    expect(payload.result.content).toBeDefined();
+    // Control: ordinary tool output → the memory IS injected.
+    const control = readVisible('file content');
+    await createSageToolCallMiddleware({ memory: store, repeatCooldownMs: 0 }).handler(
+      control,
+      async (p) => p,
+    );
+    expect(memoryEvidenceText(control)).toContain('Visible-already memory');
+
+    // The tool result already shows the memory text verbatim → alreadyVisible
+    // gate: re-injecting it would only burn context.
+    const visible = readVisible('Visible-already memory for src/visible.ts');
+    await createSageToolCallMiddleware({ memory: store, repeatCooldownMs: 0 }).handler(
+      visible,
+      async (p) => p,
+    );
+    expect(memoryEvidenceText(visible)).not.toContain('Visible-already memory');
   });
 });
 

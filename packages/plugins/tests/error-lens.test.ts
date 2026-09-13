@@ -72,7 +72,9 @@ describe('extractErrorLine / extractFrames', () => {
     expect(frames[0]).toBe('src/lib/compute.ts:42');
     expect(frames).toContain('src/main.ts:10');
     const vendorIdx = frames.findIndex((f) => f.includes('node_modules'));
-    if (vendorIdx !== -1) expect(vendorIdx).toBeGreaterThan(1);
+    // NODE_TRACE carries vendor frames (node:internal, node_modules); they
+    // must sort after both project frames rather than be dropped or lead.
+    expect(vendorIdx).toBeGreaterThan(1);
   });
 
   it('extracts Python error line and frames', () => {

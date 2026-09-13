@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { glyphSet, resolveIconStyle, type IconStyle } from '../src/ui-glyphs.js';
+import { glyphSet, glyphs, type IconStyle, resolveIconStyle } from '../src/ui-glyphs.js';
 
 describe('resolveIconStyle', () => {
   it('returns "unicode" when env is not set', () => {
@@ -118,8 +118,8 @@ describe('glyphSet', () => {
 });
 
 describe('glyphs singleton', () => {
-  it('is exported as a frozen object', () => {
-    // The singleton is available by importing at module level
-    expect(true).toBe(true); // Placeholder - glyphs is already tested above
+  it('is exported as a frozen object resolved from the process env', () => {
+    expect(Object.isFrozen(glyphs)).toBe(true);
+    expect(glyphs).toBe(glyphSet(resolveIconStyle()));
   });
 });

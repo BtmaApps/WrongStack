@@ -1,11 +1,11 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { installTool } from '../src/install.js';
 import * as Core from '@wrongstack/core/coordination';
-import type { SpawnStreamResult } from '../src/_spawn-stream.js';
 import type { ToolProgressEvent } from '@wrongstack/core/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SpawnStreamResult } from '../src/_spawn-stream.js';
+import { installTool } from '../src/install.js';
 
 // Mock spawnStream — an AsyncGenerator<ToolProgressEvent, SpawnStreamResult>.
 // executeStream calls: const result = yield* spawnStream({...})
@@ -97,22 +97,31 @@ describe('installTool', () => {
     expect(result.packages).toContain('vitest');
   });
 
+  // These used to assert only that `exit_code` existed; the flag could have
+  // been dropped from the package-manager argv and they would still pass.
+  const lastSpawn = (): { cmd: string; args: string[] } =>
+    spawnStreamMock.mock.calls.at(-1)?.[0] as { cmd: string; args: string[] };
+
   it('passes save=dev flag', async () => {
     const ctx = makeCtx();
     const result = await installTool.execute({ packages: 'foo', save: 'dev' }, ctx, makeOpts());
-    expect(result).toHaveProperty('exit_code');
+    expect(result.exit_code).toBe(0);
+    expect(lastSpawn().args).toEqual(expect.arrayContaining(['install', '--save-dev', 'foo']));
   });
 
   it('passes global flag', async () => {
     const ctx = makeCtx();
-    const result = await installTool.execute({ packages: 'foo', global: true }, ctx, makeOpts());
-    expect(result).toHaveProperty('exit_code');
+    await installTool.execute({ packages: 'foo', global: true }, ctx, makeOpts());
+    expect(lastSpawn().args).toContain('-g');
   });
 
   it('respects dry_run', async () => {
     const ctx = makeCtx();
     const result = await installTool.execute({ packages: 'foo', dry_run: true }, ctx, makeOpts());
-    expect(result).toHaveProperty('exit_code');
+    expect(result.dry_run).toBe(true);
+    expect(lastSpawn().args).toContain('--dry-run');
+    await installTool.execute({ packages: 'foo' }, ctx, makeOpts());
+    expect(lastSpawn().args).not.toContain('--dry-run');
   });
 
   // ── Authorship tracking ────────────────────────────────────────────────────
@@ -357,20 +366,19 @@ describe('installTool', () => {
     try {
       await fs.writeFile(path.join(dir, 'pnpm-lock.yaml'), '');
       const ctx = makeCtx({ cwd: dir, projectRoot: dir });
-      const result = await installTool.execute({ packages: 'foo', save: 'dev' }, ctx, makeOpts());
-      expect(result).toHaveProperty('exit_code');
+      await installTool.execute({ packages: 'foo', save: 'dev' }, ctx, makeOpts());
+      const call = spawnStreamMock.mock.calls.at(-1)?.[0] as { cmd: string; args: string[] };
+      expect(call.cmd).toBe('pnpm');
+      expect(call.args).toEqual(expect.arrayContaining(['add', '-D', 'foo']));
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
   });
 
   it('passes save=optional flag', async () => {
-    const result = await installTool.execute(
-      { packages: 'foo', save: 'optional' },
-      makeCtx(),
-      makeOpts(),
-    );
-    expect(result).toHaveProperty('exit_code');
+    await installTool.execute({ packages: 'foo', save: 'optional' }, makeCtx(), makeOpts());
+    const call = spawnStreamMock.mock.calls.at(-1)?.[0] as { cmd: string; args: string[] };
+    expect(call.args).toContain('--save-optional');
   });
 
   it('builds yarn add args', async () => {
@@ -378,8 +386,10 @@ describe('installTool', () => {
     try {
       await fs.writeFile(path.join(dir, 'yarn.lock'), '');
       const ctx = makeCtx({ cwd: dir, projectRoot: dir });
-      const result = await installTool.execute({ packages: 'foo' }, ctx, makeOpts());
-      expect(result).toHaveProperty('exit_code');
+      await installTool.execute({ packages: 'foo' }, ctx, makeOpts());
+      const call = spawnStreamMock.mock.calls.at(-1)?.[0] as { cmd: string; args: string[] };
+      expect(call.cmd).toBe('yarn');
+      expect(call.args).toEqual(expect.arrayContaining(['add', 'foo']));
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

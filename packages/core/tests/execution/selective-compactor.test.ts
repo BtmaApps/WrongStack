@@ -4,9 +4,9 @@ import { estimateMessages } from '../../src/execution/compaction-core.js';
 import { CompactionSummaryCache } from '../../src/execution/compaction-summary-cache.js';
 import { SelectiveCompactor } from '../../src/execution/selective-compactor.js';
 import type { ContentBlock, TextBlock } from '../../src/types/blocks.js';
-import type { Message } from '../../src/types/messages.js';
 import type { Logger } from '../../src/types/logger.js';
-import type { Provider, Capabilities } from '../../src/types/provider.js';
+import type { Message } from '../../src/types/messages.js';
+import type { Capabilities, Provider } from '../../src/types/provider.js';
 import type { MessageSelector } from '../../src/types/selector.js';
 
 function makeTextBlock(text: string): TextBlock {
@@ -218,40 +218,58 @@ describe('SelectiveCompactor', () => {
         selector,
       });
 
-      const messages = [
-        makeMessage('user', [makeTextBlock('hello')]),
-        makeMessage('assistant', [makeTextBlock('hi')]),
-      ];
+      // Enough history to cross warnThreshold; two tiny messages never reached
+      // the selector, so the "fallback" was never exercised.
+      const messages = Array.from({ length: 20 }, (_, i) =>
+        makeMessage(i % 2 === 0 ? 'user' : 'assistant', [
+          makeTextBlock(`turn-${i} ${'x'.repeat(200)}`),
+        ]),
+      );
       const ctx = fakeContext(messages);
 
-      const report = await compactor.compact(ctx);
+      await compactor.compact(ctx);
 
-      // Should fall back without crashing
-      expect(report).toBeDefined();
+      expect(selector.select).toHaveBeenCalled();
+      // The recency trim still leaves a usable transcript ending in the latest turn.
+      expect(ctx.messages.length).toBeGreaterThan(0);
+      expect(JSON.stringify(ctx.messages.at(-1)?.content)).toContain('turn-19');
     });
 
     it('aggressive option triggers compaction even when below threshold', async () => {
-      const provider = makeFakeProvider([]);
-      const selector: MessageSelector = {
-        select: vi.fn().mockResolvedValue({ kept: [], collapsed: [], reasoning: '' }),
-      };
-      const compactor = new SelectiveCompactor({
-        provider,
-        warnThreshold: 0.9,
-        maxContext: 1000,
-        preserveK: 1,
-        selector,
-      });
-
-      const messages = [
-        makeMessage('user', [makeTextBlock('hello')]),
-        makeMessage('assistant', [makeTextBlock('hi')]),
+      // `aggressive` bypasses the warn threshold; the selector still only runs
+      // when the history exceeds the target budget (75% of the window below
+      // the soft threshold). Size the window so load sits between the 75%
+      // budget and the 0.9 warn threshold: then aggressive is the only switch.
+      const history = () => [
+        makeMessage('user', [makeTextBlock('old question '.repeat(60))]),
+        makeMessage('assistant', [makeTextBlock('old answer '.repeat(60))]),
+        makeMessage('user', [makeTextBlock('recent question')]),
+        makeMessage('assistant', [makeTextBlock('recent answer')]),
       ];
-      const ctx = fakeContext(messages);
+      const maxContext = Math.ceil(estimateMessages(history()) / 0.82);
+      const build = () => {
+        const selector: MessageSelector = {
+          select: vi.fn().mockResolvedValue({ kept: [], collapsed: [], reasoning: '' }),
+        };
+        const compactor = new SelectiveCompactor({
+          provider: makeFakeProvider([]),
+          warnThreshold: 0.9,
+          softThreshold: 0.95,
+          hardThreshold: 0.99,
+          maxContext,
+          preserveK: 1,
+          selector,
+        });
+        return { selector, compactor };
+      };
 
-      await compactor.compact(ctx, { aggressive: true });
+      const normal = build();
+      await normal.compactor.compact(fakeContext(history()));
+      expect(normal.selector.select).not.toHaveBeenCalled();
 
-      // aggressive should bypass threshold check
+      const aggressive = build();
+      await aggressive.compactor.compact(fakeContext(history()), { aggressive: true });
+      expect(aggressive.selector.select).toHaveBeenCalled();
     });
 
     it('returns CompactReport with before and after tokens', async () => {
@@ -443,8 +461,16 @@ describe('SelectiveCompactor', () => {
         reasoning: 'prune old',
       });
 
-      const sysMsg = ctx.messages.find((m) => m.role === 'system');
-      expect(sysMsg).toBeDefined();
+      // Range 0-1 becomes one summary; the preserved tail is untouched.
+      const text = (m: (typeof ctx.messages)[number]) => JSON.stringify(m.content);
+      expect(ctx.messages).toHaveLength(3);
+      expect(ctx.messages[0]?.role).toBe('system');
+      expect(text(ctx.messages[0]!)).toContain('old conversation');
+      const all = ctx.messages.map(text).join('\n');
+      expect(all).not.toContain('msg1');
+      expect(all).not.toContain('msg2');
+      expect(text(ctx.messages[1]!)).toContain('msg3');
+      expect(text(ctx.messages[2]!)).toContain('msg4');
     });
 
     it('reuses cached summaries for identical collapsed ranges', async () => {

@@ -4,7 +4,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PersistentProcessRegistry,
   resetPersistentProcessRegistry,
@@ -36,24 +36,49 @@ afterEach(async () => {
 });
 
 describe('PersistentProcessRegistry', () => {
-  it('constructs and starts', () => {
+  // Registration is fire-and-forget (background file writes), so these used to
+  // call the API and assert nothing. They now read the persisted registry back.
+  const entriesFor = async (reg: PersistentProcessRegistry) =>
+    (await reg.getGlobalStatus()).instances.get(reg.getInstanceId()) ?? [];
+
+  it('constructs and starts — start() protects the main process', async () => {
     const reg = new PersistentProcessRegistry();
     reg.start();
-    reg.stop();
+    try {
+      await vi.waitFor(async () => {
+        expect(await reg.getAllProtectedPids()).toContain(process.pid);
+      });
+    } finally {
+      reg.stop();
+    }
   });
 
-  it('registerMainProcess registers the current process', () => {
+  it('registerMainProcess registers the current process', async () => {
     const reg = new PersistentProcessRegistry();
     reg.start();
-    reg.registerMainProcess();
-    reg.stop();
+    try {
+      reg.registerMainProcess();
+      await vi.waitFor(async () => {
+        expect(await reg.isProtectedPid(process.pid)).toBe(true);
+      });
+    } finally {
+      reg.stop();
+    }
   });
 
-  it('registerChildProcess registers a child', () => {
+  it('registerChildProcess registers a child', async () => {
     const reg = new PersistentProcessRegistry();
     reg.start();
-    reg.registerChildProcess(12345, 'child', 'node child.js');
-    reg.stop();
+    try {
+      reg.registerChildProcess(12345, 'child', 'node child.js');
+      await vi.waitFor(async () => {
+        expect(await entriesFor(reg)).toContainEqual(
+          expect.objectContaining({ pid: 12345, name: 'child', command: 'node child.js' }),
+        );
+      });
+    } finally {
+      reg.stop();
+    }
   });
 
   it('getInstanceId returns a string', () => {
@@ -125,19 +150,40 @@ describe('PersistentProcessRegistry', () => {
     reg.stop();
   });
 
-  it('registerChildProcess with sessionId and spawnMode', () => {
+  it('registerChildProcess with sessionId and spawnMode', async () => {
     const reg = new PersistentProcessRegistry();
     reg.start();
-    reg.registerChildProcess(11111, 'named', 'cmd', 'session-1', 'fork');
-    reg.stop();
+    try {
+      reg.registerChildProcess(11111, 'named', 'cmd', 'session-1', 'fork');
+      await vi.waitFor(async () => {
+        expect(await entriesFor(reg)).toContainEqual(
+          expect.objectContaining({
+            pid: 11111,
+            name: 'named',
+            sessionId: 'session-1',
+            spawnMode: 'fork',
+          }),
+        );
+      });
+    } finally {
+      reg.stop();
+    }
   });
 
-  it('multiple start/stop cycles work', () => {
+  it('multiple start/stop cycles work', async () => {
     const reg = new PersistentProcessRegistry();
+    const id = reg.getInstanceId();
     reg.start();
     reg.stop();
     reg.start();
-    reg.stop();
+    try {
+      expect(reg.getInstanceId()).toBe(id);
+      await vi.waitFor(async () => {
+        expect(await reg.getAllProtectedPids()).toContain(process.pid);
+      });
+    } finally {
+      reg.stop();
+    }
   });
 });
 

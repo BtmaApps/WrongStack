@@ -148,10 +148,11 @@ describe('HQ server — /ws/browser token validation', () => {
     b.close();
   });
 
-  it('token mode: browsers with a revoked token are rejected after the server reloads', async () => {
-    // Phase 3 limitation: the server reads auth.json once at startup. Revoking
-    // a token requires a server restart to take effect. This test documents
-    // that behavior (Phase 4 will add live reload via file-watch).
+  it('token mode: a browser with a still-valid token connects and closes cleanly', async () => {
+    // Revocation (token removed from auth.json → live socket closed with 1008,
+    // reconnect refused) is covered against the live file watcher in
+    // hq-auth-phase4.test.ts. This test only pins the happy path. Its old
+    // name claimed revocation while never revoking anything.
     const h = await startWithTokens([
       { id: 't1', token: 'token-to-keep', createdAt: '2026-06-21T00:00:00.000Z' },
     ]);

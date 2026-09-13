@@ -179,13 +179,15 @@ describe('Phase 4: parent/child atomic gate', () => {
       ],
     });
     // Should succeed — all children are done.
-    await transitionTask(tmpDir, boardId, parentId, {
-      to: 'done',
-      actor: 'reviewer',
-      action: 'Approved',
-      comment: 'LGTM',
-      attachment: { url: 'kanban://parent-review', title: 'Review', type: 'doc' as const },
-    });
+    await expect(
+      transitionTask(tmpDir, boardId, parentId, {
+        to: 'done',
+        actor: 'reviewer',
+        action: 'Approved',
+        comment: 'LGTM',
+        attachment: { url: 'kanban://parent-review', title: 'Review', type: 'doc' as const },
+      }),
+    ).resolves.toMatchObject({ transition: { to: 'done' } });
   });
 });
 

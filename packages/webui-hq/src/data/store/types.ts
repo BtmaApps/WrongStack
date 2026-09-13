@@ -21,7 +21,8 @@ export type HqViewId =
   | 'brain'
   | 'worktree'
   | 'control'
-  | 'settings';
+  | 'settings'
+  | 'events';
 
 /**
  * The most recent peer-lifecycle envelope the dashboard has seen: either a

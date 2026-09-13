@@ -384,8 +384,12 @@ describe('MCPClient', () => {
   describe('onLine() — JSON-RPC parsing edge cases', () => {
     it('onLine ignores malformed JSON', () => {
       const c = new MCPClient({ name: 'malformed-json', transport: 'stdio', command: 'echo' });
-      (c as never as { onLine: (line: string) => void }).onLine('not json at all {{{');
-      // Should not throw and should not call any handler
+      const toolsChanged = vi.fn();
+      c.addToolsChangedListener(toolsChanged);
+      expect(() =>
+        (c as never as { onLine: (line: string) => void }).onLine('not json at all {{{'),
+      ).not.toThrow();
+      expect(toolsChanged).not.toHaveBeenCalled();
     });
 
     it('onLine handles server-initiated list_changed notification', async () => {
@@ -397,12 +401,20 @@ describe('MCPClient', () => {
       });
       const toolsChanged = vi.fn();
       c.addToolsChangedListener(toolsChanged);
+      // No child process here: stub the tools/list round-trip the handler makes.
+      const request = vi.fn(async () => ({
+        result: { tools: [{ name: 'fresh_tool', inputSchema: { type: 'object' } }] },
+      }));
+      (c as never as { request: typeof request }).request = request;
       // Simulate server sending a list_changed notification (no id)
       (c as never as { onLine: (line: string) => void }).onLine(
         JSON.stringify({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' }),
       );
-      // Allow async handleToolsListChanged to complete
-      await new Promise((r) => setTimeout(r, 50));
+      await vi.waitFor(() => expect(toolsChanged).toHaveBeenCalledTimes(1));
+      expect(request).toHaveBeenCalledWith('tools/list', {});
+      const [serverName, tools] = toolsChanged.mock.calls[0] as [string, Array<{ name: string }>];
+      expect(serverName).toBe('server-list-changed');
+      expect(tools.map((t) => t.name)).toEqual(['fresh_tool']);
     });
 
     it('does not resolve a pending call from a colliding server request', () => {

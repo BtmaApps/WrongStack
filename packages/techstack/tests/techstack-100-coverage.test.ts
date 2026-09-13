@@ -2081,25 +2081,34 @@ describe('TechStack 100% Coverage Suite', () => {
       clearRegistryCache();
 
       // Mock requestWithRetry to return successful metadata
-      vi.spyOn(httpFetch, 'requestWithRetry').mockResolvedValue({
+      const request = vi.spyOn(httpFetch, 'requestWithRetry').mockResolvedValue({
         statusCode: 200,
         headers: {},
         body: JSON.stringify({ 'dist-tags': { latest: '1.0.0' } }),
       });
 
-      // Insert an entry with expired timestamp into registryCache
       await lookupRegistry('npm', 'expiring-pkg');
-      // Advance time by default TTL + 1ms to trigger lines 54-55
+      expect(request).toHaveBeenCalledTimes(1);
+      // A fresh entry is served from cache.
+      await lookupRegistry('npm', 'expiring-pkg');
+      expect(request).toHaveBeenCalledTimes(1);
+      // Past the TTL the entry is dropped and fetched again.
       const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000);
-      // Next lookup for same key should see Date.now() > entry.expiresAt and delete it
       await lookupRegistry('npm', 'expiring-pkg');
       nowSpy.mockRestore();
+      expect(request).toHaveBeenCalledTimes(2);
 
-      // Trigger trimCache lines 71-78 by populating > 512 entries
-      // We can directly call lookupRegistry or mock registryCache size
+      // Populate past the 512-entry cap: the oldest entries are evicted.
+      clearRegistryCache();
+      request.mockClear();
       for (let i = 0; i <= 515; i++) {
         await lookupRegistry('npm', `pkg-cache-${i}`);
       }
+      expect(request).toHaveBeenCalledTimes(516);
+      await lookupRegistry('npm', 'pkg-cache-515'); // newest: still cached
+      expect(request).toHaveBeenCalledTimes(516);
+      await lookupRegistry('npm', 'pkg-cache-0'); // oldest: evicted → refetch
+      expect(request).toHaveBeenCalledTimes(517);
 
       vi.restoreAllMocks();
     });

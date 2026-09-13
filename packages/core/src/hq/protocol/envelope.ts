@@ -57,6 +57,20 @@ export interface HqEventEnvelope<TPayload = unknown> {
   projectId: string;
   sessionId?: string;
   runId?: string;
+  /**
+   * Groups envelopes that belong to one logical activity, so a consumer can
+   * render a causal chain instead of independent rows.
+   *
+   * Producer-assigned and opaque to HQ: the id is whatever the emitting
+   * bridge considers the unit of work — a Brain decision request id, a fleet
+   * run id. Two envelopes sharing it are the same activity observed twice
+   * (requested → answered), never a duplicate delivery, which is what
+   * distinguishes this from `id` (one envelope) and `seq` (ordering).
+   *
+   * Optional and additive: an envelope without it is simply uncorrelated, so
+   * older publishers need no change and consumers must not require it.
+   */
+  correlationId?: string;
   seq: number;
   payload: TPayload;
 }

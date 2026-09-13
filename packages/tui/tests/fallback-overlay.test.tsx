@@ -71,16 +71,6 @@ describe('FallbackOverlay', () => {
     view.unmount();
   });
 
-  it('calls onChoose with null on Esc (tested indirectly via countdown)', () => {
-    // ink-testing-library cannot reliably produce key.escape from a lone \x1b
-    // (readline buffers it). The Esc→null path is verified by the countdown
-    // expiry test below which also resolves null when candidates[0] is the
-    // default auto-switch target. Here we just verify the guard prevents
-    // double-firing when Enter precedes the countdown.
-    // See RefineCountdownPanel tests for the same limitation.
-    expect(true).toBe(true);
-  });
-
   it('calls onMove(-1) on up arrow', () => {
     const onMove = vi.fn();
     const view = render(React.createElement(FallbackOverlay, { ...baseProps, onMove }));

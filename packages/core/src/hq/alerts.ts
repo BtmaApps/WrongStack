@@ -38,13 +38,39 @@ export interface HqAlertRuleConfig {
    * Default 24. Set to 0 to disable the warning entirely (expired-only alert remains).
    */
   tokenExpiryWarningHours?: number;
+  /**
+   * W3 #2 (RFC hq-improvements-2026-09.md): operator-configured throughput
+   * budget in USD. When the fleet's cumulative `totalCostUsd` reaches
+   * this absolute budget, the `fleet-throughput-budget` rule fires
+   * with `severity: 'warn'` — distinct from `fleet-cost-threshold`
+   * (per-call threshold, default 50) and intended as the operator's
+   * hard ceiling for a billing period.
+   *
+   * Default 0 (disabled). Set to a positive number to enable. The
+   * host wires this via `alerts-config.json` (see the W2 #13 module)
+   * so an operator can tune it without restarting the engine.
+   */
+  throughputBudgetUsd?: number;
+  /**
+   * W3 #2: minutes over which the throughput rate is computed when
+   * the snapshot provides a `throughputPerMinuteUsd` field. Default 60
+   * (a 1-hour rate). Reserved for the timeseries-based projection
+   * variant of the rule; the current implementation reads the absolute
+   * `totalCostUsd` from the snapshot.
+   */
+  throughputLookbackMinutes?: number;
 }
 
 /** The fully-resolved config passed to rule.evaluate (no optional fields). */
 type ResolvedAlertConfig = Required<
   Pick<
     HqAlertRuleConfig,
-    'costThresholdUsd' | 'staleMachineSeconds' | 'maxAgents' | 'tokenExpiryWarningHours'
+    | 'costThresholdUsd'
+    | 'staleMachineSeconds'
+    | 'maxAgents'
+    | 'tokenExpiryWarningHours'
+    | 'throughputBudgetUsd'
+    | 'throughputLookbackMinutes'
   >
 >;
 
@@ -64,7 +90,22 @@ const DEFAULT_CONFIG: ResolvedAlertConfig = {
   staleMachineSeconds: 120,
   maxAgents: 0,
   tokenExpiryWarningHours: 24,
+  // W3 #2: throughput-budget fields. Default 0 = disabled; the rule is
+  // a no-op until the operator sets a positive budget via alerts-config.json.
+  // 60 minutes is the conventional lookback window for hourly budgets.
+  throughputBudgetUsd: 0,
+  throughputLookbackMinutes: 60,
 };
+
+/**
+ * W2 #12: default cap on a single snooze request (24 hours). Picked to be
+ * long enough to mute an overnight CI run or a known deploy window, short
+ * enough that a forgotten snooze does not silence alerting past a single
+ * operational shift. Operators can override per-call via
+ * {@link HqAlertEngine.snooze} returning `clamped: true`, or globally by
+ * constructing the engine with `maxSnoozeMs`.
+ */
+const DEFAULT_MAX_SNOOZE_MS = 24 * 60 * 60_000;
 
 function resolveConfig(config?: HqAlertRuleConfig): ResolvedAlertConfig {
   return { ...DEFAULT_CONFIG, ...(config ?? {}) };
@@ -79,6 +120,41 @@ const RULES: readonly HqAlertRule[] = [
       const cost = snapshot.totals.totalCostUsd ?? 0;
       if (cost >= config.costThresholdUsd) {
         return `Fleet cost $${cost.toFixed(2)} exceeded threshold $${config.costThresholdUsd.toFixed(2)}`;
+      }
+      return null;
+    },
+  },
+  /**
+   * W3 #2 (RFC hq-improvements-2026-09.md): throughput-budget rule.
+   *
+   * Fires when the fleet's cumulative `totalCostUsd` meets or exceeds the
+   * operator-configured `throughputBudgetUsd`. Distinct from
+   * `fleet-cost-threshold` (which is a per-call threshold, default 50):
+   * the throughput-budget rule is the operator's hard ceiling for a
+   * billing period, host-wired via `alerts-config.json` (W2 #13).
+   *
+   * Disabled by default (default `throughputBudgetUsd: 0` → rule is a
+   * no-op). When the operator sets a positive budget in
+   * `alerts-config.json`, the rule fires once the fleet crosses that
+   * ceiling.
+   *
+   * `throughputLookbackMinutes` is wired into the config for future
+   * timeseries-based projection (rate-per-minute extrapolation); the
+   * current implementation reads only the absolute `totalCostUsd`
+   * from the snapshot because the snapshot does not yet carry a
+   * per-minute rate field. When the snapshot gains that field, the
+   * rule can be extended to fire on projected spend, not just absolute.
+   */
+  {
+    id: 'fleet-throughput-budget',
+    severity: 'warn',
+    evaluate: (snapshot, config) => {
+      if (snapshot === null) return null;
+      // Disabled when the operator hasn't set a budget.
+      if (config.throughputBudgetUsd <= 0) return null;
+      const cost = snapshot.totals.totalCostUsd ?? 0;
+      if (cost >= config.throughputBudgetUsd) {
+        return `Fleet spend $${cost.toFixed(2)} exceeded throughput budget $${config.throughputBudgetUsd.toFixed(2)} (lookback ${config.throughputLookbackMinutes}min)`;
       }
       return null;
     },
@@ -159,22 +235,142 @@ export class HqAlertEngine {
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly onAlert: (alert: HqAlert) => void;
   private readonly onPersist?: ((alert: HqAlert) => void) | undefined;
+  // W2 #12 (RFC hq-improvements-2026-09.md): per-rule snooze. A rule whose
+  // `snoozedUntil > now` is skipped during evaluation, with no firing or
+  // clearing emission. Operators can mute a noisy rule for a bounded window
+  // without disabling it entirely. Persisted to `<dataDir>/alerts-config.json`
+  // by the owner of that file (see W2 #13).
+  private readonly snoozes = new Map<string, number>();
+  // W2 #12: hard cap on a single snooze duration. Without this, an operator
+  // typo or a hostile script could pass `Number.POSITIVE_INFINITY` and silence
+  // a rule forever, defeating the "alerting engine" purpose. Default 24h;
+  // tunable via the constructor for tests.
+  private readonly maxSnoozeMs: number;
 
   constructor(opts: {
     onAlert: (alert: HqAlert) => void;
     maxHistory?: number;
-    /** Optional durable sink — fires when an alert transitions to firing. */
+    /**
+     * Optional durable sink — fires when an alert transitions to firing.
+     */
     onPersist?: ((alert: HqAlert) => void) | undefined;
+    /**
+     * W2 #12: maximum single-call snooze duration in ms. Default 24h.
+     * Requests above the cap are clamped to the cap (and surfaced via the
+     * return value of {@link snooze}).
+     */
+    maxSnoozeMs?: number | undefined;
   }) {
     this.onAlert = opts.onAlert;
     this.maxHistory = opts.maxHistory ?? 500;
     this.onPersist = opts.onPersist;
+    this.maxSnoozeMs = opts.maxSnoozeMs ?? DEFAULT_MAX_SNOOZE_MS;
+  }
+
+  /**
+   * Snooze a rule until `untilMs` (epoch ms). A snoozed rule is skipped in
+   * every subsequent {@link evaluate} until the deadline passes; it does
+   * NOT fire on the way out (unlike a state transition). Snoozing an
+   * already-snoozed rule replaces the deadline.
+   *
+   * Returns the effective deadline after clamping to `maxSnoozeMs`. If the
+   * effective deadline differs from the requested one, the caller learns
+   * this via `clamped: true` so it can surface it (e.g. "snoozed for 24h,
+   * the cap; you asked for 30d").
+   *
+   * If a rule is currently active (firing), the snooze is recorded but the
+   * active entry is NOT immediately cleared — the dashboard may still want
+   * to see "this rule was firing when you snoozed it" until the next tick
+   * skips it. Clearing on snooze would let a stale alert outlive the snooze.
+   */
+  snooze(
+    ruleId: string,
+    untilMs: number,
+    now: number = Date.now(),
+  ): { effectiveUntilMs: number; clamped: boolean } {
+    // Refuse snoozes for unknown rules. Silent acceptance would let an
+    // operator typo (`fleet-cost-threshld`) freeze alerting without any
+    // signal that the rule doesn't exist.
+    const known = RULES.some((r) => r.id === ruleId);
+    if (!known) {
+      throw new Error(`Unknown alert rule: ${ruleId}`);
+    }
+    if (!Number.isFinite(untilMs)) {
+      throw new Error(`snooze deadline must be a finite epoch-ms; got ${String(untilMs)}`);
+    }
+    const requested = Math.max(untilMs, now);
+    const cap = now + this.maxSnoozeMs;
+    const clamped = requested > cap;
+    const effectiveUntilMs = clamped ? cap : requested;
+    this.snoozes.set(ruleId, effectiveUntilMs);
+    return { effectiveUntilMs, clamped };
+  }
+
+  /**
+   * Clear an active snooze. If `ruleId` is not currently snoozed, this is
+   * a no-op (returns false). Returns true if a snooze was cleared.
+   *
+   * Note: this does NOT immediately fire any cleared-on-snooze rule. The
+   * next {@link evaluate} tick will re-evaluate from scratch, so a rule
+   * whose condition still holds will refire on that next tick — exactly
+   * the desired "I un-muted it; if it's still going off, tell me" behavior.
+   */
+  unsnooze(ruleId: string): boolean {
+    return this.snoozes.delete(ruleId);
+  }
+
+  /**
+   * True if the rule is currently snoozed. Exposed for tests and for the
+   * dashboard's "snoozed until T-12m" badge.
+   */
+  isSnoozed(ruleId: string, now: number = Date.now()): boolean {
+    const until = this.snoozes.get(ruleId);
+    if (until === undefined) return false;
+    if (until <= now) {
+      // Lazy expiry: drop the entry so the map stays bounded. Without this,
+      // a long-lived engine accumulates one stale entry per rule.
+      this.snoozes.delete(ruleId);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Snapshot of every active snooze. Returned as a plain object so the
+   * dashboard and the persistence layer (W2 #13) don't have to care about
+   * the internal Map shape.
+   */
+  snoozesSnapshot(now: number = Date.now()): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const [ruleId, untilMs] of this.snoozes) {
+      if (untilMs > now) out[ruleId] = untilMs;
+    }
+    return out;
+  }
+
+  /**
+   * Seed snoozes on boot (or when the persisted file is reloaded). Existing
+   * entries are NOT cleared — a fresh load from disk is authoritative, but
+   * in-flight snoozes set via the API between file writes are preserved.
+   *
+   * Past-deadline entries are filtered out at seed time, since the engine's
+   * "now" on boot may be later than the persisted deadline.
+   */
+  seedSnoozes(snoozes: Readonly<Record<string, number>>, now: number = Date.now()): void {
+    for (const [ruleId, untilMs] of Object.entries(snoozes)) {
+      if (!Number.isFinite(untilMs)) continue;
+      if (untilMs <= now) continue;
+      this.snoozes.set(ruleId, untilMs);
+    }
   }
 
   /**
    * Evaluate all rules against the snapshot. Emits (via the `onAlert`
    * callback) only for rules that newly transition to firing. Clears rules
    * that are no longer firing. Returns the list of newly-fired alerts.
+   *
+   * Snoozed rules are skipped entirely (no firing, no clearing emission)
+   * to match the operator's intent: "silence this until I unmute it."
    */
   evaluate(
     snapshot: HqSnapshot | null,
@@ -186,6 +382,13 @@ export class HqAlertEngine {
     const firingIds = new Set<string>();
 
     for (const rule of RULES) {
+      // W2 #12: snoozed rules skip evaluation. We do NOT clear the
+      // `active` entry on snooze — if the rule was firing when snoozed,
+      // the active record stays until the snooze expires and the rule
+      // re-evaluates fresh. This matches the dashboard's "snoozed while
+      // firing" badge.
+      if (this.isSnoozed(rule.id, now)) continue;
+
       const message = rule.evaluate(snapshot, resolved, now);
       if (message !== null) {
         firingIds.add(rule.id);
@@ -215,8 +418,17 @@ export class HqAlertEngine {
     }
 
     // Clear rules no longer firing.
+    //
+    // W2 #12: a rule that was firing when snoozed (so it has an active
+    // entry but was SKIPPED in the per-rule loop above — and therefore
+    // has no entry in `firingIds`) must NOT be cleared here. The whole
+    // point of snoozing is to preserve the "this rule was firing when I
+    // muted it" badge on the dashboard until the snooze expires and the
+    // rule re-evaluates fresh. Without this guard, a cost-drop evaluate
+    // while snoozed would silently drop the active entry — exactly the
+    // bug the W2 #12 test "evaluate skips snoozed rules entirely" guards.
     for (const id of Array.from(this.active.keys())) {
-      if (!firingIds.has(id)) {
+      if (!firingIds.has(id) && !this.isSnoozed(id, now)) {
         this.active.delete(id);
       }
     }

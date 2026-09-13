@@ -27,6 +27,7 @@ import {
   ACPSessionError,
   textContent,
 } from '../client/acp-session.js';
+import type { ACPSessionRunResult } from '../client/acp-session-types.js';
 import type { PermissionPolicy } from '../client/permission.js';
 import { findAgentDescriptor } from '../registry/agents.catalog.js';
 import type { McpServer } from '../types/acp-v1.js';
@@ -211,16 +212,9 @@ export async function makeACPSubagentRunnerWithStop(
       }
     };
 
+    let result: ACPSessionRunResult;
     try {
-      const result = await session.prompt([textContent(task.description)], ctx.signal, onProgress);
-      // Surface the real tool-call count captured from the stream. A
-      // text-less turn is a soft signal (an ACP agent may legitimately
-      // end with no message), not an error.
-      return {
-        result: result.text,
-        iterations: 1,
-        toolCalls: result.toolCalls.length,
-      };
+      result = await session.prompt([textContent(task.description)], ctx.signal, onProgress);
     } catch (err) {
       throw acpErrorToSubagentError(err, options.role ?? 'acp-subagent');
     } finally {
@@ -234,6 +228,22 @@ export async function makeACPSubagentRunnerWithStop(
         }
       }
     }
+
+    // A resolved prompt is not automatically a completed task: the session
+    // returns (rather than throws) a cancelled turn, and a refusal or a
+    // token/turn limit also resolves. Those used to reach the coordinator as
+    // `status: 'success'`, the same false green AgentSubagentRunner guards.
+    const failure = acpTurnFailure(result, options.role ?? 'acp-subagent');
+    if (failure) throw failure;
+
+    // Surface the real tool-call count captured from the stream. A text-less
+    // turn that DID call tools is legitimate work; only a turn with neither
+    // text nor tool calls is rejected above.
+    return {
+      result: result.text,
+      iterations: 1,
+      toolCalls: result.toolCalls.length,
+    };
   };
 
   // In persistent mode stop() closes the long-lived session; in one-shot
@@ -288,6 +298,39 @@ function acpErrorToSubagentError(err: unknown, subagentId: string): SubagentErro
       ...(err instanceof Error && err.stack !== undefined ? { stack: err.stack } : {}),
     },
   };
+}
+
+/**
+ * Classify a resolved ACP turn that must not count as a completed task.
+ * Unknown extension stop reasons (the protocol allows arbitrary strings) are
+ * accepted as long as the turn produced something.
+ */
+function acpTurnFailure(result: ACPSessionRunResult, subagentId: string): SubagentError | null {
+  const fail = (kind: SubagentErrorKind, detail: string): SubagentError => ({
+    kind,
+    message: `${subagentId}: ${detail}`,
+    retryable: false,
+  });
+  switch (result.stopReason) {
+    case 'cancelled':
+      return fail('aborted_by_parent', 'prompt turn was cancelled before the task completed');
+    case 'refusal':
+      return fail('unknown', 'agent refused the task (stopReason=refusal)');
+    case 'max_tokens':
+      return fail(
+        'budget_tokens',
+        'agent hit its token limit before finishing (stopReason=max_tokens)',
+      );
+    case 'max_turn_requests':
+      return fail(
+        'budget_iterations',
+        'agent hit its turn-request limit before finishing (stopReason=max_turn_requests)',
+      );
+  }
+  if (!result.hasText && result.toolCalls.length === 0) {
+    return fail('empty_response', 'agent ended its turn with no text and no tool calls');
+  }
+  return null;
 }
 
 function mapACPKind(acpKind: ACPSessionErrorKind): SubagentErrorKind {

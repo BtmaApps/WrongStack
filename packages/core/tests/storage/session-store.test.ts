@@ -156,12 +156,9 @@ describe('DefaultSessionStore — with EventBus', () => {
 describe('DefaultSessionStore — delete on nonexistent', () => {
   it('delete does not throw for nonexistent session', async () => {
     const store = new DefaultSessionStore({ dir: tmpDir });
-    // delete should be idempotent or throw a known error, not crash
-    try {
-      await store.delete('nonexistent-id');
-    } catch (e) {
-      // Expected — just verify it doesn't crash the process
-      expect(e).toBeInstanceOf(Error);
-    }
+    // Without an in-use guard or a catalog there is nothing to refuse:
+    // deleting an unknown id is idempotent. The old try/catch accepted
+    // either outcome and so asserted nothing.
+    await expect(store.delete('nonexistent-id')).resolves.toBeUndefined();
   });
 });

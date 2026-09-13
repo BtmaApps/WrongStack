@@ -57,9 +57,8 @@ describe('WrongStackWebSocketClient.on — generic type narrowing', () => {
     const handler = (msg: Extract<WSServerMessage, { type: 'tool.executed' }>) => {
       void msg;
     };
-    // Both the literal-key and string overloads of off() should be callable.
-    client.off('tool.executed', handler);
-    // If either overload were missing, this file wouldn't compile.
-    expect(true).toBe(true);
+    // Both the literal-key and string overloads of off() should be callable,
+    // including for a handler that was never registered.
+    expect(() => client.off('tool.executed', handler)).not.toThrow();
   });
 });

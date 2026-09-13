@@ -160,10 +160,12 @@ describe('sage middleware 100% coverage suite', () => {
         ctx: { projectRoot: '/p', cwd: '/p' } as any,
         result: { type: 'tool_result', tool_use_id: 'c', content: 'err', is_error: true },
       };
-      await mwNoSurface.handler(payloadErr, async (p) => p);
+      await expect(mwNoSurface.handler(payloadErr, async (p) => p)).resolves.toBe(payloadErr);
 
+      const listSage = vi.fn(async () => []);
+      const updateSage = vi.fn();
       const mwLimited = createSagePathRemapMiddleware({
-        memory: makePort({ listSage: vi.fn(async () => []), updateSage: vi.fn() }),
+        memory: makePort({ listSage, updateSage }),
         maxPerHour: 0, // blocks all
       });
       const payloadOk: ToolCallPipelinePayload = {
@@ -176,7 +178,10 @@ describe('sage middleware 100% coverage suite', () => {
         ctx: { projectRoot: '/p', cwd: '/p' } as any,
         result: { type: 'tool_result', tool_use_id: 'c2', content: 'ok', is_error: false },
       };
-      await mwLimited.handler(payloadOk, async (p) => p);
+      await expect(mwLimited.handler(payloadOk, async (p) => p)).resolves.toBe(payloadOk);
+      // Rate limiter at 0/hour: the rename must not touch stored memories.
+      expect(listSage).not.toHaveBeenCalled();
+      expect(updateSage).not.toHaveBeenCalled();
     });
   });
 

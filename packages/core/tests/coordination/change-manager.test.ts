@@ -1,17 +1,17 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ChangeManager,
-  DEFAULT_QUALITY_CHECKS,
   type ChangeFile,
+  ChangeManager,
   type ChangeProposal,
+  DEFAULT_QUALITY_CHECKS,
 } from '../../src/coordination/change-manager.js';
+import type { ConsensusProtocol } from '../../src/coordination/consensus-protocol.js';
+import type { FleetBus } from '../../src/coordination/fleet-bus.js';
 import type {
   ChangeNode,
   KnowledgeGraph,
   QualityGateResult,
 } from '../../src/coordination/knowledge-graph.js';
-import type { ConsensusProtocol } from '../../src/coordination/consensus-protocol.js';
-import type { FleetBus } from '../../src/coordination/fleet-bus.js';
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
@@ -442,7 +442,7 @@ describe('ChangeManager', () => {
   });
 
   describe('custom quality checks', () => {
-    it('respects custom quality gate configuration', () => {
+    it('respects custom quality gate configuration', async () => {
       const customManager = new ChangeManager({
         graph,
         consensus,
@@ -453,7 +453,21 @@ describe('ChangeManager', () => {
         },
       });
 
-      expect(customManager).toBeDefined();
+      // The old test only asserted the manager existed, so an ignored `checks`
+      // option passed. The gate is where the config takes effect.
+      const gate = await (
+        customManager as unknown as {
+          _runQualityGate(
+            id: string,
+            files: unknown[],
+          ): Promise<{ passed: boolean; checks: Array<{ name: string }> }>;
+        }
+      )._runQualityGate('change-x', []);
+      const names = gate.checks.map((c) => c.name);
+      expect(names).toContain('lint');
+      expect(names).not.toContain('tests');
+      // Pending checks mean the gate has not passed yet.
+      expect(gate.passed).toBe(false);
     });
   });
 });

@@ -224,7 +224,9 @@ describe('registerSetupEventsFleetBroadcaster', () => {
 
   it('handles list errors gracefully', async () => {
     const resolvedRoot = path.resolve('/matched/project');
-    mocks.mockList.mockRejectedValueOnce(new Error('Registry read failure'));
+    // Every read fails: registration fires its own initial broadcast, so a
+    // `…Once` rejection was consumed there and the callback read succeeded.
+    mocks.mockList.mockRejectedValue(new Error('Registry read failure'));
     let onFleetCallback: (() => Promise<void>) | undefined;
     const broadcast = vi.fn();
     const dispose = registerSetupEventsFleetBroadcaster({
@@ -238,21 +240,44 @@ describe('registerSetupEventsFleetBroadcaster', () => {
       isDisposed: () => false,
     });
 
-    await onFleetCallback?.();
+    expect(onFleetCallback).toBeTypeOf('function');
+    // Imports issued during registration can resolve to the real core module
+    // (it read a non-existent /fake root and broadcast `[]`), so the old test
+    // never reached the mocked failing `list`. Settle, drop that startup
+    // broadcast, then exercise the error path through the mock.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    broadcast.mockClear();
+    mocks.mockList.mockClear();
+    await expect(onFleetCallback?.()).resolves.toBeUndefined();
+    expect(mocks.mockList).toHaveBeenCalled();
+    // A registry read failure must not push a (wrong, empty) status update.
+    expect(broadcast).not.toHaveBeenCalled();
     dispose?.();
   });
 
   it('bails out early if disposed', async () => {
-    let disposed = true;
+    const disposed = true;
+    const broadcast = vi.fn();
+    // A readable registry, so a missing disposal guard WOULD broadcast.
+    mocks.mockList.mockResolvedValue([]);
+    let onFleetCallback: (() => Promise<void>) | undefined;
     const dispose = registerSetupEventsFleetBroadcaster({
       globalConfigPath: path.join('/fake', 'root', 'config.json'),
       context: { projectRoot: '/project' } as never,
       clients: new Map(),
-      broadcast: vi.fn(),
+      broadcast,
+      onFleetBroadcaster: (fn) => {
+        onFleetCallback = fn;
+      },
       isDisposed: () => disposed,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Await the broadcast path itself instead of racing a short sleep against
+    // the registration-time import (which let this pass with no guard at all).
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await onFleetCallback?.();
+    expect(broadcast).not.toHaveBeenCalled();
+    expect(mocks.mockList).not.toHaveBeenCalled();
     dispose?.();
   });
 });

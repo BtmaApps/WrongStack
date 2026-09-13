@@ -223,19 +223,21 @@ describe('PerSubcommandHelp shape (data contract)', () => {
   });
 
   it('every entry that declares subcommands renders the Subcommands table', () => {
+    // helpTable is not exported, so infer from output: the header is only
+    // emitted when an entry has at least one subcommand, and it must never
+    // be an empty table (header followed by no rows).
+    const withTable: string[] = [];
     for (const name of subcommandsWithFocusedHelp) {
       const renderer = makeRenderer();
       renderFocusedHelp(name, renderer);
-      void capture(renderer);
-      // The doctor/diag/init/etc. entries have no subcommands;
-      // they should NOT render the table header. mcp/plugin/
-      // models/etc. should. The test below is loose: we just
-      // assert that "Subcommands" appears if and only if the
-      // entry has a subcommand table.
-      // (We can't introspect the entry from here without
-      // exporting helpTable — instead, the test below is a
-      // smoke test for the specific subcommand-bearing entries.)
+      const lines = capture(renderer).split('\n');
+      const header = lines.findIndex((l) => l.includes('Subcommands'));
+      if (header === -1) continue;
+      withTable.push(name);
+      expect(lines[header + 1], `${name}: Subcommands table has no rows`).toMatch(/^\s{2}\S/);
     }
+    // Guards against the renderer silently dropping every table.
+    expect(withTable.length).toBeGreaterThan(0);
   });
 
   it('doctor and diag focused help blocks do NOT render a Subcommands table (no subcommands)', () => {

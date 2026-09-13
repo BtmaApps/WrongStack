@@ -167,9 +167,12 @@ describe('validateCommand', () => {
     expect(result).toContain('blocked');
   });
 
+  // The rejection tests below used to assert only `not.toBeNull()`, so a
+  // command refused for the WRONG reason (e.g. an operator chain rejected as
+  // "unknown command") still passed. Each gate must name its own reason.
   it('rejects shell operators by default', () => {
     const result = validateCommand('pwd && rm -rf /', makeConfig());
-    expect(result).not.toBeNull();
+    expect(result).toContain('shell operators');
   });
 
   it('allows shell operators when explicitly enabled', () => {
@@ -178,8 +181,13 @@ describe('validateCommand', () => {
   });
 
   it('rejects unknown commands when allowAll is false', () => {
-    const result = validateCommand('curl http://evil.com', makeConfig());
-    expect(result).not.toBeNull();
+    // `curl` is on the default BLOCKLIST, so this test used to exercise the
+    // blocked path and never the allowlist path its name describes (exposed
+    // once the reason was asserted). Use a genuinely unknown command.
+    const result = validateCommand('frobnicate --now', makeConfig());
+    expect(result).toContain('not in the verifier allowlist');
+    // The allowlist is the gate: opening it admits the same command.
+    expect(validateCommand('frobnicate --now', makeConfig({ allowAll: true }))).toBeNull();
   });
 
   it('allows unknown commands when allowAll is true', () => {
@@ -191,17 +199,18 @@ describe('validateCommand', () => {
   it('still blocks blocked commands even with allowAll', () => {
     const config = makeConfig({ allowAll: true });
     const result = validateCommand('rm -rf /', config);
-    expect(result).not.toBeNull();
+    // allowAll opens the allowlist, never the blocklist.
+    expect(result).toContain('blocked');
   });
 
   it('rejects environment variable expansion', () => {
     const result = validateCommand('echo $HOME', makeConfig({ allowAll: true }));
-    expect(result).not.toBeNull();
+    expect(result).toContain('environment-variable expansion');
   });
 
   it('rejects Windows-style env expansion', () => {
     const result = validateCommand('echo %PATH%', makeConfig({ allowAll: true }));
-    expect(result).not.toBeNull();
+    expect(result).toContain('environment-variable expansion');
   });
 });
 

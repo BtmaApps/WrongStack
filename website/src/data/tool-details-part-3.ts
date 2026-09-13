@@ -429,11 +429,6 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
         description: 'Test runner (default: auto-detect)',
       },
       {
-        name: 'watch',
-        type: 'boolean',
-        description: 'Run in watch mode (default: false)',
-      },
-      {
         name: 'coverage',
         type: 'boolean',
         description: 'Generate coverage report (default: false)',

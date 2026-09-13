@@ -253,47 +253,56 @@ describe('exec timer and buffer paths', () => {
   // when pid is number, falls back to child.kill('SIGTERM') otherwise.
   // Exercises the callback body by letting the timeout timer fire.
   it('exercises timer callback with timeout large enough for spawn', async () => {
-    // Uses a real temp dir so the spawn succeeds.
+    // Uses a real temp dir so the spawn succeeds. A command that finishes well
+    // inside its timeout keeps its real exit code — the timer must not fire.
     const sb = await mkRealSandbox();
     try {
-      const { result, error } = await settle(
-        execTool.execute({ command: 'echo', args: ['start'], timeout: 500 }, sb.ctx, makeOpts()),
-      );
-      // Either way the timer callback body ran; just verify no crash. (`echo`
-      // is a cmd builtin on Windows, so the launch itself may fail there.)
-      if (error) expect(error.message).toMatch(/exec: (spawn failed|process error)/);
-      else expect(result).toHaveProperty('exitCode');
+      const result = (await execTool.execute(
+        { command: 'node', args: ['-e', "process.stdout.write('start')"], timeout: 15_000 },
+        sb.ctx,
+        makeOpts(),
+      )) as { stdout: string; exitCode: number };
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('start');
     } finally {
       await sb.cleanup();
     }
   });
 
   it('exercises timer callback with very short timeout', async () => {
+    // A process that outlives its timeout is killed and reported as exit 124 —
+    // never as success, and without waiting for the process to end on its own.
     const sb = await mkRealSandbox();
     try {
-      const { result, error } = await settle(
-        execTool.execute({ command: 'echo', args: ['ok'], timeout: 20 }, sb.ctx, makeOpts()),
-      );
-      // exitCode may be 0 (completed) or 124 (killed) — just verify no crash.
-      if (error) expect(error.message).toMatch(/exec: (spawn failed|process error)/);
-      else expect(result).toHaveProperty('exitCode');
+      const startedAt = Date.now();
+      const result = (await execTool.execute(
+        { command: 'node', args: ['-e', 'setTimeout(() => {}, 10000)'], timeout: 300 },
+        sb.ctx,
+        makeOpts(),
+      )) as { exitCode: number };
+      expect(result.exitCode).toBe(124);
+      expect(Date.now() - startedAt).toBeLessThan(8_000);
     } finally {
       await sb.cleanup();
     }
   });
 
   // Lines 248-253: stdout/stderr chunks written to buffers when under MAX_OUTPUT
+  // `node` instead of `echo`/`ls`: those are not executables on Windows, so the
+  // old tests only ever took their "spawn failed" branch there and asserted
+  // nothing about captured output.
   it('writes stdout chunks to buffer when under MAX_OUTPUT', async () => {
     const sb = await mkRealSandbox();
     try {
-      const { result, error } = await settle(
-        execTool.execute({ command: 'echo', args: ['hello'] }, sb.ctx, makeOpts()),
-      );
-      if (error) expect(error.message).toMatch(/exec: (spawn failed|process error)/);
-      else {
-        expect(result).toHaveProperty('stdout');
-        expect(result).toHaveProperty('truncated');
-      }
+      const result = (await execTool.execute(
+        { command: 'node', args: ['-e', "process.stdout.write('hello-stdout')"] },
+        sb.ctx,
+        makeOpts(),
+      )) as { stdout: string; stderr: string; exitCode: number; truncated: boolean };
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('hello-stdout');
+      expect(result.stderr).not.toContain('hello-stdout');
+      expect(result.truncated).toBe(false);
     } finally {
       await sb.cleanup();
     }
@@ -302,11 +311,15 @@ describe('exec timer and buffer paths', () => {
   it('writes stderr chunks to buffer when command produces stderr', async () => {
     const sb = await mkRealSandbox();
     try {
-      const { result, error } = await settle(
-        execTool.execute({ command: 'ls', args: ['--no-such-option'] }, sb.ctx, makeOpts()),
-      );
-      if (error) expect(error.message).toMatch(/exec: (spawn failed|process error)/);
-      else expect(result).toHaveProperty('stderr');
+      // A non-zero exit is a RESULT (the process ran), not a thrown failure.
+      const result = (await execTool.execute(
+        { command: 'node', args: ['-e', "process.stderr.write('oops-stderr'); process.exit(3)"] },
+        sb.ctx,
+        makeOpts(),
+      )) as { stdout: string; stderr: string; exitCode: number };
+      expect(result.exitCode).toBe(3);
+      expect(result.stderr).toContain('oops-stderr');
+      expect(result.stdout).not.toContain('oops-stderr');
     } finally {
       await sb.cleanup();
     }

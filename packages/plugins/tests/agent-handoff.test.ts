@@ -62,13 +62,14 @@ describe('agent-handoff plugin', () => {
     agentHandoffPlugin.setup(api as never);
     const handler = getEventHandler(api, 'subagent.done');
     handler({ agentName: 'worker-1', status: 'done', task: 'fix bug', result: { ok: true } });
-    await new Promise((r) => setTimeout(r, 10));
-    expect(api.mailbox?.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        from: 'plugin:agent-handoff',
-        to: 'leader',
-        type: 'status',
-      }),
+    await vi.waitFor(() =>
+      expect(api.mailbox?.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: 'plugin:agent-handoff',
+          to: 'leader',
+          type: 'status',
+        }),
+      ),
     );
   });
 
@@ -84,9 +85,8 @@ describe('agent-handoff plugin', () => {
       status: 'done',
       result: { ok: true },
     });
-    await new Promise((r) => setTimeout(r, 10));
     const send = api.mailbox?.send as ReturnType<typeof vi.fn>;
-    expect(send).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
     const note = send.mock.calls[0]?.[0] as { body?: string };
     expect(note.body).toContain('fix bug');
     expect(note.body).not.toContain('[object Object]');

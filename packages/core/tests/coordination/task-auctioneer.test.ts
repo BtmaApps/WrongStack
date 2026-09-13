@@ -1,8 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { TaskAuctioneer } from '../../src/coordination/task-auctioneer.js';
-import type { GoalNode, KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FleetBus } from '../../src/coordination/fleet-bus.js';
+import type { GoalNode, KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
 import type { Mailbox } from '../../src/coordination/mailbox-types.js';
+import { TaskAuctioneer } from '../../src/coordination/task-auctioneer.js';
 
 // Controllable dispatcher so bid()/findWork() scores are deterministic.
 const { dispatchResult } = vi.hoisted(() => ({
@@ -352,11 +352,8 @@ describe('TaskAuctioneer', () => {
 
       const stats = auctioneer.getStats();
 
-      expect(stats).toHaveProperty('total');
-      expect(stats).toHaveProperty('pending');
-      expect(stats).toHaveProperty('in_progress');
-      expect(stats).toHaveProperty('done');
-      expect(stats).toHaveProperty('failed');
+      // An open task waits for bids; a targeted one is assigned directly.
+      expect(stats).toMatchObject({ total: 2, pending: 1, in_progress: 1, done: 0, failed: 0 });
     });
   });
 

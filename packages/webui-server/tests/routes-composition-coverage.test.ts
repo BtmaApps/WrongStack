@@ -220,4 +220,59 @@ describe('buildRoutes composition', () => {
     expect(resolvedOpen).not.toHaveBeenCalled();
     expect([...pendingConfirms.keys()]).toEqual(['c2']);
   });
+
+  it('acknowledges the model transition without waiting for a catalog refresh', async () => {
+    const config = { provider: 'old-provider', model: 'old-model', providers: {} };
+    const context = {
+      meta: {},
+      session: { id: 'session-1' },
+      model: 'old-model',
+      provider: { id: 'old-provider' },
+      runModelTransition: async (transition: () => Promise<void>) => transition(),
+    };
+    const state = new Proxy(
+      {
+        getConfig: vi.fn(() => config),
+        setConfig: vi.fn(),
+        getClients: vi.fn(() => new Map()),
+      },
+      { get: (target, property) => Reflect.get(target, property) ?? vi.fn() },
+    );
+    const provider = { id: 'new-provider', capabilities: {} };
+    const deps = new Proxy(
+      {
+        context,
+        wpaths: { globalRoot: 'D:\\global', projectSessions: 'D:\\sessions' },
+        providerRegistry: { has: vi.fn(() => true), create: vi.fn(() => provider) },
+        configStore: { update: vi.fn() },
+        logger: { warn: vi.fn(), level: 'info' },
+        toolRegistry: { list: vi.fn(() => []) },
+        profileConfigPath: 'D:\\global\\profiles\\default.json',
+      },
+      { get: (target, property) => Reflect.get(target, property) ?? {} },
+    );
+    const catalogRefresh = new Promise<void>(() => {});
+    const cb = {
+      updateGlobalConfig: vi.fn(async (mutate: (value: Record<string, unknown>) => void) => {
+        mutate(config);
+      }),
+      updateAutoCompactionMaxContext: vi.fn(() => catalogRefresh),
+      sessionStartPayload: vi.fn(async () => ({ sessionId: 'session-1' })),
+    };
+
+    mocks.createModelOperations.mockClear();
+    buildRoutes(state as never, deps as never, cb as never);
+    const options = mocks.createModelOperations.mock.calls[0]?.[0] as {
+      applyModelSwitch: (provider: string, model: string) => Promise<void>;
+    };
+
+    await expect(options.applyModelSwitch('new-provider', 'new-model')).resolves.toBeUndefined();
+    expect(context).toMatchObject({ model: 'new-model', provider });
+    expect(cb.updateAutoCompactionMaxContext).toHaveBeenCalledWith(
+      provider,
+      'new-provider',
+      expect.objectContaining({ type: 'new-provider' }),
+    );
+    expect(cb.sessionStartPayload).toHaveBeenCalled();
+  });
 });

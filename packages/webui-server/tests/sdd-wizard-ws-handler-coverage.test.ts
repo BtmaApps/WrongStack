@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 
 vi.mock('ws', () => {
@@ -12,8 +12,8 @@ vi.mock('ws', () => {
 vi.mock('@wrongstack/sdd', () => ({}));
 
 import {
-  SddWizardWebSocketHandler,
   type SddWizardDeps,
+  SddWizardWebSocketHandler,
 } from '../src/server/sdd-wizard-ws-handler.js';
 
 function mockWs(): any {
@@ -226,10 +226,11 @@ describe('SddWizardWebSocketHandler', () => {
       const ws = mockWs();
       handler.addClient(ws);
       await vi.waitFor(() => expect(ws.on).toHaveBeenCalled());
+      const sentBefore = ws.send.mock.calls.length;
 
       await handler.handleMessage({ type: 'sdd.spec.get' });
-      // May or may not send, but must not throw
-      expect(true).toBe(true);
+      // Without a driver there is no spec to snapshot, so nothing is sent.
+      expect(ws.send.mock.calls.length).toBe(sentBefore);
     });
   });
 
@@ -383,10 +384,12 @@ describe('SddWizardWebSocketHandler', () => {
       const ws = mockWs();
       handler.addClient(ws);
       await vi.waitFor(() => expect(ws.on).toHaveBeenCalled());
+      const sentBefore = ws.send.mock.calls.length;
 
-      await handler.handleMessage({ type: 'unknown.type', payload: {} });
-      // Should not throw
-      expect(true).toBe(true);
+      await expect(
+        handler.handleMessage({ type: 'unknown.type', payload: {} }),
+      ).resolves.toBeUndefined();
+      expect(ws.send.mock.calls.length).toBe(sentBefore);
     });
   });
 });

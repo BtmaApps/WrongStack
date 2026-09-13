@@ -12,6 +12,7 @@ import {
   CircleDollarSign,
   Columns3,
   GitBranch,
+  History,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
@@ -117,6 +118,18 @@ export const HQ_VIEWS: readonly HqViewDefinition[] = [
     group: 'Intelligence',
     icon: ChartNoAxesCombined,
     shortcut: 7,
+  },
+  {
+    // W5 #19 (RFC hq-improvements-2026-09.md): Event Log timeline view — a
+    // filterable archive of every telemetry envelope received from
+    // connected clients. Filters: type, clientId, machineId, time range.
+    // Pure additive UI; no protocol-type ripple.
+    id: 'events',
+    label: 'Event Log',
+    eyebrow: 'Archive',
+    description: 'Filterable timeline of every telemetry envelope from every machine.',
+    group: 'Intelligence',
+    icon: History,
   },
   {
     id: 'brain',

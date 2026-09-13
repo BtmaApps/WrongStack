@@ -534,11 +534,15 @@ export function buildRoutes(
       deps.configStore.update({ provider: newProvider, model: newModel });
       targetCtx.model = newModel;
       targetCtx.provider = newProv;
-      // Capability refresh is best-effort after the atomic live swap. A catalog
-      // outage must not report the switch as failed after it already committed.
+      // Capability refresh is best-effort after the atomic live swap. It must
+      // never sit on the acknowledgement boundary: refresh() may make a
+      // network request to models.dev, while the selected provider/model is
+      // already safe to use for the next turn. Keep the modal's result and the
+      // session re-announce on the fast path; apply revised context metadata
+      // when the background refresh completes.
       // Pass the POST-rewrite routedCfg (the same config the provider was built
       // from) so maxContext resolution sees the effective proxy-target URL.
-      await cb.updateAutoCompactionMaxContext(newProv, newProvider, routedCfg).catch((error) => {
+      void cb.updateAutoCompactionMaxContext(newProv, newProvider, routedCfg).catch((error) => {
         deps.logger.warn(`model.switch capability refresh failed: ${String(error)}`);
       });
 

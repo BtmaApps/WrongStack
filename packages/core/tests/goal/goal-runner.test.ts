@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EventBus } from '../../src/kernel/events.js';
-import { GoalRunner, createGoalRunnerFromTaskGraph } from '../../src/goal/goal-runner.js';
+import { createGoalRunnerFromTaskGraph, GoalRunner } from '../../src/goal/goal-runner.js';
 import type { PhaseTemplate } from '../../src/goal/types.js';
+import { EventBus } from '../../src/kernel/events.js';
 import type { WorktreeHandle, WorktreeManager } from '../../src/worktree/worktree-manager.js';
 
 function fakeWorktrees() {
@@ -272,7 +272,13 @@ describe('GoalRunner event handlers + lifecycle', () => {
       maxRunDurationMs: 0,
     });
     await runner.start();
-    runner.stop();
+    try {
+      // 0 means "no safety net": the timer is armed then cleared at once, so
+      // it can never fire an immediate stop on a run that just started.
+      expect((runner as never as { maxRunTimer: unknown }).maxRunTimer).toBeNull();
+    } finally {
+      runner.stop();
+    }
   });
 
   it('fires the progress interval and the max-run safety-net timer', async () => {

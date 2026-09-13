@@ -597,6 +597,11 @@ describe('MCPRegistry coverage', () => {
     const slot = makeSlot('lazy', { lazy: true });
     try {
       await internals(registry).persistCapabilityManifest(slot);
+      // The manifest lands on disk even though no client ever connected, so
+      // the next boot can advertise the lazy server's tools without spawning.
+      const written = await fs.readdir(cacheDir, { recursive: true });
+      expect(written.length).toBeGreaterThan(0);
+      expect(slot.manifestWrite).toBeUndefined();
     } finally {
       await fs.rm(cacheDir, { recursive: true, force: true });
     }
@@ -604,7 +609,7 @@ describe('MCPRegistry coverage', () => {
 
   it('handles non-lazy exits with known and unknown codes', () => {
     vi.useFakeTimers();
-    const { registry } = fixture();
+    const { registry, emit } = fixture();
     const api = internals(registry);
     const one = makeSlot('one');
     api.servers.set('one', one);
@@ -612,6 +617,18 @@ describe('MCPRegistry coverage', () => {
     const two = makeSlot('two');
     api.servers.set('two', two);
     api.onChildExit('two', null, null);
+    // A crashed eager server is marked down and announced with its exit code
+    // (null → "unknown"), so the UI never keeps showing it as connected.
+    expect(one.state).toBe('disconnected');
+    expect(two.state).toBe('disconnected');
+    expect(emit).toHaveBeenCalledWith('mcp.server.disconnected', { name: 'one', reason: 'exit:1' });
+    expect(emit).toHaveBeenCalledWith('mcp.server.disconnected', {
+      name: 'two',
+      reason: 'exit:unknown',
+    });
+    // Unknown server names are ignored rather than throwing.
+    expect(() => api.onChildExit('ghost', 0, null)).not.toThrow();
+    vi.clearAllTimers();
   });
 
   it('enforces catalog item, cursor, and page limits', async () => {

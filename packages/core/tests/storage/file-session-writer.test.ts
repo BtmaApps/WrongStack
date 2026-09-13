@@ -388,13 +388,15 @@ describe('FileSessionWriter', () => {
       filePath: '/tmp/test.jsonl',
     });
     await w.close();
+    const writesAtClose = capturedWrites.length;
     const event: SessionEvent = {
       type: 'user_input',
       ts: now(),
       content: 'after close',
     } as SessionEvent;
-    // Should not throw
-    await w.append(event);
+    await expect(w.append(event)).resolves.toBeUndefined();
+    // A late event must not reach the (closed) handle.
+    expect(capturedWrites).toHaveLength(writesAtClose);
   });
 
   // ── appendBatch() ────────────────────────────────────────────────────
@@ -516,74 +518,76 @@ describe('FileSessionWriter', () => {
 
   // ── recordFileChange() ───────────────────────────────────────────────
 
-  it('recordFileChange buffers a file_snapshot event', () => {
+  it('recordFileChange buffers a file_snapshot event', async () => {
     writer.recordFileChange({
       path: '/project/src/index.ts',
       action: 'modified',
       before: 'old content',
       after: 'new content',
     });
-    // Should not throw
+    await writer.close();
+    expect(capturedTypes()).toContain('file_snapshot');
   });
 
   it('recordFileChange does nothing after close', async () => {
     await writer.close();
+    const writesAtClose = capturedWrites.length;
     writer.recordFileChange({
       path: '/project/src/index.ts',
       action: 'created',
       before: null,
       after: 'content',
     });
-    // No error = success
+    await writer.close();
+    expect(capturedWrites).toHaveLength(writesAtClose);
   });
 
   // ── recordFileObservation() ──────────────────────────────────────────
 
-  it('recordFileObservation buffers a file_observation for valid input', () => {
-    writer.recordFileObservation({
-      path: '/project/src/index.ts',
-      hash: 'a'.repeat(64),
-      mtimeMs: 1234567890,
-      source: 'write',
-    });
+  const observation = {
+    path: '/project/src/index.ts',
+    hash: 'A'.repeat(64),
+    mtimeMs: 1234567890,
+    source: 'write' as const,
+  };
+  const observations = (): Array<{ path: string; hash: string }> =>
+    capturedWrites
+      .flatMap((d) => d.trim().split('\n').filter(Boolean))
+      .map((l) => JSON.parse(l) as { type: string; path: string; hash: string })
+      .filter((e) => e.type === 'file_observation');
+
+  it('recordFileObservation buffers a file_observation for valid input', async () => {
+    writer.recordFileObservation(observation);
+    await writer.close();
+    // The hash is normalised to lowercase so equal content compares equal.
+    expect(observations()).toEqual([
+      expect.objectContaining({ path: observation.path, hash: 'a'.repeat(64) }),
+    ]);
   });
 
-  it('recordFileObservation ignores invalid hash', () => {
-    writer.recordFileObservation({
-      path: '/project/src/index.ts',
-      hash: 'not-a-valid-sha',
-      mtimeMs: 1234567890,
-      source: 'write',
-    });
-  });
-
-  it('recordFileObservation ignores empty path', () => {
-    writer.recordFileObservation({
-      path: '',
-      hash: 'a'.repeat(64),
-      mtimeMs: 1234567890,
-      source: 'write',
-    });
-  });
-
-  it('recordFileObservation ignores non-finite mtimeMs', () => {
-    writer.recordFileObservation({
-      path: '/project/src/index.ts',
-      hash: 'a'.repeat(64),
-      mtimeMs: NaN,
-      source: 'write',
-    });
+  it.each([
+    ['an invalid hash', { hash: 'not-a-valid-sha' }],
+    ['an empty path', { path: '' }],
+    ['a non-finite mtimeMs', { mtimeMs: Number.NaN }],
+  ])('recordFileObservation ignores %s', async (_label, override) => {
+    writer.recordFileObservation({ ...observation, ...override });
+    await writer.close();
+    expect(observations()).toEqual([]);
   });
 
   // ── recordSideEffect() ───────────────────────────────────────────────
 
-  it('recordSideEffect fires-and-forgets a side_effect event', () => {
-    writer.recordSideEffect({
+  it('recordSideEffect fires-and-forgets a side_effect event', async () => {
+    const result = writer.recordSideEffect({
       toolUseId: 'tu1',
       toolName: 'bash',
       input: { command: 'ls' },
       risk: 'shell',
     });
+    // Synchronous by contract: never makes tool execution await the log.
+    expect(result).toBeUndefined();
+    await writer.close();
+    expect(capturedTypes()).toContain('side_effect');
   });
 
   // ── clearSession() ───────────────────────────────────────────────────

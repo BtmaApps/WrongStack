@@ -18,6 +18,7 @@ import type { EventBus, TrackedAgentSnapshot } from '../kernel/events.js';
 import type { SessionEvent, SessionWriter } from '../types/session.js';
 import { sessionScopedPath } from '../utils/session-scoped-path.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
+import { LruMap } from './lru.js';
 import type {
   HqSessionAgentLiveStatus,
   HqSessionAgentSummary,
@@ -173,11 +174,40 @@ export function startSessionTelemetryBridge(opts: SessionTelemetryBridgeOptions)
   });
   const sessionFile = sessionScopedPath(wpaths.projectSessions, opts.sessionId, '.jsonl');
 
-  let agents: HqSessionAgentSummary[] = (opts.initialAgents ?? []).map(toAgentSummary);
-  let lastActivityAt = agents.reduce(
-    (latest, agent) => (agent.lastActivityAt > latest ? agent.lastActivityAt : latest),
-    startedAt,
-  );
+  // W3 #17 (RFC hq-improvements-2026-09.md): the tracked-agent working set
+  // is bounded by an LRU. The motivation is the 64 MiB synthetic-delta
+  // regression surfaced by the SAGE memory: an unbounded `agents` array
+  // would accumulate references for every agent the bridge ever saw,
+  // and the 2.5s unconditional publish at session-bridge.ts:264 would
+  // re-serialize the whole array each tick. With an LRU keyed by
+  // agent.id, the working set is bounded to `MAX_TRACKED_AGENTS`
+  // entries; older agents are evicted on insert.
+  //
+  // The freshness floor (5 min) mirrors HQ's stale-eviction window in
+  // cli/src/hq-server/snapshot.ts (HQ_STALE_SNAPSHOT_MS = 5 * 60_000).
+  // The session-bridge keepalive republishes every 4 min (KEEPALIVE_REPUBLISH_MS
+  // = 80% of the window), so an active agent's reference is refreshed well
+  // before the floor would let it be evicted. A reference is only evicted
+  // after BOTH the freshness floor AND a `set()` cycle that bumps a NEW
+  // agent into the working set — exactly the structural fix the SAGE
+  // memory recommended: "cap each read/chunk to bound burst memory while
+  // preserving byte-offset tailing."
+  const MAX_TRACKED_AGENTS = 256;
+  const STALE_EVICTION_FLOOR_MS = 5 * 60_000;
+  const agentsLru = new LruMap<string, HqSessionAgentSummary>({
+    maxEntries: MAX_TRACKED_AGENTS,
+    freshnessFloorMs: STALE_EVICTION_FLOOR_MS,
+  });
+  for (const agent of opts.initialAgents ?? []) {
+    const summary = toAgentSummary(agent);
+    agentsLru.set(summary.id, summary);
+  }
+  let lastActivityAt = agentsLru
+    .values()
+    .reduce(
+      (latest, agent) => (agent.lastActivityAt > latest ? agent.lastActivityAt : latest),
+      startedAt,
+    );
   let lastSnapshotHash = '';
   let lastPublishedAtMs = Date.now();
   let disposed = false;
@@ -186,7 +216,19 @@ export function startSessionTelemetryBridge(opts: SessionTelemetryBridgeOptions)
     // Snapshot-build time is the single choke point both the keepalive tick
     // and bus updates flow through — downgrading here means a stale `running`
     // corrects itself on the next publish without waiting for a bus event.
-    const effectiveAgents = downgradeStaleAgentStatuses(agents, Date.parse(now()));
+    //
+    // W3 #17: the snapshot is built from the LRU-bounded working set. We
+    // pull the current values (oldest-first), downgrade any stale `running`
+    // statuses, then write the downgraded values back into the LRU so the
+    // freshness floor is refreshed. This keeps the LRU working set
+    // consistent with what the dashboard renders, even when the keepalive
+    // tick fires (which is the only tick that publishes a snapshot with
+    // `force=true`).
+    const current = agentsLru.values();
+    const effectiveAgents = downgradeStaleAgentStatuses(current, Date.parse(now()));
+    for (const agent of effectiveAgents) {
+      agentsLru.set(agent.id, agent);
+    }
     return {
       sessionId: opts.sessionId,
       clientKind: identity.kind,
@@ -273,7 +315,17 @@ export function startSessionTelemetryBridge(opts: SessionTelemetryBridgeOptions)
     ) {
       return;
     }
-    agents = payload.agents.map(toAgentSummary);
+    // W3 #17: the tracked-agent working set is now bounded by an LRU.
+    // Clear stale entries from prior payloads, then insert the new ones.
+    // An agent that no longer appears in `payload.agents` is removed
+    // (so the LRU doesn't carry phantom references after a tracker stops
+    // reporting it); an agent that DOES appear is refreshed via `set()`,
+    // which moves it to the MRU end and refreshes the freshness floor.
+    agentsLru.clear();
+    for (const agent of payload.agents) {
+      const summary = toAgentSummary(agent);
+      agentsLru.set(summary.id, summary);
+    }
     lastActivityAt = now();
     publishSnapshot();
   });

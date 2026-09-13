@@ -22,7 +22,7 @@
  * ```jsonc
  * {
  *   "enabled": true,
- *   "mode": "warn",         // "warn" | "block"
+ *   "mode": "block",        // "block" (default) | "warn"
  *   "warnAfter": 3,                // consecutive identical calls before warning
  *   "blockAfter": 5,               // consecutive identical calls before blocking
  *   "oscillationWindow": 8,        // recent-call window for A-B-A-B detection
@@ -127,7 +127,10 @@ interface LoopBreakerConfig {
 
 const DEFAULTS: LoopBreakerConfig = {
   enabled: true,
-  mode: 'warn',
+  // Documented contract (feature matrix, plugin description): warn, then
+  // block. A warn-only default meant an agent stuck re-issuing the same call
+  // was never actually stopped unless the user happened to set any option.
+  mode: 'block',
   warnAfter: 3,
   blockAfter: 5,
   oscillationWindow: 8,
@@ -175,7 +178,10 @@ function readConfig(raw: unknown): LoopBreakerConfig {
           .trim()
           .toLowerCase()
       : undefined;
-  const mode = rawMode === 'warn' ? 'warn' : 'block';
+  // Only an explicit `warn` disables blocking. Missing or misspelled values
+  // take the default — the same answer as having no config object at all.
+  // (A partial config used to block while no config only warned.)
+  const mode = rawMode === 'warn' || rawMode === 'block' ? rawMode : DEFAULTS.mode;
 
   const rawOsc = r['oscillationWindow'] ?? r['oscillation_window'] ?? r['window'];
   const rawMaxSteps = r['maxSteps'] ?? r['max_steps'] ?? r['stepLimit'] ?? r['step_limit'];
@@ -250,7 +256,14 @@ function sortKeys(value: unknown, depth = 0, seen: Set<object> = new Set()): unk
   if (value === null || typeof value !== 'object') return value;
   if (seen.has(value as object)) return '[circular]';
   if (depth >= CANONICALIZE_MAX_DEPTH) {
-    return Array.isArray(value) ? `[array:${value.length}]` : '[deep-object]';
+    // Keep the subtree discriminating: a fixed marker made every input that
+    // differed only below this depth fingerprint identically — a false repeat
+    // loop. Unsorted keys here can only miss a repeat, never invent one.
+    try {
+      return `[deep:${JSON.stringify(value)}]`;
+    } catch {
+      return Array.isArray(value) ? `[array:${value.length}]` : '[deep-object]';
+    }
   }
   seen.add(value as object);
   try {
@@ -374,7 +387,7 @@ const plugin: Plugin = {
       mode: {
         type: 'string',
         enum: ['warn', 'block'],
-        default: 'warn',
+        default: 'block',
         description: 'block = refuse the repeated call; warn = only inject context.',
       },
       warnAfter: {

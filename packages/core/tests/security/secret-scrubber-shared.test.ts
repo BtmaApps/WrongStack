@@ -76,7 +76,13 @@ describe('DefaultSecretScrubber.scrubObjectShared', () => {
     const cyclic: Record<string, unknown> = { name: 'loop' };
     cyclic.self = cyclic;
 
-    expect(() => scrubber.scrubObjectShared(cyclic)).not.toThrow();
+    let out: Record<string, unknown> | undefined;
+    expect(() => {
+      out = scrubber.scrubObjectShared(cyclic);
+    }).not.toThrow();
+    // Terminating must not come at the cost of the payload: ordinary fields
+    // survive the cycle guard.
+    expect(out?.name).toBe('loop');
   });
 
   it('leaves non-object leaves alone', () => {

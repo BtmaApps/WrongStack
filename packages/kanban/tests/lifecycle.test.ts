@@ -909,12 +909,14 @@ describe('end-to-end managed lifecycle validation paths', () => {
       status: 'completed',
       lastResult: 'Implementation complete; all tests green.',
     });
-    await transitionTask(tmpDir, board.id, cardId, {
-      to: 'review',
-      actor: 'agent-1',
-      comment: 'Done.',
-      attachment: { url: 'artifact://build', type: 'file' },
-    });
+    await expect(
+      transitionTask(tmpDir, board.id, cardId, {
+        to: 'review',
+        actor: 'agent-1',
+        comment: 'Done.',
+        attachment: { url: 'artifact://build', type: 'file' },
+      }),
+    ).resolves.toMatchObject({ transition: { to: 'review' } });
   });
 
   it('allows review with a blank evidence URL (the artifact is optional)', async () => {
@@ -1056,12 +1058,14 @@ describe('finite managed decomposition', () => {
   it('allows a childless atomic leaf to progress from Backlog to Todo', async () => {
     const { board, cardId } = await managedBoardWithCard();
     await updateTask(tmpDir, board.id, cardId, leafDetails());
-    // Must not throw — no childTaskIds, but task.atomic is not true.
-    await transitionTask(tmpDir, board.id, cardId, {
-      to: 'todo',
-      actor: 'agent-1',
-      comment: 'Planned.',
-    });
+    // No childTaskIds, but task.atomic is not true — the gate must let it pass.
+    await expect(
+      transitionTask(tmpDir, board.id, cardId, {
+        to: 'todo',
+        actor: 'agent-1',
+        comment: 'Planned.',
+      }),
+    ).resolves.toMatchObject({ transition: { to: 'todo' } });
   });
 
   it('rejects a composite parent (atomic=true) without children from progressing', async () => {

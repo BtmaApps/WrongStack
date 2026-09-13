@@ -405,6 +405,13 @@ export class HqPublisher {
       payload: options.payload,
       ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
       ...(options.runId !== undefined ? { runId: options.runId } : {}),
+      // Normalised here, at the single choke point every bridge publishes
+      // through, rather than in each bridge: an empty string on the wire reads
+      // as a real id that matches nothing, so two unrelated activities would
+      // look like one broken chain instead of two uncorrelated ones.
+      ...(options.correlationId !== undefined && options.correlationId.length > 0
+        ? { correlationId: options.correlationId }
+        : {}),
     });
     const maxSummaryLength =
       options.maxSummaryLength ??
@@ -524,15 +531,17 @@ export class HqPublisher {
   }
 
   /** Publish a fleet (multi-agent coordinator) snapshot. */
+  /** Publish a fleet (multi-agent coordinator) snapshot. */
   publishFleetSnapshot(
     payload: HqFleetSnapshotPayload,
-    opts?: { sessionId?: string; timestamp?: string },
+    opts?: { sessionId?: string; timestamp?: string; correlationId?: string },
   ): HqEventEnvelope<HqFleetSnapshotPayload> {
     return this.publishEvent({
       type: 'fleet.snapshot',
       payload,
       runId: payload.runId,
       ...(opts?.sessionId !== undefined ? { sessionId: opts.sessionId } : {}),
+      ...(opts?.correlationId !== undefined ? { correlationId: opts.correlationId } : {}),
       ...(opts?.timestamp !== undefined ? { timestamp: opts.timestamp } : {}),
     });
   }

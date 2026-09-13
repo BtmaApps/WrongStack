@@ -128,6 +128,14 @@ function truncateForSummary(
   // WS-007: `rawContent` widens how much is shown, never whether secrets are
   // stripped. The previous early return handed tool output through unscrubbed
   // whenever rawContent was set — which is the shipped default.
+  //
+  // Per-string cap rules:
+  //   - `rawContent: false` (operator-clamped) → use the generic 280-char
+  //     summary cap. Telemetry rollups don't need more.
+  //   - `rawContent: true`  (default)            → widen to HQ_TRANSCRIPT_TEXT_CAP
+  //     (16 000) so HQ Console can render full chat-history without truncation.
+  //   - The cap is applied publisher-side (publisher.ts:411) AND at the server's
+  //     re-redaction (ws-client-events.ts:124) so both hops agree.
   const limit = resolved.rawContent ? Math.max(max, HQ_TRANSCRIPT_TEXT_CAP) : max;
   return scrubAndTruncateHqPreview(output, limit) ?? '';
 }

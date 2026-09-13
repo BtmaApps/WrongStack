@@ -462,7 +462,13 @@ describe('interrupt', () => {
     await waitFor(() => {
       const call = fetchMock.mock.calls.find((c) => String(c[0]).includes('/interrupt'));
       expect(call).toBeDefined();
-      expect(JSON.parse((call![1] as { body: string }).body)).toHaveProperty('reason');
+      const init = call![1] as { method?: string; body: string };
+      // A key named `reason` holding '' or undefined passed the old check; the
+      // server records this string as why the session was stopped.
+      expect(init.method).toBe('POST');
+      const { reason } = JSON.parse(init.body) as { reason?: unknown };
+      expect(typeof reason).toBe('string');
+      expect((reason as string).trim().length).toBeGreaterThan(0);
     });
   });
 

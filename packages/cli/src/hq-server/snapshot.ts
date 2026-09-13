@@ -22,6 +22,7 @@ import type {
   HqSessionSummary,
   HqSnapshot,
 } from '@wrongstack/core/hq';
+import { summarizeCommandLatency } from '@wrongstack/core/hq';
 import { WebSocket } from 'ws';
 import type { ConnectedClient, HqSnapshotBroadcaster, ProjectDetail } from './types.js';
 import { hqMachineKey } from './utils.js';
@@ -137,7 +138,14 @@ export function reapStaleClientState(
 
 export function buildSnapshot(
   clients: Map<WebSocket, ConnectedClient>,
-  options?: { tokenStats?: HqSnapshot['totals']['tokenStats'] },
+  options?: {
+    tokenStats?: HqSnapshot['totals']['tokenStats'];
+    /**
+     * Recent command-audit entries (W4 #7). The caller owns the audit ring, so
+     * it hands over the window rather than the builder reaching for a global.
+     */
+    commandAudit?: readonly HqCommandAuditEntry[];
+  },
 ): HqSnapshot {
   reapStaleClientState(clients);
   const now = new Date().toISOString();
@@ -446,6 +454,11 @@ export function buildSnapshot(
     }
   }
 
+  // W4 #7: rolled up from the caller-supplied audit window. Omitted entirely
+  // when no command has completed a dispatch+ack cycle yet, so a fresh HQ
+  // never advertises a meaningless 0 ms p50.
+  const commandLatency = summarizeCommandLatency(options?.commandAudit ?? []);
+
   return {
     generatedAt: now,
     clients: clientRecords,
@@ -456,6 +469,7 @@ export function buildSnapshot(
     machines,
     liveSessions,
     mcpServers,
+    ...(commandLatency.sampleCount > 0 ? { commandLatency } : {}),
     totals: {
       activeProjects: projects.length,
       activeClients: new Set(clientRecords.map(processKeyOf)).size,
@@ -477,6 +491,15 @@ export function createSnapshotBroadcaster(
   clients: Map<WebSocket, ConnectedClient>,
   browsers: Set<WebSocket>,
   persistence?: HqPersistence,
+  options?: {
+    /**
+     * W4 #7: command-audit window for the latency roll-up. Passed as a
+     * provider rather than an array because the broadcaster caches its
+     * serialized frame and only rebuilds when marked dirty — reading the ring
+     * at serialize time is what keeps the cached frame current.
+     */
+    commandAudit?: () => readonly HqCommandAuditEntry[];
+  },
 ): HqSnapshotBroadcaster {
   let cached = '';
   let dirty = true;
@@ -495,7 +518,8 @@ export function createSnapshotBroadcaster(
 
   const serialize = (): string => {
     if (!dirty && cached.length > 0) return cached;
-    const snapshot = buildSnapshot(clients);
+    const commandAudit = options?.commandAudit?.();
+    const snapshot = buildSnapshot(clients, commandAudit !== undefined ? { commandAudit } : {});
     const msg: HqBrowserMessage = { type: 'hq.snapshot', snapshot };
     cached = JSON.stringify(msg);
     dirty = false;

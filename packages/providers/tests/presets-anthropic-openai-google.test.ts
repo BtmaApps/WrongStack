@@ -1,4 +1,4 @@
-import type { Request, StreamEvent } from '@wrongstack/core/types';
+import { ProviderError, type Request, type StreamEvent } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { anthropicWireFormat } from '../src/presets/anthropic.js';
 import { googleWireFormat } from '../src/presets/google.js';
@@ -186,7 +186,7 @@ describe('Anthropic preset - parseStreamEvent error handling', () => {
     } catch (e) {
       err = e;
     }
-    expect(err).toBeDefined();
+    expect(err).toBeInstanceOf(ProviderError);
     expect((err as Error).message).toContain('rate_limit_exceeded');
   });
 
@@ -202,19 +202,25 @@ describe('Anthropic preset - parseStreamEvent error handling', () => {
         ]),
       ),
     });
-    const p = provider.stream(
-      { model: 'c', messages: [], maxTokens: 100 },
-      { signal: new AbortController().signal },
-    );
+    // `stream()` returns an async iterable: awaiting it never throws, so the
+    // error only surfaces while iterating. Consume it and capture the throw.
+    let caught: unknown;
     try {
-      await p;
+      for await (const _ of provider.stream(
+        { model: 'c', messages: [], maxTokens: 100 },
+        { signal: new AbortController().signal },
+      )) {
+        // drain
+      }
     } catch (err: unknown) {
-      expect((err as { provider: string }).provider).toBe('anthropic');
-      expect((err as { body: { type: string } }).body).toEqual({
-        type: 'invalid_request_error',
-        message: 'something went wrong',
-      });
+      caught = err;
     }
+    expect(caught).toBeInstanceOf(ProviderError);
+    expect((caught as ProviderError).providerId).toBe('anthropic');
+    expect((caught as ProviderError).body).toEqual({
+      type: 'invalid_request_error',
+      message: 'something went wrong',
+    });
   });
 
   it('returns empty array for empty data', async () => {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.10",
+  "packageVersion": "1.0.11",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1137,9 +1137,11 @@
       },
       "source": "packages/core/src/hq/index.ts",
       "declarations": [
+        "export * from './alerts-config.js';",
         "export * from './alerts.js';",
         "export * from './approval-bridge.js';",
         "export * from './auth-audit.js';",
+        "export * from './auth-revocation.js';",
         "export * from './auth-store.js';",
         "export * from './bootstrap-store.js';",
         "export * from './brain-bridge.js';",
@@ -1494,8 +1496,8 @@
       "directory": "hq",
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
-      "sourceFiles": 50,
-      "sourceLines": 10421
+      "sourceFiles": 53,
+      "sourceLines": 11454
     },
     {
       "directory": "infrastructure",
@@ -1551,7 +1553,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9214
+      "sourceLines": 9217
     },
     {
       "directory": "prompts",

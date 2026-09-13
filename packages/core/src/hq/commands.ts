@@ -489,10 +489,86 @@ export interface HqCommandAuditEntry {
   enqueuedBy: string;
   enqueuedAt: string;
   status: 'queued' | 'delivered' | 'acked';
+  /**
+   * Epoch ms when the server pushed the command batch onto the target's socket
+   * (the `queued` -> `delivered` transition).
+   *
+   * Distinct from `enqueuedAt`, which is when the operator's HTTP POST was
+   * accepted: the gap between the two is server-side queue time, and the gap
+   * from here to `acknowledgedAt` is wire + client turn-around. Keeping both
+   * is what lets the latency summary separate "HQ was slow to flush" from
+   * "the machine was slow to answer".
+   */
+  dispatchedAt?: number;
+  /** Epoch ms when the client's `client.command_ack` was accepted by the server. */
+  acknowledgedAt?: number;
   /** Ack status when the client has responded. */
   ackStatus?: 'accepted' | 'completed' | 'failed' | 'rejected';
   ackMessage?: string;
   ackedAt?: string;
+}
+
+/**
+ * Percentile roll-up of the `dispatched -> acknowledged` latency across the
+ * acked commands in a window. Percentiles are computed over the sample the
+ * audit ring holds (capped at 1000 entries), so this is an order-of-magnitude
+ * signal, not an exact SLO measurement.
+ */
+export interface HqCommandLatencySummary {
+  /** How many acked commands carried BOTH timestamps and contributed a sample. */
+  sampleCount: number;
+  p50Ms?: number;
+  p95Ms?: number;
+  p99Ms?: number;
+  maxMs?: number;
+}
+
+/**
+ * Nearest-rank percentile over an ascending array. Returns `undefined` for an
+ * empty array so callers render "no data" rather than a misleading 0 ms.
+ */
+function percentile(sorted: readonly number[], fraction: number): number | undefined {
+  if (sorted.length === 0) return undefined;
+  const rank = Math.ceil(fraction * sorted.length);
+  const index = Math.min(sorted.length, Math.max(1, rank)) - 1;
+  return sorted[index];
+}
+
+/**
+ * Summarize `dispatched -> acknowledged` command latency.
+ *
+ * Only entries that carry BOTH timestamps are sampled: a command still in
+ * flight, one whose client disconnected before delivery, or one seeded from a
+ * pre-latency audit log would otherwise skew the percentiles toward zero.
+ * Negative deltas (clock skew between the stamping sites) are discarded rather
+ * than clamped, because a clamped 0 would masquerade as a healthy sample.
+ */
+export function summarizeCommandLatency(
+  entries: readonly HqCommandAuditEntry[],
+  limit = 200,
+): HqCommandLatencySummary {
+  const window = entries.slice(-limit);
+  const samples: number[] = [];
+  for (const entry of window) {
+    const dispatched = entry.dispatchedAt;
+    const acknowledged = entry.acknowledgedAt;
+    if (typeof dispatched !== 'number' || typeof acknowledged !== 'number') continue;
+    const delta = acknowledged - dispatched;
+    if (delta < 0) continue;
+    samples.push(delta);
+  }
+  if (samples.length === 0) return { sampleCount: 0 };
+  samples.sort((a, b) => a - b);
+  const summary: HqCommandLatencySummary = { sampleCount: samples.length };
+  const p50 = percentile(samples, 0.5);
+  const p95 = percentile(samples, 0.95);
+  const p99 = percentile(samples, 0.99);
+  const max = samples[samples.length - 1];
+  if (p50 !== undefined) summary.p50Ms = p50;
+  if (p95 !== undefined) summary.p95Ms = p95;
+  if (p99 !== undefined) summary.p99Ms = p99;
+  if (max !== undefined) summary.maxMs = max;
+  return summary;
 }
 
 /**

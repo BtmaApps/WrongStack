@@ -94,18 +94,27 @@ export const typecheckTool: Tool<TypecheckInput, TypecheckOutput> = {
     });
     if (bridge?.run) {
       const run = bridge.run;
-      // Checker could not be launched: exitCode is null and `?? 0` below would
-      // report a clean typecheck.
+      // Checker could not be launched: exitCode is null and would otherwise
+      // read as a clean typecheck.
       if (run.status === 'unavailable') {
         throw new Error(
           `typecheck: ${bridge.language} checker unavailable: ${run.error || run.output || 'no detail'}`,
+        );
+      }
+      // A timed-out, cancelled or crashed check also has no exit code, and its
+      // empty diagnostics summary is NOT "no type errors" — it never finished.
+      // Same rule as lint/format: the check did not run, so the call fails.
+      if (run.status === 'cancelled') signal.throwIfAborted();
+      if (run.exitCode === null) {
+        throw new Error(
+          `typecheck: ${bridge.language} checker did not finish (${run.status})${run.error ? `: ${run.error}` : ''}`,
         );
       }
       yield {
         type: 'final',
         output: {
           project: `${bridge.language} workspace`,
-          exit_code: run.exitCode ?? 0,
+          exit_code: run.exitCode,
           errors: run.summary.errors,
           warnings: run.summary.warnings,
           output: normalizeCommandOutput(run.output || run.error || ''),

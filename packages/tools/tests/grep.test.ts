@@ -1,8 +1,9 @@
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __resetRgDetectionForTests, __setRgAvailableForTests, grepTool } from '../src/grep.js';
-import { type Sandbox, mkSandbox, newSignal } from './fixtures.js';
+import { mkSandbox, newSignal, type Sandbox } from './fixtures.js';
 
 describe('grep tool', () => {
   let sb: Sandbox;
@@ -437,17 +438,17 @@ describe('grep tool', () => {
   });
 
   it('clamps limit at upper bound (2000)', async () => {
-    for (let i = 0; i < 5; i++) {
-      await fs.writeFile(path.join(sb.dir, `f${i}.txt`), 'match');
-    }
+    // More matching files than the cap, so an unclamped limit would return all.
+    await Promise.all(
+      Array.from({ length: 2005 }, (_, i) => fs.writeFile(path.join(sb.dir, `f${i}.txt`), 'match')),
+    );
     const out = await grepTool.execute(
       { pattern: 'match', output_mode: 'files_with_matches', limit: 9999 },
       sb.ctx,
       { signal: newSignal() },
     );
-    // limit should be clamped to 2000, but we may not have 2000 files
-    expect(out).toHaveProperty('matches');
-  });
+    expect(out.matches).toHaveLength(2000);
+  }, 60_000);
 
   it('content mode includes file:line:content format', async () => {
     await fs.writeFile(path.join(sb.dir, 'format.txt'), 'line1\nline2\nline3');
@@ -530,20 +531,25 @@ describe('grep tool', () => {
   it('native grep skips symlinks (security: no following)', async () => {
     // Create a regular file with content and a symlink pointing elsewhere
     await fs.writeFile(path.join(sb.dir, 'real.txt'), 'secret value match');
-    // Try to create a symlink — may fail on some platforms, that's ok
+    // A directory OUTSIDE the sandbox, reachable only through a link inside it.
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'grep-outside-'));
     try {
-      const linkPath = path.join(sb.dir, 'link.txt');
-      await fs.symlink(sb.dir, linkPath);
-      // If symlink was created, walk() should skip it
-      const out = await grepTool.execute(
-        { pattern: 'match', output_mode: 'content', path: linkPath },
-        sb.ctx,
-        { signal: newSignal() },
-      );
-      // The native walk should not traverse into the symlink
-      expect(out).toHaveProperty('matches');
-    } catch {
-      // Symlink creation may fail — skip on platforms that don't allow it
+      await fs.writeFile(path.join(outside, 'outside-secret.txt'), 'match from outside');
+      try {
+        // 'junction' needs no admin rights on Windows; ignored elsewhere.
+        await fs.symlink(outside, path.join(sb.dir, 'escape-link'), 'junction');
+      } catch {
+        return; // platform refuses links — only the setup may be skipped
+      }
+      const out = await grepTool.execute({ pattern: 'match', output_mode: 'content' }, sb.ctx, {
+        signal: newSignal(),
+      });
+      // The old version asserted inside the try, so the catch swallowed any
+      // failure. Now: the in-sandbox hit is found, the linked-out one is not.
+      expect(out.matches.some((m: string) => m.includes('real.txt'))).toBe(true);
+      expect(out.matches.some((m: string) => m.includes('outside-secret'))).toBe(false);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
     }
   });
 

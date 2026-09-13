@@ -434,9 +434,30 @@ describe('SecurityScanner', () => {
       const skill = createMockSkill(patterns);
       const techStack = createMockTechStack();
 
-      const result = await quickScanner.scan('/test', skill, techStack);
+      // The old version scanned a non-existent '/test' and only checked that
+      // `scannedFiles` existed. Real tree: one match at the root, one nested
+      // three levels deep (past quick's depth of 2, within standard's 5).
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-scanner-depth-'));
+      try {
+        await fs.writeFile(path.join(tmpDir, 'root.ts'), 'const test = 1;\n');
+        const deepDir = path.join(tmpDir, 'l1', 'l2', 'l3');
+        await fs.mkdir(deepDir, { recursive: true });
+        await fs.writeFile(path.join(deepDir, 'deep.ts'), 'const test = 2;\n');
 
-      expect(result.scannedFiles).toBeDefined();
+        const quick = await quickScanner.scan(tmpDir, skill, techStack);
+        const standard = await new SecurityScanner({ depth: 'standard' }).scan(
+          tmpDir,
+          skill,
+          techStack,
+        );
+
+        expect(quick.scannedFiles).toBe(1);
+        expect(quick.findings.every((f) => !JSON.stringify(f).includes('deep.ts'))).toBe(true);
+        expect(standard.scannedFiles).toBe(2);
+        expect(standard.findings.some((f) => JSON.stringify(f).includes('deep.ts'))).toBe(true);
+      } finally {
+        await fs.rm(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });

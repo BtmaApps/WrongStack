@@ -21,15 +21,15 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  MAILBOX_HEALTH_DEFAULT_FROM,
-  MAILBOX_HEALTH_DEFAULT_INTERVAL_MS,
-  MailboxHealthWatchdog,
   buildDownAlert,
   buildRecoveryAlert,
-  validateWatchdogOptions,
   type DownAlertInput,
+  MAILBOX_HEALTH_DEFAULT_FROM,
+  MAILBOX_HEALTH_DEFAULT_INTERVAL_MS,
   type MailboxHealthEvent,
+  MailboxHealthWatchdog,
   type RecoveryAlertInput,
+  validateWatchdogOptions,
   type WatchdogConfig,
 } from '../../src/coordination/mailbox-health.js';
 import type { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
@@ -331,24 +331,30 @@ describe('MailboxHealthWatchdog probing', () => {
   });
 
   it('fires the per-probe abort timeout when fetch hangs', async () => {
-    let resolveFetch: ((v: Response) => void) | undefined;
-    fetchMock.mockReturnValue(
-      new Promise<Response>((r) => {
-        resolveFetch = r;
-      }),
+    // A real fetch rejects when its signal aborts. The old mock ignored the
+    // signal and was later resolved `ok`, so a broken timeout still passed.
+    fetchMock.mockImplementation(
+      (_url: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('probe aborted')));
+        }),
     );
+    const events: MailboxHealthEvent[] = [];
     const wd = new MailboxHealthWatchdog({
       mailbox: makeMailbox(),
       url: 'http://x',
       probeIntervalMs: 1000,
       probeTimeoutMs: 100,
       failureThreshold: 5,
+      onAlert: (e) => events.push(e),
     });
     await wd.start();
     await flush(); // tick waiting on the hung fetch
-    await vi.advanceTimersByTimeAsync(100); // past the per-probe timeout -> abort backstop fires
-    resolveFetch?.({ ok: true } as Response); // unstick the probe
+    expect(wd.currentFailureStreak).toBe(0);
+    await vi.advanceTimersByTimeAsync(100); // past the per-probe timeout -> abort fires
     await flush();
+    expect(events).toContainEqual({ kind: 'probe-failed', error: 'probe aborted' });
+    expect(wd.currentFailureStreak).toBe(1);
     await wd.stop();
   });
 

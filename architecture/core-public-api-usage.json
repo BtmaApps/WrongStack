@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 317,
-      "typeOnly": 253,
+      "files": 316,
+      "typeOnly": 252,
       "runtimeOrMixed": 81
     },
     "@wrongstack/core/agent-catalog": {
@@ -64,9 +64,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/hq": {
-      "files": 136,
-      "typeOnly": 88,
-      "runtimeOrMixed": 79
+      "files": 137,
+      "typeOnly": 87,
+      "runtimeOrMixed": 81
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -175,8 +175,8 @@
     },
     "@wrongstack/core/types": {
       "files": 1097,
-      "typeOnly": 981,
-      "runtimeOrMixed": 325
+      "typeOnly": 980,
+      "runtimeOrMixed": 326
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -1735,12 +1735,6 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tui/tests/connections-slash.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/agent",
-      "file": "packages/tui/tests/debug-dump.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -4465,7 +4459,7 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/hq-server/routes/data-handlers.ts",
-      "typeOnly": 2,
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
@@ -4490,7 +4484,7 @@
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/src/hq-server/snapshot.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/hq",
@@ -4628,6 +4622,12 @@
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/tests/hq-auth-phase4.test.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/hq-auth-revocation.test.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -14269,8 +14269,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/presets-anthropic-openai-google.test.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",

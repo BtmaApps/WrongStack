@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BrainDecisionPrompt,
   type BrainDecisionPromptOption,
@@ -382,7 +382,7 @@ describe('BrainDecisionPrompt', () => {
   });
 
   it('does not process keystrokes when onAnswer is undefined', async () => {
-    const { stdin, unmount } = render(
+    const { stdin, lastFrame, unmount } = render(
       React.createElement(BrainDecisionPrompt, {
         requestId: 'req_007',
         source: 'test',
@@ -391,9 +391,12 @@ describe('BrainDecisionPrompt', () => {
         options,
       }),
     );
-    // Should not throw
+    const before = lastFrame();
+    expect(before).toContain('No handler?');
     stdin.write('a');
     await new Promise((resolve) => setImmediate(resolve));
+    // Without a handler the keystroke is ignored: the prompt stays rendered.
+    expect(lastFrame()).toContain('No handler?');
     unmount();
   });
 });

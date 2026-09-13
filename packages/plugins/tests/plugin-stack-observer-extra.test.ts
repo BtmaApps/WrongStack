@@ -67,12 +67,25 @@ describe('plugin-stack-observer extra coverage', () => {
     expect(h.wrapCount).toBe(0);
   });
 
-  it('onPattern handler processes wrap:loaded events', () => {
+  it('onPattern handler processes wrap:loaded events', async () => {
     const api = makeApi();
     pluginStackObserver.setup(api as never);
     const handler = api.onPattern.mock.calls[0]?.[1] as (event: string, payload: unknown) => void;
 
     handler('provider.wrap:loaded', {
+      plugin: 'llm-cache',
+      kind: 'wrapProviderRunner',
+      wraps: ['cache', 'dedup'],
+    });
+
+    const h = (await pluginStackObserver.health!()) as unknown as {
+      wrapCount: number;
+      message: string;
+      wraps: Array<{ plugin: string; kind: string; wraps: string[] }>;
+    };
+    expect(h.wrapCount).toBe(1);
+    expect(h.message).toContain('llm-cache');
+    expect(h.wraps[0]).toMatchObject({
       plugin: 'llm-cache',
       kind: 'wrapProviderRunner',
       wraps: ['cache', 'dedup'],

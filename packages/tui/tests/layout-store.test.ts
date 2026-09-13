@@ -220,14 +220,9 @@ describe('LayoutStore (persistence mode)', () => {
     ephem.set(1, computeLayout(1, 'user', 'no-save', 80));
     await ephem.flushNow();
 
+    // The old try { access; expect(true).toBe(false) } catch {} form swallowed
+    // its own assertion error, so it passed even when the file was written.
     const filePath = path.join(dir, 'tui-layout.json');
-    try {
-      await fs.access(filePath);
-      // If file exists, test should fail
-      expect(true).toBe(false);
-    } catch {
-      // Expected: file should not exist
-      expect(true).toBe(true);
-    }
+    await expect(fs.access(filePath)).rejects.toThrow();
   });
 });

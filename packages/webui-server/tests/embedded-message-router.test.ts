@@ -228,11 +228,17 @@ describe('createEmbeddedMessageRouter', () => {
   });
 
   it('dispatches an unknown message type without throwing', async () => {
-    const router = createEmbeddedMessageRouter(makeDeps());
-    const ws = mockWs();
-    await router(ws, null, { type: 'unknown.message', payload: {} } as any);
-    // Should not throw; the dispatcher may log a debug message
-    expect(true).toBe(true);
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    try {
+      const router = createEmbeddedMessageRouter(makeDeps());
+      const ws = mockWs();
+      await router(ws, null, { type: 'unknown.message', payload: {} } as any);
+      // No route claims it, so it reaches the onUnknown fallback.
+      expect(debug).toHaveBeenCalledWith('[WebUI] Unhandled message type: unknown.message');
+      expect(ws.send).not.toHaveBeenCalled();
+    } finally {
+      debug.mockRestore();
+    }
   });
 
   it('guards session-targeted messages against wrong sessionId', async () => {
@@ -278,12 +284,18 @@ describe('createEmbeddedMessageRouter', () => {
     const d = makeDeps({ send });
     const r = createEmbeddedMessageRouter(d);
     const ws = mockWs();
-    await r(ws, null, {
-      type: 'files.list',
-      payload: {},
-    } as any);
-    // Should not throw
-    expect(true).toBe(true);
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    try {
+      await r(ws, null, {
+        type: 'files.list',
+        payload: {},
+      } as any);
+      // Claimed by the content route: no session-guard error, no fallback.
+      expect(send.mock.calls.filter((c: any[]) => c[1]?.type === 'error')).toHaveLength(0);
+      expect(debug).not.toHaveBeenCalledWith(expect.stringContaining('Unhandled message type'));
+    } finally {
+      debug.mockRestore();
+    }
   });
 
   it('handles sdd.spec messages by delegating to wizard handler', async () => {
@@ -292,9 +304,11 @@ describe('createEmbeddedMessageRouter', () => {
     const r = createEmbeddedMessageRouter(d);
     const ws = mockWs();
     await r(ws, null, { type: 'sdd.spec.start', payload: { goal: 'test' } } as any);
-    // The wizard handler may or may not be called depending on routing,
-    // but the router must not throw.
-    expect(true).toBe(true);
+    // sdd.spec.* / sdd.run.* are handed to the wizard handler verbatim.
+    expect(wizardHandler.handleMessage).toHaveBeenCalledWith({
+      type: 'sdd.spec.start',
+      payload: { goal: 'test' },
+    });
   });
 });
 

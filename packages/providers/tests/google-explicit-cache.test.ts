@@ -57,7 +57,9 @@ describe('GoogleProvider explicit cached-content', () => {
     expect(calls).toHaveLength(2);
     const [create, generate] = calls;
     expect(create!.url).toMatch(/\/cachedContents$/);
-    expect(create!.body['systemInstruction']).toBeDefined();
+    expect(create!.body['systemInstruction']).toEqual({
+      parts: [{ text: 'a large stable system prompt' }],
+    });
     expect(create!.body['ttl']).toBe('3600s');
     expect(create!.body['model']).toBe('models/gemini-2.5-pro');
 
@@ -72,7 +74,9 @@ describe('GoogleProvider explicit cached-content', () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toContain(':streamGenerateContent');
-    expect(calls[0]!.body['systemInstruction']).toBeDefined();
+    expect(calls[0]!.body['systemInstruction']).toEqual({
+      parts: [{ text: 'a large stable system prompt' }],
+    });
     expect(calls[0]!.body).not.toHaveProperty('cachedContent');
   });
 
@@ -87,8 +91,11 @@ describe('GoogleProvider explicit cached-content', () => {
     expect(calls[0]!.url).toMatch(/\/cachedContents$/);
     expect(calls[1]!.url).toContain(':streamGenerateContent');
     expect(calls[2]!.url).toContain(':streamGenerateContent');
-    expect(calls[1]!.body['systemInstruction']).toBeDefined();
-    expect(calls[2]!.body['systemInstruction']).toBeDefined();
+    const inlineSystem = { parts: [{ text: 'a large stable system prompt' }] };
+    expect(calls[1]!.body['systemInstruction']).toEqual(inlineSystem);
+    expect(calls[2]!.body['systemInstruction']).toEqual(inlineSystem);
+    expect(calls[1]!.body).not.toHaveProperty('cachedContent');
+    expect(calls[2]!.body).not.toHaveProperty('cachedContent');
   });
 
   it('reuses a live cache resource across requests (single create)', async () => {

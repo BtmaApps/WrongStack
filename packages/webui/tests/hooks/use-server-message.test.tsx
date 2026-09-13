@@ -46,9 +46,7 @@ describe('useServerMessage (B-03 single-message subscription hook)', () => {
   });
 
   it('registers exactly one handler on mount and tears it down on unmount', () => {
-    const { unmount } = renderHook(() =>
-      useServerMessage('context.editor.snapshot', () => {}),
-    );
+    const { unmount } = renderHook(() => useServerMessage('context.editor.snapshot', () => {}));
     expect(client.handlerSetFor('context.editor.snapshot').size).toBe(1);
     unmount();
     expect(client.handlerCount()).toBe(0);
@@ -88,11 +86,7 @@ describe('useServerMessage (B-03 single-message subscription hook)', () => {
   it('filters by sessionId when one is supplied (B-03 lane filter)', () => {
     const seen: unknown[] = [];
     renderHook(() =>
-      useServerMessage(
-        'context.editor.snapshot',
-        (msg) => seen.push(msg),
-        { sessionId: 'tab-2' },
-      ),
+      useServerMessage('context.editor.snapshot', (msg) => seen.push(msg), { sessionId: 'tab-2' }),
     );
     act(() => {
       // Addressed to a DIFFERENT tab — must be ignored.
@@ -161,11 +155,10 @@ describe('useServerMessage (B-03 single-message subscription hook)', () => {
     const seen: unknown[] = [];
     const { rerender } = renderHook(
       ({ askFor }: { askFor: string | undefined }) =>
-        useServerMessage(
-          'context.editor.snapshot',
-          (msg) => seen.push(msg),
-          { sessionId: askFor, deps: [askFor] },
-        ),
+        useServerMessage('context.editor.snapshot', (msg) => seen.push(msg), {
+          sessionId: askFor,
+          deps: [askFor],
+        }),
       { initialProps: { askFor: 'tab-1' as string | undefined } },
     );
     expect(client.handlerSetFor('context.editor.snapshot').size).toBe(1);
@@ -195,13 +188,15 @@ describe('useServerMessage (B-03 single-message subscription hook)', () => {
     const originalClient = client;
     client = null as unknown as ReturnType<typeof makeClient>;
     try {
-      const { unmount } = renderHook(() =>
-        useServerMessage('context.editor.snapshot', () => {
-          throw new Error('handler must not run without a WS client');
-        }),
-      );
-      unmount();
-      expect(true).toBe(true);
+      expect(() => {
+        const { unmount } = renderHook(() =>
+          useServerMessage('context.editor.snapshot', () => {
+            throw new Error('handler must not run without a WS client');
+          }),
+        );
+        unmount();
+      }).not.toThrow();
+      expect(originalClient.handlerSetFor('context.editor.snapshot').size).toBe(0);
     } finally {
       client = originalClient;
     }

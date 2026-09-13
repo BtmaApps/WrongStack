@@ -44,6 +44,17 @@ export class TestPlugin implements VerifierPlugin {
       status = 'failed';
       errors.push(`${result.failed} test(s) failed.`);
     }
+    // Nothing ran (pattern matched no tests, or every test was skipped): the
+    // criterion is unproven, not passed. Reporting `passed` here let a card
+    // reach Done on a verification in which zero tests executed.
+    if (result.passed === 0 && result.failed === 0) {
+      status = 'failed';
+      errors.push(
+        `No tests ran for pattern "${pattern}"` +
+          (result.skipped > 0 ? ` (${result.skipped} skipped).` : '.') +
+          ' Point the check at tests that exist and execute.',
+      );
+    }
     if (expectedPasses > 0 && result.passed < expectedPasses) {
       status = 'failed';
       errors.push(`Expected ${expectedPasses} passes, got ${result.passed}.`);

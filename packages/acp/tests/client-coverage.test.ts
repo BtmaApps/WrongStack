@@ -1374,10 +1374,31 @@ describe('ACPSession message routing (handleMessage)', () => {
     return { session, transport: t };
   }
 
+  /** Emit an inbound message and report what the session sent back / warned. */
+  async function emitAndObserve(
+    transport: any,
+    message: Record<string, unknown>,
+  ): Promise<{ replies: any[]; warned: unknown[][] }> {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = transport.sent.length;
+    try {
+      transport.emit({ jsonrpc: '2.0', ...message } as never);
+      await new Promise((r) => setImmediate(r));
+      return { replies: transport.sent.slice(before), warned: warn.mock.calls };
+    } finally {
+      warn.mockRestore();
+    }
+  }
+
   it('handles $/cancel_request silently', async () => {
     const { transport } = await startSession();
-    transport.emit({ jsonrpc: '2.0', method: '$/cancel_request', params: {} } as never);
-    // Should not crash - no response expected
+    const { replies, warned } = await emitAndObserve(transport, {
+      method: '$/cancel_request',
+      params: {},
+    });
+    // Explicitly handled: no reply and NOT reported as an unhandled method.
+    expect(replies).toEqual([]);
+    expect(warned).toEqual([]);
   });
 
   it('logs unhandled methods to console.warn', async () => {
@@ -1398,8 +1419,7 @@ describe('ACPSession message routing (handleMessage)', () => {
 
   it('handles session/update notification', async () => {
     const { transport } = await startSession();
-    transport.emit({
-      jsonrpc: '2.0',
+    const { replies, warned } = await emitAndObserve(transport, {
       method: 'session/update',
       params: {
         update: {
@@ -1407,26 +1427,52 @@ describe('ACPSession message routing (handleMessage)', () => {
           content: [{ type: 'text', text: 'hello' }],
         },
       },
-    } as never);
-    // Should not crash
+    });
+    // A notification is consumed, never answered, and not "unhandled".
+    expect(replies).toEqual([]);
+    expect(warned).toEqual([]);
   });
 
   it('handles best-effort ack methods', async () => {
     const { transport } = await startSession();
-    transport.emit({ jsonrpc: '2.0', id: 100, method: 'mcp/connect', params: {} } as never);
-    // Should not crash - sends empty result
+    const { replies, warned } = await emitAndObserve(transport, {
+      id: 100,
+      method: 'mcp/connect',
+      params: {},
+    });
+    // An unsupported-but-known request gets an empty success so the agent
+    // does not block waiting on it.
+    expect(replies).toEqual([expect.objectContaining({ id: 100, result: {} })]);
+    expect(warned).toEqual([]);
   });
 
   it('handles best-effort ack methods with no id', async () => {
     const { transport } = await startSession();
-    transport.emit({ jsonrpc: '2.0', method: 'mcp/connect', params: {} } as never);
-    // No id - should be silently ignored even though it matches best-effort
+    const { replies, warned } = await emitAndObserve(transport, {
+      method: 'mcp/connect',
+      params: {},
+    });
+    // No id → a notification: nothing to answer.
+    expect(replies).toEqual([]);
+    expect(warned).toEqual([]);
   });
 
   it('handles messages with no method silently', async () => {
     const { transport } = await startSession();
-    transport.emit({ jsonrpc: '2.0', params: {} } as never);
-    // Should not crash
+    const { replies, warned } = await emitAndObserve(transport, { params: {} });
+    expect(replies).toEqual([]);
+    expect(warned).toEqual([]);
+  });
+
+  it('reports a genuinely unknown method instead of dropping it silently', async () => {
+    const { transport } = await startSession();
+    const { replies, warned } = await emitAndObserve(transport, {
+      method: 'vendor/frobnicate',
+      params: {},
+    });
+    expect(replies).toEqual([]);
+    expect(String(warned[0]?.[0])).toContain('acp_session.unhandled_method');
+    expect(String(warned[0]?.[0])).toContain('vendor/frobnicate');
   });
 
   it('requires valid permissionPolicy/trustBoundary', async () => {

@@ -2,8 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import type { MailboxMessage } from '../../src/coordination/mailbox-types.js';
+import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
 import type { EventBus } from '../../src/kernel/events.js';
 
 let dir: string;
@@ -452,22 +452,37 @@ describe('SqliteMailbox startAutoCompactTimer', () => {
     spy.mockRestore();
   });
 
-  it('replaces a prior timer when called twice', () => {
-    const dispose1 = mb.startAutoCompactTimer({ intervalMs: 1000 });
-    // Should not throw — second call replaces.
-    const dispose2 = mb.startAutoCompactTimer({ intervalMs: 2000 });
+  it('replaces a prior timer when called twice', async () => {
+    const spy = vi.spyOn(mb, 'autoCompact').mockResolvedValue(undefined as never);
+    // First timer is fast; if the second call did not clear it, it would keep
+    // compacting at 20ms alongside the new one.
+    const dispose1 = mb.startAutoCompactTimer({ intervalMs: 20 });
+    const dispose2 = mb.startAutoCompactTimer({ intervalMs: 60_000 });
+    await new Promise((r) => setTimeout(r, 90));
+    expect(spy).not.toHaveBeenCalled();
+
+    // Disposing a stale handle must not stop (or orphan) the live timer.
     dispose2();
-    dispose1(); // double-dispose is safe
+    const dispose3 = mb.startAutoCompactTimer({ intervalMs: 20 });
+    dispose1();
+    await new Promise((r) => setTimeout(r, 90));
+    expect(spy).toHaveBeenCalled();
+    dispose3();
+    const callsAfterStop = spy.mock.calls.length;
+    await new Promise((r) => setTimeout(r, 60));
+    expect(spy.mock.calls.length).toBe(callsAfterStop);
+    spy.mockRestore();
   });
 
   it('autoCompact errors do not crash the process', async () => {
     vi.spyOn(mb, 'autoCompact').mockRejectedValueOnce(new Error('disk full'));
+    const spy = vi.spyOn(mb, 'autoCompact');
     const dispose = mb.startAutoCompactTimer({ intervalMs: 50 });
-    // Wait one cycle — error should be swallowed.
-    await new Promise((r) => setTimeout(r, 80));
+    // The first cycle rejects; the timer must survive it and fire again.
+    await vi.waitFor(() => expect(spy.mock.calls.length).toBeGreaterThanOrEqual(2), {
+      timeout: 2_000,
+    });
     dispose();
-    // Process still alive — test reached this point.
-    expect(true).toBe(true);
   });
 });
 

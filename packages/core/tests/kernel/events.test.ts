@@ -86,11 +86,16 @@ describe('ScopedEventBus', () => {
 
   it('teardown() also calls clear() on the underlying bus', () => {
     const bus = new ScopedEventBus();
-    bus.on('session.started', vi.fn());
+    const tracked = vi.fn();
+    const untracked = vi.fn();
+    bus.on('session.started', tracked);
+    // Registered through the base class, so it is NOT in the scoped tracking
+    // map: only the underlying clear() can remove it.
+    EventBus.prototype.on.call(bus, 'session.started', untracked);
     bus.teardown();
-    // clear() would have removed all underlying listeners too
     bus.emit('session.started', { id: '1' });
-    // if clear() was called, no listeners fire
+    expect(tracked).not.toHaveBeenCalled();
+    expect(untracked).not.toHaveBeenCalled();
   });
 
   it('[Symbol.dispose] aliases teardown()', () => {

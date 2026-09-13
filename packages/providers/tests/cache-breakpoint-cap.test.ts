@@ -84,9 +84,9 @@ describe('capAnthropicCacheBreakpoints', () => {
 
     capAnthropicCacheBreakpoints({ system, messages });
 
-    expect(previousTurn.cache_control).toBeDefined();
-    expect(currentTurn.cache_control).toBeDefined();
-    expect(system[0]?.cache_control).toBeDefined(); // static prefix anchor survives
+    expect(previousTurn.cache_control).toEqual({ type: 'ephemeral' });
+    expect(currentTurn.cache_control).toEqual({ type: 'ephemeral' });
+    expect(system[0]?.cache_control).toEqual({ type: 'ephemeral' }); // static prefix anchor survives
     expect(markerCount(system) + 2).toBe(ANTHROPIC_MAX_BREAKPOINTS);
   });
 

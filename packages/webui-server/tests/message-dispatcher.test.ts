@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 
 vi.mock('ws', () => {
@@ -111,20 +111,43 @@ describe('createMessageDispatcher', () => {
     expect(typeof dispatcher).toBe('function');
   });
 
-  it('dispatches a message without throwing', async () => {
-    const opts = makeMinimalOpts();
-    const dispatcher = createMessageDispatcher(opts);
+  // The route-family dispatcher is mocked, so these tests used to assert
+  // nothing: they now check the hand-off and the fallback the dispatcher wires.
+  const lastRouteFamily = async () => {
+    const { createRouteFamilyDispatcher } = await import(
+      '../src/server/route-family-dispatcher.js'
+    );
+    const mocked = vi.mocked(createRouteFamilyDispatcher);
+    return {
+      options: mocked.mock.calls.at(-1)?.[0] as { onUnknown: (ws: unknown, msg: unknown) => void },
+      routed: mocked.mock.results.at(-1)?.value as ReturnType<typeof vi.fn>,
+    };
+  };
+
+  it('hands a message to the route-family dispatcher', async () => {
+    const dispatcher = createMessageDispatcher(makeMinimalOpts());
+    const { routed } = await lastRouteFamily();
     const ws = mockWs();
-    await dispatcher(ws, null as any, { type: 'files.list', payload: {} } as any);
-    // Should not throw
+    const message = { type: 'files.list', payload: {} } as any;
+    await dispatcher(ws, null as any, message);
+    expect(routed).toHaveBeenCalledWith(ws, message);
   });
 
-  it('handles unknown message types gracefully', async () => {
-    const opts = makeMinimalOpts();
-    const dispatcher = createMessageDispatcher(opts);
+  it('answers unknown message types with an explicit error', async () => {
+    const dispatcher = createMessageDispatcher(makeMinimalOpts());
+    const { options, routed } = await lastRouteFamily();
     const ws = mockWs();
-    await dispatcher(ws, null as any, { type: 'totally.unknown', payload: {} } as any);
-    // Should not throw — the dispatcher routes unknowns through the fallback
+    const message = { type: 'totally.unknown', payload: {} } as any;
+    await dispatcher(ws, null as any, message);
+    expect(routed).toHaveBeenCalledWith(ws, message);
+
+    // The fallback the dispatcher registers must tell the client, not drop it.
+    options.onUnknown(ws, message);
+    const sent = ws.send.mock.calls.map((call: unknown[]) => JSON.parse(String(call[0])));
+    expect(sent).toContainEqual({
+      type: 'error',
+      payload: { phase: 'handleMessage', message: 'Unknown message type: totally.unknown' },
+    });
   });
 
   it('terminal handler errors are caught and logged', async () => {

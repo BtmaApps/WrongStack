@@ -206,9 +206,18 @@ describe('TelegramBot lifecycle completion', () => {
     const bot = makeBot({ lock });
     const inner = internals(bot);
 
+    const pollTimer = () => (inner.poller as unknown as { pollTimer: unknown }).pollTimer;
+
+    // Inactive poller: nothing is scheduled.
     inner.poller.schedulePoll();
+    expect(pollTimer()).toBeNull();
+
+    // Active but another instance holds the lock: scheduling would mean two
+    // bots polling the same token (Telegram 409 conflicts, duplicate replies).
     inner.poller.pollActive = true;
     inner.poller.schedulePoll();
+    expect(pollTimer()).toBeNull();
+    expect(lock.tryAcquire).not.toHaveBeenCalled();
     inner.poller.pollActive = false;
   });
 });

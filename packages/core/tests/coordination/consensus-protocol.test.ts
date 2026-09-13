@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConsensusProtocol, type VoterConfig } from '../../src/coordination/consensus-protocol.js';
-import type { ChangeNode, KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
 import type { FleetBus } from '../../src/coordination/fleet-bus.js';
+import type { ChangeNode, KnowledgeGraph } from '../../src/coordination/knowledge-graph.js';
 
 // ── Mock KnowledgeGraph ───────────────────────────────────────────────────────
 
@@ -365,11 +365,15 @@ describe('ConsensusProtocol', () => {
 
       const result = await protocol.resolveNow('change-1');
 
-      // Should return a result object
-      expect(result).toBeDefined();
-      expect(result).toHaveProperty('outcome');
-      expect(result).toHaveProperty('approveCount');
-      expect(result).toHaveProperty('rejectCount');
+      // quorumFraction 1 with 3 eligible voters and only 2 votes cast: the tally
+      // is reported, but two approvals must NOT count as an approval.
+      expect(result).toMatchObject({
+        approveCount: 2,
+        rejectCount: 0,
+        outcome: 'quorum_not_met',
+        quorumMet: false,
+        approvalMet: false,
+      });
     });
 
     it('throws for unknown change', async () => {

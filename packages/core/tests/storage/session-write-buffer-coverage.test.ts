@@ -256,8 +256,15 @@ describe('SessionWriteBuffer — coverage', () => {
   });
 
   it('flushBufferOnce returns early when the buffer is empty', async () => {
-    const buffer = new SessionWriteBuffer(makeOpts());
-    await buffer.flushBufferOnce(false);
+    const handle = {
+      appendFile: vi.fn().mockResolvedValue(undefined),
+      datasync: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const buffer = new SessionWriteBuffer(makeOpts({ handle }));
+    await buffer.flushBufferOnce(false, { datasync: true });
+    expect(handle.appendFile).not.toHaveBeenCalled();
+    expect(handle.datasync).not.toHaveBeenCalled();
   });
 
   it('flushBufferOnce rethrows append errors and restores the buffer', async () => {
@@ -330,9 +337,15 @@ describe('SessionWriteBuffer — coverage', () => {
     });
     buffer.push(makeEvent());
     const flushPromise = buffer.flushBuffer();
-    const drained = buffer.drainFlushPromise();
+    let drainedEarly = false;
+    const drained = buffer.drainFlushPromise().then(() => {
+      drainedEarly = handle.appendFile.mock.calls.length === 0;
+    });
     await flushPromise;
     await drained;
+    // drain must not resolve before the in-flight append ran.
+    expect(handle.appendFile).toHaveBeenCalledTimes(1);
+    expect(drainedEarly).toBe(false);
   });
 
   it('scheduleFlush sets a timer that fires the flush', async () => {
@@ -360,28 +373,44 @@ describe('SessionWriteBuffer — coverage', () => {
 
   it('cancelTimer is a no-op when no timer is set', () => {
     const buffer = new SessionWriteBuffer(makeOpts());
-    buffer.cancelTimer();
+    expect(() => buffer.cancelTimer()).not.toThrow();
   });
 
   it('cancelTimer clears an active timer', () => {
     vi.useFakeTimers();
-    const buffer = new SessionWriteBuffer(makeOpts());
-    buffer.push(makeEvent());
-    buffer.scheduleFlush();
-    buffer.cancelTimer();
-    vi.advanceTimersByTime(SessionWriteBuffer.FLUSH_INTERVAL_MS + 100);
-    vi.useRealTimers();
+    try {
+      const handle = {
+        appendFile: vi.fn().mockResolvedValue(undefined),
+        datasync: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const buffer = new SessionWriteBuffer(makeOpts({ handle }));
+      buffer.push(makeEvent());
+      buffer.scheduleFlush();
+      expect(vi.getTimerCount()).toBe(1);
+      buffer.cancelTimer();
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(SessionWriteBuffer.FLUSH_INTERVAL_MS + 100);
+      expect(handle.appendFile).not.toHaveBeenCalled();
+      expect(buffer.length).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('scheduleFlush does nothing when already called', () => {
     vi.useFakeTimers();
-    const buffer = new SessionWriteBuffer(makeOpts());
-    buffer.push(makeEvent());
-    buffer.scheduleFlush();
-    // second call should be a no-op (timer already set)
-    buffer.scheduleFlush();
-    vi.useRealTimers();
-    buffer.cancelTimer();
+    try {
+      const buffer = new SessionWriteBuffer(makeOpts());
+      buffer.push(makeEvent());
+      buffer.scheduleFlush();
+      // A second call must not stack another timer (double flush per window).
+      buffer.scheduleFlush();
+      expect(vi.getTimerCount()).toBe(1);
+      buffer.cancelTimer();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('scheduleFlush(true) is a no-op (no timer set)', () => {

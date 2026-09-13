@@ -323,15 +323,33 @@ export const HQ_AUTH_CONTENT_HASH_REDACTED = '<redacted>';
  * should pass that through as an absent `contentHash` field rather
  * than failing the audit append, matching the audit module's
  * best-effort contract.
+ *
+ * W1 #11 (architecture overview): the auth file is re-read on every WS
+ * upgrade and on every auth-watcher tick, and `hqAuthContentHash` was
+ * paying the full SHA-256 cost each time. For a file with hundreds of
+ * browser tokens, that was the dominant cost of the per-connection auth
+ * path. The canonical projection string is used as the cache key — so an
+ * unchanged file returns the cached hash in O(1), and only a real
+ * structural change re-derives it.
+ *
+ * The cache is process-local. The auth-file watcher invalidates by
+ * passing a fresh file reference (the watcher always re-reads on
+ * change), and in-memory token mutations always pass the updated file,
+ * so no explicit `invalidate()` call is needed. Worst-case staleness:
+ * one process lifetime per unique serialized projection.
  */
+const _hqAuthHashCache = new Map<string, string>();
+const _HQ_AUTH_HASH_CACHE_MAX = 256;
+
 export function hqAuthContentHash(file: HqAuthFile): string | undefined {
   const REDACTED = HQ_AUTH_CONTENT_HASH_REDACTED;
   const redactToken = (t: HqToken): HqToken => ({ ...t, token: REDACTED });
+  let projection: HqAuthFile;
   try {
     // `exactOptionalPropertyTypes: true` means optional fields can't be
     // assigned `undefined` explicitly — preserve absence via conditional
     // spreads so the projection stays a valid `HqAuthFile`.
-    const projection: HqAuthFile = {
+    projection = {
       version: file.version,
       updatedAt: file.updatedAt,
       ...(file.redactionPolicy !== undefined ? { redactionPolicy: file.redactionPolicy } : {}),
@@ -353,14 +371,57 @@ export function hqAuthContentHash(file: HqAuthFile): string | undefined {
         : {}),
       ...(file.alertRules !== undefined ? { alertRules: file.alertRules } : {}),
     };
-    // Stable key ordering — the projection above has a fixed key order, so
-    // the serialized form is deterministic across runs for the same
-    // structural state.
-    const payload = JSON.stringify(projection);
-    return createHash('sha256').update(payload).digest('hex');
   } catch {
     return undefined;
   }
+  return hqAuthContentHashCached(projection);
+}
+
+/**
+ * Inner hash function with memoization. Public callers should use
+ * {@link hqAuthContentHash} — this is exported for tests that need to
+ * assert the cache behavior directly.
+ *
+ * The cache key is the canonical JSON serialization of the projection
+ * (stable key order, since the projection above has fixed key ordering).
+ * Two structurally-identical files share a hash entry; any change to the
+ * projection — which is the only thing that should change the hash —
+ * produces a different key and a fresh computation.
+ *
+ * Cache size is bounded by `_HQ_AUTH_HASH_CACHE_MAX` entries. An entry is
+ * a few hundred bytes (the JSON projection), so 256 entries is ~64 KiB
+ * worst-case — negligible next to the auth file itself, and prevents an
+ * adversarial or pathological sequence of unique projections from growing
+ * the map without bound.
+ */
+export function hqAuthContentHashCached(projection: HqAuthFile): string | undefined {
+  let payload: string;
+  try {
+    // Stable key ordering — the projection above has a fixed key order, so
+    // the serialized form is deterministic across runs for the same
+    // structural state.
+    payload = JSON.stringify(projection);
+  } catch {
+    return undefined;
+  }
+  const cached = _hqAuthHashCache.get(payload);
+  if (cached !== undefined) return cached;
+  const hash = createHash('sha256').update(payload).digest('hex');
+  if (_hqAuthHashCache.size >= _HQ_AUTH_HASH_CACHE_MAX) {
+    const oldest = _hqAuthHashCache.keys().next().value;
+    if (oldest !== undefined) _hqAuthHashCache.delete(oldest);
+  }
+  _hqAuthHashCache.set(payload, hash);
+  return hash;
+}
+
+/**
+ * Test-only: drop all memoized auth-file hashes. Production code never
+ * needs to invalidate — the watcher always re-reads, producing a fresh
+ * projection whose canonical serialization is a different cache key.
+ */
+export function _resetHqAuthHashCacheForTests(): void {
+  _hqAuthHashCache.clear();
 }
 
 /** Path to `auth.json` under the given data directory. */

@@ -1,6 +1,7 @@
 import type { HqAuthFile, HqSnapshot, HqToken } from '@wrongstack/core/hq';
 import {
   DEFAULT_HQ_REDACTION_POLICY,
+  findRevokedTokenKeys,
   hqAuthContentHash,
   hqTokenKey,
   isTokenExpired,
@@ -37,6 +38,17 @@ interface HqAuthStateOptions {
    * makes the latch unconditional.
    */
   onApplied?: ((mutableAuth: HqRouterMutableAuth) => void) | undefined;
+  /**
+   * Invoked when browser tokens stopped being live — revoked by hand, or aged
+   * out — during an {@link HqAuthState.apply}. `keys` are the stored verifiers,
+   * `ids` the token ids of those that had one.
+   *
+   * W4 #15: an open WebSocket never re-presents its credential, so before this
+   * a revoked operator kept a working dashboard until the idle-eviction pass
+   * happened to catch them. Reporting the change at the single projection
+   * choke point is what lets the server close those sockets immediately.
+   */
+  onTokensRevoked?: ((keys: readonly string[], ids: readonly string[]) => void) | undefined;
 }
 
 function liveTokens<T extends { expiresAt?: string }>(list: T[] | undefined): T[] {
@@ -128,10 +140,25 @@ export function createHqAuthState(
       const newClient = next.clientTokens ?? [];
       auditPrunedTokens('browser', rawBrowserTokens, newBrowser, next, dataDir);
       auditPrunedTokens('client', rawClientTokens, newClient, next, dataDir);
+      // W4 #15: read the revocation BEFORE `projectAuthFile` overwrites the
+      // live set and the key→id map. Afterwards the key is simply gone, so
+      // neither "which token" nor "what was its id" can be recovered — and the
+      // open socket that still holds that token would never be told.
+      const revokedKeys = findRevokedTokenKeys(
+        mutableAuth.browserTokens,
+        new Set(liveTokens(newBrowser).map(hqTokenKey)),
+      );
+      const revokedIds =
+        revokedKeys.length === 0
+          ? []
+          : revokedKeys
+              .map((key) => mutableAuth.browserTokenObjs.get(key)?.id)
+              .filter((id): id is string => id !== undefined && id.length > 0);
       rawBrowserTokens = newBrowser;
       rawClientTokens = newClient;
       projectAuthFile(mutableAuth, next);
       opts.onApplied?.(mutableAuth);
+      if (revokedKeys.length > 0) opts.onTokensRevoked?.(revokedKeys, revokedIds);
     },
   };
 }

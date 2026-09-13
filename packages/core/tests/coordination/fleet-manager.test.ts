@@ -165,19 +165,26 @@ describe('FleetManager', { retry: 1 }, () => {
     });
 
     it('rejects when fleet already hit cost cap', () => {
-      const bus = new FleetBus();
-      // Create FM with generous cap, then fake a cost event
-      const _fm = new FleetManager({ directorBudget: { maxCostUsd: 0.01 }, maxSpawns: 10 });
-      // Emit a large usage event so fleet cost > cap
-      bus.emit({
-        subagentId: 'existing',
-        ts: Date.now(),
-        type: 'provider.response',
-        payload: { usage: { input: 10_000_000, output: 0, cacheRead: 0, cacheWrite: 0 } },
-      });
-      // The aggregator needs to be connected to this bus — but FM created
-      // its own bus internally. We can't inject the bus, so we test the
-      // cost cap path by verifying the reject when cap is 0.
+      // The old version emitted on a detached `new FleetBus()` the manager
+      // never listened to, and asserted nothing. `fleetBus` is the manager's
+      // own bus, so real spend flows through its usage aggregator.
+      const fm = new FleetManager({ directorBudget: { maxCostUsd: 1 }, maxSpawns: 10 });
+      const config = makeConfig({ provider: 'openai', model: 'gpt-4o' });
+      fm.recordSpawn('existing', config, { input: 1, output: 0 }); // $1 per 1M input tokens
+      const spend = (input: number) =>
+        fm.fleetBus.emit({
+          subagentId: 'existing',
+          ts: Date.now(),
+          type: 'provider.response',
+          payload: { usage: { input, output: 0, cacheRead: 0, cacheWrite: 0 } },
+        });
+
+      spend(500_000); // $0.50 — under the cap
+      expect(fm.canSpawn(config)).toBeNull();
+
+      spend(600_000); // $1.10 total — cap reached
+      expect(fm.canSpawn(config)).toMatchObject({ kind: 'max_cost_usd', limit: 1 });
+      expect(fm.canSpawn(config)?.observed).toBeCloseTo(1.1, 6);
     });
 
     it('returns null for all-OK case with all limits set high', () => {
@@ -219,9 +226,19 @@ describe('FleetManager', { retry: 1 }, () => {
 
     it('stores priceLookup for cost attribution', () => {
       const fm = new FleetManager();
-      fm.recordSpawn('sub-1', makeConfig(), { input: 1.5, output: 7.5 });
-      // getSubagentMeta is metadata only; price is stored separately
-      // in the aggregator — we verify via snapshot below
+      fm.recordSpawn('sub-1', makeConfig({ provider: 'openai', model: 'gpt-4o' }), {
+        input: 1.5,
+        output: 7.5,
+      });
+      fm.fleetBus.emit({
+        subagentId: 'sub-1',
+        ts: Date.now(),
+        type: 'provider.response',
+        payload: { usage: { input: 1_000_000, output: 2_000_000, cacheRead: 0, cacheWrite: 0 } },
+      });
+      // 1M input × $1.5 + 2M output × $7.5 = $16.5, attributed via the price.
+      expect(fm.snapshot().total?.cost).toBeCloseTo(16.5, 6);
+      expect(fm.budgetSnapshot().usedCostUsd).toBeCloseTo(16.5, 6);
     });
 
     it('subsequent canSpawn() reflects spawn count', () => {
@@ -262,12 +279,20 @@ describe('FleetManager', { retry: 1 }, () => {
       expect(() => fm.addTaskToSubagent('unknown', 'task-1')).not.toThrow();
     });
 
-    it('accumulates multiple task ids for the same subagent', () => {
-      const fm = new FleetManager();
-      fm.recordSpawn('sub-1', makeConfig());
-      fm.addTaskToSubagent('sub-1', 'task-a');
-      fm.addTaskToSubagent('sub-1', 'task-b');
-      // The manifest entry is internal; we verify via writeManifest
+    it('accumulates multiple task ids for the same subagent', async () => {
+      const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'fm-manifest-'));
+      try {
+        const manifestPath = path.join(tmpDir, 'fleet.json');
+        const fm = new FleetManager({ manifestPath });
+        fm.recordSpawn('sub-1', makeConfig());
+        fm.addTaskToSubagent('sub-1', 'task-a');
+        fm.addTaskToSubagent('sub-1', 'task-b');
+        await fm.writeManifest();
+        const content = JSON.parse(await fsp.readFile(manifestPath, 'utf-8'));
+        expect(content.children[0].taskIds).toEqual(['task-a', 'task-b']);
+      } finally {
+        await fsp.rm(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 

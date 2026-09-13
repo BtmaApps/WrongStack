@@ -59,19 +59,24 @@ describe('lintTool', () => {
   it('respects fix flag', async () => {
     const ctx = makeCtx(tmpDir);
     const result = await lintTool.execute({ fix: true }, ctx, makeOpts());
-    expect(result).toHaveProperty('fix_applied');
+    expect(result.fix_applied).toBe(true);
+    const noFix = await lintTool.execute({}, ctx, makeOpts());
+    expect(noFix.fix_applied).toBe(false);
   });
 
   it('passes files to linter', async () => {
     const ctx = makeCtx(tmpDir);
     const result = await lintTool.execute({ files: 'src/**/*.ts' }, ctx, makeOpts());
-    expect(result).toHaveProperty('files_checked');
+    expect(result.files_checked).toBe(1);
   });
 
   it('handles files as array', async () => {
     const ctx = makeCtx(tmpDir);
     const result = await lintTool.execute({ files: ['a.ts', 'b.ts'] }, ctx, makeOpts());
-    expect(result).toHaveProperty('files_checked');
+    expect(result.files_checked).toBe(2);
+    // Comma-separated string form is split the same way.
+    const csv = await lintTool.execute({ files: 'a.ts,b.ts,c.ts' }, ctx, makeOpts());
+    expect(csv.files_checked).toBe(3);
   });
 });
 

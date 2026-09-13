@@ -1015,6 +1015,7 @@ export function createHqEventEnvelope<TPayload>(input: {
   payload: TPayload;
   sessionId?: string;
   runId?: string;
+  correlationId?: string;
 }): HqEventEnvelope<TPayload> {
   return {
     id: input.id,
@@ -1027,5 +1028,6 @@ export function createHqEventEnvelope<TPayload>(input: {
     payload: input.payload,
     ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
     ...(input.runId !== undefined ? { runId: input.runId } : {}),
+    ...(input.correlationId !== undefined ? { correlationId: input.correlationId } : {}),
   };
 }

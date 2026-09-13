@@ -468,6 +468,16 @@
       "classifiedToolErrorResult",
       "getToolErrorInfo"
     ],
+    "packages/core/src/hq/alerts-config.ts": [
+      "emptyHqAlertsConfig",
+      "HQ_ALERTS_CONFIG_VERSION",
+      "hqAlertsConfigFilePath",
+      "mutateHqAlertsConfig",
+      "writeHqAlertsConfig"
+    ],
+    "packages/core/src/hq/auth-revocation.ts": [
+      "sessionAffectedByRevocation"
+    ],
     "packages/core/src/hq/auth-store.ts": [
       "defaultHqDataDir",
       "emptyHqAuthFile",
@@ -1546,6 +1556,9 @@
       "kanbanTransitionOptions",
       "mobileKanbanAssignmentTargets",
       "suggestedKanbanStage"
+    ],
+    "packages/webui-hq/src/views/cockpit.tsx": [
+      "CommandLatencyCard"
     ],
     "packages/webui-server/src/server/chimera-routes.ts": [
       "isPendingChimeraReport"

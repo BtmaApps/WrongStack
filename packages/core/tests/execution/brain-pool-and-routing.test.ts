@@ -101,8 +101,7 @@ describe('createAutonomyBrain — LLM pool', () => {
     // Every target was tried and none answered — that is an unavailable pool,
     // not a decision to continue. The tiered ladder converts it back into the
     // caller's continue fallback, attributed to the policy tier.
-    expect(d.type).toBe('deny');
-    if (d.type === 'deny') expect(d.reason).toContain('unavailable');
+    expect(d).toMatchObject({ type: 'deny', reason: expect.stringContaining('unavailable') });
   });
 
   it('requires at least one LLM source', () => {
@@ -132,7 +131,7 @@ describe('createTieredBrainArbiter — council routing', () => {
     const d = await tiered.decide(req({ risk: 'high' }));
     expect(council.decide).toHaveBeenCalledTimes(1);
     expect(llm.decide).not.toHaveBeenCalled();
-    if (d.type === 'answer') expect(d.text).toBe('council says no');
+    expect(d).toMatchObject({ type: 'answer', text: 'council says no' });
   });
 
   it('council denials are terminal — they do not fall through to the LLM', async () => {
@@ -175,7 +174,7 @@ describe('createTieredBrainArbiter — council routing', () => {
     });
     const d = await tiered.decide(req({ risk: 'high' }));
     expect(council.decide).toHaveBeenCalledTimes(1);
-    if (d.type === 'answer') expect(d.text).toBe('llm decision');
+    expect(d).toMatchObject({ type: 'answer', text: 'llm decision' });
   });
 });
 
@@ -198,7 +197,7 @@ describe('createTieredBrainArbiter — provisional continue consults the LLM', (
     });
     const d = await tiered.decide(req({ fallback: 'continue' }));
     expect(llm.decide).toHaveBeenCalledTimes(1);
-    if (d.type === 'answer') expect(d.text).toContain('NOT complete');
+    expect(d).toMatchObject({ type: 'answer', text: expect.stringContaining('NOT complete') });
   });
 
   it('keeps the policy continue when the LLM fails', async () => {

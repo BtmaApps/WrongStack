@@ -303,6 +303,66 @@ describe('makeACPSubagentRunner', () => {
   });
 });
 
+describe('makeACPSubagentRunner — a resolved turn is not automatically a success', () => {
+  const turn = (over: Partial<NonNullable<typeof hoisted.promptResult>>) => {
+    hoisted.promptResult = {
+      text: 'partial work',
+      stopReason: 'end_turn',
+      hasText: true,
+      toolCalls: [],
+      diffs: [],
+      thoughts: '',
+      ...over,
+    };
+  };
+
+  it.each([
+    ['cancelled', 'aborted_by_parent', /cancelled/],
+    ['refusal', 'unknown', /refused the task/],
+    ['max_tokens', 'budget_tokens', /token limit/],
+    ['max_turn_requests', 'budget_iterations', /turn-request limit/],
+  ])('stopReason=%s throws %s instead of reporting success', async (stopReason, kind, message) => {
+    turn({ stopReason });
+    const runner = await makeACPSubagentRunner({ command: 'gemini', role: 'gem' });
+    await expect(runner(TASK, makeCtx(5000).ctx)).rejects.toMatchObject({
+      kind,
+      message: expect.stringMatching(message),
+      retryable: false,
+    });
+    // The one-shot session is still torn down on the failure path.
+    expect(hoisted.session?.close).toHaveBeenCalled();
+  });
+
+  it('throws empty_response for a turn with no text and no tool calls', async () => {
+    turn({ text: '', hasText: false, toolCalls: [] });
+    const runner = await makeACPSubagentRunner({ command: 'gemini' });
+    await expect(runner(TASK, makeCtx(5000).ctx)).rejects.toMatchObject({
+      kind: 'empty_response',
+    });
+  });
+
+  it('accepts a text-less turn that did call tools', async () => {
+    turn({
+      text: '',
+      hasText: false,
+      toolCalls: [{ toolCallId: 'a', title: 'edit x', status: 'completed' }],
+    });
+    const runner = await makeACPSubagentRunner({ command: 'gemini' });
+    await expect(runner(TASK, makeCtx(5000).ctx)).resolves.toMatchObject({
+      result: '',
+      toolCalls: 1,
+    });
+  });
+
+  it('accepts an unknown extension stopReason when the turn produced output', async () => {
+    turn({ stopReason: 'vendor_custom_done' });
+    const runner = await makeACPSubagentRunner({ command: 'gemini' });
+    await expect(runner(TASK, makeCtx(5000).ctx)).resolves.toMatchObject({
+      result: 'partial work',
+    });
+  });
+});
+
 describe('makeACPSubagentRunnerWithStop', () => {
   it('returns a stop() that is a no-op (sessions are per-call)', async () => {
     const { runner, stop } = await makeACPSubagentRunnerWithStop({ command: 'gemini' });

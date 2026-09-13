@@ -11,12 +11,12 @@
  */
 
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
-import { afterAll, describe, expect, it } from 'vitest';
 import {
   createWrongTraceHookPair,
   getWrongTrace,
   resetWrongTraceGate,
 } from '@wrongstack/wrongtrace';
+import { afterAll, describe, expect, it } from 'vitest';
 
 const PROBE = `__webui_gate_probe_${Date.now()}__`;
 const SESSION = 'webui-gate-focused-test';
@@ -81,7 +81,8 @@ describe('standalone WebUI WrongTrace gate (executor-path contract)', () => {
 
     const locks = await wt.listLocks();
     const held = locks.find((l) => l.path === PROBE);
-    if (held) expect(held.owner).toBe(`wrongstack:${SESSION}`);
+    // The lock must actually be claimed; `if (held)` let a missing claim pass.
+    expect(held?.owner).toBe(`wrongstack:${SESSION}`);
 
     await runner.postToolUse('edit', { path: PROBE }, { content: '', isError: false }, env);
     const after = (await wt.listLocks()).filter((l) => l.path === PROBE);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import cronPlugin from '../src/cron';
 
 function createMockApi() {
@@ -67,14 +67,6 @@ describe('cron plugin', () => {
     expect(ext.owner).toBe('cron');
     expect(typeof ext.beforeIteration).toBe('function');
     expect(typeof ext.afterIteration).toBe('function');
-  });
-
-  it('should subscribe to cron:tick events', () => {
-    // Note: the cron plugin uses api.events.emit internally, not api.events.on.
-    // It registers a beforeIteration extension that fires tick events, so the
-    // event subscription is handled via the extension system, not directly.
-    // This test is a placeholder confirming the pattern is recognized.
-    expect(true).toBe(true);
   });
 
   it('cron_schedule should have correct properties', () => {

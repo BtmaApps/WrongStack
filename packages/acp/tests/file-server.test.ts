@@ -56,25 +56,15 @@ describe('FileServer', () => {
   });
 
   it('rejects paths outside the project root with OUTSIDE_ROOT', async () => {
-    await expect(
-      server.readTextFile({ sessionId: 's1', path: '/etc/passwd' }),
-    ).rejects.toBeInstanceOf(FsError);
-    try {
-      await server.readTextFile({ sessionId: 's1', path: '/etc/passwd' });
-    } catch (err) {
-      expect((err as FsError).code).toBe('OUTSIDE_ROOT');
-    }
+    const read = server.readTextFile({ sessionId: 's1', path: '/etc/passwd' });
+    await expect(read).rejects.toBeInstanceOf(FsError);
+    await expect(read).rejects.toMatchObject({ code: 'OUTSIDE_ROOT' });
   });
 
   it('rejects relative paths (ACP requires absolute)', async () => {
-    await expect(
-      server.readTextFile({ sessionId: 's1', path: 'relative/file.txt' }),
-    ).rejects.toBeInstanceOf(FsError);
-    try {
-      await server.readTextFile({ sessionId: 's1', path: 'relative/file.txt' });
-    } catch (err) {
-      expect((err as FsError).code).toBe('INVALID_PATH');
-    }
+    const read = server.readTextFile({ sessionId: 's1', path: 'relative/file.txt' });
+    await expect(read).rejects.toBeInstanceOf(FsError);
+    await expect(read).rejects.toMatchObject({ code: 'INVALID_PATH' });
   });
 
   it('rejects sibling-prefix attacks (e.g. /project-evil vs /project)', async () => {
@@ -345,12 +335,19 @@ describe('FileServer', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       const linuxServer = new FileServer({
         projectRoot,
-        operations: fakeOperations(),
+        operations: fakeOperations({ readFile: async () => 'linux-content' }),
       });
-      await linuxServer.readTextFile({
-        sessionId: 's1',
-        path: path.join(projectRoot, 'file.txt'),
-      });
+      await expect(
+        linuxServer.readTextFile({ sessionId: 's1', path: path.join(projectRoot, 'file.txt') }),
+      ).resolves.toEqual({ content: 'linux-content' });
+      // Off Windows the root comparison is case-SENSITIVE: a case-changed
+      // spelling of the root is a different directory and must be refused.
+      await expect(
+        linuxServer.readTextFile({
+          sessionId: 's1',
+          path: path.join(projectRoot.toUpperCase(), 'file.txt'),
+        }),
+      ).rejects.toMatchObject({ code: 'OUTSIDE_ROOT' });
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     }

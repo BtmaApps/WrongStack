@@ -96,54 +96,49 @@ describe('fingerprinting awkward tool inputs', () => {
 
   it('keeps two DIFFERENT circular inputs distinguishable', async () => {
     // Both used to collapse to "[object Object]" and look like a repeat.
-    const out = await feed([cyclic('alpha'), cyclic('beta'), cyclic('gamma'), cyclic('delta')], {
-      repeatThreshold: 2,
-    });
-    expect(out?.decision).not.toBe('block');
+    // Default warnAfter is 3: four identical fingerprints would warn.
+    const out = await feed([cyclic('alpha'), cyclic('beta'), cyclic('gamma'), cyclic('delta')]);
+    expect(out).toBeUndefined();
   });
 
   it('keeps two DIFFERENT deep inputs distinguishable', async () => {
-    const out = await feed(
-      [deep(50, 'alpha'), deep(50, 'beta'), deep(50, 'gamma'), deep(50, 'delta')],
-      { repeatThreshold: 2 },
-    );
-    expect(out?.decision).not.toBe('block');
+    // Depth 8 stays inside CANONICALIZE_MAX_DEPTH (12). Inputs that differ
+    // only BELOW the cap are summarised to '[deep-object]' and do collide —
+    // a deliberate bound, not covered here.
+    const out = await feed([deep(8, 'alpha'), deep(8, 'beta'), deep(8, 'gamma'), deep(8, 'delta')]);
+    expect(out).toBeUndefined();
   });
 
   it('still detects a genuine repeat of the same circular input', async () => {
     // The guard must not become a blanket "never match" either.
     const shared = cyclic('same');
-    const out = await feed([shared, shared, shared, shared, shared], { repeatThreshold: 2 });
-    expect(out).toBeDefined();
+    const out = await feed([shared, shared, shared, shared, shared]);
+    // Any config object selects mode 'block'; blockAfter defaults to 5.
+    expect(out?.decision).toBe('block');
+    expect(out?.reason).toMatch(/called 5 times in a row with identical input/);
   });
 
   it('treats key order as irrelevant, as before', async () => {
-    const out = await feed(
-      [
-        { a: 1, b: 2, c: 3 },
-        { c: 3, b: 2, a: 1 },
-        { b: 2, a: 1, c: 3 },
-        { a: 1, c: 3, b: 2 },
-      ],
-      { repeatThreshold: 2 },
-    );
+    const out = await feed([
+      { a: 1, b: 2, c: 3 },
+      { c: 3, b: 2, a: 1 },
+      { b: 2, a: 1, c: 3 },
+      { a: 1, c: 3, b: 2 },
+    ]);
     // Same logical input written four ways — this IS a repeat.
-    expect(out).toBeDefined();
+    expect(out?.additionalContext).toMatch(/repeated 4x with identical input/);
   });
 
   it('does not treat a repeated sibling reference as a cycle', async () => {
     // `shared` appears twice but the graph is acyclic; collapsing the
     // second occurrence to a marker would blur genuinely distinct inputs.
     const shared = { v: 1 };
-    const out = await feed(
-      [
-        { left: shared, right: shared, tag: 'one' },
-        { left: shared, right: shared, tag: 'two' },
-        { left: shared, right: shared, tag: 'three' },
-        { left: shared, right: shared, tag: 'four' },
-      ],
-      { repeatThreshold: 2 },
-    );
-    expect(out?.decision).not.toBe('block');
+    const out = await feed([
+      { left: shared, right: shared, tag: 'one' },
+      { left: shared, right: shared, tag: 'two' },
+      { left: shared, right: shared, tag: 'three' },
+      { left: shared, right: shared, tag: 'four' },
+    ]);
+    expect(out).toBeUndefined();
   });
 });

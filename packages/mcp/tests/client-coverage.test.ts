@@ -244,11 +244,15 @@ describe('MCPClient coverage', () => {
 
   it('covers strict stdio response validation and notification guards', () => {
     const client = new MCPClient({ name: 'client', transport: 'stdio', command: 'noop' });
-    const onLine = (
-      client as never as {
-        onLine: (line: string) => void;
-      }
-    ).onLine.bind(client);
+    const internals = client as never as {
+      onLine: (line: string) => void;
+      pending: Map<number, unknown>;
+    };
+    const onLine = internals.onLine.bind(client);
+    // A live request with id 1: no malformed frame below may settle it.
+    const resolve = vi.fn();
+    const reject = vi.fn();
+    internals.pending.set(1, { resolve, reject, method: 'tools/list' } as never);
     for (const value of [
       null,
       1,
@@ -265,6 +269,10 @@ describe('MCPClient coverage', () => {
       onLine(JSON.stringify(value));
     }
     onLine('{invalid');
+    expect(resolve).not.toHaveBeenCalled();
+    expect(reject).not.toHaveBeenCalled();
+    expect(internals.pending.has(1)).toBe(true);
+    internals.pending.clear();
   });
 
   it('closes on an oversized receive buffer', async () => {
@@ -436,11 +444,22 @@ describe('MCPClient coverage', () => {
     const internals = client as never as {
       onData: (data: string) => void;
       onLine: (line: string) => void;
+      pending: Map<number, unknown>;
     };
-    internals.onData('\n');
-    internals.onLine('{"jsonrpc":"2.0","method":"notifications/unknown"}');
-    internals.onLine('{"jsonrpc":"2.0","method":"notifications/prompts/list_changed"}');
-    internals.onLine('{"jsonrpc":"2.0","id":999,"result":{}}');
+    // A real in-flight request that none of these lines may settle.
+    const resolve = vi.fn();
+    const reject = vi.fn();
+    internals.pending.set(1, { resolve, reject, method: 'tools/list' } as never);
+    expect(() => {
+      internals.onData('\n');
+      internals.onLine('{"jsonrpc":"2.0","method":"notifications/unknown"}');
+      internals.onLine('{"jsonrpc":"2.0","method":"notifications/prompts/list_changed"}');
+      internals.onLine('{"jsonrpc":"2.0","id":999,"result":{}}');
+    }).not.toThrow();
+    expect(internals.pending.has(1)).toBe(true);
+    expect(resolve).not.toHaveBeenCalled();
+    expect(reject).not.toHaveBeenCalled();
+    internals.pending.clear();
   });
 
   it('handles abort after a pending entry was externally cleared', async () => {

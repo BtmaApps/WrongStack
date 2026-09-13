@@ -86,6 +86,13 @@ export class FileMatchesPlugin implements VerifierPlugin {
           const lineNo = capped.slice(0, m.index).split('\n').length;
           lineNumbers.push(lineNo);
           if (!scanRegex.global) break;
+          // A global regex whose match is empty (`b*`, `\s*`, `^`, `\b`) does
+          // NOT advance `lastIndex`, so `exec` returns the identical
+          // zero-length match at the same index forever. Step past it
+          // explicitly: without this the loop grows `lineNumbers` until V8
+          // throws `RangeError: Invalid array length`, which the catch below
+          // reports as a bogus file-read error instead of a match verdict.
+          if (m[0]?.length === 0) scanRegex.lastIndex += 1;
         }
       }
 

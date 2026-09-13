@@ -5,8 +5,8 @@
  * spawn budget enforcement, task completion notification) using mock runners
  * and the shared test harness.
  */
-import { beforeEach, describe, expect, it } from 'vitest';
-import { Director } from '../../src/coordination/director.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Director, type TaskResultNotification } from '../../src/coordination/director.js';
 import type {
   MultiAgentConfig,
   SubagentRunner,
@@ -205,30 +205,40 @@ describe('Director — task result notifier', () => {
   beforeEach(() => {});
 
   it('fires taskResultNotifier on fire-and-forget task completion', async () => {
-    const notifications: any[] = [];
+    // The old version used `makeRunner()` (an object with `run(spec)` keyed on
+    // `taskId`), never spawned a subagent, and admitted the notification "may
+    // or may not fire" — it only checked status() existed, so nothing ran.
+    // Director's runner is a function `(task, ctx) => outcome`, as in
+    // director-await-any.test.ts.
+    const notifications: TaskResultNotification[] = [];
+    const runner = vi.fn(async (task: TaskSpec) => ({
+      result: `ran:${task.description}`,
+      iterations: 1,
+      toolCalls: 0,
+    }));
     const director = new Director({
       sessionId: TEST_SESSION_ID,
-      config: makeConfig(),
-      runner: makeRunner(),
+      config: {
+        coordinatorId: 'notifier-director',
+        doneCondition: { type: 'all_tasks_done' },
+        maxConcurrent: 2,
+      } as never,
+      runner: runner as never,
       taskResultNotifier: (n) => {
         notifications.push(n);
       },
     });
-
-    // Assign a fire-and-forget task (no awaitTasks)
-    director.assign({
-      taskId: 't1',
-      description: 'test task',
-      prompt: 'do something',
-    } as TaskSpec);
-
-    // Wait for async completion
-    await new Promise((r) => setTimeout(r, 50));
-
-    // The runner is synchronous-mock; the coordinator processes async
-    // The notification may or may not fire depending on coordinator wiring
-    // — just verify the director doesn't crash
-    expect(director.status()).toBeDefined();
+    try {
+      await director.spawn({ id: 'w1', name: 'W1' });
+      // Fire-and-forget: nobody awaits t1, so the notifier is its only way back.
+      await director.assign({ id: 't1', description: 'test task', subagentId: 'w1' } as TaskSpec);
+      await vi.waitFor(() => expect(notifications.map((n) => n.taskId)).toContain('t1'));
+      expect(runner).toHaveBeenCalledTimes(1);
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0]).toMatchObject({ status: 'success', resultText: 'ran:test task' });
+    } finally {
+      await director.shutdown();
+    }
   });
 });
 

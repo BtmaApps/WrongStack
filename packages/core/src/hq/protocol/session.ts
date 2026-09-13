@@ -1,3 +1,4 @@
+import type { HqCommandLatencySummary } from '../commands.js';
 import type { HqClientKind, HqClientRecord } from './client.js';
 import type { HqMachineRecord } from './core.js';
 import type { HqFleetSummary } from './fleet.js';
@@ -178,6 +179,12 @@ export interface HqSnapshot {
   liveSessions?: readonly HqSessionSnapshotPayload[];
   /** Latest operational health for each MCP server reported by any connected client. */
   mcpServers?: readonly HqMcpServerHealth[];
+  /**
+   * Command round-trip latency roll-up (W4 #7), computed server-side from the
+   * in-memory command audit ring. Absent until at least one command has been
+   * both dispatched and acknowledged (additive, default undefined).
+   */
+  commandLatency?: HqCommandLatencySummary;
   totals: {
     activeProjects: number;
     activeClients: number;

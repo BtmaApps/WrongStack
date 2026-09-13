@@ -37,6 +37,7 @@ const {
   handleSessionDamaged,
   handleSessionRewound,
   handleTokenCostEstimateUnavailable,
+  warnedCostModels,
   handleTokenThreshold,
   handleToolLoopDetected,
   handleTrustPersisted,
@@ -696,11 +697,12 @@ describe('session ws-handlers — provider / delegate / context', () => {
     });
 
     it('substitutes a placeholder for a blank model name', () => {
+      // Warn-once state is module-level; clear it so the result does not
+      // depend on which earlier test already warned for '<unknown>'.
+      warnedCostModels.clear();
+      toast.warn.mockReset();
       handleTokenCostEstimateUnavailable(msg('token.cost_estimate_unavailable', { model: '' }));
-      // Either it warns with the placeholder, or a previous test already
-      // registered it — both are consistent with warn-once semantics.
-      const calls = toast.warn.mock.calls.flat();
-      if (calls.length > 0) expect(calls[0]).toBe('Cost estimate unavailable for <unknown>');
+      expect(toast.warn).toHaveBeenCalledWith('Cost estimate unavailable for <unknown>');
     });
   });
 

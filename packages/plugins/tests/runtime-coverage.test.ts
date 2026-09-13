@@ -4,15 +4,14 @@
  * locateRunnerEntry success, resolveRunnerCommand Path 4 (absolute path),
  * runRunnerCommand error paths (ENOENT, signal exit), probeRunner success.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  type LanguageRuntime,
   collectSourceFiles,
   collectSourceFilesAsync,
+  type LanguageRuntime,
   locateRunnerEntry,
   matchesExtension,
   probeRunner,
@@ -354,11 +353,10 @@ describe('runRunnerCommand — spawn error paths', () => {
       cwd: process.cwd(),
       timeoutMs: 100,
     });
-    // On fast machines, might complete before timeout. But if it times out:
-    if (result.timedOut) {
-      expect(result.code).toBeNull();
-    }
-    // Otherwise the tiny script finished before the timeout, that's fine
+    // The child sleeps 10s against a 100ms budget, so it can only end by
+    // being killed — a conditional here let a broken timeout pass silently.
+    expect(result.timedOut).toBe(true);
+    expect(result.code).toBeNull();
   });
 });
 

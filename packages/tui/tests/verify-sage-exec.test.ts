@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatToolOutputSage, formatToolVisualOutput } from '../src/components/history/utils.js';
 import { extractSageBlock } from '../src/components/history/sage-output-format.js';
+import { formatToolOutputSage, formatToolVisualOutput } from '../src/components/history/utils.js';
 
 const SAGE_BLOCK = [
   '--- SAGE: related project knowledge (Memory Injector) ---',
@@ -58,18 +58,19 @@ describe('SAGE stripping for exec output (empirical verification)', () => {
     const { cleanOutput } = extractSageBlock(execResult);
     const visual = formatToolVisualOutput('exec', cleanOutput, true);
 
-    if (visual) {
-      for (const line of visual) {
-        expect(line.text).not.toContain('SAGE:');
-        expect(line.text).not.toContain('mem-test');
-      }
+    // `if (visual)` let a formatter that returned nothing pass this test.
+    expect(visual?.length ?? 0).toBeGreaterThan(0);
+    for (const line of visual ?? []) {
+      expect(line.text).not.toContain('SAGE:');
+      expect(line.text).not.toContain('mem-test');
     }
   });
 
   it('NEGATIVE CONTROL: formatToolVisualOutput on raw exec+SAGE (no pre-strip)', () => {
-    // What happens if the JSON has trailing SAGE text?
-    // JSON.parse will fail on the trailing non-JSON text.
-    // This test just observes — no assertions on pass/fail.
+    // Trailing SAGE text makes the exec JSON unparseable. The formatter does
+    // not leak the SAGE block, but it also loses the real output and falls
+    // back to a generic summary — which is exactly why entry.tsx must
+    // pre-strip with extractSageBlock. (This test used to only console.log.)
     const execResult =
       JSON.stringify({
         exit_code: 0,
@@ -77,13 +78,11 @@ describe('SAGE stripping for exec output (empirical verification)', () => {
         stderr: '',
       }) + `\n\n${SAGE_BLOCK}`;
 
-    const visual = formatToolVisualOutput('exec', execResult, true);
-    // Log what the visual formatter produces from contaminated input
-    // so we understand the failure mode.
-    console.log(
-      '[NEGATIVE CONTROL] exec visual from contaminated input:',
-      JSON.stringify(visual, null, 2),
-    );
+    const visual = formatToolVisualOutput('exec', execResult, true) ?? [];
+    const text = visual.map((line) => line.text).join('\n');
+    expect(visual).toEqual([expect.objectContaining({ kind: 'ok', text: 'exec completed' })]);
+    expect(text).not.toContain('hello');
+    expect(text).not.toContain('SAGE:');
   });
 
   it('also works for grep output with SAGE block', () => {

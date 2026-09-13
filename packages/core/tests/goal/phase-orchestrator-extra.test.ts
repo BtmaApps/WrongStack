@@ -101,14 +101,23 @@ describe('PhaseOrchestrator — autonomous tick loop', () => {
 
   it('tick() is a no-op when stopped or paused', async () => {
     const graph = await singlePhase();
+    const executeTask = vi.fn(async () => {});
+    const onTick = vi.fn();
     const orch = new PhaseOrchestrator({
       graph,
-      ctx: { executeTask: async () => {} },
+      ctx: { executeTask, onTick },
       autonomous: false,
+      phaseDelayMs: 1,
     });
     orch.stop();
     await (orch as never as { tick: () => Promise<void> }).tick(); // stopped → early return
-    orch.resume(); // clears paused, fires a tick (no running phases)
+    // resume() only clears `paused`; a stopped orchestrator must stay stopped
+    // instead of scheduling phases again.
+    orch.resume();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(onTick).not.toHaveBeenCalled();
+    expect(executeTask).not.toHaveBeenCalled();
+    expect(orch.isRunning()).toBe(false);
   });
 
   it('tick() starts a pending phase when a slot is open and completes the graph', async () => {

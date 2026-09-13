@@ -588,9 +588,15 @@ describe('serveStdio', () => {
     const stdin = new PassThrough();
     stdin.setEncoding('utf8');
     const stdout = new PassThrough();
+    let written = '';
+    stdout.on('data', (c: Buffer) => {
+      written += c.toString();
+    });
     const handle = serveStdio(new MCPServer({ host: makeHost() }), { stdin, stdout });
     stdin.end('\n   \n');
     await handle.done;
+    // Blank lines are skipped — not answered with a parse error.
+    expect(written).toBe('');
   });
 
   it('supports readable streams without resume()', async () => {

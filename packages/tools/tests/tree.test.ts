@@ -55,22 +55,36 @@ describe('treeTool', () => {
     expect(result.path).toBe(tmpDir);
   });
 
+  // The option tests below used to run against an EMPTY tmpDir and only check
+  // that a `tree` field existed, so an ignored option still passed.
   it('respects depth option', async () => {
+    await fs.mkdir(path.join(tmpDir, 'outer', 'inner'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'outer', 'shallow.txt'), '');
+    await fs.writeFile(path.join(tmpDir, 'outer', 'inner', 'deep.txt'), '');
     const ctx = makeCtx();
-    const result = await treeTool.execute({ depth: 1 }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    const shallow = await treeTool.execute({ depth: 1 }, ctx, makeOpts());
+    expect(shallow.tree).toContain('outer');
+    expect(shallow.tree).not.toContain('deep.txt');
+    const full = await treeTool.execute({ depth: 0 }, ctx, makeOpts());
+    expect(full.tree).toContain('deep.txt');
   });
 
   it('respects show_files=false', async () => {
+    await fs.mkdir(path.join(tmpDir, 'keepdir'));
+    await fs.writeFile(path.join(tmpDir, 'hidden-by-option.txt'), '');
     const ctx = makeCtx();
     const result = await treeTool.execute({ show_files: false }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    expect(result.tree).toContain('keepdir');
+    expect(result.tree).not.toContain('hidden-by-option.txt');
   });
 
   it('respects show_dirs=false', async () => {
+    await fs.mkdir(path.join(tmpDir, 'somedir'));
+    await fs.writeFile(path.join(tmpDir, 'visible.txt'), '');
     const ctx = makeCtx();
     const result = await treeTool.execute({ show_dirs: false }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    expect(result.tree).not.toContain('somedir/');
+    expect(result.tree).toContain('visible.txt');
   });
 
   it('skips directories when show_dirs=false (with a real subdir present)', async () => {
@@ -120,21 +134,36 @@ describe('treeTool', () => {
   });
 
   it('respects show_hidden=true', async () => {
+    await fs.writeFile(path.join(tmpDir, '.dotfile'), '');
+    await fs.writeFile(path.join(tmpDir, 'plain.txt'), '');
     const ctx = makeCtx();
-    const result = await treeTool.execute({ show_hidden: true }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    const hiddenByDefault = await treeTool.execute({}, ctx, makeOpts());
+    expect(hiddenByDefault.tree).not.toContain('.dotfile');
+    expect(hiddenByDefault.tree).toContain('plain.txt');
+    const shown = await treeTool.execute({ show_hidden: true }, ctx, makeOpts());
+    expect(shown.tree).toContain('.dotfile');
   });
 
   it('respects exclude option', async () => {
+    // A custom name: node_modules is already excluded by default, so it could
+    // not tell whether the caller's list was applied.
+    await fs.mkdir(path.join(tmpDir, 'skipme'));
+    await fs.writeFile(path.join(tmpDir, 'skipme', 'inside.txt'), '');
+    await fs.mkdir(path.join(tmpDir, 'keepme'));
     const ctx = makeCtx();
-    const result = await treeTool.execute({ exclude: ['node_modules'] }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    const result = await treeTool.execute({ exclude: ['skipme'] }, ctx, makeOpts());
+    expect(result.tree).not.toContain('skipme');
+    expect(result.tree).not.toContain('inside.txt');
+    expect(result.tree).toContain('keepme');
   });
 
   it('respects glob filter', async () => {
+    await fs.writeFile(path.join(tmpDir, 'wanted.ts'), '');
+    await fs.writeFile(path.join(tmpDir, 'unwanted.js'), '');
     const ctx = makeCtx();
     const result = await treeTool.execute({ glob: '*.ts' }, ctx, makeOpts());
-    expect(result).toHaveProperty('tree');
+    expect(result.tree).toContain('wanted.ts');
+    expect(result.tree).not.toContain('unwanted.js');
   });
 
   it('emits progress metric events past the flush threshold (>200 entries)', async () => {

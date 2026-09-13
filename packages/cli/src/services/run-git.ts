@@ -36,7 +36,8 @@ export async function runGit(
       child.on('error', (err) => {
         reject(new Error(`Failed to run git: ${err.message}`));
       });
-      child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 0 }));
+      // `code` is null only when git was killed by a signal — never a success.
+      child.on('close', (code) => resolve({ stdout, stderr, code: code ?? 1 }));
     });
   } catch (err) {
     throw new Error(toErrorMessage(err));
