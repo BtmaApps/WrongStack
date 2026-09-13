@@ -1,8 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import todoTrackerPlugin from '../src/todo-tracker';
+import { ToolRegistry } from '@wrongstack/core';
+import todoTrackerPlugin, { createTodoTrackerPlugin, deriveProjectSlug } from '../src/todo-tracker';
+
+function corruptSiblings(): string[] {
+  return readdirSync(tmpDir).filter((f) => f.startsWith('todo-tracker.json.corrupt-'));
+}
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -56,7 +61,8 @@ function getTool(
   permission: 'auto' | 'confirm';
   execute: (input: unknown) => Promise<unknown>;
 } {
-  const call = api.tools.register.mock.calls.find(
+  // Latest registration wins, like a real registry after a reload.
+  const call = api.tools.register.mock.calls.findLast(
     ([t]: unknown[]) => (t as { name: string }).name === name,
   );
   if (!call) throw new Error(`tool ${name} not registered`);
@@ -148,9 +154,7 @@ describe('add + list round trip', () => {
     const api = makeApi(filePath);
     await todoTrackerPlugin.setup(api as never);
     const addTool = getTool(api, 'todo_tracker_add');
-    const result = (await addTool.execute({ content: '   ' })) as { ok: boolean; error: string };
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/content is required/);
+    await expect(addTool.execute({ content: '   ' })).rejects.toThrow(/content is required/);
   });
 
   it('list filters by status, priority, and tag', async () => {
@@ -263,12 +267,12 @@ describe('complete / drop / remove', () => {
   it('returns a clear error for an unknown id', async () => {
     const api = makeApi(filePath);
     await todoTrackerPlugin.setup(api as never);
-    const result = (await getTool(api, 'todo_tracker_complete').execute({ id: 'no-such-id' })) as {
-      ok: boolean;
-      error: string;
-    };
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/no item with id/);
+    for (const name of ['todo_tracker_complete', 'todo_tracker_drop', 'todo_tracker_remove']) {
+      await expect(getTool(api, name).execute({ id: 'no-such-id' })).rejects.toThrow(
+        /no item with id/,
+      );
+      await expect(getTool(api, name).execute({})).rejects.toThrow(/id is required/);
+    }
   });
 });
 
@@ -320,17 +324,282 @@ describe('file persistence (atomic write + corruption tolerance)', () => {
     expect(listed.total).toBe(1);
   });
 
-  it('treats a corrupt file as empty (does not crash setup)', async () => {
-    // Seed a corrupt file before setup
-    const { writeFileSync } = await import('node:fs');
-    writeFileSync(filePath, 'not valid json {{{');
+  it('quarantines a corrupt file instead of erasing it on the next write', async () => {
+    const corruptBytes = 'not valid json {{{';
+    writeFileSync(filePath, corruptBytes);
 
     const api = makeApi(filePath);
     await expect(todoTrackerPlugin.setup(api as never)).resolves.not.toThrow();
-
-    // The plugin should now treat the file as empty — list returns 0
     const listed = (await getTool(api, 'todo_tracker_list').execute({})) as { total: number };
     expect(listed.total).toBe(0);
+
+    await getTool(api, 'todo_tracker_add').execute({ content: 'after corruption' });
+
+    const quarantined = corruptSiblings();
+    expect(quarantined).toHaveLength(1);
+    expect(readFileSync(join(tmpDir, quarantined[0]!), 'utf8')).toBe(corruptBytes);
+    const onDisk = JSON.parse(readFileSync(filePath, 'utf8')) as {
+      items: Array<{ content: string }>;
+    };
+    expect(onDisk.items.map((i) => i.content)).toEqual(['after corruption']);
+
+    expect(api.log.error).toHaveBeenCalledWith(
+      expect.stringContaining(quarantined[0]!),
+      expect.anything(),
+    );
+    const h = (await todoTrackerPlugin.health!()) as { ok: boolean; message: string };
+    expect(h.ok).toBe(false);
+    expect(h.message).toContain('.corrupt-');
+  });
+
+  it('quarantines a file whose items have invalid fields (no TypeError in list)', async () => {
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        version: 1,
+        projectSlug: 'x',
+        updatedAt: 'now',
+        items: [{ id: 'a', content: 'c', status: 5, priority: 'normal', tags: [] }],
+      }),
+    );
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    const listed = (await getTool(api, 'todo_tracker_list').execute({ status: 'pending' })) as {
+      total: number;
+    };
+    expect(listed.total).toBe(0);
+    expect(corruptSiblings()).toHaveLength(1);
+    expect(((await todoTrackerPlugin.health!()) as { ok: boolean }).ok).toBe(false);
+  });
+
+  it('loads a file with a UTF-8 BOM normally', async () => {
+    const api1 = makeApi(filePath);
+    await todoTrackerPlugin.setup(api1 as never);
+    await getTool(api1, 'todo_tracker_add').execute({ content: 'bom item' });
+    todoTrackerPlugin.teardown!(api1 as never);
+    writeFileSync(filePath, `\uFEFF${readFileSync(filePath, 'utf8')}`);
+
+    const api2 = makeApi(filePath);
+    await todoTrackerPlugin.setup(api2 as never);
+    const listed = (await getTool(api2, 'todo_tracker_list').execute({})) as {
+      total: number;
+      items: Array<{ content: string }>;
+    };
+    expect(listed.total).toBe(1);
+    expect(listed.items[0]?.content).toBe('bom item');
+    expect(corruptSiblings()).toHaveLength(0);
+  });
+
+  it('never writes a file with an unsupported (newer) version', async () => {
+    const v2 = JSON.stringify({ version: 2, items: [{ anything: true }] });
+    writeFileSync(filePath, v2);
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+
+    await expect(getTool(api, 'todo_tracker_add').execute({ content: 'nope' })).rejects.toThrow(
+      /read-only.*version 2/,
+    );
+    expect(readFileSync(filePath, 'utf8')).toBe(v2);
+    expect(corruptSiblings()).toHaveLength(0);
+    expect(((await todoTrackerPlugin.health!()) as { ok: boolean }).ok).toBe(false);
+  });
+
+  it('accepts files that stored the legacy slug (basename with extension)', async () => {
+    writeFileSync(
+      filePath,
+      JSON.stringify({
+        version: 1,
+        projectSlug: 'todo-tracker.json',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        items: [
+          {
+            id: 'legacy-1',
+            content: 'old item',
+            status: 'pending',
+            priority: 'normal',
+            tags: [],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            completedAt: null,
+            sourceSessionId: null,
+            notes: null,
+          },
+        ],
+      }),
+    );
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    const status = (await getTool(api, 'todo_tracker_status').execute({})) as {
+      total: number;
+      projectSlug: string;
+    };
+    expect(status.total).toBe(1);
+    expect(status.projectSlug).toBe('todo-tracker');
+  });
+});
+
+describe('concurrency + multi-host isolation', () => {
+  it('sees and preserves items written by another process', async () => {
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    await getTool(api, 'todo_tracker_add').execute({ content: 'mine' });
+
+    // Simulate a second process appending to the same file.
+    const onDisk = JSON.parse(readFileSync(filePath, 'utf8')) as { items: Array<unknown> };
+    const foreign = {
+      ...(onDisk.items[0] as Record<string, unknown>),
+      id: 'foreign-1',
+      content: 'theirs',
+    };
+    onDisk.items.push(foreign);
+    writeFileSync(filePath, JSON.stringify(onDisk));
+
+    const listed = (await getTool(api, 'todo_tracker_list').execute({})) as { total: number };
+    expect(listed.total).toBe(2);
+    await getTool(api, 'todo_tracker_add').execute({ content: 'mine again' });
+    const after = JSON.parse(readFileSync(filePath, 'utf8')) as {
+      items: Array<{ content: string }>;
+    };
+    expect(after.items.map((i) => i.content).sort()).toEqual(['mine', 'mine again', 'theirs']);
+  });
+
+  it('two independent plugin instances on one file keep both writes', async () => {
+    const pluginA = createTodoTrackerPlugin();
+    const pluginB = createTodoTrackerPlugin();
+    const apiA = makeApi(filePath);
+    const apiB = makeApi(filePath);
+    await pluginA.setup(apiA as never);
+    await pluginB.setup(apiB as never);
+
+    await getTool(apiA, 'todo_tracker_add').execute({ content: 'from A' });
+    await getTool(apiB, 'todo_tracker_add').execute({ content: 'from B' });
+
+    const onDisk = JSON.parse(readFileSync(filePath, 'utf8')) as {
+      items: Array<{ content: string }>;
+    };
+    expect(onDisk.items.map((i) => i.content).sort()).toEqual(['from A', 'from B']);
+    for (const api of [apiA, apiB]) {
+      const listed = (await getTool(api, 'todo_tracker_list').execute({})) as { total: number };
+      expect(listed.total).toBe(2);
+    }
+  });
+
+  it('20 parallel adds across two instances all land on disk', async () => {
+    const pluginA = createTodoTrackerPlugin();
+    const pluginB = createTodoTrackerPlugin();
+    const apiA = makeApi(filePath);
+    const apiB = makeApi(filePath);
+    await pluginA.setup(apiA as never);
+    await pluginB.setup(apiB as never);
+    const addA = getTool(apiA, 'todo_tracker_add');
+    const addB = getTool(apiB, 'todo_tracker_add');
+
+    await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        (i % 2 === 0 ? addA : addB).execute({ content: `item ${i}` }),
+      ),
+    );
+    const onDisk = JSON.parse(readFileSync(filePath, 'utf8')) as { items: unknown[] };
+    expect(onDisk.items).toHaveLength(20);
+  }, 30_000);
+
+  it('two hosts in one process do not clobber each other’s file path', async () => {
+    const otherFile = join(tmpDir, 'other.json');
+    const api1 = makeApi(filePath);
+    const api2 = makeApi(otherFile);
+    await todoTrackerPlugin.setup(api1 as never);
+    await todoTrackerPlugin.setup(api2 as never);
+
+    await getTool(api1, 'todo_tracker_add').execute({ content: 'for file 1' });
+    const onDisk = JSON.parse(readFileSync(filePath, 'utf8')) as {
+      items: Array<{ content: string }>;
+    };
+    expect(onDisk.items.map((i) => i.content)).toEqual(['for file 1']);
+    expect(existsSync(otherFile)).toBe(false);
+    todoTrackerPlugin.teardown!(api1 as never);
+    todoTrackerPlugin.teardown!(api2 as never);
+  });
+});
+
+describe('small fixes', () => {
+  it('projectSlug is the basename without extension', async () => {
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    const status = (await getTool(api, 'todo_tracker_status').execute({})) as {
+      projectSlug: string;
+    };
+    expect(status.projectSlug).toBe('todo-tracker');
+    expect(deriveProjectSlug('/p/.todos')).toBe('.todos');
+    expect(deriveProjectSlug('C:\\p\\backlog.v1.json')).toBe('backlog.v1');
+  });
+
+  it('pull reports total before the limit and is not a mutation', async () => {
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    for (const c of ['a', 'b', 'c']) {
+      await getTool(api, 'todo_tracker_add').execute({ content: c });
+    }
+    const pulled = (await getTool(api, 'todo_tracker_pull').execute({ limit: 1 })) as {
+      total: number;
+      items: unknown[];
+    };
+    expect(pulled.total).toBe(3);
+    expect(pulled.items).toHaveLength(1);
+    const status = (await getTool(api, 'todo_tracker_status').execute({})) as {
+      lastMutation: { op: string };
+      session: { pull: number };
+    };
+    expect(status.lastMutation.op).toBe('add');
+    expect(status.session.pull).toBe(1);
+  });
+
+  it('logs when session.append fails in add', async () => {
+    const api = makeApi(filePath);
+    api.session.append.mockRejectedValue(new Error('writer closed'));
+    await todoTrackerPlugin.setup(api as never);
+    const res = (await getTool(api, 'todo_tracker_add').execute({ content: 'x' })) as {
+      ok: boolean;
+    };
+    expect(res.ok).toBe(true);
+    expect(api.log.warn).toHaveBeenCalledWith(
+      expect.stringContaining('session.append failed'),
+      expect.anything(),
+    );
+  });
+
+  it('not-found error lists known open ids', async () => {
+    const api = makeApi(filePath);
+    await todoTrackerPlugin.setup(api as never);
+    const added = (await getTool(api, 'todo_tracker_add').execute({ content: 'real' })) as {
+      item: { id: string };
+    };
+    await expect(
+      getTool(api, 'todo_tracker_complete').execute({ id: `${added.item.id.slice(0, 8)}` }),
+    ).rejects.toThrow(added.item.id);
+  });
+});
+
+describe('teardown on a real ToolRegistry', () => {
+  it('setup → teardown → setup does not throw and tools are gone after teardown', async () => {
+    const registry = new ToolRegistry();
+    const api = {
+      ...makeApi(filePath),
+      tools: {
+        register: (t: never) => registry.register(t, 'todo-tracker'),
+        unregister: (name: string) => registry.unregister(name),
+        get: (name: string) => registry.get(name),
+        list: () => registry.list(),
+      },
+    };
+    await todoTrackerPlugin.setup(api as never);
+    expect(registry.get('todo_tracker_add')).toBeDefined();
+    await todoTrackerPlugin.teardown!(api as never);
+    expect(registry.list().filter((t) => t.name.startsWith('todo_tracker_'))).toHaveLength(0);
+    await expect(todoTrackerPlugin.setup(api as never)).resolves.not.toThrow();
+    // Re-setup without teardown is also safe.
+    await expect(todoTrackerPlugin.setup(api as never)).resolves.not.toThrow();
+    expect(registry.list().filter((t) => t.name.startsWith('todo_tracker_'))).toHaveLength(7);
+    await todoTrackerPlugin.teardown!(api as never);
   });
 });
 
