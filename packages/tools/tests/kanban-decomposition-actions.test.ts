@@ -55,6 +55,7 @@ vi.mock('../src/kanban-evidence-bridge.js', () => ({
 }));
 
 import { handleKanbanDecompositionAction } from '../src/kanban-decomposition-actions.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 
 const mockCtx = () =>
   ({
@@ -78,13 +79,11 @@ describe('handleKanbanDecompositionAction', () => {
 
   describe('assess_atomicity', () => {
     it('fails when required params missing', async () => {
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        { action: 'assess_atomicity' },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(projectRoot, { action: 'assess_atomicity' }, mockCtx()),
+        'INVALID_INPUT',
+        'requires boardId and taskId',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId and taskId');
     });
 
     it('returns atomicity assessment with atomic verdict', async () => {
@@ -100,55 +99,63 @@ describe('handleKanbanDecompositionAction', () => {
     it('fails when task not found', async () => {
       const { assessTaskAtomicity } = await import('@wrongstack/kanban');
       vi.mocked(assessTaskAtomicity).mockResolvedValueOnce(null);
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        { action: 'assess_atomicity', boardId: 'b1', taskId: 't1' },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          { action: 'assess_atomicity', boardId: 'b1', taskId: 't1' },
+          mockCtx(),
+        ),
+        'NOT_FOUND',
+        'Task not found',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('Task not found');
     });
   });
 
   describe('propose_decomposition', () => {
     it('fails when required params missing', async () => {
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        { action: 'propose_decomposition' },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          { action: 'propose_decomposition' },
+          mockCtx(),
+        ),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and subtasks',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and subtasks');
     });
 
     it('fails with fewer than 2 subtasks', async () => {
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        {
-          action: 'propose_decomposition',
-          boardId: 'b1',
-          taskId: 't1',
-          subtasks: [{ title: 'Only one' }],
-        },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          {
+            action: 'propose_decomposition',
+            boardId: 'b1',
+            taskId: 't1',
+            subtasks: [{ title: 'Only one' }],
+          },
+          mockCtx(),
+        ),
+        'INVALID_INPUT',
+        'at least two subtasks',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('at least two subtasks');
     });
 
     it('fails with blank subtask title', async () => {
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        {
-          action: 'propose_decomposition',
-          boardId: 'b1',
-          taskId: 't1',
-          subtasks: [{ title: '' }, { title: 'Valid' }],
-        },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          {
+            action: 'propose_decomposition',
+            boardId: 'b1',
+            taskId: 't1',
+            subtasks: [{ title: '' }, { title: 'Valid' }],
+          },
+          mockCtx(),
+        ),
+        'INVALID_INPUT',
+        'non-blank title',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('non-blank title');
     });
 
     it('applies decomposition with valid subtasks', async () => {
@@ -216,13 +223,11 @@ describe('handleKanbanDecompositionAction', () => {
 
   describe('verify_completion', () => {
     it('fails when required params missing', async () => {
-      const result = await handleKanbanDecompositionAction(
-        projectRoot,
-        { action: 'verify_completion' },
-        mockCtx(),
+      await expectKanbanError(
+        handleKanbanDecompositionAction(projectRoot, { action: 'verify_completion' }, mockCtx()),
+        'INVALID_INPUT',
+        'requires boardId and taskId',
       );
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId and taskId');
     });
 
     it('returns passed verdict on successful verification', async () => {

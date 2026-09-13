@@ -111,13 +111,21 @@ describe('taskInput', () => {
     expect(result.costCeilingUsd).toBe(10.5);
   });
 
-  it('handles childTitles mapping', () => {
+  // childTitles are titles of children to CREATE (add_task splits after
+  // creating the parent). They used to be written into childTaskIds verbatim,
+  // recording dangling "ids" like "Child 1".
+  it('never writes childTitles into childTaskIds', () => {
     const result = taskInput({
-      action: 'split_task',
+      action: 'add_task',
       title: 'Parent',
       childTitles: ['Child 1', 'Child 2'],
     });
-    expect(result.childTaskIds).toEqual(['Child 1', 'Child 2']);
+    expect(result.childTaskIds).toBeUndefined();
+  });
+
+  it('passes explicit childTaskIds through', () => {
+    const result = taskInput({ action: 'add_task', title: 'Parent', childTaskIds: ['c-1'] });
+    expect(result.childTaskIds).toEqual(['c-1']);
   });
 
   it('handles checkDescription creating successCriteria', () => {

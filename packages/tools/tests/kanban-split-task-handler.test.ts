@@ -68,20 +68,16 @@ vi.mock('@wrongstack/kanban', () => ({
 }));
 
 import { handleSplitTask, requireBoard } from '../src/kanban-split-task-handler.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 
 /** Session that owns the board events a split writes. */
 const SPLIT_EVENT_CONTEXT = { sessionId: '2026-08-26/sess_01TESTSPLITHANDLER000000' };
 
 describe('handleSplitTask', () => {
   it('fails when required params missing', async () => {
-    const result = await handleSplitTask(
-      '/project',
-      { action: 'split_task' },
-      {},
-      SPLIT_EVENT_CONTEXT,
-    );
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain(
+    await expectKanbanError(
+      handleSplitTask('/project', { action: 'split_task' }, {}, SPLIT_EVENT_CONTEXT),
+      'INVALID_INPUT',
       'split requires boardId, taskId, and at least one childTitles',
     );
   });
@@ -177,27 +173,33 @@ describe('handleSplitTask', () => {
         },
       ],
     });
-    const result = await handleSplitTask(
-      '/project',
-      { action: 'split_task', boardId: 'b1', taskId: 't1', childTitles: ['Child 1'] },
-      {},
-      SPLIT_EVENT_CONTEXT,
+    // The split committed; the error must say so rather than read as a no-op.
+    const error = await expectKanbanError(
+      handleSplitTask(
+        '/project',
+        { action: 'split_task', boardId: 'b1', taskId: 't1', childTitles: ['Child 1'] },
+        {},
+        SPLIT_EVENT_CONTEXT,
+      ),
+      'CONFLICT',
+      'not found in the board returned by the split',
     );
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('not found in returned board');
+    expect(error.message).toContain('Already committed');
   });
 
   it('fails when splitTask returns null', async () => {
     const { splitTask } = await import('@wrongstack/kanban');
     vi.mocked(splitTask).mockResolvedValueOnce(null);
-    const result = await handleSplitTask(
-      '/project',
-      { action: 'split_task', boardId: 'b1', taskId: 't1', childTitles: ['Child 1'] },
-      {},
-      SPLIT_EVENT_CONTEXT,
+    await expectKanbanError(
+      handleSplitTask(
+        '/project',
+        { action: 'split_task', boardId: 'b1', taskId: 't1', childTitles: ['Child 1'] },
+        {},
+        SPLIT_EVENT_CONTEXT,
+      ),
+      'NOT_FOUND',
+      'Task not found',
     );
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('Task not found');
   });
 
   it('passes extra split options like atomic', async () => {

@@ -1,9 +1,9 @@
 import type { KanbanBoard, KanbanEventContext, KanbanTask } from '@wrongstack/kanban';
 import { getBoard, splitTask } from '@wrongstack/kanban';
-import { fail } from './kanban-tool-results.js';
+import { conflict, invalidInput, notFound } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
-/** Shared split handler used by both split_task and split_atomic. */
+/** Shared split handler used by split_task, split_atomic and add_task childTitles. */
 export async function handleSplitTask(
   projectRoot: string,
   input: KanbanToolInput,
@@ -14,7 +14,7 @@ export async function handleSplitTask(
   const taskId = input.taskId;
   const childTitles = input.childTitles;
   if (!boardId || !taskId || !childTitles?.length) {
-    return fail('split requires boardId, taskId, and at least one childTitles.');
+    throw invalidInput('split requires boardId, taskId, and at least one childTitles.');
   }
   // Destructure the optional SplitKanbanTaskInput fields from the tool input.
   // childTitles→titles and targetColumnId→columnId are the only renames.
@@ -46,13 +46,16 @@ export async function handleSplitTask(
     },
     eventContext,
   );
-  if (!result) return fail('Task not found.');
-  const freshParent = result.board.tasks?.find((t: KanbanTask) => t.id === taskId);
+  if (!result) throw notFound('Task not found.');
+  const freshParent =
+    result.board.tasks?.find((t: KanbanTask) => t.id === taskId) ??
+    result.board.tasks?.find((t: KanbanTask) => t.id === result.parent?.id);
   if (!freshParent) {
-    return fail(
-      `Split succeeded but parent ${taskId} not found in returned board. ` +
-        `Children: [${result.children.map((c) => c.id).join(', ')}].`,
-    );
+    throw conflict(`Parent ${taskId} not found in the board returned by the split.`, {
+      committed: `the split was written — child task(s) [${result.children
+        .map((c) => c.id)
+        .join(', ')}] were created. Re-read the board with get_board.`,
+    });
   }
   return {
     ok: true,

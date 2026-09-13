@@ -19,7 +19,7 @@ import {
   updateTask,
   upsertContractNode,
 } from '@wrongstack/kanban/test-support';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
 import { planTool } from '../src/plan.js';
 import { todoTool } from '../src/todo.js';
@@ -651,6 +651,80 @@ describe('todo tool', () => {
     );
   });
 
+  // The kanban tool throws on failure. The todo → managed-card projection is
+  // best-effort, so a thrown refusal must become a warning, never a crashed
+  // todo call.
+  it('keeps the todo update when a managed kanban call throws', async () => {
+    sb.ctx.agentId = 'test-agent';
+    sb.ctx.setCurrentKanbanTask = (taskId, boardId) => {
+      sb.ctx.currentKanbanTaskId = taskId;
+      sb.ctx.currentKanbanBoardId = boardId;
+      sb.ctx.meta['kanban'] = { taskId, boardId };
+    };
+    const board = await createBoard(sb.dir, {
+      title: 'Throwing sync',
+      columns: [
+        { id: 'backlog', title: 'Backlog', order: 0 },
+        { id: 'todo', title: 'Todo', order: 1 },
+        { id: 'running', title: 'Running', order: 2 },
+        { id: 'review', title: 'Review', order: 3 },
+        { id: 'done', title: 'Done', order: 4 },
+      ],
+      lifecycle: {
+        mode: 'managed',
+        columns: {
+          backlog: 'backlog',
+          todo: 'todo',
+          running: 'in-progress',
+          review: 'review',
+          done: 'done',
+        },
+      },
+    });
+    const added = await addTask(sb.dir, board.id, {
+      title: 'Refused card',
+      description: 'A card whose start is refused.',
+      assignedAgent: 'test-agent',
+      dueDate: '2026-08-10T00:00:00.000Z',
+      labels: ['todo-sync'],
+    });
+    await addCheckToTask(sb.dir, board.id, added!.task.id, {
+      description: 'refused.txt',
+      type: 'file_exists',
+    });
+
+    // Bind the run to the board the way start_task / the host would.
+    sb.ctx.meta['kanban'] = { boardId: board.id };
+    const { KanbanToolError } = await import('../src/kanban-tool-results.js');
+    const spy = vi
+      .spyOn(kanbanTool, 'execute')
+      .mockRejectedValue(new KanbanToolError('REFUSED', 'Start refused by the board.'));
+    try {
+      const result = await todoTool.execute(
+        {
+          todos: [
+            {
+              id: 'ui-1',
+              content: 'Refused card',
+              status: 'in_progress',
+              kanbanBoardId: board.id,
+              kanbanTaskId: added!.task.id,
+            },
+          ],
+        },
+        sb.ctx,
+        { signal: newSignal() },
+      );
+      expect(spy).toHaveBeenCalled();
+      expect(result.kanban_warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining('Start refused by the board.')]),
+      );
+      expect(sb.ctx.todos.some((todo) => todo.content === 'Refused card')).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('does not silently reactivate a managed card that is already in Review', async () => {
     // Regression: synchroniseManagedKanban used to call start_task
     // unconditionally for any in_progress todo row, which yanked a Review
@@ -808,19 +882,27 @@ describe('todo tool', () => {
       sb.ctx,
       { signal: newSignal() },
     );
-    await kanbanTool.execute(
-      {
-        action: 'transition_task',
-        boardId: board.id,
-        taskId,
-        lifecycleStage: 'done',
-        author: 'test-agent',
-        transitionComment: 'Accepted.',
-        transitionAction: 'verify',
-      },
-      sb.ctx,
-      { signal: newSignal() },
-    );
+    // Auto-accept may already have carried the verified card to Done; a second
+    // transition to Done is then refused (and, since the tool throws on
+    // refusal, must only be attempted when the card is not there yet).
+    const afterCompletion = await getBoard(sb.dir, board.id);
+    if (
+      afterCompletion?.tasks.find((task) => task.id === taskId)?.lifecycle?.currentStage !== 'done'
+    ) {
+      await kanbanTool.execute(
+        {
+          action: 'transition_task',
+          boardId: board.id,
+          taskId,
+          lifecycleStage: 'done',
+          author: 'test-agent',
+          transitionComment: 'Accepted.',
+          transitionAction: 'verify',
+        },
+        sb.ctx,
+        { signal: newSignal() },
+      );
+    }
     const beforeTodo = await getBoard(sb.dir, board.id);
     expect(beforeTodo?.tasks.find((task) => task.id === taskId)?.lifecycle?.currentStage).toBe(
       'done',

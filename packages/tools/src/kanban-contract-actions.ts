@@ -30,7 +30,7 @@ import {
   removeContractNode,
   upsertContractNode,
 } from '@wrongstack/kanban';
-import { fail, okBoard } from './kanban-tool-results.js';
+import { invalidInput, notFound, okBoard } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
 /**
@@ -46,15 +46,15 @@ export async function handleKanbanContractAction(
   const eventContext = { sessionId, ...(actor !== undefined ? { actor } : {}) };
   switch (input.action) {
     case 'get_contract_graph': {
-      if (!input.boardId) return fail('get_contract_graph requires boardId.');
+      if (!input.boardId) throw invalidInput('get_contract_graph requires boardId.');
       const found = await getContractGraph(projectRoot, input.boardId);
-      if (!found) return fail('Board not found.');
+      if (!found) throw notFound('Board not found.');
       // A taskId narrows the answer to "is THIS card's contract closed?",
       // which is what a worker actually wants before claiming a card.
       const evaluated = input.taskId
         ? await evaluateTaskContractGraph(projectRoot, input.boardId, input.taskId)
         : null;
-      if (input.taskId && !evaluated) return fail('Task not found on this board.');
+      if (input.taskId && !evaluated) throw notFound('Task not found on this board.');
       return {
         ok: true,
         message: found.graph
@@ -67,7 +67,7 @@ export async function handleKanbanContractAction(
     }
 
     case 'configure_contract_graph': {
-      if (!input.boardId) return fail('configure_contract_graph requires boardId.');
+      if (!input.boardId) throw invalidInput('configure_contract_graph requires boardId.');
       // Creating the map and setting its enforcement are the same call: an
       // enforcement level is the only thing an empty map has to say.
       const enforcement = input.contractEnforcement ?? 'advisory';
@@ -77,17 +77,16 @@ export async function handleKanbanContractAction(
         enforcement,
         eventContext,
       );
-      return board
-        ? okBoard(board, `Contract map enforcement set to ${enforcement}.`)
-        : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(board, `Contract map enforcement set to ${enforcement}.`);
     }
 
     case 'upsert_contract_node': {
       if (!input.boardId || !input.taskId) {
-        return fail('upsert_contract_node requires boardId and taskId.');
+        throw invalidInput('upsert_contract_node requires boardId and taskId.');
       }
       if (!input.contractNodeKind || !input.contractNodeTitle) {
-        return fail('upsert_contract_node requires contractNodeKind and contractNodeTitle.');
+        throw invalidInput('upsert_contract_node requires contractNodeKind and contractNodeTitle.');
       }
       // A waiver is an accountable act, so it carries who and why. The domain
       // layer rejects a waived node without them; supply the actor from the
@@ -101,7 +100,7 @@ export async function handleKanbanContractAction(
             }
           : undefined;
       if (waiver && !waiver.reason.trim()) {
-        return fail('A waived contract node requires contractWaiverReason.');
+        throw invalidInput('A waived contract node requires contractWaiverReason.');
       }
       const result = await upsertContractNode(
         projectRoot,
@@ -125,7 +124,7 @@ export async function handleKanbanContractAction(
         },
         eventContext,
       );
-      if (!result) return fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
       return {
         ok: true,
         message: `Contract node ${result.node.kind} "${result.node.title}" saved (${result.node.id}).`,
@@ -136,7 +135,7 @@ export async function handleKanbanContractAction(
 
     case 'remove_contract_node': {
       if (!input.boardId || !input.contractNodeId) {
-        return fail('remove_contract_node requires boardId and contractNodeId.');
+        throw invalidInput('remove_contract_node requires boardId and contractNodeId.');
       }
       const board = await removeContractNode(
         projectRoot,
@@ -144,16 +143,18 @@ export async function handleKanbanContractAction(
         input.contractNodeId,
         eventContext,
       );
-      return board
-        ? okBoard(board, 'Contract node removed, along with every edge that touched it.')
-        : fail('Contract node not found.');
+      if (!board) throw notFound('Contract node not found.');
+      return okBoard(board, 'Contract node removed, along with every edge that touched it.');
     }
 
     case 'add_contract_edge': {
       if (!input.boardId || !input.contractEdgeFrom || !input.contractEdgeTo) {
-        return fail('add_contract_edge requires boardId, contractEdgeFrom, and contractEdgeTo.');
+        throw invalidInput(
+          'add_contract_edge requires boardId, contractEdgeFrom, and contractEdgeTo.',
+        );
       }
-      if (!input.contractEdgeType) return fail('add_contract_edge requires contractEdgeType.');
+      if (!input.contractEdgeType)
+        throw invalidInput('add_contract_edge requires contractEdgeType.');
       const result = await addContractEdge(
         projectRoot,
         input.boardId,
@@ -172,7 +173,7 @@ export async function handleKanbanContractAction(
         },
         eventContext,
       );
-      if (!result) return fail('Board not found.');
+      if (!result) throw notFound('Board not found.');
       return {
         ok: true,
         message: `Contract edge ${result.edge.type}: ${result.edge.from} → ${result.edge.to}.`,
@@ -183,7 +184,7 @@ export async function handleKanbanContractAction(
 
     case 'remove_contract_edge': {
       if (!input.boardId || !input.contractEdgeId) {
-        return fail('remove_contract_edge requires boardId and contractEdgeId.');
+        throw invalidInput('remove_contract_edge requires boardId and contractEdgeId.');
       }
       const board = await removeContractEdge(
         projectRoot,
@@ -191,7 +192,8 @@ export async function handleKanbanContractAction(
         input.contractEdgeId,
         eventContext,
       );
-      return board ? okBoard(board, 'Contract edge removed.') : fail('Contract edge not found.');
+      if (!board) throw notFound('Contract edge not found.');
+      return okBoard(board, 'Contract edge removed.');
     }
 
     default:

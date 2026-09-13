@@ -12,6 +12,7 @@ import {
 } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /** Session that owns the board events these tests write. */
@@ -214,32 +215,43 @@ describe('kanban tool — universal completion gate', () => {
   // update a board with the gate disabled — self-attestation with an extra
   // step. Tightening stays available; switching it off is a human decision
   // made through board config.
-  it('ignores a gate-disabling request from the agent-facing tool', async () => {
-    const created = await kanbanTool.execute(
-      {
-        action: 'create_board',
-        title: 'Ungated attempt',
-        gateEnforcement: 'off' as never,
-      },
-      ctx(),
-      { signal: newSignal() },
+  // The request used to be silently dropped while the call reported success —
+  // doing something other than what was asked. It is now rejected outright.
+  it('rejects a gate-disabling request from the agent-facing tool', async () => {
+    await expectKanbanError(
+      kanbanTool.execute(
+        { action: 'create_board', title: 'Ungated attempt', gateEnforcement: 'off' as never },
+        ctx(),
+        { signal: newSignal() },
+      ),
+      'INVALID_INPUT',
+      'gateEnforcement',
     );
-    expect(created.ok).toBe(true);
-    // No completionGate written at all — the board falls back to its default
-    // rather than recording the agent's choice to skip verification.
-    expect(created.board?.completionGate).toBeUndefined();
+    const listed = await kanbanTool.execute({ action: 'list_boards' }, ctx(), {
+      signal: newSignal(),
+    });
+    expect(listed.boards?.some((b) => b.title === 'Ungated attempt')).toBe(false);
 
-    const updated = await kanbanTool.execute(
-      {
-        action: 'update_board',
-        boardId: created.board!.id,
-        gateEnforcement: 'off' as never,
-      },
+    const created = await kanbanTool.execute(
+      { action: 'create_board', title: 'Gated board' },
       ctx(),
       { signal: newSignal() },
     );
-    expect(updated.ok).toBe(true);
-    expect(updated.board?.completionGate).toBeUndefined();
+    await expectKanbanError(
+      kanbanTool.execute(
+        { action: 'update_board', boardId: created.board!.id, gateEnforcement: 'off' as never },
+        ctx(),
+        { signal: newSignal() },
+      ),
+      'INVALID_INPUT',
+      'gateEnforcement',
+    );
+    const reread = await kanbanTool.execute(
+      { action: 'get_board', boardId: created.board!.id },
+      ctx(),
+      { signal: newSignal() },
+    );
+    expect(reread.board?.completionGate).toBeUndefined();
   });
 
   it('still lets the agent tighten its own gate', async () => {

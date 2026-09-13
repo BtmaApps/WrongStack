@@ -1,6 +1,14 @@
-import type { KanbanServerEvent } from '@wrongstack/kanban';
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createBoard, type KanbanServerEvent, type KanbanTask } from '@wrongstack/kanban';
+import { addCheckToTask, addGoalMetricToTask, addTask } from '@wrongstack/kanban/test-support';
+// Namespace import: vitest resolves this to the tools SOURCE, while the test
+// tsconfig resolves it to the built dist, which may predate the export.
+import * as kanbanToolModule from '@wrongstack/tools/kanban';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createKanbanMcpServer, createKanbanMcpToolHost } from '../src/adapter.js';
+import { KANBAN_READ_ACTIONS } from '../src/policy.js';
 
 describe('createKanbanMcpToolHost', () => {
   it('advertises action-filtered schemas for each enabled tier', async () => {
@@ -49,14 +57,35 @@ describe('createKanbanMcpToolHost', () => {
   });
 
   it('surfaces Kanban failures and thrown errors as MCP errors', async () => {
+    // The kanban tool THROWS on failure (it never returns ok:false); the thrown
+    // error carries a stable code, retryability and lifecycle issues, and all
+    // of it must reach the MCP client.
+    const issues = [{ code: 'missing-owner', field: 'assignee', message: 'Assign an owner.' }];
     const failedHost = createKanbanMcpToolHost('C:/project', {
       dependencies: {
-        executeKanban: vi.fn().mockResolvedValue({ ok: false, error: 'not found' }),
+        executeKanban: vi.fn().mockRejectedValue(
+          Object.assign(new Error('[REFUSED] Cannot start. Issues: assignee: Assign an owner.'), {
+            kanbanCode: 'REFUSED',
+            retryable: false,
+            issues,
+          }),
+        ),
       },
     });
     await expect(
       failedHost.callTool('kanban_read', { action: 'get_board', boardId: 'missing' }),
-    ).resolves.toMatchObject({ isError: true });
+    ).resolves.toEqual({
+      isError: true,
+      content: {
+        ok: false,
+        error: {
+          code: 'REFUSED',
+          message: '[REFUSED] Cannot start. Issues: assignee: Assign an owner.',
+          retryable: false,
+          issues,
+        },
+      },
+    });
 
     const thrownHost = createKanbanMcpToolHost('C:/project', {
       dependencies: { executeKanban: vi.fn().mockRejectedValue(new Error('daemon failed')) },
@@ -109,6 +138,85 @@ describe('createKanbanMcpToolHost', () => {
     await expect(host.callTool('kanban_watch', {})).resolves.toEqual({
       content: 'Kanban project server is disabled; live watch is unavailable',
       isError: true,
+    });
+  });
+});
+
+describe('Kanban MCP against the real kanban tool', () => {
+  let dir = '';
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'wstack-kanban-mcp-adapter-'));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  });
+
+  it('keeps the read tier identical to the tool read-only actions', () => {
+    const readOnly = (kanbanToolModule as Record<string, unknown>)['KANBAN_READ_ONLY_ACTIONS'];
+    expect(Array.isArray(readOnly)).toBe(true);
+    expect([...KANBAN_READ_ACTIONS].sort()).toEqual([...(readOnly as string[])].sort());
+  });
+
+  // The MCP context has no setCurrentKanbanTask (it is not an agent run). The
+  // managed start_task path called it unguarded, so the card was moved to
+  // Running with a lease and THEN the call died with a TypeError.
+  it('starts a managed card through the MCP context without a TypeError', async () => {
+    const board = await createBoard(dir, {
+      title: 'Managed via MCP',
+      columns: [
+        { id: 'backlog', title: 'Backlog', order: 0 },
+        { id: 'todo', title: 'Todo', order: 1 },
+        { id: 'in-progress', title: 'Running', order: 2 },
+        { id: 'review', title: 'Review', order: 3 },
+        { id: 'done', title: 'Done', order: 4 },
+      ],
+      lifecycle: {
+        mode: 'managed',
+        columns: {
+          backlog: 'backlog',
+          todo: 'todo',
+          running: 'in-progress',
+          review: 'review',
+          done: 'done',
+        },
+      },
+    });
+    const added = await addTask(dir, board.id, {
+      title: 'Implement safely',
+      description: 'Change the parser while preserving existing behavior.',
+      assignedAgent: 'agent-1',
+      dueDate: '2026-08-10T00:00:00.000Z',
+      labels: ['parser'],
+    });
+    const taskId = added!.task.id;
+    await addGoalMetricToTask(dir, board.id, taskId, { name: 'New syntax parses', target: 'pass' });
+    await addCheckToTask(dir, board.id, taskId, {
+      description: 'Regression suite passes',
+      type: 'test',
+    });
+
+    const host = createKanbanMcpToolHost(dir, { actor: 'agent-1', writable: true });
+    const result = await host.callTool('kanban_manage', {
+      action: 'start_task',
+      boardId: board.id,
+      taskId,
+      author: 'agent-1',
+      transitionComment: 'Starting from an external MCP client.',
+    });
+
+    expect(result.isError, JSON.stringify(result.content)).toBe(false);
+    const content = result.content as { ok: boolean; task: KanbanTask };
+    expect(content.task.lifecycle?.currentStage).toBe('running');
+    expect(content.task.assignment?.status).toBe('running');
+  });
+
+  it('returns a structured NOT_FOUND for a missing board', async () => {
+    const host = createKanbanMcpToolHost(dir, { actor: 'agent-1' });
+    const result = await host.callTool('kanban_read', { action: 'get_board', boardId: 'nope' });
+    expect(result).toMatchObject({
+      isError: true,
+      content: { ok: false, error: { code: 'NOT_FOUND', retryable: false } },
     });
   });
 });

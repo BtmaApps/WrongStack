@@ -116,6 +116,29 @@ function createContext(projectRoot: string, actor: string, sessionId: string): C
   } as unknown as Context;
 }
 
+/**
+ * The kanban tool throws `KanbanToolError` / `KanbanInputError` carrying a
+ * stable `kanbanCode`, `retryable` and (for lifecycle refusals) structured
+ * `issues`. Keep that structure in the MCP content so an external client can
+ * branch on the code instead of parsing prose. Duck-typed so this package does
+ * not depend on the tool's error classes. Anything else stays a plain message.
+ */
+export function mcpErrorContent(error: unknown): unknown {
+  if (!(error instanceof Error)) return String(error);
+  const kanbanCode = (error as { kanbanCode?: unknown }).kanbanCode;
+  if (typeof kanbanCode !== 'string') return error.message;
+  const issues = (error as { issues?: unknown }).issues;
+  return {
+    ok: false,
+    error: {
+      code: kanbanCode,
+      message: error.message,
+      retryable: (error as { retryable?: unknown }).retryable === true,
+      ...(Array.isArray(issues) && issues.length > 0 ? { issues } : {}),
+    },
+  };
+}
+
 function normalizeTimeout(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return WATCH_DEFAULT_TIMEOUT_MS;
   return Math.min(WATCH_MAX_TIMEOUT_MS, Math.max(100, Math.trunc(value)));
@@ -226,10 +249,7 @@ export function createKanbanMcpToolHost(
           (result as Record<string, unknown>)['ok'] === false;
         return { content: result, isError: failed };
       } catch (error) {
-        return {
-          content: error instanceof Error ? error.message : String(error),
-          isError: true,
-        };
+        return { content: mcpErrorContent(error), isError: true };
       }
     },
   };

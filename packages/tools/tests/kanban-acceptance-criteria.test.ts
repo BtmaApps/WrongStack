@@ -6,6 +6,7 @@ import { createBoard, getBoard } from '@wrongstack/kanban';
 import { addTask } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /** Session that owns the board events these tests write. */
@@ -101,13 +102,21 @@ describe('kanban tool — acceptance criteria are agent-writable', () => {
 
   it('reports a missing criterion instead of silently succeeding', async () => {
     const { boardId, taskId } = await seed();
-    const result = await kanbanTool.execute(
-      { action: 'update_check', boardId, taskId, checkId: 'no-such-check', checkStatus: 'passed' },
-      ctx(),
-      { signal: newSignal() },
+    await expectKanbanError(
+      kanbanTool.execute(
+        {
+          action: 'update_check',
+          boardId,
+          taskId,
+          checkId: 'no-such-check',
+          checkStatus: 'passed',
+        },
+        ctx(),
+        { signal: newSignal() },
+      ),
+      'NOT_FOUND',
+      'Check not found',
     );
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('Check not found');
   });
 });
 
@@ -163,11 +172,12 @@ describe('kanban tool — managed lifecycle is reversible', () => {
   });
 
   it('reports a missing board instead of silently succeeding', async () => {
-    const result = await kanbanTool.execute(
-      { action: 'release_managed_lifecycle', boardId: 'no-such-board' },
-      ctx(),
-      { signal: newSignal() },
+    await expectKanbanError(
+      kanbanTool.execute({ action: 'release_managed_lifecycle', boardId: 'no-such-board' }, ctx(), {
+        signal: newSignal(),
+      }),
+      'NOT_FOUND',
+      'Board not found',
     );
-    expect(result.ok).toBe(false);
   });
 });

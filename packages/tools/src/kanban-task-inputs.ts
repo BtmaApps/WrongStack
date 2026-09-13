@@ -32,7 +32,12 @@ export function taskInput(input: KanbanToolInput) {
     // neither the create input nor the patch, so the instruction described a
     // capability that did not exist and the attempt was silently dropped.
     ...(input.atomic !== undefined ? { atomic: input.atomic } : {}),
-    ...(input.childTitles !== undefined ? { childTaskIds: input.childTitles } : {}),
+    // `childTitles` are TITLES of children to create, never ids. They used to
+    // be written straight into `childTaskIds`, recording dangling "ids" such as
+    // "Child 1". add_task creates those children after the parent exists (via
+    // splitTask, the one path that creates child cards); explicit ids of
+    // existing children go through `childTaskIds`.
+    ...(input.childTaskIds !== undefined ? { childTaskIds: input.childTaskIds } : {}),
     ...(input.checkDescription !== undefined
       ? {
           successCriteria: [

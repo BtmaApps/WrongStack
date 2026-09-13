@@ -86,6 +86,27 @@ export type KanbanAction =
   | 'add_contract_edge'
   | 'remove_contract_edge';
 
+/**
+ * Actions that never write board state. Presence tracking (itself a write)
+ * is skipped for these. Keep in sync with the kanban-mcp read tier, which
+ * asserts equality with this list.
+ */
+export const KANBAN_READ_ONLY_ACTIONS = [
+  'list_boards',
+  'get_board',
+  'export_markdown',
+  'export_task_graph',
+  'search_tasks',
+  'ready_tasks',
+  'snapshot',
+  'workbench',
+  'get_task',
+  'get_chain',
+  'events',
+  'queue_health',
+  'get_contract_graph',
+] as const satisfies readonly KanbanAction[];
+
 export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   action: KanbanAction;
   boardId?: string | undefined;
@@ -94,10 +115,6 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   targetBoardId?: string | undefined;
   taskIds?: string[] | undefined;
   chainId?: string | undefined;
-  fromNodeId?: string | undefined;
-  toNodeId?: string | undefined;
-  baseline?: string | number | undefined;
-  threshold?: string | number | undefined;
   title?: string | undefined;
   description?: string | undefined;
   dueDate?: string | undefined;
@@ -110,7 +127,6 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   status?: KanbanTaskStatus | undefined;
   order?: number | undefined;
   targetColumnId?: string | undefined;
-  moveTasksToColumnId?: string | undefined;
   query?: string | undefined;
   limit?: number | undefined;
   dependencyTaskId?: string | undefined;
@@ -253,7 +269,14 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
 }
 
 export interface KanbanToolOutput {
+  /** Always `true` on a returned result — failures throw instead. Kept for shape stability. */
   ok: boolean;
+  /** claim_task: `false` when no ready task matched (a data outcome, not a failure). */
+  claimed?: boolean | undefined;
+  /** import_session_tasks: number of session tasks imported (0 when there were none). */
+  imported?: number | undefined;
+  /** Per-field truncation applied to large collections: `{ field: { shown, total } }`. */
+  truncated?: Record<string, { shown: number; total: number }> | undefined;
   verdict?: KanbanVerificationReport['verdict'] | undefined;
   gate?:
     | {

@@ -57,6 +57,7 @@ vi.mock('../src/kanban-split-task-handler.js', () => {
 });
 
 import { handleKanbanDetailAction } from '../src/kanban-detail-actions.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 
 describe('handleKanbanDetailAction', () => {
   const projectRoot = '/fake/project';
@@ -75,11 +76,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('add_dependency', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'add_dependency',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and dependencyTaskId');
+      await expectKanbanError(
+        run({
+          action: 'add_dependency',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and dependencyTaskId',
+      );
     });
 
     it('adds a dependency with valid params', async () => {
@@ -96,24 +99,28 @@ describe('handleKanbanDetailAction', () => {
     it('fails when task not found', async () => {
       const { addDependency } = await import('@wrongstack/kanban');
       vi.mocked(addDependency).mockResolvedValueOnce(null);
-      const result = await run({
-        action: 'add_dependency',
-        boardId: 'b1',
-        taskId: 't1',
-        dependencyTaskId: 't2',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('Task not found');
+      await expectKanbanError(
+        run({
+          action: 'add_dependency',
+          boardId: 'b1',
+          taskId: 't1',
+          dependencyTaskId: 't2',
+        }),
+        'NOT_FOUND',
+        'Task not found',
+      );
     });
   });
 
   describe('add_goal_metric', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'add_goal_metric',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and metricName');
+      await expectKanbanError(
+        run({
+          action: 'add_goal_metric',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and metricName',
+      );
     });
 
     it('adds a goal metric with optional fields', async () => {
@@ -135,11 +142,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('update_goal_metric', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'update_goal_metric',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and metricId');
+      await expectKanbanError(
+        run({
+          action: 'update_goal_metric',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and metricId',
+      );
     });
 
     it('updates goal metric with all fields', async () => {
@@ -162,11 +171,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('add_check', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'add_check',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and checkDescription');
+      await expectKanbanError(
+        run({
+          action: 'add_check',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and checkDescription',
+      );
     });
 
     it('adds a check with description and status', async () => {
@@ -184,11 +195,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('update_check', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'update_check',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and checkId');
+      await expectKanbanError(
+        run({
+          action: 'update_check',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and checkId',
+      );
     });
 
     it('updates check description and status', async () => {
@@ -207,11 +220,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('add_note', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'add_note',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and note');
+      await expectKanbanError(
+        run({
+          action: 'add_note',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and note',
+      );
     });
 
     it('adds a note with author', async () => {
@@ -229,11 +244,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('add_link', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'add_link',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and url');
+      await expectKanbanError(
+        run({
+          action: 'add_link',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and url',
+      );
     });
 
     it('adds a link with title', async () => {
@@ -252,11 +269,13 @@ describe('handleKanbanDetailAction', () => {
 
   describe('split_atomic', () => {
     it('fails when required params missing', async () => {
-      const result = await run({
-        action: 'split_atomic',
-      });
-      expect(result?.ok).toBe(false);
-      expect(result?.message).toContain('requires boardId, taskId, and childTitles');
+      await expectKanbanError(
+        run({
+          action: 'split_atomic',
+        }),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and childTitles',
+      );
     });
 
     it('splits a task with atomic flag', async () => {

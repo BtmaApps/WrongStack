@@ -7,7 +7,7 @@ import {
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
 import { recordKanbanVerificationEvidence } from './kanban-evidence-bridge.js';
-import { fail, okTask } from './kanban-tool-results.js';
+import { conflict, invalidInput, notFound, okTask } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
 export async function handleKanbanDecompositionAction(
@@ -22,13 +22,13 @@ export async function handleKanbanDecompositionAction(
   switch (input.action) {
     case 'assess_atomicity': {
       if (!input.boardId || !input.taskId) {
-        return fail('assess_atomicity requires boardId and taskId.');
+        throw invalidInput('assess_atomicity requires boardId and taskId.');
       }
       const result = await assessTaskAtomicity(projectRoot, input.boardId, input.taskId, {
         assessedBy: 'agent',
         eventContext,
       });
-      if (!result) return fail('Task not found.');
+      if (!result) throw notFound('Task not found.');
       const failing = result.assessment.criteria
         .filter((entry) => entry.score < 1)
         .map((entry) => entry.reason);
@@ -46,15 +46,16 @@ export async function handleKanbanDecompositionAction(
     }
     case 'propose_decomposition': {
       if (!input.boardId || !input.taskId || !input.subtasks?.length) {
-        return fail('propose_decomposition requires boardId, taskId, and subtasks (2+).');
+        throw invalidInput('propose_decomposition requires boardId, taskId, and subtasks (2+).');
       }
       if (input.subtasks.length < 2) {
-        return fail('propose_decomposition requires at least two subtasks.');
+        throw invalidInput('propose_decomposition requires at least two subtasks.', 'subtasks');
       }
       const invalid = input.subtasks.find(
         (subtask) => typeof subtask?.title !== 'string' || !subtask.title.trim(),
       );
-      if (invalid) return fail('Every proposed subtask needs a non-blank title.');
+      if (invalid)
+        throw invalidInput('Every proposed subtask needs a non-blank title.', 'subtasks');
       const result = await proposeTaskDecomposition(
         projectRoot,
         input.boardId,
@@ -66,7 +67,7 @@ export async function handleKanbanDecompositionAction(
         },
         eventContext,
       );
-      if (!result) return fail('Task not found.');
+      if (!result) throw notFound('Task not found.');
       const message =
         result.proposal.status === 'applied'
           ? `Decomposition applied: ${result.proposal.appliedChildTaskIds?.length ?? 0} child tasks created (parent marked atomic).`
@@ -75,9 +76,21 @@ export async function handleKanbanDecompositionAction(
     }
     case 'verify_completion': {
       if (!input.boardId || !input.taskId) {
-        return fail('verify_completion requires boardId and taskId.');
+        throw invalidInput('verify_completion requires boardId and taskId.');
       }
-      const verResult = await verifyTaskCompletion(projectRoot, input.boardId, input.taskId);
+      let verResult: Awaited<ReturnType<typeof verifyTaskCompletion>>;
+      try {
+        // The report is persisted exactly once, by the updateTask below — one
+        // revision, one event.
+        verResult = await verifyTaskCompletion(projectRoot, input.boardId, input.taskId, {
+          persist: false,
+        });
+      } catch (err) {
+        if (err instanceof Error && /^(Board|Task) not found\b/.test(err.message)) {
+          throw notFound(err.message, { cause: err });
+        }
+        throw err;
+      }
       const persistedBoard = await updateTask(
         projectRoot,
         input.boardId,
@@ -89,22 +102,17 @@ export async function handleKanbanDecompositionAction(
         eventContext,
       );
       if (!persistedBoard) {
-        return {
-          ok: false,
-          verdict: verResult.report.verdict,
-          message:
-            `Verification succeeded but persist failed: ${verResult.report.markdownSummary}. ` +
-            `Board may be stale — re-run verify_completion.`,
-          board: verResult.board,
-        };
+        throw conflict(
+          `Verification ran (verdict: ${verResult.report.verdict}) but its report could not be saved: the task is no longer on the board. Nothing was written; re-run verify_completion.`,
+          { retryable: true },
+        );
       }
       recordKanbanVerificationEvidence(ctx, verResult.report);
-      const freshTask = persistedBoard.tasks?.find((t: KanbanTask) => t.id === input.taskId);
-      const deterministicVerdicts = ['passed', 'failed', 'needs_human', 'incomplete'] as const;
+      const freshTask = persistedBoard.tasks?.find((t: KanbanTask) => t.id === verResult.task.id);
+      // The verdict (passed / failed / needs_human / incomplete) is a data
+      // outcome of a verification that ran — it is returned, never thrown.
       return {
-        ok: deterministicVerdicts.includes(
-          verResult.report.verdict as (typeof deterministicVerdicts)[number],
-        ),
+        ok: true,
         verdict: verResult.report.verdict,
         message: verResult.report.markdownSummary,
         board: persistedBoard,

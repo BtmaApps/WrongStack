@@ -31,12 +31,18 @@ import { handleSplitTask } from './kanban-split-task-handler.js';
 import { assignmentInput, taskInput, taskPatch } from './kanban-task-inputs.js';
 import {
   atomicityNudge,
-  fail,
+  conflict,
+  invalidInput,
+  notFound,
   okBoard,
   okTask,
   readEnvGateEnforcement,
+  refused,
+  resolveTaskRef,
+  toKanbanToolError,
 } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
+import type { KanbanAgentAssignment } from '@wrongstack/kanban';
 import { applySessionKanbanTaskToSource } from './session-kanban.js';
 
 async function syncContextTask(
@@ -52,6 +58,65 @@ async function syncContextTask(
   }
 }
 
+/**
+ * Undo the running assignment start_task wrote when the Running transition
+ * that should follow it is refused, so a refusal leaves no live lease behind.
+ * Fenced on the lease we just wrote. Returns a sentence describing anything
+ * that could NOT be undone (for the error's "Already committed" note), or
+ * undefined when the rollback was clean.
+ */
+async function rollbackStartedAssignment(
+  projectRoot: string,
+  boardId: string,
+  taskId: string,
+  prior: KanbanAgentAssignment | undefined,
+  leaseId: string,
+  eventContext: { sessionId: string; actor?: string },
+): Promise<string | undefined> {
+  try {
+    const restored = prior
+      ? await updateTaskAssignment(projectRoot, boardId, taskId, prior, {
+          ...eventContext,
+          expectedLeaseId: leaseId,
+        })
+      : await releaseTaskClaim(
+          projectRoot,
+          boardId,
+          taskId,
+          { clearAssignee: false, expectedLeaseId: leaseId },
+          eventContext,
+        );
+    if (restored) return undefined;
+    return `the running assignment (lease ${leaseId}) could not be rolled back — the lease changed or the task is gone; release it with release_task.`;
+  } catch (err) {
+    return `the running assignment (lease ${leaseId}) could not be rolled back (${
+      err instanceof Error ? err.message : String(err)
+    }); release it with release_task.`;
+  }
+}
+
+function joinCommitted(...notes: Array<string | undefined>): string | undefined {
+  const present = notes.filter((note): note is string => Boolean(note));
+  return present.length ? present.join(' ') : undefined;
+}
+
+/** A null from a lease-fenced write means "task missing" OR "lease no longer ours". */
+async function missingOrFenced(
+  projectRoot: string,
+  boardId: string,
+  taskId: string,
+  expectedLeaseId: string | undefined,
+  what: string,
+): Promise<never> {
+  if (expectedLeaseId !== undefined && (await getTask(projectRoot, boardId, taskId))) {
+    throw conflict(
+      `${what}: the task's current lease no longer matches expectedLeaseId "${expectedLeaseId}" (it was recovered or reassigned). Nothing was written.`,
+      { retryable: false },
+    );
+  }
+  throw notFound(`${what}: task not found.`);
+}
+
 export async function handleKanbanLifecycleAction(
   projectRoot: string,
   input: KanbanToolInput,
@@ -63,21 +128,65 @@ export async function handleKanbanLifecycleAction(
   };
   switch (input.action) {
     case 'add_task': {
-      if (!input.boardId || !input.title) return fail('add_task requires boardId and title.');
+      if (!input.boardId || !input.title)
+        throw invalidInput('add_task requires boardId and title.');
+      const childTitles = input.childTitles;
+      if (
+        childTitles !== undefined &&
+        (!Array.isArray(childTitles) ||
+          childTitles.some((title) => typeof title !== 'string' || !title.trim()))
+      ) {
+        throw invalidInput('add_task childTitles must be non-blank strings.', 'childTitles');
+      }
       const result = await addTask(projectRoot, input.boardId, taskInput(input), eventContext);
-      if (!result) return fail('Board not found.');
+      if (!result) throw notFound('Board not found.');
+      if (childTitles?.length) {
+        let split: KanbanToolOutput;
+        try {
+          split = await handleSplitTask(
+            projectRoot,
+            { action: 'split_task', boardId: result.board.id, taskId: result.task.id, childTitles },
+            {},
+            eventContext,
+          );
+        } catch (err) {
+          // Compensate: a parent whose requested children could not be created
+          // is not what was asked for. Remove it rather than leave half a card.
+          const removed = await removeTask(
+            projectRoot,
+            result.board.id,
+            result.task.id,
+            eventContext,
+          ).catch(() => null);
+          throw toKanbanToolError(
+            err,
+            removed
+              ? undefined
+              : `task ${result.task.id} was created but its children were not, and removing it failed; delete it with delete_task.`,
+          );
+        }
+        const parent = split.task ?? result.task;
+        await syncContextTask(ctx, parent);
+        return {
+          ok: true,
+          message: `Task added with ${split.children?.length ?? 0} child task(s).${atomicityNudge(parent)}`,
+          board: split.board ?? result.board,
+          task: parent,
+          children: split.children,
+        };
+      }
       await syncContextTask(ctx, result.task);
       return okTask(result.board, result.task, `Task added.${atomicityNudge(result.task)}`);
     }
     case 'split_task': {
       if (!input.boardId || !input.taskId || !input.childTitles?.length) {
-        return fail('split_task requires boardId, taskId, and childTitles.');
+        throw invalidInput('split_task requires boardId, taskId, and childTitles.');
       }
       return handleSplitTask(projectRoot, input, {}, eventContext);
     }
     case 'merge_tasks': {
       if (!input.boardId || !input.taskIds?.length || !input.title) {
-        return fail('merge_tasks requires boardId, taskIds, and title.');
+        throw invalidInput('merge_tasks requires boardId, taskIds, and title.');
       }
       const result = await mergeTasks(
         projectRoot,
@@ -96,13 +205,12 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return result
-        ? okTask(result.board, result.task, 'Tasks merged.')
-        : fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
+      return okTask(result.board, result.task, 'Tasks merged.');
     }
     case 'copy_task': {
       if (!input.boardId || !input.taskId || !input.targetBoardId) {
-        return fail('copy_task requires boardId, taskId, and targetBoardId.');
+        throw invalidInput('copy_task requires boardId, taskId, and targetBoardId.');
       }
       const result = await copyTaskToBoard(
         projectRoot,
@@ -121,13 +229,12 @@ export async function handleKanbanLifecycleAction(
           eventContext,
         },
       );
-      return result
-        ? okTask(result.targetBoard, result.task, 'Task copied to target board.')
-        : fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
+      return okTask(result.targetBoard, result.task, 'Task copied to target board.');
     }
     case 'transfer_task': {
       if (!input.boardId || !input.taskId || !input.targetBoardId) {
-        return fail('transfer_task requires boardId, taskId, and targetBoardId.');
+        throw invalidInput('transfer_task requires boardId, taskId, and targetBoardId.');
       }
       const result = await transferTaskToBoard(
         projectRoot,
@@ -146,25 +253,28 @@ export async function handleKanbanLifecycleAction(
           eventContext,
         },
       );
-      return result
-        ? okTask(result.targetBoard, result.task, 'Task transferred to target board.')
-        : fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
+      return okTask(result.targetBoard, result.task, 'Task transferred to target board.');
     }
     case 'get_task': {
-      if (!input.boardId || !input.taskId) return fail('get_task requires boardId and taskId.');
+      if (!input.boardId || !input.taskId)
+        throw invalidInput('get_task requires boardId and taskId.');
       const task = await getTask(projectRoot, input.boardId, input.taskId);
-      return task ? { ok: true, message: 'Task loaded.', task } : fail('Task not found.');
+      if (!task) throw notFound('Task not found.');
+      return { ok: true, message: 'Task loaded.', task };
     }
     case 'start_task': {
       if (!input.boardId || !input.taskId || !input.author || !input.transitionComment) {
-        return fail('start_task requires boardId, taskId, author, and transitionComment.');
+        throw invalidInput('start_task requires boardId, taskId, author, and transitionComment.');
       }
       let board = await getBoard(projectRoot, input.boardId);
-      let task = board?.tasks.find((candidate) => candidate.id === input.taskId);
-      if (!board || !task) return fail('Board or task not found.');
+      if (!board) throw notFound('Board not found.');
+      // Same id semantics as every other action: full id or unique prefix.
+      let task = resolveTaskRef(board, input.taskId);
+      if (!task) throw notFound('Task not found.');
       const readiness = evaluateContractGraphReadiness(board, task.id);
       if (!readiness.ready) {
-        return fail(
+        throw refused(
           `Task is not implementation-ready: ${readiness.issues.map((issue) => issue.message).join(' | ')}`,
         );
       }
@@ -187,7 +297,7 @@ export async function handleKanbanLifecycleAction(
           },
           eventContext,
         );
-        if (!assigned) return fail('Task assignment could not be started.');
+        if (!assigned) throw notFound('Task assignment could not be started: task not found.');
         const started = await updateTask(
           projectRoot,
           board.id,
@@ -207,6 +317,7 @@ export async function handleKanbanLifecycleAction(
         );
       }
       let stage = task.lifecycle?.currentStage;
+      let movedToTodo = false;
       if (stage === 'backlog') {
         const moved = await transitionTask(projectRoot, board.id, task.id, {
           to: 'todo',
@@ -214,7 +325,8 @@ export async function handleKanbanLifecycleAction(
           actor: input.author,
           comment: input.transitionComment,
         });
-        if (!moved) return fail('Task could not enter Todo.');
+        if (!moved) throw notFound('Task could not enter Todo: board or task not found.');
+        movedToTodo = true;
         board = moved.board;
         task = moved.task;
         stage = task.lifecycle?.currentStage;
@@ -222,6 +334,8 @@ export async function handleKanbanLifecycleAction(
       if (stage === 'todo' || stage === 'review') {
         const now = new Date();
         const leaseId = input.leaseId ?? randomUUID();
+        const priorAssignment = task.assignment ? { ...task.assignment } : undefined;
+        const todoNote = movedToTodo ? 'the card was moved Backlog → Todo.' : undefined;
         const assigned = await updateTaskAssignment(
           projectRoot,
           board.id,
@@ -239,24 +353,56 @@ export async function handleKanbanLifecycleAction(
           },
           eventContext,
         );
-        if (!assigned) return fail('Task assignment could not be started.');
-        const moved = await transitionTask(projectRoot, board.id, task.id, {
-          to: 'running',
-          sessionId: eventContext.sessionId,
-          actor: input.author,
-          comment: input.transitionComment,
-        });
-        if (!moved) return fail('Task could not enter Running.');
+        if (!assigned) {
+          throw notFound('Task assignment could not be started: task not found.', {
+            committed: todoNote,
+          });
+        }
+        const startedTaskId = task.id;
+        const startedBoardId = board.id;
+        let moved: Awaited<ReturnType<typeof transitionTask>>;
+        try {
+          moved = await transitionTask(projectRoot, startedBoardId, startedTaskId, {
+            to: 'running',
+            sessionId: eventContext.sessionId,
+            actor: input.author,
+            comment: input.transitionComment,
+          });
+        } catch (err) {
+          const rollback = await rollbackStartedAssignment(
+            projectRoot,
+            startedBoardId,
+            startedTaskId,
+            priorAssignment,
+            leaseId,
+            eventContext,
+          );
+          throw toKanbanToolError(err, joinCommitted(todoNote, rollback));
+        }
+        if (!moved) {
+          const rollback = await rollbackStartedAssignment(
+            projectRoot,
+            startedBoardId,
+            startedTaskId,
+            priorAssignment,
+            leaseId,
+            eventContext,
+          );
+          throw conflict('Task could not enter Running: the board or task disappeared.', {
+            committed: joinCommitted(todoNote, rollback),
+          });
+        }
         board = moved.board;
         task = moved.task;
         stage = task.lifecycle?.currentStage;
       }
       if (stage !== 'running' || task.assignment?.status !== 'running') {
-        return fail(
+        throw refused(
           `start_task only accepts Backlog, Todo, Review repair, or live Running cards (current: ${stage ?? 'unknown'}).`,
+          { committed: movedToTodo ? 'the card was moved Backlog → Todo.' : undefined },
         );
       }
-      ctx.setCurrentKanbanTask(task.id, board.id);
+      ctx.setCurrentKanbanTask?.(task.id, board.id);
       await syncContextTask(ctx, task);
       return okTask(
         board,
@@ -265,7 +411,8 @@ export async function handleKanbanLifecycleAction(
       );
     }
     case 'update_task': {
-      if (!input.boardId || !input.taskId) return fail('update_task requires boardId and taskId.');
+      if (!input.boardId || !input.taskId)
+        throw invalidInput('update_task requires boardId and taskId.');
       const board = await updateTask(
         projectRoot,
         input.boardId,
@@ -273,13 +420,9 @@ export async function handleKanbanLifecycleAction(
         taskPatch(input),
         eventContext,
       );
-      if (board) {
-        await syncContextTask(
-          ctx,
-          board.tasks.find((t) => t.id === input.taskId),
-        );
-      }
-      return board ? okBoard(board, 'Task updated.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      await syncContextTask(ctx, resolveTaskRef(board, input.taskId));
+      return okBoard(board, 'Task updated.');
     }
     case 'transition_task': {
       if (
@@ -289,10 +432,17 @@ export async function handleKanbanLifecycleAction(
         !input.author ||
         !input.transitionComment
       ) {
-        return fail(
+        throw invalidInput(
           'transition_task requires boardId, taskId, lifecycleStage, author, and transitionComment.',
         );
       }
+      if (input.tickChecks?.length && input.lifecycleStage !== 'done') {
+        throw invalidInput(
+          `tickChecks only applies to transition_task with lifecycleStage "done" (got "${input.lifecycleStage}"). Tick criteria with update_check instead.`,
+          'tickChecks',
+        );
+      }
+      let preGateSaved = false;
       if (input.lifecycleStage === 'done') {
         const boardBefore = await getBoard(projectRoot, input.boardId);
         const taskBefore = boardBefore
@@ -307,49 +457,56 @@ export async function handleKanbanLifecycleAction(
           const preGate = await verifyTaskCompletion(projectRoot, input.boardId, taskBefore.id, {
             persist: false,
           });
-          await updateTask(
-            projectRoot,
-            input.boardId,
-            taskBefore.id,
-            {
-              verificationReport: preGate.report,
-              successCriteria: preGate.task.successCriteria,
-            },
-            eventContext,
+          preGateSaved = Boolean(
+            await updateTask(
+              projectRoot,
+              input.boardId,
+              taskBefore.id,
+              {
+                verificationReport: preGate.report,
+                successCriteria: preGate.task.successCriteria,
+              },
+              eventContext,
+            ),
           );
         }
       }
-      const result = await transitionTask(projectRoot, input.boardId, input.taskId, {
-        to: input.lifecycleStage,
-        sessionId: eventContext.sessionId,
-        actor: input.author,
-        comment: input.transitionComment,
-        ...(input.transitionAction !== undefined ? { action: input.transitionAction } : {}),
-        ...(input.tickChecks !== undefined ? { tickChecks: input.tickChecks } : {}),
-        ...(input.attachmentUrl !== undefined
-          ? {
-              attachment: {
-                url: input.attachmentUrl,
-                type: input.attachmentType ?? 'url',
-                ...(input.attachmentTitle !== undefined ? { title: input.attachmentTitle } : {}),
-              },
-            }
-          : {}),
-        patch: taskPatch(input),
-      });
-      if (result && input.lifecycleStage === 'done' && result.task.verificationReport) {
+      const preGateNote = preGateSaved
+        ? 'the pre-gate verification report was saved on the card (evidence only; the card did not move).'
+        : undefined;
+      let result: Awaited<ReturnType<typeof transitionTask>>;
+      try {
+        result = await transitionTask(projectRoot, input.boardId, input.taskId, {
+          to: input.lifecycleStage,
+          sessionId: eventContext.sessionId,
+          actor: input.author,
+          comment: input.transitionComment,
+          ...(input.transitionAction !== undefined ? { action: input.transitionAction } : {}),
+          ...(input.tickChecks !== undefined ? { tickChecks: input.tickChecks } : {}),
+          ...(input.attachmentUrl !== undefined
+            ? {
+                attachment: {
+                  url: input.attachmentUrl,
+                  type: input.attachmentType ?? 'url',
+                  ...(input.attachmentTitle !== undefined ? { title: input.attachmentTitle } : {}),
+                },
+              }
+            : {}),
+          patch: taskPatch(input),
+        });
+      } catch (err) {
+        throw toKanbanToolError(err, preGateNote);
+      }
+      if (!result) throw notFound('Board or task not found.', { committed: preGateNote });
+      if (input.lifecycleStage === 'done' && result.task.verificationReport) {
         recordKanbanVerificationEvidence(ctx, result.task.verificationReport);
       }
-      if (result?.task) {
-        await syncContextTask(ctx, result.task);
-      }
-      return result
-        ? okTask(result.board, result.task, `Task advanced to ${result.transition.to}.`)
-        : fail('Board or task not found.');
+      await syncContextTask(ctx, result.task);
+      return okTask(result.board, result.task, `Task advanced to ${result.transition.to}.`);
     }
     case 'repair_managed_projection': {
       if (!input.boardId || !input.taskId || !input.author || !input.transitionComment) {
-        return fail(
+        throw invalidInput(
           'repair_managed_projection requires boardId, taskId, author, and transitionComment.',
         );
       }
@@ -360,17 +517,16 @@ export async function handleKanbanLifecycleAction(
       if (result?.task) {
         await syncContextTask(ctx, result.task);
       }
-      return result
-        ? okTask(
-            result.board,
-            result.task,
-            'Managed card projection repaired from lifecycle history.',
-          )
-        : fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
+      return okTask(
+        result.board,
+        result.task,
+        'Managed card projection repaired from lifecycle history.',
+      );
     }
     case 'move_task': {
       if (!input.boardId || !input.taskId || !input.targetColumnId) {
-        return fail('move_task requires boardId, taskId, and targetColumnId.');
+        throw invalidInput('move_task requires boardId, taskId, and targetColumnId.');
       }
       const board = await moveTask(
         projectRoot,
@@ -380,30 +536,28 @@ export async function handleKanbanLifecycleAction(
         input.order,
         eventContext,
       );
-      if (board) {
-        await syncContextTask(
-          ctx,
-          board.tasks.find((t) => t.id === input.taskId),
-        );
-      }
-      return board ? okBoard(board, 'Task moved.') : fail('Move failed.');
+      if (!board) throw notFound('Move failed: board or task not found.');
+      await syncContextTask(ctx, resolveTaskRef(board, input.taskId));
+      return okBoard(board, 'Task moved.');
     }
     case 'delete_task': {
-      if (!input.boardId || !input.taskId) return fail('delete_task requires boardId and taskId.');
+      if (!input.boardId || !input.taskId)
+        throw invalidInput('delete_task requires boardId and taskId.');
       const boardBefore = await getBoard(projectRoot, input.boardId);
-      const taskToDelete = boardBefore?.tasks.find((t) => t.id === input.taskId);
+      const taskToDelete = boardBefore ? resolveTaskRef(boardBefore, input.taskId) : undefined;
       const board = await removeTask(projectRoot, input.boardId, input.taskId, eventContext);
-      if (board && ctx.currentKanbanTaskId === input.taskId) {
+      if (board && taskToDelete && ctx.currentKanbanTaskId === taskToDelete.id) {
         ctx.setCurrentKanbanTask?.(undefined, ctx.currentKanbanBoardId);
       }
       if (board && taskToDelete) {
         await syncContextTask(ctx, taskToDelete, { remove: true });
       }
-      return board ? okBoard(board, 'Task deleted.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Task deleted.');
     }
     case 'set_chain': {
       if (!input.boardId || !input.taskIds?.length) {
-        return fail('set_chain requires boardId and taskIds.');
+        throw invalidInput('set_chain requires boardId and taskIds.');
       }
       const result = await setTaskChain(
         projectRoot,
@@ -417,32 +571,30 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return result
-        ? {
-            ok: true,
-            message: `Chain set: ${result.chainId}`,
-            board: result.board,
-            chain: result.tasks,
-          }
-        : fail('Board or task not found.');
+      if (!result) throw notFound('Board or task not found.');
+      return {
+        ok: true,
+        message: `Chain set: ${result.chainId}`,
+        board: result.board,
+        chain: result.tasks,
+      };
     }
     case 'get_chain': {
       if (!input.boardId || !(input.taskId || input.chainId)) {
-        return fail('get_chain requires boardId and taskId or chainId.');
+        throw invalidInput('get_chain requires boardId and taskId or chainId.');
       }
       const result = await getTaskChain(
         projectRoot,
         input.boardId,
         input.taskId ?? input.chainId ?? '',
       );
-      return result
-        ? {
-            ok: true,
-            message: `Chain loaded: ${result.chainId}`,
-            board: result.board,
-            chain: result.tasks,
-          }
-        : fail('Chain not found.');
+      if (!result) throw notFound('Chain not found.');
+      return {
+        ok: true,
+        message: `Chain loaded: ${result.chainId}`,
+        board: result.board,
+        chain: result.tasks,
+      };
     }
     case 'claim_task': {
       const result = await claimReadyTask(
@@ -455,13 +607,14 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return result
-        ? okTask(result.board, result.task, 'Task claimed.')
-        : fail('No ready kanban task matched the claim.');
+      if (!result) {
+        return { ok: true, claimed: false, message: 'No ready kanban task matched the claim.' };
+      }
+      return { ...okTask(result.board, result.task, 'Task claimed.'), claimed: true };
     }
     case 'release_task': {
       if (!input.boardId || !input.taskId) {
-        return fail('release_task requires boardId and taskId.');
+        throw invalidInput('release_task requires boardId and taskId.');
       }
       const board = await releaseTaskClaim(
         projectRoot,
@@ -474,10 +627,12 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Task claim released.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Task claim released.');
     }
     case 'assign_task': {
-      if (!input.boardId || !input.taskId) return fail('assign_task requires boardId and taskId.');
+      if (!input.boardId || !input.taskId)
+        throw invalidInput('assign_task requires boardId and taskId.');
       const board = await assignTask(
         projectRoot,
         input.boardId,
@@ -485,11 +640,12 @@ export async function handleKanbanLifecycleAction(
         assignmentInput(input),
         eventContext,
       );
-      return board ? okBoard(board, 'Task assigned.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Task assigned.');
     }
     case 'mark_assignment': {
       if (!input.boardId || !input.taskId)
-        return fail('mark_assignment requires boardId and taskId.');
+        throw invalidInput('mark_assignment requires boardId and taskId.');
       const assignmentStatus =
         input.assignmentStatus ??
         (input.status === 'completed' ? 'completed' : input.error ? 'failed' : undefined);
@@ -518,7 +674,15 @@ export async function handleKanbanLifecycleAction(
             : {}),
         },
       );
-      if (!board) return fail('Task not found.');
+      if (!board) {
+        return missingOrFenced(
+          projectRoot,
+          input.boardId,
+          input.taskId,
+          input.expectedLeaseId,
+          'Assignment not updated',
+        );
+      }
 
       if (assignmentStatus === 'completed' && board.lifecycle?.mode !== 'managed') {
         const envGate = readEnvGateEnforcement();
@@ -603,7 +767,9 @@ export async function handleKanbanLifecycleAction(
 
             if (hasCriteria) {
               try {
-                const verResult = await verifyTaskCompletion(projectRoot, board.id, input.taskId);
+                const verResult = await verifyTaskCompletion(projectRoot, board.id, input.taskId, {
+                  persist: false,
+                });
                 if (verResult.report) {
                   recordKanbanVerificationEvidence(ctx, verResult.report);
                 }
@@ -676,7 +842,7 @@ export async function handleKanbanLifecycleAction(
     }
     case 'heartbeat_assignment': {
       if (!input.boardId || !input.taskId) {
-        return fail('heartbeat_assignment requires boardId and taskId.');
+        throw invalidInput('heartbeat_assignment requires boardId and taskId.');
       }
       const board = await heartbeatTaskAssignment(
         projectRoot,
@@ -691,12 +857,19 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return board
-        ? okBoard(board, 'Assignment heartbeat updated.')
-        : fail('Task assignment not found.');
+      if (!board) {
+        return missingOrFenced(
+          projectRoot,
+          input.boardId,
+          input.taskId,
+          input.expectedLeaseId,
+          'Heartbeat not recorded',
+        );
+      }
+      return okBoard(board, 'Assignment heartbeat updated.');
     }
     case 'recover_stale': {
-      if (!input.boardId) return fail('recover_stale requires boardId.');
+      if (!input.boardId) throw invalidInput('recover_stale requires boardId.');
       const policyFields = [
         input.recoveryPolicyFailOnCostCeiling !== undefined,
         input.recoveryPolicyReleaseOnFailureKinds !== undefined,
@@ -738,14 +911,17 @@ export async function handleKanbanLifecycleAction(
         },
         eventContext,
       );
-      return result
-        ? {
-            ok: true,
-            message: `Recovered ${result.tasks.length} stale assignment(s).`,
-            board: result.board,
-            recoveredTasks: result.tasks,
-          }
-        : { ok: true, message: 'No stale assignment matched.', recoveredTasks: [] };
+      if (!result) {
+        // The domain answers null both for "no such board" and "nothing stale".
+        if (!(await getBoard(projectRoot, input.boardId))) throw notFound('Board not found.');
+        return { ok: true, message: 'No stale assignment matched.', recoveredTasks: [] };
+      }
+      return {
+        ok: true,
+        message: `Recovered ${result.tasks.length} stale assignment(s).`,
+        board: result.board,
+        recoveredTasks: result.tasks,
+      };
     }
     default:
       return undefined;

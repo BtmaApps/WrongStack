@@ -76,10 +76,6 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     taskId: { type: 'string' },
     taskIds: { type: 'array', items: { type: 'string' } },
     chainId: { type: 'string' },
-    fromNodeId: { type: 'string' },
-    toNodeId: { type: 'string' },
-    baseline: { oneOf: [{ type: 'string' }, { type: 'number' }] },
-    threshold: { oneOf: [{ type: 'string' }, { type: 'number' }] },
     columnId: { type: 'string' },
     targetBoardId: { type: 'string' },
     targetColumnId: { type: 'string' },
@@ -88,6 +84,11 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     dueDate: { type: 'string' },
     tags: { type: 'array', items: { type: 'string' } },
     labels: { type: 'array', items: { type: 'string' } },
+    label: {
+      type: 'string',
+      description:
+        'search_tasks / ready_tasks / snapshot: filter by a single label (takes precedence over labels[0]).',
+    },
     priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
     taskType: {
       type: 'string',
@@ -108,7 +109,11 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     },
     order: { type: 'number' },
     query: { type: 'string' },
-    limit: { type: 'number' },
+    limit: {
+      type: 'number',
+      description:
+        'ready_tasks: max results. workbench: per-lane and alert limit. events: return only the most recent N events.',
+    },
     agentId: { type: 'string' },
     name: { type: 'string' },
     role: { type: 'string' },
@@ -150,7 +155,7 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
         required: ['checkId', 'checkStatus'],
       },
       description:
-        '`transition_task` (to=done only): flip one or more manual criteria to `passed` before the gate fires. Read ids from kanban get_task. Non-manual criteria are refused.',
+        '`transition_task` with lifecycleStage "done" only (rejected for any other stage): flip one or more manual criteria before the gate fires. Read ids from kanban get_task. Non-manual criteria are refused.',
     },
     attachmentUrl: { type: 'string' },
     attachmentTitle: { type: 'string' },
@@ -311,7 +316,6 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     includeCompletedTasks: { type: 'boolean' },
     preserveAssignment: { type: 'boolean' },
     preserveDependencies: { type: 'boolean' },
-    moveTasksToColumnId: { type: 'string' },
     atomicityMode: { type: 'string', enum: ['off', 'assess', 'enforce'] },
     atomicityDecomposition: { type: 'string', enum: ['auto', 'propose'] },
     gateEnforcement: {

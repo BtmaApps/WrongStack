@@ -6,6 +6,7 @@ import { createBoard, getBoard } from '@wrongstack/kanban';
 import { addCheckToTask, addTask } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /** Session that owns the board events these tests write. */
@@ -137,7 +138,7 @@ describe('kanban tool — contract map', () => {
 
   it('rejects a binding to a criterion that is not on the task', async () => {
     const { boardId, taskId } = await seed();
-    const result = await run({
+    const result = run({
       action: 'upsert_contract_node',
       boardId,
       taskId,
@@ -145,13 +146,12 @@ describe('kanban tool — contract map', () => {
       contractNodeTitle: 'Phantom check',
       contractCheckId: 'no-such-check',
     });
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('binding not found');
+    await expect(result).rejects.toThrow('binding not found');
   });
 
   it('requires a reason before waiving a node', async () => {
     const { boardId, taskId } = await seed();
-    const result = await run({
+    const result = run({
       action: 'upsert_contract_node',
       boardId,
       taskId,
@@ -159,8 +159,7 @@ describe('kanban tool — contract map', () => {
       contractNodeTitle: 'Deprecated path stays available',
       contractNodeState: 'waived',
     });
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('contractWaiverReason');
+    await expectKanbanError(result, 'INVALID_INPUT', 'contractWaiverReason');
   });
 
   it('adds and removes an edge between two nodes', async () => {

@@ -11,7 +11,7 @@ import {
   updateGoalMetricOnTask,
 } from '@wrongstack/kanban';
 import { handleSplitTask } from './kanban-split-task-handler.js';
-import { fail, okBoard } from './kanban-tool-results.js';
+import { invalidInput, notFound, okBoard } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
 export async function handleKanbanDetailAction(
@@ -38,7 +38,7 @@ export async function handleKanbanDetailAction(
     }
     case 'add_dependency': {
       if (!input.boardId || !input.taskId || !input.dependencyTaskId) {
-        return fail('add_dependency requires boardId, taskId, and dependencyTaskId.');
+        throw invalidInput('add_dependency requires boardId, taskId, and dependencyTaskId.');
       }
       const board = await addDependency(
         projectRoot,
@@ -47,11 +47,12 @@ export async function handleKanbanDetailAction(
         input.dependencyTaskId,
         eventContext,
       );
-      return board ? okBoard(board, 'Dependency added.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Dependency added.');
     }
     case 'add_goal_metric': {
       if (!input.boardId || !input.taskId || !input.metricName) {
-        return fail('add_goal_metric requires boardId, taskId, and metricName.');
+        throw invalidInput('add_goal_metric requires boardId, taskId, and metricName.');
       }
       const board = await addGoalMetricToTask(
         projectRoot,
@@ -68,11 +69,12 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Goal metric added.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Goal metric added.');
     }
     case 'update_goal_metric': {
       if (!input.boardId || !input.taskId || !input.metricId) {
-        return fail('update_goal_metric requires boardId, taskId, and metricId.');
+        throw invalidInput('update_goal_metric requires boardId, taskId, and metricId.');
       }
       const board = await updateGoalMetricOnTask(
         projectRoot,
@@ -90,11 +92,12 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Goal metric updated.') : fail('Metric not found.');
+      if (!board) throw notFound('Metric not found.');
+      return okBoard(board, 'Goal metric updated.');
     }
     case 'add_check': {
       if (!input.boardId || !input.taskId || !input.checkDescription) {
-        return fail('add_check requires boardId, taskId, and checkDescription.');
+        throw invalidInput('add_check requires boardId, taskId, and checkDescription.');
       }
       // `manual` is the fallback, not the only option — see the note in
       // kanban-task-inputs.ts on why hard-coding it made every agent-authored
@@ -111,11 +114,12 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Check added.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Check added.');
     }
     case 'update_check': {
       if (!input.boardId || !input.taskId || !input.checkId) {
-        return fail('update_check requires boardId, taskId, and checkId.');
+        throw invalidInput('update_check requires boardId, taskId, and checkId.');
       }
       const board = await updateCheckOnTask(
         projectRoot,
@@ -132,11 +136,12 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Check updated.') : fail('Check not found.');
+      if (!board) throw notFound('Check not found.');
+      return okBoard(board, 'Check updated.');
     }
     case 'remove_check': {
       if (!input.boardId || !input.taskId || !input.checkId) {
-        return fail('remove_check requires boardId, taskId, and checkId.');
+        throw invalidInput('remove_check requires boardId, taskId, and checkId.');
       }
       // The truthful way out of a criterion that turned out not to apply.
       // Done refuses to advance while any criterion is not `passed`, so
@@ -149,13 +154,12 @@ export async function handleKanbanDetailAction(
         input.checkId,
         eventContext,
       );
-      return board
-        ? okBoard(board, 'Acceptance criterion removed.')
-        : fail('Check not found on this task.');
+      if (!board) throw notFound('Check not found on this task.');
+      return okBoard(board, 'Acceptance criterion removed.');
     }
     case 'add_note': {
       if (!input.boardId || !input.taskId || !input.note)
-        return fail('add_note requires boardId, taskId, and note.');
+        throw invalidInput('add_note requires boardId, taskId, and note.');
       const board = await addNoteToTask(
         projectRoot,
         input.boardId,
@@ -166,11 +170,12 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Note added.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Note added.');
     }
     case 'add_link': {
       if (!input.boardId || !input.taskId || !input.url)
-        return fail('add_link requires boardId, taskId, and url.');
+        throw invalidInput('add_link requires boardId, taskId, and url.');
       const board = await addLinkToTask(
         projectRoot,
         input.boardId,
@@ -182,11 +187,14 @@ export async function handleKanbanDetailAction(
         },
         eventContext,
       );
-      return board ? okBoard(board, 'Link added.') : fail('Task not found.');
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Link added.');
     }
     case 'split_atomic': {
       if (!input.boardId || !input.taskId || !input.childTitles?.length) {
-        return fail('split_atomic requires boardId, taskId, and childTitles (at least one).');
+        throw invalidInput(
+          'split_atomic requires boardId, taskId, and childTitles (at least one).',
+        );
       }
       return handleSplitTask(projectRoot, input, { atomic: true }, eventContext);
     }

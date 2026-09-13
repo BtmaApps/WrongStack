@@ -5,6 +5,7 @@ import type { Context } from '@wrongstack/core/agent';
 import { createBoard } from '@wrongstack/kanban';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /** Session that owns the board events these tests write. */
@@ -55,18 +56,20 @@ describe('kanban tool — managed lifecycle adoption', () => {
 
   it('rejects a malformed ordered column list before mutation', async () => {
     const board = await createBoard(dir, { title: 'Legacy board' });
-    const result = await kanbanTool.execute(
-      {
-        action: 'adopt_managed_lifecycle',
-        boardId: board.id,
-        columns: ['backlog', 'todo'],
-        author: 'migration-agent',
-        transitionComment: 'Invalid adoption.',
-      },
-      ctx(),
-      { signal: newSignal() },
+    await expectKanbanError(
+      kanbanTool.execute(
+        {
+          action: 'adopt_managed_lifecycle',
+          boardId: board.id,
+          columns: ['backlog', 'todo'],
+          author: 'migration-agent',
+          transitionComment: 'Invalid adoption.',
+        },
+        ctx(),
+        { signal: newSignal() },
+      ),
+      'INVALID_INPUT',
+      'ordered as backlog, todo, running, review, done',
     );
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('ordered as backlog, todo, running, review, done');
   });
 });

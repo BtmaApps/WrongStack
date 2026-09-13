@@ -29,7 +29,7 @@ import {
   duplicateBoardOptions,
 } from './kanban-board-inputs.js';
 import { requireBoard } from './kanban-split-task-handler.js';
-import { fail, okBoard } from './kanban-tool-results.js';
+import { conflict, invalidInput, notFound, okBoard } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 import { taskFileToSerializedGraph } from './session-kanban.js';
 
@@ -48,11 +48,13 @@ export async function handleKanbanBoardAction(
       return { ok: true, message: `${boards.length} board(s).`, boards };
     }
     case 'get_board': {
+      if (!input.boardId) throw invalidInput('get_board requires boardId.', 'boardId');
       const board = await requireBoard(projectRoot, input.boardId);
-      return board ? okBoard(board) : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(board);
     }
     case 'create_board': {
-      if (!input.title) return fail('create_board requires title.');
+      if (!input.title) throw invalidInput('create_board requires title.', 'title');
       const existing = (await listBoards(projectRoot)).filter(
         (candidate) => (candidate.kind ?? 'project') === 'project',
       );
@@ -68,56 +70,65 @@ export async function handleKanbanBoardAction(
       return { ok: true, message: `Board created: ${board.title}.${note}`, board };
     }
     case 'update_board': {
-      if (!input.boardId) return fail('update_board requires boardId.');
+      if (!input.boardId) throw invalidInput('update_board requires boardId.', 'boardId');
       const board = await updateBoard(projectRoot, input.boardId, boardUpdatePatch(input));
-      return board ? okBoard(board, 'Board updated.') : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(board, 'Board updated.');
     }
     case 'adopt_managed_lifecycle': {
       if (!input.boardId || !input.author || !input.transitionComment) {
-        return fail(
+        throw invalidInput(
           'adopt_managed_lifecycle requires boardId, author, transitionComment, and five ordered columns.',
         );
       }
       if (input.columns?.length !== 5) {
-        return fail(
+        throw invalidInput(
           'adopt_managed_lifecycle columns must be ordered as backlog, todo, running, review, done.',
+          'columns',
         );
       }
       const [backlog, todo, running, review, done] = input.columns;
       if (!backlog || !todo || !running || !review || !done) {
-        return fail('adopt_managed_lifecycle columns must contain five nonblank ids.');
+        throw invalidInput(
+          'adopt_managed_lifecycle columns must contain five nonblank ids.',
+          'columns',
+        );
       }
       const board = await adoptManagedLifecycle(projectRoot, input.boardId, {
         columns: { backlog, todo, running, review, done },
         actor: input.author,
         comment: input.transitionComment,
       });
-      return board
-        ? okBoard(board, 'Managed lifecycle adopted without moving existing cards.')
-        : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(board, 'Managed lifecycle adopted without moving existing cards.');
     }
     case 'release_managed_lifecycle': {
-      if (!input.boardId) return fail('release_managed_lifecycle requires boardId.');
+      if (!input.boardId) {
+        throw invalidInput('release_managed_lifecycle requires boardId.', 'boardId');
+      }
       const board = await updateBoard(projectRoot, input.boardId, { lifecycle: null });
-      return board
-        ? okBoard(
-            board,
-            'Managed lifecycle released; the board now tracks work without strict gates.',
-          )
-        : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(
+        board,
+        'Managed lifecycle released; the board now tracks work without strict gates.',
+      );
     }
     case 'duplicate_board': {
-      if (!input.boardId) return fail('duplicate_board requires boardId.');
+      if (!input.boardId) throw invalidInput('duplicate_board requires boardId.', 'boardId');
       const board = await duplicateBoard(projectRoot, input.boardId, duplicateBoardOptions(input));
-      return board ? okBoard(board, 'Board duplicated.') : fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      return okBoard(board, 'Board duplicated.');
     }
     case 'delete_board': {
-      if (!input.boardId) return fail('delete_board requires boardId.');
+      if (!input.boardId) throw invalidInput('delete_board requires boardId.', 'boardId');
       const removed = await removeBoard(projectRoot, input.boardId);
-      return { ok: removed, message: removed ? 'Board deleted.' : 'Board not found.' };
+      if (!removed) throw notFound('Board not found.');
+      return { ok: true, message: 'Board deleted.' };
     }
     case 'generate_board': {
-      if (!input.description) return fail('generate_board requires description.');
+      if (!input.description) {
+        throw invalidInput('generate_board requires description.', 'description');
+      }
       const boardInput = createBoardFromText({
         description: input.description,
         ...(input.title !== undefined ? { title: input.title } : {}),
@@ -133,17 +144,19 @@ export async function handleKanbanBoardAction(
       return okBoard((await getBoard(projectRoot, board.id)) ?? board, 'Board generated.');
     }
     case 'export_markdown': {
+      if (!input.boardId) throw invalidInput('export_markdown requires boardId.', 'boardId');
       const board = await requireBoard(projectRoot, input.boardId);
-      if (!board) return fail('Board not found.');
+      if (!board) throw notFound('Board not found.');
+      // The markdown IS the export; returning the full board beside it doubled
+      // the payload for no reader.
       return {
         ok: true,
         message: 'Board exported.',
-        board,
         markdown: exportBoardAsMarkdown(board),
       };
     }
     case 'export_task_graph': {
-      if (!input.boardId) return fail('export_task_graph requires boardId.');
+      if (!input.boardId) throw invalidInput('export_task_graph requires boardId.', 'boardId');
       const exported = await exportBoardToTaskGraph(projectRoot, input.boardId, {
         ...(input.graphId !== undefined ? { graphId: input.graphId } : {}),
         ...(input.specId !== undefined ? { specId: input.specId } : {}),
@@ -153,7 +166,7 @@ export async function handleKanbanBoardAction(
           : {}),
         ...(input.includeArchived !== undefined ? { includeArchived: input.includeArchived } : {}),
       });
-      if (!exported) return fail('Board not found.');
+      if (!exported) throw notFound('Board not found.');
       return {
         ok: true,
         message: `Task graph exported with ${exported.graph.nodes.size} node(s).`,
@@ -163,7 +176,7 @@ export async function handleKanbanBoardAction(
     }
     case 'sync_task_graph': {
       if (!input.boardId || !input.taskGraph) {
-        return fail('sync_task_graph requires boardId and taskGraph.');
+        throw invalidInput('sync_task_graph requires boardId and taskGraph.');
       }
       const graph = deserializeTaskGraph(input.taskGraph as SerializableTaskGraph);
       const result = await syncBoardFromTaskGraph(projectRoot, input.boardId, graph, {
@@ -183,16 +196,16 @@ export async function handleKanbanBoardAction(
           ? { preserveManualDependencies: input.preserveManualDependencies }
           : {}),
       });
-      return result
-        ? {
-            ok: true,
-            message: `Task graph synced: ${result.createdTaskIds.length} created, ${result.updatedTaskIds.length} updated, ${result.archivedTaskIds.length} archived.`,
-            board: result.board,
-          }
-        : fail('Board not found.');
+      if (!result) throw notFound('Board not found.');
+      return {
+        ok: true,
+        message: `Task graph synced: ${result.createdTaskIds.length} created, ${result.updatedTaskIds.length} updated, ${result.archivedTaskIds.length} archived.`,
+        board: result.board,
+      };
     }
     case 'create_from_graph': {
-      if (!input.taskGraph) return fail('create_from_graph requires taskGraph.');
+      if (!input.taskGraph)
+        throw invalidInput('create_from_graph requires taskGraph.', 'taskGraph');
       const graph = deserializeTaskGraph(input.taskGraph as SerializableTaskGraph);
       const { board } = await createBoardFromTaskGraph(projectRoot, graph, {
         ...(input.title !== undefined ? { title: input.title } : {}),
@@ -212,10 +225,15 @@ export async function handleKanbanBoardAction(
       };
     }
     case 'import_session_tasks': {
+      // "Nothing to import" is a data outcome, not a failure.
       const taskPath = (ctx.meta as Record<string, unknown>)?.['task.path'] as string | undefined;
-      if (!taskPath) return fail('No session task file for this session.');
+      if (!taskPath) {
+        return { ok: true, imported: 0, message: 'No session task file for this session.' };
+      }
       const file = await loadTasks(taskPath);
-      if (!file || file.tasks.length === 0) return fail('No session tasks to import.');
+      if (!file || file.tasks.length === 0) {
+        return { ok: true, imported: 0, message: 'No session tasks to import.' };
+      }
       const sessionId = ctx.session?.id ?? file.sessionId ?? 'session';
       const graph = deserializeTaskGraph(taskFileToSerializedGraph(file.tasks, sessionId));
       const tags = ['session', `session:${sessionId}`];
@@ -229,13 +247,17 @@ export async function handleKanbanBoardAction(
           archiveMissingTasks: true,
           includeCompletedTasks: true,
         });
-        return result
-          ? {
-              ok: true,
-              message: `Synced ${file.tasks.length} session tasks into board "${result.board.title}".`,
-              board: result.board,
-            }
-          : fail('Session board vanished mid-sync.');
+        if (!result) {
+          throw conflict('Session board vanished mid-sync; nothing was imported. Retry.', {
+            retryable: true,
+          });
+        }
+        return {
+          ok: true,
+          imported: file.tasks.length,
+          message: `Synced ${file.tasks.length} session tasks into board "${result.board.title}".`,
+          board: result.board,
+        };
       }
       const { board } = await createBoardFromTaskGraph(projectRoot, graph, {
         title: `Session tasks (${sessionId.slice(0, 8)})`,
@@ -244,6 +266,7 @@ export async function handleKanbanBoardAction(
       });
       return {
         ok: true,
+        imported: file.tasks.length,
         message: `Imported ${file.tasks.length} session tasks into new board "${board.title}".`,
         board,
       };
@@ -289,12 +312,20 @@ export async function handleKanbanBoardAction(
       };
     }
     case 'events': {
-      if (!input.boardId) return fail('events requires boardId.');
+      if (!input.boardId) throw invalidInput('events requires boardId.', 'boardId');
       const eventList = await listKanbanEvents(projectRoot, input.boardId);
+      const limit =
+        typeof input.limit === 'number' && Number.isFinite(input.limit) && input.limit > 0
+          ? Math.floor(input.limit)
+          : undefined;
+      const events = limit !== undefined ? eventList.slice(-limit) : eventList;
       return {
         ok: true,
-        message: `${eventList.length} event(s).`,
-        events: eventList,
+        message:
+          events.length === eventList.length
+            ? `${eventList.length} event(s).`
+            : `${events.length} most recent of ${eventList.length} event(s).`,
+        events,
       };
     }
     case 'queue_health': {

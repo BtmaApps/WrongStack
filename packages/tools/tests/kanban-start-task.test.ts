@@ -14,6 +14,7 @@ import {
 } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /** Session that owns the board events these tests write. */
@@ -301,24 +302,25 @@ describe('kanban tool — start_task governance binding', () => {
     });
     const setCurrentKanbanTask = vi.fn();
 
-    const result = await kanbanTool.execute(
-      {
-        action: 'start_task',
-        boardId: board.id,
-        taskId: added!.task.id,
-        author: 'agent-1',
-        transitionComment: 'Start.',
-      },
-      {
-        eventSessionId: () => TEST_CONTEXT_SESSION_ID,
-        projectRoot: dir,
-        setCurrentKanbanTask,
-      } as unknown as Context,
-      { signal: newSignal() },
+    await expectKanbanError(
+      kanbanTool.execute(
+        {
+          action: 'start_task',
+          boardId: board.id,
+          taskId: added!.task.id,
+          author: 'agent-1',
+          transitionComment: 'Start.',
+        },
+        {
+          eventSessionId: () => TEST_CONTEXT_SESSION_ID,
+          projectRoot: dir,
+          setCurrentKanbanTask,
+        } as unknown as Context,
+        { signal: newSignal() },
+      ),
+      'REFUSED',
+      'not implementation-ready',
     );
-
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('not implementation-ready');
     expect(setCurrentKanbanTask).not.toHaveBeenCalled();
   });
 
@@ -330,27 +332,28 @@ describe('kanban tool — start_task governance binding', () => {
     const dependent = await addTask(dir, board.id, { title: 'Ship release' });
     await addDependency(dir, board.id, dependent!.task.id, blocker!.task.id);
 
-    const result = await kanbanTool.execute(
-      {
-        action: 'start_task',
-        boardId: board.id,
-        taskId: dependent!.task.id,
-        author: 'agent-1',
-        transitionComment: 'Start.',
-      },
-      {
-        eventSessionId: () => TEST_CONTEXT_SESSION_ID,
-        projectRoot: dir,
-        setCurrentKanbanTask: vi.fn(),
-      } as unknown as Context,
-      { signal: newSignal() },
+    const error = await expectKanbanError(
+      kanbanTool.execute(
+        {
+          action: 'start_task',
+          boardId: board.id,
+          taskId: dependent!.task.id,
+          author: 'agent-1',
+          transitionComment: 'Start.',
+        },
+        {
+          eventSessionId: () => TEST_CONTEXT_SESSION_ID,
+          projectRoot: dir,
+          setCurrentKanbanTask: vi.fn(),
+        } as unknown as Context,
+        { signal: newSignal() },
+      ),
+      'REFUSED',
+      'Backfill rows',
     );
-
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('Backfill rows');
-    expect(result.message).not.toContain(blocker!.task.id);
+    expect(error.message).not.toContain(blocker!.task.id);
     // The IPC envelope is a transport detail and must never reach the model.
-    expect(result.message).not.toContain('LIFECYCLE_ISSUES');
+    expect(error.message).not.toContain('LIFECYCLE_ISSUES');
   });
 
   it('refuses a dependency-blocked card without leaving a running assignment behind', async () => {
@@ -362,24 +365,25 @@ describe('kanban tool — start_task governance binding', () => {
     await updateTask(dir, boardId, taskId, { dependsOn: [dependency!.task.id] });
     const setCurrentKanbanTask = vi.fn();
 
-    const result = await kanbanTool.execute(
-      {
-        action: 'start_task',
-        boardId,
-        taskId,
-        author: 'agent-1',
-        transitionComment: 'Trying to start too early.',
-      },
-      {
-        eventSessionId: () => TEST_CONTEXT_SESSION_ID,
-        projectRoot: dir,
-        setCurrentKanbanTask,
-      } as unknown as Context,
-      { signal: newSignal() },
+    await expectKanbanError(
+      kanbanTool.execute(
+        {
+          action: 'start_task',
+          boardId,
+          taskId,
+          author: 'agent-1',
+          transitionComment: 'Trying to start too early.',
+        },
+        {
+          eventSessionId: () => TEST_CONTEXT_SESSION_ID,
+          projectRoot: dir,
+          setCurrentKanbanTask,
+        } as unknown as Context,
+        { signal: newSignal() },
+      ),
+      'REFUSED',
+      'every dependency',
     );
-
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('every dependency');
     expect(setCurrentKanbanTask).not.toHaveBeenCalled();
     const persisted = await getBoard(dir, boardId);
     expect(persisted!.tasks.find((task) => task.id === taskId)?.assignment).toBeUndefined();

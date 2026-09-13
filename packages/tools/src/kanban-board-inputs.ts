@@ -1,3 +1,4 @@
+import { invalidInput } from './kanban-tool-results.js';
 import type { KanbanToolInput } from './kanban-tool-types.js';
 
 /**
@@ -13,11 +14,20 @@ import type { KanbanToolInput } from './kanban-tool-types.js';
  * as in the tool schema because a published schema is a contract, not a
  * control — WS-026 found `tools/call` forwarding arguments without checking
  * one at all.
+ *
+ * `'off'` is REJECTED, not silently dropped: dropping it let the call report
+ * success while doing something other than what was asked.
  */
 function agentSettableGate(
   enforcement: KanbanToolInput['gateEnforcement'],
 ): { completionGate: { enforcement: 'strict' | 'soft' } } | Record<string, never> {
-  if (enforcement === undefined || enforcement === 'off') return {};
+  if (enforcement === undefined) return {};
+  if (enforcement !== 'strict' && enforcement !== 'soft') {
+    throw invalidInput(
+      `gateEnforcement "${String(enforcement)}" is not settable from the kanban tool; only "strict" or "soft" (switching the completion gate off is a human decision made through board config).`,
+      'gateEnforcement',
+    );
+  }
   return { completionGate: { enforcement } };
 }
 

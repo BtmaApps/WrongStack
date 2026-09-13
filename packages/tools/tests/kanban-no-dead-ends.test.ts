@@ -6,6 +6,7 @@ import { createBoard, getBoard } from '@wrongstack/kanban';
 import { addTask } from '@wrongstack/kanban/test-support';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { kanbanTool } from '../src/kanban.js';
+import { expectKanbanError } from './kanban-test-helpers.js';
 import { newSignal } from './fixtures.js';
 
 /**
@@ -118,15 +119,19 @@ describe('managed lifecycle has no dead ends', () => {
       checkDescription: 'It works',
     });
 
-    const refused = await run({
-      action: 'start_task',
-      boardId,
-      taskId: blocked!.task.id,
-      author: 'agent-1',
-      transitionComment: 'Trying to start behind a dependency.',
-    });
-    expect(refused.ok).toBe(false);
-    expect(refused.message).toContain('dependsOn');
+    const refused = await expectKanbanError(
+      run({
+        action: 'start_task',
+        boardId,
+        taskId: blocked!.task.id,
+        author: 'agent-1',
+        transitionComment: 'Trying to start behind a dependency.',
+      }),
+      'REFUSED',
+      'dependsOn',
+    );
+    // Structured issues survive the throw for programmatic callers.
+    expect(refused.issues?.some((issue) => issue.code === 'dependency-incomplete')).toBe(true);
   });
 
   it('a composite parent stranded without children can become a leaf again', async () => {
@@ -214,16 +219,18 @@ describe('managed lifecycle has no dead ends', () => {
       transitionComment: 'Ready for review.',
     });
 
-    const refused = await run({
-      action: 'transition_task',
-      boardId,
-      taskId: t!.task.id,
-      lifecycleStage: 'done',
-      author: 'agent-1',
-      transitionComment: 'Accepting.',
-      transitionAction: 'Reviewed and accepted.',
-    });
-    expect(refused.ok).toBe(false);
+    const refused = await expectKanbanError(
+      run({
+        action: 'transition_task',
+        boardId,
+        taskId: t!.task.id,
+        lifecycleStage: 'done',
+        author: 'agent-1',
+        transitionComment: 'Accepting.',
+        transitionAction: 'Reviewed and accepted.',
+      }),
+      'REFUSED',
+    );
     // Says which criterion, and that removal is the honest alternative to
     // passing one that did not hold.
     expect(refused.message).toContain('Not yet settled');
@@ -234,14 +241,16 @@ describe('managed lifecycle has no dead ends', () => {
     const boardId = await managedBoard();
     const t = await card(boardId, 'Card');
     // Forward movement demands criteria, so the empty case surfaces here.
-    const refused = await run({
-      action: 'start_task',
-      boardId,
-      taskId: t!.task.id,
-      author: 'agent-1',
-      transitionComment: 'Starting without criteria.',
-    });
-    expect(refused.ok).toBe(false);
+    const refused = await expectKanbanError(
+      run({
+        action: 'start_task',
+        boardId,
+        taskId: t!.task.id,
+        author: 'agent-1',
+        transitionComment: 'Starting without criteria.',
+      }),
+      'REFUSED',
+    );
     // The readiness gate catches this before the Done gate ever sees it, and
     // says what to add rather than telling the caller to pass criteria that
     // do not exist.

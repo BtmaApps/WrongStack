@@ -64,8 +64,7 @@ function deduplicateManagedTodoRows(items: readonly TodoItem[], boardId: string)
   for (const item of items) {
     const existing = rowsById.get(item.id);
     const itemIsBound = item.kanbanBoardId === boardId && Boolean(item.kanbanTaskId);
-    const existingIsBound =
-      existing?.kanbanBoardId === boardId && Boolean(existing.kanbanTaskId);
+    const existingIsBound = existing?.kanbanBoardId === boardId && Boolean(existing.kanbanTaskId);
     if (!existing || (itemIsBound && !existingIsBound)) rowsById.set(item.id, item);
   }
   return [...rowsById.values()];
@@ -208,8 +207,21 @@ async function synchronizeManagedKanban(
   let synced = 0;
   const warnings: string[] = [];
   const actor = ctx.agentId?.trim() || ctx.agentName?.trim() || 'kanban-agent';
-  const execute = async (input: Parameters<(typeof kanbanTool)['execute']>[0]) => {
-    const result = await kanbanTool.execute(input, ctx, { signal });
+  const execute = async (
+    input: Parameters<(typeof kanbanTool)['execute']>[0],
+  ): Promise<{ ok: boolean; message: string }> => {
+    // The kanban tool THROWS on failure (the executor only records a failed
+    // call when execute() throws). This projection is best-effort: a refused
+    // or failed card update becomes a warning and the sync carries on, exactly
+    // as the old ok:false return did.
+    let result: { ok: boolean; message: string };
+    try {
+      result = await kanbanTool.execute(input, ctx, { signal });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(message);
+      return { ok: false, message };
+    }
     if (!result.ok) warnings.push(result.message);
     else {
       synced++;
@@ -535,7 +547,8 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
     let board = boardId ? await getBoard(ctx.projectRoot, boardId) : null;
     const managed = board?.lifecycle?.mode === 'managed';
     const managedItems = managed && board ? deduplicateManagedTodoRows(items, board.id) : items;
-    let boundItems = managed && board ? bindTodosToBoard(managedItems, ctx.todos ?? [], board) : managedItems;
+    let boundItems =
+      managed && board ? bindTodosToBoard(managedItems, ctx.todos ?? [], board) : managedItems;
 
     // Rows that still resolve to no card are new work, not noise. Open cards
     // for them and bind directly to the returned ids — never by re-running the
