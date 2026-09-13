@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it } from 'vitest';
 import { deriveSessionAgents } from '../src/session-catalog/session-agents.js';
 import { SessionCatalogStore } from '../src/session-catalog/store.js';
@@ -192,6 +193,54 @@ describe('SessionCatalogStore.listSessionAgents', () => {
       fs.utimesSync(file, later, later);
 
       expect(store.listSessionAgents(sessionId)[0]?.status).toBe('completed');
+    } finally {
+      store.close();
+    }
+  });
+
+  it('derives the roster from a cold (gzip) transcript instead of caching an empty one', () => {
+    const root = makeTempProject();
+    const sessionId = '2026-08-26/sess_COLD';
+    const [day, leaf] = sessionId.split('/');
+    const dir = path.join(root, 'sessions', day!);
+    fs.mkdirSync(dir, { recursive: true });
+    const journal = [
+      { type: 'agent_spawned', ts: ts(1), agentId: 'helper', role: 'reviewer' },
+      { type: 'tool_call', ts: ts(2), id: 'tc-1', agentId: 'helper', name: 'bash' },
+      { type: 'agent_stopped', ts: ts(3), agentId: 'helper', reason: 'completed' },
+    ] as SessionEvent[];
+    fs.writeFileSync(
+      path.join(dir, `${leaf}.jsonl.gz`),
+      gzipSync(`${journal.map((e) => JSON.stringify(e)).join('\n')}\n`),
+    );
+
+    const store = new SessionCatalogStore(root);
+    try {
+      store.upsertSummary(
+        {
+          id: sessionId,
+          title: 'archived fleet session',
+          startedAt: ts(0),
+          model: 'm',
+          provider: 'p',
+          tokenTotal: 5,
+          lastActivityAt: ts(3),
+        },
+        `${sessionId}.jsonl.gz`,
+        `${sessionId}.summary.json`,
+        { storageState: 'cold', codec: 'gzip', archivedAt: null },
+      );
+
+      // Regression (bug-hunt round 3): the gz transcript was previously read as
+      // utf8 text, every line failed JSON.parse, and the derived EMPTY roster was
+      // cached (full-replace) — archived sessions reported "no agents" forever.
+      const roster = store.listSessionAgents(sessionId);
+      expect(roster.map((a) => a.agentId)).toEqual(['helper']);
+      expect(roster[0]?.status).toBe('completed');
+      expect(roster[0]?.interleavedEventCount).toBe(1);
+
+      // The cached rows (gz size/mtime key) must serve the same roster.
+      expect(store.listSessionAgents(sessionId)).toEqual(roster);
     } finally {
       store.close();
     }

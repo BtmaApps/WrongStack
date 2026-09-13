@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { gunzipSync } from 'node:zlib';
 import type { SessionEvent } from '../types/session.js';
 import { deriveSessionAgents, type SessionAgentRecord } from './session-agents.js';
 import { assertId, parseJson, type SessionAgentRow } from './store-schema.js';
@@ -104,7 +105,17 @@ export function getSessionAgentsList(
 
   let raw: string;
   try {
-    raw = fs.readFileSync(file, 'utf8');
+    // Cold sessions archive their transcript as gzip (*.jsonl.gz, written by
+    // session-archive.ts and registered by upsertSummary's cold path). Reading
+    // those bytes as utf8 text makes every line fail JSON.parse, which derived
+    // an EMPTY roster and cached it — archived sessions reported "no agents"
+    // forever. Inflate gzip transcripts before parsing; hot .jsonl files are
+    // unaffected.
+    raw = (
+      transcriptRel.endsWith('.jsonl.gz')
+        ? gunzipSync(fs.readFileSync(file))
+        : fs.readFileSync(file)
+    ).toString('utf8');
   } catch {
     return [];
   }
