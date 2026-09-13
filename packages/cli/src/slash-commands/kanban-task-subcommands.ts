@@ -271,10 +271,18 @@ export async function handleTaskSubcommand(
     }
     if (board.lifecycle?.mode === 'managed') {
       const stageToColumn = board.lifecycle?.columns ?? {};
-      const currentColumnId = board.tasks.find((t) => t.id === taskId)?.columnId;
+      const currentTask = board.tasks.find((t) => t.id === taskId);
+      // Resolve the card before deriving a path: a missing card has no column,
+      // which used to surface as the misleading "unrecognized lifecycle column".
+      if (!currentTask) {
+        return { message: color.red('Task not found') };
+      }
       const currentStage = Object.entries(stageToColumn).find(
-        ([, columnId]) => columnId === currentColumnId,
+        ([, columnId]) => columnId === currentTask.columnId,
       )?.[0];
+      if (currentStage === 'done') {
+        return { message: color.yellow('Task is already in Done — nothing to do.') };
+      }
       const path: readonly ('backlog' | 'todo' | 'running' | 'review' | 'done')[] | null =
         currentStage === 'backlog'
           ? (['todo', 'running', 'review', 'done'] as const)
@@ -291,10 +299,6 @@ export async function handleTaskSubcommand(
             `❌ /kanban task done could not derive a sequential path for the card's current stage (\`${currentStage ?? 'unknown'}\`). The card may be in an unrecognized lifecycle column; move it to \`review\` with \`/kanban task move\` and retry.`,
           ),
         };
-      }
-      const currentTask = board.tasks.find((t) => t.id === taskId);
-      if (!currentTask) {
-        return { message: color.red('Task not found') };
       }
       const preflightIssues: string[] = [];
       if (!note?.trim()) {

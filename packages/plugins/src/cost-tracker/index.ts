@@ -255,6 +255,18 @@ function estimateCost(
   return inputCost + outputCost;
 }
 
+/**
+ * Provider usage is an untrusted response boundary. The old `Number(x) || 0`
+ * guard drops `NaN` and non-numeric coercion but passes `±Infinity` (truthy),
+ * which poisons the cumulative totals permanently (`Infinity + finite ===
+ * Infinity`, `NaN` from `+Inf + -Inf`) and disables the budget-warning
+ * comparison. Same invariant as token-budget / token-throttle: non-finite
+ * numeric input at this boundary normalizes to 0.
+ */
+function toFiniteNumber(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -345,11 +357,14 @@ const plugin: Plugin = {
         const input = v['input'];
         const output = v['output'];
         if (typeof input !== 'number' || typeof output !== 'number') continue;
+        // A non-finite rate (JSON `1e999` parses to Infinity) would make every
+        // cost for this model non-finite — reject the whole entry.
+        if (!Number.isFinite(input) || !Number.isFinite(output)) continue;
         const cacheRead = v['cacheRead'];
         pricingOverrides[model.toLowerCase()] = {
           input,
           output,
-          ...(typeof cacheRead === 'number' ? { cacheRead } : {}),
+          ...(typeof cacheRead === 'number' && Number.isFinite(cacheRead) ? { cacheRead } : {}),
         };
       }
     }
@@ -374,11 +389,19 @@ const plugin: Plugin = {
           if (!providerModels) continue;
           for (const [modelId, model] of Object.entries(providerModels)) {
             const cost = model?.cost;
-            if (cost && typeof cost.input === 'number' && typeof cost.output === 'number') {
+            if (
+              cost &&
+              typeof cost.input === 'number' &&
+              typeof cost.output === 'number' &&
+              Number.isFinite(cost.input) &&
+              Number.isFinite(cost.output)
+            ) {
               bundledFromRegistry[modelId.toLowerCase()] = {
                 input: cost.input,
                 output: cost.output,
-                ...(typeof cost.cache_read === 'number' ? { cacheRead: cost.cache_read } : {}),
+                ...(typeof cost.cache_read === 'number' && Number.isFinite(cost.cache_read)
+                  ? { cacheRead: cost.cache_read }
+                  : {}),
               };
               hydrated += 1;
             }
@@ -413,18 +436,22 @@ const plugin: Plugin = {
       const model = payload.ctx?.model ?? 'unknown';
 
       const u = (usage ?? {}) as unknown as Record<string, unknown>;
-      const cachedTokens =
-        Number(u['cacheRead'] ?? u['cache_read_input_tokens'] ?? u['cached_prompt_tokens'] ?? 0) ||
-        0;
-      const rawInput =
-        Number(u['input'] ?? u['prompt_tokens'] ?? u['inputTokens'] ?? u['promptTokens'] ?? 0) || 0;
-      const rawCacheWrite = Number(u['cacheWrite'] ?? u['cache_creation_input_tokens'] ?? 0) || 0;
+      const cachedTokens = toFiniteNumber(
+        Number(u['cacheRead'] ?? u['cache_read_input_tokens'] ?? u['cached_prompt_tokens'] ?? 0),
+      );
+      const rawInput = toFiniteNumber(
+        Number(u['input'] ?? u['prompt_tokens'] ?? u['inputTokens'] ?? u['promptTokens'] ?? 0),
+      );
+      const rawCacheWrite = toFiniteNumber(
+        Number(u['cacheWrite'] ?? u['cache_creation_input_tokens'] ?? 0),
+      );
       const freshTokens = rawInput + rawCacheWrite;
       const promptTokens = freshTokens + cachedTokens;
-      const completionTokens =
+      const completionTokens = toFiniteNumber(
         Number(
           u['output'] ?? u['completion_tokens'] ?? u['outputTokens'] ?? u['completionTokens'] ?? 0,
-        ) || 0;
+        ),
+      );
       const totalTokens = promptTokens + completionTokens;
       const costUsd = estimateCost(model, freshTokens, completionTokens, cachedTokens);
 

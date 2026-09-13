@@ -131,7 +131,9 @@ async function pollForGitHubToken(device: DeviceCode, signal: AbortSignal): Prom
         }).toString(),
         signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
       });
-      json = (await res.json().catch(() => ({}))) as {
+      // `?? {}`: a literal `null` body parses fine but would make the
+      // `json.access_token` read below throw a TypeError that aborts the login.
+      json = ((await res.json().catch(() => ({}))) ?? {}) as {
         access_token?: string;
         error?: string;
       };

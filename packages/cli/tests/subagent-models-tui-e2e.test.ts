@@ -17,6 +17,12 @@ const CLI_ENTRY = path.join(REPO_ROOT, 'packages', 'cli', 'dist', 'index.js');
 const ESC = String.fromCharCode(27);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function definedEnv(env: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+  );
+}
+
 interface PtyModule {
   spawn(
     file: string,
@@ -58,6 +64,12 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
 
   afterEach(async () => {
     try {
+      // Let the real TUI take its normal rapid-Ctrl+C shutdown path first.
+      // Killing the PTY outright leaves detached project helpers alive long
+      // enough to keep SQLite/IPC files open on Windows, which turns a passed
+      // interactive smoke into an EBUSY cleanup failure.
+      child?.write('\x03\x03');
+      await sleep(750);
       child?.kill();
     } catch {
       // Already exited.
@@ -65,13 +77,13 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     child = null;
     // The real CLI starts project-local helper processes. Let the terminal
     // child begin its shutdown before removing its isolated HOME/project dirs.
-    await sleep(250);
+    await sleep(750);
     await Promise.all([
       home
-        ? fs.promises.rm(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
+        ? fs.promises.rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
         : undefined,
       project
-        ? fs.promises.rm(project, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
+        ? fs.promises.rm(project, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
         : undefined,
     ]);
     home = undefined;
@@ -107,7 +119,7 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
         cols: 110,
         rows: 40,
         cwd: project,
-        env: {
+        env: definedEnv({
           PATH: process.env['PATH'],
           Path: process.env['Path'],
           PATHEXT: process.env['PATHEXT'],
@@ -122,7 +134,14 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
           USERPROFILE: home,
           HOME: home,
           WRONGSTACK_DISABLE_CONFIG_WATCH: '1',
-        },
+          // This is a TUI paint/input smoke, not a daemon lifecycle test.
+          // Keep its project state in-process so detached helper servers do
+          // not outlive the PTY and lock temporary directories on Windows.
+          WRONGSTACK_SAGE_INLINE: '1',
+          WRONGSTACK_INDEX_INLINE: '1',
+          WRONGSTACK_CHRONICLE_INLINE: '1',
+          WRONGSTACK_KANBAN_SERVER: '0',
+        }),
       },
     );
 

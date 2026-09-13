@@ -504,6 +504,16 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      # A non-TTY smoke cannot prove that Ink ever paints. Drive the built CLI
+      # through a real PTY on every supported desktop OS and require its first
+      # composer frame before sending a command. This catches the exact class
+      # of regressions where launch prompts finish but the TUI is invisible.
+      - name: Interactive TUI PTY smoke
+        run: pnpm exec vitest run packages/cli/tests/subagent-models-tui-e2e.test.ts
+        env:
+          WSTACK_E2E: '1'
+          NODE_OPTIONS: --max-old-space-size=4096
+
 
 
   # -----------------------------------------------------------------

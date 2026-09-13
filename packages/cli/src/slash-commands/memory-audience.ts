@@ -313,7 +313,14 @@ export async function runAudienceMemory(
     let imported = 0;
     let skipped = 0;
     for (const entry of entries) {
-      if (typeof entry.text !== 'string' || !entry.text.trim()) {
+      // Pasted JSON is untrusted: `[null]` or `[1]` must count as skipped, not
+      // throw a TypeError out of the command on the `.text` read.
+      if (
+        !entry ||
+        typeof entry !== 'object' ||
+        typeof entry.text !== 'string' ||
+        !entry.text.trim()
+      ) {
         skipped++;
         continue;
       }

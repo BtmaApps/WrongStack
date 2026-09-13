@@ -40,7 +40,10 @@ export async function runStats(opts: SlashCommandContext): Promise<{ message: st
       'anti_pattern',
       'untyped',
     ];
-    for (const t of typeOrder) {
+    // Types outside the canonical order (e.g. a newer entry type) must still be
+    // listed, otherwise the section silently under-counts the total.
+    const extraTypes = [...byType.keys()].filter((t) => !typeOrder.includes(t)).sort();
+    for (const t of [...typeOrder.slice(0, -1), ...extraTypes, 'untyped']) {
       const count = byType.get(t);
       if (count) {
         const bar = '█'.repeat(Math.min(count, 20));

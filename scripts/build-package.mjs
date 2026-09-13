@@ -422,8 +422,46 @@ const profiles = {
     ],
   },
   '@wrongstack/tui': {
-    ...standard(['ink', 'react']),
+    // ink, react and react-reconciler are BUNDLED, not external (they are
+    // devDependencies for that reason). The reconciler binds hooks to the
+    // React copy it resolves; the TUI's components call hooks on the copy
+    // THEY resolve. Left to the package manager those can be two copies: a bun
+    // global install with an unrelated package pinning react@19.2.7 hoisted
+    // ink + react-reconciler next to that copy and nested react@19.3.0 under
+    // @wrongstack/tui, so `useState` read a null dispatcher and the TUI never
+    // drew. One bundle is one React, whatever else is installed. It also
+    // ships patches/ink@7.1.1.patch (bounded text caches) to npm/bun installs,
+    // which a registry-resolved ink never had.
+    ...standard(),
     workspaceExternal: true,
+    // ink loads `./devtools.js` (static `ws` + `react-devtools-core` imports)
+    // only when DEV=true and react-devtools-core is installed. Splitting is
+    // off, so esbuild would hoist those imports to the top of dist/index.js
+    // and every TUI start would need `ws`. The TUI never attaches React
+    // DevTools: resolve that module to an empty one.
+    plugins: [
+      {
+        name: 'drop-ink-devtools',
+        setup(builder) {
+          builder.onResolve({ filter: /^\.\/devtools\.js$/ }, (args) =>
+            /[\\/]ink[\\/]build[\\/]?$/u.test(args.resolveDir)
+              ? { path: 'ink-devtools', namespace: 'wrongstack-empty' }
+              : undefined,
+          );
+          builder.onLoad({ filter: /.*/, namespace: 'wrongstack-empty' }, () => ({
+            contents: 'export {};',
+            loader: 'js',
+          }));
+        },
+      },
+    ],
+    // Bundled CJS (react-reconciler, stack-utils, signal-exit) calls
+    // require('events') and friends; in ESM output esbuild's shim throws
+    // "Dynamic require is not supported" unless a real `require` exists.
+    banner:
+      "import { createRequire as __wrongstackCreateRequire } from 'node:module';\n" +
+      'const require = __wrongstackCreateRequire(import.meta.url);',
+    postBuild: assertTuiBundlesReactRuntime,
   },
   '@wrongstack/webui-server': {
     entries: {
@@ -500,6 +538,37 @@ function copyToolsWasm() {
     throw new Error(`Missing vendored tree-sitter WASM directory: ${source}`);
   }
   cpSync(source, target, { recursive: true, force: true });
+}
+
+/**
+ * The TUI bundle must carry its own React runtime (see the profile note). A
+ * bare `react` / `ink` / `react-reconciler` / `scheduler` import in dist means
+ * a dependency slipped back to external and the two-React crash is back.
+ */
+function assertTuiBundlesReactRuntime() {
+  // `ws` / `react-devtools-core` come only from ink's devtools module; if they
+  // show up, the devtools stub stopped matching and every start needs `ws`.
+  const bare =
+    /(?:\bfrom\s*|\bimport\s*\(\s*|\b__require\s*\(\s*|\brequire\s*\(\s*)["'](?:react|react\/[^"']+|ink|react-reconciler(?:\/[^"']+)?|scheduler|ws|react-devtools-core)["']/u;
+  const offenders = [];
+  const walk = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const absolute = join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(absolute);
+        continue;
+      }
+      if (entry.name.endsWith('.js') && bare.test(readFileSync(absolute, 'utf8'))) {
+        offenders.push(relative(packageRoot, absolute));
+      }
+    }
+  };
+  walk(join(packageRoot, 'dist'));
+  if (offenders.length > 0) {
+    throw new Error(
+      `@wrongstack/tui dist must bundle react/ink, but these files import them externally:\n${offenders.map((file) => `- ${file}`).join('\n')}`,
+    );
+  }
 }
 
 function prependServerShebang() {
@@ -605,8 +674,10 @@ async function bundle(config, defaults) {
     // external and are resolved through the package manager. This also avoids
     // duplicating workspace singletons and embedding native/CJS dependencies.
     external: [...packageExternals, ...(defaults.external ?? []), ...(config.external ?? [])],
-    plugins:
-      config.workspaceExternal || defaults.workspaceExternal ? [workspaceExternalPlugin] : [],
+    plugins: [
+      ...(config.workspaceExternal || defaults.workspaceExternal ? [workspaceExternalPlugin] : []),
+      ...(config.plugins ?? defaults.plugins ?? []),
+    ],
     banner: config.banner || defaults.banner ? { js: config.banner ?? defaults.banner } : undefined,
     outExtension: config.extension ? { '.js': config.extension } : undefined,
     conditions: config.conditions ?? defaults.conditions,

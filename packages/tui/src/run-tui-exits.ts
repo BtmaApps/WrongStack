@@ -9,8 +9,14 @@ import { unsilenceTerminal } from './terminal-silence.js';
 
 /** Everything runTui needs from the exit wiring after handing it over. */
 export interface ExitOrchestrator {
-  /** Resolves the run promise through the durable-close budget. */
-  settle: (code: number) => void;
+  /**
+   * Resolves the run promise through the durable-close budget.
+   *
+   * `afterCleanup` runs only after the alternate buffer is restored and
+   * terminal output is unsilenced. Startup failures use it to report a mount
+   * error to the shell rather than writing it into the hidden TUI buffer.
+   */
+  settle: (code: number, afterCleanup?: (() => void) | undefined) => void;
   /** Clean project-switch exit: unmount, then a 5s hard-exit fallback. */
   requestExit: (code: number) => void;
   /** Raw-stdin Ctrl+C watcher — pass to mountInkApp (armed after render). */
@@ -283,7 +289,7 @@ export function createExitOrchestrator(deps: ExitOrchestratorDeps): ExitOrchestr
   // Register immediately (fire-and-forget)
   void tuiClientRegistration.register();
 
-  const settle = (code: number): void => {
+  const settle = (code: number, afterCleanup?: (() => void) | undefined): void => {
     // The unmount completed normally — cancel the hang fallback. Leaving it
     // armed used to hard-kill the HOST ~400ms after a project switch,
     // racing the post-TUI respawn logic in execution.ts.
@@ -295,10 +301,15 @@ export function createExitOrchestrator(deps: ExitOrchestratorDeps): ExitOrchestr
     // so the host's post-TUI grace period never cuts the datasync/sidecar
     // write short. cleanup() runs inside awaitDurableClose (terminal state
     // is restored before resolve); resolve is deferred until durability.
-    void durableTeardown.awaitDurableClose().then(
-      () => finishRun(code),
-      () => finishRun(code),
-    );
+    const finishAfterCleanup = (): void => {
+      try {
+        afterCleanup?.();
+      } catch {
+        // Reporting is best-effort. A closed stderr must not strand the host.
+      }
+      finishRun(code);
+    };
+    void durableTeardown.awaitDurableClose().then(finishAfterCleanup, finishAfterCleanup);
   };
 
   const requestExit = (code: number): void => {

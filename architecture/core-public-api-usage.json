@@ -174,9 +174,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/types": {
-      "files": 1095,
-      "typeOnly": 980,
-      "runtimeOrMixed": 324
+      "files": 1097,
+      "typeOnly": 981,
+      "runtimeOrMixed": 325
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -12774,6 +12774,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/slash-commands/memory-stats.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/slash-commands/working-dir.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14199,6 +14205,12 @@
       "file": "packages/providers/tests/native-catalog.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/oauth-copilot-device-flow.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",

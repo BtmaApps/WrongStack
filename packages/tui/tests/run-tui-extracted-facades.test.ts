@@ -134,4 +134,31 @@ describe('extracted runTui facades', () => {
     expect(restoreTrace).toHaveBeenCalledTimes(1);
     expect(mocks.unsilenceTerminal).toHaveBeenCalledTimes(1);
   });
+
+  it('reports a startup failure only after cleanup restores the normal terminal', async () => {
+    const close = vi.fn(async () => undefined);
+    const stdout = { write: vi.fn() };
+    const stdin = { off: vi.fn() };
+    const lifecycle = { release: vi.fn(), reset: vi.fn() };
+    const opts = {
+      projectRoot: '/repo',
+      agent: { ctx: { meta: {}, agentId: 'agent-1', session: { close } } },
+    };
+    const exits = createExitOrchestrator({
+      opts: opts as never,
+      stdout: stdout as never,
+      inkStdin: stdin as never,
+      lifecycle: lifecycle as never,
+      stopTitle: vi.fn(),
+      restoreTrace: vi.fn(),
+    });
+    const result = new Promise<number>((resolve) => exits.attachResolve(resolve));
+    const report = vi.fn();
+
+    exits.settle(1, report);
+
+    await expect(result).resolves.toBe(1);
+    expect(mocks.unsilenceTerminal).toHaveBeenCalledBefore(report);
+    expect(report).toHaveBeenCalledOnce();
+  });
 });

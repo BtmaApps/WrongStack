@@ -152,8 +152,9 @@ export function buildTelegramSettingsCommand(opts: SlashCommandContext): SlashCo
               message: `${color.green('✓')} long-tool → ${color.dim('off')}`,
             };
           }
-          const ms = Number.parseInt(raw, 10);
-          if (Number.isNaN(ms) || ms < 0) {
+          // Whole-token integers only: parseInt("15s") would silently store 15ms.
+          const ms = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+          if (!Number.isSafeInteger(ms)) {
             return {
               message: `${color.red('Invalid number')}: "${raw}". Enter milliseconds, e.g. /telegram-settings long-tool 15000`,
             };
@@ -173,7 +174,7 @@ export function buildTelegramSettingsCommand(opts: SlashCommandContext): SlashCo
               message: `${color.amber('Usage:')} /telegram-settings poll <seconds>   ${color.dim('(1–60)')}`,
             };
           }
-          const sec = Number.parseInt(raw, 10);
+          const sec = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
           if (Number.isNaN(sec) || sec < 1 || sec > 60) {
             return {
               message: `${color.red('Invalid value')}: "${raw}". Enter seconds between 1 and 60.`,

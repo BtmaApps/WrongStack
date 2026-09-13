@@ -602,3 +602,117 @@ describe('modelsRegistry hydration', () => {
     expect(after.registryCount).toBe(0);
   });
 });
+
+// ── Non-finite usage and pricing guards (regression) ─────────────────────────
+//
+// Provider usage and pricing are untrusted numeric boundaries. The old
+// `Number(x) || 0` guard dropped NaN but passed ±Infinity (truthy), which
+// poisoned the cumulative totals permanently (Infinity + finite === Infinity)
+// and could silence the budget-warning comparison forever. Non-finite values
+// must contribute zero; a non-finite rate entry must be rejected.
+
+describe('non-finite usage and pricing guards', () => {
+  async function respond(api: ReturnType<typeof makeApi>, payload: unknown): Promise<void> {
+    const handler = getResponseHandler(api) as (payload: unknown) => Promise<void>;
+    await handler(payload);
+  }
+
+  async function getSummary(api: ReturnType<typeof makeApi>) {
+    const summaryTool = api.tools.register.mock.calls.find(
+      ([t]: any[]) => t.name === 'cost_summary',
+    )?.[0] as any;
+    return summaryTool.execute({});
+  }
+
+  it('+Infinity usage contributes zero and totals stay finite', async () => {
+    const api = makeApi();
+    await costTrackerPlugin.setup(api as any);
+
+    await respond(api, { usage: { input: 1000, output: 500 }, ctx: { model: 'gpt-4o' } });
+    await respond(api, { usage: JSON.parse('{"prompt_tokens":1e999}'), ctx: { model: 'gpt-4o' } });
+    await respond(api, { usage: { input: 2000, output: 1000 }, ctx: { model: 'gpt-4o' } });
+
+    const result = await getSummary(api);
+    expect(result.usage.totalPromptTokens).toBe(3000);
+    expect(result.usage.totalCompletionTokens).toBe(1500);
+    expect(result.usage.totalTokens).toBe(4500);
+    // (1000+2000)/1e6*$5 + (500+1000)/1e6*$15 = 0.015 + 0.0225 = 0.0375
+    expect(result.usage.totalCostUsd).toBeCloseTo(0.0375, 7);
+  });
+
+  it('-Infinity usage cannot permanently bypass the budget warning', async () => {
+    const api = makeApi();
+    api.config.extensions['cost-tracker'] = { budgetLimit: 10, warningThreshold: 80 };
+    await costTrackerPlugin.setup(api as any);
+
+    await respond(api, {
+      usage: JSON.parse('{"completion_tokens":-1e999}'),
+      ctx: { model: 'gpt-4o' },
+    });
+    // 1M in @ $5/MT + 200k out @ $15/MT = 8.0 USD — crosses the 80% line.
+    await respond(api, { usage: { input: 1_000_000, output: 200_000 }, ctx: { model: 'gpt-4o' } });
+
+    const result = await getSummary(api);
+    expect(result.budgetStatus.spent).toBeCloseTo(8.0, 7);
+    expect(result.budgetStatus.percentUsed).toBe(80);
+    expect(result.budgetStatus.warning).toBe(true);
+  });
+
+  it('mixed +Infinity/-Infinity usage stays finite (no NaN accumulators)', async () => {
+    const api = makeApi();
+    await costTrackerPlugin.setup(api as any);
+
+    await respond(api, {
+      usage: JSON.parse('{"input":1e999,"cacheRead":-1e999}'),
+      ctx: { model: 'gpt-4o' },
+    });
+
+    const result = await getSummary(api);
+    expect(Number.isFinite(result.usage.totalPromptTokens)).toBe(true);
+    expect(Number.isFinite(result.usage.totalCostUsd)).toBe(true);
+    expect(result.usage.totalPromptTokens).toBe(0);
+    expect(result.usage.totalCostUsd).toBe(0);
+  });
+
+  it('string-coerced "Infinity" usage is rejected', async () => {
+    const api = makeApi();
+    await costTrackerPlugin.setup(api as any);
+
+    await respond(api, { usage: { prompt_tokens: 'Infinity' }, ctx: { model: 'gpt-4o' } });
+
+    const result = await getSummary(api);
+    expect(result.usage.totalPromptTokens).toBe(0);
+    expect(result.usage.totalCostUsd).toBe(0);
+  });
+
+  it('non-finite pricingOverrides entry is rejected; bundled rate applies', async () => {
+    const api = makeApi();
+    api.config.extensions['cost-tracker'] = {
+      pricingOverrides: JSON.parse('{"gpt-4o":{"input":1e999,"output":20}}'),
+    };
+    await costTrackerPlugin.setup(api as any);
+    expect((await costTrackerPlugin.health!()).overrideCount).toBe(0);
+
+    await respond(api, { usage: { input: 1000, output: 500 }, ctx: { model: 'gpt-4o' } });
+    const result = await getSummary(api);
+    // Bundled gpt-4o rate: 0.005 + 0.0075 = 0.0125.
+    expect(result.usage.totalCostUsd).toBeCloseTo(0.0125, 7);
+  });
+
+  it('non-finite registry cost is not hydrated; bundled rate applies', async () => {
+    const api = makeApi();
+    (api as any).modelsRegistry = {
+      load: async () => ({
+        openai: {
+          models: { 'gpt-4o': { cost: JSON.parse('{"input":1e999,"output":15}') } },
+        },
+      }),
+    };
+    await costTrackerPlugin.setup(api as any);
+    expect((await costTrackerPlugin.health!()).registryCount).toBe(0);
+
+    await respond(api, { usage: { input: 1000, output: 500 }, ctx: { model: 'gpt-4o' } });
+    const result = await getSummary(api);
+    expect(result.usage.totalCostUsd).toBeCloseTo(0.0125, 7);
+  });
+});

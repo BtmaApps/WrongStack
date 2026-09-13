@@ -47,7 +47,7 @@
       "relativeImports": 1
     },
     "packages/cli/src/slash-commands/kanban-task-subcommands.ts": {
-      "lines": 828,
+      "lines": 832,
       "relativeImports": 4
     },
     "packages/cli/src/slash-commands/sdd.ts": {

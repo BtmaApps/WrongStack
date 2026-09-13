@@ -49,7 +49,7 @@ export function buildAgentsCommand(opts: SlashCommandContext): SlashCommand {
     name: 'agents',
     category: 'Agent',
     description:
-      'Monitor subagent activity: /agents [chat off|compact|full | stream on|off|status | list | show <id>]',
+      'Monitor subagent activity: /agents [chat off|full|status | stream on|off|status | list | show <id>]',
     async run(args) {
       // TUI mode: bare /agents or /agents list opens the agents monitor.
       if ((!args.trim() || args.trim() === 'list') && opts.onPanelOpen?.current) {

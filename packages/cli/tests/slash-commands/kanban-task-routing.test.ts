@@ -173,6 +173,36 @@ describe('/kanban task done — managed routing', () => {
   });
 });
 
+describe('/kanban task done — managed card resolution', () => {
+  it('reports a missing card as not found instead of an unrecognized lifecycle column', async () => {
+    const root = await tempProject();
+    const board = managedBoardFixture();
+    const { boardId } = await seedRunningTask(root, board, 'present card');
+
+    const result = await runKanban(root, `task done ${boardId} ghost-task --note "done"`);
+
+    expect(result.message).toContain('Task not found');
+    expect(result.message).not.toContain('sequential path');
+  });
+
+  it('treats a card already in Done as a no-op without transitioning it again', async () => {
+    const root = await tempProject();
+    const board = managedBoardFixture();
+    const { boardId, taskId } = await seedRunningTask(root, board, 'finished card');
+    const seeded = await getBoard(root, boardId);
+    const card = findTask(seeded!, 'finished card');
+    card.columnId = board.lifecycle!.columns.done;
+    await writeBoard(root, seeded!);
+
+    const result = await runKanban(root, `task done ${boardId} ${taskId} --note "again"`);
+
+    expect(result.message).toContain('already in Done');
+    const after = findTask((await getBoard(root, boardId))!, 'finished card');
+    expect(after.columnId).toBe(board.lifecycle!.columns.done);
+    expect(after.status).toBe('in_progress');
+  });
+});
+
 describe('/kanban task done — managed non-atomic happy path', () => {
   it('routes through transitionTask and advances to Done with --attachment --note', async () => {
     const root = await tempProject();

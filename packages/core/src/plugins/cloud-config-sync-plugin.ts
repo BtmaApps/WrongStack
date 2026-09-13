@@ -121,10 +121,14 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
           | CloudSyncConfig
           | undefined;
         if (!cfg?.enabled) return;
-        const seconds = Math.max(
-          MIN_INTERVAL_SECONDS,
-          cfg.intervalSeconds ?? DEFAULT_INTERVAL_SECONDS,
-        );
+        // `cloudSync` is not schema-validated on load, so a hand-edited
+        // `"intervalSeconds": "5m"` must not reach `setInterval` as NaN — Node
+        // coerces a NaN delay to 1ms and the pass would hammer the portal.
+        const configured = cfg.intervalSeconds;
+        const seconds =
+          typeof configured === 'number' && Number.isFinite(configured)
+            ? Math.max(MIN_INTERVAL_SECONDS, configured)
+            : DEFAULT_INTERVAL_SECONDS;
         timer = setInterval(() => {
           void runPass().catch((err) => warn(`[cloud-config-sync] ${toErrorMessage(err)}`));
         }, seconds * 1000);
@@ -217,8 +221,9 @@ function buildCloudSyncCommand(
             if (!/^https?:\/\//.test(value)) {
               return { message: 'Usage: /cloudsync set url https://my.wrongstack.com' };
             }
-            await setCloudSyncConfig({ url: value.replace(/\/+$/, '') });
-            return { message: `Portal URL set to ${value}.` };
+            const url = value.replace(/\/+$/, '');
+            await setCloudSyncConfig({ url });
+            return { message: `Portal URL set to ${url}.` };
           }
           if (field === 'token') {
             if (!/^wst_[A-Za-z0-9_-]{43}$/.test(value)) {

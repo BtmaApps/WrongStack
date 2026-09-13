@@ -39,12 +39,24 @@ export interface ListSessionsHost {
   getIndexDeletedIds: () => ReadonlySet<string>;
 }
 
+/**
+ * Normalize a caller-supplied page limit (WebUI WS payloads forward these
+ * untrusted): non-number/non-finite -> `fallback`, negative -> 0 (empty page,
+ * matching the catalog RPC's bounded limit — never a negative slice() that
+ * silently drops the newest rows), otherwise floor to an integer.
+ */
+function clampListLimit(raw: number | undefined, fallback: number): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return fallback;
+  return Math.max(0, Math.floor(raw));
+}
+
 export async function executeListSessions(
   host: ListSessionsHost,
   limit = 20,
 ): Promise<SessionSummary[]> {
+  const boundedLimit = clampListLimit(limit, 20);
   if (host.catalogClient) {
-    const records = await host.catalogClient.call('list_catalog', { limit });
+    const records = await host.catalogClient.call('list_catalog', { limit: boundedLimit });
     return host.scrubSummaries(records);
   }
   try {
@@ -61,7 +73,7 @@ export async function executeListSessions(
       host.listFromDirectoryScan(SESSION_FILTER_POOL_LIMIT).catch(() => [] as SessionSummary[]),
     ]);
     return host.scrubSummaries(
-      mergeIndexWithScan(indexed, scanned, host.getIndexDeletedIds(), limit),
+      mergeIndexWithScan(indexed, scanned, host.getIndexDeletedIds(), boundedLimit),
     );
   } catch {
     return [];
@@ -80,11 +92,11 @@ export async function executeListFilteredSessions(
     limit?: number | undefined;
   },
 ): Promise<SessionSummary[]> {
-  const limit = criteria.limit ?? 100;
+  const boundedLimit = clampListLimit(criteria.limit, 100);
   if (host.catalogClient) {
     const records = await host.catalogClient.call('list_catalog', {
-      limit,
       ...criteria,
+      limit: boundedLimit,
     });
     return host.scrubSummaries(records);
   }
@@ -111,7 +123,7 @@ export async function executeListFilteredSessions(
     return host
       .scrubSummaries(pool)
       .filter((s) => matchesSessionFilter(s, criteria))
-      .slice(0, limit);
+      .slice(0, boundedLimit);
   } catch {
     return [];
   }

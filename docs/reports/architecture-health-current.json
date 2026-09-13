@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T15:16:07.620Z",
+  "generatedAt": "2026-09-13T17:26:00.502Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3784,
-    "testFiles": 3317,
-    "sourceLines": 919919,
+    "testFiles": 3328,
+    "sourceLines": 920082,
     "workspaceEdges": 128,
     "moduleEdges": 12099,
     "nonCommandSlashImports": 0,
@@ -146,7 +146,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 493,
-      "testFiles": 487,
+      "testFiles": 494,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -185,7 +185,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 487
+          "testFiles": 494
         }
       ]
     },
@@ -216,7 +216,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 860,
-      "testFiles": 753,
+      "testFiles": 755,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +231,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 753
+          "testFiles": 755
         }
       ]
     },
@@ -480,7 +480,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 70,
-      "testFiles": 64,
+      "testFiles": 65,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -493,7 +493,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 64
+          "testFiles": 65
         }
       ]
     },
@@ -735,7 +735,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 213,
-      "testFiles": 220,
+      "testFiles": 221,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,7 +751,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 220
+          "testFiles": 221
         }
       ]
     },
@@ -3729,6 +3729,12 @@
         ]
       },
       {
+        "file": "packages/cli/tests/slash-commands/agents-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/slash-commands/commit.test.ts",
         "projects": [
           "root-node"
@@ -3742,6 +3748,12 @@
       },
       {
         "file": "packages/cli/tests/slash-commands/effort.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/kanban-lifecycle-diagnostics.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3765,7 +3777,25 @@
         ]
       },
       {
+        "file": "packages/cli/tests/slash-commands/memory-audience.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/memory-flags.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/cli/tests/slash-commands/memory-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/memory-stats.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3778,6 +3808,12 @@
       },
       {
         "file": "packages/cli/tests/slash-commands/slash-deep-help.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/telegram-settings.test.ts",
         "projects": [
           "root-node"
         ]
@@ -4312,6 +4348,12 @@
       },
       {
         "file": "packages/cli/tests/tier-budget-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/tier-remove-and-parse.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7557,6 +7599,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/plugins/cloud-config-sync-plugin.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/plugins/git-plugin-extra.test.ts",
         "projects": [
           "root-node"
@@ -8554,6 +8602,12 @@
       },
       {
         "file": "packages/core/tests/storage/session-store-index-coverage.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/storage/session-store-list-limit.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11373,6 +11427,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/oauth-copilot-device-flow.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/oauth-refresh-coordinator.test.ts",
         "projects": [
           "root-node"
@@ -13678,6 +13738,12 @@
       },
       {
         "file": "packages/tools/tests/bash-kill-guard-paths.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/bash-kill-guard-targets.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21144,7 +21210,7 @@
     },
     {
       "file": "packages/cli/src/slash-commands/kanban-task-subcommands.ts",
-      "lines": 828,
+      "lines": 832,
       "relativeImports": 4
     },
     {

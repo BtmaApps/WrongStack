@@ -166,6 +166,20 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         // stdout may be closed mid-teardown — ignore.
       }
     };
+    const reportStartupFailure = (err: unknown): void => {
+      const message = `wstack: TUI failed to start: ${
+        err instanceof Error ? err.message : String(err)
+      }\n`;
+      // `resolveTuiLaunchPlan()` intentionally silences stderr while Ink owns
+      // the screen. A mount error happens before Ink can own anything, though:
+      // print it only after durable teardown restores the normal buffer and
+      // unsilences stderr, or the only useful diagnostic disappears on every
+      // platform.
+      // `settle` owns the bounded session close. Do not await a second close
+      // here: a stalled writer must not prevent the failure from reaching the
+      // user.
+      exits.settle(1, () => writeErr(message));
+    };
     try {
       // A full-screen TUI must not share the normal buffer's scrollback. DECSET
       // 1049 saves the shell screen and enters a fresh alternate buffer;
@@ -318,15 +332,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
         inkStdin,
         stdout,
         onRawCtrlC: exits.onRawCtrlC,
-        onStartupFailure: (err) => {
-          writeErr(
-            `wstack: TUI failed to start: ${err instanceof Error ? err.message : String(err)}\n`,
-          );
-          void opts.agent.ctx.session
-            .close()
-            .catch(() => undefined)
-            .finally(() => exits.settle(1));
-        },
+        onStartupFailure: reportStartupFailure,
       });
       if (!mount) return;
       // Wire the hoisted reference so signal handlers can unmount Ink.
@@ -334,13 +340,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
     } catch (err) {
       // Safety net for the terminal-mode setup above — mountInkApp reports
       // its own mount failures through onStartupFailure and returns null.
-      writeErr(
-        `wstack: TUI failed to start: ${err instanceof Error ? err.message : String(err)}\n`,
-      );
-      void opts.agent.ctx.session
-        .close()
-        .catch(() => undefined)
-        .finally(() => exits.settle(1));
+      reportStartupFailure(err);
       return;
     }
     mount.instance

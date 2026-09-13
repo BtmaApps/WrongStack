@@ -156,8 +156,9 @@ export function parseTaskEvidenceFlags(tokens: readonly string[]): TaskEvidenceF
         continue;
       }
       if (!inline && value.startsWith('-')) {
+        // The next token is another flag, not this flag's value — leave it for
+        // the next iteration instead of swallowing it (`--attachment --note x`).
         warnings.push(`${key} expects a URL but none was provided`);
-        i++;
         continue;
       }
       if (!inline) i++;
@@ -173,7 +174,6 @@ export function parseTaskEvidenceFlags(tokens: readonly string[]): TaskEvidenceF
       }
       if (!inline && raw.startsWith('-')) {
         warnings.push(`${key} expects <checkId>=<status> but none was provided`);
-        i++;
         continue;
       }
       const sep = raw.lastIndexOf('=');

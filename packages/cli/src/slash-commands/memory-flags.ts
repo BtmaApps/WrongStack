@@ -17,6 +17,9 @@ const MEMORY_KINDS: SageKind[] = [
 
 const MEMORY_SCOPES: SageScope[] = ['project', 'user', 'session', 'file', 'symbol'];
 
+const DECIMAL_RE = /^(?:\d+(?:\.\d*)?|\.\d+)$/;
+const INTEGER_RE = /^\d+$/;
+
 const MEMORY_STATUSES: SageStatus[] = [
   'active',
   'stale',
@@ -68,7 +71,9 @@ export function parseMemoryFlags(tokens: string[]): ParsedMemoryFlags {
       errors.push(`${name} needs a value between 0 and 1.`);
       return undefined;
     }
-    const parsed = Number.parseFloat(value);
+    // `parseFloat` alone accepts trailing junk ("0.5abc" → 0.5), so require
+    // the whole token to be a plain decimal before parsing it.
+    const parsed = DECIMAL_RE.test(value) ? Number.parseFloat(value) : Number.NaN;
     if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
       errors.push(`${name} must be a number between 0 and 1 (got "${value}").`);
       return undefined;
@@ -194,7 +199,7 @@ export function parseForFileFlags(tokens: string[]): ParsedForFileFlags {
         out.errors.push('--line needs a 1-indexed line number.');
         continue;
       }
-      const parsed = Number.parseInt(next, 10);
+      const parsed = INTEGER_RE.test(next) ? Number.parseInt(next, 10) : Number.NaN;
       if (!Number.isFinite(parsed) || parsed < 1) {
         out.errors.push(`--line must be a positive integer (got "${next}").`);
         continue;
@@ -206,7 +211,7 @@ export function parseForFileFlags(tokens: string[]): ParsedForFileFlags {
         out.errors.push('--limit needs a value between 1 and 200.');
         continue;
       }
-      const parsed = Number.parseInt(next, 10);
+      const parsed = INTEGER_RE.test(next) ? Number.parseInt(next, 10) : Number.NaN;
       if (!Number.isFinite(parsed) || parsed < 1 || parsed > 200) {
         out.errors.push(`--limit must be between 1 and 200 (got "${next}").`);
         continue;

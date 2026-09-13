@@ -18,6 +18,18 @@ import type { SlashCommandContext } from './command-context.js';
 
 const LEADER_MODES = ['off', 'propose', 'auto'] as const;
 
+const DECIMAL_RE = /^(?:\d+(?:\.\d*)?|\.\d+)$/;
+const INTEGER_RE = /^\d+$/;
+
+/**
+ * `parseFloat`/`parseInt` accept trailing junk ("0.25abc" → 0.25, "3.7" → 3),
+ * which would store a value the user never typed behind a ✓ reply. Negative
+ * values also fail the pattern, so callers report them as invalid.
+ */
+function strictNumber(raw: string, pattern: RegExp): number {
+  return pattern.test(raw) ? Number(raw) : Number.NaN;
+}
+
 async function patchGlobalConfig(
   globalConfigPath: string,
   mutate: (cfg: Record<string, unknown>) => void,
@@ -236,7 +248,7 @@ export function buildTierCommand(opts: SlashCommandContext): SlashCommand {
               message: `${color.amber('Usage:')} /tier budget <tier> <maxCostUsd> [maxIterations] [maxToolCalls]`,
             };
           }
-          const usd = Number.parseFloat(parts[2] ?? '');
+          const usd = strictNumber(parts[2] ?? '', DECIMAL_RE);
           if (!Number.isFinite(usd) || usd < 0) {
             return { message: `${color.red('Invalid')} maxCostUsd: "${parts[2] ?? ''}"` };
           }
@@ -246,11 +258,11 @@ export function buildTierCommand(opts: SlashCommandContext): SlashCommand {
           // where `iterations >= maxIterations` is instantly true — the agent
           // does zero work while this command reported ✓. A non-numeric value
           // must not be silently dropped either: the ✓ reply would hide it.
-          const iters = parts[3] !== undefined ? Number.parseInt(parts[3], 10) : undefined;
+          const iters = parts[3] !== undefined ? strictNumber(parts[3], INTEGER_RE) : undefined;
           if (iters !== undefined && (!Number.isFinite(iters) || iters < 0)) {
             return { message: `${color.red('Invalid')} maxIterations: "${parts[3]}"` };
           }
-          const tools = parts[4] !== undefined ? Number.parseInt(parts[4], 10) : undefined;
+          const tools = parts[4] !== undefined ? strictNumber(parts[4], INTEGER_RE) : undefined;
           if (tools !== undefined && (!Number.isFinite(tools) || tools < 0)) {
             return { message: `${color.red('Invalid')} maxToolCalls: "${parts[4]}"` };
           }
@@ -285,6 +297,15 @@ export function buildTierCommand(opts: SlashCommandContext): SlashCommand {
             const routing = routingOf(tiers);
             for (const [key, value] of Object.entries(routing)) {
               if (value === tier) delete routing[key];
+            }
+            // Same for the default and the leader ceiling: a default naming a
+            // deleted level makes resolveTier() return undefined (the whole
+            // layer silently stops applying), and a dangling ceiling ranks -1.
+            if (tiers['default'] === tier) delete tiers['default'];
+            const leader = tiers['leader'];
+            if (leader && typeof leader === 'object') {
+              const leaderRecord = leader as Record<string, unknown>;
+              if (leaderRecord['maxTier'] === tier) delete leaderRecord['maxTier'];
             }
           });
           return { message: `${color.green('✓')} tier ${color.cyan(tier)} removed` };
@@ -358,7 +379,7 @@ export function buildTierCommand(opts: SlashCommandContext): SlashCommand {
           }
 
           if (action === 'dwell') {
-            const turns = Number.parseInt(parts[2] ?? '', 10);
+            const turns = strictNumber(parts[2] ?? '', INTEGER_RE);
             if (!Number.isFinite(turns) || turns < 0) {
               return { message: `${color.amber('Usage:')} /tier leader dwell <turns>` };
             }

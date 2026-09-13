@@ -7,7 +7,9 @@
  * dangerous kill commands targeting protected PIDs.
  *
  * Handles:
- * - Direct kill commands: kill -9 12345
+ * - Direct kill commands: kill -9 12345, kill -- 12345, kill 111 12345 (every target)
+ * - Sequenced commands: `true; kill 12345`, `a && kill 12345`, `a || kill 12345`,
+ *   `a & kill 12345`, newline-separated — each segment is checked on its own
  * - Shell -c wrapped: bash -c "kill -9 12345" (any shell path — see P2 #10)
  * - Full path kills: /bin/kill -9 12345
  * - Name-based kills: pkill, killall, pgrep
@@ -61,7 +63,10 @@ const SCRIPT_KILL_RE_POSIX = /^(?:\.\/)?(?:kill|terminate|stop)\S*\.sh(?:\s|$)/i
 const SCRIPT_KILL_FALLBACK_RE = /^\S*(?:kill|terminate|stop)\S*\.(?:ps1|bat|cmd|sh)\b/i;
 
 export interface KillCommand {
+  /** First PID target (kept for single-target callers). */
   pid?: number;
+  /** Every PID target when the command names more than one (`kill 1 2 3`). */
+  pids?: number[];
   name?: string;
   signal?: string;
   isGroupKill: boolean;
@@ -154,6 +159,50 @@ function isKillRelatedCommand(cmd: string): boolean {
 /**
  * Parse a kill command string to extract PID and signal.
  */
+/**
+ * `kill [-SIG | -s SIG | -n SIG] [--] target...` where every target is a PID
+ * (a negative PID is a process group). A leading `-X` counts as a signal only
+ * when a target follows it, so `kill -123` stays a group kill.
+ *
+ * Returns null for anything else — job specs (`%1`), `kill -l`, variables,
+ * names, redirections — so the caller's name parsing and conservative
+ * fallbacks still run. The regexes this replaced anchored a single target at
+ * the end, which let `kill 111 <protected>` and `kill -- <protected>` through.
+ */
+function parsePosixKillTargets(normalized: string, command: string): KillCommand | null {
+  const tokens = normalized.split(' ');
+  if (tokens[0]?.toLowerCase() !== 'kill') return null;
+  let i = 1;
+  let signal = 'TERM';
+  const first = tokens[i];
+  if (first !== undefined && /^-[sn]$/i.test(first)) {
+    const value = tokens[i + 1];
+    if (!value || !/^[a-zA-Z0-9]+$/.test(value)) return null;
+    signal = value.toUpperCase();
+    i += 2;
+  } else if (
+    first !== undefined &&
+    first !== '--' &&
+    /^-[a-zA-Z0-9]+$/.test(first) &&
+    tokens.length - i >= 2
+  ) {
+    signal = first.slice(1).toUpperCase();
+    i += 1;
+  }
+  if (tokens[i] === '--') i += 1;
+  const targets = tokens.slice(i);
+  if (targets.length === 0 || !targets.every((t) => /^-?\d+$/.test(t))) return null;
+  const pids = targets.map((t) => Number.parseInt(t.replace(/^-/, ''), 10));
+  return {
+    pid: pids[0]!,
+    ...(pids.length > 1 ? { pids } : {}),
+    signal,
+    isGroupKill: targets.some((t) => t.startsWith('-')),
+    isAllKill: false,
+    originalCommand: command,
+  };
+}
+
 export function parseKillCommand(command: string): KillCommand | null {
   const normalized = command.replace(/\s+/g, ' ').trim();
 
@@ -238,31 +287,10 @@ export function parseKillCommand(command: string): KillCommand | null {
       };
     }
 
-    // ── Git Bash / WSL: kill -s TERM 12345 ────────────────────────────
-    const killSignalOptionMatch = normalized.match(/^kill\s+-s\s+([a-zA-Z0-9]+)\s+(\d+)$/i);
-    if (killSignalOptionMatch?.[1] && killSignalOptionMatch[2]) {
-      return {
-        pid: parseInt(killSignalOptionMatch[2], 10),
-        signal: killSignalOptionMatch[1].toUpperCase(),
-        isGroupKill: false,
-        isAllKill: false,
-        originalCommand: command,
-      };
-    }
-
-    // ── Git Bash / WSL: kill -9 12345 or kill -TERM 12345 or kill 12345 ──
+    // ── Git Bash / WSL: kill [-9|-TERM|-s SIG] [--] 12345 [67890 ...] ──
     // This branch must precede name parsing so a numeric target stays a PID.
-    const killPosixMatch = normalized.match(/^kill\s+(?:(-[a-zA-Z0-9]+)\s+)?(\d+)$/);
-    if (killPosixMatch?.[2]) {
-      const sig = killPosixMatch[1] ? killPosixMatch[1].slice(1).toUpperCase() : 'TERM';
-      return {
-        pid: parseInt(killPosixMatch[2], 10),
-        signal: sig,
-        isGroupKill: false,
-        isAllKill: false,
-        originalCommand: command,
-      };
-    }
+    const gitBashKill = parsePosixKillTargets(normalized, command);
+    if (gitBashKill) return gitBashKill;
 
     // ── PowerShell Stop-Process -Name "node" (multi-char name) ─────────
     // Uses greedier capture with end anchor to grab the full name.
@@ -345,37 +373,9 @@ export function parseKillCommand(command: string): KillCommand | null {
     return null;
   }
 
-  // POSIX: explicit signal option, e.g. kill -s TERM 12345
-  const signalOptionMatch = normalized.match(/^kill\s+-s\s+([a-zA-Z0-9]+)\s+(\d+|-?\d+)$/i);
-  if (signalOptionMatch?.[1] && signalOptionMatch[2]) {
-    const pidOrGroup = signalOptionMatch[2];
-    const isGroupKill = pidOrGroup.startsWith('-');
-    return {
-      pid: parseInt(isGroupKill ? pidOrGroup.slice(1) : pidOrGroup, 10),
-      signal: signalOptionMatch[1].toUpperCase(),
-      isGroupKill,
-      isAllKill: false,
-      originalCommand: command,
-    };
-  }
-
-  // Simple: kill -9 12345 or kill 12345
-  const simpleMatch = normalized.match(/^kill\s+(?:(-[a-zA-Z0-9]+)\s+)?(\d+|-?\d+)$/);
-  if (simpleMatch) {
-    const signal = simpleMatch[1] ?? '-TERM';
-    const pidOrGroup = simpleMatch[2];
-    if (!pidOrGroup) return null;
-    const isGroupKill = pidOrGroup.startsWith('-');
-    const pid = isGroupKill ? parseInt(pidOrGroup.slice(1), 10) : parseInt(pidOrGroup, 10);
-
-    return {
-      pid,
-      signal: signal.slice(1),
-      isGroupKill,
-      isAllKill: false,
-      originalCommand: command,
-    };
-  }
+  // POSIX: kill [-9|-TERM|-s SIG] [--] 12345 [-6789 ...]
+  const posixKill = parsePosixKillTargets(normalized, command);
+  if (posixKill) return posixKill;
 
   // pkill name or pkill -signal name
   const pkillMatch = normalized.match(/^pkill\s+(?:(-[a-zA-Z]+)\s+)?(.+)$/);
@@ -488,13 +488,13 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
     return protectedPids.length > 0;
   }
 
-  // Single process kill - check if the target PID is protected
-  if (kill.pid !== undefined) {
-    if (await registry.shouldBlockKill(kill.pid)) return true;
+  // PID kill — every target must be checked, not just the first.
+  const targets = kill.pids ?? (kill.pid !== undefined ? [kill.pid] : []);
+  for (const pid of targets) {
+    if (await registry.shouldBlockKill(pid)) return true;
     // Parity with exec-kill-guard: block self/parent even when the
     // persistent registry has no live entry for them.
-    if (kill.pid === process.pid || kill.pid === process.ppid) return true;
-    return false;
+    if (pid === process.pid || pid === process.ppid) return true;
   }
 
   return false;
@@ -505,6 +505,69 @@ async function isKillProtected(kill: KillCommand): Promise<boolean> {
  * Returns a result indicating whether to block and why.
  */
 export async function checkAndBlockKillCommand(command: string): Promise<KillCheckResult> {
+  // The whole command first: shell -c extraction and the pipeline fallback
+  // both need to see it unsplit.
+  const whole = await checkSingleCommand(command);
+  if (whole.blocked) return whole;
+  // Then every sequenced segment, so `true; kill <pid>` cannot hide the kill
+  // behind a harmless leading command.
+  const segments = splitShellSequence(command);
+  if (segments.length > 1) {
+    for (const segment of segments) {
+      const result = await checkSingleCommand(segment);
+      if (result.blocked) return result;
+    }
+  }
+  return { blocked: false };
+}
+
+/**
+ * Split on shell sequencing operators outside quotes: `;`, `&&`, `||`, a
+ * background `&`, and newlines. A single `|` is NOT split — a kill piped into
+ * another command is handled whole by the conservative pipeline block — and
+ * redirections such as `2>&1` / `&>file` are not separators.
+ */
+function splitShellSequence(command: string): string[] {
+  const segments: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!;
+    const next = command[i + 1];
+    if (quote) {
+      if (ch === quote) quote = null;
+      current += ch;
+      continue;
+    }
+    if (ch === '\\' && next !== undefined) {
+      current += ch + next;
+      i++;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    const isSeparator =
+      ch === ';' ||
+      ch === '\n' ||
+      ch === '\r' ||
+      (ch === '|' && next === '|') ||
+      (ch === '&' && command[i - 1] !== '>' && next !== '>');
+    if (isSeparator) {
+      if ((ch === '|' || ch === '&') && next === ch) i++;
+      if (current.trim()) segments.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) segments.push(current.trim());
+  return segments;
+}
+
+async function checkSingleCommand(command: string): Promise<KillCheckResult> {
   const normalized = command.replace(/\s+/g, ' ').trim();
 
   // First, extract any kill command from shell-wrapped commands
@@ -542,6 +605,8 @@ export async function checkAndBlockKillCommand(command: string): Promise<KillChe
     let target: string;
     if (parsed.name) {
       target = `process name "${parsed.name}"`;
+    } else if (parsed.pids && parsed.pids.length > 1) {
+      target = `PIDs ${parsed.pids.join(', ')}`;
     } else if (parsed.pid !== undefined) {
       target = `PID ${parsed.pid}`;
     } else {
