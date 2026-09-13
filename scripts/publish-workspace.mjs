@@ -63,7 +63,11 @@ import { existsSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { collectPublishablePackages, layerByDependencies } from './lib/publishable-packages.mjs';
+import {
+  collectPublishablePackages,
+  findVersionDrift,
+  layerByDependencies,
+} from './lib/publishable-packages.mjs';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 /**
@@ -537,6 +541,19 @@ export async function main(argv) {
   const { publishable, skipped } = collectPublishablePackages();
   if (publishable.length === 0) {
     console.error('No publishable workspace packages found.');
+    return 1;
+  }
+
+  // Before anything is packed: a drifted manifest makes `workspace:*` pin
+  // dependents to the stale sibling (see findVersionDrift). Also checked under
+  // --plan / --pack so the mistake surfaces in the unprivileged CI job.
+  const drift = findVersionDrift(publishable);
+  if (drift.drifted.length > 0) {
+    console.error(
+      `Version drift: the release is ${drift.expected}, but ` +
+        drift.drifted.map((p) => `${p.name} is ${p.version}`).join(', ') +
+        `.\nRun \`pnpm version:set ${drift.expected}\`, commit, and publish again.`,
+    );
     return 1;
   }
 

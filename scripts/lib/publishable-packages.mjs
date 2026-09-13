@@ -132,6 +132,35 @@ export function collectPublishablePackages(root = repoRoot) {
 }
 
 /**
+ * Publishable packages whose version differs from the release version.
+ *
+ * The workspace releases in lockstep (`scripts/bump-version.mjs` writes one
+ * version into every manifest) and internal deps are `workspace:*`, which pnpm
+ * pins to each sibling's CURRENT version at pack time. So one stale manifest
+ * does not fail the publish - it silently ships dependents pinned to an old
+ * sibling. 1.0.9: `packages/plugins/package.json` fell back to 1.0.8 after the
+ * bump, the resume logic correctly skipped the already-live plugins@1.0.8, and
+ * `@wrongstack/cli@1.0.9` went out depending on `@wrongstack/plugins@1.0.8`.
+ *
+ * The release version is the most common one; ties break toward the higher.
+ * @param {Pick<PublishablePackage, 'name' | 'version'>[]} packages
+ * @returns {{expected: string | undefined, drifted: {name: string, version: string}[]}}
+ */
+export function findVersionDrift(packages) {
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  for (const p of packages) counts.set(p.version, (counts.get(p.version) ?? 0) + 1);
+  const expected = [...counts.entries()].sort(
+    ([va, ca], [vb, cb]) => cb - ca || vb.localeCompare(va, undefined, { numeric: true }),
+  )[0]?.[0];
+  const drifted = packages
+    .filter((p) => p.version !== expected)
+    .map((p) => ({ name: p.name, version: p.version }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return { expected, drifted };
+}
+
+/**
  * Group packages into publish layers: layer N contains only packages whose
  * workspace dependencies all live in layers < N. Publishing layer by layer,
  * and confirming each layer is live on the registry before starting the next,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   collectPublishablePackages,
+  findVersionDrift,
   layerByDependencies,
 } from '../../../../scripts/lib/publishable-packages.mjs';
 import {
@@ -94,6 +95,38 @@ describe('publish dependency layering', () => {
         .map((p) => p.name)
         .sort(),
     ).toEqual(['a', 'b', 'c']);
+  });
+});
+
+/**
+ * Regression cover for the 1.0.9 release. `packages/plugins/package.json` fell
+ * back to 1.0.8 after the bump; `workspace:*` pinned `@wrongstack/cli@1.0.9` to
+ * `@wrongstack/plugins@1.0.8`, and resume skipped plugins as already live, so
+ * the release shipped mixed versions without a single error.
+ */
+describe('lockstep release versions', () => {
+  it('keeps every publishable workspace package on one version', () => {
+    const { publishable } = collectPublishablePackages();
+    expect(findVersionDrift(publishable).drifted).toEqual([]);
+  });
+
+  it('names the package left behind by a bump', () => {
+    const drift = findVersionDrift([
+      { name: '@wrongstack/cli', version: '1.0.9' },
+      { name: '@wrongstack/core', version: '1.0.9' },
+      { name: '@wrongstack/plugins', version: '1.0.8' },
+    ]);
+    expect(drift.expected).toBe('1.0.9');
+    expect(drift.drifted).toEqual([{ name: '@wrongstack/plugins', version: '1.0.8' }]);
+  });
+
+  it('breaks a tie toward the higher version, so the stale half is reported', () => {
+    const drift = findVersionDrift([
+      { name: 'a', version: '1.0.10' },
+      { name: 'b', version: '1.0.9' },
+    ]);
+    expect(drift.expected).toBe('1.0.10');
+    expect(drift.drifted).toEqual([{ name: 'b', version: '1.0.9' }]);
   });
 });
 

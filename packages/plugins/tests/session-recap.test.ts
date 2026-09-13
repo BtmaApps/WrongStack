@@ -191,6 +191,35 @@ describe('session-recap plugin', () => {
       const health = await sessionRecapPlugin.health!();
       expect(health.message).toContain('0 token');
     });
+
+    it('counts tool events whose `tool` field is a Tool object (tool.confirm_needed)', async () => {
+      // Regression: `tool.confirm_needed` carries the whole Tool, not its name.
+      // The handler called `.startsWith` on it and the EventBus logged
+      // "toolName.startsWith is not a function" on every approval prompt.
+      const api = createMockAPI({ withMailbox: true });
+      sessionRecapPlugin.teardown!(api as never);
+      sessionRecapPlugin.setup(api as never);
+      const toolHandler = vi
+        .mocked(api.onPattern)
+        .mock.calls.findLast((c) => c?.[0] === 'tool.*')?.[1] as
+        | ((e: string, p: unknown) => void)
+        | undefined;
+      expect(toolHandler).toBeDefined();
+
+      expect(() =>
+        toolHandler?.('tool.confirm_needed', {
+          tool: { name: 'bash', description: 'run a command' },
+          input: {},
+          toolUseId: 'tu-1',
+          suggestedPattern: 'bash:*',
+        }),
+      ).not.toThrow();
+      expect(() => toolHandler?.('tool.started', { tool: 'read' })).not.toThrow();
+      expect(() => toolHandler?.('tool.custom', { tool: 42 })).not.toThrow();
+
+      const health = (await sessionRecapPlugin.health!()) as { metrics: { toolCalls: number } };
+      expect(health.metrics.toolCalls).toBe(3);
+    });
   });
 
   // -------------------------------------------------------------------------

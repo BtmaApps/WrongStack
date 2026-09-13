@@ -416,11 +416,19 @@ const plugin: Plugin = {
       // event bus. We use a wildcard pattern to catch all tool events.
       const offTool = api.onPattern('tool.*', (eventName: string, payload: unknown) => {
         touchActivity();
-        // eventName is `tool.started`, `tool.completed`, etc. The
-        // payload typically has a `tool` field with the tool name.
-        const p = payload as { tool?: string; name?: string } | null;
-        const toolName = p?.tool ?? p?.name ?? eventName;
-        if (typeof toolName === 'string') bumpToolCount(toolName);
+        // eventName is `tool.started`, `tool.completed`, etc. `tool` is
+        // the tool NAME on some events and the whole `Tool` object on
+        // others (`tool.confirm_needed`), so read `.name` off an object.
+        const p = payload as { tool?: unknown; name?: unknown } | null;
+        const rawTool = p?.tool;
+        const nameOf = (v: unknown): string | undefined =>
+          typeof v === 'string'
+            ? v
+            : v && typeof v === 'object' && typeof (v as { name?: unknown }).name === 'string'
+              ? (v as { name: string }).name
+              : undefined;
+        const toolName = nameOf(rawTool) ?? nameOf(p?.name) ?? eventName;
+        bumpToolCount(toolName);
         // Detect commits: the `git_autocommit` tool reports a
         // successful commit via its result. We treat any `git_*`
         // tool success as a potential commit; the exact tracking
