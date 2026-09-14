@@ -37,6 +37,7 @@ export const TRUST_POLICY_JSON_SCHEMA = Object.freeze({
       },
       auto: { type: 'boolean' },
       trustWorkdir: { type: 'boolean' },
+      allowUntil: { type: 'number' },
       denyPrivate: { type: 'boolean' },
     },
   },
@@ -68,7 +69,10 @@ export type TrustPolicyValidationResult =
   | { ok: true; policy: TrustPolicy; diagnostics: TrustPolicyDiagnostic[] }
   | { ok: false; diagnostics: TrustPolicyDiagnostic[] };
 
-const RULE_FIELDS = new Set(['allow', 'deny', 'auto', 'trustWorkdir', 'denyPrivate']);
+// `allowUntil` (W6 #9) must be listed here as well as in TRUST_POLICY_JSON_SCHEMA:
+// this Set is the validator that actually runs, while the JSON schema constant is
+// exported for editor/tooling use and is not consulted by validateTrustPolicy.
+const RULE_FIELDS = new Set(['allow', 'deny', 'auto', 'trustWorkdir', 'denyPrivate', 'allowUntil']);
 const UNSAFE_PROPERTY_NAMES = new Set(['__proto__', 'prototype', 'constructor']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -215,6 +219,24 @@ export function validateTrustPolicy(value: unknown): TrustPolicyValidationResult
         error(diagnostics, 'invalid_boolean', `${toolPath}.${field}`, 'must be a boolean');
       } else {
         rule[field] = setting;
+      }
+    }
+    // W6 #9: `allowUntil` must be COPIED here, not merely listed in
+    // RULE_FIELDS above. This loop is what decides the rule that actually
+    // reaches the evaluator, and a field that is accepted but not copied is
+    // silently dropped — which reads as "the policy is valid" while the
+    // expiry never lands, so every timed rule behaves as if it were permanent.
+    const allowUntil = rawRule.allowUntil;
+    if (allowUntil !== undefined) {
+      if (typeof allowUntil !== 'number' || !Number.isFinite(allowUntil)) {
+        error(
+          diagnostics,
+          'invalid_rule',
+          `${toolPath}.allowUntil`,
+          'must be a finite epoch-ms number',
+        );
+      } else {
+        rule.allowUntil = allowUntil;
       }
     }
     policy[toolName] = rule;

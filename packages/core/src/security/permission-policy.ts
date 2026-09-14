@@ -90,6 +90,8 @@ export interface PermissionPolicyOptions {
   inputReader?: InputReader | undefined;
 }
 
+export const DEFAULT_ALWAYS_TRUST_TTL_MS = 24 * 60 * 60 * 1000;
+
 export class DefaultPermissionPolicy implements PermissionPolicy {
   private policy: TrustPolicy = {};
   private loaded = false;
@@ -390,8 +392,14 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // block. Fall through to a confirm instead.
     const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
 
+    // W6 #9: an `always` answer persists a trust rule, and it used to persist
+    // forever. An EXPIRED rule is treated as absent, not as a deny — the call
+    // falls through to the normal confirm path below, so expiry re-prompts
+    // rather than blocks. Absent `allowUntil` (a hand-authored entry) never
+    // expires.
+    const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
     const allowMatches = hasShellSubject(tool) ? matchesCommandTrust : matchesTrust;
-    if (entry?.allow && subject && allowMatches(entry.allow, subject)) {
+    if (allowUnexpired && entry?.allow && subject && allowMatches(entry.allow, subject)) {
       const decision: PermissionDecision = {
         permission: 'auto',
         source: 'trust',
@@ -417,7 +425,11 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
               reason: `approved once — ${alwaysAllowUnavailableReason(tool, input)}`,
             };
           }
-          await this.trust({ tool: tool.name, pattern: subject });
+          await this.trust({
+            tool: tool.name,
+            pattern: subject,
+            ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
+          });
           return {
             permission: 'auto',
             source: 'user',
@@ -507,7 +519,11 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
             reason: `approved once — ${alwaysAllowUnavailableReason(tool, input)}`,
           };
         }
-        await this.trust({ tool: tool.name, pattern: subject });
+        await this.trust({
+          tool: tool.name,
+          pattern: subject,
+          ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
+        });
         return { permission: 'auto', source: 'user', reason: 'user always-allowed' };
       }
       if (decision === 'deny') {
@@ -526,13 +542,17 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     return isSensitiveReadCall(tool, input);
   }
 
-  async trust(rule: { tool: string; pattern: string }): Promise<void> {
+  async trust(rule: { tool: string; pattern: string; ttlMs?: number }): Promise<void> {
     if (!this.loaded) await this.reload();
     if (this.policyInvalid) {
       throw new Error('Cannot update trust rules while trust.json is invalid; repair it first.');
     }
     const entry = this.policy[rule.tool] ?? {};
     entry.allow = Array.from(new Set([...(entry.allow ?? []), rule.pattern]));
+    // W6 #9: only a prompt-driven `always` passes `ttlMs`; a hand-authored
+    // trust.json entry stays permanent. Re-granting an already-timed rule
+    // refreshes the window rather than silently making it permanent again.
+    if (rule.ttlMs !== undefined) entry.allowUntil = Date.now() + rule.ttlMs;
     this.policy[rule.tool] = entry;
     this._evalCache.clear();
     try {

@@ -9,6 +9,19 @@ export interface TrustPolicy {
     auto?: boolean | undefined;
     trustWorkdir?: boolean | undefined;
     denyPrivate?: boolean | undefined;
+    /**
+     * W6 #9 — epoch ms after which `allow` stops applying.
+     *
+     * An `always` answer used to persist its trust rule forever, so a single
+     * approval granted standing authorization with no expiry and no reminder.
+     * This bounds it. Absent means "no expiry", which is what a hand-authored
+     * trust.json entry keeps — only rules a prompt created are timed.
+     *
+     * Fail-closed by construction: an expiry can only ever withdraw
+     * authorization, never add it, so a wrong value re-prompts rather than
+     * opening a path.
+     */
+    allowUntil?: number | undefined;
   };
 }
 

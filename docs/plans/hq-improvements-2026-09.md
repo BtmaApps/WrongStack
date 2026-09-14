@@ -18,12 +18,12 @@ contracts, and risks so the work can continue in subsequent sessions.
 | 14 | Mailbox gateway health tile | ✅ Shipped (production + HTTP endpoint) | W2 |
 | 17 | Bounded LRU for tracked agents | ✅ Shipped | W3 |
 | 2 | Throughput-budget alert rule | ✅ Shipped | W3 |
-| 4 | Correlation IDs across envelopes | 🚧 RFC | W4 |
-| 7 | Command latency SLO dashboard | ✅ Shipped (timestamps + roll-up) | W4 |
-| 15 | Token revoked broadcast | 🚧 RFC | W4 |
+| 4 | Correlation IDs across envelopes | ✅ Shipped (envelope + bridges + Events chains) | W4 |
+| 7 | Command latency SLO dashboard | ✅ Shipped (timestamps + roll-up + cockpit card) | W4 |
+| 15 | Token revoked broadcast | ✅ Shipped (detector + frame + precise eviction + SPA consumer) | W4 |
 | 19 | Event Log timeline view | ✅ Shipped | W5 |
-| 5 | HQ-mediated mailbox mutation | 🚧 RFC | W6 |
-| 9 | TTL on `HqApprovalDecision.always` | 🚧 RFC | W6 |
+| 5 | HQ-mediated mailbox mutation | ✅ Shipped (gate pre-existed; now test-covered) | W6 |
+| 9 | TTL on `HqApprovalDecision.always` | ✅ Shipped (trust rule + ApprovalRegistry grant) | W6 |
 | 3 | `hq.snapshot_diff` | ❌ Downgraded | — |
 | 8 | TUI reader of `/ws/browser` | ⏭ Out of scope | — |
 | 10 | IndexedDB persistence of alerts/commands | ⏭ Defer | — |

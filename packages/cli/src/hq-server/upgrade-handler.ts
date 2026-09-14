@@ -27,6 +27,13 @@ interface HqUpgradeHandlerDeps {
   sessions: Map<string, HqSessionEntry>;
   clients: Map<WebSocket, ConnectedClient>;
   clientSocketTokens: Map<WebSocket, HqToken | undefined>;
+  /**
+   * Session id that authorized each open browser socket, so token revocation
+   * can close only the affected browsers. Absent for a socket that
+   * authenticated with a bare loopback `?token=` rather than a cookie session;
+   * the revocation path treats that absence as "affected" (fail closed).
+   */
+  browserSocketSessions: Map<WebSocket, string>;
   browsers: Set<WebSocket>;
   eventLog: import('@wrongstack/core/hq').HqEventEnvelope[];
   transcripts: Map<string, TranscriptRing>;
@@ -138,10 +145,16 @@ export function handleHqUpgrade(
         session.lastSeenAt = now2;
         if (session.pending2fa) return false;
         if (session.kind === 'token' && session.tokenId !== undefined) {
-          return [...deps.mutableAuth.browserTokenObjs.values()].some(
+          const stillAuthorized = [...deps.mutableAuth.browserTokenObjs.values()].some(
             (obj) => obj.id === session.tokenId,
           );
+          if (!stillAuthorized) return false;
         }
+        // Recorded so the connection handoff — a different function, reached
+        // through the ws `connection` event — can bind this socket to the
+        // session that authorized it. That binding is what lets token
+        // revocation close only the affected browsers instead of all of them.
+        (req as HqUpgradeRequest).hqBrowserSessionId = sessionId;
         return true;
       })();
     if (!tokenValid && !cookieValid) {
@@ -167,6 +180,14 @@ export function handleHqUpgrade(
   });
 }
 
+/**
+ * The upgrade-time browser auth check and the connection handoff are different
+ * functions, so the authorizing session id is carried across on the request.
+ */
+interface HqUpgradeRequest extends IncomingMessage {
+  hqBrowserSessionId?: string;
+}
+
 export function handleHqConnection(
   ws: WebSocket,
   req: IncomingMessage,
@@ -174,6 +195,16 @@ export function handleHqConnection(
   deps: HqUpgradeHandlerDeps,
 ): void {
   if (pathname === '/ws/browser') {
+    // Bind this socket to the session that authorized it, so token revocation
+    // can close only the affected browsers instead of every browser. A socket
+    // with no recorded session authenticated with a bare `?token=` rather than
+    // a cookie session; it stays deliberately unbindable, and the revocation
+    // path treats "unknown" as affected (fail closed) rather than as safe.
+    const sessionId = (req as HqUpgradeRequest).hqBrowserSessionId;
+    if (sessionId !== undefined) {
+      deps.browserSocketSessions.set(ws, sessionId);
+      ws.once('close', () => deps.browserSocketSessions.delete(ws));
+    }
     HqServerWs.handleBrowser(ws, deps.snapshotBroadcaster, deps.browsers, deps.eventLog);
   } else {
     const token = new URL(req.url ?? '/', `http://${deps.host}:${deps.port}`).searchParams.get(

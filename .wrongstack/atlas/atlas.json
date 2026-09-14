@@ -1,8 +1,8 @@
 {
   "schema": 2,
   "counts": {
-    "files": 8817,
-    "symbols": 69585,
+    "files": 8856,
+    "symbols": 69931,
     "packages": 30
   },
   "packages": [
@@ -13,197 +13,197 @@
       "rank": 1
     },
     {
-      "name": "@wrongstack/core",
-      "files": 2200,
-      "hub": "packages/core/src/types/provider.ts",
-      "rank": 0.8635
-    },
-    {
       "name": "@wrongstack/acp",
       "files": 90,
       "hub": "packages/acp/src/types/acp-v1.ts",
-      "rank": 0.8607
+      "rank": 0.8616
+    },
+    {
+      "name": "@wrongstack/core",
+      "files": 2214,
+      "hub": "packages/core/src/types/provider.ts",
+      "rank": 0.8612
     },
     {
       "name": "@wrongstack/webui",
       "files": 996,
       "hub": "packages/webui/src/lib/ws-client-actions.ts",
-      "rank": 0.7183
+      "rank": 0.7188
     },
     {
       "name": "@wrongstack/sage",
       "files": 202,
       "hub": "packages/sage/src/types.ts",
-      "rank": 0.6813
+      "rank": 0.6817
     },
     {
       "name": "@wrongstack/tools",
-      "files": 445,
+      "files": 448,
       "hub": "packages/tools/src/codebase-index/writer.ts",
-      "rank": 0.6686
+      "rank": 0.6691
     },
     {
       "name": "@wrongstack/mcp",
       "files": 79,
       "hub": "packages/mcp/src/client.ts",
-      "rank": 0.5496
+      "rank": 0.5499
     },
     {
       "name": "@wrongstack/webui-server",
-      "files": 451,
+      "files": 453,
       "hub": "packages/webui-server/src/server/ws-payload-validation.ts",
-      "rank": 0.5125
+      "rank": 0.5128
     },
     {
       "name": "@wrongstack/providers",
-      "files": 139,
+      "files": 140,
       "hub": "packages/providers/src/openai-codex.ts",
-      "rank": 0.498
+      "rank": 0.4983
     },
     {
       "name": "@wrongstack/techstack",
       "files": 91,
       "hub": "packages/techstack/src/types.ts",
-      "rank": 0.4378
+      "rank": 0.4375
     },
     {
       "name": "@wrongstack/desktop",
       "files": 75,
       "hub": "apps/desktop/src/main/runtime-manager.ts",
-      "rank": 0.4109
+      "rank": 0.4112
     },
     {
       "name": "@wrongstack/governance",
       "files": 71,
       "hub": "packages/governance/src/capability-grant.ts",
-      "rank": 0.4023
+      "rank": 0.4024
     },
     {
       "name": "@wrongstack/requirement-intake",
       "files": 32,
       "hub": "packages/requirement-intake/src/types.ts",
-      "rank": 0.3924
+      "rank": 0.3927
     },
     {
       "name": "@wrongstack/plugins",
       "files": 221,
       "hub": "packages/plugins/src/todo-tracker/index.ts",
-      "rank": 0.3772
+      "rank": 0.3857
     },
     {
       "name": "@wrongstack/telegram",
       "files": 64,
       "hub": "packages/telegram/src/api-client.ts",
-      "rank": 0.3662
+      "rank": 0.3676
     },
     {
       "name": "wrongstack-monorepo",
       "files": 665,
       "hub": "scripts/release-check-matrix.mjs",
-      "rank": 0.3348
+      "rank": 0.3349
     },
     {
       "name": "@wrongstack/bench",
       "files": 89,
       "hub": "packages/bench/src/types.ts",
-      "rank": 0.2965
+      "rank": 0.2967
     },
     {
       "name": "@wrongstack/primitives",
       "files": 14,
       "hub": "packages/primitives/src/regex-ambiguity.ts",
-      "rank": 0.2913
+      "rank": 0.2955
     },
     {
       "name": "@wrongstack/cli",
-      "files": 1001,
+      "files": 1014,
       "hub": "packages/cli/src/tuneup.ts",
-      "rank": 0.2822
+      "rank": 0.2824
     },
     {
       "name": "@wrongstack/tui",
-      "files": 771,
+      "files": 769,
       "hub": "packages/tui/src/components/settings-picker-constants.ts",
-      "rank": 0.2432
+      "rank": 0.2433
     },
     {
       "name": "@wrongstack/webui-hq",
-      "files": 169,
+      "files": 176,
       "hub": "packages/webui-hq/src/data/transport/hq-socket.ts",
-      "rank": 0.2425
+      "rank": 0.2422
     },
     {
       "name": "@wrongstack/sdd",
       "files": 80,
       "hub": "packages/sdd/src/sdd-board-store.ts",
-      "rank": 0.2247
+      "rank": 0.2256
     },
     {
       "name": "@wrongstack/security-scanner",
       "files": 49,
       "hub": "packages/security-scanner/src/types.ts",
-      "rank": 0.2155
+      "rank": 0.2156
     },
     {
       "name": "@wrongstack/runtime",
       "files": 35,
       "hub": "packages/runtime/src/governance-bootstrap.ts",
-      "rank": 0.2094
+      "rank": 0.2096
     },
     {
       "name": "@wrongstack/vector-memory",
       "files": 38,
       "hub": "packages/vector-memory/src/store.ts",
-      "rank": 0.2056
+      "rank": 0.2057
     },
     {
       "name": "@wrongstack/simpleui",
       "files": 175,
       "hub": "packages/simpleui/src/lib/agent-model.ts",
-      "rank": 0.2028
+      "rank": 0.2029
     },
     {
       "name": "@wrongstack/plug-lsp",
       "files": 99,
       "hub": "packages/plug-lsp/src/types.ts",
-      "rank": 0.1964
+      "rank": 0.1937
     },
     {
       "name": "@wrongstack/wrongtrace",
       "files": 21,
       "hub": "packages/wrongtrace/src/client.ts",
-      "rank": 0.1899
+      "rank": 0.1901
     },
     {
       "name": "@wrongstack/persistence",
       "files": 20,
       "hub": "packages/persistence/src/atomic-write.ts",
-      "rank": 0.187
+      "rank": 0.1871
     },
     {
       "name": "wrongstack-website",
       "files": 105,
       "hub": "website/src/components/site/KanbanLiveDemo.tsx",
-      "rank": 0.1806
+      "rank": 0.1807
     }
   ],
   "edges": [
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/bench",
-      "weight": 47,
+      "weight": 48,
       "refType": "call"
     },
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/cli",
-      "weight": 244,
+      "weight": 252,
       "refType": "call"
     },
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/core",
-      "weight": 281,
+      "weight": 284,
       "refType": "call"
     },
     {
@@ -215,7 +215,7 @@
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/governance",
-      "weight": 34,
+      "weight": 36,
       "refType": "call"
     },
     {
@@ -251,7 +251,7 @@
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/providers",
-      "weight": 7,
+      "weight": 10,
       "refType": "call"
     },
     {
@@ -293,13 +293,13 @@
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/tools",
-      "weight": 6,
+      "weight": 8,
       "refType": "call"
     },
     {
       "from": "@wrongstack/acp",
       "to": "@wrongstack/tui",
-      "weight": 33,
+      "weight": 34,
       "refType": "call"
     },
     {
@@ -323,7 +323,7 @@
     {
       "from": "@wrongstack/acp",
       "to": "wrongstack-monorepo",
-      "weight": 80,
+      "weight": 78,
       "refType": "call"
     },
     {
@@ -383,7 +383,7 @@
     {
       "from": "@wrongstack/bench",
       "to": "@wrongstack/providers",
-      "weight": 1,
+      "weight": 4,
       "refType": "call"
     },
     {
@@ -455,7 +455,7 @@
     {
       "from": "@wrongstack/bench",
       "to": "wrongstack-monorepo",
-      "weight": 73,
+      "weight": 70,
       "refType": "call"
     },
     {
@@ -467,25 +467,25 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/acp",
-      "weight": 402,
+      "weight": 383,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/bench",
-      "weight": 587,
+      "weight": 589,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/core",
-      "weight": 8066,
+      "weight": 8089,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/desktop",
-      "weight": 1020,
+      "weight": 1044,
       "refType": "call"
     },
     {
@@ -497,13 +497,13 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/kanban",
-      "weight": 1246,
+      "weight": 1265,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/mcp",
-      "weight": 874,
+      "weight": 884,
       "refType": "call"
     },
     {
@@ -521,7 +521,7 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/plugins",
-      "weight": 103,
+      "weight": 104,
       "refType": "type_ref"
     },
     {
@@ -533,7 +533,7 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/providers",
-      "weight": 237,
+      "weight": 273,
       "refType": "call"
     },
     {
@@ -545,13 +545,13 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/runtime",
-      "weight": 102,
+      "weight": 103,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/sage",
-      "weight": 153,
+      "weight": 155,
       "refType": "call"
     },
     {
@@ -581,19 +581,19 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/telegram",
-      "weight": 74,
+      "weight": 75,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/tools",
-      "weight": 265,
+      "weight": 274,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/tui",
-      "weight": 327,
+      "weight": 328,
       "refType": "call"
     },
     {
@@ -605,19 +605,19 @@
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/webui",
-      "weight": 201,
+      "weight": 206,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/webui-hq",
-      "weight": 76,
+      "weight": 77,
       "refType": "call"
     },
     {
       "from": "@wrongstack/cli",
       "to": "@wrongstack/webui-server",
-      "weight": 483,
+      "weight": 488,
       "refType": "call"
     },
     {
@@ -629,7 +629,7 @@
     {
       "from": "@wrongstack/cli",
       "to": "wrongstack-monorepo",
-      "weight": 920,
+      "weight": 876,
       "refType": "call"
     },
     {
@@ -641,73 +641,73 @@
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/acp",
-      "weight": 436,
+      "weight": 441,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/bench",
-      "weight": 1045,
+      "weight": 1055,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/cli",
-      "weight": 4772,
+      "weight": 4823,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/desktop",
-      "weight": 1645,
+      "weight": 1665,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/governance",
-      "weight": 294,
+      "weight": 296,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/kanban",
-      "weight": 1605,
+      "weight": 1647,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/mcp",
-      "weight": 1357,
+      "weight": 1364,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/persistence",
-      "weight": 25,
-      "refType": "call"
+      "weight": 29,
+      "refType": "import"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/plug-lsp",
-      "weight": 194,
+      "weight": 195,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/plugins",
-      "weight": 381,
+      "weight": 385,
       "refType": "type_ref"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/primitives",
-      "weight": 25,
+      "weight": 26,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/providers",
-      "weight": 197,
+      "weight": 244,
       "refType": "call"
     },
     {
@@ -719,31 +719,31 @@
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/runtime",
-      "weight": 17,
+      "weight": 18,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/sage",
-      "weight": 192,
+      "weight": 196,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/sdd",
-      "weight": 182,
+      "weight": 183,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/security-scanner",
-      "weight": 43,
+      "weight": 45,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/simpleui",
-      "weight": 110,
+      "weight": 112,
       "refType": "call"
     },
     {
@@ -755,19 +755,19 @@
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/telegram",
-      "weight": 175,
+      "weight": 172,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/tools",
-      "weight": 329,
+      "weight": 357,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/tui",
-      "weight": 504,
+      "weight": 508,
       "refType": "call"
     },
     {
@@ -779,19 +779,19 @@
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/webui",
-      "weight": 367,
+      "weight": 368,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/webui-hq",
-      "weight": 309,
+      "weight": 302,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "@wrongstack/webui-server",
-      "weight": 233,
+      "weight": 248,
       "refType": "call"
     },
     {
@@ -803,13 +803,13 @@
     {
       "from": "@wrongstack/core",
       "to": "wrongstack-monorepo",
-      "weight": 1617,
+      "weight": 1581,
       "refType": "call"
     },
     {
       "from": "@wrongstack/core",
       "to": "wrongstack-website",
-      "weight": 69,
+      "weight": 68,
       "refType": "call"
     },
     {
@@ -833,7 +833,7 @@
     {
       "from": "@wrongstack/desktop",
       "to": "@wrongstack/core",
-      "weight": 204,
+      "weight": 203,
       "refType": "call"
     },
     {
@@ -845,7 +845,7 @@
     {
       "from": "@wrongstack/desktop",
       "to": "@wrongstack/kanban",
-      "weight": 32,
+      "weight": 33,
       "refType": "call"
     },
     {
@@ -863,6 +863,12 @@
     {
       "from": "@wrongstack/desktop",
       "to": "@wrongstack/primitives",
+      "weight": 1,
+      "refType": "call"
+    },
+    {
+      "from": "@wrongstack/desktop",
+      "to": "@wrongstack/providers",
       "weight": 1,
       "refType": "call"
     },
@@ -929,7 +935,7 @@
     {
       "from": "@wrongstack/desktop",
       "to": "wrongstack-monorepo",
-      "weight": 38,
+      "weight": 37,
       "refType": "call"
     },
     {
@@ -984,12 +990,6 @@
       "from": "@wrongstack/governance",
       "to": "@wrongstack/plug-lsp",
       "weight": 1,
-      "refType": "call"
-    },
-    {
-      "from": "@wrongstack/governance",
-      "to": "@wrongstack/plugins",
-      "weight": 4,
       "refType": "call"
     },
     {
@@ -1049,7 +1049,7 @@
     {
       "from": "@wrongstack/governance",
       "to": "@wrongstack/webui-server",
-      "weight": 35,
+      "weight": 39,
       "refType": "call"
     },
     {
@@ -1079,13 +1079,13 @@
     {
       "from": "@wrongstack/kanban",
       "to": "@wrongstack/cli",
-      "weight": 481,
+      "weight": 480,
       "refType": "call"
     },
     {
       "from": "@wrongstack/kanban",
       "to": "@wrongstack/core",
-      "weight": 452,
+      "weight": 450,
       "refType": "call"
     },
     {
@@ -1133,7 +1133,7 @@
     {
       "from": "@wrongstack/kanban",
       "to": "@wrongstack/providers",
-      "weight": 5,
+      "weight": 8,
       "refType": "call"
     },
     {
@@ -1181,7 +1181,7 @@
     {
       "from": "@wrongstack/kanban",
       "to": "@wrongstack/tools",
-      "weight": 78,
+      "weight": 85,
       "refType": "call"
     },
     {
@@ -1217,7 +1217,7 @@
     {
       "from": "@wrongstack/kanban",
       "to": "wrongstack-monorepo",
-      "weight": 143,
+      "weight": 139,
       "refType": "call"
     },
     {
@@ -1241,7 +1241,7 @@
     {
       "from": "@wrongstack/mcp",
       "to": "@wrongstack/core",
-      "weight": 373,
+      "weight": 375,
       "refType": "call"
     },
     {
@@ -1283,13 +1283,19 @@
     {
       "from": "@wrongstack/mcp",
       "to": "@wrongstack/providers",
-      "weight": 6,
+      "weight": 10,
       "refType": "call"
     },
     {
       "from": "@wrongstack/mcp",
       "to": "@wrongstack/runtime",
-      "weight": 4,
+      "weight": 5,
+      "refType": "call"
+    },
+    {
+      "from": "@wrongstack/mcp",
+      "to": "@wrongstack/sage",
+      "weight": 8,
       "refType": "call"
     },
     {
@@ -1313,7 +1319,7 @@
     {
       "from": "@wrongstack/mcp",
       "to": "@wrongstack/telegram",
-      "weight": 20,
+      "weight": 12,
       "refType": "call"
     },
     {
@@ -1475,7 +1481,7 @@
     {
       "from": "@wrongstack/plug-lsp",
       "to": "@wrongstack/core",
-      "weight": 240,
+      "weight": 239,
       "refType": "call"
     },
     {
@@ -1505,13 +1511,13 @@
     {
       "from": "@wrongstack/plug-lsp",
       "to": "@wrongstack/plugins",
-      "weight": 19,
+      "weight": 17,
       "refType": "type_ref"
     },
     {
       "from": "@wrongstack/plug-lsp",
       "to": "@wrongstack/providers",
-      "weight": 3,
+      "weight": 5,
       "refType": "call"
     },
     {
@@ -1553,7 +1559,7 @@
     {
       "from": "@wrongstack/plug-lsp",
       "to": "@wrongstack/telegram",
-      "weight": 9,
+      "weight": 10,
       "refType": "call"
     },
     {
@@ -1589,7 +1595,7 @@
     {
       "from": "@wrongstack/plug-lsp",
       "to": "wrongstack-monorepo",
-      "weight": 58,
+      "weight": 55,
       "refType": "call"
     },
     {
@@ -1601,31 +1607,31 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/acp",
-      "weight": 51,
+      "weight": 52,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/bench",
-      "weight": 203,
+      "weight": 204,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/cli",
-      "weight": 820,
+      "weight": 823,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/core",
-      "weight": 875,
+      "weight": 871,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/desktop",
-      "weight": 340,
+      "weight": 341,
       "refType": "call"
     },
     {
@@ -1637,7 +1643,7 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/kanban",
-      "weight": 122,
+      "weight": 129,
       "refType": "call"
     },
     {
@@ -1655,7 +1661,7 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/plug-lsp",
-      "weight": 18,
+      "weight": 19,
       "refType": "call"
     },
     {
@@ -1667,13 +1673,13 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/providers",
-      "weight": 19,
+      "weight": 39,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/requirement-intake",
-      "weight": 10,
+      "weight": 9,
       "refType": "call"
     },
     {
@@ -1691,7 +1697,7 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/sdd",
-      "weight": 19,
+      "weight": 20,
       "refType": "call"
     },
     {
@@ -1703,7 +1709,7 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/simpleui",
-      "weight": 8,
+      "weight": 9,
       "refType": "call"
     },
     {
@@ -1715,13 +1721,13 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/telegram",
-      "weight": 464,
+      "weight": 466,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/tools",
-      "weight": 43,
+      "weight": 44,
       "refType": "call"
     },
     {
@@ -1745,25 +1751,25 @@
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/webui-hq",
-      "weight": 45,
+      "weight": 42,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "@wrongstack/webui-server",
-      "weight": 64,
+      "weight": 63,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "wrongstack-monorepo",
-      "weight": 450,
+      "weight": 427,
       "refType": "call"
     },
     {
       "from": "@wrongstack/plugins",
       "to": "wrongstack-website",
-      "weight": 10,
+      "weight": 6,
       "refType": "call"
     },
     {
@@ -1816,6 +1822,12 @@
     },
     {
       "from": "@wrongstack/primitives",
+      "to": "@wrongstack/providers",
+      "weight": 2,
+      "refType": "call"
+    },
+    {
+      "from": "@wrongstack/primitives",
       "to": "@wrongstack/sdd",
       "weight": 1,
       "refType": "call"
@@ -1859,13 +1871,13 @@
     {
       "from": "@wrongstack/primitives",
       "to": "wrongstack-monorepo",
-      "weight": 18,
+      "weight": 16,
       "refType": "call"
     },
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/acp",
-      "weight": 46,
+      "weight": 47,
       "refType": "call"
     },
     {
@@ -1877,19 +1889,19 @@
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/cli",
-      "weight": 505,
+      "weight": 520,
       "refType": "call"
     },
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/core",
-      "weight": 1162,
+      "weight": 1168,
       "refType": "type_ref"
     },
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/desktop",
-      "weight": 136,
+      "weight": 138,
       "refType": "call"
     },
     {
@@ -1901,13 +1913,13 @@
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/kanban",
-      "weight": 36,
+      "weight": 37,
       "refType": "call"
     },
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/mcp",
-      "weight": 25,
+      "weight": 22,
       "refType": "call"
     },
     {
@@ -1973,7 +1985,7 @@
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/tui",
-      "weight": 60,
+      "weight": 62,
       "refType": "call"
     },
     {
@@ -1985,7 +1997,7 @@
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/webui",
-      "weight": 31,
+      "weight": 32,
       "refType": "call"
     },
     {
@@ -1997,7 +2009,7 @@
     {
       "from": "@wrongstack/providers",
       "to": "@wrongstack/webui-server",
-      "weight": 8,
+      "weight": 9,
       "refType": "call"
     },
     {
@@ -2009,7 +2021,7 @@
     {
       "from": "@wrongstack/providers",
       "to": "wrongstack-monorepo",
-      "weight": 124,
+      "weight": 122,
       "refType": "call"
     },
     {
@@ -2171,7 +2183,7 @@
     {
       "from": "@wrongstack/runtime",
       "to": "@wrongstack/providers",
-      "weight": 2,
+      "weight": 5,
       "refType": "call"
     },
     {
@@ -2237,7 +2249,7 @@
     {
       "from": "@wrongstack/runtime",
       "to": "wrongstack-monorepo",
-      "weight": 41,
+      "weight": 38,
       "refType": "call"
     },
     {
@@ -2255,13 +2267,13 @@
     {
       "from": "@wrongstack/sage",
       "to": "@wrongstack/cli",
-      "weight": 528,
+      "weight": 529,
       "refType": "call"
     },
     {
       "from": "@wrongstack/sage",
       "to": "@wrongstack/core",
-      "weight": 868,
+      "weight": 867,
       "refType": "type_ref"
     },
     {
@@ -2315,7 +2327,7 @@
     {
       "from": "@wrongstack/sage",
       "to": "@wrongstack/providers",
-      "weight": 6,
+      "weight": 11,
       "refType": "call"
     },
     {
@@ -2345,13 +2357,13 @@
     {
       "from": "@wrongstack/sage",
       "to": "@wrongstack/telegram",
-      "weight": 12,
+      "weight": 10,
       "refType": "call"
     },
     {
       "from": "@wrongstack/sage",
       "to": "@wrongstack/tools",
-      "weight": 89,
+      "weight": 91,
       "refType": "call"
     },
     {
@@ -2393,7 +2405,7 @@
     {
       "from": "@wrongstack/sage",
       "to": "wrongstack-monorepo",
-      "weight": 179,
+      "weight": 173,
       "refType": "call"
     },
     {
@@ -2411,25 +2423,25 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/bench",
-      "weight": 79,
+      "weight": 81,
       "refType": "call"
     },
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/cli",
-      "weight": 332,
+      "weight": 335,
       "refType": "call"
     },
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/core",
-      "weight": 788,
+      "weight": 793,
       "refType": "type_ref"
     },
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/desktop",
-      "weight": 90,
+      "weight": 91,
       "refType": "call"
     },
     {
@@ -2447,7 +2459,7 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/mcp",
-      "weight": 60,
+      "weight": 62,
       "refType": "call"
     },
     {
@@ -2465,7 +2477,7 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/providers",
-      "weight": 4,
+      "weight": 5,
       "refType": "call"
     },
     {
@@ -2477,7 +2489,7 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/sage",
-      "weight": 4,
+      "weight": 5,
       "refType": "call"
     },
     {
@@ -2495,13 +2507,13 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/telegram",
-      "weight": 3,
+      "weight": 2,
       "refType": "call"
     },
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/tools",
-      "weight": 8,
+      "weight": 11,
       "refType": "call"
     },
     {
@@ -2519,7 +2531,7 @@
     {
       "from": "@wrongstack/sdd",
       "to": "@wrongstack/webui-hq",
-      "weight": 22,
+      "weight": 23,
       "refType": "call"
     },
     {
@@ -2615,12 +2627,18 @@
     {
       "from": "@wrongstack/security-scanner",
       "to": "@wrongstack/providers",
-      "weight": 3,
+      "weight": 5,
       "refType": "call"
     },
     {
       "from": "@wrongstack/security-scanner",
       "to": "@wrongstack/requirement-intake",
+      "weight": 1,
+      "refType": "call"
+    },
+    {
+      "from": "@wrongstack/security-scanner",
+      "to": "@wrongstack/sage",
       "weight": 1,
       "refType": "call"
     },
@@ -2639,7 +2657,7 @@
     {
       "from": "@wrongstack/security-scanner",
       "to": "@wrongstack/telegram",
-      "weight": 2,
+      "weight": 1,
       "refType": "call"
     },
     {
@@ -2675,7 +2693,7 @@
     {
       "from": "@wrongstack/security-scanner",
       "to": "wrongstack-monorepo",
-      "weight": 46,
+      "weight": 44,
       "refType": "call"
     },
     {
@@ -2699,7 +2717,7 @@
     {
       "from": "@wrongstack/simpleui",
       "to": "@wrongstack/core",
-      "weight": 209,
+      "weight": 207,
       "refType": "call"
     },
     {
@@ -2734,12 +2752,6 @@
     },
     {
       "from": "@wrongstack/simpleui",
-      "to": "@wrongstack/plugins",
-      "weight": 2,
-      "refType": "call"
-    },
-    {
-      "from": "@wrongstack/simpleui",
       "to": "@wrongstack/primitives",
       "weight": 2,
       "refType": "call"
@@ -2747,7 +2759,7 @@
     {
       "from": "@wrongstack/simpleui",
       "to": "@wrongstack/providers",
-      "weight": 8,
+      "weight": 9,
       "refType": "call"
     },
     {
@@ -2789,7 +2801,7 @@
     {
       "from": "@wrongstack/simpleui",
       "to": "@wrongstack/tools",
-      "weight": 66,
+      "weight": 68,
       "refType": "call"
     },
     {
@@ -2825,7 +2837,7 @@
     {
       "from": "@wrongstack/simpleui",
       "to": "wrongstack-monorepo",
-      "weight": 47,
+      "weight": 46,
       "refType": "call"
     },
     {
@@ -2837,31 +2849,31 @@
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/acp",
-      "weight": 17,
+      "weight": 18,
       "refType": "call"
     },
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/bench",
-      "weight": 48,
+      "weight": 49,
       "refType": "call"
     },
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/cli",
-      "weight": 189,
+      "weight": 192,
       "refType": "call"
     },
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/core",
-      "weight": 142,
+      "weight": 139,
       "refType": "call"
     },
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/desktop",
-      "weight": 66,
+      "weight": 68,
       "refType": "call"
     },
     {
@@ -2873,7 +2885,7 @@
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/kanban",
-      "weight": 32,
+      "weight": 34,
       "refType": "call"
     },
     {
@@ -2897,7 +2909,7 @@
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/providers",
-      "weight": 9,
+      "weight": 15,
       "refType": "call"
     },
     {
@@ -2933,7 +2945,7 @@
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/tools",
-      "weight": 41,
+      "weight": 42,
       "refType": "call"
     },
     {
@@ -2963,13 +2975,13 @@
     {
       "from": "@wrongstack/techstack",
       "to": "@wrongstack/webui-server",
-      "weight": 53,
+      "weight": 54,
       "refType": "call"
     },
     {
       "from": "@wrongstack/techstack",
       "to": "wrongstack-monorepo",
-      "weight": 108,
+      "weight": 102,
       "refType": "call"
     },
     {
@@ -2999,7 +3011,7 @@
     {
       "from": "@wrongstack/telegram",
       "to": "@wrongstack/core",
-      "weight": 231,
+      "weight": 230,
       "refType": "call"
     },
     {
@@ -3035,19 +3047,19 @@
     {
       "from": "@wrongstack/telegram",
       "to": "@wrongstack/plugins",
-      "weight": 23,
+      "weight": 25,
       "refType": "type_ref"
     },
     {
       "from": "@wrongstack/telegram",
       "to": "@wrongstack/providers",
-      "weight": 2,
+      "weight": 5,
       "refType": "call"
     },
     {
       "from": "@wrongstack/telegram",
       "to": "@wrongstack/sage",
-      "weight": 2,
+      "weight": 5,
       "refType": "call"
     },
     {
@@ -3101,7 +3113,7 @@
     {
       "from": "@wrongstack/telegram",
       "to": "wrongstack-monorepo",
-      "weight": 45,
+      "weight": 42,
       "refType": "call"
     },
     {
@@ -3119,13 +3131,13 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/bench",
-      "weight": 251,
+      "weight": 254,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/cli",
-      "weight": 1467,
+      "weight": 1479,
       "refType": "call"
     },
     {
@@ -3137,7 +3149,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/desktop",
-      "weight": 478,
+      "weight": 486,
       "refType": "call"
     },
     {
@@ -3149,7 +3161,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/kanban",
-      "weight": 1022,
+      "weight": 1020,
       "refType": "call"
     },
     {
@@ -3173,7 +3185,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/plugins",
-      "weight": 139,
+      "weight": 140,
       "refType": "type_ref"
     },
     {
@@ -3185,7 +3197,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/providers",
-      "weight": 23,
+      "weight": 31,
       "refType": "call"
     },
     {
@@ -3251,7 +3263,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "@wrongstack/webui",
-      "weight": 156,
+      "weight": 157,
       "refType": "type_ref"
     },
     {
@@ -3269,7 +3281,7 @@
     {
       "from": "@wrongstack/tools",
       "to": "wrongstack-monorepo",
-      "weight": 544,
+      "weight": 535,
       "refType": "call"
     },
     {
@@ -3281,7 +3293,7 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/acp",
-      "weight": 88,
+      "weight": 87,
       "refType": "call"
     },
     {
@@ -3293,19 +3305,19 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/cli",
-      "weight": 1992,
+      "weight": 1988,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/core",
-      "weight": 1869,
+      "weight": 1851,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/desktop",
-      "weight": 587,
+      "weight": 583,
       "refType": "call"
     },
     {
@@ -3317,13 +3329,13 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/kanban",
-      "weight": 357,
+      "weight": 369,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/mcp",
-      "weight": 100,
+      "weight": 91,
       "refType": "call"
     },
     {
@@ -3347,7 +3359,7 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/providers",
-      "weight": 53,
+      "weight": 83,
       "refType": "call"
     },
     {
@@ -3401,13 +3413,13 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/tools",
-      "weight": 265,
+      "weight": 268,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/webui",
-      "weight": 218,
+      "weight": 216,
       "refType": "call"
     },
     {
@@ -3419,13 +3431,13 @@
     {
       "from": "@wrongstack/tui",
       "to": "@wrongstack/webui-server",
-      "weight": 91,
+      "weight": 89,
       "refType": "call"
     },
     {
       "from": "@wrongstack/tui",
       "to": "wrongstack-monorepo",
-      "weight": 402,
+      "weight": 369,
       "refType": "call"
     },
     {
@@ -3569,13 +3581,13 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/cli",
-      "weight": 2367,
+      "weight": 2362,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/core",
-      "weight": 1704,
+      "weight": 1676,
       "refType": "call"
     },
     {
@@ -3587,13 +3599,13 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/governance",
-      "weight": 201,
+      "weight": 200,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/kanban",
-      "weight": 533,
+      "weight": 535,
       "refType": "type_ref"
     },
     {
@@ -3611,8 +3623,8 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/plugins",
-      "weight": 8,
-      "refType": "import"
+      "weight": 13,
+      "refType": "call"
     },
     {
       "from": "@wrongstack/webui",
@@ -3623,7 +3635,7 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/providers",
-      "weight": 122,
+      "weight": 141,
       "refType": "call"
     },
     {
@@ -3641,7 +3653,7 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/sage",
-      "weight": 119,
+      "weight": 120,
       "refType": "call"
     },
     {
@@ -3671,13 +3683,13 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/telegram",
-      "weight": 101,
+      "weight": 100,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/tools",
-      "weight": 255,
+      "weight": 273,
       "refType": "call"
     },
     {
@@ -3695,7 +3707,7 @@
     {
       "from": "@wrongstack/webui",
       "to": "@wrongstack/webui-hq",
-      "weight": 248,
+      "weight": 251,
       "refType": "call"
     },
     {
@@ -3707,7 +3719,7 @@
     {
       "from": "@wrongstack/webui",
       "to": "wrongstack-monorepo",
-      "weight": 488,
+      "weight": 471,
       "refType": "call"
     },
     {
@@ -3731,19 +3743,19 @@
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/cli",
-      "weight": 182,
+      "weight": 197,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/core",
-      "weight": 562,
+      "weight": 581,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/desktop",
-      "weight": 79,
+      "weight": 86,
       "refType": "call"
     },
     {
@@ -3755,7 +3767,7 @@
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/kanban",
-      "weight": 19,
+      "weight": 20,
       "refType": "call"
     },
     {
@@ -3821,13 +3833,13 @@
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/tools",
-      "weight": 73,
+      "weight": 76,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/tui",
-      "weight": 41,
+      "weight": 43,
       "refType": "call"
     },
     {
@@ -3839,13 +3851,13 @@
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/webui",
-      "weight": 154,
+      "weight": 153,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-hq",
       "to": "@wrongstack/webui-server",
-      "weight": 25,
+      "weight": 27,
       "refType": "call"
     },
     {
@@ -3857,7 +3869,7 @@
     {
       "from": "@wrongstack/webui-hq",
       "to": "wrongstack-monorepo",
-      "weight": 80,
+      "weight": 81,
       "refType": "call"
     },
     {
@@ -3875,25 +3887,25 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/bench",
-      "weight": 197,
+      "weight": 198,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/cli",
-      "weight": 1771,
+      "weight": 1795,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/core",
-      "weight": 2586,
+      "weight": 2583,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/desktop",
-      "weight": 471,
+      "weight": 473,
       "refType": "call"
     },
     {
@@ -3905,13 +3917,13 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/kanban",
-      "weight": 516,
+      "weight": 521,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/mcp",
-      "weight": 432,
+      "weight": 441,
       "refType": "call"
     },
     {
@@ -3923,7 +3935,7 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/plugins",
-      "weight": 17,
+      "weight": 16,
       "refType": "call"
     },
     {
@@ -3935,7 +3947,7 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/providers",
-      "weight": 61,
+      "weight": 70,
       "refType": "call"
     },
     {
@@ -3983,7 +3995,7 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/tools",
-      "weight": 147,
+      "weight": 148,
       "refType": "call"
     },
     {
@@ -4001,13 +4013,13 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/webui",
-      "weight": 174,
+      "weight": 164,
       "refType": "call"
     },
     {
       "from": "@wrongstack/webui-server",
       "to": "@wrongstack/webui-hq",
-      "weight": 57,
+      "weight": 56,
       "refType": "call"
     },
     {
@@ -4019,7 +4031,7 @@
     {
       "from": "@wrongstack/webui-server",
       "to": "wrongstack-monorepo",
-      "weight": 186,
+      "weight": 176,
       "refType": "call"
     },
     {
@@ -4145,25 +4157,25 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/acp",
-      "weight": 32,
+      "weight": 31,
       "refType": "call"
     },
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/bench",
-      "weight": 92,
+      "weight": 93,
       "refType": "call"
     },
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/cli",
-      "weight": 350,
+      "weight": 355,
       "refType": "call"
     },
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/core",
-      "weight": 399,
+      "weight": 403,
       "refType": "call"
     },
     {
@@ -4181,7 +4193,7 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/kanban",
-      "weight": 96,
+      "weight": 93,
       "refType": "call"
     },
     {
@@ -4199,13 +4211,13 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/plugins",
-      "weight": 33,
+      "weight": 34,
       "refType": "call"
     },
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/providers",
-      "weight": 15,
+      "weight": 20,
       "refType": "call"
     },
     {
@@ -4253,7 +4265,7 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/tools",
-      "weight": 90,
+      "weight": 91,
       "refType": "call"
     },
     {
@@ -4265,7 +4277,7 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/webui",
-      "weight": 23,
+      "weight": 24,
       "refType": "call"
     },
     {
@@ -4277,7 +4289,7 @@
     {
       "from": "wrongstack-monorepo",
       "to": "@wrongstack/webui-server",
-      "weight": 155,
+      "weight": 156,
       "refType": "call"
     },
     {
@@ -4301,7 +4313,7 @@
     {
       "from": "wrongstack-website",
       "to": "@wrongstack/cli",
-      "weight": 33,
+      "weight": 34,
       "refType": "call"
     },
     {
@@ -4339,6 +4351,12 @@
       "to": "@wrongstack/plug-lsp",
       "weight": 1,
       "refType": "call"
+    },
+    {
+      "from": "wrongstack-website",
+      "to": "@wrongstack/plugins",
+      "weight": 1,
+      "refType": "type_ref"
     },
     {
       "from": "wrongstack-website",
@@ -4385,7 +4403,7 @@
     {
       "from": "wrongstack-website",
       "to": "@wrongstack/webui",
-      "weight": 71,
+      "weight": 70,
       "refType": "call"
     },
     {
@@ -4448,48 +4466,9 @@
       ]
     },
     {
-      "path": "packages/core/src/types/provider.ts",
-      "rank": 0.8635,
-      "inDeg": 1782,
-      "outDeg": 85,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "ReasoningEffort",
-          "kind": "type",
-          "line": 29
-        },
-        {
-          "name": "REASONING_EFFORT_LEVELS",
-          "kind": "const",
-          "line": 43
-        },
-        {
-          "name": "isReasoningEffort",
-          "kind": "function",
-          "line": 54
-        },
-        {
-          "name": "CacheTtl",
-          "kind": "type",
-          "line": 60
-        },
-        {
-          "name": "JsonSchemaSpec",
-          "kind": "interface",
-          "line": 76
-        },
-        {
-          "name": "ResponseFormat",
-          "kind": "type",
-          "line": 86
-        }
-      ]
-    },
-    {
       "path": "packages/acp/src/types/acp-v1.ts",
-      "rank": 0.8607,
-      "inDeg": 263,
+      "rank": 0.8616,
+      "inDeg": 264,
       "outDeg": 99,
       "package": "@wrongstack/acp",
       "symbols": [
@@ -4526,8 +4505,47 @@
       ]
     },
     {
+      "path": "packages/core/src/types/provider.ts",
+      "rank": 0.8612,
+      "inDeg": 1786,
+      "outDeg": 85,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "ReasoningEffort",
+          "kind": "type",
+          "line": 29
+        },
+        {
+          "name": "REASONING_EFFORT_LEVELS",
+          "kind": "const",
+          "line": 43
+        },
+        {
+          "name": "isReasoningEffort",
+          "kind": "function",
+          "line": 54
+        },
+        {
+          "name": "CacheTtl",
+          "kind": "type",
+          "line": 60
+        },
+        {
+          "name": "JsonSchemaSpec",
+          "kind": "interface",
+          "line": 76
+        },
+        {
+          "name": "ResponseFormat",
+          "kind": "type",
+          "line": 86
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/lib/ws-client-actions.ts",
-      "rank": 0.7183,
+      "rank": 0.7188,
       "inDeg": 102,
       "outDeg": 98,
       "package": "@wrongstack/webui",
@@ -4566,7 +4584,7 @@
     },
     {
       "path": "packages/sage/src/types.ts",
-      "rank": 0.6813,
+      "rank": 0.6817,
       "inDeg": 604,
       "outDeg": 91,
       "package": "@wrongstack/sage",
@@ -4605,7 +4623,7 @@
     },
     {
       "path": "packages/kanban/src/test-support-session.ts",
-      "rank": 0.679,
+      "rank": 0.6795,
       "inDeg": 52,
       "outDeg": 70,
       "package": "@wrongstack/kanban",
@@ -4644,7 +4662,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/writer.ts",
-      "rank": 0.6686,
+      "rank": 0.6691,
       "inDeg": 170,
       "outDeg": 252,
       "package": "@wrongstack/tools",
@@ -4683,8 +4701,8 @@
     },
     {
       "path": "packages/core/src/types/session.ts",
-      "rank": 0.6573,
-      "inDeg": 808,
+      "rank": 0.662,
+      "inDeg": 810,
       "outDeg": 39,
       "package": "@wrongstack/core",
       "symbols": [
@@ -4722,7 +4740,7 @@
     },
     {
       "path": "packages/webui/src/lib/ws-client-domain-methods.ts",
-      "rank": 0.6291,
+      "rank": 0.6295,
       "inDeg": 67,
       "outDeg": 77,
       "package": "@wrongstack/webui",
@@ -4761,7 +4779,7 @@
     },
     {
       "path": "packages/kanban/src/server/kanban-store.ts",
-      "rank": 0.6061,
+      "rank": 0.6064,
       "inDeg": 48,
       "outDeg": 66,
       "package": "@wrongstack/kanban",
@@ -4800,8 +4818,8 @@
     },
     {
       "path": "packages/core/src/hq/protocol/core.ts",
-      "rank": 0.6032,
-      "inDeg": 105,
+      "rank": 0.6038,
+      "inDeg": 107,
       "outDeg": 205,
       "package": "@wrongstack/core",
       "symbols": [
@@ -4839,7 +4857,7 @@
     },
     {
       "path": "packages/core/src/coordination/knowledge-graph.ts",
-      "rank": 0.5892,
+      "rank": 0.5878,
       "inDeg": 206,
       "outDeg": 121,
       "package": "@wrongstack/core",
@@ -4878,7 +4896,7 @@
     },
     {
       "path": "packages/webui/src/types/server-message.ts",
-      "rank": 0.5686,
+      "rank": 0.569,
       "inDeg": 0,
       "outDeg": 294,
       "package": "@wrongstack/webui",
@@ -4892,7 +4910,7 @@
     },
     {
       "path": "packages/mcp/src/client.ts",
-      "rank": 0.5496,
+      "rank": 0.5499,
       "inDeg": 66,
       "outDeg": 136,
       "package": "@wrongstack/mcp",
@@ -4930,47 +4948,8 @@
       ]
     },
     {
-      "path": "packages/webui-server/src/server/ws-payload-validation.ts",
-      "rank": 0.5125,
-      "inDeg": 181,
-      "outDeg": 130,
-      "package": "@wrongstack/webui-server",
-      "symbols": [
-        {
-          "name": "PayloadValidationResult",
-          "kind": "type",
-          "line": 3
-        },
-        {
-          "name": "isRecord",
-          "kind": "function",
-          "line": 5
-        },
-        {
-          "name": "clampLimit",
-          "kind": "function",
-          "line": 18
-        },
-        {
-          "name": "ModelSwitchPayload",
-          "kind": "interface",
-          "line": 28
-        },
-        {
-          "name": "validateModelSwitchPayload",
-          "kind": "function",
-          "line": 40
-        },
-        {
-          "name": "ModelFallbackChoicePayload",
-          "kind": "interface",
-          "line": 75
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/brain.ts",
-      "rank": 0.512,
+      "rank": 0.5156,
       "inDeg": 442,
       "outDeg": 85,
       "package": "@wrongstack/core",
@@ -5008,8 +4987,47 @@
       ]
     },
     {
+      "path": "packages/webui-server/src/server/ws-payload-validation.ts",
+      "rank": 0.5128,
+      "inDeg": 181,
+      "outDeg": 130,
+      "package": "@wrongstack/webui-server",
+      "symbols": [
+        {
+          "name": "PayloadValidationResult",
+          "kind": "type",
+          "line": 3
+        },
+        {
+          "name": "isRecord",
+          "kind": "function",
+          "line": 5
+        },
+        {
+          "name": "clampLimit",
+          "kind": "function",
+          "line": 18
+        },
+        {
+          "name": "ModelSwitchPayload",
+          "kind": "interface",
+          "line": 28
+        },
+        {
+          "name": "validateModelSwitchPayload",
+          "kind": "function",
+          "line": 40
+        },
+        {
+          "name": "ModelFallbackChoicePayload",
+          "kind": "interface",
+          "line": 75
+        }
+      ]
+    },
+    {
       "path": "packages/providers/src/openai-codex.ts",
-      "rank": 0.498,
+      "rank": 0.4983,
       "inDeg": 82,
       "outDeg": 242,
       "package": "@wrongstack/providers",
@@ -5048,7 +5066,7 @@
     },
     {
       "path": "packages/mcp/src/authorization.ts",
-      "rank": 0.4907,
+      "rank": 0.491,
       "inDeg": 209,
       "outDeg": 167,
       "package": "@wrongstack/mcp",
@@ -5087,7 +5105,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/schema.ts",
-      "rank": 0.4738,
+      "rank": 0.4741,
       "inDeg": 424,
       "outDeg": 21,
       "package": "@wrongstack/tools",
@@ -5126,8 +5144,8 @@
     },
     {
       "path": "packages/core/src/types/multi-agent.ts",
-      "rank": 0.4631,
-      "inDeg": 539,
+      "rank": 0.4624,
+      "inDeg": 541,
       "outDeg": 36,
       "package": "@wrongstack/core",
       "symbols": [
@@ -5165,7 +5183,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/background-indexer.ts",
-      "rank": 0.4492,
+      "rank": 0.4495,
       "inDeg": 199,
       "outDeg": 210,
       "package": "@wrongstack/tools",
@@ -5204,7 +5222,7 @@
     },
     {
       "path": "packages/techstack/src/types.ts",
-      "rank": 0.4378,
+      "rank": 0.4375,
       "inDeg": 460,
       "outDeg": 16,
       "package": "@wrongstack/techstack",
@@ -5243,7 +5261,7 @@
     },
     {
       "path": "packages/core/src/security/yolo-risk.ts",
-      "rank": 0.4369,
+      "rank": 0.4371,
       "inDeg": 160,
       "outDeg": 108,
       "package": "@wrongstack/core",
@@ -5282,7 +5300,7 @@
     },
     {
       "path": "packages/tools/src/session-kanban.ts",
-      "rank": 0.4305,
+      "rank": 0.4308,
       "inDeg": 148,
       "outDeg": 243,
       "package": "@wrongstack/tools",
@@ -5321,7 +5339,7 @@
     },
     {
       "path": "packages/sage/src/sqlite-store.ts",
-      "rank": 0.43,
+      "rank": 0.4291,
       "inDeg": 200,
       "outDeg": 236,
       "package": "@wrongstack/sage",
@@ -5360,7 +5378,7 @@
     },
     {
       "path": "packages/tools/src/languages/types.ts",
-      "rank": 0.4264,
+      "rank": 0.4262,
       "inDeg": 302,
       "outDeg": 42,
       "package": "@wrongstack/tools",
@@ -5399,7 +5417,7 @@
     },
     {
       "path": "apps/desktop/src/main/runtime-manager.ts",
-      "rank": 0.4109,
+      "rank": 0.4112,
       "inDeg": 79,
       "outDeg": 245,
       "package": "@wrongstack/desktop",
@@ -5438,7 +5456,7 @@
     },
     {
       "path": "packages/tools/src/browser/tools.ts",
-      "rank": 0.4029,
+      "rank": 0.4031,
       "inDeg": 68,
       "outDeg": 153,
       "package": "@wrongstack/tools",
@@ -5477,7 +5495,7 @@
     },
     {
       "path": "packages/governance/src/capability-grant.ts",
-      "rank": 0.4023,
+      "rank": 0.4024,
       "inDeg": 158,
       "outDeg": 67,
       "package": "@wrongstack/governance",
@@ -5516,7 +5534,7 @@
     },
     {
       "path": "packages/kanban/src/client-domain.ts",
-      "rank": 0.4019,
+      "rank": 0.4022,
       "inDeg": 1431,
       "outDeg": 93,
       "package": "@wrongstack/kanban",
@@ -5555,7 +5573,7 @@
     },
     {
       "path": "packages/governance/src/event-store.ts",
-      "rank": 0.4002,
+      "rank": 0.4005,
       "inDeg": 104,
       "outDeg": 134,
       "package": "@wrongstack/governance",
@@ -5594,7 +5612,7 @@
     },
     {
       "path": "packages/core/src/storage/session-store.ts",
-      "rank": 0.3951,
+      "rank": 0.3952,
       "inDeg": 80,
       "outDeg": 190,
       "package": "@wrongstack/core",
@@ -5633,7 +5651,7 @@
     },
     {
       "path": "packages/requirement-intake/src/types.ts",
-      "rank": 0.3924,
+      "rank": 0.3927,
       "inDeg": 204,
       "outDeg": 46,
       "package": "@wrongstack/requirement-intake",
@@ -5671,9 +5689,48 @@
       ]
     },
     {
+      "path": "packages/core/src/coordination/mailbox-types.ts",
+      "rank": 0.3916,
+      "inDeg": 303,
+      "outDeg": 60,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "RegisteredAgent",
+          "kind": "interface",
+          "line": 52
+        },
+        {
+          "name": "MailboxAgentStatus",
+          "kind": "interface",
+          "line": 68
+        },
+        {
+          "name": "MailboxQuery",
+          "kind": "interface",
+          "line": 85
+        },
+        {
+          "name": "MailboxSendInput",
+          "kind": "interface",
+          "line": 113
+        },
+        {
+          "name": "AckRecord",
+          "kind": "interface",
+          "line": 128
+        },
+        {
+          "name": "MailboxAckInput",
+          "kind": "interface",
+          "line": 141
+        }
+      ]
+    },
+    {
       "path": "packages/kanban/src/storage.ts",
-      "rank": 0.3903,
-      "inDeg": 183,
+      "rank": 0.3901,
+      "inDeg": 185,
       "outDeg": 199,
       "package": "@wrongstack/kanban",
       "symbols": [
@@ -5711,8 +5768,8 @@
     },
     {
       "path": "packages/core/src/types/errors.ts",
-      "rank": 0.3859,
-      "inDeg": 466,
+      "rank": 0.386,
+      "inDeg": 469,
       "outDeg": 62,
       "package": "@wrongstack/core",
       "symbols": [
@@ -5749,8 +5806,47 @@
       ]
     },
     {
+      "path": "packages/plugins/src/todo-tracker/index.ts",
+      "rank": 0.3857,
+      "inDeg": 77,
+      "outDeg": 161,
+      "package": "@wrongstack/plugins",
+      "symbols": [
+        {
+          "name": "Status",
+          "kind": "type",
+          "line": 53
+        },
+        {
+          "name": "Priority",
+          "kind": "type",
+          "line": 54
+        },
+        {
+          "name": "STATUSES",
+          "kind": "const",
+          "line": 56
+        },
+        {
+          "name": "PRIORITIES",
+          "kind": "const",
+          "line": 57
+        },
+        {
+          "name": "TrackedItem",
+          "kind": "interface",
+          "line": 59
+        },
+        {
+          "name": "TodoTrackerFile",
+          "kind": "interface",
+          "line": 74
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/stores/chat-lanes.ts",
-      "rank": 0.3832,
+      "rank": 0.3835,
       "inDeg": 426,
       "outDeg": 146,
       "package": "@wrongstack/webui",
@@ -5789,8 +5885,8 @@
     },
     {
       "path": "packages/core/src/core/context.ts",
-      "rank": 0.3817,
-      "inDeg": 877,
+      "rank": 0.3824,
+      "inDeg": 879,
       "outDeg": 87,
       "package": "@wrongstack/core",
       "symbols": [
@@ -5827,47 +5923,8 @@
       ]
     },
     {
-      "path": "packages/core/src/coordination/mailbox-types.ts",
-      "rank": 0.3809,
-      "inDeg": 275,
-      "outDeg": 60,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "RegisteredAgent",
-          "kind": "interface",
-          "line": 52
-        },
-        {
-          "name": "MailboxAgentStatus",
-          "kind": "interface",
-          "line": 68
-        },
-        {
-          "name": "MailboxQuery",
-          "kind": "interface",
-          "line": 85
-        },
-        {
-          "name": "MailboxSendInput",
-          "kind": "interface",
-          "line": 113
-        },
-        {
-          "name": "AckRecord",
-          "kind": "interface",
-          "line": 128
-        },
-        {
-          "name": "MailboxAckInput",
-          "kind": "interface",
-          "line": 141
-        }
-      ]
-    },
-    {
       "path": "packages/webui/src/types/protocol-core.ts",
-      "rank": 0.3803,
+      "rank": 0.3806,
       "inDeg": 149,
       "outDeg": 37,
       "package": "@wrongstack/webui",
@@ -5905,47 +5962,8 @@
       ]
     },
     {
-      "path": "packages/plugins/src/todo-tracker/index.ts",
-      "rank": 0.3772,
-      "inDeg": 74,
-      "outDeg": 161,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "Status",
-          "kind": "type",
-          "line": 53
-        },
-        {
-          "name": "Priority",
-          "kind": "type",
-          "line": 54
-        },
-        {
-          "name": "STATUSES",
-          "kind": "const",
-          "line": 56
-        },
-        {
-          "name": "PRIORITIES",
-          "kind": "const",
-          "line": 57
-        },
-        {
-          "name": "TrackedItem",
-          "kind": "interface",
-          "line": 59
-        },
-        {
-          "name": "TodoTrackerFile",
-          "kind": "interface",
-          "line": 74
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/chronicle/journal.ts",
-      "rank": 0.3772,
+      "rank": 0.3774,
       "inDeg": 108,
       "outDeg": 134,
       "package": "@wrongstack/core",
@@ -5983,47 +6001,8 @@
       ]
     },
     {
-      "path": "packages/kanban/src/types-operations.ts",
-      "rank": 0.3667,
-      "inDeg": 241,
-      "outDeg": 139,
-      "package": "@wrongstack/kanban",
-      "symbols": [
-        {
-          "name": "CreateKanbanBoardInput",
-          "kind": "interface",
-          "line": 48
-        },
-        {
-          "name": "UpdateKanbanBoardInput",
-          "kind": "interface",
-          "line": 69
-        },
-        {
-          "name": "DuplicateKanbanBoardInput",
-          "kind": "interface",
-          "line": 88
-        },
-        {
-          "name": "CreateKanbanColumnInput",
-          "kind": "interface",
-          "line": 98
-        },
-        {
-          "name": "UpdateKanbanColumnInput",
-          "kind": "interface",
-          "line": 107
-        },
-        {
-          "name": "RemoveKanbanColumnOptions",
-          "kind": "interface",
-          "line": 115
-        }
-      ]
-    },
-    {
       "path": "packages/telegram/src/api-client.ts",
-      "rank": 0.3662,
+      "rank": 0.3676,
       "inDeg": 182,
       "outDeg": 65,
       "package": "@wrongstack/telegram",
@@ -6061,8 +6040,47 @@
       ]
     },
     {
+      "path": "packages/kanban/src/types-operations.ts",
+      "rank": 0.3668,
+      "inDeg": 241,
+      "outDeg": 139,
+      "package": "@wrongstack/kanban",
+      "symbols": [
+        {
+          "name": "CreateKanbanBoardInput",
+          "kind": "interface",
+          "line": 48
+        },
+        {
+          "name": "UpdateKanbanBoardInput",
+          "kind": "interface",
+          "line": 69
+        },
+        {
+          "name": "DuplicateKanbanBoardInput",
+          "kind": "interface",
+          "line": 88
+        },
+        {
+          "name": "CreateKanbanColumnInput",
+          "kind": "interface",
+          "line": 98
+        },
+        {
+          "name": "UpdateKanbanColumnInput",
+          "kind": "interface",
+          "line": 107
+        },
+        {
+          "name": "RemoveKanbanColumnOptions",
+          "kind": "interface",
+          "line": 115
+        }
+      ]
+    },
+    {
       "path": "packages/governance/src/daemon-metadata.ts",
-      "rank": 0.3649,
+      "rank": 0.3651,
       "inDeg": 165,
       "outDeg": 144,
       "package": "@wrongstack/governance",
@@ -6101,8 +6119,8 @@
     },
     {
       "path": "packages/core/src/chronicle/project-server.ts",
-      "rank": 0.3623,
-      "inDeg": 442,
+      "rank": 0.3626,
+      "inDeg": 448,
       "outDeg": 219,
       "package": "@wrongstack/core",
       "symbols": [
@@ -6140,7 +6158,7 @@
     },
     {
       "path": "packages/mcp/src/registry.ts",
-      "rank": 0.3596,
+      "rank": 0.3598,
       "inDeg": 101,
       "outDeg": 173,
       "package": "@wrongstack/mcp",
@@ -6179,7 +6197,7 @@
     },
     {
       "path": "packages/core/src/coordination/director.ts",
-      "rank": 0.3581,
+      "rank": 0.358,
       "inDeg": 4,
       "outDeg": 175,
       "package": "@wrongstack/core",
@@ -6217,8 +6235,47 @@
       ]
     },
     {
+      "path": "packages/acp/src/client/acp-session.ts",
+      "rank": 0.3578,
+      "inDeg": 54,
+      "outDeg": 168,
+      "package": "@wrongstack/acp",
+      "symbols": [
+        {
+          "name": "PendingRequest",
+          "kind": "interface",
+          "line": 81
+        },
+        {
+          "name": "State",
+          "kind": "type",
+          "line": 89
+        },
+        {
+          "name": "LATE_CANCEL_SEND_TIMEOUT_MS",
+          "kind": "const",
+          "line": 94
+        },
+        {
+          "name": "ACPSession",
+          "kind": "class",
+          "line": 96
+        },
+        {
+          "name": "transport",
+          "kind": "property",
+          "line": 97
+        },
+        {
+          "name": "fileServer",
+          "kind": "property",
+          "line": 98
+        }
+      ]
+    },
+    {
       "path": "packages/requirement-intake/src/service.ts",
-      "rank": 0.3455,
+      "rank": 0.3457,
       "inDeg": 69,
       "outDeg": 194,
       "package": "@wrongstack/requirement-intake",
@@ -6257,7 +6314,7 @@
     },
     {
       "path": "packages/core/src/utils/tool-output-serializer.ts",
-      "rank": 0.3413,
+      "rank": 0.3416,
       "inDeg": 67,
       "outDeg": 112,
       "package": "@wrongstack/core",
@@ -6295,47 +6352,8 @@
       ]
     },
     {
-      "path": "packages/acp/src/client/acp-session.ts",
-      "rank": 0.3373,
-      "inDeg": 20,
-      "outDeg": 161,
-      "package": "@wrongstack/acp",
-      "symbols": [
-        {
-          "name": "PendingRequest",
-          "kind": "interface",
-          "line": 81
-        },
-        {
-          "name": "State",
-          "kind": "type",
-          "line": 89
-        },
-        {
-          "name": "ACPSession",
-          "kind": "class",
-          "line": 91
-        },
-        {
-          "name": "transport",
-          "kind": "property",
-          "line": 92
-        },
-        {
-          "name": "fileServer",
-          "kind": "property",
-          "line": 93
-        },
-        {
-          "name": "terminalServer",
-          "kind": "property",
-          "line": 94
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/execution/prompt-enhancer.ts",
-      "rank": 0.3366,
+      "rank": 0.3368,
       "inDeg": 94,
       "outDeg": 123,
       "package": "@wrongstack/core",
@@ -6374,8 +6392,8 @@
     },
     {
       "path": "scripts/release-check-matrix.mjs",
-      "rank": 0.3348,
-      "inDeg": 1228,
+      "rank": 0.3349,
+      "inDeg": 1232,
       "outDeg": 97,
       "package": "wrongstack-monorepo",
       "symbols": [
@@ -6413,7 +6431,7 @@
     },
     {
       "path": "packages/core/src/coordination/sqlite-mailbox.ts",
-      "rank": 0.3318,
+      "rank": 0.3329,
       "inDeg": 45,
       "outDeg": 204,
       "package": "@wrongstack/core",
@@ -6452,7 +6470,7 @@
     },
     {
       "path": "apps/desktop/src/shared/types.ts",
-      "rank": 0.3277,
+      "rank": 0.3279,
       "inDeg": 212,
       "outDeg": 17,
       "package": "@wrongstack/desktop",
@@ -6491,7 +6509,7 @@
     },
     {
       "path": "packages/plugins/src/accessibility-auditor/index.ts",
-      "rank": 0.3273,
+      "rank": 0.3275,
       "inDeg": 36,
       "outDeg": 101,
       "package": "@wrongstack/plugins",
@@ -6530,7 +6548,7 @@
     },
     {
       "path": "packages/requirement-intake/src/validation.ts",
-      "rank": 0.3271,
+      "rank": 0.3273,
       "inDeg": 62,
       "outDeg": 69,
       "package": "@wrongstack/requirement-intake",
@@ -6568,8 +6586,47 @@
       ]
     },
     {
+      "path": "packages/core/src/coordination/fleet-bus.ts",
+      "rank": 0.3237,
+      "inDeg": 245,
+      "outDeg": 37,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "FleetEvent",
+          "kind": "interface",
+          "line": 12
+        },
+        {
+          "name": "FleetHandler",
+          "kind": "type",
+          "line": 20
+        },
+        {
+          "name": "FleetBus",
+          "kind": "class",
+          "line": 33
+        },
+        {
+          "name": "byId",
+          "kind": "property",
+          "line": 34
+        },
+        {
+          "name": "byType",
+          "kind": "property",
+          "line": 35
+        },
+        {
+          "name": "any",
+          "kind": "property",
+          "line": 36
+        }
+      ]
+    },
+    {
       "path": "packages/governance/src/runtime-compatibility.ts",
-      "rank": 0.3226,
+      "rank": 0.3228,
       "inDeg": 84,
       "outDeg": 142,
       "package": "@wrongstack/governance",
@@ -6608,7 +6665,7 @@
     },
     {
       "path": "packages/requirement-intake/src/constants.ts",
-      "rank": 0.3221,
+      "rank": 0.3223,
       "inDeg": 134,
       "outDeg": 1,
       "package": "@wrongstack/requirement-intake",
@@ -6647,7 +6704,7 @@
     },
     {
       "path": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "rank": 0.3214,
+      "rank": 0.3216,
       "inDeg": 59,
       "outDeg": 132,
       "package": "@wrongstack/core",
@@ -6685,47 +6742,8 @@
       ]
     },
     {
-      "path": "packages/core/src/coordination/fleet-bus.ts",
-      "rank": 0.3206,
-      "inDeg": 245,
-      "outDeg": 37,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "FleetEvent",
-          "kind": "interface",
-          "line": 12
-        },
-        {
-          "name": "FleetHandler",
-          "kind": "type",
-          "line": 20
-        },
-        {
-          "name": "FleetBus",
-          "kind": "class",
-          "line": 33
-        },
-        {
-          "name": "byId",
-          "kind": "property",
-          "line": 34
-        },
-        {
-          "name": "byType",
-          "kind": "property",
-          "line": 35
-        },
-        {
-          "name": "any",
-          "kind": "property",
-          "line": 36
-        }
-      ]
-    },
-    {
       "path": "packages/tools/src/codebase-index/project-server-client.ts",
-      "rank": 0.3196,
+      "rank": 0.3199,
       "inDeg": 32,
       "outDeg": 175,
       "package": "@wrongstack/tools",
@@ -6764,8 +6782,8 @@
     },
     {
       "path": "packages/acp/src/types/acp-messages.ts",
-      "rank": 0.3154,
-      "inDeg": 336,
+      "rank": 0.3162,
+      "inDeg": 337,
       "outDeg": 9,
       "package": "@wrongstack/acp",
       "symbols": [
@@ -6803,7 +6821,7 @@
     },
     {
       "path": "packages/core/src/coordination/task-dag.ts",
-      "rank": 0.3153,
+      "rank": 0.3155,
       "inDeg": 42,
       "outDeg": 61,
       "package": "@wrongstack/core",
@@ -6842,7 +6860,7 @@
     },
     {
       "path": "packages/core/src/security/trust-boundary.ts",
-      "rank": 0.3104,
+      "rank": 0.3106,
       "inDeg": 196,
       "outDeg": 71,
       "package": "@wrongstack/core",
@@ -6881,7 +6899,7 @@
     },
     {
       "path": "packages/acp/src/agent/stdio-transport.ts",
-      "rank": 0.309,
+      "rank": 0.3091,
       "inDeg": 39,
       "outDeg": 68,
       "package": "@wrongstack/acp",
@@ -6920,7 +6938,7 @@
     },
     {
       "path": "packages/governance/src/protocol-decoder.ts",
-      "rank": 0.3083,
+      "rank": 0.3085,
       "inDeg": 157,
       "outDeg": 155,
       "package": "@wrongstack/governance",
@@ -6958,8 +6976,47 @@
       ]
     },
     {
+      "path": "packages/core/src/utils/context-evidence.ts",
+      "rank": 0.3067,
+      "inDeg": 124,
+      "outDeg": 159,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "MAX_TOOL_CALLS",
+          "kind": "const",
+          "line": 13
+        },
+        {
+          "name": "MAX_FACTS",
+          "kind": "const",
+          "line": 14
+        },
+        {
+          "name": "MAX_ERRORS",
+          "kind": "const",
+          "line": 15
+        },
+        {
+          "name": "MAX_DIGEST_CHARS",
+          "kind": "const",
+          "line": 16
+        },
+        {
+          "name": "MAX_RECENT_USER_TURNS",
+          "kind": "const",
+          "line": 17
+        },
+        {
+          "name": "MAX_USER_TURN_CHARS",
+          "kind": "const",
+          "line": 18
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/components/codemap-model.ts",
-      "rank": 0.3063,
+      "rank": 0.3065,
       "inDeg": 165,
       "outDeg": 114,
       "package": "@wrongstack/webui",
@@ -6997,47 +7054,8 @@
       ]
     },
     {
-      "path": "packages/core/src/utils/context-evidence.ts",
-      "rank": 0.3063,
-      "inDeg": 122,
-      "outDeg": 159,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "MAX_TOOL_CALLS",
-          "kind": "const",
-          "line": 13
-        },
-        {
-          "name": "MAX_FACTS",
-          "kind": "const",
-          "line": 14
-        },
-        {
-          "name": "MAX_ERRORS",
-          "kind": "const",
-          "line": 15
-        },
-        {
-          "name": "MAX_DIGEST_CHARS",
-          "kind": "const",
-          "line": 16
-        },
-        {
-          "name": "MAX_RECENT_USER_TURNS",
-          "kind": "const",
-          "line": 17
-        },
-        {
-          "name": "MAX_USER_TURN_CHARS",
-          "kind": "const",
-          "line": 18
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/wiring/proxy-rewrite.ts",
-      "rank": 0.3054,
+      "rank": 0.3055,
       "inDeg": 160,
       "outDeg": 51,
       "package": "@wrongstack/core",
@@ -7076,8 +7094,8 @@
     },
     {
       "path": "packages/core/src/coordination/subagent-budget.ts",
-      "rank": 0.3041,
-      "inDeg": 213,
+      "rank": 0.3042,
+      "inDeg": 214,
       "outDeg": 60,
       "package": "@wrongstack/core",
       "symbols": [
@@ -7115,8 +7133,8 @@
     },
     {
       "path": "packages/kanban/src/server/project-server.ts",
-      "rank": 0.3039,
-      "inDeg": 36,
+      "rank": 0.3025,
+      "inDeg": 44,
       "outDeg": 149,
       "package": "@wrongstack/kanban",
       "symbols": [
@@ -7153,47 +7171,8 @@
       ]
     },
     {
-      "path": "packages/kanban/src/server/protocol.ts",
-      "rank": 0.3018,
-      "inDeg": 125,
-      "outDeg": 27,
-      "package": "@wrongstack/kanban",
-      "symbols": [
-        {
-          "name": "KANBAN_PROJECT_SERVER_PROTOCOL_VERSION",
-          "kind": "const",
-          "line": 21
-        },
-        {
-          "name": "KanbanDomainWireValue",
-          "kind": "type",
-          "line": 23
-        },
-        {
-          "name": "encodeKanbanDomainValue",
-          "kind": "function",
-          "line": 40
-        },
-        {
-          "name": "encodeDomainValue",
-          "kind": "function",
-          "line": 44
-        },
-        {
-          "name": "decodeKanbanDomainValue",
-          "kind": "function",
-          "line": 86
-        },
-        {
-          "name": "KanbanProjectServerInfo",
-          "kind": "interface",
-          "line": 156
-        }
-      ]
-    },
-    {
       "path": "packages/providers/src/index.ts",
-      "rank": 0.3006,
+      "rank": 0.301,
       "inDeg": 34,
       "outDeg": 248,
       "package": "@wrongstack/providers",
@@ -7231,47 +7210,8 @@
       ]
     },
     {
-      "path": "packages/sage/src/store-helpers.ts",
-      "rank": 0.2997,
-      "inDeg": 126,
-      "outDeg": 108,
-      "package": "@wrongstack/sage",
-      "symbols": [
-        {
-          "name": "MAX_MEMORY_TEXT_CHARS",
-          "kind": "const",
-          "line": 20
-        },
-        {
-          "name": "MAX_MEMORY_METADATA_ITEMS",
-          "kind": "const",
-          "line": 21
-        },
-        {
-          "name": "VALID_SCOPES",
-          "kind": "const",
-          "line": 23
-        },
-        {
-          "name": "VALID_KINDS",
-          "kind": "const",
-          "line": 24
-        },
-        {
-          "name": "VALID_ANCHOR_TYPES",
-          "kind": "const",
-          "line": 46
-        },
-        {
-          "name": "AUDIENCE_KEYS",
-          "kind": "const",
-          "line": 57
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/remote-mailbox.ts",
-      "rank": 0.2996,
+      "rank": 0.3005,
       "inDeg": 171,
       "outDeg": 110,
       "package": "@wrongstack/core",
@@ -7309,8 +7249,86 @@
       ]
     },
     {
+      "path": "packages/kanban/src/server/protocol.ts",
+      "rank": 0.3003,
+      "inDeg": 125,
+      "outDeg": 27,
+      "package": "@wrongstack/kanban",
+      "symbols": [
+        {
+          "name": "KANBAN_PROJECT_SERVER_PROTOCOL_VERSION",
+          "kind": "const",
+          "line": 21
+        },
+        {
+          "name": "KanbanDomainWireValue",
+          "kind": "type",
+          "line": 23
+        },
+        {
+          "name": "encodeKanbanDomainValue",
+          "kind": "function",
+          "line": 40
+        },
+        {
+          "name": "encodeDomainValue",
+          "kind": "function",
+          "line": 44
+        },
+        {
+          "name": "decodeKanbanDomainValue",
+          "kind": "function",
+          "line": 86
+        },
+        {
+          "name": "KanbanProjectServerInfo",
+          "kind": "interface",
+          "line": 156
+        }
+      ]
+    },
+    {
+      "path": "packages/sage/src/store-helpers.ts",
+      "rank": 0.2999,
+      "inDeg": 126,
+      "outDeg": 108,
+      "package": "@wrongstack/sage",
+      "symbols": [
+        {
+          "name": "MAX_MEMORY_TEXT_CHARS",
+          "kind": "const",
+          "line": 20
+        },
+        {
+          "name": "MAX_MEMORY_METADATA_ITEMS",
+          "kind": "const",
+          "line": 21
+        },
+        {
+          "name": "VALID_SCOPES",
+          "kind": "const",
+          "line": 23
+        },
+        {
+          "name": "VALID_KINDS",
+          "kind": "const",
+          "line": 24
+        },
+        {
+          "name": "VALID_ANCHOR_TYPES",
+          "kind": "const",
+          "line": 46
+        },
+        {
+          "name": "AUDIENCE_KEYS",
+          "kind": "const",
+          "line": 57
+        }
+      ]
+    },
+    {
       "path": "packages/bench/src/types.ts",
-      "rank": 0.2965,
+      "rank": 0.2967,
       "inDeg": 469,
       "outDeg": 20,
       "package": "@wrongstack/bench",
@@ -7348,47 +7366,47 @@
       ]
     },
     {
-      "path": "scripts/bench.mjs",
-      "rank": 0.2943,
-      "inDeg": 71,
-      "outDeg": 82,
-      "package": "wrongstack-monorepo",
+      "path": "packages/primitives/src/regex-ambiguity.ts",
+      "rank": 0.2955,
+      "inDeg": 215,
+      "outDeg": 102,
+      "package": "@wrongstack/primitives",
       "symbols": [
         {
-          "name": "median",
-          "kind": "function",
-          "line": 33
+          "name": "CharSet",
+          "kind": "type",
+          "line": 52
         },
         {
-          "name": "ITER",
+          "name": "MAX_CP",
           "kind": "const",
-          "line": 39
+          "line": 53
         },
         {
-          "name": "WARM",
-          "kind": "const",
-          "line": 40
-        },
-        {
-          "name": "bench",
+          "name": "complementOf",
           "kind": "function",
-          "line": 42
+          "line": 55
         },
         {
-          "name": "hline",
+          "name": "intersect",
           "kind": "function",
-          "line": 58
+          "line": 65
         },
         {
-          "name": "PASS",
-          "kind": "const",
-          "line": 63
+          "name": "anyMember",
+          "kind": "function",
+          "line": 78
+        },
+        {
+          "name": "freezeSet",
+          "kind": "function",
+          "line": 90
         }
       ]
     },
     {
       "path": "packages/governance/src/credential-lease-controller.ts",
-      "rank": 0.2942,
+      "rank": 0.2944,
       "inDeg": 41,
       "outDeg": 50,
       "package": "@wrongstack/governance",
@@ -7426,47 +7444,47 @@
       ]
     },
     {
-      "path": "packages/primitives/src/regex-ambiguity.ts",
-      "rank": 0.2913,
-      "inDeg": 214,
-      "outDeg": 102,
-      "package": "@wrongstack/primitives",
+      "path": "scripts/bench.mjs",
+      "rank": 0.2916,
+      "inDeg": 35,
+      "outDeg": 82,
+      "package": "wrongstack-monorepo",
       "symbols": [
         {
-          "name": "CharSet",
-          "kind": "type",
-          "line": 52
+          "name": "median",
+          "kind": "function",
+          "line": 33
         },
         {
-          "name": "MAX_CP",
+          "name": "ITER",
           "kind": "const",
-          "line": 53
+          "line": 39
         },
         {
-          "name": "complementOf",
-          "kind": "function",
-          "line": 55
+          "name": "WARM",
+          "kind": "const",
+          "line": 40
         },
         {
-          "name": "intersect",
+          "name": "bench",
           "kind": "function",
-          "line": 65
+          "line": 42
         },
         {
-          "name": "anyMember",
+          "name": "hline",
           "kind": "function",
-          "line": 78
+          "line": 58
         },
         {
-          "name": "freezeSet",
-          "kind": "function",
-          "line": 90
+          "name": "PASS",
+          "kind": "const",
+          "line": 63
         }
       ]
     },
     {
       "path": "packages/mcp/src/token-store.ts",
-      "rank": 0.2894,
+      "rank": 0.2896,
       "inDeg": 69,
       "outDeg": 107,
       "package": "@wrongstack/mcp",
@@ -7505,7 +7523,7 @@
     },
     {
       "path": "packages/core/src/types/council.ts",
-      "rank": 0.2881,
+      "rank": 0.2883,
       "inDeg": 186,
       "outDeg": 14,
       "package": "@wrongstack/core",
@@ -7544,7 +7562,7 @@
     },
     {
       "path": "packages/core/src/chronicle/types.ts",
-      "rank": 0.2848,
+      "rank": 0.2849,
       "inDeg": 221,
       "outDeg": 6,
       "package": "@wrongstack/core",
@@ -7583,7 +7601,7 @@
     },
     {
       "path": "packages/tools/src/process-registry.ts",
-      "rank": 0.2837,
+      "rank": 0.2838,
       "inDeg": 144,
       "outDeg": 54,
       "package": "@wrongstack/tools",
@@ -7622,7 +7640,7 @@
     },
     {
       "path": "packages/cli/src/tuneup.ts",
-      "rank": 0.2822,
+      "rank": 0.2824,
       "inDeg": 116,
       "outDeg": 113,
       "package": "@wrongstack/cli",
@@ -7661,7 +7679,7 @@
     },
     {
       "path": "packages/governance/src/plan-version.ts",
-      "rank": 0.2809,
+      "rank": 0.2811,
       "inDeg": 80,
       "outDeg": 78,
       "package": "@wrongstack/governance",
@@ -7700,7 +7718,7 @@
     },
     {
       "path": "packages/core/src/chronicle/sqlite-journal.ts",
-      "rank": 0.2808,
+      "rank": 0.281,
       "inDeg": 56,
       "outDeg": 98,
       "package": "@wrongstack/core",
@@ -7739,7 +7757,7 @@
     },
     {
       "path": "scripts/lib/architecture-health.mjs",
-      "rank": 0.2777,
+      "rank": 0.2779,
       "inDeg": 24,
       "outDeg": 132,
       "package": "wrongstack-monorepo",
@@ -7778,7 +7796,7 @@
     },
     {
       "path": "packages/webui/src/types/runtime.ts",
-      "rank": 0.2773,
+      "rank": 0.2775,
       "inDeg": 71,
       "outDeg": 45,
       "package": "@wrongstack/webui",
@@ -7817,8 +7835,8 @@
     },
     {
       "path": "packages/webui/src/stores/session-lanes.ts",
-      "rank": 0.2773,
-      "inDeg": 423,
+      "rank": 0.2774,
+      "inDeg": 424,
       "outDeg": 76,
       "package": "@wrongstack/webui",
       "symbols": [
@@ -7856,7 +7874,7 @@
     },
     {
       "path": "packages/plugins/src/prompt-firewall/index.ts",
-      "rank": 0.2762,
+      "rank": 0.2763,
       "inDeg": 50,
       "outDeg": 113,
       "package": "@wrongstack/plugins",
@@ -7895,7 +7913,7 @@
     },
     {
       "path": "packages/core/src/coordination/delegation/run-delegation.ts",
-      "rank": 0.275,
+      "rank": 0.2763,
       "inDeg": 108,
       "outDeg": 151,
       "package": "@wrongstack/core",
@@ -7933,86 +7951,8 @@
       ]
     },
     {
-      "path": "packages/core/src/types/plugin.ts",
-      "rank": 0.2744,
-      "inDeg": 268,
-      "outDeg": 80,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "ToolRegistryView",
-          "kind": "interface",
-          "line": 24
-        },
-        {
-          "name": "ProviderFactory",
-          "kind": "interface",
-          "line": 33
-        },
-        {
-          "name": "ProviderRegistryView",
-          "kind": "interface",
-          "line": 39
-        },
-        {
-          "name": "ProviderAuthRegistryView",
-          "kind": "interface",
-          "line": 46
-        },
-        {
-          "name": "MCPRegistryView",
-          "kind": "interface",
-          "line": 52
-        },
-        {
-          "name": "SlashCommandRegistryView",
-          "kind": "interface",
-          "line": 59
-        }
-      ]
-    },
-    {
-      "path": "packages/core/src/storage/cloud-config-sync/sanitize.ts",
-      "rank": 0.2742,
-      "inDeg": 53,
-      "outDeg": 34,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "ContractNode",
-          "kind": "type",
-          "line": 28
-        },
-        {
-          "name": "SAGE_TREE",
-          "kind": "const",
-          "line": 30
-        },
-        {
-          "name": "CORE_RUNTIME_TREE",
-          "kind": "const",
-          "line": 55
-        },
-        {
-          "name": "UI_PREFERENCES_TREE",
-          "kind": "const",
-          "line": 132
-        },
-        {
-          "name": "MODELS_ROUTING_TREE",
-          "kind": "const",
-          "line": 168
-        },
-        {
-          "name": "PROVIDERS_CATALOG_TREE",
-          "kind": "const",
-          "line": 195
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/mailbox-http-validation.ts",
-      "rank": 0.274,
+      "rank": 0.2747,
       "inDeg": 97,
       "outDeg": 115,
       "package": "@wrongstack/core",
@@ -8050,8 +7990,86 @@
       ]
     },
     {
+      "path": "packages/core/src/storage/cloud-config-sync/sanitize.ts",
+      "rank": 0.2744,
+      "inDeg": 53,
+      "outDeg": 34,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "ContractNode",
+          "kind": "type",
+          "line": 28
+        },
+        {
+          "name": "SAGE_TREE",
+          "kind": "const",
+          "line": 30
+        },
+        {
+          "name": "CORE_RUNTIME_TREE",
+          "kind": "const",
+          "line": 55
+        },
+        {
+          "name": "UI_PREFERENCES_TREE",
+          "kind": "const",
+          "line": 132
+        },
+        {
+          "name": "MODELS_ROUTING_TREE",
+          "kind": "const",
+          "line": 168
+        },
+        {
+          "name": "PROVIDERS_CATALOG_TREE",
+          "kind": "const",
+          "line": 195
+        }
+      ]
+    },
+    {
+      "path": "packages/core/src/types/plugin.ts",
+      "rank": 0.2743,
+      "inDeg": 268,
+      "outDeg": 80,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "ToolRegistryView",
+          "kind": "interface",
+          "line": 24
+        },
+        {
+          "name": "ProviderFactory",
+          "kind": "interface",
+          "line": 33
+        },
+        {
+          "name": "ProviderRegistryView",
+          "kind": "interface",
+          "line": 39
+        },
+        {
+          "name": "ProviderAuthRegistryView",
+          "kind": "interface",
+          "line": 46
+        },
+        {
+          "name": "MCPRegistryView",
+          "kind": "interface",
+          "line": 52
+        },
+        {
+          "name": "SlashCommandRegistryView",
+          "kind": "interface",
+          "line": 59
+        }
+      ]
+    },
+    {
       "path": "packages/sage/src/project-server.ts",
-      "rank": 0.2735,
+      "rank": 0.2737,
       "inDeg": 11,
       "outDeg": 167,
       "package": "@wrongstack/sage",
@@ -8090,7 +8108,7 @@
     },
     {
       "path": "packages/sage/src/domain-term-extractor.ts",
-      "rank": 0.2732,
+      "rank": 0.2734,
       "inDeg": 55,
       "outDeg": 74,
       "package": "@wrongstack/sage",
@@ -8129,7 +8147,7 @@
     },
     {
       "path": "packages/providers/src/codex-websocket.ts",
-      "rank": 0.2728,
+      "rank": 0.273,
       "inDeg": 99,
       "outDeg": 68,
       "package": "@wrongstack/providers",
@@ -8168,7 +8186,7 @@
     },
     {
       "path": "packages/tools/src/e2e.ts",
-      "rank": 0.2706,
+      "rank": 0.2708,
       "inDeg": 59,
       "outDeg": 115,
       "package": "@wrongstack/tools",
@@ -8207,7 +8225,7 @@
     },
     {
       "path": "scripts/generate-subcommand-manifest.mjs",
-      "rank": 0.2696,
+      "rank": 0.2697,
       "inDeg": 100,
       "outDeg": 29,
       "package": "wrongstack-monorepo",
@@ -8246,7 +8264,7 @@
     },
     {
       "path": "packages/core/src/coordination/multi-agent-coordinator.ts",
-      "rank": 0.2673,
+      "rank": 0.2674,
       "inDeg": 92,
       "outDeg": 100,
       "package": "@wrongstack/core",
@@ -8285,7 +8303,7 @@
     },
     {
       "path": "packages/webui/src/lib/ws-client.ts",
-      "rank": 0.2671,
+      "rank": 0.2672,
       "inDeg": 200,
       "outDeg": 118,
       "package": "@wrongstack/webui",
@@ -8324,7 +8342,7 @@
     },
     {
       "path": "packages/providers/src/ai-gateway.ts",
-      "rank": 0.267,
+      "rank": 0.2672,
       "inDeg": 76,
       "outDeg": 112,
       "package": "@wrongstack/providers",
@@ -8363,7 +8381,7 @@
     },
     {
       "path": "packages/techstack/src/policy/resolver.ts",
-      "rank": 0.2654,
+      "rank": 0.2655,
       "inDeg": 46,
       "outDeg": 75,
       "package": "@wrongstack/techstack",
@@ -8402,7 +8420,7 @@
     },
     {
       "path": "packages/mcp/src/protocol.ts",
-      "rank": 0.265,
+      "rank": 0.2652,
       "inDeg": 120,
       "outDeg": 48,
       "package": "@wrongstack/mcp",
@@ -8441,7 +8459,7 @@
     },
     {
       "path": "packages/core/src/kernel/events.ts",
-      "rank": 0.2645,
+      "rank": 0.2646,
       "inDeg": 104,
       "outDeg": 78,
       "package": "@wrongstack/core",
@@ -8480,7 +8498,7 @@
     },
     {
       "path": "packages/core/src/coordination/delegation/leader-auto-wake.ts",
-      "rank": 0.2641,
+      "rank": 0.2643,
       "inDeg": 46,
       "outDeg": 42,
       "package": "@wrongstack/core",
@@ -8519,8 +8537,8 @@
     },
     {
       "path": "packages/core/src/security/secret-vault.ts",
-      "rank": 0.2639,
-      "inDeg": 116,
+      "rank": 0.2641,
+      "inDeg": 118,
       "outDeg": 112,
       "package": "@wrongstack/core",
       "symbols": [
@@ -8557,47 +8575,8 @@
       ]
     },
     {
-      "path": "packages/core/src/session-catalog/protocol.ts",
-      "rank": 0.2636,
-      "inDeg": 129,
-      "outDeg": 20,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "SESSION_CATALOG_PROTOCOL_VERSION",
-          "kind": "const",
-          "line": 5
-        },
-        {
-          "name": "SESSION_CATALOG_MAX_FRAME_CHARS",
-          "kind": "const",
-          "line": 6
-        },
-        {
-          "name": "SESSION_CATALOG_DEFAULT_LEASE_MS",
-          "kind": "const",
-          "line": 7
-        },
-        {
-          "name": "SESSION_CATALOG_DEFAULT_RESERVATION_MS",
-          "kind": "const",
-          "line": 8
-        },
-        {
-          "name": "SESSION_CATALOG_MAX_AGENTS",
-          "kind": "const",
-          "line": 9
-        },
-        {
-          "name": "SessionLeaseCredential",
-          "kind": "interface",
-          "line": 11
-        }
-      ]
-    },
-    {
       "path": "packages/sage/src/project-server-client.ts",
-      "rank": 0.263,
+      "rank": 0.2631,
       "inDeg": 33,
       "outDeg": 92,
       "package": "@wrongstack/sage",
@@ -8635,8 +8614,47 @@
       ]
     },
     {
+      "path": "packages/core/src/session-catalog/protocol.ts",
+      "rank": 0.263,
+      "inDeg": 129,
+      "outDeg": 20,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "SESSION_CATALOG_PROTOCOL_VERSION",
+          "kind": "const",
+          "line": 5
+        },
+        {
+          "name": "SESSION_CATALOG_MAX_FRAME_CHARS",
+          "kind": "const",
+          "line": 6
+        },
+        {
+          "name": "SESSION_CATALOG_DEFAULT_LEASE_MS",
+          "kind": "const",
+          "line": 7
+        },
+        {
+          "name": "SESSION_CATALOG_DEFAULT_RESERVATION_MS",
+          "kind": "const",
+          "line": 8
+        },
+        {
+          "name": "SESSION_CATALOG_MAX_AGENTS",
+          "kind": "const",
+          "line": 9
+        },
+        {
+          "name": "SessionLeaseCredential",
+          "kind": "interface",
+          "line": 11
+        }
+      ]
+    },
+    {
       "path": "packages/cli/src/plugin-management.ts",
-      "rank": 0.2622,
+      "rank": 0.2624,
       "inDeg": 88,
       "outDeg": 236,
       "package": "@wrongstack/cli",
@@ -8674,9 +8692,48 @@
       ]
     },
     {
+      "path": "packages/core/src/hq/auth-store.ts",
+      "rank": 0.2623,
+      "inDeg": 419,
+      "outDeg": 111,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "HQ_AUTH_FILE_VERSION",
+          "kind": "const",
+          "line": 48
+        },
+        {
+          "name": "defaultHqDataDir",
+          "kind": "function",
+          "line": 51
+        },
+        {
+          "name": "resolveHqDataDir",
+          "kind": "function",
+          "line": 67
+        },
+        {
+          "name": "HqToken",
+          "kind": "interface",
+          "line": 91
+        },
+        {
+          "name": "hqTokenVerifier",
+          "kind": "function",
+          "line": 141
+        },
+        {
+          "name": "hqTokenKey",
+          "kind": "function",
+          "line": 152
+        }
+      ]
+    },
+    {
       "path": "packages/tools/src/process-registry-persistent.ts",
       "rank": 0.261,
-      "inDeg": 64,
+      "inDeg": 65,
       "outDeg": 95,
       "package": "@wrongstack/tools",
       "symbols": [
@@ -8714,7 +8771,7 @@
     },
     {
       "path": "packages/core/src/plugins/review-finding-types.ts",
-      "rank": 0.2603,
+      "rank": 0.2602,
       "inDeg": 148,
       "outDeg": 24,
       "package": "@wrongstack/core",
@@ -8752,8 +8809,47 @@
       ]
     },
     {
+      "path": "packages/core/src/hq/commands.ts",
+      "rank": 0.2599,
+      "inDeg": 106,
+      "outDeg": 56,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "HQ_COMMAND_TYPES",
+          "kind": "const",
+          "line": 28
+        },
+        {
+          "name": "HqCommandType",
+          "kind": "type",
+          "line": 43
+        },
+        {
+          "name": "HqSteerCommand",
+          "kind": "interface",
+          "line": 46
+        },
+        {
+          "name": "HqBtwCommand",
+          "kind": "interface",
+          "line": 71
+        },
+        {
+          "name": "HqQueueCommand",
+          "kind": "interface",
+          "line": 96
+        },
+        {
+          "name": "HqAbortCommand",
+          "kind": "interface",
+          "line": 117
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/lib/agent-office.ts",
-      "rank": 0.2595,
+      "rank": 0.2597,
       "inDeg": 121,
       "outDeg": 105,
       "package": "@wrongstack/webui",
@@ -8792,7 +8888,7 @@
     },
     {
       "path": "packages/core/src/coordination/delegation/delegation-tracker.ts",
-      "rank": 0.2577,
+      "rank": 0.2579,
       "inDeg": 37,
       "outDeg": 79,
       "package": "@wrongstack/core",
@@ -8831,7 +8927,7 @@
     },
     {
       "path": "packages/mcp/src/server.ts",
-      "rank": 0.2539,
+      "rank": 0.2568,
       "inDeg": 156,
       "outDeg": 109,
       "package": "@wrongstack/mcp",
@@ -8870,7 +8966,7 @@
     },
     {
       "path": "packages/core/src/execution/compaction-elision.ts",
-      "rank": 0.2525,
+      "rank": 0.2526,
       "inDeg": 88,
       "outDeg": 129,
       "package": "@wrongstack/core",
@@ -8909,7 +9005,7 @@
     },
     {
       "path": "packages/sage/src/tools/memory-tools.ts",
-      "rank": 0.2523,
+      "rank": 0.2525,
       "inDeg": 34,
       "outDeg": 241,
       "package": "@wrongstack/sage",
@@ -8948,7 +9044,7 @@
     },
     {
       "path": "packages/governance/src/project-service.ts",
-      "rank": 0.2503,
+      "rank": 0.2504,
       "inDeg": 70,
       "outDeg": 78,
       "package": "@wrongstack/governance",
@@ -8987,7 +9083,7 @@
     },
     {
       "path": "packages/webui/src/lib/ws-client-utils.ts",
-      "rank": 0.25,
+      "rank": 0.2502,
       "inDeg": 180,
       "outDeg": 85,
       "package": "@wrongstack/webui",
@@ -9027,7 +9123,7 @@
     {
       "path": "packages/core/src/plugins/review-finding-store.ts",
       "rank": 0.25,
-      "inDeg": 55,
+      "inDeg": 56,
       "outDeg": 103,
       "package": "@wrongstack/core",
       "symbols": [
@@ -9065,7 +9161,7 @@
     },
     {
       "path": "packages/core/src/coordination/provider-status-tracker-types.ts",
-      "rank": 0.2493,
+      "rank": 0.2495,
       "inDeg": 86,
       "outDeg": 20,
       "package": "@wrongstack/core",
@@ -9104,7 +9200,7 @@
     },
     {
       "path": "packages/cli/src/services/statusline-config.ts",
-      "rank": 0.2485,
+      "rank": 0.2487,
       "inDeg": 138,
       "outDeg": 95,
       "package": "@wrongstack/cli",
@@ -9143,7 +9239,7 @@
     },
     {
       "path": "packages/core/src/coordination/agents/project-agent-learning-structured.ts",
-      "rank": 0.2482,
+      "rank": 0.2484,
       "inDeg": 147,
       "outDeg": 94,
       "package": "@wrongstack/core",
@@ -9182,7 +9278,7 @@
     },
     {
       "path": "packages/core/src/utils/term.ts",
-      "rank": 0.248,
+      "rank": 0.2481,
       "inDeg": 148,
       "outDeg": 39,
       "package": "@wrongstack/core",
@@ -9221,7 +9317,7 @@
     },
     {
       "path": "packages/techstack/src/policy/rulebook.ts",
-      "rank": 0.2468,
+      "rank": 0.2469,
       "inDeg": 78,
       "outDeg": 41,
       "package": "@wrongstack/techstack",
@@ -9260,7 +9356,7 @@
     },
     {
       "path": "packages/core/src/plugins/review-claim-registry.ts",
-      "rank": 0.2468,
+      "rank": 0.246,
       "inDeg": 118,
       "outDeg": 130,
       "package": "@wrongstack/core",
@@ -9299,7 +9395,7 @@
     },
     {
       "path": "packages/tools/src/languages/diagnostics.ts",
-      "rank": 0.2458,
+      "rank": 0.246,
       "inDeg": 62,
       "outDeg": 137,
       "package": "@wrongstack/tools",
@@ -9337,47 +9433,8 @@
       ]
     },
     {
-      "path": "packages/core/src/hq/commands.ts",
-      "rank": 0.2456,
-      "inDeg": 92,
-      "outDeg": 49,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "HQ_COMMAND_TYPES",
-          "kind": "const",
-          "line": 28
-        },
-        {
-          "name": "HqCommandType",
-          "kind": "type",
-          "line": 43
-        },
-        {
-          "name": "HqSteerCommand",
-          "kind": "interface",
-          "line": 46
-        },
-        {
-          "name": "HqBtwCommand",
-          "kind": "interface",
-          "line": 71
-        },
-        {
-          "name": "HqQueueCommand",
-          "kind": "interface",
-          "line": 96
-        },
-        {
-          "name": "HqAbortCommand",
-          "kind": "interface",
-          "line": 117
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/fleet.ts",
-      "rank": 0.2445,
+      "rank": 0.2448,
       "inDeg": 48,
       "outDeg": 45,
       "package": "@wrongstack/core",
@@ -9416,7 +9473,7 @@
     },
     {
       "path": "packages/webui/src/components/SettingsPanel/brain-section-options.tsx",
-      "rank": 0.2437,
+      "rank": 0.2438,
       "inDeg": 58,
       "outDeg": 34,
       "package": "@wrongstack/webui",
@@ -9455,7 +9512,7 @@
     },
     {
       "path": "packages/tui/src/components/settings-picker-constants.ts",
-      "rank": 0.2432,
+      "rank": 0.2433,
       "inDeg": 209,
       "outDeg": 17,
       "package": "@wrongstack/tui",
@@ -9494,7 +9551,7 @@
     },
     {
       "path": "packages/webui-hq/src/data/transport/hq-socket.ts",
-      "rank": 0.2425,
+      "rank": 0.2422,
       "inDeg": 98,
       "outDeg": 58,
       "package": "@wrongstack/webui-hq",
@@ -9533,7 +9590,7 @@
     },
     {
       "path": "packages/governance/src/task-aggregate.ts",
-      "rank": 0.242,
+      "rank": 0.2422,
       "inDeg": 126,
       "outDeg": 75,
       "package": "@wrongstack/governance",
@@ -9572,7 +9629,7 @@
     },
     {
       "path": "packages/tui/src/ui-contracts.ts",
-      "rank": 0.2412,
+      "rank": 0.2414,
       "inDeg": 268,
       "outDeg": 19,
       "package": "@wrongstack/tui",
@@ -9611,7 +9668,7 @@
     },
     {
       "path": "packages/webui-server/src/server/ws-payload-preferences.ts",
-      "rank": 0.2412,
+      "rank": 0.2413,
       "inDeg": 30,
       "outDeg": 36,
       "package": "@wrongstack/webui-server",
@@ -9650,7 +9707,7 @@
     },
     {
       "path": "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
-      "rank": 0.2401,
+      "rank": 0.2403,
       "inDeg": 163,
       "outDeg": 95,
       "package": "@wrongstack/core",
@@ -9689,7 +9746,7 @@
     },
     {
       "path": "packages/core/src/goal/phase-orchestrator.ts",
-      "rank": 0.2399,
+      "rank": 0.24,
       "inDeg": 34,
       "outDeg": 134,
       "package": "@wrongstack/core",
@@ -9728,7 +9785,7 @@
     },
     {
       "path": "packages/plugins/src/secret-scanner/index.ts",
-      "rank": 0.239,
+      "rank": 0.2392,
       "inDeg": 31,
       "outDeg": 91,
       "package": "@wrongstack/plugins",
@@ -9767,7 +9824,7 @@
     },
     {
       "path": "packages/tui/src/brain-panel-model.ts",
-      "rank": 0.2388,
+      "rank": 0.239,
       "inDeg": 100,
       "outDeg": 28,
       "package": "@wrongstack/tui",
@@ -9806,7 +9863,7 @@
     },
     {
       "path": "packages/primitives/src/regex-guard.ts",
-      "rank": 0.2381,
+      "rank": 0.2383,
       "inDeg": 59,
       "outDeg": 81,
       "package": "@wrongstack/primitives",
@@ -9845,7 +9902,7 @@
     },
     {
       "path": "packages/plugins/src/performance-regression-gate/index.ts",
-      "rank": 0.2371,
+      "rank": 0.2372,
       "inDeg": 23,
       "outDeg": 59,
       "package": "@wrongstack/plugins",
@@ -9884,7 +9941,7 @@
     },
     {
       "path": "packages/core/src/plugin/api.ts",
-      "rank": 0.2353,
+      "rank": 0.2354,
       "inDeg": 54,
       "outDeg": 155,
       "package": "@wrongstack/core",
@@ -9923,7 +9980,7 @@
     },
     {
       "path": "packages/core/src/coordination/mailbox-project-server-client.ts",
-      "rank": 0.2352,
+      "rank": 0.2354,
       "inDeg": 35,
       "outDeg": 75,
       "package": "@wrongstack/core",
@@ -9962,7 +10019,7 @@
     },
     {
       "path": "packages/core/src/coordination/model-matrix.ts",
-      "rank": 0.2349,
+      "rank": 0.235,
       "inDeg": 116,
       "outDeg": 91,
       "package": "@wrongstack/core",
@@ -10001,7 +10058,7 @@
     },
     {
       "path": "packages/governance/src/task-contract.ts",
-      "rank": 0.2348,
+      "rank": 0.235,
       "inDeg": 95,
       "outDeg": 47,
       "package": "@wrongstack/governance",
@@ -10079,7 +10136,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/project-server-client-state.ts",
-      "rank": 0.2325,
+      "rank": 0.2327,
       "inDeg": 119,
       "outDeg": 48,
       "package": "@wrongstack/tools",
@@ -10117,81 +10174,8 @@
       ]
     },
     {
-      "path": "packages/tui/src/ink.tsx",
-      "rank": 0.2317,
-      "inDeg": 238,
-      "outDeg": 8,
-      "package": "@wrongstack/tui",
-      "symbols": [
-        {
-          "name": "TextOwnProps",
-          "kind": "type",
-          "line": 33
-        },
-        {
-          "name": "BoxOwnProps",
-          "kind": "type",
-          "line": 37
-        },
-        {
-          "name": "colorProps",
-          "kind": "const",
-          "line": 58
-        },
-        {
-          "name": "Text",
-          "kind": "function",
-          "line": 65
-        },
-        {
-          "name": "Box",
-          "kind": "const",
-          "line": 73
-        }
-      ]
-    },
-    {
-      "path": "packages/core/src/utils/token-estimate.ts",
-      "rank": 0.2316,
-      "inDeg": 203,
-      "outDeg": 50,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "RoughTokenEstimate",
-          "kind": "const",
-          "line": 25
-        },
-        {
-          "name": "CalState",
-          "kind": "interface",
-          "line": 29
-        },
-        {
-          "name": "CAL_ALPHA",
-          "kind": "const",
-          "line": 36
-        },
-        {
-          "name": "CALIBRATION_GLOBAL_KEY",
-          "kind": "const",
-          "line": 45
-        },
-        {
-          "name": "_cals",
-          "kind": "const",
-          "line": 46
-        },
-        {
-          "name": "calState",
-          "kind": "function",
-          "line": 48
-        }
-      ]
-    },
-    {
       "path": "packages/tools/src/browser/manager.ts",
-      "rank": 0.2315,
+      "rank": 0.2317,
       "inDeg": 51,
       "outDeg": 109,
       "package": "@wrongstack/tools",
@@ -10229,8 +10213,81 @@
       ]
     },
     {
+      "path": "packages/tui/src/ink.tsx",
+      "rank": 0.2316,
+      "inDeg": 237,
+      "outDeg": 8,
+      "package": "@wrongstack/tui",
+      "symbols": [
+        {
+          "name": "TextOwnProps",
+          "kind": "type",
+          "line": 33
+        },
+        {
+          "name": "BoxOwnProps",
+          "kind": "type",
+          "line": 37
+        },
+        {
+          "name": "colorProps",
+          "kind": "const",
+          "line": 58
+        },
+        {
+          "name": "Text",
+          "kind": "function",
+          "line": 65
+        },
+        {
+          "name": "Box",
+          "kind": "const",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "path": "packages/core/src/utils/token-estimate.ts",
+      "rank": 0.2312,
+      "inDeg": 203,
+      "outDeg": 50,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "RoughTokenEstimate",
+          "kind": "const",
+          "line": 25
+        },
+        {
+          "name": "CalState",
+          "kind": "interface",
+          "line": 29
+        },
+        {
+          "name": "CAL_ALPHA",
+          "kind": "const",
+          "line": 36
+        },
+        {
+          "name": "CALIBRATION_GLOBAL_KEY",
+          "kind": "const",
+          "line": 45
+        },
+        {
+          "name": "_cals",
+          "kind": "const",
+          "line": 46
+        },
+        {
+          "name": "calState",
+          "kind": "function",
+          "line": 48
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/storage/session-store/transcript-archive.ts",
-      "rank": 0.2298,
+      "rank": 0.23,
       "inDeg": 37,
       "outDeg": 78,
       "package": "@wrongstack/core",
@@ -10269,7 +10326,7 @@
     },
     {
       "path": "packages/webui/src/stores/session-tab-store.ts",
-      "rank": 0.2282,
+      "rank": 0.2284,
       "inDeg": 169,
       "outDeg": 159,
       "package": "@wrongstack/webui",
@@ -10307,47 +10364,8 @@
       ]
     },
     {
-      "path": "packages/core/src/storage/cloud-config-sync.ts",
-      "rank": 0.2278,
-      "inDeg": 51,
-      "outDeg": 93,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "CloudConfigSyncSettings",
-          "kind": "interface",
-          "line": 45
-        },
-        {
-          "name": "CloudConfigSyncState",
-          "kind": "interface",
-          "line": 53
-        },
-        {
-          "name": "CloudConfigSyncDeps",
-          "kind": "interface",
-          "line": 70
-        },
-        {
-          "name": "CloudSyncPassSummary",
-          "kind": "interface",
-          "line": 92
-        },
-        {
-          "name": "EMPTY_STATE",
-          "kind": "const",
-          "line": 102
-        },
-        {
-          "name": "stableStringify",
-          "kind": "function",
-          "line": 113
-        }
-      ]
-    },
-    {
       "path": "packages/webui-hq/src/data/local-prefs.ts",
-      "rank": 0.2276,
+      "rank": 0.2277,
       "inDeg": 108,
       "outDeg": 57,
       "package": "@wrongstack/webui-hq",
@@ -10385,8 +10403,47 @@
       ]
     },
     {
+      "path": "packages/core/src/storage/cloud-config-sync.ts",
+      "rank": 0.2276,
+      "inDeg": 51,
+      "outDeg": 93,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "CloudConfigSyncSettings",
+          "kind": "interface",
+          "line": 45
+        },
+        {
+          "name": "CloudConfigSyncState",
+          "kind": "interface",
+          "line": 53
+        },
+        {
+          "name": "CloudConfigSyncDeps",
+          "kind": "interface",
+          "line": 70
+        },
+        {
+          "name": "CloudSyncPassSummary",
+          "kind": "interface",
+          "line": 92
+        },
+        {
+          "name": "EMPTY_STATE",
+          "kind": "const",
+          "line": 102
+        },
+        {
+          "name": "stableStringify",
+          "kind": "function",
+          "line": 113
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/types/brain.ts",
-      "rank": 0.227,
+      "rank": 0.2271,
       "inDeg": 36,
       "outDeg": 24,
       "package": "@wrongstack/webui",
@@ -10424,47 +10481,8 @@
       ]
     },
     {
-      "path": "packages/core/src/hq/auth-store.ts",
-      "rank": 0.2268,
-      "inDeg": 405,
-      "outDeg": 107,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "HQ_AUTH_FILE_VERSION",
-          "kind": "const",
-          "line": 48
-        },
-        {
-          "name": "defaultHqDataDir",
-          "kind": "function",
-          "line": 51
-        },
-        {
-          "name": "resolveHqDataDir",
-          "kind": "function",
-          "line": 67
-        },
-        {
-          "name": "HqToken",
-          "kind": "interface",
-          "line": 91
-        },
-        {
-          "name": "hqTokenVerifier",
-          "kind": "function",
-          "line": 141
-        },
-        {
-          "name": "hqTokenKey",
-          "kind": "function",
-          "line": 152
-        }
-      ]
-    },
-    {
       "path": "packages/plugins/src/release-notes-generator/index.ts",
-      "rank": 0.2267,
+      "rank": 0.2268,
       "inDeg": 30,
       "outDeg": 64,
       "package": "@wrongstack/plugins",
@@ -10503,7 +10521,7 @@
     },
     {
       "path": "packages/core/src/chronicle/project-server-client.ts",
-      "rank": 0.2262,
+      "rank": 0.2263,
       "inDeg": 70,
       "outDeg": 81,
       "package": "@wrongstack/core",
@@ -10541,8 +10559,47 @@
       ]
     },
     {
+      "path": "packages/sdd/src/sdd-board-store.ts",
+      "rank": 0.2256,
+      "inDeg": 50,
+      "outDeg": 65,
+      "package": "@wrongstack/sdd",
+      "symbols": [
+        {
+          "name": "DEFAULT_EVENT_MAX_BYTES",
+          "kind": "const",
+          "line": 6
+        },
+        {
+          "name": "DEFAULT_EVENT_KEEP_BYTES",
+          "kind": "const",
+          "line": 7
+        },
+        {
+          "name": "DEFAULT_EVENT_SIZE_CHECK_EVERY",
+          "kind": "const",
+          "line": 8
+        },
+        {
+          "name": "SddBoardStoreOptions",
+          "kind": "interface",
+          "line": 10
+        },
+        {
+          "name": "SddBoardControlFileIO",
+          "kind": "interface",
+          "line": 23
+        },
+        {
+          "name": "SddBoardIndexEntry",
+          "kind": "interface",
+          "line": 29
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/security/permission-helpers.ts",
-      "rank": 0.2253,
+      "rank": 0.2254,
       "inDeg": 74,
       "outDeg": 67,
       "package": "@wrongstack/core",
@@ -10580,47 +10637,8 @@
       ]
     },
     {
-      "path": "packages/sdd/src/sdd-board-store.ts",
-      "rank": 0.2247,
-      "inDeg": 48,
-      "outDeg": 64,
-      "package": "@wrongstack/sdd",
-      "symbols": [
-        {
-          "name": "DEFAULT_EVENT_MAX_BYTES",
-          "kind": "const",
-          "line": 6
-        },
-        {
-          "name": "DEFAULT_EVENT_KEEP_BYTES",
-          "kind": "const",
-          "line": 7
-        },
-        {
-          "name": "DEFAULT_EVENT_SIZE_CHECK_EVERY",
-          "kind": "const",
-          "line": 8
-        },
-        {
-          "name": "SddBoardStoreOptions",
-          "kind": "interface",
-          "line": 10
-        },
-        {
-          "name": "SddBoardControlFileIO",
-          "kind": "interface",
-          "line": 23
-        },
-        {
-          "name": "SddBoardIndexEntry",
-          "kind": "interface",
-          "line": 29
-        }
-      ]
-    },
-    {
       "path": "packages/mcp/src/transport-base.ts",
-      "rank": 0.2233,
+      "rank": 0.2234,
       "inDeg": 54,
       "outDeg": 59,
       "package": "@wrongstack/mcp",
@@ -10659,7 +10677,7 @@
     },
     {
       "path": "packages/webui-server/src/server/completion-handlers.ts",
-      "rank": 0.223,
+      "rank": 0.2231,
       "inDeg": 89,
       "outDeg": 111,
       "package": "@wrongstack/webui-server",
@@ -10698,7 +10716,7 @@
     },
     {
       "path": "packages/governance/src/verification-run-contract.ts",
-      "rank": 0.2219,
+      "rank": 0.222,
       "inDeg": 84,
       "outDeg": 71,
       "package": "@wrongstack/governance",
@@ -10737,7 +10755,7 @@
     },
     {
       "path": "packages/mcp/src/authorization-manager.ts",
-      "rank": 0.2216,
+      "rank": 0.2218,
       "inDeg": 187,
       "outDeg": 64,
       "package": "@wrongstack/mcp",
@@ -10776,7 +10794,7 @@
     },
     {
       "path": "packages/core/src/chronicle/project-access.ts",
-      "rank": 0.2212,
+      "rank": 0.2213,
       "inDeg": 76,
       "outDeg": 109,
       "package": "@wrongstack/core",
@@ -10815,7 +10833,7 @@
     },
     {
       "path": "packages/core/src/types/hooks.ts",
-      "rank": 0.2211,
+      "rank": 0.2213,
       "inDeg": 138,
       "outDeg": 20,
       "package": "@wrongstack/core",
@@ -10854,7 +10872,7 @@
     },
     {
       "path": "packages/core/tests/registry/slash-command-registry.test.ts",
-      "rank": 0.221,
+      "rank": 0.2211,
       "inDeg": 0,
       "outDeg": 133,
       "package": "@wrongstack/core",
@@ -10893,8 +10911,8 @@
     },
     {
       "path": "packages/core/src/session-catalog/store.ts",
-      "rank": 0.2206,
-      "inDeg": 18,
+      "rank": 0.2205,
+      "inDeg": 19,
       "outDeg": 110,
       "package": "@wrongstack/core",
       "symbols": [
@@ -10932,7 +10950,7 @@
     },
     {
       "path": "packages/plugins/src/path-guard/shell-targets.ts",
-      "rank": 0.2198,
+      "rank": 0.2199,
       "inDeg": 59,
       "outDeg": 101,
       "package": "@wrongstack/plugins",
@@ -10971,7 +10989,7 @@
     },
     {
       "path": "packages/cli/src/renderer.ts",
-      "rank": 0.2189,
+      "rank": 0.219,
       "inDeg": 109,
       "outDeg": 68,
       "package": "@wrongstack/cli",
@@ -11010,7 +11028,7 @@
     },
     {
       "path": "packages/core/tests/core/agent.test.ts",
-      "rank": 0.2188,
+      "rank": 0.2189,
       "inDeg": 0,
       "outDeg": 336,
       "package": "@wrongstack/core",
@@ -11049,8 +11067,8 @@
     },
     {
       "path": "packages/core/src/coordination/autonomous-brain.ts",
-      "rank": 0.2185,
-      "inDeg": 28,
+      "rank": 0.2183,
+      "inDeg": 29,
       "outDeg": 89,
       "package": "@wrongstack/core",
       "symbols": [
@@ -11088,7 +11106,7 @@
     },
     {
       "path": "packages/tools/src/search.ts",
-      "rank": 0.218,
+      "rank": 0.2182,
       "inDeg": 57,
       "outDeg": 112,
       "package": "@wrongstack/tools",
@@ -11127,7 +11145,7 @@
     },
     {
       "path": "packages/webui/src/stores/codemap-activity-store.ts",
-      "rank": 0.2163,
+      "rank": 0.2165,
       "inDeg": 94,
       "outDeg": 106,
       "package": "@wrongstack/webui",
@@ -11166,7 +11184,7 @@
     },
     {
       "path": "packages/core/src/coordination/mailbox-project-server-protocol.ts",
-      "rank": 0.2157,
+      "rank": 0.2164,
       "inDeg": 71,
       "outDeg": 58,
       "package": "@wrongstack/core",
@@ -11205,7 +11223,7 @@
     },
     {
       "path": "packages/security-scanner/src/types.ts",
-      "rank": 0.2155,
+      "rank": 0.2156,
       "inDeg": 129,
       "outDeg": 17,
       "package": "@wrongstack/security-scanner",
@@ -11244,7 +11262,7 @@
     },
     {
       "path": "packages/cli/src/fleet/host.ts",
-      "rank": 0.215,
+      "rank": 0.2152,
       "inDeg": 39,
       "outDeg": 156,
       "package": "@wrongstack/cli",
@@ -11283,7 +11301,7 @@
     },
     {
       "path": "packages/core/src/statusline/index.ts",
-      "rank": 0.2145,
+      "rank": 0.2147,
       "inDeg": 247,
       "outDeg": 24,
       "package": "@wrongstack/core",
@@ -11322,7 +11340,7 @@
     },
     {
       "path": "packages/webui-hq/src/domain/fleet-topology.ts",
-      "rank": 0.2145,
+      "rank": 0.2147,
       "inDeg": 93,
       "outDeg": 110,
       "package": "@wrongstack/webui-hq",
@@ -11361,8 +11379,8 @@
     },
     {
       "path": "packages/core/src/coordination/collab-debug.ts",
-      "rank": 0.2139,
-      "inDeg": 137,
+      "rank": 0.214,
+      "inDeg": 136,
       "outDeg": 80,
       "package": "@wrongstack/core",
       "symbols": [
@@ -11399,47 +11417,8 @@
       ]
     },
     {
-      "path": "packages/webui-server/src/server/terminal-ws-handler.ts",
-      "rank": 0.2129,
-      "inDeg": 90,
-      "outDeg": 55,
-      "package": "@wrongstack/webui-server",
-      "symbols": [
-        {
-          "name": "IncomingMessage",
-          "kind": "type",
-          "line": 12
-        },
-        {
-          "name": "PtyExit",
-          "kind": "type",
-          "line": 13
-        },
-        {
-          "name": "PtyProcess",
-          "kind": "interface",
-          "line": 14
-        },
-        {
-          "name": "NodePtyApi",
-          "kind": "interface",
-          "line": 22
-        },
-        {
-          "name": "LoadNodePty",
-          "kind": "type",
-          "line": 36
-        },
-        {
-          "name": "KillProcessTree",
-          "kind": "type",
-          "line": 37
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/tasking/task-tracker.ts",
-      "rank": 0.2128,
+      "rank": 0.2129,
       "inDeg": 225,
       "outDeg": 75,
       "package": "@wrongstack/core",
@@ -11478,7 +11457,7 @@
     },
     {
       "path": "packages/core/src/types/blocks.ts",
-      "rank": 0.2118,
+      "rank": 0.212,
       "inDeg": 294,
       "outDeg": 22,
       "package": "@wrongstack/core",
@@ -11516,48 +11495,9 @@
       ]
     },
     {
-      "path": "packages/plugins/src/git-autocommit/index.ts",
-      "rank": 0.2116,
-      "inDeg": 31,
-      "outDeg": 95,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "API_VERSION",
-          "kind": "const",
-          "line": 33
-        },
-        {
-          "name": "ConventionalType",
-          "kind": "type",
-          "line": 35
-        },
-        {
-          "name": "commitCount",
-          "kind": "const",
-          "line": 62
-        },
-        {
-          "name": "lastCommit",
-          "kind": "const",
-          "line": 63
-        },
-        {
-          "name": "llmGenerated",
-          "kind": "const",
-          "line": 65
-        },
-        {
-          "name": "DEFAULT_GIT_TIMEOUT_MS",
-          "kind": "const",
-          "line": 71
-        }
-      ]
-    },
-    {
       "path": "scripts/check-lint-warnings.mjs",
-      "rank": 0.2114,
-      "inDeg": 169,
+      "rank": 0.212,
+      "inDeg": 197,
       "outDeg": 66,
       "package": "wrongstack-monorepo",
       "symbols": [
@@ -11594,8 +11534,47 @@
       ]
     },
     {
+      "path": "packages/plugins/src/git-autocommit/index.ts",
+      "rank": 0.2116,
+      "inDeg": 37,
+      "outDeg": 95,
+      "package": "@wrongstack/plugins",
+      "symbols": [
+        {
+          "name": "API_VERSION",
+          "kind": "const",
+          "line": 33
+        },
+        {
+          "name": "ConventionalType",
+          "kind": "type",
+          "line": 35
+        },
+        {
+          "name": "commitCount",
+          "kind": "const",
+          "line": 62
+        },
+        {
+          "name": "lastCommit",
+          "kind": "const",
+          "line": 63
+        },
+        {
+          "name": "llmGenerated",
+          "kind": "const",
+          "line": 65
+        },
+        {
+          "name": "DEFAULT_GIT_TIMEOUT_MS",
+          "kind": "const",
+          "line": 71
+        }
+      ]
+    },
+    {
       "path": "packages/bench/src/suites/local-manifest.ts",
-      "rank": 0.2112,
+      "rank": 0.2114,
       "inDeg": 54,
       "outDeg": 100,
       "package": "@wrongstack/bench",
@@ -11633,47 +11612,8 @@
       ]
     },
     {
-      "path": "packages/kanban/src/server/sqlite-storage.ts",
-      "rank": 0.2102,
-      "inDeg": 130,
-      "outDeg": 107,
-      "package": "@wrongstack/kanban",
-      "symbols": [
-        {
-          "name": "KANBAN_SQLITE_FILE",
-          "kind": "const",
-          "line": 21
-        },
-        {
-          "name": "LEGACY_MIGRATION_KEY",
-          "kind": "const",
-          "line": 22
-        },
-        {
-          "name": "BoardRow",
-          "kind": "interface",
-          "line": 24
-        },
-        {
-          "name": "CountRow",
-          "kind": "interface",
-          "line": 30
-        },
-        {
-          "name": "SqliteKanbanMutation",
-          "kind": "interface",
-          "line": 34
-        },
-        {
-          "name": "SqliteKanbanStorage",
-          "kind": "class",
-          "line": 40
-        }
-      ]
-    },
-    {
       "path": "packages/tools/src/codebase-index/project-server.ts",
-      "rank": 0.2099,
+      "rank": 0.21,
       "inDeg": 16,
       "outDeg": 127,
       "package": "@wrongstack/tools",
@@ -11712,7 +11652,7 @@
     },
     {
       "path": "packages/runtime/src/governance-bootstrap.ts",
-      "rank": 0.2094,
+      "rank": 0.2096,
       "inDeg": 66,
       "outDeg": 80,
       "package": "@wrongstack/runtime",
@@ -11751,7 +11691,7 @@
     },
     {
       "path": "packages/core/src/hooks/runner.ts",
-      "rank": 0.2092,
+      "rank": 0.2093,
       "inDeg": 145,
       "outDeg": 112,
       "package": "@wrongstack/core",
@@ -11790,7 +11730,7 @@
     },
     {
       "path": "packages/cli/src/slash-commands/tool.ts",
-      "rank": 0.2086,
+      "rank": 0.2088,
       "inDeg": 54,
       "outDeg": 187,
       "package": "@wrongstack/cli",
@@ -11829,7 +11769,7 @@
     },
     {
       "path": "packages/core/src/kernel/pipeline.ts",
-      "rank": 0.2085,
+      "rank": 0.2086,
       "inDeg": 85,
       "outDeg": 33,
       "package": "@wrongstack/core",
@@ -11868,8 +11808,8 @@
     },
     {
       "path": "packages/mcp/src/manage.ts",
-      "rank": 0.208,
-      "inDeg": 284,
+      "rank": 0.2081,
+      "inDeg": 286,
       "outDeg": 131,
       "package": "@wrongstack/mcp",
       "symbols": [
@@ -11907,7 +11847,7 @@
     },
     {
       "path": "packages/core/src/types/context-window.ts",
-      "rank": 0.2078,
+      "rank": 0.2079,
       "inDeg": 100,
       "outDeg": 36,
       "package": "@wrongstack/core",
@@ -11945,8 +11885,125 @@
       ]
     },
     {
+      "path": "packages/kanban/src/server/sqlite-storage.ts",
+      "rank": 0.2076,
+      "inDeg": 130,
+      "outDeg": 107,
+      "package": "@wrongstack/kanban",
+      "symbols": [
+        {
+          "name": "KANBAN_SQLITE_FILE",
+          "kind": "const",
+          "line": 21
+        },
+        {
+          "name": "LEGACY_MIGRATION_KEY",
+          "kind": "const",
+          "line": 22
+        },
+        {
+          "name": "BoardRow",
+          "kind": "interface",
+          "line": 24
+        },
+        {
+          "name": "CountRow",
+          "kind": "interface",
+          "line": 30
+        },
+        {
+          "name": "SqliteKanbanMutation",
+          "kind": "interface",
+          "line": 34
+        },
+        {
+          "name": "SqliteKanbanStorage",
+          "kind": "class",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "path": "packages/plugins/src/cost-tracker/index.ts",
+      "rank": 0.2071,
+      "inDeg": 17,
+      "outDeg": 40,
+      "package": "@wrongstack/plugins",
+      "symbols": [
+        {
+          "name": "API_VERSION",
+          "kind": "const",
+          "line": 37
+        },
+        {
+          "name": "ModelPricing",
+          "kind": "interface",
+          "line": 48
+        },
+        {
+          "name": "TokenUsage",
+          "kind": "interface",
+          "line": 57
+        },
+        {
+          "name": "SessionCost",
+          "kind": "interface",
+          "line": 66
+        },
+        {
+          "name": "PRICING",
+          "kind": "const",
+          "line": 87
+        },
+        {
+          "name": "DEFAULT_PRICING",
+          "kind": "const",
+          "line": 96
+        }
+      ]
+    },
+    {
+      "path": "packages/plugins/src/semantic-search-indexer/index.ts",
+      "rank": 0.207,
+      "inDeg": 37,
+      "outDeg": 129,
+      "package": "@wrongstack/plugins",
+      "symbols": [
+        {
+          "name": "API_VERSION",
+          "kind": "const",
+          "line": 40
+        },
+        {
+          "name": "escapeRegex",
+          "kind": "const",
+          "line": 43
+        },
+        {
+          "name": "Posting",
+          "kind": "interface",
+          "line": 49
+        },
+        {
+          "name": "FileEntry",
+          "kind": "interface",
+          "line": 53
+        },
+        {
+          "name": "InvertedIndex",
+          "kind": "interface",
+          "line": 60
+        },
+        {
+          "name": "SemanticSearchState",
+          "kind": "interface",
+          "line": 65
+        }
+      ]
+    },
+    {
       "path": "packages/tools/src/codebase-index/writer-graph-reader.ts",
-      "rank": 0.2057,
+      "rank": 0.2059,
       "inDeg": 35,
       "outDeg": 163,
       "package": "@wrongstack/tools",
@@ -11985,7 +12042,7 @@
     },
     {
       "path": "packages/vector-memory/src/store.ts",
-      "rank": 0.2056,
+      "rank": 0.2057,
       "inDeg": 109,
       "outDeg": 103,
       "package": "@wrongstack/vector-memory",
@@ -12023,8 +12080,47 @@
       ]
     },
     {
+      "path": "packages/core/src/security/permission-policy.ts",
+      "rank": 0.2056,
+      "inDeg": 42,
+      "outDeg": 124,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "mergeTrustEntries",
+          "kind": "function",
+          "line": 59
+        },
+        {
+          "name": "PermissionPolicyOptions",
+          "kind": "interface",
+          "line": 75
+        },
+        {
+          "name": "DEFAULT_ALWAYS_TRUST_TTL_MS",
+          "kind": "const",
+          "line": 93
+        },
+        {
+          "name": "DefaultPermissionPolicy",
+          "kind": "class",
+          "line": 95
+        },
+        {
+          "name": "policy",
+          "kind": "property",
+          "line": 96
+        },
+        {
+          "name": "loaded",
+          "kind": "property",
+          "line": 97
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/coordination/agent-monitor.ts",
-      "rank": 0.2053,
+      "rank": 0.2056,
       "inDeg": 58,
       "outDeg": 65,
       "package": "@wrongstack/core",
@@ -12063,7 +12159,7 @@
     },
     {
       "path": "packages/core/src/storage/cloud-sync.ts",
-      "rank": 0.2039,
+      "rank": 0.204,
       "inDeg": 49,
       "outDeg": 95,
       "package": "@wrongstack/core",
@@ -12102,7 +12198,7 @@
     },
     {
       "path": "packages/core/src/storage/memory-consolidator.ts",
-      "rank": 0.2039,
+      "rank": 0.204,
       "inDeg": 677,
       "outDeg": 67,
       "package": "@wrongstack/core",
@@ -12141,7 +12237,7 @@
     },
     {
       "path": "packages/providers/src/wire-adapter.ts",
-      "rank": 0.2035,
+      "rank": 0.2037,
       "inDeg": 41,
       "outDeg": 82,
       "package": "@wrongstack/providers",
@@ -12180,7 +12276,7 @@
     },
     {
       "path": "packages/core/src/core/fallback-profile-manager.ts",
-      "rank": 0.2031,
+      "rank": 0.2033,
       "inDeg": 78,
       "outDeg": 97,
       "package": "@wrongstack/core",
@@ -12219,7 +12315,7 @@
     },
     {
       "path": "packages/simpleui/src/lib/agent-model.ts",
-      "rank": 0.2028,
+      "rank": 0.2029,
       "inDeg": 78,
       "outDeg": 56,
       "package": "@wrongstack/simpleui",
@@ -12257,8 +12353,47 @@
       ]
     },
     {
+      "path": "packages/webui-server/src/server/terminal-ws-handler.ts",
+      "rank": 0.2029,
+      "inDeg": 83,
+      "outDeg": 59,
+      "package": "@wrongstack/webui-server",
+      "symbols": [
+        {
+          "name": "IncomingMessage",
+          "kind": "type",
+          "line": 13
+        },
+        {
+          "name": "PtyExit",
+          "kind": "type",
+          "line": 14
+        },
+        {
+          "name": "PtyProcess",
+          "kind": "interface",
+          "line": 15
+        },
+        {
+          "name": "NodePtyApi",
+          "kind": "interface",
+          "line": 23
+        },
+        {
+          "name": "LoadNodePty",
+          "kind": "type",
+          "line": 37
+        },
+        {
+          "name": "KillProcessTree",
+          "kind": "type",
+          "line": 38
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/models/models-registry.ts",
-      "rank": 0.2024,
+      "rank": 0.2025,
       "inDeg": 39,
       "outDeg": 118,
       "package": "@wrongstack/core",
@@ -12297,7 +12432,7 @@
     },
     {
       "path": "packages/tui/src/auth-panel-model.ts",
-      "rank": 0.2023,
+      "rank": 0.2024,
       "inDeg": 184,
       "outDeg": 57,
       "package": "@wrongstack/tui",
@@ -12336,7 +12471,7 @@
     },
     {
       "path": "packages/core/src/execution/topic-shift-advisor.ts",
-      "rank": 0.2019,
+      "rank": 0.202,
       "inDeg": 189,
       "outDeg": 59,
       "package": "@wrongstack/core",
@@ -12375,7 +12510,7 @@
     },
     {
       "path": "packages/core/src/observability/metrics.ts",
-      "rank": 0.2016,
+      "rank": 0.2017,
       "inDeg": 18,
       "outDeg": 39,
       "package": "@wrongstack/core",
@@ -12414,7 +12549,7 @@
     },
     {
       "path": "packages/cli/src/config-history.ts",
-      "rank": 0.2011,
+      "rank": 0.2012,
       "inDeg": 360,
       "outDeg": 125,
       "package": "@wrongstack/cli",
@@ -12453,7 +12588,7 @@
     },
     {
       "path": "packages/plugins/src/path-guard/glob.ts",
-      "rank": 0.201,
+      "rank": 0.2011,
       "inDeg": 84,
       "outDeg": 59,
       "package": "@wrongstack/plugins",
@@ -12491,47 +12626,8 @@
       ]
     },
     {
-      "path": "packages/plugins/src/semantic-search-indexer/index.ts",
-      "rank": 0.201,
-      "inDeg": 34,
-      "outDeg": 129,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "API_VERSION",
-          "kind": "const",
-          "line": 40
-        },
-        {
-          "name": "escapeRegex",
-          "kind": "const",
-          "line": 43
-        },
-        {
-          "name": "Posting",
-          "kind": "interface",
-          "line": 49
-        },
-        {
-          "name": "FileEntry",
-          "kind": "interface",
-          "line": 53
-        },
-        {
-          "name": "InvertedIndex",
-          "kind": "interface",
-          "line": 60
-        },
-        {
-          "name": "SemanticSearchState",
-          "kind": "interface",
-          "line": 65
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/plugins/review-report-store.ts",
-      "rank": 0.2004,
+      "rank": 0.2005,
       "inDeg": 25,
       "outDeg": 112,
       "package": "@wrongstack/core",
@@ -12569,47 +12665,47 @@
       ]
     },
     {
-      "path": "packages/core/src/security/permission-policy.ts",
-      "rank": 0.2004,
-      "inDeg": 40,
-      "outDeg": 124,
-      "package": "@wrongstack/core",
+      "path": "scripts/check-test-typecheck.mjs",
+      "rank": 0.1992,
+      "inDeg": 252,
+      "outDeg": 95,
+      "package": "wrongstack-monorepo",
       "symbols": [
         {
-          "name": "mergeTrustEntries",
-          "kind": "function",
-          "line": 59
+          "name": "args",
+          "kind": "const",
+          "line": 9
         },
         {
-          "name": "PermissionPolicyOptions",
-          "kind": "interface",
-          "line": 75
+          "name": "supported",
+          "kind": "const",
+          "line": 10
         },
         {
-          "name": "DefaultPermissionPolicy",
-          "kind": "class",
-          "line": 93
+          "name": "arg",
+          "kind": "const",
+          "line": 11
         },
         {
-          "name": "policy",
-          "kind": "property",
-          "line": 94
+          "name": "repoRoot",
+          "kind": "const",
+          "line": 18
         },
         {
-          "name": "loaded",
-          "kind": "property",
-          "line": 95
+          "name": "registry",
+          "kind": "const",
+          "line": 19
         },
         {
-          "name": "trustFile",
-          "kind": "property",
-          "line": 96
+          "name": "tscEntry",
+          "kind": "const",
+          "line": 22
         }
       ]
     },
     {
       "path": "packages/core/src/storage/session-recovery.ts",
-      "rank": 0.1987,
+      "rank": 0.1988,
       "inDeg": 55,
       "outDeg": 103,
       "package": "@wrongstack/core",
@@ -12647,47 +12743,47 @@
       ]
     },
     {
-      "path": "scripts/check-test-typecheck.mjs",
-      "rank": 0.1984,
-      "inDeg": 251,
-      "outDeg": 95,
-      "package": "wrongstack-monorepo",
+      "path": "packages/core/src/coordination/explore-companion.ts",
+      "rank": 0.198,
+      "inDeg": 59,
+      "outDeg": 53,
+      "package": "@wrongstack/core",
       "symbols": [
         {
-          "name": "args",
-          "kind": "const",
-          "line": 9
+          "name": "ExploreProbeSource",
+          "kind": "type",
+          "line": 50
         },
         {
-          "name": "supported",
-          "kind": "const",
-          "line": 10
+          "name": "ExploreProbe",
+          "kind": "interface",
+          "line": 59
         },
         {
-          "name": "arg",
-          "kind": "const",
-          "line": 11
+          "name": "ExploreCompanionSignalToggles",
+          "kind": "interface",
+          "line": 78
         },
         {
-          "name": "repoRoot",
-          "kind": "const",
-          "line": 18
+          "name": "ExploreCompanionOptions",
+          "kind": "interface",
+          "line": 87
         },
         {
-          "name": "registry",
-          "kind": "const",
-          "line": 19
+          "name": "ExploreCompanionTunables",
+          "kind": "type",
+          "line": 144
         },
         {
-          "name": "tscEntry",
+          "name": "DEFAULT_EXPLORE_COMPANION_AGENT_ID",
           "kind": "const",
-          "line": 22
+          "line": 159
         }
       ]
     },
     {
       "path": "packages/tui/src/kanban-audit.ts",
-      "rank": 0.1975,
+      "rank": 0.1977,
       "inDeg": 198,
       "outDeg": 130,
       "package": "@wrongstack/tui",
@@ -12725,86 +12821,8 @@
       ]
     },
     {
-      "path": "packages/plugins/src/cost-tracker/index.ts",
-      "rank": 0.1967,
-      "inDeg": 16,
-      "outDeg": 39,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "API_VERSION",
-          "kind": "const",
-          "line": 37
-        },
-        {
-          "name": "ModelPricing",
-          "kind": "interface",
-          "line": 48
-        },
-        {
-          "name": "TokenUsage",
-          "kind": "interface",
-          "line": 57
-        },
-        {
-          "name": "SessionCost",
-          "kind": "interface",
-          "line": 66
-        },
-        {
-          "name": "PRICING",
-          "kind": "const",
-          "line": 87
-        },
-        {
-          "name": "DEFAULT_PRICING",
-          "kind": "const",
-          "line": 96
-        }
-      ]
-    },
-    {
-      "path": "packages/plug-lsp/src/types.ts",
-      "rank": 0.1964,
-      "inDeg": 156,
-      "outDeg": 5,
-      "package": "@wrongstack/plug-lsp",
-      "symbols": [
-        {
-          "name": "AutoStartMode",
-          "kind": "type",
-          "line": 16
-        },
-        {
-          "name": "DiagnosticsAfterEdit",
-          "kind": "type",
-          "line": 17
-        },
-        {
-          "name": "SeverityName",
-          "kind": "type",
-          "line": 18
-        },
-        {
-          "name": "ServerConfig",
-          "kind": "interface",
-          "line": 20
-        },
-        {
-          "name": "PlugLSPConfig",
-          "kind": "interface",
-          "line": 34
-        },
-        {
-          "name": "ServerState",
-          "kind": "type",
-          "line": 46
-        }
-      ]
-    },
-    {
       "path": "packages/tools/src/codebase-index/writer-concepts.ts",
-      "rank": 0.1962,
+      "rank": 0.1963,
       "inDeg": 61,
       "outDeg": 57,
       "package": "@wrongstack/tools",
@@ -12843,7 +12861,7 @@
     },
     {
       "path": "packages/webui/src/components/TechStackView/shared.tsx",
-      "rank": 0.1956,
+      "rank": 0.1957,
       "inDeg": 63,
       "outDeg": 47,
       "package": "@wrongstack/webui",
@@ -12882,8 +12900,8 @@
     },
     {
       "path": "packages/simpleui/src/lib/ws.ts",
-      "rank": 0.1954,
-      "inDeg": 273,
+      "rank": 0.1955,
+      "inDeg": 274,
       "outDeg": 65,
       "package": "@wrongstack/simpleui",
       "symbols": [
@@ -12920,47 +12938,47 @@
       ]
     },
     {
-      "path": "packages/webui/src/types/sage.ts",
-      "rank": 0.195,
-      "inDeg": 261,
-      "outDeg": 23,
-      "package": "@wrongstack/webui",
+      "path": "packages/webui-server/src/server/context-editor.ts",
+      "rank": 0.1951,
+      "inDeg": 128,
+      "outDeg": 150,
+      "package": "@wrongstack/webui-server",
       "symbols": [
         {
-          "name": "SageScope",
+          "name": "ContextEditorBlock",
           "kind": "type",
-          "line": 1
+          "line": 15
         },
         {
-          "name": "SageStatus",
-          "kind": "type",
-          "line": 2
-        },
-        {
-          "name": "SageAnchor",
+          "name": "ContextEditorMessage",
           "kind": "interface",
-          "line": 10
+          "line": 17
         },
         {
-          "name": "SageEntry",
+          "name": "ContextEditorRemoval",
           "kind": "interface",
-          "line": 20
+          "line": 23
         },
         {
-          "name": "SageStats",
+          "name": "ContextEditorMetrics",
           "kind": "interface",
-          "line": 45
+          "line": 30
         },
         {
-          "name": "SageGraphEdge",
+          "name": "ContextEditorDiagnostics",
           "kind": "interface",
-          "line": 52
+          "line": 37
+        },
+        {
+          "name": "ContextEditorRepairPreview",
+          "kind": "interface",
+          "line": 46
         }
       ]
     },
     {
       "path": "packages/core/src/coordination/agents/types.ts",
-      "rank": 0.1947,
+      "rank": 0.1949,
       "inDeg": 124,
       "outDeg": 11,
       "package": "@wrongstack/core",
@@ -12998,47 +13016,8 @@
       ]
     },
     {
-      "path": "packages/webui-server/src/server/context-editor.ts",
-      "rank": 0.1946,
-      "inDeg": 117,
-      "outDeg": 151,
-      "package": "@wrongstack/webui-server",
-      "symbols": [
-        {
-          "name": "ContextEditorBlock",
-          "kind": "type",
-          "line": 15
-        },
-        {
-          "name": "ContextEditorMessage",
-          "kind": "interface",
-          "line": 17
-        },
-        {
-          "name": "ContextEditorRemoval",
-          "kind": "interface",
-          "line": 23
-        },
-        {
-          "name": "ContextEditorMetrics",
-          "kind": "interface",
-          "line": 30
-        },
-        {
-          "name": "ContextEditorDiagnostics",
-          "kind": "interface",
-          "line": 37
-        },
-        {
-          "name": "ContextEditorRepairPreview",
-          "kind": "interface",
-          "line": 46
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/execution/brain-runtime.ts",
-      "rank": 0.1945,
+      "rank": 0.1946,
       "inDeg": 98,
       "outDeg": 155,
       "package": "@wrongstack/core",
@@ -13077,7 +13056,7 @@
     },
     {
       "path": "packages/core/src/execution/council-orchestrator.ts",
-      "rank": 0.1943,
+      "rank": 0.1944,
       "inDeg": 14,
       "outDeg": 146,
       "package": "@wrongstack/core",
@@ -13115,86 +13094,86 @@
       ]
     },
     {
-      "path": "packages/core/src/coordination/explore-companion.ts",
-      "rank": 0.1939,
-      "inDeg": 58,
-      "outDeg": 53,
-      "package": "@wrongstack/core",
+      "path": "packages/webui/src/types/sage.ts",
+      "rank": 0.1943,
+      "inDeg": 261,
+      "outDeg": 23,
+      "package": "@wrongstack/webui",
       "symbols": [
         {
-          "name": "ExploreProbeSource",
+          "name": "SageScope",
           "kind": "type",
-          "line": 50
+          "line": 1
         },
         {
-          "name": "ExploreProbe",
-          "kind": "interface",
-          "line": 59
-        },
-        {
-          "name": "ExploreCompanionSignalToggles",
-          "kind": "interface",
-          "line": 78
-        },
-        {
-          "name": "ExploreCompanionOptions",
-          "kind": "interface",
-          "line": 87
-        },
-        {
-          "name": "ExploreCompanionTunables",
+          "name": "SageStatus",
           "kind": "type",
-          "line": 144
+          "line": 2
         },
         {
-          "name": "DEFAULT_EXPLORE_COMPANION_AGENT_ID",
-          "kind": "const",
-          "line": 159
+          "name": "SageAnchor",
+          "kind": "interface",
+          "line": 10
+        },
+        {
+          "name": "SageEntry",
+          "kind": "interface",
+          "line": 20
+        },
+        {
+          "name": "SageStats",
+          "kind": "interface",
+          "line": 45
+        },
+        {
+          "name": "SageGraphEdge",
+          "kind": "interface",
+          "line": 52
         }
       ]
     },
     {
-      "path": "packages/techstack/src/registry/client.ts",
-      "rank": 0.1939,
-      "inDeg": 51,
-      "outDeg": 56,
-      "package": "@wrongstack/techstack",
+      "path": "packages/plug-lsp/src/types.ts",
+      "rank": 0.1937,
+      "inDeg": 156,
+      "outDeg": 5,
+      "package": "@wrongstack/plug-lsp",
       "symbols": [
         {
-          "name": "RegistryEntry",
+          "name": "AutoStartMode",
+          "kind": "type",
+          "line": 16
+        },
+        {
+          "name": "DiagnosticsAfterEdit",
+          "kind": "type",
+          "line": 17
+        },
+        {
+          "name": "SeverityName",
+          "kind": "type",
+          "line": 18
+        },
+        {
+          "name": "ServerConfig",
           "kind": "interface",
-          "line": 15
+          "line": 20
         },
         {
-          "name": "CacheEntry",
+          "name": "PlugLSPConfig",
           "kind": "interface",
-          "line": 24
+          "line": 34
         },
         {
-          "name": "HostConcurrency",
-          "kind": "interface",
-          "line": 30
-        },
-        {
-          "name": "DEFAULT_TTL_MS",
-          "kind": "const",
-          "line": 37
-        },
-        {
-          "name": "MAX_CONCURRENCY_PER_HOST",
-          "kind": "const",
-          "line": 38
-        },
-        {
-          "name": "REGISTRY_BATCH_CONCURRENCY",
-          "kind": "const",
-          "line": 39
+          "name": "ServerState",
+          "kind": "type",
+          "line": 46
         }
       ]
     },
     {
       "path": "packages/governance/src/verification-planner.ts",
-      "rank": 0.1932,
+      "rank": 0.1934,
       "inDeg": 53,
       "outDeg": 63,
       "package": "@wrongstack/governance",
@@ -13233,8 +13212,8 @@
     },
     {
       "path": "packages/core/src/coordination/autonomous-coordinator.ts",
-      "rank": 0.1932,
-      "inDeg": 40,
+      "rank": 0.1928,
+      "inDeg": 41,
       "outDeg": 108,
       "package": "@wrongstack/core",
       "symbols": [
@@ -13271,8 +13250,47 @@
       ]
     },
     {
+      "path": "packages/cli/src/subcommands/handlers/hq.ts",
+      "rank": 0.1925,
+      "inDeg": 43,
+      "outDeg": 173,
+      "package": "@wrongstack/cli",
+      "symbols": [
+        {
+          "name": "resolveDataDir",
+          "kind": "function",
+          "line": 65
+        },
+        {
+          "name": "hqCmd",
+          "kind": "const",
+          "line": 71
+        },
+        {
+          "name": "startServer",
+          "kind": "function",
+          "line": 116
+        },
+        {
+          "name": "writeStartupInfo",
+          "kind": "function",
+          "line": 278
+        },
+        {
+          "name": "hqTokenCmd",
+          "kind": "function",
+          "line": 322
+        },
+        {
+          "name": "hqAuditCmd",
+          "kind": "function",
+          "line": 368
+        }
+      ]
+    },
+    {
       "path": "packages/simpleui/src/types.ts",
-      "rank": 0.1921,
+      "rank": 0.1924,
       "inDeg": 208,
       "outDeg": 9,
       "package": "@wrongstack/simpleui",
@@ -13311,7 +13329,7 @@
     },
     {
       "path": "packages/core/src/security/directory-permission-policy.ts",
-      "rank": 0.1917,
+      "rank": 0.1919,
       "inDeg": 77,
       "outDeg": 88,
       "package": "@wrongstack/core",
@@ -13349,8 +13367,47 @@
       ]
     },
     {
+      "path": "packages/techstack/src/registry/client.ts",
+      "rank": 0.1918,
+      "inDeg": 51,
+      "outDeg": 56,
+      "package": "@wrongstack/techstack",
+      "symbols": [
+        {
+          "name": "RegistryEntry",
+          "kind": "interface",
+          "line": 15
+        },
+        {
+          "name": "CacheEntry",
+          "kind": "interface",
+          "line": 24
+        },
+        {
+          "name": "HostConcurrency",
+          "kind": "interface",
+          "line": 30
+        },
+        {
+          "name": "DEFAULT_TTL_MS",
+          "kind": "const",
+          "line": 37
+        },
+        {
+          "name": "MAX_CONCURRENCY_PER_HOST",
+          "kind": "const",
+          "line": 38
+        },
+        {
+          "name": "REGISTRY_BATCH_CONCURRENCY",
+          "kind": "const",
+          "line": 39
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/plugin/loader.ts",
-      "rank": 0.1917,
+      "rank": 0.1918,
       "inDeg": 58,
       "outDeg": 124,
       "package": "@wrongstack/core",
@@ -13388,86 +13445,8 @@
       ]
     },
     {
-      "path": "packages/core/src/hq/publisher.ts",
-      "rank": 0.1916,
-      "inDeg": 6,
-      "outDeg": 139,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "TRANSCRIPT_EVENT_TYPES",
-          "kind": "const",
-          "line": 72
-        },
-        {
-          "name": "DEFAULT_RECONNECT_BASE_MS",
-          "kind": "const",
-          "line": 74
-        },
-        {
-          "name": "DEFAULT_RECONNECT_MAX_MS",
-          "kind": "const",
-          "line": 75
-        },
-        {
-          "name": "DEFAULT_DISCOVERY_POLL_MS",
-          "kind": "const",
-          "line": 76
-        },
-        {
-          "name": "DEFAULT_MAX_QUEUED_MESSAGES",
-          "kind": "const",
-          "line": 77
-        },
-        {
-          "name": "DEFAULT_MAX_QUEUED_BYTES",
-          "kind": "const",
-          "line": 88
-        }
-      ]
-    },
-    {
-      "path": "packages/plugins/src/dead-code-detector/index.ts",
-      "rank": 0.1914,
-      "inDeg": 16,
-      "outDeg": 88,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "API_VERSION",
-          "kind": "const",
-          "line": 35
-        },
-        {
-          "name": "SuspiciousSymbol",
-          "kind": "interface",
-          "line": 41
-        },
-        {
-          "name": "DeadCodeDetectorState",
-          "kind": "interface",
-          "line": 48
-        },
-        {
-          "name": "state",
-          "kind": "const",
-          "line": 58
-        },
-        {
-          "name": "DeadCodeDetectorConfig",
-          "kind": "interface",
-          "line": 72
-        },
-        {
-          "name": "DEFAULTS",
-          "kind": "const",
-          "line": 80
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/mailbox-project-server.ts",
-      "rank": 0.1914,
+      "rank": 0.1916,
       "inDeg": 12,
       "outDeg": 122,
       "package": "@wrongstack/core",
@@ -13505,47 +13484,86 @@
       ]
     },
     {
-      "path": "packages/tools/src/_util.ts",
-      "rank": 0.191,
-      "inDeg": 166,
-      "outDeg": 60,
-      "package": "@wrongstack/tools",
+      "path": "packages/plugins/src/dead-code-detector/index.ts",
+      "rank": 0.1916,
+      "inDeg": 16,
+      "outDeg": 88,
+      "package": "@wrongstack/plugins",
       "symbols": [
         {
-          "name": "sha256hex",
-          "kind": "function",
-          "line": 12
+          "name": "API_VERSION",
+          "kind": "const",
+          "line": 35
         },
         {
-          "name": "PackageManager",
-          "kind": "type",
-          "line": 16
+          "name": "SuspiciousSymbol",
+          "kind": "interface",
+          "line": 41
         },
         {
-          "name": "detectPackageManager",
-          "kind": "function",
-          "line": 31
-        },
-        {
-          "name": "detectPackageManagerInDir",
-          "kind": "function",
+          "name": "DeadCodeDetectorState",
+          "kind": "interface",
           "line": 48
         },
         {
-          "name": "resolvePath",
-          "kind": "function",
-          "line": 83
+          "name": "state",
+          "kind": "const",
+          "line": 58
         },
         {
-          "name": "allowedRoots",
-          "kind": "function",
-          "line": 94
+          "name": "DeadCodeDetectorConfig",
+          "kind": "interface",
+          "line": 72
+        },
+        {
+          "name": "DEFAULTS",
+          "kind": "const",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "path": "packages/core/src/hq/publisher.ts",
+      "rank": 0.1915,
+      "inDeg": 6,
+      "outDeg": 139,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "TRANSCRIPT_EVENT_TYPES",
+          "kind": "const",
+          "line": 72
+        },
+        {
+          "name": "DEFAULT_RECONNECT_BASE_MS",
+          "kind": "const",
+          "line": 74
+        },
+        {
+          "name": "DEFAULT_RECONNECT_MAX_MS",
+          "kind": "const",
+          "line": 75
+        },
+        {
+          "name": "DEFAULT_DISCOVERY_POLL_MS",
+          "kind": "const",
+          "line": 76
+        },
+        {
+          "name": "DEFAULT_MAX_QUEUED_MESSAGES",
+          "kind": "const",
+          "line": 77
+        },
+        {
+          "name": "DEFAULT_MAX_QUEUED_BYTES",
+          "kind": "const",
+          "line": 88
         }
       ]
     },
     {
       "path": "packages/core/src/storage/goal-store.ts",
-      "rank": 0.1909,
+      "rank": 0.1911,
       "inDeg": 195,
       "outDeg": 54,
       "package": "@wrongstack/core",
@@ -13584,7 +13602,7 @@
     },
     {
       "path": "packages/core/src/coordination/mailbox-credential-store.ts",
-      "rank": 0.1906,
+      "rank": 0.1908,
       "inDeg": 111,
       "outDeg": 20,
       "package": "@wrongstack/core",
@@ -13622,8 +13640,47 @@
       ]
     },
     {
+      "path": "packages/tools/src/_util.ts",
+      "rank": 0.1905,
+      "inDeg": 166,
+      "outDeg": 60,
+      "package": "@wrongstack/tools",
+      "symbols": [
+        {
+          "name": "sha256hex",
+          "kind": "function",
+          "line": 12
+        },
+        {
+          "name": "PackageManager",
+          "kind": "type",
+          "line": 16
+        },
+        {
+          "name": "detectPackageManager",
+          "kind": "function",
+          "line": 31
+        },
+        {
+          "name": "detectPackageManagerInDir",
+          "kind": "function",
+          "line": 48
+        },
+        {
+          "name": "resolvePath",
+          "kind": "function",
+          "line": 83
+        },
+        {
+          "name": "allowedRoots",
+          "kind": "function",
+          "line": 94
+        }
+      ]
+    },
+    {
       "path": "packages/providers/src/model-output-limits.ts",
-      "rank": 0.1904,
+      "rank": 0.1905,
       "inDeg": 108,
       "outDeg": 64,
       "package": "@wrongstack/providers",
@@ -13661,8 +13718,47 @@
       ]
     },
     {
+      "path": "packages/plug-lsp/src/server/lsp-server.ts",
+      "rank": 0.1905,
+      "inDeg": 53,
+      "outDeg": 53,
+      "package": "@wrongstack/plug-lsp",
+      "symbols": [
+        {
+          "name": "ServerContext",
+          "kind": "interface",
+          "line": 37
+        },
+        {
+          "name": "LSPServer",
+          "kind": "class",
+          "line": 45
+        },
+        {
+          "name": "MAX_DIAGNOSTICS_ENTRIES",
+          "kind": "property",
+          "line": 52
+        },
+        {
+          "name": "state",
+          "kind": "property",
+          "line": 53
+        },
+        {
+          "name": "capabilities",
+          "kind": "property",
+          "line": 54
+        },
+        {
+          "name": "diagnostics",
+          "kind": "property",
+          "line": 55
+        }
+      ]
+    },
+    {
       "path": "packages/plugins/src/migration-planner/index.ts",
-      "rank": 0.1902,
+      "rank": 0.1903,
       "inDeg": 17,
       "outDeg": 59,
       "package": "@wrongstack/plugins",
@@ -13700,47 +13796,8 @@
       ]
     },
     {
-      "path": "packages/core/src/storage/director-state.ts",
-      "rank": 0.1902,
-      "inDeg": 57,
-      "outDeg": 34,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "DirectorSubagentState",
-          "kind": "interface",
-          "line": 16
-        },
-        {
-          "name": "DirectorTaskState",
-          "kind": "interface",
-          "line": 25
-        },
-        {
-          "name": "DirectorTaskWorktreeState",
-          "kind": "interface",
-          "line": 39
-        },
-        {
-          "name": "DirectorStateSnapshot",
-          "kind": "interface",
-          "line": 60
-        },
-        {
-          "name": "loadDirectorState",
-          "kind": "function",
-          "line": 80
-        },
-        {
-          "name": "DirectorStateLock",
-          "kind": "interface",
-          "line": 101
-        }
-      ]
-    },
-    {
       "path": "packages/wrongtrace/src/client.ts",
-      "rank": 0.1899,
+      "rank": 0.1901,
       "inDeg": 27,
       "outDeg": 87,
       "package": "@wrongstack/wrongtrace",
@@ -13778,47 +13835,47 @@
       ]
     },
     {
-      "path": "packages/sdd/src/task-flow.ts",
-      "rank": 0.1891,
-      "inDeg": 271,
-      "outDeg": 70,
-      "package": "@wrongstack/sdd",
+      "path": "packages/core/src/storage/director-state.ts",
+      "rank": 0.1898,
+      "inDeg": 57,
+      "outDeg": 34,
+      "package": "@wrongstack/core",
       "symbols": [
         {
-          "name": "TaskFlowEventMap",
+          "name": "DirectorSubagentState",
           "kind": "interface",
-          "line": 20
+          "line": 16
         },
         {
-          "name": "TaskFlowPhase",
-          "kind": "type",
-          "line": 32
-        },
-        {
-          "name": "TaskFlowEventName",
-          "kind": "type",
-          "line": 43
-        },
-        {
-          "name": "TaskFlowOptions",
+          "name": "DirectorTaskState",
           "kind": "interface",
-          "line": 45
+          "line": 25
         },
         {
-          "name": "TaskFlowExecutionContext",
+          "name": "DirectorTaskWorktreeState",
           "kind": "interface",
-          "line": 52
+          "line": 39
         },
         {
-          "name": "TaskFlow",
-          "kind": "class",
-          "line": 58
+          "name": "DirectorStateSnapshot",
+          "kind": "interface",
+          "line": 60
+        },
+        {
+          "name": "loadDirectorState",
+          "kind": "function",
+          "line": 80
+        },
+        {
+          "name": "DirectorStateLock",
+          "kind": "interface",
+          "line": 101
         }
       ]
     },
     {
       "path": "packages/core/tests/coordination/fixtures/mailbox/index.ts",
-      "rank": 0.1887,
+      "rank": 0.1895,
       "inDeg": 61,
       "outDeg": 63,
       "package": "@wrongstack/core",
@@ -13856,8 +13913,47 @@
       ]
     },
     {
+      "path": "packages/sdd/src/task-flow.ts",
+      "rank": 0.189,
+      "inDeg": 271,
+      "outDeg": 70,
+      "package": "@wrongstack/sdd",
+      "symbols": [
+        {
+          "name": "TaskFlowEventMap",
+          "kind": "interface",
+          "line": 20
+        },
+        {
+          "name": "TaskFlowPhase",
+          "kind": "type",
+          "line": 32
+        },
+        {
+          "name": "TaskFlowEventName",
+          "kind": "type",
+          "line": 43
+        },
+        {
+          "name": "TaskFlowOptions",
+          "kind": "interface",
+          "line": 45
+        },
+        {
+          "name": "TaskFlowExecutionContext",
+          "kind": "interface",
+          "line": 52
+        },
+        {
+          "name": "TaskFlow",
+          "kind": "class",
+          "line": 58
+        }
+      ]
+    },
+    {
       "path": "packages/tools/src/kanban-tool-results.ts",
-      "rank": 0.1885,
+      "rank": 0.1886,
       "inDeg": 101,
       "outDeg": 62,
       "package": "@wrongstack/tools",
@@ -13896,7 +13992,7 @@
     },
     {
       "path": "packages/webui-server/src/server/terminal-dashboard.ts",
-      "rank": 0.1881,
+      "rank": 0.1882,
       "inDeg": 59,
       "outDeg": 65,
       "package": "@wrongstack/webui-server",
@@ -13935,7 +14031,7 @@
     },
     {
       "path": "packages/plugins/src/duplicate-code-detector/index.ts",
-      "rank": 0.1875,
+      "rank": 0.1876,
       "inDeg": 28,
       "outDeg": 99,
       "package": "@wrongstack/plugins",
@@ -13974,7 +14070,7 @@
     },
     {
       "path": "packages/requirement-intake/src/service-helpers.ts",
-      "rank": 0.1874,
+      "rank": 0.1875,
       "inDeg": 38,
       "outDeg": 108,
       "package": "@wrongstack/requirement-intake",
@@ -14013,7 +14109,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/worker-protocol.ts",
-      "rank": 0.1873,
+      "rank": 0.1874,
       "inDeg": 141,
       "outDeg": 34,
       "package": "@wrongstack/tools",
@@ -14052,7 +14148,7 @@
     },
     {
       "path": "packages/core/src/coordination/session-subagent-models.ts",
-      "rank": 0.1871,
+      "rank": 0.1872,
       "inDeg": 173,
       "outDeg": 67,
       "package": "@wrongstack/core",
@@ -14091,7 +14187,7 @@
     },
     {
       "path": "packages/persistence/src/atomic-write.ts",
-      "rank": 0.187,
+      "rank": 0.1871,
       "inDeg": 31,
       "outDeg": 57,
       "package": "@wrongstack/persistence",
@@ -14130,8 +14226,8 @@
     },
     {
       "path": "packages/core/src/worktree/worktree-manager.ts",
-      "rank": 0.1868,
-      "inDeg": 577,
+      "rank": 0.187,
+      "inDeg": 580,
       "outDeg": 113,
       "package": "@wrongstack/core",
       "symbols": [
@@ -14168,86 +14264,8 @@
       ]
     },
     {
-      "path": "packages/plug-lsp/src/server/lsp-server.ts",
-      "rank": 0.1866,
-      "inDeg": 52,
-      "outDeg": 53,
-      "package": "@wrongstack/plug-lsp",
-      "symbols": [
-        {
-          "name": "ServerContext",
-          "kind": "interface",
-          "line": 37
-        },
-        {
-          "name": "LSPServer",
-          "kind": "class",
-          "line": 45
-        },
-        {
-          "name": "MAX_DIAGNOSTICS_ENTRIES",
-          "kind": "property",
-          "line": 52
-        },
-        {
-          "name": "state",
-          "kind": "property",
-          "line": 53
-        },
-        {
-          "name": "capabilities",
-          "kind": "property",
-          "line": 54
-        },
-        {
-          "name": "diagnostics",
-          "kind": "property",
-          "line": 55
-        }
-      ]
-    },
-    {
-      "path": "packages/webui/src/stores/fleet-store.ts",
-      "rank": 0.1865,
-      "inDeg": 182,
-      "outDeg": 95,
-      "package": "@wrongstack/webui",
-      "symbols": [
-        {
-          "name": "SPARKLINE_BINS",
-          "kind": "const",
-          "line": 16
-        },
-        {
-          "name": "MAX_TIMELINE",
-          "kind": "const",
-          "line": 17
-        },
-        {
-          "name": "MAX_AGENT_TIMELINE",
-          "kind": "const",
-          "line": 18
-        },
-        {
-          "name": "MAX_AGENT_TRANSCRIPT",
-          "kind": "const",
-          "line": 19
-        },
-        {
-          "name": "MAX_FLEET_AGENTS",
-          "kind": "const",
-          "line": 21
-        },
-        {
-          "name": "EMPTY_AGENT_TRANSCRIPT",
-          "kind": "const",
-          "line": 23
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/brain-monitor.ts",
-      "rank": 0.1863,
+      "rank": 0.1865,
       "inDeg": 30,
       "outDeg": 46,
       "package": "@wrongstack/core",
@@ -14285,8 +14303,47 @@
       ]
     },
     {
+      "path": "packages/webui/src/stores/fleet-store.ts",
+      "rank": 0.1864,
+      "inDeg": 183,
+      "outDeg": 95,
+      "package": "@wrongstack/webui",
+      "symbols": [
+        {
+          "name": "SPARKLINE_BINS",
+          "kind": "const",
+          "line": 16
+        },
+        {
+          "name": "MAX_TIMELINE",
+          "kind": "const",
+          "line": 17
+        },
+        {
+          "name": "MAX_AGENT_TIMELINE",
+          "kind": "const",
+          "line": 18
+        },
+        {
+          "name": "MAX_AGENT_TRANSCRIPT",
+          "kind": "const",
+          "line": 19
+        },
+        {
+          "name": "MAX_FLEET_AGENTS",
+          "kind": "const",
+          "line": 21
+        },
+        {
+          "name": "EMPTY_AGENT_TRANSCRIPT",
+          "kind": "const",
+          "line": 23
+        }
+      ]
+    },
+    {
       "path": "packages/webui/src/stores/session-store.ts",
-      "rank": 0.1862,
+      "rank": 0.1864,
       "inDeg": 207,
       "outDeg": 117,
       "package": "@wrongstack/webui",
@@ -14325,7 +14382,7 @@
     },
     {
       "path": "packages/core/src/quota/index.ts",
-      "rank": 0.1862,
+      "rank": 0.1863,
       "inDeg": 133,
       "outDeg": 36,
       "package": "@wrongstack/core",
@@ -14364,7 +14421,7 @@
     },
     {
       "path": "packages/wrongtrace/src/types.ts",
-      "rank": 0.186,
+      "rank": 0.1862,
       "inDeg": 85,
       "outDeg": 13,
       "package": "@wrongstack/wrongtrace",
@@ -14403,7 +14460,7 @@
     },
     {
       "path": "packages/governance/src/attachment-broker-controller.ts",
-      "rank": 0.1857,
+      "rank": 0.1858,
       "inDeg": 46,
       "outDeg": 45,
       "package": "@wrongstack/governance",
@@ -14444,7 +14501,7 @@
       "path": "packages/core/src/chronicle/query.ts",
       "rank": 0.1855,
       "inDeg": 33,
-      "outDeg": 142,
+      "outDeg": 144,
       "package": "@wrongstack/core",
       "symbols": [
         {
@@ -14481,7 +14538,7 @@
     },
     {
       "path": "packages/core/src/session-catalog/store-leases.ts",
-      "rank": 0.1854,
+      "rank": 0.1855,
       "inDeg": 48,
       "outDeg": 137,
       "package": "@wrongstack/core",
@@ -14520,7 +14577,7 @@
     },
     {
       "path": "packages/providers/src/opencode-go.ts",
-      "rank": 0.1853,
+      "rank": 0.1854,
       "inDeg": 22,
       "outDeg": 68,
       "package": "@wrongstack/providers",
@@ -14559,7 +14616,7 @@
     },
     {
       "path": "packages/acp/tests/protocol-handler.test.ts",
-      "rank": 0.185,
+      "rank": 0.1851,
       "inDeg": 11,
       "outDeg": 50,
       "package": "@wrongstack/acp",
@@ -14598,8 +14655,8 @@
     },
     {
       "path": "packages/mcp/src/operations.ts",
-      "rank": 0.1847,
-      "inDeg": 108,
+      "rank": 0.1846,
+      "inDeg": 109,
       "outDeg": 37,
       "package": "@wrongstack/mcp",
       "symbols": [
@@ -14637,7 +14694,7 @@
     },
     {
       "path": "packages/core/src/types/tool.ts",
-      "rank": 0.1837,
+      "rank": 0.1838,
       "inDeg": 178,
       "outDeg": 12,
       "package": "@wrongstack/core",
@@ -14676,7 +14733,7 @@
     },
     {
       "path": "packages/core/src/types/session-timeline.ts",
-      "rank": 0.1831,
+      "rank": 0.1832,
       "inDeg": 67,
       "outDeg": 72,
       "package": "@wrongstack/core",
@@ -14715,7 +14772,7 @@
     },
     {
       "path": "packages/governance/src/admin-session.ts",
-      "rank": 0.1831,
+      "rank": 0.1832,
       "inDeg": 38,
       "outDeg": 43,
       "package": "@wrongstack/governance",
@@ -14754,7 +14811,7 @@
     },
     {
       "path": "packages/cli/src/boot/launch-menu.ts",
-      "rank": 0.183,
+      "rank": 0.1831,
       "inDeg": 51,
       "outDeg": 95,
       "package": "@wrongstack/cli",
@@ -14792,47 +14849,8 @@
       ]
     },
     {
-      "path": "packages/core/src/session-catalog/client.ts",
-      "rank": 0.1826,
-      "inDeg": 32,
-      "outDeg": 73,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "CONNECT_TIMEOUT_MS",
-          "kind": "const",
-          "line": 22
-        },
-        {
-          "name": "START_TIMEOUT_MS",
-          "kind": "const",
-          "line": 23
-        },
-        {
-          "name": "CALL_TIMEOUT_MS",
-          "kind": "const",
-          "line": 24
-        },
-        {
-          "name": "MAX_PENDING_REQUESTS",
-          "kind": "const",
-          "line": 25
-        },
-        {
-          "name": "MAX_EVENT_LISTENERS",
-          "kind": "const",
-          "line": 26
-        },
-        {
-          "name": "PendingRequest",
-          "kind": "interface",
-          "line": 28
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/observability/otlp-traces.ts",
-      "rank": 0.1825,
+      "rank": 0.1827,
       "inDeg": 38,
       "outDeg": 41,
       "package": "@wrongstack/core",
@@ -14870,8 +14888,47 @@
       ]
     },
     {
+      "path": "packages/core/src/session-catalog/client.ts",
+      "rank": 0.1824,
+      "inDeg": 32,
+      "outDeg": 73,
+      "package": "@wrongstack/core",
+      "symbols": [
+        {
+          "name": "CONNECT_TIMEOUT_MS",
+          "kind": "const",
+          "line": 22
+        },
+        {
+          "name": "START_TIMEOUT_MS",
+          "kind": "const",
+          "line": 23
+        },
+        {
+          "name": "CALL_TIMEOUT_MS",
+          "kind": "const",
+          "line": 24
+        },
+        {
+          "name": "MAX_PENDING_REQUESTS",
+          "kind": "const",
+          "line": 25
+        },
+        {
+          "name": "MAX_EVENT_LISTENERS",
+          "kind": "const",
+          "line": 26
+        },
+        {
+          "name": "PendingRequest",
+          "kind": "interface",
+          "line": 28
+        }
+      ]
+    },
+    {
       "path": "packages/tui/src/components/agents-monitor.tsx",
-      "rank": 0.182,
+      "rank": 0.1821,
       "inDeg": 66,
       "outDeg": 135,
       "package": "@wrongstack/tui",
@@ -14910,7 +14967,7 @@
     },
     {
       "path": "packages/core/src/storage/prompt-usage-store.ts",
-      "rank": 0.1819,
+      "rank": 0.182,
       "inDeg": 88,
       "outDeg": 37,
       "package": "@wrongstack/core",
@@ -14949,7 +15006,7 @@
     },
     {
       "path": "apps/desktop/src/main/webui-command-bridge.ts",
-      "rank": 0.1818,
+      "rank": 0.182,
       "inDeg": 25,
       "outDeg": 34,
       "package": "@wrongstack/desktop",
@@ -14988,7 +15045,7 @@
     },
     {
       "path": "packages/core/src/coordination/delegation/leader-delivery-hub.ts",
-      "rank": 0.1817,
+      "rank": 0.1819,
       "inDeg": 84,
       "outDeg": 32,
       "package": "@wrongstack/core",
@@ -15027,7 +15084,7 @@
     },
     {
       "path": "packages/telegram/tests/helpers/fake-telegram-server.ts",
-      "rank": 0.1808,
+      "rank": 0.181,
       "inDeg": 21,
       "outDeg": 25,
       "package": "@wrongstack/telegram",
@@ -15066,7 +15123,7 @@
     },
     {
       "path": "packages/core/src/utils/continuous-memory-profiler.ts",
-      "rank": 0.1807,
+      "rank": 0.1808,
       "inDeg": 31,
       "outDeg": 35,
       "package": "@wrongstack/core",
@@ -15105,8 +15162,8 @@
     },
     {
       "path": "website/src/components/site/KanbanLiveDemo.tsx",
-      "rank": 0.1806,
-      "inDeg": 109,
+      "rank": 0.1807,
+      "inDeg": 108,
       "outDeg": 54,
       "package": "wrongstack-website",
       "symbols": [
@@ -15144,7 +15201,7 @@
     },
     {
       "path": "packages/core/src/coordination/collab-debug-types.ts",
-      "rank": 0.1805,
+      "rank": 0.1807,
       "inDeg": 90,
       "outDeg": 15,
       "package": "@wrongstack/core",
@@ -15182,47 +15239,8 @@
       ]
     },
     {
-      "path": "apps/desktop/src/main/main.ts",
-      "rank": 0.1805,
-      "inDeg": 72,
-      "outDeg": 147,
-      "package": "@wrongstack/desktop",
-      "symbols": [
-        {
-          "name": "desktopTrustBoundary",
-          "kind": "const",
-          "line": 89
-        },
-        {
-          "name": "manager",
-          "kind": "const",
-          "line": 90
-        },
-        {
-          "name": "bridge",
-          "kind": "const",
-          "line": 91
-        },
-        {
-          "name": "mainWindow",
-          "kind": "let",
-          "line": 93
-        },
-        {
-          "name": "shellView",
-          "kind": "let",
-          "line": 94
-        },
-        {
-          "name": "shellSidebarCollapsed",
-          "kind": "let",
-          "line": 95
-        }
-      ]
-    },
-    {
       "path": "apps/desktop/src/main/webui/controller.ts",
-      "rank": 0.18,
+      "rank": 0.1801,
       "inDeg": 13,
       "outDeg": 86,
       "package": "@wrongstack/desktop",
@@ -15261,7 +15279,7 @@
     },
     {
       "path": "packages/tools/src/codebase-index/parser-worker-pool.ts",
-      "rank": 0.1796,
+      "rank": 0.1798,
       "inDeg": 21,
       "outDeg": 36,
       "package": "@wrongstack/tools",
@@ -15299,41 +15317,41 @@
       ]
     },
     {
-      "path": "packages/governance/src/project-server.ts",
+      "path": "packages/core/src/coordination/fleet-supervisor.ts",
       "rank": 0.1795,
-      "inDeg": 85,
-      "outDeg": 82,
-      "package": "@wrongstack/governance",
+      "inDeg": 31,
+      "outDeg": 66,
+      "package": "@wrongstack/core",
       "symbols": [
         {
-          "name": "ServerState",
-          "kind": "type",
-          "line": 30
-        },
-        {
-          "name": "GOVERNANCE_IPC_MAX_CONNECTIONS",
-          "kind": "const",
-          "line": 32
-        },
-        {
-          "name": "GOVERNANCE_IPC_SOCKET_TIMEOUT_MS",
-          "kind": "const",
-          "line": 33
-        },
-        {
-          "name": "GovernanceProjectServerOptions",
+          "name": "SupervisedSubagent",
           "kind": "interface",
-          "line": 35
+          "line": 44
         },
         {
-          "name": "requestIdFromUnknown",
-          "kind": "function",
-          "line": 46
+          "name": "FleetSupervisorSource",
+          "kind": "interface",
+          "line": 52
         },
         {
-          "name": "transportError",
-          "kind": "function",
-          "line": 57
+          "name": "FleetSupervisorActions",
+          "kind": "interface",
+          "line": 59
+        },
+        {
+          "name": "FleetSupervisorOptions",
+          "kind": "interface",
+          "line": 84
+        },
+        {
+          "name": "SupervisorLogEntry",
+          "kind": "interface",
+          "line": 97
+        },
+        {
+          "name": "COLLAB_ID_PREFIXES",
+          "kind": "const",
+          "line": 109
         }
       ]
     },
@@ -15378,7 +15396,7 @@
     },
     {
       "path": "packages/core/src/session-catalog/registry.ts",
-      "rank": 0.1794,
+      "rank": 0.1795,
       "inDeg": 21,
       "outDeg": 73,
       "package": "@wrongstack/core",
@@ -15416,47 +15434,8 @@
       ]
     },
     {
-      "path": "packages/core/src/coordination/fleet-supervisor.ts",
-      "rank": 0.1793,
-      "inDeg": 31,
-      "outDeg": 66,
-      "package": "@wrongstack/core",
-      "symbols": [
-        {
-          "name": "SupervisedSubagent",
-          "kind": "interface",
-          "line": 44
-        },
-        {
-          "name": "FleetSupervisorSource",
-          "kind": "interface",
-          "line": 52
-        },
-        {
-          "name": "FleetSupervisorActions",
-          "kind": "interface",
-          "line": 59
-        },
-        {
-          "name": "FleetSupervisorOptions",
-          "kind": "interface",
-          "line": 84
-        },
-        {
-          "name": "SupervisorLogEntry",
-          "kind": "interface",
-          "line": 97
-        },
-        {
-          "name": "COLLAB_ID_PREFIXES",
-          "kind": "const",
-          "line": 109
-        }
-      ]
-    },
-    {
       "path": "packages/sage/src/anchors/verify.ts",
-      "rank": 0.1791,
+      "rank": 0.1792,
       "inDeg": 35,
       "outDeg": 74,
       "package": "@wrongstack/sage",
@@ -15494,47 +15473,8 @@
       ]
     },
     {
-      "path": "packages/plugins/src/semver-bump/index.ts",
-      "rank": 0.1789,
-      "inDeg": 40,
-      "outDeg": 116,
-      "package": "@wrongstack/plugins",
-      "symbols": [
-        {
-          "name": "API_VERSION",
-          "kind": "const",
-          "line": 15
-        },
-        {
-          "name": "requireProjectRoot",
-          "kind": "function",
-          "line": 17
-        },
-        {
-          "name": "requireGitRef",
-          "kind": "function",
-          "line": 29
-        },
-        {
-          "name": "resolveProjectRoot",
-          "kind": "function",
-          "line": 35
-        },
-        {
-          "name": "state",
-          "kind": "const",
-          "line": 52
-        },
-        {
-          "name": "BumpType",
-          "kind": "type",
-          "line": 68
-        }
-      ]
-    },
-    {
       "path": "packages/core/src/coordination/brain-trace.ts",
-      "rank": 0.1788,
+      "rank": 0.179,
       "inDeg": 36,
       "outDeg": 61,
       "package": "@wrongstack/core",
@@ -15573,7 +15513,7 @@
     },
     {
       "path": "packages/plug-lsp/src/slash-commands/lsp.ts",
-      "rank": 0.1788,
+      "rank": 0.1789,
       "inDeg": 52,
       "outDeg": 140,
       "package": "@wrongstack/plug-lsp",
@@ -15612,7 +15552,7 @@
     },
     {
       "path": "packages/core/src/plugins/skills-plugin.ts",
-      "rank": 0.1787,
+      "rank": 0.1788,
       "inDeg": 46,
       "outDeg": 189,
       "package": "@wrongstack/core",
@@ -15650,47 +15590,47 @@
       ]
     },
     {
-      "path": "packages/cli/src/fleet/host-shadow-manager.ts",
-      "rank": 0.1787,
-      "inDeg": 18,
-      "outDeg": 40,
-      "package": "@wrongstack/cli",
+      "path": "packages/plugins/src/semver-bump/index.ts",
+      "rank": 0.1782,
+      "inDeg": 45,
+      "outDeg": 116,
+      "package": "@wrongstack/plugins",
       "symbols": [
         {
-          "name": "HostShadowManagerContext",
-          "kind": "interface",
-          "line": 46
-        },
-        {
-          "name": "MAX_TRACKED_SESSIONS",
+          "name": "API_VERSION",
           "kind": "const",
-          "line": 67
+          "line": 15
         },
         {
-          "name": "DEFAULT_HEARTBEAT_INTERVAL_MS",
+          "name": "requireProjectRoot",
+          "kind": "function",
+          "line": 17
+        },
+        {
+          "name": "requireGitRef",
+          "kind": "function",
+          "line": 29
+        },
+        {
+          "name": "resolveProjectRoot",
+          "kind": "function",
+          "line": 35
+        },
+        {
+          "name": "state",
           "kind": "const",
-          "line": 69
+          "line": 52
         },
         {
-          "name": "ShadowSessionState",
-          "kind": "interface",
-          "line": 72
-        },
-        {
-          "name": "emptySessionState",
-          "kind": "function",
-          "line": 84
-        },
-        {
-          "name": "isDisposable",
-          "kind": "function",
-          "line": 99
+          "name": "BumpType",
+          "kind": "type",
+          "line": 68
         }
       ]
     },
     {
       "path": "packages/core/src/execution/autonomy-brain-llm.ts",
-      "rank": 0.1776,
+      "rank": 0.1778,
       "inDeg": 64,
       "outDeg": 71,
       "package": "@wrongstack/core",
@@ -15729,7 +15669,7 @@
     },
     {
       "path": "packages/webui/src/types/system.ts",
-      "rank": 0.1776,
+      "rank": 0.1777,
       "inDeg": 59,
       "outDeg": 12,
       "package": "@wrongstack/webui",
@@ -15768,7 +15708,7 @@
     },
     {
       "path": "packages/sage/src/project-server-protocol.ts",
-      "rank": 0.1774,
+      "rank": 0.1775,
       "inDeg": 86,
       "outDeg": 72,
       "package": "@wrongstack/sage",
@@ -15807,7 +15747,7 @@
     },
     {
       "path": "packages/webui-server/src/server/mcp-handlers.ts",
-      "rank": 0.177,
+      "rank": 0.1772,
       "inDeg": 113,
       "outDeg": 172,
       "package": "@wrongstack/webui-server",
@@ -15846,7 +15786,7 @@
     },
     {
       "path": "packages/core/src/coordination/director-quality-gate-tool.ts",
-      "rank": 0.1769,
+      "rank": 0.177,
       "inDeg": 46,
       "outDeg": 90,
       "package": "@wrongstack/core",
@@ -15884,8 +15824,47 @@
       ]
     },
     {
+      "path": "packages/tools/src/auto-proceed-loop-guard.ts",
+      "rank": 0.1769,
+      "inDeg": 76,
+      "outDeg": 34,
+      "package": "@wrongstack/tools",
+      "symbols": [
+        {
+          "name": "normalizeForRepetition",
+          "kind": "function",
+          "line": 60
+        },
+        {
+          "name": "LoopGuardOptions",
+          "kind": "interface",
+          "line": 64
+        },
+        {
+          "name": "RepetitionSignal",
+          "kind": "interface",
+          "line": 80
+        },
+        {
+          "name": "GROUNDED_NO_PROGRESS_STEER",
+          "kind": "const",
+          "line": 103
+        },
+        {
+          "name": "GroundedRepetitionAction",
+          "kind": "type",
+          "line": 112
+        },
+        {
+          "name": "GroundedRepetitionSignal",
+          "kind": "interface",
+          "line": 114
+        }
+      ]
+    },
+    {
       "path": "packages/core/src/session-catalog/session-registry.ts",
-      "rank": 0.1766,
+      "rank": 0.1767,
       "inDeg": 71,
       "outDeg": 84,
       "package": "@wrongstack/core",
@@ -15923,47 +15902,8 @@
       ]
     },
     {
-      "path": "packages/tools/src/auto-proceed-loop-guard.ts",
-      "rank": 0.1766,
-      "inDeg": 36,
-      "outDeg": 34,
-      "package": "@wrongstack/tools",
-      "symbols": [
-        {
-          "name": "normalizeForRepetition",
-          "kind": "function",
-          "line": 60
-        },
-        {
-          "name": "LoopGuardOptions",
-          "kind": "interface",
-          "line": 64
-        },
-        {
-          "name": "RepetitionSignal",
-          "kind": "interface",
-          "line": 80
-        },
-        {
-          "name": "GROUNDED_NO_PROGRESS_STEER",
-          "kind": "const",
-          "line": 103
-        },
-        {
-          "name": "GroundedRepetitionAction",
-          "kind": "type",
-          "line": 112
-        },
-        {
-          "name": "GroundedRepetitionSignal",
-          "kind": "interface",
-          "line": 114
-        }
-      ]
-    },
-    {
       "path": "packages/cli/src/goal-host.ts",
-      "rank": 0.1765,
+      "rank": 0.1766,
       "inDeg": 62,
       "outDeg": 158,
       "package": "@wrongstack/cli",
@@ -16001,8 +15941,47 @@
       ]
     },
     {
+      "path": "packages/governance/src/project-server.ts",
+      "rank": 0.1763,
+      "inDeg": 85,
+      "outDeg": 82,
+      "package": "@wrongstack/governance",
+      "symbols": [
+        {
+          "name": "ServerState",
+          "kind": "type",
+          "line": 30
+        },
+        {
+          "name": "GOVERNANCE_IPC_MAX_CONNECTIONS",
+          "kind": "const",
+          "line": 32
+        },
+        {
+          "name": "GOVERNANCE_IPC_SOCKET_TIMEOUT_MS",
+          "kind": "const",
+          "line": 33
+        },
+        {
+          "name": "GovernanceProjectServerOptions",
+          "kind": "interface",
+          "line": 35
+        },
+        {
+          "name": "requestIdFromUnknown",
+          "kind": "function",
+          "line": 46
+        },
+        {
+          "name": "transportError",
+          "kind": "function",
+          "line": 57
+        }
+      ]
+    },
+    {
       "path": "packages/tui/src/components/kanban-panel.tsx",
-      "rank": 0.176,
+      "rank": 0.1761,
       "inDeg": 35,
       "outDeg": 168,
       "package": "@wrongstack/tui",
@@ -16041,7 +16020,7 @@
     },
     {
       "path": "packages/core/src/plugin/discovery.ts",
-      "rank": 0.1759,
+      "rank": 0.176,
       "inDeg": 40,
       "outDeg": 48,
       "package": "@wrongstack/core",
@@ -16075,6 +16054,45 @@
           "name": "readdir",
           "kind": "method",
           "line": 56
+        }
+      ]
+    },
+    {
+      "path": "packages/security-scanner/src/package-audit.ts",
+      "rank": 0.176,
+      "inDeg": 29,
+      "outDeg": 32,
+      "package": "@wrongstack/security-scanner",
+      "symbols": [
+        {
+          "name": "AuditablePackageManager",
+          "kind": "type",
+          "line": 6
+        },
+        {
+          "name": "PackageAuditSeverity",
+          "kind": "type",
+          "line": 7
+        },
+        {
+          "name": "PackageAuditVulnerability",
+          "kind": "interface",
+          "line": 9
+        },
+        {
+          "name": "PackageAuditSummary",
+          "kind": "interface",
+          "line": 18
+        },
+        {
+          "name": "PackageAuditResult",
+          "kind": "interface",
+          "line": 27
+        },
+        {
+          "name": "PackageAuditExecutionResult",
+          "kind": "interface",
+          "line": 38
         }
       ]
     }

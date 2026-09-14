@@ -61,3 +61,25 @@ export function sessionAffectedByRevocation(
   if (sessionTokenId === undefined || sessionTokenId.length === 0) return false;
   return revokedTokenIds.has(sessionTokenId);
 }
+
+/**
+ * True when an open browser socket must be closed because the auth file
+ * changed.
+ *
+ * A socket is bound at upgrade time to the session that authorized it, so only
+ * sockets whose OWN session was revoked are closed — revoking one token no
+ * longer logs out every operator.
+ *
+ * A socket with no recorded session authenticated with a bare `?token=` rather
+ * than a cookie session. It cannot be matched to any surviving session, so it
+ * is treated as affected: failing closed here reproduces the behaviour that
+ * existed before the binding was recorded, which is the safe direction for a
+ * predicate that decides whether to drop an authenticated connection.
+ */
+export function shouldCloseBrowserSocket(
+  boundSessionId: string | undefined,
+  revokedSessionIds: ReadonlySet<string>,
+): boolean {
+  if (boundSessionId === undefined || boundSessionId.length === 0) return true;
+  return revokedSessionIds.has(boundSessionId);
+}

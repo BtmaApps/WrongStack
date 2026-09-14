@@ -31,6 +31,7 @@ import {
   isTokenExpired,
   mintHqCookieSecret,
   mutateHqAuthFile,
+  shouldCloseBrowserSocket,
   toAlertMessage,
   watchHqAuthFile,
 } from '@wrongstack/core/hq';
@@ -232,6 +233,10 @@ async function startHqServerWithAuth(
     let listeningPort = port;
     const clients = new Map<WebSocket, ConnectedClient>();
     const clientSocketTokens = new Map<WebSocket, HqToken | undefined>();
+    // W4 #15 follow-on: which session authorized each open browser socket, so
+    // the revocation close loop can target the affected browsers instead of
+    // every browser. Populated at connection time by the upgrade handoff.
+    const browserSocketSessions = new Map<WebSocket, string>();
     const browsers = new Set<WebSocket>();
     const sessions = new Map<string, HqSessionEntry>();
     // W4 #15: a revoked browser token has to evacuate sockets that are ALREADY
@@ -496,6 +501,7 @@ async function startHqServerWithAuth(
       sessions,
       clients,
       clientSocketTokens,
+      browserSocketSessions,
       browsers,
       eventLog,
       transcripts,
@@ -532,6 +538,7 @@ async function startHqServerWithAuth(
           const liveBrowserTokenIds = new Set(
             [...mutableAuth.browserTokenObjs.values()].map((token) => token.id),
           );
+          const revokedSessionIds = new Set<string>();
           for (const [sessionId, session] of sessions) {
             if (
               passwordChanged ||
@@ -540,9 +547,18 @@ async function startHqServerWithAuth(
                 (session.tokenId === undefined || !liveBrowserTokenIds.has(session.tokenId)))
             ) {
               sessions.delete(sessionId);
+              revokedSessionIds.add(sessionId);
             }
           }
-          for (const browser of browsers) browser.close(1008, 'Browser authentication changed');
+          // Close only the browsers whose OWN session died; the predicate owns
+          // the fail-closed rule for sockets with no recorded session. A
+          // password or cookie-secret change deletes every session above, so
+          // that case still closes everything, as it must.
+          for (const browser of browsers) {
+            if (shouldCloseBrowserSocket(browserSocketSessions.get(browser), revokedSessionIds)) {
+              browser.close(1008, 'Browser authentication changed');
+            }
+          }
         }
 
         const clientAuthRequired = HqServerAuth.hqClientAuthRequired(mutableAuth);

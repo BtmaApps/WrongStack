@@ -40,6 +40,44 @@ import { summarizeHqToolArgs } from './redaction.js';
 /** The four answers an operator can give. `abort` is produced by the run, never sent. */
 export type HqApprovalDecision = 'yes' | 'no' | 'always' | 'deny';
 
+/**
+ * How long an `always` answer stays good before HQ must ask again.
+ *
+ * Mirrors `DEFAULT_ALWAYS_TRUST_TTL_MS` on the local trust-policy surface, so
+ * the two halves of one operator decision — the persisted trust rule and HQ's
+ * own record of the grant — lapse together instead of disagreeing about how
+ * long "always" meant.
+ */
+export const DEFAULT_ALWAYS_APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * When an `always` grant lapses, or `undefined` when it never does.
+ *
+ * Only `always` outlives the prompt it answered: `yes` settles a single call,
+ * and `no` / `deny` grant nothing, so all three return `undefined`.
+ *
+ * "No TTL" is modelled as no expiry rather than `Infinity`, because `Infinity`
+ * is not representable in JSON — it serializes to `null`. An infinite grant and
+ * an absent field would then be indistinguishable on the wire, and a dashboard
+ * rendering that pair cannot tell "never lapses" from "we did not record it".
+ * An absent property already means "no expiry" everywhere else in the HQ
+ * protocol, so it is the representation that cannot be misread.
+ *
+ * A zero or negative TTL is honoured, not coerced: it yields `nowMs`, i.e. an
+ * already-lapsed grant. Rounding that up to "never expires" would turn a
+ * deliberately-expired grant into a permanent one, which is the one direction
+ * this must never fail in.
+ */
+export function approvalGrantExpiry(
+  decision: HqApprovalDecision,
+  nowMs: number,
+  ttlMs?: number | undefined,
+): number | undefined {
+  if (decision !== 'always') return undefined;
+  if (ttlMs === undefined || !Number.isFinite(ttlMs)) return undefined;
+  return nowMs + ttlMs;
+}
+
 /** One prompt currently on screen, with the resolver that can settle it. */
 export interface PendingApproval {
   toolUseId: string;
@@ -92,11 +130,19 @@ export interface ApprovalRegistry {
    * command names the session the operator picked in HQ; applying it to a
    * different session's prompt would answer a conversation they were not
    * looking at.
+   *
+   * `grantTtlMs` (W6 #9) bounds an `always` answer. It is optional because only
+   * `always` grants outlive the prompt, and it defaults to
+   * {@link DEFAULT_ALWAYS_APPROVAL_TTL_MS} rather than to "forever" — an
+   * unbounded default would leave every unattended caller granting permanently,
+   * which is the behaviour this parameter exists to remove. Pass `Infinity` to
+   * opt out explicitly.
    */
   resolve(
     toolUseId: string,
     decision: HqApprovalDecision,
     expectSessionId?: string | undefined,
+    grantTtlMs?: number | undefined,
   ): boolean;
   /**
    * Add a prompt that did NOT come from `tool.confirm_needed`.
@@ -139,6 +185,14 @@ export type ApprovalChange =
       decision: HqApprovalResolvedPayload['decision'];
       source: HqApprovalResolvedPayload['source'];
       rationale?: string | undefined;
+      /**
+       * W6 #9: when this `always` grant lapses, absent when it never does.
+       *
+       * Only an `always` answered from HQ carries one — `yes` / `no` / `deny`
+       * grant nothing that outlives the prompt, and a grant answered at the
+       * terminal has its expiry recorded on the trust rule instead.
+       */
+      grantedUntil?: number | undefined;
     }
   | { kind: 'input_requested'; input: PendingHqUserInput }
   | {
@@ -187,6 +241,17 @@ function isDestructive(e: {
 export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
   const pending = new Map<string, PendingApproval>();
   const pendingInputs = new Map<string, PendingHqUserInput>();
+  /**
+   * W6 #9: expiry of the `always` grant each in-flight resolution carries.
+   *
+   * It cannot ride on the pending entry because `resolve()` deletes that entry
+   * BEFORE calling the resolver, and the resolver emits `tool.confirm_resolved`
+   * synchronously — so by the time the resolved handler runs there is no entry
+   * left to read a grant off. This map is written immediately before the
+   * resolve and consumed (and cleared) by that handler, so a grant is announced
+   * exactly once and never outlives the resolution it describes.
+   */
+  const grantExpiries = new Map<string, number>();
   const listeners = new Set<(change: ApprovalChange) => void>();
   // Declared BEFORE subscribing: the guard in `waitForConfirm` reads this
   // count, and a window where the listener exists but is not yet declared
@@ -228,6 +293,10 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
     const e = raw as ConfirmResolvedEvent;
     const held = pending.get(e.toolUseId);
     pending.delete(e.toolUseId);
+    // W6 #9: read and cleared here so a grant is announced exactly once, and
+    // only as part of the resolution that produced it.
+    const grantedUntil = grantExpiries.get(e.toolUseId);
+    grantExpiries.delete(e.toolUseId);
     notify({
       kind: 'resolved',
       toolUseId: e.toolUseId,
@@ -236,6 +305,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       decision: e.decision,
       source: e.source,
       rationale: e.rationale,
+      ...(grantedUntil !== undefined ? { grantedUntil } : {}),
     });
   });
   const offInputRequested = events.on('user.input_requested', (event) => {
@@ -290,7 +360,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       input.resolve(response);
       return true;
     },
-    resolve(toolUseId, decision, expectSessionId) {
+    resolve(toolUseId, decision, expectSessionId, grantTtlMs) {
       sweep();
       const approval = pending.get(toolUseId);
       if (approval === undefined) return false;
@@ -305,6 +375,22 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       // that event synchronously, but a second HQ command racing this one must
       // not find the entry either way.
       pending.delete(toolUseId);
+      // W6 #9: an `always` answered from HQ records when it lapses, so the
+      // dashboard can render the expiry and an audit row can say why the prompt
+      // came back. The default is applied HERE rather than inside the helper:
+      // the point of the feature is that `always` expires, and leaving the
+      // default to each caller ships it inert for every caller that forgets.
+      // An explicit `Infinity` is still the opt-out — the helper returns
+      // undefined for a non-finite TTL, and an absent field already means
+      // "never lapses" everywhere else in the protocol.
+      if (decision === 'always') {
+        const grantedUntil = approvalGrantExpiry(
+          decision,
+          Date.now(),
+          grantTtlMs ?? DEFAULT_ALWAYS_APPROVAL_TTL_MS,
+        );
+        if (grantedUntil !== undefined) grantExpiries.set(toolUseId, grantedUntil);
+      }
       approval.resolve(decision);
       return true;
     },
