@@ -98,6 +98,29 @@ export function parseToolsFlag(
   return set.size > 0 ? set : null;
 }
 
+/**
+ * Resolve the TCP port for `mcp serve --http`.
+ *
+ * `--http` is also a boolean flag, and the old `Number(flags.port ?? flags.http)`
+ * turned a bare `--http` into `Number(true) === 1` — the server tried to bind
+ * privileged port 1 instead of an ephemeral one. A bare flag now means "pick a
+ * free port" (0); an explicit value must be an integer in 0–65535.
+ */
+export function resolveServeHttpPort(flags: Record<string, string | boolean>): number {
+  const raw =
+    typeof flags['port'] === 'string'
+      ? flags['port']
+      : typeof flags['http'] === 'string'
+        ? flags['http']
+        : undefined;
+  if (raw === undefined || raw.trim() === '') return 0;
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port < 0 || port > 65_535) {
+    throw new Error(`invalid --port "${raw}" — expected an integer between 0 and 65535`);
+  }
+  return port;
+}
+
 interface SelectedMcpServeContent {
   resources: MCPServerResource[];
   prompts: MCPServerPrompt[];
@@ -435,7 +458,13 @@ export async function serveMcpStdio(
     flags['port'] ||
     flags['host']
   ) {
-    const port = Number(flags['port'] ?? flags['http'] ?? 0) || 0;
+    let port: number;
+    try {
+      port = resolveServeHttpPort(flags);
+    } catch (err) {
+      log(`wrongstack MCP server: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
     const httpHost = typeof flags['host'] === 'string' ? flags['host'] : '127.0.0.1';
     // Keep bearer credentials out of the process list where possible. The
     // standalone MCP packages use the same environment variable.
