@@ -161,6 +161,49 @@ describe('setupCodebaseIndexing — onEdit middleware', () => {
     expect(enqueueReindexMock).toHaveBeenCalledTimes(1);
   });
 
+  it('reindexes files changed by ast-replace, format and patch', async () => {
+    const p = createDefaultPipelines();
+    await setupCodebaseIndexing(
+      deps({ onSessionStart: false, onEdit: true, watchExternal: false, debounceMs: 250 }, p),
+    );
+    const reindexed = (call: number, files: string[]) =>
+      expect(enqueueReindexMock).toHaveBeenNthCalledWith(
+        call,
+        expect.objectContaining({ files: files.map((file) => path.resolve(PROJECT, file)) }),
+      );
+
+    await p.toolCall.run(
+      toolCallPayload('codebase-ast-replace', true, { file: 'src/a.ts', symbol: 'a', newBody: '' }),
+    );
+    reindexed(1, ['src/a.ts']);
+
+    await p.toolCall.run(toolCallPayload('format', true, { files: ['src/b.ts', 'README.md'] }));
+    reindexed(2, ['src/b.ts']);
+
+    await p.toolCall.run(
+      toolCallPayload('patch', true, {
+        patch: [
+          '--- a/src/c.ts\t2026-01-01',
+          '+++ b/src/c.ts\t2026-01-01',
+          '@@ -1 +1 @@',
+          '-a',
+          '+b',
+          '--- a/src/gone.ts',
+          '+++ /dev/null',
+        ].join('\n'),
+      }),
+    );
+    reindexed(3, ['src/c.ts', 'src/gone.ts']);
+    expect(enqueueReindexMock).toHaveBeenCalledTimes(3);
+
+    // Check-only formatting and dry-run patches change nothing.
+    await p.toolCall.run(toolCallPayload('format', true, { files: 'src/b.ts', check: true }));
+    await p.toolCall.run(
+      toolCallPayload('patch', true, { patch: '+++ b/src/c.ts\n', dry_run: true }),
+    );
+    expect(enqueueReindexMock).toHaveBeenCalledTimes(3);
+  });
+
   it('ignores edits to non-indexable files', async () => {
     const p = createDefaultPipelines();
     await setupCodebaseIndexing(

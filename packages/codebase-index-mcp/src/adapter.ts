@@ -223,8 +223,9 @@ export function createCodebaseIndexMcpToolHost(
             }
           }
           const content = await executeTool(builtin, args, context, new AbortController().signal);
-          // codebase_context degrades a failed query to `indexStatus: 'error'`
-          // instead of throwing; an MCP client must still see a failure.
+          // The built-in tools THROW on failure (caught below). This guards a
+          // payload from an older tool build that still degraded a failed
+          // query to `indexStatus: 'error'` — an MCP client must see a failure.
           return { content, isError: isDegradedFailure(content) };
         }
 

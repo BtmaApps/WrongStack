@@ -68,10 +68,16 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
       const check = /(^|\s)--check(\s|$)/.test(text);
       const enrich = /(^|\s)--enrich(\s|$)/.test(text);
       const embed = /(^|\s)--embed(\s|$)/.test(text);
-      const exportMatch = /(^|\s)--export(?:[= ]([^\s]+))?(\s|$)/.exec(text);
+      // The optional path must not start with `-`: `--export --tokens 2000`
+      // used to write the HTML to a file literally named `--tokens`.
+      const exportMatch = /(^|\s)--export(?:[= ]([^\s-][^\s]*))?(\s|$)/.exec(text);
       const maxFilesMatch = /--max-files[= ](\d+)/.exec(text);
       const tokensMatch = /--tokens[= ](\d+)/.exec(text);
-      const maxTokens = tokensMatch ? Number(tokensMatch[1]) : undefined;
+      // Same bounds as the codebase-repo-map tool: `--tokens 0` rendered an
+      // empty map reported as "No indexable source files found".
+      const maxTokens = tokensMatch
+        ? Math.min(Math.max(Number(tokensMatch[1]), MIN_MAP_TOKENS), MAX_MAP_TOKENS)
+        : undefined;
       const projectRoot = opts.projectRoot;
 
       try {
@@ -180,6 +186,10 @@ export function buildCodebaseMapCommand(opts: SlashCommandContext): SlashCommand
 
 /** Where `--export` writes when the caller names no path. */
 const DEFAULT_EXPORT_FILE = 'atlas.html';
+
+/** Token budget bounds, matching the codebase-repo-map tool. */
+const MIN_MAP_TOKENS = 100;
+const MAX_MAP_TOKENS = 20_000;
 
 function noIndexMessage(): string {
   return color.yellow(

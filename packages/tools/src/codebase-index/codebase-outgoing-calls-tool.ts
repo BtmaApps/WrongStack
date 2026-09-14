@@ -126,7 +126,7 @@ export const codebaseOutgoingCallsTool: Tool<OutgoingCallsInput, OutgoingCallsOu
       if (!hasPersistedIndex) {
         try {
           const stats = await codebaseIndexStats({
-            projectRoot: ctx.projectRoot,
+            projectRoot,
             indexDir: codebaseIndexDirOverride(ctx),
           });
           hasPersistedIndex = stats.totalFiles > 0 || stats.lastIndexed !== null;

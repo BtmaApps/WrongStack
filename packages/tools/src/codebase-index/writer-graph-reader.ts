@@ -59,6 +59,59 @@ function chunkedIdQuery(
   return results;
 }
 
+/** {@link chunkedIdQuery} for a list of string keys (file paths). Same no-LIMIT contract. */
+function chunkedValueQuery(
+  stmt: PrepareStatement,
+  values: readonly string[],
+  buildSql: (placeholders: string) => string,
+): unknown[] {
+  const results: unknown[] = [];
+  let cursor = 0;
+  for (const take of inListChunks(values.length, MAX_SQL_VARS)) {
+    const chunk = padToInBucket(values.slice(cursor, cursor + take));
+    cursor += take;
+    results.push(...(stmt(buildSql(placeholders(chunk.length))).all(...chunk) as unknown[]));
+  }
+  return results;
+}
+
+type RefCountRow = { from_id: number; to_id: number; call_type: string; n: number };
+
+/**
+ * Resolved ref counts touching `localIds` (as source OR target), grouped by
+ * `(from_id, to_id, call_type)`.
+ *
+ * The graph readers used to bind every scoped file path — twice — in a single
+ * `file IN (…)` statement, which overflowed SQLite's bound-variable limit on a
+ * broad package filter in a large repository. Two id-partitioned passes stay
+ * under it: every group whose source is local lands in exactly one chunk of
+ * the first pass, and the second pass keeps only groups whose source is NOT
+ * local, so no group is counted twice. (The symbol graph's former
+ * `UNION ALL` counted every file-internal ref twice, doubling its weight.)
+ */
+function refCountsTouching(stmt: PrepareStatement, localIds: readonly number[]): RefCountRow[] {
+  const local = new Set(localIds);
+  const outgoing = chunkedIdQuery(
+    stmt,
+    localIds,
+    (ph) =>
+      `SELECT from_id, to_id, call_type, COUNT(*) AS n FROM refs
+        WHERE from_id IN (${ph}) AND to_id IS NOT NULL
+        GROUP BY from_id, to_id, call_type`,
+  ) as RefCountRow[];
+  const incoming = (
+    chunkedIdQuery(
+      stmt,
+      localIds,
+      (ph) =>
+        `SELECT from_id, to_id, call_type, COUNT(*) AS n FROM refs
+          WHERE to_id IN (${ph})
+          GROUP BY from_id, to_id, call_type`,
+    ) as RefCountRow[]
+  ).filter((row) => !local.has(row.from_id));
+  return [...outgoing, ...incoming];
+}
+
 /**
  * Hydrate symbol rows for an arbitrary id list.
  *
@@ -155,6 +208,20 @@ function mapCallSiteRow(row: CallSiteRow): CallSite {
  * Resolve a symbol name (optionally scoped by file) to matching symbol IDs.
  * When `file` is omitted, all symbols with that name across the project match.
  */
+/**
+ * Deterministic call-site order: reference line, then location. Transitive
+ * CTE rows all carry `ref_line = 0`, so without the file/line tiebreak they
+ * fell back to symbol-id order and `limit` kept an arbitrary subset.
+ */
+function compareCallSiteRows(a: CallSiteRow, b: CallSiteRow): number {
+  return (
+    a.ref_line - b.ref_line ||
+    (a.sym_file < b.sym_file ? -1 : a.sym_file > b.sym_file ? 1 : 0) ||
+    a.sym_line - b.sym_line ||
+    a.sym_id - b.sym_id
+  );
+}
+
 function resolveIndexedFiles(stmt: PrepareStatement, file: string): string[] {
   const rows = stmt(
     `SELECT DISTINCT file FROM symbols WHERE ${indexedFileMatchSql('file')} ORDER BY length(file), file`,
@@ -191,6 +258,67 @@ function resolveSymbolIds(
     ids.push(...rows.map((r) => r.id));
   }
   return ids;
+}
+
+/** Above this many target files the per-ref file check is skipped (bind budget). */
+const MAX_DISAMBIGUATION_FILES = 64;
+
+/**
+ * Direct incoming ref rows for `matchIds`.
+ *
+ * `scopedTargetIds` is set when a `file` filter was widened to every
+ * same-named symbol. Widening kept callers that `to_id` misattributed, but it
+ * also reported callers PROVABLY bound to another file: `other.ts#helper`
+ * listed every caller of `b.ts#helper`. A ref is dropped only on evidence —
+ * its own resolved `to_file`, or an import of that name in the caller's file
+ * resolved to a different file. Refs without such evidence stay (ambiguous).
+ */
+function directIncomingRows(
+  stmt: PrepareStatement,
+  matchIds: readonly number[],
+  scopedTargetIds: readonly number[] | null,
+): CallSiteRow[] {
+  const targetFiles =
+    scopedTargetIds === null
+      ? []
+      : (
+          chunkedIdQuery(
+            stmt,
+            scopedTargetIds,
+            (ph) => `SELECT DISTINCT file FROM symbols WHERE id IN (${ph})`,
+          ) as Array<{ file: string }>
+        ).map((row) => row.file);
+  const refine = targetFiles.length > 0 && targetFiles.length <= MAX_DISAMBIGUATION_FILES;
+  const fph = refine ? targetFiles.map(() => '?').join(',') : '';
+  const evidenceFilter = refine
+    ? `AND (r.to_file IS NULL OR r.to_file IN (${fph}))
+       AND NOT EXISTS (
+         SELECT 1 FROM refs ri JOIN symbols si ON si.id = ri.from_id
+         WHERE si.file = s.file AND ri.call_type = 'import' AND ri.to_name = r.to_name
+           AND ri.to_file IS NOT NULL AND ri.to_file NOT IN (${fph})
+       )`
+    : '';
+  return chunkedIdQuery(
+    stmt,
+    matchIds,
+    (ph) =>
+      `SELECT
+         s.id   AS sym_id,
+         s.name AS sym_name,
+         s.kind AS sym_kind,
+         s.lang AS sym_lang,
+         s.file AS sym_file,
+         s.line AS sym_line,
+         s.signature AS sym_signature,
+         r.call_type,
+         r.line AS ref_line
+       FROM refs r
+       JOIN symbols s ON s.id = r.from_id
+       WHERE r.to_id IN (${ph})
+       ${evidenceFilter}
+       ORDER BY r.line, r.id`,
+    refine ? [...targetFiles, ...targetFiles] : [],
+  ) as CallSiteRow[];
 }
 
 /**
@@ -239,26 +367,7 @@ export function findIncomingCallsByName(
   // unresolved-ref rows multiple times. Splitting eliminates the duplicate.
   const useFallback = !file;
 
-  const rows = chunkedIdQuery(
-    stmt,
-    matchIds,
-    (ph) =>
-      `SELECT
-         s.id   AS sym_id,
-         s.name AS sym_name,
-         s.kind AS sym_kind,
-         s.lang AS sym_lang,
-         s.file AS sym_file,
-         s.line AS sym_line,
-         s.signature AS sym_signature,
-         r.call_type,
-         r.line AS ref_line
-       FROM refs r
-       JOIN symbols s ON s.id = r.from_id
-       WHERE r.to_id IN (${ph})
-       ORDER BY r.line, r.id`,
-    [],
-  ) as CallSiteRow[];
+  const rows = directIncomingRows(stmt, matchIds, ambiguous ? targetIds : null);
 
   if (useFallback) {
     const fallbackRows = stmt(
@@ -283,7 +392,7 @@ export function findIncomingCallsByName(
   // Global sort after merge — each chunk sorts independently, so the merged
   // array is not globally ordered. The main query (to_id IN) and fallback
   // (to_id IS NULL) are mutually exclusive, so no dedup is needed.
-  rows.sort((a, b) => a.ref_line - b.ref_line || a.sym_id - b.sym_id);
+  rows.sort(compareCallSiteRows);
 
   const allCalls = rows.map(mapCallSiteRow);
   return {
@@ -345,7 +454,7 @@ export function findOutgoingCallsByName(
 
   // Global sort after merge — each chunk sorts independently, so the merged
   // array is not globally ordered. Sort by ref_line then sym_id for determinism.
-  rows.sort((a, b) => a.ref_line - b.ref_line || a.sym_id - b.sym_id);
+  rows.sort(compareCallSiteRows);
 
   const calls = rows.map(mapCallSiteRow).slice(0, limit);
   return { calls, symbolFound: true, unresolvedCount, totalMatches: rows.length };
@@ -397,6 +506,51 @@ function runCteWithSeeds(
 }
 
 /**
+ * Give first-hop rows of a transitive tree the metadata of the edge that
+ * actually connects them to the seeds. Only deeper hops keep the `''` / `0`
+ * placeholders: a direct caller reported at line 0 read as a real (and wrong)
+ * call-site location in codebase-impact-analysis. A real call wins over an
+ * import edge of the same pair, then the earliest line.
+ */
+function annotateDirectEdges(
+  stmt: PrepareStatement,
+  rows: CallSiteRow[],
+  seedIds: readonly number[],
+  seedColumn: 'from_id' | 'to_id',
+  otherColumn: 'from_id' | 'to_id',
+): void {
+  if (rows.length === 0) return;
+  const edges = chunkedIdQuery(
+    stmt,
+    [...seedIds],
+    (ph) =>
+      `SELECT ${otherColumn} AS sym_id, call_type, line
+       FROM refs
+       WHERE ${seedColumn} IN (${ph}) AND ${otherColumn} IS NOT NULL`,
+    [],
+  ) as Array<{ sym_id: number; call_type: string; line: number }>;
+  const best = new Map<number, { call_type: string; line: number }>();
+  for (const edge of edges) {
+    const current = best.get(edge.sym_id);
+    const edgeIsImport = edge.call_type === 'import';
+    const currentIsImport = current?.call_type === 'import';
+    if (
+      !current ||
+      (currentIsImport && !edgeIsImport) ||
+      (currentIsImport === edgeIsImport && edge.line < current.line)
+    ) {
+      best.set(edge.sym_id, { call_type: edge.call_type, line: edge.line });
+    }
+  }
+  for (const row of rows) {
+    const edge = best.get(row.sym_id);
+    if (!edge) continue;
+    row.call_type = edge.call_type;
+    row.ref_line = edge.line;
+  }
+}
+
+/**
  * Transitive incoming-call tree: all symbols that transitively call the target.
  *
  * Anchor: direct callers of the target symbol(s).
@@ -437,11 +591,21 @@ export function findTransitiveIncomingCallsByName(
   // with each chunk building an independent transitive tree — cross-chunk
   // edges are silently dropped. The temp-table approach runs a single CTE
   // over the full seed set. Mirrors findReachableSymbolIds.
+  // Under a widened file filter the first hop comes from the evidence-filtered
+  // direct callers, so the tree does not grow from callers of another file's
+  // same-named symbol; otherwise the CTE anchors on the ref edges itself.
+  const anchorCallerIds = ambiguous
+    ? [...new Set(directIncomingRows(stmt, matchIds, targetIds).map((row) => row.sym_id))]
+    : null;
   const cteSql = (seedSource: string) =>
     `WITH RECURSIVE incoming_tree(from_id) AS (
-       SELECT r.from_id
+       ${
+         anchorCallerIds === null
+           ? `SELECT r.from_id
        FROM refs r
-       WHERE r.to_id IN (${seedSource})
+       WHERE r.to_id IN (${seedSource})`
+           : `SELECT s0.id FROM symbols s0 WHERE s0.id IN (${seedSource})`
+}
 
        UNION
 
@@ -464,7 +628,11 @@ export function findTransitiveIncomingCallsByName(
      GROUP BY s.id
      ORDER BY s.file, s.line`;
 
-  const rows = runCteWithSeeds(stmt, matchIds, cteSql) as CallSiteRow[];
+  const rows =
+    anchorCallerIds !== null && anchorCallerIds.length === 0
+      ? []
+      : (runCteWithSeeds(stmt, anchorCallerIds ?? matchIds, cteSql) as CallSiteRow[]);
+  annotateDirectEdges(stmt, rows, matchIds, 'to_id', 'from_id');
 
   // Fallback: refs whose to_id was never resolved (cross-language, etc.)
   if (!file) {
@@ -487,7 +655,7 @@ export function findTransitiveIncomingCallsByName(
     rows.push(...fallbackRows);
   }
 
-  rows.sort((a, b) => a.ref_line - b.ref_line || a.sym_id - b.sym_id);
+  rows.sort(compareCallSiteRows);
   const allCalls = rows.map(mapCallSiteRow);
   return {
     calls: allCalls.slice(0, limit),
@@ -549,6 +717,7 @@ export function findTransitiveOutgoingCallsByName(
      ORDER BY s.file, s.line`;
 
   const rows = runCteWithSeeds(stmt, sourceIds, cteSql) as CallSiteRow[];
+  annotateDirectEdges(stmt, rows, sourceIds, 'from_id', 'to_id');
 
   const calls = rows.map(mapCallSiteRow).slice(0, limit);
   return { calls, symbolFound: true, unresolvedCount, totalMatches: rows.length };
@@ -720,40 +889,33 @@ export function getFileGraphWithStatement(
   const localFiles = new Set(pkgFilePaths);
   if (localFiles.size === 0) return { nodes: [], edges: [] };
 
-  const filePlaceholders = [...localFiles].map(() => '?').join(',');
-  const pkgSyms = stmt(
-    `SELECT file, id, name, kind, lang, line FROM symbols WHERE file IN (${filePlaceholders}) ORDER BY id`,
-  ).all(...pkgFilePaths) as WriterFileGraphSymbolRow[];
+  const pkgSyms = (
+    chunkedValueQuery(
+      stmt,
+      [...localFiles],
+      (ph) => `SELECT file, id, name, kind, lang, line FROM symbols WHERE file IN (${ph})`,
+    ) as WriterFileGraphSymbolRow[]
+  ).sort((a, b) => a.id - b.id);
   const { fileNodes, symToFile, fileStats, ensureFileNode } = buildFileGraphNodeState(
     pkgSyms,
     localFiles,
     packageOf,
   );
 
-  const refRows = stmt(
-    `SELECT r.from_id, r.to_id, r.call_type, COUNT(*) AS n
-       FROM refs r
-       WHERE (r.from_id IN (SELECT id FROM symbols WHERE file IN (${filePlaceholders}))
-           OR r.to_id IN (SELECT id FROM symbols WHERE file IN (${filePlaceholders})))
-         AND r.to_id IS NOT NULL
-       GROUP BY r.from_id, r.to_id, r.call_type`,
-  ).all(...pkgFilePaths, ...pkgFilePaths) as {
-    from_id: number;
-    to_id: number;
-    call_type: string;
-    n: number;
-  }[];
+  const localIds = pkgSyms.map((s) => s.id);
+  const refRows = refCountsTouching(stmt, localIds);
 
-  const knownSymIds = new Set(pkgSyms.map((s) => s.id));
+  const knownSymIds = new Set(localIds);
   const crossRefIds = new Set<number>();
   for (const r of refRows) {
     if (!knownSymIds.has(r.from_id)) crossRefIds.add(r.from_id);
     if (!knownSymIds.has(r.to_id)) crossRefIds.add(r.to_id);
   }
   if (crossRefIds.size > 0) {
-    const crossPlaceholders = [...crossRefIds].map(() => '?').join(',');
-    const extras = stmt(`SELECT id, file FROM symbols WHERE id IN (${crossPlaceholders})`).all(
-      ...crossRefIds,
+    const extras = chunkedIdQuery(
+      stmt,
+      [...crossRefIds],
+      (ph) => `SELECT id, file FROM symbols WHERE id IN (${ph})`,
     ) as { id: number; file: string }[];
     for (const x of extras) {
       symToFile.set(x.id, x.file);
@@ -778,15 +940,18 @@ export function getFileGraphWithStatement(
 
   // Same two-way target resolution as the package graph: the index-time module
   // resolution result first, the imported symbol's declaring file second.
-  const importRows = stmt(
-    `SELECT r.from_id, COALESCE(r.to_file, st.file) AS to_file, COUNT(*) AS n
-       FROM refs r
-       LEFT JOIN symbols st ON st.id = r.to_id
-       WHERE r.call_type = 'import'
-         AND COALESCE(r.to_file, st.file) IS NOT NULL
-         AND r.from_id IN (SELECT id FROM symbols WHERE file IN (${filePlaceholders}))
-       GROUP BY r.from_id, COALESCE(r.to_file, st.file)`,
-  ).all(...pkgFilePaths) as { from_id: number; to_file: string; n: number }[];
+  const importRows = chunkedIdQuery(
+    stmt,
+    localIds,
+    (ph) =>
+      `SELECT r.from_id, COALESCE(r.to_file, st.file) AS to_file, COUNT(*) AS n
+         FROM refs r
+         LEFT JOIN symbols st ON st.id = r.to_id
+         WHERE r.call_type = 'import'
+           AND COALESCE(r.to_file, st.file) IS NOT NULL
+           AND r.from_id IN (${ph})
+         GROUP BY r.from_id, COALESCE(r.to_file, st.file)`,
+  ) as { from_id: number; to_file: string; n: number }[];
   for (const r of importRows) {
     const fromFile = symToFile.get(r.from_id);
     if (!fromFile || !localFiles.has(fromFile)) continue;
@@ -813,71 +978,52 @@ export function getSymbolGraphWithStatement(
   stmt: PrepareStatement,
   fileFilter: string,
 ): CodeMapGraph {
-    const indexedFiles = resolveIndexedFiles(stmt, fileFilter);
-    if (indexedFiles.length === 0) return { nodes: [], edges: [] };
-    const filePlaceholders = indexedFiles.map(() => '?').join(',');
-  
-    const syms = stmt(
-      `SELECT id, name, kind, lang, file, line, signature, scope FROM symbols WHERE file IN (${filePlaceholders}) ORDER BY line, id`,
-    ).all(...indexedFiles) as WriterSymbolGraphRow[];
-  
-    if (syms.length === 0) return { nodes: [], edges: [] };
-  
-    const symById = new Map(syms.map((symbol) => [symbol.id, symbol]));
-    const relatedIds = new Set<number>(syms.map((symbol) => symbol.id));
-  
-    // P5: Single UNION ALL replaces two separate UNION queries, halving round-trips
-    // and parameter bindings. The outer WHERE runs after the subquery is fully
-    // materialized — same semantics as the original two-query form.
-    const refRows = stmt(
-      `SELECT from_id, to_id, call_type, COUNT(*) AS n
-         FROM (
-           SELECT r.from_id, r.to_id, r.call_type
-             FROM refs r
-             JOIN symbols s ON s.id = r.from_id
-            WHERE s.file IN (${filePlaceholders})
-            UNION ALL
-           SELECT r.from_id, r.to_id, r.call_type
-             FROM refs r
-             JOIN symbols s ON s.id = r.to_id
-            WHERE s.file IN (${filePlaceholders})
-         )
-         WHERE to_id IS NOT NULL
-         GROUP BY from_id, to_id, call_type`,
-    ).all(...indexedFiles, ...indexedFiles) as {
-      from_id: number;
-      to_id: number;
-      call_type: string;
-      n: number;
-    }[];
-  
-    const edgeMap = new Map<string, WeightedEdgeAccumulator>();
-    for (const r of refRows) {
-      if (r.to_id == null) continue;
-      relatedIds.add(r.from_id);
-      relatedIds.add(r.to_id);
-      const n = Number(r.n) || 0;
-      addWeightedEdge(edgeMap, r.from_id, r.to_id, r.call_type, n);
-    }
-    const edges = materializeWeightedEdges(edgeMap, 'sym');
-  
-    const loadedIds = new Set(syms.map((s) => s.id));
-    const missingIds = [...relatedIds].filter((id) => !loadedIds.has(id));
-    if (missingIds.length > 0) {
-      const placeholders = missingIds.map(() => '?').join(',');
-      const extras = stmt(
-        `SELECT id, name, kind, lang, file, line, signature, scope FROM symbols WHERE id IN (${placeholders})`,
-      ).all(...missingIds) as WriterSymbolGraphRow[];
-      for (const s of extras) symById.set(s.id, s);
-    }
-  
-    const packageOf = readPackageLabeller(stmt);
-    const nodes = buildSymbolGraphNodes(
-      symById,
-      relatedIds,
-      new Set(syms.map((symbol) => symbol.file)),
-      packageOf,
-    );
-    decorateGraphNodes(stmt, nodes, packageOf);
-    return { nodes, edges };
+  const indexedFiles = resolveIndexedFiles(stmt, fileFilter);
+  if (indexedFiles.length === 0) return { nodes: [], edges: [] };
+
+  // A suffix filter can match many files; chunk instead of one unbounded IN.
+  const syms = (
+    chunkedValueQuery(
+      stmt,
+      indexedFiles,
+      (ph) =>
+        `SELECT id, name, kind, lang, file, line, signature, scope FROM symbols WHERE file IN (${ph})`,
+    ) as WriterSymbolGraphRow[]
+  ).sort((a, b) => a.line - b.line || a.id - b.id);
+
+  if (syms.length === 0) return { nodes: [], edges: [] };
+
+  const symById = new Map(syms.map((symbol) => [symbol.id, symbol]));
+  const relatedIds = new Set<number>(syms.map((symbol) => symbol.id));
+
+  const refRows = refCountsTouching(
+    stmt,
+    syms.map((symbol) => symbol.id),
+  );
+
+  const edgeMap = new Map<string, WeightedEdgeAccumulator>();
+  for (const r of refRows) {
+    if (r.to_id == null) continue;
+    relatedIds.add(r.from_id);
+    relatedIds.add(r.to_id);
+    const n = Number(r.n) || 0;
+    addWeightedEdge(edgeMap, r.from_id, r.to_id, r.call_type, n);
   }
+  const edges = materializeWeightedEdges(edgeMap, 'sym');
+
+  const loadedIds = new Set(syms.map((s) => s.id));
+  const missingIds = [...relatedIds].filter((id) => !loadedIds.has(id));
+  if (missingIds.length > 0) {
+    for (const s of getSymbolsByIdsWithStatement(stmt, missingIds)) symById.set(s.id, s);
+  }
+
+  const packageOf = readPackageLabeller(stmt);
+  const nodes = buildSymbolGraphNodes(
+    symById,
+    relatedIds,
+    new Set(syms.map((symbol) => symbol.file)),
+    packageOf,
+  );
+  decorateGraphNodes(stmt, nodes, packageOf);
+  return { nodes, edges };
+}

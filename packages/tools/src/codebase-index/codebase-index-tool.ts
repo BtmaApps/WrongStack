@@ -37,7 +37,8 @@ export const codebaseIndexTool: Tool<CodebaseIndexInput, CodebaseIndexOutput> = 
     properties: {
       force: {
         type: 'boolean',
-        description: 'Force a full reindex — clears the index first and reindexes all files.',
+        description:
+          'Force a reindex that ignores mtime/content-hash caches. Without `langs` it clears the index and rebuilds every file; with `langs` it re-parses only those languages and keeps the rest.',
       },
       langs: {
         type: 'array',

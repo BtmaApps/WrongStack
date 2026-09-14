@@ -129,7 +129,16 @@ export async function embedFiles(
   const startedAt = Date.now();
   const errors: string[] = [];
   const signal = options.signal;
-  const batchSize = Math.max(1, Math.min(options.batchSize ?? DEFAULT_BATCH_SIZE, 128));
+  // A non-finite batch size made `start += NaN` end the loop before its first
+  // batch: the pass returned success having embedded nothing.
+  const requestedBatch = Number.isFinite(options.batchSize)
+    ? Math.trunc(options.batchSize as number)
+    : DEFAULT_BATCH_SIZE;
+  const batchSize = Math.max(1, Math.min(requestedBatch, 128));
+  const maxFiles =
+    options.maxFiles !== undefined && Number.isFinite(options.maxFiles)
+      ? Math.max(0, Math.trunc(options.maxFiles))
+      : undefined;
 
   const providerChanged = store.reconcileVectorProvider(port.id);
   const pruned = store.pruneOrphanFileVectors();
@@ -154,6 +163,8 @@ export async function embedFiles(
   const queue: Pending[] = [];
   let cached = 0;
   for (const file of ordered) {
+    // Checked before queueing: `maxFiles: 0` used to queue (and embed) one file.
+    if (maxFiles !== undefined && queue.length >= maxFiles) break;
     const declarations = summaries.has(file)
       ? []
       : store.getFileSymbols(file, FALLBACK_DECLARATIONS).map((symbol) => symbol.name);
@@ -169,7 +180,6 @@ export async function embedFiles(
       continue;
     }
     queue.push({ file, text, hash, fromDeclarations });
-    if (options.maxFiles !== undefined && queue.length >= options.maxFiles) break;
   }
 
   let embedded = 0;
@@ -182,18 +192,32 @@ export async function embedFiles(
     try {
       const vectors = await port.embed(batch.map((entry) => entry.text));
       const rows = [];
+      let rejected = 0;
       for (let i = 0; i < batch.length; i++) {
         const entry = batch[i] as Pending;
         const vector = vectors[i];
-        // A provider that returns fewer vectors than inputs, or a vector of the
-        // wrong width, would corrupt the space silently. Drop those rather than
-        // store something that will never match anything.
-        if (vector === undefined || vector.length !== port.dimensions) continue;
+        // A provider that returns fewer vectors than inputs, a vector of the
+        // wrong width, or one carrying NaN/Infinity would corrupt the space
+        // silently. Drop those rather than store something that will never
+        // match anything — and say so, instead of just embedding fewer files.
+        if (
+          vector === undefined ||
+          vector.length !== port.dimensions ||
+          !vector.every(Number.isFinite)
+        ) {
+          rejected++;
+          continue;
+        }
         rows.push({ file: entry.file, vector, sourceHash: entry.hash, provider: port.id });
         if (entry.fromDeclarations) fromDeclarations++;
       }
       store.upsertFileVectors(rows);
       embedded += rows.length;
+      if (rejected > 0 && errors.length < 20) {
+        errors.push(
+          `batch at ${start}: dropped ${rejected} vector(s) that were missing, the wrong width, or non-finite`,
+        );
+      }
     } catch (error) {
       if (errors.length < 20) {
         errors.push(`batch at ${start}: ${error instanceof Error ? error.message : String(error)}`);

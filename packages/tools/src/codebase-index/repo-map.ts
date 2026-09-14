@@ -22,6 +22,7 @@
 
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
+import { isIndexablePath } from './languages.js';
 import { generateFallbackRepoMap } from './repo-map-fallback.js';
 import { type RepoMapCandidate, renderSkeletonSections } from './repo-map-render.js';
 import type { RepoMapOptions, RepoMapResult } from './repo-map-types.js';
@@ -212,8 +213,10 @@ export async function generateRepoMap(opts: RepoMapOptions): Promise<RepoMapResu
 
   // A focus file the index has never seen would otherwise be silently dropped.
   const known = new Set(candidates.map((c) => c.absolute));
+  // Only source the index could have indexed: a focus entry naming `.env` or a
+  // key file must not be rendered through the skeleton fallback (full text).
   const missingFocus: RepoMapCandidate[] = focus
-    .filter((file) => !known.has(file))
+    .filter((file) => !known.has(file) && isIndexablePath(file))
     .map((file) => ({ absolute: file, relative: relativeOf(file) }));
 
   const bodyBudget = Math.max(0, charBudget - header.length - 2);

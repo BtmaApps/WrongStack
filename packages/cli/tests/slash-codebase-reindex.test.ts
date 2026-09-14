@@ -69,6 +69,46 @@ describe('buildCodebaseReindexCommand', () => {
     expect(runStartupIndexMock).toHaveBeenCalledWith({ projectRoot: '/proj', force: true });
   });
 
+  it('accepts the -f short flag (no word boundary before "-")', async () => {
+    const cmd = build();
+    await cmd.run('-f', ctx);
+    expect(runStartupIndexMock).toHaveBeenCalledWith({ projectRoot: '/proj', force: true });
+  });
+
+  it('does not treat a word containing "force" as the flag', async () => {
+    const cmd = build();
+    await cmd.run('reinforce', ctx);
+    expect(runStartupIndexMock).toHaveBeenCalledWith({ projectRoot: '/proj', force: false });
+  });
+
+  it('reports parsed vs unchanged files instead of a misleading "0 files"', async () => {
+    runStartupIndexMock.mockResolvedValueOnce({
+      filesIndexed: 0,
+      fileOutcomes: { parsed: 0, skipped: 3200, empty: 4, failed: 0 },
+      symbolsIndexed: 91_000,
+      langStats: {},
+      durationMs: 42,
+      errors: [],
+    } as never);
+    const res = await build().run('', ctx);
+    expect(res?.message).toContain('0 parsed · 3200 unchanged');
+    expect(res?.message).not.toContain('0 files');
+  });
+
+  it('says so when a corrupt index was rebuilt automatically', async () => {
+    runStartupIndexMock.mockResolvedValueOnce({
+      filesIndexed: 5,
+      symbolsIndexed: 10,
+      langStats: {},
+      durationMs: 1,
+      errors: [],
+      autoRecovered: { failure: 'UNIQUE constraint failed', rebuiltWithForce: true },
+    } as never);
+    const res = await build().run('', ctx);
+    expect(res?.message).toContain('rebuilt');
+    expect(res?.message).toContain('corrupt index');
+  });
+
   it('prints a starting notice before indexing', async () => {
     const writes: string[] = [];
     const cmd = build(writes);

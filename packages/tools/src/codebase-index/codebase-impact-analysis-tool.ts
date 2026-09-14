@@ -10,8 +10,9 @@
 
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { incomingCallsService } from './background-indexer.js';
+import { codebaseIndexStats, getIndexState, incomingCallsService } from './background-indexer.js';
 import type { CallSite } from './schema.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -33,6 +34,8 @@ export interface ImpactCallSite {
   callerKind: string;
   callType: string;
   isTest: boolean;
+  /** A caller of a caller: reached through the transitive tree, not a direct use. */
+  indirect?: boolean | undefined;
 }
 
 export interface ImpactAnalysisOutput {
@@ -47,11 +50,26 @@ export interface ImpactAnalysisOutput {
   recommendedActionPlan: string[];
   /** False when the symbol could not be resolved in the index. */
   symbolFound?: boolean;
+  /** True when a previous generation's cached answer was served during a refresh. */
+  stale?: boolean | undefined;
 }
 
 export type CodebaseImpactAnalysisOutput = ImpactAnalysisOutput;
 
-const TEST_FILE_REGEX = /(?:test|spec|mock|fixture|bench)[s]?[/\\._]/i;
+/**
+ * Test-like path segment: `tests/`, `__tests__/`, `foo.test.ts`, `foo_test.go`,
+ * `test_foo.py`, `fixtures/`, `mocks/`, `benchmarks/`. The marker must be
+ * delimited on BOTH sides — the old unanchored pattern classified
+ * `inspect.ts` (`spec.`), `latest/` (`test/`) and `aspect.ts` as tests, which
+ * hid production callers from the blast radius.
+ */
+const TEST_FILE_REGEX =
+  /(?:^|[/\\._-])(?:tests?|specs?|mocks?|fixtures?|bench(?:es|marks?)?)(?:[/\\._-]|$)/i;
+
+/** Whether a project-relative path looks like a test, fixture, mock, or bench file. */
+export function isTestFilePath(relPath: string): boolean {
+  return TEST_FILE_REGEX.test(relPath);
+}
 
 export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysisOutput> = {
   name: 'codebase-impact-analysis',
@@ -60,6 +78,9 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
   permission: 'auto',
   mutating: false,
   capabilities: ['fs.read'],
+  // The index host has its own 30s read watchdog; leave headroom so its
+  // structured timeout reaches the agent instead of a generic TOOL_TIMEOUT.
+  timeoutMs: 35_000,
   description:
     'Perform a blast radius and impact analysis before modifying or refactoring a function, class, or type. ' +
     'Identifies all production call sites, affected test suites, and breaking change risks across the entire codebase.',
@@ -96,12 +117,31 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
     const limit = 200;
     const transitive = input.transitive ?? true;
 
-    let rawSites: CallSite[] = [];
-    let symbolFound = true;
-    let indexUnavailable = false;
-    let indexError: string | undefined;
+    if (!input?.symbol || typeof input.symbol !== 'string' || !input.symbol.trim()) {
+      throw new ToolValidationError({
+        message: 'codebase-impact-analysis: symbol is required and cannot be empty',
+        field: 'symbol',
+      });
+    }
+
+    const state = getIndexState();
+    if (state.lastError) {
+      const circuit = state.circuit;
+      const retryHint =
+        circuit.state === 'open'
+          ? `Indexing is paused (circuit open, retry in ${Math.ceil(circuit.cooldownRemainingMs / 1000)}s).`
+          : 'Try /codebase-reindex.';
+      throw new Error(`Index build failed: ${state.lastError}. ${retryHint}`);
+    }
+
+    // An index outage is an operational failure, NOT "symbol not found": it
+    // THROWS so the caller retries after rebuilding the index instead of
+    // concluding the symbol has no callers — the most dangerous wrong answer
+    // before a refactor. A returned `status: 'error'` payload was a
+    // SUCCESSFUL call to the executor (the UI showed "ok").
+    let serviced: Awaited<ReturnType<typeof incomingCallsService>>;
     try {
-      const serviced = await incomingCallsService({
+      serviced = await incomingCallsService({
         projectRoot,
         indexDir,
         symbol: input.symbol,
@@ -109,30 +149,42 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
         limit,
         transitive,
       });
-      rawSites = serviced.calls;
-      symbolFound = serviced.symbolFound;
     } catch (err) {
-      // Fall back gracefully when index is cold/not yet built — but keep the
-      // actual error so the remediation message distinguishes a missing
-      // build from an endpoint-invalid or watchdog-timeout rejection.
-      symbolFound = false;
-      indexUnavailable = true;
-      indexError = toErrorMessage(err);
-    }
-
-    if (indexUnavailable) {
-      // An index outage is an operational failure, NOT "symbol not found":
-      // it must surface as a failed call (is_error) so the caller retries
-      // after rebuilding the index instead of concluding the symbol is
-      // missing. A returned `status: 'error'` payload was a SUCCESSFUL call
-      // to the executor — the UI showed "ok".
-      const detail = indexError ? ` (${indexError})` : '';
+      if ((err as { name?: string }).name === 'IndexRefreshInProgressError') {
+        throw new Error(
+          `Index refresh in progress (${state.currentFile}/${state.totalFiles} files); '${input.symbol}' has no cached answer yet — retry after the completed generation is published.`,
+          { cause: err },
+        );
+      }
       throw new Error(
-        `Index query failed for '${input.symbol}'. Run codebase-index, then retry.${detail}`,
+        `Index query failed for '${input.symbol}'. Run codebase-index, then retry. (${toErrorMessage(err)})`,
+        { cause: err },
       );
     }
+    const rawSites: CallSite[] = serviced.calls;
+    const { symbolFound, totalMatches, stale } = serviced;
 
     if (!symbolFound) {
+      // Process-local readiness resets on launch while the SQLite index may
+      // never have been built. A never-built index must not be reported as a
+      // LOW-risk "symbol not found" (mirrors codebase-incoming-calls).
+      let hasPersistedIndex = state.ready;
+      if (!hasPersistedIndex) {
+        try {
+          const stats = await codebaseIndexStats({ projectRoot, indexDir });
+          hasPersistedIndex = stats.totalFiles > 0 || stats.lastIndexed !== null;
+        } catch (err) {
+          throw new Error(
+            `Symbol '${input.symbol}' was not found and the persisted index could not be verified: ${toErrorMessage(err)}. Try /codebase-reindex.`,
+            { cause: err },
+          );
+        }
+      }
+      if (!hasPersistedIndex) {
+        throw new Error(
+          'No persisted index data found. Run codebase-index to build it, then retry codebase-impact-analysis.',
+        );
+      }
       const reason =
         `Symbol '${input.symbol}' was not found in the index` +
         (input.file ? ` for file filter '${input.file}'` : '') +
@@ -153,16 +205,22 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
 
     const prodFilesSet = new Set<string>();
     const testFilesSet = new Set<string>();
+    const directProdFilesSet = new Set<string>();
+    const indirectProdFilesSet = new Set<string>();
     const callSites: ImpactCallSite[] = [];
 
     for (const site of rawSites) {
       const relPath = path.relative(projectRoot, site.symbol.file).replace(/\\/g, '/');
-      const isTest = TEST_FILE_REGEX.test(relPath);
+      const isTest = isTestFilePath(relPath);
+      // Deeper hops of the transitive tree carry no edge metadata (empty call
+      // type): they call a caller, not the symbol, and need no edit of their own.
+      const indirect = !site.callType;
 
       if (isTest) {
         testFilesSet.add(relPath);
       } else {
         prodFilesSet.add(relPath);
+        (indirect ? indirectProdFilesSet : directProdFilesSet).add(relPath);
       }
 
       callSites.push({
@@ -172,26 +230,42 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
         callerKind: site.symbol.kind,
         callType: site.callType,
         isTest,
+        ...(indirect ? { indirect: true } : {}),
       });
     }
 
     const prodFiles = [...prodFilesSet];
     const testFiles = [...testFilesSet];
-    const totalCallSites = callSites.length;
+    const directProdFiles = [...directProdFilesSet];
+    const indirectOnlyProdFiles = [...indirectProdFilesSet].filter(
+      (file) => !directProdFilesSet.has(file),
+    );
+    // Only direct sites are places to edit. Counting every transitive caller
+    // here reported "Update 40 call site(s)" for a helper with two callers and
+    // raised the risk level on files that need no change.
+    const totalCallSites = callSites.filter((site) => !site.indirect).length;
+    const indirectCallers = callSites.length - totalCallSites;
 
     // Determine risk level
     let riskLevel: 'low' | 'medium' | 'high' = 'low';
-    if (prodFiles.length > 5 || totalCallSites > 10) {
+    if (directProdFiles.length > 5 || totalCallSites > 10) {
       riskLevel = 'high';
-    } else if (prodFiles.length > 1 || totalCallSites > 3) {
+    } else if (directProdFiles.length > 1 || totalCallSites > 3) {
       riskLevel = 'medium';
     }
+    // A wide transitive reach still widens the blast radius; it only raises.
+    if (riskLevel === 'low' && prodFiles.length > 5) riskLevel = 'medium';
 
     // Generate action plan
     const recommendedActionPlan: string[] = [];
-    if (prodFiles.length > 0) {
+    if (directProdFiles.length > 0) {
       recommendedActionPlan.push(
-        `Update ${totalCallSites} call site(s) across ${prodFiles.length} production file(s): ${prodFiles.slice(0, 3).join(', ')}${prodFiles.length > 3 ? ` +${prodFiles.length - 3} more` : ''}`,
+        `Update ${totalCallSites} call site(s) across ${directProdFiles.length} production file(s): ${directProdFiles.slice(0, 3).join(', ')}${directProdFiles.length > 3 ? ` +${directProdFiles.length - 3} more` : ''}`,
+      );
+    }
+    if (indirectOnlyProdFiles.length > 0) {
+      recommendedActionPlan.push(
+        `Re-verify ${indirectOnlyProdFiles.length} production file(s) that reach it only indirectly: ${indirectOnlyProdFiles.slice(0, 3).join(', ')}${indirectOnlyProdFiles.length > 3 ? ` +${indirectOnlyProdFiles.length - 3} more` : ''}`,
       );
     }
     if (testFiles.length > 0) {
@@ -204,7 +278,21 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       );
     }
 
-    const summary = `Blast Radius for '${input.symbol}': ${riskLevel.toUpperCase()} RISK (${totalCallSites} call sites in ${prodFiles.length} prod files, ${testFiles.length} test suites).`;
+    // A capped result understates the blast radius: say so, and never let the
+    // cap talk a HIGH-risk change down to a lower level.
+    // Compared against every returned row: indirect callers are part of the
+    // capped result even though they are not counted as call sites.
+    const capped = totalMatches > callSites.length;
+    if (capped) riskLevel = 'high';
+
+    let summary = `Blast Radius for '${input.symbol}': ${riskLevel.toUpperCase()} RISK (${totalCallSites} call sites in ${directProdFiles.length} prod files, ${testFiles.length} test suites`;
+    summary += indirectCallers > 0 ? `; ${indirectCallers} indirect caller(s)).` : ').';
+    if (capped) {
+      summary += ` Only the first ${callSites.length} of ${totalMatches} callers were analyzed; pass \`file\` to narrow.`;
+    }
+    if (stale) {
+      summary += ` Index refresh in progress; served from the previous generation — call sites in files being indexed may lag.`;
+    }
 
     return {
       status: 'ok',
@@ -217,6 +305,7 @@ export const codebaseImpactAnalysisTool: Tool<ImpactAnalysisInput, ImpactAnalysi
       callSites,
       recommendedActionPlan,
       symbolFound: true,
+      ...(stale ? { stale: true } : {}),
     };
   },
 };

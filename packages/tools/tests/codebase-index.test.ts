@@ -1033,12 +1033,15 @@ describe('lspKindToInternalKind', () => {
     expect(lspKindToInternalKind(LSPSymbolKind.TypeParameter)).toBe('type');
   });
 
-  it('maps LSP Constructor (9) to class', async () => {
-    expect(lspKindToInternalKind(LSPSymbolKind.Constructor)).toBe('class');
+  it('maps LSP Struct (23), Module (2) and Object (19) to their indexed kinds', async () => {
+    expect(lspKindToInternalKind(LSPSymbolKind.Struct)).toBe('struct');
+    expect(lspKindToInternalKind(LSPSymbolKind.Module)).toBe('mod');
+    expect(lspKindToInternalKind(LSPSymbolKind.Object)).toBe('object');
   });
 
-  it('maps LSP EnumMember (22) to enum', async () => {
-    expect(lspKindToInternalKind(LSPSymbolKind.EnumMember)).toBe('enum');
+  it('returns null for Constructor and EnumMember — the index stores neither', async () => {
+    expect(lspKindToInternalKind(LSPSymbolKind.Constructor)).toBeNull();
+    expect(lspKindToInternalKind(LSPSymbolKind.EnumMember)).toBeNull();
   });
 
   it('returns null for unmapped LSP kinds (String, Number, etc.)', async () => {
@@ -1046,9 +1049,7 @@ describe('lspKindToInternalKind', () => {
     expect(lspKindToInternalKind(LSPSymbolKind.Number)).toBeNull();
     expect(lspKindToInternalKind(LSPSymbolKind.Boolean)).toBeNull();
     expect(lspKindToInternalKind(LSPSymbolKind.Array)).toBeNull();
-    expect(lspKindToInternalKind(LSPSymbolKind.Object)).toBeNull();
     expect(lspKindToInternalKind(LSPSymbolKind.Null)).toBeNull();
-    expect(lspKindToInternalKind(LSPSymbolKind.Struct)).toBeNull();
     expect(lspKindToInternalKind(LSPSymbolKind.Event)).toBeNull();
     expect(lspKindToInternalKind(LSPSymbolKind.Operator)).toBeNull();
   });

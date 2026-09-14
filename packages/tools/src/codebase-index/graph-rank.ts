@@ -176,6 +176,20 @@ export interface WiringGraphOptions {
   fileOf?: ReadonlyMap<number, string> | undefined;
   /** Files each source file imports, as resolved by the module resolver. */
   importsOf?: ReadonlyMap<string, ReadonlySet<string>> | undefined;
+  /**
+   * True when the target is visible to the source without a file-level import
+   * — the same Go package, Java package or C# namespace directory, or a file
+   * of a Go package the source imports (the resolver records ONE
+   * representative file per imported package). Those edges are ordinary
+   * code, not misresolutions, and must not take the contradicted weight.
+   */
+  implicitlyVisible?:
+    | ((
+        sourceFile: string,
+        targetFile: string,
+        imports: ReadonlySet<string> | undefined,
+      ) => boolean)
+    | undefined;
 }
 
 export function buildWiringGraph(
@@ -218,7 +232,9 @@ export function buildWiringGraph(
       // symbol we did not index is not evidence the edge is wrong.
       if (sourceFile !== undefined && targetFile !== undefined && sourceFile !== targetFile) {
         const imports = importsOf.get(sourceFile);
-        if (imports === undefined) {
+        if (options.implicitlyVisible?.(sourceFile, targetFile, imports)) {
+          // Visible by language scoping rules: full weight.
+        } else if (imports === undefined) {
           w *= UNVERIFIED_VISIBILITY_WEIGHT;
         } else if (!imports.has(targetFile)) {
           w *= CONTRADICTED_VISIBILITY_WEIGHT;

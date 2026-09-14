@@ -126,24 +126,35 @@ export function visitTree(
 
   function visit(node: Node, depth: number): void {
     if (symbols.length >= TREE_SITTER_MAX_SYMBOLS) return;
+    // The tree covers the WHOLE file but offsets are only known inside the
+    // bounded window: a node past it resolved to the window's last line, so
+    // every declaration beyond 512 KiB was indexed at one wrong line.
+    if (node.startIndex >= boundedContent.length) return;
     if (node.isMissing || node.isError) {
       // Skip syntax-error and MISSING nodes — they represent parser recovery,
       // not real source. Equivalent to `generic-parser` returning empty for
       // a file that fails a regex.
     } else {
-      const kind = queries.declKinds[node.type];
+      const staticKind = queries.declKinds[node.type];
+      const kind =
+        staticKind && queries.resolveKind ? queries.resolveKind(node, staticKind) : staticKind;
       if (kind) {
-        const emitted = emitSymbol(
-          node,
-          kind,
-          file,
-          lang,
-          scopeStack,
-          boundedContent,
-          nlOffsets,
-          queries,
-        );
-        if (emitted) symbols.push(emitted);
+        const names = queries.declaredNames?.(node);
+        for (const name of names ?? [undefined]) {
+          if (symbols.length >= TREE_SITTER_MAX_SYMBOLS) break;
+          const emitted = emitSymbol(
+            node,
+            kind,
+            file,
+            lang,
+            scopeStack,
+            boundedContent,
+            nlOffsets,
+            queries,
+            name,
+          );
+          if (emitted) symbols.push(emitted);
+        }
       }
       // P3.9: refs fire on every node with a matching rule, INCLUDING nodes
       // that also emitted a symbol (a `call` node can be an Elixir def) —
@@ -156,7 +167,9 @@ export function visitTree(
     // `queries.scopeNodes` defaults to `function_definition` and friends;
     // a `class_declaration` inside a `class_declaration` is a nested class —
     // both belong in the index, with the outer as the scope.
-    const pushesScope = queries.scopeNodes?.has(node.type) ?? false;
+    const pushesScope = queries.isScopeNode
+      ? queries.isScopeNode(node)
+      : (queries.scopeNodes?.has(node.type) ?? false);
     const pushIdx = pushesScope ? pushScope(scopeStack, node, queries) : -1;
 
     if (queries.skipNamedChildren) {
@@ -214,7 +227,28 @@ const IDENTIFIER_NODE_TYPES: ReadonlySet<string> = new Set([
   'variable_name',
   'constant',
   'sym',
+  'namespace_identifier',
 ]);
+
+/**
+ * Follow a declarator chain to the declared identifier:
+ * `char *dup(…)` is (pointer_declarator declarator: (function_declarator
+ * declarator: (identifier))), and `double Shape::area()` ends in a
+ * qualified_identifier whose `name:` is the identifier. Reading only one
+ * level down lost every pointer-returning C function and every out-of-class
+ * C++ method definition.
+ */
+function declaratorChainName(start: Node): string | null {
+  let current: Node | null = start;
+  for (let depth = 0; current && depth < 16; depth++) {
+    if (IDENTIFIER_NODE_TYPES.has(current.type)) return current.text;
+    if (current.type === 'destructor_name' || current.type === 'operator_name') {
+      return current.text;
+    }
+    current = current.childForFieldName('declarator') ?? current.childForFieldName('name');
+  }
+  return null;
+}
 
 function extractName(node: Node, queries: NodeQueries): string | null {
   if (queries.nameExtractor) {
@@ -224,11 +258,10 @@ function extractName(node: Node, queries: NodeQueries): string | null {
   const fieldName = queries.nameField?.[node.type] ?? 'name';
   const field = node.childForFieldName(fieldName);
   if (field) {
-    if (IDENTIFIER_NODE_TYPES.has(field.type)) {
-      return field.text;
-    }
-    // Some grammars wrap the name one level deeper (e.g. a declarator chain).
-    const inner = field.childForFieldName('name') ?? field.namedChild(0);
+    const chained = declaratorChainName(field);
+    if (chained) return chained;
+    // Some grammars wrap the name one level deeper without a field.
+    const inner = field.namedChild(0);
     if (inner && IDENTIFIER_NODE_TYPES.has(inner.type)) {
       return inner.text;
     }
@@ -259,8 +292,9 @@ function emitSymbol(
   content: string,
   nlOffsets: readonly number[],
   queries: NodeQueries,
+  nameOverride?: string,
 ): IndexSymbol | null {
-  const name = extractName(node, queries);
+  const name = nameOverride ?? extractName(node, queries);
   if (!name) return null;
 
   // 1-based line, 0-based col. Tree-sitter positions are already 0-based for

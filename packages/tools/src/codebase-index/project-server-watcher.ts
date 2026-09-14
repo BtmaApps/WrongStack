@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   DEFAULT_WALK_IGNORE_SET,
@@ -12,6 +13,20 @@ export const DEFAULT_EXTERNAL_COALESCE_WINDOW_MS = 50;
 
 export function isIgnoredRelativePath(relativePath: string): boolean {
   return relativePath.split(/[/\\]/u).some((segment) => DEFAULT_WALK_IGNORE_SET.has(segment));
+}
+
+/**
+ * Whether a non-indexable `rename` path may be a directory whose files the
+ * index holds: an existing directory, or a vanished path without an
+ * extension (a deleted `.png` must not trigger an index write run).
+ */
+export async function isDirectoryWatchCandidate(absolute: string): Promise<boolean> {
+  try {
+    return (await fs.stat(absolute)).isDirectory();
+  } catch (err) {
+    const code = (err as { code?: unknown } | null)?.code;
+    return (code === 'ENOENT' || code === 'ENOTDIR') && path.extname(absolute) === '';
+  }
 }
 
 export interface ProjectServerWatcherOptions {
@@ -65,19 +80,28 @@ export class ProjectServerWatcherManager {
     const projectRoot = this.options.projectRoot;
     this.externalWatcher = watchProjectTree(
       projectRoot,
-      ({ filename }) => {
+      ({ eventType, filename }) => {
         if (!filename || isIgnoredRelativePath(filename)) return;
         const absolute = path.resolve(projectRoot, filename);
         const relative = path.relative(projectRoot, absolute);
         if (
           relative === '..' ||
           relative.startsWith(`..${path.sep}`) ||
-          path.isAbsolute(relative) ||
-          !isIndexablePath(absolute)
+          path.isAbsolute(relative)
         ) {
           return;
         }
-        this.enqueueExternalFile(absolute);
+        if (isIndexablePath(absolute)) {
+          this.enqueueExternalFile(absolute);
+          return;
+        }
+        // A deleted or renamed DIRECTORY arrives as one event naming the
+        // directory, which is never an indexable path. Dropping it left every
+        // file under it in the index; the indexer expands the path instead.
+        if (eventType !== 'rename') return;
+        void isDirectoryWatchCandidate(absolute).then((candidate) => {
+          if (candidate && this.externalWatcher) this.enqueueExternalFile(absolute);
+        });
       },
       {
         onError: () => {

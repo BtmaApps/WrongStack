@@ -94,6 +94,13 @@ describe('buildCodebaseMapCommand', () => {
     expect(generateRepoMapMock.mock.calls[0]?.[0]).toMatchObject({ maxTokens: 2000 });
   });
 
+  it('clamps the token budget to the repo-map tool bounds', async () => {
+    await build().run('--tokens 0', ctx);
+    expect(generateRepoMapMock.mock.calls[0]?.[0]).toMatchObject({ maxTokens: 100 });
+    await build().run('--tokens 999999', ctx);
+    expect(generateRepoMapMock.mock.calls[1]?.[0]).toMatchObject({ maxTokens: 20_000 });
+  });
+
   it('writes the atlas on --write', async () => {
     const result = await build().run('--write', ctx);
 
@@ -205,6 +212,13 @@ describe('/codebase-map --export', () => {
       'utf8',
     );
     expect(written).toContain('<html>');
+  });
+
+  it('does not take a following flag as the export path', async () => {
+    await run('--export --tokens 2000');
+
+    expect(await fs.readFile(path.join(projectRoot, 'atlas.html'), 'utf8')).toContain('<html>');
+    await expect(fs.access(path.join(projectRoot, '--tokens'))).rejects.toThrow();
   });
 
   it('points at /codebase-reindex instead of writing an empty file', async () => {

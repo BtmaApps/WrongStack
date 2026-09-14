@@ -87,6 +87,7 @@ import {
   getAllImportRefsWithStatement,
   getAllResolvedRefsWithStatement,
   getFilePackagesWithStatement,
+  getFilesWithDanglingImportsWithStatement,
   getNamespaceDeclarationsWithStatement,
   getUnresolvedImportsWithStatement,
   resolveRefsForNamesUnsafe,
@@ -125,6 +126,8 @@ export class IndexStore {
   private readonly stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>();
   private bm25Cache: Bm25Index | null = null;
   private bm25Dirty = true;
+  /** `PRAGMA data_version` the BM25 cache was built at. */
+  private bm25DataVersion = -1;
 
   private stmt(sql: string): ReturnType<DatabaseSync['prepare']> {
     const cached = this.stmtCache.get(sql);
@@ -169,6 +172,8 @@ export class IndexStore {
       } catch {
         /* preserve the indexing failure */
       }
+      // A BM25 corpus built mid-job read rows the rollback just discarded.
+      this.invalidateBm25();
       throw error;
     } finally {
       this.atomicIndexUpdateActive = false;
@@ -190,12 +195,23 @@ export class IndexStore {
     else this.db.exec('COMMIT');
   }
 
+  /**
+   * Never throws: every caller is already propagating the failure that caused
+   * the rollback. When SQLite has rolled the transaction back itself (disk
+   * full, I/O error) the ROLLBACK fails with "no transaction is active", and
+   * that message used to replace the real error.
+   */
   private rollbackWriteTransaction(savepoint: string | null): void {
-    if (savepoint) {
-      this.db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-      this.db.exec(`RELEASE SAVEPOINT ${savepoint}`);
-    } else {
-      this.db.exec('ROLLBACK');
+    this.invalidateBm25();
+    try {
+      if (savepoint) {
+        this.db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        this.db.exec(`RELEASE SAVEPOINT ${savepoint}`);
+      } else {
+        this.db.exec('ROLLBACK');
+      }
+    } catch {
+      /* preserve the original failure */
     }
   }
 
@@ -289,6 +305,9 @@ export class IndexStore {
             'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
           ).run(file);
         }
+        this.stmt(
+          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(file);
         const deletedChanges = Number(
           this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
         );
@@ -321,6 +340,12 @@ export class IndexStore {
         this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
           file,
         );
+        // Rank rows go with their symbols and file: left behind, the rank
+        // readers returned deleted files until the next full run.
+        this.stmt(
+          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(file);
+        this.stmt('DELETE FROM file_rank WHERE file = ?').run(file);
         const deletedChanges = Number(
           this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
         );
@@ -371,8 +396,17 @@ export class IndexStore {
     );
   }
 
+  getFilesWithDanglingImports(): string[] {
+    return getFilesWithDanglingImportsWithStatement((sql) => this.stmt(sql));
+  }
+
   applyImportResolutions(
-    resolutions: ReadonlyArray<{ fromFile: string; lang: string; module: string; toFile: string }>,
+    resolutions: ReadonlyArray<{
+      fromFile: string;
+      lang: string;
+      module: string;
+      toFile: string | null;
+    }>,
   ): number {
     return applyImportResolutionsWithStatement(
       this.db,
@@ -417,12 +451,33 @@ export class IndexStore {
     this.bm25Cache = null;
   }
 
+  /**
+   * The corpus is rebuilt when this connection wrote (bm25Dirty) OR another
+   * connection committed since it was built. Pooled stores stay open for the
+   * life of the host while the project daemon, an inline indexer or another
+   * process writes the same database; the dirty flag alone never saw those
+   * writes, so short-query results silently dropped every symbol added since.
+   */
   private getOrBuildBm25(): Bm25Index {
-    if (this.bm25Cache && !this.bm25Dirty) return this.bm25Cache;
+    const version = this.dataVersion();
+    if (this.bm25Cache && !this.bm25Dirty && version === this.bm25DataVersion) {
+      return this.bm25Cache;
+    }
     const docs = this.getAllIndexable();
     this.bm25Cache = buildBm25Index(docs);
     this.bm25Dirty = false;
+    this.bm25DataVersion = version;
     return this.bm25Cache;
+  }
+
+  /** Changes whenever ANOTHER connection commits to this database. */
+  private dataVersion(): number {
+    try {
+      const row = this.stmt('PRAGMA data_version').get() as { data_version?: number } | undefined;
+      return Number(row?.data_version ?? -1);
+    } catch {
+      return -1;
+    }
   }
 
   getAllIndexable(): Array<{ id: number; text: string }> {
@@ -598,6 +653,9 @@ export class IndexStore {
         this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
           meta.file,
         );
+        this.stmt(
+          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(meta.file);
         const deletedChanges = Number(
           this.stmt('DELETE FROM symbols WHERE file = ?').run(meta.file).changes,
         );
@@ -759,14 +817,18 @@ export class IndexStore {
     file: string;
     kind: SymbolKind;
     line: number;
+    scope: string;
   }> {
     return (
-      this.stmt('SELECT id, name, file, kind, line FROM symbols ORDER BY id').all() as Array<{
+      this.stmt(
+        'SELECT id, name, file, kind, line, scope FROM symbols ORDER BY id',
+      ).all() as Array<{
         id: number;
         name: string;
         file: string;
         kind: string;
         line: number;
+        scope: string;
       }>
     ).map((r) => ({ ...r, kind: r.kind as SymbolKind }));
   }

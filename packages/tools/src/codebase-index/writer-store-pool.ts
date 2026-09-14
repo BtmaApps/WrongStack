@@ -73,7 +73,10 @@ export class StorePool<TStore extends PooledIndexStore> {
   release(store: TStore): void {
     const k = this.keyByStore.get(store as object);
     const entry = k === undefined ? undefined : this.stores.get(k);
-    if (entry && entry.refs > 0) entry.refs--;
+    // The key outlives an evicted/closeAll'd store: a late release of the old
+    // handle must not decrement the NEW connection's refcount, which let
+    // trim() close a store that was still checked out.
+    if (entry && entry.store === store && entry.refs > 0) entry.refs--;
     this.trim();
   }
 

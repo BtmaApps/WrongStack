@@ -51,6 +51,15 @@ function normalizeNamespace(value: string): string {
     .toLowerCase();
 }
 
+/** Directory holding a Rust module's child modules (see `resolveRust`). */
+function rustModuleDir(file: string): string {
+  const base = path.posix.basename(file);
+  if (base === 'mod.rs' || base === 'lib.rs' || base === 'main.rs') {
+    return path.posix.dirname(file);
+  }
+  return file.replace(/\.rs$/i, '');
+}
+
 export class ModuleResolver {
   private readonly structure: ProjectStructure;
   /** Lowercased portable path → the path as indexed (case is preserved). */
@@ -74,16 +83,29 @@ export class ModuleResolver {
     // same key — only possible on a case-sensitive filesystem — neither can be
     // chosen without guessing, so the key is dropped and resolution falls back
     // to symbol-id rather than drawing a wrong edge.
+    //
+    // A collided key stays dropped: previously a THIRD spelling (or another
+    // file under the first spelling of a collided directory) found the key
+    // empty again and re-registered it, resolving to whichever came last.
     const dirsByKey = new Map<string, string>();
+    const collidedPaths = new Set<string>();
+    const collidedDirs = new Set<string>();
     for (const file of files) {
       const portable = toPortablePath(file);
       const pathKey = portable.toLowerCase();
-      const priorPath = this.byPath.get(pathKey);
-      if (priorPath !== undefined && priorPath !== file) this.byPath.delete(pathKey);
-      else this.byPath.set(pathKey, file);
+      if (!collidedPaths.has(pathKey)) {
+        const priorPath = this.byPath.get(pathKey);
+        if (priorPath !== undefined && priorPath !== file) {
+          this.byPath.delete(pathKey);
+          collidedPaths.add(pathKey);
+        } else {
+          this.byPath.set(pathKey, file);
+        }
+      }
 
       const dir = path.posix.dirname(portable);
       const dirKey = dir.toLowerCase();
+      if (collidedDirs.has(dirKey)) continue;
       const knownDir = dirsByKey.get(dirKey);
       if (knownDir === undefined) {
         dirsByKey.set(dirKey, dir);
@@ -93,6 +115,7 @@ export class ModuleResolver {
       } else {
         dirsByKey.delete(dirKey);
         this.byDir.delete(dirKey);
+        collidedDirs.add(dirKey);
       }
     }
     for (const { name, file } of namespaces) {
@@ -314,51 +337,79 @@ export class ModuleResolver {
     return undefined;
   }
 
-  /** `use crate::a::b`, `use super::x`, `use self::y`, `use other_crate::z`. */
+  /**
+   * `use crate::a::b`, `use super::x`, `use self::y`, `use other_crate::z`,
+   * and `mod x;` declarations.
+   *
+   * Paths are resolved from the declaring file's MODULE directory, which is
+   * only its filesystem directory for `mod.rs`/`lib.rs`/`main.rs`. A plain
+   * `src/net.rs` owns `src/net/`: its `mod http;` is `src/net/http.rs`, its
+   * `super` is the crate root. Using the file's directory put every
+   * `self::`/`super::`/`mod` path from such a file one level too high, so
+   * those edges silently resolved to nothing (or to an unrelated file).
+   */
   private resolveRust(fromFile: string, spec: string): string | undefined {
     const segments = spec.split('::').filter(Boolean);
     if (segments.length === 0) return undefined;
     const head = segments[0];
 
     if (head === 'self' || head === 'super') {
-      let base = path.posix.dirname(fromFile);
+      let base = rustModuleDir(fromFile);
+      let consumed = 0;
       for (const segment of segments) {
         if (segment === 'super') base = path.posix.dirname(base);
         else if (segment !== 'self') break;
+        consumed++;
       }
-      const rest = segments.filter((segment) => segment !== 'self' && segment !== 'super');
-      return this.lookupWithExtensions(path.posix.join(base, ...rest), 'rs');
+      // An unresolvable tail is an item of that module: the edge goes to the
+      // module's own file.
+      return this.lookupRustPath(base, segments.slice(consumed)) ?? this.lookupRustModuleFile(base);
     }
 
-    const owningCrate = findOwningRoot(this.structure, fromFile, ['cargo']);
     const crate =
       head === 'crate'
-        ? owningCrate
+        ? findOwningRoot(this.structure, fromFile, ['cargo'])
         : this.structure.roots.find(
             (root) => root.kind === 'cargo' && root.importPath === head?.replace(/-/g, '_'),
           );
     if (!crate) {
-      // `mod parser;` names a sibling module, not a crate: it resolves to
-      // `parser.rs` or `parser/mod.rs` next to the declaring file.
-      return this.lookupWithExtensions(
-        path.posix.join(path.posix.dirname(fromFile), ...segments),
-        'rs',
-      );
+      // `mod parser;` (or a 2018 uniform path through it) names a child module
+      // of the declaring module, not a crate.
+      return this.lookupRustPath(rustModuleDir(fromFile), segments);
     }
 
     const rest = segments.slice(1);
     for (const base of crate.sourceRoots) {
-      // The trailing segment of a `use` is usually the imported item, not a
-      // module, so the parent path is tried first.
-      const parent =
-        rest.length > 1
-          ? this.lookupWithExtensions(path.posix.join(base, ...rest.slice(0, -1)), 'rs')
-          : undefined;
-      const exact = this.lookupWithExtensions(path.posix.join(base, ...rest), 'rs');
-      const hit = exact ?? parent ?? this.lookupWithExtensions(path.posix.join(base, 'lib'), 'rs');
+      const hit = this.lookupRustPath(base, rest) ?? this.lookupRustCrateRoot(base);
       if (hit) return hit;
     }
     return undefined;
+  }
+
+  /**
+   * Longest module prefix of `segments` under `base` that is an indexed file.
+   * The trailing segments of a `use` are usually items (`net::http::Client::new`),
+   * so each is dropped in turn until a module file matches.
+   */
+  private lookupRustPath(base: string, segments: readonly string[]): string | undefined {
+    for (let end = segments.length; end > 0; end--) {
+      const hit = this.lookupWithExtensions(path.posix.join(base, ...segments.slice(0, end)), 'rs');
+      if (hit) return hit;
+    }
+    return undefined;
+  }
+
+  /** The file defining the module whose children live in `dir`. */
+  private lookupRustModuleFile(dir: string): string | undefined {
+    return this.lookupWithExtensions(dir, 'rs') ?? this.lookupRustCrateRoot(dir);
+  }
+
+  /** A crate's root file: the library root, else the binary root. */
+  private lookupRustCrateRoot(sourceRoot: string): string | undefined {
+    return (
+      this.lookup(path.posix.join(sourceRoot, 'lib.rs')) ??
+      this.lookup(path.posix.join(sourceRoot, 'main.rs'))
+    );
   }
 
   /** `com.example.Thing` and `com.example.*` against JVM source roots. */
@@ -374,10 +425,21 @@ export class ModuleResolver {
     const parts = wildcard ? segments.slice(0, -1) : segments;
     for (const base of [...sourceRoots, this.structure.projectRoot]) {
       const target = path.posix.join(base, ...parts);
-      const hit = wildcard
-        ? this.representativeIn(target, 'jvm')
-        : this.lookupWithExtensions(target, 'jvm');
-      if (hit) return hit;
+      if (wildcard) {
+        // `a.b.*` names a package directory; `import static a.b.C.*` names
+        // the members of class C, which is a file.
+        const hit =
+          this.representativeIn(target, 'jvm') ?? this.lookupWithExtensions(target, 'jvm');
+        if (hit) return hit;
+        continue;
+      }
+      // `import static a.b.C.member` and `import a.b.Outer.Inner` name
+      // something inside C.java / Outer.java: drop up to two trailing
+      // segments, never below a package-qualified name.
+      for (let end = parts.length; end >= Math.max(2, parts.length - 2); end--) {
+        const hit = this.lookupWithExtensions(path.posix.join(base, ...parts.slice(0, end)), 'jvm');
+        if (hit) return hit;
+      }
     }
     return undefined;
   }

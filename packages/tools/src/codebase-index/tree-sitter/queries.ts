@@ -49,6 +49,187 @@ export interface NodeQueries {
   scopeNodes?: ReadonlySet<string>;
   skipNamedChildren?: boolean;
   refRules?: Partial<Record<string, RefRule>>;
+  /**
+   * Final say on a matched node's kind; `null` skips it. For node types that
+   * are only sometimes declarations: C's `declaration` (prototype, global or
+   * local), a Ruby `constant` (assignment target or mere reference), an
+   * Elixir `call` (`def` or any call at all).
+   */
+  resolveKind?: (node: import('web-tree-sitter').Node, kind: SymbolKind) => SymbolKind | null;
+  /**
+   * Names for nodes that declare several (`int a, b;`) or whose name is not an
+   * identifier child. `undefined` falls back to single-name extraction.
+   */
+  declaredNames?: (node: import('web-tree-sitter').Node) => readonly string[] | undefined;
+  /** Scope membership decided per node; replaces `scopeNodes` when set. */
+  isScopeNode?: (node: import('web-tree-sitter').Node) => boolean;
+}
+
+type TsNode = import('web-tree-sitter').Node;
+
+const NAME_LIKE_TYPES: ReadonlySet<string> = new Set([
+  'identifier',
+  'simple_identifier',
+  'type_identifier',
+  'field_identifier',
+  'name',
+  'constant',
+]);
+
+function namedChildrenOf(node: TsNode): TsNode[] {
+  const out: TsNode[] = [];
+  for (let i = 0; i < node.namedChildCount; i++) {
+    const child = node.namedChild(i);
+    if (child) out.push(child);
+  }
+  return out;
+}
+
+/**
+ * Names of the declarators under a field/property declaration. The first
+ * identifier-shaped child used to be taken as THE name, which for
+ * `private String name;` is the type `String` — and a primitive-typed
+ * `int a, b;` had no identifier child at all, so it was never indexed.
+ */
+function declaratorNames(
+  node: TsNode,
+  declaratorTypes: ReadonlySet<string>,
+  containerTypes: ReadonlySet<string> = new Set(),
+): string[] {
+  const out: string[] = [];
+  const walk = (current: TsNode, depth: number): void => {
+    for (const child of namedChildrenOf(current)) {
+      if (declaratorTypes.has(child.type)) {
+        const id =
+          child.childForFieldName('name') ??
+          namedChildrenOf(child).find((c) => NAME_LIKE_TYPES.has(c.type));
+        if (id) out.push(id.text);
+      } else if (depth < 2 && containerTypes.has(child.type)) {
+        walk(child, depth + 1);
+      }
+    }
+  };
+  walk(node, 0);
+  return out;
+}
+
+/** Innermost identifier of each `declarator:` of a C declaration. */
+function cDeclaratorNames(node: TsNode): string[] {
+  const out: string[] = [];
+  for (const declarator of node.childrenForFieldName('declarator')) {
+    let current: TsNode | null = declarator;
+    for (let depth = 0; current && depth < 16; depth++) {
+      if (current.type === 'identifier') {
+        out.push(current.text);
+        break;
+      }
+      current = current.childForFieldName('declarator');
+    }
+  }
+  return out;
+}
+
+function cDeclaresFunction(node: TsNode): boolean {
+  for (const declarator of node.childrenForFieldName('declarator')) {
+    let current: TsNode | null = declarator;
+    for (let depth = 0; current && depth < 16; depth++) {
+      if (current.type === 'function_declarator') return true;
+      current = current.childForFieldName('declarator');
+    }
+  }
+  return false;
+}
+
+/**
+ * A C `declaration` is a prototype, a file-scope variable, or a local. Every
+ * one of them used to be indexed as a `function` — each local variable of
+ * every function body included.
+ */
+function cDeclarationKind(node: TsNode): SymbolKind | null {
+  if (cDeclaresFunction(node)) return 'function';
+  let parent = node.parent;
+  while (parent?.type.startsWith('preproc_')) parent = parent.parent;
+  return parent?.type === 'translation_unit' ? 'var' : null;
+}
+
+const C_SPECIFIER_TYPES: ReadonlySet<string> = new Set([
+  'struct_specifier',
+  'union_specifier',
+  'enum_specifier',
+  'class_specifier',
+]);
+
+/**
+ * `struct node *next` and `class Foo;` are references to a type, not its
+ * definition: only a specifier with a body declares one. Without this every
+ * parameter of type `struct x *` added another "struct x" symbol.
+ */
+function cSpecifierKind(node: TsNode, kind: SymbolKind): SymbolKind | null {
+  if (!C_SPECIFIER_TYPES.has(node.type)) return kind;
+  return node.childForFieldName('body') ? kind : null;
+}
+
+function sameNode(a: TsNode | null, b: TsNode): boolean {
+  return a !== null && a.startIndex === b.startIndex && a.endIndex === b.endIndex;
+}
+
+/** Ruby: methods defined inside a class/module are methods. */
+function rubyInsideClass(node: TsNode): boolean {
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (parent.type === 'class' || parent.type === 'module' || parent.type === 'singleton_class') {
+      return true;
+    }
+    if (parent.type === 'method' || parent.type === 'singleton_method') return false;
+  }
+  return false;
+}
+
+/**
+ * Elixir definitions are calls: `def total(items)`, `defp tax(x) when x > 0`,
+ * `defmodule Billing.Invoice`. Anything else — which is almost every `call`
+ * node in a file — is not a declaration.
+ */
+const ELIXIR_FUNCTION_DEFS: ReadonlySet<string> = new Set([
+  'def',
+  'defp',
+  'defmacro',
+  'defmacrop',
+  'defguard',
+  'defguardp',
+  'defdelegate',
+]);
+const ELIXIR_MODULE_DEFS: ReadonlySet<string> = new Set(['defmodule', 'defprotocol']);
+
+function elixirDefinition(node: TsNode): { kind: SymbolKind; name: string } | null {
+  if (node.type !== 'call') return null;
+  const target = node.childForFieldName('target') ?? node.namedChild(0);
+  if (target?.type !== 'identifier') return null;
+  const args = namedChildrenOf(node).find((child) => child.type === 'arguments');
+  const head = args?.namedChild(0);
+  if (!head) return null;
+  if (ELIXIR_MODULE_DEFS.has(target.text)) {
+    return head.type === 'alias' ? { kind: 'namespace', name: head.text } : null;
+  }
+  if (!ELIXIR_FUNCTION_DEFS.has(target.text)) return null;
+  const name = elixirFunctionName(head, 0);
+  return name ? { kind: 'function', name } : null;
+}
+
+function elixirFunctionName(head: TsNode, depth: number): string | null {
+  if (depth > 3) return null;
+  // `def ready?, do: true`
+  if (head.type === 'identifier') return head.text;
+  // `def total(items)`
+  if (head.type === 'call') {
+    const target = head.childForFieldName('target') ?? head.namedChild(0);
+    return target?.type === 'identifier' ? target.text : null;
+  }
+  // `defp tax(x) when x > 0`
+  if (head.type === 'binary_operator') {
+    const left = head.childForFieldName('left') ?? head.namedChild(0);
+    return left ? elixirFunctionName(left, depth + 1) : null;
+  }
+  return null;
 }
 
 /** One ref a refRule wants emitted. `callType` defaults to the rule's. */
@@ -495,6 +676,10 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       type_definition: 'declarator',
       preproc_def: 'name',
     },
+    resolveKind: (node, kind) =>
+      node.type === 'declaration' ? cDeclarationKind(node) : cSpecifierKind(node, kind),
+    declaredNames: (node) =>
+      node.type === 'declaration' && !cDeclaresFunction(node) ? cDeclaratorNames(node) : undefined,
     scopeNodes: new Set([
       'translation_unit',
       'function_definition',
@@ -529,6 +714,7 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       namespace_definition: 'name',
       type_definition: 'declarator',
     },
+    resolveKind: cSpecifierKind,
     scopeNodes: new Set([
       'translation_unit',
       'function_definition',
@@ -555,7 +741,12 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       method_declaration: 'method',
       constructor_declaration: 'method',
       field_declaration: 'property',
+      constant_declaration: 'const',
     },
+    declaredNames: (node) =>
+      node.type === 'field_declaration' || node.type === 'constant_declaration'
+        ? declaratorNames(node, new Set(['variable_declarator']))
+        : undefined,
     nameField: {
       class_declaration: 'name',
       interface_declaration: 'name',
@@ -566,12 +757,7 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       constructor_declaration: 'name',
     },
     // `field_declaration` has no single `name` field — it carries a list of
-    // variable declarators. We emit one Symbol per node using the first
-    // identifier-shaped named child (see `extractName` fallback in
-    // `visitor.ts`). `int a, b, c;` therefore indexes only `a` — splitting
-    // multi-declarator fields into separate Symbols is a separate refactor
-    // that needs the visitor to know it has multiple names per node, and no
-    // current test relies on it.
+    // variable declarators, each emitted as its own symbol (declaredNames).
     scopeNodes: new Set([
       'program',
       'class_declaration',
@@ -615,14 +801,28 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       field_declaration: 'property',
       namespace_declaration: 'namespace',
     },
-    // Custom name extractor: take the full dotted name verbatim.
+    // Namespaces keep their full dotted name verbatim. Scoped to namespace
+    // nodes: applied to every declaration it named an interface member
+    // `System.Threading.Tasks.Task RunAsync();` after its RETURN TYPE.
     nameExtractor: (node) => {
+      if (
+        node.type !== 'namespace_declaration' &&
+        node.type !== 'file_scoped_namespace_declaration'
+      ) {
+        return null;
+      }
+      const named = node.childForFieldName('name');
+      if (named) return named.text;
       const inner = node.namedChild(0);
-      if (inner && (inner.type === 'qualified_name' || inner.type === 'name')) {
+      if (inner && (inner.type === 'qualified_name' || inner.type === 'identifier')) {
         return inner.text;
       }
       return null;
     },
+    declaredNames: (node) =>
+      node.type === 'field_declaration'
+        ? declaratorNames(node, new Set(['variable_declarator']), new Set(['variable_declaration']))
+        : undefined,
     scopeNodes: new Set([
       'compilation_unit',
       'namespace_declaration',
@@ -662,6 +862,13 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       trait_declaration: 'name',
       enum_declaration: 'name',
       namespace_definition: 'name',
+    },
+    // `namespace App\Models;` — the whole qualified name, not its first
+    // segment. The resolver binds `use App\Models\User` against it.
+    declaredNames: (node) => {
+      if (node.type !== 'namespace_definition') return undefined;
+      const name = node.childForFieldName('name')?.text;
+      return name ? [name] : [];
     },
     scopeNodes: new Set([
       'program',
@@ -706,6 +913,19 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       module: 'name',
       constant: 'name',
     },
+    resolveKind: (node, kind) => {
+      // A `constant` node is declared only as an assignment target
+      // (`VERSION = "1"`); everywhere else it is a reference.
+      if (node.type === 'constant') {
+        const parent = node.parent;
+        return parent?.type === 'assignment' && sameNode(parent.childForFieldName('left'), node)
+          ? 'const'
+          : null;
+      }
+      if (node.type === 'method') return rubyInsideClass(node) ? 'method' : 'function';
+      return kind;
+    },
+    declaredNames: (node) => (node.type === 'constant' ? [node.text] : undefined),
     scopeNodes: new Set(['program', 'class', 'module', 'singleton_method', 'method']),
     refRules: {
       // `call` covers both `foo(...)` and `obj.foo(...)` — the extractor
@@ -725,6 +945,7 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       extension_declaration: 'class',
       initializer: 'method',
       property_declaration: 'property',
+      protocol_function_declaration: 'method',
     },
     nameField: {
       function_declaration: 'name',
@@ -775,6 +996,14 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
       property_declaration: 'name',
       type_alias: 'name',
     },
+    declaredNames: (node) =>
+      node.type === 'property_declaration'
+        ? declaratorNames(
+            node,
+            new Set(['variable_declaration']),
+            new Set(['multi_variable_declaration']),
+          )
+        : undefined,
     scopeNodes: new Set([
       'source_file',
       'class_declaration',
@@ -794,52 +1023,17 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
     },
   },
   elixir: {
+    // Every Elixir definition is a `call` node (`def`, `defmodule`, …), and so
+    // is every ordinary call. The previous table indexed `defmodule` itself as
+    // a function named "defmodule", named each def after its whole argument
+    // text ("total(items), do: …"), and emitted a function symbol for every
+    // plain call in every body. elixirDefinition decides all three.
     declKinds: {
-      // `def foo`, `defp foo`, `defmacro foo`, `macrop foo` all surface as
-      // `call` nodes in the tree-sitter grammar — there is no
-      // `function_definition`. The `nameExtractor` walks the call's
-      // children to pick the right sibling identifier.
       call: 'function',
-      module: 'namespace',
     },
-    nameExtractor: (node) => {
-      // The Elixir grammar produces `call` for `def foo do … end` and
-      // `module` for `defmodule Foo.Bar do … end`. For `call`, we want
-      // the second identifier (the function name) and verify the first
-      // child is one of `def` / `defp` / `defmacro` / `macrop`. For
-      // `module`, the alias is the first child of an `alias` keyword-less
-      // construct — we grab the inner attribute's string content.
-      if (node.type === 'module') {
-        const aliasNode = node.childForFieldName('alias');
-        return readFirstString(aliasNode) ?? null;
-      }
-      if (node.type !== 'call') return null;
-      const first = node.namedChild(0);
-      if (!first) return null;
-      const target = first.text;
-      // All Elixir definition keywords surface as `call` nodes. def/defp declare
-      // named functions, defmodule declares a module, defprotocol declares a
-      // behaviour, defstruct declares a struct (no symbol name in the
-      // traditional sense — the field list is the value), defmacro/defmacrop
-      // declare compile-time macros, and defguard/defguardp declare guard
-      // macros. defstruct/defmodule (alias form) and `module` (the standalone
-      // Elixir keyword) are handled above; the dispatch below covers the rest.
-      if (
-        target !== 'def' &&
-        target !== 'defp' &&
-        target !== 'defmacro' &&
-        target !== 'defp_macro' &&
-        target !== 'macrop' &&
-        target !== 'defprotocol' &&
-        target !== 'defguard' &&
-        target !== 'defguardp'
-      ) {
-        return null;
-      }
-      const nameNode = node.namedChild(1);
-      return nameNode?.text ?? null;
-    },
-    scopeNodes: new Set(['source', 'module']),
+    resolveKind: (node) => elixirDefinition(node)?.kind ?? null,
+    nameExtractor: (node) => elixirDefinition(node)?.name ?? null,
+    isScopeNode: (node) => elixirDefinition(node)?.kind === 'namespace',
   },
   shell: {
     declKinds: {
@@ -853,14 +1047,4 @@ const LANG_QUERIES: Partial<Record<SymbolLang, NodeQueries>> = {
 /** Resolve the queries for a language, falling back to the default. */
 export function getQueries(lang: SymbolLang): NodeQueries {
   return LANG_QUERIES[lang] ?? DEFAULT_QUERIES;
-}
-
-/** Read the first string-literal child of a node (used for Elixir aliases). */
-function readFirstString(node: import('web-tree-sitter').Node | null): string | null {
-  if (!node) return null;
-  if (node.type === 'string_literal' || node.type === 'alias') {
-    return node.text.replace(/^"|"$/g, '');
-  }
-  const child = node.namedChild(0);
-  return child ? readFirstString(child) : null;
 }

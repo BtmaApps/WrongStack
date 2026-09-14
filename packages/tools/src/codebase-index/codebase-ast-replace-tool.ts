@@ -10,7 +10,7 @@
  */
 
 import * as path from 'node:path';
-import type { Tool } from '@wrongstack/core/types';
+import { type Tool, ToolValidationError } from '@wrongstack/core/types';
 import { safeResolveProjectPath } from '../_util.js';
 import { type MutateSymbolOptions, replaceSymbolInFile } from './ast-symbol-mutator.js';
 
@@ -86,6 +86,24 @@ export const codebaseAstReplaceTool: Tool<CodebaseAstReplaceInput, CodebaseAstRe
   // to the executor (is_error:false) — the UI showed "ok", the audit log and
   // spans recorded success, and only a model reading the payload noticed.
   async execute(input, ctx) {
+    // A missing or mistyped field crashed deep inside the mutator with
+    // "Cannot read properties of undefined (reading 'trim')", naming nothing
+    // the caller could fix. `newBody` may be empty (an emptied body is valid).
+    for (const field of ['file', 'symbol', 'newBody'] as const) {
+      const value = input?.[field];
+      if (typeof value !== 'string' || (field !== 'newBody' && !value.trim())) {
+        throw new ToolValidationError({
+          message: `codebase-ast-replace: ${field} is required and must be a${field === 'newBody' ? ' string' : ' non-empty string'}`,
+          field,
+        });
+      }
+    }
+    if (input.target !== undefined && input.target !== 'body' && input.target !== 'full') {
+      throw new ToolValidationError({
+        message: `codebase-ast-replace: target must be "body" or "full", got ${JSON.stringify(input.target)}`,
+        field: 'target',
+      });
+    }
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
     // H-5 (security report VF-07): this was the only MUTATING file tool that
     // resolved its target with a bare isAbsolute passthrough — an absolute

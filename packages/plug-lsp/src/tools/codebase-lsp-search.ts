@@ -93,7 +93,10 @@ export function createCodebaseLspSearchTool(deps: ToolDeps): Tool<CodebaseLspSea
         });
       }
       try {
-        const limit = Math.min(input.limit ?? 20, 100);
+        // 0/negative made `slice(0, limit)` drop results from the END; NaN
+        // returned nothing at all.
+        const requested = Number.isFinite(input.limit) ? Math.trunc(input.limit as number) : 20;
+        const limit = Math.min(Math.max(requested, 1), 100);
 
         const signal = opts?.signal ?? ctx?.signal;
         let indexResults: CodebaseLspResult[] = [];

@@ -1,22 +1,23 @@
 /**
  * Go source symbol extraction using `go/parser`.
  *
- * Spawns a `go run -` child process that parses the file with go/ast and
- * emits JSON. Falls back to empty results on any error.
+ * Runs the extraction program from `toolchain-scripts.ts` under `go run`, with
+ * the source on stdin, and decodes its JSON. When the toolchain is missing or
+ * the run yields nothing, a line-based extractor keeps the file indexed.
  *
- * Extracts: package, func, type, const, var
+ * Extracts: func, method, type, const, var
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import * as fs from 'node:fs/promises';
-import { StringDecoder } from 'node:string_decoder';
 import { resolveWin32Command } from '../_win32-resolve.js';
-import { parseParserOutput } from './parser-output.js';
-import { recordParserSubprocess } from './perf-metrics.js';
+import { parseParserOutput, toIndexSymbols } from './parser-output.js';
 import type { FileSymbols, Symbol as IndexSymbol, SymbolLang } from './schema.js';
 import { withSpawnGate } from './spawn-gate.js';
+import {
+  GO_PARSE_SCRIPT,
+  goSpawnOptions,
+  privateScriptPath,
+  runToolchainChild,
+} from './toolchain-scripts.js';
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -35,11 +36,11 @@ export async function parseSymbols(opts: {
     }
     // No symbols means the toolchain is missing or the file failed to parse.
     // Keep any refs the run did produce rather than discarding them with it.
-    const fallback = fallbackParse(file, content, lang);
+    const fallback = parseGoWithoutToolchain(file, content, lang);
     return parsed.refs?.length ? { ...fallback, refs: parsed.refs } : fallback;
   } catch {
     /* v8 ignore next -- syncGoParse has its own catch; this outer guard is defensive. */
-    return fallbackParse(file, content, lang);
+    return parseGoWithoutToolchain(file, content, lang);
   }
 }
 
@@ -47,59 +48,140 @@ export { detectLang } from './languages.js';
 
 // ─── Lightweight fallback parser ────────────────────────────────────────────
 
-function fallbackParse(filePath: string, content: string, lang: SymbolLang): FileSymbols {
-  if (!/^\s*package\s+[A-Za-z_]\w*/m.test(content) || hasUnbalancedDelimiters(content)) {
+/** `func Name(`, `func Name[T any](`, `func (r *Recv[T]) Name(` — receiver type in group 1. */
+const GO_FUNC_RE =
+  /^func\s+(?:\(\s*(?:[A-Za-z_]\w*\s+)?\*?\s*([A-Za-z_]\w*)(?:\[[^\]]*\])?\s*\)\s*)?([A-Za-z_]\w*)\s*[[(]/;
+const GO_NAME_LIST_RE = /^([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)/;
+
+/**
+ * Blank comment and string/rune literal contents, keeping offsets and newlines.
+ * Quote characters survive so the line structure stays readable.
+ */
+export function maskGoNonCode(src: string): string {
+  const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i] as string;
+    const next = src[i + 1];
+    if (c === '/' && next === '/') {
+      const newline = src.indexOf('\n', i);
+      const stop = newline === -1 ? n : newline;
+      out += blank(src.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      // Go block comments do not nest.
+      const end = src.indexOf('*/', i + 2);
+      const stop = end === -1 ? n : end + 2;
+      out += blank(src.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const raw = c === '`';
+      let j = i + 1;
+      while (j < n && src[j] !== c && (raw || src[j] !== '\n')) {
+        j += !raw && src[j] === '\\' ? 2 : 1;
+      }
+      if (j < n && src[j] === c) {
+        out += c + blank(src.slice(i + 1, j)) + c;
+        i = j + 1;
+      } else {
+        const stop = Math.min(j, n);
+        out += c + blank(src.slice(i + 1, stop));
+        i = stop;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Line-based extraction for when `go run` is unavailable or failed.
+ *
+ * Runs over {@link maskGoNonCode} output and only reads declarations at the top
+ * level. Previously it scanned every trimmed line of the raw source, so:
+ *  - a `(` or `}` inside a string or comment tripped the delimiter check and
+ *    the whole file indexed empty (`strings.Split(s, "(")` is enough);
+ *  - every `var x` / `type t` local inside a function body became a
+ *    package-level symbol;
+ *  - generic functions (`func Map[T any](`) were missing, grouped
+ *    `const ( … )` / `var ( … )` members were missing, and methods were
+ *    scoped `pkg.Name` instead of the native parser's `pkg.Recv.Name`.
+ */
+export function parseGoWithoutToolchain(
+  filePath: string,
+  content: string,
+  lang: SymbolLang = 'go',
+): FileSymbols {
+  const code = maskGoNonCode(content);
+  if (!/^\s*package\s+[A-Za-z_]\w*/m.test(code) || hasUnbalancedDelimiters(code)) {
     return { file: filePath, lang, symbols: [], mtimeMs: Date.now() };
   }
 
   const symbols: IndexSymbol[] = [];
-  const packageName = content.match(/^\s*package\s+([A-Za-z_]\w*)/m)?.[1] ?? '';
-  const lines = content.split(/\r?\n/);
-  for (const [idx, line] of lines.entries()) {
+  const packageName = code.match(/^\s*package\s+([A-Za-z_]\w*)/m)?.[1] ?? '';
+  const qualify = (...parts: string[]): string => [packageName, ...parts].filter(Boolean).join('.');
+  const codeLines = code.split('\n');
+  const srcLines = content.split('\n');
+  let braces = 0;
+  let parens = 0;
+  let group: 'const' | 'var' | 'type' | null = null;
+
+  for (const [idx, line] of codeLines.entries()) {
     const trimmed = line.trimStart();
-    const col = line.length - trimmed.length;
-    const fn = /^func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(/.exec(trimmed);
-    if (fn?.[1]) {
+    const add = (kind: IndexSymbol['kind'], name: string, scope: string): void => {
+      if (name === '_') return;
       addFallbackSymbol(symbols, {
         filePath,
         lang,
-        kind: trimmed.startsWith('func (') ? 'method' : 'function',
-        name: fn[1],
+        kind,
+        name,
         line: idx + 1,
-        col,
-        signature: trimmed,
-        scope: packageName ? `${packageName}.${fn[1]}` : fn[1],
+        col: line.length - trimmed.length,
+        signature: (srcLines[idx] ?? '').trim(),
+        scope,
       });
-      continue;
+    };
+
+    if (braces === 0 && parens === 0) {
+      group = null;
+      const fn = GO_FUNC_RE.exec(trimmed);
+      const opener = /^(const|var|type)\s*\(/.exec(trimmed);
+      if (fn?.[2]) {
+        add(fn[1] ? 'method' : 'function', fn[2], fn[1] ? qualify(fn[1], fn[2]) : qualify(fn[2]));
+      } else if (opener?.[1]) {
+        group = opener[1] as 'const' | 'var' | 'type';
+      } else {
+        const typeDecl = /^type\s+([A-Za-z_]\w*)/.exec(trimmed);
+        if (typeDecl?.[1]) add('type', typeDecl[1], packageName);
+        const valueDecl = /^(const|var)\s+/.exec(trimmed);
+        const names = valueDecl ? GO_NAME_LIST_RE.exec(trimmed.slice(valueDecl[0].length)) : null;
+        if (valueDecl?.[1] && names?.[1]) {
+          for (const name of names[1].split(',')) {
+            add(valueDecl[1] as 'const' | 'var', name.trim(), packageName);
+          }
+        }
+      }
+    } else if (group && braces === 0 && parens === 1) {
+      const names = GO_NAME_LIST_RE.exec(trimmed)?.[1];
+      if (names) {
+        const members = group === 'type' ? [names.split(',')[0] ?? ''] : names.split(',');
+        for (const name of members) add(group, name.trim(), packageName);
+      }
     }
 
-    const typeDecl = /^type\s+([A-Za-z_]\w*)\b/.exec(trimmed);
-    if (typeDecl?.[1]) {
-      addFallbackSymbol(symbols, {
-        filePath,
-        lang,
-        kind: 'type',
-        name: typeDecl[1],
-        line: idx + 1,
-        col,
-        signature: trimmed,
-        scope: packageName,
-      });
-      continue;
-    }
-
-    const valueDecl = /^(const|var)\s+([A-Za-z_]\w*)\b/.exec(trimmed);
-    if (valueDecl?.[1] && valueDecl[2]) {
-      addFallbackSymbol(symbols, {
-        filePath,
-        lang,
-        kind: valueDecl[1] as 'const' | 'var',
-        name: valueDecl[2],
-        line: idx + 1,
-        col,
-        signature: trimmed,
-        scope: packageName,
-      });
+    for (const ch of line) {
+      if (ch === '{') braces++;
+      else if (ch === '}') braces--;
+      else if (ch === '(') parens++;
+      else if (ch === ')') parens--;
     }
   }
 
@@ -148,398 +230,39 @@ function hasUnbalancedDelimiters(content: string): boolean {
   return stack.length > 0;
 }
 
-// ─── Inline Go parser script ────────────────────────────────────────────────
-
-const GO_PARSE_SCRIPT = `
-package main
-
-import (
-	"encoding/json"
-	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"io"
-	"os"
-	"strconv"
-	"strings"
-)
-
-type Sym struct {
-	Name      string \`json:"name"\`
-	Kind      string \`json:"kind"\`
-	Line      int    \`json:"line"\`
-	Col       int    \`json:"col"\`
-	Signature string \`json:"signature"\`
-	Scope     string \`json:"scope"\`
-}
-
-// Ref is a cross-reference emitted alongside the symbols, so one \`go run\`
-// yields both. Module is the import path for CallType "import", else empty.
-type Ref struct {
-	ToName   string \`json:"toName"\`
-	CallType string \`json:"callType"\`
-	Line     int    \`json:"line"\`
-	Module   string \`json:"module"\`
-}
-
-type Result struct {
-	Symbols []Sym \`json:"symbols"\`
-	Refs    []Ref \`json:"refs"\`
-}
-
-func emptyResult() string {
-	return "{\\"symbols\\":[],\\"refs\\":[]}"
-}
-
-func main() {
-	src, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		fmt.Print(emptyResult())
-		return
-	}
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "src.go", src, 0)
-	if err != nil {
-		fmt.Print(emptyResult())
-		return
-	}
-
-	var syms []Sym
-
-	// Package-level scope
-	pkgScope := node.Name.Name
-
-	// Collect all top-level declarations
-	for _, decl := range node.Decls {
-		switch d := decl.(type) {
-		case *ast.FuncDecl:
-			name := d.Name.Name
-			kind := "function"
-			scope := pkgScope
-			if d.Recv != nil && len(d.Recv.List) > 0 {
-				scope = pkgScope + "." + recvTypeName(d.Recv.List[0].Type) + "." + name
-				kind = "method"
-			} else {
-				scope = pkgScope + "." + name
-			}
-			pos := fset.Position(d.Pos())
-			sig := formatFuncSig(d)
-			syms = append(syms, Sym{Name: name, Kind: kind, Line: pos.Line, Col: pos.Column - 1, Signature: sig, Scope: scope})
-
-		case *ast.GenDecl:
-			for _, spec := range d.Specs {
-				switch s := spec.(type) {
-				case *ast.TypeSpec:
-					name := s.Name.Name
-					pos := fset.Position(s.Pos())
-					sig := "type " + name
-					if s.TypeParams != nil {
-						sig += formatTypeParams(s.TypeParams)
-					}
-					if st, ok := s.Type.(*ast.StructType); ok {
-						sig += " = struct { " + formatFields(st.Fields.List) + " }"
-					} else if it, ok := s.Type.(*ast.InterfaceType); ok {
-						sig += " = interface { " + formatMethods(it.Methods.List) + " }"
-					} else {
-						sig += " = " + formatType(s.Type)
-					}
-					syms = append(syms, Sym{Name: name, Kind: "type", Line: pos.Line, Col: pos.Column - 1, Signature: sig, Scope: pkgScope})
-
-				case *ast.ValueSpec:
-					for _, n := range s.Names {
-						name := n.Name
-						pos := fset.Position(n.Pos())
-						kind := "var"
-						if d.Tok == token.CONST {
-							kind = "const"
-						}
-						sig := kind + " " + name
-						if s.Type != nil {
-							sig += " " + formatType(s.Type)
-						}
-						syms = append(syms, Sym{Name: name, Kind: kind, Line: pos.Line, Col: pos.Column - 1, Signature: sig, Scope: pkgScope})
-					}
-				}
-			}
-		}
-	}
-
-	refs := []Ref{}
-	ast.Inspect(node, func(n ast.Node) bool {
-		switch expr := n.(type) {
-		case *ast.CallExpr:
-			line := fset.Position(expr.Pos()).Line
-			switch fun := expr.Fun.(type) {
-			case *ast.Ident:
-				refs = append(refs, Ref{ToName: fun.Name, CallType: "call", Line: line})
-			case *ast.SelectorExpr:
-				// Record the selected name (\`Join\` of \`filepath.Join\`): it is the
-				// declared symbol name, so it resolves the same way the TypeScript
-				// and Python extractors' call refs do.
-				refs = append(refs, Ref{ToName: fun.Sel.Name, CallType: "call", Line: line})
-			}
-		case *ast.ImportSpec:
-			if expr.Path != nil {
-				if importPath, uerr := strconv.Unquote(expr.Path.Value); uerr == nil {
-					line := fset.Position(expr.Pos()).Line
-					// A Go import names a package, not a symbol; the package's
-					// last path segment is the name it is referenced by.
-					name := importPath
-					if idx := strings.LastIndex(importPath, "/"); idx >= 0 {
-						name = importPath[idx+1:]
-					}
-					refs = append(refs, Ref{ToName: name, CallType: "import", Line: line, Module: importPath})
-				}
-			}
-		}
-		return true
-	})
-
-	if syms == nil {
-		syms = []Sym{}
-	}
-	data, err := json.Marshal(Result{Symbols: syms, Refs: refs})
-	if err != nil {
-		fmt.Print(emptyResult())
-		return
-	}
-	fmt.Print(string(data))
-}
-
-func recvTypeName(t ast.Expr) string {
-	switch v := t.(type) {
-	case *ast.Ident:
-		return v.Name
-	case *ast.StarExpr:
-		return recvTypeName(v.X)
-	default:
-		return "?"
-	}
-}
-
-func formatFuncSig(d *ast.FuncDecl) string {
-	scope := ""
-	if d.Recv != nil && len(d.Recv.List) > 0 {
-		scope = "(" + formatFieldList(d.Recv.List) + ") "
-	}
-	scope += formatFuncType(d.Type)
-	return "func " + scope
-}
-
-func formatFuncType(f *ast.FuncType) string {
-	params := formatFieldList(f.Params.List)
-	results := ""
-	if f.Results != nil {
-		results = " -> " + formatFieldList(f.Results.List)
-	}
-	return params + results
-}
-
-func formatFieldList(fields []*ast.Field) string {
-	if len(fields) == 0 {
-		return "()"
-	}
-	names := make([]string, 0, len(fields))
-	for _, f := range fields {
-		name := ""
-		if len(f.Names) > 0 {
-			name = f.Names[0].Name
-		}
-		t := formatType(f.Type)
-		if name != "" {
-			names = append(names, name+" "+t)
-		} else {
-			names = append(names, t)
-		}
-	}
-	return "(" + strings.Join(names, ", ") + ")"
-}
-
-func formatFields(fields []*ast.Field) string {
-	lines := make([]string, 0)
-	for _, f := range fields {
-		name := ""
-		if len(f.Names) > 0 {
-			name = f.Names[0].Name
-		}
-		t := formatType(f.Type)
-		if name != "" {
-			lines = append(lines, name+" "+t)
-		} else {
-			lines = append(lines, t)
-		}
-	}
-	return strings.Join(lines, "; ")
-}
-
-func formatMethods(fields []*ast.Field) string {
-	return formatFields(fields)
-}
-
-func formatTypeParams(tp *ast.FieldList) string {
-	if tp == nil || len(tp.List) == 0 {
-		return ""
-	}
-	params := make([]string, len(tp.List))
-	for i, p := range tp.List {
-		if len(p.Names) > 0 {
-			params[i] = p.Names[0].Name
-		} else {
-			params[i] = "T"
-		}
-	}
-	return "[" + strings.Join(params, ", ") + "]"
-}
-
-func formatType(t ast.Expr) string {
-	if t == nil {
-		return "?"
-	}
-	switch v := t.(type) {
-	case *ast.Ident:
-		return v.Name
-	case *ast.SelectorExpr:
-		return formatType(v.X) + "." + v.Sel.Name
-	case *ast.StarExpr:
-		return "*" + formatType(v.X)
-	case *ast.ArrayType:
-		if v.Len == nil {
-			return "[]" + formatType(v.Elt)
-		}
-		return "[...]" + formatType(v.Elt)
-	case *ast.MapType:
-		return "map[" + formatType(v.Key) + "]" + formatType(v.Value)
-	case *ast.InterfaceType:
-		return "interface{}"
-	case *ast.StructType:
-		return "struct{}"
-	case *ast.FuncType:
-		return formatFuncType(v)
-	case *ast.ChanType:
-		return "chan " + formatType(v.Value)
-	case *ast.BasicLit:
-		return v.Value
-	case *ast.IndexExpr:
-		// Generic instantiation with one type arg, e.g. Logger[int].
-		return formatType(v.X) + "[" + formatType(v.Index) + "]"
-	case *ast.IndexListExpr:
-		// Generic instantiation with multiple type args, e.g. Map[K, V].
-		args := make([]string, len(v.Indices))
-		for i, idx := range v.Indices {
-			args[i] = formatType(idx)
-		}
-		return formatType(v.X) + "[" + strings.Join(args, ", ") + "]"
-	default:
-		return "?"
-	}
-}
-`;
-
-// Cache the temp script path so we don't rewrite the parser script on every
-// file. The script is identical for every invocation — writing it once per
-// process (like py-parser does) eliminates mkdtemp + writeFile + rm per file.
-let _cachedGoScriptPath: string | null = null;
+// ─── Native parse via `go run` ───────────────────────────────────────────────
 
 async function syncGoParse(
   filePath: string,
   content: string,
   lang: SymbolLang,
 ): Promise<FileSymbols> {
+  const empty: FileSymbols = { file: filePath, lang, symbols: [], mtimeMs: Date.now() };
   // Feed the source over stdin — never pass the target .go file as a CLI arg.
   // `go run script.go target.go` makes the toolchain treat target.go as a
   // second package file ("named files must all be in one directory") and
-  // refuses *_test.go outright. Reading from stdin sidesteps both, and lets
-  // us parse the in-memory content without touching disk.
+  // refuses *_test.go outright.
   try {
-    // Local `let` so TypeScript's CFA narrows to `string` after the guard.
-    // Module-scope `_cachedGoScriptPath` stays `string | null` because TS
-    // can't prove no concurrent mutation between the check and the use.
-    let scriptPath = _cachedGoScriptPath;
-    if (!scriptPath) {
-      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-go-parse-'));
-      scriptPath = path.join(tmpDir, 'parse.go');
-      await fs.writeFile(scriptPath, GO_PARSE_SCRIPT, 'utf8');
-      _cachedGoScriptPath = scriptPath;
-    }
-
-    // argv-array form (no shell): avoids any quoting/metachar issues in the
-    // temp script path. The target source is fed via stdin, not as an arg.
-    // Resolve the Go binary via PATHEXT on Windows so ENOENT is impossible.
-    const goBinary = resolveWin32Command('go');
-
-    const goResult = await new Promise<{ code: number | null; stdout: string }>(
-      (resolve, reject) => {
-        let settled = false;
-
-        recordParserSubprocess();
-        const proc: ChildProcess = spawn(goBinary, ['run', scriptPath], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          windowsHide: true,
-        });
-
-        proc.on('error', (err) => {
-          if (settled) return;
-          settled = true;
-          reject(err);
-        });
-
-        let stdout = '';
-        // Decoder, not `chunk.toString()`: stdout is parsed as JSON, so a
-        // multi-byte character split across a pipe chunk boundary corrupts it.
-        const stdoutDecoder = new StringDecoder('utf8');
-        proc.stdout?.on('data', (chunk: Buffer) => {
-          stdout += stdoutDecoder.write(chunk);
-        });
-        // Drain stderr to avoid backpressure deadlocks from Go toolchain
-        // diagnostics (e.g. "found packages …").
-        proc.stderr?.resume();
-
-        // Write source via stdin so `go run` receives it without touching disk
-        proc.stdin?.write(content);
-        proc.stdin?.end();
-
-        const timer = setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          proc.kill('SIGKILL');
-          reject(new Error('timeout'));
-        }, 15_000);
-        timer.unref?.();
-
-        proc.on('close', (code) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          // Flush a partial trailing sequence before the JSON payload is parsed.
-          stdout += stdoutDecoder.end();
-          resolve({ code, stdout });
-        });
-      },
+    const scriptPath = await privateScriptPath('ws-go-parse-', 'parse.go', GO_PARSE_SCRIPT);
+    // argv-array form (no shell); the Go binary is resolved via PATHEXT on Windows.
+    const result = await runToolchainChild(
+      resolveWin32Command('go'),
+      ['run', scriptPath],
+      content,
+      15_000,
+      goSpawnOptions(scriptPath),
     );
+    if (result?.code !== 0 || !result.stdout.trim()) return empty;
 
-    const { code, stdout } = goResult;
-
-    if (code !== 0 || !stdout.trim()) {
-      return { file: filePath, lang, symbols: [], mtimeMs: Date.now() };
-    }
-
-    const { symbols: rawSymbols, refs } = parseParserOutput(stdout, lang);
-    const symbols: IndexSymbol[] = rawSymbols.map((s) => ({
-      id: 0,
-      lang,
-      kind: s.kind as IndexSymbol['kind'],
-      name: s.name,
+    const { symbols, refs } = parseParserOutput(result.stdout, lang);
+    return {
       file: filePath,
-      line: s.line,
-      col: s.col,
-      signature: s.signature ?? '',
-      docComment: '',
-      scope: s.scope ?? '',
-      text: `${s.name} ${s.signature ?? ''}`.trim(),
-    }));
-    return { file: filePath, lang, symbols, refs, mtimeMs: Date.now() };
+      lang,
+      symbols: toIndexSymbols(symbols, filePath, lang),
+      refs,
+      mtimeMs: Date.now(),
+    };
   } catch {
-    return { file: filePath, lang, symbols: [], mtimeMs: Date.now() };
+    return empty;
   }
 }

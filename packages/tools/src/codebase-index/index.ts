@@ -53,11 +53,6 @@ export {
   buildIndexableText,
   tokenise,
 } from './bm25.js';
-export {
-  getCodebaseIndexPerfSnapshot,
-  resetCodebaseIndexPerfMetrics,
-  type CodebaseIndexPerfSnapshot,
-} from './perf-metrics.js';
 export type { CircuitSnapshot, CircuitState } from './circuit-breaker.js';
 // Circuit breaker guarding every index run (startup, incremental, manual).
 // `resetIndexCircuitBreaker` is the manual-recovery hook for /codebase-reindex.
@@ -158,6 +153,11 @@ export {
   internalKindToLspKind,
   lspKindToInternalKind,
 } from './lsp-kind.js';
+export {
+  type CodebaseIndexPerfSnapshot,
+  getCodebaseIndexPerfSnapshot,
+  resetCodebaseIndexPerfMetrics,
+} from './perf-metrics.js';
 export type {
   ProjectIndexServerClientHealth,
   ProjectIndexServerConnectionState,

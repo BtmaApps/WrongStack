@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import type * as TS from '@typescript/typescript6';
 import { detectLang, isIndexablePath } from './languages.js';
 import type { SymbolLang } from './schema.js';
-import { parseTreeSitterAst } from './tree-sitter-parser.js';
+import { parseTreeSitterAst, treeSitterDeclarationName } from './tree-sitter-parser.js';
 
 type TsModule = typeof import('@typescript/typescript6');
 let tsModule: TsModule | null = null;
@@ -71,8 +71,10 @@ interface Replacement {
 function applyReplacements(content: string, replacements: Replacement[]): string {
   if (replacements.length === 0) return content;
 
-  // Sort by start ascending
-  const sorted = [...replacements].sort((a, b) => a.start - b.start);
+  // Sort by start ascending; on a tie the LONGER replacement wins, so removing
+  // a whole declaration beats removing just its leading JSDoc (which starts at
+  // the same offset) instead of being skipped as an overlap.
+  const sorted = [...replacements].sort((a, b) => a.start - b.start || b.end - a.end);
   let result = '';
   let lastIndex = 0;
 
@@ -121,14 +123,76 @@ async function extractTsSkeleton(
   let symbolCount = 0;
   const includeLineNumbers = opts.includeLineNumbers ?? true;
 
+  // Names exported through a list (`export { a, b as c }`) or `export default a`
+  // — a declaration without the `export` modifier is still public then, and
+  // exportsOnly used to strip it.
+  const exportedByName = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isExportDeclaration(statement) &&
+      !statement.moduleSpecifier &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        exportedByName.add((element.propertyName ?? element.name).text);
+      }
+    } else if (
+      ts.isExportAssignment(statement) &&
+      !statement.isExportEquals &&
+      ts.isIdentifier(statement.expression)
+    ) {
+      exportedByName.add(statement.expression.text);
+    } else if (
+      ts.isExportAssignment(statement) &&
+      statement.isExportEquals &&
+      ts.isIdentifier(statement.expression)
+    ) {
+      exportedByName.add(statement.expression.text);
+    }
+  }
+
   function isExported(node: TS.Node): boolean {
-    if (!ts.canHaveModifiers(node)) return false;
-    const modifiers = ts.getModifiers(node);
-    return modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+    if (ts.canHaveModifiers(node)) {
+      const modifiers = ts.getModifiers(node);
+      if (modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) return true;
+    }
+    if (ts.isVariableStatement(node)) {
+      return node.declarationList.declarations.some(
+        (d) => ts.isIdentifier(d.name) && exportedByName.has(d.name.text),
+      );
+    }
+    const name = (node as { name?: TS.Node }).name;
+    return name !== undefined && ts.isIdentifier(name) && exportedByName.has(name.text);
+  }
+
+  /** Remove a whole top-level declaration, including its leading JSDoc. */
+  function removeDeclaration(node: TS.Node): void {
+    replacements.push({ start: node.getStart(sourceFile, true), end: node.getEnd(), text: '' });
   }
 
   function visit(node: TS.Node, depth: number) {
     if (opts.maxDepth !== undefined && depth > opts.maxDepth) {
+      return;
+    }
+
+    // `includeDocs: false` was documented but never implemented on this path:
+    // every JSDoc block survived.
+    if (opts.includeDocs === false) {
+      for (const doc of (node as { jsDoc?: TS.JSDoc[] }).jsDoc ?? []) {
+        replacements.push({ start: doc.getStart(sourceFile), end: doc.getEnd(), text: '' });
+      }
+    }
+
+    // exportsOnly previously ignored variable statements and namespaces, so a
+    // private `const helper = () => …` stayed in an "exports only" outline.
+    if (
+      opts.exportsOnly &&
+      depth === 0 &&
+      (ts.isVariableStatement(node) || ts.isModuleDeclaration(node)) &&
+      !isExported(node)
+    ) {
+      removeDeclaration(node);
       return;
     }
 
@@ -141,11 +205,7 @@ async function extractTsSkeleton(
     ) {
       symbolCount++;
       if (opts.exportsOnly && depth === 0 && !isExported(node)) {
-        replacements.push({
-          start: node.getStart(sourceFile),
-          end: node.getEnd(),
-          text: '',
-        });
+        removeDeclaration(node);
         return;
       }
 
@@ -220,11 +280,7 @@ async function extractTsSkeleton(
     ) {
       symbolCount++;
       if (opts.exportsOnly && depth === 0 && !isExported(node)) {
-        replacements.push({
-          start: node.getStart(sourceFile),
-          end: node.getEnd(),
-          text: '',
-        });
+        removeDeclaration(node);
         return;
       }
 
@@ -303,6 +359,44 @@ function collapseTsImports(code: string): string {
 }
 
 /**
+ * Whether a top-level tree-sitter declaration is non-public under its
+ * language's visibility convention: Python `_name`, Go lower-case identifiers,
+ * Rust items without `pub`. Other languages keep everything (their public
+ * surface is not decidable from the top-level node alone).
+ */
+function isPrivateTopLevel(node: import('web-tree-sitter').Node, lang: SymbolLang): boolean {
+  if (lang === 'py') {
+    const decl = node.type === 'decorated_definition' ? node.childForFieldName('definition') : node;
+    if (decl?.type !== 'function_definition' && decl?.type !== 'class_definition') return false;
+    return decl.childForFieldName('name')?.text.startsWith('_') ?? false;
+  }
+  if (lang === 'go') {
+    let name: string | undefined;
+    if (node.type === 'function_declaration' || node.type === 'method_declaration') {
+      name = node.childForFieldName('name')?.text;
+    } else if (node.type === 'type_declaration' && node.namedChildCount === 1) {
+      name = node.namedChild(0)?.childForFieldName('name')?.text;
+    }
+    return name !== undefined && !/^[A-Z]/.test(name);
+  }
+  if (lang === 'rs') {
+    const items = [
+      'function_item',
+      'struct_item',
+      'enum_item',
+      'trait_item',
+      'type_item',
+      'const_item',
+      'static_item',
+      'mod_item',
+    ];
+    if (!items.includes(node.type)) return false;
+    return !node.children.some((c) => c?.type === 'visibility_modifier');
+  }
+  return false;
+}
+
+/**
  * Extract skeleton for polyglot languages using Tree-Sitter AST.
  */
 async function extractTreeSitterSkeleton(
@@ -322,14 +416,27 @@ async function extractTreeSitterSkeleton(
   try {
     const root = tree.rootNode;
 
-    function walk(node: import('web-tree-sitter').Node) {
+    function walk(node: import('web-tree-sitter').Node, depth: number) {
       const type = node.type;
+
+      // `includeDocs: false` was ignored for every tree-sitter language.
+      if (opts.includeDocs === false && /comment$/.test(type)) {
+        replacements.push({ start: node.startIndex, end: node.endIndex, text: '' });
+        return;
+      }
+
+      // exportsOnly was ignored for every tree-sitter language.
+      if (opts.exportsOnly && depth === 1 && isPrivateTopLevel(node, lang)) {
+        replacements.push({ start: node.startIndex, end: node.endIndex, text: '' });
+        return;
+      }
 
       // Detect function/method declarations across C, C++, Java, C#, Go, Rust, Python, PHP, Ruby, Kotlin, Swift
       if (
         type === 'function_definition' ||
         type === 'function_declaration' ||
         type === 'method_declaration' ||
+        type === 'constructor_declaration' ||
         type === 'function_item' ||
         type === 'method' ||
         type === 'singleton_method' ||
@@ -362,11 +469,31 @@ async function extractTreeSitterSkeleton(
           const label = includeLineNumbers ? `/* L${bodyStart}-L${bodyEnd} */` : '/* ... */';
 
           if (lang === 'py') {
-            replacements.push({
-              start: bodyNode.startIndex,
-              end: bodyNode.endIndex,
-              text: includeLineNumbers ? `... # L${bodyStart}-L${bodyEnd}` : '...',
-            });
+            const stub = includeLineNumbers ? `... # L${bodyStart}-L${bodyEnd}` : '...';
+            // The docstring is the first statement of the body, so replacing
+            // the whole block deleted it even with `includeDocs: true`.
+            const first = bodyNode.namedChild(0);
+            const hasDocstring =
+              opts.includeDocs !== false &&
+              first?.type === 'expression_statement' &&
+              first.namedChild(0)?.type === 'string';
+            const docLineStart = first ? content.lastIndexOf('\n', first.startIndex - 1) + 1 : 0;
+            const docIndent = first ? content.slice(docLineStart, first.startIndex) : '';
+            if (hasDocstring && first && /^[ \t]*$/.test(docIndent)) {
+              if (bodyNode.namedChildCount > 1) {
+                replacements.push({
+                  start: first.endIndex,
+                  end: bodyNode.endIndex,
+                  text: `\n${docIndent}${stub}`,
+                });
+              }
+            } else {
+              replacements.push({
+                start: bodyNode.startIndex,
+                end: bodyNode.endIndex,
+                text: stub,
+              });
+            }
           } else if (lang === 'ruby') {
             replacements.push({
               start: bodyNode.startIndex,
@@ -384,8 +511,9 @@ async function extractTreeSitterSkeleton(
           }
         }
 
-        const nameNode = node.childForFieldName('name') ?? node.childForFieldName('declarator');
-        const symbolName = nameNode ? nameNode.text : undefined;
+        // C/C++ names live inside a declarator chain; the outer declarator's
+        // text is `add(int a, int b)`, not `add`.
+        const symbolName = treeSitterDeclarationName(node);
 
         symbolRanges.push({
           name: symbolName,
@@ -423,11 +551,11 @@ async function extractTreeSitterSkeleton(
 
       for (let i = 0; i < node.namedChildCount; i++) {
         const child = node.namedChild(i);
-        if (child) walk(child);
+        if (child) walk(child, depth + 1);
       }
     }
 
-    walk(root);
+    walk(root, 0);
     const skeleton = applyReplacements(content, replacements);
     return { skeleton, symbolCount, symbols: symbolRanges };
   } finally {

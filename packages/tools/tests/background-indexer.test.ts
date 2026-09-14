@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 // This suite drives the codebase index in-process. The project daemon now
 // fails closed when its build cannot be located, so the in-process path has to
 // be requested rather than fallen into — the same declaration a user would make
@@ -532,5 +533,33 @@ describe('UNIQUE constraint auto-recovery', () => {
 
     await expect(runStartupIndex({ projectRoot: '/proj' })).rejects.toThrow('some other error');
     expect(indexServiceMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds inside a half-open probe and closes the circuit (no re-admission)', async () => {
+    for (let i = 0; i < 3; i++) {
+      indexServiceMock.mockRejectedValueOnce(new Error(`boom ${i}`));
+      await expect(runStartupIndex({ projectRoot: '/proj' })).rejects.toThrow(`boom ${i}`);
+    }
+    expect(indexCircuitBreaker.snapshot().state).toBe('open');
+
+    // The breaker captured `Date.now` at construction, so faking Date cannot
+    // move its clock — swap its clock past the 60s cooldown directly.
+    const breaker = indexCircuitBreaker as unknown as { now: () => number };
+    const realNow = breaker.now;
+    const later = realNow() + 61_000;
+    breaker.now = () => later;
+    try {
+      indexServiceMock.mockRejectedValueOnce(new Error('UNIQUE constraint failed: symbols.id'));
+      indexServiceMock.mockResolvedValueOnce(OK_RESULT);
+      // The recursive retry used to re-run allowRequest(), which a half-open
+      // circuit refuses — the recovery failed and the probe never settled.
+      await expect(runStartupIndex({ projectRoot: '/proj' })).resolves.toMatchObject({
+        autoRecovered: { rebuiltWithForce: true },
+      });
+      expect(indexCircuitBreaker.snapshot().state).toBe('closed');
+      expect(isIndexing()).toBe(false);
+    } finally {
+      breaker.now = realNow;
+    }
   });
 });

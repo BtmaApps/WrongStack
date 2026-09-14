@@ -8,12 +8,15 @@ import { expectDefined } from '@wrongstack/core/utils';
  * key line at any depth, which let a single i18n or report file produce
  * thousands of noise symbols). Extraction is string-aware and capped.
  * Special handling for:
- * - package.json: scripts, dependencies, devDependencies → `const`
+ * - package.json: scripts, dependencies, devDependencies → `const`; each
+ *   script → `function`
  * - tsconfig.json: compilerOptions keys → `property`
- * - JSON Schema / OpenAPI: $schema, $id, $ref → `schema`
+ * - JSON Schema / OpenAPI: $schema, $id, $ref → `schema`; every definition
+ *   under `$defs` / `definitions` / `schemas` → `schema`
  * - Root object itself → kind `object`
  *
- * Uses regex/scanner-based extraction for speed and zero dependencies.
+ * Uses a scanner, not a JSON parse: JSONC comments and trailing commas are
+ * common in configuration files and must not drop the file from the index.
  */
 
 import * as path from 'node:path';
@@ -33,9 +36,9 @@ export function parseSymbols(opts: {
   const { file, content, lang } = opts;
 
   try {
-    return regexParse({ file, content, lang, maxSymbols: opts.maxSymbols });
+    return scanParse({ file, content, lang, maxSymbols: opts.maxSymbols });
   } catch {
-    /* v8 ignore next -- regexParse is pure regex/string work; the catch is a defensive fallback. */
+    /* v8 ignore next -- scanParse is pure string work; the catch is a defensive fallback. */
     return { file, lang, symbols: [], mtimeMs: Date.now() };
   }
 }
@@ -44,80 +47,98 @@ export { detectLang } from './languages.js';
 
 // ─── Scanner ────────────────────────────────────────────────────────────────
 
-interface TopLevelKey {
-  key: string;
-  /** Offset of the opening quote, for line/col mapping. */
-  offset: number;
-}
-
-/**
- * Single-pass scan for the ROOT object's keys: strings seen while the
- * container stack is exactly `[{` that are followed (after whitespace) by `:`.
- * String-aware (handles `\"` escapes, so a quote inside a key or value cannot
- * desynchronize the scan), O(n), zero dependencies. Keys nested in child
- * objects/arrays are deliberately not emitted (P3).
- */
-function topLevelKeys(content: string): TopLevelKey[] {
-  const keys: TopLevelKey[] = [];
-  const stack: string[] = [];
-  let inString = false;
-  for (let i = 0; i < content.length; i++) {
+/** Index of the next significant character at or after `from` (skips whitespace and JSONC comments). */
+function skipTrivia(content: string, from: number): number {
+  let i = from;
+  while (i < content.length) {
     const ch = content[i];
-    if (inString) {
-      if (ch === '\\') {
-        i++; // skip the escaped character
-      } else if (ch === '"') {
-        inString = false;
-      }
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || ch === '﻿') {
+      i++;
       continue;
     }
     if (ch === '/' && content[i + 1] === '/') {
-      // JSONC line comment (.jsonc routes here): skip to end of line.
-      while (i < content.length && content[i] !== '\n') i++;
+      const newline = content.indexOf('\n', i);
+      i = newline === -1 ? content.length : newline + 1;
       continue;
     }
     if (ch === '/' && content[i + 1] === '*') {
-      // JSONC block comment: skip past the closing */ (or EOF).
-      i += 2;
-      while (i < content.length && !(content[i] === '*' && content[i + 1] === '/')) i++;
-      i++; // past '*'; the loop's i++ moves past '/'
+      const end = content.indexOf('*/', i + 2);
+      i = end === -1 ? content.length : end + 2;
       continue;
     }
+    break;
+  }
+  return i;
+}
+
+interface ObjectKey {
+  key: string;
+  /** Offset of the key's opening quote, for line/col mapping. */
+  offset: number;
+  /** Offset of the value's first significant character. */
+  valueStart: number;
+}
+
+/**
+ * Keys of the object whose `{` sits at `open`: strings at depth 1 of THAT
+ * object followed by `:`. String-aware (escapes cannot end a string early)
+ * and comment-aware, O(object length).
+ *
+ * Nested blocks used to be read with `"scripts"\s*:\s*\{([^}]+)\}`, which
+ * stopped at the first `}` anywhere — a `${VAR}` inside one script value, or
+ * `"paths": {…}` inside compilerOptions, silently dropped every key after it.
+ */
+function objectKeys(content: string, open: number): ObjectKey[] {
+  const keys: ObjectKey[] = [];
+  let depth = 0;
+  for (let i = open; i < content.length; i++) {
+    const ch = content[i];
     if (ch === '"') {
-      inString = true;
-      if (stack.length === 1 && stack[0] === '{') {
-        // Consume the key string manually so escapes cannot end it early.
-        let j = i + 1;
-        while (j < content.length && content[j] !== '"') {
-          if (content[j] === '\\') j++;
-          j++;
-        }
-        if (j < content.length) {
-          const key = content.slice(i + 1, j);
-          let k = j + 1;
-          while (k < content.length && /\s/.test(content[k] ?? '')) k++;
-          if (content[k] === ':') keys.push({ key, offset: i });
-          i = j; // the loop's i++ resumes after the closing quote
-          inString = false;
-        }
-        // j >= length: unterminated key at EOF — the loop exits naturally.
+      let j = i + 1;
+      while (j < content.length && content[j] !== '"') {
+        if (content[j] === '\\') j++;
+        j++;
       }
+      if (j >= content.length) break;
+      if (depth === 1) {
+        const colon = skipTrivia(content, j + 1);
+        if (content[colon] === ':') {
+          keys.push({
+            key: content.slice(i + 1, j),
+            offset: i,
+            valueStart: skipTrivia(content, colon + 1),
+          });
+        }
+      }
+      i = j;
       continue;
     }
-    if (ch === '{' || ch === '[') stack.push(ch);
-    else if (ch === '}' || ch === ']') stack.pop();
+    if (ch === '/' && (content[i + 1] === '/' || content[i + 1] === '*')) {
+      i = skipTrivia(content, i) - 1;
+      continue;
+    }
+    if (ch === '{' || ch === '[') {
+      depth++;
+    } else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) break;
+    }
   }
   return keys;
 }
 
-// ─── Regex parser ───────────────────────────────────────────────────────────
+/** Containers whose child keys are schema definitions. */
+const DEFINITION_CONTAINERS: ReadonlySet<string> = new Set(['$defs', 'definitions', 'schemas']);
 
-/**
- * Extract the root object's keys from JSON content. Nested keys are covered
- * only by the explicit special cases below (package.json scripts, tsconfig
- * compilerOptions, JSON Schema / OpenAPI definition blocks).
- */
-function regexParse(opts: {
+/** Container blocks recorded as symbols themselves (OpenAPI `components` holds `schemas`). */
+const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([...DEFINITION_CONTAINERS, 'components']);
+
+/** Nesting depth searched for definition containers (OpenAPI puts them at `components.schemas`). */
+const DEFINITION_SEARCH_DEPTH = 4;
+
+// ─── Parser ─────────────────────────────────────────────────────────────────
+
+function scanParse(opts: {
   file: string;
   content: string;
   lang: SymbolLang;
@@ -126,20 +147,18 @@ function regexParse(opts: {
   const { file, content, lang } = opts;
   const maxSymbols = opts.maxSymbols ?? JSON_MAX_SYMBOLS_DEFAULT;
   const symbols: IndexSymbol[] = [];
-  const pushSymbol = (symbol: IndexSymbol): void => {
-    if (symbols.length < maxSymbols) symbols.push(symbol);
-  };
   const basename = path.basename(file).toLowerCase();
 
   const isPackageJson = basename === 'package.json';
   const isTsconfig = basename === 'tsconfig.json' || basename === 'tsconfig.build.json';
   const isJsonSchema =
-    content.includes('$schema') || content.includes('$id') || content.includes('$ref');
+    content.includes('$schema') ||
+    content.includes('$id') ||
+    content.includes('$ref') ||
+    content.includes('$defs');
   const isOpenApi = content.includes('openapi') || content.includes('swagger');
 
   const lines = content.split('\n');
-
-  // Build line offset map
   const lineOffsets: number[] = [0];
   for (let i = 0; i < lines.length; i++) {
     lineOffsets.push((lineOffsets[i] ?? 0) + (lines[i]?.length ?? 0) + 1);
@@ -156,34 +175,48 @@ function regexParse(opts: {
     return lo + 1;
   }
 
-  // Root object symbol
-  const rootMatch = content.match(/^\s*\{/m);
-  if (rootMatch) {
-    const offset = expectDefined(rootMatch.index);
+  const push = (name: string, kind: IndexSymbol['kind'], offset: number, signature: string) => {
+    if (symbols.length >= maxSymbols) return;
     const line = lineFromOffset(offset);
-    pushSymbol(
+    symbols.push(
       makeSymbol({
-        name: path.basename(file),
-        kind: 'object',
+        name,
+        kind,
         line,
-        col: 0,
-        signature: `"${path.basename(file)}" = { ... }`,
+        col: offset - (lineOffsets[line - 1] ?? 0),
+        signature,
         file,
         lang,
       }),
     );
-  }
+  };
 
-  // Extract root-object keys
-  for (const { key, offset } of topLevelKeys(content)) {
+  // Root object symbol — only when the document IS an object. `^\s*\{` with
+  // the multiline flag matched the first `{` at the start of ANY line, so a
+  // root array of objects was reported as an object.
+  const rootOpen = skipTrivia(content, 0);
+  if (content[rootOpen] !== '{') {
+    return { file, lang, symbols, mtimeMs: Date.now() };
+  }
+  const rootLine = lineFromOffset(rootOpen);
+  symbols.push(
+    makeSymbol({
+      name: path.basename(file),
+      kind: 'object',
+      line: rootLine,
+      col: 0,
+      signature: `"${path.basename(file)}" = { ... }`,
+      file,
+      lang,
+    }),
+  );
+
+  for (const { key, offset, valueStart } of objectKeys(content, rootOpen)) {
     if (symbols.length >= maxSymbols) break;
-    const line = lineFromOffset(offset);
-    const col = offset - (lineOffsets[line - 1] ?? 0);
 
     let kind: IndexSymbol['kind'] = 'property';
-    let signature = `"${key}": ..."`;
+    let signature = `"${key}": ...`;
 
-    // Special casing for known file types
     if (isPackageJson) {
       if (
         key === 'scripts' ||
@@ -195,187 +228,57 @@ function regexParse(opts: {
         kind = 'const';
         signature = `"${key}": { ... }`;
       }
-    } else if (isTsconfig) {
-      if (key === 'compilerOptions') {
-        kind = 'property';
-        signature = `"compilerOptions": { ... }`;
+    } else if (isTsconfig && key === 'compilerOptions') {
+      signature = `"compilerOptions": { ... }`;
+    }
+
+    if ((isJsonSchema || isOpenApi) && (key === '$schema' || key === '$id' || key === '$ref')) {
+      kind = 'schema';
+      signature = `"${key}": "..."`;
+    }
+
+    push(key, kind, offset, signature);
+
+    const objectValue = content[valueStart] === '{';
+    // Script names routinely carry `:` (`build:prod`, `test:unit`); the old
+    // `\w[\w-]*` key pattern dropped every one of them.
+    if (isPackageJson && key === 'scripts' && objectValue) {
+      for (const script of objectKeys(content, valueStart)) {
+        push(script.key, 'function', script.offset, `"${script.key}": "..."`);
       }
     }
-
-    // JSON Schema / OpenAPI special keys
-    if (isJsonSchema || isOpenApi) {
-      if (key === '$schema' || key === '$id') {
-        kind = 'schema';
-        signature = `"${key}": "..."`;
-      } else if (key === '$ref') {
-        kind = 'schema';
-        signature = `"$ref": "..."`;
+    if (isTsconfig && key === 'compilerOptions' && objectValue) {
+      for (const option of objectKeys(content, valueStart)) {
+        push(option.key, 'property', option.offset, `"${option.key}": ...`);
       }
-    }
-
-    pushSymbol(
-      makeSymbol({
-        name: key,
-        kind,
-        line,
-        col,
-        signature,
-        file,
-        lang,
-      }),
-    );
-
-    // For package.json, also extract individual scripts as 'function'
-    if (isPackageJson && key === 'scripts') {
-      extractPackageScripts(content, symbols, file, lang, lineOffsets, lineFromOffset, maxSymbols);
-    }
-
-    // For tsconfig.json compilerOptions, extract nested keys
-    if (isTsconfig && key === 'compilerOptions') {
-      extractCompilerOptions(content, symbols, file, lang, lineOffsets, lineFromOffset, maxSymbols);
     }
   }
 
-  // Extract definitions (OpenAPI components, JSON Schema definitions)
-  const defsPatterns = [
-    /"\$defs"\s*:/g,
-    /"definitions"\s*:/g,
-    /"components"\s*:/g,
-    /"schemas"\s*:/g,
-  ];
-  for (const pat of defsPatterns) {
-    pat.lastIndex = 0;
-    for (let match = pat.exec(content); match !== null; match = pat.exec(content)) {
-      if (symbols.length >= maxSymbols) break;
-      const offset = match.index ?? 0;
-      const line = lineFromOffset(offset);
-      const key = match[0]?.match(/"([^"]+)"/)?.[1] ?? expectDefined(match[0]);
-      pushSymbol(
-        makeSymbol({
-          name: key,
-          kind: 'property',
-          line,
-          col: offset - (lineOffsets[line - 1] ?? 0),
-          signature: `"${key}": { ... }`,
-          file,
-          lang,
-        }),
-      );
-    }
+  // Schema blocks. Gated on the document looking like a schema: the
+  // containers used to be regex-matched in EVERY JSON file, anywhere in the
+  // text (inside string values included), and only the container's own name
+  // was recorded — never the definitions it holds. Each block occurrence is
+  // recorded once (`"key": { ... }`), and every definition in it as `schema`.
+  if (isJsonSchema || isOpenApi) {
+    const visit = (open: number, depth: number): void => {
+      for (const entry of objectKeys(content, open)) {
+        if (symbols.length >= maxSymbols) return;
+        if (content[entry.valueStart] !== '{') continue;
+        if (BLOCK_CONTAINERS.has(entry.key)) {
+          push(entry.key, 'property', entry.offset, `"${entry.key}": { ... }`);
+        }
+        if (DEFINITION_CONTAINERS.has(entry.key)) {
+          for (const definition of objectKeys(content, entry.valueStart)) {
+            push(definition.key, 'schema', definition.offset, `"${definition.key}": { ... }`);
+          }
+        }
+        if (depth < DEFINITION_SEARCH_DEPTH) visit(entry.valueStart, depth + 1);
+      }
+    };
+    visit(rootOpen, 0);
   }
 
   return { file, lang, symbols, mtimeMs: Date.now() };
-}
-
-function extractPackageScripts(
-  content: string,
-  symbols: IndexSymbol[],
-  file: string,
-  lang: SymbolLang,
-  lineOffsets: number[],
-  lineFromOffset: (offset: number) => number,
-  maxSymbols: number,
-): void {
-  // Find the "scripts": { ... } block and extract each script key
-  const scriptsBlockRegex = /"scripts"\s*:\s*\{([^}]+)\}/g;
-  for (
-    let match = scriptsBlockRegex.exec(content);
-    match !== null;
-    match = scriptsBlockRegex.exec(content)
-  ) {
-    if (symbols.length >= maxSymbols) return;
-    // Scan only the block's INNER content (capture group 1). Scanning
-    // match[0] re-matched the `"scripts":` header itself and re-emitted
-    // `scripts` as a spurious `function`-kind symbol alongside the
-    // legitimate `const`-kind block symbol.
-    const scriptInner = expectDefined(match[1]);
-    const scriptFull = expectDefined(match[0]);
-    const blockContent = scriptInner;
-    // Offset of the inner capture inside the file: match[0] ends with the
-    // closing `}` that group 1 excludes, so the inner starts at
-    // len(full) - len(inner) - 1 past the match start.
-    const blockOffset = (match.index ?? 0) + (scriptFull.length - scriptInner.length - 1);
-
-    // Extract each "key" inside the block (simple approach)
-    const scriptKeyRegex = /"(\w[\w-]*)"\s*:/g;
-    for (
-      let scriptMatch = scriptKeyRegex.exec(blockContent);
-      scriptMatch !== null;
-      scriptMatch = scriptKeyRegex.exec(blockContent)
-    ) {
-      if (symbols.length >= maxSymbols) return;
-      const key = expectDefined(scriptMatch[1]);
-      const keyOffset = blockOffset + expectDefined(scriptMatch.index);
-      const line = lineFromOffset(keyOffset);
-      symbols.push(
-        makeSymbol({
-          name: key,
-          kind: 'function',
-          line,
-          col: keyOffset - (lineOffsets[line - 1] ?? 0),
-          signature: `"${key}": "..."`,
-          file,
-          lang,
-        }),
-      );
-    }
-  }
-}
-
-function extractCompilerOptions(
-  content: string,
-  symbols: IndexSymbol[],
-  file: string,
-  lang: SymbolLang,
-  lineOffsets: number[],
-  lineFromOffset: (offset: number) => number,
-  maxSymbols: number,
-): void {
-  // Find the "compilerOptions": { ... } block
-  const optsBlockRegex = /"compilerOptions"\s*:\s*\{([^}]+)\}/g;
-  for (
-    let match = optsBlockRegex.exec(content);
-    match !== null;
-    match = optsBlockRegex.exec(content)
-  ) {
-    if (symbols.length >= maxSymbols) return;
-    // Scan only the block's INNER content (capture group 1). Scanning
-    // match[0] re-matched the `"compilerOptions":` header itself, which the
-    // `line <= parentLine` guard then suppressed — and that guard over-fired:
-    // legitimate nested keys on the SAME line as the header (single-line
-    // `{"compilerOptions": {"noEmit": true}}`) were silently dropped.
-    const optsInner = expectDefined(match[1]);
-    const optsFull = expectDefined(match[0]);
-    const blockContent = optsInner;
-    // Offset of the inner capture inside the file: match[0] ends with the
-    // closing `}` that group 1 excludes, so the inner starts at
-    // len(full) - len(inner) - 1 past the match start.
-    const blockOffset = (match.index ?? 0) + (optsFull.length - optsInner.length - 1);
-
-    // Extract nested key inside compilerOptions (up to depth 1)
-    const optKeyRegex = /"(\w[\w]*)"\s*:/g;
-    for (
-      let optMatch = optKeyRegex.exec(blockContent);
-      optMatch !== null;
-      optMatch = optKeyRegex.exec(blockContent)
-    ) {
-      if (symbols.length >= maxSymbols) return;
-      const key = expectDefined(optMatch[1]);
-      const keyOffset = blockOffset + expectDefined(optMatch.index);
-      const line = lineFromOffset(keyOffset);
-      symbols.push(
-        makeSymbol({
-          name: key,
-          kind: 'property',
-          line,
-          col: keyOffset - (lineOffsets[line - 1] ?? 0),
-          signature: `"${key}": ...`,
-          file,
-          lang,
-        }),
-      );
-    }
-  }
 }
 
 function makeSymbol(opts: {

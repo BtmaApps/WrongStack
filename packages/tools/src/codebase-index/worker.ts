@@ -102,19 +102,30 @@ port.on('message', (msg: HostToWorker) => {
     return;
   }
   void dispatch(msg).then(
-    (result) => post({ type: 'response', id: msg.id, ok: true, result }),
-    (err: unknown) => {
+    (result) => {
       try {
-        post({
-          type: 'response',
-          id: msg.id,
-          ok: false,
-          error: err instanceof Error ? err.message : String(err),
-          errorName: err instanceof Error ? err.name : undefined,
-        });
-      } catch {
-        // postMessage to a closed port — nothing we can do; drop the response.
+        post({ type: 'response', id: msg.id, ok: true, result });
+      } catch (err) {
+        // A result that cannot be structured-cloned (DataCloneError) used to
+        // throw inside this handler: an unhandled rejection in the worker and
+        // NO response, so the host's request hung until the watchdog fired.
+        postError(msg.id, err);
       }
     },
+    (err: unknown) => postError(msg.id, err),
   );
 });
+
+function postError(id: number, err: unknown): void {
+  try {
+    post({
+      type: 'response',
+      id,
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+      errorName: err instanceof Error ? err.name : undefined,
+    });
+  } catch {
+    // postMessage to a closed port — nothing we can do; drop the response.
+  }
+}

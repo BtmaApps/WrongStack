@@ -263,19 +263,24 @@ export async function parseSymbols(opts: {
     const cached = await loadLanguage(lang);
 
     const parser = new Parser();
-    parser.setLanguage(cached.Language);
-    const tree = parser.parse(content);
-    if (!tree) {
-      return { file, lang, symbols: [], mtimeMs: Date.now() };
+    let tree: import('web-tree-sitter').Tree | null = null;
+    // try/finally: a throwing visitor used to skip both deletes, leaking the
+    // tree and parser on the WASM heap of a long-lived daemon for every file.
+    try {
+      parser.setLanguage(cached.Language);
+      tree = parser.parse(content);
+      if (!tree) {
+        return { file, lang, symbols: [], mtimeMs: Date.now() };
+      }
+      // P3.9: the visitor emits call/import/heritage refs alongside symbols
+      // (per-language refRules in tree-sitter/queries.ts). Refs flow through
+      // withRelations like every other parser's.
+      const { symbols, refs } = visitTree(tree, content, file, lang, getQueries(lang));
+      return { file, lang, symbols, refs, mtimeMs: Date.now() };
+    } finally {
+      tree?.delete();
+      parser.delete();
     }
-
-    // P3.9: the visitor now emits call/import/heritage refs alongside
-    // symbols (per-language refRules in tree-sitter/queries.ts). Refs flow
-    // through withRelations like every other parser's.
-    const { symbols, refs } = visitTree(tree, content, file, lang, getQueries(lang));
-    parser.delete();
-    tree.delete();
-    return { file, lang, symbols, refs, mtimeMs: Date.now() };
   } catch {
     // Any failure — missing WASM, runtime mismatch, parse crash on
     // pathological input — returns empty so the dispatch can fall through
@@ -364,4 +369,25 @@ export async function parseTreeSitterAst(opts: { content: string; lang: SymbolLa
   } catch {
     return null;
   }
+}
+
+/**
+ * The identifier a tree-sitter declaration is named by. C/C++ nest it in a
+ * declarator chain (`function_definition` → `function_declarator` →
+ * `identifier`); comparing or reporting the OUTER declarator's text yields
+ * `add(int a, int b)` instead of `add`.
+ */
+export function treeSitterDeclarationName(
+  node: import('web-tree-sitter').Node,
+): string | undefined {
+  const named = node.childForFieldName('name');
+  if (named) return named.text;
+  let declarator: import('web-tree-sitter').Node | null = node.childForFieldName('declarator');
+  if (!declarator) return undefined;
+  for (;;) {
+    const inner: import('web-tree-sitter').Node | null = declarator.childForFieldName('declarator');
+    if (!inner) break;
+    declarator = inner;
+  }
+  return /identifier$/.test(declarator.type) ? declarator.text : undefined;
 }

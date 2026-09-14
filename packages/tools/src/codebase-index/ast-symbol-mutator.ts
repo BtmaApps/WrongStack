@@ -6,7 +6,7 @@ import { type InvariantViolation, polyglotInvariantEngine } from './ast-invarian
 import { enqueueReindex } from './background-indexer.js';
 import { detectLang } from './languages.js';
 import type { SymbolLang } from './schema.js';
-import { parseTreeSitterAst } from './tree-sitter-parser.js';
+import { parseTreeSitterAst, treeSitterDeclarationName } from './tree-sitter-parser.js';
 
 type TsModule = typeof import('@typescript/typescript6');
 let tsModule: TsModule | null = null;
@@ -188,6 +188,16 @@ async function mutateTsSymbol(
 
   const match = candidates[0] as TsMatch;
 
+  // A body-less declaration (class, interface, enum, namespace, abstract
+  // method, `const x = 5`) used to fall through to a FULL replacement in body
+  // mode: `newBody: "foo() {}"` overwrote `export class Cart {…}` wholesale.
+  if (target === 'body' && !match.body) {
+    throw new Error(
+      `'${match.qualified}' (L${match.line}) is a ${ts.SyntaxKind[match.node.kind]} with no replaceable body. ` +
+        'Pass target: "full" with the complete new declaration, or name a function/method inside it.',
+    );
+  }
+
   // A `full` replacement of a single-declarator variable must cover the whole
   // statement — the declarator alone starts after `export const`, so a new
   // `export const x = …` doubled the keywords.
@@ -224,6 +234,17 @@ async function mutateTsSymbol(
     // class method at depth 1 needs its statements at depth 2.
     const baseIndent = indentAt(content, fullNode.getStart(sourceFile));
     formattedReplacement = `{\n${reindent(newBody, `${baseIndent}  `)}\n${baseIndent}}`;
+  } else if (
+    target === 'body' &&
+    match.body &&
+    !ts.isBlock(match.body) &&
+    !ts.isTypeNode(match.body) &&
+    /^return\b/.test(formattedReplacement)
+  ) {
+    // Expression-bodied arrow (`=> n`) given statements: `=> return x;` is a
+    // syntax error, so promote the body to a block.
+    const baseIndent = indentAt(content, fullNode.getStart(sourceFile));
+    formattedReplacement = `{\n${reindent(newBody, `${baseIndent}  `)}\n${baseIndent}}`;
   }
 
   const updatedContent = content.slice(0, startPos) + formattedReplacement + content.slice(endPos);
@@ -236,6 +257,45 @@ async function mutateTsSymbol(
     newRange: { startLine, endLine: newEndLine },
     updatedContent,
   };
+}
+
+/**
+ * Node types that carry a `name`/`declarator` field without being a
+ * replaceable declaration: parameters, call arguments (`f(name=1)`), struct
+ * fields, and the inner `*_declarator` of a C definition (which would
+ * otherwise duplicate its own `function_definition`).
+ */
+const NON_DECLARATION_TYPES = /parameter|argument|declarator$|^field_declaration$|^field$/;
+
+const TREE_SITTER_BODY_TYPES = [
+  'compound_statement',
+  'statement_block',
+  'block',
+  'function_body',
+  'body_statement',
+  'code_block',
+  'do_block',
+];
+
+function bodyOf(node: import('web-tree-sitter').Node): import('web-tree-sitter').Node | null {
+  return (
+    node.childForFieldName('body') ??
+    node.children.find((c) => c !== null && TREE_SITTER_BODY_TYPES.includes(c.type)) ??
+    null
+  );
+}
+
+/** Indent unit used inside an existing brace body (tab for Go when undetectable). */
+function indentUnit(bodyText: string, declIndent: string, lang: SymbolLang): string {
+  for (const line of bodyText.split('\n').slice(1)) {
+    if (!line.trim()) continue;
+    const lead = /^[ \t]*/.exec(line)?.[0] ?? '';
+    if (lead.startsWith(declIndent) && lead.length > declIndent.length) {
+      return lead.slice(declIndent.length);
+    }
+    break;
+  }
+  return lang === 'go' ? '\t' : '    ';
 }
 
 /**
@@ -252,47 +312,90 @@ async function mutateTreeSitterSymbol(
   if (!parsed) return null;
 
   const { tree, parser } = parsed;
+  type TsNode = import('web-tree-sitter').Node;
 
   try {
     const root = tree.rootNode;
-    let targetNode: import('web-tree-sitter').Node | null = null;
-    let bodyNode: import('web-tree-sitter').Node | null = null;
+    const matches: Array<{ node: TsNode; body: TsNode | null; qualified: string; line: number }> =
+      [];
+    const scope: string[] = [];
 
-    function walk(node: import('web-tree-sitter').Node) {
-      if (targetNode) return;
-
-      const nameNode = node.childForFieldName('name') ?? node.childForFieldName('declarator');
-      if (nameNode && nameNode.text === symbolName) {
-        targetNode = node;
-        bodyNode =
-          node.childForFieldName('body') ??
-          node.children.find((c) =>
-            [
-              'compound_statement',
-              'statement_block',
-              'block',
-              'function_body',
-              'body_statement',
-              'code_block',
-              'do_block',
-            ].includes(c.type),
-          ) ??
-          null;
-        return;
+    // Collect EVERY named declaration (the old walker took the first same-named
+    // node in pre-order, so `Cart.total` vs `Invoice.total` silently rewrote
+    // whichever came first — the bug already fixed on the TS path).
+    function walk(node: TsNode) {
+      let pushed: string | undefined;
+      if (node.type === 'impl_item') {
+        // Rust `impl Foo<T> { fn new }` qualifies as `Foo.new`; not itself a target.
+        pushed =
+          node
+            .childForFieldName('type')
+            ?.text.replace(/<[\s\S]*$/, '')
+            .trim() || undefined;
+      } else if (!NON_DECLARATION_TYPES.test(node.type)) {
+        // The old code compared the OUTER C declarator's text, so no C
+        // function could ever be found.
+        const name = treeSitterDeclarationName(node);
+        if (name !== undefined) {
+          let prefix = scope;
+          if (node.type === 'method_declaration' && lang === 'go') {
+            const receiver = node.childForFieldName('receiver')?.text ?? '';
+            const receiverType = /([A-Za-z_]\w*)\s*(?:\[[^\]]*\])?\s*\)\s*$/.exec(receiver)?.[1];
+            if (receiverType) prefix = [...scope, receiverType];
+          }
+          matches.push({
+            node,
+            body: bodyOf(node),
+            qualified: [...prefix, name].join('.'),
+            line: node.startPosition.row + 1,
+          });
+          pushed = name;
+        }
       }
 
+      if (pushed !== undefined) scope.push(pushed);
       for (let i = 0; i < node.namedChildCount; i++) {
         const child = node.namedChild(i);
         if (child) walk(child);
       }
+      if (pushed !== undefined) scope.pop();
     }
 
     walk(root);
 
-    if (!targetNode) return null;
+    let candidates = matches.filter(
+      (m) => m.qualified === symbolName || m.qualified.endsWith(`.${symbolName}`),
+    );
+    if (candidates.length === 0) return null;
+    // A C/C++ prototype plus its definition is one symbol; the definition is
+    // the only editable body.
+    if (
+      candidates.length > 1 &&
+      candidates.every((m) => m.qualified === candidates[0]?.qualified)
+    ) {
+      const withBody = candidates.filter((m) => m.body !== null);
+      if (withBody.length === 1) candidates = withBody;
+    }
+    if (candidates.length > 1) {
+      const listed = candidates.map((m) => `${m.qualified} (L${m.line})`).join(', ');
+      const example = candidates.find((m) => m.qualified.includes('.'))?.qualified;
+      throw new Error(
+        `Symbol '${symbolName}' is ambiguous: ${candidates.length} declarations match — ${listed}. ` +
+          (example
+            ? `Pass a qualified name, e.g. symbol: "${example}".`
+            : 'Rename-free disambiguation is impossible here; use the edit tool.'),
+      );
+    }
+    const match = candidates[0] as (typeof matches)[number];
 
-    const replaceTarget: import('web-tree-sitter').Node =
-      target === 'full' || !bodyNode ? targetNode : bodyNode;
+    if (target === 'body' && !match.body) {
+      throw new Error(
+        `'${match.qualified}' (L${match.line}) is a ${match.node.type} with no replaceable body. ` +
+          'Pass target: "full" with the complete new declaration.',
+      );
+    }
+
+    const replaceTarget: TsNode = target === 'full' ? match.node : (match.body as TsNode);
     const startPos = replaceTarget.startIndex;
     const endPos = replaceTarget.endIndex;
 
@@ -300,12 +403,27 @@ async function mutateTreeSitterSymbol(
     const endLine = replaceTarget.endPosition.row + 1;
 
     let formattedReplacement = newBody.trim();
-    if (target === 'body' && lang === 'py') {
-      const indent = '    ';
-      formattedReplacement = formattedReplacement
-        .split('\n')
-        .map((l) => (l.trim() ? `${indent}${l}` : ''))
-        .join('\n');
+    if (target === 'body') {
+      const declIndent = indentAt(content, match.node.startIndex);
+      const lineStart = content.lastIndexOf('\n', startPos - 1) + 1;
+      const lead = content.slice(lineStart, startPos);
+      if (replaceTarget.text.startsWith('{')) {
+        // Brace-delimited body: the replacement must stay a block, indented one
+        // level below the declaration in the file's own indent unit.
+        if (!formattedReplacement.startsWith('{')) {
+          const unit = indentUnit(replaceTarget.text, declIndent, lang);
+          formattedReplacement = `{\n${reindent(newBody, `${declIndent}${unit}`)}\n${declIndent}}`;
+        }
+      } else if (/^[ \t]*$/.test(lead)) {
+        // Indentation-scoped body (Python, Ruby): every line takes the existing
+        // body's indent; the first line's indent is already in `content`. The
+        // old hard-coded 4 spaces broke every method body (8 spaces) and
+        // double-indented the first line.
+        formattedReplacement = reindent(newBody, lead).slice(lead.length);
+      } else {
+        // Body shares the header line (`def f(): pass`): move it onto its own lines.
+        formattedReplacement = `\n${reindent(newBody, `${declIndent}    `)}`;
+      }
     }
 
     const updatedContent =
@@ -325,7 +443,7 @@ async function mutateTreeSitterSymbol(
   }
 }
 
-const TEST_CALLEES = String.raw`(?:it|test|describe|suite|bench|context|specify)`;
+const TEST_CALLEES = '(?:it|test|describe|suite|bench|context|specify)';
 
 /**
  * Explain WHY a lookup failed. The bare "could not be located" gave a model

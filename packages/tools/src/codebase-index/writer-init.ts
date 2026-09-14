@@ -228,7 +228,10 @@ export function allocateSymbolIds(
   const row = stmt('SELECT value FROM metadata WHERE key = ?').get(NEXT_SYMBOL_ID_KEY) as
     | { value?: string }
     | undefined;
-  const start = Math.max(1, Number(row?.value ?? 1) || 1);
+  // Never below an existing id: a counter that fell behind the table (restored
+  // metadata, a build that allocated from MAX(id)) handed out ids already in
+  // use, and every insert failed on the primary key until a forced rebuild.
+  const start = Math.max(1, Number(row?.value ?? 1) || 1, getMaxSymbolId() + 1);
   stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)').run(
     NEXT_SYMBOL_ID_KEY,
     String(start + count),

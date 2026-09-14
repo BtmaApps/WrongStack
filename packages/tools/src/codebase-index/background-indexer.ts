@@ -38,6 +38,7 @@ import {
 } from './circuit-breaker.js';
 import type { ContextResult } from './context-retrieval.js';
 import {
+  contextService as contextServiceInline,
   fileGraphService as fileGraphServiceInline,
   type IncomingCallsResult,
   incomingCallsService as incomingCallsServiceInline,
@@ -48,6 +49,7 @@ import {
   searchService,
   statsService,
   symbolGraphService as symbolGraphServiceInline,
+  vectorSearchService as vectorSearchServiceInline,
 } from './index-service.js';
 import { isIndexablePath } from './languages.js';
 import {
@@ -114,6 +116,28 @@ let _indexing = false;
 let _currentFile = 0;
 let _totalFiles = 0;
 let _lastError: string | null = null;
+/** When `_lastError` was recorded (ms epoch); 0 when there is none. */
+let _lastErrorAt = 0;
+
+/**
+ * The error read tools gate on, from this process's own runs and the shared
+ * project server's activity.
+ *
+ * `remote?.lastError ?? local` let a stale local failure outlive the server's
+ * later successful generation (`null ?? local` is `local`), so search,
+ * incoming/outgoing calls and impact analysis kept refusing with "Index build
+ * failed" against a healthy index. The newer report wins; a tie trusts the
+ * server, which owns the index.
+ */
+export function resolveLastError(
+  remote: { lastError: string | null; updatedAt: number | null } | null | undefined,
+  local: string | null,
+  localAt: number,
+): string | null {
+  if (!remote) return local;
+  if (local !== null && localAt > (remote.updatedAt ?? 0)) return local;
+  return remote.lastError;
+}
 
 /** True once the first full-project index has completed (success or failure). */
 export function isIndexReady(): boolean {
@@ -153,7 +177,7 @@ export function getIndexState(): {
     indexing: _indexing || remoteIndexing,
     currentFile: remoteIndexing ? (remoteActivity?.currentFile ?? 0) : _currentFile,
     totalFiles: remoteIndexing ? (remoteActivity?.totalFiles ?? 0) : _totalFiles,
-    lastError: remoteActivity?.lastError ?? _lastError,
+    lastError: resolveLastError(remoteActivity, _lastError, _lastErrorAt),
     server,
     circuit: indexCircuitBreaker.snapshot(),
   };
@@ -469,6 +493,14 @@ async function callInline<O extends OpName>(
         })) as OpShapes[O]['result'];
       case 'search':
         return searchService(args as SearchOpArgs) as OpShapes[O]['result'];
+      // `context` and `vectorSearch` were served by the worker and the project
+      // server but missing here, so inline mode (WRONGSTACK_INDEX_INLINE=1, or
+      // no worker build) failed every codebase-context call with
+      // "unknown index op".
+      case 'context':
+        return contextServiceInline(args as ContextOpArgs) as OpShapes[O]['result'];
+      case 'vectorSearch':
+        return vectorSearchServiceInline(args as VectorSearchOpArgs) as OpShapes[O]['result'];
       case 'stats':
         return statsService(args as StatsOpArgs) as OpShapes[O]['result'];
       case 'packageGraph':
@@ -693,62 +725,84 @@ export async function runStartupIndex(opts: {
   emitState();
 
   try {
-    const result = await withMutex(() => {
-      // Reset counters inside the mutex — if runStartupIndex is called twice
-      // concurrently, the second caller must not clobber a running index's
-      // progress counters.
-      _currentFile = 0;
-      _totalFiles = 0;
-      _lastError = null;
-      return callIndexOp(
-        'index',
-        {
-          projectRoot: opts.projectRoot,
-          indexDir: opts.indexDir,
-          force: opts.force,
-          langs: opts.langs,
-        },
-        {
-          timeoutMs: opts.timeoutMs ?? DEFAULT_FULL_INDEX_TIMEOUT_MS,
-          signal: opts.signal,
-          onProgress: setIndexProgress,
-        },
-      );
-    });
+    let result: IndexResult;
+    try {
+      result = await runIndexPass(opts);
+    } catch (err) {
+      // Auto-recovery: SQLite constraint failures indicate index DB corruption
+      // from a previous interrupted write (e.g., process killed mid-insert).
+      // Rebuild with force=true under THIS run's breaker admission. Recursing
+      // into runStartupIndex re-ran allowRequest(): a half-open circuit refused
+      // it, the probe never settled, and every later run was rejected until a
+      // manual reset — and the inner `finally` cleared `_indexing` while this
+      // run was still active.
+      if (!isRecoverableConstraintError(err) || opts.force || opts.signal?.aborted) throw err;
+      const failure = err instanceof Error ? err.message : String(err);
+      result = {
+        ...(await runIndexPass({ ...opts, force: true })),
+        // Tag the result so callers can distinguish a normal run from a
+        // corruption-triggered recovery.
+        autoRecovered: { failure, rebuiltWithForce: true },
+      };
+    }
     _ready = true;
     indexCircuitBreaker.recordSuccess();
     return result;
   } catch (err) {
-    _lastError = err instanceof Error ? err.message : String(err);
-
-    // Auto-recovery: SQLite constraint failures indicate index DB corruption
-    // from a previous interrupted write (e.g., process killed mid-insert).
-    // Retry with force=true to wipe and rebuild from source.
-    const originalError = _lastError;
-    if (isRecoverableConstraintError(err) && !opts.force) {
-      _lastError = null;
-      const rebuildResult = await runStartupIndex({
-        ...opts,
-        force: true,
-      });
-      _ready = true;
-      // Tag the result so callers can distinguish a normal run from a
-      // corruption-triggered recovery.
-      return {
-        ...rebuildResult,
-        autoRecovered: { failure: originalError, rebuiltWithForce: true },
-      };
+    // A caller-initiated abort (session teardown, Ctrl+C, project switch) is
+    // not a broken index: recording "Indexing cancelled" here made every read
+    // tool refuse with "Index build failed" until the next full run, although
+    // the persisted index was untouched and fully readable.
+    if (!opts.signal?.aborted) {
+      _lastError = err instanceof Error ? err.message : String(err);
+      _lastErrorAt = Date.now();
     }
-
     _ready = true; // index is "ready" in the sense that we won't try again; downstream tools will see lastError
     // Caller-initiated aborts (session teardown, Ctrl+C) are not indexer
     // failures — only genuine errors and watchdog timeouts trip the breaker.
-    if (!opts.signal?.aborted) indexCircuitBreaker.recordFailure(err);
+    // An aborted half-open probe must still be released, or the circuit stays
+    // half-open and refuses every later run.
+    if (opts.signal?.aborted) indexCircuitBreaker.abandonProbe();
+    else indexCircuitBreaker.recordFailure(err);
     throw err;
   } finally {
     _indexing = false;
     emitState();
   }
+}
+
+/** One serialized index run (no breaker accounting — the caller owns that). */
+function runIndexPass(opts: {
+  projectRoot: string;
+  indexDir?: string | undefined;
+  force?: boolean | undefined;
+  langs?: string[] | undefined;
+  signal?: AbortSignal | undefined;
+  timeoutMs?: number | undefined;
+}): Promise<IndexResult> {
+  return withMutex(() => {
+    // Reset counters inside the mutex — if runStartupIndex is called twice
+    // concurrently, the second caller must not clobber a running index's
+    // progress counters.
+    _currentFile = 0;
+    _totalFiles = 0;
+    _lastError = null;
+    _lastErrorAt = 0;
+    return callIndexOp(
+      'index',
+      {
+        projectRoot: opts.projectRoot,
+        indexDir: opts.indexDir,
+        force: opts.force,
+        langs: opts.langs,
+      },
+      {
+        timeoutMs: opts.timeoutMs ?? DEFAULT_FULL_INDEX_TIMEOUT_MS,
+        signal: opts.signal,
+        onProgress: setIndexProgress,
+      },
+    );
+  });
 }
 
 /**
@@ -954,6 +1008,7 @@ export function resetIndexStateForTesting(): void {
   _currentFile = 0;
   _totalFiles = 0;
   _lastError = null;
+  _lastErrorAt = 0;
   chain = Promise.resolve();
   indexCircuitBreaker.reset();
   cancelPendingReindexes();

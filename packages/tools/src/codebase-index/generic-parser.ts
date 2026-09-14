@@ -18,6 +18,14 @@ interface ExtractPattern {
   kind: SymbolKind;
 }
 
+/**
+ * Guard placed before a declaration's return-type token. Without it the
+ * `type name(...)` shape matched ordinary statements — `return helper(x);`,
+ * `new Foo(1);`, `throw Error(msg);` — and every call after one of those
+ * keywords became a function/method declaration.
+ */
+const NOT_STATEMENT = '(?!(?:return|new|throw|else|case|delete|goto|await|yield|sizeof|typeof)\\b)';
+
 /** Shared C-like declaration patterns (C/C++/Java/C#/… approximate). */
 const C_LIKE: ExtractPattern[] = [
   { re: /\b(?:class|struct|enum|interface|union)\s+([A-Za-z_]\w*)/g, kind: 'class' },
@@ -32,7 +40,10 @@ const C_LIKE: ExtractPattern[] = [
     // separates type from name. Generic types with internal spaces
     // (`Map<String, Integer> x;`) are no longer matched — tree-sitter is the
     // primary parser for C/C++ and this is only its WASM-less fallback.
-    re: /\b(?:(?:public|private|protected|static|final|async|override|virtual|inline|export)\s+)?[\w:<>[\]*&]+\s+([A-Za-z_]\w*)\s*\([^;{]*\)\s*(?:const)?\s*[{;]/g,
+    re: new RegExp(
+      `\\b(?:(?:public|private|protected|static|final|async|override|virtual|inline|export)\\s+)?${NOT_STATEMENT}[\\w:<>[\\]*&]+\\s+([A-Za-z_]\\w*)\\s*\\([^;{]*\\)\\s*(?:const)?\\s*[{;]`,
+      'g',
+    ),
     kind: 'function',
   },
   { re: /\b(?:namespace)\s+([A-Za-z_]\w*)/g, kind: 'namespace' },
@@ -42,7 +53,8 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
   py: [
     { re: /^(?:async\s+)?def\s+([A-Za-z_]\w*)/gm, kind: 'function' },
     { re: /^class\s+([A-Za-z_]\w*)/gm, kind: 'class' },
-    { re: /^([A-Za-z_]\w*)\s*=/gm, kind: 'var' },
+    // `(?!=)`: a top-level comparison (`x == y`) is not an assignment.
+    { re: /^([A-Za-z_]\w*)\s*=(?!=)/gm, kind: 'var' },
   ],
   go: [
     { re: /^func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\(/gm, kind: 'function' },
@@ -68,7 +80,10 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
       // `(?:…|\s)+\s*[\w.<>,[\]\s]+\s+` let three quantifiers compete for the
       // same whitespace (800 bytes of padding measured at 42 s). Whitespace
       // now has exactly one owner per position.
-      re: /\b(?:(?:public|private|protected|static|final|abstract|synchronized|native|default)\s+)*[\w.$,<>[\]]+\s+([A-Za-z_]\w*)\s*\(/g,
+      re: new RegExp(
+        `\\b(?:(?:public|private|protected|static|final|abstract|synchronized|native|default)\\s+)*${NOT_STATEMENT}[\\w.$,<>[\\]]+\\s+([A-Za-z_]\\w*)\\s*\\(`,
+        'g',
+      ),
       kind: 'method',
     },
   ],
@@ -77,7 +92,10 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
     { re: /\bnamespace\s+([A-Za-z_.\w]+)/g, kind: 'namespace' },
     {
       // H-10: see java above.
-      re: /\b(?:(?:public|private|protected|internal|static|async|override|virtual)\s+)*[\w.$,<>[\]]+\s+([A-Za-z_]\w*)\s*\(/g,
+      re: new RegExp(
+        `\\b(?:(?:public|private|protected|internal|static|async|override|virtual)\\s+)*${NOT_STATEMENT}[\\w.$,<>[\\]]+\\s+([A-Za-z_]\\w*)\\s*\\(`,
+        'g',
+      ),
       kind: 'method',
     },
   ],
@@ -118,7 +136,9 @@ const LANG_PATTERNS: Partial<Record<SymbolLang, ExtractPattern[]>> = {
     },
   ],
   md: [{ re: /^(#{1,6})\s+(.+)$/gm, kind: 'namespace' }],
-  toml: [{ re: /^\[([^\]]+)\]/gm, kind: 'namespace' }],
+  // `[table]` and `[[array.of.tables]]` — the old `^\[([^\]]+)\]` captured
+  // `[bin` for `[[bin]]`.
+  toml: [{ re: /^\[\[?\s*([^[\]\s][^[\]]*?)\s*\]\]?/gm, kind: 'namespace' }],
   html: [
     { re: /\bid\s*=\s*["']([^"']+)["']/gi, kind: 'property' },
     { re: /<(?:script|template|style)\b/gi, kind: 'namespace' },
@@ -254,6 +274,30 @@ const KEYWORDS = new Set([
   'yield',
 ]);
 
+/**
+ * Blank the contents of fenced code blocks (``` / ~~~), keeping every offset
+ * and newline. A `# install` comment inside a README's bash block was indexed
+ * as a heading.
+ */
+function maskMarkdownFences(content: string): string {
+  const lines = content.split('\n');
+  let fence: string | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (fence === null) {
+      if (marker) fence = marker;
+      continue;
+    }
+    if (marker && marker[0] === fence[0] && marker.length >= fence.length) {
+      fence = null;
+      continue;
+    }
+    lines[i] = line.replace(/[^\r]/g, ' ');
+  }
+  return lines.join('\n');
+}
+
 function patternsFor(lang: SymbolLang): ExtractPattern[] {
   return LANG_PATTERNS[lang] ?? LANG_PATTERNS.other ?? [];
 }
@@ -336,10 +380,11 @@ export function parseGeneric(opts: {
     return { file, lang, symbols: [], mtimeMs };
   }
   // Bound CPU: never regex-scan multi-MB blobs in full.
-  const content =
+  const bounded =
     opts.content.length > GENERIC_MAX_FILE_CHARS
       ? opts.content.slice(0, GENERIC_MAX_FILE_CHARS)
       : opts.content;
+  const content = lang === 'md' ? maskMarkdownFences(bounded) : bounded;
 
   const patterns = patternsFor(lang);
   const symbols: IndexSymbol[] = [];
@@ -364,7 +409,12 @@ export function parseGeneric(opts: {
       if (!name || name.length > 200) continue;
       // Strip markdown heading markers accidentally captured
       name = name.replace(/^#+\s*/, '').replace(/["'`]/g, '');
-      if (!name || KEYWORDS.has(name.toLowerCase())) continue;
+      // Case-sensitive: the keywords are lowercase in every language here, and
+      // folding case rejected real declarations named `Module`, `Package`,
+      // `Default` or `Select`. Headings and TOML tables are prose/data, not
+      // code: Cargo's `[package]` table was always dropped as a keyword.
+      if (!name) continue;
+      if (lang !== 'md' && lang !== 'toml' && KEYWORDS.has(name)) continue;
       // Reject pure punctuation / numbers
       if (!/^[A-Za-z_#.@/\w][\w.\-:/#!?]*$/.test(name) && lang !== 'md' && lang !== 'toml') {
         continue;

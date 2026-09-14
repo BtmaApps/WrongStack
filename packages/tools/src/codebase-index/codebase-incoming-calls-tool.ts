@@ -127,7 +127,7 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
       if (!hasPersistedIndex) {
         try {
           const stats = await codebaseIndexStats({
-            projectRoot: ctx.projectRoot,
+            projectRoot,
             indexDir: codebaseIndexDirOverride(ctx),
           });
           hasPersistedIndex = stats.totalFiles > 0 || stats.lastIndexed !== null;
@@ -159,7 +159,7 @@ export const codebaseIncomingCallsTool: Tool<IncomingCallsInput, IncomingCallsOu
     }
     if (ambiguous) {
       notes.push(
-        `Symbol "${input.symbol}" exists in multiple files. Results include callers of all same-named symbols. Use codebase-search to find the exact file and pass it as \`file\`.`,
+        `Symbol "${input.symbol}" exists in multiple files. Callers resolved to another file were excluded, but callers whose target could not be pinned to a file are still included. Verify with codebase-search before relying on the list.`,
       );
     }
     if (stale) {

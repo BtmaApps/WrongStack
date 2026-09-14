@@ -3,7 +3,6 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertPairingValid, captureLoad } from './bench-pairing.js';
 import {
   checkCodebaseIndexServerHealth,
   getCodebaseIndexPerfSnapshot,
@@ -12,6 +11,7 @@ import {
   shutdownCodebaseIndexHost,
   shutdownCodebaseIndexServer,
 } from '../dist/codebase-index/index.js';
+import { assertPairingValid, captureLoad } from './bench-pairing.js';
 
 const elapsedMs = (start: bigint): number => Number(process.hrtime.bigint() - start) / 1e6;
 const percentile = (values: number[], p: number): number => {
@@ -72,7 +72,9 @@ describe('built-dist detached codebase-index benchmark', () => {
     const loadStart = await captureLoad();
     const latencies: number[] = [];
     for (let round = 0; round < 3; round++) {
-      await Promise.all(files.map((file) => fs.appendFile(file, `\nexport const daemonChanged${round} = true;\n`)));
+      await Promise.all(
+        files.map((file) => fs.appendFile(file, `\nexport const daemonChanged${round} = true;\n`)),
+      );
       const starts = files.map(() => process.hrtime.bigint());
       await Promise.all(
         files.map(async (_file, i) => {
@@ -128,7 +130,9 @@ describe('built-dist detached codebase-index benchmark', () => {
       // Sample after the warm-up so the pair brackets the burst, not the
       // previous sweep point's daemon shutdown.
       const loadStart = await captureLoad();
-      await Promise.all(files.map((file) => fs.appendFile(file, '\nexport const sweepChanged = true;\n')));
+      await Promise.all(
+        files.map((file) => fs.appendFile(file, '\nexport const sweepChanged = true;\n')),
+      );
       const latencies: number[] = [];
       const starts = files.map(() => process.hrtime.bigint());
       await Promise.all(

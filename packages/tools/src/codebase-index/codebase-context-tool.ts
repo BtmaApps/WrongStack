@@ -76,6 +76,10 @@ const VECTOR_MIN_SCORE = 0.25;
  */
 let queryEmbedder: EmbeddingPort | undefined;
 
+function finiteIntOrUndefined(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : undefined;
+}
+
 /** Install (or clear) the query-time embedding model. */
 export function setContextQueryEmbedder(port: EmbeddingPort | undefined): void {
   queryEmbedder = port;
@@ -142,12 +146,16 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
         description: 'What you are trying to do or understand, in plain words.',
       },
       limit: {
-        type: 'number',
+        type: 'integer',
         description: 'Number of files to return (default 12, max 50).',
+        minimum: 1,
+        maximum: 50,
       },
       symbolsPerFile: {
-        type: 'number',
+        type: 'integer',
         description: 'Declarations shown per file (default 4, max 20).',
+        minimum: 1,
+        maximum: 20,
       },
       pathPrefix: {
         type: 'string',
@@ -180,9 +188,11 @@ export const codebaseContextTool: Tool<CodebaseContextInput, CodebaseContextOutp
         indexDir,
         query,
         ...(vectorFiles.length > 0 ? { vectorFiles } : {}),
-        limit: input.limit,
-        symbolsPerFile: input.symbolsPerFile,
-        pathPrefix: input.pathPrefix,
+        // A NaN slipping past the schema survived the server's min/max clamp
+        // and truncated the answer to zero files.
+        limit: finiteIntOrUndefined(input.limit),
+        symbolsPerFile: finiteIntOrUndefined(input.symbolsPerFile),
+        pathPrefix: input.pathPrefix?.replace(/\\/g, '/'),
       });
     } catch (err) {
       if (signal?.aborted) throw err;

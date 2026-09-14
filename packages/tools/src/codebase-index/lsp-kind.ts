@@ -40,39 +40,44 @@ export enum LSPSymbolKind {
 }
 
 /**
- * Maps an LSP kind number to the corresponding internal SymbolKind.
+ * Every internal kind an LSP kind covers, primary kind first.
+ *
+ * One LSP kind can span several internal kinds: `Variable` is both `var` and
+ * `let`, `Interface` is both `interface` and Rust's `trait`. A single-kind
+ * mapping made an `lspKind: 13` filter silently drop every `let`.
+ *
+ * `Constructor` and `EnumMember` are deliberately absent: the index stores
+ * neither, and the old `class`/`enum` stand-ins answered a constructor filter
+ * with classes and an enum-member filter with enums.
+ */
+const LSP_TO_INTERNAL_KINDS: Readonly<Partial<Record<number, readonly SymbolKind[]>>> = {
+  [LSPSymbolKind.Module]: ['mod'],
+  [LSPSymbolKind.Namespace]: ['namespace'],
+  [LSPSymbolKind.Class]: ['class'],
+  [LSPSymbolKind.Method]: ['method'],
+  [LSPSymbolKind.Property]: ['property'],
+  [LSPSymbolKind.Field]: ['property'],
+  [LSPSymbolKind.Enum]: ['enum'],
+  [LSPSymbolKind.Interface]: ['interface', 'trait'],
+  [LSPSymbolKind.Function]: ['function'],
+  [LSPSymbolKind.Variable]: ['var', 'let'],
+  [LSPSymbolKind.Constant]: ['const', 'static'],
+  [LSPSymbolKind.Object]: ['object'],
+  [LSPSymbolKind.Struct]: ['struct'],
+  [LSPSymbolKind.TypeParameter]: ['type'],
+};
+
+/** All internal kinds an LSP kind number covers; empty when it has no equivalent. */
+export function lspKindToInternalKinds(k: number): readonly SymbolKind[] {
+  return LSP_TO_INTERNAL_KINDS[k] ?? [];
+}
+
+/**
+ * Maps an LSP kind number to its primary internal SymbolKind.
  * Returns null if the LSP kind has no equivalent in the internal taxonomy.
  */
 export function lspKindToInternalKind(k: number): SymbolKind | null {
-  switch (k) {
-    case LSPSymbolKind.Class:
-      return 'class';
-    case LSPSymbolKind.Method:
-      return 'method';
-    case LSPSymbolKind.Property:
-    case LSPSymbolKind.Field:
-      return 'property';
-    case LSPSymbolKind.Constructor:
-      return 'class';
-    case LSPSymbolKind.Enum:
-      return 'enum';
-    case LSPSymbolKind.Interface:
-      return 'interface';
-    case LSPSymbolKind.Function:
-      return 'function';
-    case LSPSymbolKind.Variable:
-      return 'var';
-    case LSPSymbolKind.Constant:
-      return 'const';
-    case LSPSymbolKind.EnumMember:
-      return 'enum';
-    case LSPSymbolKind.TypeParameter:
-      return 'type';
-    case LSPSymbolKind.Namespace:
-      return 'namespace';
-    default:
-      return null;
-  }
+  return LSP_TO_INTERNAL_KINDS[k]?.[0] ?? null;
 }
 
 /**
@@ -103,7 +108,17 @@ export function internalKindToLspKind(k: SymbolKind): number | null {
       return LSPSymbolKind.Namespace;
     case 'type':
       return LSPSymbolKind.TypeParameter;
-    // parameter and other internal-only kinds have no LSP equivalent
+    case 'struct':
+      return LSPSymbolKind.Struct;
+    case 'trait':
+      return LSPSymbolKind.Interface;
+    case 'mod':
+      return LSPSymbolKind.Module;
+    case 'object':
+      return LSPSymbolKind.Object;
+    case 'static':
+      return LSPSymbolKind.Constant;
+    // parameter, impl, literal, schema have no LSP equivalent
     default:
       return null;
   }

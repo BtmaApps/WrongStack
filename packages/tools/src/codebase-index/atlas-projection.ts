@@ -83,6 +83,48 @@ function round(value: number): number {
   return Number(value.toFixed(RANK_PRECISION));
 }
 
+/**
+ * Code-unit string order. `localeCompare` follows the host's ICU locale, so
+ * the same index sorted `B`/`a` (or `I`/`ı` under tr-TR) differently on two
+ * machines — a committed atlas that must be byte-identical everywhere
+ * churned on every regeneration by someone with another locale.
+ */
+export function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * The package a file is shown under. Single source for the projection AND the
+ * brief: a file with an empty `package` label is grouped by its first path
+ * segment.
+ */
+export function atlasPackageName(packageLabel: string | undefined, relativePath: string): string {
+  return packageLabel || relativePath.split('/')[0] || '(root)';
+}
+
+/**
+ * Indexed files per displayed package name. Counting by the raw label gave
+ * every path-derived package the total of ALL unlabelled files (they share
+ * the '' label), and counted '' itself as a package.
+ */
+export function atlasPackageFileCounts(
+  store: IndexStore,
+  relativeOf: (file: string) => string,
+): Map<string, number> {
+  const labels = store.getFilePackages();
+  const counts = new Map<string, number>();
+  for (const meta of store.getAllFileMetas()) {
+    const name = atlasPackageName(labels.get(meta.file), relativeOf(meta.file));
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Text safe inside one markdown table cell or list item. */
+function markdownCell(value: string): string {
+  return value.replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim();
+}
+
 export type {
   AtlasDocument,
   AtlasEdge,
@@ -133,7 +175,9 @@ function renderMarkdown(document: AtlasDocument): string {
     '| --- | ---: | --- | ---: |',
   ];
   for (const pkg of document.packages) {
-    lines.push(`| ${pkg.name} | ${pkg.files} | \`${pkg.hub}\` | ${pkg.rank.toFixed(4)} |`);
+    lines.push(
+      `| ${markdownCell(pkg.name)} | ${pkg.files} | \`${markdownCell(pkg.hub)}\` | ${pkg.rank.toFixed(4)} |`,
+    );
   }
 
   // The concept layer is optional, so its section exists only when it has run.
@@ -143,7 +187,7 @@ function renderMarkdown(document: AtlasDocument): string {
   if (described.length > 0) {
     lines.push('', '## Subsystems', '');
     for (const pkg of described) {
-      lines.push(`- **${pkg.name}** — ${pkg.summary}`);
+      lines.push(`- **${markdownCell(pkg.name)}** — ${markdownCell(pkg.summary ?? '')}`);
     }
   }
 
@@ -163,10 +207,10 @@ function renderMarkdown(document: AtlasDocument): string {
   for (const file of document.files.slice(0, MARKDOWN_FILE_LIMIT)) {
     const declarations = file.symbols
       .slice(0, MARKDOWN_SYMBOLS_PER_FILE)
-      .map((symbol) => `\`${symbol.name}\``)
+      .map((symbol) => `\`${markdownCell(symbol.name)}\``)
       .join(', ');
     lines.push(
-      `| ${file.rank.toFixed(4)} | \`${file.path}\` | ${file.inDeg} | ${file.outDeg} | ${declarations} |`,
+      `| ${file.rank.toFixed(4)} | \`${markdownCell(file.path)}\` | ${file.inDeg} | ${file.outDeg} | ${declarations} |`,
     );
   }
   // Trailing newline, LF only: the pre-commit hook normalises line endings and
@@ -181,7 +225,7 @@ function renderMarkdown(document: AtlasDocument): string {
 export function buildAtlas(store: IndexStore, projectRoot: string): AtlasProjection {
   const relativeOf = relativeFactory(projectRoot);
   const stats = store.getStats();
-  const packageCounts = store.getPackageFileCounts();
+  const packageCounts = atlasPackageFileCounts(store, relativeOf);
   const ranked: RankedFileRow[] = store.getRankedFiles(ATLAS_FILE_LIMIT);
   const concepts = store.getReadyConceptSummaries();
   const subsystemSummaries = new Map(
@@ -195,7 +239,7 @@ export function buildAtlas(store: IndexStore, projectRoot: string): AtlasProject
   // cannot be filtered, grouped or drawn.
   const packages = new Map<string, AtlasPackage>();
   const packageNameOf = (row: RankedFileRow): string =>
-    row.package || relativeOf(row.file).split('/')[0] || '(root)';
+    atlasPackageName(row.package, relativeOf(row.file));
   for (const row of ranked) {
     const relative = relativeOf(row.file);
     const name = packageNameOf(row);
@@ -204,7 +248,7 @@ export function buildAtlas(store: IndexStore, projectRoot: string): AtlasProject
       const summary = subsystemSummaries.get(name);
       packages.set(name, {
         name,
-        files: packageCounts.get(row.package) ?? 0,
+        files: packageCounts.get(name) ?? 0,
         hub: relative,
         rank: round(row.rank),
         // Absent rather than empty: an un-enriched repository must project the
@@ -250,17 +294,13 @@ export function buildAtlas(store: IndexStore, projectRoot: string): AtlasProject
     .filter((edge) => known.has(edge.from) && known.has(edge.to))
     .sort(
       (a, b) =>
-        a.from.localeCompare(b.from) ||
-        a.to.localeCompare(b.to) ||
-        a.refType.localeCompare(b.refType),
+        compareText(a.from, b.from) || compareText(a.to, b.to) || compareText(a.refType, b.refType),
     );
 
   const document: AtlasDocument = {
     schema: ATLAS_SCHEMA,
     counts: { files: stats.totalFiles, symbols: stats.totalSymbols, packages: packages.size },
-    packages: [...packages.values()].sort(
-      (a, b) => b.rank - a.rank || a.name.localeCompare(b.name),
-    ),
+    packages: [...packages.values()].sort((a, b) => b.rank - a.rank || compareText(a.name, b.name)),
     edges,
     files,
   };

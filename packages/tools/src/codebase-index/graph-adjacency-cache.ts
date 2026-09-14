@@ -20,6 +20,7 @@
  */
 
 import { buildWiringGraph, type WiringGraph } from './graph-rank.js';
+import { createImplicitVisibility } from './graph-rank-pass.js';
 import type { IndexStore } from './writer.js';
 
 /** Everything the walk needs, built together and invalidated together. */
@@ -72,10 +73,14 @@ export function getWiringSnapshot(
 
   const fileOf = new Map<number, string>();
   for (const symbol of store.getAllSymbols()) fileOf.set(symbol.id, symbol.file);
+  // Same weighting as the index-time rank pass: without the implicit
+  // visibility rule, personalised retrieval scored every same-package Go/Java
+  // reference as a contradicted misresolution while the global rank did not.
   const graph = buildWiringGraph(store.getAllResolvedRefs(), {
     candidates: store.getSymbolNameCandidates(),
     fileOf,
     importsOf: store.getImportVisibility(),
+    implicitlyVisible: createImplicitVisibility(),
   });
 
   cached = { key, stamp, graph, fileOf };

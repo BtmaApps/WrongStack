@@ -3,7 +3,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resetIndexStateForTesting } from '../src/codebase-index/background-indexer.js';
+import { isTestFilePath } from '../src/codebase-index/codebase-impact-analysis-tool.js';
 import { codebaseIndexTool } from '../src/codebase-index/codebase-index-tool.js';
+import { parseTestCounts } from '../src/codebase-index/codebase-targeted-test-tool.js';
 import {
   codebaseImpactAnalysisTool,
   codebaseTargetedTestTool,
@@ -13,23 +15,112 @@ import { indexStorePool } from '../src/codebase-index/writer.js';
 process.env['WRONGSTACK_INDEX_INLINE'] = '1';
 
 describe('codebase-impact-analysis and codebase-targeted-test tools', () => {
-  it('codebase-impact-analysis reports a missing symbol instead of a fake zero-risk blast radius', async () => {
+  it('codebase-impact-analysis fails on a never-built index instead of a fake zero-risk blast radius', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'impact-test-'));
+    const indexDir = path.join(tempDir, '.codebase-index');
+    resetIndexStateForTesting();
 
     try {
+      await expect(
+        codebaseImpactAnalysisTool.execute(
+          { symbol: 'calculateDiscount' },
+          { projectRoot: tempDir, meta: { codebaseIndexDir: indexDir } } as never,
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toThrow(/No persisted index|Index query failed/i);
+    } finally {
+      indexStorePool.evict(tempDir, indexDir);
+      resetIndexStateForTesting();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('codebase-impact-analysis reports a missing symbol on a built index', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'impact-miss-'));
+    const indexDir = path.join(tempDir, '.codebase-index');
+    resetIndexStateForTesting();
+    try {
+      await fs.mkdir(path.join(tempDir, 'src'), { recursive: true });
+      await fs.writeFile(
+        path.join(tempDir, 'src', 'calc.ts'),
+        'export function add(a: number, b: number): number { return a + b; }\n',
+      );
+      const ctx = { projectRoot: tempDir, meta: { codebaseIndexDir: indexDir } } as never;
+      await codebaseIndexTool.execute({ force: true }, ctx, {
+        signal: new AbortController().signal,
+      });
       const output = await codebaseImpactAnalysisTool.execute(
         { symbol: 'calculateDiscount' },
-        { projectRoot: tempDir } as never,
+        ctx,
         { signal: new AbortController().signal },
       );
-
-      expect(output.status).toBe('ok');
-      expect(output.symbol).toBe('calculateDiscount');
       expect(output.symbolFound).toBe(false);
       expect(output.totalCallSites).toBe(0);
-      expect(output.summary).toMatch(/not found|Index query failed/i);
-      expect(output.recommendedActionPlan.length).toBeGreaterThan(0);
-      expect(output.recommendedActionPlan.join(' ')).not.toMatch(/0 call sites in 0 prod files/i);
+      expect(output.summary).toMatch(/not found/i);
+    } finally {
+      indexStorePool.evict(tempDir, indexDir);
+      resetIndexStateForTesting();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('codebase-impact-analysis rejects an empty symbol', async () => {
+    await expect(
+      codebaseImpactAnalysisTool.execute({ symbol: '  ' }, { projectRoot: os.tmpdir() } as never, {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/symbol is required/);
+  });
+
+  it('isTestFilePath requires a delimited test marker', () => {
+    for (const p of [
+      'tests/foo.ts',
+      'src/__tests__/foo.ts',
+      'src/foo.test.ts',
+      'src/foo.spec.tsx',
+      'pkg/foo_test.go',
+      'test_foo.py',
+      'fixtures/a.json',
+      'src/mocks/db.ts',
+      'benchmarks/run.ts',
+    ]) {
+      expect(isTestFilePath(p), p).toBe(true);
+    }
+    for (const p of [
+      'src/inspect.ts',
+      'src/latest/index.ts',
+      'src/aspect.ts',
+      'src/contest.ts',
+      'src/respect_rules.ts',
+    ]) {
+      expect(isTestFilePath(p), p).toBe(false);
+    }
+  });
+
+  it('parseTestCounts reads the vitest Tests line, not Test Files', () => {
+    const vitest = ' Test Files  1 failed | 2 passed (3)\n      Tests  4 failed | 17 passed (21)\n';
+    expect(parseTestCounts(vitest)).toEqual({ passed: 17, failed: 4 });
+    expect(parseTestCounts('==== 1 failed, 3 passed in 0.2s ====')).toEqual({
+      passed: 3,
+      failed: 1,
+    });
+    expect(parseTestCounts('ok  \texample.com/pkg\t0.01s')).toBeNull();
+  });
+
+  it('codebase-targeted-test refuses flag-shaped and out-of-project test paths', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'targeted-guard-'));
+    try {
+      const ctx = { projectRoot: tempDir } as never;
+      const opts = { signal: new AbortController().signal };
+      await expect(
+        codebaseTargetedTestTool.execute({ testFiles: ['--config=evil.ts'] }, ctx, opts),
+      ).rejects.toThrow(/not a flag/);
+      await expect(
+        codebaseTargetedTestTool.execute({ testFiles: ['../../outside.test.ts'] }, ctx, opts),
+      ).rejects.toThrow();
+      await expect(codebaseTargetedTestTool.execute({}, ctx, opts)).rejects.toThrow(
+        /at least one of/,
+      );
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true });
     }

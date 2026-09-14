@@ -172,8 +172,15 @@ const MARKER_PROBES: readonly MarkerProbe[] = [
     kind: 'npm',
     file: 'package.json',
     build: (dir, source) => {
-      const name = parsePackageJsonName(source) ?? path.posix.basename(dir);
-      return { name, importPath: name, sourceRoots: [dir] };
+      const declared = parsePackageJsonName(source);
+      // Only a declared name is importable. Deriving the import path from the
+      // directory name let an unnamed `vendor/react/package.json` capture every
+      // `import … from 'react'` in the repository.
+      return {
+        name: declared ?? path.posix.basename(dir),
+        importPath: declared,
+        sourceRoots: [dir],
+      };
     },
   },
   {
@@ -285,6 +292,25 @@ async function probeDotnetRoot(dir: string): Promise<ModuleRoot | undefined> {
   };
 }
 
+/** Directories probed for markers at once. */
+const MARKER_PROBE_CONCURRENCY = 16;
+
+/** Run `fn` over `items` with at most `limit` calls in flight. */
+async function forEachLimited<T>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const item = items[next++] as T;
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
+
 /**
  * Detect every module root reachable from the indexed file set.
  *
@@ -327,21 +353,23 @@ export async function detectModuleRoots(
   }
 
   const roots: ModuleRoot[] = [];
-  await Promise.all(
-    [...candidates].map(async ([dir, langs]) => {
-      for (const probe of MARKER_PROBES) {
-        if (!LANGS_BY_KIND[probe.kind].some((lang) => langs.has(lang))) continue;
-        const source = await readTextIfPresent(path.posix.join(dir, probe.file));
-        if (source === undefined) continue;
-        const built = probe.build(dir, source);
-        if (built) roots.push({ dir, kind: probe.kind, ...built });
-      }
-      if (LANGS_BY_KIND.dotnet.some((lang) => langs.has(lang))) {
-        const dotnet = await probeDotnetRoot(dir);
-        if (dotnet) roots.push(dotnet);
-      }
-    }),
-  );
+  // Bounded: a large repository has thousands of candidate directories, and
+  // probing them all at once opened that many files concurrently. Past the
+  // descriptor limit the reads fail with EMFILE, which reads as "no marker
+  // here" — package roots then went missing, differently on every run.
+  await forEachLimited([...candidates], MARKER_PROBE_CONCURRENCY, async ([dir, langs]) => {
+    for (const probe of MARKER_PROBES) {
+      if (!LANGS_BY_KIND[probe.kind].some((lang) => langs.has(lang))) continue;
+      const source = await readTextIfPresent(path.posix.join(dir, probe.file));
+      if (source === undefined) continue;
+      const built = probe.build(dir, source);
+      if (built) roots.push({ dir, kind: probe.kind, ...built });
+    }
+    if (LANGS_BY_KIND.dotnet.some((lang) => langs.has(lang))) {
+      const dotnet = await probeDotnetRoot(dir);
+      if (dotnet) roots.push(dotnet);
+    }
+  });
 
   // Deepest first: nearest-ancestor lookups become a linear scan with an
   // early exit, and a nested package always wins over its workspace root.

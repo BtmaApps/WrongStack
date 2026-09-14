@@ -97,6 +97,12 @@ export function countFileVectorsWithStatement(stmt: PrepareStatement): number {
   );
 }
 
+function l2Norm(vector: Float32Array): number {
+  let sum = 0;
+  for (let i = 0; i < vector.length; i++) sum += (vector[i] as number) * (vector[i] as number);
+  return Math.sqrt(sum);
+}
+
 export interface VectorHit {
   file: string;
   /** Cosine similarity in [-1, 1]. */
@@ -118,7 +124,14 @@ export function searchFileVectorsWithStatement(
   limit: number,
   minScore: number,
 ): VectorHit[] {
-  if (limit <= 0 || query.length === 0) return [];
+  if (!(limit > 0) || query.length === 0) return [];
+  // True cosine, not a bare dot product. The vectors come from a pluggable
+  // embedding port that is not required to L2-normalise, and a dot product of
+  // unnormalised vectors is not bounded by [-1, 1]: the `minScore` floor then
+  // admitted or rejected hits by vector magnitude instead of by direction.
+  const queryNorm = l2Norm(query);
+  if (!(queryNorm > 0)) return [];
+  const floor = Number.isFinite(minScore) ? minScore : Number.NEGATIVE_INFINITY;
   const rows = stmt('SELECT file, vector FROM file_vectors').all() as Array<{
     file: string;
     vector: Uint8Array;
@@ -134,9 +147,12 @@ export function searchFileVectorsWithStatement(
       continue;
     }
     if (vector.length !== query.length) continue;
+    const vectorNorm = l2Norm(vector);
+    if (!(vectorNorm > 0)) continue;
     let dot = 0;
     for (let i = 0; i < query.length; i++) dot += (query[i] as number) * (vector[i] as number);
-    if (dot >= minScore) hits.push({ file: row.file, score: dot });
+    const score = dot / (queryNorm * vectorNorm);
+    if (score >= floor) hits.push({ file: row.file, score });
   }
 
   hits.sort((a, b) => b.score - a.score || a.file.localeCompare(b.file));

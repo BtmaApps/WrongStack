@@ -24,7 +24,12 @@
 
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
-import { checkAtlasFreshness } from './atlas-projection.js';
+import {
+  atlasPackageFileCounts,
+  atlasPackageName,
+  checkAtlasFreshness,
+  compareText,
+} from './atlas-projection.js';
 import { type IndexStore, indexStorePool } from './writer.js';
 import { posixIndexPath, resolveIndexDir } from './writer-helpers.js';
 
@@ -113,17 +118,19 @@ export async function buildAtlasBrief(store: IndexStore, projectRoot: string): P
   // The package hub comes from the ranking, so a package whose files never
   // reach the ranked head simply has no hub to name and is left out rather
   // than listed with an arbitrary member.
-  const counts = store.getPackageFileCounts();
+  // Counted by the displayed name (see atlasPackageFileCounts): the raw label
+  // counts gave path-derived packages 0 files and counted '' as a package.
+  const counts = atlasPackageFileCounts(store, relativeOf);
   const hubOf = new Map<string, { file: string; rank: number }>();
   for (const row of store.getRankedFiles(Math.max(counts.size * 4, BRIEF_HUB_LIMIT))) {
-    const name = row.package || relativeOf(row.file).split('/')[0] || '(root)';
+    const name = atlasPackageName(row.package, relativeOf(row.file));
     const current = hubOf.get(name);
     if (current === undefined || row.rank > current.rank) {
       hubOf.set(name, { file: relativeOf(row.file), rank: row.rank });
     }
   }
   const packages: AtlasBriefPackage[] = [...hubOf.entries()]
-    .sort((a, b) => b[1].rank - a[1].rank || a[0].localeCompare(b[0]))
+    .sort((a, b) => b[1].rank - a[1].rank || compareText(a[0], b[0]))
     .slice(0, BRIEF_PACKAGE_LIMIT)
     .map(([name, hub]) => ({ name, files: counts.get(name) ?? 0, hub: hub.file }));
 

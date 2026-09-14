@@ -265,6 +265,23 @@ export function retrieveContext(
     snippet: '',
   }));
 
+  // Lexical hits the graph never wired are not walk nodes, so they were
+  // silently dropped here — a query (or `pathPrefix`) naming a declaration
+  // nothing resolves to returned zero entries despite matching it. They join
+  // below every walked symbol: walk probabilities and BM25 are different
+  // scales, so only their order among themselves comes from the lexical score.
+  let floor = Number.POSITIVE_INFINITY;
+  for (const score of scoreBySymbolId.values()) if (score < floor) floor = score;
+  if (!Number.isFinite(floor) || floor <= 0) floor = 1;
+  const unwired = search.results.filter((hit) => !scoreBySymbolId.has(hit.id));
+  const maxLexical = Math.max(0, ...unwired.map((hit) => hit.score));
+  for (const hit of unwired) {
+    const lexical = maxLexical > 0 && hit.score > 0 ? hit.score / maxLexical : 1;
+    const score = floor * 0.5 * lexical;
+    scoreBySymbolId.set(hit.id, score);
+    walked.push({ ...hit, score });
+  }
+
   const grouped = groupIntoEntries(
     walked,
     scoreBySymbolId,

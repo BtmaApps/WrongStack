@@ -12,7 +12,7 @@
  * hard parse failure that drops the file from the index entirely.
  */
 
-import type { CallType, Ref, SymbolLang } from './schema.js';
+import type { CallType, Symbol as IndexSymbol, Ref, SymbolKind, SymbolLang } from './schema.js';
 
 interface RawParsedSymbol {
   name: string;
@@ -21,6 +21,32 @@ interface RawParsedSymbol {
   col: number;
   signature: string;
   scope: string;
+  /** First line of the declaration's doc comment / docstring. */
+  doc: string;
+}
+
+/** Map decoded parser symbols onto index rows for `file`. */
+export function toIndexSymbols(
+  raw: readonly RawParsedSymbol[],
+  file: string,
+  lang: SymbolLang,
+): IndexSymbol[] {
+  return raw.map((s) => {
+    const signature = s.signature.slice(0, 500);
+    return {
+      id: 0,
+      lang,
+      kind: s.kind as SymbolKind,
+      name: s.name,
+      file,
+      line: s.line,
+      col: s.col,
+      signature,
+      docComment: s.doc,
+      scope: s.scope,
+      text: [s.name, signature, s.doc].filter(Boolean).join(' '),
+    };
+  });
 }
 
 interface ParsedParserOutput {
@@ -49,6 +75,7 @@ function coerceSymbols(value: unknown): RawParsedSymbol[] {
         col: typeof candidate.col === 'number' ? candidate.col : 0,
         signature: typeof candidate.signature === 'string' ? candidate.signature : '',
         scope: typeof candidate.scope === 'string' ? candidate.scope : '',
+        doc: typeof candidate.doc === 'string' ? candidate.doc : '',
       },
     ];
   });

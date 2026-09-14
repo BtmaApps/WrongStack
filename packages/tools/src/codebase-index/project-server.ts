@@ -396,11 +396,15 @@ async function handleMessage(
     const previousDebounceMs = state.debounceMs;
     const previousCoalesceWindowMs = state.coalesceWindowMs;
     try {
-      state.watchExternal = message.watchExternal;
-      state.debounceMs = Math.max(0, message.debounceMs);
-      state.coalesceWindowMs = Math.max(
-        0,
-        message.coalesceWindowMs ?? DEFAULT_EXTERNAL_COALESCE_WINDOW_MS,
+      // Wire values are untrusted shapes: `Math.max(0, NaN)` is NaN, which the
+      // watcher then fed to Math.min/setTimeout as its debounce.
+      const nonNegative = (value: unknown, fallback: number): number =>
+        typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : fallback;
+      state.watchExternal = message.watchExternal === true;
+      state.debounceMs = nonNegative(message.debounceMs, DEFAULT_EXTERNAL_DEBOUNCE_MS);
+      state.coalesceWindowMs = nonNegative(
+        message.coalesceWindowMs,
+        DEFAULT_EXTERNAL_COALESCE_WINDOW_MS,
       );
       watcherManager.reconcile(clients);
       send(state, {

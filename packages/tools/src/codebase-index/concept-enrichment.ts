@@ -34,6 +34,7 @@
 import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { detectLang } from './languages.js';
 import { type IndexStore, indexStorePool } from './writer.js';
 import { type FileConcept, isConceptRelation } from './writer-concepts.js';
 import { posixIndexPath, resolveIndexDir } from './writer-helpers.js';
@@ -170,7 +171,16 @@ export async function enrichConcepts(
   const startedAt = Date.now();
   const errors: string[] = [];
   const signal = options.signal;
-  const concurrency = Math.max(1, Math.min(options.concurrency ?? DEFAULT_CONCURRENCY, 16));
+  // A non-finite value made Math.max/min return NaN, which started ZERO
+  // workers: the pass "succeeded" having summarised nothing.
+  const requestedConcurrency = Number.isFinite(options.concurrency)
+    ? Math.trunc(options.concurrency as number)
+    : DEFAULT_CONCURRENCY;
+  const concurrency = Math.max(1, Math.min(requestedConcurrency, 16));
+  const maxFiles =
+    options.maxFiles !== undefined && Number.isFinite(options.maxFiles)
+      ? Math.max(0, Math.trunc(options.maxFiles))
+      : undefined;
 
   // Housekeeping first, so the walk sees an accurate picture of what is
   // outstanding rather than re-summarising files that already match.
@@ -198,6 +208,8 @@ export async function enrichConcepts(
   const queue: string[] = [];
   let cached = 0;
   for (const file of ordered) {
+    // Checked before queueing: `maxFiles: 0` used to queue (and pay for) one file.
+    if (maxFiles !== undefined && queue.length >= maxFiles) break;
     const hash = hashByFile.get(file);
     if (hash === undefined) continue;
     const concept = existing.get(file);
@@ -208,7 +220,6 @@ export async function enrichConcepts(
       continue;
     }
     queue.push(file);
-    if (options.maxFiles !== undefined && queue.length >= options.maxFiles) break;
   }
 
   let summarised = 0;
@@ -304,7 +315,7 @@ async function summariseOne(
   const result = await port.describeFile({
     file: relativeOf(file),
     absolutePath: file,
-    language: '',
+    language: detectLang(file) ?? '',
     source: truncated ? source.slice(0, MAX_SOURCE_CHARS) : source,
     truncated,
     declarations,
@@ -352,13 +363,22 @@ async function deriveSubsystems(
   const summaries = store.getReadyConceptSummaries();
   if (summaries.size === 0) return 0;
 
+  // Membership comes from the summaries themselves; rank only orders the
+  // sample. Driving it from the top `2 × summaries` ranked files dropped every
+  // summarised file outside that slice — unranked leaf files always, and after
+  // a force or incremental pass most of what had just been paid for.
+  const rankOf = store.getFileRankMap();
+  const packageOf = store.getFilePackages();
+  const ordered = [...summaries.keys()].sort(
+    (a, b) => (rankOf.get(b) ?? 0) - (rankOf.get(a) ?? 0) || a.localeCompare(b),
+  );
   const byPackage = new Map<string, Array<{ file: string; summary: string; rank: number }>>();
-  for (const row of store.getRankedFiles(summaries.size * 2)) {
-    const summary = summaries.get(row.file);
+  for (const file of ordered) {
+    const summary = summaries.get(file);
     if (summary === undefined) continue;
-    const name = row.package || relativeOf(row.file).split('/')[0] || '(root)';
+    const name = packageOf.get(file) || relativeOf(file).split('/')[0] || '(root)';
     const bucket = byPackage.get(name);
-    const entry = { file: relativeOf(row.file), summary, rank: row.rank };
+    const entry = { file: relativeOf(file), summary, rank: rankOf.get(file) ?? 0 };
     if (bucket === undefined) byPackage.set(name, [entry]);
     else if (bucket.length < SUBSYSTEM_FILE_SAMPLE) bucket.push(entry);
   }

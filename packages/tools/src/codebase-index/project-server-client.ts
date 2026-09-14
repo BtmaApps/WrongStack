@@ -10,6 +10,7 @@ import {
   MAX_BINARY_FRAME_BYTES,
 } from './binary-frame.js';
 import { IndexTimeoutError } from './circuit-breaker.js';
+import { recordIpcPending } from './perf-metrics.js';
 import {
   CONNECT_ATTEMPT_TIMEOUT_MS,
   cancellationError,
@@ -56,7 +57,6 @@ import {
   type ProjectIndexServerInfo,
   type ProjectServerMessage,
 } from './project-server-protocol.js';
-import { recordIpcPending } from './perf-metrics.js';
 import type { OpName, OpShapes } from './worker-protocol.js';
 
 export {
@@ -503,14 +503,18 @@ class ProjectServerConnection {
         if (this.readBuffer.length < 5 + frameLen) return; // payload incomplete
         const payload = this.readBuffer.subarray(5, 5 + frameLen);
         this.readBuffer = this.readBuffer.subarray(5 + frameLen);
-        let message: ProjectServerMessage;
+        let decoded: unknown;
         try {
-          message = decodeBinaryFrame(payload) as ProjectServerMessage;
+          decoded = decodeBinaryFrame(payload);
         } catch {
           socket.destroy(new Error('invalid binary codebase-index server response'));
           return;
         }
-        this.onMessage(message);
+        if (!isServerMessage(decoded)) {
+          socket.destroy(new Error('invalid binary codebase-index server response'));
+          return;
+        }
+        this.onMessage(decoded);
         continue;
       }
       const newline = this.readBuffer.indexOf(0x0a);
@@ -527,14 +531,20 @@ class ProjectServerConnection {
       const line = this.readBuffer.subarray(0, newline).toString('utf8');
       this.readBuffer = this.readBuffer.subarray(newline + 1);
       if (!line) continue;
-      let message: ProjectServerMessage;
+      let parsed: unknown;
       try {
-        message = JSON.parse(line) as ProjectServerMessage;
+        parsed = JSON.parse(line);
       } catch {
         socket.destroy(new Error('invalid codebase-index server response'));
         return;
       }
-      this.onMessage(message);
+      // `onMessage` reads `message.type` inside a socket 'data' handler: a
+      // `null` frame threw there as an uncaught exception in THIS process.
+      if (!isServerMessage(parsed)) {
+        socket.destroy(new Error('invalid codebase-index server response'));
+        return;
+      }
+      this.onMessage(parsed);
     }
   }
 
@@ -757,6 +767,16 @@ let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
  * adopt MessagePack frames when the server advertises `binarySupported`.
  * Default is NDJSON — see the hello handler for the benchmark rationale.
  */
+/** A decoded server frame is only handled when it is an object with a string `type`. */
+function isServerMessage(value: unknown): value is ProjectServerMessage {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { type?: unknown }).type === 'string'
+  );
+}
+
 function binaryFramingEnabled(): boolean {
   const flag = process.env['WRONGSTACK_INDEX_BINARY'];
   return flag === '1' || flag === 'true';

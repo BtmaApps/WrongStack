@@ -1,4 +1,4 @@
-import { lspKindToInternalKind } from './lsp-kind.js';
+import { lspKindToInternalKinds } from './lsp-kind.js';
 import type { SearchResult, SymbolKind, SymbolLang } from './schema.js';
 import { escapeLike } from './writer-helpers.js';
 
@@ -47,6 +47,28 @@ export function normalizeSearchLimit(limit: number | undefined): number | undefi
     : undefined;
 }
 
+/**
+ * The symbol kinds a search may return.
+ *
+ * `undefined` — no kind constraint. `null` — the filter can match nothing (an
+ * LSP kind with no internal equivalent, or a `kind` outside the `lspKind`'s
+ * set). Otherwise the allowed kinds. `kind` and `lspKind` INTERSECT: the old
+ * code let `lspKind` silently override an explicit `kind`.
+ */
+export function resolveKindFilter(
+  filter: WriterSearchFilter | undefined,
+): readonly SymbolKind[] | null | undefined {
+  // `!= null`: binary-framed (MessagePack) clients deliver a missing lspKind
+  // as null; absent and null mean the same thing here.
+  const lspKinds = filter?.lspKind != null ? lspKindToInternalKinds(filter.lspKind) : undefined;
+  if (lspKinds !== undefined && lspKinds.length === 0) return null;
+  if (filter?.kind) {
+    if (lspKinds !== undefined && !lspKinds.includes(filter.kind)) return null;
+    return [filter.kind];
+  }
+  return lspKinds;
+}
+
 export function buildWriterSearchWhere(
   query: string,
   filter?: WriterSearchFilter | undefined,
@@ -54,21 +76,11 @@ export function buildWriterSearchWhere(
   const conditions: string[] = [];
   const values: unknown[] = [];
 
-  let effectiveKind: SymbolKind | undefined = filter?.kind;
-  // `!= null`: binary-framed (MessagePack) clients deliver a missing lspKind
-  // as null; absent and null mean the same thing here.
-  if (filter?.lspKind != null) {
-    const mapped = lspKindToInternalKind(filter.lspKind);
-    if (mapped !== null) {
-      effectiveKind = mapped;
-    } else {
-      return null;
-    }
-  }
-
-  if (effectiveKind) {
-    conditions.push('kind = ?');
-    values.push(effectiveKind);
+  const kinds = resolveKindFilter(filter);
+  if (kinds === null) return null;
+  if (kinds !== undefined) {
+    conditions.push(`kind IN (${kinds.map(() => '?').join(', ')})`);
+    values.push(...kinds);
   }
   if (filter?.lang) {
     conditions.push('lang = ?');

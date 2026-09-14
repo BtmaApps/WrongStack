@@ -44,6 +44,13 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     return lo + 1;
   }
 
+  // Lines that are the TEXT of a block scalar (`run: |`, `script: >-`), not
+  // YAML structure. A GitHub Actions step body or an embedded config file
+  // (`config.yaml: |`) was scanned like mapping syntax, so every `word:` or
+  // `&`/`*` inside it became a symbol.
+  const scalarBody = blockScalarBodyLines(lines);
+  const inScalarBody = (offset: number): boolean => scalarBody.has(lineFromOffset(offset) - 1);
+
   // ── 1. Anchors and aliases ─────────────────────────────────────────────────
   // &anchor_name — the sigil must sit in value position (start of line,
   // whitespace, or after `:`, `[`, `{`, `,`, `-`). Without this, `&word`
@@ -53,6 +60,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   for (let match = anchorRegex.exec(content); match !== null; match = anchorRegex.exec(content)) {
     const name = expectDefined(match[1]);
     const offset = match.index ?? 0;
+    if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
     const col = offset - (lineOffsets[line - 1] ?? 0);
     symbols.push(
@@ -74,6 +82,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   for (let match = aliasRegex.exec(content); match !== null; match = aliasRegex.exec(content)) {
     const name = expectDefined(match[1]);
     const offset = match.index ?? 0;
+    if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
     const col = offset - (lineOffsets[line - 1] ?? 0);
     symbols.push(
@@ -95,10 +104,11 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   const kvRegex = /^(\s*)([^:#\s][^:#\s]*)\s*:/gm;
   for (let match = kvRegex.exec(content); match !== null; match = kvRegex.exec(content)) {
     const indent = match[1]?.length ?? 0;
-    const key = match[2];
+    const key = unquoteKey(match[2] ?? '');
     /* v8 ignore next -- the capture group always matches ≥1 char, so key is never empty; defensive. */
     if (!key) continue;
     const offset = match.index ?? 0;
+    if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
     const col = offset - (lineOffsets[line - 1] ?? 0);
 
@@ -117,7 +127,7 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     // Block-scalar headers (`key: |`, `key: >`) are owned by section 4;
     // emitting them here too produced two near-identical symbols per header.
     const value = extractValue(content, (match.index ?? 0) + expectDefined(match[0]).length);
-    if (/^[|>](\s|$)/.test(value)) continue;
+    if (BLOCK_SCALAR_VALUE.test(value)) continue;
     const kind: IndexSymbol['kind'] = isScalar(value) ? 'literal' : 'property';
     const signature = `${key}: ${truncate(value, 60)}`;
 
@@ -136,8 +146,9 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
     match !== null;
     match = listItemRegex.exec(content)
   ) {
-    const key = expectDefined(match[3]);
+    const key = unquoteKey(expectDefined(match[3]));
     const offset = match.index ?? 0;
+    if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
     const col = offset - (lineOffsets[line - 1] ?? 0);
     const value = extractValue(content, offset + match[0]?.length);
@@ -156,14 +167,16 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
   }
 
   // ── 4. Block scalar keys (key: | or key: >) ────────────────────────────────
-  const blockScalarRegex = /^(\s*)([^:#\s][^:#\s]*)\s*:\s*[|>](\s|$)/gm;
+  // Indentation/chomping indicators (`|-`, `>+`, `|2`) are part of the header.
+  const blockScalarRegex = /^(\s*)([^:#\s][^:#\s]*)\s*:[ \t]*[|>][-+0-9]*(?=[ \t]|$)/gm;
   for (
     let match = blockScalarRegex.exec(content);
     match !== null;
     match = blockScalarRegex.exec(content)
   ) {
-    const key = expectDefined(match[2]);
+    const key = unquoteKey(expectDefined(match[2]));
     const offset = match.index ?? 0;
+    if (inScalarBody(offset)) continue;
     const line = lineFromOffset(offset);
     const col = offset - (lineOffsets[line - 1] ?? 0);
     symbols.push(
@@ -183,6 +196,44 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * A block scalar header value: `|` or `>` plus optional chomping/indentation
+ * indicators. `^[|>](\s|$)` missed `|-` and `>-` — the most common forms —
+ * so those headers were emitted twice and their bodies parsed as YAML.
+ */
+const BLOCK_SCALAR_VALUE = /^[|>][-+0-9]*(\s|#|$)/;
+
+/** 0-based indices of lines that belong to a block scalar's text. */
+function blockScalarBodyLines(lines: readonly string[]): Set<number> {
+  const body = new Set<number>();
+  const header = /^(\s*)(?:(?:-[ \t]+)?[^#\n]*?:|-)[ \t]*[|>][-+0-9]*[ \t]*(?:#.*)?$/;
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] ?? '').replace(/\r$/, '');
+    const match = header.exec(line);
+    if (!match) continue;
+    const baseIndent = match[1]?.length ?? 0;
+    let j = i + 1;
+    for (; j < lines.length; j++) {
+      const next = (lines[j] ?? '').replace(/\r$/, '');
+      if (next.trim() === '') {
+        body.add(j);
+        continue;
+      }
+      const indent = next.length - next.trimStart().length;
+      if (indent <= baseIndent) break;
+      body.add(j);
+    }
+    i = j - 1;
+  }
+  return body;
+}
+
+/** `"key"` / `'key'` → `key`. */
+function unquoteKey(key: string): string {
+  const quoted = /^(["'])(.*)\1$/.exec(key);
+  return quoted ? (quoted[2] ?? '') : key;
+}
 
 function extractValue(content: string, afterColonOffset: number): string {
   // Get the rest of the line after the colon

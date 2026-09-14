@@ -17,8 +17,8 @@ import type { Context } from '@wrongstack/core/agent';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetIndexStateForTesting } from '../src/codebase-index/background-indexer.js';
 import { codebaseIncomingCallsTool } from '../src/codebase-index/codebase-incoming-calls-tool.js';
-import { codebaseOutgoingCallsTool } from '../src/codebase-index/codebase-outgoing-calls-tool.js';
 import { codebaseIndexTool } from '../src/codebase-index/codebase-index-tool.js';
+import { codebaseOutgoingCallsTool } from '../src/codebase-index/codebase-outgoing-calls-tool.js';
 import { indexStorePool } from '../src/codebase-index/writer.js';
 
 process.env['WRONGSTACK_INDEX_INLINE'] = '1';
@@ -188,15 +188,16 @@ describe('codebase-incoming-calls tool', () => {
   });
 
   it('does not silently drop callers when querying the non-canonical duplicate', async () => {
-    // Ref resolution assigns to_id name-globally via MIN(id), so callers of
-    // `sharedName` all resolve to the a.ts symbol (indexed first). Querying
-    // the b.ts duplicate must still surface callers via name-level matching
-    // instead of returning an empty result (writer-graph-reader.ts).
+    // Ref resolution assigns to_id name-globally via MIN(id), so the call may
+    // resolve to the a.ts symbol (indexed first) although caller.ts imports
+    // b.ts. Querying the b.ts duplicate must still surface that caller
+    // instead of returning an empty result (writer-graph-reader.ts) — and the
+    // a.ts duplicate must not claim it, since the import proves the binding.
     await fs.writeFile(path.join(tmpDir, 'a.ts'), 'export function sharedName(): void { }');
     await fs.writeFile(path.join(tmpDir, 'b.ts'), 'export function sharedName(): void { }');
     await fs.writeFile(
       path.join(tmpDir, 'caller.ts'),
-      `import { sharedName } from './a.js';\nfunction doCall(): void { sharedName(); }`,
+      `import { sharedName } from './b.js';\nfunction doCall(): void { sharedName(); }`,
     );
     await codebaseIndexTool.execute({}, ctx, { signal: newSignal() });
 
@@ -208,6 +209,13 @@ describe('codebase-incoming-calls tool', () => {
 
     expect(result.total).toBeGreaterThanOrEqual(1);
     expect(result.calls.some((c) => c.symbol.name === 'doCall')).toBe(true);
+
+    const other = await codebaseIncomingCallsTool.execute(
+      { symbol: 'sharedName', file: path.join(tmpDir, 'a.ts') },
+      ctx,
+      { signal: newSignal() },
+    );
+    expect(other.calls.some((c) => c.symbol.name === 'doCall')).toBe(false);
   });
 
   it('rejects missing or empty symbol with ToolValidationError', async () => {
@@ -392,13 +400,13 @@ describe('ambiguous flag', () => {
   });
 
   it('returns ambiguous note when file-scoped name exists in multiple files', async () => {
-    // `dupName` defined in two files; caller only calls the a.ts version.
+    // `dupName` defined in two files; caller imports the b.ts version.
     // When file=b.ts is specified, the tool detects ambiguity and warns.
     await fs.writeFile(path.join(tmpDir, 'a.ts'), 'export function dupName(): void { }');
     await fs.writeFile(path.join(tmpDir, 'b.ts'), 'export function dupName(): void { }');
     await fs.writeFile(
       path.join(tmpDir, 'caller.ts'),
-      `import { dupName } from './a.js';\nfunction doCall(): void { dupName(); }`,
+      `import { dupName } from './b.js';\nfunction doCall(): void { dupName(); }`,
     );
     await codebaseIndexTool.execute({}, ctx, { signal: newSignal() });
 

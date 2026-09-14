@@ -144,10 +144,7 @@ export function projectIndexServerStderrPath(projectRoot: string, indexDir?: str
  * whitespace. Reads at most the last `PROJECT_INDEX_SERVER_STDERR_MAX_BYTES`
  * so a large file cannot be pulled into memory here.
  */
-export function readProjectIndexServerStderrTail(
-  path_: string,
-  maxLines = 4,
-): string | null {
+export function readProjectIndexServerStderrTail(path_: string, maxLines = 4): string | null {
   let raw: string;
   try {
     const { size } = fs.statSync(path_);

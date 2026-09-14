@@ -30,8 +30,48 @@ import {
 } from '@wrongstack/tools';
 import { createCodebaseEmbeddingPort } from './codebase-embeddings.js';
 
-/** Mutating builtin tools whose input carries a single `path`. */
-const FILE_EDIT_TOOLS = new Set(['write', 'edit']);
+/**
+ * Project files a successful file-changing tool call wrote, resolved against
+ * `cwd`. Only `write`/`edit` were handled, so `codebase-ast-replace`, `patch`
+ * and `format` left the index describing the pre-edit code until a restart
+ * (external watching is off by default) — incoming calls and impact analysis
+ * then answered for a function body that no longer existed.
+ */
+export function editedFilePaths(toolName: string, input: unknown, cwd: string): string[] {
+  const args = (input ?? {}) as Record<string, unknown>;
+  const resolve = (value: unknown, base = cwd): string[] =>
+    typeof value === 'string' && value.length > 0 ? [path.resolve(base, value)] : [];
+  switch (toolName) {
+    case 'write':
+    case 'edit':
+      return resolve(args['path']);
+    case 'codebase-ast-replace':
+      return resolve(args['file']);
+    case 'format': {
+      if (args['check'] === true) return [];
+      const files = args['files'];
+      const base = typeof args['cwd'] === 'string' ? path.resolve(cwd, args['cwd']) : cwd;
+      // A project-wide format names no files; the watcher or next startup run covers it.
+      return (Array.isArray(files) ? files : [files]).flatMap((file) => resolve(file, base));
+    }
+    case 'patch': {
+      if (args['dry_run'] === true || typeof args['patch'] !== 'string') return [];
+      const base =
+        typeof args['directory'] === 'string' ? path.resolve(cwd, args['directory']) : cwd;
+      const strip = typeof args['strip'] === 'number' ? args['strip'] : 1;
+      const out = new Set<string>();
+      for (const match of args['patch'].matchAll(/^(?:\+\+\+|---) ([^\t\r\n]+)/gm)) {
+        const header = (match[1] ?? '').trim().replace(/^"(.*)"$/, '$1');
+        if (!header || header === '/dev/null') continue;
+        const stripped = header.split('/').slice(strip).join('/');
+        if (stripped) out.add(path.resolve(base, stripped));
+      }
+      return [...out];
+    }
+    default:
+      return [];
+  }
+}
 
 interface CodebaseIndexingDeps {
   config: { indexing?: IndexingConfig | undefined };
@@ -111,17 +151,18 @@ export async function setupCodebaseIndexing(deps: CodebaseIndexingDeps): Promise
       ) => {
         try {
           const tool = payload.tool;
-          if (tool?.mutating && FILE_EDIT_TOOLS.has(tool.name) && !payload.result.is_error) {
-            const fp = (payload.toolUse.input as { path?: unknown | undefined })?.path;
-            if (typeof fp === 'string' && fp.length > 0) {
-              const activeRoot = payload.ctx.projectRoot;
-              const abs = path.resolve(payload.ctx.cwd, fp);
-              const rel = path.relative(activeRoot, abs);
-              const inside =
-                rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
-              if (inside && isIndexableFile(abs)) {
-                enqueueReindex({ projectRoot: activeRoot, files: [abs], debounceMs, onError });
-              }
+          if (tool && !payload.result.is_error) {
+            const activeRoot = payload.ctx.projectRoot;
+            const files = editedFilePaths(tool.name, payload.toolUse.input, payload.ctx.cwd).filter(
+              (abs) => {
+                const rel = path.relative(activeRoot, abs);
+                const inside =
+                  rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
+                return inside && isIndexableFile(abs);
+              },
+            );
+            if (files.length > 0) {
+              enqueueReindex({ projectRoot: activeRoot, files, debounceMs, onError });
             }
           }
         } catch {

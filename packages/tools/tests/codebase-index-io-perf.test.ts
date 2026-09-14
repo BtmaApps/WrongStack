@@ -3,7 +3,6 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { assertPairingValid, captureLoad } from './bench-pairing.js';
 import {
   cancelPendingReindexes,
   enqueueReindex,
@@ -12,6 +11,7 @@ import {
   runStartupIndex,
   shutdownCodebaseIndexHost,
 } from '../src/codebase-index/index.js';
+import { assertPairingValid, captureLoad } from './bench-pairing.js';
 
 const elapsedMs = (start: bigint): number => Number(process.hrtime.bigint() - start) / 1e6;
 
@@ -53,7 +53,9 @@ describe('codebase-index controlled I/O benchmark', () => {
     roots.push(root);
     const indexDir = path.join(root, '.index');
     const files = Array.from({ length: 12 }, (_, i) => path.join(root, `file-${i}.ts`));
-    await Promise.all(files.map((file, i) => fs.writeFile(file, `export function f${i}() { return ${i}; }\n`)));
+    await Promise.all(
+      files.map((file, i) => fs.writeFile(file, `export function f${i}() { return ${i}; }\n`)),
+    );
 
     resetCodebaseIndexPerfMetrics();
     await runStartupIndex({ projectRoot: root, indexDir, force: true, timeoutMs: 30_000 });
@@ -63,7 +65,9 @@ describe('codebase-index controlled I/O benchmark', () => {
     const loadStart = await captureLoad();
     const latencies: number[] = [];
     for (let round = 0; round < 3; round++) {
-      await Promise.all(files.map((file) => fs.appendFile(file, `\nexport const changed${round} = true;\n`)));
+      await Promise.all(
+        files.map((file) => fs.appendFile(file, `\nexport const changed${round} = true;\n`)),
+      );
       const starts = files.map(() => process.hrtime.bigint());
       await Promise.all(
         files.map(async (_file, i) => {
@@ -119,7 +123,9 @@ describe('codebase-index controlled I/O benchmark', () => {
     expect(latency).toBeLessThan(30_000);
     expect(metrics.filesystemBytesRead).toBeGreaterThan(0);
     // eslint-disable-next-line no-console
-    console.log(`[codebase-index-io-perf] enqueue burst n=${files.length} latency=${latency.toFixed(1)}ms`);
+    console.log(
+      `[codebase-index-io-perf] enqueue burst n=${files.length} latency=${latency.toFixed(1)}ms`,
+    );
   });
 
   it('reports the controlled boundary counters without requiring a daemon', () => {

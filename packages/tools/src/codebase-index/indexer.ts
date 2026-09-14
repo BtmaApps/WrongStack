@@ -232,6 +232,78 @@ async function findGitSourceFiles(
   }
 }
 
+/**
+ * Expand the directories in a targeted file list.
+ *
+ * A directory deleted or renamed outside the agent reaches the watcher as ONE
+ * event naming the directory. A targeted run used to stat that path, find a
+ * directory (skipped: not a file) or nothing (`deleteFile(dir)` matched no
+ * row), and leave every file under it indexed — search and the call graph
+ * kept answering from deleted sources, and the renamed copies were never
+ * indexed. A non-indexable path is therefore replaced by the indexed files
+ * under it (vanished ones are then removed as missing) plus the indexable
+ * files now on disk there. Indexable file paths pass through untouched, so
+ * the per-edit hot path never reads the file table.
+ */
+async function expandTargetedDirectories(
+  store: IndexStore,
+  projectRoot: string,
+  targets: string[],
+  isGitIgnored: IgnoreMatcher,
+  signal: AbortSignal | undefined,
+): Promise<string[]> {
+  const isIndexableName = (file: string) =>
+    INDEXABLE_EXTENSION_SET.has(path.extname(file).toLowerCase()) || detectLang(file) !== null;
+  const expanded = new Set<string>();
+  let indexedFiles: string[] | undefined;
+  for (const target of targets) {
+    if (isIndexableName(target) || !isWithinProject(projectRoot, target)) {
+      expanded.add(target);
+      continue;
+    }
+    let stats: Stats | undefined;
+    try {
+      stats = await fs.stat(target);
+    } catch (err) {
+      if (!isMissingPathError(err)) {
+        expanded.add(target);
+        continue;
+      }
+    }
+    if (stats && !stats.isDirectory()) {
+      expanded.add(target);
+      continue;
+    }
+    indexedFiles ??= store.getAllFileMetas().map((meta) => meta.file);
+    const prefix = normalizeComparablePath(target) + path.sep;
+    for (const file of indexedFiles) {
+      if (normalizeComparablePath(file).startsWith(prefix)) expanded.add(file);
+    }
+    if (!stats) continue;
+    const walk = async (dir: string): Promise<void> => {
+      throwIfAborted(signal);
+      let entries: Dirent[];
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (DEFAULT_IGNORE.includes(entry.name)) continue;
+        const full = path.join(dir, entry.name);
+        const rel = path.relative(projectRoot, full).replace(/\\/g, '/');
+        if (entry.isDirectory()) {
+          if (!isGitIgnored(rel, true)) await walk(full);
+        } else if (entry.isFile() && isIndexableName(full)) {
+          expanded.add(full);
+        }
+      }
+    };
+    await walk(target);
+  }
+  return [...expanded];
+}
+
 interface IndexerOptions {
   projectRoot: string;
   files?: string[] | undefined;
@@ -397,19 +469,25 @@ async function resolveProjectRelations(
     store.setFilePackages(assignPackageLabels(structure, indexedFiles));
 
     const resolver = new ModuleResolver(structure, indexedFiles, store.getNamespaceDeclarations());
-    const pending = store.getUnresolvedImports(opts.onlyFiles);
+    // A scoped run also re-resolves importers whose target is gone.
+    const scope = opts.onlyFiles
+      ? [...new Set([...opts.onlyFiles, ...store.getFilesWithDanglingImports()])]
+      : undefined;
+    const pending = store.getUnresolvedImports(scope);
     const resolutions: Array<{
       fromFile: string;
       lang: string;
       module: string;
-      toFile: string;
+      toFile: string | null;
     }> = [];
     for (const entry of pending) {
       const toFile = resolver.resolve(entry.fromFile, entry.lang as SymbolLang, entry.module);
+      // Unresolved entries are written as null so a stale `to_file` is cleared.
       // Self-imports (a barrel re-exporting its own directory) are not edges.
-      if (toFile && toFile !== entry.fromFile) {
-        resolutions.push({ ...entry, toFile });
-      }
+      resolutions.push({
+        ...entry,
+        toFile: toFile && toFile !== entry.fromFile ? toFile : null,
+      });
     }
     if (opts.signal?.aborted) return;
     store.applyImportResolutions(resolutions);
@@ -460,8 +538,8 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   // and wipe the same shared DB while a new WebUI is being rolled out.
   const relationGraphVersion = '2';
   const refResolutionVersion = '2';
-  const force =
-    (opts.force ?? false) || store.getMetadata('relation_graph_version') !== relationGraphVersion;
+  const graphVersionStale = store.getMetadata('relation_graph_version') !== relationGraphVersion;
+  const force = (opts.force ?? false) || graphVersionStale;
   const needsFullRefResolution =
     force || store.getMetadata('ref_resolution_version') !== refResolutionVersion;
   const startMs = Date.now();
@@ -493,18 +571,23 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   if (opts.files && opts.files.length > 0) {
     // Explicit file list (per-edit / watcher path): keep paths inside the
     // project only and apply both always-on and .gitignore exclusions.
-    files = opts.files
-      .map((f) => path.resolve(projectRoot, f))
-      .filter((f) => {
-        if (!isWithinProject(projectRoot, f)) return false;
-        const rel = path.relative(projectRoot, f).replace(/\\/g, '/');
-        return (
-          !rel.split('/').some((seg) => DEFAULT_IGNORE.includes(seg)) &&
-          !DEFAULT_IGNORE_FILES.has(path.basename(f)) &&
-          !isAtlasProjection(rel) &&
-          !isGitIgnored(rel, false)
-        );
-      });
+    const targeted = await expandTargetedDirectories(
+      store,
+      projectRoot,
+      opts.files.map((f) => path.resolve(projectRoot, f)),
+      isGitIgnored,
+      signal,
+    );
+    files = targeted.filter((f) => {
+      if (!isWithinProject(projectRoot, f)) return false;
+      const rel = path.relative(projectRoot, f).replace(/\\/g, '/');
+      return (
+        !rel.split('/').some((seg) => DEFAULT_IGNORE.includes(seg)) &&
+        !DEFAULT_IGNORE_FILES.has(path.basename(f)) &&
+        !isAtlasProjection(rel) &&
+        !isGitIgnored(rel, false)
+      );
+    });
   } else {
     const discovery = await findSourceFiles(projectRoot, ignore, isGitIgnored, signal);
     files = discovery.files;
@@ -523,7 +606,14 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
     });
   }
 
-  if (force) store.clearAll();
+  // A user-forced run limited to some languages or files re-parses exactly
+  // that scope. Clearing the WHOLE index first (as a scoped `force` used to)
+  // deleted every other language's symbols — `codebase-index({ force: true,
+  // langs: ['json'] })` wiped the TypeScript index until the next full run.
+  // A relation-graph version bump still clears everything: the old rows are
+  // semantically invalid regardless of scope.
+  const scopedRun = (langs?.length ?? 0) > 0 || (opts.files?.length ?? 0) > 0;
+  if (force && (graphVersionStale || !scopedRun)) store.clearAll();
 
   // Collect existing file metadata for incremental check
   const existingMeta: Map<string, FileMeta> = new Map();
@@ -818,7 +908,13 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
         // source was deleted or renamed, so remove its previous index rows.
         // Read/parse/permission failures are transient and retain the last good
         // snapshot instead of replacing it with an empty one.
-        if (result.missing) store.deleteFile(file);
+        if (result.missing) {
+          // A deletion is a successful outcome, not a failure: reporting it as
+          // `stat error: ENOENT` made every watcher-observed delete or rename
+          // surface as "N error(s)" and count toward `failed`.
+          store.deleteFile(file);
+          continue;
+        }
         errors.push(`${file}: ${result.error}`);
         filesFailed++;
         continue;

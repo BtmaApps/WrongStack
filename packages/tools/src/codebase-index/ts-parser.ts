@@ -121,6 +121,64 @@ function getJsDoc(node: TS.Node, sourceFile: TS.SourceFile): string {
   return '';
 }
 
+type DeclarationNameNode =
+  | TS.Identifier
+  | TS.PrivateIdentifier
+  | TS.StringLiteral
+  | TS.NumericLiteral;
+
+/**
+ * The name nodes a declaration introduces.
+ *
+ * `null` — the declaration has no name at all (anonymous container).
+ * `[]` — a name exists but is not indexable (computed `[expr]`).
+ * Otherwise one node per bound name: a destructuring declaration binds several.
+ */
+function declarationNameNodes(node: TS.Node): DeclarationNameNode[] | null {
+  const name = (node as { name?: TS.Node | undefined }).name;
+  if (!name) return null;
+  if (
+    ts.isIdentifier(name) ||
+    ts.isPrivateIdentifier(name) ||
+    ts.isStringLiteral(name) ||
+    ts.isNumericLiteral(name)
+  ) {
+    return [name];
+  }
+  if (ts.isObjectBindingPattern(name) || ts.isArrayBindingPattern(name)) {
+    return bindingIdentifiers(name);
+  }
+  return [];
+}
+
+function bindingIdentifiers(pattern: TS.BindingPattern): TS.Identifier[] {
+  const out: TS.Identifier[] = [];
+  for (const element of pattern.elements) {
+    if (ts.isOmittedExpression(element)) continue;
+    if (ts.isIdentifier(element.name)) out.push(element.name);
+    else out.push(...bindingIdentifiers(element.name));
+  }
+  return out;
+}
+
+/**
+ * The node whose leading trivia holds a declaration's JSDoc. For
+ * `/** doc *\/ export const x = …` the comment belongs to the VariableStatement,
+ * two levels above the declarator — reading the declarator's own trivia found
+ * nothing, so every documented const was indexed with an empty docComment.
+ */
+function docHostOf(node: TS.Node): TS.Node {
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isVariableDeclarationList(node.parent) &&
+    node.parent.declarations[0] === node &&
+    ts.isVariableStatement(node.parent.parent)
+  ) {
+    return node.parent.parent;
+  }
+  return node;
+}
+
 /** Push the current node's scope contribution onto `parts` (for the O(1) recursive scope tracker). */
 function pushScopeName(node: TS.Node, parts: string[]): void {
   if (
@@ -197,36 +255,45 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
         // Fall through to ref extraction — function-local variables can still
         // appear in type references and calls.
       } else {
-        const nameNode = (node as { name?: TS.Identifier | undefined }).name;
-        if (!nameNode || !ts.isIdentifier(nameNode)) {
+        const nameNodes = declarationNameNodes(node);
+        if (nameNodes === null) {
           // Anonymous declaration (e.g. `export default class { ... }`) — no
-          // name identifier, so there's nothing to index. Skip children too
+          // name at all, so there's nothing to index. Skip children too
           // to avoid indexing members of anonymous containers. Ref extraction
           // for the node itself is also skipped, but anonymous declarations
           // never match ref checks anyway.
           return;
         }
-        const name = nameNode.text;
-        const pos = nameNode.getStart(sourceFile);
-        const { line, character } = sourceFile.getLineAndCharacterOfPosition(pos);
-        const scope = scopeParts.join('.');
-        const signature = getSignature(printer, node as TS.Declaration, sourceFile);
-        const docComment = getJsDoc(node, sourceFile);
-        const text = [name, signature, docComment].filter(Boolean).join(' | ');
+        // An empty list (a computed name like `[Symbol.iterator]`) indexes no
+        // symbol but still descends: the body's calls and nested declarations
+        // are real. The old identifier-only check returned here for
+        // `#private` members, `declare module 'x' {…}`, `'quoted'()` methods
+        // and `const { a, b } = …`, dropping every ref inside them — callers
+        // in a private method were invisible to incoming-calls.
+        const signature =
+          nameNodes.length > 0 ? getSignature(printer, node as TS.Declaration, sourceFile) : '';
+        const docComment = nameNodes.length > 0 ? getJsDoc(docHostOf(node), sourceFile) : '';
+        for (const nameNode of nameNodes) {
+          const name = nameNode.text;
+          const pos = nameNode.getStart(sourceFile);
+          const { line, character } = sourceFile.getLineAndCharacterOfPosition(pos);
+          const scope = scopeParts.join('.');
+          const text = [name, signature, docComment].filter(Boolean).join(' | ');
 
-        symbols.push({
-          id: 0,
-          lang,
-          kind,
-          name,
-          file,
-          line: line + 1,
-          col: character,
-          signature,
-          docComment,
-          scope,
-          text,
-        });
+          symbols.push({
+            id: 0,
+            lang,
+            kind,
+            name,
+            file,
+            line: line + 1,
+            col: character,
+            signature,
+            docComment,
+            scope,
+            text,
+          });
+        }
       }
     }
 
@@ -239,6 +306,13 @@ export async function parseSymbols(opts: ParseOptions): Promise<FileSymbols> {
       const expr = node.expression;
       if (ts.isIdentifier(expr)) {
         refs.push({ fromId: 0, toName: expr.text, callType: 'call', line: lineNum });
+      }
+    } else if (ts.isNewExpression(node)) {
+      // `new Store()` is a use of the class like any call. Without it a class
+      // constructed only in its own file had no incoming edge at all (other
+      // languages already emit object creation as a call).
+      if (ts.isIdentifier(node.expression)) {
+        refs.push({ fromId: 0, toName: node.expression.text, callType: 'call', line: lineNum });
       }
     } else if (ts.isPropertyAccessExpression(node)) {
       if (ts.isIdentifier(node.expression)) {

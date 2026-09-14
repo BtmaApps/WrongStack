@@ -1,7 +1,6 @@
 import { expectDefined } from '@wrongstack/core/utils';
 import { type Bm25Index, tokenise } from './bm25.js';
-import { lspKindToInternalKind } from './lsp-kind.js';
-import type { SearchResult, SymbolKind } from './schema.js';
+import type { SearchResult } from './schema.js';
 import {
   cosineSimilarity,
   decodeVector,
@@ -13,6 +12,7 @@ import {
   buildWriterSearchWhere,
   mapWriterSearchRow,
   normalizeSearchLimit,
+  resolveKindFilter,
   SEARCH_CANDIDATE_SCAN_CAP,
   type WriterSearchFilter,
   type WriterSearchRow,
@@ -83,15 +83,10 @@ export function searchRankedWithStatement(
     );
   }
 
-  let effectiveKind: SymbolKind | undefined = filter?.kind;
-  // `!= null` (not `!== undefined`): a MessagePack wire client encodes a
-  // missing lspKind as nil, which arrives here as null. Absent and null mean
-  // the same thing — no LSP-kind filter.
-  if (filter?.lspKind != null) {
-    const mapped = lspKindToInternalKind(filter.lspKind);
-    if (mapped === null) return { results: [], total: 0 };
-    effectiveKind = mapped;
-  }
+  // Same kind/lspKind resolution as the LIKE path (null-safe for MessagePack
+  // clients that encode a missing lspKind as nil).
+  const kinds = resolveKindFilter(filter);
+  if (kinds === null) return { results: [], total: 0 };
 
   const longTokens = tokens.filter((t) => t.length >= 3);
   const shortTokens = tokens.filter((t) => t.length < 3);
@@ -120,9 +115,9 @@ export function searchRankedWithStatement(
     );
     values.push(like, like, like);
   }
-  if (effectiveKind) {
-    conditions.push('s.kind = ?');
-    values.push(effectiveKind);
+  if (kinds !== undefined) {
+    conditions.push(`s.kind IN (${kinds.map(() => '?').join(', ')})`);
+    values.push(...kinds);
   }
   if (filter?.lang) {
     conditions.push('s.lang = ?');
@@ -184,12 +179,21 @@ export function searchRankedWithStatement(
       `SELECT sv.symbol_id, sv.vector FROM symbol_vectors sv WHERE sv.symbol_id IN (${placeholders})`,
     ).all(...candidateIds) as { symbol_id: number; vector: Buffer }[];
 
-    const vecScores: Array<{ id: number; sim: number }> = vecRows
-      .map((r) => ({
-        id: r.symbol_id,
-        sim: cosineSimilarity(queryVec, decodeVector(r.vector)),
-      }))
-      .sort((a, b) => b.sim - a.sim);
+    // A corrupt vector blob (decodeVector throws on a non-multiple-of-4
+    // length) used to fail the WHOLE search; it now only loses that symbol's
+    // vector rank, and the row keeps its BM25 rank.
+    const vecScores: Array<{ id: number; sim: number }> = [];
+    for (const r of vecRows) {
+      try {
+        vecScores.push({
+          id: r.symbol_id,
+          sim: cosineSimilarity(queryVec, decodeVector(r.vector)),
+        });
+      } catch {
+        /* skip the unreadable vector */
+      }
+    }
+    vecScores.sort((a, b) => b.sim - a.sim);
 
     const bm25Rank = new Map<number, number>();
     bm25Rows.forEach((r, i) => {

@@ -2,14 +2,14 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { deadCodeScanTool } from '../src/codebase-index/dead-code-scan.js';
+import { indexStorePool } from '../src/codebase-index/writer.js';
 import {
   codebaseAstReplaceTool,
   codebaseInvariantCheckTool,
   codebaseSkeletonTool,
   securityAstScanTool,
 } from '../src/index.js';
-import { deadCodeScanTool } from '../src/codebase-index/dead-code-scan.js';
-import { indexStorePool } from '../src/codebase-index/writer.js';
 
 // H-5/H-6 (security report VF-06/VF-07): the four codebase tools that resolved
 // input paths with a bare `path.isAbsolute(input…) ? input : resolve(root, …)`

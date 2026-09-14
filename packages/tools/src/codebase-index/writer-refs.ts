@@ -147,12 +147,44 @@ export function resolveRefsWithStatement(
   }
 }
 
+/**
+ * Importer files holding an import ref whose `to_file` is no longer indexed —
+ * the target was deleted or renamed. A watcher run only re-resolves the files
+ * it touched, and the importer of a deleted file is not one of them, so these
+ * are added to its scope; otherwise the edge to the missing file survives.
+ */
+export function getFilesWithDanglingImportsWithStatement(
+  stmtFn: (sql: string) => { all: () => unknown[] },
+): string[] {
+  return (
+    stmtFn(
+      `SELECT DISTINCT s.file AS file
+         FROM refs r
+         JOIN symbols s ON s.id = r.from_id
+        WHERE r.call_type = 'import'
+          AND r.to_file IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM files f WHERE f.file = r.to_file)`,
+    ).all() as Array<{ file: string }>
+  ).map((row) => row.file);
+}
+
+/**
+ * Write module-resolution results. `toFile: null` records "re-resolved, no
+ * target": it CLEARS a previous `to_file`. Only resolved entries used to be
+ * written, so an import whose target had since been deleted kept pointing at
+ * it through every later run, full reindex included.
+ */
 export function applyImportResolutionsWithStatement(
   db: { exec: (sql: string) => unknown },
-  stmtFn: (sql: string) => { run: (...args: string[]) => unknown },
+  stmtFn: (sql: string) => { run: (...args: (string | null)[]) => unknown },
   runWithRetry: <T>(fn: () => T) => T,
   maxSqlVars: number,
-  resolutions: ReadonlyArray<{ fromFile: string; lang: string; module: string; toFile: string }>,
+  resolutions: ReadonlyArray<{
+    fromFile: string;
+    lang: string;
+    module: string;
+    toFile: string | null;
+  }>,
 ): number {
   if (resolutions.length === 0) return 0;
   return runWithRetry(() => {
@@ -162,7 +194,7 @@ export function applyImportResolutionsWithStatement(
          from_file TEXT NOT NULL,
          lang TEXT NOT NULL,
          module TEXT NOT NULL,
-         to_file TEXT NOT NULL
+         to_file TEXT
        )`,
     );
     const chunkSize = Math.max(1, Math.floor(maxSqlVars / 4));
@@ -173,7 +205,7 @@ export function applyImportResolutionsWithStatement(
       const chunk = resolutions.slice(cursor, cursor + take);
       cursor += take;
       const valuesPh = chunk.map(() => '(?, ?, ?, ?)').join(', ');
-      const binds: string[] = [];
+      const binds: (string | null)[] = [];
       for (const entry of chunk) {
         binds.push(entry.fromFile, entry.lang, entry.module, entry.toFile);
       }

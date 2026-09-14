@@ -11,8 +11,61 @@
  * watcher run, which is what {@link shouldRefreshRanks} arbitrates.
  */
 
+import * as path from 'node:path';
 import { aggregateFileRank, buildWiringGraph, pageRank, toSymbolRankRows } from './graph-rank.js';
+import { detectLang, languageFamily } from './languages.js';
 import type { IndexStore } from './writer.js';
+
+/**
+ * Families whose files see every declaration of their own directory without
+ * an import: a Go package, a Java/Kotlin package, a C# namespace folder, a
+ * Swift module.
+ */
+const DIRECTORY_SCOPED_FAMILIES: ReadonlySet<string> = new Set(['go', 'jvm', 'dotnet', 'swift']);
+
+/** Families whose import names a directory, resolved to one representative file. */
+const DIRECTORY_IMPORT_FAMILIES: ReadonlySet<string> = new Set(['go', 'jvm']);
+
+function familyOf(file: string): string | undefined {
+  const lang = detectLang(file);
+  return lang ? languageFamily(lang) : undefined;
+}
+
+/**
+ * Build the `implicitlyVisible` predicate for one rank pass.
+ *
+ * Without it every same-package Go/Java/C# reference — code that needs no
+ * import by the language's own rules — was scored as a contradicted
+ * misresolution (weight 0.02), as was every call into a Go package other than
+ * the one file the resolver picked to represent it. Centrality for those
+ * languages was computed on a graph with its package-internal wiring erased.
+ */
+export function createImplicitVisibility(): (
+  sourceFile: string,
+  targetFile: string,
+  imports: ReadonlySet<string> | undefined,
+) => boolean {
+  const importedDirs = new WeakMap<ReadonlySet<string>, Set<string>>();
+  return (sourceFile, targetFile, imports) => {
+    const family = familyOf(targetFile);
+    if (family === undefined) return false;
+    const targetDir = path.dirname(targetFile);
+    if (
+      DIRECTORY_SCOPED_FAMILIES.has(family) &&
+      path.dirname(sourceFile) === targetDir &&
+      familyOf(sourceFile) === family
+    ) {
+      return true;
+    }
+    if (imports === undefined || !DIRECTORY_IMPORT_FAMILIES.has(family)) return false;
+    let dirs = importedDirs.get(imports);
+    if (dirs === undefined) {
+      dirs = new Set([...imports].map((file) => path.dirname(file)));
+      importedDirs.set(imports, dirs);
+    }
+    return dirs.has(targetDir);
+  };
+}
 
 /**
  * Data-version marker for the rank layer, in the same spirit as
@@ -70,6 +123,7 @@ export function runGraphRankPass(store: IndexStore, errors: string[]): RankPassR
       candidates: store.getSymbolNameCandidates(),
       fileOf,
       importsOf: store.getImportVisibility(),
+      implicitlyVisible: createImplicitVisibility(),
     });
     const scores = pageRank(graph);
     const symbolRows = toSymbolRankRows(graph, scores);

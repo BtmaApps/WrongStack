@@ -82,8 +82,10 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
         description: 'Only include exported/public declarations (defaults to false).',
       },
       maxFiles: {
-        type: 'number',
+        type: 'integer',
         description: 'Max files to include if path is a directory (defaults to 20, max 50).',
+        minimum: 1,
+        maximum: 50,
       },
     },
     required: ['path'],
@@ -118,7 +120,9 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
     };
 
     if (stat.isDirectory()) {
-      const maxFiles = Math.min(Math.max(1, input.maxFiles ?? 20), 50);
+      // Math.max/min propagate NaN, which made the directory walk stop at 0 files.
+      const requested = Number.isFinite(input.maxFiles) ? Math.trunc(input.maxFiles as number) : 20;
+      const maxFiles = Math.min(Math.max(1, requested), 50);
       const dirResult = await extractDirectorySkeleton({
         dirPath: targetPath,
         maxFiles,

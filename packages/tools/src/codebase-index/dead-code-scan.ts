@@ -197,7 +197,10 @@ function resolveAgainst(base: string, relative: string): string {
 /**
  * Walk the workspace and discover entry-point files from package.json(s).
  */
-function discoverEntryPoints(projectRoot: string, userEntryPoints: string[] | undefined): string[] {
+export function discoverEntryPoints(
+  projectRoot: string,
+  userEntryPoints: string[] | undefined,
+): string[] {
   const entries = new Set<string>();
 
   // 1. User-provided entry points.
@@ -373,21 +376,27 @@ function addPkgJsonEntryPoints(
     }
   }
 
-  // exports
-  const exports_ = pkg.exports;
-  if (exports_ && typeof exports_ === 'object') {
-    for (const value of Object.values(exports_ as Record<string, unknown>)) {
-      if (typeof value === 'string') {
-        tryAddEntryPath(pkgDir, value, entries);
-      } else if (value && typeof value === 'object') {
-        // Nested export condition: { "import": "./dist/foo.js", "types": ... }
-        for (const nested of Object.values(value as Record<string, unknown>)) {
-          if (typeof nested === 'string') {
-            tryAddEntryPath(pkgDir, nested, entries);
-          }
-        }
-      }
-    }
+  // exports — every target string at any depth. The sugar form
+  // (`"exports": "./dist/index.js"`) is a bare string, and conditions nest
+  // (`{".": {"import": {"types": …, "default": …}}}`); reading only one object
+  // level missed both, leaving those packages with no seed at all.
+  const targets: string[] = [];
+  collectExportTargets(pkg.exports, targets, 0);
+  for (const target of targets) tryAddEntryPath(pkgDir, target, entries);
+}
+
+function collectExportTargets(value: unknown, out: string[], depth: number): void {
+  if (depth > 8) return;
+  if (typeof value === 'string') {
+    out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectExportTargets(item, out, depth + 1);
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectExportTargets(item, out, depth + 1);
   }
 }
 
@@ -414,8 +423,14 @@ function expandGlobPattern(entry: string, projectRoot: string): string[] {
 
 function extractWorkspaceGlobs(pkg: Record<string, unknown>, projectRoot: string): string[] {
   const dirs: string[] = [];
-  const workspaces = pkg.workspaces;
-  if (Array.isArray(workspaces)) {
+  // Yarn also accepts `"workspaces": { "packages": [...], "nohoist": [...] }`.
+  const raw = pkg.workspaces;
+  const workspaces = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { packages?: unknown }).packages)
+      ? (raw as { packages: unknown[] }).packages
+      : undefined;
+  if (workspaces) {
     for (const entry of workspaces) {
       if (typeof entry === 'string') {
         dirs.push(...expandGlobPattern(entry, projectRoot));
@@ -483,13 +498,30 @@ function extractPnpmWorkspaceDirs(projectRoot: string): string[] {
 
 // ─── BFS reachability scan ────────────────────────────────────────────────
 
+/** Languages whose symbols are data or prose; they can never be dead code. */
+const NON_CODE_LANGS: ReadonlySet<SymbolLang> = new Set(['json', 'yaml', 'toml', 'md']);
+
 interface SymbolRow {
   id: number;
   name: string;
   file: string;
   kind: string;
   line: number;
+  scope: string;
 }
+
+/**
+ * Languages whose parser records `obj.method()` by its receiver, not the
+ * member name (resolving `.get`/`.map` by name alone would invent edges).
+ * A member of a live declaration there has no edge of its own, so every
+ * instance method was reported dead while its class was plainly in use.
+ */
+const RECEIVER_ONLY_MEMBER_CALL_LANGS: ReadonlySet<SymbolLang> = new Set([
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+]);
 
 /**
  * Try to resolve a relative module specifier (e.g. './foo', '../bar/index.js')
@@ -703,14 +735,38 @@ export function runDeadCodeScan(
     const symbolsByFile = new Map<string, SymbolRow[]>();
     const usedFiles = new Set<string>();
 
+    // Dotted scope paths of live declarations, per file ("Store", "Outer.Inner").
+    const liveScopesByFile = new Map<string, Set<string>>();
     for (const s of allSymbols) {
-      if (alive.has(s.id)) {
+      if (!alive.has(s.id)) continue;
+      const scopePath = s.scope ? `${s.scope}.${s.name}` : s.name;
+      let scopes = liveScopesByFile.get(s.file);
+      if (!scopes) {
+        scopes = new Set();
+        liveScopesByFile.set(s.file, scopes);
+      }
+      scopes.add(scopePath);
+    }
+    const isMemberOfLiveDeclaration = (s: SymbolRow): boolean => {
+      if (!s.scope) return false;
+      const lang = detectLang(s.file);
+      if (lang === null || !RECEIVER_ONLY_MEMBER_CALL_LANGS.has(lang)) return false;
+      return liveScopesByFile.get(s.file)?.has(s.scope) ?? false;
+    };
+
+    for (const s of allSymbols) {
+      if (alive.has(s.id) || isMemberOfLiveDeclaration(s)) {
         usedFiles.add(s.file);
         continue;
       }
       // Only report symbols that are exported or could be externally relevant.
       // Skip pure-internal things like parameters, local vars that can't be "dead".
       if (s.kind === 'parameter') continue;
+      // Keys of manifests, config and docs are read by tools and humans, never
+      // referenced from code: listing `package.json` fields as dead code was
+      // pure noise that buried the real findings.
+      const symbolLang = detectLang(s.file);
+      if (symbolLang !== null && NON_CODE_LANGS.has(symbolLang)) continue;
       if (s.kind === 'let' || s.kind === 'var') {
         // Local variables are only dead if the whole file is dead — handled by deadFiles.
         continue;
@@ -737,15 +793,10 @@ export function runDeadCodeScan(
     // Phase 5: classify dead files (all their symbols are dead).
     const deadFiles: DeadFile[] = [];
     for (const [file, syms] of symbolsByFile) {
-      // Check if any symbol from this file is alive.
-      let anyAlive = false;
-      for (const s of allSymbols) {
-        if (s.file === file && alive.has(s.id)) {
-          anyAlive = true;
-          break;
-        }
-      }
-      if (!anyAlive) {
+      // `usedFiles` already holds every file with an alive symbol. Rescanning
+      // the whole symbol list per file was O(files × symbols) — hundreds of
+      // millions of comparisons on a large repository, against a 60 s budget.
+      if (!usedFiles.has(file)) {
         deadFiles.push({
           file,
           symbolCount: syms.length,

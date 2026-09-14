@@ -11,10 +11,12 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { spawnStream } from '../_spawn-stream.js';
-import { normalizeCommandOutput } from '../_util.js';
+import { normalizeCommandOutput, safeResolveProjectPath } from '../_util.js';
 import { incomingCallsService } from './background-indexer.js';
+import { isTestFilePath } from './codebase-impact-analysis-tool.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
 export interface TargetedTestInput {
@@ -40,7 +42,28 @@ export interface TargetedTestOutput {
 
 export type CodebaseTargetedTestOutput = TargetedTestOutput;
 
-const TEST_FILE_REGEX = /(?:test|spec|mock|fixture|bench)[s]?[/\\._]/i;
+/**
+ * Pull pass/fail counts out of a runner's (ANSI-stripped) output.
+ *
+ * Vitest prints `Test Files  1 passed (1)` BEFORE `Tests  5 passed (5)`; the
+ * old first-match regex reported the suite count as the test count. Scope to
+ * the vitest `Tests` summary line when present, otherwise take the LAST
+ * summary (pytest prints `== 3 passed, 1 failed in 0.2s ==` at the end).
+ * Returns null when no counts are printed (e.g. `go test`).
+ */
+export function parseTestCounts(output: string): { passed: number; failed: number } | null {
+  const vitestLine = output.match(/^\s*Tests\s+(.+)$/m)?.[1];
+  const scope = vitestLine ?? output;
+  const last = (re: RegExp): number | undefined => {
+    let value: number | undefined;
+    for (const m of scope.matchAll(re)) value = Number(m[1]);
+    return value;
+  };
+  const passed = last(/(\d+)\s+passed/gi);
+  const failed = last(/(\d+)\s+failed/gi);
+  if (passed === undefined && failed === undefined) return null;
+  return { passed: passed ?? 0, failed: failed ?? 0 };
+}
 
 /**
  * Locate candidate test files matching a source file path using common conventions.
@@ -75,6 +98,53 @@ async function findConventionTestFiles(
     }
   }
   return found;
+}
+
+/** Call-graph discovery could not run and nothing else found a suite. */
+class IndexDiscoveryError extends Error {
+  override name = 'IndexDiscoveryError';
+}
+
+/**
+ * Pick the runner for the discovered suites.
+ *
+ * - `go test` takes PACKAGES: handed `pkg/foo_test.go` it compiles that one
+ *   file without the package's sources and fails on every undefined symbol.
+ * - A jest project was run with `npx vitest run`, which is not installed there.
+ * - Suites of different runners cannot share one command line; the old
+ *   fallback handed `.py` files to vitest.
+ */
+export async function selectTestRunner(
+  projectRoot: string,
+  suites: readonly string[],
+): Promise<{ cmd: string; args: string[] }> {
+  const runnerOf = (suite: string): 'go' | 'pytest' | 'js' =>
+    suite.endsWith('_test.go') ? 'go' : suite.endsWith('.py') ? 'pytest' : 'js';
+  const runners = new Set(suites.map(runnerOf));
+  if (runners.size > 1) {
+    throw new ToolValidationError({
+      message: `codebase-targeted-test: the suites need different runners (${[...runners].join(', ')}): ${suites.join(', ')}. Run each language's suites in a separate call.`,
+      field: 'testFiles',
+    });
+  }
+  const runner = runners.values().next().value;
+  if (runner === 'go') {
+    const packages = [...new Set(suites.map((s) => `./${path.posix.dirname(s)}`))];
+    return { cmd: 'go', args: ['test', ...packages.map((p) => (p === './.' ? '.' : p))] };
+  }
+  if (runner === 'pytest') return { cmd: 'pytest', args: [...suites] };
+  return { cmd: 'npx', args: [...(await jsRunnerArgs(projectRoot)), ...suites] };
+}
+
+async function jsRunnerArgs(projectRoot: string): Promise<string[]> {
+  try {
+    const manifest = JSON.parse(await fs.readFile(path.join(projectRoot, 'package.json'), 'utf8'));
+    const deps = { ...manifest?.dependencies, ...manifest?.devDependencies };
+    if ('jest' in deps && !('vitest' in deps)) return ['jest'];
+  } catch {
+    // No readable manifest: vitest stays the default.
+  }
+  return ['vitest', 'run'];
 }
 
 export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutput> = {
@@ -117,20 +187,58 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
     const suitesSet = new Set<string>();
 
+    // Suite paths become runner ARGV. A `-`-prefixed entry was a flag
+    // (`--config=…`, `--reporter=…`) and an absolute/`../` path ran code
+    // outside the project; both are validated before anything spawns.
+    const toProjectRelative = async (raw: string, field: string): Promise<string> => {
+      if (typeof raw !== 'string' || !raw.trim() || raw.trim().startsWith('-')) {
+        throw new ToolValidationError({
+          message: `codebase-targeted-test: invalid path ${JSON.stringify(raw)} — expected a project file path, not a flag.`,
+          field,
+        });
+      }
+      const resolved = await safeResolveProjectPath(raw.trim(), ctx);
+      return path.relative(projectRoot, resolved).replace(/\\/g, '/');
+    };
+    const explicitSuites: string[] = [];
+    if (input.testFiles !== undefined) {
+      if (!Array.isArray(input.testFiles)) {
+        throw new ToolValidationError({
+          message: 'codebase-targeted-test: testFiles must be an array of file paths.',
+          field: 'testFiles',
+        });
+      }
+      for (const tf of input.testFiles)
+        explicitSuites.push(await toProjectRelative(tf, 'testFiles'));
+    }
+    const sourceFile =
+      input.file !== undefined ? await toProjectRelative(input.file, 'file') : undefined;
+    if (explicitSuites.length === 0 && !input.symbol?.trim() && sourceFile === undefined) {
+      throw new ToolValidationError({
+        message: 'codebase-targeted-test: pass at least one of `symbol`, `file`, or `testFiles`.',
+        field: 'symbol',
+      });
+    }
+
+    const symbol = input.symbol?.trim();
+    // Why call-graph discovery failed, if it did. Discovery stays best-effort
+    // while conventions still find suites, but "no_tests_found" on top of an
+    // unreadable index told the agent the change was untested when the index
+    // simply could not answer.
+    let discoveryError: unknown;
+
     try {
       // 1. Explicit test files
-      if (input.testFiles) {
-        for (const tf of input.testFiles) suitesSet.add(tf.replace(/\\/g, '/'));
-      }
+      for (const tf of explicitSuites) suitesSet.add(tf);
 
       // 2. Discover from symbol call-graph
-      if (input.symbol) {
+      if (symbol) {
         try {
           const indexDir = codebaseIndexDirOverride(ctx);
           const serviced = await incomingCallsService({
             projectRoot,
             indexDir,
-            symbol: input.symbol,
+            symbol,
             file: input.file,
             limit: 100,
             transitive: true,
@@ -138,24 +246,33 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
 
           for (const site of serviced.calls) {
             const relPath = path.relative(projectRoot, site.symbol.file).replace(/\\/g, '/');
-            if (TEST_FILE_REGEX.test(relPath)) {
+            // Never hand a path outside the project to the runner.
+            if (relPath.startsWith('../') || path.isAbsolute(relPath)) continue;
+            if (isTestFilePath(relPath)) {
               suitesSet.add(relPath);
             }
           }
-        } catch {
+        } catch (err) {
           // Index might not be ready, continue to conventions
+          discoveryError = err;
         }
       }
 
       // 3. Discover from file convention
-      if (input.file) {
-        const convFiles = await findConventionTestFiles(projectRoot, input.file);
+      if (sourceFile !== undefined) {
+        const convFiles = await findConventionTestFiles(projectRoot, sourceFile);
         for (const cf of convFiles) suitesSet.add(cf);
       }
 
       const discoveredSuites = [...suitesSet];
 
       if (discoveredSuites.length === 0) {
+        if (discoveryError !== undefined) {
+          throw new IndexDiscoveryError(
+            `Could not discover tests for '${symbol}': the codebase index query failed (${toErrorMessage(discoveryError)}). Run codebase-index, or pass \`file\`/\`testFiles\`.`,
+            { cause: discoveryError },
+          );
+        }
         return {
           status: 'no_tests_found',
           discoveredSuites: [],
@@ -170,18 +287,10 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
       // 4. Run the targeted tests
       const start = Date.now();
 
-      // Check package.json to see test runner
-      let runnerCmd = 'npx';
-      let runnerArgs: string[] = ['vitest', 'run', ...discoveredSuites];
-
-      // Detect Python / Go if all suites are py / go
-      if (discoveredSuites.every((s) => s.endsWith('.py'))) {
-        runnerCmd = 'pytest';
-        runnerArgs = discoveredSuites;
-      } else if (discoveredSuites.every((s) => s.endsWith('_test.go'))) {
-        runnerCmd = 'go';
-        runnerArgs = ['test', ...discoveredSuites];
-      }
+      const { cmd: runnerCmd, args: runnerArgs } = await selectTestRunner(
+        projectRoot,
+        discoveredSuites,
+      );
 
       const signal = execOpts?.signal ?? ctx.signal ?? new AbortController().signal;
       const gen = spawnStream({
@@ -199,23 +308,18 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
       const streamRes = genResult.value;
 
       const durationMs = Date.now() - start;
-      const combinedOutput = normalizeCommandOutput(
-        `${streamRes.stdout}\n${streamRes.stderr}`.trim(),
-        { maxBytes: 4000 },
-      );
+      const rawOutput = `${streamRes.stdout}\n${streamRes.stderr}`.trim();
+      const combinedOutput = normalizeCommandOutput(rawOutput, { maxBytes: 4000 });
 
       const isPassed = streamRes.exitCode === 0;
 
-      // Extract basic test numbers if possible
-      const passMatch = combinedOutput.match(/(\d+)\s+passed/i);
-      const failMatch = combinedOutput.match(/(\d+)\s+failed/i);
-
-      const passed = passMatch
-        ? parseInt(passMatch[1] ?? '0', 10)
-        : isPassed
-          ? discoveredSuites.length
-          : 0;
-      const failed = failMatch ? parseInt(failMatch[1] ?? '0', 10) : isPassed ? 0 : 1;
+      // Count from the UNTRUNCATED output: the runner summary sits at the
+      // end, exactly where the 4 KB head/tail cut can land.
+      const counts = parseTestCounts(
+        normalizeCommandOutput(rawOutput, { maxBytes: Number.MAX_SAFE_INTEGER }),
+      );
+      const passed = counts ? counts.passed : isPassed ? discoveredSuites.length : 0;
+      const failed = counts ? counts.failed : isPassed ? 0 : 1;
       const testsRun = passed + failed;
 
       return {
@@ -228,6 +332,7 @@ export const codebaseTargetedTestTool: Tool<TargetedTestInput, TargetedTestOutpu
         output: combinedOutput,
       };
     } catch (err) {
+      if (err instanceof IndexDiscoveryError || err instanceof ToolValidationError) throw err;
       // THROW, don't return `status: 'error'` — a returned payload is a
       // successful call to the executor (is_error:false, UI shows "ok").
       // A red test run is data ('failed'); a runner that could not start is not.

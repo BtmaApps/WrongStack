@@ -28,7 +28,9 @@ export function buildCodebaseReindexCommand(opts: SlashCommandContext): SlashCom
       'refresh — e.g. after a large branch switch, merge, or external edit.',
     ].join('\n'),
     async run(args: string, _ctx: Context) {
-      const force = /\b(force|--force|-f)\b/.test(args.trim());
+      // Token-delimited, not `\b`: there is no word boundary before `-`, so
+      // `\b(-f)\b` never matched and `/codebase-reindex -f` ran incrementally.
+      const force = /(^|\s)(force|--force|-f)(\s|$)/.test(args.trim());
 
       opts.renderer.write(color.dim(`${force ? 'Rebuilding' : 'Reindexing'} codebase index…\n`));
 
@@ -38,10 +40,20 @@ export function buildCodebaseReindexCommand(opts: SlashCommandContext): SlashCom
         // run is admitted instead of failing fast.
         resetIndexCircuitBreaker();
         const r = await runStartupIndex({ projectRoot: opts.projectRoot, force });
+        // `filesIndexed` counts only files parsed this run, so an incremental
+        // run over an unchanged tree read "0 files". Report the outcome split.
+        const outcomes = r.fileOutcomes;
+        const fileSummary = outcomes
+          ? `${outcomes.parsed} parsed · ${outcomes.skipped} unchanged` +
+            (outcomes.failed > 0 ? ` · ${outcomes.failed} failed` : '')
+          : `${r.filesIndexed} files`;
         const summary =
-          `${color.green('✓')} codebase index ${force ? 'rebuilt' : 'updated'} ` +
-          color.dim(`— ${r.symbolsIndexed} symbols · ${r.filesIndexed} files · ${r.durationMs}ms`) +
-          (r.errors.length ? `\n${color.yellow(`  ${r.errors.length} file(s) had errors`)}` : '');
+          `${color.green('✓')} codebase index ${force || r.autoRecovered ? 'rebuilt' : 'updated'} ` +
+          color.dim(`— ${r.symbolsIndexed} symbols · ${fileSummary} · ${r.durationMs}ms`) +
+          (r.autoRecovered
+            ? `\n${color.yellow('  corrupt index detected — rebuilt from scratch')}`
+            : '') +
+          (r.errors.length ? `\n${color.yellow(`  ${r.errors.length} error(s) reported`)}` : '');
         return { message: summary };
       } catch (err) {
         const msg = `${color.red('Codebase reindex failed:')} ${toErrorMessage(err)}`;

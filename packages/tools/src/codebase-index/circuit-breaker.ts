@@ -127,6 +127,16 @@ export class IndexCircuitBreaker {
     }
   }
 
+  /**
+   * Release a probe that ended without a verdict (the caller aborted it).
+   * Neither success nor failure is recorded, but a half-open circuit must be
+   * able to admit the next probe — otherwise it refuses every request until a
+   * manual reset.
+   */
+  abandonProbe(): void {
+    this.probeInFlight = false;
+  }
+
   /** Force-close the circuit (manual recovery: `/codebase-reindex`). */
   reset(): void {
     this.state = 'closed';

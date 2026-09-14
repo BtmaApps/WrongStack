@@ -44,22 +44,145 @@ interface RustPattern {
   kind: IndexSymbol['kind'];
 }
 
+/**
+ * Declaration patterns, run over {@link maskRustNonCode} output so a keyword in
+ * a comment or string never produces a symbol. Previously:
+ *  - `fn\s+(\w+)\s*\(` required `(` right after the name, so every generic
+ *    function (`fn parse<T>(…)`) was missing from the index;
+ *  - `static\s+(\w+)` matched the lifetime in `&'static str`, indexing a
+ *    `static` named `str` for nearly every string-typed signature;
+ *  - `const\s+(\w+)` indexed `const fn new()` as a const named `fn`;
+ *  - `impl` in return position (`-> impl Iterator`) became an impl symbol.
+ */
+// `d` (match indices) locates the captured name exactly, whatever precedes or
+// follows it in the match.
 const RS_PATTERNS: RustPattern[] = [
-  { regex: /fn\s+(\w+)\s*\([^)]*\)/g, kind: 'function' },
-  { regex: /struct\s+(\w+)/g, kind: 'struct' },
-  { regex: /enum\s+(\w+)/g, kind: 'enum' },
-  { regex: /trait\s+(\w+)/g, kind: 'trait' },
-  { regex: /impl\s+(?:<[^>]+>)?(\w+)/g, kind: 'impl' },
-  { regex: /type\s+(\w+)\s*=/g, kind: 'type' },
-  { regex: /const\s+(\w+)/g, kind: 'const' },
-  { regex: /static\s+(\w+)/g, kind: 'static' },
-  { regex: /mod\s+(\w+)/g, kind: 'mod' },
+  { regex: /\bfn\s+(\w+)\s*[<(]/dg, kind: 'function' },
+  { regex: /\bstruct\s+(\w+)/dg, kind: 'struct' },
+  { regex: /\benum\s+(\w+)/dg, kind: 'enum' },
+  { regex: /\btrait\s+(\w+)/dg, kind: 'trait' },
+  {
+    // Item position only (line start, optional `unsafe`); generic parameter
+    // lists may nest one level (`impl<T: Into<String>> Foo`).
+    regex:
+      /^[ \t]*(?:unsafe\s+)?impl\b\s*(?:<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?\s*(?:[\w]+::)*(\w+)/dgm,
+    kind: 'impl',
+  },
+  { regex: /\btype\s+(\w+)\s*(?:<[^=;]*>)?\s*=/dg, kind: 'type' },
+  { regex: /(?<![\w'])const\s+(?!(?:fn|unsafe|extern|async)\b)(\w+)\s*:/dg, kind: 'const' },
+  { regex: /(?<![\w'])static\s+(?:mut\s+)?(\w+)\s*:/dg, kind: 'static' },
+  { regex: /\bmod\s+(\w+)\s*[;{]/dg, kind: 'mod' },
 ];
+
+/**
+ * Replace comments and string/char literal contents with spaces, keeping every
+ * offset and newline intact so match positions map straight back to the
+ * original source. Quote characters survive, so the lifetime guard
+ * (`'static`) still sees its apostrophe.
+ */
+export function maskRustNonCode(src: string): string {
+  const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i] as string;
+    const next = src[i + 1];
+    if (c === '/' && next === '/') {
+      const newline = src.indexOf('\n', i);
+      const stop = newline === -1 ? n : newline;
+      out += blank(src.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      // Rust block comments nest.
+      let depth = 1;
+      let j = i + 2;
+      while (j < n && depth > 0) {
+        if (src[j] === '/' && src[j + 1] === '*') {
+          depth++;
+          j += 2;
+        } else if (src[j] === '*' && src[j + 1] === '/') {
+          depth--;
+          j += 2;
+        } else {
+          j++;
+        }
+      }
+      out += blank(src.slice(i, j));
+      i = j;
+      continue;
+    }
+    const prev = src[i - 1] ?? '';
+    const rawPrefixOk = !/\w/.test(prev) || (prev === 'b' && !/\w/.test(src[i - 2] ?? ''));
+    if (c === 'r' && (next === '"' || next === '#') && rawPrefixOk) {
+      let j = i + 1;
+      let hashes = 0;
+      while (src[j] === '#') {
+        hashes++;
+        j++;
+      }
+      if (src[j] === '"') {
+        const closer = `"${'#'.repeat(hashes)}`;
+        const end = src.indexOf(closer, j + 1);
+        const stop = end === -1 ? n : end + closer.length;
+        out += `r${blank(src.slice(i + 1, stop))}`;
+        i = stop;
+        continue;
+      }
+    }
+    if (c === '"') {
+      let j = i + 1;
+      while (j < n && src[j] !== '"') j += src[j] === '\\' ? 2 : 1;
+      if (j >= n) {
+        out += `"${blank(src.slice(i + 1, n))}`;
+        i = n;
+      } else {
+        out += `"${blank(src.slice(i + 1, j))}"`;
+        i = j + 1;
+      }
+      continue;
+    }
+    if (c === "'") {
+      // Char literal (`'"'`, `'\n'`, `'\u{1F600}'`) vs lifetime (`'a`).
+      let end = -1;
+      if (next === '\\') {
+        const close = src.indexOf("'", i + 2);
+        if (close !== -1 && close - i <= 12) end = close;
+      } else if (next !== undefined) {
+        const width = (src.codePointAt(i + 1) ?? 0) > 0xffff ? 2 : 1;
+        if (src[i + 1 + width] === "'") end = i + 1 + width;
+      }
+      if (end !== -1) {
+        out += `'${blank(src.slice(i + 1, end))}'`;
+        i = end + 1;
+        continue;
+      }
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/** First line of the `///` doc block directly above `lineIdx` (attributes skipped). */
+function rustDocAbove(lines: readonly string[], lineIdx: number): string {
+  const doc: string[] = [];
+  for (let i = lineIdx - 1; i >= 0; i--) {
+    const trimmed = (lines[i] ?? '').trim();
+    if (trimmed.startsWith('///')) doc.unshift(trimmed.slice(3).trim());
+    else if (trimmed.startsWith('#[')) continue;
+    else break;
+  }
+  return (doc.find((line) => line.length > 0) ?? '').slice(0, 200);
+}
 
 function regexParse(opts: { file: string; content: string; lang: SymbolLang }): FileSymbols {
   const { file, content, lang } = opts;
   const symbols: IndexSymbol[] = [];
   const lines = content.split('\n');
+  const code = maskRustNonCode(content);
 
   // Build line offset map
   const lineOffsets: number[] = [0];
@@ -85,17 +208,16 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
 
   for (const pattern of RS_PATTERNS) {
     pattern.regex.lastIndex = 0;
-    for (
-      let match = pattern.regex.exec(content);
-      match !== null;
-      match = pattern.regex.exec(content)
-    ) {
+    for (let match = pattern.regex.exec(code); match !== null; match = pattern.regex.exec(code)) {
       const name = expectDefined(match[1]);
-      const offset = match.index ?? 0;
+      // Anchor on the captured NAME, not the match start: a line-anchored
+      // pattern's match begins at the indentation.
+      const offset = match.indices?.[1]?.[0] ?? match.index ?? 0;
       const line = lineFromOffset(offset);
       const col = offset - (lineOffsets[line - 1] ?? 0);
       const lineIdx = line - 1;
       const signature = extractDeclaration(lineIdx, match);
+      const docComment = rustDocAbove(lines, lineIdx);
 
       symbols.push({
         id: 0,
@@ -106,9 +228,9 @@ function regexParse(opts: { file: string; content: string; lang: SymbolLang }): 
         line,
         col,
         signature,
-        docComment: '',
+        docComment,
         scope: '',
-        text: `${name} ${signature}`.trim(),
+        text: [name, signature, docComment].filter(Boolean).join(' ').trim(),
       });
     }
   }

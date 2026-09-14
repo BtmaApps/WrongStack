@@ -7,7 +7,10 @@
  * })
  */
 
+import * as path from 'node:path';
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
+import { safeResolveProjectPath } from '../_util.js';
 import { generateRepoMap, type RepoMapResult } from './repo-map.js';
 import { codebaseIndexDirOverride } from './writer.js';
 
@@ -17,6 +20,9 @@ export interface CodebaseRepoMapInput {
   /** Optional file paths to prioritize and boost in the map generation. */
   focusFiles?: string[] | undefined;
 }
+
+const MIN_MAP_TOKENS = 100;
+const MAX_MAP_TOKENS = 20_000;
 
 export interface CodebaseRepoMapOutput extends RepoMapResult {
   status: 'ok';
@@ -46,8 +52,10 @@ export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutp
     type: 'object',
     properties: {
       maxTokens: {
-        type: 'number',
-        description: 'Maximum token budget (approximate) for the map. Defaults to 1200.',
+        type: 'integer',
+        description: `Maximum token budget (approximate) for the map. Defaults to 1200, range ${MIN_MAP_TOKENS}-${MAX_MAP_TOKENS}.`,
+        minimum: MIN_MAP_TOKENS,
+        maximum: MAX_MAP_TOKENS,
       },
       focusFiles: {
         type: 'array',
@@ -61,10 +69,39 @@ export const codebaseRepoMapTool: Tool<CodebaseRepoMapInput, CodebaseRepoMapOutp
   // `status: 'error'` payload was recorded as a successful call).
   async execute(input, ctx) {
     const projectRoot = ctx.projectRoot ?? ctx.cwd ?? process.cwd();
+    // Unclamped, 0/negative produced an empty map and NaN a zero char budget;
+    // a huge value let one call flood the context window.
+    const maxTokens = Number.isFinite(input.maxTokens)
+      ? Math.min(Math.max(Math.trunc(input.maxTokens as number), MIN_MAP_TOKENS), MAX_MAP_TOKENS)
+      : undefined;
+    // Security: focus files are READ (skeleton extraction, whose fallback
+    // returns a file's full text) by an auto-permission tool, so an absolute or
+    // `../` entry disclosed arbitrary files without a prompt. Enforce the same
+    // realpath containment as codebase-skeleton before anything is opened.
+    let focusFiles: string[] | undefined;
+    if (input.focusFiles !== undefined) {
+      if (!Array.isArray(input.focusFiles)) {
+        throw new ToolValidationError({
+          message: 'codebase-repo-map: focusFiles must be an array of file paths.',
+          field: 'focusFiles',
+        });
+      }
+      focusFiles = [];
+      for (const file of input.focusFiles) {
+        if (typeof file !== 'string' || !file.trim()) {
+          throw new ToolValidationError({
+            message: 'codebase-repo-map: focusFiles entries must be non-empty file paths.',
+            field: 'focusFiles',
+          });
+        }
+        await safeResolveProjectPath(file.trim(), ctx);
+        focusFiles.push(path.resolve(projectRoot, file.trim()));
+      }
+    }
     const result = await generateRepoMap({
       projectRoot,
-      maxTokens: input.maxTokens,
-      focusFiles: input.focusFiles,
+      maxTokens,
+      focusFiles,
       // Honour a caller-supplied index location so the map reads the same
       // index the other codebase-* tools do.
       indexDir: codebaseIndexDirOverride(ctx),

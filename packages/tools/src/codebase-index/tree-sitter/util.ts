@@ -9,7 +9,12 @@
  * we have to translate into 1-based line + 0-based col ourselves.
  */
 
-/** 1-based {line, col} for a byte offset, using binary search over newline offsets. */
+/**
+ * 1-based line, 0-based col (the index schema's convention) for an offset,
+ * using binary search over newline offsets. The col used to be 1-based —
+ * `index - lastNl` counts the newline itself — so every tree-sitter symbol
+ * sat one column right of where every other parser puts it.
+ */
 export function lineColAt(
   offsets: readonly number[],
   index: number,
@@ -22,7 +27,7 @@ export function lineColAt(
     else high = mid;
   }
   const lastNl = low > 0 ? (offsets[low - 1] ?? -1) : -1;
-  return { line: low + 1, col: index - lastNl };
+  return { line: low + 1, col: index - lastNl - 1 };
 }
 
 /**

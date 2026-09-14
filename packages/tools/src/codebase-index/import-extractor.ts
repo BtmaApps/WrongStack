@@ -55,10 +55,12 @@ const LANG_IMPORTS: Partial<Record<SymbolLang, ImportPattern[]>> = {
   py: [{ re: /^[ \t]*import\s+([\w.]+)/gm }, { re: /^[ \t]*from\s+([.\w]+)\s+import\b/gm }],
 
   rs: [
-    // use a::b::C;  |  use a::b::{C, D};  → the path before any brace
-    { re: /^[ \t]*(?:pub\s+)?use\s+([\w:]+?)(?:::\{|\s*;|\s+as\b)/gm },
+    // use a::b::C;  |  use a::b::{C, D};  |  use a::b::*;  → the path before
+    // any brace or glob. Visibility may be restricted (`pub(crate) use …`),
+    // which the plain `pub\s+` form never matched.
+    { re: /^[ \t]*(?:pub(?:\s*\([^)]*\))?\s+)?use\s+(?:::)?([\w:]+?)(?:::\{|::\*|\s*;|\s+as\b)/gm },
     // mod foo;  (a declaration *and* a dependency on foo.rs / foo/mod.rs)
-    { re: /^[ \t]*(?:pub\s+)?mod\s+(\w+)\s*;/gm },
+    { re: /^[ \t]*(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+(\w+)\s*;/gm },
   ],
 
   java: DOTTED_IMPORT,

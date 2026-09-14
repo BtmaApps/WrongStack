@@ -51,10 +51,57 @@ export function sendServerMessage(state: ClientState, message: ProjectServerMess
  * per frame (the previous slice-per-frame loop reallocated on every frame
  * while pinning the whole parent buffer).
  */
+/**
+ * A decoded frame is dispatched only when it is an object with a string
+ * `type`. The reader runs BEFORE authentication, and the handler reads
+ * `message.type` first — a frame of `null` threw a TypeError inside the async
+ * handler, and that unhandled rejection terminated the daemon. Any local
+ * process able to open the socket could kill every client's index with 5 bytes.
+ */
+function isClientMessage(value: unknown): value is ProjectServerClientMessage {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { type?: unknown }).type === 'string'
+  );
+}
+
+function rejectConnection(state: ClientState, reason: string): void {
+  state.buffer = Buffer.alloc(0);
+  if (!state.socket.destroyed) state.socket.destroy(new Error(reason));
+}
+
+/**
+ * Run the handler without letting its failure escape into the process. The
+ * handler is async and the reader does not await it, so a rejection here was
+ * an unhandled rejection — fatal under Node's default policy. A handler bug is
+ * contained to the connection that triggered it and logged for diagnosis.
+ */
+function dispatchClientMessage(
+  state: ClientState,
+  message: ProjectServerClientMessage,
+  onMessage: (state: ClientState, message: ProjectServerClientMessage) => void | Promise<void>,
+): boolean {
+  const fail = (error: unknown): void => {
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`codebase-index server: client message handler failed: ${detail}\n`);
+    rejectConnection(state, 'codebase-index client message handler failed');
+  };
+  try {
+    const pending = onMessage(state, message);
+    if (pending && typeof pending.then === 'function') pending.then(undefined, fail);
+    return true;
+  } catch (error) {
+    fail(error);
+    return false;
+  }
+}
+
 export function consumeClientChunk(
   state: ClientState,
   chunk: Buffer,
-  onMessage: (state: ClientState, message: ProjectServerClientMessage) => void,
+  onMessage: (state: ClientState, message: ProjectServerClientMessage) => void | Promise<void>,
 ): void {
   const buffer = state.buffer.length === 0 ? chunk : Buffer.concat([state.buffer, chunk]);
   let scan = 0;
@@ -74,18 +121,21 @@ export function consumeClientChunk(
       }
       if (buffer.length - scan < 5 + frameLen) break; // payload incomplete
       const payload = buffer.subarray(scan + 5, scan + 5 + frameLen);
-      let message: ProjectServerClientMessage;
+      let decoded: unknown;
       try {
-        message = decodeBinaryFrame(payload) as ProjectServerClientMessage;
+        decoded = decodeBinaryFrame(payload);
       } catch {
-        state.buffer = Buffer.alloc(0);
-        state.socket.destroy(new Error('invalid codebase-index client binary frame'));
+        rejectConnection(state, 'invalid codebase-index client binary frame');
+        return;
+      }
+      if (!isClientMessage(decoded)) {
+        rejectConnection(state, 'invalid codebase-index client binary frame');
         return;
       }
       scan += 5 + frameLen;
       state.binary = true;
       state.lastSeenAt = Date.now();
-      onMessage(state, message);
+      if (!dispatchClientMessage(state, decoded, onMessage)) return;
       continue;
     }
     const newline = buffer.indexOf(0x0a, scan);
@@ -107,16 +157,19 @@ export function consumeClientChunk(
     const line = buffer.subarray(scan, newline).toString('utf8');
     scan = newline + 1;
     if (!line) continue;
-    let message: ProjectServerClientMessage;
+    let parsed: unknown;
     try {
-      message = JSON.parse(line) as ProjectServerClientMessage;
+      parsed = JSON.parse(line);
     } catch {
-      state.buffer = Buffer.alloc(0);
-      state.socket.destroy(new Error('invalid codebase-index client message'));
+      rejectConnection(state, 'invalid codebase-index client message');
+      return;
+    }
+    if (!isClientMessage(parsed)) {
+      rejectConnection(state, 'invalid codebase-index client message');
       return;
     }
     state.lastSeenAt = Date.now();
-    onMessage(state, message);
+    if (!dispatchClientMessage(state, parsed, onMessage)) return;
   }
   // Compact the parsed prefix once per chunk instead of once per frame.
   // The tail is COPIED into a right-sized buffer: subarray would pin the
