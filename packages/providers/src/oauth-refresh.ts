@@ -50,9 +50,18 @@ export function createSingleFlightRefresh<T>(
     // every refreshFn impl already wraps its own `AbortSignal.timeout`, so the
     // shared work stays bounded, just not caller-cancellable.
     if (!inFlight) {
-      inFlight = refreshFn(undefined).finally(() => {
+      const flight = refreshFn(undefined).finally(() => {
         inFlight = null;
       });
+      // The shared flight can outlive every awaiter: a first caller whose
+      // signal is already aborted early-returns a different (already-rejected)
+      // promise below, so nobody may ever attach to `flight`. Without a
+      // handler its rejection (e.g. invalid_grant after token rotation) would
+      // surface as an unhandledRejection and crash the process. The no-op
+      // catch only marks the rejection handled — every real awaiter still
+      // receives it through their own handlers.
+      void flight.catch(() => {});
+      inFlight = flight;
     }
     const shared = inFlight;
 

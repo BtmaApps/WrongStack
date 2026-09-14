@@ -1,7 +1,7 @@
 import { Brain, FileText, Hash, Link2, Search, Tag, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -44,7 +44,14 @@ export function MemoryDrawer({ socketRef }: MemoryDrawerProps) {
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
-    return onSimplePanel('open-memory-drawer', onOpen);
+    const unsubOpen = onSimplePanel('open-memory-drawer', onOpen);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-memory-drawer') setOpen(false);
+    });
+    return () => {
+      unsubOpen();
+      unsubActivation();
+    };
   }, []);
 
   // Cancel a pending search on unmount (prevents setState on unmounted component)

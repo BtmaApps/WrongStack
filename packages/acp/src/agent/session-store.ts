@@ -30,7 +30,9 @@ export interface SessionStoreOptions {
 /**
  * Session ids whose `<id>.json` would collide with a store sidecar file.
  * The sidecar index is `index.json` (see `ACPSessionStore.indexPath()`), so
- * "index" is reserved. Extend this set if more sidecars are added.
+ * "index" is reserved — matched case-insensitively in `sessionFile()`, because
+ * Windows and default macOS resolve `INDEX.json` to the same file. Extend this
+ * set if more sidecars are added.
  */
 const RESERVED_SESSION_IDS: ReadonlySet<string> = new Set(['index']);
 
@@ -93,8 +95,10 @@ export class ACPSessionStore {
     // Reject ids whose `<id>.json` collides with a store sidecar file (e.g.
     // "index" → index.json). A client-supplied reserved id would otherwise let
     // session/load read, session/delete unlink, and save clobber the sidecar
-    // (Chimera MEDIUM — reserved-name collision).
-    if (RESERVED_SESSION_IDS.has(sessionId)) return null;
+    // (Chimera MEDIUM — reserved-name collision). Compared case-insensitively:
+    // Windows and default macOS resolve `INDEX.json` and `index.json` to the
+    // SAME file, so a case variant of the sidecar name is the same collision.
+    if (RESERVED_SESSION_IDS.has(sessionId.toLowerCase())) return null;
     return resolveContainedPath(this.dir, `${sessionId}.json`);
   }
 

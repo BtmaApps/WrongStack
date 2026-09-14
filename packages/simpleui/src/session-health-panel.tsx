@@ -1,7 +1,7 @@
 import { Activity, ChevronRight, Clock, Cpu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { formatUptime } from './lib/session-helpers.js';
 import type { ChatMessage, ContextInfo } from './types.js';
 
@@ -48,7 +48,14 @@ export function SessionHealthPanel({
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
-    return onSimplePanel('open-session-health', onOpen);
+    const unsubOpen = onSimplePanel('open-session-health', onOpen);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-session-health') setOpen(false);
+    });
+    return () => {
+      unsubOpen();
+      unsubActivation();
+    };
   }, []);
 
   const ctxPct =

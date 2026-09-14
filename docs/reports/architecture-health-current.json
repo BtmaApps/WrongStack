@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T11:09:10.913Z",
+  "generatedAt": "2026-09-14T19:16:17.331Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3795,
-    "testFiles": 3356,
-    "sourceLines": 925423,
+    "sourceFiles": 3797,
+    "testFiles": 3383,
+    "sourceLines": 927499,
     "workspaceEdges": 128,
-    "moduleEdges": 12121,
+    "moduleEdges": 12128,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 946
+    "testOnlyExports": 956
   },
   "errors": [],
   "packageCycles": [],
@@ -193,7 +193,7 @@
       "name": "@wrongstack/codebase-index-mcp",
       "dir": "packages/codebase-index-mcp",
       "sourceFiles": 5,
-      "testFiles": 4,
+      "testFiles": 5,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/mcp",
@@ -208,7 +208,7 @@
         {
           "path": "packages/codebase-index-mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 4
+          "testFiles": 5
         }
       ]
     },
@@ -661,8 +661,8 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 97,
-      "testFiles": 70,
+      "sourceFiles": 98,
+      "testFiles": 72,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/tools",
@@ -683,7 +683,7 @@
         {
           "path": "packages/simpleui/tsconfig.test.json",
           "error": null,
-          "testFiles": 70
+          "testFiles": 72
         }
       ]
     },
@@ -714,7 +714,7 @@
       "name": "@wrongstack/telegram",
       "dir": "packages/telegram",
       "sourceFiles": 27,
-      "testFiles": 32,
+      "testFiles": 34,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -727,15 +727,15 @@
         {
           "path": "packages/telegram/tsconfig.test.json",
           "error": null,
-          "testFiles": 32
+          "testFiles": 34
         }
       ]
     },
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 213,
-      "testFiles": 223,
+      "sourceFiles": 214,
+      "testFiles": 245,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,7 +751,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 223
+          "testFiles": 245
         }
       ]
     },
@@ -4804,6 +4804,12 @@
       },
       {
         "file": "packages/codebase-index-mcp/tests/architecture.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/codebase-index-mcp/tests/cli-flag-values.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13053,6 +13059,12 @@
         ]
       },
       {
+        "file": "packages/simpleui/tests/panel-events.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/simpleui/tests/panels-and-composer.test.tsx",
         "projects": [
           "root-node"
@@ -13276,6 +13288,12 @@
       },
       {
         "file": "packages/simpleui/tests/user-input-queue.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/simpleui/tests/utility-dock.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -13647,6 +13665,12 @@
         ]
       },
       {
+        "file": "packages/telegram/tests/unit/offset-store-write-failure.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/telegram/tests/unit/offset-store.test.ts",
         "projects": [
           "root-node"
@@ -13654,6 +13678,12 @@
       },
       {
         "file": "packages/telegram/tests/unit/outbound-queue.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/telegram/tests/unit/outbox-html-escape.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13953,6 +13983,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-adjacency-cache-visibility.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-ast-replace-tool.test.ts",
         "projects": [
           "root-node"
@@ -13960,6 +13996,12 @@
       },
       {
         "file": "packages/tools/tests/codebase-atlas-brief.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-atlas-determinism-counts.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13989,13 +14031,37 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-data-parsers-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-embedding-pass-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-embeddings.test.ts",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-go-py-toolchain-parsers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-graph-enrichment.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-graph-reader-chunking.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14043,6 +14109,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-index-directory-events.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-index-go-parser.test.ts",
         "projects": [
           "root-node"
@@ -14079,6 +14151,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-index-last-error-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-index-multilang-relations.test.ts",
         "projects": [
           "root-node"
@@ -14086,6 +14164,12 @@
       },
       {
         "file": "packages/tools/tests/codebase-index-perf.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-index-project-server-framing.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14116,6 +14200,12 @@
       },
       {
         "file": "packages/tools/tests/codebase-index-rs-parser.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-index-scoped-force.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14169,6 +14259,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-index-watcher-consistency.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-index-worker-src.test.ts",
         "projects": [
           "root-node"
@@ -14205,6 +14301,30 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-invariant-mutator-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-lsp-kind-filter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-module-resolution-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-rank-deadcode-concepts-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-repo-map-ranked.test.ts",
         "projects": [
           "root-node"
@@ -14217,6 +14337,18 @@
         ]
       },
       {
+        "file": "packages/tools/tests/codebase-rs-parser-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-skeleton-and-host-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/codebase-skeleton-tool.test.ts",
         "projects": [
           "root-node"
@@ -14224,6 +14356,36 @@
       },
       {
         "file": "packages/tools/tests/codebase-tool-path-confinement.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-tools-filter-and-runner.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-tools-real-index-regressions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-tree-sitter-declarations.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-ts-parser-and-vectors-edges.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-writer-integrity.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21624,7 +21786,7 @@
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 1083,
+      "lines": 1097,
       "relativeImports": 12
     },
     {
@@ -21739,8 +21901,8 @@
     },
     {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
-      "lines": 1078,
-      "relativeImports": 52
+      "lines": 1096,
+      "relativeImports": 51
     },
     {
       "file": "packages/tools/src/bash.ts",
@@ -21749,37 +21911,37 @@
     },
     {
       "file": "packages/tools/src/codebase-index/background-indexer.ts",
-      "lines": 968,
+      "lines": 1023,
       "relativeImports": 8
     },
     {
       "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
-      "lines": 828,
+      "lines": 879,
       "relativeImports": 4
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
-      "lines": 1013,
+      "lines": 1109,
       "relativeImports": 11
     },
     {
       "file": "packages/tools/src/codebase-index/project-server-client.ts",
-      "lines": 880,
+      "lines": 900,
       "relativeImports": 7
     },
     {
       "file": "packages/tools/src/codebase-index/tree-sitter/queries.ts",
-      "lines": 867,
+      "lines": 1051,
       "relativeImports": 1
     },
     {
       "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
-      "lines": 884,
+      "lines": 1030,
       "relativeImports": 6
     },
     {
       "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 991,
+      "lines": 1053,
       "relativeImports": 24
     },
     {
@@ -22080,24 +22242,29 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/tools/src/codebase-index/indexer.ts",
+      "lines": 1109,
+      "relativeImports": 11
+    },
+    {
       "file": "packages/core/src/coordination/director.ts",
       "lines": 1108,
       "relativeImports": 43
     },
     {
-      "file": "packages/cli/src/subcommands/handlers/hq.ts",
-      "lines": 1088,
-      "relativeImports": 10
-    },
-    {
       "file": "packages/mcp/src/client.ts",
-      "lines": 1083,
+      "lines": 1097,
       "relativeImports": 12
     },
     {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
-      "lines": 1078,
-      "relativeImports": 52
+      "lines": 1096,
+      "relativeImports": 51
+    },
+    {
+      "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "lines": 1088,
+      "relativeImports": 10
     },
     {
       "file": "packages/plugins/src/git-autocommit/index.ts",
@@ -22125,9 +22292,19 @@
       "relativeImports": 47
     },
     {
+      "file": "packages/tools/src/codebase-index/writer.ts",
+      "lines": 1053,
+      "relativeImports": 24
+    },
+    {
       "file": "packages/core/src/index.ts",
       "lines": 1051,
       "relativeImports": 164
+    },
+    {
+      "file": "packages/tools/src/codebase-index/tree-sitter/queries.ts",
+      "lines": 1051,
+      "relativeImports": 1
     },
     {
       "file": "packages/webui/src/components/OfficeMapCanvas.tsx",
@@ -22205,6 +22382,16 @@
       "relativeImports": 43
     },
     {
+      "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
+      "lines": 1030,
+      "relativeImports": 6
+    },
+    {
+      "file": "packages/tools/src/codebase-index/background-indexer.ts",
+      "lines": 1023,
+      "relativeImports": 8
+    },
+    {
       "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
       "lines": 1021,
       "relativeImports": 0
@@ -22243,11 +22430,6 @@
       "file": "packages/acp/src/client/acp-session.ts",
       "lines": 1013,
       "relativeImports": 19
-    },
-    {
-      "file": "packages/tools/src/codebase-index/indexer.ts",
-      "lines": 1013,
-      "relativeImports": 11
     },
     {
       "file": "packages/tui/src/input-validation.ts",
@@ -22290,29 +22472,9 @@
       "relativeImports": 2
     },
     {
-      "file": "packages/tools/src/codebase-index/writer.ts",
-      "lines": 991,
-      "relativeImports": 24
-    },
-    {
       "file": "packages/tui/src/components/agents-monitor.tsx",
       "lines": 984,
       "relativeImports": 14
-    },
-    {
-      "file": "packages/core/src/coordination/sqlite-mailbox.ts",
-      "lines": 982,
-      "relativeImports": 15
-    },
-    {
-      "file": "packages/tui/src/app.tsx",
-      "lines": 981,
-      "relativeImports": 59
-    },
-    {
-      "file": "packages/webui/src/components/KanbanTaskInspector.tsx",
-      "lines": 980,
-      "relativeImports": 16
     }
   ],
   "testOnlyExports": [
@@ -24273,6 +24435,10 @@
       "name": "parseContextDebugPayload"
     },
     {
+      "file": "packages/simpleui/src/file-changes-button.tsx",
+      "name": "FileChangesButton"
+    },
+    {
       "file": "packages/simpleui/src/lib/agent-model.ts",
       "name": "IDLE_AGENT_TTL_MS"
     },
@@ -24518,11 +24684,23 @@
     },
     {
       "file": "packages/tools/src/codebase-index/background-indexer.ts",
+      "name": "resolveLastError"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/background-indexer.ts",
       "name": "setIndexReady"
     },
     {
       "file": "packages/tools/src/codebase-index/bm25.ts",
       "name": "FTS_SIGNATURE_MAX_CHARS"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
+      "name": "parseTestCounts"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
+      "name": "selectTestRunner"
     },
     {
       "file": "packages/tools/src/codebase-index/content-hash.ts",
@@ -24533,12 +24711,24 @@
       "name": "xxhash64Hex"
     },
     {
+      "file": "packages/tools/src/codebase-index/dead-code-scan.ts",
+      "name": "discoverEntryPoints"
+    },
+    {
       "file": "packages/tools/src/codebase-index/generic-parser.ts",
       "name": "GENERIC_MAX_FILE_CHARS"
     },
     {
       "file": "packages/tools/src/codebase-index/generic-parser.ts",
       "name": "GENERIC_MAX_SYMBOLS_DEFAULT"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/go-parser.ts",
+      "name": "maskGoNonCode"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/go-parser.ts",
+      "name": "parseGoWithoutToolchain"
     },
     {
       "file": "packages/tools/src/codebase-index/indexer.ts",
@@ -24579,6 +24769,18 @@
     {
       "file": "packages/tools/src/codebase-index/project-server-operations.ts",
       "name": "runFullIndex"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/project-server-watcher.ts",
+      "name": "isDirectoryWatchCandidate"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/rs-parser.ts",
+      "name": "maskRustNonCode"
+    },
+    {
+      "file": "packages/tools/src/codebase-index/toolchain-scripts.ts",
+      "name": "__privateScriptPathsForTest"
     },
     {
       "file": "packages/tools/src/codebase-index/vector-search.ts",

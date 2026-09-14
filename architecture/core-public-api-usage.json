@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 316,
-      "typeOnly": 252,
+      "files": 318,
+      "typeOnly": 254,
       "runtimeOrMixed": 81
     },
     "@wrongstack/core/agent-catalog": {
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/types": {
-      "files": 1097,
-      "typeOnly": 980,
-      "runtimeOrMixed": 326
+      "files": 1098,
+      "typeOnly": 979,
+      "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -1416,7 +1416,19 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/codebase-index-watcher-consistency.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/codebase-index.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/codebase-writer-integrity.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15199,8 +15211,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-ast-replace-tool.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15212,7 +15224,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-impact-analysis-tool.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15242,7 +15254,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-repo-map-tool.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15266,7 +15278,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -15579,6 +15591,12 @@
       "file": "packages/tools/tests/clarify-tool.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 4
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tools/tests/codebase-tools-real-index-regressions.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",

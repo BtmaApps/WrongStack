@@ -1,7 +1,7 @@
 import { Bookmark, Plus, Trash2, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { readPersisted, writePersisted } from './lib/persisted.js';
 
 interface SavedPrompt {
@@ -65,7 +65,14 @@ export function PromptLibrary({ onRecall }: PromptLibraryProps) {
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
-    return onSimplePanel('open-prompt-library', onOpen);
+    const unsubOpen = onSimplePanel('open-prompt-library', onOpen);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-prompt-library') setOpen(false);
+    });
+    return () => {
+      unsubOpen();
+      unsubActivation();
+    };
   }, []);
 
   const add = () => {

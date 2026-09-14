@@ -5,19 +5,19 @@ import {
   ListPlus,
   Send,
   ShieldAlert,
-  Waves,
   Split,
+  Waves,
   X,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import type { PendingConfirm, SessionInfo } from './types.js';
-import type { StatusNoticeProjection } from './lib/status-notice.js';
-import { detectFileMention, fileBasename } from './lib/file-mention.js';
 import type { FileMention } from './lib/file-mention.js';
-import type { QueueMode, QueuedItem } from './lib/queue-model.js';
+import { detectFileMention, fileBasename } from './lib/file-mention.js';
+import type { QueuedItem, QueueMode } from './lib/queue-model.js';
 import type { RefineDecision, RefineState } from './lib/refine-model.js';
+import type { StatusNoticeProjection } from './lib/status-notice.js';
 import { QueuedMessages } from './queued-messages.js';
 import { RefinePanel } from './refine-panel.js';
+import type { PendingConfirm, SessionInfo } from './types.js';
 
 interface ComposerProps {
   draft: string;
@@ -353,6 +353,7 @@ export function Composer({
               aria-label="Stop run"
             >
               <CircleStop size={15} />
+              <span>Stop</span>
             </button>
           )}
           {running && (
@@ -365,6 +366,7 @@ export function Composer({
               aria-label="Steer the run with this message"
             >
               <Split size={15} />
+              <span>Steer</span>
             </button>
           )}
           <button
@@ -376,6 +378,7 @@ export function Composer({
             aria-label="Add message to queue"
           >
             <ListPlus size={15} />
+            <span>Queue</span>
           </button>
           <button
             type="submit"
@@ -385,6 +388,7 @@ export function Composer({
             aria-label={running ? 'Send message alongside the run' : 'Send message'}
           >
             <Send size={18} />
+            <span>Send</span>
           </button>
         </div>
       </form>

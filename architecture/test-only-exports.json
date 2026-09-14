@@ -1018,6 +1018,9 @@
     "packages/simpleui/src/context-breakdown-modal.tsx": [
       "parseContextDebugPayload"
     ],
+    "packages/simpleui/src/file-changes-button.tsx": [
+      "FileChangesButton"
+    ],
     "packages/simpleui/src/lib/agent-model.ts": [
       "IDLE_AGENT_TTL_MS",
       "isActiveStatus",
@@ -1136,18 +1139,30 @@
     ],
     "packages/tools/src/codebase-index/background-indexer.ts": [
       "resetIndexStateForTesting",
+      "resolveLastError",
       "setIndexReady"
     ],
     "packages/tools/src/codebase-index/bm25.ts": [
       "FTS_SIGNATURE_MAX_CHARS"
     ],
+    "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts": [
+      "parseTestCounts",
+      "selectTestRunner"
+    ],
     "packages/tools/src/codebase-index/content-hash.ts": [
       "parseContentHash",
       "xxhash64Hex"
     ],
+    "packages/tools/src/codebase-index/dead-code-scan.ts": [
+      "discoverEntryPoints"
+    ],
     "packages/tools/src/codebase-index/generic-parser.ts": [
       "GENERIC_MAX_FILE_CHARS",
       "GENERIC_MAX_SYMBOLS_DEFAULT"
+    ],
+    "packages/tools/src/codebase-index/go-parser.ts": [
+      "maskGoNonCode",
+      "parseGoWithoutToolchain"
     ],
     "packages/tools/src/codebase-index/indexer.ts": [
       "shouldUseParserWorkerPool"
@@ -1170,6 +1185,15 @@
       "isShareableFullIndex",
       "preservesQueryCaches",
       "runFullIndex"
+    ],
+    "packages/tools/src/codebase-index/project-server-watcher.ts": [
+      "isDirectoryWatchCandidate"
+    ],
+    "packages/tools/src/codebase-index/rs-parser.ts": [
+      "maskRustNonCode"
+    ],
+    "packages/tools/src/codebase-index/toolchain-scripts.ts": [
+      "__privateScriptPathsForTest"
     ],
     "packages/tools/src/codebase-index/vector-search.ts": [
       "buildRankMap",

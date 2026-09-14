@@ -6835,6 +6835,1365 @@ input:focus-visible,
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* ── Simple refresh ─────────────────────────────────────────────────────
+   The original surface accrued several visual systems as new capabilities
+   landed.  Keep every capability, but make the conversation — not the chrome
+   — the obvious place to look.  These intentionally sit last so legacy panel
+   selectors retain their behaviour while sharing one quiet visual language. */
+:root {
+  --simple-radius: 12px;
+  --simple-radius-sm: 8px;
+  --simple-content-width: 880px;
+  --simple-elevation: 0 12px 34px color-mix(in srgb, var(--shadow) 68%, transparent);
+  --simple-control: color-mix(in srgb, var(--surface) 94%, var(--text) 6%);
+}
+
+.app-shell {
+  grid-template-rows: 60px auto minmax(0, 1fr) auto;
+  background: var(--bg);
+}
+
+.topbar {
+  grid-template-columns: minmax(220px, 1fr) minmax(190px, 340px) minmax(250px, 1fr);
+  border-bottom-color: var(--line);
+  background: color-mix(in srgb, var(--topbar-bg) 94%, var(--surface) 6%);
+}
+
+.topbar::before,
+.topbar::after {
+  display: none;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 59px;
+  border-right-color: var(--line);
+  background: transparent;
+}
+
+.brand-mark img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.project-icon {
+  width: 34px;
+  color: var(--accent);
+}
+
+.project-copy {
+  gap: 3px;
+}
+
+.project-copy > strong {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.session-trigger {
+  height: 18px;
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.model-control {
+  height: 36px;
+  border-radius: var(--simple-radius-sm);
+  border-color: var(--line);
+  background: var(--simple-control);
+}
+
+.topbar-right {
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.topbar-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--simple-radius-sm);
+  border-color: transparent;
+  background: transparent;
+}
+
+.topbar-icon-btn:hover {
+  border-color: var(--line);
+  background: var(--simple-control);
+}
+
+.context-meter {
+  width: 138px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--simple-radius-sm);
+}
+
+.context-meter:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--simple-control);
+}
+
+.context-details-hint {
+  display: none;
+}
+
+.connection {
+  min-width: 34px;
+  justify-content: center;
+  gap: 0;
+}
+
+.connection > span:last-child {
+  display: none;
+}
+
+.version-chip {
+  border-radius: 7px;
+}
+
+.agent-strip {
+  height: 42px;
+  padding: 0 max(12px, calc((100vw - var(--simple-content-width)) / 2));
+  gap: 8px;
+  border-bottom-color: var(--line);
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg) 12%);
+}
+
+.agent-strip-label {
+  width: auto;
+  padding: 0 4px 0 0;
+  border: 0;
+  color: var(--subtle);
+}
+
+.agent-list {
+  gap: 5px;
+}
+
+.agent-item {
+  min-width: auto;
+  max-width: 260px;
+  height: 30px;
+  align-self: center;
+  grid-template-columns: auto minmax(0, auto) auto minmax(0, 1fr);
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.agent-item:hover {
+  border-color: var(--line);
+  background: var(--simple-control);
+}
+
+.agent-item.active {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  box-shadow: none;
+}
+
+.agent-item small {
+  max-width: 116px;
+}
+
+.agent-finished {
+  margin-left: auto;
+  border-left: 0;
+}
+
+.agent-finished-toggle {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.agent-finished-toggle:hover,
+.agent-finished-toggle.open {
+  border-color: var(--line);
+  background: var(--simple-control);
+}
+
+.conversation,
+.agent-conversation {
+  width: min(100%, var(--simple-content-width));
+  padding: 30px 24px 48px;
+}
+
+.empty-state,
+.agent-empty-state,
+.resume-state {
+  min-height: 44vh;
+}
+
+.empty-state h1,
+.agent-empty-state h1 {
+  max-width: 17ch;
+  font-size: clamp(28px, 4.5vw, 46px);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-transform: none;
+}
+
+.empty-state span,
+.agent-empty-state span {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.empty-state p,
+.agent-empty-state p {
+  max-width: 38ch;
+  line-height: 1.6;
+}
+
+.message,
+.agent-transcript-entry {
+  grid-template-columns: 92px minmax(0, 1fr);
+  border-top-color: color-mix(in srgb, var(--line) 76%, transparent);
+  padding: 22px 0;
+}
+
+.message:last-of-type,
+.agent-transcript-entry:last-of-type {
+  border-bottom: 0;
+}
+
+.message-label,
+.agent-entry-label {
+  padding-top: 5px;
+  color: var(--subtle);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.message-body,
+.agent-entry-body {
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.message.user .message-body {
+  width: fit-content;
+  max-width: min(100%, 680px);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: var(--simple-radius);
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  font-weight: 450;
+}
+
+.message.user .message-body > :last-child {
+  margin-bottom: 0;
+}
+
+.message.thinking .message-body {
+  border-left: 2px solid color-mix(in srgb, var(--warning) 55%, transparent);
+  padding-left: 12px;
+}
+
+.message-body pre {
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius-sm);
+  padding: 14px;
+}
+
+.message-body :not(pre) > code {
+  border-radius: 5px;
+}
+
+.next-steps {
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: var(--simple-radius);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  overflow: hidden;
+}
+
+.next-steps-heading {
+  height: 38px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.next-step:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.activity-line {
+  padding-left: 92px;
+}
+
+.composer-wrap {
+  border-top-color: color-mix(in srgb, var(--line) 80%, transparent);
+  background: color-mix(in srgb, var(--composer-bg) 94%, var(--surface) 6%);
+  box-shadow: 0 -10px 28px color-mix(in srgb, var(--shadow) 35%, transparent);
+}
+
+.composer-inner {
+  width: min(100%, var(--simple-content-width));
+  padding: 12px 24px 10px;
+}
+
+.composer {
+  border-radius: var(--simple-radius);
+  border-color: var(--line);
+  background: var(--simple-control);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.composer textarea {
+  min-height: 54px;
+  padding: 15px 16px;
+}
+
+.composer-actions {
+  gap: 2px;
+  padding: 7px;
+}
+
+.image-attach-button,
+.mode-button,
+.send-button {
+  min-width: 38px;
+  width: auto;
+  min-height: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--simple-radius-sm);
+}
+
+.image-attach-button,
+.mode-button {
+  gap: 5px;
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.mode-button span,
+.send-button span {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.mode-button:hover:not(:disabled),
+.image-attach-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+
+.send-button {
+  gap: 6px;
+  padding: 0 12px;
+  border-left: 0;
+  border-radius: var(--simple-radius-sm);
+}
+
+.composer-meta {
+  padding: 7px 4px 0;
+  font-size: 9px;
+}
+
+.permission-bar,
+.queue-strip,
+.refine-panel {
+  border-radius: var(--simple-radius);
+}
+
+.file-picker,
+.session-menu,
+.model-picker,
+.model-switch-warning {
+  border-radius: var(--simple-radius);
+  box-shadow: var(--simple-elevation);
+}
+
+.file-picker {
+  bottom: calc(100% + 10px);
+}
+
+.tool-sidebar-launcher {
+  right: max(12px, calc((100vw - var(--simple-content-width)) / 2 - 58px));
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius);
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg) 8%);
+  box-shadow: var(--simple-elevation);
+}
+
+.tool-sidebar-trigger {
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--simple-radius-sm);
+}
+
+.tool-sidebar-trigger span {
+  display: none;
+}
+
+.tool-sidebar-trigger:hover,
+.tool-sidebar-trigger.active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.tool-sidebar-trigger b {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 8px;
+}
+
+/* One quiet entry point for optional panels. Its sibling selectors suppress
+   the legacy independent triggers, while each panel and keyboard command
+   keeps its existing event path and focus management. */
+.utility-dock {
+  position: fixed;
+  top: 112px;
+  right: 14px;
+  z-index: 40;
+}
+
+.utility-dock-toggle,
+.utility-dock-actions button {
+  border: 1px solid var(--line);
+  background: var(--simple-control);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.utility-dock-toggle {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--simple-radius-sm);
+  box-shadow: var(--simple-elevation);
+}
+
+.utility-dock-toggle:hover,
+.utility-dock.open .utility-dock-toggle {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  color: var(--accent);
+}
+
+.utility-dock-actions {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  width: 196px;
+  display: grid;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius);
+  background: var(--surface);
+  box-shadow: var(--simple-elevation);
+}
+
+.utility-dock-actions button {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-color: transparent;
+  border-radius: var(--simple-radius-sm);
+  padding: 0 9px;
+  font-size: 11px;
+  text-align: left;
+}
+
+.utility-dock-actions button:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+
+.utility-dock-actions section + section {
+  margin-top: 5px;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+}
+
+.utility-dock-changes {
+  margin-top: 5px;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+}
+
+.utility-dock-changes button {
+  color: var(--success);
+}
+
+.utility-dock-changes button:hover {
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  color: var(--success);
+}
+
+.utility-dock-changes b {
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 18%, var(--surface));
+  color: var(--success);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.utility-dock-heading {
+  display: block;
+  padding: 4px 8px 5px;
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.utility-dock ~ .memory-drawer-trigger,
+.utility-dock ~ .file-explorer-trigger,
+.utility-dock ~ .prompt-library-trigger,
+.utility-dock ~ .brain-panel-trigger,
+.utility-dock ~ .health-panel-trigger {
+  display: none;
+}
+
+.tool-sidebar,
+.memory-drawer,
+.file-explorer,
+.prompt-library,
+.brain-panel,
+.health-panel,
+.vector-memory-panel {
+  top: 112px;
+  right: 14px;
+  bottom: 14px;
+  width: min(420px, calc(100vw - 28px));
+  border-color: var(--line);
+  border-radius: var(--simple-radius);
+  background: var(--surface);
+  box-shadow: var(--simple-elevation);
+}
+
+.file-changes-button,
+.jump-to-latest {
+  border-radius: 999px;
+}
+
+.fallback-modal,
+.outage-card,
+.settings-panel,
+.command-palette,
+.context-breakdown-modal,
+.file-diff-panel,
+.mailbox-sidebar {
+  border-radius: var(--simple-radius);
+  box-shadow: var(--simple-elevation);
+}
+
+.user-input-question-card,
+.user-input-question label,
+.user-input-question textarea,
+.user-input-custom,
+.user-input-delegate {
+  border-radius: var(--simple-radius-sm);
+}
+
+@media (max-width: 1080px) {
+  .tool-sidebar-launcher {
+    right: 12px;
+  }
+
+  .utility-dock {
+    top: auto;
+    right: 10px;
+    bottom: 144px;
+  }
+
+  .utility-dock-actions {
+    top: auto;
+    right: 0;
+    bottom: calc(100% + 8px);
+  }
+
+  .tool-sidebar,
+  .memory-drawer,
+  .file-explorer,
+  .prompt-library,
+  .brain-panel,
+  .health-panel,
+  .vector-memory-panel {
+    top: 66px;
+    right: 10px;
+    bottom: 78px;
+    left: 10px;
+    width: auto;
+    max-height: none;
+  }
+
+  .tool-sidebar {
+    right: 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-rows: 56px auto minmax(0, 1fr) auto;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 55px;
+  }
+
+  .project-icon,
+  .context-meter,
+  .version-chip,
+  .topbar-icon-btn:nth-of-type(1),
+  .topbar-icon-btn:nth-of-type(2) {
+    display: none;
+  }
+
+  .model-control {
+    display: none;
+  }
+
+  .topbar-right {
+    padding-right: 8px;
+  }
+
+  .agent-strip {
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .agent-strip-label {
+    font-size: 0;
+  }
+
+  .agent-strip-label svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .agent-item {
+    max-width: 180px;
+  }
+
+  .agent-item > span:not(.agent-dot),
+  .agent-item small {
+    display: none;
+  }
+
+  .conversation,
+  .agent-conversation {
+    padding: 20px 14px 30px;
+  }
+
+  .message,
+  .agent-transcript-entry {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 18px 0;
+  }
+
+  .message-label,
+  .agent-entry-label {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+  }
+
+  .message-copy {
+    margin-left: auto;
+  }
+
+  .activity-line {
+    padding-left: 0;
+  }
+
+  .composer-inner {
+    padding: 8px 10px 8px;
+  }
+
+  .composer-actions {
+    padding: 5px;
+  }
+
+  .mode-button span,
+  .send-button span {
+    display: none;
+  }
+
+  .image-attach-button,
+  .mode-button,
+  .send-button {
+    min-width: 36px;
+    height: 38px;
+    padding: 0 7px;
+  }
+
+  .composer textarea {
+    min-height: 50px;
+    padding: 13px 12px;
+  }
+
+  .composer-meta span:last-child {
+    display: none;
+  }
+
+  .tool-sidebar-launcher {
+    top: auto;
+    right: 10px;
+    bottom: 86px;
+    flex-direction: row;
+    border-radius: 999px;
+  }
+
+  .tool-sidebar {
+    top: auto;
+    right: 10px;
+    bottom: 84px;
+    width: min(390px, calc(100vw - 20px));
+    max-height: min(66dvh, 620px);
+  }
+}
+
+/* ── Modal content refresh ──────────────────────────────────────────────
+   Every overlay now follows the same reading order: a quiet title bar, a
+   padded working area, clearly grouped controls, then distinct feedback.
+   This is deliberately selector-only: panel state, socket requests, focus
+   traps, and keyboard behaviour remain owned by their components. */
+:is(
+  .tool-sidebar-header,
+  .memory-drawer-head,
+  .file-explorer-head,
+  .prompt-library-head,
+  .brain-panel-head,
+  .health-panel-head,
+  .vector-memory-panel__head,
+  .settings-head,
+  .diff-head,
+  .ctx-breakdown-head,
+  .command-palette-head,
+  .fallback-modal-header
+) {
+  min-height: 50px;
+  padding: 0 14px;
+  border-bottom-color: color-mix(in srgb, var(--line) 82%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 72%, var(--surface));
+}
+
+:is(
+  .tool-sidebar-header > button,
+  .memory-drawer-head > button,
+  .file-explorer-head button,
+  .prompt-library-head > button,
+  .brain-panel-head > button,
+  .health-panel-head > button,
+  .vector-memory-panel__head > button,
+  .settings-head > button,
+  .diff-head > button,
+  .ctx-breakdown-icon-btn,
+  .command-palette-head > button
+) {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+:is(
+  .tool-sidebar-header > button,
+  .memory-drawer-head > button,
+  .file-explorer-head button,
+  .prompt-library-head > button,
+  .brain-panel-head > button,
+  .health-panel-head > button,
+  .vector-memory-panel__head > button,
+  .settings-head > button,
+  .diff-head > button,
+  .ctx-breakdown-icon-btn,
+  .command-palette-head > button
+):hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+
+:is(
+  .tool-sidebar-list,
+  .memory-drawer-results,
+  .prompt-library-list,
+  .brain-panel-log,
+  .health-panel-body,
+  .ctx-breakdown-body
+) {
+  padding: 14px;
+}
+
+:is(
+  .memory-drawer-search,
+  .file-manager-search,
+  .brain-panel-ask,
+  .prompt-library-add,
+  .vector-memory-panel__search,
+  .settings-search,
+  .command-palette-search
+) {
+  border-color: var(--line);
+  border-radius: var(--simple-radius-sm);
+  background: var(--simple-control);
+}
+
+:is(
+  .memory-drawer-search input,
+  .file-manager-search input,
+  .brain-panel-ask input,
+  .prompt-library-add input,
+  .prompt-library-add textarea,
+  .vector-memory-panel__search input,
+  .settings-search input,
+  .command-palette-search input
+) {
+  border-radius: 7px;
+}
+
+:is(
+  .memory-drawer-search button,
+  .brain-panel-ask button,
+  .prompt-library-add > button,
+  .vector-memory-panel__controls button
+) {
+  min-height: 32px;
+  border-radius: 7px;
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent);
+  font-weight: 650;
+}
+
+:is(
+  .memory-drawer-search button,
+  .brain-panel-ask button,
+  .prompt-library-add > button,
+  .vector-memory-panel__controls button
+):hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:is(
+  .memory-drawer-empty,
+  .memory-drawer-error,
+  .file-explorer-empty,
+  .file-manager-empty,
+  .prompt-library-empty,
+  .brain-panel-empty,
+  .tool-sidebar-empty,
+  .vector-memory-panel__loading,
+  .vector-memory-panel__disabled,
+  .vector-memory-panel__no-hits,
+  .command-palette-empty,
+  .diff-view-empty,
+  .ctx-breakdown-status
+) {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--simple-radius-sm);
+  padding: 18px 14px;
+  background: color-mix(in srgb, var(--surface-2) 54%, transparent);
+  line-height: 1.55;
+  text-align: center;
+}
+
+.memory-card,
+.prompt-item,
+.vector-memory-panel__hit,
+.tool-sidebar-call,
+.tool-sidebar-meta,
+.health-stat-action {
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: var(--simple-radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 54%, var(--surface));
+}
+
+.memory-card,
+.vector-memory-panel__hit {
+  padding: 12px;
+}
+
+.memory-card:hover,
+.vector-memory-panel__hit:hover,
+.tool-sidebar-call:hover,
+.health-stat-action:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--line));
+}
+
+.memory-card-text,
+.vector-memory-panel__hit-text {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.prompt-library-add {
+  margin: 14px;
+  padding: 10px;
+}
+
+.prompt-item {
+  overflow: hidden;
+}
+
+.prompt-item + .prompt-item,
+.memory-card + .memory-card,
+.vector-memory-panel__hit + .vector-memory-panel__hit,
+.tool-sidebar-call + .tool-sidebar-call,
+.tool-sidebar-meta + .tool-sidebar-meta {
+  margin-top: 7px;
+}
+
+.tool-sidebar-meta,
+.health-stat-action {
+  min-height: 46px;
+  padding: 9px 10px;
+}
+
+.tool-sidebar-call-trigger {
+  min-height: 46px;
+  border-radius: var(--simple-radius-sm);
+}
+
+.tool-sidebar-call-detail {
+  margin: 0 8px 8px;
+  border-radius: 7px;
+  background: var(--code-bg);
+}
+
+.brain-panel-risk,
+.brain-panel-answer {
+  margin: 12px 14px 0;
+  border-radius: var(--simple-radius-sm);
+  padding: 10px;
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+.brain-panel-ask {
+  margin: 12px 14px 0;
+  padding: 5px;
+}
+
+.health-stat + .health-stat {
+  margin-top: 7px;
+}
+
+.settings-panel {
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius);
+  box-shadow: var(--simple-elevation);
+}
+
+.settings-search {
+  margin: 0 0 14px;
+  border-radius: var(--simple-radius-sm);
+}
+
+.settings-group {
+  margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+  border-radius: var(--simple-radius-sm);
+  padding: 12px;
+  background: color-mix(in srgb, var(--surface-2) 42%, transparent);
+}
+
+.settings-group:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+}
+
+.settings-group h2 {
+  color: var(--text-secondary);
+}
+
+.settings-segmented,
+.settings-field input,
+.settings-field select {
+  border-radius: 7px;
+}
+
+.settings-toggle {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  padding-top: 10px;
+}
+
+.settings-palette {
+  border-radius: 7px;
+}
+
+.ctx-breakdown-modal,
+.command-palette,
+.diff-panel,
+.fallback-modal {
+  border-radius: var(--simple-radius);
+  overflow: hidden;
+}
+
+.command-palette::before {
+  display: none;
+}
+
+.command-palette-search {
+  margin: 10px 12px;
+  border: 1px solid var(--line);
+}
+
+.command-palette-item {
+  border-radius: var(--simple-radius-sm);
+}
+
+.ctx-breakdown-summary,
+.ctx-breakdown-section,
+.ctx-breakdown-list {
+  border-radius: var(--simple-radius-sm);
+}
+
+.ctx-breakdown-stat,
+.ctx-breakdown-section,
+.ctx-breakdown-list {
+  border-color: color-mix(in srgb, var(--line) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 48%, var(--surface));
+}
+
+.diff-panel {
+  inset: 18px;
+}
+
+.diff-file-item {
+  border-radius: 7px;
+}
+
+.diff-view-head {
+  background: color-mix(in srgb, var(--code-bg) 88%, var(--surface));
+}
+
+.fallback-modal {
+  padding: 18px;
+}
+
+.fallback-modal-footer {
+  margin: 14px -18px -18px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-2) 54%, var(--surface));
+}
+
+.fallback-modal-footer button,
+.user-input-progress button {
+  min-height: 34px;
+  border-radius: 7px;
+}
+
+.user-input-tabs {
+  margin: 0 -18px;
+  padding: 0 18px;
+}
+
+.user-input-tabs button {
+  min-height: 38px;
+}
+
+.user-input-body {
+  padding: 16px 0;
+}
+
+.user-input-progress {
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius-sm);
+  padding: 9px;
+  background: color-mix(in srgb, var(--surface-2) 54%, transparent);
+}
+
+.user-input-question-card {
+  padding: 14px;
+  background: color-mix(in srgb, var(--surface-2) 34%, transparent);
+}
+
+.user-input-question label,
+.user-input-delegate {
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.user-input-question label:hover,
+.user-input-delegate:hover {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+}
+
+@media (max-width: 760px) {
+  .settings-panel {
+    top: 10px;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+  }
+
+  .diff-panel {
+    inset: 10px;
+  }
+
+  .fallback-modal {
+    padding: 14px;
+  }
+
+  .fallback-modal-footer {
+    margin: 12px -14px -14px;
+    padding: 10px 14px;
+  }
+
+  .user-input-tabs {
+    margin: 0 -14px;
+    padding: 0 14px;
+  }
+}
+
+/* A short landscape/mobile viewport cannot fit the full two-section menu
+   above the composer. Anchor it beneath the agent strip instead and let its
+   action list scroll, keeping the first workspace controls reachable. */
+@media (max-width: 760px) and (max-height: 520px) {
+  .utility-dock {
+    top: 112px;
+    bottom: auto;
+  }
+
+  .utility-dock-actions {
+    top: 0;
+    right: calc(100% + 8px);
+    bottom: auto;
+    max-height: calc(100dvh - 124px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* A modal owns the screen while it is open. Do not leave the launcher above
+   a dialog where it could open a second, overlapping surface. */
+.utility-dock:has(
+  ~ .tool-sidebar,
+  ~ .memory-drawer,
+  ~ .file-explorer,
+  ~ .prompt-library,
+  ~ .brain-panel,
+  ~ .health-panel,
+  ~ .vector-memory-panel,
+  ~ .email-panel,
+  ~ .settings-panel,
+  ~ .ctx-breakdown-modal,
+  ~ .fallback-modal,
+  ~ .diff-panel
+) {
+  display: none;
+}
+
+/* File manager is the one workspace that benefits from more horizontal
+   space: keep its navigator and editor comfortably usable on desktop. */
+.file-explorer.file-manager {
+  width: min(760px, calc(100vw - 28px));
+}
+
+.email-panel {
+  top: 112px;
+  right: 14px;
+  bottom: 14px;
+  width: min(420px, calc(100vw - 28px));
+  border-color: var(--line);
+  border-radius: var(--simple-radius);
+  box-shadow: var(--simple-elevation);
+}
+
+.file-manager-split {
+  grid-template-columns: 236px minmax(0, 1fr);
+}
+
+.file-manager-search {
+  margin: 10px 14px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius-sm);
+  background: var(--simple-control);
+}
+
+.file-manager .file-explorer-body {
+  margin: 10px 0 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--simple-radius-sm) 0 0 var(--simple-radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 46%, var(--surface));
+}
+
+.file-tree-node {
+  min-height: 30px;
+  border-radius: 6px;
+}
+
+.file-manager-content {
+  margin: 10px 14px 10px 0;
+  border: 1px solid var(--line);
+  border-radius: 0 var(--simple-radius-sm) var(--simple-radius-sm) 0;
+  background: var(--code-bg);
+}
+
+.file-manager-content-head {
+  min-height: 40px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--code-bg) 84%, var(--surface));
+}
+
+.file-manager-edit-btn,
+.file-manager-save-btn,
+.file-manager-cancel-btn,
+.file-manager-open-list-btn {
+  min-height: 30px;
+  border-radius: 7px;
+}
+
+.file-manager-welcome {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.file-manager-welcome > svg {
+  color: var(--accent);
+}
+
+.file-manager-welcome strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.file-manager-welcome p {
+  max-width: 30ch;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .file-explorer.file-manager {
+    width: auto;
+  }
+
+  .email-panel {
+    top: 66px;
+    right: 10px;
+    bottom: 78px;
+    left: 10px;
+    width: auto;
+  }
+
+  .file-manager-split:not(.file-list-collapsed) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(120px, 42%) minmax(0, 1fr);
+  }
+
+  .file-manager .file-explorer-body,
+  .file-manager-content {
+    margin: 8px 10px;
+    border-radius: var(--simple-radius-sm);
+  }
+
+  .file-manager .file-explorer-body {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .file-manager-content {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .project-copy > strong {
+    max-width: 150px;
+  }
+
+  .topbar-right .connection,
+  .topbar-right .topbar-icon-btn:nth-of-type(3) {
+    display: none;
+  }
+
+  .agent-item {
+    max-width: 126px;
+  }
+
+  .empty-state h1,
+  .agent-empty-state h1 {
+    font-size: 32px;
+  }
+
+  .permission-bar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .permission-actions {
+    grid-column: 1 / -1;
+  }
+
+  .permission-actions button {
+    flex: 1;
+  }
+}
+
+/* Keep every secondary surface on the same mobile drawer geometry. This
+   follows the older sidebar breakpoint so no legacy rule can shrink just the
+   workspace drawer while the other panels remain full-height. */
+@media (max-width: 760px) {
+  .tool-sidebar,
+  .memory-drawer,
+  .file-explorer,
+  .prompt-library,
+  .brain-panel,
+  .health-panel,
+  .vector-memory-panel {
+    top: 66px;
+    right: 10px;
+    bottom: 78px;
+    left: 10px;
+    width: auto;
+    max-height: none;
+  }
+}
 .user-input-modal {
   width: min(760px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px);

@@ -279,8 +279,12 @@ export class EventBus {
     if (this.wildcards.length > 0) {
       const name = event as string;
       for (const { match, fn } of this.wildcardSnapshot()) {
-        if (!match(name)) continue;
         try {
+          // match() is subscriber-supplied code too (e.g. onRegex resets
+          // lastIndex on the caller's RegExp, which throws on a frozen
+          // regex). A throwing matcher must neither reach the producer
+          // nor abort delivery to wildcard subscribers after it.
+          if (!match(name)) continue;
           fn(name, payload);
         } catch (err) {
           this.logger?.error(`EventBus wildcard listener for "${name}" threw`, err);
@@ -340,8 +344,10 @@ export class EventBus {
   emitCustom(event: string, payload: unknown): void {
     if (this.wildcards.length === 0) return;
     for (const { match, fn } of this.wildcardSnapshot()) {
-      if (!match(event)) continue;
       try {
+        // Same matcher-isolation rule as emit(): a throwing wildcard
+        // matcher is logged and skipped, never propagated to the producer.
+        if (!match(event)) continue;
         fn(event, payload);
       } catch (err) {
         this.logger?.error(`EventBus wildcard listener for "${event}" threw`, err);
@@ -386,7 +392,17 @@ export class EventBus {
    */
   hasListenerFor(event: string): boolean {
     if ((this.listeners.get(event as EventName)?.size ?? 0) > 0) return true;
-    return this.wildcards.some((w) => w.match(event));
+    // A throwing wildcard matcher is treated as a non-match for that
+    // subscriber: hasListenerFor is a query, so it answers with the healthy
+    // matchers' verdict and logs the broken one instead of throwing.
+    return this.wildcards.some((w) => {
+      try {
+        return w.match(event);
+      } catch (err) {
+        this.logger?.error(`EventBus wildcard matcher for "${event}" threw`, err);
+        return false;
+      }
+    });
   }
 }
 

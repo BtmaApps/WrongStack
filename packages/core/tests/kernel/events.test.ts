@@ -580,3 +580,75 @@ describe('EventBus dispatch-array caching', () => {
     expect(seen).toEqual(['a:plugin.one', 'a:plugin.two', 'b:plugin.two', 'b:plugin.three']);
   });
 });
+
+describe('EventBus wildcard matcher isolation', () => {
+  // onRegex stores a matcher that resets lastIndex on the CALLER's RegExp for
+  // global/sticky sources. A frozen global RegExp makes that assignment throw
+  // TypeError in strict mode (ESM), giving a deterministic throwing wildcard
+  // matcher through the public API. The contract is that subscriber
+  // exceptions never reach the producer nor abort later wildcard delivery.
+  const crashingMatcher = (): RegExp => Object.freeze(/too./g);
+
+  const busWithCrashingMatcher = () => {
+    const bus = new EventBus();
+    const logs: string[] = [];
+    bus.setLogger({
+      error: (msg) => {
+        logs.push(String(msg));
+      },
+    });
+    return { bus, logs };
+  };
+
+  it('emit() isolates a throwing wildcard matcher: producer unaffected, later wildcards still delivered', () => {
+    const { bus, logs } = busWithCrashingMatcher();
+    const later = vi.fn();
+    const named = vi.fn();
+
+    // Crashing matcher registered FIRST: the fix must let the loop continue
+    // to the healthy subscriber behind it.
+    bus.onRegex(crashingMatcher(), vi.fn());
+    bus.onPattern('tool.*', later);
+    bus.on('tool.executed', named);
+
+    expect(() => bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true })).not.toThrow();
+    expect(named).toHaveBeenCalledTimes(1);
+    expect(later).toHaveBeenCalledTimes(1);
+    expect(later).toHaveBeenCalledWith('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    expect(logs.some((m) => m.includes('tool.executed'))).toBe(true);
+  });
+
+  it('emitCustom() isolates a throwing wildcard matcher', () => {
+    const { bus, logs } = busWithCrashingMatcher();
+    const later = vi.fn();
+
+    bus.onRegex(crashingMatcher(), vi.fn());
+    bus.onPattern('tool.*', later);
+
+    expect(() => bus.emitCustom('tool.executed', { ok: true })).not.toThrow();
+    expect(later).toHaveBeenCalledTimes(1);
+    expect(logs.some((m) => m.includes('tool.executed'))).toBe(true);
+  });
+
+  it('hasListenerFor() treats a throwing matcher as a non-match and still honors healthy ones', () => {
+    const { bus, logs } = busWithCrashingMatcher();
+
+    bus.onRegex(crashingMatcher(), vi.fn());
+    bus.onPattern('tool.*', vi.fn());
+
+    expect(bus.hasListenerFor('tool.executed')).toBe(true);
+    expect(logs.some((m) => m.includes('tool.executed'))).toBe(true);
+  });
+
+  it('a throwing matcher does not poison wildcard delivery on subsequent emits', () => {
+    const { bus } = busWithCrashingMatcher();
+    const later = vi.fn();
+
+    bus.onRegex(crashingMatcher(), vi.fn());
+    bus.onPattern('tool.*', later);
+
+    bus.emit('tool.executed', { name: 'x', durationMs: 0, ok: true });
+    bus.emit('tool.executed', { name: 'y', durationMs: 0, ok: true });
+    expect(later).toHaveBeenCalledTimes(2);
+  });
+});

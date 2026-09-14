@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -167,7 +167,14 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
       setOpen(true);
       loadStatus();
     };
-    return onSimplePanel('open-brain-panel', onOpen);
+    const unsubOpen = onSimplePanel('open-brain-panel', onOpen);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-brain-panel') setOpen(false);
+    });
+    return () => {
+      unsubOpen();
+      unsubActivation();
+    };
   }, [loadStatus]);
 
   const askBrain = () => {

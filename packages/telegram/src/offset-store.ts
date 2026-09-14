@@ -105,10 +105,22 @@ export class OffsetStore {
     // both POSIX and Windows before the rename makes them visible.
     const fd = openSync(tmp, 'w');
     try {
-      writeSync(fd, JSON.stringify(offset));
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
+      try {
+        writeSync(fd, JSON.stringify(offset));
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+    } catch (err) {
+      // Same cleanup contract as the rename-failure path below: a failed
+      // write must never leak a stray temp file next to the offset store.
+      // The inner finally has already closed the fd, so the unlink is safe.
+      try {
+        unlinkSync(tmp);
+      } catch {
+        // Temp file removal is best-effort.
+      }
+      throw err;
     }
     try {
       renameSync(tmp, this.path);

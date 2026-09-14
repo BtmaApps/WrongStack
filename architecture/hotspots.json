@@ -211,7 +211,7 @@
       "relativeImports": 0
     },
     "packages/mcp/src/client.ts": {
-      "lines": 1083,
+      "lines": 1097,
       "relativeImports": 12
     },
     "packages/mcp/src/registry.ts": {
@@ -303,39 +303,39 @@
       "relativeImports": 18
     },
     "packages/simpleui/src/simple-ui-session.tsx": {
-      "lines": 1078,
-      "relativeImports": 52
+      "lines": 1096,
+      "relativeImports": 51
     },
     "packages/tools/src/bash.ts": {
       "lines": 849,
       "relativeImports": 7
     },
     "packages/tools/src/codebase-index/background-indexer.ts": {
-      "lines": 968,
+      "lines": 1023,
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
-      "lines": 828,
+      "lines": 879,
       "relativeImports": 4
     },
     "packages/tools/src/codebase-index/indexer.ts": {
-      "lines": 1013,
+      "lines": 1109,
       "relativeImports": 11
     },
     "packages/tools/src/codebase-index/project-server-client.ts": {
-      "lines": 880,
+      "lines": 900,
       "relativeImports": 7
     },
     "packages/tools/src/codebase-index/tree-sitter/queries.ts": {
-      "lines": 867,
+      "lines": 1051,
       "relativeImports": 1
     },
     "packages/tools/src/codebase-index/writer-graph-reader.ts": {
-      "lines": 884,
+      "lines": 1030,
       "relativeImports": 6
     },
     "packages/tools/src/codebase-index/writer.ts": {
-      "lines": 991,
+      "lines": 1053,
       "relativeImports": 24
     },
     "packages/tools/src/json.ts": {

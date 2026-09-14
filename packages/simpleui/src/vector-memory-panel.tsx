@@ -7,10 +7,10 @@
  * disabled placeholder.
  */
 import { Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 
 export interface VectorMemoryStatus {
   enabled: boolean;
@@ -92,9 +92,13 @@ export function VectorMemoryPanel({ baseUrl = '' }: VectorMemoryPanelProps): Rea
     const onClose = () => setOpen(false);
     const unsubOpen = onSimplePanel('open-vector-memory-panel', onOpen);
     const unsubClose = onSimplePanel('close-vector-memory-panel', onClose);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-vector-memory-panel') setOpen(false);
+    });
     return () => {
       unsubOpen();
       unsubClose();
+      unsubActivation();
     };
   }, []);
 

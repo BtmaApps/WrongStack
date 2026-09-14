@@ -4,6 +4,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileExplorer } from '../src/file-explorer.js';
+import { dispatchSimplePanel } from '../src/lib/panel-events.js';
 import type { SimpleSocket } from '../src/lib/ws.js';
 
 const STORAGE_KEY = 'wrongstack-simpleui-file-manager-selected-file';
@@ -77,7 +78,7 @@ afterEach(() => {
 });
 
 describe('FileExplorer', () => {
-  it('opens with the file list and directory tree collapsed', async () => {
+  it('opens with the project file list ready, while directories remain collapsed', async () => {
     const container = renderExplorer(new FakeSocket());
 
     click(container.querySelector('[aria-label="Open file manager"]'));
@@ -85,12 +86,6 @@ describe('FileExplorer', () => {
     // synchronous FakeSocket reply reaches component state.
     await act(async () => {});
 
-    expect(
-      container.querySelector('.file-manager-split')?.classList.contains('file-list-collapsed'),
-    ).toBe(true);
-    expect(container.querySelector('.file-explorer-body')).toBeNull();
-
-    click(container.querySelector('[aria-label="Expand file list"]'));
     expect(container.querySelector('.file-explorer-body')).not.toBeNull();
     expect(container.textContent).toContain('src');
     expect(container.textContent).not.toContain('app.ts');
@@ -102,7 +97,6 @@ describe('FileExplorer', () => {
 
     click(first.querySelector('[aria-label="Open file manager"]'));
     await act(async () => {});
-    click(first.querySelector('[aria-label="Expand file list"]'));
     click(
       Array.from(first.querySelectorAll('.file-tree-node')).find((node) =>
         node.textContent?.includes('src'),
@@ -128,15 +122,25 @@ describe('FileExplorer', () => {
 
     expect(
       second.querySelector('.file-manager-split')?.classList.contains('file-list-collapsed'),
-    ).toBe(true);
+    ).toBe(false);
     expect(second.textContent).toContain('content:src/app.ts');
     expect(secondSocket.sent).toContainEqual({
       type: 'files.read',
       payload: { filePath: 'src/app.ts' },
     });
 
-    click(second.querySelector('[aria-label="Expand file list"]'));
     expect(second.textContent).toContain('app.ts');
     expect(second.querySelector('.file-tree-node.selected')?.textContent).toContain('app.ts');
+  });
+
+  it('closes when another exclusive panel is activated', async () => {
+    const container = renderExplorer(new FakeSocket());
+    click(container.querySelector('[aria-label="Open file manager"]'));
+    await act(async () => {});
+    expect(container.querySelector('.file-explorer')).not.toBeNull();
+
+    act(() => dispatchSimplePanel('open-memory-drawer'));
+
+    expect(container.querySelector('.file-explorer')).toBeNull();
   });
 });

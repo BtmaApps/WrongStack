@@ -84,6 +84,33 @@ describe('ACPSessionStore', () => {
     ]);
   });
 
+  it('rejects case variants of the reserved "index" id (case-insensitive filesystems)', async () => {
+    // Windows and default macOS resolve `INDEX.json` and `index.json` to the
+    // SAME file, so a case variant of the reserved id is the same sidecar
+    // collision as the lowercase form: session/load would read the sidecar as
+    // a session, delete would unlink it, save would clobber it.
+    const indexPath = path.join(dir, 'index.json');
+    await fsp.writeFile(
+      indexPath,
+      JSON.stringify([{ id: 'sess_real', updatedAt: '2026-01-01T00:00:00.000Z' }]),
+    );
+
+    for (const variant of ['INDEX', 'Index']) {
+      // load("<variant>") must NOT read the sidecar index as a session.
+      expect(await store.load(variant)).toBeNull();
+
+      // save({ id: "<variant>" }) must refuse to clobber the sidecar index.
+      await expect(store.save(fakeState({ id: variant }))).rejects.toThrow(/unsafe session id/);
+
+      // delete("<variant>") must NOT unlink the sidecar index.
+      await store.delete(variant);
+      const stillThere = await fsp.readFile(indexPath, 'utf8');
+      expect(JSON.parse(stillThere)).toEqual([
+        { id: 'sess_real', updatedAt: '2026-01-01T00:00:00.000Z' },
+      ]);
+    }
+  });
+
   it('lists persisted sessions', async () => {
     await store.save(fakeState({ id: 'sess_a', updatedAt: '2026-01-01T00:00:00.000Z' }));
     await store.save(fakeState({ id: 'sess_b', updatedAt: '2026-01-02T00:00:00.000Z' }));

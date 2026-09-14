@@ -122,4 +122,42 @@ describe('createSingleFlightRefresh', () => {
     await p;
     expect(sf.inFlight).toBe(false);
   });
+
+  it('keeps the shared rejection handled when the first caller is already aborted', async () => {
+    let rejectRefresh!: (err: Error) => void;
+    const refreshFn = vi.fn(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectRefresh = reject;
+        }),
+    );
+    const sf = createSingleFlightRefresh(refreshFn);
+
+    // First (and only) caller: signal aborted BEFORE the call. The wrapper
+    // starts the shared refresh but early-returns a different (already
+    // rejected) promise, so no awaiter ever attaches to the shared flight.
+    const ctrl = new AbortController();
+    ctrl.abort();
+    const aborted = sf.refresh(ctrl.signal);
+    await expect(aborted).rejects.toThrow();
+    expect(refreshFn).toHaveBeenCalledTimes(1);
+    expect(sf.inFlight).toBe(true);
+
+    // The shared refresh then fails (e.g. invalid_grant after rotation) with
+    // no other caller attached. Its rejection must stay handled — an orphaned
+    // rejection surfaces as an unhandledRejection and crashes the process.
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      rejectRefresh(new Error('invalid_grant: refresh token rotated'));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+    expect(sf.inFlight).toBe(false);
+  });
 });

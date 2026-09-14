@@ -8,6 +8,27 @@ import {
   TelegramNetworkError,
 } from './api-client.js';
 import type { TelegramBotResponse } from './bot-types.js';
+import { escapeHtml } from './text-format.js';
+
+/** Telegram rejects any message over 4096 chars — the Bot API hard limit. */
+const TELEGRAM_WIRE_LIMIT = 4096;
+
+/**
+ * Clamp an HTML-escaped wire text to the hard limit. Escaping expands text
+ * up to 5x ('&' -> '&amp;'), so a raw message within every upstream cap can
+ * still exceed the limit on the wire. Cutting escaped text can leave a
+ * partial trailing entity ('&am'), which the parser also rejects, so cut
+ * back to before the unterminated entity when that happens.
+ */
+function fitHtmlWireText(escaped: string): string {
+  if (escaped.length <= TELEGRAM_WIRE_LIMIT) return escaped;
+  const cut = escaped.slice(0, TELEGRAM_WIRE_LIMIT);
+  const lastAmp = cut.lastIndexOf('&');
+  const lastSemi = cut.lastIndexOf(';');
+  // In escaped text every '&' opens '&amp;'/'&lt;'/'&gt;'; a trailing '&'
+  // with no later ';' is a partially-cut entity.
+  return lastAmp > lastSemi ? cut.slice(0, lastAmp) : cut;
+}
 
 /**
  * Outbound Telegram API surface (card 7A-4): retry-wrapped senders and the
@@ -44,10 +65,16 @@ export class TelegramOutbox {
     let lastErr: unknown;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+        const mode = this.deps.getParseMode?.();
+        // Telegram's HTML parse mode requires literal < > & to be
+        // entity-escaped; raw specials make the API reject the send (400).
+        // Escaping expands text up to 5x, so clamp the wire text to the
+        // hard limit (entity-safely) — raw caps alone don't bound it.
+        const wireText = mode === 'HTML' ? fitHtmlWireText(escapeHtml(text)) : text;
         const timeout = AbortSignal.timeout(10_000);
-        const result = await this.deps.api().sendMessage(chatId, text, {
+        const result = await this.deps.api().sendMessage(chatId, wireText, {
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-          parseMode: this.deps.getParseMode?.(),
+          parseMode: mode,
         });
         return { ok: true, result };
       } catch (err) {
@@ -84,10 +111,13 @@ export class TelegramOutbox {
     let lastErr: unknown;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+        const mode = this.deps.getParseMode?.();
+        // Same HTML-mode escaping + wire-limit contract as sendMessage above.
+        const wireText = mode === 'HTML' ? fitHtmlWireText(escapeHtml(text)) : text;
         const timeout = AbortSignal.timeout(10_000);
-        const result = await this.deps.api().sendMessageWithKeyboard(chatId, text, buttons, {
+        const result = await this.deps.api().sendMessageWithKeyboard(chatId, wireText, buttons, {
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-          parseMode: this.deps.getParseMode?.(),
+          parseMode: mode,
         });
         return { ok: true, result };
       } catch (err) {

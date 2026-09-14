@@ -15,6 +15,7 @@ import { ServerOutageOverlay } from './server-outage-overlay.js';
 import { SessionHealthPanel } from './session-health-panel.js';
 import { SettingsPanel } from './settings-panel.js';
 import type { ChatMessage, ContextInfo, FileEditMeta, SessionInfo } from './types.js';
+import { UtilityDock } from './utility-dock.js';
 import { VectorMemoryPanel } from './vector-memory-panel.js';
 
 export interface SessionModalsProps {
@@ -50,6 +51,8 @@ export interface SessionModalsProps {
   /** Provider/model pairs offered by the subagent lane selects. */
   modelOptions?: ComponentProps<typeof SettingsPanel>['modelOptions'];
   isAtDefaults: boolean;
+  fileChangeCount: number;
+  onOpenFileChanges: () => void;
   diffFiles: FileEditMeta[] | null;
   onCloseDiffFiles: () => void;
   outageDismissed: boolean;
@@ -90,6 +93,8 @@ export function SessionModals(props: SessionModalsProps) {
     onPrefChange,
     onResetPrefs,
     isAtDefaults,
+    fileChangeCount,
+    onOpenFileChanges,
     modelOptions,
     diffFiles,
     onCloseDiffFiles,
@@ -113,6 +118,7 @@ export function SessionModals(props: SessionModalsProps) {
         onRun={onRunCommandPaletteAction}
       />
 
+      <UtilityDock fileChangeCount={fileChangeCount} onOpenFileChanges={onOpenFileChanges} />
       <MemoryDrawer socketRef={socketRef} />
       <FileExplorer socketRef={socketRef} />
       <PromptLibrary onRecall={onRecallPrompt} />

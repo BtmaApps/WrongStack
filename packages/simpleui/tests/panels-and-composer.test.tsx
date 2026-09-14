@@ -229,6 +229,20 @@ describe('SimpleUI interaction components', () => {
     const container = mount(<Composer {...props} />);
 
     const buttons = [...container.querySelectorAll('button')];
+    // Send modes remain explicit in the compact composer. Icons alone made
+    // an active run unnecessarily hard to scan, especially with a pointer.
+    expect(
+      buttons.find((button) => button.textContent === 'Stop')?.getAttribute('aria-label'),
+    ).toBe('Stop run');
+    expect(
+      buttons.find((button) => button.textContent === 'Steer')?.getAttribute('aria-label'),
+    ).toBe('Steer the run with this message');
+    expect(
+      buttons.find((button) => button.textContent === 'Queue')?.getAttribute('aria-label'),
+    ).toBe('Add message to queue');
+    expect(
+      buttons.find((button) => button.textContent === 'Send')?.getAttribute('aria-label'),
+    ).toBe('Send message alongside the run');
     act(() => buttons.find((button) => button.textContent === 'Allow')?.click());
     expect(actions.decideConfirm).toHaveBeenCalledWith('yes');
     act(() => (container.querySelector('[role="option"]') as HTMLButtonElement).click());

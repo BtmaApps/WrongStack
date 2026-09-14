@@ -5,7 +5,6 @@ import { ChatMessageList } from './chat-message-list.js';
 import { Composer } from './composer.js';
 import { ErrorBoundary } from './error-boundary.js';
 import type { FallbackPendingProjection } from './fallback-modal.js';
-import { FileChangesButton } from './file-changes-button.js';
 import { useAgentRoster } from './hooks/use-agent-roster.js';
 import { useComposerActions } from './hooks/use-composer-actions.js';
 import { useF5Resilience } from './hooks/use-f5-resilience.js';
@@ -39,7 +38,7 @@ import { removeFileMention } from './lib/file-mention.js';
 import type { MessageHandlerDeps } from './lib/message-handler.js';
 import { createMessageHandler } from './lib/message-handler.js';
 import { isVisionModel } from './lib/model-capabilities.js';
-import { dispatchSimplePanel } from './lib/panel-events.js';
+import { dispatchSimplePanel, onPanelActivation } from './lib/panel-events.js';
 import { onPersistedWriteFailure } from './lib/persisted.js';
 import { type QueuedItem, removeQueuedAt } from './lib/queue-model.js';
 import type { RefineState } from './lib/refine-model.js';
@@ -189,6 +188,17 @@ export function SimpleUiSession() {
     handleMailboxAction,
     applyMailboxMessage,
   } = useSimpleMailbox({ socketRef, setNotice, prefsRef });
+
+  // Settings, context, mailbox, file diff, and the independently mounted
+  // utility panels share one exclusive surface rule. A newly activated panel
+  // must not leave a prior drawer alive underneath its overlay.
+  useEffect(() => {
+    return onPanelActivation((panel) => {
+      if (panel !== 'open-settings') setSettingsOpen(false);
+      if (panel !== 'open-context-breakdown') setContextBreakdownOpen(false);
+      if (panel !== 'open-mailbox') setMailboxOpen(false);
+    });
+  }, [setContextBreakdownOpen, setMailboxOpen, setSettingsOpen]);
 
   // Tab-strip presence: running marker + unread mailbox count (D10).
   useTabTitle({ running, unreadCount: mailboxUnreadCount });
@@ -728,6 +738,7 @@ export function SimpleUiSession() {
           toggleTheme();
           return;
         case 'open-settings':
+          dispatchSimplePanel('open-settings');
           setSettingsOpen(true);
           return;
         case 'open-tools':
@@ -761,6 +772,7 @@ export function SimpleUiSession() {
           dispatchSimplePanel('open-session-health');
           return;
         case 'open-context-breakdown':
+          dispatchSimplePanel('open-context-breakdown');
           setContextBreakdownOpen(true);
           return;
         case 'compact-context':
@@ -836,17 +848,23 @@ export function SimpleUiSession() {
               });
             }
           }}
-          onOpenContextBreakdown={() => setContextBreakdownOpen(true)}
+          onOpenContextBreakdown={() => {
+            dispatchSimplePanel('open-context-breakdown');
+            setContextBreakdownOpen(true);
+          }}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onToggleTheme={toggleTheme}
           onToggleMailbox={() => {
-            setMailboxOpen((current) => {
-              const next = !current;
-              if (next) refreshMailbox();
-              return next;
-            });
+            if (!mailboxOpen) {
+              dispatchSimplePanel('open-mailbox');
+              refreshMailbox();
+            }
+            setMailboxOpen(!mailboxOpen);
           }}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => {
+            dispatchSimplePanel('open-settings');
+            setSettingsOpen(true);
+          }}
         />
       </ErrorBoundary>
 
@@ -938,14 +956,6 @@ export function SimpleUiSession() {
           onTaskStatusChange={updateTaskStatus}
           onPlanStatusChange={updatePlanStatus}
         />
-
-        <FileChangesButton
-          fileCount={fileEditSummary.fileCount}
-          totalAdded={fileEditSummary.totalAdded}
-          totalRemoved={fileEditSummary.totalRemoved}
-          files={fileEditSummary.files}
-          onOpenDiff={(files) => setDiffFiles(files)}
-        />
       </ErrorBoundary>
 
       <ErrorBoundary section="mailbox">
@@ -976,7 +986,10 @@ export function SimpleUiSession() {
         sessionStart={sessionStart}
         contextBreakdownOpen={contextBreakdownOpen}
         onCloseContextBreakdown={() => setContextBreakdownOpen(false)}
-        onOpenContextBreakdown={() => setContextBreakdownOpen(true)}
+        onOpenContextBreakdown={() => {
+          dispatchSimplePanel('open-context-breakdown');
+          setContextBreakdownOpen(true);
+        }}
         onCompactContext={() => {
           if (sessionIdRef.current) {
             socketRef.current?.send('context.compact', {
@@ -1003,6 +1016,11 @@ export function SimpleUiSession() {
         onResetPrefs={resetPrefs}
         isAtDefaults={isAtDefaults}
         modelOptions={subagentModelOptions}
+        fileChangeCount={fileEditSummary.fileCount}
+        onOpenFileChanges={() => {
+          dispatchSimplePanel('open-file-diff');
+          setDiffFiles(fileEditSummary.files);
+        }}
         diffFiles={diffFiles}
         onCloseDiffFiles={() => setDiffFiles(null)}
         outageDismissed={outageDismissed}

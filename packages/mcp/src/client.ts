@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import type { MCPAuthorizationProvider } from './authorization.js';
 import { forceKillTree } from './client-process.js';
@@ -119,6 +120,14 @@ export class MCPClient {
   >();
   private rxBuffer = '';
   private rxBufferBytes = 0;
+  /**
+   * Incremental UTF-8 decoder for the stdio rx path. A pipe read boundary can
+   * land inside a multi-byte sequence; decoding each chunk with
+   * `chunk.toString()` would replace it with U+FFFD and silently corrupt the
+   * JSON-RPC payload. StringDecoder withholds the partial sequence until the
+   * chunk that completes it (same remedy as `readFileHead` in core utils).
+   */
+  private rxDecoder = new StringDecoder('utf8');
   private _tools: MCPTool[] = [];
   /** Server-declared handshake metadata. Populated for stdio in the first protocol slice. */
   private _serverMetadata?: MCPServerMetadata | undefined;
@@ -241,6 +250,7 @@ export class MCPClient {
     // attempt would corrupt JSON-RPC parsing on the new stream.
     this.rxBuffer = '';
     this.rxBufferBytes = 0;
+    this.rxDecoder = new StringDecoder('utf8');
 
     // On Windows, MCP servers are usually launched via `npx`/`npm`/`uvx`,
     // which resolve to `.cmd` shims. Since the CVE-2024-27980 fix Node refuses
@@ -296,8 +306,12 @@ export class MCPClient {
         });
     this.child = child;
 
-    child.stdout?.on('data', (chunk: Buffer) => this.onData(chunk.toString()));
+    child.stdout?.on('data', (chunk: Buffer) => this.onData(this.rxDecoder.write(chunk)));
     child.stdout?.on('end', () => {
+      // Flush the decoder's withheld bytes together with any buffered partial
+      // line — a trailing fragment without a newline is still a frame.
+      const tail = this.rxDecoder.end();
+      if (tail) this.onData(tail);
       if (this.rxBuffer.trim()) {
         const line = this.rxBuffer.trim();
         this.rxBuffer = '';

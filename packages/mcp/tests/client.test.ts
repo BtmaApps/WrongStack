@@ -970,3 +970,58 @@ describe('MCPClient connect re-entrancy', () => {
     }
   }, 15_000);
 });
+
+describe('MCPClient stdio rx — UTF-8 chunk boundaries', () => {
+  it('keeps multi-byte UTF-8 intact when a stdout chunk splits a code point', async () => {
+    // Regression: the rx path decoded each stdout chunk with chunk.toString(),
+    // so a pipe read boundary landing inside a multi-byte sequence replaced it
+    // with U+FFFD — silent mojibake in tool results.
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'mcp-utf8-split-'));
+    try {
+      const serverPath = path.join(tmp, 'split-server.mjs');
+      const serverSource = [
+        "import * as readline from 'node:readline';",
+        'const rl = readline.createInterface({ input: process.stdin, terminal: false });',
+        "rl.on('line', (line) => {",
+        '  if (!line.trim()) return;',
+        '  let msg; try { msg = JSON.parse(line); } catch { return; }',
+        "  const reply = (result) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result }) + '\\n');",
+        "  if (msg.method === 'initialize') {",
+        "    reply({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'utf8-split', version: '0.0.0' } });",
+        "  } else if (msg.method === 'tools/list') {",
+        "    reply({ tools: [{ name: 'big', inputSchema: { type: 'object' } }] });",
+        "  } else if (msg.method === 'tools/call') {",
+        "    const content = 'x'.repeat(40 * 1024) + '国END';",
+        "    const bytes = Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { content } }) + '\\n', 'utf8');",
+        "    const cut = bytes.indexOf(Buffer.from('国', 'utf8')) + 2;",
+        '    process.stdout.write(bytes.subarray(0, cut));',
+        '    setTimeout(() => process.stdout.write(bytes.subarray(cut)), 30);',
+        '  }',
+        '});',
+      ].join('\n');
+      await fs.writeFile(serverPath, serverSource, 'utf8');
+
+      const client = new MCPClient({
+        name: 'utf8-split',
+        transport: 'stdio',
+        command: 'node',
+        args: [serverPath],
+        startupTimeoutMs: 15_000,
+        requestTimeoutMs: 10_000,
+      });
+      try {
+        await client.connect();
+        const result = await client.callTool('big', {});
+        const content = typeof result.content === 'string' ? result.content : '';
+        // The 3-byte 国 sequence straddles the stdout chunk boundary; the rx
+        // decoder must withhold the partial bytes and complete the codepoint.
+        expect(content).toContain('国');
+        expect(content).not.toContain('\uFFFD');
+      } finally {
+        await client.close().catch(() => {});
+      }
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
+    }
+  }, 30_000);
+});

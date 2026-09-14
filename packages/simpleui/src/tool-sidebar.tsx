@@ -6,7 +6,6 @@ import {
   ListChecks,
   LoaderCircle,
   Map as MapIcon,
-  PanelRight,
   Workflow,
   Wrench,
   X,
@@ -21,6 +20,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { onOpenWorkspacePanel, onPanelActivation } from './lib/panel-events.js';
 import type {
   PlanStatus,
   TaskStatus,
@@ -28,7 +28,6 @@ import type {
   WorklistStore,
   WorklistView,
 } from './lib/worklist-store.js';
-import { onOpenWorkspacePanel } from './lib/panel-events.js';
 import type { ToolCallInfo } from './types.js';
 
 const LazyWorklistSidebar = lazy(() =>
@@ -94,30 +93,7 @@ export function ToolSidebar({
   const subscribe = worklists?.subscribe ?? (() => () => undefined);
   const getSnapshot = worklists?.getSnapshot ?? (() => EMPTY_WORKLISTS);
   const worklistSnapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  // Derive counts/splits only when their inputs change — this component
-  // re-renders on every parent stream delta, and these are ~6 full-array passes.
-  const runningCount = useMemo(
-    () => calls.filter((call) => call.status === 'running').length,
-    [calls],
-  );
-  const worklistCounts: Record<WorklistView, number> = useMemo(
-    () => ({
-      flow: worklistSnapshot.workbench?.totals.active ?? 0,
-      todos: worklistSnapshot.todos.filter((item) => item.status !== 'completed').length,
-      tasks: worklistSnapshot.tasks.filter((item) => item.status !== 'completed').length,
-      plan: worklistSnapshot.planItems.filter((item) => item.status !== 'done').length,
-    }),
-    [worklistSnapshot],
-  );
   const open = view !== null;
-
-  const selectView = (next: SidebarView) => {
-    setView((current) => (current === next ? null : next));
-    if (next !== 'tools' && !requested.current.has(next)) {
-      requested.current.add(next);
-      requestWorklist?.(next);
-    }
-  };
 
   const openView = useCallback(
     (next: SidebarView) => {
@@ -135,6 +111,12 @@ export function ToolSidebar({
       openView(view);
     });
   }, [openView]);
+
+  useEffect(() => {
+    return onPanelActivation((panel) => {
+      if (!panel.startsWith('workspace:')) setView(null);
+    });
+  }, []);
 
   useEffect(() => {
     requested.current.clear();
@@ -172,7 +154,6 @@ export function ToolSidebar({
     plan: { label: 'PLAN', icon: MapIcon },
   } satisfies Record<SidebarView, { label: string; icon: typeof Wrench }>;
   const ActiveIcon = view ? viewMeta[view].icon : Wrench;
-
   // Split calls: meta tools (compact) vs regular tools (expandable)
   const { metaCalls, regularCalls } = useMemo(
     () => ({
@@ -184,34 +165,6 @@ export function ToolSidebar({
 
   return (
     <>
-      <nav className="tool-sidebar-launcher" aria-label="Workspace panels">
-        {(
-          [
-            ['tools', 'TOOLS', PanelRight, calls.length],
-            ['flow', 'FLOW', Workflow, worklistCounts.flow],
-            ['todos', 'TODOS', ListChecks, worklistCounts.todos],
-            ['tasks', 'TASKS', ClipboardList, worklistCounts.tasks],
-            ['plan', 'PLAN', MapIcon, worklistCounts.plan],
-          ] as const
-        ).map(([itemView, label, Icon, count]) => (
-          <button
-            type="button"
-            className={`tool-sidebar-trigger${view === itemView ? ' active' : ''}`}
-            aria-expanded={view === itemView}
-            aria-controls="tool-sidebar"
-            onClick={() => selectView(itemView)}
-            key={itemView}
-          >
-            <Icon size={14} aria-hidden="true" />
-            <span>{label}</span>
-            <b>{count}</b>
-            {itemView === 'tools' && runningCount > 0 && (
-              <i role="status" aria-label={`${runningCount} running tool calls`} />
-            )}
-          </button>
-        ))}
-      </nav>
-
       {/* Backdrop overlay — closes the panel when clicking outside */}
       {open && (
         <button

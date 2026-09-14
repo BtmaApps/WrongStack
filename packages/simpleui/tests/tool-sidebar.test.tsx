@@ -3,8 +3,9 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ToolSidebar } from '../src/tool-sidebar.js';
+import { dispatchOpenWorkspacePanel } from '../src/lib/panel-events.js';
 import { createWorklistStore } from '../src/lib/worklist-store.js';
+import { ToolSidebar } from '../src/tool-sidebar.js';
 import type { ToolCallInfo } from '../src/types.js';
 
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -29,7 +30,17 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('SimpleUI floating tool sidebar', () => {
+describe('SimpleUI workspace drawer', () => {
+  it('has no independent launcher: the shared workspace menu owns entry points', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    act(() => root.render(<ToolSidebar agentId="leader" agentName="LEADER" calls={[]} />));
+
+    expect(container.querySelector('.tool-sidebar-launcher')).toBeNull();
+  });
+
   it('does not render the panel until requested, then closes with Escape', () => {
     const container = document.createElement('div');
     document.body.append(container);
@@ -37,11 +48,9 @@ describe('SimpleUI floating tool sidebar', () => {
     roots.push(root);
     act(() => root.render(<ToolSidebar agentId="worker-1" agentName="WORKER" calls={calls} />));
 
-    const trigger = container.querySelector('.tool-sidebar-trigger');
-    expect(trigger).not.toBeNull();
     expect(container.querySelector('#tool-sidebar')).toBeNull();
 
-    act(() => click(trigger as Element));
+    act(() => dispatchOpenWorkspacePanel('tools'));
     const panel = container.querySelector<HTMLElement>('#tool-sidebar');
     expect(panel?.dataset['agentId']).toBe('worker-1');
     expect(panel?.textContent).toContain('read');
@@ -70,11 +79,8 @@ describe('SimpleUI floating tool sidebar', () => {
       ),
     );
 
-    const todoTrigger = Array.from(container.querySelectorAll('.tool-sidebar-trigger')).find(
-      (button) => button.textContent?.includes('TODOS'),
-    );
     await act(async () => {
-      click(todoTrigger as Element);
+      dispatchOpenWorkspacePanel('todos');
       await import('../src/worklist-sidebar.js');
     });
     expect(requested).toEqual(['todos']);
@@ -89,11 +95,10 @@ describe('SimpleUI floating tool sidebar', () => {
       });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(todoTrigger?.textContent).toContain('1');
     expect(container.textContent).toContain('Add SimpleUI todos');
 
-    act(() => click(todoTrigger as Element));
-    act(() => click(todoTrigger as Element));
+    act(() => dispatchOpenWorkspacePanel('todos'));
+    act(() => dispatchOpenWorkspacePanel('todos'));
     expect(requested).toEqual(['todos']);
   });
 
@@ -104,8 +109,7 @@ describe('SimpleUI floating tool sidebar', () => {
     roots.push(root);
     act(() => root.render(<ToolSidebar agentId="leader" agentName="LEADER" calls={calls} />));
 
-    const trigger = container.querySelector('.tool-sidebar-trigger');
-    act(() => click(trigger as Element));
+    act(() => dispatchOpenWorkspacePanel('tools'));
     expect(container.textContent).not.toContain('src/app.tsx');
 
     const callTrigger = container.querySelector('.tool-sidebar-call-trigger');

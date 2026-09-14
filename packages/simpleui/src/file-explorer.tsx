@@ -13,12 +13,16 @@ import {
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
-import { onSimplePanel } from './lib/panel-events.js';
+import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
 const SELECTED_FILE_STORAGE_KEY = 'wrongstack-simpleui-file-manager-selected-file';
 const MAX_STORED_PATH_LENGTH = 4096;
+
+function defaultFileListOpen(): boolean {
+  return !globalThis.matchMedia?.('(max-width: 760px)').matches;
+}
 
 interface FileNode {
   name: string;
@@ -203,7 +207,7 @@ function ChevronRight({ size }: { size: number }) {
 
 export function FileExplorer({ socketRef }: FileExplorerProps) {
   const [open, setOpen] = useState(false);
-  const [fileListOpen, setFileListOpen] = useState(false);
+  const [fileListOpen, setFileListOpen] = useState(defaultFileListOpen);
   const [tree, setTree] = useState<FileNode[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(readSelectedPath);
@@ -398,7 +402,7 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
 
   const openExplorer = useCallback(() => {
     setOpen(true);
-    setFileListOpen(false);
+    setFileListOpen(defaultFileListOpen());
     if (!tree) loadTree();
     if (selectedPath && fileContent === null && !contentLoading) {
       loadFileContent(selectedPath);
@@ -407,7 +411,18 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
 
   useEffect(() => {
     const onOpen = () => openExplorer();
-    return onSimplePanel('open-file-explorer', onOpen);
+    const unsubOpen = onSimplePanel('open-file-explorer', onOpen);
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-file-explorer') {
+        setOpen(false);
+        setIsEditing(false);
+        setEditedContent(null);
+      }
+    });
+    return () => {
+      unsubOpen();
+      unsubActivation();
+    };
   }, [openExplorer]);
 
   // ── Tab key handling — insert 2 spaces instead of changing focus ──
@@ -728,14 +743,17 @@ export function FileExplorer({ socketRef }: FileExplorerProps) {
               </>
             )}
             {!selectedPath && (
-              <div className="file-manager-empty">
+              <div className="file-manager-empty file-manager-welcome">
+                <Folder size={22} aria-hidden="true" />
+                <strong>Open a project file</strong>
+                <p>Choose a file from the project tree to preview or edit it here.</p>
                 <button
                   type="button"
                   className="file-manager-open-list-btn"
                   onClick={() => setFileListOpen(true)}
                 >
                   <PanelLeftOpen size={13} aria-hidden="true" />
-                  Select a file to view its content
+                  Browse project files
                 </button>
               </div>
             )}
