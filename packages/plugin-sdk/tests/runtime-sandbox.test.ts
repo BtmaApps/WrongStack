@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { sanitizeRunnerPath, withinProject } from '../src/runtime/index.js';
 import { isInsideProject, safePath } from '../src/runtime/sandbox.js';
 
 /**
@@ -100,5 +101,39 @@ describe('safePath', () => {
     } finally {
       await fs.rm(sibling, { recursive: true, force: true });
     }
+  });
+
+  it('accepts an in-project file whose name merely starts with `..`', async () => {
+    // `..audit-notes.md` is an ordinary segment: the dots are part of the
+    // NAME, not a parent traversal. A bare startsWith('..') on the relative
+    // path rejected it as if it had escaped the project; only `..` itself or
+    // a `..` + separator prefix is an escape (bug sdk-r1).
+    await fs.writeFile(path.join(root, '..audit-notes.md'), 'notes');
+    expect(safePath('..audit-notes.md', { projectRoot: root })).toBe(
+      path.join(root, '..audit-notes.md'),
+    );
+    expect(isInsideProject('..audit-notes.md', { projectRoot: root })).toBe(true);
+  });
+});
+
+describe('project boundary (withinProject / sanitizeRunnerPath)', () => {
+  it('accepts in-project paths whose first segment starts with `..`', () => {
+    // Same boundary predicate as safePath, on the runner side of the SDK:
+    // withinProject guards project-relative checks, sanitizeRunnerPath guards
+    // spawned argv/cwd values. A root-level file named `..audit-notes.md` is
+    // inside the project; the check is pure path math, no fs.
+    const cwd = process.cwd();
+    expect(withinProject(path.join(cwd, '..audit-notes.md'))).toBe(true);
+    expect(withinProject('..audit-notes.md')).toBe(true);
+    expect(sanitizeRunnerPath('..audit-notes.md', { projectRoot: cwd })).toBe(
+      path.join(cwd, '..audit-notes.md'),
+    );
+  });
+
+  it('still rejects real parent escapes and the parent directory itself', () => {
+    const cwd = process.cwd();
+    expect(withinProject(path.join(cwd, '..', 'outside.txt'))).toBe(false);
+    expect(withinProject('..')).toBe(false);
+    expect(sanitizeRunnerPath('../escape.txt', { projectRoot: cwd })).toBeNull();
   });
 });

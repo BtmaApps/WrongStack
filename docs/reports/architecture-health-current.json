@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T08:41:48.920Z",
+  "generatedAt": "2026-09-14T10:54:08.501Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3790,
-    "testFiles": 3351,
-    "sourceLines": 923183,
+    "sourceFiles": 3795,
+    "testFiles": 3356,
+    "sourceLines": 925423,
     "workspaceEdges": 128,
-    "moduleEdges": 12115,
+    "moduleEdges": 12121,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 940
+    "testOnlyExports": 946
   },
   "errors": [],
   "packageCycles": [],
@@ -812,8 +812,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 548,
-      "testFiles": 377,
+      "sourceFiles": 553,
+      "testFiles": 382,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -836,7 +836,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 377
+          "testFiles": 382
         }
       ]
     },
@@ -19863,6 +19863,24 @@
         ]
       },
       {
+        "file": "packages/webui/tests/components/tool-call-overview.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/tool-group-special-views.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/tool-ledger-card.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/components/tool-result-sage.test.tsx",
         "projects": [
           "webui-jsdom"
@@ -20464,6 +20482,18 @@
       },
       {
         "file": "packages/webui/tests/lib/file-icons.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/font-scale-css.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/fonts.test.ts",
         "projects": [
           "webui-jsdom"
         ]
@@ -21884,7 +21914,7 @@
     },
     {
       "file": "packages/webui/src/components/CodeMap.tsx",
-      "lines": 931,
+      "lines": 932,
       "relativeImports": 12
     },
     {
@@ -21939,7 +21969,7 @@
     },
     {
       "file": "packages/webui/src/components/SkillDetailView.tsx",
-      "lines": 1051,
+      "lines": 1062,
       "relativeImports": 3
     },
     {
@@ -21956,6 +21986,11 @@
       "file": "packages/webui/src/hooks/ws-handlers.ts",
       "lines": 913,
       "relativeImports": 7
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "lines": 873,
+      "relativeImports": 0
     },
     {
       "file": "packages/webui/src/stores/chat-lanes.ts",
@@ -22070,6 +22105,11 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/webui/src/components/SkillDetailView.tsx",
+      "lines": 1062,
+      "relativeImports": 3
+    },
+    {
       "file": "packages/webui-server/src/server/ws-payload-validation.ts",
       "lines": 1057,
       "relativeImports": 1
@@ -22088,11 +22128,6 @@
       "file": "packages/core/src/index.ts",
       "lines": 1051,
       "relativeImports": 164
-    },
-    {
-      "file": "packages/webui/src/components/SkillDetailView.tsx",
-      "lines": 1051,
-      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/components/OfficeMapCanvas.tsx",
@@ -22463,19 +22498,11 @@
     },
     {
       "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
-      "name": "createAuthAuditLogger"
-    },
-    {
-      "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
       "name": "fileAuditSink"
     },
     {
       "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
       "name": "memAuthAuditSink"
-    },
-    {
-      "file": "packages/cli/src/auth-menu/auth-menu-audit.ts",
-      "name": "resolveAuditSink"
     },
     {
       "file": "packages/cli/src/auth-menu/panel-service.ts",
@@ -25502,6 +25529,10 @@
       "name": "splitStableStreamPrefix"
     },
     {
+      "file": "packages/webui/src/components/MessageBubble/ToolCallOverview.tsx",
+      "name": "TOOL_OVERVIEW_REGISTRY"
+    },
+    {
       "file": "packages/webui/src/components/OfficeMapCanvas/utils.ts",
       "name": "AGENT_COLS"
     },
@@ -25896,6 +25927,34 @@
     {
       "file": "packages/webui/src/lib/fallback-ref.ts",
       "name": "splitProviderModel"
+    },
+    {
+      "file": "packages/webui/src/lib/font-scale-css.ts",
+      "name": "fontScalePostcssPlugin"
+    },
+    {
+      "file": "packages/webui/src/lib/font-scale-css.ts",
+      "name": "scaleTypographyValue"
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "name": "clampFontSetting"
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "name": "DEFAULT_FONT_PRESET"
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "name": "FONT_FAMILIES"
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "name": "FONT_ROLE_CSS_VARIABLE"
+    },
+    {
+      "file": "packages/webui/src/lib/fonts.ts",
+      "name": "isFamilyAllowedForRole"
     },
     {
       "file": "packages/webui/src/lib/model-calendar.ts",

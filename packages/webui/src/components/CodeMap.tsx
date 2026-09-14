@@ -24,6 +24,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import '@xyflow/react/dist/style.css';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useShallow } from 'zustand/react/shallow';
+import { scaledPx } from '@/lib/fonts';
 import {
   activityAgentKey,
   type FileActivity,
@@ -31,6 +32,7 @@ import {
   useCodemapActivityStore,
 } from '@/stores/codemap-activity-store';
 import { useCodemapIndexStore } from '@/stores/codemap-index-store';
+import { CodeMapActivityDrawer } from './CodeMapActivityDrawer';
 import {
   activityFingerprint,
   activityMatchesNode,
@@ -41,12 +43,8 @@ import {
   sameFile,
   touchClientGraphCache,
 } from './CodeMapActivityHelpers';
-import { CodeMapActivityDrawer } from './CodeMapActivityDrawer';
 import { CodeMapCanvasSurface } from './CodeMapCanvasSurface';
 import { CodeMapCanvasToolbar } from './CodeMapCanvasToolbar';
-import { CodeMapHeader } from './CodeMapHeader';
-import { CodeMapRelationInspector } from './CodeMapRelationInspector';
-import { CodeMapTreeSidebar } from './CodeMapTreeSidebar';
 import {
   EMPTY_GRAPH,
   FLOW_ACTIVITY_THROTTLE_MS,
@@ -59,7 +57,10 @@ import {
   SEARCH_VIRTUALIZE_THRESHOLD,
 } from './CodeMapConfig';
 import { preserveFlowEdges, preserveFlowNodes } from './CodeMapFlowState';
+import { CodeMapHeader } from './CodeMapHeader';
 import { LiveAgentsHud, LiveControlBar } from './CodeMapLiveOverlay';
+import { CodeMapRelationInspector } from './CodeMapRelationInspector';
+import { CodeMapTreeSidebar } from './CodeMapTreeSidebar';
 import { agentInitials, agentTrailColor, type CodeMapNodeData, EDGE_COLOR } from './CodeMapVisuals';
 import {
   buildDirectoryTree,
@@ -468,7 +469,7 @@ function CodeMapInner(): React.ReactElement {
             opacity: live ? 1 : selectedId ? (focused ? 0.88 : 0.08) : 0.52,
           },
           labelStyle: {
-            fontSize: 9,
+            fontSize: scaledPx(9),
             fontFamily: 'var(--font-mono)',
             fill: 'hsl(var(--muted-foreground))',
           },
@@ -533,7 +534,7 @@ function CodeMapInner(): React.ReactElement {
                 : undefined,
             markerEnd: { type: MarkerType.ArrowClosed, color, width: 13, height: 13 },
             style: { stroke: color, strokeWidth: 2.5, strokeDasharray: '7 5', opacity: 0.9 },
-            labelStyle: { fontSize: 8, fontWeight: 700, fill: color },
+            labelStyle: { fontSize: scaledPx(8), fontWeight: 700, fill: color },
             labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.94 },
             labelBgPadding: [4, 2] as [number, number],
             zIndex: 6,

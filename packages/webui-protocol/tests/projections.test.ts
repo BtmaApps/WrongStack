@@ -225,6 +225,9 @@ describe('projectToolMessage', () => {
           ok: false,
           durationMs: 12,
           output: 'err',
+          outputBytes: 2048,
+          outputTokens: 585,
+          outputLines: 19,
         }),
       ),
     ).toEqual({
@@ -234,6 +237,9 @@ describe('projectToolMessage', () => {
       ok: false,
       durationMs: 12,
       output: 'err',
+      outputBytes: 2048,
+      outputTokens: 585,
+      outputLines: 19,
     });
   });
 

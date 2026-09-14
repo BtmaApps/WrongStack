@@ -6,32 +6,13 @@ declare module '*.css' {
   export default css;
 }
 
-declare module '@fontsource-variable/ibm-plex-sans' {
+// Self-hosted font packages: eager imports in main.tsx, lazy loaders in lib/fonts.ts.
+declare module '@fontsource-variable/*' {
   const _: string;
   export default _;
 }
 
-declare module '@fontsource-variable/manrope' {
-  const _: string;
-  export default _;
-}
-
-declare module '@fontsource-variable/space-grotesk' {
-  const _: string;
-  export default _;
-}
-
-declare module '@fontsource/ibm-plex-mono/400.css' {
-  const _: string;
-  export default _;
-}
-
-declare module '@fontsource/ibm-plex-mono/500.css' {
-  const _: string;
-  export default _;
-}
-
-declare module '@fontsource/ibm-plex-mono/600.css' {
+declare module '@fontsource/*' {
   const _: string;
   export default _;
 }

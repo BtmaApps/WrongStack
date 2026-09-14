@@ -273,6 +273,9 @@ export function handleToolExecuted(msg: WSServerMessage) {
     }
     chat.updateMessage(ownerId, {
       toolDurationMs: payload.durationMs,
+      ...(payload.outputBytes !== undefined ? { toolOutputBytes: payload.outputBytes } : {}),
+      ...(payload.outputTokens !== undefined ? { toolOutputTokens: payload.outputTokens } : {}),
+      ...(payload.outputLines !== undefined ? { toolOutputLines: payload.outputLines } : {}),
       // SAGE memory arrives as its own field; keep it off `toolResult` so the
       // block can only ever render as a memory card.
       ...(payload.sage && payload.sage.length > 0 ? { sageLines: payload.sage } : {}),

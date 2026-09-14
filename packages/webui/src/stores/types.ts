@@ -101,6 +101,12 @@ export interface ChatMessage {
   /** Wall-clock ms reported by the backend in tool.executed; rendered next
    *  to the tool name so the user can spot slow tools at a glance. */
   toolDurationMs?: number | undefined;
+  /** Authoritative output metrics from `tool.executed`. These can differ from
+   *  the displayed body when the backend bounded a large result, so cards must
+   *  preserve them rather than re-counting the preview string. */
+  toolOutputBytes?: number | undefined;
+  toolOutputTokens?: number | undefined;
+  toolOutputLines?: number | undefined;
   /** Backend's tool_use id (e.g. "toolu_..." from Anthropic). Used to map
    *  tool.executed events back to the right bubble when the model fires
    *  multiple tools in parallel — currentToolId alone only points at the

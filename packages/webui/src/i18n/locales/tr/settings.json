@@ -29,7 +29,9 @@
     "chimeraDesc": "Oturum sonrası kod inceleme ajanı yapılandırması.",
     "contextDesc": "Özellik bayrakları, bağlam stratejisi, sıkıştırıcı ve eklenti denetimleri.",
     "logsDesc": "Günlük düzeyi, denetim ayrıntısı, dosya sistemi erişim kapsamı ve hata ayıklama akışı.",
-    "securityDesc": "Beyin karar kontrolü, gölge ajan ve araç erişimi."
+    "securityDesc": "Beyin karar kontrolü, gölge ajan ve araç erişimi.",
+    "fonts": "Yazı tipleri",
+    "fontsDesc": "Arayüz, sohbet, editör ve terminal fontları; boyut, satır yüksekliği ve ligatürler."
   },
   "model": {
     "heading": "Model",
@@ -960,5 +962,130 @@
     "capAttachment": "Ek",
     "capStructuredOutput": "Yapılandırılmış çıktı",
     "capOpenWeights": "Açık ağırlıklar"
+  },
+  "fonts": {
+    "presetsHeading": "Hazır font grupları",
+    "presetsHint": "Bir hazır grup tüm rolleri birden ayarlar; fontlar yalnızca ilk kullanıldığında indirilir.",
+    "presets": {
+      "workbench": {
+        "label": "Tezgâh",
+        "description": "Varsayılan operatör tezgâhı görünümü."
+      },
+      "plex": {
+        "label": "IBM Plex",
+        "description": "Baştan sona tek, mühendislik ürünü bir aile."
+      },
+      "modern": {
+        "label": "Modern",
+        "description": "Nötr Inter, kod için JetBrains Mono."
+      },
+      "geist": {
+        "label": "Geist",
+        "description": "Net Geist sans ve mono eşleşmesi."
+      },
+      "classic": {
+        "label": "Klasik",
+        "description": "Adobe'nin Source Sans, Serif ve Code Pro ailesi."
+      },
+      "editorial": {
+        "label": "Editoryal",
+        "description": "Serif başlıklar ve kitap tadında sohbet fontu."
+      },
+      "readable": {
+        "label": "Okunaklı",
+        "description": "Uzun oturumlar için yüksek okunaklılık."
+      },
+      "friendly": {
+        "label": "Samimi",
+        "description": "Yumuşak, rahat hatlar ve Fira Code."
+      },
+      "monospace": {
+        "label": "Eş aralıklı",
+        "description": "Her yerde eş aralıklı, terminal havası."
+      },
+      "system": {
+        "label": "Sistem",
+        "description": "İşletim sistemi fontları, indirme yok."
+      }
+    },
+    "rolesHeading": "Rollere göre fontlar",
+    "rolesHint": "Hazır grubun üstüne istediğiniz rolü değiştirin. “… ile aynı” yazan roller üst rollerini izler.",
+    "roles": {
+      "ui": {
+        "label": "Arayüz ve paneller",
+        "hint": "Düğmeler, menüler, kenar çubukları, listeler ve ayarlar."
+      },
+      "display": {
+        "label": "Başlıklar",
+        "hint": "Sayfa ve bölüm başlıkları."
+      },
+      "reading": {
+        "label": "Sohbet ve belgeler",
+        "hint": "Asistan yanıtları, markdown ve posta kutusu mesajları."
+      },
+      "code": {
+        "label": "Satır içi kod ve veri",
+        "hint": "Kod blokları, günlükler, kimlikler ve tablo verileri."
+      },
+      "editor": {
+        "label": "Kod editörü",
+        "hint": "Monaco dosya editörü ve fark görünümü."
+      },
+      "terminal": {
+        "label": "Terminal",
+        "hint": "Tümleşik terminal oturumları."
+      }
+    },
+    "fromPreset": "Hazır grup ({{name}})",
+    "inherit": "{{role}} ile aynı ({{name}})",
+    "categories": {
+      "sans": "Sans serif",
+      "serif": "Serif",
+      "mono": "Eş aralıklı"
+    },
+    "systemTag": "sistem",
+    "sizeHeading": "Boyut ve aralık",
+    "sizeHint": "Arayüz yazı boyutu tüm panelleri ölçekler; editör ve terminal boyutları piksel olarak ayarlanır.",
+    "sizePresets": {
+      "compact": "Kompakt",
+      "normal": "Normal",
+      "comfortable": "Rahat",
+      "large": "Büyük",
+      "custom": "Özel"
+    },
+    "controls": {
+      "uiScale": {
+        "label": "Arayüz yazı boyutu",
+        "hint": "Paneller, sohbet ve pencerelerdeki metni ölçekler."
+      },
+      "editorFontSize": {
+        "label": "Editör yazı boyutu",
+        "hint": "Monaco editör ve fark görünümü."
+      },
+      "codeLineHeight": {
+        "label": "Kod satır yüksekliği",
+        "hint": "Editör, fark görünümü ve kod blokları."
+      },
+      "terminalFontSize": {
+        "label": "Terminal yazı boyutu",
+        "hint": "Tümleşik terminal."
+      },
+      "terminalLineHeight": {
+        "label": "Terminal satır yüksekliği",
+        "hint": "Terminaldeki satır aralığı."
+      },
+      "ligatures": {
+        "label": "Kod ligatürleri",
+        "hint": "Destekleyen fontlarda (Fira Code, Cascadia, JetBrains Mono…) => !== >= tek glif olarak birleşir. Terminalde uygulanmaz."
+      }
+    },
+    "previewHeading": "Canlı önizleme",
+    "preview": {
+      "heading": "Oturum yükleyicisini yeniden düzenle",
+      "body": "Ajan 12 dosya okudu ve iki adımlı bir değişiklik önerdi. Uygulamadan önce farkı inceleyin.",
+      "label": "Arayüz etiketi"
+    },
+    "resetAll": "Tüm font ayarlarını sıfırla",
+    "resetOverrides": "Rol değişikliklerini temizle"
   }
 }

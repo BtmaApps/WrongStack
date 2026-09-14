@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { DEFAULT_FONT_SETTINGS, type FontSettings, normalizeFontSettings } from '@/lib/fonts';
 import {
-  PALETTE_STORAGE_KEY,
   isPaletteId,
-  readStoredPalette,
+  PALETTE_STORAGE_KEY,
   type PaletteId,
+  readStoredPalette,
 } from '@/lib/palettes';
 import { defaultWsUrl } from '@/lib/ws-client-utils';
 
@@ -36,6 +37,9 @@ export interface ConfigState {
    *  blocks. Mirrors the ThemeProvider's `wrongstack-palette` localStorage
    *  entry so the choice survives reloads and cross-surface config reads. */
   palette: PaletteId;
+  /** Typography — preset, per-role overrides, and size controls; see
+   *  `lib/fonts.ts`. Applied to <html> (and font loading) by ThemeProvider. */
+  fonts: FontSettings;
   autoConnect: boolean;
   /** Play a soft synthesized chime when run.result lands with status=done.
    *  Off by default — opt-in via the Command Palette. Persisted so the
@@ -47,11 +51,15 @@ export interface ConfigState {
   setModel: (model: string) => void;
   setConfig: (
     config: Partial<
-      Omit<ConfigState, 'setProvider' | 'setModel' | 'setConfig' | 'setTheme' | 'setPalette'>
+      Omit<
+        ConfigState,
+        'setProvider' | 'setModel' | 'setConfig' | 'setTheme' | 'setPalette' | 'setFonts'
+      >
     >,
   ) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setPalette: (palette: PaletteId) => void;
+  setFonts: (fonts: FontSettings) => void;
   setWsConnected: (connected: boolean) => void;
   setWsStatus: (s: ConfigState['wsStatus']) => void;
   setSoundOnComplete: (on: boolean) => void;
@@ -67,6 +75,7 @@ export const useConfigStore = create<ConfigState>()(
       wsStatus: { state: 'connecting' },
       theme: 'system',
       palette: 'signal',
+      fonts: DEFAULT_FONT_SETTINGS,
       autoConnect: true,
       soundOnComplete: false,
       setProvider: (provider) => set({ provider }),
@@ -74,6 +83,7 @@ export const useConfigStore = create<ConfigState>()(
       setConfig: (config) => set(config),
       setTheme: (theme) => set({ theme }),
       setPalette: (palette) => set({ palette }),
+      setFonts: (fonts) => set({ fonts: normalizeFontSettings(fonts) }),
       setWsConnected: (connected) => set({ wsConnected: connected }),
       setWsStatus: (wsStatus) => set({ wsStatus, wsConnected: wsStatus.state === 'open' }),
       setSoundOnComplete: (on) => set({ soundOnComplete: on }),
@@ -93,6 +103,7 @@ export const useConfigStore = create<ConfigState>()(
         baseUrl: state.baseUrl,
         theme: state.theme,
         palette: state.palette,
+        fonts: state.fonts,
         autoConnect: state.autoConnect,
         soundOnComplete: state.soundOnComplete,
       }),
@@ -117,6 +128,10 @@ export const useConfigStore = create<ConfigState>()(
           palette: isPaletteId(rest.palette)
             ? rest.palette
             : readStoredPalette(PALETTE_STORAGE_KEY, current.palette),
+          // Same rule for typography: unknown presets/families and out-of-range
+          // sizes never reach state; the 3-role format from the first picker
+          // version is migrated.
+          fonts: rest.fonts === undefined ? current.fonts : normalizeFontSettings(rest.fonts),
         };
       },
     },

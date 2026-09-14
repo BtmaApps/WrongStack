@@ -1021,7 +1021,18 @@
   },
   "toolGroup": {
     "toolCalls_one": "{{count}} chamada",
-    "toolCalls_other": "{{count}} chamadas"
+    "toolCalls_other": "{{count}} chamadas",
+    "succeeded_one": "{{count}} succeeded",
+    "succeeded_other": "{{count}} succeeded",
+    "failed_one": "{{count}} failed",
+    "failed_other": "{{count}} failed",
+    "running_one": "{{count}} running",
+    "running_other": "{{count}} running",
+    "filterLabel": "Filter tool calls",
+    "filterAll": "All ({{count}})",
+    "filterFailed": "Failed ({{count}})",
+    "filterRunning": "Running ({{count}})",
+    "noMatchingCalls": "No matching tool calls"
   },
   "fileRef": {
     "removeTitle": "Remover referência",
@@ -1316,7 +1327,11 @@
     "pinnedLabel": "Fixado",
     "pinLabel": "Fixar",
     "regenerateTitle": "Regenerar esta resposta",
-    "retryLabel": "Tentar novamente"
+    "retryLabel": "Tentar novamente",
+    "toolRunning": "Running",
+    "toolFailed": "Failed",
+    "toolSucceeded": "Succeeded",
+    "details": "Details"
   },
   "watch": {
     "toolFallback": "ferramenta",
@@ -3698,5 +3713,66 @@
     "humanJudgement": "Escalado para julgamento humano:",
     "decisionResult": "Estratégia e resposta do Brain:",
     "cognitiveRationale": "Justificativa cognitiva e trilha de políticas"
+  },
+  "toolOverview": {
+    "label": "{{tool}} overview",
+    "titles": {
+      "file": "File operation",
+      "filesystem": "File discovery",
+      "command": "Command run",
+      "vcs": "Version control",
+      "verify": "Verification",
+      "web": "Web activity",
+      "workflow": "Work tracking",
+      "clarify": "Decision request",
+      "structured": "Structured data",
+      "codebase": "Codebase analysis",
+      "browser": "Browser activity",
+      "e2e": "E2E plan",
+      "language": "Language tooling",
+      "packages": "Dependency operation",
+      "observability": "Runtime logs",
+      "security": "Security scan",
+      "design": "Design system",
+      "catalog": "Tool catalog",
+      "generic": "Tool activity"
+    },
+    "fields": {
+      "target": "Target",
+      "change": "Change",
+      "query": "Query",
+      "scope": "Scope",
+      "command": "Command",
+      "directory": "Directory",
+      "operation": "Operation",
+      "filter": "Filter",
+      "address": "Address",
+      "mode": "Mode",
+      "action": "Action",
+      "item": "Item",
+      "question": "Question",
+      "choices": "Choices",
+      "document": "Document",
+      "subject": "Subject",
+      "workspace": "Workspace",
+      "packages": "Packages",
+      "source": "Source",
+      "rules": "Rules",
+      "kit": "Kit",
+      "request": "Request",
+      "invocation": "Invocation",
+      "input": "Input"
+    },
+    "signals": {
+      "result": "Result",
+      "analysis": "Analysis",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "output": "Output",
+      "findings": "Findings",
+      "advisories": "Advisories",
+      "http": "HTTP",
+      "events": "Events"
+    }
   }
 }

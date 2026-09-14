@@ -1,10 +1,11 @@
 import { expectDefined } from '@wrongstack/core/utils/expect-defined';
-import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
-import type { ChatMessage } from '@/stores';
 import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Terminal, XCircle } from 'lucide-react';
 import { memo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import type { ChatMessage } from '@/stores';
 import { MessageBubble } from './MessageBubble';
+
 interface ToolGroupProps {
   /** A run of consecutive tool messages (>=1). Rendered as one chip while
    *  collapsed, expanded into the usual MessageBubble list on click. */
@@ -20,12 +21,20 @@ interface ToolGroupProps {
   isContinuation?: boolean | undefined;
 }
 
+type ToolGroupFilter = 'all' | 'failed' | 'running';
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`;
   const m = Math.floor(ms / 60_000);
   const s = Math.floor((ms % 60_000) / 1000);
   return `${m}m${s}s`;
+}
+
+function formatDataSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
 export const ToolGroup = memo(function ToolGroup({
@@ -35,6 +44,7 @@ export const ToolGroup = memo(function ToolGroup({
 }: ToolGroupProps) {
   const { t } = useAppTranslation();
   const [open, setOpen] = useState(defaultOpen);
+  const [filter, setFilter] = useState<ToolGroupFilter>('all');
 
   // Single tool? Render as a normal bubble — grouping overhead is just noise.
   if (tools.length === 1) {
@@ -45,7 +55,14 @@ export const ToolGroup = memo(function ToolGroup({
 
   const running = tools.filter((t) => t.toolResult === undefined).length;
   const errored = tools.filter((t) => t.isError).length;
+  const succeeded = tools.length - running - errored;
   const totalMs = tools.reduce((acc, t) => acc + (t.toolDurationMs ?? 0), 0);
+  const totalOutputBytes = tools.reduce((acc, t) => acc + (t.toolOutputBytes ?? 0), 0);
+  const filteredTools = tools.filter((tool) => {
+    if (filter === 'failed') return !!tool.isError;
+    if (filter === 'running') return tool.toolResult === undefined;
+    return true;
+  });
 
   // Show the first few tool names so the user has a hint of what's inside
   // without expanding ("Read, Grep, Bash …").
@@ -68,7 +85,7 @@ export const ToolGroup = memo(function ToolGroup({
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'flex items-center gap-2 text-sm font-medium cursor-pointer select-none',
+            'flex flex-wrap items-center gap-2 text-sm font-medium cursor-pointer select-none',
             'hover:bg-muted/50 rounded-lg px-2 py-1.5 -mx-2 transition-colors',
             'border border-border/40 bg-muted/30',
           )}
@@ -89,9 +106,35 @@ export const ToolGroup = memo(function ToolGroup({
           ) : (
             <CheckCircle2 className="h-3 w-3 text-success" />
           )}
+          {succeeded > 0 && (
+            <span className="rounded border border-success/30 bg-success/[0.06] px-1 py-0.5 font-mono text-[10px] font-medium text-success">
+              {t('activity:toolGroup.succeeded', {
+                count: succeeded,
+                defaultValue: '{{count}} succeeded',
+              })}
+            </span>
+          )}
+          {errored > 0 && (
+            <span className="rounded border border-destructive/30 bg-destructive/[0.06] px-1 py-0.5 font-mono text-[10px] font-medium text-destructive">
+              {t('activity:toolGroup.failed', { count: errored, defaultValue: '{{count}} failed' })}
+            </span>
+          )}
+          {running > 0 && (
+            <span className="rounded border border-warning/30 bg-warning/[0.06] px-1 py-0.5 font-mono text-[10px] font-medium text-warning">
+              {t('activity:toolGroup.running', {
+                count: running,
+                defaultValue: '{{count}} running',
+              })}
+            </span>
+          )}
           {totalMs > 0 && (
             <span className="text-xs text-muted-foreground tabular-nums font-normal">
               {formatDuration(totalMs)}
+            </span>
+          )}
+          {totalOutputBytes > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums font-normal">
+              {formatDataSize(totalOutputBytes)}
             </span>
           )}
           {preview && (
@@ -104,9 +147,47 @@ export const ToolGroup = memo(function ToolGroup({
 
         {open && (
           <div className="space-y-2 pl-3 border-l-2 border-border/40 ml-2 tool-details">
-            {tools.map((tool) => (
-              <MessageBubble key={tool.id} message={tool} isFirst={false} />
-            ))}
+            {(errored > 0 || running > 0) && (
+              <div
+                aria-label={t('activity:toolGroup.filterLabel', 'Filter tool calls')}
+                className="flex flex-wrap items-center gap-1 border-b border-border/30 pb-2"
+                role="toolbar"
+              >
+                {(
+                  [
+                    ['all', tools.length, 'filterAll', 'All ({{count}})'],
+                    ['failed', errored, 'filterFailed', 'Failed ({{count}})'],
+                    ['running', running, 'filterRunning', 'Running ({{count}})'],
+                  ] as const
+                )
+                  .filter(([, count]) => count > 0)
+                  .map(([nextFilter, count, key, defaultValue]) => (
+                    <button
+                      aria-pressed={filter === nextFilter}
+                      className={cn(
+                        'rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors',
+                        filter === nextFilter
+                          ? 'border-primary/40 bg-primary/10 text-primary'
+                          : 'border-border/50 bg-background/50 text-muted-foreground hover:text-foreground',
+                      )}
+                      key={nextFilter}
+                      onClick={() => setFilter(nextFilter)}
+                      type="button"
+                    >
+                      {t(`activity:toolGroup.${key}`, { count, defaultValue })}
+                    </button>
+                  ))}
+              </div>
+            )}
+            {filteredTools.length > 0 ? (
+              filteredTools.map((tool) => (
+                <MessageBubble key={tool.id} message={tool} isFirst={false} />
+              ))
+            ) : (
+              <p className="font-mono text-[11px] italic text-muted-foreground">
+                {t('activity:toolGroup.noMatchingCalls', 'No matching tool calls')}
+              </p>
+            )}
           </div>
         )}
       </div>

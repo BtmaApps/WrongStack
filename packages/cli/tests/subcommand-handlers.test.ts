@@ -151,6 +151,55 @@ describe('authCmd', () => {
     expect(opts.models).toBe('llama3.1:8b');
   });
 
+  it('wires `--audit stdout` to a logger that emits JSONL (documented contract)', async () => {
+    // Regression: `--audit [target]` is documented in LOCAL_AUTH_FLAGS but
+    // was dropped — it was missing from the restoreFlags name list, absent
+    // from AuthFlags, and never resolved to a sink, so the flag was inert.
+    const parsed = parseArgs([
+      'auth',
+      'local',
+      '--name',
+      'ollama',
+      '--no-probe',
+      '--audit',
+      'stdout',
+    ]);
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      await authCmd(parsed.positional.slice(1), { ...fakeDeps(), flags: parsed.flags });
+      expect(runAuthLocal).toHaveBeenCalledTimes(1);
+      const opts = runAuthLocal.mock.calls[0]![1] as { audit?: { emit(e: unknown): void } };
+      expect(opts.audit).toBeDefined();
+      opts.audit!.emit({
+        type: 'auth.local.add',
+        providerId: 'ollama',
+        baseUrl: 'http://localhost:11434',
+        models: [],
+      });
+      expect(out.mock.calls.map((c) => String(c[0])).join('')).toContain('"type":"auth.local.add"');
+    } finally {
+      out.mockRestore();
+    }
+  });
+
+  it('stays silent when `--audit` is absent (documented default)', async () => {
+    const parsed = parseArgs(['auth', 'local', '--name', 'ollama', '--no-probe']);
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      await authCmd(parsed.positional.slice(1), { ...fakeDeps(), flags: parsed.flags });
+      const opts = runAuthLocal.mock.calls[0]![1] as { audit?: { emit(e: unknown): void } };
+      opts.audit?.emit({
+        type: 'auth.local.add',
+        providerId: 'ollama',
+        baseUrl: 'http://localhost:11434',
+        models: [],
+      });
+      expect(out.mock.calls.map((c) => String(c[0])).join('')).not.toContain('auth.local.add');
+    } finally {
+      out.mockRestore();
+    }
+  });
+
   it('status with no provider id prints usage and exits 1', async () => {
     const deps = fakeDeps();
     const code = await authCmd(['status'], deps);

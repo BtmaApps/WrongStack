@@ -29,7 +29,9 @@
     "chimeraDesc": "Configuration de l'agent de revue de code après session.",
     "contextDesc": "Interrupteurs de fonctionnalités, stratégie de contexte, compacteur et contrôles des plugins.",
     "logsDesc": "Niveau de journalisation, détail d'audit, portée d'accès au système de fichiers et flux de débogage.",
-    "securityDesc": "Contrôle décisionnel Brain, agent fantôme et accès aux outils."
+    "securityDesc": "Contrôle décisionnel Brain, agent fantôme et accès aux outils.",
+    "fonts": "Polices",
+    "fontsDesc": "Polices de l’interface, du chat, de l’éditeur et du terminal ; taille, interligne et ligatures."
   },
   "model": {
     "heading": "Modèle",
@@ -960,5 +962,130 @@
     "capAttachment": "Pièce jointe",
     "capStructuredOutput": "Sortie structurée",
     "capOpenWeights": "Poids ouverts"
+  },
+  "fonts": {
+    "presetsHeading": "Jeux de polices",
+    "presetsHint": "Un jeu règle tous les rôles d’un coup ; les polices ne sont téléchargées qu’à la première utilisation.",
+    "presets": {
+      "workbench": {
+        "label": "Atelier",
+        "description": "L’apparence par défaut de l’atelier."
+      },
+      "plex": {
+        "label": "IBM Plex",
+        "description": "Une seule famille technique de bout en bout."
+      },
+      "modern": {
+        "label": "Moderne",
+        "description": "Inter neutre avec JetBrains Mono pour le code."
+      },
+      "geist": {
+        "label": "Geist",
+        "description": "Un duo net Geist Sans et Mono."
+      },
+      "classic": {
+        "label": "Classique",
+        "description": "Source Sans, Serif et Code Pro d’Adobe."
+      },
+      "editorial": {
+        "label": "Éditorial",
+        "description": "Titres à empattements et police de chat façon livre."
+      },
+      "readable": {
+        "label": "Lisible",
+        "description": "Des polices très lisibles pour les longues sessions."
+      },
+      "friendly": {
+        "label": "Convivial",
+        "description": "Formes arrondies et détendues avec Fira Code."
+      },
+      "monospace": {
+        "label": "Chasse fixe",
+        "description": "Chasse fixe partout, style terminal."
+      },
+      "system": {
+        "label": "Système",
+        "description": "Polices du système, aucun téléchargement."
+      }
+    },
+    "rolesHeading": "Polices par rôle",
+    "rolesHint": "Remplacez n’importe quel rôle en plus du jeu. Les rôles marqués « Comme … » suivent leur rôle parent.",
+    "roles": {
+      "ui": {
+        "label": "Interface et panneaux",
+        "hint": "Boutons, menus, barres latérales, listes et réglages."
+      },
+      "display": {
+        "label": "Titres",
+        "hint": "Titres de page et de section."
+      },
+      "reading": {
+        "label": "Chat et documents",
+        "hint": "Réponses de l’assistant, markdown et messages de la boîte."
+      },
+      "code": {
+        "label": "Code en ligne et données",
+        "hint": "Blocs de code, journaux, identifiants et données tabulaires."
+      },
+      "editor": {
+        "label": "Éditeur de code",
+        "hint": "Éditeur de fichiers Monaco et vue des différences."
+      },
+      "terminal": {
+        "label": "Terminal",
+        "hint": "Sessions de terminal intégrées."
+      }
+    },
+    "fromPreset": "Jeu ({{name}})",
+    "inherit": "Comme {{role}} ({{name}})",
+    "categories": {
+      "sans": "Sans empattement",
+      "serif": "Avec empattement",
+      "mono": "Chasse fixe"
+    },
+    "systemTag": "système",
+    "sizeHeading": "Taille et espacement",
+    "sizeHint": "La taille du texte de l’interface agrandit tous les panneaux ; les tailles de l’éditeur et du terminal sont en pixels.",
+    "sizePresets": {
+      "compact": "Compact",
+      "normal": "Normal",
+      "comfortable": "Confortable",
+      "large": "Grand",
+      "custom": "Personnalisé"
+    },
+    "controls": {
+      "uiScale": {
+        "label": "Taille du texte de l’interface",
+        "hint": "Met à l’échelle le texte des panneaux, du chat et des dialogues."
+      },
+      "editorFontSize": {
+        "label": "Taille de police de l’éditeur",
+        "hint": "Éditeur Monaco et vue des différences."
+      },
+      "codeLineHeight": {
+        "label": "Interligne du code",
+        "hint": "Éditeur, vue des différences et blocs de code."
+      },
+      "terminalFontSize": {
+        "label": "Taille de police du terminal",
+        "hint": "Terminal intégré."
+      },
+      "terminalLineHeight": {
+        "label": "Interligne du terminal",
+        "hint": "Espacement des lignes du terminal."
+      },
+      "ligatures": {
+        "label": "Ligatures de code",
+        "hint": "Fusionne => !== >= en un seul glyphe dans les polices compatibles (Fira Code, Cascadia, JetBrains Mono…). Non appliqué au terminal."
+      }
+    },
+    "previewHeading": "Aperçu en direct",
+    "preview": {
+      "heading": "Refactoriser le chargeur de session",
+      "body": "L’agent a lu 12 fichiers et proposé une modification en deux étapes. Vérifiez les différences avant de l’appliquer.",
+      "label": "Libellé d’interface"
+    },
+    "resetAll": "Réinitialiser tous les réglages de police",
+    "resetOverrides": "Effacer les remplacements par rôle"
   }
 }

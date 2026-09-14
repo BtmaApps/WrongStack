@@ -29,7 +29,9 @@
     "chimeraDesc": "Post-session code review agent configuration.",
     "contextDesc": "Feature flags, context strategy, compactor, and plugin controls.",
     "logsDesc": "Log level, audit detail, filesystem access scope, and debug stream.",
-    "securityDesc": "Brain decision control, shadow agent, and tool access."
+    "securityDesc": "Brain decision control, shadow agent, and tool access.",
+    "fonts": "Fonts",
+    "fontsDesc": "Interface, chat, editor and terminal fonts; size, line height, and ligatures."
   },
   "general": {
     "themeHeading": "Theme",
@@ -960,5 +962,130 @@
     "capAttachment": "Attachment",
     "capStructuredOutput": "Structured output",
     "capOpenWeights": "Open weights"
+  },
+  "fonts": {
+    "presetsHeading": "Font presets",
+    "presetsHint": "A preset sets every role at once; fonts download only when first used.",
+    "presets": {
+      "workbench": {
+        "label": "Workbench",
+        "description": "The default operator-workbench look."
+      },
+      "plex": {
+        "label": "IBM Plex",
+        "description": "One engineered family end to end."
+      },
+      "modern": {
+        "label": "Modern",
+        "description": "Neutral Inter with JetBrains Mono for code."
+      },
+      "geist": {
+        "label": "Geist",
+        "description": "A crisp Geist sans and mono pairing."
+      },
+      "classic": {
+        "label": "Classic",
+        "description": "Adobe's Source Sans, Serif, and Code Pro."
+      },
+      "editorial": {
+        "label": "Editorial",
+        "description": "Serif headings and a bookish chat font."
+      },
+      "readable": {
+        "label": "Readable",
+        "description": "High-legibility faces for long sessions."
+      },
+      "friendly": {
+        "label": "Friendly",
+        "description": "Rounded, relaxed shapes with Fira Code."
+      },
+      "monospace": {
+        "label": "Monospace",
+        "description": "Monospace everywhere, terminal style."
+      },
+      "system": {
+        "label": "System",
+        "description": "Your OS fonts, nothing downloaded."
+      }
+    },
+    "rolesHeading": "Fonts by role",
+    "rolesHint": "Override any role on top of the preset. Roles marked “Same as” follow their parent role.",
+    "roles": {
+      "ui": {
+        "label": "Interface & panels",
+        "hint": "Buttons, menus, sidebars, lists, and settings."
+      },
+      "display": {
+        "label": "Headings",
+        "hint": "Page and section titles."
+      },
+      "reading": {
+        "label": "Chat & documents",
+        "hint": "Assistant replies, markdown, and mailbox messages."
+      },
+      "code": {
+        "label": "Inline code & data",
+        "hint": "Code blocks, logs, IDs, and tabular readouts."
+      },
+      "editor": {
+        "label": "Code editor",
+        "hint": "Monaco file editor and diff view."
+      },
+      "terminal": {
+        "label": "Terminal",
+        "hint": "Integrated terminal sessions."
+      }
+    },
+    "fromPreset": "Preset ({{name}})",
+    "inherit": "Same as {{role}} ({{name}})",
+    "categories": {
+      "sans": "Sans serif",
+      "serif": "Serif",
+      "mono": "Monospace"
+    },
+    "systemTag": "system",
+    "sizeHeading": "Size & spacing",
+    "sizeHint": "Interface text size scales every panel; editor and terminal sizes are set in pixels.",
+    "sizePresets": {
+      "compact": "Compact",
+      "normal": "Normal",
+      "comfortable": "Comfortable",
+      "large": "Large",
+      "custom": "Custom"
+    },
+    "controls": {
+      "uiScale": {
+        "label": "Interface text size",
+        "hint": "Scales text across panels, chat, and dialogs."
+      },
+      "editorFontSize": {
+        "label": "Editor font size",
+        "hint": "Monaco editor and diff view."
+      },
+      "codeLineHeight": {
+        "label": "Code line height",
+        "hint": "Editor, diff view, and code blocks."
+      },
+      "terminalFontSize": {
+        "label": "Terminal font size",
+        "hint": "Integrated terminal."
+      },
+      "terminalLineHeight": {
+        "label": "Terminal line height",
+        "hint": "Row spacing in the terminal."
+      },
+      "ligatures": {
+        "label": "Code ligatures",
+        "hint": "Joins => !== >= into single glyphs in fonts that support it (Fira Code, Cascadia, JetBrains Mono…). Not applied in the terminal."
+      }
+    },
+    "previewHeading": "Live preview",
+    "preview": {
+      "heading": "Refactor the session loader",
+      "body": "The agent read 12 files and proposed a two-step change. Review the diff before applying it.",
+      "label": "Interface label"
+    },
+    "resetAll": "Reset all font settings",
+    "resetOverrides": "Clear role overrides"
   }
 }

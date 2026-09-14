@@ -73,6 +73,9 @@ function shape() {
     toolName: m.toolName,
     toolResult: m.toolResult,
     toolDurationMs: m.toolDurationMs,
+    toolOutputBytes: m.toolOutputBytes,
+    toolOutputTokens: m.toolOutputTokens,
+    toolOutputLines: m.toolOutputLines,
     isError: m.isError,
   }));
 }
@@ -96,10 +99,19 @@ describe('a tool call renders the same live and replayed', () => {
       ok: true,
       durationMs: 42,
       outputBytes: 9,
+      outputTokens: 3,
+      outputLines: 1,
     });
     const live = shape();
     expect(live).toHaveLength(1);
-    expect(live[0]).toMatchObject({ role: 'tool', toolName: 'read', toolDurationMs: 42 });
+    expect(live[0]).toMatchObject({
+      role: 'tool',
+      toolName: 'read',
+      toolDurationMs: 42,
+      toolOutputBytes: 9,
+      toolOutputTokens: 3,
+      toolOutputLines: 1,
+    });
 
     // ── Replayed ────────────────────────────────────────────────────────
     reset();
@@ -127,7 +139,17 @@ describe('a tool call renders the same live and replayed', () => {
         },
       ],
       // The half that used not to cross the wire at all.
-      replayToolMeta: [{ id: TOOL_USE_ID, name: 'read', durationMs: 42, outputBytes: 9, ok: true }],
+      replayToolMeta: [
+        {
+          id: TOOL_USE_ID,
+          name: 'read',
+          durationMs: 42,
+          outputBytes: 9,
+          outputTokens: 3,
+          outputLines: 1,
+          ok: true,
+        },
+      ],
     });
 
     expect(shape()).toEqual(live);

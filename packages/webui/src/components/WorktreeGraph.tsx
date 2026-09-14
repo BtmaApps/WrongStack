@@ -1,5 +1,6 @@
 import { expectDefined } from '@wrongstack/core/utils/expect-defined';
 import { useAppTranslation } from '@/i18n';
+import { scaledPx } from '@/lib/fonts';
 import type { WorktreeHandleView } from '@/types';
 
 const TOKEN_COLOR = {
@@ -86,7 +87,7 @@ export function WorktreeGraph({
           stroke={TOKEN_COLOR.primary}
           strokeWidth={3}
         />
-        <text x={trunkX - 4} y={14} fontSize={11} fill={TOKEN_COLOR.muted}>
+        <text x={trunkX - 4} y={14} style={{ fontSize: scaledPx(11) }} fill={TOKEN_COLOR.muted}>
           {baseBranch || 'HEAD'}
         </text>
         <circle cx={trunkX} cy={20} r={5} fill={TOKEN_COLOR.primary} />
@@ -125,13 +126,17 @@ export function WorktreeGraph({
               <text
                 x={branchX + 12}
                 y={n.y - 6}
-                fontSize={12}
+                style={{ fontSize: scaledPx(12), fontFamily: 'var(--font-mono)' }}
                 fill={TOKEN_COLOR.foreground}
-                fontFamily="monospace"
               >
                 {shortBranch(n.handle.branch)}
               </text>
-              <text x={branchX + 12} y={n.y + 10} fontSize={10} fill={TOKEN_COLOR.muted}>
+              <text
+                x={branchX + 12}
+                y={n.y + 10}
+                style={{ fontSize: scaledPx(10) }}
+                fill={TOKEN_COLOR.muted}
+              >
                 {conflict
                   ? `⚠ ${n.handle.status}`
                   : merged

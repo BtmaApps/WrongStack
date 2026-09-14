@@ -89,10 +89,8 @@
       "BOOLEAN_FLAGS"
     ],
     "packages/cli/src/auth-menu/auth-menu-audit.ts": [
-      "createAuthAuditLogger",
       "fileAuditSink",
-      "memAuthAuditSink",
-      "resolveAuditSink"
+      "memAuthAuditSink"
     ],
     "packages/cli/src/auth-menu/panel-service.ts": [
       "plainMaskedKey"
@@ -1672,6 +1670,9 @@
     "packages/webui/src/components/MessageBubble/StreamingMarkdown.tsx": [
       "splitStableStreamPrefix"
     ],
+    "packages/webui/src/components/MessageBubble/ToolCallOverview.tsx": [
+      "TOOL_OVERVIEW_REGISTRY"
+    ],
     "packages/webui/src/components/OfficeMapCanvas/utils.ts": [
       "AGENT_COLS",
       "layoutClientXs"
@@ -1828,6 +1829,17 @@
     ],
     "packages/webui/src/lib/fallback-ref.ts": [
       "splitProviderModel"
+    ],
+    "packages/webui/src/lib/font-scale-css.ts": [
+      "fontScalePostcssPlugin",
+      "scaleTypographyValue"
+    ],
+    "packages/webui/src/lib/fonts.ts": [
+      "clampFontSetting",
+      "DEFAULT_FONT_PRESET",
+      "FONT_FAMILIES",
+      "FONT_ROLE_CSS_VARIABLE",
+      "isFamilyAllowedForRole"
     ],
     "packages/webui/src/lib/model-calendar.ts": [
       "isCalendarRuleBlocking"

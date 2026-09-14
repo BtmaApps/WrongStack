@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-14T08:41:48.920Z
+**Generated:** 2026-09-14T10:54:08.501Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 3790 |
-| Production source lines | 923183 |
-| Test files | 3351 |
+| Production source files | 3795 |
+| Production source lines | 925423 |
+| Test files | 3356 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12115 |
+| Relative module edges | 12121 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -57,7 +57,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/tools | 213 | 223 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 393 | 352 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 18 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 548 | 377 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 553 | 382 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 45 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 17 | 8 | @wrongstack/core |
 | @wrongstack/webui-server | 228 | 216 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -93,11 +93,11 @@ None.
 | 1083 | `packages/mcp/src/client.ts` |
 | 1078 | `packages/simpleui/src/simple-ui-session.tsx` |
 | 1066 | `packages/plugins/src/git-autocommit/index.ts` |
+| 1062 | `packages/webui/src/components/SkillDetailView.tsx` |
 | 1057 | `packages/webui-server/src/server/ws-payload-validation.ts` |
 | 1055 | `packages/cli/src/slash-commands/settings-mutations.ts` |
 | 1054 | `packages/webui-server/src/server/routes.ts` |
 | 1051 | `packages/core/src/index.ts` |
-| 1051 | `packages/webui/src/components/SkillDetailView.tsx` |
 | 1049 | `packages/webui/src/components/OfficeMapCanvas.tsx` |
 | 1048 | `packages/cli/src/webui-server.ts` |
 | 1048 | `packages/plugins/src/path-guard/shell-targets.ts` |
@@ -138,7 +138,7 @@ None.
 
 ## Exports only tests reference
 
-- 940 runtime exports are referenced by tests and by no other production file.
+- 946 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

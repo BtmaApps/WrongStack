@@ -4,36 +4,37 @@
  */
 
 import {
-  Sparkles,
-  X,
+  ArrowUpRight,
+  BookOpen,
+  Check,
   ChevronLeft,
   ChevronRight,
-  Download,
-  Pencil,
-  RefreshCw,
-  Trash2,
   Copy,
-  Check,
-  Globe,
-  ArrowUpRight,
-  FolderOpen,
+  Download,
   FileText,
+  FolderOpen,
+  Globe,
   Loader2,
   PanelRight,
-  BookOpen,
+  Pencil,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LazyMarkdown as ReactMarkdown } from './MessageBubble/LazyMarkdown.js';
 import rehypeHighlight from 'rehype-highlight';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
-import { cn } from '@/lib/utils';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
+import { scaledPx } from '@/lib/fonts';
+import { cn } from '@/lib/utils';
 import { showPanel } from '@/lib/view-navigation';
 import { useUIStore } from '@/stores/ui-store';
-import { EmptyState } from './ui/empty-state';
+import { LazyMarkdown as ReactMarkdown } from './MessageBubble/LazyMarkdown.js';
 import { markdownComponents } from './MessageBubble/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { EmptyState } from './ui/empty-state';
 
 /** Lazy-loaded code editor — only needed when the user enters edit mode. */
 const TextareaCodeEditor = lazy(() => import('@uiw/react-textarea-code-editor'));
@@ -923,7 +924,12 @@ export function SkillDetailView({ className }: { className?: string }) {
                       onChange={(e) => setEditContent(e.target.value ?? '')}
                       language="markdown"
                       className="flex-1"
-                      style={{ fontSize: 12, backgroundColor: 'transparent', minHeight: 0 }}
+                      style={{
+                        fontSize: scaledPx(12),
+                        fontFamily: 'var(--font-editor)',
+                        backgroundColor: 'transparent',
+                        minHeight: 0,
+                      }}
                       placeholder={t('activity:skillDetail.contentPlaceholder')}
                     />
                   </Suspense>
@@ -942,7 +948,12 @@ export function SkillDetailView({ className }: { className?: string }) {
                   onChange={(e) => setEditContent(e.target.value ?? '')}
                   language="markdown"
                   className="flex-1"
-                  style={{ fontSize: 12, backgroundColor: 'transparent', minHeight: 0 }}
+                  style={{
+                    fontSize: scaledPx(12),
+                    fontFamily: 'var(--font-editor)',
+                    backgroundColor: 'transparent',
+                    minHeight: 0,
+                  }}
                   placeholder={t('activity:skillDetail.contentPlaceholder')}
                 />
               </Suspense>

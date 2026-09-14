@@ -370,6 +370,28 @@ describe('parseAuthFlags', () => {
       'ollama',
     ]);
   });
+
+  it('parses `--audit <target>` into AuthFlags.audit', () => {
+    expect(parseAuthFlags(['local', '--audit', 'stdout']).audit).toBe('stdout');
+    expect(parseAuthFlags(['local', '--audit', 'stderr']).audit).toBe('stderr');
+    expect(parseAuthFlags(['local', '--audit', '/var/log/auth.jsonl']).audit).toBe(
+      '/var/log/auth.jsonl',
+    );
+  });
+
+  it('parses a bare `--audit` as true (documented stdout default)', () => {
+    expect(parseAuthFlags(['local', '--audit']).audit).toBe(true);
+    expect(parseAuthFlags(['local', '--audit', '--no-key']).audit).toBe(true);
+    // `--audit=` (empty target) is ignored, like `--label=`.
+    expect(parseAuthFlags(['local', '--audit=']).audit).toBeUndefined();
+    expect(parseAuthFlags(['local']).audit).toBeUndefined();
+  });
+
+  it('parses the inline `--audit=<target>` form without consuming the next token', () => {
+    const r = parseAuthFlags(['local', '--audit=stderr', 'ollama']);
+    expect(r.audit).toBe('stderr');
+    expect(r.positional).toEqual(['local', 'ollama']);
+  });
 });
 
 describe('parseSpawnFlags', () => {

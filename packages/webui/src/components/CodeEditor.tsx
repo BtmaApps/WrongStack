@@ -1,31 +1,33 @@
-import { useFileStore } from '@/stores/file-store';
-import { useConfigStore } from '@/stores/config-store';
-import { useFileReferenceStore } from '@/stores/file-reference-store';
+import Editor, { loader, type OnMount } from '@monaco-editor/react';
+import { Circle, FileText, GitBranch, Map as MapIcon, Send, WrapText, X } from 'lucide-react';
+import * as monaco from 'monaco-editor';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFontSettings } from '@/hooks/use-font-settings';
+import { useAppTranslation } from '@/i18n';
 import {
+  buildCompletionCacheKey,
   COMPLETION_CACHE_TTL_MS,
   COMPLETION_DOCUMENT_CHARS,
   COMPLETION_LANGUAGES,
   COMPLETION_PREFIX_CHARS,
   COMPLETION_SUFFIX_CHARS,
   COMPLETION_TIMEOUT_MS,
-  buildCompletionCacheKey,
   currentToken,
   getLanguage,
   shouldAllowCompletionLlm,
   shouldAskCompletionServer,
 } from '@/lib/completion';
-import { getWSClient } from '@/lib/ws-client';
+import { subscribeFontLoads } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
 import { showPanel } from '@/lib/view-navigation';
-import { EmptyState } from './ui/empty-state';
-import { Circle, FileText, GitBranch, Map as MapIcon, Send, WrapText, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Editor, { type OnMount, loader } from '@monaco-editor/react';
+import { getWSClient } from '@/lib/ws-client';
+import { useConfigStore } from '@/stores/config-store';
+import { useFileReferenceStore } from '@/stores/file-reference-store';
+import { useFileStore } from '@/stores/file-store';
 import { useGitInfoStore } from '@/stores/git-info-store';
-import * as monaco from 'monaco-editor';
 import type { WSCompletionResult } from '@/types';
 import { useTheme } from './ThemeProvider';
+import { EmptyState } from './ui/empty-state';
 // Side-effect import: defines Monaco themes on module load
 import './monaco-theme';
 import { FileActivityDrawer } from './FileActivityDrawer';
@@ -148,6 +150,10 @@ export function CodeEditor() {
 
   const language = activeFilePath ? getLanguage(activeFilePath) : 'plaintext';
   const monacoTheme = getMonacoTheme();
+  // Monaco can't read CSS variables — take the editor font settings directly,
+  // and re-measure glyphs whenever a web font finishes loading.
+  const { editor: editorFont } = useFontSettings();
+  useEffect(() => subscribeFontLoads(() => monaco.editor.remeasureFonts()), []);
 
   /** Whether the editor currently has a non-empty text selection. Drives the
    *  floating "send to chat" toolbar. */
@@ -513,9 +519,10 @@ export function CodeEditor() {
             }
             options={{
               minimap: { enabled: showMinimap },
-              fontSize: 13,
-              fontFamily:
-                "'IBM Plex Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace",
+              fontSize: editorFont.fontSize,
+              fontFamily: editorFont.fontFamily,
+              lineHeight: editorFont.lineHeight,
+              fontLigatures: editorFont.fontLigatures,
               lineNumbers: 'on',
               renderWhitespace: 'selection',
               scrollBeyondLastLine: false,

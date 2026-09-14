@@ -1,13 +1,15 @@
+import { FitAddon } from '@xterm/addon-fit';
+import { Terminal } from '@xterm/xterm';
+import { safeId } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import type { WSServerMessage } from '@/types';
-import { safeId } from '@/lib/utils';
-import { FitAddon } from '@xterm/addon-fit';
-import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { Plus, RotateCcw, TerminalSquare, Trash2, X } from 'lucide-react';
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { useAppTranslation, i18n } from '@/i18n';
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { useFontSettings } from '@/hooks/use-font-settings';
+import { i18n, useAppTranslation } from '@/i18n';
+import { terminalFontOptions } from '@/lib/fonts';
 import { clampTerminalHeight, TERMINAL_HEIGHT_STORAGE_KEY } from '@/lib/terminal-dock';
 import { cn } from '@/lib/utils';
 
@@ -380,19 +382,39 @@ function TerminalSession({
   const onRunningRef = useRef(onRunning);
   const onExitRef = useRef(onExit);
   const wsConnected = useConfigStore((s) => s.wsConnected);
+  const { terminal: terminalFont } = useFontSettings();
 
   useEffect(() => {
     onRunningRef.current = onRunning;
     onExitRef.current = onExit;
   }, [onExit, onRunning]);
 
+  // xterm can't read CSS variables — push the terminal font settings in live
+  // and refit, since glyph size changes the row/column count.
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    if (term.options.fontFamily === terminalFont.fontFamily) {
+      // Same stack, but a web font may have just finished loading. xterm only
+      // re-measures cells on an option change, so bounce the family once.
+      term.options.fontFamily = 'monospace';
+    }
+    term.options.fontFamily = terminalFont.fontFamily;
+    term.options.fontSize = terminalFont.fontSize;
+    term.options.lineHeight = terminalFont.lineHeight;
+    try {
+      fitRef.current?.fit();
+    } catch {
+      /* container not laid out yet */
+    }
+  }, [terminalFont]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const term = new Terminal({
-      fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
-      fontSize: 13,
+      ...terminalFontOptions(useConfigStore.getState().fonts),
       cursorBlink: true,
       theme: XTERM_THEME,
       scrollback: 5000,

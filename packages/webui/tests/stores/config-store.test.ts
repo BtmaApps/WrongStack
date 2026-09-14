@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DEFAULT_FONT_SETTINGS } from '../../src/lib/fonts';
 import { useConfigStore } from '../../src/stores/config-store';
 
 function resetStore() {
@@ -10,6 +11,7 @@ function resetStore() {
     wsStatus: { state: 'connecting' },
     theme: 'system',
     palette: 'signal',
+    fonts: DEFAULT_FONT_SETTINGS,
     autoConnect: true,
     soundOnComplete: false,
   });
@@ -217,6 +219,77 @@ describe('palette merge fallback', () => {
     );
     await useConfigStore.persist.rehydrate();
     expect(useConfigStore.getState().palette).toBe('emerald-gold');
+  });
+});
+
+// ── font selection ─────────────────────────────────────────────────
+
+describe('font selection', () => {
+  beforeEach(() => {
+    resetStore();
+    localStorage.removeItem('wrongstack-config');
+  });
+
+  afterEach(() => {
+    resetStore();
+    localStorage.removeItem('wrongstack-config');
+  });
+
+  it('setFonts drops overrides that repeat the preset family and clamps sizes', () => {
+    useConfigStore.getState().setFonts({
+      ...DEFAULT_FONT_SETTINGS,
+      preset: 'plex',
+      overrides: { ui: 'plex-sans', code: 'fira-code' },
+      editorFontSize: 99,
+    });
+    const { fonts } = useConfigStore.getState();
+    expect(fonts.preset).toBe('plex');
+    expect(fonts.overrides).toEqual({ code: 'fira-code' });
+    expect(fonts.editorFontSize).toBe(24);
+  });
+
+  it('rehydrates a valid persisted selection', async () => {
+    localStorage.setItem(
+      'wrongstack-config',
+      JSON.stringify({
+        state: {
+          fonts: {
+            ...DEFAULT_FONT_SETTINGS,
+            preset: 'editorial',
+            overrides: { terminal: 'jetbrains-mono' },
+            uiScale: 1.1,
+          },
+        },
+        version: 0,
+      }),
+    );
+    await useConfigStore.persist.rehydrate();
+    const { fonts } = useConfigStore.getState();
+    expect(fonts.preset).toBe('editorial');
+    expect(fonts.overrides).toEqual({ terminal: 'jetbrains-mono' });
+    expect(fonts.uiScale).toBe(1.1);
+  });
+
+  it('migrates the first picker format and sanitizes corrupted values', async () => {
+    localStorage.setItem(
+      'wrongstack-config',
+      JSON.stringify({
+        state: {
+          fonts: {
+            preset: 'comic',
+            overrides: { sans: 'no-such-font', mono: 'fira-code', display: 'plex-mono' },
+          },
+        },
+        version: 0,
+      }),
+    );
+    await useConfigStore.persist.rehydrate();
+    // `sans`/`mono` are the first picker's role names; unknown families drop,
+    // and a monospace heading font is a valid choice in the 6-role model.
+    expect(useConfigStore.getState().fonts).toEqual({
+      ...DEFAULT_FONT_SETTINGS,
+      overrides: { code: 'fira-code', display: 'plex-mono' },
+    });
   });
 });
 

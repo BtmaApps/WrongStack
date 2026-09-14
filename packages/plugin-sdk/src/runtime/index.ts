@@ -31,56 +31,55 @@
 
 import { execFile } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { basename, extname, isAbsolute, relative, resolve } from 'node:path';
+import { basename, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 import { buildChildEnv } from '@wrongstack/core/utils/child-env';
 
 export {
+  type OptionalCouncilRequest,
+  type OptionalLlmRequest,
+  type OptionalLlmResult,
   parseLlmJsonObject,
   runOptionalPluginCouncil,
   runOptionalPluginLlm,
   stripOuterMarkdownFence,
-  type OptionalCouncilRequest,
-  type OptionalLlmRequest,
-  type OptionalLlmResult,
 } from './llm.js';
 
-import { resolveExecInvocation, type ExecInvocation } from './local-bin.js';
+import { type ExecInvocation, resolveExecInvocation } from './local-bin.js';
 
-export { BoundedMap, BoundedSet, type BoundedMapOptions } from './bounded-map.js';
+export { BoundedMap, type BoundedMapOptions, BoundedSet } from './bounded-map.js';
 export {
-  cloneCredentialPatterns,
   CREDENTIAL_PATTERNS,
   type CredentialPattern,
+  cloneCredentialPatterns,
 } from './credential-patterns.js';
-export { UNSERIALIZABLE, safeJsonStringify } from './safe-json.js';
-export { releaseHandle, releaseHandles, type Unregister } from './handles.js';
-export {
-  withReDoSGuard,
-  guardedMatcher,
-  type ReDoSResult,
-  type ReDoSOptions,
-} from './redos-guard.js';
-export {
-  safePath,
-  isInsideProject,
-  type SafePathOptions,
-} from './sandbox.js';
 export {
   createH1State,
   type H1State,
 } from './h1-state.js';
-
+export { releaseHandle, releaseHandles, type Unregister } from './handles.js';
 export {
   clearLocalBinCache,
+  type ExecInvocation,
   findOnPath,
+  type ResolvedNodeBin,
   resolveExecInvocation,
   resolveFirstNodeBin,
   resolveNodeBin,
   resolveWin32Command,
-  type ExecInvocation,
-  type ResolvedNodeBin,
 } from './local-bin.js';
+export {
+  guardedMatcher,
+  type ReDoSOptions,
+  type ReDoSResult,
+  withReDoSGuard,
+} from './redos-guard.js';
+export { safeJsonStringify, UNSERIALIZABLE } from './safe-json.js';
+export {
+  isInsideProject,
+  type SafePathOptions,
+  safePath,
+} from './sandbox.js';
 
 export type LanguageId =
   | 'typescript'
@@ -198,7 +197,11 @@ function withinProjectPath(projectRoot: string, candidate: string): boolean {
   if (hasLeadingDash(candidate)) return false;
   const resolved = isAbsolute(candidate) ? resolve(candidate) : resolve(projectRoot, candidate);
   const rel = relative(projectRoot, resolved);
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  // Parent escapes only: `..` itself, or a `..${sep}` prefix. Any other
+  // leading-dot name (`.gitignore`, `..audit-notes.md`) is an ordinary
+  // segment INSIDE the project; a bare `startsWith('..')` wrongly rejects
+  // those (same idiom bug as withinLexical in ./sandbox.js).
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
 }
 
 /**

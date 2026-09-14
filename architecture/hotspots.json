@@ -443,7 +443,7 @@
       "relativeImports": 2
     },
     "packages/webui/src/components/CodeMap.tsx": {
-      "lines": 931,
+      "lines": 932,
       "relativeImports": 12
     },
     "packages/webui/src/components/ContextDashboard.tsx": {
@@ -487,7 +487,7 @@
       "relativeImports": 0
     },
     "packages/webui/src/components/SkillDetailView.tsx": {
-      "lines": 1051,
+      "lines": 1062,
       "relativeImports": 3
     },
     "packages/webui/src/components/TechStackView/index.tsx": {
@@ -501,6 +501,10 @@
     "packages/webui/src/hooks/ws-handlers.ts": {
       "lines": 913,
       "relativeImports": 7
+    },
+    "packages/webui/src/lib/fonts.ts": {
+      "lines": 873,
+      "relativeImports": 0
     },
     "packages/webui/src/stores/chat-lanes.ts": {
       "lines": 931,

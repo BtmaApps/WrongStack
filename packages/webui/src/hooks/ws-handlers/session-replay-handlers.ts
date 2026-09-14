@@ -209,6 +209,9 @@ export function hydrateReplayMessages(
           // `isError` absent, exactly as a live tool card does while it runs.
           ...(item.ok !== undefined ? { isError: !item.ok } : {}),
           ...(item.durationMs !== undefined ? { toolDurationMs: item.durationMs } : {}),
+          ...(item.outputBytes !== undefined ? { toolOutputBytes: item.outputBytes } : {}),
+          ...(item.outputTokens !== undefined ? { toolOutputTokens: item.outputTokens } : {}),
+          ...(item.outputLines !== undefined ? { toolOutputLines: item.outputLines } : {}),
         });
         break;
       case 'marker': {

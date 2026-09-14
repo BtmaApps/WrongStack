@@ -1,14 +1,20 @@
-import {
-  DEFAULT_PALETTE,
-  PALETTE_STORAGE_KEY,
-  applyPalette,
-  isPaletteId,
-  readStoredPalette,
-  type PaletteId,
-} from '@/lib/palettes';
-import { useConfigStore } from '@/stores';
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  applyFontSettings,
+  DEFAULT_FONT_SETTINGS,
+  loadFontFamilies,
+  resolveFontFamilies,
+} from '@/lib/fonts';
+import {
+  applyPalette,
+  DEFAULT_PALETTE,
+  isPaletteId,
+  PALETTE_STORAGE_KEY,
+  type PaletteId,
+  readStoredPalette,
+} from '@/lib/palettes';
+import { useConfigStore } from '@/stores';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -38,6 +44,7 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const setStoreTheme = useConfigStore((s) => s.setTheme);
   const setStorePalette = useConfigStore((s) => s.setPalette);
+  const fonts = useConfigStore((s) => s.fonts);
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
@@ -68,6 +75,14 @@ export function ThemeProvider({
   useEffect(() => {
     applyPalette(window.document.documentElement, palette);
   }, [palette]);
+
+  // Typography lives in the config store (persisted); mirror it onto <html> as
+  // `--font-*` / size custom properties and fetch the web fonts it uses.
+  useEffect(() => {
+    const settings = fonts ?? DEFAULT_FONT_SETTINGS;
+    applyFontSettings(window.document.documentElement, settings);
+    void loadFontFamilies(Object.values(resolveFontFamilies(settings)));
+  }, [fonts]);
 
   // Keep open tabs in sync: when another tab writes the palette key, adopt it
   // so the DOM attribute and config store don't drift apart.

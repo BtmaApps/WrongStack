@@ -29,7 +29,9 @@
     "chimeraDesc": "Konfiguration des Code-Review-Agents nach der Sitzung.",
     "contextDesc": "Feature-Flags, Kontextstrategie, Komprimierer und Plugin-Steuerung.",
     "logsDesc": "Protokollebene, Prüfdetails, Dateisystem-Zugriffsbereich und Debug-Stream.",
-    "securityDesc": "Brain-Entscheidungskontrolle, Schatten-Agent und Tool-Zugriff."
+    "securityDesc": "Brain-Entscheidungskontrolle, Schatten-Agent und Tool-Zugriff.",
+    "fonts": "Schriften",
+    "fontsDesc": "Schriften für Oberfläche, Chat, Editor und Terminal; Größe, Zeilenhöhe und Ligaturen."
   },
   "model": {
     "heading": "Modell",
@@ -960,5 +962,130 @@
     "capAttachment": "Anhang",
     "capStructuredOutput": "Strukturierte Ausgabe",
     "capOpenWeights": "Offene Gewichte"
+  },
+  "fonts": {
+    "presetsHeading": "Schrift-Vorlagen",
+    "presetsHint": "Eine Vorlage setzt alle Rollen auf einmal; Schriften werden erst bei der ersten Nutzung geladen.",
+    "presets": {
+      "workbench": {
+        "label": "Werkbank",
+        "description": "Der Standard-Look der Operator-Werkbank."
+      },
+      "plex": {
+        "label": "IBM Plex",
+        "description": "Eine technische Schriftfamilie durchgehend."
+      },
+      "modern": {
+        "label": "Modern",
+        "description": "Neutrale Inter mit JetBrains Mono für Code."
+      },
+      "geist": {
+        "label": "Geist",
+        "description": "Klare Kombination aus Geist Sans und Mono."
+      },
+      "classic": {
+        "label": "Klassisch",
+        "description": "Adobes Source Sans, Serif und Code Pro."
+      },
+      "editorial": {
+        "label": "Editorial",
+        "description": "Serifen-Überschriften und eine buchartige Chat-Schrift."
+      },
+      "readable": {
+        "label": "Lesbar",
+        "description": "Gut lesbare Schriften für lange Sitzungen."
+      },
+      "friendly": {
+        "label": "Freundlich",
+        "description": "Runde, entspannte Formen mit Fira Code."
+      },
+      "monospace": {
+        "label": "Monospace",
+        "description": "Überall Monospace, im Terminal-Stil."
+      },
+      "system": {
+        "label": "System",
+        "description": "Schriften des Betriebssystems, kein Download."
+      }
+    },
+    "rolesHeading": "Schriften nach Rolle",
+    "rolesHint": "Überschreibe jede Rolle zusätzlich zur Vorlage. Mit „Wie …“ markierte Rollen folgen ihrer übergeordneten Rolle.",
+    "roles": {
+      "ui": {
+        "label": "Oberfläche & Panels",
+        "hint": "Schaltflächen, Menüs, Seitenleisten, Listen und Einstellungen."
+      },
+      "display": {
+        "label": "Überschriften",
+        "hint": "Seiten- und Abschnittstitel."
+      },
+      "reading": {
+        "label": "Chat & Dokumente",
+        "hint": "Assistentenantworten, Markdown und Postfachnachrichten."
+      },
+      "code": {
+        "label": "Inline-Code & Daten",
+        "hint": "Codeblöcke, Logs, IDs und Tabellenwerte."
+      },
+      "editor": {
+        "label": "Code-Editor",
+        "hint": "Monaco-Dateieditor und Diff-Ansicht."
+      },
+      "terminal": {
+        "label": "Terminal",
+        "hint": "Integrierte Terminalsitzungen."
+      }
+    },
+    "fromPreset": "Vorlage ({{name}})",
+    "inherit": "Wie {{role}} ({{name}})",
+    "categories": {
+      "sans": "Serifenlos",
+      "serif": "Serif",
+      "mono": "Monospace"
+    },
+    "systemTag": "System",
+    "sizeHeading": "Größe & Abstand",
+    "sizeHint": "Die Textgröße der Oberfläche skaliert alle Panels; Editor- und Terminalgrößen werden in Pixeln festgelegt.",
+    "sizePresets": {
+      "compact": "Kompakt",
+      "normal": "Normal",
+      "comfortable": "Komfortabel",
+      "large": "Groß",
+      "custom": "Benutzerdefiniert"
+    },
+    "controls": {
+      "uiScale": {
+        "label": "Textgröße der Oberfläche",
+        "hint": "Skaliert Text in Panels, Chat und Dialogen."
+      },
+      "editorFontSize": {
+        "label": "Schriftgröße im Editor",
+        "hint": "Monaco-Editor und Diff-Ansicht."
+      },
+      "codeLineHeight": {
+        "label": "Zeilenhöhe für Code",
+        "hint": "Editor, Diff-Ansicht und Codeblöcke."
+      },
+      "terminalFontSize": {
+        "label": "Schriftgröße im Terminal",
+        "hint": "Integriertes Terminal."
+      },
+      "terminalLineHeight": {
+        "label": "Zeilenhöhe im Terminal",
+        "hint": "Zeilenabstand im Terminal."
+      },
+      "ligatures": {
+        "label": "Code-Ligaturen",
+        "hint": "Verbindet => !== >= in unterstützenden Schriften (Fira Code, Cascadia, JetBrains Mono…) zu einer Glyphe. Gilt nicht im Terminal."
+      }
+    },
+    "previewHeading": "Live-Vorschau",
+    "preview": {
+      "heading": "Den Sitzungslader umbauen",
+      "body": "Der Agent hat 12 Dateien gelesen und eine zweistufige Änderung vorgeschlagen. Prüfe den Diff vor dem Anwenden.",
+      "label": "Oberflächen-Label"
+    },
+    "resetAll": "Alle Schrifteinstellungen zurücksetzen",
+    "resetOverrides": "Rollen-Überschreibungen löschen"
   }
 }

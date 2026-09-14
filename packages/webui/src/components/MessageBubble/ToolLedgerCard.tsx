@@ -8,6 +8,7 @@ import type { ChatMessage } from '@/stores';
 import { diffFromToolInput, ToolDiffView } from '../DiffView';
 import { ToolResult } from '../ToolResult';
 import { CopyButton } from './CopyButton.js';
+import { ToolCallOverview } from './ToolCallOverview.js';
 import { ToolInputView } from './ToolInputView.js';
 import './ledger.css';
 import {
@@ -22,6 +23,12 @@ type Status = 'running' | 'error' | 'ok';
 function statusOf(message: ChatMessage): Status {
   if (message.toolResult === undefined) return 'running';
   return message.isError ? 'error' : 'ok';
+}
+
+function formatOutputBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
 /** Tailwind text-color for the status dot / accents, per status. */
@@ -42,6 +49,12 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
   const { t } = useAppTranslation();
   const [expanded, setExpanded] = useState(false);
   const status = statusOf(message);
+  const statusLabel =
+    status === 'running'
+      ? t('activity:message.toolRunning', 'Running')
+      : status === 'error'
+        ? t('activity:message.toolFailed', 'Failed')
+        : t('activity:message.toolSucceeded', 'Succeeded');
   // ToolLedgerCard only renders for tool messages, which always carry a name;
   // fall back to '' so the icon/summary helpers (which want a plain string)
   // stay happy on the rare untyped tool event.
@@ -51,7 +64,8 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
 
   const inputSummary =
     message.toolInput !== undefined ? summarizeToolInput(toolName, message.toolInput) : '';
-  const resultLines = message.toolResult ? message.toolResult.split('\n').length : 0;
+  const resultLines =
+    message.toolOutputLines ?? (message.toolResult ? message.toolResult.split('\n').length : 0);
   const exitCode = extractExitCode(message.toolResult);
   const hasBody =
     (message.toolResult !== undefined && message.toolResult.length > 0) ||
@@ -91,6 +105,18 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
         <span className="font-semibold tracking-tight" style={{ color: toolColor }}>
           {message.toolName}
         </span>
+        <span
+          className={cn(
+            'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
+            status === 'running'
+              ? 'text-warning'
+              : status === 'error'
+                ? 'text-destructive'
+                : 'text-success',
+          )}
+        >
+          {statusLabel}
+        </span>
 
         {inputSummary && (
           <span className="min-w-0 flex-1 truncate text-muted-foreground/80">{inputSummary}</span>
@@ -103,6 +129,12 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
             <span className="text-[10px]">
               {t('activity:message.linesSuffix', { count: resultLines })}
             </span>
+          )}
+          {message.toolOutputBytes !== undefined && (
+            <span className="text-[10px]">{formatOutputBytes(message.toolOutputBytes)}</span>
+          )}
+          {message.toolOutputTokens !== undefined && message.toolOutputTokens > 0 && (
+            <span className="text-[10px]">~{message.toolOutputTokens.toLocaleString()} tok</span>
           )}
           {exitCode !== undefined && (
             <span
@@ -159,37 +191,43 @@ export const ToolLedgerCard = memo(function ToolLedgerCard({ message }: { messag
       {/* ── Expanded body ──────────────────────────────────────────────── */}
       {expanded && (
         <div className="border-t border-border/40">
-          {message.toolInput !== undefined &&
-            (diff ? (
-              <div className="p-2">
-                <ToolDiffView diff={diff} />
-              </div>
-            ) : (
-              <div className="overflow-x-auto bg-muted/30 p-2.5">
-                <div className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                  <Clock className="h-3 w-3" />
-                  <span>{t('activity:message.inputLabel')}</span>
+          <ToolCallOverview message={message} />
+          <details className="group/details" open>
+            <summary className="cursor-pointer select-none border-b border-border/30 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/75 hover:bg-muted/30">
+              {t('activity:message.details', 'Details')}
+            </summary>
+            {message.toolInput !== undefined &&
+              (diff ? (
+                <div className="p-2">
+                  <ToolDiffView diff={diff} />
                 </div>
-                <ToolInputView input={message.toolInput} />
+              ) : (
+                <div className="overflow-x-auto bg-muted/30 p-2.5">
+                  <div className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                    <Clock className="h-3 w-3" />
+                    <span>{t('activity:message.inputLabel')}</span>
+                  </div>
+                  <ToolInputView input={message.toolInput} />
+                </div>
+              ))}
+
+            {message.toolResult !== undefined && message.toolResult.length > 0 && (
+              <div className="p-2">
+                <ToolResult
+                  toolName={message.toolName}
+                  result={message.toolResult}
+                  isError={message.isError}
+                  sageLines={message.sageLines}
+                />
               </div>
-            ))}
+            )}
 
-          {message.toolResult !== undefined && message.toolResult.length > 0 && (
-            <div className="p-2">
-              <ToolResult
-                toolName={message.toolName}
-                result={message.toolResult}
-                isError={message.isError}
-                sageLines={message.sageLines}
-              />
-            </div>
-          )}
-
-          {message.toolResult !== undefined && message.toolResult.length === 0 && (
-            <div className="px-2.5 py-1.5 font-mono text-[11px] italic text-muted-foreground">
-              {t('activity:message.empty')}
-            </div>
-          )}
+            {message.toolResult !== undefined && message.toolResult.length === 0 && (
+              <div className="px-2.5 py-1.5 font-mono text-[11px] italic text-muted-foreground">
+                {t('activity:message.empty')}
+              </div>
+            )}
+          </details>
         </div>
       )}
 

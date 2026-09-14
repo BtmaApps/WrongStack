@@ -11,9 +11,10 @@
  * 6. Execute sends a message to the current agent via WS to perform cleanup
  */
 
+import type { DeadCodeScanOutput, DeadFile, DeadSymbol } from '@wrongstack/tools/codebase-index';
 import { useCallback, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
-import type { DeadCodeScanOutput, DeadFile, DeadSymbol } from '@wrongstack/tools/codebase-index';
+import { scaledPx } from '@/lib/fonts';
 
 // ─── Action plan types (server response) ─────────────────────────────────
 
@@ -189,7 +190,7 @@ export function DeadCodeScanPanel() {
       <h2
         style={{
           margin: '0 0 16px',
-          fontSize: '18px',
+          fontSize: scaledPx(18),
           fontWeight: 600,
           color: 'hsl(var(--foreground))',
         }}
@@ -204,7 +205,7 @@ export function DeadCodeScanPanel() {
         disabled={scanPhase === 'scanning'}
         style={{
           padding: '8px 16px',
-          fontSize: '14px',
+          fontSize: scaledPx(14),
           fontWeight: 500,
           background: scanPhase === 'scanning' ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
           color:
@@ -229,7 +230,7 @@ export function DeadCodeScanPanel() {
             color: 'hsl(var(--destructive))',
             border: '1px solid hsl(var(--destructive) / 0.3)',
             borderRadius: '0',
-            fontSize: '13px',
+            fontSize: scaledPx(13),
           }}
         >
           {error}
@@ -306,7 +307,7 @@ export function DeadCodeScanPanel() {
                   style={{
                     padding: '6px 8px',
                     color: 'hsl(var(--muted-foreground))',
-                    fontSize: '12px',
+                    fontSize: scaledPx(12),
                   }}
                 >
                   … and {scanResult.deadSymbols.length - 50} more
@@ -324,7 +325,7 @@ export function DeadCodeScanPanel() {
               style={{
                 marginTop: '12px',
                 padding: '8px 16px',
-                fontSize: '14px',
+                fontSize: scaledPx(14),
                 fontWeight: 500,
                 background: planPhase === 'generating' ? 'hsl(var(--muted))' : 'hsl(var(--accent))',
                 color:
@@ -356,7 +357,7 @@ export function DeadCodeScanPanel() {
           <h3
             style={{
               margin: '0 0 8px',
-              fontSize: '15px',
+              fontSize: scaledPx(15),
               fontWeight: 600,
               color: 'hsl(var(--card-foreground))',
             }}
@@ -365,7 +366,7 @@ export function DeadCodeScanPanel() {
           </h3>
           <p
             style={{
-              fontSize: '13px',
+              fontSize: scaledPx(13),
               color: 'hsl(var(--muted-foreground))',
               margin: '0 0 12px',
             }}
@@ -383,7 +384,7 @@ export function DeadCodeScanPanel() {
                 padding: '6px 0',
                 borderBottom:
                   i < actionPlan.files.length - 1 ? '1px solid hsl(var(--border))' : 'none',
-                fontSize: '13px',
+                fontSize: scaledPx(13),
               }}
             >
               <span
@@ -392,7 +393,7 @@ export function DeadCodeScanPanel() {
                   color: 'hsl(var(--primary-foreground))',
                   borderRadius: '0',
                   padding: '2px 6px',
-                  fontSize: '11px',
+                  fontSize: scaledPx(11),
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
@@ -412,7 +413,7 @@ export function DeadCodeScanPanel() {
                 >
                   {file.file}
                 </div>
-                <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: '12px' }}>
+                <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: scaledPx(12) }}>
                   {file.symbolCount} symbol(s)
                   {file.symbols.length > 0 &&
                     ` · ${file.symbols.slice(0, 2).join(', ')}${file.symbols.length > 2 ? '…' : ''}`}
@@ -428,7 +429,7 @@ export function DeadCodeScanPanel() {
             style={{
               marginTop: '12px',
               padding: '8px 16px',
-              fontSize: '14px',
+              fontSize: scaledPx(14),
               fontWeight: 500,
               background: planPhase === 'executing' ? 'hsl(var(--muted))' : 'hsl(var(--success))',
               color: 'hsl(var(--primary-foreground))',
@@ -470,8 +471,10 @@ function StatCard({ label, value, token }: { label: string; value: number; token
         textAlign: 'center',
       }}
     >
-      <div style={{ fontSize: '24px', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))', marginTop: '2px' }}>
+      <div style={{ fontSize: scaledPx(24), fontWeight: 700, color }}>{value}</div>
+      <div
+        style={{ fontSize: scaledPx(12), color: 'hsl(var(--muted-foreground))', marginTop: '2px' }}
+      >
         {label}
       </div>
     </div>
@@ -493,7 +496,7 @@ function ResultSection({
       <h3
         style={{
           margin: '0 0 6px',
-          fontSize: '14px',
+          fontSize: scaledPx(14),
           fontWeight: 600,
           color,
           borderLeft: `3px solid ${color}`,
@@ -507,7 +510,7 @@ function ResultSection({
           border: '1px solid hsl(var(--border))',
           borderRadius: '0',
           overflow: 'hidden',
-          fontSize: '13px',
+          fontSize: scaledPx(13),
         }}
       >
         {children}
@@ -524,7 +527,7 @@ function ResultRow({ columns }: { columns: string[] }) {
         gap: '8px',
         padding: '5px 8px',
         borderBottom: '1px solid hsl(var(--border))',
-        fontSize: '13px',
+        fontSize: scaledPx(13),
         fontFamily: 'var(--font-mono, monospace)',
         background: 'hsl(var(--card))',
         color: 'hsl(var(--card-foreground))',

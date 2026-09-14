@@ -300,13 +300,27 @@ describe('chat ws-handlers — iteration / deltas / tool lifecycle', () => {
       handleToolStarted(msg('tool.started', { id, name: 'bash', input: {}, messageId: 'm' }));
     }
 
-    it('records the result, duration and clears the current tool', () => {
+    it('records authoritative result metrics, duration and clears the current tool', () => {
       startTool();
       handleToolExecuted(
-        msg('tool.executed', { id: 'tu1', name: 'bash', ok: true, output: 'done', durationMs: 42 }),
+        msg('tool.executed', {
+          id: 'tu1',
+          name: 'bash',
+          ok: true,
+          output: 'done',
+          durationMs: 42,
+          outputBytes: 2048,
+          outputTokens: 585,
+          outputLines: 19,
+        }),
       );
       const bubble = messages().find((m) => m.toolUseId === 'tu1');
-      expect(bubble).toMatchObject({ toolDurationMs: 42 });
+      expect(bubble).toMatchObject({
+        toolDurationMs: 42,
+        toolOutputBytes: 2048,
+        toolOutputTokens: 585,
+        toolOutputLines: 19,
+      });
       expect(chat().currentToolId).toBeNull();
     });
 

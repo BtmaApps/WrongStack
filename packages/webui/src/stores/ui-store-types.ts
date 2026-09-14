@@ -107,6 +107,7 @@ export function coerceDockSection(value: unknown): DockSection | null {
 
 export const SETTINGS_TABS = [
   'general',
+  'fonts',
   'provider',
   'connection',
   'agent',

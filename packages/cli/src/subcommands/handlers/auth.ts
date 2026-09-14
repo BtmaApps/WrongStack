@@ -1,5 +1,6 @@
 import { color } from '@wrongstack/core/utils';
 import { parseAuthFlags } from '../../arg-parser.js';
+import { createAuthAuditLogger, resolveAuditSink } from '../../auth-menu/auth-menu-audit.js';
 import {
   type AuthMenuDeps,
   providerAuthStrategiesFor,
@@ -38,6 +39,7 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
     'probe-only',
     'model',
     'm',
+    'audit',
     'help',
     'h',
   ]);
@@ -90,6 +92,9 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
       skipKey: has('no-key', 'skip-key'),
       noProbe: has('no-probe', 'skip-probe'),
       probeOnly: has('probe-only'),
+      // `--audit [target]` → the documented JSONL sink (stdout / stderr /
+      // file). Absent → the no-op logger, so the default stays silent.
+      audit: createAuthAuditLogger(resolveAuditSink(flags.audit)),
       // Bare `--model` (no value, or followed by another flag) clears the
       // allowlist, which is why an empty string is meaningful here.
       ...(modelIdx >= 0

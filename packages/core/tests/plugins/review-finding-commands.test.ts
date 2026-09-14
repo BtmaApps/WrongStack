@@ -3,16 +3,17 @@
  *
  * FS-P0.5 + FS-P0.6
  */
+
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { executeFindingCommand } from '../../src/plugins/review-finding-commands.js';
 import {
-  resolveChimeraConfig,
   type ChimeraReviewCompletePayload,
+  resolveChimeraConfig,
 } from '../../src/plugins/chimera-plugin.js';
+import { executeFindingCommand } from '../../src/plugins/review-finding-commands.js';
 import { JsonlFindingStore } from '../../src/plugins/review-finding-store.js';
 import type { ChimeraFinding } from '../../src/plugins/review-finding-types.js';
 
@@ -87,6 +88,40 @@ describe('/review findings slash commands', () => {
     const output = await executeFindingCommand(['findings'], { projectDir: dir });
     expect(output).toContain('critical');
     expect(output).toContain('Critical bug');
+  });
+
+  it('renders the basename for forward, backslash, and mixed-separator locations', async () => {
+    // Regression: the File column computed the basename as a chained substring
+    // whose second lastIndexOf('\\') was evaluated on the ORIGINAL string but
+    // applied to the ALREADY-TRUNCATED result, so mixed-separator locations
+    // (drive backslash + forward relative rest on win32) rendered garbage like
+    // `e.ts` instead of `file.ts`. The all-backslash case passed by accident,
+    // which is why only the mixed shape catches this.
+    await store.upsert(
+      [
+        makeFinding({
+          title: 'r2 forward',
+          location: { file: 'packages/core/src/file.ts', line: 1 },
+        }),
+        makeFinding({
+          title: 'r2 backslash',
+          location: { file: 'packages\\core\\src\\file.ts', line: 1 },
+        }),
+        makeFinding({
+          title: 'r2 mixed',
+          location: { file: 'C:\\repo/packages/core/src/file.ts', line: 1 },
+        }),
+      ],
+      { sessionId: 's', reportId: 'r', agentId: 'chimera-review', model: 'test-model' },
+    );
+    const output = await executeFindingCommand(['findings'], { projectDir: dir });
+    for (const title of ['r2 forward', 'r2 backslash', 'r2 mixed']) {
+      const row = output
+        .split('\n')
+        .find((line) => line.includes(title) && line.trim().startsWith('|'));
+      expect(row, `findings row for '${title}'`).toBeTruthy();
+      expect(row).toContain('`file.ts`');
+    }
   });
 
   it('filters by severity', async () => {

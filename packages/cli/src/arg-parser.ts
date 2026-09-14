@@ -228,6 +228,12 @@ export interface AuthFlags {
   family?: import('@wrongstack/core/types').WireFamily | undefined;
   baseUrl?: string | undefined;
   envVars?: string[] | undefined;
+  /**
+   * `--audit [target]` — `true` for a bare flag (stdout), otherwise the
+   * target: `'stdout'`, `'stderr'`, or a file path. Consumed by
+   * `resolveAuditSink` in `auth-menu/auth-menu-audit.ts`.
+   */
+  audit?: boolean | string | undefined;
 }
 
 /** Parse `wstack auth <provider> [--label ...] [--family ...] [...]` flags. */
@@ -259,6 +265,19 @@ export function parseAuthFlags(args: string[]): AuthFlags {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean);
+    } else if (key === '--audit') {
+      // `--audit [target]` — bare means stdout (the documented default); a
+      // following non-flag token is the target: `stdout`, `stderr`, or a file
+      // path. `resolveAuditSink` (auth-menu/auth-menu-audit.ts) maps it.
+      const next = args[i + 1];
+      if (inlineVal !== undefined) {
+        // `--audit=<target>`; an empty target is ignored, like `--label=`.
+        if (inlineVal) out.audit = inlineVal;
+      } else if (next === undefined || next.startsWith('-')) {
+        out.audit = true;
+      } else {
+        out.audit = args[++i] ?? '';
+      }
     } else if (a.startsWith('-')) {
       // Unknown flag (e.g. `--model`, `-m`, `--name`, `--audit`). Mirror
       // parseArgs: unless it is a known boolean, it owns the next token as

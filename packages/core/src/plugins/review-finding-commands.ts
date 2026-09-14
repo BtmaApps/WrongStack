@@ -8,9 +8,9 @@
  */
 
 import { FINDING_DEFAULT_PAGE_SIZE } from './review-finding-store.js';
-import { syncReportCompletion, syncReportReopen } from './review-report-integration.js';
-import type { ReviewReport, ReportLifecycleStatus } from './review-report-types.js';
 import type { FindingSeverity, FindingStatus, ResolutionOutcome } from './review-finding-types.js';
+import { syncReportCompletion, syncReportReopen } from './review-report-integration.js';
+import type { ReportLifecycleStatus, ReviewReport } from './review-report-types.js';
 
 /**
  * Run the review findings command.
@@ -155,8 +155,12 @@ async function listFindings(args: string[], ctx: FindingCommandContext): Promise
   const lines: string[] = ['| Severity | Status | File | Title |', '|---|---|---|---|'];
   for (const f of all) {
     const location = f.location?.file ?? 'unknown';
+    // Basename across BOTH separators: mixed-separator locations (drive
+    // backslash + forward relative rest on win32) made the previously chained
+    // substring apply the ORIGINAL string's backslash index to the
+    // already-truncated result, rendering garbage like `e.ts` in the table.
     const file =
-      location.substring(location.lastIndexOf('/') + 1).substring(location.lastIndexOf('\\') + 1) ||
+      location.substring(Math.max(location.lastIndexOf('/'), location.lastIndexOf('\\')) + 1) ||
       location;
     const severityEmoji =
       f.severity === 'critical'

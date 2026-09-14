@@ -13,6 +13,7 @@ import {
   Radio,
   Settings2,
   Shield,
+  Type,
   X,
   Zap,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ import { DisplaySection } from './DisplaySection';
 import { ExecutionSettingsTab } from './ExecutionSettingsTab';
 import { FallbacksSection } from './FallbacksSection';
 import { FleetSection } from './FleetSection';
+import { FontSettingsTab } from './FontSettingsTab';
 import { IntegrationsSection } from './IntegrationsSection';
 import { LogsSettingsTab } from './LogsSettingsTab';
 import { ModelEffortSelect } from './ModelEffortSelect';
@@ -76,6 +78,12 @@ const TABS: TabDef[] = [
     icon: <Palette className="h-3.5 w-3.5" />,
     labelKey: 'settings:tabs.general',
     descKey: 'settings:tabs.generalDesc',
+  },
+  {
+    id: 'fonts',
+    icon: <Type className="h-3.5 w-3.5" />,
+    labelKey: 'settings:tabs.fonts',
+    descKey: 'settings:tabs.fontsDesc',
   },
   {
     id: 'provider',
@@ -443,6 +451,10 @@ export function SettingsPanel() {
 
               <TabsContent value="general" className="mt-0">
                 <AppearanceSettingsTab />
+              </TabsContent>
+
+              <TabsContent value="fonts" className="mt-0">
+                <FontSettingsTab />
               </TabsContent>
 
               <TabsContent value="provider" className="mt-0 space-y-4">

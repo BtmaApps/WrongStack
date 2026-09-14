@@ -32,7 +32,7 @@
  */
 
 import { realpathSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export interface SafePathOptions {
   /**
@@ -104,7 +104,11 @@ function realpathWithMissingLeaf(candidate: string): string | null {
 function withinLexical(projectRoot: string, candidate: string): boolean {
   const rel = relative(projectRoot, candidate);
   if (rel === '' || rel === '.') return true;
-  if (rel.startsWith('..')) return false;
+  // Parent escapes only: `..` itself, or a `..${sep}` prefix. Any other
+  // leading-dot name (`.gitignore`, `..audit-notes.md`) is an ordinary
+  // segment inside the project; a bare `startsWith('..')` wrongly rejects
+  // those (same idiom bug as withinProjectPath in ./index.js).
+  if (rel === '..' || rel.startsWith(`..${sep}`)) return false;
   if (isAbsolute(rel)) return false;
   return true;
 }

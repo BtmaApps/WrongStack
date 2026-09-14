@@ -1,13 +1,18 @@
-import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { fontScalePostcssPlugin } from './src/lib/font-scale-css.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Routes every compiled `font-size` (Tailwind classes + stylesheets) through
+  // `--ui-font-scale` so the typography panel's text-size control reaches the
+  // whole UI. See src/lib/font-scale-css.ts.
+  css: { postcss: { plugins: [fontScalePostcssPlugin()] } },
   resolve: {
     alias: [
       {

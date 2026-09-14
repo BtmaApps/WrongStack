@@ -29,7 +29,9 @@
     "chimeraDesc": "Configuração do agente de revisão de código pós-sessão.",
     "contextDesc": "Flags de recursos, estratégia de contexto, compactador e controles de plugins.",
     "logsDesc": "Nível de log, detalhe de auditoria, escopo de acesso ao sistema de arquivos e stream de depuração.",
-    "securityDesc": "Controle de decisão Brain, agente sombra e acesso a ferramentas."
+    "securityDesc": "Controle de decisão Brain, agente sombra e acesso a ferramentas.",
+    "fonts": "Fontes",
+    "fontsDesc": "Fontes de interface, chat, editor e terminal; tamanho, altura de linha e ligaduras."
   },
   "model": {
     "heading": "Modelo",
@@ -960,5 +962,130 @@
     "capAttachment": "Anexo",
     "capStructuredOutput": "Saída estruturada",
     "capOpenWeights": "Pesos abertos"
+  },
+  "fonts": {
+    "presetsHeading": "Conjuntos de fontes",
+    "presetsHint": "Um conjunto define todas as funções de uma vez; as fontes só são baixadas no primeiro uso.",
+    "presets": {
+      "workbench": {
+        "label": "Bancada",
+        "description": "A aparência padrão da bancada de trabalho."
+      },
+      "plex": {
+        "label": "IBM Plex",
+        "description": "Uma única família técnica do início ao fim."
+      },
+      "modern": {
+        "label": "Moderno",
+        "description": "Inter neutra com JetBrains Mono para código."
+      },
+      "geist": {
+        "label": "Geist",
+        "description": "Combinação nítida de Geist Sans e Mono."
+      },
+      "classic": {
+        "label": "Clássico",
+        "description": "Source Sans, Serif e Code Pro da Adobe."
+      },
+      "editorial": {
+        "label": "Editorial",
+        "description": "Títulos serifados e uma fonte de chat com cara de livro."
+      },
+      "readable": {
+        "label": "Legível",
+        "description": "Fontes muito legíveis para sessões longas."
+      },
+      "friendly": {
+        "label": "Amigável",
+        "description": "Formas arredondadas e descontraídas com Fira Code."
+      },
+      "monospace": {
+        "label": "Monoespaçada",
+        "description": "Monoespaçada em todo lugar, estilo terminal."
+      },
+      "system": {
+        "label": "Sistema",
+        "description": "Fontes do sistema operacional, sem downloads."
+      }
+    },
+    "rolesHeading": "Fontes por função",
+    "rolesHint": "Substitua qualquer função sobre o conjunto. Funções marcadas com “Igual a” seguem a função principal.",
+    "roles": {
+      "ui": {
+        "label": "Interface e painéis",
+        "hint": "Botões, menus, barras laterais, listas e configurações."
+      },
+      "display": {
+        "label": "Títulos",
+        "hint": "Títulos de página e de seção."
+      },
+      "reading": {
+        "label": "Chat e documentos",
+        "hint": "Respostas do assistente, markdown e mensagens da caixa de entrada."
+      },
+      "code": {
+        "label": "Código em linha e dados",
+        "hint": "Blocos de código, logs, IDs e dados tabulares."
+      },
+      "editor": {
+        "label": "Editor de código",
+        "hint": "Editor de arquivos Monaco e visualização de diferenças."
+      },
+      "terminal": {
+        "label": "Terminal",
+        "hint": "Sessões do terminal integrado."
+      }
+    },
+    "fromPreset": "Conjunto ({{name}})",
+    "inherit": "Igual a {{role}} ({{name}})",
+    "categories": {
+      "sans": "Sem serifa",
+      "serif": "Serifada",
+      "mono": "Monoespaçada"
+    },
+    "systemTag": "sistema",
+    "sizeHeading": "Tamanho e espaçamento",
+    "sizeHint": "O tamanho do texto da interface escala todos os painéis; editor e terminal são definidos em pixels.",
+    "sizePresets": {
+      "compact": "Compacto",
+      "normal": "Normal",
+      "comfortable": "Confortável",
+      "large": "Grande",
+      "custom": "Personalizado"
+    },
+    "controls": {
+      "uiScale": {
+        "label": "Tamanho do texto da interface",
+        "hint": "Escala o texto de painéis, chat e diálogos."
+      },
+      "editorFontSize": {
+        "label": "Tamanho da fonte do editor",
+        "hint": "Editor Monaco e visualização de diferenças."
+      },
+      "codeLineHeight": {
+        "label": "Altura de linha do código",
+        "hint": "Editor, visualização de diferenças e blocos de código."
+      },
+      "terminalFontSize": {
+        "label": "Tamanho da fonte do terminal",
+        "hint": "Terminal integrado."
+      },
+      "terminalLineHeight": {
+        "label": "Altura de linha do terminal",
+        "hint": "Espaçamento entre linhas do terminal."
+      },
+      "ligatures": {
+        "label": "Ligaduras de código",
+        "hint": "Une => !== >= em um único glifo em fontes compatíveis (Fira Code, Cascadia, JetBrains Mono…). Não se aplica ao terminal."
+      }
+    },
+    "previewHeading": "Prévia ao vivo",
+    "preview": {
+      "heading": "Refatorar o carregador de sessões",
+      "body": "O agente leu 12 arquivos e propôs uma alteração em duas etapas. Revise as diferenças antes de aplicar.",
+      "label": "Rótulo da interface"
+    },
+    "resetAll": "Redefinir todas as configurações de fonte",
+    "resetOverrides": "Limpar substituições por função"
   }
 }

@@ -1,4 +1,3 @@
-import { useAppTranslation } from '@/i18n';
 import {
   Background,
   BackgroundVariant,
@@ -10,11 +9,13 @@ import {
   Position,
   ReactFlow,
 } from '@xyflow/react';
+import { useAppTranslation } from '@/i18n';
 import '@xyflow/react/dist/style.css';
 import { Expand } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { scaledPx } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import type { SageAnchor, SageEntry, SageGraphEdge } from '@/types';
 
@@ -265,7 +266,7 @@ export function MemoryGraph({
         },
         labelStyle: {
           fill: danger ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))',
-          fontSize: 9,
+          fontSize: scaledPx(9),
           fontWeight: 700,
         },
         labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.9 },

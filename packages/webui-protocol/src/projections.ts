@@ -138,6 +138,9 @@ export type ToolProjection =
        */
       sage?: string[] | undefined;
       durationMs: number;
+      outputBytes?: number | undefined;
+      outputTokens?: number | undefined;
+      outputLines?: number | undefined;
     };
 
 export function projectToolMessage(message: ProtocolEnvelope): ToolProjection | null {
@@ -171,6 +174,15 @@ export function projectToolMessage(message: ProtocolEnvelope): ToolProjection | 
       ok: payload['ok'] !== false,
       durationMs: finite(payload['durationMs']),
       ...(typeof payload['output'] === 'string' ? { output: payload['output'] } : {}),
+      ...(optionalFinite(payload['outputBytes']) !== undefined
+        ? { outputBytes: optionalFinite(payload['outputBytes']) }
+        : {}),
+      ...(optionalFinite(payload['outputTokens']) !== undefined
+        ? { outputTokens: optionalFinite(payload['outputTokens']) }
+        : {}),
+      ...(optionalFinite(payload['outputLines']) !== undefined
+        ? { outputLines: optionalFinite(payload['outputLines']) }
+        : {}),
       ...(Array.isArray(payload['sage'])
         ? { sage: payload['sage'].filter((line): line is string => typeof line === 'string') }
         : {}),

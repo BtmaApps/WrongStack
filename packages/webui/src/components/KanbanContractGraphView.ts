@@ -10,6 +10,7 @@ import {
   taskContractEndpoint,
 } from '@wrongstack/kanban/contract-graph';
 import { type Edge, MarkerType, type Node } from '@xyflow/react';
+import { scaledPx } from '@/lib/fonts';
 
 const X_BY_KIND: Record<KanbanContractNode['kind'], number> = {
   objective: 300,
@@ -275,7 +276,7 @@ function contractEdgeView(edge: NonNullable<KanbanBoard['contractGraph']>['edges
       opacity: edge.enforcement === 'blocking' ? 1 : 0.72,
     },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
-    labelStyle: { fontSize: 10, fontWeight: 600, fill: '#cbd5e1' },
+    labelStyle: { fontSize: scaledPx(10), fontWeight: 600, fill: '#cbd5e1' },
     labelBgStyle: { fill: '#07101f', fillOpacity: 0.9 },
     labelBgPadding: [5, 3],
     labelBgBorderRadius: 5,
@@ -291,7 +292,7 @@ function nodeStyle(color: string, root = false): Node['style'] {
     background: root ? `linear-gradient(135deg, ${color}, #075985)` : `${color}24`,
     color: '#f8fafc',
     boxShadow: `0 10px 30px ${color}18, inset 0 1px 0 rgba(255,255,255,0.08)`,
-    fontSize: 11,
+    fontSize: scaledPx(11),
     fontWeight: 650,
     lineHeight: 1.45,
     whiteSpace: 'pre-line',

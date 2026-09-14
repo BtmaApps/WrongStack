@@ -9,7 +9,9 @@ import { DiffEditor, loader } from '@monaco-editor/react';
 import { Check, Loader2, Save } from 'lucide-react';
 import * as monaco from 'monaco-editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFontSettings } from '@/hooks/use-font-settings';
 import { useAppTranslation } from '@/i18n';
+import { subscribeFontLoads } from '@/lib/fonts';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore } from '@/stores';
 import type { WSServerMessage } from '@/types';
@@ -65,6 +67,8 @@ export function MonacoDiffView({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const { editor: editorFont } = useFontSettings();
+  useEffect(() => subscribeFontLoads(() => monaco.editor.remeasureFonts()), []);
 
   // Reset transient state when switching files.
   useEffect(() => {
@@ -145,7 +149,10 @@ export function MonacoDiffView({
             readOnly: false,
             originalEditable: false,
             minimap: { enabled: false },
-            fontSize: 13,
+            fontSize: editorFont.fontSize,
+            fontFamily: editorFont.fontFamily,
+            lineHeight: editorFont.lineHeight,
+            fontLigatures: editorFont.fontLigatures,
             scrollBeyondLastLine: false,
             automaticLayout: true,
           }}
