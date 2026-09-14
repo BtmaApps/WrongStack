@@ -115,7 +115,16 @@ describe('policy refuses to store an unmatched always-rule (WS-046)', () => {
     const decision = await p.evaluate(tool('edit'), { path: 'src/a.ts' }, {} as Context);
 
     expect(decision.permission).toBe('auto');
-    expect(await storedTrust()).toEqual({ edit: { allow: ['src/a.ts'] } });
+    const stored = (await storedTrust()) as {
+      edit?: { allow?: string[]; allowUntil?: number };
+    };
+    expect(stored.edit?.allow).toEqual(['src/a.ts']);
+    // W6 #9: a prompt-driven `always` now also stamps an expiry, so the stored
+    // rule carries `allowUntil` alongside the pattern. Assert the pattern
+    // exactly and the expiry as a live future number rather than pinning a
+    // timestamp — the invariant that matters is "timed, and not already lapsed".
+    expect(typeof stored.edit?.allowUntil).toBe('number');
+    expect(stored.edit?.allowUntil).toBeGreaterThan(Date.now());
   });
 
   it('a stored subject rule actually re-matches on the next call', async () => {

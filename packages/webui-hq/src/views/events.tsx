@@ -61,6 +61,57 @@ function toneForType(type: string | undefined): BadgeTone {
   return TYPE_TONE[type] ?? 'neutral';
 }
 
+/** One timeline row, annotated with its position in a correlation chain. */
+export interface EventChainRow {
+  event: EventsResponse['events'][number];
+  /** Shared id when this row belongs to a multi-row chain, else undefined. */
+  chainId?: string;
+  /** Only the first row of a chain prints the id. */
+  isChainHead: boolean;
+  /** Rows in this chain; 1 when the row is uncorrelated or stands alone. */
+  chainSize: number;
+}
+
+/**
+ * W4 #4 phase 2 — annotate timeline rows with their correlation chain.
+ *
+ * Grouping is over CONSECUTIVE rows only, never globally. The timeline is in
+ * arrival order, and an id that reappears much later is the same activity
+ * observed again rather than a continuation of this run — grouping globally
+ * would pull distant rows together and misreport the order the operator saw.
+ *
+ * A run of one is NOT a chain: an isolated correlated row renders as an
+ * ordinary row, because marking it would promise siblings that don't exist.
+ */
+export function groupEventChains(events: EventsResponse['events']): EventChainRow[] {
+  const rows: EventChainRow[] = [];
+  let index = 0;
+  while (index < events.length) {
+    const chainId = events[index]?.correlationId;
+    if (chainId === undefined || chainId.length === 0) {
+      const event = events[index];
+      if (event !== undefined) rows.push({ event, isChainHead: false, chainSize: 1 });
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (end < events.length && events[end]?.correlationId === chainId) end += 1;
+    const chainSize = end - index;
+    for (let offset = 0; offset < chainSize; offset += 1) {
+      const event = events[index + offset];
+      if (event === undefined) continue;
+      rows.push({
+        event,
+        ...(chainSize > 1 ? { chainId } : {}),
+        isChainHead: chainSize > 1 && offset === 0,
+        chainSize,
+      });
+    }
+    index = end;
+  }
+  return rows;
+}
+
 /** Best-effort JSON preview: stringify compact; cap at ~120 chars. */
 function previewPayload(payload: unknown): string {
   if (payload === undefined || payload === null) return '';
@@ -233,12 +284,21 @@ export function EventsView(): React.ReactElement {
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-border/40">
-              {events.map((event, index) => {
+              {groupEventChains(events).map((row, index) => {
+                const event = row.event;
                 const tone = toneForType(event.type);
                 return (
                   <li
                     key={`${event.timestamp ?? 'no-ts'}-${index}`}
-                    className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-2 text-xs"
+                    className={cn(
+                      'grid grid-cols-[auto_1fr] items-start gap-x-3 py-2 text-xs',
+                      // A continuation row is drawn as part of the row above it
+                      // rather than a peer of it, so the chain reads as one
+                      // activity observed N times.
+                      row.chainId !== undefined &&
+                        !row.isChainHead &&
+                        'border-l-2 border-primary/30 pl-2',
+                    )}
                   >
                     <span className="font-mono tabular-nums text-muted-foreground">
                       {formatClock(event.timestamp)}
@@ -246,6 +306,14 @@ export function EventsView(): React.ReactElement {
                     <div className="flex min-w-0 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={tone}>{event.type ?? '(unknown)'}</Badge>
+                        {row.isChainHead && row.chainId !== undefined && (
+                          <span
+                            className="font-mono text-[10px] text-muted-foreground"
+                            title={`correlation id ${row.chainId}`}
+                          >
+                            ↳ chain {row.chainId.slice(0, 8)} · {row.chainSize} events
+                          </span>
+                        )}
                         {event.clientId !== undefined && (
                           <span className="font-mono text-[11px] text-muted-foreground">
                             {event.clientId}

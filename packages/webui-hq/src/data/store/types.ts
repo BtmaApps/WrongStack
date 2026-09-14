@@ -51,6 +51,16 @@ export interface HqFleetState {
   connected: boolean;
   authRequired: boolean;
   /**
+   * Set when this browser's own credential was revoked server-side, so the
+   * gate can say WHY it appeared. `authRequired` alone renders a bare token
+   * prompt, which reads as "you were idle" even when an operator deliberately
+   * revoked the token mid-session.
+   *
+   * Always accompanied by `authRequired` — this refines that state, it never
+   * replaces it, so nothing that keys on `authRequired` needs to change.
+   */
+  authRevoked: boolean;
+  /**
    * Client-monotonic (`performance.now()`) timestamp of when the current
    * snapshot was accepted, or null while none is held. Bounds the
    * stale-frame guard in `reduceSnapshot` to client time, so a server clock
@@ -80,6 +90,11 @@ export interface HqActions {
   selectAgent: (sessionId: string, agentId: string) => void;
   selectClient: (clientId: string | null) => void;
   markAuthRequired: () => void;
+  /**
+   * Mark this browser as revoked rather than merely unauthenticated. Implies
+   * `markAuthRequired()`.
+   */
+  markAuthRevoked: () => void;
   dismissPeerEnvelope: () => void;
 
   /** Seed the first render from HTTP without claiming the WebSocket is live. */

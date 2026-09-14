@@ -31,6 +31,7 @@ export const useHqStore = create<HqStore>()((set) => ({
   peerEnvelope: null,
   connected: false,
   authRequired: false,
+  authRevoked: false,
   snapshotAcceptedAtMs: null,
 
   selectedSessionId: null,
@@ -50,6 +51,11 @@ export const useHqStore = create<HqStore>()((set) => ({
   selectClient: (clientId) => set({ selectedClientId: clientId }),
 
   markAuthRequired: () => set((state) => (state.authRequired ? {} : { authRequired: true })),
+
+  markAuthRevoked: () =>
+    set((state) =>
+      state.authRequired && state.authRevoked ? {} : { authRequired: true, authRevoked: true },
+    ),
 
   dismissPeerEnvelope: () => set({ peerEnvelope: null }),
 

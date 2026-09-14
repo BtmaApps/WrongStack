@@ -147,6 +147,12 @@ export interface EventsResponse {
     clientId?: string;
     machineId?: string;
     sessionId?: string;
+    /**
+     * W4 #4 — groups several envelopes into one logical activity (a Brain
+     * decision request id, a fleet run id). Optional: envelopes without it are
+     * simply uncorrelated, so the timeline must not require it.
+     */
+    correlationId?: string;
     payload?: unknown;
   }>;
   total: number;

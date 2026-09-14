@@ -13,6 +13,7 @@ import { KeyRound, ShieldCheck, TriangleAlert } from 'lucide-react';
 import type * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { clearHqToken, loginWithHqToken } from '../../data/auth/index.js';
+import { useHqStore } from '../../data/store/index.js';
 import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
 import { Label } from '../ui/label.js';
@@ -70,9 +71,12 @@ function GateError({ message }: { message: string }): React.ReactElement {
 
 function TokenForm({
   hadToken,
+  revoked = false,
   onAuthenticated,
 }: {
   hadToken: boolean;
+  /** This browser's own credential was revoked server-side (W4 #15 follow-on). */
+  revoked?: boolean;
   onAuthenticated: () => void;
 }): React.ReactElement {
   const [value, setValue] = useState('');
@@ -104,6 +108,9 @@ function TokenForm({
 
   return (
     <div className="flex flex-col gap-2.5">
+      {revoked && (
+        <GateError message="This session was ended because its browser token was revoked by an operator. Ask them for a new token — or use a password if this server has one configured." />
+      )}
       <p className="text-xs text-muted-foreground">
         {hadToken
           ? 'The saved token was rejected — it may have been revoked, or the server was reset. Paste a current browser token.'
@@ -306,6 +313,10 @@ export function TokenGate({
 }): React.ReactElement {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // W4 #15: set when the transport re-mints this tab's credential after an
+  // `hq.auth_revoked` frame and the re-mint fails. Reading it here (rather
+  // than prop-drilling from the shell) keeps the gate self-contained.
+  const revoked = useHqStore((s) => s.authRevoked);
 
   useEffect(() => {
     let cancelled = false;
@@ -374,7 +385,7 @@ export function TokenGate({
         {showPassword ? (
           <PasswordForm />
         ) : (
-          <TokenForm hadToken={hadToken} onAuthenticated={onAuthenticated} />
+          <TokenForm hadToken={hadToken} onAuthenticated={onAuthenticated} revoked={revoked} />
         )}
       </GateShell>
     );
@@ -388,7 +399,7 @@ export function TokenGate({
           <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
         <TabsContent value="token" className="pt-3">
-          <TokenForm hadToken={hadToken} onAuthenticated={onAuthenticated} />
+          <TokenForm hadToken={hadToken} onAuthenticated={onAuthenticated} revoked={revoked} />
         </TabsContent>
         <TabsContent value="password" className="pt-3">
           <PasswordForm />

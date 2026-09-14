@@ -15,14 +15,14 @@ import {
   projectHqFleetMessage,
 } from '@wrongstack/webui-protocol';
 import { fetchJson } from './api.js';
-import { upgradeStoredTokenToCookie } from './auth/index.js';
+import { clearHqToken, upgradeStoredTokenToCookie } from './auth/index.js';
+import { useHqStore } from './store/index.js';
 import {
   getHqSocket,
   type HqSocketMessage,
   type HqSocketOptions,
   type HqSocketState,
 } from './transport/hq-socket.js';
-import { useHqStore } from './store/index.js';
 
 type HqStoreApi = typeof useHqStore;
 
@@ -71,6 +71,30 @@ export function applySocketMessage(store: HqStoreApi, message: HqSocketMessage):
     case 'hq.resume_reject': {
       state.resetResumeCursors();
       state.setNeedsSnapshotRefresh(true);
+      return;
+    }
+    case 'hq.auth_revoked': {
+      // The server broadcasts token revocations to every open browser socket
+      // before its watcher closes the affected ones (1008) — so this frame is
+      // a trigger to re-validate THIS browser's credential, not a verdict:
+      // the payload carries token keys (server-side verifiers), which the
+      // client cannot match against its raw token. A still-live token
+      // re-mints its cookie and the feed keeps streaming; a revoked one
+      // fails the upgrade, which clears the stored credential and raises
+      // the auth gate before the reconnect loop starts churning on a
+      // credential that can never succeed.
+      void upgradeStoredTokenToCookie().then((minted) => {
+        if (minted) return;
+        clearHqToken();
+        // This browser is the one that lost its credential. The frame is
+        // broadcast to EVERY socket, but only a failed re-mint proves the
+        // revocation applies here — a still-live token re-mints above and is
+        // told nothing. Marking revoked rather than merely required lets the
+        // gate say an operator revoked the token, instead of showing the
+        // idle-timeout prompt and leaving the operator to guess why they were
+        // signed out mid-session.
+        store.getState().markAuthRevoked();
+      });
       return;
     }
     default:
