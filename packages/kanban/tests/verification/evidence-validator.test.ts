@@ -96,6 +96,24 @@ describe('EvidenceValidator', () => {
       expect(result.reasons.some((r) => r.includes('vague') || r.includes('Vague'))).toBe(true);
     });
 
+    /**
+     * Regression: the "too short to be concrete" guard was `^.{0,5}$`, and `.`
+     * does not match a line terminator. A 3-character summary containing a
+     * newline therefore never matched and was accepted, so the evidence
+     * contract could be satisfied with a stub — while the same text on one
+     * line was correctly rejected.
+     */
+    it('rejects a short summary that hides its length behind a newline', () => {
+      const v = new EvidenceValidator();
+      const result = v.validate(
+        makeResult({
+          backingRefs: [{ kind: 'file', path: 'src/test.ts', summary: 'a\nb' }],
+        }),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.reasons.some((r) => r.includes('vague') || r.includes('Vague'))).toBe(true);
+    });
+
     it('rejects missing required reference kinds', () => {
       const v = new EvidenceValidator({
         requiredRefKinds: ['file', 'diff'],

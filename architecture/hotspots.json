@@ -207,15 +207,15 @@
       "relativeImports": 3
     },
     "packages/mcp/src/authorization.ts": {
-      "lines": 908,
+      "lines": 926,
       "relativeImports": 0
     },
     "packages/mcp/src/client.ts": {
-      "lines": 1069,
+      "lines": 1083,
       "relativeImports": 12
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 836,
+      "lines": 865,
       "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {

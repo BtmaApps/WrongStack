@@ -32,7 +32,7 @@ export const DEFAULT_EVIDENCE_RULES: BackingEvidenceRules = {
 
 const VAGUE_PATTERNS = [
   /^(passed|ok|done|fine|good|works?|looks?\s*good|seems?\s*fine|approved?|yes|no|n\/a|\.\.\.)$/i,
-  /^.{0,5}$/, // Very short strings
+  /^[\s\S]{0,5}$/, // Very short strings; [\s\S] so a newline cannot hide length
 ];
 
 export class EvidenceValidator {

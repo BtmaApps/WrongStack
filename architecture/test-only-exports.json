@@ -193,6 +193,7 @@
       "makeServeContext",
       "parseToolsFlag",
       "resolveServeFsRestriction",
+      "resolveServeHttpPort",
       "selectExposedTools",
       "yoloServePolicy"
     ],

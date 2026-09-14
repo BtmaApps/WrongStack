@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T07:02:16.204Z",
+  "generatedAt": "2026-09-14T08:41:48.920Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3790,
-    "testFiles": 3350,
-    "sourceLines": 922989,
+    "testFiles": 3351,
+    "sourceLines": 923183,
     "workspaceEdges": 128,
     "moduleEdges": 12115,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 939
+    "testOnlyExports": 940
   },
   "errors": [],
   "packageCycles": [],
@@ -146,7 +146,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 494,
-      "testFiles": 499,
+      "testFiles": 500,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -185,7 +185,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 499
+          "testFiles": 500
         }
       ]
     },
@@ -3202,6 +3202,12 @@
       },
       {
         "file": "packages/cli/tests/mcp-management.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/mcp-serve-http-port.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21583,17 +21589,17 @@
     },
     {
       "file": "packages/mcp/src/authorization.ts",
-      "lines": 908,
+      "lines": 926,
       "relativeImports": 0
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 1069,
+      "lines": 1083,
       "relativeImports": 12
     },
     {
       "file": "packages/mcp/src/registry.ts",
-      "lines": 836,
+      "lines": 865,
       "relativeImports": 19
     },
     {
@@ -22049,14 +22055,14 @@
       "relativeImports": 10
     },
     {
+      "file": "packages/mcp/src/client.ts",
+      "lines": 1083,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
       "lines": 1078,
       "relativeImports": 52
-    },
-    {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 1069,
-      "relativeImports": 12
     },
     {
       "file": "packages/plugins/src/git-autocommit/index.ts",
@@ -22654,6 +22660,10 @@
     {
       "file": "packages/cli/src/mcp-serve.ts",
       "name": "resolveServeFsRestriction"
+    },
+    {
+      "file": "packages/cli/src/mcp-serve.ts",
+      "name": "resolveServeHttpPort"
     },
     {
       "file": "packages/cli/src/mcp-serve.ts",
