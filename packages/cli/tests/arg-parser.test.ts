@@ -47,6 +47,29 @@ describe('parseArgs', () => {
     expect(r.flags.name).toBe('bar');
   });
 
+  it('short flag that is not a known boolean consumes the next token as its value', () => {
+    // `auth local -m <spec>` must classify like `--model <spec>`; forcing
+    // shorts boolean dropped the value into `positional`, where the
+    // auth-local handler read it as the preset name.
+    expect(parseArgs(['auth', 'local', '-m', 'llama3.1:8b'])).toEqual({
+      flags: { m: 'llama3.1:8b' },
+      positional: ['auth', 'local'],
+    });
+  });
+
+  it('boolean short flags (-v/-y/-h) never consume a following token', () => {
+    expect(parseArgs(['-v', 'task'])).toEqual({ flags: { verbose: true }, positional: ['task'] });
+    expect(parseArgs(['-y', 'task'])).toEqual({ flags: { yes: true }, positional: ['task'] });
+    // (avoid surface-alias words like `webui` — normalizeSurfaceAliases
+    // legitimately converts them from positional to flag)
+    expect(parseArgs(['-h', 'auth'])).toEqual({ flags: { help: true }, positional: ['auth'] });
+  });
+
+  it('non-boolean short flag followed by another flag or end of argv stays boolean', () => {
+    expect(parseArgs(['-m', '--yolo'])).toEqual({ flags: { m: true, yolo: true }, positional: [] });
+    expect(parseArgs(['-m'])).toEqual({ flags: { m: true }, positional: [] });
+  });
+
   it('preserves the session id consumed by the value-taking --resume flag', () => {
     expect(BOOLEAN_FLAGS.has('resume')).toBe(false);
     expect(parseArgs(['--resume', 'sess1'])).toEqual({
@@ -312,6 +335,40 @@ describe('parseAuthFlags', () => {
   it('ignores unknown bare flags but keeps positional words', () => {
     const r = parseAuthFlags(['provider', '--unknown']);
     expect(r.positional).toEqual(['provider']);
+  });
+
+  it('unknown flag owns its value token — value must not leak into positional', () => {
+    // Regression: `wstack auth local --model <spec>` (no --name) fed the
+    // model spec into positional[1], which the auth-local handler reads as
+    // the preset name — runAuthLocal then hard-failed with
+    // `Unknown local server "<spec>"`.
+    expect(parseAuthFlags(['local', '--model', 'llama3.1:8b']).positional).toEqual(['local']);
+  });
+
+  it('unknown short flag owns its value token', () => {
+    expect(parseAuthFlags(['local', '-m', 'llama3.1:8b']).positional).toEqual(['local']);
+  });
+
+  it('unknown boolean flag does not swallow the following positional', () => {
+    expect(parseAuthFlags(['local', '--no-key', 'ollama']).positional).toEqual(['local', 'ollama']);
+  });
+
+  it('bare -- separator does not consume the following token', () => {
+    expect(parseAuthFlags(['local', '--', 'ollama']).positional).toEqual(['local', 'ollama']);
+  });
+
+  it('inline unknown flag form does not consume the next token', () => {
+    expect(parseAuthFlags(['local', '--model=llama3.1:8b', 'extra']).positional).toEqual([
+      'local',
+      'extra',
+    ]);
+  });
+
+  it('unknown flag followed by another flag does not consume it', () => {
+    expect(parseAuthFlags(['local', '--model', '--no-key', 'ollama']).positional).toEqual([
+      'local',
+      'ollama',
+    ]);
   });
 });
 

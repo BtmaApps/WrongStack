@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ── auth handler ────────────────────────────────────────────────────────────
 const runAuthMenu = vi.fn().mockResolvedValue(0);
 const runAuthDirect = vi.fn().mockResolvedValue(0);
+const runAuthLocal = vi.fn().mockResolvedValue(0);
 vi.mock('../src/auth-menu/index.js', () => ({
   runAuthMenu: (...a: unknown[]) => runAuthMenu(...a),
   runAuthDirect: (...a: unknown[]) => runAuthDirect(...a),
+  runAuthLocal: (...a: unknown[]) => runAuthLocal(...a),
 }));
 
 // ── history handler — mock the underlying store calls ──────────────────────
@@ -20,6 +22,7 @@ vi.mock('../src/config-history.js', () => ({
   restoreLast: (...a: unknown[]) => restoreLast(...a),
 }));
 
+import { parseArgs } from '../src/arg-parser.js';
 import { authCmd } from '../src/subcommands/handlers/auth.js';
 import { historyCmd, restoreCmd } from '../src/subcommands/handlers/config-history.js';
 import { helpCmd } from '../src/subcommands/handlers/version-help.js';
@@ -42,6 +45,7 @@ function fakeDeps() {
 beforeEach(() => {
   runAuthMenu.mockClear();
   runAuthDirect.mockClear();
+  runAuthLocal.mockClear();
   listHistory.mockReset();
   getHistoryEntry.mockReset();
   restoreFromHistory.mockReset();
@@ -107,6 +111,44 @@ describe('authCmd', () => {
     expect(opts.label).toBe('work');
     expect(opts.family).toBe('anthropic');
     expect(opts.baseUrl).toBe('https://x');
+  });
+
+  it('routes the --model value to the allowlist, never the preset name (full chain)', async () => {
+    // Regression: `wstack auth local --model <spec>` (no --name) leaked the
+    // spec into positional[1], which the local branch reads as the preset
+    // name — runAuthLocal then hard-failed with `Unknown local server`.
+    const parsed = parseArgs(['auth', 'local', '--model', 'llama3.1:8b']);
+    await authCmd(parsed.positional.slice(1), { ...fakeDeps(), flags: parsed.flags });
+    expect(runAuthLocal).toHaveBeenCalledTimes(1);
+    const [, opts] = runAuthLocal.mock.calls[0]!;
+    expect(opts.name).toBeUndefined();
+    expect(opts.models).toBe('llama3.1:8b');
+  });
+
+  it('routes the -m short form through the same path', async () => {
+    const parsed = parseArgs(['auth', 'local', '-m', 'llama3.1:8b']);
+    await authCmd(parsed.positional.slice(1), { ...fakeDeps(), flags: parsed.flags });
+    expect(runAuthLocal).toHaveBeenCalledTimes(1);
+    const [, opts] = runAuthLocal.mock.calls[0]!;
+    expect(opts.name).toBeUndefined();
+    expect(opts.models).toBe('llama3.1:8b');
+  });
+
+  it('documented `--name ollama --model <spec>` example still selects both', async () => {
+    const parsed = parseArgs([
+      'auth',
+      'local',
+      '--name',
+      'ollama',
+      '--no-probe',
+      '--model',
+      'llama3.1:8b',
+    ]);
+    await authCmd(parsed.positional.slice(1), { ...fakeDeps(), flags: parsed.flags });
+    expect(runAuthLocal).toHaveBeenCalledTimes(1);
+    const [, opts] = runAuthLocal.mock.calls[0]!;
+    expect(opts.name).toBe('ollama');
+    expect(opts.models).toBe('llama3.1:8b');
   });
 
   it('status with no provider id prints usage and exits 1', async () => {

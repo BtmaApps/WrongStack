@@ -153,7 +153,17 @@ export function parseArgs(argv: string[]): ParsedArgs {
     } else if (a.startsWith('-') && a.length === 2) {
       const short = a.slice(1);
       const expand: Record<string, string> = { v: 'verbose', y: 'yes', h: 'help' };
-      flags[expand[short] ?? short] = true;
+      const name = expand[short] ?? short;
+      // Mirror the long-flag rule above: a short flag that is not a known
+      // boolean owns the following token as its value (e.g. `auth local
+      // -m <spec>`, `export -f json`). Forcing every short flag boolean let
+      // the value fall through to `positional`, where downstream handlers
+      // misread it as a subcommand argument.
+      if (!BOOLEAN_FLAGS.has(name) && i + 1 < argv.length && !(argv[i + 1] ?? '').startsWith('-')) {
+        flags[name] = argv[++i] ?? '';
+      } else {
+        flags[name] = true;
+      }
     } else {
       positional.push(a);
     }
@@ -249,7 +259,24 @@ export function parseAuthFlags(args: string[]): AuthFlags {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean);
-    } else if (!a.startsWith('--')) {
+    } else if (a.startsWith('-')) {
+      // Unknown flag (e.g. `--model`, `-m`, `--name`, `--audit`). Mirror
+      // parseArgs: unless it is a known boolean, it owns the next token as
+      // its value — consume it so the value cannot leak into `positional`.
+      // The `auth local` handler reads positional[1] as the preset name,
+      // and a leaked `--model <spec>` value made runAuthLocal hard-fail
+      // with `Unknown local server "<spec>"`.
+      const name = a.replace(/^-+/, '').split('=')[0] ?? '';
+      const isBoolean = name === '' || BOOLEAN_FLAGS.has(name);
+      if (
+        !isBoolean &&
+        inlineVal === undefined &&
+        i + 1 < args.length &&
+        !(args[i + 1] ?? '').startsWith('-')
+      ) {
+        i++;
+      }
+    } else {
       out.positional.push(a);
     }
   }
