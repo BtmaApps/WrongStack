@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import {
   applyProxyConfig,
@@ -290,8 +291,20 @@ export const doctorCmd: SubcommandHandler = async (args, deps) => {
       url?: string | undefined;
     },
   ][];
-  for (const [name, srv] of mcpEntries) {
-    if (!srv.enabled) continue;
+  for (const [name, entry] of mcpEntries) {
+    // Servers are enabled unless explicitly `enabled: false` — `!srv.enabled`
+    // skipped every server relying on that default. A bare preset entry
+    // (`{ enabled: true }`) is only checkable once merged over its preset.
+    if (entry.enabled === false) continue;
+    const srv = resolveMcpServerConfig(name, entry as never);
+    if (!srv) {
+      checks.push({
+        name: `mcp:${name}`,
+        status: 'fail',
+        detail: 'no transport and no built-in preset of this name',
+      });
+      continue;
+    }
     if ((srv.transport === 'sse' || srv.transport === 'streamable-http') && !srv.url)
       checks.push({ name: `mcp:${name}`, status: 'fail', detail: 'transport requires url' });
     else if (srv.transport === 'stdio' && !srv.command)

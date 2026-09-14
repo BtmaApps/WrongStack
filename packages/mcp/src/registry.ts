@@ -72,6 +72,7 @@ export class MCPRegistry {
   private readonly log: Logger;
   private readonly lazyMode: boolean;
   private readonly cacheDir?: string | undefined;
+  private readonly cwd?: string | undefined;
   private readonly idleTimeoutMs: number;
   private readonly authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'];
   private readonly authorizationManager?: MCPAuthorizationManager | undefined;
@@ -85,6 +86,7 @@ export class MCPRegistry {
     this.log = opts.log;
     this.lazyMode = opts.lazyMode ?? false;
     this.cacheDir = opts.cacheDir;
+    this.cwd = opts.cwd;
     this.idleTimeoutMs = opts.idleTimeoutMs ?? MCP_CONSTANTS.IDLE.DEFAULT_TIMEOUT_MS;
     this.authorizationProviderFactory = opts.authorizationProviderFactory;
     this.authorizationManager = opts.authorizationManager;
@@ -311,6 +313,32 @@ export class MCPRegistry {
     // the WebUI row to an error state with a warning toast after every call.
     this.log.info(`MCP server "${name}" deactivated (${count} tools removed)`);
     return count;
+  }
+
+  /**
+   * The tools a server offers — bare names, descriptions and input schemas —
+   * without activating, registering or waking it. In token-saving mode the
+   * model reaches MCP only through `mcp_use`, which needs the bare tool name
+   * and its input shape; before this there was no way to learn either short
+   * of guessing and reading the error. Honors `allowedTools`. Returns
+   * `undefined` for an unknown server, `[]` when nothing was discovered yet.
+   */
+  describeTools(
+    name: string,
+  ):
+    | { name: string; description?: string | undefined; inputSchema: Record<string, unknown> }[]
+    | undefined {
+    const slot = this.servers.get(name);
+    if (!slot) return undefined;
+    const allowed = slot.cfg.allowedTools;
+    const tools = slot.discoveredTools ?? slot.client?.listTools() ?? [];
+    return tools
+      .filter((tool) => !allowed || allowed.includes(tool.name))
+      .map((tool) => ({
+        name: tool.name,
+        ...(tool.description !== undefined ? { description: tool.description } : {}),
+        inputSchema: structuredClone(tool.inputSchema),
+      }));
   }
 
   /**
@@ -554,6 +582,7 @@ export class MCPRegistry {
       log: this.log,
       lazyMode: this.lazyMode,
       cacheDir: this.cacheDir,
+      cwd: this.cwd,
       authorizationProviderFactory: this.authorizationProviderFactory,
       operationListeners: this.operationListeners,
       ensureConnected: (name) => this.ensureConnected(name),

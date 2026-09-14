@@ -145,6 +145,46 @@ describe('mcp_control enable / activate on lazy and downed servers', () => {
   });
 });
 
+describe('mcp_control tools', () => {
+  it('lists bare tool names and input schemas for mcp_use', async () => {
+    const reg = fakeRegistry({
+      describeTools: vi.fn().mockReturnValue([
+        {
+          name: 'create_issue',
+          description: 'Open an issue',
+          inputSchema: { type: 'object', properties: { title: { type: 'string' } } },
+        },
+      ]),
+    });
+    const out = await run(make(reg), { action: 'tools', server: 'github' });
+    expect(out).toContain('mcp_use({ server: "github"');
+    expect(out).toContain('- create_issue — Open an issue');
+    expect(out).toContain('"title":{"type":"string"}');
+  });
+
+  it('truncates oversized schemas and reports empty or unknown servers', async () => {
+    const huge = { type: 'object', description: 'x'.repeat(5_000) };
+    const reg = fakeRegistry({
+      describeTools: vi
+        .fn()
+        .mockReturnValueOnce([{ name: 'big', inputSchema: huge }])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce(undefined),
+    });
+    expect(await run(make(reg), { action: 'tools', server: 's' })).toContain('[schema truncated]');
+    expect(await run(make(reg), { action: 'tools', server: 's' })).toContain(
+      'has not published any tools',
+    );
+    await expect(run(make(reg), { action: 'tools', server: 's' })).rejects.toThrow(
+      /not registered/,
+    );
+    await expect(run(make(fakeRegistry()), { action: 'tools', server: 's' })).rejects.toThrow(
+      /cannot describe/,
+    );
+    await expect(run(make(reg), { action: 'tools' })).rejects.toThrow(/required for tools/);
+  });
+});
+
 describe('mcp_control deactivate', () => {
   it('requires a server name', async () => {
     await expect(run(make(fakeRegistry()), { action: 'deactivate' })).rejects.toThrow(

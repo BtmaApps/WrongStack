@@ -11,6 +11,12 @@ export interface MCPRegistryOptions {
   events: EventBus;
   log: Logger;
   cacheDir?: string | undefined;
+  /**
+   * Working directory for stdio servers — the project root the host serves.
+   * Omitted: children inherit the process cwd (only correct for a host that
+   * runs from the project root).
+   */
+  cwd?: string | undefined;
   idleTimeoutMs?: number | undefined;
   lazyMode?: boolean | undefined;
   authorizationProviderFactory?:

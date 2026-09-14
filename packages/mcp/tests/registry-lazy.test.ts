@@ -511,6 +511,51 @@ describe('MCPRegistry lazy-connect', () => {
     await reg.stopAll();
   });
 
+  // Regression: in token-saving mode the model had no way to learn a server's
+  // bare tool names or input schemas before calling mcp_use.
+  it('describeTools lists bare names and schemas without waking a dormant server', async () => {
+    const seed = new MCPRegistry({
+      toolRegistry: new ToolRegistry(),
+      events,
+      log: silentLog,
+      cacheDir: tmp,
+    });
+    await seed.start(lazyCfg('svc'));
+    await seed.stopAll();
+
+    h.connectCalls = 0;
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog, cacheDir: tmp });
+    await reg.start(lazyCfg('svc'));
+    expect(reg.describeTools('svc')).toEqual([
+      { name: 'echo', description: 'echo', inputSchema: { type: 'object', properties: {} } },
+    ]);
+    expect(h.connectCalls).toBe(0);
+    expect(reg.describeTools('ghost')).toBeUndefined();
+
+    const filtered = new MCPRegistry({ toolRegistry: new ToolRegistry(), events, log: silentLog });
+    await filtered.start(lazyCfg('only', { lazy: false, allowedTools: ['nothing-matches'] }));
+    expect(filtered.describeTools('only')).toEqual([]);
+    await filtered.stopAll();
+    await reg.stopAll();
+  });
+
+  // Regression: stdio children inherited the process cwd, so presets using
+  // `--project-root .` served whatever directory the host happened to run in.
+  it('spawns stdio servers in the configured cwd', async () => {
+    const reg = new MCPRegistry({
+      toolRegistry: toolReg,
+      events,
+      log: silentLog,
+      cwd: tmp,
+    });
+    await reg.start(lazyCfg('svc', { lazy: false }));
+    const slot = (
+      reg as never as { servers: Map<string, { client?: { opts: { cwd?: string } } }> }
+    ).servers.get('svc');
+    expect(slot?.client?.opts.cwd).toBe(tmp);
+    await reg.stopAll();
+  });
+
   it('falls back to eager connect when no cacheDir is configured', async () => {
     const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog });
     await reg.start(lazyCfg('svc')); // lazy requested but no cacheDir → eager

@@ -289,6 +289,9 @@ export async function createPreContextServices(
     events,
     log: logger,
     cacheDir: wpaths.cacheDir,
+    // The WebUI host serves `projectRoot` but may run from any directory;
+    // presets resolve `--project-root .` against the spawn cwd.
+    cwd: wpaths.projectRoot,
     authorizationProviderFactory: createVaultBackedMcpAuthorizationProviderFactory({
       store: mcpTokenStore,
     }),

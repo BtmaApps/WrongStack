@@ -46,6 +46,15 @@ export interface MCPRegistryHandle {
    * Check whether a server's tools are currently registered.
    */
   isActivated?(name: string): boolean;
+  /**
+   * Bare tool names, descriptions and input schemas a server offers, without
+   * activating or waking it. `undefined` when the server is not registered.
+   */
+  describeTools?(
+    name: string,
+  ):
+    | { name: string; description?: string | undefined; inputSchema: Record<string, unknown> }[]
+    | undefined;
 }
 
 export interface CreateMcpControlToolOptions {
@@ -73,9 +82,9 @@ export function createMcpControlTool(opts: CreateMcpControlToolOptions): Tool {
     properties: {
       action: {
         type: 'string',
-        enum: ['list', 'search', 'enable', 'disable', 'restart', 'activate', 'deactivate'],
+        enum: ['list', 'search', 'tools', 'enable', 'disable', 'restart', 'activate', 'deactivate'],
         description:
-          'The management action to perform. activate/deactivate toggle tool registration ephemerally without disconnecting.',
+          "The management action to perform. `tools` lists a server's tool names and input schemas (for mcp_use) without starting it. activate/deactivate toggle tool registration ephemerally without disconnecting.",
       },
       /** Filter for `search`. Matches server name or description case-insensitively. */
       query: {
@@ -137,6 +146,8 @@ async function mcpControlDispatch(
       return renderList(deps);
     case 'search':
       return renderSearch(query ?? '', deps);
+    case 'tools':
+      return renderTools(need('tools'), deps);
     case 'enable':
       return runEnable(need('enable'), deps);
     case 'disable':
@@ -149,7 +160,7 @@ async function mcpControlDispatch(
       return runDeactivate(need('deactivate'), deps);
     default:
       throw new Error(
-        `Unknown action "${action}". Use one of: list, search, enable, disable, restart, activate, deactivate.`,
+        `Unknown action "${action}". Use one of: list, search, tools, enable, disable, restart, activate, deactivate.`,
       );
   }
 }
@@ -240,6 +251,35 @@ async function renderSearch(
   lines.push(
     dim(`  ${total} server${total !== 1 ? 's' : ''} shown. Run \`enable\` on one to activate it.`),
   );
+  return lines.join('\n');
+}
+
+/** Cap on the rendered schema per tool so one huge schema cannot flood the context. */
+const MAX_TOOL_SCHEMA_CHARS = 2_000;
+
+async function renderTools(name: string, deps: { registry: MCPRegistryHandle }): Promise<string> {
+  if (!deps.registry.describeTools) {
+    throw new Error('This registry cannot describe MCP tools.');
+  }
+  const tools = deps.registry.describeTools(name);
+  if (!tools) {
+    throw new Error(
+      `Server "${name}" is not registered. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`,
+    );
+  }
+  if (tools.length === 0) {
+    return `Server "${name}" has not published any tools yet (it may still be connecting).`;
+  }
+  const lines = [`Tools on "${name}" — call with mcp_use({ server: "${name}", tool, input }):`];
+  for (const tool of tools) {
+    lines.push('');
+    lines.push(`- ${tool.name}${tool.description ? ` — ${tool.description}` : ''}`);
+    let schema = JSON.stringify(tool.inputSchema);
+    if (schema.length > MAX_TOOL_SCHEMA_CHARS) {
+      schema = `${schema.slice(0, MAX_TOOL_SCHEMA_CHARS)}… [schema truncated]`;
+    }
+    lines.push(`  input schema: ${schema}`);
+  }
   return lines.join('\n');
 }
 

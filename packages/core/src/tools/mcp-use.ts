@@ -53,17 +53,17 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
       server: {
         type: 'string',
         description:
-          'MCP server name (e.g. "github", "filesystem", "brave-search"). Use mcp_control list or search first to discover available servers.',
+          'MCP server name (e.g. "github", "filesystem", "brave-search"). Use mcp_control list first to discover available servers.',
       },
       tool: {
         type: 'string',
         description:
-          'Tool name on the MCP server to call (without the mcp__server__ prefix — just the bare tool name).',
+          'Bare tool name on the MCP server (no mcp__server__ prefix). Get the exact names from mcp_control({ action: "tools", server }).',
       },
       input: {
         type: 'object',
         description:
-          "JSON input to pass to the tool. Use the tool's own input schema — check with mcp_control describe or the server's documentation.",
+          'JSON input matching the tool\'s input schema, as listed by mcp_control({ action: "tools", server }).',
         properties: {},
         additionalProperties: true,
       },
@@ -74,7 +74,7 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
   return {
     name: 'mcp_use',
     description:
-      'Call an MCP tool on a lazy-loaded server. Activates the server temporarily, calls the tool, returns the result, and deactivates. Use this instead of the manual activate→use→deactivate cycle. First call mcp_control list/search to find the right server and tool name.',
+      'Call an MCP tool on a lazy-loaded server. Activates the server temporarily (starting a sleeping server), calls the tool, returns the result, and deactivates. Use this instead of the manual activate→use→deactivate cycle. Find the server with mcp_control list, and the exact tool name and input schema with mcp_control({ action: "tools", server }).',
     category: 'mcp',
     permission: 'confirm',
     mutating: true,

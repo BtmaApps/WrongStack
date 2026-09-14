@@ -38,6 +38,14 @@ export interface MCPClientOptions {
   headers?: Record<string, string> | undefined;
   startupTimeoutMs?: number | undefined;
   requestTimeoutMs?: number | undefined;
+  /**
+   * Working directory for a stdio server process. Presets address the project
+   * as `--project-root .` / `server-filesystem .`, which resolve against the
+   * spawn cwd — without this the child inherited WrongStack's PROCESS cwd, so
+   * a host serving a project from elsewhere (WebUI, ACP sessions with their
+   * own cwd) pointed those servers at the wrong directory.
+   */
+  cwd?: string | undefined;
   /** Host-owned, vault-backed authorization for HTTP transports. */
   authorizationProvider?: MCPAuthorizationProvider | undefined;
   /**
@@ -273,13 +281,19 @@ export class MCPClient {
           return spawn(shim.command, shim.args, {
             env: spawnEnv,
             stdio,
+            ...(this.opts.cwd ? { cwd: this.opts.cwd } : {}),
             windowsVerbatimArguments: shim.windowsVerbatimArguments,
             // Without this every MCP server spawned from a console-less host
             // (WebUI server, scheduled runs) opens a visible console window.
             windowsHide: true,
           });
         })()
-      : spawn(this.opts.command, rawArgs, { env: spawnEnv, stdio, windowsHide: true });
+      : spawn(this.opts.command, rawArgs, {
+          env: spawnEnv,
+          stdio,
+          windowsHide: true,
+          ...(this.opts.cwd ? { cwd: this.opts.cwd } : {}),
+        });
     this.child = child;
 
     child.stdout?.on('data', (chunk: Buffer) => this.onData(chunk.toString()));

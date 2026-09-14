@@ -66,6 +66,26 @@ describe('mcpCmd subcommand', () => {
     expect(out).toContain('# filesystem');
   });
 
+  // Regression: the documented bare preset entry has no transport, and
+  // `cfg.transport.padEnd` threw a TypeError that killed the whole listing.
+  it('list resolves a bare preset entry instead of crashing', async () => {
+    const deps = mkDeps({
+      config: { mcpServers: { github: { enabled: true }, orphan: { enabled: true } } },
+    });
+    const code = await mcpCmd(['list'], deps);
+    expect(code).toBe(0);
+    const out = writes.join('');
+    expect(out).toMatch(/github\s+stdio\s+enabled/);
+    expect(out).toContain('orphan');
+    expect(out).toContain('invalid (no transport)');
+  });
+
+  it('add rejects names that only exist on Object.prototype', async () => {
+    const code = await mcpCmd(['add', 'toString'], mkDeps());
+    expect(code).toBe(1);
+    expect(errors[0]).toContain('Unknown server');
+  });
+
   it('errors on unknown subcommand', async () => {
     const code = await mcpCmd(['frobulate'], mkDeps());
     expect(code).toBe(1);

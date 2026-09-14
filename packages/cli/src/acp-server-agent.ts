@@ -359,6 +359,7 @@ export function buildAcpServerAgentFactory(
         events,
         logger,
         ...(wpaths.cacheDir ? { cacheDir: wpaths.cacheDir } : {}),
+        cwd,
       });
       if (mcp) sessionMcp.set(sessionId, mcp);
     }

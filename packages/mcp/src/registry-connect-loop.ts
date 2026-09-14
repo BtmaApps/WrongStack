@@ -25,6 +25,7 @@ export interface RegistryConnectContext {
   log: Logger;
   lazyMode: boolean;
   cacheDir?: string | undefined;
+  cwd?: string | undefined;
   authorizationProviderFactory?: MCPRegistryOptions['authorizationProviderFactory'] | undefined;
   operationListeners: Set<MCPOperationListener>;
   ensureConnected: (name: string) => Promise<MCPClient>;
@@ -226,6 +227,7 @@ export async function attemptConnectSlot(
         headers: slot.cfg.headers,
         startupTimeoutMs: slot.cfg.startupTimeoutMs,
         requestTimeoutMs: slot.cfg.requestTimeoutMs,
+        cwd: ctx.cwd,
         allowPrivateNetworks: slot.cfg.allowPrivateNetworks,
         passthroughEnv: slot.cfg.passthroughEnv,
         authorizationProvider: ctx.authorizationProviderFactory?.(slot.cfg),

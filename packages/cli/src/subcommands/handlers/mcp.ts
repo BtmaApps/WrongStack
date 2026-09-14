@@ -1,4 +1,4 @@
-import { allServers } from '@wrongstack/core/infrastructure';
+import { allServers, resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import {
   expectDefined,
   jsonObjectFileExists,
@@ -34,10 +34,15 @@ export const mcpCmd: SubcommandHandler = async (args, deps) => {
       deps.renderer.write('Use `wstack mcp add <name>` or set mcpServers in your config.\n');
       return 0;
     }
-    for (const [name, cfg] of Object.entries(servers)) {
-      const status = cfg.enabled === false ? 'disabled' : 'enabled';
-      const desc = cfg.description ? `  # ${cfg.description}` : '';
-      deps.renderer.write(`  ${name.padEnd(20)} ${cfg.transport.padEnd(16)} ${status}${desc}\n`);
+    for (const [name, entry] of Object.entries(servers)) {
+      // A bare preset entry (`{ enabled: true }`) has no transport of its own;
+      // reading `cfg.transport.padEnd` on it crashed the whole listing.
+      const cfg = resolveMcpServerConfig(name, entry);
+      const status = entry?.enabled === false ? 'disabled' : 'enabled';
+      const description = cfg?.description ?? entry?.description;
+      const desc = description ? `  # ${description}` : '';
+      const transport = cfg?.transport ?? 'invalid (no transport)';
+      deps.renderer.write(`  ${name.padEnd(20)} ${transport.padEnd(16)} ${status}${desc}\n`);
     }
     return 0;
   }
@@ -79,7 +84,9 @@ async function addMcpServer(args: string[], deps: SubcommandDeps): Promise<numbe
     deps.renderer.write('\nRun `wstack mcp add <name> --enable` to enable immediately.\n');
     return 1;
   }
-  const factory = BUILT_IN_MCP[name];
+  // hasOwn: `name` is user input and BUILT_IN_MCP a plain record — `toString`
+  // or `__proto__` resolved through Object.prototype and read as a preset.
+  const factory = Object.hasOwn(BUILT_IN_MCP, name) ? BUILT_IN_MCP[name] : undefined;
   if (!factory) {
     deps.renderer.writeError(
       `Unknown server "${name}". Run \`wstack mcp add\` without args to see available servers.\n`,
@@ -90,7 +97,7 @@ async function addMcpServer(args: string[], deps: SubcommandDeps): Promise<numbe
   serverCfg.enabled = enable;
   const existing = await readJsonObjectFile(configPath);
   const mcpServers = isRecord(existing.mcpServers) ? existing.mcpServers : {};
-  if (mcpServers[name])
+  if (Object.hasOwn(mcpServers, name))
     deps.renderer.writeWarning(`Server "${name}" already in config. Updating.\n`);
   await updateJsonObjectFile(configPath, (config) => {
     setJsonPath(config, ['mcpServers', name], serverCfg);
@@ -110,7 +117,7 @@ async function removeMcpServer(name: string, deps: SubcommandDeps): Promise<numb
   }
   const existing = await readJsonObjectFile(configPath);
   const mcpServers = isRecord(existing.mcpServers) ? existing.mcpServers : {};
-  if (!mcpServers[name]) {
+  if (!Object.hasOwn(mcpServers, name)) {
     deps.renderer.writeError(`Server "${name}" not in config.\n`);
     return 1;
   }

@@ -323,23 +323,11 @@ describe('runMcpManagementCommand — enable', () => {
   });
 
   it('uses restart path on already-enabled server', async () => {
-    const registry = makeRegistry();
-    const out = await runMcpManagementCommand(
-      { action: 'enable', name: 'github' },
-      {
-        config: fakeConfig({ mcpServers: { github: fakePreset({ enabled: true }) } }),
-        configPath,
-        mcpRegistry: registry,
-        allServerPresets: { github: fakePreset() },
-      },
-    );
-    expect(stripAnsi(out)).toContain('already enabled and running');
-    expect((registry as { restart: ReturnType<typeof vi.fn> }).restart).toHaveBeenCalled();
-  });
-
-  it('falls back to start() when restart on enabled server fails', async () => {
+    // Registered (live) server → the restart path with the resolved config.
     const registry = makeRegistry({
-      restart: vi.fn().mockRejectedValue(new Error('not running')),
+      list: vi.fn().mockReturnValue([
+        { name: 'github', state: 'connected', toolCount: 2, tools: [] },
+      ]),
     });
     const out = await runMcpManagementCommand(
       { action: 'enable', name: 'github' },
@@ -350,8 +338,32 @@ describe('runMcpManagementCommand — enable', () => {
         allServerPresets: { github: fakePreset() },
       },
     );
-    expect(stripAnsi(out)).toContain('Enabled');
-    expect((registry as { start: ReturnType<typeof vi.fn> }).start).toHaveBeenCalled();
+    expect(stripAnsi(out)).toContain('already enabled and running');
+    expect((registry as { restart: ReturnType<typeof vi.fn> }).restart).toHaveBeenCalledWith(
+      'github',
+      expect.objectContaining({ enabled: true }),
+    );
+  });
+
+  it('propagates a failed restart on an already-enabled registered server', async () => {
+    // The enable-flow redesign removed the silent restart→start fallback.
+    const registry = makeRegistry({
+      list: vi.fn().mockReturnValue([
+        { name: 'github', state: 'connected', toolCount: 2, tools: [] },
+      ]),
+      restart: vi.fn().mockRejectedValue(new Error('not running')),
+    });
+    await expect(
+      runMcpManagementCommand(
+        { action: 'enable', name: 'github' },
+        {
+          config: fakeConfig({ mcpServers: { github: fakePreset({ enabled: true }) } }),
+          configPath,
+          mcpRegistry: registry,
+          allServerPresets: { github: fakePreset() },
+        },
+      ),
+    ).rejects.toThrow('not running');
   });
 
   it('enables a disabled server, writes config, then starts', async () => {

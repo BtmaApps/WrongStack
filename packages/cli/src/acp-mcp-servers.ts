@@ -73,6 +73,8 @@ export interface AcpSessionMcpOptions {
   events: EventBus;
   logger: Logger;
   cacheDir?: string | undefined;
+  /** The ACP session's cwd — each session names its own, unrelated to the process cwd. */
+  cwd?: string | undefined;
 }
 
 /**
@@ -97,6 +99,7 @@ export async function connectAcpSessionMcpServers(
     // absent from the very first turn's provider payload.
     lazyMode: false,
     ...(opts.cacheDir ? { cacheDir: opts.cacheDir } : {}),
+    ...(opts.cwd ? { cwd: opts.cwd } : {}),
   });
   for (const server of opts.servers) {
     try {

@@ -177,7 +177,10 @@ describe('runMcpManagementCommand', () => {
       deps(),
     );
     expect(out).toContain('Updated and started');
-    expect(h.mcpRegistry.restart).toHaveBeenCalledWith('files');
+    expect(h.mcpRegistry.restart).toHaveBeenCalledWith(
+      'files',
+      expect.objectContaining({ name: 'files', enabled: true }),
+    );
   });
 
   it('reports unknown servers with the available list', async () => {
@@ -221,18 +224,29 @@ describe('runMcpManagementCommand', () => {
 
   it('enables an already-enabled server by restarting it', async () => {
     h.readJsonObjectFile.mockResolvedValue({ mcpServers: { files: configured.files } });
+    // Registered (live) server → the restart path; the call now carries the
+    // merged config (a bare restart keeps the slot's old one).
+    h.mcpRegistry.list.mockReturnValue([
+      { name: 'files', state: 'connected', toolCount: 0, tools: [] },
+    ]);
     const out = await runMcpManagementCommand({ action: 'enable', name: 'files' }, deps());
     expect(out).toContain('already enabled');
-    expect(h.mcpRegistry.restart).toHaveBeenCalledWith('files');
+    expect(h.mcpRegistry.restart).toHaveBeenCalledWith(
+      'files',
+      expect.objectContaining({ enabled: true }),
+    );
   });
 
   it('enables a disabled server in config and starts it', async () => {
     h.readJsonObjectFile.mockResolvedValue({
       mcpServers: { files: { ...configured.files, enabled: false } },
     });
+    // Disabled in config → not in the early "already enabled" branch; and list()
+    // is empty so production routes unregistered enables to start(), not restart.
     const out = await runMcpManagementCommand({ action: 'enable', name: 'files' }, deps());
     expect(out).toContain('Enabled');
-    expect(h.mcpRegistry.restart).toHaveBeenCalled();
+    expect(h.mcpRegistry.start).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }));
+    expect(h.mcpRegistry.restart).not.toHaveBeenCalled();
   });
 
   it('reports a missing server on enable', async () => {
@@ -279,13 +293,18 @@ describe('runMcpManagementCommand', () => {
     expect(out).toContain('crash');
   });
 
-  it('falls back to start when restarting an enabled server fails', async () => {
+  it('propagates a failed restart when enabling an already-enabled registered server', async () => {
     h.readJsonObjectFile.mockResolvedValue({ mcpServers: { files: configured.files } });
+    h.mcpRegistry.list.mockReturnValue([
+      { name: 'files', state: 'connected', toolCount: 0, tools: [] },
+    ]);
     h.mcpRegistry.restart.mockRejectedValue(new Error('restart down'));
-    const out = await runMcpManagementCommand({ action: 'enable', name: 'files' }, deps());
-    // cfg.enabled !== false → try restart, catch → start fallback (230-231).
-    expect(out).toContain('Enabled');
-    expect(h.mcpRegistry.start).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }));
+    // The enable-flow redesign removed the silent restart→start fallback: a
+    // failed restart on a registered server surfaces to the caller instead of
+    // masking a broken slot behind a fresh start.
+    await expect(
+      runMcpManagementCommand({ action: 'enable', name: 'files' }, deps()),
+    ).rejects.toThrow('restart down');
   });
 
   it('falls back to start when enabling a disabled server fails to restart', async () => {
