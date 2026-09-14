@@ -129,6 +129,17 @@ export interface MCPAuthorizationProvider {
   ): Promise<boolean>;
 }
 
+/** Non-2xx answer from an OAuth endpoint, carrying the HTTP status. */
+export class MCPOAuthHttpError extends Error {
+  override readonly name = 'MCPOAuthHttpError';
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 export function canonicalMcpResource(rawUrl: string): string {
   let url: URL;
   try {
@@ -505,6 +516,7 @@ export async function exchangeMcpAuthorizationCode(
     maxResponseBytes: options.maxResponseBytes,
     lookup: options.lookup,
     allowedLoopbackHostname: loopbackHostnameForResource(resource),
+    label: 'token endpoint',
   });
   if (response === undefined) throw new Error('MCP OAuth token endpoint returned no response');
   return parseTokenResponse(response, resource);
@@ -528,6 +540,7 @@ export async function refreshMcpAccessToken(options: MCPTokenRefreshOptions): Pr
     maxResponseBytes: options.maxResponseBytes,
     lookup: options.lookup,
     allowedLoopbackHostname: loopbackHostnameForResource(resource),
+    label: 'token endpoint',
   });
   if (response === undefined) throw new Error('MCP OAuth token endpoint returned no response');
   const parsed = parseTokenResponse(response, resource);
@@ -645,9 +658,12 @@ async function requestPinnedJson(
     maxResponseBytes?: number | undefined;
     lookup?: BrowserCompatibleDnsLookup | undefined;
     allowedLoopbackHostname?: string | undefined;
+    /** Names the endpoint in errors — token calls were reported as "discovery". */
+    label?: string | undefined;
   },
 ): Promise<unknown | undefined> {
-  const url = secureOAuthUrl(rawUrl, 'discovery URL');
+  const label = options.label ?? 'discovery';
+  const url = secureOAuthUrl(rawUrl, `${label} URL`);
   const target = await resolvePinnedAddress(url, options);
   const timeoutMs = options.timeoutMs ?? 10_000;
   const maxBytes = options.maxResponseBytes ?? 64 * 1024;
@@ -696,12 +712,14 @@ async function requestPinnedJson(
       }
       if (status >= 300 && status < 400) {
         response.resume();
-        finish(new Error('MCP OAuth discovery redirects are not allowed'));
+        finish(new Error(`MCP OAuth ${label} redirects are not allowed`));
         return;
       }
       if (status < 200 || status >= 300) {
         response.resume();
-        finish(new Error(`MCP OAuth discovery HTTP ${status}`));
+        // `status` lets callers tell a rejection (400 invalid_grant, 401) from
+        // a transient fault without parsing the message.
+        finish(new MCPOAuthHttpError(`MCP OAuth ${label} HTTP ${status}`, status));
         return;
       }
       const contentType = response.headers['content-type'] ?? '';

@@ -490,6 +490,134 @@ describe('MCP refreshing authorization provider', () => {
     );
   });
 
+  describe('refresh rejection', () => {
+    /** Loopback token endpoint whose answer is chosen per call. */
+    async function tokenEndpoint(
+      respond: (call: number) => Promise<{ status: number; body?: unknown }>,
+    ) {
+      let calls = 0;
+      const server = http.createServer((request, response) => {
+        request.resume();
+        request.on('end', () => {
+          calls += 1;
+          void respond(calls).then(({ status, body }) => {
+            response.statusCode = status;
+            response.setHeader('content-type', 'application/json');
+            response.end(JSON.stringify(body ?? { error: 'invalid_grant' }));
+          });
+        });
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('fixture did not bind');
+      const origin = `http://127.0.0.1:${address.port}`;
+      return {
+        origin,
+        calls: () => calls,
+        close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+      };
+    }
+
+    function expiringAuthorization(origin: string) {
+      return storedAuthorization('alpha', `${origin}/mcp`, {
+        accessToken: 'access-old',
+        refreshToken: 'refresh-old',
+        expiresAt: Date.now() + 500,
+        authorizationServer: {
+          issuer: `${origin}/auth`,
+          authorizationEndpoint: `${origin}/authorize`,
+          tokenEndpoint: `${origin}/token`,
+          scopesSupported: ['tools:read'],
+        },
+      });
+    }
+
+    // Regression: a revoked refresh token threw on EVERY request (as an opaque
+    // "discovery HTTP 400") and never emitted reauth_required.
+    it('announces reauthorization once and stops retrying a rejected refresh token', async () => {
+      const fixture = await createFixture();
+      const endpoint = await tokenEndpoint(async () => ({ status: 400 }));
+      const value = expiringAuthorization(endpoint.origin);
+      await fixture.store.save(value);
+      const onStateChange = vi.fn();
+      const provider = new MCPRefreshingAuthorizationProvider({
+        serverName: value.serverName,
+        resource: value.resource,
+        store: fixture.store,
+        onStateChange,
+      });
+      const context = { serverName: value.serverName, resource: value.resource };
+      try {
+        await expect(provider.getAccessToken(context)).resolves.toBeUndefined();
+        await expect(provider.getAccessToken(context)).resolves.toBeUndefined();
+        await expect(
+          provider.handleUnauthorized(
+            { status: 401, rawScheme: 'Bearer', resource: value.resource, scopes: [] },
+            context,
+          ),
+        ).resolves.toBe(false);
+        expect(endpoint.calls()).toBe(1);
+        expect(
+          onStateChange.mock.calls.filter(([event]) => event.state === 'reauth_required'),
+        ).toHaveLength(1);
+      } finally {
+        await endpoint.close();
+      }
+    });
+
+    it('adopts a token another process rotated in while this refresh was rejected', async () => {
+      const fixture = await createFixture();
+      let rotatedValue: MCPStoredAuthorization | undefined;
+      const endpoint = await tokenEndpoint(async () => {
+        // The competing process wins the rotation before our request lands.
+        if (rotatedValue) await fixture.store.save(rotatedValue);
+        return { status: 400 };
+      });
+      const value = expiringAuthorization(endpoint.origin);
+      rotatedValue = {
+        ...value,
+        tokenSet: {
+          ...value.tokenSet,
+          accessToken: 'access-rotated',
+          refreshToken: 'refresh-rotated',
+          expiresAt: Date.now() + 3_600_000,
+        },
+      };
+      await fixture.store.save(value);
+      const provider = new MCPRefreshingAuthorizationProvider({
+        serverName: value.serverName,
+        resource: value.resource,
+        store: fixture.store,
+      });
+      try {
+        await expect(
+          provider.getAccessToken({ serverName: value.serverName, resource: value.resource }),
+        ).resolves.toMatchObject({ accessToken: 'access-rotated' });
+      } finally {
+        await endpoint.close();
+      }
+    });
+
+    it('still throws on a transient token endpoint failure', async () => {
+      const fixture = await createFixture();
+      const endpoint = await tokenEndpoint(async () => ({ status: 503 }));
+      const value = expiringAuthorization(endpoint.origin);
+      await fixture.store.save(value);
+      const provider = new MCPRefreshingAuthorizationProvider({
+        serverName: value.serverName,
+        resource: value.resource,
+        store: fixture.store,
+      });
+      try {
+        await expect(
+          provider.getAccessToken({ serverName: value.serverName, resource: value.resource }),
+        ).rejects.toThrow(/token endpoint HTTP 503/);
+      } finally {
+        await endpoint.close();
+      }
+    });
+  });
+
   it('returns a future token without refreshing it', async () => {
     const fixture = await createFixture();
     const value = storedAuthorization('alpha', 'https://mcp.example.com/mcp', {

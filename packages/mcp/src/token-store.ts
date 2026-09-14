@@ -8,6 +8,7 @@ import {
   type MCPAuthorizationContext,
   type MCPAuthorizationProvider,
   type MCPAuthorizationServerMetadata,
+  MCPOAuthHttpError,
   type MCPTokenSet,
   refreshMcpAccessToken,
   validateMcpAuthorizationServerMetadata,
@@ -195,6 +196,8 @@ export class MCPVaultTokenStore {
 
 export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvider {
   private refreshPromise?: Promise<MCPStoredAuthorization | undefined> | undefined;
+  /** Refresh token the authorization server rejected; cleared by a new authorization. */
+  private rejectedRefreshToken?: string | undefined;
   private readonly resource: string;
   private readonly refreshSkewMs: number;
 
@@ -255,16 +258,39 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
     state: MCPStoredAuthorization,
   ): Promise<MCPStoredAuthorization | undefined> {
     const refreshToken = state.tokenSet.refreshToken;
-    if (!refreshToken) {
-      this.emit('reauth_required', state);
+    if (!refreshToken || refreshToken === this.rejectedRefreshToken) {
+      // A token the server already rejected is not retried on every request;
+      // `reauth_required` was announced when it was rejected.
+      if (!refreshToken) this.emit('reauth_required', state);
       return undefined;
     }
-    const tokenSet = await refreshMcpAccessToken({
-      authorizationServer: state.authorizationServer,
-      clientId: state.clientId,
-      resource: state.resource,
-      refreshToken,
-    });
+    let tokenSet: MCPTokenSet;
+    try {
+      tokenSet = await refreshMcpAccessToken({
+        authorizationServer: state.authorizationServer,
+        clientId: state.clientId,
+        resource: state.resource,
+        refreshToken,
+      });
+    } catch (err) {
+      // Another WrongStack process may have rotated this refresh token first
+      // (rotation invalidates the old one) — its fresh token is in the store.
+      const current = await this.options.store
+        .load(this.options.serverName, this.resource)
+        .catch(() => undefined);
+      if (current && current.tokenSet.refreshToken !== refreshToken) return current;
+      // A rejection (invalid_grant / revoked client) is permanent until the
+      // user re-authorizes. Throwing here failed EVERY request on the server
+      // with an opaque HTTP error and never emitted `reauth_required`. A
+      // transient fault (network, timeout, 5xx) still throws so the caller
+      // can retry.
+      if (err instanceof MCPOAuthHttpError && err.status >= 400 && err.status < 500) {
+        this.rejectedRefreshToken = refreshToken;
+        this.emit('reauth_required', state);
+        return undefined;
+      }
+      throw err;
+    }
     const next = normalizeStoredAuthorization({
       ...state,
       tokenSet,
