@@ -4,7 +4,12 @@ const mocks = vi.hoisted(() => ({
   createAutonomyRouteHandlers: vi.fn(() => ({ kind: 'autonomy' })),
   createMailboxRouteHandlers: vi.fn(() => ({ kind: 'mailbox' })),
   createModeHandlers: vi.fn(() => ({ kind: 'mode' })),
-  createModelOperations: vi.fn(() => ({ switchModel: vi.fn(), refineModel: vi.fn() })),
+  createModelOperations: vi.fn(
+    (_context: { applyModelSwitch: (provider: string, model: string) => Promise<void> }) => ({
+      switchModel: vi.fn(),
+      refineModel: vi.fn(),
+    }),
+  ),
   createPrefsRouteHandlers: vi.fn(() => ({ kind: 'prefs' })),
   createProjectHandlers: vi.fn(() => ({ kind: 'project' })),
   createProviderHandlers: vi.fn(() => ({
@@ -262,9 +267,8 @@ describe('buildRoutes composition', () => {
 
     mocks.createModelOperations.mockClear();
     buildRoutes(state as never, deps as never, cb as never);
-    const options = mocks.createModelOperations.mock.calls[0]?.[0] as {
-      applyModelSwitch: (provider: string, model: string) => Promise<void>;
-    };
+    const options = mocks.createModelOperations.mock.calls.at(-1)?.[0];
+    if (options === undefined) throw new Error('model operations were not composed');
 
     await expect(options.applyModelSwitch('new-provider', 'new-model')).resolves.toBeUndefined();
     expect(context).toMatchObject({ model: 'new-model', provider });

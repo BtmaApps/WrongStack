@@ -141,6 +141,7 @@ export function fleetState(
     peerEnvelope: null,
     connected: false,
     authRequired: false,
+    authRevoked: false,
     selectedSessionId: null,
     selectedAgentId: null,
     selectedClientId: null,

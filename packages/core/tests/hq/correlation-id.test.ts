@@ -20,7 +20,12 @@ import { EventBus } from '../../src/kernel/events.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────
 
-const client = { clientId: 'c1', kind: 'cli' as const, machineId: 'm1' };
+const client = {
+  clientId: 'c1',
+  kind: 'cli' as const,
+  machineId: 'm1',
+  startedAt: '2026-09-13T00:00:00.000Z',
+};
 const project = {
   projectId: 'p1',
   projectRoot: '/repo',
@@ -38,7 +43,10 @@ const baseRequest = {
 };
 
 /** Captures the options each bridge hands to the publisher. */
-function fakePublisher(spy: ReturnType<typeof vi.fn>, fleetSpy?: ReturnType<typeof vi.fn>) {
+function fakePublisher(
+  spy: (options: { correlationId?: string }) => void,
+  fleetSpy?: (options: { payload: unknown; correlationId?: string }) => void,
+) {
   return {
     publishEvent: (o: { correlationId?: string }) => {
       spy(o);
@@ -211,7 +219,7 @@ describe('brain bridge correlation (W4 #4)', () => {
       sessionId: 's1',
       request: baseRequest,
       decision: { type: 'answer', text: 'stop' },
-      kind: 'guard',
+      kind: 'tool_failure_streak',
       intervened: true,
       at: 1020,
     });
@@ -221,7 +229,7 @@ describe('brain bridge correlation (W4 #4)', () => {
     stop();
   });
 
-  it('leaves the id absent when the event carries no request id', () => {
+  it('uses the council answer id when the event has no full request', () => {
     const events = new EventBus();
     const spy = vi.fn();
     const stop = startBrainTelemetryBridge({
@@ -230,12 +238,17 @@ describe('brain bridge correlation (W4 #4)', () => {
       sessionId: 's1',
     });
 
-    // A council row still names its request, but an event with neither a
-    // request nor an id must not fabricate one.
-    events.emit('brain.human_answered', { sessionId: 's1', optionId: 'a', at: 1000 });
+    // A council answer names its request directly rather than carrying a full
+    // decision request. Its id remains the correlation key.
+    events.emit('brain.human_answered', {
+      sessionId: 's1',
+      id: 'req-council',
+      optionId: 'a',
+      at: 1000,
+    });
 
     const [call] = spy.mock.calls.map((c) => c[0] as { correlationId?: string });
-    expect(call?.correlationId).toBeUndefined();
+    expect(call?.correlationId).toBe('req-council');
     stop();
   });
 });
