@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T23:46:18.039Z",
+  "generatedAt": "2026-09-14T06:15:01.698Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,16 +13,16 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3790,
-    "testFiles": 3340,
-    "sourceLines": 922203,
+    "testFiles": 3348,
+    "sourceLines": 922543,
     "workspaceEdges": 128,
-    "moduleEdges": 12114,
+    "moduleEdges": 12115,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
-    "testsWithMultipleTypechecks": 2,
-    "testOnlyExports": 935
+    "testsWithMultipleTypechecks": 4,
+    "testOnlyExports": 939
   },
   "errors": [
     "2 unexcepted module cycle(s)",
@@ -149,7 +149,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 494,
-      "testFiles": 498,
+      "testFiles": 499,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -188,7 +188,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 498
+          "testFiles": 499
         }
       ]
     },
@@ -219,7 +219,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 863,
-      "testFiles": 761,
+      "testFiles": 764,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -234,7 +234,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 761
+          "testFiles": 764
         }
       ]
     },
@@ -847,7 +847,7 @@
       "name": "@wrongstack/webui-hq",
       "dir": "packages/webui-hq",
       "sourceFiles": 121,
-      "testFiles": 41,
+      "testFiles": 45,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools",
@@ -858,12 +858,12 @@
         {
           "path": "packages/webui-hq/tsconfig.json",
           "error": null,
-          "testFiles": 2
+          "testFiles": 4
         },
         {
           "path": "packages/webui-hq/tsconfig.test.json",
           "error": null,
-          "testFiles": 41
+          "testFiles": 45
         }
       ]
     },
@@ -2818,6 +2818,12 @@
       },
       {
         "file": "packages/cli/tests/hq-mailbox-actions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-mailbox-capability.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7173,6 +7179,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/hq/approval-grant-ttl.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/hq/auth-audit.test.ts",
         "projects": [
           "root-node"
@@ -7210,6 +7222,12 @@
       },
       {
         "file": "packages/core/tests/hq/brain-bridge.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/hq/browser-socket-close.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8074,6 +8092,12 @@
       },
       {
         "file": "packages/core/tests/security/trust-command-wildcard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/security/trust-ttl.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17271,13 +17295,31 @@
         ]
       },
       {
+        "file": "packages/webui-hq/src/components/hq/__tests__/token-gate-revoked.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/src/views/__tests__/cockpit-latency.test.tsx",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "packages/webui-hq/src/views/__tests__/event-chains.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-hq/src/views/__tests__/events.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/tests/auth-revoked.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17512,6 +17554,12 @@
       },
       {
         "file": "packages/webui-hq/tests/transcript-store.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/tests/wire-auth-revoked.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21163,7 +21211,27 @@
     "withoutTypecheck": [],
     "multipleTypechecks": [
       {
+        "file": "packages/webui-hq/src/components/hq/__tests__/token-gate-revoked.test.tsx",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": [
+          "packages/webui-hq/tsconfig.json",
+          "packages/webui-hq/tsconfig.test.json"
+        ]
+      },
+      {
         "file": "packages/webui-hq/src/views/__tests__/cockpit-latency.test.tsx",
+        "runtimeProjects": [
+          "root-node"
+        ],
+        "typecheckProjects": [
+          "packages/webui-hq/tsconfig.json",
+          "packages/webui-hq/tsconfig.test.json"
+        ]
+      },
+      {
+        "file": "packages/webui-hq/src/views/__tests__/event-chains.test.ts",
         "runtimeProjects": [
           "root-node"
         ],
@@ -23181,6 +23249,14 @@
       "name": "writeHqAlertsConfig"
     },
     {
+      "file": "packages/core/src/hq/approval-bridge.ts",
+      "name": "approvalGrantExpiry"
+    },
+    {
+      "file": "packages/core/src/hq/approval-bridge.ts",
+      "name": "DEFAULT_ALWAYS_APPROVAL_TTL_MS"
+    },
+    {
       "file": "packages/core/src/hq/auth-revocation.ts",
       "name": "sessionAffectedByRevocation"
     },
@@ -23363,6 +23439,10 @@
     {
       "file": "packages/core/src/quota/index.ts",
       "name": "resetProviderQuota"
+    },
+    {
+      "file": "packages/core/src/security/permission-policy.ts",
+      "name": "DEFAULT_ALWAYS_TRUST_TTL_MS"
     },
     {
       "file": "packages/core/src/security/permission-policy.ts",
@@ -25223,6 +25303,10 @@
     {
       "file": "packages/webui-hq/src/views/cockpit.tsx",
       "name": "CommandLatencyCard"
+    },
+    {
+      "file": "packages/webui-hq/src/views/events.tsx",
+      "name": "groupEventChains"
     },
     {
       "file": "packages/webui-server/src/server/chimera-routes.ts",

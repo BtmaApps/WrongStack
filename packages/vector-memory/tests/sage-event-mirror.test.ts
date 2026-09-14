@@ -170,7 +170,14 @@ describeIfSqlite('subscribeVectorMemoryToSage', () => {
     handle.dispose(); // idempotent
     const surface = getSageSurface(sagePort)!;
     await surface.rememberSage({ text: 'post-dispose', anchors: [] });
-    await new Promise((r) => setImmediate(r));
+    // Wait as long as the positive mirror tests do (the store write is async:
+    // file lock + ONNX). A single setImmediate happened to be enough with this
+    // fast test store (a no-op dispose still fails it), but an absence check
+    // must not depend on the write winning a one-tick race on a slower store.
+    for (let i = 0; i < 50; i++) {
+      if (vectorStore.list({ limit: 5 }).length > 0) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
     expect(vectorStore.list({ limit: 5 })).toEqual([]);
   });
 

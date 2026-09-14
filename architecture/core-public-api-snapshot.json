@@ -1497,7 +1497,7 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 53,
-      "sourceLines": 11454
+      "sourceLines": 11562
     },
     {
       "directory": "infrastructure",
@@ -1588,7 +1588,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 20,
-      "sourceLines": 7555
+      "sourceLines": 7597
     },
     {
       "directory": "session-catalog",
@@ -1637,7 +1637,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 73,
-      "sourceLines": 13732
+      "sourceLines": 13745
     },
     {
       "directory": "utils",

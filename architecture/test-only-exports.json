@@ -475,6 +475,10 @@
       "mutateHqAlertsConfig",
       "writeHqAlertsConfig"
     ],
+    "packages/core/src/hq/approval-bridge.ts": [
+      "approvalGrantExpiry",
+      "DEFAULT_ALWAYS_APPROVAL_TTL_MS"
+    ],
     "packages/core/src/hq/auth-revocation.ts": [
       "sessionAffectedByRevocation"
     ],
@@ -566,6 +570,7 @@
       "resetProviderQuota"
     ],
     "packages/core/src/security/permission-policy.ts": [
+      "DEFAULT_ALWAYS_TRUST_TTL_MS",
       "mergeTrustEntries"
     ],
     "packages/core/src/security/secret-vault.ts": [
@@ -1559,6 +1564,9 @@
     ],
     "packages/webui-hq/src/views/cockpit.tsx": [
       "CommandLatencyCard"
+    ],
+    "packages/webui-hq/src/views/events.tsx": [
+      "groupEventChains"
     ],
     "packages/webui-server/src/server/chimera-routes.ts": [
       "isPendingChimeraReport"
