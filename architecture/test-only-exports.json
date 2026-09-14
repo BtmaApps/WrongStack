@@ -739,14 +739,14 @@
     "packages/mcp/src/registry-connect-loop.ts": [
       "discoverSlotCapabilities"
     ],
-    "packages/mcp/src/registry-idle.ts": [
-      "sleepIdleSlot"
-    ],
     "packages/mcp/src/server.ts": [
       "handleHttpRequest"
     ],
     "packages/mcp/src/test-helpers/mock-server.ts": [
       "MockMCPServer"
+    ],
+    "packages/mcp/src/tool-schema.ts": [
+      "normalizeMCPTools"
     ],
     "packages/mcp/src/transport-security.ts": [
       "assertTransportAddressAllowed",

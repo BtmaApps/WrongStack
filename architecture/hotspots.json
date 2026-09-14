@@ -211,8 +211,12 @@
       "relativeImports": 0
     },
     "packages/mcp/src/client.ts": {
-      "lines": 1064,
+      "lines": 1069,
       "relativeImports": 12
+    },
+    "packages/mcp/src/registry.ts": {
+      "lines": 836,
+      "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {
       "lines": 840,
@@ -467,7 +471,7 @@
       "relativeImports": 6
     },
     "packages/webui/src/components/SettingsPanel/MCPSection.tsx": {
-      "lines": 935,
+      "lines": 947,
       "relativeImports": 8
     },
     "packages/webui/src/components/SettingsPanel/ProviderSection.tsx": {

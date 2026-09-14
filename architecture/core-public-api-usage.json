@@ -74,9 +74,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 44,
+      "files": 45,
       "typeOnly": 6,
-      "runtimeOrMixed": 43
+      "runtimeOrMixed": 44
     },
     "@wrongstack/core/kernel": {
       "files": 270,
@@ -5233,6 +5233,12 @@
     {
       "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/cli/src/fleet/host-subagent-factory.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/cli/src/services/mcp-management.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

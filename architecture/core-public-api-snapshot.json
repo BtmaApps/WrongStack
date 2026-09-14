@@ -1082,7 +1082,7 @@
         "export { DefaultPathResolver } from './path-resolver.js';",
         "export { DefaultTokenCounter } from './token-counter.js';",
         "export { ProviderCacheLedger } from './provider-cache-ledger.js';",
-        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, everArtServer, filesystemServer, githubServer, googleMapsServer, miniMaxVisionServer, playwrightServer, sentinelServer, slackServer, sshManagerServer, zaiVisionServer, } from './mcp-servers.js';",
+        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, everArtServer, filesystemServer, githubServer, googleMapsServer, miniMaxVisionServer, playwrightServer, resolveMcpServerConfig, sentinelServer, slackServer, sshManagerServer, zaiVisionServer, } from './mcp-servers.js';",
         "export { assertProjectRootOutsideStateDir, type BootConfigOptions, type BootConfigResult, bootConfig, flagsToConfigPatch, } from '../boot.js';"
       ]
     },
@@ -1497,14 +1497,14 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 53,
-      "sourceLines": 11562
+      "sourceLines": 11575
     },
     {
       "directory": "infrastructure",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1772
+      "sourceLines": 1796
     },
     {
       "directory": "kernel",
@@ -1616,7 +1616,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23505
+      "sourceLines": 23517
     },
     {
       "directory": "tasking",
@@ -1630,7 +1630,7 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 20,
-      "sourceLines": 3997
+      "sourceLines": 4039
     },
     {
       "directory": "types",

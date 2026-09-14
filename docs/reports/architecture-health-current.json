@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T06:15:01.698Z",
+  "generatedAt": "2026-09-14T06:57:27.141Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,21 +13,18 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3790,
-    "testFiles": 3348,
-    "sourceLines": 922543,
+    "testFiles": 3350,
+    "sourceLines": 922989,
     "workspaceEdges": 128,
     "moduleEdges": 12115,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 9,
+    "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 939
   },
-  "errors": [
-    "2 unexcepted module cycle(s)",
-    "ARCH-CYCLE-TYPE-13: exception no longer matches an active cycle"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -219,7 +216,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 863,
-      "testFiles": 764,
+      "testFiles": 765,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -234,7 +231,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 764
+          "testFiles": 765
         }
       ]
     },
@@ -356,7 +353,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 37,
-      "testFiles": 37,
+      "testFiles": 38,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -369,7 +366,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 37
+          "testFiles": 38
         }
       ]
     },
@@ -981,14 +978,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/cli/src/hq-server/mailbox-gateway-manager.ts",
-          "packages/cli/src/hq-server/routes.ts",
-          "packages/cli/src/hq-server/routes/system-handlers.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/cli/src/subcommands/handlers/audit.ts",
           "packages/cli/src/subcommands/index.ts"
         ]
@@ -1053,7 +1042,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/core/src/hq/commands.ts",
           "packages/core/src/hq/protocol/client.ts",
           "packages/core/src/hq/protocol/core.ts",
           "packages/core/src/hq/protocol/fleet.ts",
@@ -1091,30 +1079,12 @@
       "ARCH-CYCLE-TYPE-09",
       "ARCH-CYCLE-TYPE-11",
       "ARCH-CYCLE-TYPE-12",
+      "ARCH-CYCLE-TYPE-13",
       "ARCH-CYCLE-TYPE-14",
       "ARCH-CYCLE-TYPE-29",
       "ARCH-CYCLE-TYPE-30"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/cli/src/hq-server/mailbox-gateway-manager.ts",
-          "packages/cli/src/hq-server/routes.ts",
-          "packages/cli/src/hq-server/routes/system-handlers.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/core/src/hq/commands.ts",
-          "packages/core/src/hq/protocol/client.ts",
-          "packages/core/src/hq/protocol/core.ts",
-          "packages/core/src/hq/protocol/fleet.ts",
-          "packages/core/src/hq/protocol/session.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -7395,6 +7365,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/infrastructure/mcp-server-config-resolve.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/infrastructure/mcp-servers.test.ts",
         "projects": [
           "root-node"
@@ -10258,6 +10234,12 @@
       },
       {
         "file": "packages/mcp/tests/transport-pinning.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/transport-protocol-conformance.test.ts",
         "projects": [
           "root-node"
         ]
@@ -21606,8 +21588,13 @@
     },
     {
       "file": "packages/mcp/src/client.ts",
-      "lines": 1064,
+      "lines": 1069,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/mcp/src/registry.ts",
+      "lines": 836,
+      "relativeImports": 19
     },
     {
       "file": "packages/mcp/src/server.ts",
@@ -21926,7 +21913,7 @@
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/MCPSection.tsx",
-      "lines": 935,
+      "lines": 947,
       "relativeImports": 8
     },
     {
@@ -22067,14 +22054,14 @@
       "relativeImports": 52
     },
     {
+      "file": "packages/mcp/src/client.ts",
+      "lines": 1069,
+      "relativeImports": 12
+    },
+    {
       "file": "packages/plugins/src/git-autocommit/index.ts",
       "lines": 1066,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/mcp/src/client.ts",
-      "lines": 1064,
-      "relativeImports": 12
     },
     {
       "file": "packages/webui-server/src/server/ws-payload-validation.ts",
@@ -23769,16 +23756,16 @@
       "name": "discoverSlotCapabilities"
     },
     {
-      "file": "packages/mcp/src/registry-idle.ts",
-      "name": "sleepIdleSlot"
-    },
-    {
       "file": "packages/mcp/src/server.ts",
       "name": "handleHttpRequest"
     },
     {
       "file": "packages/mcp/src/test-helpers/mock-server.ts",
       "name": "MockMCPServer"
+    },
+    {
+      "file": "packages/mcp/src/tool-schema.ts",
+      "name": "normalizeMCPTools"
     },
     {
       "file": "packages/mcp/src/transport-security.ts",
