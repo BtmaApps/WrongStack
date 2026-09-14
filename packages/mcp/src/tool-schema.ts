@@ -1,5 +1,51 @@
 import type { MCPTool } from './contracts.js';
 
+const MAX_TOOL_PAGES = 100;
+const MAX_TOOLS = 10_000;
+
+/**
+ * Collect every page of `tools/list`.
+ *
+ * The result carries `nextCursor` when a server paginates, and every transport
+ * used to read only the first page — a server with a large catalog silently
+ * lost the rest of its tools. Returns `null` when the FIRST page is a JSON-RPC
+ * error (callers keep their previous catalog instead of wiping it); a failure
+ * on a later page keeps the pages already collected. A transport exception on
+ * the first page propagates, as it did before.
+ */
+export async function listAllTools(
+  requestPage: (
+    params: Record<string, unknown>,
+  ) => Promise<{ result?: unknown | undefined; error?: unknown | undefined }>,
+): Promise<MCPTool[] | null> {
+  const tools: MCPTool[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_TOOL_PAGES; page++) {
+    let response: { result?: unknown | undefined; error?: unknown | undefined };
+    try {
+      response = await requestPage(cursor ? { cursor } : {});
+    } catch (err) {
+      if (page === 0) throw err;
+      break;
+    }
+    if (response.error) {
+      if (page === 0) return null;
+      break;
+    }
+    const result = response.result as
+      | { tools?: unknown | undefined; nextCursor?: unknown | undefined }
+      | undefined;
+    tools.push(...normalizeMCPTools(result?.tools));
+    const next = result?.nextCursor;
+    if (typeof next !== 'string' || next.length === 0) break;
+    if (seenCursors.has(next) || tools.length >= MAX_TOOLS) break;
+    seenCursors.add(next);
+    cursor = next;
+  }
+  return tools.slice(0, MAX_TOOLS);
+}
+
 export function normalizeMCPTools(value: unknown): MCPTool[] {
   if (!Array.isArray(value)) return [];
   const tools: MCPTool[] = [];

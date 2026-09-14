@@ -32,7 +32,7 @@ import {
   makeMailSendTool,
 } from '@wrongstack/core/coordination';
 import { DefaultPromptLoader, DefaultSkillLoader } from '@wrongstack/core/execution';
-import { DefaultTokenCounter } from '@wrongstack/core/infrastructure';
+import { DefaultTokenCounter, resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { type Container, EventBus, TOKENS } from '@wrongstack/core/kernel';
 import { DefaultModelsRegistry, DefaultModeStore } from '@wrongstack/core/models';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
@@ -296,7 +296,14 @@ export async function createPreContextServices(
   });
   if (config.features.mcp && config.mcpServers) {
     for (const [name, cfg] of Object.entries(config.mcpServers)) {
-      void mcpRegistry.start({ ...cfg, name }).catch((err) => {
+      // Merge the preset like the CLI boot does: a bare `{ enabled: true }`
+      // preset entry has no transport/command of its own.
+      const resolved = resolveMcpServerConfig(name, cfg);
+      if (!resolved) {
+        logger.warn(`MCP server "${name}" has no transport and matches no preset — skipped`);
+        continue;
+      }
+      void mcpRegistry.start(resolved).catch((err) => {
         logger.warn(`MCP server "${name}" failed to start at boot`, err);
       });
     }

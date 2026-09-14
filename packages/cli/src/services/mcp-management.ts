@@ -4,6 +4,7 @@
  * the CLI subcommand handler (packages/cli/src/subcommands/handlers/mcp.ts)
  * and the slash-command wiring in index.ts.
  */
+import { resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import type { Config, MCPServerConfig } from '@wrongstack/core/types';
 import {
   color,
@@ -177,7 +178,8 @@ async function runAdd(
 
   try {
     if (mcpRegistry.list().some((server) => server.name === name)) {
-      await mcpRegistry.restart(name);
+      // Pass the merged config — a bare restart keeps the slot's old one.
+      await mcpRegistry.restart(name, { ...nextCfg, name });
     } else {
       await mcpRegistry.start(nextCfg);
     }
@@ -227,25 +229,22 @@ async function runEnable(
 ): Promise<string> {
   const cfg = configured[name];
   if (!cfg) return `Server "${name}" is not in config. Run \`/mcp add ${name} --enable\` first.`;
+  const resolved = resolveMcpServerConfig(name, cfg);
+  if (!resolved) return `Server "${name}" has no transport and matches no preset.`;
+  const startCfg = { ...resolved, enabled: true };
+  const registered = mcpRegistry.list().some((server) => server.name === name);
   if (cfg.enabled !== false) {
-    // Already enabled — just ensure it's running
-    try {
-      await mcpRegistry.restart(name);
-      return `${color.green('●')} "${name}" is already enabled and running.`;
-    } catch {
-      await mcpRegistry.start({ ...cfg, enabled: true });
-      return `${color.green('Enabled')} "${name}" and started.`;
-    }
+    // Already enabled — just ensure it's running (with the config on disk).
+    if (registered) await mcpRegistry.restart(name, startCfg);
+    else await mcpRegistry.start(startCfg);
+    return `${color.green('●')} "${name}" is already enabled and running.`;
   }
   await updateJsonObjectFile(configPath, (full) => {
     const current = isMcpServerRecord(full.mcpServers) ? full.mcpServers : {};
     setJsonPath(full, ['mcpServers', name], { ...cfg, ...current[name], enabled: true });
   });
-  try {
-    await mcpRegistry.restart(name);
-  } catch {
-    await mcpRegistry.start({ ...cfg, enabled: true });
-  }
+  if (registered) await mcpRegistry.restart(name, startCfg);
+  else await mcpRegistry.start(startCfg);
   return `${color.green('Enabled')} "${name}" and started.`;
 }
 
@@ -308,6 +307,8 @@ function stateBadge(state: string): string {
       return color.dim('○ disconnected');
     case 'failed':
       return color.red('✗ failed');
+    case 'dormant':
+      return color.dim('◌ dormant (spawns on first call)');
     default:
       return color.dim(state);
   }

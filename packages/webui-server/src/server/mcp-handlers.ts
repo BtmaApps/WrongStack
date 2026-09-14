@@ -380,10 +380,12 @@ export async function handleMcpSleep(
 ): Promise<void> {
   const d = deps(ws, globalConfigPath, mcpRegistry);
   if (!d) return;
-  // Sleep == disable the live process but keep config enabled — use the
-  // registry directly so the persisted `enabled` flag is untouched.
+  // Sleep == stop the live process but keep config enabled — use the registry
+  // directly so the persisted `enabled` flag is untouched. `sleep()` keeps a
+  // lazy server's tools registered (dormant); `stop()` would unregister them.
   try {
-    await d.registry.stop(name(msg));
+    if (typeof d.registry.sleep === 'function') await d.registry.sleep(name(msg));
+    else await d.registry.stop(name(msg));
     send(ws, { type: 'mcp.server.sleeping', payload: { name: name(msg) } });
     send(ws, {
       type: 'mcp.operation_result',

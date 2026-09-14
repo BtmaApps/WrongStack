@@ -16,6 +16,19 @@ type JsonRpcMethodEnvelope = {
 
 type JsonRpcEnvelope = JsonRpcResult | JsonRpcMethodEnvelope;
 
+/**
+ * Encode an outgoing JSON-RPC message. A `notifications/*` method is a
+ * notification and MUST NOT carry an `id` — with one it is a request, which a
+ * strict server answers with an error (or never marks the session initialized).
+ */
+export function encodeJsonRpcMessage(id: number, method: string, params: unknown): string {
+  return JSON.stringify(
+    method.startsWith('notifications/')
+      ? { jsonrpc: '2.0', method, params }
+      : { jsonrpc: '2.0', id, method, params },
+  );
+}
+
 export function isJsonRpcResult(v: unknown): v is JsonRpcResult {
   if (typeof v !== 'object' || v === null) return false;
   const r = v as Record<string, unknown>;

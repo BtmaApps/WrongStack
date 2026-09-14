@@ -1,6 +1,6 @@
 import type { MCPServerConfig, Tool } from '@wrongstack/core/types';
 import type { MCPClient } from './client.js';
-import type { ConnectionState } from './contracts.js';
+import type { ConnectionState, MCPTool } from './contracts.js';
 import type { MCPServerOperationState } from './operations.js';
 import type { MCPPrompt, MCPResource, MCPResourceTemplate, MCPServerMetadata } from './protocol.js';
 
@@ -12,6 +12,16 @@ export interface ServerSlot {
   toolNames: string[];
   /** Cached tools when lazyMode is active (not registered in toolRegistry). */
   lazyTools: Tool[];
+  /**
+   * Raw tool list last learned from the server (live `tools/list` or the
+   * manifest cache). The manifest is written from THIS, never from
+   * `client.listTools()`: a write queued behind an idle sleep or crash runs
+   * after the client is gone, and persisting `[]` then would boot the server
+   * dormant with no tools — invisible until its config changes.
+   */
+  discoveredTools?: MCPTool[] | undefined;
+  /** Signature of the wrapped tool set, so an unchanged lazy wake does not re-register. */
+  toolSignature?: string | undefined;
   serverMetadata?: MCPServerMetadata | undefined;
   resources?: MCPResource[] | undefined;
   resourceTemplates?: MCPResourceTemplate[] | undefined;

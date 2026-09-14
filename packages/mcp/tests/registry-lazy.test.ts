@@ -359,6 +359,158 @@ describe('MCPRegistry lazy-connect', () => {
     await reg.stopAll();
   });
 
+  // Regression: a lazy wake returned early once wrappers were registered, so a
+  // server whose real tool list moved on kept the manifest's stale tools.
+  it('re-registers a lazy server whose tool set changed since the manifest', async () => {
+    const seed = new MCPRegistry({
+      toolRegistry: new ToolRegistry(),
+      events,
+      log: silentLog,
+      cacheDir: tmp,
+    });
+    await seed.start(lazyCfg('svc'));
+    await seed.stopAll();
+
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog, cacheDir: tmp });
+    await reg.start(lazyCfg('svc'));
+    expect(toolReg.get('mcp__svc__echo')).toBeDefined();
+
+    const original = h.tools;
+    h.tools = [{ name: 'echo_v2', inputSchema: { type: 'object', properties: {} } }];
+    try {
+      await reg.ensureConnected('svc');
+      expect(toolReg.get('mcp__svc__echo')).toBeUndefined();
+      expect(toolReg.get('mcp__svc__echo_v2')).toBeDefined();
+      const manifest = await fs.readFile(path.join(tmp, 'mcp-tools', 'svc.json'), 'utf8');
+      expect(manifest).toContain('echo_v2');
+    } finally {
+      h.tools = original;
+      await reg.stopAll();
+    }
+  });
+
+  // Regression: the manifest was written from `client.listTools()`, so a write
+  // landing after an idle sleep persisted `tools: []` and the next boot came up
+  // dormant with no tools at all.
+  it('never overwrites a manifest with an empty tool list once the client is gone', async () => {
+    const reg = new MCPRegistry({
+      toolRegistry: toolReg,
+      events,
+      log: silentLog,
+      cacheDir: tmp,
+      idleTimeoutMs: 5,
+    });
+    await reg.start(lazyCfg('svc'));
+    await new Promise((r) => setTimeout(r, 20));
+    await (reg as never as { sweepIdle(): Promise<void> }).sweepIdle();
+    expect(reg.list().find((s) => s.name === 'svc')?.state).toBe('dormant');
+
+    h.promptsChanged = undefined;
+    // A catalog invalidation after sleep re-persists the manifest without a client.
+    (reg as never as { onPromptsChanged(name: string): void }).onPromptsChanged('svc');
+    await new Promise((r) => setTimeout(r, 20));
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(tmp, 'mcp-tools', 'svc.json'), 'utf8'),
+    ) as { tools: { name: string }[] };
+    expect(manifest.tools.map((t) => t.name)).toEqual(['echo']);
+    await reg.stopAll();
+  });
+
+  // Regression: restart(name) reconnected with the slot's ORIGINAL config, so
+  // management updates persisted to disk but never reached the live server.
+  it('restart(name, nextCfg) applies the edited configuration', async () => {
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog });
+    await reg.start(lazyCfg('svc', { lazy: false, permission: 'confirm' }));
+    await reg.restart('svc', lazyCfg('svc', { lazy: false, permission: 'auto', args: ['--new'] }));
+    expect(toolReg.get('mcp__svc__echo')?.permission).toBe('auto');
+
+    await reg.restart('svc', lazyCfg('svc', { enabled: false }));
+    expect(reg.list()).toHaveLength(0);
+    expect(reg.describe()).toEqual([expect.objectContaining({ name: 'svc', enabled: false })]);
+    await expect(reg.restart('svc', lazyCfg('other'))).rejects.toThrow(/not registered/);
+    await reg.stopAll();
+  });
+
+  // Regression: a client dying mid-handshake closes with its listeners still
+  // attached; handling that as a disconnect raced a second reconnect against
+  // the connect loop.
+  it('ignores exit/disconnect signals for a slot that is not connected', async () => {
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog });
+    await reg.start(lazyCfg('svc', { lazy: false }));
+    const slot = (reg as never as { servers: Map<string, { state: string }> }).servers.get('svc');
+    if (!slot) throw new Error('expected slot');
+    slot.state = 'connecting';
+    const disconnects: unknown[] = [];
+    events.on('mcp.server.disconnected', (p) => disconnects.push(p));
+    const api = reg as never as {
+      onChildExit(name: string, code: number | null, signal: string | null): void;
+      onTransportDisconnect(name: string): void;
+    };
+    api.onChildExit('svc', 1, null);
+    api.onTransportDisconnect('svc');
+    expect(slot.state).toBe('connecting');
+    expect(disconnects).toEqual([]);
+    expect(toolReg.get('mcp__svc__echo')).toBeDefined();
+    slot.state = 'connected';
+    await reg.stopAll();
+  });
+
+  // Regression: in lazyMode a tools/list_changed wiped an ACTIVATED server's
+  // tools, and activate/deactivate emitted connection events on every call.
+  it('keeps an activated lazyMode server registered across a tool-list change', async () => {
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog, lazyMode: true });
+    await reg.start(lazyCfg('svc', { lazy: false }));
+    expect(toolReg.get('mcp__svc__echo')).toBeUndefined();
+
+    const connectionEvents: string[] = [];
+    events.on('mcp.server.connected', () => connectionEvents.push('connected'));
+    events.on('mcp.server.disconnected', () => connectionEvents.push('disconnected'));
+    reg.activateServer('svc');
+    expect(toolReg.get('mcp__svc__echo')).toBeDefined();
+
+    const original = h.tools;
+    h.tools = [{ name: 'echo_v2', inputSchema: { type: 'object', properties: {} } }];
+    try {
+      (reg as never as { onToolsChanged(name: string, tools: unknown[]): void }).onToolsChanged(
+        'svc',
+        h.tools,
+      );
+      expect(reg.isActivated('svc')).toBe(true);
+      expect(toolReg.get('mcp__svc__echo_v2')).toBeDefined();
+      expect(toolReg.get('mcp__svc__echo')).toBeUndefined();
+      expect(reg.deactivateServer('svc')).toBe(1);
+      expect(connectionEvents).toEqual([]);
+    } finally {
+      h.tools = original;
+      await reg.stopAll();
+    }
+  });
+
+  // Regression: WebUI "sleep" called stop(), which unregistered a lazy
+  // server's tools instead of letting it go dormant.
+  it('sleep() puts a lazy server dormant and keeps its tools callable', async () => {
+    const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog, cacheDir: tmp });
+    await reg.start(lazyCfg('svc'));
+    expect(reg.list().find((s) => s.name === 'svc')?.state).toBe('connected');
+
+    await reg.sleep('svc');
+    expect(reg.list().find((s) => s.name === 'svc')?.state).toBe('dormant');
+    const tool = toolReg.get('mcp__svc__echo');
+    expect(tool).toBeDefined();
+
+    h.connectCalls = 0;
+    await expect(tool?.execute({}, {} as never, {} as never)).resolves.toBe('ok');
+    expect(h.connectCalls).toBe(1);
+
+    const eager = new MCPRegistry({ toolRegistry: new ToolRegistry(), events, log: silentLog });
+    await eager.start(lazyCfg('eager', { lazy: false }));
+    await eager.sleep('eager');
+    expect(eager.list().find((s) => s.name === 'eager')?.state).toBe('disconnected');
+    await expect(eager.sleep('missing')).rejects.toThrow(/not registered/);
+    await eager.stopAll();
+    await reg.stopAll();
+  });
+
   it('falls back to eager connect when no cacheDir is configured', async () => {
     const reg = new MCPRegistry({ toolRegistry: toolReg, events, log: silentLog });
     await reg.start(lazyCfg('svc')); // lazy requested but no cacheDir → eager

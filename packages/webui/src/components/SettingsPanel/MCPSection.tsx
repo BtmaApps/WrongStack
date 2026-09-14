@@ -668,15 +668,27 @@ export function MCPSection(): ReactElement {
     const handleMcpServerDisconnected = (msg: WSServerMessage) => {
       if (msg.type === 'mcp.server.disconnected') {
         const p = msg.payload as { name: string; reason: string };
+        // Idle sleep and lazy dormancy are the designed lifecycle of a lazy
+        // server, and `stop` is a user action — none of them is an error.
+        const planned =
+          p.reason === 'stop' || p.reason === 'idle-sleep' || p.reason.endsWith('(dormant)');
         setServers((prev) =>
           prev.map((s) =>
-            s.name === p.name
-              ? { ...s, status: 'error', error: p.reason, lastError: p.reason, pid: undefined }
-              : s,
+            s.name !== p.name
+              ? s
+              : planned
+                ? {
+                    ...s,
+                    status: p.reason === 'stop' ? ('stopped' as const) : ('sleeping' as const),
+                    pid: undefined,
+                  }
+                : { ...s, status: 'error', error: p.reason, lastError: p.reason, pid: undefined },
           ),
         );
         setPendingOp(null);
-        toast.warn(i18n.t('settings:mcp.toastDisconnected', { name: p.name, reason: p.reason }));
+        if (!planned) {
+          toast.warn(i18n.t('settings:mcp.toastDisconnected', { name: p.name, reason: p.reason }));
+        }
       }
     };
 

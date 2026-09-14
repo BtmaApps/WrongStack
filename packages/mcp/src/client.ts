@@ -18,7 +18,7 @@ import {
   parseReadResourceResult,
   parseServerMetadata,
 } from './protocol.js';
-import { normalizeMCPTools } from './tool-schema.js';
+import { listAllTools } from './tool-schema.js';
 import { type HttpTransportOptions, SSETransport, StreamableHTTPTransport } from './transport.js';
 import { nextJsonRpcId } from './transport-base.js';
 import { isJsonRpcResult } from './transport-jsonrpc.js';
@@ -330,7 +330,9 @@ export class MCPClient {
       'initialize',
       {
         protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-        capabilities: { tools: {} },
+        // Client capabilities (roots/sampling/elicitation) — none offered.
+        // `tools` is a SERVER capability and never belonged here.
+        capabilities: {},
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       },
       this.opts.startupTimeoutMs ?? 10_000,
@@ -355,13 +357,7 @@ export class MCPClient {
           toErrorMessage(err),
       );
     }
-    const toolsRes = await this.request('tools/list', {});
-    if (toolsRes.error) {
-      this._tools = [];
-    } else {
-      const result = toolsRes.result as { tools?: MCPTool[] | undefined } | undefined;
-      this._tools = normalizeMCPTools(result?.tools);
-    }
+    this._tools = (await listAllTools((params) => this.request('tools/list', params))) ?? [];
     // Cache tools so reconnect can re-register without re-discovering
     this._toolsCache = this._tools;
     this.state = 'connected';
@@ -691,8 +687,9 @@ export class MCPClient {
     // may have already run failPending, but calling it again with the same
     // pending set is a no-op (failPending guards on `this.pending.size`).
     this.failPending(`MCP "${this.opts.name}" closed`);
-    this.sseTransport?.close();
-    this.httpTransport?.close();
+    // Awaited so close() resolves only once the transport has released its
+    // connection pool and aborted its in-flight requests.
+    await Promise.allSettled([this.sseTransport?.close(), this.httpTransport?.close()]);
     this.state = 'disconnected';
   }
 
@@ -981,15 +978,23 @@ export class MCPClient {
   }
 
   private handleServerRequest(request: JsonRpcServerRequest): void {
-    const message =
-      request.method === 'sampling/createMessage'
-        ? 'Client sampling is disabled by policy'
-        : `Method not found: ${request.method}`;
-    const response = {
-      jsonrpc: '2.0',
-      id: request.id,
-      error: { code: -32601, message },
-    };
+    // `ping` is valid in both directions and MUST be answered with an empty
+    // result — servers that probe liveness treated the old "Method not found"
+    // as a dead client.
+    const response =
+      request.method === 'ping'
+        ? { jsonrpc: '2.0', id: request.id, result: {} }
+        : {
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: -32601,
+              message:
+                request.method === 'sampling/createMessage'
+                  ? 'Client sampling is disabled by policy'
+                  : `Method not found: ${request.method}`,
+            },
+          };
 
     try {
       this.child?.stdin?.write(`${JSON.stringify(response)}\n`);
@@ -1007,10 +1012,10 @@ export class MCPClient {
    */
   private async handleToolsListChanged(): Promise<void> {
     try {
-      const toolsRes = await this.request('tools/list', {});
-      const tools = normalizeMCPTools(
-        (toolsRes.result as { tools?: unknown | undefined } | undefined)?.tools,
-      );
+      const tools = await listAllTools((params) => this.request('tools/list', params));
+      // An error response used to normalize to [] and wipe every registered
+      // tool on a transient refresh failure — keep the last catalog instead.
+      if (!tools) return;
       this._tools = tools;
       this._toolsCache = tools;
       for (const listener of this.toolsChangedListeners) {

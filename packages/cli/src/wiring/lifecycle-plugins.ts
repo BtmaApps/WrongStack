@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { getSharedProjectMailbox, type RemoteMailbox } from '@wrongstack/core/coordination';
 import { CouncilOrchestrator, OneShotOrchestrator } from '@wrongstack/core/execution';
 import { countShellHooks, HookRegistry, HookRunner, shellHooksEqual } from '@wrongstack/core/hooks';
-import { allServers } from '@wrongstack/core/infrastructure';
+import { resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
 import { TOKENS } from '@wrongstack/core/kernel';
 import { NotifierImpl } from '@wrongstack/core/notifications';
 import type { PluginHostHandle } from '@wrongstack/core/plugin';
@@ -418,12 +418,16 @@ export async function setupLifecycleAndPlugins(
     authorizationManager: mcpAuthorizationManager,
   });
   if (config.features.mcp) {
-    const presets = allServers();
-    for (const cfg of Object.values(config.mcpServers ?? {})) {
-      const preset = presets[cfg.name];
-      const merged = preset ? { ...preset, ...cfg } : cfg;
-      void mcpRegistry.start(merged).catch((err) => {
-        logger.warn(`MCP server "${cfg.name}" failed to start`, err);
+    // The record key is the name: the documented `{ github: { enabled: true } }`
+    // has no `name` field, so reading `cfg.name` started an unnamed server.
+    for (const [name, entry] of Object.entries(config.mcpServers ?? {})) {
+      const resolved = resolveMcpServerConfig(name, entry);
+      if (!resolved) {
+        logger.warn(`MCP server "${name}" has no transport and matches no preset — skipped`);
+        continue;
+      }
+      void mcpRegistry.start(resolved).catch((err) => {
+        logger.warn(`MCP server "${name}" failed to start`, err);
       });
     }
   }

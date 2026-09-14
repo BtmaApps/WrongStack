@@ -29,6 +29,7 @@ export {
   googleMapsServer,
   miniMaxVisionServer,
   playwrightServer,
+  resolveMcpServerConfig,
   sentinelServer,
   slackServer,
   sshManagerServer,

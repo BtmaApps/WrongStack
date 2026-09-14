@@ -305,8 +305,11 @@ describe('restart / discover', () => {
     });
     const r = await enableMcp('github', deps(registry));
     expect(r.ok).toBe(true);
+    // The persisted config travels with the restart — a bare restart(name)
+    // would keep the slot's original config.
     expect((registry as { restart: ReturnType<typeof vi.fn> }).restart).toHaveBeenCalledWith(
       'github',
+      expect.objectContaining({ name: 'github', enabled: true }),
     );
   });
 
@@ -434,8 +437,10 @@ describe('management edge cases', () => {
     await expect(
       updateMcp({ name: 'github', description: 'updated' }, deps(updateRegistry)),
     ).resolves.toMatchObject({ ok: true });
+    // Regression: the edit must reach the live registry, not just config.json.
     expect((updateRegistry as { restart: ReturnType<typeof vi.fn> }).restart).toHaveBeenCalledWith(
       'github',
+      expect.objectContaining({ name: 'github', description: 'updated', enabled: true }),
     );
 
     const addRegistry = makeRegistry({
@@ -447,6 +452,7 @@ describe('management edge cases', () => {
     );
     expect((addRegistry as { restart: ReturnType<typeof vi.fn> }).restart).toHaveBeenCalledWith(
       'tracked',
+      expect.objectContaining({ name: 'tracked', command: 'cmd' }),
     );
   });
 

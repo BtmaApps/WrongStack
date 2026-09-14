@@ -29,6 +29,21 @@ export interface CreateMcpUseToolOptions {
   toolRegistry: ToolRegistry;
 }
 
+/** Registry states in which a tool call can proceed (dormant wakes on demand). */
+const MCP_USE_CALLABLE_STATES: ReadonlySet<string> = new Set(['connected', 'dormant']);
+
+/** Per-registry, per-server count of in-flight mcp_use calls holding an activation. */
+const activationLeaseMaps = new WeakMap<object, Map<string, number>>();
+
+function activationLeasesFor(registry: MCPRegistryHandle): Map<string, number> {
+  let leases = activationLeaseMaps.get(registry);
+  if (!leases) {
+    leases = new Map();
+    activationLeaseMaps.set(registry, leases);
+  }
+  return leases;
+}
+
 export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
   const { registry, toolRegistry } = opts;
 
@@ -85,20 +100,27 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
           `Server "${serverName}" not found. Available: ${servers.map((s) => s.name).join(', ') || 'none'}.`,
         );
       }
-      if (serverInfo.state !== 'connected') {
+      // `dormant` is the NORMAL resting state of a lazy server (booted from its
+      // manifest, or asleep after the idle timeout): its tool wrappers spawn
+      // the process on the call. Rejecting it made the gateway unusable for
+      // exactly the servers it exists to reach.
+      if (!MCP_USE_CALLABLE_STATES.has(serverInfo.state)) {
         throw new Error(
-          `Server "${serverName}" is not connected (state: ${serverInfo.state}). Use \`mcp_control({ action: "enable", server: "${serverName}" })\` first.`,
+          `Server "${serverName}" is not available (state: ${serverInfo.state}). Use \`mcp_control({ action: "${serverInfo.state === 'failed' || serverInfo.state === 'disconnected' ? 'restart' : 'enable'}", server: "${serverName}" })\` first.`,
         );
       }
 
-      // Activate server tools — but only when they are not already active.
-      // The operator may have activated this server via mcp_control; an
-      // ephemeral mcp_use call must not tear that activation down on exit.
-      // Registries without isActivated keep the old activate-always behavior.
-      const alreadyActive = registry.isActivated?.(serverName) === true;
-      const didActivate = !alreadyActive && Boolean(registry.activateServer);
-      if (didActivate) {
-        registry.activateServer?.(serverName);
+      // Activate server tools unless the operator already did (an mcp_control
+      // activation must survive this call). Concurrent mcp_use calls share one
+      // activation through a lease count: without it the first call to finish
+      // deactivated the server under a sibling that had not resolved its tool.
+      const leases = activationLeasesFor(registry);
+      const held = leases.get(serverName) ?? 0;
+      const alreadyActive = held === 0 && registry.isActivated?.(serverName) === true;
+      const leased = !alreadyActive && Boolean(registry.activateServer);
+      if (leased) {
+        if (held === 0) registry.activateServer?.(serverName);
+        leases.set(serverName, held + 1);
       }
 
       try {
@@ -128,10 +150,16 @@ export function createMcpUseTool(opts: CreateMcpUseToolOptions): Tool {
         if (!result.success) throw new Error(result.error ?? 'MCP tool execution failed');
         return result.result;
       } finally {
-        // Deactivate only what THIS call activated (even if the tool call
-        // threw) — pre-existing activations belong to the operator.
-        if (didActivate && registry.deactivateServer) {
-          registry.deactivateServer(serverName);
+        // Release this call's lease (even if the tool call threw); the last
+        // holder deactivates. Pre-existing activations belong to the operator.
+        if (leased) {
+          const remaining = (leases.get(serverName) ?? 1) - 1;
+          if (remaining > 0) {
+            leases.set(serverName, remaining);
+          } else {
+            leases.delete(serverName);
+            registry.deactivateServer?.(serverName);
+          }
         }
       }
     },

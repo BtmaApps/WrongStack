@@ -134,6 +134,35 @@ describe('wrapMCPTool - extra coverage', () => {
     expect(out).toContain('resource');
   });
 
+  // Regression: image/audio blocks were JSON-stringified whole, dumping raw
+  // base64 into the model context.
+  it('summarizes binary content blocks instead of inlining base64', async () => {
+    const base64 = 'A'.repeat(8_000);
+    const wrapped = wrapMCPTool(
+      's',
+      { name: 'shot', inputSchema: { type: 'object' } },
+      mkClient(async () => [
+        { type: 'text', text: 'caption' },
+        { type: 'image', mimeType: 'image/png', data: base64 },
+        { type: 'audio', mimeType: 'audio/wav', data: base64 },
+        { type: 'resource', resource: { uri: 'file:///notes.md', text: 'readable body' } },
+        {
+          type: 'resource',
+          resource: { uri: 'file:///bin', mimeType: 'application/zip', blob: base64 },
+        },
+        { type: 'resource_link', uri: 'file:///linked' },
+      ]),
+    );
+    const out = String(await wrapped.execute({}, ctx, opts));
+    expect(out).not.toContain(base64);
+    expect(out).toContain('caption');
+    expect(out).toContain('[image content: image/png, ~6 KB');
+    expect(out).toContain('[audio content: audio/wav');
+    expect(out).toContain('[resource file:///notes.md]\nreadable body');
+    expect(out).toContain('[resource file:///bin: application/zip, binary payload not inlined]');
+    expect(out).toContain('[resource link: file:///linked]');
+  });
+
   it('stringifies items without type field as JSON', async () => {
     const wrapped = wrapMCPTool(
       's',

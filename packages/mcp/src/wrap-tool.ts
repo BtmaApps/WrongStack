@@ -84,15 +84,46 @@ export function wrapMCPTool(
   };
 }
 
+/**
+ * Render one MCP content block as model-facing text.
+ *
+ * Non-text blocks used to be JSON-stringified whole, so an `image`/`audio`
+ * block landed in the context as megabytes of base64 the model cannot read —
+ * burning the window and tripping truncation for nothing. Binary payloads are
+ * summarized; embedded resource TEXT is kept because it is readable content.
+ */
+function renderContentBlock(item: Record<string, unknown>): string {
+  const type = item['type'];
+  if (type === 'text') return typeof item['text'] === 'string' ? item['text'] : '';
+  if (type === 'image' || type === 'audio') {
+    const mime = typeof item['mimeType'] === 'string' ? item['mimeType'] : 'unknown type';
+    const data = typeof item['data'] === 'string' ? item['data'] : '';
+    const kb = Math.max(1, Math.round((data.length * 3) / 4 / 1024));
+    return `[${type} content: ${mime}, ~${kb} KB — binary payload not inlined]`;
+  }
+  if (type === 'resource' && item['resource'] && typeof item['resource'] === 'object') {
+    const resource = item['resource'] as Record<string, unknown>;
+    const uri = typeof resource['uri'] === 'string' ? resource['uri'] : 'unknown';
+    if (typeof resource['text'] === 'string') return `[resource ${uri}]\n${resource['text']}`;
+    if (typeof resource['blob'] === 'string') {
+      const mime = typeof resource['mimeType'] === 'string' ? `${resource['mimeType']}, ` : '';
+      return `[resource ${uri}: ${mime}binary payload not inlined]`;
+    }
+    return JSON.stringify(item);
+  }
+  if (type === 'resource_link' && typeof item['uri'] === 'string') {
+    return `[resource link: ${item['uri']}]`;
+  }
+  return JSON.stringify(item);
+}
+
 function stringify(c: unknown): string {
   if (typeof c === 'string') return c;
   if (Array.isArray(c)) {
     return c
       .map((item) => {
         if (item && typeof item === 'object') {
-          const t = (item as { type?: string | undefined; text?: string | undefined }).type;
-          if (t === 'text') return (item as { text?: string | undefined }).text ?? '';
-          return JSON.stringify(item);
+          return renderContentBlock(item as Record<string, unknown>);
         }
         return String(item);
       })

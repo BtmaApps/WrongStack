@@ -91,6 +91,60 @@ describe('mcp_control activate', () => {
   });
 });
 
+describe('mcp_control enable / activate on lazy and downed servers', () => {
+  // Regression: a registered slot in failed/disconnected state made start()
+  // throw "already registered", so enable reported a failure for a server that
+  // only needed restarting — and the bare preset entry was never merged.
+  it('restarts a registered-but-failed server with the merged preset config', async () => {
+    const restart = vi.fn().mockResolvedValue(undefined);
+    const start = vi.fn().mockResolvedValue(undefined);
+    const reg = fakeRegistry({
+      start,
+      restart,
+      describe: vi
+        .fn()
+        .mockReturnValue([{ name: 'github', state: 'failed', toolCount: 0, enabled: true }]),
+    });
+    const out = await run(make(reg, { github: { enabled: true } as never }), {
+      action: 'enable',
+      server: 'github',
+    });
+    expect(out).toContain('Enabled and started');
+    expect(start).not.toHaveBeenCalled();
+    expect(restart).toHaveBeenCalledWith(
+      'github',
+      expect.objectContaining({ name: 'github', command: 'npx', enabled: true }),
+    );
+  });
+
+  it('treats a dormant lazy server as already running', async () => {
+    const start = vi.fn();
+    const reg = fakeRegistry({
+      start,
+      describe: vi
+        .fn()
+        .mockReturnValue([{ name: 'github', state: 'dormant', toolCount: 3, enabled: true }]),
+    });
+    expect(await run(make(reg), { action: 'enable', server: 'github' })).toContain(
+      'already running',
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('activates a dormant lazy server', async () => {
+    const activateServer = vi.fn();
+    const reg = fakeRegistry({
+      activateServer,
+      isActivated: vi.fn().mockReturnValue(false),
+      describe: vi
+        .fn()
+        .mockReturnValue([{ name: 'x', state: 'dormant', toolCount: 2, enabled: true }]),
+    });
+    expect(await run(make(reg), { action: 'activate', server: 'x' })).toContain('Activated');
+    expect(activateServer).toHaveBeenCalledWith('x');
+  });
+});
+
 describe('mcp_control deactivate', () => {
   it('requires a server name', async () => {
     await expect(run(make(fakeRegistry()), { action: 'deactivate' })).rejects.toThrow(

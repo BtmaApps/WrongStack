@@ -481,6 +481,8 @@ describe('MCPRegistry coverage', () => {
     const failedSlot = makeSlot('failed', {
       reconnectTimer: setTimeout(() => {}, 10_000),
     });
+    // The connect loop refuses slots that are not (or no longer) registered.
+    internals(failed).servers.set('failed', failedSlot);
     const failedRun = internals(failed).attemptConnect(failedSlot);
     await vi.runAllTimersAsync();
     await failedRun;
@@ -496,6 +498,7 @@ describe('MCPRegistry coverage', () => {
     const thrownSlot = makeSlot('remote', {
       cfg: { name: 'remote', transport: 'sse', url: 'https://example.test' },
     });
+    internals(thrown).servers.set('remote', thrownSlot);
     const thrownRun = internals(thrown).attemptConnect(thrownSlot);
     await vi.runAllTimersAsync();
     await thrownRun;
@@ -594,7 +597,10 @@ describe('MCPRegistry coverage', () => {
   it('persists a lazy manifest without a live client', async () => {
     const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'registry-coverage-'));
     const { registry } = fixture({ cacheDir });
-    const slot = makeSlot('lazy', { lazy: true });
+    const slot = makeSlot('lazy', {
+      lazy: true,
+      discoveredTools: [{ name: 'echo', inputSchema: { type: 'object' } }],
+    });
     try {
       await internals(registry).persistCapabilityManifest(slot);
       // The manifest lands on disk even though no client ever connected, so

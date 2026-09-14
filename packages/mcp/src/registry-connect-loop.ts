@@ -57,9 +57,22 @@ export function applySlotTools(
   tools: MCPTool[],
   client?: MCPClient | undefined,
 ): void {
-  if (slot.lazy && slot.registeredLazy && !ctx.lazyMode) return;
+  slot.discoveredTools = tools;
   const allowed = slot.cfg.allowedTools;
   const filtered = tools.filter((t) => !allowed || allowed.includes(t.name));
+  const signature = JSON.stringify(
+    filtered.map((t) => [t.name, t.description ?? null, t.inputSchema ?? null]),
+  );
+  // Lazy wrappers resolve the live client on every call, so an unchanged tool
+  // set needs no rebinding on wake. A CHANGED set must be re-registered — the
+  // old early-return kept the manifest's stale schemas registered forever once
+  // the server's real tool list moved on.
+  const lazyWrappersCurrent =
+    slot.lazy &&
+    slot.toolSignature === signature &&
+    slot.lazyTools.length === filtered.length &&
+    (slot.registeredLazy || ctx.lazyMode);
+  if (lazyWrappersCurrent) return;
   const clientArg = slot.lazy ? () => ctx.ensureConnected(slot.cfg.name) : expectDefined(client);
   const wrapped = filtered.map((t) =>
     wrapMCPTool(slot.cfg.name, t, clientArg, slot.cfg.permission ?? 'confirm', {
@@ -85,9 +98,19 @@ export function applySlotTools(
     }),
   );
   slot.lazyTools = wrapped;
-  if (ctx.lazyMode) {
-    return;
+  slot.toolSignature = signature;
+  // In lazyMode tools stay unregistered until activated — but a server that IS
+  // activated right now must get the fresh set, not silently lose its tools.
+  const wasActive = slot.toolNames.length > 0;
+  if (ctx.lazyMode && !wasActive) return;
+  for (const name of slot.toolNames) {
+    try {
+      ctx.toolRegistry.unregister(name);
+    } catch {
+      /* ignore */
+    }
   }
+  slot.toolNames = [];
   for (const tool of wrapped) {
     try {
       ctx.toolRegistry.register(tool, `mcp:${slot.cfg.name}`);
@@ -96,7 +119,7 @@ export function applySlotTools(
       ctx.log.warn(`MCP tool "${tool.name}" not registered`, err);
     }
   }
-  if (slot.lazy && wrapped.length > 0) slot.registeredLazy = true;
+  if (slot.lazy && !ctx.lazyMode && wrapped.length > 0) slot.registeredLazy = true;
 }
 
 export async function discoverSlotCapabilities(
@@ -157,15 +180,19 @@ export async function persistSlotCapabilityManifest(
 ): Promise<void> {
   if (!slot.lazy || !cacheDir) return;
   const previous = slot.manifestWrite ?? Promise.resolve();
-  const pending = previous.then(() =>
-    writeCapabilityManifest(cacheDir, slot.cfg.name, manifestConfigHash(slot.cfg), {
-      tools: slot.client?.listTools() ?? [],
+  const pending = previous.then(() => {
+    const tools = slot.discoveredTools ?? slot.client?.listTools();
+    // Nothing learned yet (no discovery, no live client): writing would
+    // replace a good manifest with an empty tool list.
+    if (!tools) return;
+    return writeCapabilityManifest(cacheDir, slot.cfg.name, manifestConfigHash(slot.cfg), {
+      tools,
       serverMetadata: slot.serverMetadata,
       resources: slot.resources,
       resourceTemplates: slot.resourceTemplates,
       prompts: slot.prompts,
-    }),
-  );
+    });
+  });
   slot.manifestWrite = pending;
   await pending;
   if (slot.manifestWrite === pending) slot.manifestWrite = undefined;
@@ -178,7 +205,8 @@ export async function attemptConnectSlot(
   const MAX_ATTEMPTS = MCP_CONSTANTS.RECONNECT.MAX_ATTEMPTS;
   let attempt = 0;
   while (attempt < MAX_ATTEMPTS) {
-    if (ctx.servers.has(slot.cfg.name) && ctx.servers.get(slot.cfg.name) !== slot) {
+    // A slot removed (forget/markDisabled) or replaced must not keep spawning.
+    if (ctx.servers.get(slot.cfg.name) !== slot) {
       return;
     }
     attempt++;
@@ -239,6 +267,9 @@ export async function attemptConnectSlot(
       slot.reconnectCycles = 0;
       const mc = client as MCPClient;
       const discovered = mc.listTools();
+      // Record before persisting: the manifest must carry THIS connect's tool
+      // list, not the one a dormant boot loaded from the previous cache.
+      slot.discoveredTools = discovered;
       await discoverSlotCapabilities(ctx, slot, mc);
       await persistSlotCapabilityManifest(ctx.cacheDir, slot);
       applySlotTools(ctx, slot, discovered, mc);
@@ -295,7 +326,7 @@ export async function attemptConnectSlot(
       await new Promise((r) => setTimeout(r, delay));
       if (
         (slot.state as ConnectionState) === 'disconnected' ||
-        (ctx.servers.has(slot.cfg.name) && ctx.servers.get(slot.cfg.name) !== slot)
+        ctx.servers.get(slot.cfg.name) !== slot
       ) {
         return;
       }

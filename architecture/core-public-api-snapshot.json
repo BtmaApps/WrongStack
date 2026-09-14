@@ -1616,7 +1616,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23517
+      "sourceLines": 23513
     },
     {
       "directory": "tasking",

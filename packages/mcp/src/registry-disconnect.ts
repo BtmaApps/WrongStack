@@ -12,6 +12,7 @@ export function resetDisconnectedSlotTools(slot: ServerSlot, toolRegistry: ToolR
   }
   slot.toolNames = [];
   slot.lazyTools = [];
+  slot.toolSignature = undefined;
   slot.serverMetadata = undefined;
   slot.resources = undefined;
   slot.resourceTemplates = undefined;

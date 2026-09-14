@@ -5,7 +5,7 @@ import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { parseServerMetadata } from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import { SSEReader } from './sse-reader.js';
-import { normalizeMCPTools } from './tool-schema.js';
+import { listAllTools } from './tool-schema.js';
 import {
   BaseHTTPTransport,
   createTimeoutSignal,
@@ -13,23 +13,58 @@ import {
   makeAbortError,
   nextJsonRpcId,
 } from './transport-base.js';
-import { assertMatchingJsonRpcResult, type JsonRpcResult } from './transport-jsonrpc.js';
+import {
+  assertMatchingJsonRpcResult,
+  encodeJsonRpcMessage,
+  isJsonRpcResult,
+  type JsonRpcResult,
+} from './transport-jsonrpc.js';
+import { validateTransportUrl } from './transport-security.js';
+
+/**
+ * Longest connect() waits for the legacy `endpoint` event before POSTing to
+ * the configured URL. The wait also ends on the first dispatched event and on
+ * stream end, so servers that never send one cost at most this much.
+ */
+const ENDPOINT_WAIT_MS = 1_000;
+
+/**
+ * HTTP statuses that mean the session itself is gone. Only these tear the
+ * connection down from the request path; a 5xx or a single slow call is a call
+ * error, not a dead session (the stream closing is what signals that).
+ */
+const SESSION_FATAL_HTTP_STATUSES = new Set([401, 403, 404, 410]);
+
+interface StreamPending {
+  resolve: (result: JsonRpcResult) => void;
+  reject: (err: Error) => void;
+}
 
 // ---------------------------------------------------------------------------
 // SSE Transport
 // ---------------------------------------------------------------------------
 
 /**
- * SSE transport for MCP over HTTP.
+ * SSE transport for MCP over HTTP (the 2024-11-05 "HTTP with SSE" transport).
  *
- * Uses native fetch API with ReadableStream to consume SSE events.
- * HTTP POST is used to send JSON-RPC requests.
+ * The client opens a GET event stream. A compliant server first sends
+ * `event: endpoint` naming the URL to POST JSON-RPC to, answers each POST with
+ * `202 Accepted`, and delivers the response over the stream. Servers that
+ * answer in the POST body instead are also supported: a JSON body is taken as
+ * the response, an empty/202 body waits for the stream.
  */
 export class SSETransport extends BaseHTTPTransport {
   private _nextId = 1;
   private readerDone = false;
+  private closed = false;
   private readLoopAbort?: AbortController | undefined;
   private reader?: globalThis.ReadableStreamDefaultReader<string> | undefined;
+  /** POST target announced by the server's `endpoint` event. */
+  private endpointUrl?: string | undefined;
+  /** Wakes connect() once the endpoint is known (or will not arrive). */
+  private streamSignal?: (() => void) | undefined;
+  /** Requests whose response is expected over the event stream, keyed by id. */
+  private readonly streamPending = new Map<number, StreamPending>();
 
   constructor(opts: HttpTransportOptions) {
     super(opts, 'SSETransport');
@@ -44,19 +79,15 @@ export class SSETransport extends BaseHTTPTransport {
   /** Refresh tool list when server sends notifications/tools/list_changed. */
   private async handleToolsListChanged(): Promise<void> {
     try {
-      const res = await this.httpPost('tools/list', {});
-      if (!res.error) {
-        this.tools.splice(
-          0,
-          this.tools.length,
-          ...normalizeMCPTools((res.result as { tools?: unknown | undefined } | undefined)?.tools),
-        );
-        for (const cb of this.toolsChangedListeners) {
-          try {
-            cb([...this.tools]);
-          } catch {
-            /* ignore */
-          }
+      const tools = await listAllTools((params) => this.httpPost('tools/list', params));
+      // A failed refresh keeps the last known catalog instead of wiping it.
+      if (!tools) return;
+      this.tools.splice(0, this.tools.length, ...tools);
+      for (const cb of this.toolsChangedListeners) {
+        try {
+          cb([...this.tools]);
+        } catch {
+          /* ignore */
         }
       }
     } catch {
@@ -66,6 +97,8 @@ export class SSETransport extends BaseHTTPTransport {
 
   async connect(): Promise<void> {
     this.readerDone = false;
+    this.closed = false;
+    this.endpointUrl = undefined;
     this.state = 'connecting';
     this.serverMetadata = undefined;
     this.abortController = new AbortController();
@@ -75,7 +108,7 @@ export class SSETransport extends BaseHTTPTransport {
     try {
       const sseUrl = this.buildSSEUrl();
       const fetchOpts: RequestInit = {
-        headers: this.headers,
+        headers: { Accept: 'text/event-stream', ...this.headers },
         signal,
       };
       this.applyTlsAgent(fetchOpts);
@@ -102,8 +135,16 @@ export class SSETransport extends BaseHTTPTransport {
       const textDecoder = new TextDecoder();
       const sseReader = new SSEReader();
       this.readLoopAbort = new AbortController();
+      const streamReady = new Promise<void>((resolve) => {
+        this.streamSignal = resolve;
+      });
 
+      sseReader.onEndpoint((endpoint) => {
+        this.acceptEndpoint(endpoint);
+        this.streamSignal?.();
+      });
       sseReader.onMessage((msg) => {
+        this.streamSignal?.();
         // Server-initiated notifications (no id). Handle list_changed for L2-C.
         if (msg.method && !msg.id) {
           if (msg.method === 'notifications/tools/list_changed') {
@@ -112,6 +153,15 @@ export class SSETransport extends BaseHTTPTransport {
             this.notifyResourcesChanged();
           } else if (msg.method === 'notifications/prompts/list_changed') {
             this.notifyPromptsChanged();
+          }
+          return;
+        }
+        // A response delivered over the stream (the spec-compliant path).
+        if (!msg.method && isJsonRpcResult(msg)) {
+          const pending = this.streamPending.get(msg.id);
+          if (pending) {
+            this.streamPending.delete(msg.id);
+            pending.resolve(msg);
           }
         }
       });
@@ -122,11 +172,14 @@ export class SSETransport extends BaseHTTPTransport {
         releaseLock: () => reader.releaseLock(),
       } as globalThis.ReadableStreamDefaultReader<string>;
 
-      this.readSSEBody(reader, textDecoder, sseReader);
+      void this.readSSEBody(reader, textDecoder, sseReader);
+      await this.waitForStream(streamReady, signal);
 
       const initRes = await this.httpPost('initialize', {
         protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-        capabilities: { tools: {} },
+        // Client capabilities (roots/sampling/elicitation) — none are offered.
+        // `tools` is a SERVER capability and never belonged here.
+        capabilities: {},
         clientInfo: MCP_CONSTANTS.CLIENT_INFO,
       });
 
@@ -147,13 +200,8 @@ export class SSETransport extends BaseHTTPTransport {
         // servers may not require it
       }
 
-      const toolsRes = await this.httpPost('tools/list', {});
-      if (toolsRes.error) {
-        this.tools.splice(0, this.tools.length);
-      } else {
-        const result = toolsRes.result as { tools?: unknown | undefined } | undefined;
-        this.tools.splice(0, this.tools.length, ...normalizeMCPTools(result?.tools));
-      }
+      const tools = await listAllTools((params) => this.httpPost('tools/list', params));
+      this.tools.splice(0, this.tools.length, ...(tools ?? []));
 
       this.state = 'connected';
       clearTimeout(startupTimer);
@@ -162,6 +210,46 @@ export class SSETransport extends BaseHTTPTransport {
       this.state = 'failed';
       this.abortController.abort();
       throw err;
+    } finally {
+      this.streamSignal = undefined;
+    }
+  }
+
+  /** Resolve once the stream announced its endpoint, emitted anything, ended, or the cap passed. */
+  private async waitForStream(ready: Promise<void>, signal: AbortSignal): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    let onAbort: (() => void) | undefined;
+    try {
+      await Promise.race([
+        ready,
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, Math.min(ENDPOINT_WAIT_MS, this.timeout));
+          timer.unref?.();
+        }),
+        new Promise<void>((resolve) => {
+          onAbort = resolve;
+          signal.addEventListener('abort', onAbort, { once: true });
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) signal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  /**
+   * Adopt the server's POST endpoint. It must stay on the configured origin:
+   * a cross-origin endpoint would move every request — Authorization header
+   * included — to a host that never passed configuration review.
+   */
+  private acceptEndpoint(endpoint: string): void {
+    try {
+      const next = new URL(endpoint, this.url);
+      if (next.origin !== new URL(this.url).origin) return;
+      validateTransportUrl(next.toString());
+      this.endpointUrl = next.toString();
+    } catch {
+      /* malformed endpoint — keep POSTing to the configured URL */
     }
   }
 
@@ -180,6 +268,9 @@ export class SSETransport extends BaseHTTPTransport {
     } catch {
       // SSE read error — connection lost.
     } finally {
+      this.streamSignal?.();
+      // Responses that were to arrive over this stream never will.
+      this.rejectStreamPending('SSE stream closed');
       // Stream ended (either via error or clean remote close / EOF).
       // Transition to disconnected so callTool and health checks see
       // the correct state, then notify disconnect handlers so the
@@ -189,6 +280,14 @@ export class SSETransport extends BaseHTTPTransport {
         this.notifyDisconnect();
       }
     }
+  }
+
+  private rejectStreamPending(reason: string): void {
+    if (this.streamPending.size === 0) return;
+    const err = new Error(`MCP "${this.name}": ${reason}`);
+    const pending = [...this.streamPending.values()];
+    this.streamPending.clear();
+    for (const entry of pending) entry.reject(err);
   }
 
   private buildSSEUrl(): string {
@@ -204,20 +303,56 @@ export class SSETransport extends BaseHTTPTransport {
     }
   }
 
-  private async httpPost(
+  /** Register interest in a stream-delivered response before the POST goes out. */
+  private awaitStreamResponse(id: number, signal: AbortSignal): Promise<JsonRpcResult> {
+    const promise = new Promise<JsonRpcResult>((resolve, reject) => {
+      const onAbort = () =>
+        reject(signal.reason instanceof Error ? signal.reason : new Error('MCP request aborted'));
+      this.streamPending.set(id, {
+        resolve: (result) => {
+          signal.removeEventListener('abort', onAbort);
+          resolve(result);
+        },
+        reject: (err) => {
+          signal.removeEventListener('abort', onAbort);
+          reject(err);
+        },
+      });
+      if (signal.aborted) onAbort();
+      else signal.addEventListener('abort', onAbort, { once: true });
+    });
+    // Unobserved whenever the POST body carries the response directly.
+    promise.catch(() => undefined);
+    return promise;
+  }
+
+  private httpPost(
     method: string,
     params: unknown,
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResult> {
+    return this.postJsonRpc(method, params, this.requestTimeout, opts);
+  }
+
+  private async postJsonRpc(
+    method: string,
+    params: unknown,
+    timeoutMs: number,
+    opts?: { signal?: AbortSignal | undefined },
+  ): Promise<JsonRpcResult> {
     const id = this.genId();
-    const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
+    const isNotification = method.startsWith('notifications/');
+    const body = encodeJsonRpcMessage(id, method, params);
 
     const external = opts?.signal;
     const parent =
       external && this.abortController
         ? AbortSignal.any([this.abortController.signal, external])
         : (external ?? this.abortController?.signal);
-    const timeoutSignal = createTimeoutSignal(parent, this.requestTimeout);
+    const timeoutSignal = createTimeoutSignal(parent, timeoutMs);
+    const streamed = isNotification
+      ? undefined
+      : this.awaitStreamResponse(id, timeoutSignal.signal);
     const fetchOpts: RequestInit = {
       method: 'POST',
       headers: {
@@ -231,20 +366,30 @@ export class SSETransport extends BaseHTTPTransport {
     // fetch lives INSIDE the try so dispose() runs on every exit path — a
     // rejected fetch must not leak the timeout timer / abort listener.
     try {
-      const res = await this.fetchWithAuthorization(this.url, fetchOpts, timeoutSignal.signal);
+      let res: Response;
+      try {
+        res = await this.fetchWithAuthorization(
+          this.endpointUrl ?? this.url,
+          fetchOpts,
+          timeoutSignal.signal,
+        );
+      } catch (err) {
+        // The request never reached the server (connection refused/reset):
+        // the session is gone. A timeout or caller abort is NOT — one slow
+        // tool call used to tear down every other call on the session.
+        if (!timeoutSignal.signal.aborted) this.markDisconnected();
+        throw err;
+      }
       if (!res.ok) {
+        if (SESSION_FATAL_HTTP_STATUSES.has(res.status)) this.markDisconnected();
         // Cap the body — a misbehaving server could return megabytes of
         // HTML and that's not useful in an error message anyway. readBodyCapped
-        // bounds the BUFFER (the old res.text() slurped the whole body before
-        // the slice below ever ran); when even the cap is exceeded we keep the
+        // bounds the BUFFER; when even the cap is exceeded we keep the
         // status-line error and drop the snippet.
         let snippet: string;
         try {
           snippet = await readBodyCapped(res, MCP_CONSTANTS.REQUEST_LOG_CAP);
         } catch (err) {
-          // Over-cap (or unreadable) error body: the capped reader stops
-          // before the true size is known, so report the at-least bound it
-          // did observe instead of buffering the whole body to measure it.
           const received =
             err instanceof ToolError && typeof err.context?.['received'] === 'number'
               ? err.context['received']
@@ -263,26 +408,30 @@ export class SSETransport extends BaseHTTPTransport {
       }
 
       // Notifications get no JSON-RPC reply (the server returns 202 / empty body).
-      if (method.startsWith('notifications/')) {
+      if (isNotification || !streamed) {
         await readBodyCapped(res).catch(() => undefined);
         return { jsonrpc: '2.0', id };
       }
 
+      let text: string;
+      try {
+        text = await readBodyCapped(res);
+      } catch (err) {
+        throw invalidResponse(method, this.url, err);
+      }
+      // Spec-compliant server: 202 Accepted, response arrives on the stream.
+      if (res.status === 202 || text.trim() === '') {
+        return await streamed;
+      }
       let data: unknown;
       try {
-        data = JSON.parse(await readBodyCapped(res));
+        data = JSON.parse(text);
       } catch (err) {
-        throw new ToolError({
-          message: `Invalid JSON-RPC response: ${err instanceof Error ? err.message : 'parse failed'}`,
-          code: 'TOOL_EXECUTION_FAILED',
-          toolName: method,
-          context: { transport: 'sse', url: this.url, phase: 'parse-json' },
-          cause: err,
-        });
+        throw invalidResponse(method, this.url, err);
       }
       return assertMatchingJsonRpcResult(data, id, method);
     } catch (err) {
-      if (external?.aborted && !method.startsWith('notifications/')) {
+      if (external?.aborted && !isNotification) {
         // MCP spec cancellation: tell the server to stop the in-flight
         // request. Best-effort fire-and-forget — the caller is already
         // unwinding on the abort.
@@ -292,9 +441,13 @@ export class SSETransport extends BaseHTTPTransport {
         }).catch(() => {});
         throw makeAbortError(method);
       }
-      this.markDisconnected();
       throw err;
     } finally {
+      const pending = this.streamPending.get(id);
+      if (pending) {
+        this.streamPending.delete(id);
+        pending.reject(new Error('MCP request settled'));
+      }
       timeoutSignal.dispose();
     }
   }
@@ -332,86 +485,20 @@ export class SSETransport extends BaseHTTPTransport {
     timeoutMs?: number,
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResponse> {
-    const id = this.genId();
-    const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
-
-    const external = opts?.signal;
-    const parent =
-      external && this.abortController
-        ? AbortSignal.any([this.abortController.signal, external])
-        : (external ?? this.abortController?.signal);
-    const timeoutSignal = createTimeoutSignal(parent, timeoutMs ?? this.requestTimeout);
-    const fetchOpts: RequestInit = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.headers,
-      },
-      body,
-      signal: timeoutSignal.signal,
-    };
-    this.applyTlsAgent(fetchOpts);
-    // dispose() clears the timeout timer and the parent-abort listener. It must
-    // run on EVERY exit path (fetch rejection, !res.ok, JSON parse error,
-    // mismatched result) — not just success — or the timer keeps ticking and the
-    // abort listener leaks for the full timeout on each failed request.
-    try {
-      const res = await this.fetchWithAuthorization(this.url, fetchOpts, timeoutSignal.signal);
-
-      if (!res.ok) {
-        throw new ToolError({
-          message: `HTTP ${res.status}: ${res.statusText}`,
-          code: 'TOOL_EXECUTION_FAILED',
-          toolName: method,
-          context: {
-            transport: 'sse',
-            url: this.url,
-            status: res.status,
-            statusText: res.statusText,
-          },
-        });
-      }
-
-      // Notifications get no JSON-RPC reply (the server returns 202 / empty body).
-      if (method.startsWith('notifications/')) {
-        await readBodyCapped(res).catch(() => undefined);
-        return { jsonrpc: '2.0', id };
-      }
-
-      let data: unknown;
-      try {
-        data = JSON.parse(await readBodyCapped(res));
-      } catch (err) {
-        throw new ToolError({
-          message: `Invalid JSON-RPC response: ${err instanceof Error ? err.message : 'parse failed'}`,
-          code: 'TOOL_EXECUTION_FAILED',
-          toolName: method,
-          context: { transport: 'sse', url: this.url, phase: 'parse-json' },
-          cause: err,
-        });
-      }
-      const result = assertMatchingJsonRpcResult(data, id, method);
-      return { jsonrpc: '2.0', id, result: result.result, error: result.error };
-    } catch (err) {
-      if (external?.aborted && !method.startsWith('notifications/')) {
-        void this.httpPost('notifications/cancelled', {
-          requestId: id,
-          reason: 'client aborted',
-        }).catch(() => {});
-        throw makeAbortError(method);
-      }
-      this.markDisconnected();
-      throw err;
-    } finally {
-      timeoutSignal.dispose();
-    }
+    const result = await this.postJsonRpc(method, params, timeoutMs ?? this.requestTimeout, opts);
+    return { jsonrpc: '2.0', id: result.id, result: result.result, error: result.error };
   }
 
   async close(): Promise<void> {
     this.releasePinnedDispatcher();
-    // Idempotent — safe to call multiple times.
-    if (this.state === 'disconnected') return;
+    // Idempotent. Keyed on `closed`, not on state: a stream that already
+    // dropped leaves the state 'disconnected' but its in-flight requests,
+    // abort controller and handlers still need tearing down.
+    const alreadyClosed = this.closed;
+    this.closed = true;
     this.readerDone = true;
+    this.state = 'disconnected';
+    if (alreadyClosed) return;
     this.readLoopAbort?.abort();
     try {
       this.reader?.cancel();
@@ -424,8 +511,8 @@ export class SSETransport extends BaseHTTPTransport {
       /* ignore */
     }
     this.abortController?.abort();
+    this.rejectStreamPending('transport closed');
     this.disconnectHandlers.splice(0, this.disconnectHandlers.length);
-    this.state = 'disconnected';
   }
 
   private markDisconnected(): void {
@@ -434,4 +521,14 @@ export class SSETransport extends BaseHTTPTransport {
       this.notifyDisconnect();
     }
   }
+}
+
+function invalidResponse(method: string, url: string, err: unknown): ToolError {
+  return new ToolError({
+    message: `Invalid JSON-RPC response: ${err instanceof Error ? err.message : 'parse failed'}`,
+    code: 'TOOL_EXECUTION_FAILED',
+    toolName: method,
+    context: { transport: 'sse', url, phase: 'parse-json' },
+    cause: err,
+  });
 }

@@ -2,7 +2,7 @@ import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
 import { parseServerMetadata } from './protocol.js';
 import { readBodyCapped } from './read-body.js';
-import { normalizeMCPTools } from './tool-schema.js';
+import { listAllTools } from './tool-schema.js';
 import {
   BaseHTTPTransport,
   createTimeoutSignal,
@@ -12,6 +12,7 @@ import {
 } from './transport-base.js';
 import {
   assertMatchingJsonRpcResult,
+  encodeJsonRpcMessage,
   extractJsonRpcEnvelopes,
   extractJsonRpcResults,
   isJsonRpcResult,
@@ -29,6 +30,7 @@ import {
  */
 export class StreamableHTTPTransport extends BaseHTTPTransport {
   private _nextId = 1;
+  private closed = false;
   private sessionId?: string | undefined;
 
   constructor(opts: HttpTransportOptions) {
@@ -64,11 +66,8 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
 
   private async refreshTools(): Promise<void> {
     try {
-      const response = await this.postRaw('tools/list', {});
-      if (response.error) return;
-      const tools = normalizeMCPTools(
-        (response.result as { tools?: unknown | undefined } | undefined)?.tools,
-      );
+      const tools = await listAllTools((params) => this.postRaw('tools/list', params));
+      if (!tools) return;
       this.tools.splice(0, this.tools.length, ...tools);
       for (const listener of this.toolsChangedListeners) {
         try {
@@ -83,6 +82,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
   }
 
   async connect(): Promise<void> {
+    this.closed = false;
     this.state = 'connecting';
     this.serverMetadata = undefined;
     this.abortController = new AbortController();
@@ -104,7 +104,8 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
           method: 'initialize',
           params: {
             protocolVersion: MCP_CONSTANTS.PROTOCOL_VERSION,
-            capabilities: { tools: {} },
+            // Client capabilities — none offered (`tools` is a server capability).
+            capabilities: {},
             clientInfo: MCP_CONSTANTS.CLIENT_INFO,
           },
         }),
@@ -147,13 +148,8 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
       this.sessionId = initRes.headers.get('mcp-session-id') ?? undefined;
       await this.postRaw('notifications/initialized', {});
 
-      const toolsRes = await this.postRaw('tools/list', {});
-      if (toolsRes.error) {
-        this.tools.splice(0, this.tools.length);
-      } else {
-        const result = toolsRes.result as { tools?: unknown | undefined } | undefined;
-        this.tools.splice(0, this.tools.length, ...normalizeMCPTools(result?.tools));
-      }
+      const tools = await listAllTools((params) => this.postRaw('tools/list', params));
+      this.tools.splice(0, this.tools.length, ...(tools ?? []));
 
       this.state = 'connected';
       clearTimeout(startupTimer);
@@ -171,7 +167,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResult> {
     const id = this.genId();
-    const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
+    const body = encodeJsonRpcMessage(id, method, params);
 
     const external = opts?.signal;
     const parent =
@@ -239,7 +235,7 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     opts?: { signal?: AbortSignal | undefined },
   ): Promise<JsonRpcResponse> {
     const id = this.genId();
-    const body = JSON.stringify({ jsonrpc: '2.0', id, method, params });
+    const body = encodeJsonRpcMessage(id, method, params);
 
     const external = opts?.signal;
     const parent =
@@ -277,12 +273,15 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
 
       const parsed = this.consumeResponseText(await readBodyCapped(res), id);
       if (parsed) {
-        // Convert JsonRpcResult to JsonRpcResponse
+        // consumeResponseText falls back to the FIRST response when none
+        // carries our id; without this check another request's result was
+        // returned as this one's.
+        const matched = assertMatchingJsonRpcResult(parsed, id, method);
         return {
           jsonrpc: '2.0',
           id,
-          result: parsed.result,
-          error: parsed.error,
+          result: matched.result,
+          error: matched.error,
         };
       }
       throw new Error('Could not parse response as JSON-RPC');
@@ -323,8 +322,13 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
 
   async close(): Promise<void> {
     this.releasePinnedDispatcher();
-    if (this.state === 'disconnected') return;
+    // Keyed on `closed`, not state: after a session-fatal status the state is
+    // already 'disconnected', and returning early left in-flight requests
+    // running against a session the registry had abandoned.
+    const alreadyClosed = this.closed;
+    this.closed = true;
     this.state = 'disconnected';
+    if (alreadyClosed) return;
     this.abortController?.abort();
     // Intentionally do NOT fire disconnect handlers — those trigger
     // reconnection in the registry, which would fight an explicit close().

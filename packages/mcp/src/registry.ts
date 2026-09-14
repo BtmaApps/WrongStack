@@ -51,7 +51,7 @@ import {
 } from './registry-connect-loop.js';
 import { markLazySlotDormant, resetDisconnectedSlotTools } from './registry-disconnect.js';
 import { buildRegistryOperationalHealth } from './registry-health.js';
-import { type RegistryIdleContext, sweepIdleSlots } from './registry-idle.js';
+import { type RegistryIdleContext, sleepIdleSlot, sweepIdleSlots } from './registry-idle.js';
 import {
   recordRegistryFailure,
   recordRegistryOperation,
@@ -283,8 +283,10 @@ export class MCPRegistry {
         this.log.warn(`MCP tool "${tool.name}" activate failed`, err);
       }
     }
+    // Visibility only — no connection changed, so no `mcp.server.connected`:
+    // that event drove a "connected" toast and the connects counter on every
+    // ephemeral `mcp_use` call.
     this.log.info(`MCP server "${name}" activated (${slot.toolNames.length} tools)`);
-    this.events.emit('mcp.server.connected', { name, toolCount: slot.toolNames.length });
   }
 
   /**
@@ -305,8 +307,9 @@ export class MCPRegistry {
       }
     }
     slot.toolNames = [];
+    // The connection stays up: emitting `mcp.server.disconnected` here flipped
+    // the WebUI row to an error state with a warning toast after every call.
     this.log.info(`MCP server "${name}" deactivated (${count} tools removed)`);
-    this.events.emit('mcp.server.disconnected', { name, reason: 'deactivate' });
     return count;
   }
 
@@ -352,12 +355,53 @@ export class MCPRegistry {
     this.events.emit('mcp.server.disconnected', { name, reason: 'stop' });
   }
 
-  async restart(name: string): Promise<void> {
+  /**
+   * Stop and start a registered server. Pass `nextCfg` to apply an edited
+   * configuration: without it the slot reconnects with the config it was
+   * started with, so an update/enable routed through restart() silently kept
+   * the old command, url, env, permission and lazy flag until the next boot.
+   */
+  /**
+   * Put a running server to sleep while keeping its configuration enabled.
+   *
+   * A lazy server goes `dormant`: the process stops but its tools stay
+   * registered and the next call wakes it. Surfaces previously used stop() for
+   * this, which unregistered a lazy server's tools — "sleep" silently became
+   * "unreachable until restarted". Eager servers have no dormant state, so
+   * for them sleep is a stop.
+   */
+  async sleep(name: string): Promise<void> {
+    const slot = this.requireSlot(name);
+    if (!slot.lazy) {
+      await this.stop(name);
+      return;
+    }
+    if (slot.state === 'dormant') return;
+    if (slot.operations.inFlightCalls > 0) {
+      throw new Error(`MCP server "${name}" has tool calls in flight — try again when they finish`);
+    }
+    await sleepIdleSlot(this.idleContext(), slot);
+  }
+
+  async restart(name: string, nextCfg?: MCPServerConfig | undefined): Promise<void> {
     const slot = this.servers.get(name);
     if (!slot) throw new Error(`MCP server "${name}" not registered`);
+    if (nextCfg && nextCfg.name !== name) {
+      throw new Error(`MCP restart config names "${nextCfg.name}", expected "${name}"`);
+    }
+    if (nextCfg?.enabled === false) {
+      await this.stop(name);
+      this.markDisabled(nextCfg);
+      return;
+    }
     slot.operations.restartCount++;
     this.recordOperation(slot, 'restart', 'manual');
     await this.stop(name);
+    if (nextCfg) {
+      slot.cfg = nextCfg;
+      slot.lazy = !!nextCfg.lazy && !!this.cacheDir;
+      slot.discoveredTools = undefined;
+    }
     slot.attempts = 0;
     slot.reconnectCycles = 0; // user intent: start fresh
     if (slot.lazy) {
@@ -638,24 +682,12 @@ export class MCPRegistry {
   private readonly onToolsChanged = (name: string, _tools: { name: string }[]): void => {
     const slot = this.servers.get(name);
     if (!slot?.client) return;
-    // Unregister any previously registered tools, then re-apply the fresh set.
-    for (const t of slot.toolNames) {
-      try {
-        this.toolRegistry.unregister(t);
-      } catch {
-        /* ignore */
-      }
-    }
-    slot.toolNames = [];
-    slot.registeredLazy = false;
+    // applyTools swaps the registered set itself (and keeps an lazyMode
+    // activation alive). No connection event: the connection did not change.
     const discovered = slot.client.listTools();
-    // Refresh the lazy manifest so a future cold boot sees the new tool set.
     this.applyTools(slot, discovered, slot.client);
+    // Refresh the lazy manifest so a future cold boot sees the new tool set.
     void this.persistCapabilityManifest(slot);
-    this.events.emit('mcp.server.connected', {
-      name: slot.cfg.name,
-      toolCount: slot.toolNames.length,
-    });
     this.log.info(
       `MCP server "${slot.cfg.name}" tools refreshed (${this.toolNamesForSlot(slot).length} active)`,
     );
@@ -694,7 +726,12 @@ export class MCPRegistry {
     _signal: string | null,
   ): void => {
     const slot = this.servers.get(name);
-    if (!slot) return;
+    // Only the death of a LIVE connection is a disconnect. A client that fails
+    // mid-handshake closes (and exits) with its listeners still attached; the
+    // connect loop already owns that failure, and treating it here as well
+    // scheduled a second, concurrent reconnect and made the loop abandon its
+    // remaining attempts (it read the flipped 'disconnected' as a stop()).
+    if (slot?.state !== 'connected') return;
     if (slot.lazy) {
       this.recordFailure(slot, 'transport', 'process-exit-lazy');
       markLazySlotDormant(slot, this.events, `exit:${code ?? 'unknown'}`, {
@@ -714,7 +751,8 @@ export class MCPRegistry {
   /** Handles SSE / streamable-http disconnect — same recovery as stdio child exit. */
   private readonly onTransportDisconnect = (name: string): void => {
     const slot = this.servers.get(name);
-    if (!slot) return;
+    // Same live-connection guard as onChildExit.
+    if (slot?.state !== 'connected') return;
     if (slot.lazy) {
       this.recordFailure(slot, 'transport', 'http-disconnect-lazy');
       markLazySlotDormant(slot, this.events, 'http-disconnect', {
@@ -754,7 +792,9 @@ export class MCPRegistry {
     slot.reconnectCycles++;
     slot.operations.reconnectCount++;
     this.recordOperation(slot, 'reconnect', 'automatic');
-    await this.attemptConnect(slot);
+    // Through the single-flight gate: a tool call waking the slot at the same
+    // moment must share this connect, not spawn a second process.
+    await this.singleFlightConnect(slot);
   }
 
   private recordSuccess(slot: ServerSlot, resetFailures = true): void {

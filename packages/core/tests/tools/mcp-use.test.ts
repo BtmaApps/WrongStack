@@ -105,18 +105,78 @@ describe('createMcpUseTool', () => {
     await expect(run(tool, { server: 'ghost', tool: 't', input: {} })).rejects.toThrow('none');
   });
 
-  it('throws for a server that is not connected', async () => {
+  it('throws for a server that is not available', async () => {
     const tool = createMcpUseTool({
       registry: fakeRegistry({
         describe: vi
           .fn()
-          .mockReturnValue([{ name: 'github', state: 'connecting', toolCount: 0, enabled: true }]),
+          .mockReturnValue([{ name: 'github', state: 'failed', toolCount: 0, enabled: true }]),
       }),
       toolRegistry: fakeToolRegistry(),
     });
     await expect(run(tool, { server: 'github', tool: 't', input: {} })).rejects.toThrow(
-      /not connected.*connecting/,
+      /not available.*failed.*restart/,
     );
+  });
+
+  // Regression: `dormant` is the resting state of a lazy server — the gateway
+  // rejected exactly the servers it exists to reach.
+  it('calls a tool on a dormant lazy server (the wrapper wakes it)', async () => {
+    const inner = mcpTool(
+      'mcp__github__ping',
+      vi.fn(async () => 'pong'),
+    );
+    const tool = createMcpUseTool({
+      registry: fakeRegistry({
+        describe: vi
+          .fn()
+          .mockReturnValue([{ name: 'github', state: 'dormant', toolCount: 1, enabled: true }]),
+      }),
+      toolRegistry: fakeToolRegistry([inner]),
+    });
+    expect(await run(tool, { server: 'github', tool: 'ping', input: {} }, [inner])).toBe('pong');
+  });
+
+  // Regression: the first concurrent call to finish deactivated the server
+  // under a sibling still running its tool.
+  it('keeps the server activated until the last concurrent call finishes', async () => {
+    let active = false;
+    const activateServer = vi.fn(() => {
+      active = true;
+    });
+    const deactivateServer = vi.fn(() => {
+      active = false;
+      return 1;
+    });
+    const releases: Array<() => void> = [];
+    const seenActive: boolean[] = [];
+    const inner = mcpTool(
+      'mcp__github__slow',
+      vi.fn(async () => {
+        await new Promise<void>((resolve) => releases.push(resolve));
+        seenActive.push(active);
+        return 'done';
+      }),
+    );
+    const tool = createMcpUseTool({
+      registry: fakeRegistry({
+        activateServer,
+        deactivateServer,
+        isActivated: vi.fn(() => active),
+      }),
+      toolRegistry: fakeToolRegistry([inner]),
+    });
+    const first = run(tool, { server: 'github', tool: 'slow', input: {} }, [inner]);
+    const second = run(tool, { server: 'github', tool: 'slow', input: {} }, [inner]);
+    await vi.waitFor(() => expect(releases).toHaveLength(2));
+    releases[0]?.();
+    await first;
+    expect(deactivateServer).not.toHaveBeenCalled();
+    releases[1]?.();
+    await second;
+    expect(seenActive).toEqual([true, true]);
+    expect(activateServer).toHaveBeenCalledTimes(1);
+    expect(deactivateServer).toHaveBeenCalledTimes(1);
   });
 
   it('activates, calls the resolved tool, returns its result, and deactivates', async () => {

@@ -292,6 +292,29 @@ export const codebaseIndexServer = (): MCPServerConfig => ({
   permission: 'auto',
 });
 
+/**
+ * Resolve one `mcpServers` entry into a startable config.
+ *
+ * The record key IS the server name, and the documented way to turn a preset
+ * on is the bare `mcpServers: { github: { enabled: true } }` — no `name`, no
+ * `transport`, no `command`. Every boot path and `mcp_control enable` must
+ * therefore merge the preset under the entry and stamp the key as the name;
+ * callers that read `cfg.name` or skipped the merge started a server with an
+ * undefined name or no command at all.
+ */
+export function resolveMcpServerConfig(
+  name: string,
+  cfg: Partial<MCPServerConfig> | undefined,
+): MCPServerConfig | undefined {
+  const presets = allServers();
+  const preset = Object.hasOwn(presets, name) ? presets[name] : undefined;
+  if (!preset && !cfg?.transport) return undefined;
+  // A preset's catalog `enabled: false` is not the user's choice — only the
+  // entry's own flag decides whether the server runs.
+  const { enabled: _presetEnabled, ...presetBase } = preset ?? ({} as MCPServerConfig);
+  return { ...presetBase, ...cfg, name } as MCPServerConfig;
+}
+
 /** Everything bundled — full set of built-in servers. Useful for `wstack mcp add --all`. */
 export const allServers = (): Record<string, MCPServerConfig> => ({
   filesystem: { ...filesystemServer(), enabled: false },

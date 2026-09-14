@@ -359,7 +359,7 @@ export async function updateMcp(input: McpServerInput, deps: McpManageDeps): Pro
 
   // Re-apply to the registry so edits take effect without a manual restart.
   if (cfg.enabled !== false) {
-    return startServer(input.name, cfg, deps, `Server "${input.name}" updated`, { restart: true });
+    return startServer(input.name, cfg, deps, `Server "${input.name}" updated`);
   }
   await safeStop(input.name, deps);
   trackDisabled(deps.registry, cfg);
@@ -401,7 +401,7 @@ export async function enableMcp(name: string, deps: McpManageDeps): Promise<McpO
   cfg.enabled = true;
   servers[name] = cfg;
   await persist(deps.configPath, full, servers);
-  return startServer(name, cfg, deps, `Server "${name}" enabled`, { restart: true });
+  return startServer(name, cfg, deps, `Server "${name}" enabled`);
 }
 
 /** Disable a server in config and stop it. */
@@ -451,7 +451,7 @@ export async function restartMcp(name: string, deps: McpManageDeps): Promise<Mcp
   }
   const cfg = servers[name];
   if (!cfg) return { ok: false, message: `Server "${name}" is not in config.` };
-  return startServer(name, { ...cfg, name }, deps, `Server "${name}" started`, { restart: true });
+  return startServer(name, { ...cfg, name }, deps, `Server "${name}" started`);
 }
 
 /**
@@ -462,6 +462,16 @@ export async function discoverMcp(name: string, deps: McpManageDeps): Promise<Mc
   if (!name) return { ok: false, message: 'Server name is required' };
   const result = await restartMcp(name, deps);
   if (!result.ok) return result;
+  // A lazy server restarts DORMANT from its manifest — that is the cache, not
+  // a discovery. Wake it so the reported tools come from the live server (and
+  // a changed tool list replaces the stale manifest).
+  if (liveState(name, deps.registry).state === 'dormant') {
+    try {
+      await deps.registry.ensureConnected(name);
+    } catch (err) {
+      return { ok: false, message: `Failed to discover "${name}": ${errMessage(err)}` };
+    }
+  }
   const { state, tools } = liveState(name, deps.registry);
   return {
     ok: true,
@@ -483,16 +493,16 @@ async function startServer(
   cfg: MCPServerConfig,
   deps: McpManageDeps,
   okMessage: string,
-  opts?: { restart?: boolean },
 ): Promise<McpOpResult> {
   try {
     const alreadyRegistered = deps.registry.list().some((s) => s.name === name);
-    if (alreadyRegistered && opts?.restart) {
-      await deps.registry.restart(name);
-    } else if (alreadyRegistered) {
-      await deps.registry.restart(name);
+    if (alreadyRegistered) {
+      // Hand the edited config over: a bare restart(name) reconnected with the
+      // slot's ORIGINAL config, so `mcp.update` persisted the new command/url
+      // but kept running the old one until the next boot.
+      await deps.registry.restart(name, { ...cfg, name, enabled: true });
     } else {
-      await deps.registry.start({ ...cfg, enabled: true });
+      await deps.registry.start({ ...cfg, name, enabled: true });
     }
     const { state, tools } = liveState(name, deps.registry);
     return {

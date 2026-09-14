@@ -67,6 +67,49 @@ describe('GraphMemoryBackend.remember', () => {
   });
 });
 
+describe('GraphMemoryBackend graphPath separator handling', () => {
+  it('persists the graph when graphPath uses native path.join separators (win32)', async () => {
+    // path.join output is backslash-separated on win32; _saveGraph must derive
+    // the parent dir from either separator. Regression: it used
+    // lastIndexOf('/') alone, so dir became '' on native paths, mkdir('') threw
+    // ENOENT inside the best-effort catch, and the graph silently never
+    // persisted (the fwd()-normalized cases above masked it).
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mem-graph-native-'));
+    try {
+      const graphPath = path.join(dir, 'memory-graph.json');
+      const native = new GraphMemoryBackend({
+        paths: { projectDir: dir } as never,
+        graphPath,
+      });
+      await native.remember(scope, entry('native separator persistence'), path.join(dir, 'mem.md'));
+      await native.flush();
+      await expect(fs.readFile(graphPath, 'utf8')).resolves.toContain(
+        'native separator persistence',
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('creates missing directories for a nested native graphPath', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mem-graph-nested-'));
+    try {
+      const graphPath = path.join(dir, 'deep', 'nested', 'memory-graph.json');
+      const nested = new GraphMemoryBackend({
+        paths: { projectDir: dir } as never,
+        graphPath,
+      });
+      await nested.remember(scope, entry('nested directory persistence'), path.join(dir, 'mem.md'));
+      await nested.flush();
+      await expect(fs.readFile(graphPath, 'utf8')).resolves.toContain(
+        'nested directory persistence',
+      );
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('GraphMemoryBackend.list / search', () => {
   beforeEach(async () => {
     await backend.remember(

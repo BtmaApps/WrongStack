@@ -25,6 +25,21 @@ const SSE_READER_MAX_DATA_LINES = 1024;
 export class SSEReader {
   private buffer = '';
   private dataLines: string[] = [];
+  private eventName = '';
+  private endpointListeners: Array<(endpoint: string) => void> = [];
+
+  /**
+   * Legacy HTTP+SSE transport: the server's first event is
+   * `event: endpoint` whose data is the (relative) URL to POST requests to.
+   * Its payload is a URL, not JSON, so it is dispatched separately.
+   */
+  onEndpoint(cb: (endpoint: string) => void): () => void {
+    this.endpointListeners.push(cb);
+    return () => {
+      const idx = this.endpointListeners.indexOf(cb);
+      if (idx >= 0) this.endpointListeners.splice(idx, 1);
+    };
+  }
   private listeners: Array<
     (event: {
       jsonrpc?: string | undefined;
@@ -100,8 +115,7 @@ export class SSEReader {
     if (value.startsWith(' ')) value = value.slice(1);
 
     if (field === 'event') {
-      // The current transport only cares about JSON-RPC payloads in data
-      // fields. Event names are accepted for spec compatibility.
+      this.eventName = value;
     } else if (field === 'data') {
       if (this.dataLines.length >= SSE_READER_MAX_DATA_LINES) {
         throw new ToolError({
@@ -120,12 +134,24 @@ export class SSEReader {
   }
 
   private flush(): void {
+    const eventName = this.eventName;
+    this.eventName = '';
     if (this.dataLines.length === 0) {
       return;
     }
     const data = this.dataLines.join('\n').trim();
     this.dataLines = [];
     if (!data) return;
+    if (eventName === 'endpoint') {
+      for (const cb of this.endpointListeners) {
+        try {
+          cb(data);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
     try {
       const parsed = JSON.parse(data) as {
         jsonrpc?: string | undefined;
@@ -157,6 +183,8 @@ export class SSEReader {
   reset(): void {
     this.buffer = '';
     this.dataLines = [];
+    this.eventName = '';
     this.listeners = [];
+    this.endpointListeners = [];
   }
 }

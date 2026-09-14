@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import type { MemoryEntry, MemoryScope } from '../types/memory.js';
-import { type FileMemoryBackendOptions, FileMemoryBackend } from './memory-backend.js';
 import type { MemoryBackend } from './memory-backend.js';
+import { FileMemoryBackend, type FileMemoryBackendOptions } from './memory-backend.js';
 
 // ── Graph node and edge types ──────────────────────────────────────────
 
@@ -362,7 +362,15 @@ export class GraphMemoryBackend implements MemoryBackend {
         nodes: [...this.nodes.entries()],
         edges: this.edges,
       };
-      const dir = this.graphFile.substring(0, this.graphFile.lastIndexOf('/'));
+      // Separator-robust dirname: graphPath may arrive as path.join() output
+      // (backslash-separated on win32), where lastIndexOf('/') alone is -1 and
+      // `dir` silently became '' — mkdir('') rejects ENOENT and the catch
+      // swallowed it, so the graph never persisted. Mirror the Math.max(...)
+      // last-separator pattern used by techstack-mailbox-consumer.ts and
+      // tools/task.ts; `.` keeps a bare-filename graphPath mkdir-able on both
+      // platforms.
+      const lastSep = Math.max(this.graphFile.lastIndexOf('/'), this.graphFile.lastIndexOf('\\'));
+      const dir = lastSep === -1 ? '.' : this.graphFile.slice(0, lastSep);
       await fs.mkdir(dir, { recursive: true });
       // Atomic write via temp file
       const tmp = `${this.graphFile}.tmp`;

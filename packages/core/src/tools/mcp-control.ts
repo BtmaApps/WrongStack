@@ -14,13 +14,14 @@ import { ToolCapabilities } from '../security/capabilities.js';
  * This is the primary mechanism by which the LLM autonomously extends its
  * own capabilities at runtime — e.g. "I need GitHub access, let me enable it."
  */
-import { allServers } from '../infrastructure/mcp-servers.js';
+import { allServers, resolveMcpServerConfig } from '../infrastructure/mcp-servers.js';
 import { readJsonObjectFile, setJsonPath, updateJsonObjectFile } from '../utils/config-json.js';
 import type { Config, JSONSchema, MCPServerConfig, Tool } from '../index.js';
 export interface MCPRegistryHandle {
   start(cfg: MCPServerConfig): Promise<void>;
   stop(name: string): Promise<void>;
-  restart(name: string): Promise<void>;
+  /** `nextCfg` applies an edited config; omitted, the slot restarts as it was started. */
+  restart(name: string, nextCfg?: MCPServerConfig): Promise<void>;
   describe(): {
     name: string;
     state: string;
@@ -252,13 +253,14 @@ async function runEnable(
   const all = allServers();
   const configured = deps.getConfig().mcpServers ?? {};
 
-  // Resolve the target config — it may be a preset not yet in config.
-  // hasOwn on both records (Phase 3 truthiness sweep, security report item
-  // 14): `name` is agent-controlled tool input and `configured` is a
-  // JSON-derived record — a bare `configured[name]` resolves through
+  // Resolve the target config — it may be a preset not yet in config, or a
+  // partial entry like the documented `{ enabled: true }` that only makes
+  // sense merged over its preset. hasOwn (Phase 3 truthiness sweep, security
+  // report item 14): `name` is agent-controlled tool input and `configured`
+  // is a JSON-derived record — a bare `configured[name]` resolves through
   // Object.prototype for '__proto__'-shaped names.
   const fromConfig = Object.hasOwn(configured, name) ? configured[name] : undefined;
-  const cfg = fromConfig ?? (Object.hasOwn(all, name) ? all[name] : undefined);
+  const cfg = resolveMcpServerConfig(name, fromConfig);
   if (!cfg) {
     const known = Object.keys(all).join(', ');
     throw new Error(`Unknown server "${name}". Available presets: ${known}`);
@@ -277,11 +279,18 @@ async function runEnable(
   // Start the server in the registry, then persist on success.
   try {
     const live = deps.registry.describe().find((s) => s.name === name);
-    if (live && live.state === 'connected') {
+    if (live && (live.state === 'connected' || live.state === 'dormant')) {
       await persistEnabled();
       return `Server "${name}" is already running (${live.toolCount} tools registered).`;
     }
-    await deps.registry.start({ ...cfg, enabled: true });
+    // A registered-but-down slot (failed / disconnected / stopped) rejects a
+    // second start() as a duplicate; it has to be restarted instead. Disabled
+    // servers are tracked as `enabled: false` and are not slots, so they start.
+    if (live?.enabled) {
+      await deps.registry.restart(name, { ...cfg, enabled: true });
+    } else {
+      await deps.registry.start({ ...cfg, enabled: true });
+    }
     await persistEnabled();
     const updated = deps.registry.describe().find((s) => s.name === name);
     return `Enabled and started "${name}"${updated ? ` (${updated.toolCount} tools registered).` : '.'}`;
@@ -377,7 +386,8 @@ async function runActivate(
       `Server "${name}" is not registered. Use \`mcp_control({ action: "enable", server: "${name}" })\` first.`,
     );
   }
-  if (live.state !== 'connected') {
+  // A dormant lazy server activates fine: its wrappers spawn it on first call.
+  if (live.state !== 'connected' && live.state !== 'dormant') {
     throw new Error(
       `Server "${name}" is not connected (state: ${live.state}). Use \`enable\` to start it first.`,
     );
@@ -460,6 +470,10 @@ function badge(state: string): string {
       return '○ disconnected';
     case 'failed':
       return '✗ failed';
+    case 'dormant':
+      return '◌ dormant (spawns on first call)';
+    case 'idle':
+      return '○ idle';
     default:
       return state;
   }
