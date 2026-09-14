@@ -1,4 +1,3 @@
-import type { HqCommandLatencySummary } from '../commands.js';
 import type { HqClientKind, HqClientRecord } from './client.js';
 import type { HqMachineRecord } from './core.js';
 import type { HqFleetSummary } from './fleet.js';
@@ -184,7 +183,21 @@ export interface HqSnapshot {
    * in-memory command audit ring. Absent until at least one command has been
    * both dispatched and acknowledged (additive, default undefined).
    */
-  commandLatency?: HqCommandLatencySummary;
+  // Declared structurally rather than imported from `../commands.js`: that
+  // import pulled `commands.ts` into the HQ-protocol type cycle
+  // (ARCH-CYCLE-TYPE-13), whose exception pins a 4-member scope. The cycle is
+  // the reason, and the safety net is that `snapshot.ts` assigns
+  // `summarizeCommandLatency()`'s result here — so a divergence from
+  // `HqCommandLatencySummary` fails to compile rather than drifting silently.
+  commandLatency?: {
+    /** Commands with both endpoints recorded; zero means no measurement yet. */
+    sampleCount: number;
+    /** Nearest-rank percentiles; present only when a sample exists. */
+    p50Ms?: number;
+    p95Ms?: number;
+    p99Ms?: number;
+    maxMs?: number;
+  };
   totals: {
     activeProjects: number;
     activeClients: number;

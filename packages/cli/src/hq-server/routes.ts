@@ -28,7 +28,7 @@ import type { WebSocket } from 'ws';
 import { HQ_HTML } from '../hq-recovery-html.js';
 import { resolveHqDistDir, serveHqStatic } from '../hq-static-serve.js';
 import * as HqServerAuth from './auth.js';
-import type { MailboxGatewayManager } from './mailbox-gateway-manager.js';
+import type { HqMailboxGatewayHealth } from './mailbox-gateway-health.js';
 import {
   type ApplyHqAuthFile,
   callerCanAdministerAuth,
@@ -157,7 +157,12 @@ export interface HqRouterDeps {
    * `mailboxGatewayRateLimiter` — passed explicitly so the handler can
    * call `getHealth()` without reaching into a closure.
    */
-  mailboxManager: MailboxGatewayManager;
+  // Structural, not `MailboxGatewayManager`: importing that type closed a
+  // 2-member type cycle back to ./mailbox-gateway-manager.js, which imports
+  // from this module. Same dependency-leaf recipe as routes/system-handlers.ts.
+  mailboxManager: {
+    getHealth(): HqMailboxGatewayHealth;
+  };
   alertEngine: HqAlertEngine;
   auditLog: HqCommandAuditLog;
   persistence: ReturnType<typeof createHqPersistence>;

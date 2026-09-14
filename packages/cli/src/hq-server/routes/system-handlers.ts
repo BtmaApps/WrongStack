@@ -13,7 +13,7 @@ import type {
   HqPersistence,
 } from '@wrongstack/core/hq';
 import type { WebSocket } from 'ws';
-import type { MailboxGatewayManager } from '../mailbox-gateway-manager.js';
+import type { HqMailboxGatewayHealth } from '../mailbox-gateway-health.js';
 import type { ConnectedClient } from '../types.js';
 
 export async function handleApiSystemUpdate(res: http.ServerResponse): Promise<void> {
@@ -148,10 +148,22 @@ export async function handleApiAlerts(
 }
 
 /**
+ * Structural view of the gateway manager this handler needs. Typing the
+ * parameter structurally — rather than importing `MailboxGatewayManager` —
+ * keeps this module out of the type-inclusive cycle
+ * `mailbox-gateway-manager → routes → system-handlers`, which
+ * `check:architecture` reports as unexcepted. The real manager satisfies this
+ * shape, so callers and the wire contract are unaffected.
+ */
+interface MailboxHealthSource {
+  getHealth(): HqMailboxGatewayHealth;
+}
+
+/**
  * W2 #14 (RFC hq-improvements-2026-09.md): GET /api/health/mailbox —
  * mailbox gateway health snapshot for the cockpit's "Mailbox gateway" card.
  *
- * Surfaces {@link MailboxGatewayManager.getHealth} verbatim. The contract
+ * Surfaces {@link MailboxHealthSource.getHealth} verbatim. The contract
  * (basename as `projectId`, full path as `projectRoot`, `actorAttached: false`
  * on the HQ mount, sorted gateways) is locked by the focused test in
  * `packages/cli/tests/hq-mailbox-gateway-health.test.ts`.
@@ -162,7 +174,7 @@ export async function handleApiAlerts(
  */
 export function handleApiMailboxHealth(
   res: http.ServerResponse,
-  mailboxManager: MailboxGatewayManager,
+  mailboxManager: MailboxHealthSource,
 ): void {
   const health = mailboxManager.getHealth();
   res.writeHead(200, {
