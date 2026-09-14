@@ -292,6 +292,11 @@
       "fingerprint": "8f0a065f34a0d18f"
     },
     {
+      "file": "packages/tools/tests/codebase-go-py-toolchain-parsers.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "1d7cc13f3647510a"
+    },
+    {
       "file": "packages/tools/tests/codebase-index-worker.test.ts",
       "kind": "skipIf",
       "fingerprint": "73f47856be4c7a02"

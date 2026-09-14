@@ -43,7 +43,6 @@ describe('graph readers — bound-variable chunking', () => {
     const count = 1_200;
     store.insertSymbols(
       Array.from({ length: count }, (_, i) => sym(`chainFn${i}`, `/p/src/f${i}.ts`)),
-      1,
     );
     const ids = idsByName();
     for (let i = 0; i < count - 1; i++) {
@@ -59,7 +58,7 @@ describe('graph readers — bound-variable chunking', () => {
   });
 
   it('counts a file-internal ref once in the symbol graph (no UNION ALL double count)', () => {
-    store.insertSymbols([sym('outer', '/p/one.ts', 1), sym('inner', '/p/one.ts', 5)], 1);
+    store.insertSymbols([sym('outer', '/p/one.ts', 1), sym('inner', '/p/one.ts', 5)]);
     const ids = idsByName();
     const fromId = ids.get('outer') as number;
     store.insertRefs(fromId, [{ fromId, toName: 'inner', callType: 'call', line: 2 }]);
