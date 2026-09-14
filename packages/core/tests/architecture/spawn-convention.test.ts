@@ -125,8 +125,8 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'core/src/skills/skill-generator.ts': REASON_TRUSTED_DAEMON,
   // ── Internal parser/toolchain workers ──
   'tools/src/codebase-index/indexer.ts': REASON_INTERNAL_WORKER,
-  'tools/src/codebase-index/parser-batch.ts': REASON_INTERNAL_WORKER,
-  'tools/src/codebase-index/go-parser.ts': REASON_INTERNAL_WORKER,
+  // Shared `runToolchainChild` — go/py parsers and parser-batch spawn through it.
+  'tools/src/codebase-index/toolchain-scripts.ts': REASON_INTERNAL_WORKER,
   'tools/src/codebase-index/py-parser.ts': REASON_INTERNAL_WORKER,
   'sage/src/anchors/verify.ts': REASON_INTERNAL_WORKER,
   'sage/src/domain-term-extractor.ts': REASON_INTERNAL_WORKER,
