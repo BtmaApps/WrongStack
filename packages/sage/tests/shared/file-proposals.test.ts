@@ -5,7 +5,7 @@ describe('fileTriageProposals', () => {
   const recent = new Date(Date.now() - 86_400_000).toISOString();
 
   it('skips a proposal whose unchanged memory a human already reviewed', async () => {
-    const createCandidate = vi.fn(async () => ({ id: 'new' }));
+    const createCandidate = vi.fn(async (_input: { targetMemoryId?: string }) => ({ id: 'new' }));
     const surface = {
       listCandidates: async () => [
         {
@@ -43,10 +43,9 @@ describe('fileTriageProposals', () => {
 
     expect(result.skippedAsReviewed).toBe(1);
     expect(result.filed).toBe(2);
-    expect(
-      createCandidate.mock.calls.map(
-        (call) => (call[0] as { targetMemoryId: string }).targetMemoryId,
-      ),
-    ).toEqual(['edited', 'fresh']);
+    expect(createCandidate.mock.calls.map(([input]) => input.targetMemoryId)).toEqual([
+      'edited',
+      'fresh',
+    ]);
   });
 });

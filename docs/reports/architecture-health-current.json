@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T06:53:33.745Z",
+  "generatedAt": "2026-09-15T07:06:05.395Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3799,
-    "testFiles": 3392,
+    "testFiles": 3393,
     "sourceLines": 928677,
     "workspaceEdges": 128,
     "moduleEdges": 12136,
@@ -216,7 +216,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 863,
-      "testFiles": 765,
+      "testFiles": 766,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +231,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 765
+          "testFiles": 766
         }
       ]
     },
@@ -5029,6 +5029,12 @@
       },
       {
         "file": "packages/core/tests/architecture/ram-leak-caps-guard.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/release-check-matrix-log.test.ts",
         "projects": [
           "root-node"
         ]

@@ -44,7 +44,7 @@
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createWriteStream, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -391,7 +391,15 @@ function fail(msg) {
  * destinations; both are tee'd into the same per-gate diagnostic log.
  */
 async function runGate(command, logFile) {
-  const log = createWriteStream(logFile, { encoding: 'utf8' });
+  // A prior gate or an external cleanup may remove `.reports` while the
+  // matrix is still running. Recreate the parent for every gate and open the
+  // file synchronously so a missing path cannot surface later as an unhandled
+  // WriteStream `error` event.
+  mkdirSync(path.dirname(logFile), { recursive: true });
+  const log = createWriteStream(logFile, {
+    encoding: 'utf8',
+    fd: openSync(logFile, 'w'),
+  });
   log.write(`$ ${command}\n`);
 
   const child = spawn(command, {

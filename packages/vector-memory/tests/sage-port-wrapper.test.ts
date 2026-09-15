@@ -187,10 +187,7 @@ describe('wrapMemoryPortWithVectorRecall', () => {
       store: undefined as unknown as VectorMemoryStore,
       vectorRecall,
     });
-    const service = wrapped.getCapability<{
-      searchSage: (query: string, opts?: Record<string, unknown>) => Promise<Sage[]>;
-      rememberSage: unknown;
-    }>(SAGE_SERVICE_CAPABILITY)!;
+    const service = wrapped.getCapability(SAGE_SERVICE_CAPABILITY)!;
 
     const ids = (await service.searchSage('anything', { includeStatuses: ['active'] })).map(
       (memory) => memory.id,

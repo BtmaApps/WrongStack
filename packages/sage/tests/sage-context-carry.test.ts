@@ -494,7 +494,7 @@ describe.skipIf(!isSqliteAvailable())('candidate acceptance', () => {
 
 describe('outcome capture', () => {
   it('never anchors a non-command tool error as a shell command', async () => {
-    const rememberSage = vi.fn(async () => ({}));
+    const rememberSage = vi.fn(async (_input: { anchors?: unknown[] }) => ({}));
     const port = { getCapability: () => ({ rememberSage }) } as never;
     const middleware = createSageOutcomeCaptureMiddleware({ memory: port, errorPatterns: true });
     await middleware.handler(
