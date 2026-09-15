@@ -225,4 +225,60 @@ describe('WebUI structured user input dialog', () => {
       },
     });
   });
+
+  it('re-enables the form when the server never confirms the submit', () => {
+    render(<UserInputDialog />);
+    act(() => socket.emit('user.input_requested', request('r1', 'Timeout')));
+    const tenant = screen
+      .getAllByRole('textbox')
+      .find((element) => element.tagName.toLowerCase() === 'textarea')!;
+    fireEvent.change(tenant, { target: { value: 'Acme' } });
+
+    // Arm BEFORE the submit so the timeout lands on the fake clock; real
+    // timers stay in charge of the radix dialog mount above.
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Submit answers' }));
+      expect(
+        (screen.getByRole('button', { name: 'Submitting…' }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+
+      // The send "succeeded" (queued), so only the client-side submit
+      // timeout can unlock the form when the frame is later dropped.
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(screen.getByRole('button', { name: 'Submit answers' })).toBeTruthy();
+      expect(screen.getByText(/No confirmation received/)).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancel answers the server with status cancelled and unlocks the form', () => {
+    render(<UserInputDialog />);
+    act(() => socket.emit('user.input_requested', request('r1', 'Cancel')));
+    const tenant = screen
+      .getAllByRole('textbox')
+      .find((element) => element.tagName.toLowerCase() === 'textarea')!;
+    fireEvent.change(tenant, { target: { value: 'Acme' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit answers' }));
+    expect(
+      (screen.getByRole('button', { name: 'Submitting…' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(socket.client.send).toHaveBeenCalledTimes(2);
+    expect(socket.client.send.mock.calls[1]?.[0]).toMatchObject({
+      type: 'user.input_submit',
+      payload: {
+        sessionId: 's1',
+        response: { requestId: 'r1', status: 'cancelled', answers: [] },
+      },
+    });
+    expect(screen.getByRole('button', { name: 'Submit answers' })).toBeTruthy();
+    expect(screen.getByText(/Cancel requested/)).toBeTruthy();
+  });
 });

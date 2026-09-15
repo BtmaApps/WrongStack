@@ -1,5 +1,5 @@
 import { Check, Sparkles } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { UserInputQuestion, UserInputRequest } from './types.js';
 
 type DraftAnswer = {
@@ -15,6 +15,13 @@ const EMPTY_ANSWER: DraftAnswer = {
   customSelected: false,
   delegated: false,
 };
+/**
+ * How long a submit may stay unanswered before the form unlocks again.
+ * A dropped send (offline-queue overflow, dead socket) is never resolved
+ * server-side, and only a resolved request resets `submitting` — without
+ * this timer the modal locks on "Submitting…" until a fresh request lands.
+ */
+const SUBMIT_TIMEOUT_MS = 10_000;
 export function UserInputModal({
   pending,
   queuedCount,
@@ -40,6 +47,20 @@ export function UserInputModal({
     () => pending?.request.tabs.flatMap((item) => item.questions) ?? [],
     [pending],
   );
+  // Unlock a submit the server never confirmed (see SUBMIT_TIMEOUT_MS).
+  // Cleanup runs on every `submitting` transition, so a server resolution
+  // (pending → null → the reset block above flips `submitting`) also clears
+  // the pending timer.
+  useEffect(() => {
+    if (!submitting) return;
+    const timer = setTimeout(() => {
+      setSubmitting(false);
+      setValidationMessage(
+        'No confirmation received — check the connection, then retry or cancel.',
+      );
+    }, SUBMIT_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [submitting]);
   if (!pending) return null;
   const active = pending.request.tabs[tab] ?? pending.request.tabs[0]!;
   const missing = questions.filter((q) => q.required && !hasAnswer(draft[q.id]));
@@ -84,6 +105,24 @@ export function UserInputModal({
         }),
       },
     });
+  };
+  const cancel = () => {
+    if (!pending) return;
+    // 'cancelled' is a first-class UserInputResponse.status (core
+    // types/user-input.ts): the server-side awaiter settles on any matching
+    // requestId and the resulting user.input_resolved frame removes this
+    // entry from the client queue. If this send is also dropped, the local
+    // state reset below still unlocks the form — it stays usable so the
+    // answer can be retried (or cancelled again) once the connection
+    // returns.
+    send('user.input_submit', {
+      sessionId: pending.sessionId,
+      response: { requestId: pending.request.id, status: 'cancelled', answers: [] },
+    });
+    setSubmitting(false);
+    setValidationMessage(
+      'Cancel requested — it may not have reached the agent while the connection is down.',
+    );
   };
   const applyRecommendations = (scope: 'tab' | 'all') => {
     const targets = scope === 'all' ? questions : active.questions;
@@ -190,6 +229,9 @@ export function UserInputModal({
             {validationMessage ||
               (valid ? 'Ready' : `${missing.length} required answer(s) missing`)}
           </span>
+          <button type="button" onClick={cancel}>
+            Cancel
+          </button>
           <button type="button" disabled={submitting} onClick={submit}>
             {submitting ? 'Submitting…' : (pending.request.submitLabel ?? 'Submit answers')}
           </button>

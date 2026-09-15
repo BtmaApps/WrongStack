@@ -42,6 +42,18 @@ import { ensureSessionLane, setActiveSessionLane } from '/src/stores/session-lan
 import { useUserInputStore } from '/src/stores/user-input-store.ts';
 ensureSessionLane('browser-session');
 setActiveSessionLane('browser-session');
+// Record every outbound frame so the smoke can assert the cancelled
+// user.input_submit. The wrapper stays on the real client, so frames still
+// pass through protocol validation and the queueing/boolean send contract.
+import { getWSClient } from '/src/lib/ws-client.ts';
+import { useConfigStore } from '/src/stores/index.ts';
+window.__wsSent = [];
+const wsClient = getWSClient(useConfigStore.getState().wsUrl);
+const originalSend = wsClient.send;
+wsClient.send = (message, options) => {
+  window.__wsSent.push(message);
+  return originalSend.call(wsClient, message, options);
+};
 const options = Array.from({ length: 6 }, (_, index) => ({ id: 'option_' + index, label: 'Option ' + (index + 1), description: 'A concrete trade-off for option ' + (index + 1) }));
 useUserInputStore.getState().enqueue({ sessionId: 'browser-session', request: {
   id: 'browser-form', title: 'Production architecture decisions', description: 'Answer the questions required to continue safely.', submitLabel: 'Submit answers',
@@ -64,7 +76,8 @@ const pending = { sessionId: 'simple-session', request: { id: 'simple-form', tit
   { id: 'architecture', label: 'Architecture', questions: Array.from({ length: 5 }, (_, index) => ({ id: 'choice_' + index, prompt: 'Question ' + (index + 1) + '?', kind: 'single_select', required: true, options, recommendedOptionIds: ['option_0'], recommendationReason: 'Safest default.', allowCustomResponse: true })) },
   { id: 'product', label: 'Product', questions: [{ id: 'tenant_name', prompt: 'Tenant name?', kind: 'text', required: true }] }
 ] } };
-const send = (type, payload) => { window.__submitted = { type, payload }; };
+window.__sent = [];
+const send = (type, payload) => { window.__sent.push({ type, payload }); };
 createRoot(document.getElementById('root')).render(React.createElement(UserInputModal, { pending, queuedCount: 2, send }));
 window.__userInputReady = true;
 `;
@@ -187,17 +200,51 @@ async function runSurface(browser, root, source, name) {
     if ((await delegate.getAttribute('aria-pressed')) !== 'false') {
       throw new Error(`${name} did not clear delegation after a concrete answer`);
     }
+    // Submit, then Cancel: in a real browser the cancel click must emit a
+    // cancelled user.input_submit frame (last one recorded) and unlock the
+    // form — the same lock→cancel→unlock contract the unit tests cover, now
+    // exercised through the real rendering + socket stack.
+    await page.getByRole('button', { name: 'Submit answers' }).click();
+    await page.getByRole('button', { name: 'Submitting…' }).waitFor();
     if (name === 'SimpleUI') {
-      await page.getByRole('button', { name: 'Submit answers' }).click();
-      const submitted = await page.evaluate(() => window.__submitted);
-      if (submitted?.type !== 'user.input_submit') {
-        throw new Error('SimpleUI submit did not produce a tool response');
+      const submitted = await page.evaluate(() => window.__sent[0]);
+      if (
+        submitted?.type !== 'user.input_submit' ||
+        submitted?.payload?.response?.status !== 'submitted'
+      ) {
+        throw new Error('SimpleUI submit did not produce a submitted response frame');
       }
     }
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    // `name` must be passed explicitly: page.evaluate stringifies the
+    // function, so a free `name` would silently resolve to window.name.
+    const frames = await page.evaluate(
+      (surface) => (surface === 'WebUI' ? window.__wsSent : window.__sent),
+      name,
+    );
+    const cancelled = frames.at(-1);
+    const expectedRequestId = name === 'WebUI' ? 'browser-form' : 'simple-form';
+    if (cancelled?.type !== 'user.input_submit') {
+      throw new Error(`${name} cancel did not emit a user.input_submit frame`);
+    }
+    const response = cancelled.payload?.response;
+    if (response?.status !== 'cancelled' || response?.requestId !== expectedRequestId) {
+      throw new Error(`${name} cancel frame was not a cancelled response for ${expectedRequestId}`);
+    }
+    if (!Array.isArray(response.answers) || response.answers.length !== 0) {
+      throw new Error(`${name} cancel frame carried answers`);
+    }
+    const submit = page.getByRole('button', { name: 'Submit answers' });
+    await submit.waitFor();
+    if (await submit.isDisabled()) {
+      throw new Error(`${name} form stayed locked after cancel`);
+    }
+    await page.getByText(/Cancel requested/).waitFor();
     return {
       name,
       viewports: ['390x520', '390x300', '1280x300'],
       interaction: 'passed',
+      cancel: 'passed',
     };
   } finally {
     await page.close();

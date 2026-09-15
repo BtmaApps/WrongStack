@@ -34,6 +34,13 @@ const EMPTY_ANSWER: DraftAnswer = {
   customSelected: false,
   delegated: false,
 };
+/**
+ * How long a submit may stay unanswered before the form unlocks again.
+ * A send that was accepted but queued (and later dropped by a disconnect)
+ * is never resolved server-side, and only a resolved request resets
+ * `submitting` — without this timer the dialog locks on "Submitting…".
+ */
+const SUBMIT_TIMEOUT_MS = 10_000;
 
 export function UserInputDialog() {
   const wsUrl = useConfigStore((state) => state.wsUrl);
@@ -76,6 +83,21 @@ export function UserInputDialog() {
     setValidationMessage('');
     setSubmitting(false);
   }, [request]);
+
+  // Unlock a submit the server never confirmed (see SUBMIT_TIMEOUT_MS).
+  // Cleanup runs on every `submitting` transition, so a server resolution
+  // (request swap → the reset effect above flips `submitting`) also clears
+  // the pending timer.
+  useEffect(() => {
+    if (!submitting) return;
+    const timer = setTimeout(() => {
+      setSubmitting(false);
+      setValidationMessage(
+        'No confirmation received — check the connection, then retry or cancel.',
+      );
+    }, SUBMIT_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [submitting]);
 
   const questions = useMemo(() => request?.tabs.flatMap((tab) => tab.questions) ?? [], [request]);
   const missing = questions.filter(
@@ -124,6 +146,30 @@ export function UserInputDialog() {
       setSubmitting(false);
       setValidationMessage('Could not send the answers. Check the connection and try again.');
     }
+  };
+
+  const cancel = () => {
+    if (!request || !entry) return;
+    // 'cancelled' is a first-class UserInputResponse.status (core
+    // types/user-input.ts): the server-side awaiter settles on any matching
+    // requestId and the resulting user.input_resolved frame removes the
+    // entry from the store. A false return means the frame never left; a
+    // true return means it was queued, which a disconnect can still drop —
+    // either way the form unlocks and stays usable so the answers can be
+    // retried (or cancelled again) once the connection returns.
+    const sent = getWSClient(wsUrl).send({
+      type: 'user.input_submit',
+      payload: {
+        sessionId: entry.sessionId,
+        response: { requestId: request.id, status: 'cancelled', answers: [] },
+      },
+    });
+    setSubmitting(false);
+    setValidationMessage(
+      sent
+        ? 'Cancel requested — it may not have reached the agent while the connection is down.'
+        : 'Could not cancel — check the connection and try again.',
+    );
   };
 
   const applyRecommendations = (scope: 'tab' | 'all') => {
@@ -266,6 +312,9 @@ export function UserInputDialog() {
             {validationMessage ||
               (valid ? 'Ready to submit' : `${missing.length} required answer(s) missing`)}
           </span>
+          <Button type="button" variant="outline" onClick={cancel}>
+            Cancel
+          </Button>
           <Button disabled={submitting} onClick={submit}>
             {submitting ? 'Submitting…' : (request.submitLabel ?? 'Submit answers')}
           </Button>
