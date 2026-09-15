@@ -21,6 +21,20 @@ describe('hookMatcherMatches', () => {
 });
 
 describe('HookRunner.preToolUse', () => {
+  it('uses the executing WebUI context session instead of the boot-session fallback', async () => {
+    const reg = new HookRegistry();
+    const seen: Array<string | undefined> = [];
+    reg.registerInProcess('PreToolUse', '*', (input) => {
+      seen.push(input.sessionId);
+    });
+    const runner = new HookRunner({ registry: reg, sessionId: () => 'boot-session' });
+
+    await runner.preToolUse('read', {}, { ...env, session: { id: 'tab-session-a' } });
+    await runner.preToolUse('read', {}, { ...env, session: { id: 'tab-session-b' } });
+
+    expect(seen).toEqual(['tab-session-a', 'tab-session-b']);
+  });
+
   it('supports explicit allow/deny/mutate outcomes', async () => {
     const reg = new HookRegistry();
     reg.registerInProcess('PreToolUse', '*', async (input) => ({

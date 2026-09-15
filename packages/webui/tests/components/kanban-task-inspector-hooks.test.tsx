@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { KanbanBoard, KanbanTask } from '@wrongstack/kanban';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nestedButtons } from '../helpers/nested-buttons.js';
 
 // Hoisted reference so the vi.mock factories (which run before module
 // initialization) can read the same mutable that tests assign in
@@ -301,5 +302,23 @@ describe('KanbanView — TaskInspector hook-order regression (React error 310)',
       criticalRisks: 1,
       warningRisks: 1,
     });
+  });
+
+  it('renders no button nested inside another button in the task inspector', () => {
+    const task = makeTask();
+    mockRefs.activeBoard = makeBoard(task);
+    renderKanban();
+    fireEvent.click(screen.getByRole('button', { name: `Select task: ${task.title}` }));
+
+    // The inspector chrome carries inline header actions (expand/collapse,
+    // close) above per-tab control rows, and every tab renders its own actions,
+    // so a nesting regression can arrive with any one of them. Scoped to the
+    // inspector element rather than the document so unrelated board markup
+    // cannot mask (or fake) the result.
+    for (const tab of ['Definition', 'Execution', 'Evidence', 'Breakdown', 'History']) {
+      fireEvent.click(screen.getByRole('tab', { name: new RegExp(tab) }));
+      const inspector = screen.getByRole('complementary', { name: 'Task inspector' });
+      expect(nestedButtons(inspector)).toEqual([]);
+    }
   });
 });

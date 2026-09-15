@@ -261,10 +261,21 @@ scroll position and unsent draft survive a trip to Files or Kanban.
   tri-state (`light | dark | system`) and lives in `ThemeProvider`, which
   resolves `system` against `prefers-color-scheme`; the button toggles against
   the *resolved* mode, and `system` is selected from Settings rather than from
-  the topbar. The design system ("Engineering Instrument Deck": IBM Plex
-  type, warm-graphite/​warm-paper surfaces, signal-amber accent, status LEDs) is
-  defined entirely with HSL CSS variables in `src/index.css`, so both modes stay
-  in lockstep. The sidebar brand plate carries a live connection LED.
+  the topbar. The design system ("Operator Workbench") is defined entirely in
+  `src/index.css` as HSL channel triplets consumed through `hsl(var(--token))`
+  (Tailwind 4 bridges them into utilities via its `@theme` block), so both modes
+  stay in lockstep: Manrope for interface text, Space Grotesk for display, IBM
+  Plex Mono for code and data; warm paper with precise ink in light against warm
+  graphite with cream ink in dark; signal pink as the primary signal
+  (`--primary`, which also drives `--ring` and `--running`) with `--brand-orange`
+  as the secondary one, alongside the semantic `success` / `warning` / `info` /
+  `destructive` roles. Geometry is deliberately square — every `--radius-*` token
+  is `0`. An optional palette layer (`data-palette` on `<html>`, applied by
+  `ThemeProvider`, entries in `src/lib/palettes.ts`) re-points only the
+  brand-signal tokens and leaves the neutral surfaces shared. Connection health
+  appears in the topbar and as the dismissible `ConnectionBanner`, not as a
+  sidebar LED. Components consume the semantic tokens only;
+  `tests/lib/theme-color-boundaries.test.ts` enforces that.
 - **Settings / Model Routing** — Settings exposes the same durable model controls
   as the CLI: fallback chain, named fallback profiles, favorite models,
   smart-fallback auto toggle, and `modelMatrix` routing for role/phase/`*`

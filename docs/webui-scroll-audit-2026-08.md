@@ -3,6 +3,42 @@
 > Generated: 2026-08-01
 > Scope: `packages/webui/src` — 161 files, 538 scroll/overflow occurrences
 
+---
+
+> **SUPERSEDED 2026-09-15.** This audit is retained for its method and its
+> per-pattern reasoning; its counts and its remediation checklist are no longer
+> current. The redesign it predates (operator-workbench shell, the `min-h-0`
+> pass) landed afterwards, and re-measurement on 2026-09-15 shows two of its nine
+> remediation items closed outright. Do not re-run this audit as-is: see
+> [`docs/audit/webui-full-review-2026-09-03.md`](./audit/webui-full-review-2026-09-03.md)
+> for the current end-to-end review, and
+> [`docs/reports/webui-improvement-readiness-2026-09-15.md`](./reports/webui-improvement-readiness-2026-09-15.md)
+> §A2/A3 for the layout/visual/scroll gates that are still missing.
+
+### Disposition (2026-09-15)
+
+| Item | Status | Evidence |
+|---|---|---|
+| **P2.8** — `overflow-scroll` → `overflow-auto` (74 sites) | **Closed** | 0 occurrences of `overflow-scroll`, `overflow-y-scroll` or `overflow-x-scroll` in `src/**/*.{ts,tsx,css}` |
+| **P2.9** — add `scrollbar-gutter: stable` | **Closed** | 8 `scrollbar-gutter` sites now present |
+| **Pattern 2** — `min-h-0` on flex parents of scroll containers | **Carried forward** | 277 `min-h-0` sites exist, so the pattern was adopted — but this audit never enumerated the specific parents, so nothing is left to close mechanically; a regression gate is the durable fix |
+| **Pattern 1** — bound every `overflow-auto` container | **Carried forward** | 230 conditional-scroll sites remain (42 `overflow-auto` + 144 `overflow-y-auto` + 44 `overflow-x-auto`) in a source tree that has grown since 2026-08-01 |
+| **P0.1–P0.3** — ChatView, `App.tsx`, SidePanel | **Carried forward** | Layout changed under the workbench redesign, so file-level counts are no longer comparable to this audit's baseline |
+| **P1.4–P1.7** — FleetMonitor, ChatInput, FileExplorer, ToolResult | **Carried forward** | Same reason as P0: needs a gate, not another manual sweep |
+| **Infra.1** — Playwright config for WebUI | **Closed** | `playwright.config.ts` + 17 specs under `e2e/` |
+| **Infra.2** — scroll-position assertions for primary surfaces | **Partial** | `tests/components/search-overlay-scroll-stability.test.tsx`, `tests/components/chat-view-welcome-scroll.test.ts` and `tests/hooks/use-horizontal-scroll.test.tsx` cover individual surfaces, not the shell |
+| **Infra.3** — viewport resize tests for responsive behaviour | **Carried forward** | Playwright defines one desktop-Chromium project; no resize or mobile project exists (tracked as A3) |
+| **Infra.4** — visual regression snapshots for scroll state | **Carried forward** | 0 `toHaveScreenshot` assertions repo-wide (tracked as A2) |
+
+**Measurement note:** the disposition counts are class-string occurrences in
+`packages/webui/src/**/*.{ts,tsx,css}`. The original audit also counted inline
+`style` props and store state, so only the zero-count row (`overflow-scroll`) and
+the newly-added row (`scrollbar-gutter`) are directly comparable to its figures.
+No per-file claim in this audit was re-verified — treat the P0/P1 rows as
+"unverified, superseded by redesign" rather than "fixed".
+
+---
+
 ## Summary
 
 | Metric | Count |

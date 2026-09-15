@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProviderWaitingRoom } from '../../src/components/ProviderWaitingRoom.js';
 import { useLocalPrefs } from '../../src/stores/local-prefs.js';
 import { useProviderStatusStore } from '../../src/stores/provider-status-store.js';
+import { nestedButtons } from '../helpers/nested-buttons.js';
 
 const getProviderStatusMock = vi.fn();
 const getProviderAuditHistoryMock = vi.fn();
@@ -179,5 +180,43 @@ describe('ProviderWaitingRoom', () => {
     expect(getProviderAuditHistoryMock).toHaveBeenCalledWith(20);
     expect(screen.getByText(/healthy → blocked/i)).toBeTruthy();
     expect(screen.getByText(/quota_exceeded 429/i)).toBeTruthy();
+  });
+
+  it('renders no button nested inside another button', () => {
+    // Regression: the header's refresh control used to be rendered *inside* the
+    // expand/collapse button. A <button> descendant is invalid HTML and React
+    // reported it as a hydration error. This asserts the whole tree: the
+    // collapsed header, the expanded entry rows, their per-entry action buttons
+    // and the audit toggle.
+    useProviderStatusStore.setState({
+      entries: {
+        'anthropic\0claude-3-5-sonnet': {
+          providerId: 'anthropic',
+          model: 'claude-3-5-sonnet',
+          state: 'blocked',
+          reason: 'rate_limit',
+          stateExpiresAt: Date.now() + 120_000,
+          lastErrorMessage: 'quota exceeded',
+        } as any,
+      },
+    });
+
+    const { container } = render(<ProviderWaitingRoom />);
+
+    // Collapsed header: the refresh control must be a sibling of the toggle, not
+    // a child of it.
+    expect(nestedButtons(container)).toEqual([]);
+    expect(screen.getByRole('button', { name: /Refresh status/i })).toBeTruthy();
+
+    // Expanded: entry rows, their action buttons and the audit toggle.
+    fireEvent.click(screen.getByRole('button', { name: /Availability/i }));
+    fireEvent.click(screen.getByText('anthropic/claude-3-5-sonnet').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: /block\/open events/i }));
+
+    // Guard the fix itself: the refresh action still has to exist as its own
+    // control, so "delete the nested button" cannot satisfy this test.
+    expect(screen.getByRole('button', { name: /Reopen/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Clear tracking/i })).toBeTruthy();
+    expect(nestedButtons(container)).toEqual([]);
   });
 });

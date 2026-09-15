@@ -473,8 +473,30 @@ async function startHqServerWithAuth(
     };
     const handleRequest = createHqRouter(routerDeps);
 
+    // WS-2026-09-15-02: an open `/ws/browser` socket never presents its cookie
+    // again, so deleting the session that authorized it has to close it here.
+    // The auth.json watcher cannot do this for in-process mutations: password
+    // change/removal, TOTP enable, session revoke and logout all apply the new
+    // auth state BEFORE the watcher runs, so its before/after diff is empty and
+    // its close loop never fires. Wrapping every HTTP request is the one choke
+    // point those routes — and any future one — share, without threading a
+    // callback through each handler. Only sockets bound to a session that this
+    // request window removed are closed; bare `?token=` sockets and sessions
+    // expired by the periodic sweep (not an HTTP request) are left alone.
+    const closeSocketsOfRemovedSessions = (before: ReadonlySet<string>): void => {
+      for (const [browser, sessionId] of browserSocketSessions) {
+        if (!before.has(sessionId) || sessions.has(sessionId)) continue;
+        if (browser.readyState === WebSocket.OPEN) {
+          browser.close(1008, 'Browser session revoked');
+        }
+      }
+    };
+
     const httpServer: HttpServer = http.createServer((req, res) => {
-      void handleRequest(req, res);
+      const sessionsBefore = sessions.size > 0 ? new Set(sessions.keys()) : undefined;
+      void handleRequest(req, res).finally(() => {
+        if (sessionsBefore !== undefined) closeSocketsOfRemovedSessions(sessionsBefore);
+      });
     });
 
     const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });

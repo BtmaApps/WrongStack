@@ -18,13 +18,26 @@ makes that drop-in possible.
 
 ## Surface
 
-All three of the following live in `packages/webui-hq/src/lib/`:
+**What exists today** — verified 2026-09-15: one of the four files below.
 
-| File | Role |
-|------|------|
-| `inspector.ts` | `InspectorTarget` union + `registerInspectorSlot` / `resolveInspectorSlot` / `clearInspectorSlots` registry. No React. |
-| `inspector-slots.tsx` | `RightInspector` shell — takes a `target: InspectorTarget | null`, dispatches to the slot, renders a scrim + drawer. |
-| `inspector-default-slots.tsx` | The three documented default slots: `hq.kanban.task`, `hq.mailbox.message`, `hq.client`. Read-only with "Open in WebUI" deep links. |
+| File | Status | Role |
+|------|--------|------|
+| `packages/webui-hq/src/domain/inspector.ts` | **Exists** (56 lines) | `InspectorTarget` union, `InspectorTargetKind`, `InspectorSlot`, and the module-scope registry: `registerInspectorSlot` (returns an unregister fn), `clearInspectorSlots`, `resolveInspectorSlot` (`null` for unknown kinds). No React. |
+| `packages/webui-hq/src/lib/inspector-slots.tsx` | **Not written** | The `RightInspector` shell — takes `target: InspectorTarget | null`, dispatches to the slot, renders a scrim + drawer. HQ's drawers are still ad-hoc today (`views/chat-drawer.tsx`, `ui/sheet.tsx`, `ui/dialog.tsx`). |
+| `packages/webui-hq/src/lib/inspector-default-slots.tsx` | **Not written** | The three documented default slots: `hq.kanban.task`, `hq.mailbox.message`, `hq.client`. |
+| `packages/webui-hq/tests/inspector.test.tsx` | **Not written** | The contract test described under "Test contract" below. |
+
+Two corrections to note against earlier revisions of this document:
+
+1. **Path drift:** the contract module lives in `packages/webui-hq/src/domain/`,
+   not `packages/webui-hq/src/lib/`. Only the union and registry were lifted; the
+   React shell and the default slots were never written.
+2. **Zero consumers:** nothing imports the registry yet — no production view, no
+   test. The contract below is therefore a specification, not a description of
+   running behaviour. `InspectorTarget` also exists as an unrelated union in
+   `packages/webui`; do not cross-wire the two.
+
+The following is what the shell and slots **must** provide once written.
 
 ### `InspectorTarget` union
 
@@ -73,7 +86,7 @@ When `packages/webui-ui` is ready, the workbench team implements
    is keyboard-accessible (Escape closes), focus is moved into the
    drawer on open and restored on close.
 
-The HQ swap is a one-line change in `inspector-slots.tsx`:
+Once the shell exists, the HQ swap is a one-line change in it:
 
 ```ts
 // before
@@ -84,7 +97,9 @@ import { RightInspector } from '@wrongstack/webui-ui'; // when ready
 
 ## Test contract
 
-The handoff is locked by `packages/webui-hq/tests/inspector.test.tsx`:
+The handoff **must be locked** by `packages/webui-hq/tests/inspector.test.tsx`.
+That file does not exist yet (verified 2026-09-15), so none of the following is
+enforced today — it is the acceptance list for whoever writes the shell:
 
 - The registry resolves only known kinds; unknown kinds return `null`.
 - The shell renders `null` when `target` is `null` (drawer closed).
@@ -123,12 +138,16 @@ design; the deep link is the only path to act on a record.
 
 ## Status
 
-- **C1 (2026-07-31):** scaffolding landed in `packages/webui-hq` with
-  9 / 9 focused tests passing. The hand-rolled shell in
-  `inspector-slots.tsx` is the placeholder; once `packages/webui-ui`
-  ships `WorkbenchShell.RightInspector`, the import in
-  `packages/webui-hq/src/main.tsx` (or wherever the inspector is
-  mounted) swaps to the new package.
+- **C1 (2026-07-31):** the pure contract module landed at
+  `packages/webui-hq/src/domain/inspector.ts` — the `InspectorTarget` union, the
+  `InspectorSlot` interface and the register / resolve / clear registry, with no
+  React and no consumers. The React shell, the three default slots and the
+  contract test were **not** written; earlier revisions of this document that
+  described a landed `src/lib/` shell with "9 / 9 focused tests passing" were
+  incorrect — no such test file exists in the tree.
+- **Verified 2026-09-15:** zero importers of `registerInspectorSlot` /
+  `resolveInspectorSlot` / `InspectorTarget` repo-wide. HQ's drawer surfaces are
+  still the ad-hoc ones named in the Surface table above.
 - **Open question for the workbench team:** should `InspectorTarget` be
   re-exported from `@wrongstack/core/hq` (current location) or moved
   into `packages/webui-ui`? Today it lives next to the shell for

@@ -35,6 +35,8 @@ function hookTimeoutMs(entry: HookEntry): number {
 export interface HookRunEnv {
   cwd: string;
   signal?: AbortSignal | undefined;
+  /** Active conversation. Shared WebUI executors pass a different one per tab. */
+  session?: { id: string } | undefined;
 }
 
 export interface HookRunnerOptions {
@@ -307,7 +309,10 @@ export class HookRunner {
   // ── internals ──────────────────────────────────────────────────────
 
   private base(env: HookRunEnv): { cwd: string; sessionId?: string | undefined } {
-    const sessionId = this.opts.sessionId?.();
+    // The executor may be shared by multiple WebUI agents. Its construction-
+    // time fallback identifies only the boot conversation; the call's live
+    // Context is authoritative for every cloned tab/session.
+    const sessionId = env.session?.id ?? this.opts.sessionId?.();
     return sessionId ? { cwd: env.cwd, sessionId } : { cwd: env.cwd };
   }
 

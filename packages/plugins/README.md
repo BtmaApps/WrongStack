@@ -699,7 +699,7 @@ once you're confident in the rewrite.
 ### 22 — `loop-breaker`
 
 **Tools**: `loop_breaker_status`
-**Hooks**: `PreToolUse`
+**Hooks**: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`
 
 Detects repeated tool calls before they execute. It tracks exact-repeat
 streaks and A-B-A-B oscillations, then either blocks the call or injects a
@@ -711,6 +711,7 @@ warning depending on `mode`.
     "loop-breaker": {
       "enabled": true,
       "mode": "block",        // "block" | "warn"
+      "maxSteps": 0,          // unlimited; set a positive value to opt into a cap
       "repeatThreshold": 3,
       "oscillationThreshold": 2
     }

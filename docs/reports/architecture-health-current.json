@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T07:10:44.085Z",
+  "generatedAt": "2026-09-15T10:46:46.926Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3799,
-    "testFiles": 3393,
-    "sourceLines": 928677,
+    "sourceFiles": 3800,
+    "testFiles": 3404,
+    "sourceLines": 928931,
     "workspaceEdges": 128,
-    "moduleEdges": 12136,
+    "moduleEdges": 12138,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 960
+    "testOnlyExports": 961
   },
   "errors": [],
   "packageCycles": [],
@@ -146,7 +146,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 494,
-      "testFiles": 501,
+      "testFiles": 502,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -185,7 +185,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 501
+          "testFiles": 502
         }
       ]
     },
@@ -215,8 +215,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 863,
-      "testFiles": 766,
+      "sourceFiles": 864,
+      "testFiles": 768,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +231,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 766
+          "testFiles": 768
         }
       ]
     },
@@ -480,7 +480,7 @@
       "name": "@wrongstack/providers",
       "dir": "packages/providers",
       "sourceFiles": 70,
-      "testFiles": 65,
+      "testFiles": 66,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -493,7 +493,7 @@
         {
           "path": "packages/providers/tsconfig.test.json",
           "error": null,
-          "testFiles": 65
+          "testFiles": 66
         }
       ]
     },
@@ -571,7 +571,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 107,
-      "testFiles": 91,
+      "testFiles": 94,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -586,7 +586,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 91
+          "testFiles": 94
         }
       ]
     },
@@ -735,7 +735,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 214,
-      "testFiles": 248,
+      "testFiles": 250,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,7 +751,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 248
+          "testFiles": 250
         }
       ]
     },
@@ -813,7 +813,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 553,
-      "testFiles": 382,
+      "testFiles": 384,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -836,7 +836,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 382
+          "testFiles": 384
         }
       ]
     },
@@ -2947,6 +2947,12 @@
       },
       {
         "file": "packages/cli/tests/hq-service.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/hq-session-revoke-closes-browser-socket.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8250,6 +8256,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/source-hygiene-nul.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/storage/annotations-store-extra.test.ts",
         "projects": [
           "root-node"
@@ -9415,6 +9427,12 @@
       },
       {
         "file": "packages/core/tests/utils/ulid.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/utils/win32-exe-search.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11730,6 +11748,12 @@
         ]
       },
       {
+        "file": "packages/providers/tests/source-hygiene-nul.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/providers/tests/sse.test.ts",
         "projects": [
           "root-node"
@@ -12096,6 +12120,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/hygiene-critical-importance-gate.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/memory-candidates-coverage.test.ts",
         "projects": [
           "root-node"
@@ -12354,6 +12384,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/source-hygiene-nul.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/sqlite-availability.test.ts",
         "projects": [
           "root-node"
@@ -12511,6 +12547,12 @@
       },
       {
         "file": "packages/sage/tests/types.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/unified-search-paths-filter.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14448,6 +14490,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/diff-outside-ref.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/diff.test.ts",
         "projects": [
           "root-node"
@@ -15103,6 +15151,12 @@
       },
       {
         "file": "packages/tools/tests/skill.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/source-hygiene-nul.test.ts",
         "projects": [
           "root-node"
         ]
@@ -20196,6 +20250,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/helpers/nested-buttons.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/hooks/background-tool-confirm.test.ts",
         "projects": [
           "webui-jsdom"
@@ -21360,6 +21420,12 @@
         ]
       },
       {
+        "file": "packages/webui/tests/stores/source-hygiene-nul.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
         "file": "packages/webui/tests/stores/specs-store.test.ts",
         "projects": [
           "webui-jsdom"
@@ -21670,7 +21736,7 @@
     },
     {
       "file": "packages/cli/src/subcommands/handlers/hq.ts",
-      "lines": 1088,
+      "lines": 1103,
       "relativeImports": 10
     },
     {
@@ -21879,6 +21945,11 @@
       "relativeImports": 0
     },
     {
+      "file": "packages/plugins/src/loop-breaker/index.ts",
+      "lines": 826,
+      "relativeImports": 0
+    },
+    {
       "file": "packages/plugins/src/path-guard/shell-targets.ts",
       "lines": 1048,
       "relativeImports": 1
@@ -21940,7 +22011,7 @@
     },
     {
       "file": "packages/sage/src/sqlite-store-hygiene.ts",
-      "lines": 819,
+      "lines": 834,
       "relativeImports": 10
     },
     {
@@ -22331,6 +22402,11 @@
       "relativeImports": 43
     },
     {
+      "file": "packages/cli/src/subcommands/handlers/hq.ts",
+      "lines": 1103,
+      "relativeImports": 10
+    },
+    {
       "file": "packages/mcp/src/client.ts",
       "lines": 1097,
       "relativeImports": 12
@@ -22339,11 +22415,6 @@
       "file": "packages/simpleui/src/simple-ui-session.tsx",
       "lines": 1096,
       "relativeImports": 51
-    },
-    {
-      "file": "packages/cli/src/subcommands/handlers/hq.ts",
-      "lines": 1088,
-      "relativeImports": 10
     },
     {
       "file": "packages/plugins/src/git-autocommit/index.ts",
@@ -24892,6 +24963,10 @@
     {
       "file": "packages/tools/src/codebase-index/writer-refs.ts",
       "name": "FAMILY_MATCH_SQL"
+    },
+    {
+      "file": "packages/tools/src/diff.ts",
+      "name": "refLooksLikeOutsidePath"
     },
     {
       "file": "packages/tools/src/grep.ts",

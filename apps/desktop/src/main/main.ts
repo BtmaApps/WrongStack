@@ -12,7 +12,11 @@
  */
 import * as path from 'node:path';
 import { watchProviderConfig } from '@wrongstack/core/storage';
-import { installCrashShield, resolveWstackPaths } from '@wrongstack/core/utils';
+import {
+  hardenWin32ExecutableSearch,
+  installCrashShield,
+  resolveWstackPaths,
+} from '@wrongstack/core/utils';
 import {
   app,
   BaseWindow,
@@ -548,6 +552,9 @@ async function boot(): Promise<void> {
 // Same last-resort shield as the CLI host: a background rejection in a watcher,
 // IPC handler, or the agent bridge must not take the desktop app down (WS-076).
 installCrashShield();
+// WS-2026-09-15-NV1: bare executable names must never resolve from the opened
+// project directory (see core/utils/win32-exe-search.ts).
+hardenWin32ExecutableSearch();
 
 // `boot` is async — an unhandled rejection here would leave the app running with
 // no window and no error shown, which reads to the user as a silent hang.

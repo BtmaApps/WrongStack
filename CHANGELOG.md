@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Windows: bare command names no longer resolve from the opened repository.**
+  On Windows, `spawn` without a shell and `cmd.exe` `call` (every `.cmd` shim)
+  both look in the current directory *before* `PATH`. WrongStack starts `git`,
+  `rg`, `npx`, `uvx`, `pnpm` and others by bare name with the project as that
+  directory, so a cloned repository that committed `git.exe` or `npx.cmd` at
+  its root got its binary run. That covered codebase indexing on open, the
+  approval-free `grep` and `diff` tools, and every stdio MCP server start.
+  The CLI, desktop app and standalone WebUI now set
+  `NoDefaultCurrentDirectoryInExePath=1`, and every child environment built by
+  `buildChildEnv` carries it; previously it was stripped even when you set it
+  yourself. **Behaviour change:** inside WrongStack child processes, run a
+  program from the current directory as `.\name`.
+- **HQ: `/ws/client` requires a client token whenever HQ has any credential.**
+  A password- or browser-token-protected HQ whose client tokens had all expired
+  or been revoked accepted anonymous publishers, including their
+  `control.approve` capability. Open mode now means no credential of any kind.
+  With a password and no live client token, publishers are rejected. Run
+  `wstack hq token create --client`, which `wstack hq token list --client` now
+  says instead of "OPEN MODE".
+- **HQ: revoking a browser session closes its live dashboard connection.**
+  Deleting sessions, changing or removing the password, enabling TOTP and
+  logging out used to leave already-open `/ws/browser` sockets streaming
+  telemetry until they dropped on their own.
+- **`diff` tool refuses refs shaped like filesystem paths** (absolute,
+  drive-prefixed, or containing a `..` segment). Git otherwise switches to
+  `--no-index` and reads files outside the project. The git directory lookup
+  also stops at the project root.
+
 ## [1.0.9] — 2026-09-13
 
 ### Added

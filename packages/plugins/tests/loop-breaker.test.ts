@@ -50,6 +50,10 @@ function makeApi(overrides: { extensions?: Record<string, unknown> } = {}): Mock
   };
 }
 
+function makeEnabledApi(config: Record<string, unknown> = {}): MockApi {
+  return makeApi({ extensions: { 'loop-breaker': { enabled: true, ...config } } });
+}
+
 type HookResult = { decision?: string; reason?: string; additionalContext?: string } | undefined;
 
 function getHook(api: MockApi, event = 'PreToolUse'): (input: unknown) => HookResult {
@@ -79,20 +83,21 @@ beforeEach(() => {
 });
 
 describe('loop-breaker plugin', () => {
-  it('registers loop_breaker_status and PreToolUse/PostToolUse * hooks', () => {
-    const api = makeApi();
+  it('registers status, tool-use detection, and per-turn reset hooks', () => {
+    const api = makeEnabledApi();
     loopBreakerPlugin.setup(api as never);
     expect(api.tools.register).toHaveBeenCalledTimes(1);
     expect(api.registerHook.mock.calls.map((call: unknown[]) => call.slice(0, 2))).toEqual(
       expect.arrayContaining([
         ['PreToolUse', '*'],
         ['PostToolUse', '*'],
+        ['UserPromptSubmit', undefined],
       ]),
     );
   });
 
   it('does not react to distinct calls', () => {
-    const api = makeApi();
+    const api = makeEnabledApi();
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     for (let i = 0; i < 10; i++) {
@@ -101,7 +106,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('warns after warnAfter identical calls, blocks after blockAfter', () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { mode: 'block' } } });
+    const api = makeEnabledApi({ mode: 'block' });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'npm test' } };
@@ -117,7 +122,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('treats key order as identical input', () => {
-    const api = makeApi();
+    const api = makeEnabledApi();
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     hook({ toolName: 'x', toolInput: { a: 1, b: 2 } });
@@ -127,7 +132,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('resets the streak on a different call', () => {
-    const api = makeApi();
+    const api = makeEnabledApi();
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'x' } };
@@ -138,7 +143,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('warn mode never blocks', () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { mode: 'warn' } } });
+    const api = makeEnabledApi({ mode: 'warn' });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'x' } };
@@ -148,20 +153,19 @@ describe('loop-breaker plugin', () => {
   });
 
   it.each([
-    ['no config at all', undefined],
-    ['a partial config without mode', { warnAfter: 3 }],
-    ['a misspelled mode', { mode: 'blcok' }],
-  ])('blocks a runaway repeat by default with %s', (_label, cfg) => {
-    const api = makeApi(cfg ? { extensions: { 'loop-breaker': cfg } } : {});
+    ['no config at all', {}],
+    ['partial settings without enabled:true', { 'loop-breaker': { mode: 'block' } }],
+  ])('stays disabled with %s', (_label, extensions) => {
+    const api = makeApi({ extensions });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'npm test' } };
     for (let i = 0; i < 4; i++) hook(call);
-    expect(hook(call)?.decision).toBe('block');
+    expect(hook(call)).toBeUndefined();
   });
 
   it('does not treat inputs that differ only below the canonicalize depth as repeats', () => {
-    const api = makeApi();
+    const api = makeEnabledApi();
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const deep = (leaf: number) => {
@@ -175,7 +179,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('detects A-B-A-B oscillation', () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { oscillationWindow: 4 } } });
+    const api = makeEnabledApi({ oscillationWindow: 4 });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const a = { toolName: 'write', toolInput: { path: '/a', content: '1' } };
@@ -188,7 +192,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('blocks after the configured step budget', () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { maxSteps: 3, blockAfter: 99 } } });
+    const api = makeEnabledApi({ maxSteps: 3, blockAfter: 99 });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     expect(hook({ toolName: 'read', toolInput: { path: '/a' } })).toBeUndefined();
@@ -197,13 +201,62 @@ describe('loop-breaker plugin', () => {
     const block = hook({ toolName: 'read', toolInput: { path: '/d' } });
     expect(block?.decision).toBe('block');
     expect(block?.reason).toContain('step budget exceeded');
+    expect(block?.reason).toContain('(3/3 tool calls)');
+    expect(hook({ toolName: 'read', toolInput: { path: '/e' } })?.reason).toContain(
+      '(3/3 tool calls)',
+    );
+  });
+
+  it('has no total step limit by default', () => {
+    const api = makeEnabledApi();
+    loopBreakerPlugin.setup(api as never);
+    const hook = getHook(api);
+
+    for (let i = 0; i < 250; i++) {
+      expect(hook({ toolName: 'read', toolInput: { path: `/distinct-${i}` } })).not.toMatchObject({
+        reason: expect.stringContaining('step budget exceeded'),
+      });
+    }
+  });
+
+  it('resets the step budget and loop streaks for every new user turn', () => {
+    const api = makeEnabledApi({ maxSteps: 2, blockAfter: 99 });
+    loopBreakerPlugin.setup(api as never);
+    const hook = getHook(api);
+    const promptHook = getHook(api, 'UserPromptSubmit');
+    const session = { sessionId: 'webui-conversation-a' };
+
+    hook({ ...session, toolName: 'read', toolInput: { path: '/a' } });
+    hook({ ...session, toolName: 'read', toolInput: { path: '/b' } });
+    expect(hook({ ...session, toolName: 'read', toolInput: { path: '/c' } })?.decision).toBe(
+      'block',
+    );
+
+    promptHook({ ...session, prompt: 'continue' });
+    expect(hook({ ...session, toolName: 'read', toolInput: { path: '/c' } })).toBeUndefined();
+  });
+
+  it('isolates budgets between concurrent WebUI conversations', () => {
+    const api = makeEnabledApi({ maxSteps: 1, blockAfter: 99 });
+    loopBreakerPlugin.setup(api as never);
+    const hook = getHook(api);
+
+    expect(
+      hook({ sessionId: 'conversation-a', toolName: 'read', toolInput: { path: '/a' } }),
+    ).toBeUndefined();
+    expect(
+      hook({ sessionId: 'conversation-a', toolName: 'read', toolInput: { path: '/b' } })?.decision,
+    ).toBe('block');
+    expect(
+      hook({ sessionId: 'conversation-b', toolName: 'read', toolInput: { path: '/b' } }),
+    ).toBeUndefined();
   });
 
   it('warns on repeated errors and blocks the next step at the threshold', async () => {
-    const api = makeApi({
-      extensions: {
-        'loop-breaker': { repeatedErrorWarnAfter: 2, repeatedErrorBlockAfter: 3, blockAfter: 99 },
-      },
+    const api = makeEnabledApi({
+      repeatedErrorWarnAfter: 2,
+      repeatedErrorBlockAfter: 3,
+      blockAfter: 99,
     });
     loopBreakerPlugin.setup(api as never);
     const preHook = getHook(api);
@@ -222,9 +275,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('warns when mutating steps stop changing the git diff and blocks the next step', async () => {
-    const api = makeApi({
-      extensions: { 'loop-breaker': { noDiffWarnAfter: 1, noDiffBlockAfter: 2, blockAfter: 99 } },
-    });
+    const api = makeEnabledApi({ noDiffWarnAfter: 1, noDiffBlockAfter: 2, blockAfter: 99 });
     loopBreakerPlugin.setup(api as never);
     const preHook = getHook(api);
     const postHook = getAsyncHook(api, 'PostToolUse');
@@ -244,7 +295,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('respects ignoreTools', () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { ignoreTools: ['poll'] } } });
+    const api = makeEnabledApi({ ignoreTools: ['poll'] });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'poll', toolInput: {} };
@@ -264,7 +315,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('status tool reports counters', async () => {
-    const api = makeApi({ extensions: { 'loop-breaker': { mode: 'block' } } });
+    const api = makeEnabledApi({ mode: 'block' });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'x' } };
@@ -277,7 +328,7 @@ describe('loop-breaker plugin', () => {
   });
 
   it('teardown zeros counters and is safe before setup', async () => {
-    const api = makeApi();
+    const api = makeEnabledApi();
     expect(() => loopBreakerPlugin.teardown!(api as never)).not.toThrow();
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);

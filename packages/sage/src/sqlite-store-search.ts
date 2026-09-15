@@ -438,7 +438,17 @@ function buildPathExistsClause(
   if (symbolGlobs.length > 0) {
     conditions.push(symbolGlobs.map(() => 'e.to_node GLOB ?').join(' OR '));
   }
-  if (conditions.length === 0) return undefined;
+  if (conditions.length === 0) {
+    // `query.paths` was provided, but every entry resolved OUTSIDE the project
+    // root: `buildRetrievePathTargets` drops such paths ("no stored anchor can
+    // match it") and `normalizeAnchors` refuses to store an anchor that
+    // escapes the root, so nothing can ever satisfy this filter. Returning
+    // `undefined` here meant "no path filter requested", which silently
+    // dropped the caller's restriction and returned the UNFILTERED corpus —
+    // the opposite of the request. Match nothing instead, matching the sibling
+    // `retrieveSqliteSageForPath` (`if (relPaths.length === 0) return [];`).
+    conditions.push('0');
+  }
   return {
     clause: `EXISTS (SELECT 1 FROM edges e WHERE e.from_node = 'mem:' || ${prefix}id AND (${conditions.join(' OR ')}))`,
     params: [...targetList, ...symbolGlobs],

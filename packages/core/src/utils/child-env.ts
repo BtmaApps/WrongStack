@@ -24,6 +24,8 @@
  * the risk).
  */
 
+import { hardenWin32ExecutableSearch } from './win32-exe-search.js';
+
 const ALLOWED_KEYS = new Set<string>([
   'PATH',
   'HOME',
@@ -308,6 +310,14 @@ export function buildChildEnv(optsOrSessionId?: BuildChildEnvOptions | string): 
   if (opts.extra) {
     Object.assign(out, opts.extra);
   }
+
+  // WS-2026-09-15-NV1: forced AFTER the extras merge and in passthrough mode
+  // too, so neither a caller nor the parent environment can switch it off.
+  // cmd.exe reads this from its OWN environment when resolving `call "<bare>"`
+  // (every `.cmd` shim, e.g. stdio MCP servers), and our daemons read it to
+  // harden their own libuv spawns. It used to be dropped here — it is on no
+  // allowlist — which stripped even an operator-set mitigation.
+  hardenWin32ExecutableSearch(out);
 
   if (opts.sessionId) out['WRONGSTACK_SESSION_ID'] = opts.sessionId.replace(/\\/g, '/');
   return out;

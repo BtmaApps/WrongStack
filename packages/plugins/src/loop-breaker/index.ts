@@ -26,7 +26,7 @@
  *   "warnAfter": 3,                // consecutive identical calls before warning
  *   "blockAfter": 5,               // consecutive identical calls before blocking
  *   "oscillationWindow": 8,        // recent-call window for A-B-A-B detection
- *   "maxSteps": 200,               // total tool-call budget before blocking
+ *   "maxSteps": 0,                 // unlimited by default; positive values opt into a cap
  *   "noDiffWarnAfter": 6,          // edit/write steps with unchanged git diff before warning
  *   "noDiffBlockAfter": 10,        // edit/write steps with unchanged git diff before blocking
  *   "repeatedErrorWarnAfter": 2,   // same tool error before warning
@@ -35,8 +35,7 @@
  * }
  * ```
  *
- * Toggle off entirely with `{ "name": "loop-breaker", "enabled": false }`
- * in `config.plugins`, or `"enabled": false` in the options above.
+ * Opt in with `"enabled": true` in `config.extensions['loop-breaker']`.
  *
  * @public
  */
@@ -48,7 +47,7 @@ import type { Plugin } from '@wrongstack/core/types';
 // Module-scope state (H1 audit pattern)
 // ---------------------------------------------------------------------------
 
-interface LoopBreakerState {
+interface LoopBreakerRunState {
   /** Fingerprint of the last observed tool call. */
   lastFingerprint: string | null;
   /** How many times `lastFingerprint` has been seen consecutively. */
@@ -76,31 +75,83 @@ interface LoopBreakerState {
   noDiffBlocks: number;
   repeatedErrorWarnings: number;
   repeatedErrorBlocks: number;
+}
+
+interface LoopBreakerState {
+  runs: Map<string, LoopBreakerRunState>;
   /** Hook handle for teardown. */
   hookUnregister: null | (() => void);
 }
 
-const state: LoopBreakerState = {
-  lastFingerprint: null,
-  streak: 0,
-  recent: [],
-  pendingBlockReason: null,
-  lastDiffFingerprint: null,
-  noDiffStreak: 0,
-  lastErrorFingerprint: null,
-  repeatedErrorStreak: 0,
-  invocations: 0,
-  postInvocations: 0,
-  warnings: 0,
-  blocks: 0,
-  oscillationsDetected: 0,
-  stepBudgetBlocks: 0,
-  noDiffWarnings: 0,
-  noDiffBlocks: 0,
-  repeatedErrorWarnings: 0,
-  repeatedErrorBlocks: 0,
-  hookUnregister: null,
-};
+const FALLBACK_SESSION = '__default__';
+const MAX_TRACKED_RUNS = 32;
+
+function createRunState(): LoopBreakerRunState {
+  return {
+    lastFingerprint: null,
+    streak: 0,
+    recent: [],
+    pendingBlockReason: null,
+    lastDiffFingerprint: null,
+    noDiffStreak: 0,
+    lastErrorFingerprint: null,
+    repeatedErrorStreak: 0,
+    invocations: 0,
+    postInvocations: 0,
+    warnings: 0,
+    blocks: 0,
+    oscillationsDetected: 0,
+    stepBudgetBlocks: 0,
+    noDiffWarnings: 0,
+    noDiffBlocks: 0,
+    repeatedErrorWarnings: 0,
+    repeatedErrorBlocks: 0,
+  };
+}
+
+const state: LoopBreakerState = { runs: new Map(), hookUnregister: null };
+
+function sessionKey(sessionId: string | undefined): string {
+  return sessionId || FALLBACK_SESSION;
+}
+
+function storeRun(key: string, current: LoopBreakerRunState): void {
+  state.runs.set(key, current);
+  if (state.runs.size <= MAX_TRACKED_RUNS) return;
+  const oldest = state.runs.keys().next().value;
+  if (oldest !== undefined && oldest !== key) state.runs.delete(oldest);
+}
+
+function runState(sessionId: string | undefined): LoopBreakerRunState {
+  const key = sessionKey(sessionId);
+  let current = state.runs.get(key);
+  if (!current) {
+    current = createRunState();
+    storeRun(key, current);
+  }
+  return current;
+}
+
+function resetRun(sessionId: string | undefined): void {
+  storeRun(sessionKey(sessionId), createRunState());
+}
+
+function aggregateRuns(): LoopBreakerRunState {
+  const total = createRunState();
+  for (const current of state.runs.values()) {
+    total.invocations += current.invocations;
+    total.postInvocations += current.postInvocations;
+    total.warnings += current.warnings;
+    total.blocks += current.blocks;
+    total.oscillationsDetected += current.oscillationsDetected;
+    total.stepBudgetBlocks += current.stepBudgetBlocks;
+    total.noDiffWarnings += current.noDiffWarnings;
+    total.noDiffBlocks += current.noDiffBlocks;
+    total.repeatedErrorWarnings += current.repeatedErrorWarnings;
+    total.repeatedErrorBlocks += current.repeatedErrorBlocks;
+  }
+  return total;
+}
 
 // ---------------------------------------------------------------------------
 // Config
@@ -126,7 +177,7 @@ interface LoopBreakerConfig {
 }
 
 const DEFAULTS: LoopBreakerConfig = {
-  enabled: true,
+  enabled: false,
   // Documented contract (feature matrix, plugin description): warn, then
   // block. A warn-only default meant an agent stuck re-issuing the same call
   // was never actually stopped unless the user happened to set any option.
@@ -134,7 +185,7 @@ const DEFAULTS: LoopBreakerConfig = {
   warnAfter: 3,
   blockAfter: 5,
   oscillationWindow: 8,
-  maxSteps: 200,
+  maxSteps: 0,
   noDiffWarnAfter: 6,
   noDiffBlockAfter: 10,
   repeatedErrorWarnAfter: 2,
@@ -187,7 +238,7 @@ function readConfig(raw: unknown): LoopBreakerConfig {
   const rawMaxSteps = r['maxSteps'] ?? r['max_steps'] ?? r['stepLimit'] ?? r['step_limit'];
 
   return {
-    enabled: r['enabled'] !== false,
+    enabled: r['enabled'] === true,
     mode,
     warnAfter,
     blockAfter,
@@ -383,7 +434,11 @@ const plugin: Plugin = {
   configSchema: {
     type: 'object',
     properties: {
-      enabled: { type: 'boolean', default: true, description: 'Master switch.' },
+      enabled: {
+        type: 'boolean',
+        default: false,
+        description: 'Opt-in master switch; disabled unless explicitly enabled.',
+      },
       mode: {
         type: 'string',
         enum: ['warn', 'block'],
@@ -411,8 +466,8 @@ const plugin: Plugin = {
       maxSteps: {
         type: 'number',
         minimum: 0,
-        default: 200,
-        description: 'Maximum tool steps before blocking; 0 disables the step budget.',
+        default: 0,
+        description: 'Optional maximum tool steps before blocking; 0 keeps runs unlimited.',
       },
       noDiffWarnAfter: {
         type: 'number',
@@ -450,24 +505,7 @@ const plugin: Plugin = {
 
   setup(api) {
     // Idempotent re-init (H1 pattern).
-    state.lastFingerprint = null;
-    state.streak = 0;
-    state.recent = [];
-    state.pendingBlockReason = null;
-    state.lastDiffFingerprint = null;
-    state.noDiffStreak = 0;
-    state.lastErrorFingerprint = null;
-    state.repeatedErrorStreak = 0;
-    state.invocations = 0;
-    state.postInvocations = 0;
-    state.warnings = 0;
-    state.blocks = 0;
-    state.oscillationsDetected = 0;
-    state.stepBudgetBlocks = 0;
-    state.noDiffWarnings = 0;
-    state.noDiffBlocks = 0;
-    state.repeatedErrorWarnings = 0;
-    state.repeatedErrorBlocks = 0;
+    state.runs.clear();
     if (state.hookUnregister) {
       try {
         state.hookUnregister();
@@ -479,66 +517,73 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['loop-breaker']);
 
-    const hook = (input: { toolName?: string | undefined; toolInput?: unknown }) => {
+    const hook = (input: {
+      toolName?: string | undefined;
+      toolInput?: unknown;
+      sessionId?: string | undefined;
+    }) => {
       if (!cfg.enabled) return;
       const toolName = input.toolName ?? 'unknown';
       // Performance: uses Set.has() for O(1) lookup instead of Array.includes() O(n).
       if (ignoreToolsSet.has(toolName)) return;
-      state.invocations += 1;
+      const current = runState(input.sessionId);
 
-      if (state.pendingBlockReason && cfg.mode === 'block') {
-        const reason = state.pendingBlockReason;
-        state.pendingBlockReason = null;
-        state.blocks += 1;
+      if (current.pendingBlockReason && cfg.mode === 'block') {
+        const reason = current.pendingBlockReason;
+        current.pendingBlockReason = null;
+        current.blocks += 1;
         api.metrics.counter('blocks');
         return { decision: 'block' as const, reason };
       }
 
-      if (cfg.maxSteps > 0 && state.invocations > cfg.maxSteps && cfg.mode === 'block') {
-        state.blocks += 1;
-        state.stepBudgetBlocks += 1;
+      // A denied attempt is not an executed step. Keeping this saturated at
+      // the cap also avoids misleading 206/200, 207/200, ... diagnostics.
+      if (cfg.maxSteps > 0 && current.invocations >= cfg.maxSteps && cfg.mode === 'block') {
+        current.blocks += 1;
+        current.stepBudgetBlocks += 1;
         api.metrics.counter('blocks');
         api.metrics.counter('step_budget_blocks');
         return {
           decision: 'block' as const,
           reason:
-            `loop-breaker: step budget exceeded (${state.invocations}/${cfg.maxSteps} tool calls). ` +
+            `loop-breaker: step budget exceeded (${current.invocations}/${cfg.maxSteps} tool calls). ` +
             'Stop and report what has been tried instead of continuing an unbounded loop.',
         };
       }
+      current.invocations += 1;
 
       const fp = fingerprint(toolName, input.toolInput);
-      if (fp === state.lastFingerprint) {
-        state.streak += 1;
+      if (fp === current.lastFingerprint) {
+        current.streak += 1;
       } else {
-        state.lastFingerprint = fp;
-        state.streak = 1;
+        current.lastFingerprint = fp;
+        current.streak = 1;
       }
-      state.recent.push(fp);
-      if (state.recent.length > Math.max(cfg.oscillationWindow, 16)) {
-        state.recent.splice(0, state.recent.length - Math.max(cfg.oscillationWindow, 16));
+      current.recent.push(fp);
+      if (current.recent.length > Math.max(cfg.oscillationWindow, 16)) {
+        current.recent.splice(0, current.recent.length - Math.max(cfg.oscillationWindow, 16));
       }
 
       // ── Consecutive identical repeats ─────────────────────────────────
-      if (state.streak >= cfg.blockAfter && cfg.mode === 'block') {
-        state.blocks += 1;
+      if (current.streak >= cfg.blockAfter && cfg.mode === 'block') {
+        current.blocks += 1;
         api.metrics.counter('blocks');
         return {
           decision: 'block' as const,
           reason:
-            `loop-breaker: "${toolName}" has been called ${state.streak} times in a row with identical input. ` +
+            `loop-breaker: "${toolName}" has been called ${current.streak} times in a row with identical input. ` +
             'This looks like a runaway loop. Change the input, try a different tool, or explain to the user why repetition is needed. ' +
             '(Disable this guard via config.extensions["loop-breaker"].enabled = false.)',
         };
       }
-      if (state.streak >= cfg.warnAfter) {
-        state.warnings += 1;
+      if (current.streak >= cfg.warnAfter) {
+        current.warnings += 1;
         api.metrics.counter('warnings');
-        const remaining = cfg.mode === 'block' ? cfg.blockAfter - state.streak : null;
+        const remaining = cfg.mode === 'block' ? cfg.blockAfter - current.streak : null;
         return {
           decision: 'allow' as const,
           additionalContext:
-            `loop-breaker: "${toolName}" repeated ${state.streak}x with identical input.` +
+            `loop-breaker: "${toolName}" repeated ${current.streak}x with identical input.` +
             (remaining !== null && remaining > 0
               ? ` It will be BLOCKED after ${remaining} more identical call(s).`
               : '') +
@@ -547,11 +592,11 @@ const plugin: Plugin = {
       }
 
       // ── A-B-A-B oscillation ───────────────────────────────────────────
-      if (isOscillating(state.recent, cfg.oscillationWindow)) {
-        state.oscillationsDetected += 1;
+      if (isOscillating(current.recent, cfg.oscillationWindow)) {
+        current.oscillationsDetected += 1;
         api.metrics.counter('oscillations');
         // Reset the window so we don't warn on every subsequent call.
-        state.recent = [];
+        current.recent = [];
         return {
           decision: 'allow' as const,
           additionalContext:
@@ -568,6 +613,7 @@ const plugin: Plugin = {
         toolInput?: unknown;
         toolResult?: { content: string; isError: boolean } | undefined;
         cwd?: string | undefined;
+        sessionId?: string | undefined;
       },
       runtime: { signal: AbortSignal } = { signal: new AbortController().signal },
     ) => {
@@ -575,43 +621,44 @@ const plugin: Plugin = {
       const toolName = input.toolName ?? 'unknown';
       // Performance: uses Set.has() for O(1) lookup instead of Array.includes() O(n).
       if (ignoreToolsSet.has(toolName)) return;
-      state.postInvocations += 1;
+      const current = runState(input.sessionId);
+      current.postInvocations += 1;
 
       if (input.toolResult?.isError) {
         const errorFingerprint = normalizeError(input.toolResult.content);
-        if (errorFingerprint && errorFingerprint === state.lastErrorFingerprint) {
-          state.repeatedErrorStreak += 1;
+        if (errorFingerprint && errorFingerprint === current.lastErrorFingerprint) {
+          current.repeatedErrorStreak += 1;
         } else {
-          state.lastErrorFingerprint = errorFingerprint;
-          state.repeatedErrorStreak = errorFingerprint ? 1 : 0;
+          current.lastErrorFingerprint = errorFingerprint;
+          current.repeatedErrorStreak = errorFingerprint ? 1 : 0;
         }
-        state.noDiffStreak = 0;
+        current.noDiffStreak = 0;
 
         if (
           cfg.repeatedErrorBlockAfter > 0 &&
-          state.repeatedErrorStreak >= cfg.repeatedErrorBlockAfter &&
+          current.repeatedErrorStreak >= cfg.repeatedErrorBlockAfter &&
           cfg.mode === 'block'
         ) {
-          state.repeatedErrorBlocks += 1;
-          state.pendingBlockReason =
-            `loop-breaker: the same tool error repeated ${state.repeatedErrorStreak} times. ` +
+          current.repeatedErrorBlocks += 1;
+          current.pendingBlockReason =
+            `loop-breaker: the same tool error repeated ${current.repeatedErrorStreak} times. ` +
             'The next tool call is blocked so you can stop, summarize the repeated failure, and change approach.';
         }
-        if (state.repeatedErrorStreak >= cfg.repeatedErrorWarnAfter) {
-          state.repeatedErrorWarnings += 1;
+        if (current.repeatedErrorStreak >= cfg.repeatedErrorWarnAfter) {
+          current.repeatedErrorWarnings += 1;
           api.metrics.counter('repeated_error_warnings');
           return {
             decision: 'allow' as const,
             additionalContext:
-              `loop-breaker: same error repeated ${state.repeatedErrorStreak}x. ` +
+              `loop-breaker: same error repeated ${current.repeatedErrorStreak}x. ` +
               'Do not retry the same command/tool unchanged; inspect the root cause or ask for help.',
           };
         }
         return;
       }
 
-      state.lastErrorFingerprint = null;
-      state.repeatedErrorStreak = 0;
+      current.lastErrorFingerprint = null;
+      current.repeatedErrorStreak = 0;
 
       if (!MUTATING_TOOLS.has(toolName)) return;
       const toolInput = (input.toolInput ?? {}) as Record<string, unknown>;
@@ -631,30 +678,30 @@ const plugin: Plugin = {
         runtime.signal,
       );
       if (diffFingerprint === null) return;
-      if (diffFingerprint === state.lastDiffFingerprint) {
-        state.noDiffStreak += 1;
+      if (diffFingerprint === current.lastDiffFingerprint) {
+        current.noDiffStreak += 1;
       } else {
-        state.lastDiffFingerprint = diffFingerprint;
-        state.noDiffStreak = 0;
+        current.lastDiffFingerprint = diffFingerprint;
+        current.noDiffStreak = 0;
       }
 
       if (
         cfg.noDiffBlockAfter > 0 &&
-        state.noDiffStreak >= cfg.noDiffBlockAfter &&
+        current.noDiffStreak >= cfg.noDiffBlockAfter &&
         cfg.mode === 'block'
       ) {
-        state.noDiffBlocks += 1;
-        state.pendingBlockReason =
-          `loop-breaker: no diff was produced in the last ${state.noDiffStreak} mutating step(s). ` +
+        current.noDiffBlocks += 1;
+        current.pendingBlockReason =
+          `loop-breaker: no diff was produced in the last ${current.noDiffStreak} mutating step(s). ` +
           'The next tool call is blocked because continued edits are not changing the working tree.';
       }
-      if (state.noDiffStreak >= cfg.noDiffWarnAfter) {
-        state.noDiffWarnings += 1;
+      if (current.noDiffStreak >= cfg.noDiffWarnAfter) {
+        current.noDiffWarnings += 1;
         api.metrics.counter('no_diff_warnings');
         return {
           decision: 'allow' as const,
           additionalContext:
-            `loop-breaker: no diff has changed for ${state.noDiffStreak} mutating step(s). ` +
+            `loop-breaker: no diff has changed for ${current.noDiffStreak} mutating step(s). ` +
             'Stop repeating edits; read the file/status, explain why no change is happening, or choose a different approach.',
         };
       }
@@ -671,9 +718,21 @@ const plugin: Plugin = {
       timeoutMs: 2_000,
       failurePolicy: 'open',
     });
+    const unregisterPrompt = api.registerHook(
+      'UserPromptSubmit',
+      undefined,
+      ((input: { sessionId?: string | undefined }) => {
+        // maxSteps and all loop streaks describe one agent run. A new user
+        // prompt starts a new run even though the long-lived WebUI plugin host
+        // and conversation session remain alive.
+        resetRun(input.sessionId);
+      }) as never,
+      { name: 'loop-breaker-turn-reset', failurePolicy: 'open' },
+    );
     state.hookUnregister = () => {
       unregisterPre();
       unregisterPost();
+      unregisterPrompt();
     };
 
     // ── loop_breaker_status tool ──────────────────────────────────────
@@ -685,7 +744,8 @@ const plugin: Plugin = {
       permission: 'auto',
       category: 'Diagnostics',
       mutating: false,
-      async execute() {
+      async execute(_input, ctx) {
+        const current = runState(ctx?.session?.id);
         return {
           ok: true,
           enabled: cfg.enabled,
@@ -699,20 +759,20 @@ const plugin: Plugin = {
           repeatedErrorWarnAfter: cfg.repeatedErrorWarnAfter,
           repeatedErrorBlockAfter: cfg.repeatedErrorBlockAfter,
           ignoreTools: cfg.ignoreTools,
-          currentStreak: state.streak,
-          noDiffStreak: state.noDiffStreak,
-          repeatedErrorStreak: state.repeatedErrorStreak,
+          currentStreak: current.streak,
+          noDiffStreak: current.noDiffStreak,
+          repeatedErrorStreak: current.repeatedErrorStreak,
           counters: {
-            invocations: state.invocations,
-            postInvocations: state.postInvocations,
-            warnings: state.warnings,
-            blocks: state.blocks,
-            oscillationsDetected: state.oscillationsDetected,
-            stepBudgetBlocks: state.stepBudgetBlocks,
-            noDiffWarnings: state.noDiffWarnings,
-            noDiffBlocks: state.noDiffBlocks,
-            repeatedErrorWarnings: state.repeatedErrorWarnings,
-            repeatedErrorBlocks: state.repeatedErrorBlocks,
+            invocations: current.invocations,
+            postInvocations: current.postInvocations,
+            warnings: current.warnings,
+            blocks: current.blocks,
+            oscillationsDetected: current.oscillationsDetected,
+            stepBudgetBlocks: current.stepBudgetBlocks,
+            noDiffWarnings: current.noDiffWarnings,
+            noDiffBlocks: current.noDiffBlocks,
+            repeatedErrorWarnings: current.repeatedErrorWarnings,
+            repeatedErrorBlocks: current.repeatedErrorBlocks,
           },
         };
       },
@@ -736,54 +796,27 @@ const plugin: Plugin = {
       }
       state.hookUnregister = null;
     }
-    const final = {
-      invocations: state.invocations,
-      postInvocations: state.postInvocations,
-      warnings: state.warnings,
-      blocks: state.blocks,
-      oscillationsDetected: state.oscillationsDetected,
-      stepBudgetBlocks: state.stepBudgetBlocks,
-      noDiffWarnings: state.noDiffWarnings,
-      noDiffBlocks: state.noDiffBlocks,
-      repeatedErrorWarnings: state.repeatedErrorWarnings,
-      repeatedErrorBlocks: state.repeatedErrorBlocks,
-    };
-    state.lastFingerprint = null;
-    state.streak = 0;
-    state.recent = [];
-    state.pendingBlockReason = null;
-    state.lastDiffFingerprint = null;
-    state.noDiffStreak = 0;
-    state.lastErrorFingerprint = null;
-    state.repeatedErrorStreak = 0;
-    state.invocations = 0;
-    state.postInvocations = 0;
-    state.warnings = 0;
-    state.blocks = 0;
-    state.oscillationsDetected = 0;
-    state.stepBudgetBlocks = 0;
-    state.noDiffWarnings = 0;
-    state.noDiffBlocks = 0;
-    state.repeatedErrorWarnings = 0;
-    state.repeatedErrorBlocks = 0;
+    const final = aggregateRuns();
+    state.runs.clear();
     api.log.info('loop-breaker: teardown complete', { final });
   },
 
   async health() {
+    const totals = aggregateRuns();
     return {
       ok: true,
-      message: `loop-breaker: ${state.invocations} call(s) observed, ${state.warnings + state.noDiffWarnings + state.repeatedErrorWarnings} warning(s), ${state.blocks} block(s), ${state.oscillationsDetected} oscillation(s)`,
+      message: `loop-breaker: ${totals.invocations} call(s) observed, ${totals.warnings + totals.noDiffWarnings + totals.repeatedErrorWarnings} warning(s), ${totals.blocks} block(s), ${totals.oscillationsDetected} oscillation(s)`,
       counters: {
-        invocations: state.invocations,
-        postInvocations: state.postInvocations,
-        warnings: state.warnings,
-        blocks: state.blocks,
-        oscillationsDetected: state.oscillationsDetected,
-        stepBudgetBlocks: state.stepBudgetBlocks,
-        noDiffWarnings: state.noDiffWarnings,
-        noDiffBlocks: state.noDiffBlocks,
-        repeatedErrorWarnings: state.repeatedErrorWarnings,
-        repeatedErrorBlocks: state.repeatedErrorBlocks,
+        invocations: totals.invocations,
+        postInvocations: totals.postInvocations,
+        warnings: totals.warnings,
+        blocks: totals.blocks,
+        oscillationsDetected: totals.oscillationsDetected,
+        stepBudgetBlocks: totals.stepBudgetBlocks,
+        noDiffWarnings: totals.noDiffWarnings,
+        noDiffBlocks: totals.noDiffBlocks,
+        repeatedErrorWarnings: totals.repeatedErrorWarnings,
+        repeatedErrorBlocks: totals.repeatedErrorBlocks,
       },
     };
   },

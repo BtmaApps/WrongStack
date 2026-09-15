@@ -29,6 +29,17 @@ import { DEFAULT_PERSISTENCE } from './types.js';
 const HYGIENE_NEAR_DUP_BUCKET_CAP = 80;
 
 /**
+ * Importance at or above which a memory is user-designated critical, per the
+ * triage pipeline's `pre-filter.ts` KEEP rule 1 and `action-dispatcher.ts`'s
+ * "importance >= 0.9 memories never get destructive proposals" safety gate.
+ * Hygiene must honor the same invariant: a memory the owner pinned as critical
+ * is never *recommended for deletion* by an automatic pass — least of all on
+ * the statistical `injected_never_used` signal, where non-use says nothing
+ * about value. The review signal still surfaces, as `investigate`.
+ */
+const CRITICAL_IMPORTANCE_FLOOR = 0.9;
+
+/**
  * Ascending byte comparison for ISO-8601 timestamps. `localeCompare` is
  * locale-aware and can reorder ASCII-only ISO strings across locales (Turkish
  * `i`/`I`, German `ß`/`ss`) — see `shared/pagination.ts:compareByUpdatedDesc`
@@ -688,7 +699,11 @@ export async function runSqliteSageHygiene(
       age >= unusedMs
     ) {
       reason = 'injected_never_used';
-      suggestedAction = 'delete';
+      // Safety gate, mirroring the triage pipeline: a memory pinned as
+      // critical is never *recommended for deletion* by this statistical
+      // signal. The review candidate is still filed — as a non-destructive
+      // `investigate` — so the unused-critical case stays visible to a human.
+      suggestedAction = m.importance >= CRITICAL_IMPORTANCE_FLOOR ? 'investigate' : 'delete';
     } else if (
       (m.status === 'stale' && age >= retentionMs) ||
       (m.confidence < 0.5 && age >= lowConfidenceMs)

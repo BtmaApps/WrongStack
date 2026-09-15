@@ -1213,6 +1213,9 @@
     "packages/tools/src/codebase-index/writer-refs.ts": [
       "FAMILY_MATCH_SQL"
     ],
+    "packages/tools/src/diff.ts": [
+      "refLooksLikeOutsidePath"
+    ],
     "packages/tools/src/grep.ts": [
       "__setRgAvailableForTests"
     ],

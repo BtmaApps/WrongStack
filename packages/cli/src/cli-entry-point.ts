@@ -68,7 +68,12 @@ installSqliteWarningFilter();
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scrubErrorText } from '@wrongstack/core/security';
-import { installCrashShield, runFatalSalvageSync, writeErr } from '@wrongstack/core/utils';
+import {
+  hardenWin32ExecutableSearch,
+  installCrashShield,
+  runFatalSalvageSync,
+  writeErr,
+} from '@wrongstack/core/utils';
 
 function isCliMain(moduleUrl: string, argvEntry = process.argv[1]): boolean {
   if (!argvEntry) return false;
@@ -217,6 +222,11 @@ export function runAsMain(mainFn: (argv: string[]) => Promise<number>): void {
   // job; the shield deliberately ignores broken-consumer errors. This call was
   // present, regressed to zero call sites, and is re-armed here (WS-076).
   installCrashShield();
+  // WS-2026-09-15-NV1: libuv resolves a bare spawn name (`git`, `rg`, `npx`) in
+  // the cwd BEFORE PATH on Windows, and the cwd is the opened repository. It
+  // honours this variable from the spawning process's own environment, and
+  // children inherit it (daemons are spawned with `env: process.env`).
+  hardenWin32ExecutableSearch();
   // Every process.exit / natural drain hits this; hooks are sync and idempotent.
   process.on('exit', () => {
     runFatalSalvageSync();

@@ -4,9 +4,14 @@
 // Run several instances on different ports — `wstack --webui --list` shows
 // which are open for which project (registry: ~/.wrongstack/webui-instances.json).
 import { ToolValidationError } from '@wrongstack/core/types';
+import { hardenWin32ExecutableSearch } from '@wrongstack/core/utils';
 import { startWebUI } from './index.js';
 import { formatInstances, listInstances } from './instance-registry.js';
 import { errMessage } from './ws-utils.js';
+
+// WS-2026-09-15-NV1: before anything spawns — git/rg/npx resolved by bare name
+// must never come from the opened repository's directory.
+hardenWin32ExecutableSearch();
 
 const argv = process.argv.slice(2);
 

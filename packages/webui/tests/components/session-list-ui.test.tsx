@@ -7,6 +7,7 @@ import type { SessionHistoryEntry } from '../../src/stores';
 import { useSessionTabStore, useUIStore } from '../../src/stores';
 import { chatLane, DEFAULT_LANE_ID, useChatLanes } from '../../src/stores/chat-lanes';
 import { SESSION_DEFAULT_LANE_ID, useSessionLanes } from '../../src/stores/session-lanes';
+import { nestedButtons } from '../helpers/nested-buttons.js';
 
 function entry(overrides: Partial<SessionHistoryEntry> = {}): SessionHistoryEntry {
   return {
@@ -193,5 +194,21 @@ describe('SessionList workspace', () => {
         name: i18n.t('activity:sessions.deleteEmptyTitle', { count: 0 }) as string,
       }),
     ).toBeNull();
+  });
+
+  it('renders no button nested inside another button', () => {
+    // The history row is itself a button and carries inline actions (rename,
+    // pin, Resume, tab badge) plus a rename editor. Each has to stay a sibling
+    // of the row: nesting them is invalid HTML, and an inner control's
+    // activation becomes undefined in a real browser.
+    renderWorkspace();
+    const workspace = document.querySelector<HTMLElement>('[data-history-variant="workspace"]');
+    expect(workspace).not.toBeNull();
+    expect(nestedButtons(workspace as HTMLElement)).toEqual([]);
+
+    // Opening the rename editor is the phase that swaps a control into the row.
+    fireEvent.click(screen.getByTitle('Rename'));
+    expect(screen.getByLabelText('Session name')).toBeDefined();
+    expect(nestedButtons(workspace as HTMLElement)).toEqual([]);
   });
 });

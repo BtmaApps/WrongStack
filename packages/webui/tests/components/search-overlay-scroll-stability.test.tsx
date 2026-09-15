@@ -17,8 +17,8 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SearchOverlay } from '../../src/components/SearchOverlay';
-import { useChatStore, useUIStore } from '../../src/stores';
 import type { ChatMessage } from '../../src/stores';
+import { useChatStore, useUIStore } from '../../src/stores';
 
 function msg(overrides: Partial<ChatMessage>): ChatMessage {
   return {
@@ -30,7 +30,42 @@ function msg(overrides: Partial<ChatMessage>): ChatMessage {
   };
 }
 
+// Animation frames are queued here instead of running on jsdom's real rAF
+// timer. SearchOverlay's repaint chain is three setState calls spread across
+// three frames; on a real timer they land *after* the test's await points and
+// React reports each one as "a test was not wrapped in act(...)".
+//
+// The queue must not be flushed synchronously *inside* requestAnimationFrame:
+// the chain assigns back to its own binding (`let raf = requestAnimationFrame(
+// tick)` where tick reassigns `raf`), so a re-entrant call hits the temporal
+// dead zone. Queueing keeps rescheduling legal, and flushFrames() runs the
+// callbacks inside act() so the updates are covered.
+let frames = new Map<number, FrameRequestCallback>();
+let nextFrameId = 1;
+
+/** Run the queued animation frames inside act(). */
+async function flushFrames(rounds = 3): Promise<void> {
+  for (let round = 0; round < rounds; round += 1) {
+    if (frames.size === 0) return;
+    const pending = [...frames.values()];
+    frames.clear();
+    await act(async () => {
+      for (const cb of pending) cb(0);
+    });
+  }
+}
+
 beforeEach(() => {
+  frames = new Map();
+  nextFrameId = 1;
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+    const id = nextFrameId++;
+    frames.set(id, cb);
+    return id;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+    frames.delete(id);
+  });
   useUIStore.setState({
     searchOpen: false,
     searchQuery: '',
@@ -41,12 +76,10 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useUIStore.setState({
-    searchOpen: false,
-    searchQuery: '',
-    searchActiveMessageId: null,
-    scrollTarget: null,
-  });
+  vi.unstubAllGlobals();
+  // Store resets moved to beforeEach: resetting here would touch the stores
+  // while the previous test's tree is still mounted (RTL's auto-cleanup runs in
+  // its own afterEach), re-rendering SearchOverlay outside act().
 });
 
 describe('SearchOverlay scroll stability', () => {
@@ -65,6 +98,9 @@ describe('SearchOverlay scroll stability', () => {
     });
 
     render(<SearchOverlay />);
+
+    // Drive the queued repaint frames inside act().
+    await flushFrames();
 
     // Wait for the initial scroll request to fire — scrollTarget should be
     // set with nonce 1 pointing at the first hit.
@@ -114,6 +150,9 @@ describe('SearchOverlay scroll stability', () => {
 
     render(<SearchOverlay />);
 
+    // Drive the queued repaint frames inside act().
+    await flushFrames();
+
     // Initial scroll to hit-a.
     await waitFor(() => {
       expect(useUIStore.getState().scrollTarget).not.toBeNull();
@@ -148,6 +187,9 @@ describe('SearchOverlay scroll stability', () => {
     });
 
     render(<SearchOverlay />);
+
+    // Drive the queued repaint frames inside act().
+    await flushFrames();
 
     await waitFor(() => {
       expect(useUIStore.getState().scrollTarget).not.toBeNull();

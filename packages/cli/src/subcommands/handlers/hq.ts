@@ -674,6 +674,21 @@ async function tokenList(args: string[], deps: SubcommandDeps): Promise<number> 
   const tokens: HqToken[] = authFile[tokenField] ?? [];
 
   if (tokens.length === 0) {
+    // WS-2026-09-15-01: `/ws/client` is only open when HQ holds no credential of
+    // any kind. With a password or a browser token, zero client tokens means
+    // every publisher is REJECTED — reporting OPEN MODE there was both wrong and
+    // the reason nobody noticed the channel used to stay open.
+    const browserCredential =
+      authFile.passwordHash !== undefined || (authFile.browserTokens ?? []).length > 0;
+    if (scope === 'client' && browserCredential) {
+      deps.renderer.write(
+        'No client tokens issued. HQ has a browser credential, so /ws/client REJECTS every publisher.\n',
+      );
+      deps.renderer.write(
+        'Run `wstack hq token create --client [label]` to let publishers connect.\n',
+      );
+      return 0;
+    }
     deps.renderer.write(
       `No ${scope} tokens issued. ${scope === 'browser' ? 'Browsers' : 'Clients'} are in OPEN MODE.\n`,
     );

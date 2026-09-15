@@ -8,11 +8,17 @@ import {
 
 it('uses the safe cancel choice when a dialog opts into cancel as the default', async () => {
   render(<ConfirmModalHost />);
-  const decision = confirmModalChoice({
-    title: 'Start a fresh context?',
-    confirmLabel: 'New context',
-    cancelLabel: 'Same context',
-    defaultAction: 'cancel',
+  // confirmModalChoice() writes the request into the modal store, which
+  // re-renders the host mounted above — that update has to land inside act() or
+  // React reports it as an update outside act().
+  let decision!: ReturnType<typeof confirmModalChoice>;
+  await act(async () => {
+    decision = confirmModalChoice({
+      title: 'Start a fresh context?',
+      confirmLabel: 'New context',
+      cancelLabel: 'Same context',
+      defaultAction: 'cancel',
+    });
   });
 
   expect(await screen.findByText('Start a fresh context?')).toBeDefined();

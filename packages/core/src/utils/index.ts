@@ -8,12 +8,6 @@ export * from './config-json.js';
 export { checkConnectivity, resetConnectivityCache } from './connectivity.js';
 export { type ContextBreakdown, getContextBreakdown } from './context-breakdown.js';
 export {
-  addFatalSalvageHook,
-  runFatalSalvageSync,
-  type CrashShieldOptions,
-  installCrashShield,
-} from './crash-shield.js';
-export {
   buildCompletedWorkLedgerBlock,
   buildContextEvidenceDigest,
   COMPLETED_WORK_LEDGER_MARKER,
@@ -28,6 +22,12 @@ export {
   repeatedReadPressure,
   syncCompletedWorkLedgerBlock,
 } from './context-evidence.js';
+export {
+  addFatalSalvageHook,
+  type CrashShieldOptions,
+  installCrashShield,
+  runFatalSalvageSync,
+} from './crash-shield.js';
 export {
   type DeepMergeOptions,
   deepMerge,
@@ -64,7 +64,13 @@ export {
   parseIncomingImages,
 } from './incoming-images.js';
 export { readBundledInstructionText, renderInstructionTemplate } from './instruction-file.js';
-export { assertNotPrivateHost, embeddedIPv4, expandIPv6, isPrivateIPv4, isPrivateIPv6 } from './ip-guard.js';
+export {
+  assertNotPrivateHost,
+  embeddedIPv4,
+  expandIPv6,
+  isPrivateIPv4,
+  isPrivateIPv6,
+} from './ip-guard.js';
 export { completePartialObject } from './json-repair.js';
 export {
   type CoercionResult,
@@ -73,14 +79,14 @@ export {
   type ValidationResult,
   validateAgainstSchema,
 } from './json-schema-validate.js';
-export { mergeCustomModelDefs } from './merge-custom-models.js';
-export { mergeModelsPayload } from './merge-models-payload.js';
 export {
   formatMemoryEvidenceBlock,
   MEMORY_EVIDENCE_TAG,
   sanitizeMemoryEvidenceBody,
   sanitizeMemoryEvidenceSource,
 } from './memory-evidence-fence.js';
+export { mergeCustomModelDefs } from './merge-custom-models.js';
+export { mergeModelsPayload } from './merge-models-payload.js';
 export {
   hasMeaningfulContent,
   type MessageRepairReport,
@@ -130,13 +136,19 @@ export {
   watchProjectTree,
 } from './project-watch.js';
 export {
-  capSubject,
   type CompileFail,
   type CompileResult,
+  capSubject,
   compileUserRegex,
   MAX_SUBJECT_LEN,
 } from './regex-guard.js';
 export * from './safe-json.js';
+export {
+  capSageLines,
+  SAGE_INJECTOR_HEADINGS,
+  type SageOutputSplit,
+  splitSageOutputBlock,
+} from './sage-output-block.js';
 export { sessionScopedPath } from './session-scoped-path.js';
 export * from './sleep.js';
 export { slugify } from './slug.js';
@@ -223,10 +235,5 @@ export {
 export { isUlid, ulid } from './ulid.js';
 export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore.js';
 export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';
+export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';
 export * from './wstack-paths.js';
-export {
-  capSageLines,
-  SAGE_INJECTOR_HEADINGS,
-  splitSageOutputBlock,
-  type SageOutputSplit,
-} from './sage-output-block.js';

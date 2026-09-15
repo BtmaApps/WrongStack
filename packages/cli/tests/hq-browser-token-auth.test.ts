@@ -123,11 +123,38 @@ describe('HQ server — /ws/browser token validation', () => {
     ws.close();
   });
 
-  it('token mode: /ws/client connections are exempt from token validation', async () => {
+  // WS-2026-09-15-01. This test used to be named "/ws/client connections are
+  // exempt from token validation" and asserted that the upgrade OPENED — it was
+  // pinning the vulnerability: with a browser credential configured and no
+  // client token, an anonymous peer registered as a publisher and was granted
+  // every capability it declared, `control.approve` included. Open mode is "no
+  // credential of any kind"; a browser token is a credential.
+  it('token mode: a tokenless /ws/client upgrade is rejected when only browser tokens exist', async () => {
     const h = await startWithTokens([
       { id: 't1', token: 'valid-token-abc', createdAt: '2026-06-21T00:00:00.000Z' },
     ]);
     const ws = new WebSocket(wsUrl(h, '/ws/client'));
+    await expect(waitForOpen(ws)).rejects.toThrow(/401/);
+  });
+
+  it('token mode: /ws/client with a live client token still connects', async () => {
+    await writeHqAuthFile(dataDir, {
+      version: HQ_AUTH_FILE_VERSION,
+      updatedAt: new Date().toISOString(),
+      browserTokens: [
+        { id: 't1', token: 'valid-token-abc', createdAt: '2026-06-21T00:00:00.000Z' },
+      ],
+      clientTokens: [
+        {
+          id: 'c1',
+          token: 'client-token-xyz',
+          createdAt: '2026-06-21T00:00:00.000Z',
+          capabilities: ['telemetry.publish'],
+        },
+      ],
+    });
+    handle = await startHqServer({ host: '127.0.0.1', port: 0, dataDir });
+    const ws = new WebSocket(wsUrl(handle, '/ws/client', 'client-token-xyz'));
     // /ws/client requires a hello frame; open is enough for this test.
     await expect(waitForOpen(ws)).resolves.toBeUndefined();
     ws.close();

@@ -519,13 +519,20 @@ describe('polling', () => {
     await act(async () => {
       Object.defineProperty(document, 'hidden', { value: true, configurable: true });
     });
-    await vi.advanceTimersByTimeAsync(10_000);
+    // The advance must run *inside* act: the polling timer's state update lands
+    // while the timers fire, and an unwrapped advance reports every tick as an
+    // update outside act().
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
     expect(urls()).toHaveLength(before);
 
     await act(async () => {
       Object.defineProperty(document, 'hidden', { value: false, configurable: true });
     });
-    await vi.advanceTimersByTimeAsync(3_000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
     expect(urls().length).toBeGreaterThan(before);
   });
 

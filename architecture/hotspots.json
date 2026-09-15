@@ -63,7 +63,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/subcommands/handlers/hq.ts": {
-      "lines": 1088,
+      "lines": 1103,
       "relativeImports": 10
     },
     "packages/cli/src/subcommands/handlers/providers-models.ts": {
@@ -230,6 +230,10 @@
       "lines": 1066,
       "relativeImports": 0
     },
+    "packages/plugins/src/loop-breaker/index.ts": {
+      "lines": 826,
+      "relativeImports": 0
+    },
     "packages/plugins/src/path-guard/shell-targets.ts": {
       "lines": 1048,
       "relativeImports": 1
@@ -279,7 +283,7 @@
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 819,
+      "lines": 834,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {

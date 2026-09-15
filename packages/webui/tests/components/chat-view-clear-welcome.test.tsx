@@ -33,6 +33,7 @@ import { runChatSlashCommand } from '../../src/components/ChatInput/slash-routin
 import { ChatView } from '../../src/components/ChatView/index.js';
 import { handleSessionStart } from '../../src/hooks/ws-handlers/session-replay-handlers.js';
 import { useChatStore } from '../../src/stores/index.js';
+import { nestedButtons } from '../helpers/nested-buttons.js';
 
 /** The composer's `/clear` wiring, with the store as its backing state. */
 function clearViaSlashCommand(): void {
@@ -131,5 +132,25 @@ describe('ChatView welcome screen after a clear', () => {
     expect(useChatStore.getState().messages).toHaveLength(0);
     expect(useChatStore.getState().isLoading).toBe(false);
     expect(welcomeScreen()).not.toBeNull();
+  });
+
+  it('renders no button nested inside another button in the chat header', () => {
+    const { container } = render(<ChatView />);
+
+    // ChatHeader is hand-rolled and carries a row of inline action controls
+    // (open-sidebar, rename, session switcher, iteration chip, tool-stats /
+    // memory / processes / checkpoints) next to regions that are themselves
+    // clickable. None of them may wrap another button.
+    expect(nestedButtons(container)).toEqual([]);
+
+    // A transcript is the other phase that adds header controls: the status
+    // strip (context fill bar, Edit, cost and quota chips) only renders once
+    // there is recorded usage, so assert it separately rather than assuming the
+    // empty state covered it.
+    act(() => {
+      useChatStore.getState().addMessage({ role: 'user', content: 'hello' });
+    });
+    expect(welcomeScreen()).toBeNull();
+    expect(nestedButtons(container)).toEqual([]);
   });
 });

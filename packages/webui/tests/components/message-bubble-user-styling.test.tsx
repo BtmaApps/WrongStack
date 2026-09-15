@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { MessageBubble } from '../../src/components/MessageBubble/index.js';
 import { useChatStore } from '../../src/stores/chat-store.js';
 import type { ChatMessage } from '../../src/stores/types.js';
@@ -25,6 +25,18 @@ function assistantMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
 }
 
 describe('MessageBubble user-message styling', () => {
+  afterEach(async () => {
+    // MessageBubble renders its body through LazyMarkdown, whose
+    // `import('react-markdown')` chunk resolves on its own schedule — after the
+    // synchronous test body has finished. Awaiting the same import inside act()
+    // pulls the Suspense resolution into the act window; without it React
+    // reports "a suspended resource finished loading inside a test, but the
+    // event was not wrapped in act(...)".
+    await act(async () => {
+      await import('react-markdown');
+    });
+  });
+
   it('renders user bubble with transparent background and primary-colored border', () => {
     const { container } = render(<MessageBubble message={userMessage()} isFirst />);
     const bubble = container.querySelector('[data-message-id="user_1"] .shadow-sm');

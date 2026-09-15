@@ -365,9 +365,19 @@ export function hqAuthRequired(
  * which are a separate set from the browser tokens, but the same fail-closed
  * floor applies: an all-expired client-token file must not mean "no auth
  * configured, let anyone register as a session".
+ *
+ * WS-2026-09-15-01: this used to be `requireAuthFloor || clientTokens.size > 0`.
+ * The floor only latches in true open mode (no password, no browser token), so
+ * a password-protected HQ on a network bind whose client tokens had all expired
+ * or been revoked accepted a tokenless `/ws/client` — and `client.hello` then
+ * granted every capability the socket declared, `control.approve` included.
+ * OPEN MODE is "no credential of any kind" (SECURITY.md); once HQ holds ANY
+ * browser credential, the publisher channel must present a client token too.
+ * A loopback exemption is deliberately absent: `--tunnel` and reverse proxies
+ * deliver remote traffic from 127.0.0.1.
  */
 export function hqClientAuthRequired(mutableAuth: HqRouterMutableAuth): boolean {
-  return mutableAuth.requireAuthFloor === true || mutableAuth.clientTokens.size > 0;
+  return mutableAuth.clientTokens.size > 0 || hqAuthRequired(mutableAuth);
 }
 
 // ── Request auth ───────────────────────────────────────────────────────────

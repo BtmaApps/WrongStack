@@ -64,9 +64,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/hq": {
-      "files": 137,
+      "files": 138,
       "typeOnly": 87,
-      "runtimeOrMixed": 81
+      "runtimeOrMixed": 83
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 587,
+      "files": 588,
       "typeOnly": 55,
-      "runtimeOrMixed": 560
+      "runtimeOrMixed": 561
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -4634,7 +4634,7 @@
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/tests/hq-auth-floor.test.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/hq",
@@ -4771,6 +4771,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/tests/hq-server.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/cli/tests/hq-session-revoke-closes-browser-socket.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20623,6 +20629,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/embedded-host-adapters.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/entry.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

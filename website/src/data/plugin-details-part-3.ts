@@ -555,8 +555,8 @@ export const pluginDetailsPart3: Record<string, PluginDetail> = {
       {
         name: 'enabled',
         type: 'boolean',
-        defaultValue: 'true',
-        description: 'Master switch.',
+        defaultValue: 'false',
+        description: 'Opt-in master switch; disabled unless explicitly enabled.',
       },
       {
         name: 'mode',
@@ -585,8 +585,8 @@ export const pluginDetailsPart3: Record<string, PluginDetail> = {
       {
         name: 'maxSteps',
         type: 'number',
-        defaultValue: '200',
-        description: 'Maximum tool steps before blocking; 0 disables the step budget.',
+        defaultValue: '0',
+        description: 'Optional maximum tool steps before blocking; 0 keeps runs unlimited.',
       },
       {
         name: 'noDiffWarnAfter',
@@ -623,7 +623,7 @@ export const pluginDetailsPart3: Record<string, PluginDetail> = {
     hooks: ['PreToolUse (*)', 'PostToolUse (*)'],
     apiVersion: '^0.1.10',
     example:
-      '{\n  "extensions": {\n    "loop-breaker": {\n      "mode": "block",\n      "warnAfter": 3,\n      "blockAfter": 5\n    }\n  }\n}',
+      '{\n  "extensions": {\n    "loop-breaker": {\n      "enabled": true,\n      "mode": "block",\n      "warnAfter": 3,\n      "blockAfter": 5\n    }\n  }\n}',
   },
   'path-guard': {
     version: '0.1.0',

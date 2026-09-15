@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageBubble } from '../../src/components/MessageBubble/index.js';
 import { useChatStore } from '../../src/stores/chat-store.js';
 import type { ChatMessage } from '../../src/stores/types.js';
@@ -38,6 +38,20 @@ describe('MessageBubble edit and retry operations', () => {
     mockWs.sendMessage.mockClear();
     useChatStore.getState().clearMessages();
     useChatStore.getState().setLoading(false);
+  });
+
+  afterEach(async () => {
+    // MessageBubble renders its body through LazyMarkdown, whose
+    // `import('react-markdown')` chunk resolves on its own schedule — after the
+    // synchronous test body has finished. Awaiting the same import inside act()
+    // pulls the Suspense resolution into the act window; without it React
+    // reports "a suspended resource finished loading inside a test, but the
+    // event was not wrapped in act(...)". RTL's auto-cleanup registers its own
+    // afterEach at import time, and after-hooks run in reverse registration
+    // order, so this drain happens while the tree is still mounted.
+    await act(async () => {
+      await import('react-markdown');
+    });
   });
 
   it('saveEdit updates the message in place and does NOT add a duplicate user message', () => {

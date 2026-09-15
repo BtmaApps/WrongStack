@@ -182,11 +182,18 @@ export default defineConfig({
       // Raised after component coverage expansion (ToolStatsModal, SideEffectTimeline,
       // ProviderWaitingRoom, CustomRosterPanel, GoalView & BoardView).
       // Measured: 62.62% statements, 53.44% branches, 55.65% functions, 64.16% lines.
+      //
+      // Raised 2026-09-15 to the measured floor, after coverage drifted ~2 points
+      // clear of the previous ratchet on all four metrics. Verified with the full
+      // package suite: 384 test files / 5,418 tests green, exit 0.
+      // Measured: 64.30% statements, 54.95% branches, 57.46% functions, 65.77% lines
+      // on a 31,698-statement in-scope denominator (530 files under src/).
+      // packages/webui/TESTING.md mirrors these numbers — update both in one commit.
       thresholds: {
-        statements: 62,
-        branches: 53,
-        functions: 55,
-        lines: 63,
+        statements: 64,
+        branches: 54,
+        functions: 57,
+        lines: 65,
         perFile: false,
       },
     },

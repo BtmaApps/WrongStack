@@ -1,10 +1,10 @@
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { blockingCalendarRules, ruleTarget } from '@/lib/model-calendar';
 import { getWSClient } from '@/lib/ws-client';
 import { useProviderStatusStore } from '@/stores';
 import { useLocalPrefs } from '@/stores/local-prefs';
-import { useAppTranslation } from '@/i18n';
 
 function remaining(expiresAt: number | undefined, now: number): string {
   if (!expiresAt) return 'reset time unknown';
@@ -108,32 +108,36 @@ export function ProviderWaitingRoom() {
 
   return (
     <div className="mx-auto mb-2 max-w-6xl rounded-lg border border-warning/25 bg-warning/5 text-xs">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-warning/5"
-        onClick={() => setExpanded((value) => !value)}
-        aria-expanded={expanded}
-      >
-        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-        <span className="font-medium text-foreground">
-          {t('activity:providerWait.providerModelAvailability')}
-        </span>
-        <span className="text-muted-foreground">
-          {blocked} blocked · {degraded} degraded · {activeRules.length} scheduled
-        </span>
+      {/* The toggle and the refresh control are siblings, never nested: a
+          <button> inside a <button> is invalid HTML and React reports it as a
+          hydration error. Refresh is a separate action, so it must not share
+          the toggle's activation semantics either. */}
+      <div className="flex w-full items-center gap-2 px-3 py-2 hover:bg-warning/5">
         <button
           type="button"
-          className="ml-auto inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            refresh();
-          }}
+          className="flex flex-1 items-center gap-2 text-left"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+        >
+          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+          <span className="font-medium text-foreground">
+            {t('activity:providerWait.providerModelAvailability')}
+          </span>
+          <span className="text-muted-foreground">
+            {blocked} blocked · {degraded} degraded · {activeRules.length} scheduled
+          </span>
+          <span className="ml-auto text-muted-foreground">{expanded ? 'Hide' : 'Details'}</span>
+        </button>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+          onClick={refresh}
           title={t('activity:providerWait.refreshStatus')}
+          aria-label={t('activity:providerWait.refreshStatus')}
         >
           <RefreshCw className="h-3 w-3" />
         </button>
-        <span className="text-muted-foreground">{expanded ? 'Hide' : 'Details'}</span>
-      </button>
+      </div>
       {expanded && (
         <div className="border-t border-warning/15 px-3 py-2">
           {visible.map((entry) => {

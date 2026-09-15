@@ -72,6 +72,23 @@ describe('hqClientAuthRequired — /ws/client counterpart', () => {
   it('is true under the floor with zero client tokens', () => {
     expect(hqClientAuthRequired(mutableAuth({ requireAuthFloor: true }))).toBe(true);
   });
+
+  // WS-2026-09-15-01. The floor only latches in true open mode, so these three
+  // states — a credentialed HQ whose client tokens all expired or were revoked
+  // — used to return false and accept a tokenless `/ws/client` whose
+  // `client.hello` was then granted `control.approve`. Injection-validated:
+  // restoring `requireAuthFloor || clientTokens.size > 0` turns all three red.
+  it('is true in password mode with zero client tokens', () => {
+    expect(hqClientAuthRequired(mutableAuth({ passwordHash: 'h' }))).toBe(true);
+  });
+
+  it('is true with browser tokens and zero client tokens', () => {
+    expect(hqClientAuthRequired(mutableAuth({ browserTokens: new Set(['b']) }))).toBe(true);
+  });
+
+  it('is true when requireBrowserAuth is on with zero client tokens', () => {
+    expect(hqClientAuthRequired(mutableAuth({ requireBrowserAuth: true }))).toBe(true);
+  });
 });
 
 describe('HQ gates reject unauthenticated callers when tokens are configured', () => {
@@ -140,6 +157,37 @@ describe('HQ gates reject unauthenticated callers when tokens are configured', (
     const socket = new WebSocket(`ws://127.0.0.1:${h.port}/ws/browser`, {
       headers: { Origin: `http://127.0.0.1:${h.port}` },
     });
+    sockets.push(socket);
+    const outcome = await new Promise<string>((resolve) => {
+      socket.on('open', () => resolve('open'));
+      socket.on('error', () => resolve('rejected'));
+      socket.on('unexpected-response', () => resolve('rejected'));
+    });
+    expect(outcome).toBe('rejected');
+  });
+
+  // WS-2026-09-15-01, end to end. Password-protected HQ whose only client token
+  // has expired: the floor never latched (a password exists), so the old
+  // predicate skipped `/ws/client` auth and a tokenless, Origin-less peer was
+  // upgraded. Injection-validated against the pre-fix predicate (outcome 'open').
+  it('/ws/client rejects a tokenless upgrade on a password HQ with only expired client tokens', async () => {
+    const { hashHqPassword, mintHqCookieSecret } = await import('@wrongstack/core/hq');
+    const h = await start(
+      authFile({
+        passwordHash: await hashHqPassword('dummy-password'),
+        cookieSecret: mintHqCookieSecret(),
+        clientTokens: [
+          {
+            id: 'c1',
+            token: 'dummy-client-token',
+            createdAt: '2000-01-01T00:00:00.000Z',
+            expiresAt: '2000-01-02T00:00:00.000Z',
+            capabilities: ['telemetry.publish'],
+          },
+        ],
+      }),
+    );
+    const socket = new WebSocket(`ws://127.0.0.1:${h.port}/ws/client`);
     sockets.push(socket);
     const outcome = await new Promise<string>((resolve) => {
       socket.on('open', () => resolve('open'));

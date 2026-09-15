@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.13",
+  "packageVersion": "1.0.14",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -451,15 +451,14 @@
         "export { ALLOWED_IMAGE_MEDIA_TYPES, base64DecodedBytes, buildUserContentBlocks, IncomingImageError, type IncomingImagePayload, isAllowedImageMediaType, isValidImageBase64, MAX_INCOMING_IMAGE_BYTES, MAX_INCOMING_IMAGES, parseIncomingImages, } from './incoming-images.js';",
         "export { DEFAULT_WALK_IGNORE_DIRS, DEFAULT_WALK_IGNORE_SET } from './walk-ignore.js';",
         "export { activateProjectStateGuard, type ProjectStateGuard, type ProjectStateGuardOptions, startProjectStateGuard, } from './project-state-guard.js';",
-        "export { addFatalSalvageHook, runFatalSalvageSync, type CrashShieldOptions, installCrashShield, } from './crash-shield.js';",
+        "export { addFatalSalvageHook, type CrashShieldOptions, installCrashShield, runFatalSalvageSync, } from './crash-shield.js';",
         "export { applyToolDescriptionModes, applyToolDescriptionModeToTool, DEFAULT_TOOL_DESCRIPTION_MODE, getToolDescriptionMode, normalizeToolDescriptionMode, resolveToolDescriptionMode, setToolDescriptionMode, simplifyToolDescription, type ToolDescriptionRegistryLike, } from './tool-description-mode.js';",
         "export { applyToolResultRenderModes, DEFAULT_TOOL_RESULT_RENDER_MODE, getToolResultRenderMode, normalizeToolResultRenderMode, resolveToolResultRenderMode, setToolResultRenderMode, type ToolResultRenderModeRegistryLike, } from './tool-result-render-mode.js';",
-        "export { assertNotPrivateHost, embeddedIPv4, expandIPv6, isPrivateIPv4, isPrivateIPv6 } from './ip-guard.js';",
+        "export { assertNotPrivateHost, embeddedIPv4, expandIPv6, isPrivateIPv4, isPrivateIPv6, } from './ip-guard.js';",
         "export { buildCompletedWorkLedgerBlock, buildContextEvidenceDigest, COMPLETED_WORK_LEDGER_MARKER, createContextEvidenceState, formatCompletedWorkLedger, markAssistantReferencedEvidence, type RecordCompletedWorkInput, type RecordToolOutputEvidenceInput, recordCompletedWorkEvidence, recordToolOutputEvidence, recordUserIntentEvidence, repeatedReadPressure, syncCompletedWorkLedgerBlock, } from './context-evidence.js';",
         "export { buildSgrSequence, buildTitleSequence, type ColorDepth, detectTerminal, ESCAPE_TERMINATOR, type EscapeEmitResult, type EscapeSequence, isStdinTTY, type MouseProtocol, onResize, safeEmit, setOutputLineGuard, setRawMode, setTitle, type TerminalCapability, TerminalLifecycle, writeErr, writeOut, } from './term.js';",
         "export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';",
-        "export { capSageLines, SAGE_INJECTOR_HEADINGS, splitSageOutputBlock, type SageOutputSplit, } from './sage-output-block.js';",
-        "export { capSubject, type CompileFail, type CompileResult, compileUserRegex, MAX_SUBJECT_LEN, } from './regex-guard.js';",
+        "export { capSageLines, SAGE_INJECTOR_HEADINGS, type SageOutputSplit, splitSageOutputBlock, } from './sage-output-block.js';",
         "export { checkConnectivity, resetConnectivityCache } from './connectivity.js';",
         "export { completePartialObject } from './json-repair.js';",
         "export { computeMessageTokens, estimateMessageTokens, estimateRequestTokens, estimateRequestTokensCalibrated, estimateTextTokens, estimateToolDefTokens, estimateToolInputTokens, estimateToolResultTokens, getCalibrationState, type RequestTokenBreakdown, recordActualUsage, resetCalibration, } from './token-estimate.js';",
@@ -471,6 +470,7 @@
         "export { formatMemoryEvidenceBlock, MEMORY_EVIDENCE_TAG, sanitizeMemoryEvidenceBody, sanitizeMemoryEvidenceSource, } from './memory-evidence-fence.js';",
         "export { formatProjectSuppliedBlock, PROJECT_SUPPLIED_INSTRUCTIONS_TAG, PROJECT_SUPPLIED_TAG, sanitizeProjectSuppliedBody, sanitizeProjectSuppliedSource, } from './project-supplied-fence.js';",
         "export { getPerfProfile, indexParallelBatchSize, isFrugalPerf, type PerfProfile, SageCachePragmas, sqliteCachePragmas, tuiStreamFlushMs, useDaemonPerfDefaults, } from './perf-profile.js';",
+        "export { hardenWin32ExecutableSearch, NO_CWD_EXE_SEARCH_ENV } from './win32-exe-search.js';",
         "export { hasMeaningfulContent, type MessageRepairReport, type MessageRepairResult, repairToolUseAdjacency, } from './message-invariants.js';",
         "export { isPidAlive } from './pid.js';",
         "export { isUlid, ulid } from './ulid.js';",
@@ -484,6 +484,7 @@
         "export { slugify } from './slug.js';",
         "export { type CoercionResult, coerceAgainstSchema, type ValidationError, type ValidationResult, validateAgainstSchema, } from './json-schema-validate.js';",
         "export { type CompactToolDefinitionForWireOptions, type CompactWireToolDefinition, compactSchemaDescriptions, compactToolDefinitionForWire, normalizeTopLevelToolSchema, type ToolWireDefinitionLike, } from './tool-wire-compact.js';",
+        "export { type CompileFail, type CompileResult, capSubject, compileUserRegex, MAX_SUBJECT_LEN, } from './regex-guard.js';",
         "export { type ContextBreakdown, getContextBreakdown } from './context-breakdown.js';",
         "export { type DeepMergeOptions, deepMerge, FORBIDDEN_PROTO_KEYS, isPrimitiveArray, } from './deep-merge.js';",
         "export { type ProjectWatchEvent, type ProjectWatchSubscription, watchProjectTree, } from './project-watch.js';",
@@ -1490,7 +1491,7 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner",
       "sourceFiles": 6,
-      "sourceLines": 1312
+      "sourceLines": 1317
     },
     {
       "directory": "hq",
@@ -1643,8 +1644,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 69,
-      "sourceLines": 12222
+      "sourceFiles": 70,
+      "sourceLines": 12297
     },
     {
       "directory": "wiring",

@@ -18,17 +18,43 @@ ensures coverage keeps pace with new code.
 3. Set each threshold to `Math.floor(measured_value)`. This is the floor — CI
    will fail if coverage drops below this.
 4. If a new test lands and coverage improves past a whole number
-   (e.g. 19.2% → 20.1%), set the threshold to that whole number.
+   (e.g. 62.6% → 63.1%), set the threshold to that whole number.
 5. Commit message: `test(webui): tighten coverage thresholds`
 
-### Current measured coverage
+### Current coverage floor
 
-| Metric    | Measured | Threshold |
-|-----------|----------|-----------|
-| statements | 19.21%  | 19        |
-| branches  | 16.87%  | 16        |
-| functions | 17.81%  | 17        |
-| lines     | 19.83%  | 19        |
+`test.coverage.thresholds` in `packages/webui/vitest.config.ts` is the source of
+truth; the table below mirrors it. If the two ever disagree, the config wins —
+change the config, then update this table in the same commit.
+
+| Metric     | Threshold (enforced) | Measured 2026-09-15        |
+|------------|----------------------|----------------------------|
+| statements | 64                   | 64.30% (20,384 / 31,698)   |
+| branches   | 54                   | 54.95% (16,125 / 29,340)   |
+| functions  | 57                   | 57.46% (5,185 / 9,023)     |
+| lines      | 65                   | 65.77% (17,947 / 27,287)   |
+
+Verified by running `pnpm --filter @wrongstack/webui test:coverage`: 384 test
+files / 5,418 tests passed, exit 0. This is the run that validated the raise —
+the thresholds went from 62/53/55/63 to 64/54/57/65 on 2026-09-15, closing the
+~2-point slack the previous floor carried on every metric. Statements is now the
+tightest metric (+0.30), so a coverage-moving change lands within a third of a
+point of the floor: re-measure and raise in the same change.
+
+- The ratchet is **aggregate** (`perFile: false`): one floor over the whole
+  in-scope source, not a per-file requirement.
+- The measurement covers 530 files totalling 31,698 statements, all under `src/`.
+  The exclusions below keep `packages/webui-server` and the type-only modules out
+  of this report — confirmed by inspecting `coverage-summary.json`: 0 files from
+  outside `src/`. The raise-history comment in `vitest.config.ts` still cites a
+  22,949-statement denominator measured on 2026-07-29; the in-scope source has
+  grown since then, so treat that figure as historical.
+- The measured column is a dated snapshot, not a live value. Re-measure with
+  `pnpm --filter @wrongstack/webui test:coverage`, then read the `total` entry of
+  `packages/webui/coverage/coverage-summary.json` (or the `All files` row).
+- Apply the policy's `Math.floor(measured)` rule when re-measuring, and land the
+  config change and this table together — a floor that trails the measurement by
+  whole points is exactly the window a regression slips through.
 
 ### What counts as a "store/utility test"
 
@@ -39,12 +65,18 @@ ensures coverage keeps pace with new code.
 
 ### Files excluded from coverage
 
-The configured exclusions in `vitest.config.ts` are bootstrap or declaration files:
+`test.coverage` includes `src/**/*.{ts,tsx}` and excludes:
 
-- `src/env.d.ts`
-- `src/main.tsx`
-- `src/lib/core-browser-shim.ts`
-- `src/server/entry.ts`
+| Pattern | Why |
+|---------|-----|
+| `**/*.test.*`, `**/dist/**` | Test files and build output |
+| `src/env.d.ts`, `src/vite-env.d.ts` | Ambient type declarations only |
+| `src/main.tsx` | ReactDOM bootstrap entry — exercised by E2E |
+| `src/lib/core-browser-shim.ts` | Side-effect polyfill shim |
+| `src/server/entry.ts` | Process/bootstrap entry — exercised at runtime |
+| `src/types/**`, `src/types.ts` | Type-only modules: v8 reports them 0/0, which the aggregate would read as a real gap |
+| `src/protocol-compatibility.ts` | Compile-time `AssertNever` bridge only |
+| `../webui-server/**`, `**/packages/webui-server/**` | Measured by `packages/webui-server/tests` under the ROOT vitest config; counting it here double-counts ~10k statements at near-0% |
 
 All other `src/**/*.{ts,tsx}` files contribute to the aggregate ratchet, including
 components and WebSocket utilities.

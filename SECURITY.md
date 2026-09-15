@@ -45,6 +45,19 @@ they are defense in depth, not a sandbox.
   - **POSIX process-group kill** on timeout/abort so
     `bash -c "sleep 9999 & disown"` doesn't orphan a grandchild.
 
+- **Windows executable search** ([packages/core/src/utils/win32-exe-search.ts](packages/core/src/utils/win32-exe-search.ts))
+  - On Windows, libuv (`spawn`/`execFile` without a shell) and `cmd.exe`
+    (`call "<name>"`, used for every `.cmd` shim) resolve a bare command name
+    in the current directory **before** PATH. WrongStack spawns `git`, `rg`,
+    `npx`, `pnpm`, … with the opened repository as that directory, so a cloned
+    repo committing `git.exe` or `npx.cmd` supplied the binary that ran —
+    verified 2026-09-15 on Node 24 and Bun 1.4 (WS-2026-09-15-NV1).
+  - Every process entry (CLI, desktop, standalone WebUI) sets
+    `NoDefaultCurrentDirectoryInExePath=1`, which libuv reads from the spawning
+    process, and `buildChildEnv` forces it into every child env, which is where
+    `cmd.exe` reads it. Inside those children a program in the current
+    directory must be run as `.\name`. There is deliberately no opt-out.
+
 - **`exec` tool** ([packages/tools/src/exec.ts](packages/tools/src/exec.ts))
   - Strict allowlist (`node`/`npm`/`pnpm`/`git`/`tsc`/…); no escape hatch.
     The previous `allow_unknown` flag was dropped — for arbitrary commands
@@ -211,7 +224,10 @@ These controls have important boundaries:
 
 - A missing `auth.json` bootstraps least-privilege browser and client tokens.
   An existing file with empty token arrays and no password is explicit
-  **OPEN MODE**. Corrupt, unreadable, or unsupported-version files
+  **OPEN MODE**. Open mode is all-or-nothing: once HQ holds any browser
+  credential, `/ws/client` also requires a live client token, so client tokens
+  expiring or being revoked on a password-protected HQ rejects publishers rather
+  than admitting anonymous ones (WS-2026-09-15-01). Corrupt, unreadable, or unsupported-version files
   fail closed during startup; live-reload failures preserve the last-known-good
   auth state. Treat auth-load failures as operator-visible security faults and
   repair the file rather than replacing it with an empty document.

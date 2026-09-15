@@ -3,9 +3,9 @@ import { statSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
-import { buildChildEnv } from '@wrongstack/core/utils';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { buildChildEnv } from '@wrongstack/core/utils';
 import { mapWithConcurrency } from './_concurrency.js';
 import { safeResolveReal } from './_util.js';
 
@@ -180,6 +180,25 @@ async function gitDiff(
       field: 'b',
     });
   }
+  // Path-shaped refs: `git diff <x> <y>` silently switches to `--no-index` when
+  // either positional names a path OUTSIDE the work tree, and then diffs two
+  // filesystem files — an out-of-root read from a permission:'auto' tool that
+  // the sensitive-read gate never inspects (it keys on `path`-like fields).
+  // Today exit status 1 happens to discard the content, which is not a control
+  // anyone would preserve on purpose. A trailing `--` does not close it either:
+  // with ONE ref git's prescan still sees `<ref> --` as the two paths. No real
+  // revision is absolute, drive-prefixed, or has a `..` path SEGMENT (git
+  // forbids those in ref names; `main..feature` ranges have no separator around
+  // the dots), so refusing that shape removes nothing legitimate.
+  for (const field of ['a', 'b'] as const) {
+    const ref = input[field];
+    if (typeof ref === 'string' && refLooksLikeOutsidePath(ref.trim())) {
+      throw new ToolValidationError({
+        message: `diff: unsafe ref "${ref}" — refs may not be filesystem paths (implicit --no-index)`,
+        field,
+      });
+    }
+  }
 
   // 'side-by-side' has no git equivalent we can safely render; fall back to
   // unified and say so — result.mode must reflect what was actually produced.
@@ -202,9 +221,9 @@ async function gitDiff(
   }
   // A diff that could not be produced must throw: a returned value (even with
   // a `note`) is recorded by the executor as a successful call.
-  const gitDir = findGitDir(basePath);
+  const gitDir = findGitDir(basePath, ctx.projectRoot);
   if (!gitDir) {
-    throw new Error(`diff: not a git repository (or any parent up to root): ${basePath}`);
+    throw new Error(`diff: not a git repository (or any parent up to project root): ${basePath}`);
   }
 
   const args: string[] = ['diff', '--no-color'];
@@ -217,6 +236,10 @@ async function gitDiff(
   if (input.staged) args.push('--staged');
   if (input.a) args.push(input.a.trim());
   if (input.b) args.push(input.b.trim());
+  // Always terminate revisions: with both refs present git then parses them as
+  // revisions only, never as the two paths of an implicit `--no-index` diff.
+  // (Single-ref path shapes are refused above — `--` alone does not cover them.)
+  args.push('--');
   let effectiveFiles: string[] = [];
   if (input.files) {
     const rawFiles = Array.isArray(input.files)
@@ -266,7 +289,26 @@ async function gitDiff(
   };
 }
 
-function findGitDir(cwd: string): string | null {
+/**
+ * True when a diff "ref" is shaped like a filesystem path that git would read
+ * with implicit `--no-index`: absolute (`/etc/x`, `C:\x`, `\\server\x`),
+ * drive-prefixed (`C:x`), or carrying a `..` path SEGMENT (`../x`, `a/../../x`).
+ * Revision ranges (`main..feature`, `..feature`, `main...`) have no separator
+ * around the dots and are unaffected.
+ */
+export function refLooksLikeOutsidePath(ref: string): boolean {
+  return (
+    path.isAbsolute(ref) ||
+    path.win32.isAbsolute(ref) ||
+    /^[A-Za-z]:/.test(ref) ||
+    /(^|[\\/])\.\.([\\/]|$)/.test(ref)
+  );
+}
+
+function findGitDir(cwd: string, projectRoot: string): string | null {
+  // Bounded at projectRoot like git.ts: a non-git project must not walk up into
+  // an unrelated parent repository and diff that instead.
+  const root = path.resolve(projectRoot);
   let dir = cwd;
   for (let i = 0; i < 20; i++) {
     try {
@@ -277,6 +319,7 @@ function findGitDir(cwd: string): string | null {
     } catch {
       // continue
     }
+    if (path.resolve(dir) === root) break;
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
