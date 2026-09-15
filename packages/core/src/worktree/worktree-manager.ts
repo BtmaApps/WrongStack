@@ -622,17 +622,25 @@ export class WorktreeManager {
    */
   async release(handle: WorktreeHandle, opts: { keep?: boolean | undefined } = {}): Promise<void> {
     const keep = opts.keep || handle.status === 'needs-review' || handle.status === 'failed';
+    // `removed` = the checkout actually came off disk. A failed removal
+    // (locked dir, OS file handles) leaves the worktree, branch, and commits
+    // on disk — keep the handle registered and report kept:true so manager
+    // state stays in sync and a later release can retry.
+    let removed = false;
     if (!keep) {
-      await this.runGit(['worktree', 'remove', '--force', handle.dir], this.projectRoot);
-      await this.runGit(['branch', '-D', handle.branch], this.projectRoot);
-      await this.runGit(['worktree', 'prune'], this.projectRoot);
-      this.handles.delete(handle.ownerId);
+      const rm = await this.runGit(['worktree', 'remove', '--force', handle.dir], this.projectRoot);
+      removed = rm.code === 0;
+      if (removed) {
+        await this.runGit(['branch', '-D', handle.branch], this.projectRoot);
+        await this.runGit(['worktree', 'prune'], this.projectRoot);
+        this.handles.delete(handle.ownerId);
+      }
     }
     this.emit('worktree.released', {
       handleId: handle.id,
       ownerId: handle.ownerId,
       branch: handle.branch,
-      kept: keep,
+      kept: !removed,
     });
   }
 

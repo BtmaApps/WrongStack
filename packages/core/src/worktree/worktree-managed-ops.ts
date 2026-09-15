@@ -161,6 +161,13 @@ export async function removeOne(
   } catch {
     // best-effort
   }
+  // A failed removal (locked dir, OS file handles) leaves the worktree, its
+  // branch, and its commits on disk: return early so the branch ref and every
+  // matching in-memory handle survive — only prune and drop handles after the
+  // checkout actually came off disk.
+  if (!removed) {
+    return { removed };
+  }
   // Defense-in-depth: never let a branch that could be parsed as a git flag
   // through (a leading `-`). `branch -D --` terminates option parsing.
   if (branch && !branch.startsWith('-')) {

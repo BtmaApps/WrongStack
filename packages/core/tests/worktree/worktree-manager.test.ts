@@ -555,6 +555,72 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
     }
   }, 120_000);
 
+  it('release({keep:false}) on a removal failure keeps the handle and reports kept:true', async () => {
+    const base = await makeRepo();
+    try {
+      const events: Array<{ name: string; payload: any }> = [];
+      const fakeBus = { emit: (name: string, payload: any) => events.push({ name, payload }) } as any;
+      const wm = new WorktreeManager({ projectRoot: base, events: fakeBus });
+      const h = await wm.allocate('p', { slugHint: 'locked-release' });
+      await fs.writeFile(path.join(h.dir, 'work.txt'), 'precious\n', 'utf8');
+      await wm.commitAll(h, 'feat: still on disk');
+
+      // A locked worktree fails `worktree remove --force` on real git
+      // ("cannot remove a locked working tree; use 'remove -f -f'"), so the
+      // checkout, branch, and commits all remain on disk. Regression: the
+      // handle used to be dropped and worktree.released reported kept:false
+      // while nothing had actually been removed.
+      spawnSync('git', ['-C', base, 'worktree', 'lock', h.dir], { stdio: 'ignore' });
+      await wm.release(h, { keep: false });
+
+      expect(wm.get('p')).toBeDefined();
+      const rel = events.find((e) => e.name === 'worktree.released');
+      expect(rel?.payload['kept']).toBe(true);
+      expect(await fs.stat(h.dir).then(() => true).catch(() => false)).toBe(true);
+      // git refuses to delete a branch checked out in a registered worktree,
+      // so the branch must survive a failed removal too.
+      const ref = spawnSync(
+        'git',
+        ['-C', base, 'rev-parse', '--verify', '--quiet', `${h.branch}^{commit}`],
+        { stdio: 'ignore' },
+      );
+      expect(ref.status).toBe(0);
+
+      spawnSync('git', ['-C', base, 'worktree', 'unlock', h.dir], { stdio: 'ignore' });
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('removeOne keeps the handle and branch when the removal fails (locked worktree)', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const locked = await wm.allocate('locked', { slugHint: 'locked-rm' });
+      spawnSync('git', ['-C', base, 'worktree', 'lock', locked.dir], { stdio: 'ignore' });
+
+      const r = await wm.removeOne(locked.dir, locked.branch);
+      expect(r.removed).toBe(false);
+      expect(wm.get('locked')).toBeDefined();
+      const ref = spawnSync(
+        'git',
+        ['-C', base, 'rev-parse', '--verify', '--quiet', `${locked.branch}^{commit}`],
+        { stdio: 'ignore' },
+      );
+      expect(ref.status).toBe(0);
+
+      // Control: an unlocked worktree is removed normally, handle dropped.
+      const free = await wm.allocate('free', { slugHint: 'free-rm' });
+      const ok = await wm.removeOne(free.dir, free.branch);
+      expect(ok.removed).toBe(true);
+      expect(wm.get('free')).toBeUndefined();
+
+      spawnSync('git', ['-C', base, 'worktree', 'unlock', locked.dir], { stdio: 'ignore' });
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
   it('commitAll on a clean tree returns committed:false', async () => {
     const base = await makeRepo();
     try {
