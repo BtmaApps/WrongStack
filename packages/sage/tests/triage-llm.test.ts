@@ -11,10 +11,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Sage } from '../src/types.js';
-import { computeValueScore } from '../src/triage/value-score.js';
-import { evaluateMemory, evaluateBatch } from '../src/triage/llm-evaluator.js';
+import { dispatchAction } from '../src/triage/action-dispatcher.js';
 import type { LlmCallFn, TriageAction } from '../src/triage/llm-evaluator.js';
+import { evaluateBatch, evaluateMemory } from '../src/triage/llm-evaluator.js';
+import { computeValueScore } from '../src/triage/value-score.js';
+import type { Sage } from '../src/types.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -89,12 +90,29 @@ describe('LLM evaluator — response parsing', () => {
     expect(result.evaluation.reason).toBe('Niche but occasionally useful');
   });
 
-  it('defaults to score 3 on unparseable response', async () => {
+  it('treats an unparseable response as no verdict and takes no action', async () => {
     const m = makeMemory();
     const vs = computeValueScore(m);
     const result = await evaluateMemory(m, vs, mockLlm('something completely unexpected'));
     expect(result.evaluation.score).toBe(3);
-    expect(result.evaluation.ok).toBe(true);
+    // A reply with no 1-5 score is not a verdict: it must not act as a 3.
+    expect(result.evaluation.ok).toBe(false);
+    expect(result.action).toBe('keep');
+  });
+
+  it('never marks a memory stale when the LLM call fails', async () => {
+    // A low deterministic score plus a "neutral 3" used to resolve to `stale`,
+    // so a provider outage staled every gray-zone memory under --apply.
+    const m = makeMemory({ importance: 0.5, confidence: 0.5 });
+    const vs = { ...computeValueScore(m), total: 35 };
+    const failing = async () => {
+      throw new Error('provider unavailable');
+    };
+    const result = await evaluateMemory(m, vs, failing);
+    expect(result.evaluation.ok).toBe(false);
+    expect(result.action).toBe('keep');
+    expect(dispatchAction(result).autoApply).toBeNull();
+    expect(dispatchAction(result).proposal).toBeNull();
   });
 
   it('defaults to score 3 on empty response', async () => {

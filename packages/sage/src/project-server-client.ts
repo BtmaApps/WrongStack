@@ -160,6 +160,8 @@ export class SageProjectServerConnection {
    * refuse. Reading the file is the proof of same-user access the gate needs.
    */
   private authToken: string | undefined;
+  /** Error reported by the live socket before it closed, if any. */
+  private closeCause: Error | null = null;
 
   constructor(
     readonly projectRoot: string,
@@ -409,6 +411,7 @@ export class SageProjectServerConnection {
     this.socket = null;
     this.info = null;
     this.buffer = '';
+    this.closeCause = null;
     this.authToken = this.readAuthToken();
     return new Promise<void>((resolve, reject) => {
       const socket = net.createConnection(this.state.endpoint);
@@ -436,6 +439,7 @@ export class SageProjectServerConnection {
       socket.on('data', (chunk: string) => this.onData(socket, chunk));
       socket.on('error', (error) => {
         if (!this.info) this.connectReject?.(error);
+        else if (socket === this.socket) this.closeCause = error;
       });
       socket.on('close', () => this.onClose(socket));
     });
@@ -529,25 +533,40 @@ export class SageProjectServerConnection {
 
   private onData(socket: net.Socket, chunk: string): void {
     if (socket !== this.socket) return;
+    // The buffered prefix was already scanned and holds no newline; search
+    // only the new chunk. Rescanning the whole buffer — and re-slicing it per
+    // line — was quadratic in frame size: a multi-megabyte frame arriving in
+    // 64KB chunks was scanned from its first byte on every chunk.
+    const scanFrom = this.buffer.length;
     this.buffer += chunk;
-    if (this.buffer.length > MAX_FRAME_BUFFER_CHARS) {
-      socket.destroy(new Error('SAGE server frame exceeded maximum size'));
-      return;
-    }
-    while (true) {
-      const newline = this.buffer.indexOf('\n');
-      if (newline < 0) return;
-      const line = this.buffer.slice(0, newline);
-      this.buffer = this.buffer.slice(newline + 1);
-      if (!line) continue;
-      let message: SageProjectServerMessage;
-      try {
-        message = JSON.parse(line) as SageProjectServerMessage;
-      } catch {
-        socket.destroy(new Error('Invalid SAGE project server response'));
-        return;
+    let start = 0;
+    let newline = this.buffer.indexOf('\n', scanFrom);
+    while (newline >= 0) {
+      const line = this.buffer.slice(start, newline);
+      start = newline + 1;
+      if (line) {
+        let message: SageProjectServerMessage;
+        try {
+          message = JSON.parse(line) as SageProjectServerMessage;
+        } catch {
+          socket.destroy(new Error('Invalid SAGE project server response'));
+          return;
+        }
+        this.onMessage(message);
+        // A handler may have torn this socket down (protocol mismatch).
+        if (socket !== this.socket || socket.destroyed) return;
       }
-      this.onMessage(message);
+      newline = this.buffer.indexOf('\n', start);
+    }
+    if (start > 0) this.buffer = this.buffer.slice(start);
+    // Bound the one frame still being assembled, not the complete frames the
+    // chunk happened to carry alongside it.
+    if (this.buffer.length > MAX_FRAME_BUFFER_CHARS) {
+      socket.destroy(
+        new Error(
+          `SAGE server frame exceeded maximum size (${MAX_FRAME_BUFFER_CHARS} chars); page large results`,
+        ),
+      );
     }
   }
 
@@ -595,7 +614,16 @@ export class SageProjectServerConnection {
     const wasConnected = this.info !== null;
     this.socket = null;
     this.info = null;
-    const error = new Error('SAGE project server connection closed');
+    // Carry the socket error that caused the close (e.g. the frame-size guard
+    // in onData). Without it every rejected caller saw only a generic
+    // "connection closed" that pointed at the daemon instead of the payload.
+    const cause = this.closeCause;
+    this.closeCause = null;
+    const error = new Error(
+      cause
+        ? `SAGE project server connection closed: ${cause.message}`
+        : 'SAGE project server connection closed',
+    );
     this.connectReject?.(error);
     this.connectResolve = null;
     this.connectReject = null;

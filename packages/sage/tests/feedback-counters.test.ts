@@ -167,7 +167,11 @@ describe('createSageTurnMiddleware feedback loop', () => {
       messages: [{ role: 'user' as const, content: 'How do I run the lifecycle tests?' }],
     };
     const injected = await middleware.handler(turn1 as never, async (next) => next);
-    expect(service.recordInjection).toHaveBeenCalledWith(['mem_feedback'], 'turn_context');
+    expect(service.recordInjection).toHaveBeenCalledWith(
+      ['mem_feedback'],
+      'turn_context',
+      undefined,
+    );
     expect(injected.system?.some((block) => block.text.includes('pnpm vitest'))).toBe(true);
 
     const turn2 = {
@@ -185,7 +189,14 @@ describe('createSageTurnMiddleware feedback loop', () => {
     await middleware.handler(turn2 as never, async (next) => next);
 
     expect(service.recordUse).toHaveBeenCalledTimes(1);
-    expect(service.recordUse).toHaveBeenCalledWith(['mem_feedback'], 'assistant_reference');
+    expect(service.recordUse).toHaveBeenCalledWith(
+      ['mem_feedback'],
+      'assistant_reference',
+      undefined,
+    );
+    // The memory stayed in the block across both requests: one injection, not
+    // one per provider request.
+    expect(service.recordInjection).toHaveBeenCalledTimes(1);
   });
 
   it('does not credit a use when the assistant ignores the injection', async () => {

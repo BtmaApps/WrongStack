@@ -11,6 +11,7 @@
 import type { AgentPipelines } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Config, Logger, MemoryPort } from '@wrongstack/core/types';
+import { getSageRetrieval, getSageSurface } from './memory-port.js';
 import { createSageContextMonitorMiddleware } from './middleware/context-monitor.js';
 import { createSageDomainTermExtractorMiddleware } from './middleware/domain-term-extractor-middleware.js';
 import { InjectionTracker } from './middleware/injection-tracker.js';
@@ -19,7 +20,6 @@ import { createSagePathRemapMiddleware } from './middleware/path-remap.js';
 import { subscribeSessionEndCommitExtractor } from './middleware/session-end-commit-extractor.js';
 import { createSageToolCallMiddleware } from './middleware/tool-call-memory.js';
 import { createSageTurnMiddleware } from './middleware/turn-memory.js';
-import { getSageRetrieval, getSageSurface } from './memory-port.js';
 import { fileTriageProposals } from './shared/file-proposals.js';
 import type { LlmCallFn } from './triage/llm-evaluator.js';
 import { runTriage } from './triage/orchestrator.js';
@@ -152,6 +152,9 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
         minScore: cfg?.inject?.minScore,
         metadataWeight: cfg?.retrieval?.metadataWeight,
         tracker: injectionTracker,
+        // The context monitor below owns usefulness crediting; two owners
+        // would scan the same assistant message twice.
+        creditUses: false,
         getSessionId: deps.getSessionId,
       }),
     );
@@ -170,6 +173,9 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
       tracker: injectionTracker,
       events: deps.events,
       getSessionId: deps.getSessionId,
+      // Always-on usefulness feedback: `recordUse` is the corpus's only
+      // quality signal and must not depend on opt-in turn-context injection.
+      memory: retrieval,
     }),
   );
   // Session-end commit extraction is process-scoped. The function returned

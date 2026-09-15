@@ -10,8 +10,8 @@ import {
 } from '@wrongstack/core/agent-catalog';
 import { TOKENS } from '@wrongstack/core/kernel';
 import type { SubagentConfig } from '@wrongstack/core/types';
-import { formatProjectSuppliedBlock } from '@wrongstack/core/utils';
-import { getSageRetrieval } from '@wrongstack/sage';
+import { formatMemoryEvidenceBlock, formatProjectSuppliedBlock } from '@wrongstack/core/utils';
+import { formatMemoryHintsDetailed, getSageRetrieval } from '@wrongstack/sage';
 
 import type { MultiAgentDeps } from './host-types.js';
 
@@ -219,12 +219,13 @@ export async function retrieveHostSubagentMemory(
    * conversation that never made them.
    */
   owningSessionId?: string,
-): Promise<string[]> {
+): Promise<string | undefined> {
   const memoryPort = deps.container.safeResolve(TOKENS.MemoryStore);
   const memory = memoryPort ? getSageRetrieval(memoryPort) : undefined;
-  if (!memory?.retrieveForAudience) return [];
+  if (!memory?.retrieveForAudience) return undefined;
   const contextualTaskType =
     typeof taskContext?.['taskType'] === 'string' ? taskContext['taskType'] : undefined;
+  const sessionId = owningSessionId ?? deps.session.id;
   try {
     const taskType = subCfg.memoryContext?.taskType ?? contextualTaskType;
     const mode = subCfg.memoryContext?.mode ?? getLeaderMode?.();
@@ -235,14 +236,37 @@ export async function retrieveHostSubagentMemory(
         ...(mode !== undefined ? { mode } : {}),
       },
       20,
+      undefined,
+      // The owning conversation's own session-scoped audience memories are
+      // visible to its workers; other sessions' stay hidden.
+      sessionId,
     );
-    await memory.recordInjection?.(
-      matches.map((item) => item.id),
-      'subagent_audience',
-      owningSessionId ?? deps.session.id,
+    // The store's audience listing also serves `/memory audience list`, so it
+    // returns stale and never-inject rows on purpose. Automatic context must
+    // not: `contextPolicy: 'never'` is an explicit privacy/safety ban, and
+    // every other injection surface already enforces both rules.
+    const eligible = matches.filter(
+      (item) => item.status === 'active' && item.contextPolicy !== 'never',
     );
-    return matches.map((item) => item.text);
+    // Same fenced, escaped rendering as tool-result and turn-context memory: a
+    // memory body is data, and pasting it raw into a system prompt let a
+    // stored instruction reach every worker of that role as instructions.
+    const rendered = formatMemoryHintsDetailed(eligible, {
+      heading: 'SAGE: project memory for this agent role',
+      maxChars: SUBAGENT_AUDIENCE_MEMORY_CHARS,
+    });
+    if (!rendered.text || rendered.memoryIds.length === 0) return undefined;
+    try {
+      // Count what the worker actually receives, not what the query matched.
+      await memory.recordInjection?.(rendered.memoryIds, 'subagent_audience', sessionId);
+    } catch {
+      // Counters are advisory; the block is still delivered.
+    }
+    return formatMemoryEvidenceBlock('sage.subagent-audience', rendered.text);
   } catch {
-    return [];
+    return undefined;
   }
 }
+
+/** Budget for the role-memory block in a subagent's system prompt. */
+const SUBAGENT_AUDIENCE_MEMORY_CHARS = 4_000;

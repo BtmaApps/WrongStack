@@ -306,6 +306,102 @@ store, raise the semantic-only floor, or bound the fan-out. **Fixed**: `Sage.vec
 (`enabled`, `weight`, `threshold`, `vectorOnlyThreshold`, `maxMaterializations`), read by
 both hosts.
 
+### 4.11 Carrying memory back into context — audit 2026-09-15
+
+Tool-result injection no longer appends to the tool result: the block is stored
+as `Context.memoryEvidence` (`sage.tool-memory`) and re-sent as a volatile
+provider block on every request. The audit traced that path end to end and
+found seven defects, all silent.
+
+| # | Defect | Severity | Fix |
+|---|---|---|---|
+| a | `setMemoryEvidence` **replaces** per source, and the tool calls of one step run back-to-back before the next request — only the LAST call's memories reached the model. The earlier ones were still marked seen (once per session), counted by `recordInjection`, and tracked for use. | Critical | `mergeMemoryEvidence` keeps a rolling window (`min(6000, 3×maxChars)`), newest first, whole lines only; evicted ids get their cooldown released. |
+| b | The once-per-session cooldown outlived the evidence: after `/clear`, a topic shift or a project switch a memory was barred for the rest of the session. | High | `releaseDepartedCooldowns`: before every cooldown check, ids this injector placed but no longer present in the window are released. Evidence never enters history, so "not in the window" means "not in context". |
+| c | `recordUse` was credited only by the opt-in turn middleware — on a default install `useCount` never moved, every memory collected the unused penalty. It could also credit from an assistant message written **before** the injection (the tool step that retrieved it shares its vocabulary). | High | The always-installed `sage.context-monitor` owns crediting: each assistant message is scanned once, and only memories active in the previous request snapshot are eligible (`consumeMatches(…, { onlyIds })`). `setupSage` passes `creditUses: false` to the turn middleware. |
+| d | `retrieveForPath` hard-coded `status IN ('active','stale')`; read triggers asked for `['active']` and injected stale memories anyway. | Medium | Store honors `includeStatuses`; `retrieveTriggeredMemories` re-applies the trigger's status set to the union (old daemons). |
+| e | Tool-result hints were capped by the tool's `maxOutputBytes` minus the tool output — a leftover from in-content injection that set the budget to 0 for big files. | Medium | Budget is `plan.maxChars`; `availableHintChars` removed. |
+| f | Re-remembering a stale memory merged into it and kept it stale; nothing ever moves stale → active, so the fact stayed invisible to default search while `remember` reported success. | Medium | The merge reactivates (`memory.merged` carries `reactivated: true`). |
+| g | The vector wrapper did not wrap the SERVICE capability, which the agent's `memory_search` tools are built from — the model's own searches never reached the semantic channel. | Medium | Retrieval, surface and service capabilities are all wrapped. |
+
+Also: turn-context re-renders counted as injections on every request (now counted
+when a memory enters the block); the domain-term extractor re-mined the identical
+conversation on every tool-loop request (now skipped by snapshot fingerprint); the
+provider evidence budget cut blocks mid-line (now at a line boundary); and the
+duplicated gate helpers in `tool-call-memory-retrieval.ts` / `-trace.ts`, which had
+already drifted (`cooldownKey` `||` vs `??`, an unbounded `pruneCooldowns`), were
+collapsed to one copy each.
+
+Write side, same audit:
+
+- **Rename remap skipped stale memories.** `sage.path-remap` only rewrote `active`
+  anchors, but a move is exactly what verification reports as "Anchored path no longer
+  exists" — and stale is terminal. It now remaps `active` + `stale` and reactivates a
+  remapped stale memory (the next verification re-marks it if something else broke).
+- **Symbol rename corrupted memory text.** `split/join` replaced substrings of other
+  identifiers (`get` → `fetch` turned `getUser` into `fetchUser`); `replaceIdentifier`
+  matches whole identifiers only.
+- **Outcome capture invented command anchors.** A `read`/`edit` error was anchored as
+  the shell command `read`; only a command the tool was actually given is an anchor now.
+- **Stale was terminal — root cause.** Automatic hygiene verified only `active`
+  memories, so nothing on the automatic path ever moved stale → active. Hygiene now
+  re-verifies stale memories: deep depth reactivates on an explicit `verified`;
+  existence depth only for anchors existence fully proves (file/test/directory/package
+  path, no content hash, blob hash or symbol; real type and in-project realpath).
+  A new `Sage.staleReason` (`verification` | `manual`) keeps a memory retired with
+  `memory_update status: "stale"` retired — automatic passes and rename remaps only
+  revive `verification` staleness (`isVerificationStale`, with a 15-minute
+  `updatedAt − lastVerifiedAt` rule for records that predate the field).
+- **Role memory reached subagents unfenced, stale and banned.** `retrieveHostSubagentMemory`
+  pasted bodies raw into the worker's system prompt (`- ${text}`), kept stale and
+  `contextPolicy: 'never'` rows (the audience listing returns them for
+  `/memory audience list`), counted every matched row as injected and queried without
+  the owning session. It now filters to active, non-banned rows, renders through
+  `formatMemoryHintsDetailed` + `formatMemoryEvidenceBlock` within 4,000 chars, counts
+  only delivered ids, and passes the session. Hygiene's `injected_never_used` rule skips
+  audience memories — no usefulness signal exists in a worker prompt, so every one of
+  them would otherwise become a deletion candidate.
+- **Accepting a review proposal corrupted its target.** `acceptCandidate` on a
+  `memory_review` proposal re-remembered the target's text, merged into it and stapled
+  review tags onto it; it now refuses and points to `resolve`. Acceptance also claims
+  the candidate before writing the memory (no orphaned memories on a concurrent
+  resolve) and returns it to `pending` if the write fails.
+- **Triage acted without a verdict.** A failed LLM call, an empty reply or a reply with
+  no 1-5 score became a "neutral 3", and 3 on a low deterministic score resolves to
+  `stale`, which `/memory triage --apply` applies — a provider outage staled the whole
+  gray zone. Such evaluations are now `ok: false` and resolve to `keep` with no updates
+  and no proposals. (The daily dry-run's neutral stub never produced proposals and
+  applies nothing, so it was not affected.)
+- **Not a leak (checked):** the legacy `readAll` prompt section includes other sessions'
+  session memories and `contextPolicy: 'never'` rows, but every production host builds
+  the system prompt with `injectMemory: false`, so it never reaches a model.
+- **One corrupt row cancelled injection.** `retrieveForPath` (edge query) and
+  `findRelatedSage` decoded rows with the throwing decoder; both now skip-and-log like
+  search.
+- **IPC client frame parsing was quadratic.** Each chunk rescanned and re-sliced the
+  whole buffer; it now scans only new data and bounds the incomplete frame.
+- **The context monitor re-normalized the whole transcript per request.** Request parts
+  are the same string objects across a tool loop; `InjectionTracker` memoizes their
+  normalized form (bounded by entries and characters).
+- **The semantic corpus kept memories recall can never return.** The vector mirror
+  re-embedded archived, superseded and contradicted memories on every status change and
+  the stale-mirror sweep removed only `deleted` rows, so they stayed forever, costing
+  cosine scans and fusion materialization slots. Only `active`/`stale` memories keep a
+  row now, live and in the sweep. The mirror also ignored `memory.merged`, where a
+  re-remember can replace text, union tags and reactivate a memory. Handlers were
+  fire-and-forget, so two quick writes could interleave and leave a row with the older
+  text; writes for one id are now applied in event order.
+- **Backfill was invisible and could duplicate.** `backfillRecoverable` emitted only an
+  aggregate count, so restored rows never reached the vector mirror; it now emits
+  `memory.recovered` per restored memory. It wrote rows directly, bypassing remember's
+  duplicate merge, so a fact deleted and later re-remembered came back twice; such
+  records are skipped as `duplicate_active`. `recoverSage` on a tombstone that backfill
+  already restored restored it again (two active copies); it now returns the successor.
+- **Triage discarded durable knowledge by its first word.** The pre-filter's transient
+  markers accepted a bare word plus a space, so "Test suite must run from the repo root"
+  or "Draft specs live in docs/" was DISCARD and marked stale by `--apply`. A marker now
+  needs `:` or a spaced dash. The remember-time ephemeral rule likewise rejected
+  "Todo list items sync with the Kanban board"; noun uses of the marker word pass.
+
 ---
 
 ## 5. Configuration reference
@@ -368,6 +464,18 @@ both hosts.
 7. **Every retrieval reason must carry a channel prefix `selectDiverseMemories` knows**
    (`anchor:` / `graph:` / `query:`). An unrecognised prefix silently disables every
    diversity cap for that hit.
+8. **Tool-memory evidence is merged, never replaced.** Anything that writes
+   `sage.tool-memory` must go through `storeProviderMemoryEvidence`; a direct
+   `setMemoryEvidence` drops every earlier tool call of the step.
+9. **A cooldown lasts only while the memory is in the evidence window.** Marking a
+   memory seen without tracking its placement makes `/clear` a session-long ban.
+10. **Usefulness is credited from what the model could see.** Only ids active in the
+    request that produced the assistant message may be credited, and each message is
+    scanned once. The context monitor is the single owner on hosts using `setupSage`.
+11. **The vector store mirrors exactly the recallable corpus.** A SAGE write that changes
+    text, tags or status must emit a per-memory event the mirror listens to
+    (`accepted`, `merged`, `updated`, `recovered`, `deleted`); aggregate-only events
+    leave the semantic channel out of date until the next sweep.
 
 ## 7. Regression guards
 
@@ -389,6 +497,21 @@ must not, and the evidence must carry a `query:` prefix.
 walk (`pageSize: 5` over 12 rows) — the only shape that separates a correct keyset walk
 from a re-read of page one. The clean-corpus case would have hung under the old code, and
 the delete-as-you-walk case is what `OFFSET` gets wrong.
+
+`packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts` pins the mirror
+lifecycle (archive forgets, merge propagates, backfill mirrors, ordered writes, sweep drops
+archived). It runs against SAGE *source*: the root Vitest config aliases
+`@wrongstack/sage` to `packages/sage/src`, because against a stale dist the backfill case
+failed on a correct fix. `sqlite-recovery-file.test.ts` pins recover-after-backfill and
+`duplicate_active`; `triage.test.ts` pins the marker-word false positives.
+
+`packages/sage/tests/sage-context-carry.test.ts` pins §4.11: two tool calls of one
+step both in the window, cooldown held while present and released after clear, stale
+not injected on read, window eviction and spoofed trailer ids, use crediting only from
+a message written with the memory in context, turn injections counted on entry, stale
+reactivation on re-remember, and one extraction per conversation snapshot.
+`packages/vector-memory/tests/sage-port-wrapper.test.ts` pins the service-capability
+fusion.
 
 ### Mirror coverage
 

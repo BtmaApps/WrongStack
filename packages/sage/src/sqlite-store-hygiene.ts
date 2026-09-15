@@ -4,6 +4,8 @@ import type { DatabaseSync } from 'node:sqlite';
 import { ulid } from '@wrongstack/core/utils';
 import { verifyMemoryAnchors } from './anchors/verify.js';
 import { applySemanticChange } from './shared/semantic-rewrite.js';
+import { isVerificationStale } from './shared/stale-reason.js';
+import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { cleanReferencingMemories, memoryNodeId } from './sqlite-store-graph-helpers.js';
 import {
@@ -63,6 +65,54 @@ function hygieneScopeKey(m: Sage): string {
   return m.scope === 'session' ? `session:${m.ownerSessionId ?? ''}` : m.scope;
 }
 
+/**
+ * Can a path-existence check alone prove every anchor valid? Only for plain
+ * file/test/directory/package paths: a content hash, blob hash or symbol can
+ * make a memory stale while its file still exists, and an existence pass that
+ * reactivated such a memory would silently undo a deep verification.
+ */
+function existenceProvesAnchors(anchors: readonly MemoryAnchor[]): boolean {
+  return (
+    anchors.length > 0 &&
+    anchors.every(
+      (anchor) =>
+        Boolean(anchor.path) &&
+        (anchor.type === 'file' ||
+          anchor.type === 'test' ||
+          anchor.type === 'directory' ||
+          anchor.type === 'package') &&
+        !anchor.contentHash &&
+        !anchor.gitBlobHash &&
+        !anchor.symbol,
+    )
+  );
+}
+
+/**
+ * Every anchor resolves inside the project (symlinks included) to an entry of
+ * the right kind — the same containment and file/directory rules
+ * `verifyMemoryAnchors` applies, without hashing.
+ */
+async function anchorsPresentOnDisk(
+  projectRoot: string,
+  realRoot: string,
+  anchors: readonly MemoryAnchor[],
+): Promise<boolean> {
+  for (const anchor of anchors) {
+    try {
+      const real = await fs.promises.realpath(path.resolve(projectRoot, anchor.path!));
+      const relative = path.relative(realRoot, real);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) return false;
+      const stat = await fs.promises.stat(real);
+      const wantsDirectory = anchor.type === 'directory' || anchor.type === 'package';
+      if (wantsDirectory ? !stat.isDirectory() : !stat.isFile()) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 interface SqliteHygieneContext {
   projectRoot: string;
   stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>;
@@ -96,6 +146,7 @@ export async function runSqliteSageHygiene(
   const active = await ctx.listMemories({ status: 'active', limit: 0 });
   const stale: string[] = [];
   const verified: string[] = [];
+  const reactivated: string[] = [];
 
   // Anchor verification depth is configurable:
   // - existence (default): cheap O(N) path presence only.
@@ -105,6 +156,16 @@ export async function runSqliteSageHygiene(
     const depth = opts?.verifyDepth ?? 'existence';
     const verificationRunAt = ctx.nowIso();
     const verificationOutcomes = new Map<string, boolean>();
+    // Stale memories are re-verified too. This pass used to demote active →
+    // stale and never look back, and nothing else on the automatic path moves
+    // stale → active: a memory whose file was restored or re-created stayed
+    // out of search and injection for good.
+    // Only memories verification itself demoted: a manually retired memory
+    // (`memory_update status: "stale"`) must not be revived by a passing check.
+    const staleMemories = (await ctx.listMemories({ status: 'stale', limit: 0 })).filter(
+      (memory) => memory.anchors.length > 0 && isVerificationStale(memory),
+    );
+    const reactivations = new Map<string, MemoryAnchor[]>();
 
     if (depth === 'existence') {
       const anchorPaths = new Set<string>();
@@ -155,6 +216,15 @@ export async function runSqliteSageHygiene(
         if (allValid) verified.push(m.id);
         else stale.push(m.id);
       }
+      const realRoot = await fs.promises.realpath(ctx.projectRoot).catch(() => undefined);
+      if (realRoot) {
+        for (const m of staleMemories) {
+          if (!existenceProvesAnchors(m.anchors)) continue;
+          if (await anchorsPresentOnDisk(ctx.projectRoot, realRoot, m.anchors)) {
+            reactivations.set(m.id, m.anchors);
+          }
+        }
+      }
     } else {
       // Deep pass: bound concurrency so hygiene stays usable on large corpora.
       const DEEP_CONCURRENCY = 8;
@@ -187,6 +257,24 @@ export async function runSqliteSageHygiene(
           deepWorker(),
         ),
       );
+      let nextStale = 0;
+      const staleWorker = async (): Promise<void> => {
+        while (nextStale < staleMemories.length) {
+          const memory = staleMemories[nextStale++]!;
+          try {
+            const result = await verifyMemoryAnchors(ctx.projectRoot, memory, verificationRunAt);
+            // Only an explicit `verified` reactivates; `unknown` stays stale.
+            if (result.status === 'verified') reactivations.set(memory.id, memory.anchors);
+          } catch {
+            // Fail-closed for reactivation: the memory stays stale.
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(DEEP_CONCURRENCY, staleMemories.length) }, () =>
+          staleWorker(),
+        ),
+      );
     }
 
     await ctx.runMutation(() => {
@@ -200,12 +288,33 @@ export async function runSqliteSageHygiene(
           {
             status: allValid ? ('active' as const) : ('stale' as const),
             lastVerifiedAt: verificationRunAt,
-            ...(allValid ? { freshness: 1 } : {}),
+            ...(allValid ? { freshness: 1 } : { staleReason: 'verification' as const }),
           },
           ctx.nowIso(),
         );
         ctx.upsertMemory(updated);
         ctx.syncAnchorEdges(updated);
+      }
+      for (const [memoryId, observedAnchors] of reactivations) {
+        const current = readSqliteSageRow(ctx.stmt, memoryId);
+        // Re-read inside the mutation: a person may have retired it meanwhile.
+        if (!current || !isVerificationStale(current)) continue;
+        // Anchors edited while verification ran: what was verified is no
+        // longer what the memory points at.
+        if (anchorsChanged(current.anchors, observedAnchors)) continue;
+        const updated = applySemanticChange(
+          current,
+          {
+            status: 'active' as const,
+            staleReason: undefined,
+            lastVerifiedAt: verificationRunAt,
+            freshness: 1,
+          },
+          ctx.nowIso(),
+        );
+        ctx.upsertMemory(updated);
+        ctx.syncAnchorEdges(updated);
+        reactivated.push(memoryId);
       }
     });
   }
@@ -563,6 +672,11 @@ export async function runSqliteSageHygiene(
     } else if (
       m.status === 'active' &&
       m.scope !== 'session' &&
+      // Audience memories are delivered into subagent system prompts, where
+      // no usefulness signal is observed: every spawn counts an injection and
+      // nothing can ever count a use, so this rule would flag every one of
+      // them for deletion regardless of value.
+      !m.audience &&
       (m.injectionCount ?? 0) >= unusedMinInjections &&
       (m.useCount ?? 0) === 0 &&
       // Age by injection activity (`age` = lastAccessedAt ?? updatedAt), not
@@ -691,6 +805,7 @@ export async function runSqliteSageHygiene(
     deleted,
     purgedDeleted,
     verified: verified.length,
+    reactivated: reactivated.length,
     transitiveMerges,
   };
   ctx.audit('memory.hygiene_completed', {

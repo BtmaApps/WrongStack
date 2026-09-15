@@ -48,9 +48,9 @@ import {
   augmentLexicalWithVectorRecall,
   isSageVisibleForSearch,
   SAGE_RETRIEVAL_CAPABILITY,
+  SAGE_SERVICE_CAPABILITY,
   SAGE_SURFACE_CAPABILITY,
   type Sage,
-  type SageRetrievalCapability,
   type SageSearchOptions,
   type SageSurface,
   type VectorAugmentHit,
@@ -58,6 +58,12 @@ import {
 } from '@wrongstack/sage';
 
 import type { VectorMemoryStore } from './store.js';
+
+/** The part of a SAGE read capability the wrapper replaces. */
+interface SearchCapabilityShape {
+  searchSage: (...args: never[]) => unknown;
+  searchSageWithBreakdown?: ((...args: never[]) => unknown) | undefined;
+}
 
 export interface VectorPortWrappingOptions {
   /** Vector store. The wrapper adapts it to the SAGE recall contract. */
@@ -195,39 +201,38 @@ export function wrapMemoryPortWithVectorRecall(
     Object.getPrototypeOf(port),
     Object.getOwnPropertyDescriptors(port),
   ) as MemoryPort;
+  const wrapSearchCapability = <C extends SearchCapabilityShape>(original: C): C => ({
+    ...original,
+    searchSage: wrapSearchSage(original.searchSage as never),
+    ...(original.searchSageWithBreakdown
+      ? {
+          searchSageWithBreakdown: wrapSearchWithBreakdown(
+            original.searchSageWithBreakdown as never,
+          ),
+        }
+      : {}),
+  });
+
+  // Every read-side capability that exposes `searchSage` is wrapped. The
+  // service capability is included on purpose: the agent's memory tools
+  // (`memory_search`, `memory_search_explain`) are built from it, so leaving
+  // it unwrapped meant the model's own searches never reached the semantic
+  // channel even on hosts where injection did.
+  const wrappedCapabilityIds = new Set([
+    SAGE_RETRIEVAL_CAPABILITY.id,
+    SAGE_SURFACE_CAPABILITY.id,
+    SAGE_SERVICE_CAPABILITY.id,
+  ]);
   wrapped.getCapability = <T>(capability: {
     id: string;
     readonly __memoryCapabilityType?: ((value: T) => T) | undefined;
   }): T | undefined => {
-    if (capability.id === SAGE_RETRIEVAL_CAPABILITY.id) {
-      const original = port.getCapability<SageRetrievalCapability>(capability as never);
-      if (!original) return undefined;
-      return {
-        ...original,
-        searchSage: wrapSearchSage(original.searchSage as never),
-        ...(original.searchSageWithBreakdown
-          ? {
-              searchSageWithBreakdown: wrapSearchWithBreakdown(
-                original.searchSageWithBreakdown as never,
-              ),
-            }
-          : {}),
-      } as unknown as T;
-    }
-    if (capability.id === SAGE_SURFACE_CAPABILITY.id) {
-      const original = port.getCapability<SageSurface>(capability as never);
-      if (!original) return undefined;
-      return {
-        ...original,
-        searchSage: wrapSearchSage(original.searchSage as never),
-        ...(original.searchSageWithBreakdown
-          ? {
-              searchSageWithBreakdown: wrapSearchWithBreakdown(
-                original.searchSageWithBreakdown as never,
-              ),
-            }
-          : {}),
-      } as unknown as T;
+    if (wrappedCapabilityIds.has(capability.id)) {
+      const original = port.getCapability<SearchCapabilityShape>(capability as never);
+      if (!original || typeof original.searchSage !== 'function') {
+        return original as unknown as T | undefined;
+      }
+      return wrapSearchCapability(original) as unknown as T;
     }
     return port.getCapability<T>(capability as never);
   };

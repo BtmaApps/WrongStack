@@ -141,6 +141,13 @@ export interface Sage {
   updatedAt: string;
   lastAccessedAt?: string | undefined;
   lastVerifiedAt?: string | undefined;
+  /**
+   * Why a `stale` memory is stale. `verification` — anchor verification
+   * demoted it, so a later passing verification may restore it.
+   * `manual` — someone set the status (retirement); automatic passes leave it
+   * alone. Absent on records written before the field existed.
+   */
+  staleReason?: 'verification' | 'manual' | undefined;
   /** Last time the assistant referenced an injected memory (usefulness signal). */
   lastUsedAt?: string | undefined;
   expiresAt?: string | undefined;
@@ -295,6 +302,11 @@ export interface SageHygieneReport {
    */
   purgedDeleted: number;
   verified: number;
+  /**
+   * Stale memories whose anchors verified again this run and were returned to
+   * `active`. Optional for reports produced by older stores.
+   */
+  reactivated?: number | undefined;
   /**
    * Number of near-dup groups in the SimHash pass whose size exceeded 2
    * (transitive union-find collapse). See `findNearDuplicateGroups` for the

@@ -35,10 +35,33 @@ export interface SageTurnMiddlewareOptions {
    */
   tracker?: InjectionTracker | undefined;
   getSessionId?: (() => string | undefined) | undefined;
+  /**
+   * Credit `recordUse` from the latest assistant message. Default true for
+   * standalone use; `setupSage` passes false because the always-on context
+   * monitor owns crediting there.
+   */
+  creditUses?: boolean | undefined;
 }
+
+/** Sessions whose last rendered memory set is remembered. */
+const MAX_TRACKED_SESSIONS = 256;
 
 export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middleware<Request> {
   const tracker = opts.tracker ?? new InjectionTracker();
+  // The block is re-rendered on EVERY provider request, tool-loop iterations
+  // included. Counting each render as an injection inflated `injectionCount`
+  // by the number of steps in a turn and pushed memories the model was using
+  // into the unused penalty. An injection is counted when a memory ENTERS the
+  // block, not while it stays there.
+  const renderedBySession = new Map<string, Set<string>>();
+  const rememberRendered = (key: string, ids: Set<string>): void => {
+    renderedBySession.delete(key);
+    renderedBySession.set(key, ids);
+    if (renderedBySession.size > MAX_TRACKED_SESSIONS) {
+      const oldest = renderedBySession.keys().next().value;
+      if (oldest !== undefined) renderedBySession.delete(oldest);
+    }
+  };
   // Per-instance cached system-prompt normalizer. The factory owns its
   // closure-local cache state, which preserves test isolation and prevents
   // cross-session contamination when multiple middleware instances share
@@ -49,21 +72,27 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
     owner: 'sage',
     async handler(request, next) {
       let nextRequest = request;
+      const sessionId = opts.getSessionId?.();
+      const sessionKey = sessionId ?? '<no-session>';
       try {
         // Close the feedback loop first: if the previous assistant step
         // referenced a memory we injected earlier, credit the use before
         // registering this turn's injections.
-        const assistantText = lastAssistantText(request.messages);
-        if (assistantText) {
-          const used = tracker.consumeMatches(assistantText, Date.now(), opts.getSessionId?.());
-          if (used.length > 0) await opts.memory.recordUse?.(used, 'assistant_reference');
+        if (opts.creditUses !== false) {
+          const assistantText = lastAssistantText(request.messages);
+          if (assistantText) {
+            const used = tracker.consumeMatches(assistantText, Date.now(), sessionId);
+            if (used.length > 0) {
+              await opts.memory.recordUse?.(used, 'assistant_reference', sessionId);
+            }
+          }
         }
         const query = lastUserText(request.messages);
         if (query) {
           const searchOptions = {
             limit: opts.maxMemories ?? 8,
             includeAudienceScoped: false,
-            sessionId: opts.getSessionId?.(),
+            sessionId,
           };
           // Prefer the per-channel breakdown when the port can produce it.
           // The flat `searchSage` shape discards `vectorScore`, and this
@@ -157,18 +186,17 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
           const rendered = formatMemoryHintsDetailed(eligible, {
             maxChars: opts.maxChars ?? 2_400,
           });
+          const renderedIds = new Set(rendered.text ? rendered.memoryIds : []);
+          const previouslyRendered = renderedBySession.get(sessionKey);
+          rememberRendered(sessionKey, renderedIds);
           if (rendered.text) {
-            await opts.memory.recordInjection?.(rendered.memoryIds, 'turn_context');
-            const renderedIds = new Set(rendered.memoryIds);
+            const entered = rendered.memoryIds.filter((id) => !previouslyRendered?.has(id));
+            if (entered.length > 0) {
+              await opts.memory.recordInjection?.(entered, 'turn_context', sessionId);
+            }
             for (const memory of eligible) {
               if (renderedIds.has(memory.id)) {
-                tracker.record(
-                  memory.id,
-                  memory.text,
-                  Date.now(),
-                  opts.getSessionId?.(),
-                  rendered.text,
-                );
+                tracker.record(memory.id, memory.text, Date.now(), sessionId, rendered.text);
               }
             }
             nextRequest = {

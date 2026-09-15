@@ -10,14 +10,27 @@ import type {
   ScoredEntry,
 } from '@wrongstack/core/types';
 import type { SageRetrieverLike } from './middleware/tool-call-memory.js';
-import type { SageServiceLike, SageSurface } from './service-contract.js';
 import {
   SageProjectServerConnection,
   type SageProjectServerConnectionState,
 } from './project-server-client.js';
-import type { SageRequestMetadata, SageServerOperationName } from './project-server-protocol.js';
-import type { SageServerOperations } from './project-server-protocol.js';
-import type { SageForPathOptions, SageHygieneOptions, SageStoreOptions } from './types.js';
+import type {
+  SageRequestMetadata,
+  SageServerOperationName,
+  SageServerOperations,
+} from './project-server-protocol.js';
+import type { SageServiceLike, SageSurface } from './service-contract.js';
+import { DEFAULT_PAGE_STATUSES, VALID_MEMORY_STATUSES } from './shared/pagination.js';
+import type {
+  Sage,
+  SageForPathOptions,
+  SageHygieneOptions,
+  SageStatus,
+  SageStoreOptions,
+} from './types.js';
+
+/** Rows per `listSagePage` frame when `listSage` is paged over IPC. */
+const LIST_SAGE_PAGE_SIZE = 250;
 
 const SAGE_SERVICE_CAPABILITY_ID = 'wrongstack.memory.sage-service.v1';
 const SAGE_RETRIEVAL_CAPABILITY_ID = 'wrongstack.memory.retrieval.v1';
@@ -126,7 +139,7 @@ export class ProjectSageMemoryPort implements MemoryPort {
 
   private readonly surfaceCapability: SageSurface = {
     stats: () => this.call('stats', {}),
-    listSage: (statuses) => this.call('listSage', { statuses }),
+    listSage: (statuses) => this.listSageAcrossPages(statuses),
     listSagePage: (options) => this.call('listSagePage', { options }),
     getSage: (id) => this.call('getSage', { id }),
     rememberSage: (input) => this.call('rememberSage', { input }),
@@ -365,6 +378,48 @@ export class ProjectSageMemoryPort implements MemoryPort {
   async dispose(): Promise<void> {
     this.unsubscribeEvent();
     this.connection.close();
+  }
+
+  /**
+   * `listSage` over IPC, fetched as bounded `listSagePage` frames.
+   *
+   * A single `listSage` response carries the whole corpus in one frame, and a
+   * real project store (13k rows, ~20MB of JSON) overruns the client's
+   * `MAX_FRAME_BUFFER_CHARS`. The client then destroys the SHARED socket, so
+   * every in-flight SAGE request fails with "connection closed" — not just the
+   * oversized listing. Paging keeps each frame small (max row ~5KB × page).
+   *
+   * Semantics mirror `listCompatSage`: empty/omitted statuses mean
+   * `DEFAULT_PAGE_STATUSES`, an explicit list of only invalid statuses yields
+   * `[]` (the page API would silently widen it to the default), and no session
+   * filter is applied (`includeAllSessions`). Rows updated mid-scan can move
+   * behind the cursor; ids are de-duplicated so a row never appears twice.
+   */
+  private async listSageAcrossPages(statuses?: SageStatus[]): Promise<Sage[]> {
+    const effective = statuses && statuses.length > 0 ? statuses : DEFAULT_PAGE_STATUSES;
+    const valid = effective.filter((status) => VALID_MEMORY_STATUSES.has(status));
+    if (valid.length === 0) return [];
+    const seen = new Set<string>();
+    const memories: Sage[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await this.call('listSagePage', {
+        options: {
+          statuses: valid,
+          limit: LIST_SAGE_PAGE_SIZE,
+          includeAllSessions: true,
+          ...(cursor === undefined ? {} : { cursor }),
+        },
+      });
+      if (!page) break;
+      for (const memory of page.memories) {
+        if (seen.has(memory.id)) continue;
+        seen.add(memory.id);
+        memories.push(memory);
+      }
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor !== undefined);
+    return memories;
   }
 
   private meta(): SageRequestMetadata {

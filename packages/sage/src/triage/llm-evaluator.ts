@@ -194,6 +194,18 @@ function resolveAction(
   vs: ValueScoreBreakdown,
   eval_: LlmEvaluation,
 ): { action: TriageAction; actionReason: string } {
+  // No verdict, no action. A failed call, an empty reply or a reply with no
+  // score used to become a "neutral 3", and 3 on a low deterministic score
+  // resolves to `stale` — which `/memory triage --apply` applies. A provider
+  // outage therefore marked every gray-zone memory stale without a single
+  // evaluation having happened.
+  if (!eval_.ok) {
+    return {
+      action: 'keep',
+      actionReason: `LLM evaluation unavailable (${eval_.error ?? eval_.reason}) → no action`,
+    };
+  }
+
   const imp = memory.importance;
   const llmScore = eval_.score;
   const safetyGated = imp >= 0.9;
@@ -288,9 +300,17 @@ function parseEvaluation(raw: string): LlmEvaluation {
 
   // Extract first digit 1-5
   const scoreMatch = trimmed.match(/^[^\d]*([1-5])/);
-  const score: 1 | 2 | 3 | 4 | 5 = scoreMatch?.[1]
-    ? (Number.parseInt(scoreMatch[1], 10) as 1 | 2 | 3 | 4 | 5)
-    : 3;
+  if (!scoreMatch?.[1]) {
+    // An unparseable reply is not a verdict: do not let it act as a 3.
+    return {
+      score: 3,
+      reason: trimmed.slice(0, 200),
+      raw,
+      ok: false,
+      error: 'LLM response carried no 1-5 score',
+    };
+  }
+  const score = Number.parseInt(scoreMatch[1], 10) as 1 | 2 | 3 | 4 | 5;
 
   // Extract reason: everything after the score + separator
   const reasonMatch = trimmed.match(/^[^\d]*[1-5]\s*[|\-:.]\s*(.+)/s);

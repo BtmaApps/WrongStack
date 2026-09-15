@@ -276,6 +276,23 @@ describe('SageProjectServerConnection', () => {
     socket.emit('close');
   });
 
+  it('names the socket error that closed the connection instead of a bare "connection closed"', async () => {
+    const connection = new SageProjectServerConnection('D:/repo');
+    const connecting = connection.connect();
+    send(socket, hello());
+    await connecting;
+
+    const pending = connection.call('listSage', {}, { meta: { clientId: 'client-1' } });
+    await Promise.resolve();
+
+    socket.emit('data', 'x'.repeat(8 * 1024 * 1024 + 1));
+    expect(socket.destroy).toHaveBeenCalled();
+    socket.emit('close');
+    await expect(pending).rejects.toThrow(
+      /connection closed: SAGE server frame exceeded maximum size/,
+    );
+  });
+
   it('handles remote error responses with custom error names and invalidates auth token on refusal', async () => {
     const connection = new SageProjectServerConnection('D:/repo');
     const connecting = connection.connect();

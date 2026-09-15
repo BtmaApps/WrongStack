@@ -393,7 +393,9 @@ describe('SAGE outcome and anchor capture', () => {
 
     await middleware.handler(payload, async (nextPayload) => nextPayload);
 
-    expect(listSage).toHaveBeenCalledWith(['active']);
+    // Stale rows are remapped too: the move itself is what verification
+    // reports as "Anchored path no longer exists".
+    expect(listSage).toHaveBeenCalledWith(['active', 'stale']);
     expect(updateSage).toHaveBeenCalledWith('memory-path', {
       anchors: [{ type: 'file', path: 'src/new.ts' }],
     });

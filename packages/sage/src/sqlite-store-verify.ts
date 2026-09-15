@@ -1,10 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import { verifyMemoryAnchors } from './anchors/verify.js';
+import { applySemanticChange } from './shared/semantic-rewrite.js';
 import { anchorsChanged } from './sqlite-store-anchor-diff.js';
 import { readSqliteSageRow } from './sqlite-store-codec.js';
 import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
-import { applySemanticChange } from './shared/semantic-rewrite.js';
 import type { MemoryVerificationResult, Sage } from './types.js';
 
 interface SqliteVerifyContext {
@@ -112,6 +112,9 @@ export async function verifySqliteSage(
           current,
           {
             status: nextStatus,
+            ...(nextStatus !== current.status
+              ? { staleReason: nextStatus === 'stale' ? ('verification' as const) : undefined }
+              : {}),
             lastVerifiedAt: update.lastVerifiedAt,
             ...(update.freshness !== undefined && { freshness: update.freshness }),
           },

@@ -1,13 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { MEMORY_NODE_GLOB, MEMORY_NODE_PREFIX_LEN } from './sqlite-store-graph-helpers.js';
 import {
   buildRetrieveFallbackQuery,
   buildRetrievePathTargets,
 } from './sqlite-store-retrieve-helpers.js';
-import { buildSessionClause as buildSharedSessionClause } from './sqlite-store-search-helpers.js';
-import { sqliteRowsToMemories } from './sqlite-store-search-helpers.js';
+import {
+  buildSessionClause as buildSharedSessionClause,
+  sqliteRowsToMemories,
+} from './sqlite-store-search-helpers.js';
 import type { Sage, SageForPathOptions } from './types.js';
 
 interface SqliteRetrieveForPathContext {
@@ -38,6 +39,14 @@ export function retrieveSqliteSageForPath(
   const limit = opts?.limit ?? 20;
   const includeAncestors = opts?.includeAncestors ?? true;
   if (paths.length === 0) return [];
+  // Honor the caller's status filter. This used to be hard-coded to
+  // active+stale, so the tool-result injector's read triggers — which ask for
+  // `['active']` only — still received memories whose anchors verification had
+  // already marked stale, and injected them. The default stays active+stale
+  // for callers that do not choose.
+  const statuses: string[] = opts?.includeStatuses ?? ['active', 'stale'];
+  if (statuses.length === 0) return [];
+  const statusPlaceholders = statuses.map(() => '?').join(',');
 
   const { relPaths, targetList, symbolGlobs } = buildRetrievePathTargets(
     ctx.projectRoot,
@@ -76,24 +85,28 @@ export function retrieveSqliteSageForPath(
                ${globClause}
              )
        )
-       AND m.status IN ('active', 'stale')
+       AND m.status IN (${statusPlaceholders})
        ${session.clause}
        ${audienceEdgeClause}
        ORDER BY m.importance DESC, m.updated_at DESC
        LIMIT ?`,
     )
-    .all(...targetList, ...symbolGlobs, ...session.params, limit) as Array<{ data: string }>;
+    .all(...targetList, ...symbolGlobs, ...statuses, ...session.params, limit) as Array<{
+    data: string;
+  }>;
 
   if (edgeRows.length > 0) {
-    return edgeRows.map((r) => sqliteRowToMemory(r)).filter(audienceFilter);
+    // Skip-and-log decoding, like the fallback below: one corrupt row must
+    // not throw away every valid memory for the path.
+    return sqliteRowsToMemories(edgeRows).filter(audienceFilter);
   }
 
   const fallback = buildRetrieveFallbackQuery(relPaths, includeAncestors);
-  const params: (string | number)[] = ['active', 'stale', ...fallback.params];
+  const params: (string | number)[] = [...statuses, ...fallback.params];
   const rows = ctx
     .stmt(
       `SELECT data FROM memories
-       WHERE status IN (?, ?)
+       WHERE status IN (${statusPlaceholders})
        AND (${fallback.conditions.join(' OR ')})
        ${session.clause}
        ${audienceFallbackClause}

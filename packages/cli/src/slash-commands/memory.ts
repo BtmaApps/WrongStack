@@ -335,12 +335,19 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
           const action = rest[0]?.toLowerCase() ?? 'list';
           if (action === 'accept') {
             if (!rest[1]) return { message: 'Usage: /memory candidates accept <candidate-id>' };
-            const accepted = await Sage.acceptCandidate(rest[1]);
-            return {
-              message: accepted
-                ? `Accepted ${rest[1]} as ${accepted.id}.`
-                : `Candidate ${rest[1]} was not found.`,
-            };
+            try {
+              const accepted = await Sage.acceptCandidate(rest[1]);
+              return {
+                message: accepted
+                  ? `Accepted ${rest[1]} as ${accepted.id}.`
+                  : `Candidate ${rest[1]} was not found.`,
+              };
+            } catch (error) {
+              // e.g. a review proposal, which is resolved rather than accepted.
+              return {
+                message: `Could not accept ${rest[1]}: ${error instanceof Error ? error.message : String(error)}`,
+              };
+            }
           }
           if (action === 'reject') {
             if (!rest[1])

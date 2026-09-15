@@ -18,6 +18,7 @@
 import type { MemoryPort } from '@wrongstack/core/types';
 import {
   SAGE_RETRIEVAL_CAPABILITY,
+  SAGE_SERVICE_CAPABILITY,
   SAGE_SURFACE_CAPABILITY,
   type Sage,
   type SageRetrievalCapability,
@@ -33,7 +34,11 @@ import {
 import { FakeEmbeddingProvider } from './fake-provider.js';
 
 function makeFakePort(
-  opts: { retrieval?: SageRetrievalCapability; surface?: SageSurface } = {},
+  opts: {
+    retrieval?: SageRetrievalCapability;
+    surface?: SageSurface;
+    service?: Record<string, unknown>;
+  } = {},
 ): MemoryPort {
   const port = {
     async initialize() {},
@@ -47,6 +52,7 @@ function makeFakePort(
     getCapability<T>(cap: { id: string }): T | undefined {
       if (cap.id === SAGE_RETRIEVAL_CAPABILITY.id) return opts.retrieval as unknown as T;
       if (cap.id === SAGE_SURFACE_CAPABILITY.id) return opts.surface as unknown as T;
+      if (cap.id === SAGE_SERVICE_CAPABILITY.id) return opts.service as unknown as T;
       return undefined;
     },
     async read() {
@@ -156,6 +162,44 @@ describe('wrapMemoryPortWithVectorRecall', () => {
     } finally {
       store.close();
     }
+  });
+
+  // The agent's `memory_search` / `memory_search_explain` tools are built from
+  // the SERVICE capability. Left unwrapped, the model's own searches never
+  // reached the semantic channel even on hosts where injection did.
+  it('fuses the service capability used by the agent memory tools', async () => {
+    const lexicalHit = makeSage('lex-1', 'lexical only');
+    const semanticHit = makeSage('vec-1', 'semantic only');
+    const serviceSearch = vi.fn(async () => [lexicalHit]);
+    const remember = vi.fn();
+    const port = makeFakePort({
+      service: { searchSage: serviceSearch, rememberSage: remember },
+      surface: {
+        getSage: async (id: string) => (id === 'vec-1' ? semanticHit : undefined),
+      } as unknown as SageSurface,
+    });
+    const vectorRecall = {
+      search: async () => [
+        { id: 'v1', score: 0.9, text: 'semantic only', tags: [], metadata: { sageId: 'vec-1' } },
+      ],
+    };
+    const wrapped = wrapMemoryPortWithVectorRecall(port, {
+      store: undefined as unknown as VectorMemoryStore,
+      vectorRecall,
+    });
+    const service = wrapped.getCapability<{
+      searchSage: (query: string, opts?: Record<string, unknown>) => Promise<Sage[]>;
+      rememberSage: unknown;
+    }>(SAGE_SERVICE_CAPABILITY)!;
+
+    const ids = (await service.searchSage('anything', { includeStatuses: ['active'] })).map(
+      (memory) => memory.id,
+    );
+
+    expect(ids).toEqual(expect.arrayContaining(['lex-1', 'vec-1']));
+    expect(serviceSearch).toHaveBeenCalledTimes(1);
+    // Write-side members pass through untouched.
+    expect(service.rememberSage).toBe(remember);
   });
 
   it("honors a caller's explicit `vectorRecall` over the wrapper", async () => {

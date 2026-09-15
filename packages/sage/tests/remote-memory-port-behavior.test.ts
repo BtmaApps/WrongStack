@@ -353,6 +353,43 @@ describe('ProjectSageMemoryPort', () => {
     await portWithoutEvents.dispose();
   });
 
+  it('pages listSage over IPC so one oversized frame cannot close the shared socket', async () => {
+    const pages = [
+      { memories: [{ id: 'm1' }, { id: 'm2' }], nextCursor: 'c1', total: 3, statusCounts: {} },
+      // m2 re-appears when it was updated mid-scan; it must not be listed twice.
+      { memories: [{ id: 'm2' }, { id: 'm3' }], nextCursor: null, total: 3, statusCounts: {} },
+    ];
+    mocks.call.mockImplementation(async (op: string) =>
+      op === 'listSagePage' ? pages.shift() : undefined,
+    );
+    const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo', clientId: 'client-5' });
+    const surface = port.getCapability({ id: 'wrongstack.memory.surface.v1' } as never) as any;
+
+    await expect(surface.listSage(['active', 'stale'])).resolves.toEqual([
+      { id: 'm1' },
+      { id: 'm2' },
+      { id: 'm3' },
+    ]);
+    expect(mocks.call.mock.calls.map(([op]) => op)).toEqual(['listSagePage', 'listSagePage']);
+    expect(mocks.call.mock.calls[0]?.[1]).toEqual({
+      options: { statuses: ['active', 'stale'], limit: 250, includeAllSessions: true },
+    });
+    expect(mocks.call.mock.calls[1]?.[1]).toMatchObject({ options: { cursor: 'c1' } });
+  });
+
+  it('keeps listSage status semantics: default statuses, and [] for only-invalid statuses', async () => {
+    mocks.call.mockResolvedValue({ memories: [], nextCursor: null, total: 0, statusCounts: {} });
+    const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo', clientId: 'client-6' });
+    const surface = port.getCapability({ id: 'wrongstack.memory.surface.v1' } as never) as any;
+
+    await expect(surface.listSage(['bogus'])).resolves.toEqual([]);
+    expect(mocks.call).not.toHaveBeenCalled();
+
+    await surface.listSage();
+    expect(mocks.call.mock.calls[0]?.[1].options.statuses).not.toContain('deleted');
+    expect(mocks.call.mock.calls[0]?.[1].options.statuses).toContain('active');
+  });
+
   it('reports an unavailable health result when the daemon call fails', async () => {
     mocks.call.mockRejectedValueOnce(new Error('daemon unavailable'));
     const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo' });

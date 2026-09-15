@@ -19,6 +19,8 @@ import {
   remapSymbolAnchors,
   toProjectRelative,
 } from '../shared/path-remap.js';
+import { isVerificationStale } from '../shared/stale-reason.js';
+import type { Sage } from '../types.js';
 
 export interface SagePathRemapOptions {
   memory: MemoryPort;
@@ -38,6 +40,38 @@ function allow(key: string, max: number): boolean {
   if (recent.has(key)) return false;
   recent.set(key, now);
   return true;
+}
+
+/**
+ * Stale memories are remapped too. A rename is exactly what makes the next
+ * verification mark a file-anchored memory stale ("Anchored path no longer
+ * exists"), and nothing ever moves stale back to active — remapping only
+ * active rows lost every memory whose file was verified between the move and
+ * this hook, permanently.
+ */
+const REMAP_STATUSES: Sage['status'][] = ['active', 'stale'];
+
+/**
+ * A remapped memory that verification demoted points at live code again; the
+ * next verification pass re-marks it if something else (content hash,
+ * symbol) is broken. A manually retired memory keeps its status — its anchors
+ * still follow the file.
+ */
+function reactivateIfStale(memory: Sage): { status?: 'active' } {
+  return isVerificationStale(memory) ? { status: 'active' } : {};
+}
+
+/**
+ * Replace `oldId` only where it stands as a whole identifier. The previous
+ * `split/join` rewrote substrings of unrelated names: renaming `get` turned
+ * `getUser` into `fetchUser` inside the memory text.
+ */
+export function replaceIdentifier(text: string, oldId: string, newId: string): string {
+  if (!oldId || oldId === newId) return text;
+  const escaped = oldId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}_$])${escaped}(?![\\p{L}\\p{N}_$])`, 'gu');
+  // Function replacer: `newId` must never be read as a `$&`-style pattern.
+  return text.replace(pattern, () => newId);
 }
 
 const COMMAND_TOOLS = new Set([
@@ -116,11 +150,13 @@ export function createSagePathRemapMiddleware(
               parsed.to,
             );
             if (from && to && from !== to && allow(`path:${from}->${to}`, maxPerHour)) {
-              const active = await surface.listSage(['active']);
-              for (const memory of active) {
+              const candidates = await surface.listSage(REMAP_STATUSES);
+              for (const memory of candidates) {
                 if (!memoryNeedsPathRemap(memory, from)) continue;
                 const { anchors, changed } = remapAnchors(memory.anchors, from, to);
-                if (changed) await surface.updateSage(memory.id, { anchors });
+                if (changed) {
+                  await surface.updateSage(memory.id, { anchors, ...reactivateIfStale(memory) });
+                }
               }
             }
           }
@@ -130,8 +166,8 @@ export function createSagePathRemapMiddleware(
         if (pendingSymbol) {
           const key = `sym:${pendingSymbol.path}#${pendingSymbol.oldSymbol}->${pendingSymbol.newSymbol}`;
           if (allow(key, maxPerHour)) {
-            const active = await surface.listSage(['active']);
-            for (const memory of active) {
+            const candidates = await surface.listSage(REMAP_STATUSES);
+            for (const memory of candidates) {
               if (
                 !memoryNeedsSymbolRemap(memory, {
                   oldSymbol: pendingSymbol.oldSymbol,
@@ -146,13 +182,16 @@ export function createSagePathRemapMiddleware(
                 path: pendingSymbol.path,
               });
               if (!changed) continue;
-              // Also rewrite bare symbol occurrences in text when exact match.
-              const text = memory.text.includes(pendingSymbol.oldSymbol)
-                ? memory.text.split(pendingSymbol.oldSymbol).join(pendingSymbol.newSymbol)
-                : memory.text;
+              // Also rewrite whole-identifier occurrences in the text.
+              const text = replaceIdentifier(
+                memory.text,
+                pendingSymbol.oldSymbol,
+                pendingSymbol.newSymbol,
+              );
               await surface.updateSage(memory.id, {
                 anchors,
                 ...(text !== memory.text ? { text } : {}),
+                ...reactivateIfStale(memory),
               });
             }
           }

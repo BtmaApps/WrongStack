@@ -217,12 +217,7 @@ export function createHostSubagentFactory(
       task?.context,
       owningSessionId,
     );
-    if (audienceMemory.length > 0) {
-      baseSystem.push({
-        type: 'text',
-        text: `Project memory for this agent role:\n${audienceMemory.map((text) => `- ${text}`).join('\n')}`,
-      });
-    }
+    if (audienceMemory) baseSystem.push({ type: 'text', text: audienceMemory });
 
     const skillResolution = await resolveHostSubagentSkillResolution(
       host.deps,

@@ -361,21 +361,13 @@ describe('tool-call memory selection and scoring helpers', () => {
     expect(capped.dropped.map((item) => item.memory.id)).toEqual(['deferred-4']);
   });
 
-  it('computes visible context and byte-aware output budgets', () => {
+  it('computes visible context from the result and prompt blocks', () => {
     const payload = {
       result: { content: 'RESULT' },
       ctx: { systemPrompt: [{ text: 'PROMPT' }, {}] },
       tool: { maxOutputBytes: 100 },
     } as unknown as ToolCallPipelinePayload;
     expect(coverage.visibleContextText(payload)).toBe('result\nprompt\n');
-    expect(coverage.availableHintChars(payload, 1_000)).toBeLessThan(100);
-    expect(coverage.availableHintChars({ ...payload, tool: undefined }, -1)).toBe(0);
-    expect(
-      coverage.availableHintChars(
-        { ...payload, result: { content: 'x'.repeat(200) } } as never,
-        100,
-      ),
-    ).toBe(0);
   });
 
   it('emits bounded task signals in injector traces', () => {

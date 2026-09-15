@@ -690,7 +690,9 @@ describe('sage 100% coverage suite', () => {
     });
 
     it('exercises selectDiverseMemories deferred branch with query, graph, and path reasons', async () => {
-      const { selectDiverseMemories } = await import('../src/middleware/tool-call-memory-trace.js');
+      const { selectDiverseMemories } = await import(
+        '../src/middleware/tool-call-memory-retrieval.js'
+      );
       const m1 = mem('m-1', 'Memory 1', { kind: 'fact' });
       const m2 = mem('m-2', 'Memory 2', { kind: 'fact' });
       const m3 = mem('m-3', 'Memory 3', { kind: 'fact' });

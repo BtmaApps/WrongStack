@@ -570,8 +570,8 @@ describe('SageToolCallMiddleware — cooldown for high importance memory', () =>
   });
 });
 
-describe('SageToolCallMiddleware — availableHintChars', () => {
-  it('respects maxOutputBytes cap', async () => {
+describe('SageToolCallMiddleware — evidence budget is independent of tool output', () => {
+  it('still injects when the tool output nearly fills maxOutputBytes', async () => {
     const store = await storeWithFileMemory('src/file.ts');
     const mw = createSageToolCallMiddleware({
       memory: store,
@@ -580,10 +580,12 @@ describe('SageToolCallMiddleware — availableHintChars', () => {
     });
 
     const payload = makePayload();
-    // Set tool maxOutputBytes cap to limit chars
-    (payload as any).tool = { maxOutputBytes: 2000 };
+    // 12-byte tool output against a 20-byte cap. The old in-content budget left
+    // floor((20 - 12 - 2) / 3) = 2 chars and silently injected nothing; the
+    // evidence block is a separate provider block and keeps its full budget.
+    (payload as any).tool = { maxOutputBytes: 20 };
     await mw.handler(payload as never, async (p) => p);
-    // Should still inject with available chars
+    expect(payload.result.content).toBe('file content');
     expect(memoryEvidenceText(payload)).toContain('Memory for');
   });
 });

@@ -63,11 +63,14 @@ export function createSageOutcomeCaptureMiddleware(
         const isError = nextPayload.result.is_error === true;
         const output = asString(nextPayload.result.content);
         const input = nextPayload.toolUse.input as Record<string, unknown> | undefined;
+        // Only a command the tool was actually given is an anchor. Falling
+        // back to the tool name anchored `read`/`edit` errors as the shell
+        // command "read", which verification then resolved against PATH and
+        // marked stale, and which path/command retrieval matched on noise.
         const command =
           asString(input?.['command']) ||
           asString(input?.['CommandLine']) ||
-          asString(input?.['cmd']) ||
-          name;
+          asString(input?.['cmd']);
 
         if (opts.errorPatterns && isError && output.trim()) {
           const signature = output.replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -80,7 +83,7 @@ export function createSageOutcomeCaptureMiddleware(
               importance: 0.55,
               confidence: 0.6,
               tags: ['auto-capture', 'error_pattern', name],
-              anchors: command ? [{ type: 'command', command: String(command).slice(0, 200) }] : [],
+              anchors: command ? [{ type: 'command', command: command.slice(0, 200) }] : [],
               sources: [{ type: 'tool_result' }],
             });
           }
@@ -94,18 +97,19 @@ export function createSageOutcomeCaptureMiddleware(
           'run_command',
           'execute_command',
         ]);
-        if (opts.toolOutcomes && !isError && commandTools.has(name)) {
+        // A command outcome without a command says nothing reusable.
+        if (opts.toolOutcomes && !isError && commandTools.has(name) && command) {
           const summary = output.replace(/\s+/g, ' ').trim().slice(0, 160);
-          const key = `ok:${String(command).slice(0, 100)}`;
-          if (allowKey(key, maxPerHour) && summary) {
+          const key = `ok:${command.slice(0, 100)}`;
+          if (summary && allowKey(key, maxPerHour)) {
             await surface.rememberSage({
-              text: `Successful ${name}: \`${String(command).slice(0, 120)}\` → ${summary}`,
+              text: `Successful ${name}: \`${command.slice(0, 120)}\` → ${summary}`,
               kind: 'tool_outcome',
               scope: 'project',
               importance: 0.45,
               confidence: 0.7,
               tags: ['auto-capture', 'tool_outcome', name],
-              anchors: [{ type: 'command', command: String(command).slice(0, 200) }],
+              anchors: [{ type: 'command', command: command.slice(0, 200) }],
               sources: [{ type: 'tool_result' }],
             });
           }

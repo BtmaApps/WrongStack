@@ -25,6 +25,17 @@ export interface InjectionTrackerOptions {
   minMatchTokens?: number | undefined;
 }
 
+export interface ConsumeMatchesOptions {
+  /**
+   * Only these memory ids may be credited. Pass the ids that were in the
+   * provider request which produced `assistantText`: a memory injected AFTER
+   * that message (by the tool calls it requested) shares its vocabulary by
+   * construction — it was retrieved from the same paths and query — yet the
+   * model never saw it while writing.
+   */
+  onlyIds?: ReadonlySet<string> | undefined;
+}
+
 interface TrackedInjection {
   textKey: string;
   tokens: number;
@@ -73,6 +84,10 @@ export class InjectionTracker {
    *  so pruning on every single operation is pure waste. */
   private lastPruneAt = 0;
   private static readonly PRUNE_INTERVAL_MS = 30_000;
+  private readonly normalizedPartCache = new Map<string, string>();
+  private normalizedPartChars = 0;
+  private static readonly PART_CACHE_MAX_ENTRIES = 4_096;
+  private static readonly PART_CACHE_MAX_CHARS = 16_000_000;
 
   constructor(opts: InjectionTrackerOptions = {}) {
     this.ttlMs = opts.ttlMs ?? 2 * 60 * 60_000;
@@ -130,9 +145,12 @@ export class InjectionTracker {
   ): ContextMemorySnapshot {
     this.prune(now);
     const sessionKey = sessionId ?? '<no-session>';
-    const normalizedParts = [...requestParts]
-      .map((part) => normalizeTextKey(part))
-      .filter((part) => part.length > 0);
+    const normalizedParts: string[] = [];
+    for (const part of requestParts) {
+      if (!part) continue;
+      const normalized = this.normalizePart(part);
+      if (normalized.length > 0) normalizedParts.push(normalized);
+    }
     const active = new Set<string>();
     for (const entry of this.contextEntries.values()) {
       if ((entry.sessionId ?? '<no-session>') !== sessionKey) continue;
@@ -167,8 +185,14 @@ export class InjectionTracker {
    * are eligible for matching — preventing cross-session use attribution
    * when a shared tracker serves concurrent sessions.
    */
-  consumeMatches(assistantText: string, now = Date.now(), sessionId?: string): string[] {
+  consumeMatches(
+    assistantText: string,
+    now = Date.now(),
+    sessionId?: string,
+    options: ConsumeMatchesOptions = {},
+  ): string[] {
     if (this.entries.size === 0) return [];
+    if (options.onlyIds?.size === 0) return [];
     const textKey = normalizeTextKey(assistantText);
     if (!textKey) return [];
     this.prune(now);
@@ -197,6 +221,7 @@ export class InjectionTracker {
       // Session filter: skip entries that belong to a different session.
       // Entries with no session or the same session remain eligible.
       if (otherSessionMemoryIds?.has(memoryId)) continue;
+      if (options.onlyIds && !options.onlyIds.has(memoryId)) continue;
       // Explicit id citation is the strongest usefulness signal — models often
       // reference `<memory id="…">` without restating the full body.
       if (textKey.includes(normalizeTextKey(memoryId)) || assistantText.includes(memoryId)) {
@@ -233,10 +258,47 @@ export class InjectionTracker {
     return matched;
   }
 
+  /**
+   * Memory ids the most recent provider-request snapshot found in context for
+   * `sessionId`. Read it BEFORE taking the next snapshot to learn what the
+   * model could see when it produced its latest message.
+   */
+  activeMemoryIds(sessionId?: string): Set<string> {
+    return new Set(this.activeContextBySession.get(sessionId ?? '<no-session>')?.memoryIds ?? []);
+  }
+
   /** Current number of tracked injections (after pruning). */
   get size(): number {
     this.prune(Date.now());
     return this.entries.size;
+  }
+
+  /**
+   * `normalizeTextKey` for one request part, memoized.
+   *
+   * The monitor snapshots EVERY provider request, and almost every part — the
+   * system prompt, each historical message, each tool result — is the same
+   * string object as on the previous request. Re-running NFKC + lowercase +
+   * whitespace collapse over the whole transcript per tool-loop step was
+   * O(context) work per request. Bounded by entry count and total cached
+   * characters so a compacted-away transcript does not stay pinned.
+   */
+  private normalizePart(part: string): string {
+    const cached = this.normalizedPartCache.get(part);
+    if (cached !== undefined) return cached;
+    const normalized = normalizeTextKey(part);
+    this.normalizedPartCache.set(part, normalized);
+    this.normalizedPartChars += part.length + normalized.length;
+    while (
+      this.normalizedPartCache.size > InjectionTracker.PART_CACHE_MAX_ENTRIES ||
+      this.normalizedPartChars > InjectionTracker.PART_CACHE_MAX_CHARS
+    ) {
+      const oldest = this.normalizedPartCache.entries().next().value;
+      if (!oldest) break;
+      this.normalizedPartCache.delete(oldest[0]);
+      this.normalizedPartChars -= oldest[0].length + oldest[1].length;
+    }
+    return normalized;
   }
 
   private prune(now: number): void {

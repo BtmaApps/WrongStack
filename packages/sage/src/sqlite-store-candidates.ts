@@ -75,7 +75,16 @@ export function listSqliteCandidates(
     ? 'SELECT data FROM candidates ORDER BY updated_at DESC'
     : "SELECT data FROM candidates WHERE status = 'pending' ORDER BY updated_at DESC";
   const rows = ctx.stmt(sql).all() as Array<{ data: string }>;
-  return rows.map((r) => sqliteRowToCandidate(r));
+  // One corrupt row must not hide the whole review queue.
+  const candidates: MemoryCandidate[] = [];
+  for (const row of rows) {
+    try {
+      candidates.push(sqliteRowToCandidate(row));
+    } catch {
+      // Skip corrupt rows, like createSqliteCandidate's dedupe scan.
+    }
+  }
+  return candidates;
 }
 
 export function createSqliteCandidate(
@@ -150,64 +159,82 @@ export function acceptSqliteCandidate(
       const candidate = await snapshot;
       if (!candidate) return undefined;
 
-      const memory = await ctx.rememberSage({
-        text: candidate.text,
-        kind: candidate.kind,
-        scope: candidate.scope,
-        confidence: candidate.confidence,
-        importance: candidate.importance,
-        tags: candidate.tags,
-        anchors: candidate.anchors,
-        audience: candidate.audience,
-        sources: candidate.sources,
-      });
+      // A review proposal (hygiene, triage, `memory_candidates propose`)
+      // carries its TARGET memory's text. Accepting it re-remembered that
+      // text as a `memory_review` record, which exact-matched and merged into
+      // the target — stapling review tags such as `persistence:long_lived`
+      // onto the very memory under review. Proposals are decided, not
+      // accepted.
+      if (candidate.kind === 'memory_review') {
+        throw new Error(
+          `Memory candidate "${candidateId}" is a review proposal` +
+            (candidate.targetMemoryId ? ` for memory ${candidate.targetMemoryId}` : '') +
+            '; resolve it with a decision (delete, archive or keep) instead of accepting it.',
+        );
+      }
 
-      // Mark candidate as accepted. The reclaim-UPDATE pattern ensures
-      // atomicity: if a concurrent resolveCandidate already flipped the
-      // status away from 'pending', this UPDATE matches 0 rows and we
-      // log the orphaned memory for diagnostics instead of silently
-      // leaving the candidate in a stale state.
-      const accepted = await ctx.runMutation(() => {
+      // Claim BEFORE writing the memory. The old order wrote first and
+      // claimed second, so a concurrent resolve/reject that won the claim
+      // left an orphaned memory behind (only logged). The file lock covers
+      // accept-vs-accept; resolve does not take it, the claim covers both.
+      const claimedAt = ctx.nowIso();
+      const claimed = await ctx.runMutation(() => {
         const result = ctx
           .stmt(
             "UPDATE candidates SET data = ?, status = 'accepted', updated_at = ? WHERE id = ? AND status = 'pending'",
           )
           .run(
-            JSON.stringify({
-              ...candidate,
-              status: 'accepted',
-              memoryId: memory.id,
-              updatedAt: ctx.nowIso(),
-            }),
-            ctx.nowIso(),
+            JSON.stringify({ ...candidate, status: 'accepted', updatedAt: claimedAt }),
+            claimedAt,
             candidateId,
           );
         return result.changes > 0;
       });
-      if (!accepted) {
-        // A concurrent resolveCandidate raced us. The memory was already
-        // created — log the orphan so an operator can reconcile.
-        ctx.audit('memory.candidate_accept_orphaned', {
-          memoryId: memory.id,
-          details: { candidateId, reason: 'Candidate status was no longer pending during accept' },
+      if (!claimed) return undefined;
+
+      let memory: Sage;
+      try {
+        memory = await ctx.rememberSage({
+          text: candidate.text,
+          kind: candidate.kind,
+          scope: candidate.scope,
+          confidence: candidate.confidence,
+          importance: candidate.importance,
+          tags: candidate.tags,
+          anchors: candidate.anchors,
+          audience: candidate.audience,
+          sources: candidate.sources,
         });
-        console.warn(
-          JSON.stringify({
-            level: 'warn',
-            event: 'sage.candidate_accept_orphaned',
-            candidateId,
-            memoryId: memory.id,
-            message:
-              'Memory created but candidate was resolved concurrently; orphaned memory logged.',
-            timestamp: ctx.nowIso(),
-          }),
+      } catch (error) {
+        // The write failed (validation, secret guard, store error): release
+        // the claim so the candidate stays reviewable instead of reading as
+        // accepted with no memory behind it.
+        await ctx.runMutation(() =>
+          ctx
+            .stmt(
+              "UPDATE candidates SET data = ?, status = 'pending', updated_at = ? WHERE id = ? AND status = 'accepted'",
+            )
+            .run(JSON.stringify(candidate), ctx.nowIso(), candidateId),
         );
-      } else {
-        ctx.audit('memory.candidate_accepted', {
-          memoryId: memory.id,
-          details: { candidateId },
-        });
+        throw error;
       }
+
+      await ctx.runMutation(() =>
+        ctx.stmt('UPDATE candidates SET data = ?, updated_at = ? WHERE id = ?').run(
+          JSON.stringify({
+            ...candidate,
+            status: 'accepted',
+            memoryId: memory.id,
+            updatedAt: ctx.nowIso(),
+          }),
+          ctx.nowIso(),
+          candidateId,
+        ),
+      );
+      ctx.audit('memory.candidate_accepted', {
+        memoryId: memory.id,
+        details: { candidateId },
+      });
       return memory;
     },
     {

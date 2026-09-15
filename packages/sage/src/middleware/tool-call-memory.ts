@@ -5,13 +5,13 @@ import type { Sage } from '../types.js';
 import type { InjectionTracker } from './injection-tracker.js';
 import { MemoryInjectorAgent } from './memory-injector-agent.js';
 import {
-  containsMemoryText,
   dedupeRetrievedByText,
   retrieveTriggeredMemories,
   selectDiverseMemories,
 } from './tool-call-memory-retrieval.js';
 import {
   computeInjectionProof,
+  containsMemoryText,
   contextualInjectionScore,
   DEFAULT_MIN_IMPORTANCE,
   DEFAULT_MIN_SCORE,
@@ -24,13 +24,16 @@ import {
 } from './tool-call-memory-scoring.js';
 import {
   applyCooldown,
-  availableHintChars,
   boundedText,
   cooldownKey,
   emitInjectorTrace,
   formatTraceAnchor,
+  memoryIdsInEvidence,
   pruneCooldowns,
+  readToolMemoryEvidence,
+  releaseDepartedCooldowns,
   storeProviderMemoryEvidence,
+  TOOL_MEMORY_EVIDENCE_WINDOW_CHARS,
   toTraceMemory,
   visibleContextText,
 } from './tool-call-memory-trace.js';
@@ -49,12 +52,10 @@ import {
   stringValues,
 } from './tool-call-memory-triggers.js';
 
-export {
-  containsMemoryText,
-  type RetrievedMemory,
-} from './tool-call-memory-retrieval.js';
+export type { RetrievedMemory } from './tool-call-memory-retrieval.js';
 export {
   computeInjectionProof,
+  containsMemoryText,
   contextualInjectionScore,
   DEFAULT_MIN_IMPORTANCE,
   DEFAULT_MIN_SCORE,
@@ -204,6 +205,14 @@ export function createSageToolCallMiddleware(
 ): Middleware<ToolCallPipelinePayload> {
   const seen = new Map<string, number>();
   const pruneState = { lastPruneAt: 0 };
+  // Per context object, per session: the ids this injector last placed in the
+  // tool-memory evidence window. Compared with the live window before each
+  // cooldown check so a memory that left context (clear, topic shift,
+  // eviction) can return. Keyed by the context object on purpose: a host that
+  // hands every call a fresh synthetic context (no evidence persistence) has no
+  // placement record there, so its once-per-session cooldown still holds
+  // instead of every call looking like "the memory left context".
+  const placedInEvidence = new WeakMap<object, Map<string, Set<string>>>();
   const injector = new MemoryInjectorAgent();
   const minScore = opts.minScore ?? DEFAULT_MIN_SCORE;
   const minImportance = opts.minImportance ?? DEFAULT_MIN_IMPORTANCE;
@@ -346,6 +355,15 @@ export function createSageToolCallMiddleware(
         const eligible = eligibleItems.map((item) => item.memory);
         const sessionId =
           opts.getSessionId?.() ?? (nextPayload.ctx.session as { id?: string } | undefined)?.id;
+        const placedForCtx = placedInEvidence.get(nextPayload.ctx);
+        if (placedForCtx) {
+          releaseDepartedCooldowns(
+            seen,
+            placedForCtx,
+            sessionId,
+            memoryIdsInEvidence(readToolMemoryEvidence(nextPayload.ctx)),
+          );
+        }
         const fresh = applyCooldown(
           eligible,
           seen,
@@ -399,7 +417,11 @@ export function createSageToolCallMiddleware(
           return nextPayload;
         }
 
-        const maxChars = availableHintChars(nextPayload, plan.maxChars);
+        // No longer capped by the tool's `maxOutputBytes`: evidence travels as
+        // its own provider block, not inside the tool result, so a large tool
+        // output must not starve the memory budget (it used to reduce it to 0
+        // for exactly the big files that most need context).
+        const maxChars = plan.maxChars;
         const { selected, dropped: budgetDropped } = selectDiverseMemories(
           fresh,
           maxHints,
@@ -452,10 +474,29 @@ export function createSageToolCallMiddleware(
           return nextPayload;
         }
 
-        storeProviderMemoryEvidence(nextPayload.ctx, rendered.text, plan.maxChars);
+        // Rolling window: several tool calls of one step each contribute, and
+        // a context-pressure budget shrinks the window with the per-call one.
+        const windowChars = Math.max(
+          plan.maxChars,
+          Math.min(TOOL_MEMORY_EVIDENCE_WINDOW_CHARS, plan.maxChars * 3),
+        );
+        const evidence = storeProviderMemoryEvidence(nextPayload.ctx, rendered.text, windowChars);
         const injectedAt = Date.now();
         for (const memoryId of rendered.memoryIds)
           seen.set(cooldownKey(memoryId, sessionId), injectedAt);
+        for (const memoryId of evidence.evictedIds) seen.delete(cooldownKey(memoryId, sessionId));
+        let placed = placedInEvidence.get(nextPayload.ctx);
+        if (!placed) {
+          placed = new Map();
+          placedInEvidence.set(nextPayload.ctx, placed);
+        }
+        const placedKey = sessionId ?? '<no-session>';
+        placed.delete(placedKey);
+        placed.set(placedKey, new Set(evidence.memoryIds));
+        if (placed.size > 256) {
+          const oldest = placed.keys().next().value;
+          if (oldest !== undefined) placed.delete(oldest);
+        }
         pruneCooldowns(
           seen,
           pruneState,
@@ -556,7 +597,6 @@ export const toolCallMemoryCoverage = {
   applyCooldown,
   pruneCooldowns,
   visibleContextText,
-  availableHintChars,
   emitInjectorTrace,
   retrieveTriggeredMemories,
   dedupeRetrievedByText,

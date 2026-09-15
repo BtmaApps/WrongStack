@@ -9,19 +9,18 @@ import { createSageDomainTermExtractorMiddleware } from '../../src/middleware/do
 import { createSageOutcomeCaptureMiddleware } from '../../src/middleware/outcome-capture.js';
 import { createSagePathRemapMiddleware } from '../../src/middleware/path-remap.js';
 import {
-  applyCooldown,
-  availableHintChars,
-  containsMemoryText,
-  pruneCooldowns,
-  visibleContextText,
+  dedupeRetrievedByText,
+  selectDiverseMemories,
 } from '../../src/middleware/tool-call-memory-retrieval.js';
 import {
+  containsMemoryText,
   observeBurstRejections,
   containsMemoryText as scoringContainsMemoryText,
 } from '../../src/middleware/tool-call-memory-scoring.js';
 import {
-  dedupeRetrievedByText,
-  selectDiverseMemories,
+  applyCooldown,
+  pruneCooldowns,
+  visibleContextText,
 } from '../../src/middleware/tool-call-memory-trace.js';
 
 function makeMemory(id: string, overrides: Partial<Sage> = {}): Sage {
@@ -391,7 +390,8 @@ describe('sage middleware 100% coverage suite', () => {
       const seen = new Map<string, number>();
       const now = Date.now();
       seen.set('<no-session>:m1', now - 10_000); // 10s ago
-      seen.set('<no-session>:m2', now - 100_000); // 100s ago
+      // 2h ago: timed cooldown entries are retained for at least an hour.
+      seen.set('<no-session>:m2', now - 2 * 60 * 60_000);
 
       const m1 = makeMemory('m1');
       const m2 = makeMemory('m2');
@@ -443,29 +443,6 @@ describe('sage middleware 100% coverage suite', () => {
           'that includes this phrase definitely',
         ),
       ).toBe(true);
-    });
-
-    it('availableHintChars respects tool.maxOutputBytes', () => {
-      const payloadWithoutLimit: ToolCallPipelinePayload = {
-        toolUse: { type: 'tool_use', id: 'c', name: 'read', input: {} },
-        ctx: {} as any,
-        result: { type: 'tool_result', tool_use_id: 'c', content: 'hello', is_error: false },
-      };
-      expect(availableHintChars(payloadWithoutLimit, 500)).toBe(500);
-
-      const payloadWithLimit: ToolCallPipelinePayload = {
-        toolUse: { type: 'tool_use', id: 'c', name: 'read', input: {} },
-        tool: { maxOutputBytes: 20 } as any,
-        ctx: {} as any,
-        result: {
-          type: 'tool_result',
-          tool_use_id: 'c',
-          content: '1234567890',
-          is_error: false,
-        }, // 10 bytes
-      };
-      // remaining = 20 - 10 - 2 = 8. 8 / 3 = 2 chars
-      expect(availableHintChars(payloadWithLimit, 500)).toBe(2);
     });
   });
 

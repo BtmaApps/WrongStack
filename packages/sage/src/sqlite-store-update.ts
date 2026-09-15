@@ -136,7 +136,13 @@ export function updateSqliteSage(
     ...(input.text !== undefined && { text: normalizeText(input.text) }),
     ...(input.persistence !== undefined && { persistence: input.persistence }),
     ...(input.kind !== undefined && { kind: input.kind }),
-    ...(input.status !== undefined && { status: input.status as SageStatus }),
+    // A status set through the API is a decision, not a verification outcome:
+    // mark a manual `stale` so automatic passes never revive the retirement.
+    ...(input.status !== undefined &&
+      input.status !== existing.status && {
+        status: input.status as SageStatus,
+        staleReason: input.status === 'stale' ? ('manual' as const) : undefined,
+      }),
     ...(input.tags !== undefined && { tags: normalizeTags(input.tags) }),
     ...(input.anchors !== undefined && {
       anchors: normalizeAnchors(ctx.projectRoot, input.anchors),

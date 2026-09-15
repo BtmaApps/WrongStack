@@ -112,8 +112,15 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
         !exactRow &&
         tokenizeCount(normalizedText) > tokenizeCount(existing.text) &&
         normalizedText.length > existing.text.length;
+      // A stale match is re-asserted by this write. Verification and hygiene
+      // only ever move active → stale, so without this a re-remembered fact
+      // stayed stale forever: invisible to default search and to read-trigger
+      // injection, while `remember` reported success. The next verify pass
+      // marks it stale again if its anchors are still broken.
+      const reactivated = existing.status === 'stale';
       const merged: Sage = {
         ...existing,
+        ...(reactivated ? { status: 'active' as const, staleReason: undefined } : {}),
         text: preferIncomingText ? normalizedText : existing.text,
         legacyScope: existing.legacyScope,
         tags: [...new Set([...existing.tags, ...tags])],
@@ -172,6 +179,7 @@ export async function rememberSqliteSage(ctx: RememberSqliteSageContext): Promis
         memoryId: merged.id,
         mergedIds: [],
         nearDuplicate: !exactRow,
+        ...(reactivated ? { reactivated: true } : {}),
         qualityReasons: quality.reasons,
       });
       return merged;
