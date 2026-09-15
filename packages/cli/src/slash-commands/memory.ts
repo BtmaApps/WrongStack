@@ -333,9 +333,56 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
         case 'candidates': {
           if (!Sage) return requiresSage('candidates');
           const action = rest[0]?.toLowerCase() ?? 'list';
+          if (action === 'resolve') {
+            const decision = rest[2]?.toLowerCase();
+            if (
+              !rest[1] ||
+              (decision !== 'delete' && decision !== 'archive' && decision !== 'keep')
+            ) {
+              return {
+                message:
+                  'Usage: /memory candidates resolve <candidate-id> delete|archive|keep [reason]',
+              };
+            }
+            try {
+              const resolution = await Sage.resolveCandidate(
+                rest[1],
+                decision,
+                rest.slice(3).join(' ') || undefined,
+              );
+              if (!resolution) return { message: `Candidate ${rest[1]} was not found.` };
+              if (resolution.error) {
+                return { message: `Could not resolve ${rest[1]}: ${resolution.error}` };
+              }
+              return {
+                message: `Resolved ${rest[1]}: ${decision}${resolution.applied ? '' : ' (target memory unchanged)'}.`,
+              };
+            } catch (error) {
+              return {
+                message: `Could not resolve ${rest[1]}: ${error instanceof Error ? error.message : String(error)}`,
+              };
+            }
+          }
           if (action === 'accept') {
             if (!rest[1]) return { message: 'Usage: /memory candidates accept <candidate-id>' };
             try {
+              // A review proposal is a decision about its target memory: accept
+              // applies the suggested archive, anything else deletes. Use
+              // `resolve` to choose explicitly.
+              const review = (await Sage.listCandidates(false)).find(
+                (c) => c.id === rest[1] && c.kind === 'memory_review',
+              );
+              if (review) {
+                const decision = review.suggestedAction === 'archive' ? 'archive' : 'delete';
+                const resolution = await Sage.resolveCandidate(rest[1], decision);
+                if (!resolution) return { message: `Candidate ${rest[1]} was not found.` };
+                if (resolution.error) {
+                  return { message: `Could not accept ${rest[1]}: ${resolution.error}` };
+                }
+                return {
+                  message: `Accepted review ${rest[1]}: ${decision}${resolution.applied ? '' : ' (target memory unchanged)'}.`,
+                };
+              }
               const accepted = await Sage.acceptCandidate(rest[1]);
               return {
                 message: accepted

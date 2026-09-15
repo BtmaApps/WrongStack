@@ -100,6 +100,8 @@ const SHUTDOWN_DRAIN_GRACE_MS = 1_000;
  */
 const SESSION_CATALOG_FORCE_DESTROY_MS = 500;
 let stopping = false;
+/** Drives the AbortSignal passed to in-flight dispatch handlers so stop() can cancel them. */
+const dispatchAbortController = new AbortController();
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 const clients = new Set<ClientState>();
 const MAX_CLIENTS = 256;
@@ -240,6 +242,11 @@ async function dispatch<O extends SessionCatalogOperationName>(
   op: O,
   args: SessionCatalogOperations[O]['args'],
 ): Promise<SessionCatalogOperations[O]['result']> {
+  if (dispatchAbortController.signal.aborted) {
+    throw Object.assign(new Error('Session Catalog server is stopping'), {
+      name: 'SessionCatalogStoppingError',
+    });
+  }
   const catalog = requiredStore();
   switch (op) {
     case 'ping': {
@@ -610,6 +617,10 @@ async function stop(_reason: string): Promise<void> {
     }, SESSION_CATALOG_FORCE_DESTROY_MS);
     forceDestroyTimer.unref?.();
   });
+  // Signal all in-flight dispatch handlers to cancel immediately.
+  // Any handler that has not yet called requiredStore() will throw
+  // SessionCatalogStoppingError instead of racing store?.close().
+  dispatchAbortController.abort();
   // Bounded drain: give in-flight dispatches a short grace window to finish
   // so the store does not close under a running operation (its caller would
   // otherwise see "database is closed" instead of a clean result or

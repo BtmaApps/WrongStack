@@ -691,7 +691,11 @@ describe('applySessionKanbanTaskToSource — missing source path', () => {
       status: 'completed',
       createdAt: '2026-08-11T00:00:00.000Z',
       updatedAt: '2026-08-11T00:00:00.000Z',
-      origin: { system: originSystem, taskId: originTaskId, graphId: `session:${originTaskId}` },
+      origin: {
+        system: originSystem,
+        taskId: originTaskId,
+        graphId: originSystem === 'session-plan' ? 'plan:sess' : 'session:sess',
+      },
     } as KanbanTask;
   }
 

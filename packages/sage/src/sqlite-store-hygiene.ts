@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { ulid } from '@wrongstack/core/utils';
 import { verifyMemoryAnchors } from './anchors/verify.js';
+import { reviewedTargetTexts, wasReviewedUnchanged } from './shared/candidate-dedupe.js';
 import { applySemanticChange } from './shared/semantic-rewrite.js';
 import { isVerificationStale } from './shared/stale-reason.js';
 import { anchorsChanged } from './sqlite-store-anchor-diff.js';
@@ -119,7 +120,7 @@ interface SqliteHygieneContext {
   now: () => Date;
   nowIso: () => string;
   listMemories: (opts: { status: Sage['status'] | 'all'; limit: number }) => Promise<Sage[]>;
-  listCandidates: () => Promise<MemoryCandidate[]>;
+  listCandidates: (includeResolved?: boolean) => Promise<MemoryCandidate[]>;
   addCandidate: (candidate: MemoryCandidate) => Promise<void>;
   runMutation: <T>(work: () => T) => Promise<T>;
   upsertMemory: (memory: Sage) => void;
@@ -633,10 +634,11 @@ export async function runSqliteSageHygiene(
   const unusedMs = (opts?.archiveUnusedAfterDays ?? 30) * 86_400_000;
   const unusedMinInjections = Math.max(1, Math.floor(opts?.unusedMinInjections ?? 10));
 
-  const existingCandidates = await ctx.listCandidates();
+  const existingCandidates = await ctx.listCandidates(true);
   const existingPendingKeys = new Set(
     existingCandidates.filter((c) => c.status === 'pending').map((c) => c.targetMemoryId ?? ''),
   );
+  const reviewedTexts = reviewedTargetTexts(existingCandidates, nowMs);
 
   let reviewCandidatesCreated = 0;
   let deleted = 0;
@@ -695,7 +697,7 @@ export async function runSqliteSageHygiene(
       suggestedAction = 'investigate';
     }
 
-    if (reason && !existingPendingKeys.has(m.id)) {
+    if (reason && !existingPendingKeys.has(m.id) && !wasReviewedUnchanged(reviewedTexts, m)) {
       const ageDays = Math.floor((nowMs - Date.parse(m.updatedAt)) / 86_400_000);
       await ctx.addCandidate({
         id: ulid(),

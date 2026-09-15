@@ -10,6 +10,31 @@ export interface IntegrationProbeState {
   error?: string | undefined;
 }
 
+async function probeIntegration(
+  kind: 'hq' | 'wrong-proxy',
+  signal: AbortSignal,
+): Promise<{
+  connected: boolean;
+  latencyMs?: number;
+  error?: string;
+}> {
+  const response = await fetch(`/api/integrations/${kind}/status`, {
+    method: 'GET',
+    signal,
+    headers: { accept: 'application/json' },
+  });
+  const body = (await response.json()) as {
+    connected?: unknown;
+    latencyMs?: unknown;
+    error?: unknown;
+  };
+  return {
+    connected: response.ok && body.connected === true,
+    ...(typeof body.latencyMs === 'number' ? { latencyMs: body.latencyMs } : {}),
+    ...(typeof body.error === 'string' ? { error: body.error } : {}),
+  };
+}
+
 export function useWrongProxyStatus(): IntegrationProbeState {
   const enabled = useLocalPrefs((s) => s.wrongProxyEnabled);
   const url = useLocalPrefs((s) => s.wrongProxyUrl);
@@ -33,25 +58,20 @@ export function useWrongProxyStatus(): IntegrationProbeState {
     let disposed = false;
     const probe = async () => {
       const trimmed = url.trim().replace(/\/+$/, '');
-      const healthUrl = `${trimmed}/api/health`;
       const start = Date.now();
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 2000);
 
       try {
-        const res = await fetch(healthUrl, {
-          method: 'GET',
-          signal: controller.signal,
-          headers: { accept: 'application/json' },
-        });
+        const result = await probeIntegration('wrong-proxy', controller.signal);
         clearTimeout(timer);
         if (disposed) return;
-        const ok = res.ok && res.status >= 200 && res.status < 300;
+        const ok = result.connected;
         setState({
           status: ok ? 'connected' : 'error',
-          latencyMs: Date.now() - start,
+          latencyMs: result.latencyMs ?? Date.now() - start,
           url: trimmed,
-          error: ok ? undefined : `HTTP ${res.status}`,
+          error: ok ? undefined : (result.error ?? 'Unreachable'),
         });
       } catch (err) {
         clearTimeout(timer);
@@ -100,30 +120,20 @@ export function useHqStatus(): IntegrationProbeState {
     let disposed = false;
     const probe = async () => {
       const trimmed = url.trim().replace(/\/+$/, '');
-      const healthUrl = `${trimmed}/api/auth/status`;
       const start = Date.now();
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 2000);
 
       try {
-        const headers: Record<string, string> = { accept: 'application/json' };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch(healthUrl, {
-          method: 'GET',
-          signal: controller.signal,
-          headers,
-        });
+        const result = await probeIntegration('hq', controller.signal);
         clearTimeout(timer);
         if (disposed) return;
-        // Even 401 proves the HQ server is alive and responding
-        const ok = res.ok || res.status === 401;
+        const ok = result.connected;
         setState({
           status: ok ? 'connected' : 'error',
-          latencyMs: Date.now() - start,
+          latencyMs: result.latencyMs ?? Date.now() - start,
           url: trimmed,
-          error: ok ? undefined : `HTTP ${res.status}`,
+          error: ok ? undefined : (result.error ?? 'Unreachable'),
         });
       } catch (err) {
         clearTimeout(timer);

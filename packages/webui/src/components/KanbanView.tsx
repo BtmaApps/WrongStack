@@ -382,7 +382,7 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
   };
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col bg-background text-foreground md:flex-row">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-y-auto bg-background text-foreground md:flex-row md:overflow-hidden">
       <KanbanBoardSidebar
         boardTotal={boardTotal}
         activeBoardTotal={activeBoardTotal}
@@ -406,7 +406,7 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
         onBoardPageChange={changeBoardPage}
       />
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-none flex-col md:flex-1">
         <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
           <div className="w-full min-w-0 sm:w-auto sm:flex-1">
             <h1 className="truncate text-sm font-semibold">
@@ -476,7 +476,7 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
                   }
                 }}
                 className={cn(
-                  'hidden h-8 items-center justify-center rounded-md border transition-colors sm:flex',
+                  'flex h-8 items-center justify-center rounded-md border transition-colors',
                   confirmDeleteBoard
                     ? 'w-16 gap-1 border-destructive/40 bg-destructive/15 text-[11px] font-semibold text-destructive'
                     : 'w-16 text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
@@ -546,7 +546,7 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
 
         <div
           ref={boardScrollRef}
-          className="kanban-scroll-area min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-contain"
+          className="kanban-scroll-area min-h-64 flex-1 overflow-x-auto overflow-y-hidden overscroll-contain md:min-h-0"
         >
           {showHistory ? (
             <div className="h-full overflow-y-auto p-4">

@@ -1,5 +1,4 @@
 import type { TodoItem } from '@wrongstack/core/agent';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   addPlanItem,
   emptyPlan,
@@ -11,6 +10,7 @@ import {
   savePlan,
   setPlanItemStatus,
 } from '@wrongstack/core/storage';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../types.js';
 import { validatePlanTemplateUsePayload } from '../ws-payload-validation.js';
@@ -89,7 +89,16 @@ export function handleTodosGet(ctx: WorklistContext, ws: WebSocket): void {
 async function commitTodos(
   ctx: WorklistContext,
   todos: TodoItem[],
+  remove = false,
 ): Promise<{ todos: TodoItem[]; warnings: string[] }> {
+  if (remove) {
+    // Explicit human deletion must bypass the model tool's omission guard,
+    // which deliberately retains unfinished rows. State observers still
+    // receive the replacement for persistence and Kanban mirroring.
+    if (!ctx.replaceTodos) throw new Error('Todo replacement is not configured');
+    ctx.replaceTodos(todos);
+    return { todos: [...ctx.context.todos], warnings: [] };
+  }
   if (ctx.mutateTodos) {
     const result = await ctx.mutateTodos(todos);
     return { todos: result.todos, warnings: result.warnings ?? [] };
@@ -108,7 +117,7 @@ export async function handleTodosClear(ctx: WorklistContext, ws: WebSocket): Pro
     return;
   }
   try {
-    const result = await commitTodos(ctx, []);
+    const result = await commitTodos(ctx, [], true);
     sendResult(ctx, ws, true, 'Todos cleared');
     ctx.broadcast({
       type: 'todos.updated',
@@ -146,7 +155,7 @@ export async function handleTodosRemove(
   }
   const next = [...todos.slice(0, targetIndex), ...todos.slice(targetIndex + 1)];
   try {
-    const result = await commitTodos(ctx, next);
+    const result = await commitTodos(ctx, next, true);
     sendResult(ctx, ws, true, `Removed: ${removed.content}`);
     ctx.broadcast({
       type: 'todos.updated',
@@ -196,9 +205,12 @@ export async function handleTodoUpdate(
     const result = await commitTodos(ctx, next);
     const projected = result.todos.find((todo) => todo.id === existing.id);
     const requestedStatus = payload.status ?? existing.status;
+    const completedAndCleared =
+      requestedStatus === 'completed' && result.todos.length === 0 && result.warnings.length === 0;
     const projectionRejected =
       Boolean(existing.kanbanBoardId && existing.kanbanTaskId) &&
-      projected?.status !== requestedStatus;
+      projected?.status !== requestedStatus &&
+      !completedAndCleared;
     const warning = result.warnings[0];
     sendResult(
       ctx,

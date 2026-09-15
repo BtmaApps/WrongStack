@@ -1002,6 +1002,40 @@ describe('SqliteSageStore', () => {
       expect(report2.reviewCandidatesCreated).toBe(0);
     });
 
+    it('does not re-propose a memory a human already reviewed until its content changes', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      const oldDate = new Date(Date.now() - 45 * 86_400_000).toISOString();
+      const created = await store.rememberSage({
+        text: 'Reviewed low confidence fact.',
+        confidence: 0.2,
+      });
+      const backdate = () =>
+        (
+          store as unknown as {
+            db: { prepare: (s: string) => { run: (...args: unknown[]) => void } };
+          }
+        ).db
+          .prepare(
+            "UPDATE memories SET data = json_set(data, '$.updatedAt', ?, '$.lastAccessedAt', ?) WHERE id = ?",
+          )
+          .run(oldDate, oldDate, created.id);
+      backdate();
+
+      await store.hygiene({ archiveLowConfidenceAfterDays: 30, verify: false });
+      const first = (await store.listCandidates()).find((c) => c.targetMemoryId === created.id);
+      expect(first).toBeDefined();
+      expect(await store.rejectCandidate(first!.id, 'keep it')).toBe(true);
+
+      const rerun = await store.hygiene({ archiveLowConfidenceAfterDays: 30, verify: false });
+      expect(rerun.reviewCandidatesCreated).toBe(0);
+
+      await store.updateSage(created.id, { text: 'Reviewed low confidence fact, rewritten.' });
+      backdate();
+      const afterEdit = await store.hygiene({ archiveLowConfidenceAfterDays: 30, verify: false });
+      expect(afterEdit.reviewCandidatesCreated).toBe(1);
+    });
+
     it('exempts permanent memories from review candidates', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();

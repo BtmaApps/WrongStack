@@ -1,4 +1,5 @@
 import type { MemoryPort } from '@wrongstack/core/types';
+import { todoTool } from '@wrongstack/tools';
 import { describe, expect, it, vi } from 'vitest';
 import { buildDiagCommand, buildStatsCommand } from '../src/slash-commands/diag-stats.js';
 import type { SlashCommandContext } from '../src/slash-commands/index.js';
@@ -294,6 +295,28 @@ describe('buildTodosCommand', () => {
     const cmd = buildTodosCommand(emptyCtx({ context: makeCtx() as never }));
     const res = await cmd.run('done nope');
     expect(res?.message ?? '').toContain('No todo matched');
+  });
+
+  it('reports completion when the final managed todo auto-clears', async () => {
+    const ctxState = makeCtx([
+      {
+        id: 'bound',
+        content: 'Final task',
+        status: 'in_progress',
+        kanbanBoardId: 'board-1',
+        kanbanTaskId: 'task-1',
+      } as never,
+    ]);
+    const execute = vi.spyOn(todoTool, 'execute').mockImplementationOnce(async () => {
+      ctxState.todos.splice(0);
+      return { count: 1, in_progress: 0 };
+    });
+    try {
+      const cmd = buildTodosCommand(emptyCtx({ context: ctxState as never }));
+      expect((await cmd.run('done bound'))?.message).toBe('Marked done: Final task');
+    } finally {
+      execute.mockRestore();
+    }
   });
 
   // ── /todos remove ──

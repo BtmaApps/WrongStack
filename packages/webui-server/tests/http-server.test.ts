@@ -11,6 +11,7 @@
  */
 
 import * as fs from 'node:fs/promises';
+import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -320,6 +321,48 @@ describe('injectWsConfig', () => {
 });
 
 describe('createHttpServer', () => {
+  it('relays HQ status same-origin without forwarding the browser Origin or credentials', async () => {
+    let upstreamRequest: http.IncomingMessage | undefined;
+    const upstream = http.createServer((req, res) => {
+      upstreamRequest = req;
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'authentication required' }));
+    });
+    await new Promise<void>((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+    const upstreamAddress = upstream.address();
+    if (!upstreamAddress || typeof upstreamAddress === 'string')
+      throw new Error('bad upstream address');
+
+    const relay = createHttpServer({
+      host: '127.0.0.1',
+      distDir,
+      getIntegrationTarget: (kind) =>
+        kind === 'hq'
+          ? `http://127.0.0.1:${upstreamAddress.port}/ignored-by-fixed-probe`
+          : undefined,
+    });
+    await new Promise<void>((resolve) => relay.listen(0, '127.0.0.1', resolve));
+    const relayAddress = relay.address();
+    if (!relayAddress || typeof relayAddress === 'string') throw new Error('bad relay address');
+
+    try {
+      const res = await fetch(`http://127.0.0.1:${relayAddress.port}/api/integrations/hq/status`, {
+        headers: {
+          Origin: `http://127.0.0.1:${relayAddress.port}`,
+          Authorization: 'Bearer browser-token',
+        },
+      });
+      expect(res.status).toBe(200);
+      await expect(res.json()).resolves.toMatchObject({ connected: true, upstreamStatus: 401 });
+      expect(upstreamRequest?.url).toBe('/api/auth/status');
+      expect(upstreamRequest?.headers.origin).toBeUndefined();
+      expect(upstreamRequest?.headers.authorization).toBeUndefined();
+    } finally {
+      await new Promise<void>((resolve) => relay.close(() => resolve()));
+      await new Promise<void>((resolve) => upstream.close(() => resolve()));
+    }
+  });
+
   it('reports the current WebUI server process memory', async () => {
     const res = await authFetch(`${baseUrl}/debug/system`);
     expect(res.status).toBe(200);

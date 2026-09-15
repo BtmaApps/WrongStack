@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 318,
-      "typeOnly": 254,
+      "files": 319,
+      "typeOnly": 255,
       "runtimeOrMixed": 81
     },
     "@wrongstack/core/agent-catalog": {
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 45
     },
     "@wrongstack/core/kernel": {
-      "files": 270,
-      "typeOnly": 141,
-      "runtimeOrMixed": 142
+      "files": 272,
+      "typeOnly": 140,
+      "runtimeOrMixed": 144
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -159,9 +159,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/storage": {
-      "files": 122,
+      "files": 124,
       "typeOnly": 33,
-      "runtimeOrMixed": 119
+      "runtimeOrMixed": 121
     },
     "@wrongstack/core/tasking": {
       "files": 32,
@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 585,
+      "files": 587,
       "typeOnly": 55,
-      "runtimeOrMixed": 558
+      "runtimeOrMixed": 560
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1122,12 +1122,6 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
-      "file": "packages/sage/src/middleware/tool-call-memory-retrieval.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/agent",
       "file": "packages/sage/src/middleware/tool-call-memory-trace.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1147,6 +1141,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/sage/tests/middleware/middleware-100-coverage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -1585,6 +1585,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/task.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/todo-identity-regression.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -6523,7 +6529,7 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/sage/src/middleware/context-monitor.ts",
-      "typeOnly": 2,
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
@@ -6603,6 +6609,12 @@
       "file": "packages/sage/tests/middleware/tool-call-memory-rejected-detail.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -6819,6 +6831,12 @@
       "file": "packages/vector-memory/src/sage-event-mirror.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -10147,6 +10165,18 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/tools/tests/session-kanban.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/tools/tests/todo-identity-regression.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/tools/tests/todo-persistence-regression.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20160,6 +20190,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/src/todo.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/tree.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20197,6 +20233,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/tests/regex-guard-parity.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tools/tests/todo-persistence-regression.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

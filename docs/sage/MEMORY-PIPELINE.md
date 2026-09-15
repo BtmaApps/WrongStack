@@ -401,6 +401,32 @@ Write side, same audit:
   or "Draft specs live in docs/" was DISCARD and marked stale by `--apply`. A marker now
   needs `:` or a spaced dash. The remember-time ephemeral rule likewise rejected
   "Todo list items sync with the Kanban board"; noun uses of the marker word pass.
+- **Triage merges broke the supersession graph.** `/memory triage --apply` set
+  `status: 'superseded'` with no `supersededBy`, so nothing could name the replacement
+  (`recoverSage` failed with "chain head unavailable"), and replaced the keeper's
+  `supersedes` with a one-item list, erasing its earlier supersessions. Pairs were
+  resolved independently, so equal-quality tiebreaks could supersede A by B, B by C
+  and C by A — no active head, the fact gone from recall — or supersede a memory
+  already chosen as a keeper. `UpdateSageInput.supersededBy` now exists (validated:
+  requires status `superseded`, an existing non-deleted successor, no self or
+  two-cycle); merge detection never supersedes a memory twice or keeps one it already
+  superseded; apply re-reads the keeper and unions `supersedes`.
+- **The review queue could not apply a single proposal.** Accepting a `memory_review`
+  proposal is refused (it corrupted the target), but the WebUI's "Accept deletion"
+  button and `/memory candidates accept` still called accept, and `SageSurface` did not
+  expose `resolveCandidate` at all — so deletion and archive proposals could only be
+  rejected. `resolveCandidate` is now on the surface (SQLite and IPC ports); accept on a
+  review proposal resolves it (archive suggestion → archive, otherwise delete), and
+  `/memory candidates resolve <id> delete|archive|keep` chooses explicitly.
+- **First-boot vector sync indexed `active` only** while the live mirror keeps
+  `active`/`stale`; both now use the same corpus.
+- **A review decision never stuck.** Hygiene and the triage proposal filer deduped
+  against *pending* candidates only, so a proposal a human rejected or resolved `keep`
+  was filed again on the next run (hygiene is throttled hourly) for a memory that had
+  not changed — the queue kept asking until someone gave the destructive answer. A
+  resolved `memory_review` now suppresses re-proposing its target for 90 days while the
+  memory still carries the reviewed text (content, not `updatedAt`: verification and
+  counters move timestamps on untouched memories). Editing the memory re-opens review.
 
 ---
 
@@ -476,6 +502,13 @@ Write side, same audit:
     text, tags or status must emit a per-memory event the mirror listens to
     (`accepted`, `merged`, `updated`, `recovered`, `deleted`); aggregate-only events
     leave the semantic channel out of date until the next sweep.
+12. **Every superseded memory names its successor, and the graph has an active head.**
+    Supersede through `supersededBy`, never through `status` alone, and never replace a
+    keeper's `supersedes` list. A batch of merges must not supersede one memory twice or
+    keep a memory it has already superseded.
+13. **A human review decision is remembered.** Anything that files `memory_review`
+    proposals must dedupe against resolved reviews of the unchanged target
+    (`reviewedTargetTexts` / `wasReviewedUnchanged`), not only against pending ones.
 
 ## 7. Regression guards
 
@@ -504,6 +537,12 @@ archived). It runs against SAGE *source*: the root Vitest config aliases
 `@wrongstack/sage` to `packages/sage/src`, because against a stale dist the backfill case
 failed on a correct fix. `sqlite-recovery-file.test.ts` pins recover-after-backfill and
 `duplicate_active`; `triage.test.ts` pins the marker-word false positives.
+`triage-merge.test.ts` pins the acyclic merge set, `sqlite-recovery-file.test.ts` the
+`supersededBy` contract, `cli/tests/memory-triage.test.ts` the keeper union, and
+`webui-server/tests/memory-candidate-resolve.test.ts` plus `slash-memory-sage.test.ts`
+(against a real store — a mocked surface hid the missing `resolveCandidate`) the review
+queue. `sqlite-store.test.ts` ("does not re-propose a memory a human already reviewed")
+and `tests/shared/file-proposals.test.ts` pin review suppression.
 
 `packages/sage/tests/sage-context-carry.test.ts` pins §4.11: two tool calls of one
 step both in the window, cooldown held while present and released after clear, stale

@@ -209,10 +209,9 @@ export async function handleSageListPage(
   } catch (err) {
     send(ws, {
       type: 'memory.sage.listPage',
-      payload: withRequestId(
-        (msg as { payload?: Record<string, unknown> }).payload,
-        { error: errMessage(err) },
-      ),
+      payload: withRequestId((msg as { payload?: Record<string, unknown> }).payload, {
+        error: errMessage(err),
+      }),
     });
   }
 }
@@ -289,10 +288,9 @@ export async function handleSageSearchBreakdown(
   } catch (err) {
     send(ws, {
       type: 'memory.sage.searchBreakdown',
-      payload: withRequestId(
-        (msg as { payload?: Record<string, unknown> }).payload,
-        { error: errMessage(err) },
-      ),
+      payload: withRequestId((msg as { payload?: Record<string, unknown> }).payload, {
+        error: errMessage(err),
+      }),
     });
   }
 }
@@ -657,7 +655,9 @@ export async function handleSageListCandidates(
     if (typeof Sage.listCandidates !== 'function') {
       send(ws, {
         type: 'memory.sage.listCandidates',
-        payload: withRequestId(msg, { error: 'listCandidates is not available on this SAGE surface' }),
+        payload: withRequestId(msg, {
+          error: 'listCandidates is not available on this SAGE surface',
+        }),
       });
       return;
     }
@@ -716,9 +716,24 @@ export async function handleSageCandidateResolve(
   const reason = payload['reason'] as string | undefined;
   try {
     let candidate: { id: string; status: string } | undefined;
+    let applied: boolean | undefined;
     if (action === 'accept') {
-      const accepted = await Sage.acceptCandidate(candidateId);
-      candidate = accepted ? { id: accepted.id, status: accepted.status ?? 'active' } : undefined;
+      // Hygiene and triage file `memory_review` proposals. Accepting one is a
+      // decision about its TARGET, not a request to store the proposal text as
+      // a new memory — the store refuses that — so route it through resolve.
+      // The queue's accept button reads "Accept deletion"; an archive proposal
+      // archives, everything else deletes.
+      const review = await findReviewCandidate(Sage, candidateId);
+      if (review) {
+        const decision = review.suggestedAction === 'archive' ? 'archive' : 'delete';
+        const resolution = await Sage.resolveCandidate(candidateId, decision, reason);
+        if (resolution?.error) throw new Error(resolution.error);
+        candidate = resolution ? { id: candidateId, status: 'accepted' } : undefined;
+        applied = resolution?.applied;
+      } else {
+        const accepted = await Sage.acceptCandidate(candidateId);
+        candidate = accepted ? { id: accepted.id, status: accepted.status ?? 'active' } : undefined;
+      }
     } else {
       const rejected = await Sage.rejectCandidate(candidateId, reason ?? 'Rejected via WebUI');
       candidate = rejected ? { id: candidateId, status: 'rejected' } : undefined;
@@ -732,7 +747,11 @@ export async function handleSageCandidateResolve(
     }
     send(ws, {
       type: 'memory.sage.candidateResolve',
-      payload: { candidate, resolvedAction: action },
+      payload: {
+        candidate,
+        resolvedAction: action,
+        ...(applied !== undefined ? { applied } : {}),
+      },
     });
   } catch (err) {
     send(ws, {
@@ -740,6 +759,15 @@ export async function handleSageCandidateResolve(
       payload: { error: errMessage(err) },
     });
   }
+}
+
+async function findReviewCandidate(
+  Sage: NonNullable<ReturnType<typeof getSageSurface>>,
+  candidateId: string,
+): Promise<{ suggestedAction?: string | undefined } | undefined> {
+  if (typeof Sage.listCandidates !== 'function') return undefined;
+  const pending = await Sage.listCandidates(false);
+  return pending.find((c) => c.id === candidateId && c.kind === 'memory_review');
 }
 
 /**

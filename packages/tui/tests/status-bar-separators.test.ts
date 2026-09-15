@@ -275,7 +275,7 @@ describe('StatusBar chip separators', () => {
     // Line 1 is now the workspace & identity rail: project → workdir → git →
     // provider/model. Line 2 carries the run-state rail with the context meter.
     expect(line1).toMatch(/▣ WrongStack.*⌁ packages\/tui.*openai\/gpt-5\.6/);
-    expect(line2).toMatch(/\[00o/);
+    expect(line2).toMatch(/\[000o/);
   });
 
   it('updates the rendered provider/model when current state changes', () => {

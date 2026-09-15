@@ -92,6 +92,21 @@ export function updateSqliteSage(
       'SAGE rejected ephemeral progress text. Store durable facts, decisions, conventions, or root causes — not WIP/todo chatter. Use todos for task state.',
     );
   }
+  if (input.supersededBy !== undefined) {
+    if ((input.status ?? existing.status) !== 'superseded') {
+      throw new Error('SAGE supersededBy requires status "superseded".');
+    }
+    if (input.supersededBy === id) {
+      throw new Error('SAGE memory cannot supersede itself.');
+    }
+    const successor = readSqliteSageRow(ctx.stmt, input.supersededBy);
+    if (!successor || successor.status === 'deleted') {
+      throw new Error(`SAGE successor "${input.supersededBy}" not found.`);
+    }
+    if (successor.supersededBy === id) {
+      throw new Error(`SAGE successor "${input.supersededBy}" is itself superseded by "${id}".`);
+    }
+  }
   const resultingKind = input.kind ?? existing.kind;
   const resultingAnchors = input.anchors ?? existing.anchors;
   if (STRUCTURAL_KINDS.has(resultingKind) && resultingAnchors.length === 0) {
@@ -153,6 +168,11 @@ export function updateSqliteSage(
     ...(input.audience !== undefined && { audience: normalizeAudience(input.audience) }),
     ...(input.supersedes !== undefined && { supersedes: input.supersedes }),
     ...(input.contradicts !== undefined && { contradicts: input.contradicts }),
+    // Leaving `superseded` drops the stale chain pointer; entering it may set one.
+    ...(input.status !== undefined &&
+      input.status !== 'superseded' &&
+      existing.supersededBy !== undefined && { supersededBy: undefined }),
+    ...(input.supersededBy !== undefined && { supersededBy: input.supersededBy }),
     ...(input.status === 'deleted' && {
       supersedes: undefined,
       contradicts: undefined,

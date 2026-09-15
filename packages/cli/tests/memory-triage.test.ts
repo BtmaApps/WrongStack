@@ -48,6 +48,8 @@ function makeSurface(
   const recorded: Recorded = { listSagePage: [], updateSage: [], createCandidate: [] };
   let call = 0;
   const surface = {
+    getSage: async (id: string) =>
+      pages.flatMap((page) => page.memories).find((memory) => memory.id === id) ?? null,
     listSagePage: async (options: {
       statuses?: string[];
       limit?: number;
@@ -328,7 +330,32 @@ describe('runTriageCommand', () => {
       expect(['older', 'newer']).toContain(superseded.id);
       expect(keeper.id).not.toBe(superseded.id);
       expect(keeper.patch.supersedes).toEqual([superseded.id]);
+      expect(superseded.patch.supersededBy).toBe(keeper.id);
     }
+  });
+
+  it('apply mode keeps the supersessions a keeper already carried', async () => {
+    const shared = {
+      text: 'The build pipeline uses pnpm v9 with strict peer dependency checks enabled.',
+      anchors: [{ type: 'file' as const, path: 'docs/build.md' }],
+    };
+    const a = sage({ id: 'a', ...shared, supersedes: ['earlier'] });
+    const b = sage({ id: 'b', ...shared, supersedes: ['earlier'] });
+    const { surface, recorded } = makeSurface([{ memories: [a, b] }]);
+    const provider = {
+      complete: vi.fn(async (req: { system: Array<{ type: string; text: string }> }) => {
+        const system = req.system?.map((block) => block.text).join(' ') ?? '';
+        return {
+          content: [{ type: 'text', text: system.includes('same fact') ? 'YES' : '4 | useful' }],
+        };
+      }),
+    };
+
+    await runTriageCommand(ctxWith(surface, { llmProvider: provider }), ['--apply']);
+
+    const keeper = recorded.updateSage.find((c) => Array.isArray(c.patch.supersedes));
+    expect(keeper?.patch.supersedes).toEqual(expect.arrayContaining(['earlier']));
+    expect(keeper?.patch.supersedes).toHaveLength(2);
   });
 
   it('apply mode reports merge failures without aborting the run', async () => {

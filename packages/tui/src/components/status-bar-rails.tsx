@@ -1,10 +1,10 @@
-import { systemPromptVariantLabel } from "@wrongstack/core/agent";
-import type React from "react";
-import { Text } from "../ink.js";
-import { activeMemoryContextCount } from "../memory-context-monitor.js";
-import { getActiveThemeName, theme } from "../theme.js";
-import type { RailSpanEntry } from "./powerline-rail.js";
-import { ThinkingChip } from "./status-bar-chips.js";
+import { systemPromptVariantLabel } from '@wrongstack/core/agent';
+import type React from 'react';
+import { Text } from '../ink.js';
+import { activeMemoryContextCount } from '../memory-context-monitor.js';
+import { getActiveThemeName, theme } from '../theme.js';
+import type { RailSpanEntry } from './powerline-rail.js';
+import { ThinkingChip } from './status-bar-chips.js';
 import {
   contextBarColor,
   fmtElapsed,
@@ -13,23 +13,18 @@ import {
   renderMeter,
   shortenPath,
   truncateChip,
-} from "./status-bar-format.js";
-import { modeIcon } from "./status-bar-helpers.js";
-import { chipColor, STATUSLINE_ICONS } from "./status-bar-icons.js";
-import type { StatusBarProps } from "./status-bar-types.js";
-import type { StatuslineItem } from "./statusline-picker.js";
-import {
-  type StatusBarRailBuildParams,
-  entry,
-  compact,
-  icon,
-} from "./status-bar-rails-common.js";
+} from './status-bar-format.js';
+import { modeIcon } from './status-bar-helpers.js';
+import { chipColor, STATUSLINE_ICONS } from './status-bar-icons.js';
+import { compact, entry, icon, type StatusBarRailBuildParams } from './status-bar-rails-common.js';
+import type { StatusBarProps } from './status-bar-types.js';
+import type { StatuslineItem } from './statusline-picker.js';
 
+export { buildAsyncChipEntries } from './status-bar-rails-async.js';
 // Re-exports for consumers
-export type { StatusBarRailBuildParams } from "./status-bar-rails-common.js";
-export { densityBounds } from "./status-bar-rails-common.js";
-export { buildSafetyWorkEntries } from "./status-bar-rails-safety.js";
-export { buildAsyncChipEntries } from "./status-bar-rails-async.js";
+export type { StatusBarRailBuildParams } from './status-bar-rails-common.js';
+export { densityBounds } from './status-bar-rails-common.js';
+export { buildSafetyWorkEntries } from './status-bar-rails-safety.js';
 
 export function buildWorkspaceChipEntries(
   p: StatusBarRailBuildParams,
@@ -207,7 +202,7 @@ export function buildVitalsChipEntries(p: StatusBarRailBuildParams): RailSpanEnt
       ? entry('context', 'context', p, [
           <Text color={barColor}>
             <Text dimColor={!isNoColor}>{`${STATUSLINE_ICONS.context} ctx `}</Text>
-            {renderMeter(ratio, 8)} {fmtTok(context.used)}/{fmtTok(context.max)}
+            {renderMeter(ratio, 10)} {fmtTok(context.used)}/{fmtTok(context.max)}
             {contextStrategy ? <Text dimColor={!isNoColor}>{` [${contextStrategy}]`}</Text> : null}
           </Text>,
           <Text color={barColor}>
@@ -300,7 +295,6 @@ export function buildVitalsChipEntries(p: StatusBarRailBuildParams): RailSpanEnt
       : null,
   ]);
 }
-
 
 export function buildMinimumChips(p: StatusBarRailBuildParams): React.ReactElement[] {
   const {

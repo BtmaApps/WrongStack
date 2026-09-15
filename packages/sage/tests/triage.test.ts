@@ -194,6 +194,22 @@ describe('Phase 1: deterministic pre-filter', () => {
       expect(preFilter(m).verdict).toBe('discard');
     });
 
+    it('transient "WIP - " spaced-dash marker → discard', () => {
+      const m = makeMemory({ text: 'WIP - still wiring the retry budget', importance: 0.3 });
+      expect(preFilter(m).verdict).toBe('discard');
+    });
+
+    it('durable text that merely starts with a marker word is not transient', () => {
+      for (const text of [
+        'Test suite must run from the repo root, never from a package directory.',
+        'Todo list items sync two-way with the Kanban board.',
+        'Draft specs live in docs/specs and are promoted on approval.',
+        'test-driven changes to the parser need a golden fixture.',
+      ]) {
+        expect(preFilter(makeMemory({ text, importance: 0.3 })).verdict).not.toBe('discard');
+      }
+    });
+
     it('orphaned noise → discard', () => {
       const m = makeMemory({
         anchors: [],

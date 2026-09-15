@@ -567,16 +567,16 @@ export async function settleSessionKanbanBackgroundWork(maxPasses = 25): Promise
 function fireAndForget(context: string, work: Promise<unknown>): void {
   trackBackgroundWork(
     work.catch((err: unknown) => {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(
-      JSON.stringify({
-        level: 'warn',
-        event: 'session-kanban',
-        context,
-        message,
-        timestamp: new Date().toISOString(),
-      }),
-    );
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'session-kanban',
+          context,
+          message,
+          timestamp: new Date().toISOString(),
+        }),
+      );
     }),
   );
 }
@@ -898,9 +898,14 @@ export function applySessionKanbanBoardToTodos(context: Context, board: KanbanBo
   });
 }
 
-export function applyManagedKanbanBoardToTodos(context: Context, board: KanbanBoard): TodoItem[] {
+export function applyManagedKanbanBoardToTodos(
+  context: Context,
+  board: KanbanBoard,
+  sourceTodos: readonly TodoItem[] = context.todos,
+): TodoItem[] {
   return applyManagedKanbanBoardToTodosSync(context, board, suppressedTodoMirrors, {
     sessionOwnerFromTags: sessionIdFromTags,
+    sourceTodos,
   });
 }
 

@@ -331,6 +331,12 @@ function buildResult(
 ): MergeDetectionResult {
   const merges: MergeAction[] = [];
   const overlaps: OverlapProposal[] = [];
+  // Each memory may leave the active set at most once per run, and never
+  // after it has been chosen to lose. Without this, equal-quality pairs
+  // resolved independently could supersede A by B, B by C and C by A — a
+  // cycle with no active head, i.e. the fact vanishes from recall — and a
+  // memory superseded in one pair could still be named keeper of the next.
+  const supersededThisRun = new Set<string>();
   let errors = 0;
 
   for (const result of pairResults) {
@@ -343,6 +349,7 @@ function buildResult(
 
     switch (result.verdict) {
       case 'YES': {
+        if (supersededThisRun.has(memoryA.id) || supersededThisRun.has(memoryB.id)) break;
         // Pick the keeper by quality signals, not age.
         // Quality scoring (higher = better keeper):
         //   - text length: longer memories capture more detail
@@ -368,6 +375,7 @@ function buildResult(
           superseded = dateA >= dateB ? memoryB : memoryA;
         }
 
+        supersededThisRun.add(superseded.id);
         merges.push({
           supersededId: superseded.id,
           keeperId: keeper.id,

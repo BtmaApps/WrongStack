@@ -246,6 +246,7 @@ export function applyManagedKanbanBoardToTodos(
   options: {
     /** Extracts the owning session id from board tags (`session:<id>`). */
     sessionOwnerFromTags?: ((tags: readonly string[] | undefined) => string | null) | undefined;
+    sourceTodos?: readonly TodoItem[] | undefined;
   } = {},
 ): TodoItem[] {
   const metaKanban = context.meta['kanban'];
@@ -277,7 +278,16 @@ export function applyManagedKanbanBoardToTodos(
         task.mergedIntoTaskId === undefined &&
         (!task.childTaskIds || task.childTaskIds.length === 0),
     ),
-  ).map((task) => managedTodoFromTask(task, board));
+  ).map((task) => {
+    const source = (options.sourceTodos ?? context.todos).find(
+      (todo) => todo.kanbanBoardId === board.id && todo.kanbanTaskId === task.id,
+    );
+    return {
+      ...managedTodoFromTask(task, board),
+      ...(source?.promotedFromPlan ? { promotedFromPlan: source.promotedFromPlan } : {}),
+      ...(source?.promotedFromTask ? { promotedFromTask: source.promotedFromTask } : {}),
+    };
+  });
 
   // `replaceTodos` auto-clears an all-completed list to `[]` (see
   // ConversationState.replaceTodos). So once every card is done, `context.todos`
@@ -314,12 +324,23 @@ export async function applySessionKanbanTaskToSource(
   const originId = task.origin?.taskId;
   const graphId = task.origin?.graphId ?? '';
 
+  // Session graph IDs carry the source owner. A shared board can be edited
+  // from another session, but that must never rewrite the acting session's
+  // unrelated sidecar or a todo that happens to have the same local ID.
+  const sessionPrefix = ['todo:', 'plan:', 'session:'].find((prefix) => graphId.startsWith(prefix));
+  if (sessionPrefix && graphId.slice(sessionPrefix.length) !== context.session?.id) {
+    return { source: null };
+  }
+
   const isTodoOrigin = task.origin?.system === 'session-todo' || graphId.startsWith('todo:');
   const targetTodo = context.todos?.find(
     (todo) =>
-      (originId !== undefined && todo.id === originId) ||
+      (isTodoOrigin && originId !== undefined && todo.id === originId) ||
       todo.kanbanTaskId === task.id ||
-      (todo.id === task.id && !todo.promotedFromPlan && !todo.promotedFromTask),
+      ((!task.origin || isTodoOrigin) &&
+        todo.id === task.id &&
+        !todo.promotedFromPlan &&
+        !todo.promotedFromTask),
   );
 
   if (isTodoOrigin || targetTodo) {

@@ -155,8 +155,7 @@ describe('createSessionAwareWorklistContext', () => {
     expect(ctx.context.session?.id).toBe('sess_new');
   });
 
-  it('keeps the root context when no agent can be resolved for the id', () => {
-    const { resolve } = harness({ peekAgent: () => undefined });
+  it('rejects the request when no agent can be resolved for the id', () => {
     // getAgent present but returns undefined for unknown ids.
     const guarded = createSessionAwareWorklistContext({
       rootContext: {} as never,
@@ -166,7 +165,6 @@ describe('createSessionAwareWorklistContext', () => {
       send: vi.fn(),
       broadcast: vi.fn(),
     });
-    void resolve;
-    expect(guarded(msg('sess_ghost')).context.session).toBeNull();
+    expect(() => guarded(msg('sess_ghost'))).toThrow('Worklist session is unavailable');
   });
 });

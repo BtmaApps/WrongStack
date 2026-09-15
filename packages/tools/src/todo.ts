@@ -1,13 +1,8 @@
 import type { Context, TodoItem } from '@wrongstack/core/agent';
-import {
-  loadPlan,
-  loadTasks,
-  savePlan,
-  saveTasks,
-  setPlanItemStatus,
-} from '@wrongstack/core/storage';
+import { loadPlan, loadTasks, savePlan, saveTasks } from '@wrongstack/core/storage';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { toErrorMessage, withFileLock } from '@wrongstack/core/utils';
 import { addTask, getBoard, type KanbanBoard, type KanbanTask } from '@wrongstack/kanban';
 import { kanbanTool } from './kanban.js';
 import {
@@ -511,7 +506,29 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
       }
     }
 
-    const items = input.todos.filter((t): t is TodoItem => Boolean(t?.id && t.content));
+    const previousById = new Map((ctx.todos ?? []).map((item) => [item.id, item]));
+    const items = input.todos
+      .filter((t): t is TodoItem => Boolean(t?.id && t.content))
+      .map((item) => {
+        const previous = previousById.get(item.id);
+        // The tool schema does not expose promotion metadata. Preserve source
+        // identity before checking omissions, or an ordinary status update
+        // becomes a new row alongside the unfinished original.
+        const sameBinding =
+          (!item.kanbanBoardId || item.kanbanBoardId === previous?.kanbanBoardId) &&
+          (!item.kanbanTaskId || item.kanbanTaskId === previous?.kanbanTaskId);
+        return {
+          ...item,
+          ...(previous && sameBinding
+            ? {
+                promotedFromPlan: item.promotedFromPlan ?? previous.promotedFromPlan,
+                promotedFromTask: item.promotedFromTask ?? previous.promotedFromTask,
+                kanbanBoardId: item.kanbanBoardId ?? previous.kanbanBoardId,
+                kanbanTaskId: item.kanbanTaskId ?? previous.kanbanTaskId,
+              }
+            : {}),
+        };
+      });
     const todoIdentity = (item: TodoItem): string =>
       item.kanbanBoardId && item.kanbanTaskId
         ? `kanban:${item.kanbanBoardId}:${item.kanbanTaskId}`
@@ -593,7 +610,7 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
       const refreshed = await getBoard(ctx.projectRoot, board.id);
       if (refreshed) {
         projectedBoard = refreshed;
-        applyManagedKanbanBoardToTodos(ctx, refreshed);
+        applyManagedKanbanBoardToTodos(ctx, refreshed, boundItems);
       }
     }
 
@@ -615,16 +632,20 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
     const pendingPlanIds = new Set<string>();
     const pendingTaskIds = new Set<string>();
 
-    for (const item of items) {
+    // Parent completion follows accepted card state, not the model's request.
+    // Keep metadata from boundItems: the canonical todo projection may already
+    // have auto-cleared and does not carry promotion metadata.
+    for (const item of boundItems) {
+      const completed = managed
+        ? item.kanbanBoardId === projectedBoard?.id &&
+          projectedBoard?.tasks.find((task) => task.id === item.kanbanTaskId)?.status ===
+            'completed'
+        : item.status === 'completed';
       if (item.promotedFromPlan) {
-        (item.status === 'completed' ? completedPlanIds : pendingPlanIds).add(
-          item.promotedFromPlan,
-        );
+        (completed ? completedPlanIds : pendingPlanIds).add(item.promotedFromPlan);
       }
       if (item.promotedFromTask) {
-        (item.status === 'completed' ? completedTaskIds : pendingTaskIds).add(
-          item.promotedFromTask,
-        );
+        (completed ? completedTaskIds : pendingTaskIds).add(item.promotedFromTask);
       }
     }
 
@@ -636,18 +657,25 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
     const planPath = meta?.['plan.path.resolved'] ?? meta?.['plan.path'];
     if (typeof planPath === 'string' && planPath && completedPlanIds.size > 0) {
       try {
-        let plan = await loadPlan(planPath);
-        if (plan) {
+        await withFileLock(planPath, async () => {
+          const plan = await loadPlan(planPath);
+          if (!plan) return;
           let modified = false;
           for (const planId of completedPlanIds) {
             if (pendingPlanIds.has(planId)) continue;
-            plan = setPlanItemStatus(plan, planId, 'done');
+            const item = plan.items.find((candidate) => candidate.id === planId);
+            if (!item || item.status === 'done') continue;
+            item.status = 'done';
+            item.updatedAt = new Date().toISOString();
+            plan.updatedAt = item.updatedAt;
             modified = true;
           }
-          if (modified) await savePlan(planPath, plan);
-        }
-      } catch {
-        /* best-effort */
+          if (modified && !(await savePlan(planPath, plan))) {
+            throw new Error('Plan completion was not saved.');
+          }
+        });
+      } catch (error) {
+        kanbanSync.warnings.push(`Plan completion was not saved: ${toErrorMessage(error)}`);
       }
     }
 
@@ -656,8 +684,9 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
     const taskPath = meta?.['task.path.resolved'] ?? meta?.['task.path'];
     if (typeof taskPath === 'string' && taskPath && completedTaskIds.size > 0) {
       try {
-        const file = await loadTasks(taskPath);
-        if (file) {
+        await withFileLock(taskPath, async () => {
+          const file = await loadTasks(taskPath);
+          if (!file) return;
           let modified = false;
           for (const taskId of completedTaskIds) {
             if (pendingTaskIds.has(taskId)) continue;
@@ -668,10 +697,12 @@ export const todoTool: Tool<TodoInput, TodoOutput> = {
               modified = true;
             }
           }
-          if (modified) await saveTasks(taskPath, file);
-        }
-      } catch {
-        /* best-effort */
+          if (modified && !(await saveTasks(taskPath, file))) {
+            throw new Error('Task completion was not saved.');
+          }
+        });
+      } catch (error) {
+        kanbanSync.warnings.push(`Task completion was not saved: ${toErrorMessage(error)}`);
       }
     }
 

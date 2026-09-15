@@ -25,13 +25,12 @@
  */
 import * as http from 'node:http';
 import * as path from 'node:path';
-import { generateProjectSlug } from './projects-manifest.js';
-import { errMessage } from './ws-utils.js';
-import type { FileWatcherMetrics } from './setup-events.js';
-import type { TechStackEvent } from './techstack-handlers.js';
-import { httpRequestOriginOk, isLoopbackBind, tokenMatches } from './ws-auth.js';
 import { handleApiRoutes } from './http-server/api-router.js';
-import { handleSpaFallback, handleStaticFileRequest } from './http-server/static-file-handler.js';
+import {
+  handleIntegrationStatus,
+  type IntegrationProbeKind,
+  type IntegrationTargetResolver,
+} from './http-server/integration-status.js';
 import {
   buildCspHeader,
   decodeSessionId,
@@ -42,6 +41,12 @@ import {
   WS_TOKEN_COOKIE,
   WS_TOKEN_COOKIE_SECURE,
 } from './http-server/security-helpers.js';
+import { handleSpaFallback, handleStaticFileRequest } from './http-server/static-file-handler.js';
+import { generateProjectSlug } from './projects-manifest.js';
+import type { FileWatcherMetrics } from './setup-events.js';
+import type { TechStackEvent } from './techstack-handlers.js';
+import { httpRequestOriginOk, isLoopbackBind, tokenMatches } from './ws-auth.js';
+import { errMessage } from './ws-utils.js';
 
 export {
   buildCspHeader,
@@ -126,6 +131,11 @@ export interface CreateHttpServerOptions {
    * `integrationConnectSources(liveConfig)`.
    */
   getExtraConnectSrc?: (() => readonly string[]) | undefined;
+  /**
+   * Resolves the operator-configured target for a fixed integration health
+   * probe. The HTTP handler never accepts a target URL from the browser.
+   */
+  getIntegrationTarget?: IntegrationTargetResolver | undefined;
   /**
    * Project root path for the codebase index. When provided, the
    * /api/codemap/* endpoints serve the dependency graph.
@@ -278,6 +288,16 @@ export function createHttpServer(opts: CreateHttpServerOptions): http.Server {
 
       if (shouldSetAuthCookie && opts.apiToken) {
         setAuthCookieHeaders(res, opts.apiToken, secureCookies);
+      }
+
+      const integrationMatch = /^\/api\/integrations\/(hq|wrong-proxy)\/status$/.exec(url.pathname);
+      if (req.method === 'GET' && integrationMatch) {
+        await handleIntegrationStatus(
+          res,
+          integrationMatch[1] as IntegrationProbeKind,
+          opts.getIntegrationTarget,
+        );
+        return;
       }
 
       const handled = await handleApiRoutes(

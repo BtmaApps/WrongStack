@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.12",
+  "packageVersion": "1.0.13",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1455,7 +1455,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 56,
-      "sourceLines": 13002
+      "sourceLines": 13008
     },
     {
       "directory": "design",
@@ -1595,7 +1595,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5031
+      "sourceLines": 5042
     },
     {
       "directory": "skills",

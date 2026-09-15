@@ -2,7 +2,6 @@ import type { MemoryStore } from '@wrongstack/core/types';
 import type {
   CandidateDecision,
   CreateCandidateInput,
-  SageSearchOptions,
   FindMemoriesForFileOptions,
   FindMemoriesForFileResponse,
   LegacyImportResult,
@@ -23,6 +22,7 @@ import type {
   SageHygieneReport,
   SageKind,
   SageScope,
+  SageSearchOptions,
   SageStats,
   SageStatus,
   UpdateSageInput,
@@ -145,6 +145,17 @@ export interface SageSurface {
   ): Promise<Sage[]>;
   acceptCandidate(candidateId: string): Promise<Sage | undefined>;
   rejectCandidate(candidateId: string, reason: string): Promise<boolean>;
+  /**
+   * Apply a decision to a `memory_review` proposal's target. Review proposals
+   * cannot be accepted (the store refuses), so a surface that exposes the
+   * review queue must expose this too — without it the WebUI and `/memory`
+   * could only ever reject deletion and archive proposals.
+   */
+  resolveCandidate(
+    candidateId: string,
+    decision: CandidateDecision,
+    reason?: string,
+  ): Promise<MemoryCandidateResolution | undefined>;
   retrieveForAudience(
     context: { role?: string; taskType?: string; mode?: string },
     limit?: number,

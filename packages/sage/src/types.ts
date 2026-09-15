@@ -710,6 +710,13 @@ export interface UpdateSageInput {
   supersedes?: string[] | undefined;
   contradicts?: string[] | undefined;
   /**
+   * The memory that replaces this one. Only valid together with a resulting
+   * status of `superseded`; the successor must exist and not be deleted.
+   * Without it a superseded memory has no chain head, so `recoverSage` and the
+   * file drawer cannot point at what replaced it.
+   */
+  supersededBy?: string | undefined;
+  /**
    * Override the permanent-memory guard when setting `status: 'deleted'`.
    * Mirrors the `{ force: true }` contract on `deleteSage`. The
    * override is recorded in the audit log so the caller's intent is always

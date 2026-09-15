@@ -162,6 +162,8 @@ export class ProjectSageMemoryPort implements MemoryPort {
     },
     acceptCandidate: (candidateId) => this.call('acceptCandidate', { candidateId }),
     rejectCandidate: (candidateId, reason) => this.call('rejectCandidate', { candidateId, reason }),
+    resolveCandidate: (candidateId, decision, reason) =>
+      this.call('resolveCandidate', { candidateId, decision, reason }),
     retrieveForAudience: (context, limit, _onTruncated, sessionId, includeAllSessions) =>
       this.call('retrieveForAudience', { context, limit, sessionId, includeAllSessions }),
     hygiene: (options) => this.call('hygiene', { options }, { timeoutMs: 5 * 60_000 }),

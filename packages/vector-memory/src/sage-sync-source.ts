@@ -88,7 +88,10 @@ export function createSageSurfaceSyncSource(
         }
         const remaining = requested - memories.length;
         const page = await sage.listSagePage({
-          statuses: ['active'],
+          // Same corpus the live mirror keeps (`isMirroredStatus`): a stale
+          // memory is still recallable for mutation triggers, so a first-boot
+          // index without it disagreed with every later event-driven write.
+          statuses: ['active', 'stale'],
           limit: Math.min(pageSize, Math.max(1, remaining)),
           ...(cursor ? { cursor } : {}),
         });

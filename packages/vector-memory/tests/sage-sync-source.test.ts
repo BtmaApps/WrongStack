@@ -120,12 +120,12 @@ describe('createSageSurfaceSyncSource', () => {
     expect(surface.calls).toHaveLength(1);
   });
 
-  it('keeps the privacy default: active statuses only, no session expansion', async () => {
+  it('keeps the privacy default: recallable statuses only, no session expansion', async () => {
     const surface = fakeSurface([{ memories: [], nextCursor: null }]);
     await createSageSurfaceSyncSource(surface).listActiveMemories({ limit: 10 });
     expect(surface.calls).toHaveLength(1);
     const opts = surface.calls[0]! as Record<string, unknown>;
-    expect(opts['statuses']).toEqual(['active']);
+    expect(opts['statuses']).toEqual(['active', 'stale']);
     expect('sessionId' in opts).toBe(false);
     expect('includeAllSessions' in opts).toBe(false);
   });

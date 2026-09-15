@@ -95,6 +95,24 @@ describe('handleWorklistMessage dispatcher', () => {
     expect(ws.sent[0]?.payload?.message).toContain('task projections');
   });
 
+  it('acknowledges completion when the final managed todo auto-clears', async () => {
+    const ctx = makeCtx();
+    const ws = createMockWs();
+    ctx.context.todos[0] = {
+      id: 't1',
+      content: 'Final task',
+      status: 'in_progress',
+      kanbanBoardId: 'board-1',
+      kanbanTaskId: 'task-1',
+    };
+    ctx.mutateTodos = vi.fn(async () => ({ todos: [] }));
+    await handleWorklistMessage(ctx, ws, {
+      type: 'todo.update',
+      payload: { id: 't1', status: 'completed' },
+    });
+    expect(ws.sent[0]?.payload?.success).toBe(true);
+  });
+
   it('rejects malformed todo updates without throwing or mutating state', async () => {
     const ctx = makeCtx();
     const ws = createMockWs();

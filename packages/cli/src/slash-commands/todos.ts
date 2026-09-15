@@ -111,7 +111,12 @@ export function buildTodosCommand(opts: SlashCommandContext): SlashCommand {
             ];
             const result = await updateTodos(nextTodos);
             const projected = ctx.todos.find((todo) => todo.id === doneItem.id);
-            if (isManagedProjection(doneItem) && projected?.status !== 'completed') {
+            const completedAndCleared = ctx.todos.length === 0 && !result.kanban_warnings?.length;
+            if (
+              isManagedProjection(doneItem) &&
+              projected?.status !== 'completed' &&
+              !completedAndCleared
+            ) {
               return {
                 message:
                   result.kanban_warnings?.[0] ??

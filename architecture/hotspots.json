@@ -278,6 +278,10 @@
       "lines": 928,
       "relativeImports": 7
     },
+    "packages/sage/src/sqlite-store-hygiene.ts": {
+      "lines": 819,
+      "relativeImports": 10
+    },
     "packages/sage/src/sqlite-store.ts": {
       "lines": 1033,
       "relativeImports": 43
@@ -287,7 +291,7 @@
       "relativeImports": 4
     },
     "packages/sage/src/types.ts": {
-      "lines": 1007,
+      "lines": 1026,
       "relativeImports": 0
     },
     "packages/sdd/src/sdd-parallel-run.ts": {
@@ -351,7 +355,7 @@
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {
-      "lines": 914,
+      "lines": 919,
       "relativeImports": 4
     },
     "packages/tui/src/app-action-type.ts": {
@@ -547,12 +551,16 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/memory-handlers.ts": {
-      "lines": 863,
+      "lines": 891,
       "relativeImports": 2
     },
     "packages/webui-server/src/server/routes.ts": {
       "lines": 1054,
       "relativeImports": 47
+    },
+    "packages/webui-server/src/server/start-webui.ts": {
+      "lines": 804,
+      "relativeImports": 33
     },
     "packages/webui-server/src/server/ws-payload-validation.ts": {
       "lines": 1057,

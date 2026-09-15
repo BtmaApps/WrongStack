@@ -62,7 +62,10 @@ export function createSessionAwareWorklistContext(
     let target = deps.rootContext;
     if (requested && requested !== rootSessionId) {
       const agent = deps.peekAgent?.(requested) ?? deps.getAgent?.(requested);
-      if (agent) target = agent.ctx;
+      if (!agent || agent.ctx.session?.id !== requested) {
+        throw new Error(`Worklist session is unavailable: ${requested}`);
+      }
+      target = agent.ctx;
     }
     if (requested && target.session?.id === requested && deps.sessionsDir) {
       const expectedPlan = sessionScopedPath(deps.sessionsDir, requested, '.plan.json');

@@ -52,6 +52,11 @@ export default defineConfig({
       // (`@wrongstack/plugin-sdk/runtime`); resolve it from source the same
       // way so plugin tests exercise current SDK code, not a stale dist.
       '@wrongstack/plugin-sdk': path.resolve(__dirname, './packages/plugin-sdk/src'),
+      // vector-memory and CLI tests drive SAGE through `@wrongstack/sage`. From
+      // dist, a store-side fix is invisible to them until someone rebuilds —
+      // the mirror test for backfilled memories failed against a correct fix
+      // because the root suite was exercising yesterday's bundle.
+      '@wrongstack/sage': path.resolve(__dirname, './packages/sage/src'),
     },
   },
   // Exclude typescript from SSR transform to prevent "invalid JS syntax" errors

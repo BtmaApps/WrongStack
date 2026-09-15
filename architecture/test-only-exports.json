@@ -958,8 +958,15 @@
     "packages/sage/src/middleware/memory-injector-agent.ts": [
       "memoryInjectorAgentCoverage"
     ],
+    "packages/sage/src/middleware/path-remap.ts": [
+      "replaceIdentifier"
+    ],
     "packages/sage/src/middleware/tool-call-memory-retrieval.ts": [
       "pathAnchorRelation"
+    ],
+    "packages/sage/src/middleware/tool-call-memory-trace.ts": [
+      "mergeMemoryEvidence",
+      "TOOL_MEMORY_EVIDENCE_SOURCE"
     ],
     "packages/sage/src/middleware/tool-call-memory.ts": [
       "toolCallMemoryCoverage"
@@ -983,6 +990,9 @@
     ],
     "packages/sage/src/retrieval/hybrid-rerank.ts": [
       "hybridRerankCoverage"
+    ],
+    "packages/sage/src/shared/candidate-dedupe.ts": [
+      "REVIEW_SUPPRESSION_MS"
     ],
     "packages/sage/src/shared/pagination.ts": [
       "compareByUpdatedDesc",

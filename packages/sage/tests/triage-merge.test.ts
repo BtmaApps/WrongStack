@@ -3,9 +3,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Sage } from '../src/types.js';
 import type { LlmCallFn } from '../src/triage/llm-evaluator.js';
 import { detectMerges } from '../src/triage/merge-detection.js';
+import type { Sage } from '../src/types.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -379,6 +379,32 @@ describe('merge detection — quality-based keeper selection', () => {
     // b should be among the keepers (highest-quality memory wins)
     const keeperIds = new Set(result.merges.map((m) => m.keeperId));
     expect(keeperIds.has('m_b')).toBe(true);
+  });
+});
+
+describe('merge detection — supersession graph stays acyclic', () => {
+  it('never supersedes a memory twice or keeps one already superseded', async () => {
+    // Equal quality and identical creation time: every pair falls to the
+    // tiebreak, which used to produce a→b, b→c, c→a — no active head at all.
+    const shared = {
+      anchors: [{ type: 'file' as const, path: 'src/cycle.ts' }],
+      createdAt: '2026-08-01T00:00:00.000Z',
+    };
+    const memories = [
+      makeMem('m_1', 'same fact aaa', shared),
+      makeMem('m_2', 'same fact bbb', shared),
+      makeMem('m_3', 'same fact ccc', shared),
+    ];
+
+    const result = await detectMerges(memories, async () => 'YES');
+
+    const supersededIds = result.merges.map((m) => m.supersededId);
+    expect(new Set(supersededIds).size).toBe(supersededIds.length);
+    for (const merge of result.merges) {
+      expect(supersededIds).not.toContain(merge.keeperId);
+    }
+    const survivors = memories.filter((m) => !supersededIds.includes(m.id));
+    expect(survivors.length).toBeGreaterThanOrEqual(1);
   });
 });
 

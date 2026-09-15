@@ -158,6 +158,21 @@
       "reviewBy": "2026-10-01",
       "removeWhen": "Core agent definitions are decoupled from phase registries.",
       "canonicalTask": "D2"
+    },
+    {
+      "id": "ARCH-CYCLE-TYPE-31",
+      "kind": "type-module-cycle",
+      "members": [
+        "packages/sage/src/middleware/tool-call-memory-retrieval.ts",
+        "packages/sage/src/middleware/tool-call-memory-trace.ts",
+        "packages/sage/src/middleware/tool-call-memory.ts"
+      ],
+      "owner": "sage-memory-audit",
+      "reason": "Type-level module SCC introduced by the 2026-09-15 memory-pipeline audit: the duplicated gate helpers in tool-call-memory-retrieval.ts and -trace.ts were collapsed into tool-call-memory-retrieval.ts (MEMORY-PIPELINE §4.11), and tool-call-memory-trace.ts and tool-call-memory.ts import them back while retrieval consumes their types. Type-only (runtime cycles: 0).",
+      "introduced": "2026-09-15",
+      "reviewBy": "2026-10-01",
+      "removeWhen": "Shared tool-memory gate helpers are re-homed to a leaf module with one-way imports into retrieval, trace, and memory.",
+      "canonicalTask": "S2"
     }
   ]
 }

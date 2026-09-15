@@ -30,7 +30,7 @@ describe('useWrongProxyStatus and useHqStatus hooks', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true }),
+      json: async () => ({ connected: true, latencyMs: 4 }),
     } as Response);
 
     useLocalPrefs.setState({ wrongProxyEnabled: true, wrongProxyUrl: 'http://localhost:3444' });
@@ -70,7 +70,7 @@ describe('useWrongProxyStatus and useHqStatus hooks', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({ status: 'ok' }),
+      json: async () => ({ connected: true, latencyMs: 4 }),
     } as Response);
 
     useLocalPrefs.setState({
@@ -88,10 +88,10 @@ describe('useWrongProxyStatus and useHqStatus hooks', () => {
     expect(result.current.status).toBe('connected');
     expect(result.current.url).toBe('http://localhost:3499');
     expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-      'http://localhost:3499/api/auth/status',
+      '/api/integrations/hq/status',
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
+          accept: 'application/json',
         }),
       }),
     );

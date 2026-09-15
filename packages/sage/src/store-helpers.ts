@@ -8,13 +8,13 @@ import { normalizeProjectPath, normalizeSlashes } from './paths.js';
 import {
   DEFAULT_PERSISTENCE,
   legacyToSageScope,
-  VALID_PERSISTENCE,
   type MemoryAnchor,
   type MemoryAudienceSelector,
   type RememberSageInput,
   type Sage,
   type SageKind,
   type SageScope,
+  VALID_PERSISTENCE,
 } from './types.js';
 
 export const MAX_MEMORY_TEXT_CHARS = 20_000;
@@ -242,7 +242,9 @@ function normalizeAnchorPath(p: string | undefined): string {
   if (!p) return '';
   const trimmed = p.trim();
   if (!trimmed) return '';
-  const normalized = normalizeSlashes(trimmed).toLowerCase().replace(/^\.\/+/, '');
+  const normalized = normalizeSlashes(trimmed)
+    .toLowerCase()
+    .replace(/^\.\/+/, '');
   return normalized === '' ? '.' : normalized;
 }
 
@@ -414,7 +416,10 @@ function structuralAnchorKey(anchor: MemoryAnchor): string | undefined {
  * Intentionally narrow — "we decided to use X" is durable and must pass.
  */
 const EPHEMERAL_REMEMBER_PATTERNS: readonly RegExp[] = [
-  /^(wip|todo|fixme|hack)\b/i,
+  // The leading word is chatter only when it is a marker, not the subject:
+  // "TODO implement retries" is progress, "Todo list items sync with the
+  // Kanban board" is a durable fact about the todo feature.
+  /^(wip|todo|fixme|hack)\b(?![\s-]*(?:lists?|items?|tools?|boards?|panels?|sync(?:s|ing)?|entr(?:y|ies)|comments?|markers?|tracking|widgets?|views?|state|mode)\b)/i,
   /\b(still working on|looking into|need to (?:fix|check|investigate)|will (?:fix|look|check) (?:this|that|it) later)\b/i,
   /^(debugging|investigating|checking|reading) (the )?(file|code|issue|bug)\b/i,
   /^(fixed|updated|changed) (the )?(bug|issue|test|file)\.?$/i,
@@ -538,10 +543,7 @@ export function validateRememberInput(input: RememberSageInput): void {
   }
   // Hard-reject pure progress chatter for non-session scopes. Session scope
   // is allowed to hold short-lived notes that expire.
-  if (
-    (input.scope ?? 'project') !== 'session' &&
-    isEphemeralMemoryText(normalizedText)
-  ) {
+  if ((input.scope ?? 'project') !== 'session' && isEphemeralMemoryText(normalizedText)) {
     throw new Error(
       'SAGE rejected ephemeral progress text. Store durable facts, decisions, conventions, or root causes — not WIP/todo chatter. Use todos for task state.',
     );

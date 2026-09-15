@@ -317,7 +317,9 @@ export const useKanbanStore = create<KanbanState>()((set, get) => ({
     }
     if (isBoard(data)) {
       const summary = summarize(data);
-      if (type === 'kanban.get') {
+      // Only an operation that creates a board should select it. Replies to
+      // edits/moves can arrive after the user has selected a different board.
+      if (type !== 'kanban.create' && type !== 'kanban.duplicate' && type !== 'kanban.generate') {
         set((state) => ({
           boards: upsertSummary(state.boards, summary),
           activeBoard: state.activeBoardId === data.id ? data : state.activeBoard,

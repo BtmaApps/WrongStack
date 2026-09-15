@@ -25,9 +25,16 @@ export interface PreFilterResult {
 /** Text length below which a memory cannot plausibly carry durable knowledge. */
 const MIN_MEANINGFUL_TEXT_LENGTH = 20;
 
-/** Transient-content markers — text that matches these is session debris. */
+/**
+ * Transient-content markers — text that matches these is session debris.
+ *
+ * The marker must be explicit (`WIP:`, `TODO - …`). A bare word followed by a
+ * space used to match, so durable knowledge that merely starts with one of
+ * these words — "Test suite must run from the repo root", "Draft specs live
+ * in docs/" — was classified DISCARD and marked stale by `--apply`.
+ */
 const TRANSIENT_PATTERNS = [
-  /^(wip|todo|test|tmp|draft|tbd|placeholder|scratch)[:\s-]/i,
+  /^(wip|todo|test|tmp|draft|tbd|placeholder|scratch)\s*(?::|-\s|—|–)/i,
   /^fix(ed|ing)?\s*:/i,
   /^debug\s*:/i,
 ];

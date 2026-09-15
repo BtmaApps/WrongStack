@@ -1,3 +1,4 @@
+import * as fs from 'node:fs/promises';
 import {
   defineMemoryCapability,
   type MemoryCapability,
@@ -5,10 +6,9 @@ import {
   type MemoryPort,
   type MemoryStore,
 } from '@wrongstack/core/types';
-import * as fs from 'node:fs/promises';
 import type { SageRetrieverLike } from './middleware/tool-call-memory.js';
-import type { SageServiceLike, SageSurface } from './service-contract.js';
 import { ProjectSageMemoryPort, type ProjectSageMemoryPortOptions } from './remote-memory-port.js';
+import type { SageServiceLike, SageSurface } from './service-contract.js';
 import { SqliteSageStore } from './sqlite-store.js';
 import type { SageStoreOptions } from './types.js';
 
@@ -111,6 +111,8 @@ export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
       super.searchSageWithBreakdown(query, options as never),
     acceptCandidate: (candidateId) => super.acceptCandidate(candidateId),
     rejectCandidate: (candidateId, reason) => super.rejectCandidate(candidateId, reason),
+    resolveCandidate: (candidateId, decision, reason) =>
+      super.resolveCandidate(candidateId, decision, reason),
     retrieveForAudience: (context, limit, onTruncated, sessionId, includeAllSessions) =>
       super.retrieveForAudience(context, limit, onTruncated, sessionId, includeAllSessions),
     hygiene: (options) => super.hygiene(options),

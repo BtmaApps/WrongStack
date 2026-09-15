@@ -20,6 +20,10 @@
  *   - `memory.recovered` → treated as `memory.accepted` (a recovery
  *                          re-activates the memory; the mirror needs to
  *                          see it as well).
+ *   - `memory.merged`    → re-mirror (a merge can change text and tags).
+ *
+ * Only `active`/`stale` memories keep a vector row; any other status
+ * forgets it. Writes for one memory id are applied in event order.
  *
  * Fail-open: any error from the vector store is logged and swallowed.
  * The mirror must never block the SAGE write path.
@@ -99,12 +103,36 @@ export function subscribeVectorMemoryToSage(
     }
   };
 
+  // Per-id serialization. Handlers fire-and-forget, so two quick writes to
+  // the same memory used to run `mirror` concurrently: both found the same
+  // existing row, both forgot it, and both inserted — the slower fetch could
+  // land last with the OLDER text, leaving a row SAGE no longer has (and two
+  // rows for one sageId whenever the texts differed). Chaining keeps the
+  // vector store applying writes in event order.
+  const chains = new Map<string, Promise<void>>();
+  const serialized = (memoryId: string, work: () => Promise<void>): void => {
+    const previous = chains.get(memoryId) ?? Promise.resolve();
+    const next = previous.then(work, work).finally(() => {
+      if (chains.get(memoryId) === next) chains.delete(memoryId);
+    });
+    chains.set(memoryId, next);
+  };
+
   const mirror = async (memoryId: string): Promise<void> => {
     const memory = await fetch(memoryId);
     if (!memory) return;
     // Session-scoped memories stay private — never mirror them. This
     // matches `createSageSurfaceSyncSource`'s privacy contract.
     if (memory.scope === 'session') return;
+    // Only recallable memories belong in the semantic corpus. An archived,
+    // superseded or contradicted memory used to be re-embedded on every
+    // status change and then kept forever (the sweep only dropped deleted
+    // rows), spending cosine scans and fusion materialization slots on rows
+    // the visibility filter always rejects.
+    if (!isMirroredStatus(memory.status)) {
+      await forgetMirror(memoryId);
+      return;
+    }
     try {
       // Drop any existing mirror for this SAGE id BEFORE re-inserting.
       // Without this step two update paths drift:
@@ -153,12 +181,20 @@ export function subscribeVectorMemoryToSage(
   const offAccepted = events.onPattern('memory.accepted', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
     if (typeof memoryId !== 'string') return;
-    void mirror(memoryId);
+    serialized(memoryId, () => mirror(memoryId));
   });
   const offRecovered = events.onPattern('memory.recovered', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
     if (typeof memoryId !== 'string') return;
-    void mirror(memoryId);
+    serialized(memoryId, () => mirror(memoryId));
+  });
+  // A re-remember that merges into an existing row can replace its text,
+  // union its tags and reactivate a stale memory — none of which reaches
+  // `memory.accepted` or `memory.updated`.
+  const offMerged = events.onPattern('memory.merged', (_event, payload) => {
+    const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
+    if (typeof memoryId !== 'string') return;
+    serialized(memoryId, () => mirror(memoryId));
   });
   const offUpdated = events.onPattern('memory.updated', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
@@ -169,22 +205,28 @@ export function subscribeVectorMemoryToSage(
     // the explicit delete.
     const status = (payload as { status?: unknown } | undefined)?.status;
     if (status === 'deleted') return;
-    void mirror(memoryId);
+    serialized(memoryId, () => mirror(memoryId));
   });
   const offDeleted = events.onPattern('memory.deleted', (_event, payload) => {
     const memoryId = (payload as { memoryId?: unknown } | undefined)?.memoryId;
     if (typeof memoryId !== 'string') return;
-    void forgetMirror(memoryId);
+    serialized(memoryId, () => forgetMirror(memoryId));
   });
 
   return {
     dispose: () => {
       offAccepted();
       offRecovered();
+      offMerged();
       offUpdated();
       offDeleted();
     },
   };
+}
+
+/** SAGE statuses whose memories can surface in recall and so deserve a vector row. */
+function isMirroredStatus(status: Sage['status']): boolean {
+  return status === 'active' || status === 'stale';
 }
 
 /**
@@ -240,12 +282,14 @@ export async function forgetStaleSageMirrors(
       if (typeof sageId !== 'string') continue;
       try {
         const memory = await surface.getSage(sageId);
-        // `getSage` returns the row even when `status === 'deleted'`
-        // (SAGE tombstones stay in the table for audit; only the
-        // search filter hides them). Treat the tombstoned memory as
-        // gone for the mirror's purposes — otherwise stale entries
-        // accumulate forever after a `deleteSage`.
-        if (memory !== null && memory.status !== 'deleted') continue;
+        // `getSage` returns the row for every status (tombstones stay in
+        // the table for audit; only the search filter hides them). Keep
+        // exactly what the live mirror would keep: an archived, superseded,
+        // contradicted or deleted memory is gone for the mirror's purposes —
+        // hygiene's bulk archive emits no per-memory event, so this is the
+        // only place those rows are ever dropped. A later un-archive fires
+        // `memory.updated`, which re-mirrors it.
+        if (memory !== null && isMirroredStatus(memory.status)) continue;
         await store.forget(entry.id);
         removed++;
       } catch (err) {

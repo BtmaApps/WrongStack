@@ -4,9 +4,9 @@ import {
   clamp01,
   collectStringValues,
   looksLikeSecret,
+  normalizeTags,
   normalizeText,
   normalizeTextKey,
-  normalizeTags,
   tokenize,
   validateRememberInput,
 } from '../src/store-helpers.js';
@@ -409,6 +409,18 @@ describe('validateRememberInput', () => {
   it('rejects ephemeral project-scope progress text', () => {
     expect(() =>
       validateRememberInput({ ...minimal, text: 'WIP still working on migration' }),
+    ).toThrow(/ephemeral progress/i);
+  });
+
+  it('accepts durable facts about the todo feature and still rejects todo markers', () => {
+    expect(() =>
+      validateRememberInput({
+        ...minimal,
+        text: 'Todo list items sync two-way with the Kanban board',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateRememberInput({ ...minimal, text: 'TODO implement rate limiting' }),
     ).toThrow(/ephemeral progress/i);
   });
 });

@@ -305,12 +305,23 @@ describe('generic envelopes', () => {
     expect(state().activeBoard?.id).toBe('b1');
   });
 
-  it('any other bare board becomes the new selection', () => {
+  it('a created board becomes the new selection', () => {
     useKanbanStore.setState({ activeBoardId: 'b1', activeBoard: board('b1') as never });
     result('kanban.create', board('b9'));
     expect(state().activeBoardId).toBe('b9');
     expect(state().activeBoard?.id).toBe('b9');
   });
+
+  it.each(['kanban.update', 'kanban.task.move', 'kanban.column.add'])(
+    '%s does not select a board the user has left',
+    (type) => {
+      useKanbanStore.setState({ activeBoardId: 'b1', activeBoard: board('b1') as never });
+      result(type, board('b9'));
+      expect(state().activeBoardId).toBe('b1');
+      expect(state().activeBoard?.id).toBe('b1');
+      expect(state().boards.some((item) => item.id === 'b9')).toBe(true);
+    },
+  );
 
   it('a bare task upserts into whatever board is open', () => {
     useKanbanStore.setState({ activeBoardId: 'b1', activeBoard: board('b1') as never });

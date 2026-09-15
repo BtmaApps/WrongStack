@@ -18,9 +18,12 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/types';
 import { ulid } from '@wrongstack/core/utils';
 import { resolveSagePaths } from './paths.js';
-import { consolidateSqliteSession } from './sqlite-store-session-consolidation.js';
-import { readSqliteAudit, pruneSqliteAuditLog, writeSqliteAudit } from './sqlite-store-audit.js';
+import type { VectorAugmentHit } from './retrieval/vector-augment.js';
+import { augmentLexicalWithVectorRecall } from './retrieval/vector-augment.js';
+import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
+import { syncSqliteAnchorEdges } from './sqlite-store-anchor-sync.js';
 import { retrieveSqliteSageForAudience } from './sqlite-store-audience.js';
+import { pruneSqliteAuditLog, readSqliteAudit, writeSqliteAudit } from './sqlite-store-audit.js';
 import {
   acceptCandidateOp,
   addCandidateOp,
@@ -30,46 +33,33 @@ import {
   resolveCandidateOp,
   type SqliteCandidateHost,
 } from './sqlite-store-candidate-ops.js';
+import { sqliteRowToMemory } from './sqlite-store-codec.js';
+import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
+import { recordSqliteInjection, recordSqliteUse } from './sqlite-store-counters.js';
+import { deleteSqliteSage } from './sqlite-store-delete.js';
+import {
+  findRelatedSqliteSage,
+  type SqliteFindRelatedOptions,
+} from './sqlite-store-find-related.js';
+import { graphSqliteSageFor } from './sqlite-store-graph-for.js';
+import { traverseSqliteGraph } from './sqlite-store-graph-traverse.js';
+import { runSqliteSageHygiene } from './sqlite-store-hygiene.js';
+import { initializeSqliteSageStore } from './sqlite-store-initialize.js';
+import { migrateSqliteLegacyJsonl } from './sqlite-store-jsonl-migration.js';
+import { importLegacySqliteMemory, searchLegacySqliteMemory } from './sqlite-store-legacy-api.js';
 import {
   readAllSqliteMemory,
   readSqliteMemory,
   rememberSqliteMemoryBridge,
 } from './sqlite-store-legacy-bridge.js';
-import { upsertSqliteCandidate, upsertSqliteMemory } from './sqlite-store-upsert.js';
-import { probeSqliteAvailable } from './sqlite-store-loader.js';
-import { graphSqliteSageFor } from './sqlite-store-graph-for.js';
-import { traverseSqliteGraph } from './sqlite-store-graph-traverse.js';
-import {
-  findRelatedSqliteSage,
-  type SqliteFindRelatedOptions,
-} from './sqlite-store-find-related.js';
-import { runSqliteSageHygiene } from './sqlite-store-hygiene.js';
-import { syncSqliteAnchorEdges } from './sqlite-store-anchor-sync.js';
-import { syncSqliteRelationshipEdges } from './sqlite-store-relationship-sync.js';
-import { sqliteRowToMemory } from './sqlite-store-codec.js';
-import { retrieveSqliteSageForPath } from './sqlite-store-retrieve-path.js';
-import { initializeSqliteSageStore } from './sqlite-store-initialize.js';
-import { searchSqliteSage, materializeSageByIdFactory } from './sqlite-store-search-sage.js';
-import { executeUnifiedSearch } from './sqlite-store-search.js';
-import { augmentLexicalWithVectorRecall } from './retrieval/vector-augment.js';
-import type { VectorAugmentHit } from './retrieval/vector-augment.js';
-import { getSqliteSageStats } from './sqlite-store-stats.js';
-import { updateSqliteSage } from './sqlite-store-update.js';
-import { verifySqliteSage } from './sqlite-store-verify.js';
-import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
-import { recordSqliteInjection, recordSqliteUse } from './sqlite-store-counters.js';
-import { deleteSqliteSage } from './sqlite-store-delete.js';
 import { clearLegacySqliteMemory } from './sqlite-store-legacy-clear.js';
 import { consolidateLegacySqliteMemory } from './sqlite-store-legacy-consolidate.js';
 import { forgetLegacySqliteMemory } from './sqlite-store-legacy-forget.js';
 import { listLegacySqliteMemory } from './sqlite-store-legacy-list.js';
-import { importLegacySqliteMemory, searchLegacySqliteMemory } from './sqlite-store-legacy-api.js';
 import { listSqliteMemories } from './sqlite-store-list-memories.js';
 import { listSqliteSagePage } from './sqlite-store-list-page.js';
+import { probeSqliteAvailable } from './sqlite-store-loader.js';
 import { SqliteMutationQueue } from './sqlite-store-mutation-queue.js';
-import { rememberSqliteSage } from './sqlite-store-remember.js';
-import { migrateSqliteLegacyJsonl } from './sqlite-store-jsonl-migration.js';
-import { SqliteStatementCache } from './sqlite-store-statement-cache.js';
 import {
   backfillAdminSage,
   closeSqliteStore,
@@ -78,7 +68,17 @@ import {
   recoverAdminSage,
   type SqliteAdminHost,
 } from './sqlite-store-operations.js';
-import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
+import { syncSqliteRelationshipEdges } from './sqlite-store-relationship-sync.js';
+import { rememberSqliteSage } from './sqlite-store-remember.js';
+import { retrieveSqliteSageForPath } from './sqlite-store-retrieve-path.js';
+import { executeUnifiedSearch } from './sqlite-store-search.js';
+import { materializeSageByIdFactory, searchSqliteSage } from './sqlite-store-search-sage.js';
+import { consolidateSqliteSession } from './sqlite-store-session-consolidation.js';
+import { SqliteStatementCache } from './sqlite-store-statement-cache.js';
+import { getSqliteSageStats } from './sqlite-store-stats.js';
+import { updateSqliteSage } from './sqlite-store-update.js';
+import { upsertSqliteCandidate, upsertSqliteMemory } from './sqlite-store-upsert.js';
+import { verifySqliteSage } from './sqlite-store-verify.js';
 import type {
   CandidateDecision,
   CreateCandidateInput,
@@ -858,7 +858,7 @@ export class SqliteSageStore implements MemoryStore {
         now: () => this.now(),
         nowIso: () => this.nowIso(),
         listMemories: (listOpts) => this.listMemories(listOpts),
-        listCandidates: () => this.listCandidates(),
+        listCandidates: (includeResolved) => this.listCandidates(includeResolved),
         addCandidate: (candidate) => this.addCandidate(candidate),
         runMutation: (work) => this.runMutation(work),
         upsertMemory: (memory) => this.upsertMemory(memory),

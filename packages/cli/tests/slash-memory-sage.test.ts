@@ -158,6 +158,41 @@ describe('/memory SAGE commands', () => {
     expect((await cmd.run('candidates'))?.message).toContain('No memory candidates');
   });
 
+  it('accepting a review proposal applies its suggested action to the target', async () => {
+    const store = newPort({ projectRoot: root });
+    const target = await store.rememberSage({ text: 'Retired convention to archive.' });
+    const review = await store.createCandidate({
+      text: target.text,
+      kind: 'memory_review',
+      targetMemoryId: target.id,
+      suggestedAction: 'archive',
+    });
+    const cmd = command(store);
+
+    const out = await cmd.run(`candidates accept ${review.id}`);
+
+    expect(out?.message).toContain('archive');
+    expect((await store.getSage(target.id))?.status).toBe('archived');
+  });
+
+  it('resolves a review proposal with an explicit decision', async () => {
+    const store = newPort({ projectRoot: root });
+    const target = await store.rememberSage({ text: 'Convention the reviewer keeps.' });
+    const review = await store.createCandidate({
+      text: target.text,
+      kind: 'memory_review',
+      targetMemoryId: target.id,
+      suggestedAction: 'delete',
+    });
+    const cmd = command(store);
+
+    expect((await cmd.run(`candidates resolve ${review.id} maybe`))?.message).toContain('Usage');
+    expect((await cmd.run(`candidates resolve ${review.id} keep`))?.message).toContain(
+      `Resolved ${review.id}: keep`,
+    );
+    expect((await store.getSage(target.id))?.status).toBe('active');
+  });
+
   describe('/memory audience', () => {
     it('remembers, lists, searches, and clears audience-scoped memories', async () => {
       const store = newPort({ projectRoot: root });

@@ -37,7 +37,6 @@ import {
   type WebuiDeps,
   type WebuiMutableState,
 } from './routes.js';
-import { integrationConnectSources } from './http-server/integration-connect-src.js';
 import { armEvents, createWsServers, resolvePorts, startHttpServer } from './server-runtime.js';
 import { scheduleOwnerlessEmptySessionCleanup } from './session-cleanup-scheduler.js';
 import { collectDisplayedSessionIds, createSessionTransitionGate } from './session-handlers.js';
@@ -460,10 +459,16 @@ export async function startWebUI(
     // it just resolves to `undefined` and the API router answers 503.
     getVectorMemoryStore: () => vectorMemoryStore,
     vectorMemoryModelCacheDir,
-    // Read through the live `config` binding: a settings-panel edit to the HQ
-    // or WrongProxy URL persists to config, and the next page load must carry
-    // the new origin in `connect-src` or the topbar probe is CSP-blocked.
-    getExtraConnectSrc: () => integrationConnectSources(config),
+    // The browser must not fetch HQ directly: HQ correctly rejects a foreign
+    // Origin. Read the live metadata so a settings change is visible before
+    // its asynchronous config write completes.
+    getIntegrationTarget: (kind) => {
+      const enabledKey = kind === 'hq' ? 'hqEnabled' : 'wrongProxyEnabled';
+      const urlKey = kind === 'hq' ? 'hqUrl' : 'wrongProxyUrl';
+      return context.meta[enabledKey] === true && typeof context.meta[urlKey] === 'string'
+        ? (context.meta[urlKey] as string)
+        : undefined;
+    },
   });
 
   const wsResult = createWsServers(httpServer, ports, accessToken);

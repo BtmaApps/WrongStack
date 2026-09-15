@@ -236,13 +236,29 @@ async function applyDispatch(Sage: SageSurface, report: TriageReport): Promise<s
   lines.push(`**Auto-apply:** ${autoOk} succeeded, ${autoFail} failed`);
   lines.push('');
 
-  // Merges: mark older as superseded, link on keeper
+  // Merges: supersede the loser with a chain pointer, then link it on the keeper.
+  //
+  // The loser used to get `status: 'superseded'` with no `supersededBy`, so
+  // nothing could name its replacement (`recoverSage` failed with "chain head
+  // unavailable"), and the keeper's `supersedes` was REPLACED with a one-item
+  // list, erasing every earlier supersession it carried. The keeper is re-read
+  // first: an auto-apply above may have changed it, and a keeper that is no
+  // longer live must not absorb anything.
   let mergeOk = 0;
   let mergeFail = 0;
   for (const merge of report.merges.merges) {
     try {
-      await Sage.updateSage(merge.supersededId, { status: 'superseded' });
-      await Sage.updateSage(merge.keeperId, { supersedes: [merge.supersededId] });
+      const keeper = await Sage.getSage(merge.keeperId);
+      if (!keeper || (keeper.status !== 'active' && keeper.status !== 'stale')) {
+        throw new Error(`keeper ${merge.keeperId} is no longer active`);
+      }
+      await Sage.updateSage(merge.supersededId, {
+        status: 'superseded',
+        supersededBy: merge.keeperId,
+      });
+      await Sage.updateSage(merge.keeperId, {
+        supersedes: [...new Set([...(keeper.supersedes ?? []), merge.supersededId])],
+      });
       mergeOk++;
     } catch (err) {
       mergeFail++;
