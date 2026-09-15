@@ -252,6 +252,26 @@
       "fingerprint": "58d00f7ced87f24e"
     },
     {
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "310a57b6ec4ed26f"
+    },
+    {
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "33158bdb0133f1aa"
+    },
+    {
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "36b64b1a4080aa59"
+    },
+    {
+      "file": "packages/sage/tests/sage-context-carry.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "641295dc4626fb20"
+    },
+    {
       "file": "packages/tools/tests/_win32-resolve.test.ts",
       "kind": "skipIf",
       "fingerprint": "1c95f6dfd19e4e92"
@@ -465,6 +485,21 @@
       "file": "packages/vector-memory/tests/sage-augment-integration.test.ts",
       "kind": "skip",
       "fingerprint": "21406c79b555b6fc"
+    },
+    {
+      "file": "packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts",
+      "kind": "conditional-skip",
+      "fingerprint": "efe79437f5d08bf2"
+    },
+    {
+      "file": "packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts",
+      "kind": "conditional-suite-alias",
+      "fingerprint": "92e6466528fdfc1b"
+    },
+    {
+      "file": "packages/vector-memory/tests/sage-event-mirror-lifecycle.test.ts",
+      "kind": "skip",
+      "fingerprint": "e95ab8fec24e2e01"
     },
     {
       "file": "packages/vector-memory/tests/sage-event-mirror-updates.test.ts",
