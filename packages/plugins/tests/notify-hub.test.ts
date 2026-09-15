@@ -105,8 +105,9 @@ describe('notify-hub plugin', () => {
     ]) {
       const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
       await notifyHubPlugin.setup(api as never);
+      // A configured-but-refused URL must not be reported as unconfigured.
       await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
-        /no webhookUrl configured/,
+        /webhookUrl was refused/,
       );
       expect(api.registerHook).not.toHaveBeenCalled();
     }
@@ -126,10 +127,10 @@ describe('notify-hub plugin', () => {
     expect(api.log.warn).toHaveBeenCalledWith(
       expect.stringContaining('resolves to a private/local IP'),
     );
-    // notify_send tool is still registered (global tool registry) but returns
-    // "no webhookUrl configured" because the channel was never constructed.
+    // notify_send tool is still registered (global tool registry) but names
+    // the refusal because the channel was never constructed.
     await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
-      /no webhookUrl configured/,
+      /webhookUrl was refused: hooks\.example\.com resolves to a private\/local IP/,
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -257,7 +258,7 @@ describe('notify-hub plugin', () => {
       const api = makeApi({ extensions: { 'notify-hub': { webhookUrl } } });
       await notifyHubPlugin.setup(api as never);
       await expect(getTool(api, 'notify_send').execute({ message: 'x' })).rejects.toThrow(
-        /no webhookUrl configured/,
+        /webhookUrl was refused/,
       );
       expect(api.registerHook).not.toHaveBeenCalled();
     }

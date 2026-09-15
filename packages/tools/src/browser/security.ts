@@ -19,7 +19,14 @@ export async function assertBrowserUrlAllowed(
     if (normalizedHost === 'localhost' || normalizedHost.endsWith('.localhost')) {
       throw new Error('browser: blocked localhost target');
     }
-    await assertNotPrivateHost(url.hostname);
+    // The shared guard labels its refusals "fetch:", which read as if the
+    // browser tool had called fetch.
+    await assertNotPrivateHost(url.hostname).catch((err: unknown) => {
+      if (err instanceof Error && err.message.startsWith('fetch: ')) {
+        throw new Error(`browser: ${err.message.slice('fetch: '.length)}`, { cause: err });
+      }
+      throw err;
+    });
   }
   return url;
 }

@@ -27,7 +27,7 @@ function profileDir(): string {
 
 /** Build a v2 document from a partial chips map (the pre-v2 fixture shape). */
 function doc(chips: StatuslineConfig, lines: StatuslineDocument['lines'] = {}): StatuslineDocument {
-  return { version: STATUSLINE_CONFIG_VERSION, chips, lines, densities: {} };
+  return { version: STATUSLINE_CONFIG_VERSION, chips, lines, densities: {}, order: [] };
 }
 
 beforeEach(async () => {
@@ -187,7 +187,13 @@ function makeDeps(
   },
 ): StatuslineCommandDeps & { _cfg: StatuslineDocument } {
   const state = {
-    cfg: { version: STATUSLINE_CONFIG_VERSION, chips: { ...initial }, lines: {} },
+    cfg: {
+      version: STATUSLINE_CONFIG_VERSION,
+      chips: { ...initial },
+      lines: {},
+      densities: {},
+      order: [],
+    },
   };
   return {
     cwd: tmp,
@@ -270,14 +276,19 @@ describe('buildStatuslineCommand', () => {
     expect(setConfig).not.toHaveBeenCalled();
   });
 
-  it('layout reset clears lines and densities but leaves visibility alone', async () => {
+  it('layout reset clears lines, order and densities but leaves visibility alone', async () => {
     const setConfig = vi.fn();
     const deps = { ...makeDeps(), setConfig } as never as StatuslineCommandDeps;
     const cmd = buildStatuslineCommand(deps);
     await cmd.run('layout reset');
-    const written = setConfig.mock.calls[0]?.[0] as { lines: unknown; densities: unknown };
+    const written = setConfig.mock.calls[0]?.[0] as {
+      lines: unknown;
+      densities: unknown;
+      order: unknown;
+    };
     expect(written.lines).toEqual({});
     expect(written.densities).toEqual({});
+    expect(written.order).toEqual([]);
     expect(setConfig.mock.calls[0]?.[0]).toHaveProperty('chips');
   });
 

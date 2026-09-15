@@ -42,6 +42,7 @@ export default defineConfig({
     include: ['tests/status-bar-sgr.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     env: {
+      ...baseConfig.test?.env,
       FORCE_COLOR: '3',
       COLORTERM: 'truecolor',
     },

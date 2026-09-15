@@ -22,6 +22,7 @@ type EnvironmentProps = Omit<
     | 'statuslineHiddenItems'
     | 'statuslineLines'
     | 'statuslineDensities'
+    | 'statuslineOrder'
     | 'toolCount'
     | 'getSettings'
     | 'setStatuslineHiddenItems'
@@ -30,6 +31,8 @@ type EnvironmentProps = Omit<
     | 'saveStatuslineLines'
     | 'setStatuslineDensities'
     | 'saveStatuslineDensities'
+    | 'setStatuslineOrder'
+    | 'saveStatuslineOrder'
   >,
   'yolo'
 > & { yolo: boolean };
@@ -63,6 +66,7 @@ export function useTuiEnvironmentState({
   statuslineHiddenItems,
   statuslineLines,
   statuslineDensities,
+  statuslineOrder,
   toolCount,
   getSettings,
   setStatuslineHiddenItems,
@@ -71,6 +75,8 @@ export function useTuiEnvironmentState({
   saveStatuslineLines,
   setStatuslineDensities,
   saveStatuslineDensities,
+  setStatuslineOrder,
+  saveStatuslineOrder,
 }: EnvironmentProps) {
   const [memoryContextMonitor, setMemoryContextMonitor] = useState(emptyMemoryContextMonitor);
   const [memoryRecordTotal, setMemoryRecordTotal] = useState<number | undefined>();
@@ -109,6 +115,7 @@ export function useTuiEnvironmentState({
     statuslineHiddenItems,
     statuslineLines,
     statuslineDensities,
+    statuslineOrder,
   });
   const hiddenItemsRef = useRef(statusline.hiddenItems);
   hiddenItemsRef.current = statusline.hiddenItems;
@@ -191,6 +198,18 @@ export function useTuiEnvironmentState({
       logPersistFailure('statusline.persist_densities_failed'),
     );
   }, [setStatuslineDensities, saveStatuslineDensities, statusline.densities]);
+
+  const orderHydrated = useRef(false);
+  useEffect(() => {
+    if (!orderHydrated.current) {
+      orderHydrated.current = true;
+      return;
+    }
+    setStatuslineOrder?.(statusline.order);
+    saveStatuslineOrder?.(statusline.order).catch?.(
+      logPersistFailure('statusline.persist_order_failed'),
+    );
+  }, [setStatuslineOrder, saveStatuslineOrder, statusline.order]);
 
   return {
     ...statusline,

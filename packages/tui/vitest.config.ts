@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import { getVitestMaxWorkers } from '../../vitest.workers.ts';
 import { coreAliases } from '../../scripts/vitest-core-aliases.mjs';
+import { getVitestMaxWorkers } from '../../vitest.workers.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,6 +17,11 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
+    // Production auto-detects installed Nerd Fonts. Pin the portable profile
+    // in snapshots so developer-machine font installs cannot change fixtures.
+    env: {
+      WRONGSTACK_TUI_ICON_STYLE: 'unicode',
+    },
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     exclude: [
       '**/node_modules/**',

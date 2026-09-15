@@ -93,4 +93,14 @@ describe('expandGlob', () => {
     expect(outGlobstar).toContain('a.ts');
     expect(outGlobstar).toContain('d.ts');
   });
+
+  it('normalizes a leading ./ segment instead of matching it literally', async () => {
+    // Regression: a `./`-prefixed pattern left the prefix in relPat, so walk()
+    // looked for a directory literally named `.` — readdir never yields one —
+    // and every match was silently dropped.
+    expect((await expandGlob('./*.ts')).map(base).sort()).toEqual(['a.ts', 'b.ts']);
+    expect((await expandGlob('./*.js')).map(base)).toEqual(['c.js']);
+    const globstar = (await expandGlob('./**/*.ts')).map(base).sort();
+    expect(globstar).toEqual(expect.arrayContaining(['a.ts', 'b.ts', 'd.ts']));
+  });
 });

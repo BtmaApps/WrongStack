@@ -5,6 +5,7 @@ import {
   effectiveLine,
   LINE_SUBTITLES,
   LINE_TITLES,
+  resolveStatuslineOrder,
   STATUSLINE_DENSITY_CYCLE,
   STATUSLINE_FIELD_COUNT,
   STATUSLINE_ITEMS,
@@ -13,6 +14,7 @@ import {
   type StatuslineItem,
   type StatuslineLine,
   type StatuslineLines,
+  type StatuslineOrder,
 } from '@wrongstack/core/statusline';
 import type React from 'react';
 import { Box, Text } from '../ink.js';
@@ -103,10 +105,10 @@ export function matchesFilter(item: StatuslineItem, filter: string): boolean {
 }
 
 /** Field indices the arrow keys may land on under the current filter. */
-export function navigableFields(filter: string): number[] {
-  const fields = STATUSLINE_ITEMS.map((item, index) =>
-    matchesFilter(item, filter) ? index : -1,
-  ).filter((index) => index >= 0);
+export function navigableFields(filter: string, order: StatuslineOrder = []): number[] {
+  const fields = resolveStatuslineOrder(order)
+    .map((item) => (matchesFilter(item, filter) ? STATUSLINE_ITEMS.indexOf(item) : -1))
+    .filter((index) => index >= 0);
   return fields.length > 0 ? fields : STATUSLINE_ITEMS.map((_, index) => index);
 }
 
@@ -142,6 +144,8 @@ interface StatuslinePickerProps {
   lines?: StatuslineLines | undefined;
   /** Per-chip density pin; absent keys mean 'auto'. */
   densities?: StatuslineDensities | undefined;
+  /** Custom left-to-right order; absent means canonical contract order. */
+  order?: StatuslineOrder | undefined;
   /** Temporarily-visible chips with expiration metadata. */
   visibleChips?: ChipMeta[] | undefined;
   /** Text filter over chip names and descriptions. */
@@ -161,12 +165,19 @@ const DENSITY_LABEL: Record<StatuslineDensity, string> = {
   micro: 'micro',
 };
 
+/** Fixed-width inline line picker rendered beside every chip's on/off state. */
+export function lineSelectorText(active: StatuslineLine): string {
+  return ([1, 2, 3, 4] as StatuslineLine[])
+    .map((line) => (line === active ? `[${line}]` : String(line)))
+    .join(' ');
+}
+
 /**
  * The `/statusline` editor.
  *
- * Three things the old picker could not do, all of which the renderer and the
- * v3 config already supported with no UI to reach them: move a chip to
- * another line, pin its density, and see whether the result actually fits.
+ * Line, order and density controls share one row: 1-4 assigns the rail,
+ * `o`/`O` changes left-to-right position (`[`/`]` and Shift+Up/Down are aliases), and `d` pins density. The
+ * measured strip above previews the resulting layout rather than mocking it.
  * The layout strip at the top is not a mock-up — it reads the rail geometry
  * the StatusBar published on its last render, so `used/budget` and the
  * dropped/shortened marks are the real thing.
@@ -176,6 +187,7 @@ export function StatuslinePicker({
   hiddenItems,
   lines = {},
   densities = {},
+  order = [],
   visibleChips = [],
   filter = '',
   filtering = false,
@@ -190,10 +202,11 @@ export function StatuslinePicker({
   const fills = readRailFills(clickMap);
   const focused = STATUSLINE_ITEMS[field];
 
+  const resolvedOrder = resolveStatuslineOrder(order);
   const enabledOn = (line: StatuslineLine): StatuslineItem[] =>
-    STATUSLINE_ITEMS.filter((item) => effectiveLine(item, lines) === line && !hiddenSet.has(item));
+    resolvedOrder.filter((item) => effectiveLine(item, lines) === line && !hiddenSet.has(item));
 
-  const visibleFields = navigableFields(filter);
+  const visibleFields = navigableFields(filter, order);
   const fieldRank = Math.max(0, visibleFields.indexOf(field));
 
   // ── Layout strip: four rails, real fill, focused chip highlighted ──
@@ -268,15 +281,15 @@ export function StatuslinePicker({
     return theme.success;
   };
 
-  const descWidth = Math.max(10, size.contentWidth - 44);
-  const showDescriptions = size.columns >= 88;
+  const descWidth = Math.max(10, size.contentWidth - 56);
+  const showDescriptions = size.columns >= 140;
 
   return (
     <MonitorShell
       accent={theme.warn}
       icon={glyphs.terminal}
       title="STATUS LINE"
-      kicker={size.columns >= 82 ? 'chips · lines · density' : undefined}
+      kicker={size.columns >= 140 ? 'chip · on/off · line 1-4 · order · density' : undefined}
       right={
         <Text color={theme.textMuted}>
           {totalFields - hiddenItems.length}/{totalFields} on
@@ -291,6 +304,7 @@ export function StatuslinePicker({
             <KeyCap keyName="↑↓" label="select" color={theme.warn} />
             <KeyCap keyName="←→" label="on/off" color={theme.accent} />
             <KeyCap keyName="1-4" label="line" color={theme.accent} />
+            <KeyCap keyName="o/O" label="order" color={theme.accent} />
             <KeyCap keyName="d" label="density" color={theme.accent} />
           </Box>
           <Box gap={2}>
@@ -299,7 +313,7 @@ export function StatuslinePicker({
             <KeyCap keyName="r" label="reset layout" color={theme.error} />
             <KeyCap keyName="Esc" label="close" color={theme.error} />
           </Box>
-          {size.columns >= 100 ? (
+          {size.columns >= 140 ? (
             <Text color={theme.textMuted}>
               {'  '}
               {'‹ shortened  « micro  · dropped — saved to the active profile/statusline.json'}
@@ -386,6 +400,10 @@ export function StatuslinePicker({
           const line = effectiveLine(item, lines);
           const moved = line !== DEFAULT_LINES[item];
           const density = effectiveDensity(item, densities);
+          const lineItems = resolvedOrder.filter(
+            (candidate) => effectiveLine(candidate, lines) === line,
+          );
+          const orderIndex = lineItems.indexOf(item) + 1;
           return (
             <Box key={`row-${item}`}>
               <Text color={selected ? theme.warn : theme.textMuted}>{selected ? '› ' : '  '}</Text>
@@ -393,10 +411,17 @@ export function StatuslinePicker({
                 {item.padEnd(16)}
               </Text>
               <Text color={stateColor(item)} bold>
-                {stateOf(item).padEnd(5)}
+                {stateOf(item).padEnd(6)}
               </Text>
-              <Text color={moved ? theme.warn : theme.textMuted}>
-                {`L${line}${moved ? '*' : ' '} `}
+              <Text
+                color={selected ? theme.accent : moved ? theme.warn : theme.textMuted}
+                bold={selected}
+              >
+                {lineSelectorText(line)}
+                {'  '}
+              </Text>
+              <Text color={selected ? theme.warn : theme.textMuted}>
+                {`#${String(orderIndex).padStart(2, '0')} `}
               </Text>
               <Text color={density === 'auto' ? theme.textMuted : theme.brand}>
                 {DENSITY_LABEL[density].padEnd(6)}

@@ -58,7 +58,7 @@ describe('workspace edits with non-file URIs', () => {
       ],
     } as never;
 
-    const result = await applyWorkspaceEdit(input, { fileWritten: async () => {} } as never);
+    const result = await applyWorkspaceEdit(input, { fileWritten: async () => {} } as never, root);
     expect(await fs.readFile(file, 'utf8')).toBe('result2;\n');
     expect(result.files).toEqual([file]);
     expect(result.edits).toBe(1);

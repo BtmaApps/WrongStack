@@ -280,6 +280,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'statuslineFilter',
   'statuslineHint',
   'statuslineMoveLine',
+  'statuslineMoveOrder',
   'statuslineOpen',
   'statuslineResetLayout',
   'statuslineSetDensity',

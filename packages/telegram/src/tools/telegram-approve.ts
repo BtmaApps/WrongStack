@@ -133,7 +133,7 @@ export function makeTelegramApproveTool(opts: {
       // terminal settlement.
       const approval = opts.bot.awaitApproval({
         requestId,
-        sessionId: ctx?.session.id ?? 'unknown-session',
+        sessionId: ctx?.session?.id ?? 'unknown-session',
         expectedChatId: chatId,
         expectedUserIds,
         allowGroup: isGroup && opts.getAllowGroupApprovals?.() === true,

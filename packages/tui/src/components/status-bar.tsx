@@ -79,9 +79,9 @@ export type {
  * the reader's eye learns where to look:
  *
  *  L1 IDENTITY — project, working_dir, git, model, mode, prompt_variant,
- *     theme, sessions, tools; version right-anchored. Fixed for the session.
+ *     theme, sessions, tools; version is the reserved tail. Fixed for the session.
  *  L2 VITALS — state, context, tokens, cost, cache, elapsed, queue, hint;
- *     index right-anchored. Redraws every token.
+ *     index is the reserved tail. Redraws every token.
  *  L3 SAFETY & WORK — yolo, autonomy, eternal_stage, breaker, token_saving,
  *     processes, side_effects, dropped_tools, goal, todos, plan, tasks.
  *  L4 ASYNC — fleet, fleet_agents, mailbox, brain, debug_stream, memory,
@@ -127,6 +127,7 @@ export function StatusBar({
   hiddenItems,
   statuslineLines,
   statuslineDensities,
+  statuslineOrder,
   mode = 'detailed',
   events,
   sessionId,
@@ -389,6 +390,7 @@ export function StatusBar({
   // user's line assignment.
   const detailedRails = buildDetailedRails(buildParams, {
     lines: statuslineLines,
+    order: statuslineOrder,
     modelChip: modelStatusChip,
     modelShortChip,
     modelMicroChip,
@@ -400,13 +402,13 @@ export function StatusBar({
 
   // Rails 1–2 always render so a vanilla session keeps its two-line
   // footprint; conditional rails render when they have content. The index
-  // chip alone opens its rail (right-anchored, no left chips).
+  // chip alone opens its rail (reserved tail, no ordinary chips).
   const rendersRail = (rail: DetailedRail, logical: number): boolean =>
     logical < 2 || rail.entries.length > 0 || rail.rightAnchor != null;
 
   // Click-map: physical rows are the rails that publish left spans, top to
   // bottom — conditional rows shift up when an earlier rail is gated off.
-  // Right-anchored chips carry no left spans, so an anchor-only rail
+  // Reserved tail chips carry no left spans, so a tail-only rail
   // publishes no row. `budget`/`droppedIds` let the /statusline picker show
   // real, measured fill per line instead of guessing chip widths.
   if (clickMapRef) {
@@ -447,6 +449,7 @@ export function StatusBar({
           segments={minimumChips}
           rightAnchor={versionStatusChip}
           budget={railBudget}
+          monochrome={isNoColor}
         />
       </Box>
     );
@@ -468,6 +471,7 @@ export function StatusBar({
             segments={rail.entries}
             rightAnchor={rail.rightAnchor}
             budget={railBudget}
+            monochrome={isNoColor}
           />
         ) : null,
       )}

@@ -18,6 +18,11 @@ export interface DirectorTaskRegistryDeps {
   coordinator: TaskCoordinator;
   stateCheckpoint: DirectorStateCheckpoint | null;
   isWorkComplete(): boolean;
+  /**
+   * Subagents a pinned task can still run on: spawned, not removed, not
+   * stopped. Omitted in hosts that assign before registering workers.
+   */
+  dispatchableSubagentIds?(): readonly string[];
   addTaskToManifest(subagentId: string, taskId: string): void;
   recordPendingTask(taskId: string, subagentId: string, description: string): void;
   appendSessionEvent(event: Parameters<SessionWriter['append']>[0]): Promise<void>;
@@ -162,6 +167,16 @@ export class DirectorTaskRegistry {
       return taskWithId.id;
     }
 
+    // A task pinned to a subagent that does not exist (a typo, or a worker
+    // already retired) sat in the pending queue forever while any other
+    // worker stayed live, so `await_tasks` never returned.
+    const liveIds = this.deps.dispatchableSubagentIds?.();
+    if (taskWithId.subagentId && liveIds && !liveIds.includes(taskWithId.subagentId)) {
+      throw new Error(
+        `assign: unknown or stopped subagent "${taskWithId.subagentId}" — spawn it first (current fleet: ${liveIds.join(', ') || 'none'})`,
+      );
+    }
+
     if (taskWithId.subagentId) {
       this.deps.addTaskToManifest(taskWithId.subagentId, taskWithId.id);
     }
@@ -261,7 +276,7 @@ export class DirectorTaskRegistry {
         `_${result.status} — ${result.iterations} iter · ${result.toolCalls} tools · ${result.durationMs}ms_`,
         '',
       );
-      if (result.error) lines.push(`**Error:** ${result.error}`);
+      if (result.error) lines.push(`**Error:** ${result.error.kind}: ${result.error.message}`);
       else if (result.report) lines.push(formatSubagentStructuredReport(result.report));
       else if (typeof result.result === 'string') lines.push(result.result);
       else if (result.result !== undefined) {

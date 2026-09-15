@@ -22,13 +22,12 @@ export async function storeProviderKey(
 ): Promise<ProviderKeyStoreOutput> {
   const providerId = input.provider;
 
-  // Ensure the provider config exists.
-  if (!providers[providerId]) {
-    // Auto-create with a best-guess type; users can configure details later.
-    providers[providerId] = { type: providerId };
-  }
-
-  const entry = providers[providerId]!;
+  // Copy the entry: `providers` is a shallow copy of the live config, so an
+  // existing entry is the ConfigStore's deep-frozen object and assigning
+  // `apiKeys` to it threw "object is not extensible" — every key set for an
+  // already-configured provider failed. A missing provider is auto-created
+  // with a best-guess type; users can configure details later.
+  const entry: Record<string, unknown> = { ...(providers[providerId] ?? { type: providerId }) };
   const existingKeys = Array.isArray(entry.apiKeys)
     ? [...(entry.apiKeys as Array<Record<string, unknown>>)]
     : [];

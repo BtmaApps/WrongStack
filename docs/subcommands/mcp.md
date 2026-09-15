@@ -91,17 +91,25 @@ All presets are available via `allServers()` and can be added with either
 |---|---|---|
 | `filesystem` | Read/write/navigate local filesystem | `confirm` |
 | `github` | GitHub API — issues, PRs, repos, search | `confirm` |
+| `gitlab` | GitLab API — issues, merge requests, projects | `confirm` |
+| `postgres` | PostgreSQL database access — schema inspection and queries | `confirm` |
+| `sqlite` | SQLite database inspection and SQL queries | `confirm` |
+| `git` | Git repository inspection — history, diffs, log, commit | `confirm` |
+| `memory` | Knowledge Graph-based persistent memory | `auto` |
+| `sequential-thinking` | Dynamic problem solving and structured reasoning | `auto` |
+| `puppeteer` | Browser automation via Puppeteer (headless Chrome) | `confirm` |
+| `playwright` | Browser automation via Microsoft Playwright | `confirm` |
 | `context7` | Codebase-aware documentation (context7.ai) | `confirm` |
+| `fetch` | Web page fetching and markdown conversion | `auto` |
 | `brave-search` | Web search (requires `BRAVE_SEARCH_API_KEY`) | `confirm` |
-| `block` | Postgres database access via SQL | `confirm` |
-| `everart` | AI image generation (requires `EVERART_API_KEY`) | `confirm` |
-| `slack` | Slack messaging, channels, search | `confirm` |
-| `aws` | AWS — EC2, S3, Lambda, IAM, CloudFormation | `confirm` |
+| `docker` | Docker container, image, and log management | `confirm` |
+| `aws` | AWS — EC2, S3, Lambda, CloudWatch (yawlabs/aws-mcp) | `confirm` |
 | `google-maps` | Directions, geocoding, places | `confirm` |
-| `sentinel` | Security vulnerability scanning | `deny` |
+| `slack` | Slack messaging, channels, search | `confirm` |
+| `sentry` | Sentry error and crash tracking (requires `SENTRY_AUTH_TOKEN`) | `confirm` |
+| `everart` | AI image generation (requires `EVERART_API_KEY`) | `confirm` |
 | `zai-vision` | Image analysis and screenshot understanding | `auto` |
 | `minimax-vision` | MiniMax image understanding (read-only) | `auto` |
-| `playwright` | Browser automation — navigate, screenshot, click, type, evaluate JS | `confirm` |
 | `ssh` | Remote SSH management — execute commands, transfer files, tunnels, health checks | `confirm` |
 
 ### Playwright + Browser Agent

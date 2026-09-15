@@ -706,17 +706,25 @@ WrongStack ships with a set of built-in MCP server presets. Use
 |---|---|---|---|
 | `filesystem` | Read/write/navigate local filesystem | `confirm` | No |
 | `github` | GitHub API — issues, PRs, repos, search | `confirm` | No |
+| `gitlab` | GitLab API — issues, merge requests, projects | `confirm` | No |
+| `postgres` | PostgreSQL database access — schema inspection and queries | `confirm` | No |
+| `sqlite` | SQLite database inspection and SQL queries | `confirm` | No |
+| `git` | Git repository inspection — history, diffs, log, commit | `confirm` | No |
+| `memory` | Knowledge Graph-based persistent memory | `auto` | No |
+| `sequential-thinking` | Dynamic problem solving and structured reasoning | `auto` | No |
+| `puppeteer` | Browser automation via Puppeteer (headless Chrome) | `confirm` | No |
+| **`playwright`** | Browser automation — navigate, screenshot, click, type, evaluate JS | `confirm` | No |
 | `context7` | Codebase-aware documentation (context7.ai) | `confirm` | No |
+| `fetch` | Web page fetching and markdown conversion | `auto` | No |
 | `brave-search` | Web search (requires `BRAVE_SEARCH_API_KEY`) | `confirm` | No |
-| `block` | Postgres database access via SQL | `confirm` | No |
-| `everart` | AI image generation | `confirm` | No |
-| `slack` | Slack messaging, channels, search | `confirm` | No |
-| `aws` | EC2, S3, Lambda, IAM, CloudFormation | `confirm` | No |
+| `docker` | Docker container, image, and log management | `confirm` | No |
+| `aws` | EC2, S3, Lambda, CloudWatch (yawlabs/aws-mcp) | `confirm` | No |
 | `google-maps` | Directions, geocoding, places | `confirm` | No |
-| `sentinel` | Security vulnerability scanning | `deny` | No |
+| `slack` | Slack messaging, channels, search | `confirm` | No |
+| `sentry` | Sentry error and crash tracking (requires `SENTRY_AUTH_TOKEN`) | `confirm` | No |
+| `everart` | AI image generation | `confirm` | No |
 | `zai-vision` | Image analysis, screenshot understanding | `auto` | No |
 | `minimax-vision` | MiniMax image understanding (read-only) | `auto` | No |
-| **`playwright`** | Browser automation — navigate, screenshot, click, type, evaluate JS | `confirm` | No |
 | **`ssh`** | Remote SSH — execute commands, transfer files, tunnels, health checks | `confirm` | No |
 
 Playwright and SSH are opt-in presets. Add and enable only the MCP servers you

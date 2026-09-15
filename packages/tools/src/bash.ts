@@ -77,7 +77,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     '- Use bash only when you genuinely need shell features (pipes, redirection, complex one-liners).\n' +
     '- Prefer single focused commands over huge `&&` chains.\n' +
     '- Use `background: true` only for long-running processes (dev servers, watchers).\n' +
-    '- The working directory is the session working dir (changed via `set_working_dir`), defaulting to the project root.\n' +
+    '- The working directory is the session working dir (the user changes it with `/working_dir`), defaulting to the project root; use `cd` inside the command for a one-off directory.\n' +
     '- Output may be truncated in the middle for very large results.',
   selection: {
     doNotUseWhen:

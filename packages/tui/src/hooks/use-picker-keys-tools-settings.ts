@@ -629,6 +629,10 @@ export function tryToolsSettingsPickerKeys(
       dispatch({ type: 'statuslineFieldMove', delta: key.mouse.wheel > 0 ? -1 : 1 });
       return true;
     }
+    if (focused && key.shift && (key.upArrow || key.downArrow)) {
+      dispatch({ type: 'statuslineMoveOrder', item: focused, delta: key.upArrow ? -1 : 1 });
+      return true;
+    }
     if (key.upArrow) {
       dispatch({ type: 'statuslineFieldMove', delta: -1 });
       return true;
@@ -673,7 +677,11 @@ export function tryToolsSettingsPickerKeys(
       return true;
     }
     if (focused && (input === '[' || input === ']')) {
-      dispatch({ type: 'statuslineMoveLine', item: focused, delta: input === '[' ? -1 : 1 });
+      dispatch({ type: 'statuslineMoveOrder', item: focused, delta: input === '[' ? -1 : 1 });
+      return true;
+    }
+    if (focused && (input === 'o' || input === 'O')) {
+      dispatch({ type: 'statuslineMoveOrder', item: focused, delta: input === 'O' ? -1 : 1 });
       return true;
     }
     if (focused && (input === 'd' || input === 'D')) {

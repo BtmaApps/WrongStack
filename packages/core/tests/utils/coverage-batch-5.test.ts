@@ -1,28 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  compactToolDefinitionForWire,
-  compactSchemaDescriptions,
-  compactDescription,
-  findSemanticBoundary,
-} from '../../src/utils/tool-wire-compact.js';
+  computeTaskItemProgress,
+  formatTaskList,
+  formatTaskProgress,
+  type TaskItem,
+} from '../../src/utils/task-format.js';
 import {
+  applyToolDescriptionModeToTool,
+  normalizeToolDescriptionMode,
+  simplifyToolDescription,
+} from '../../src/utils/tool-description-mode.js';
+import {
+  applyToolResultRenderModes,
+  DEFAULT_TOOL_RESULT_RENDER_MODE,
   normalizeToolResultRenderMode,
   resolveToolResultRenderMode,
-  DEFAULT_TOOL_RESULT_RENDER_MODE,
-  applyToolResultRenderModes,
   type ToolResultRenderModeRegistryLike,
 } from '../../src/utils/tool-result-render-mode.js';
 import {
-  normalizeToolDescriptionMode,
-  simplifyToolDescription,
-  applyToolDescriptionModeToTool,
-} from '../../src/utils/tool-description-mode.js';
-import {
-  computeTaskItemProgress,
-  formatTaskProgress,
-  formatTaskList,
-  type TaskItem,
-} from '../../src/utils/task-format.js';
+  compactDescription,
+  compactSchemaDescriptions,
+  compactToolDefinitionForWire,
+  findSemanticBoundary,
+  SCHEMA_DESCRIPTION_MAX_CHARS,
+  TOOL_DESCRIPTION_MAX_CHARS,
+} from '../../src/utils/tool-wire-compact.js';
 
 // ── tool-wire-compact ──────────────────────────────────────────────────
 
@@ -86,12 +88,15 @@ describe('compactToolDefinitionForWire', () => {
   it('compacts name, description, and schema', () => {
     const tool = {
       name: 'myTool',
-      description: 'A'.repeat(500),
-      inputSchema: { type: 'object', description: 'B'.repeat(500) },
+      description: 'A'.repeat(TOOL_DESCRIPTION_MAX_CHARS + 500),
+      inputSchema: { type: 'object', description: 'B'.repeat(SCHEMA_DESCRIPTION_MAX_CHARS + 500) },
     };
     const result = compactToolDefinitionForWire(tool);
     expect(result.name).toBe('myTool');
-    expect(result.description.length).toBeLessThanOrEqual(412);
+    expect(result.description.length).toBeLessThanOrEqual(TOOL_DESCRIPTION_MAX_CHARS);
+    expect(String(result.inputSchema.description).length).toBeLessThanOrEqual(
+      SCHEMA_DESCRIPTION_MAX_CHARS,
+    );
   });
   it('caches on repeated calls with default options', () => {
     const tool = { name: 'cached', description: 'desc', inputSchema: {} };

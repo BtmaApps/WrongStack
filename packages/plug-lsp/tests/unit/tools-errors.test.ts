@@ -213,6 +213,7 @@ describe('tool error and edge paths', () => {
           },
         },
         { fileWritten: vi.fn() } as never,
+        root,
       ),
     ).rejects.toMatchObject({ code: 'ENOENT' });
     expect(await fs.readFile(file, 'utf8')).toBe('const a = 1;');
@@ -228,6 +229,7 @@ describe('tool error and edge paths', () => {
         },
       },
       { fileWritten: vi.fn(async () => undefined) } as never,
+      root,
     );
     expect(await fs.readFile(file, 'utf8')).toBe('!const a = 1;');
   });

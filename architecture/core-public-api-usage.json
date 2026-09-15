@@ -19,9 +19,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/coordination": {
-      "files": 222,
+      "files": 223,
       "typeOnly": 84,
-      "runtimeOrMixed": 195
+      "runtimeOrMixed": 196
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -74,9 +74,9 @@
       "runtimeOrMixed": 5
     },
     "@wrongstack/core/infrastructure": {
-      "files": 46,
+      "files": 47,
       "typeOnly": 6,
-      "runtimeOrMixed": 45
+      "runtimeOrMixed": 46
     },
     "@wrongstack/core/kernel": {
       "files": 272,
@@ -169,14 +169,14 @@
       "runtimeOrMixed": 21
     },
     "@wrongstack/core/tools": {
-      "files": 5,
+      "files": 6,
       "typeOnly": 0,
-      "runtimeOrMixed": 5
+      "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1098,
-      "typeOnly": 979,
-      "runtimeOrMixed": 331
+      "files": 1101,
+      "typeOnly": 981,
+      "runtimeOrMixed": 333
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 588,
+      "files": 589,
       "typeOnly": 55,
-      "runtimeOrMixed": 561
+      "runtimeOrMixed": 562
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -3216,6 +3216,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/sage/src/anchors/verify.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -5455,6 +5461,12 @@
     {
       "specifier": "@wrongstack/core/infrastructure",
       "file": "packages/runtime/tests/tool-registration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/infrastructure",
+      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -10686,6 +10698,12 @@
     },
     {
       "specifier": "@wrongstack/core/tools",
+      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/tools",
       "file": "packages/webui-server/src/server/provider/keys.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -13322,7 +13340,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/src/tools/rename.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13818,6 +13836,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/loaded-plugin-tools-are-enabled.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/path-guard.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14220,6 +14244,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/gemini-oneof-sanitize.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/github-copilot.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14473,6 +14503,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/runtime/tests/tool-registration.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15505,8 +15541,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tools/src/read-url-content.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -19417,6 +19453,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/plug-lsp/tests/unit/platform-coverage.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/plug-lsp/tests/unit/rename-name-validation.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

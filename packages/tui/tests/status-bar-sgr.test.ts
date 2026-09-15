@@ -29,38 +29,53 @@ import { sidebarCardSurface, theme } from '../src/theme.js';
  */
 
 describe('StatusBar version-chip SGR color pins', () => {
-  it('does not paint a statusline background while preserving foreground colors', () => {
-    const { lastFrame, unmount } = render(
-      React.createElement(StatusBar, {
-        model: 'anthropic/claude',
-        state: 'idle',
-        projectName: 'WrongStack',
-      } as StatusBarProps),
-    );
-    const raw = lastFrame() ?? '';
-    unmount();
-    expect(raw).toMatch(/\x1b\[38;2;/);
-    expect(raw).not.toMatch(/\x1b\[48;2;/);
+  it('paints connected status capsules while preserving foreground colors', () => {
+    const previous = theme.supportsBackground;
+    theme.supportsBackground = true;
+    try {
+      const { lastFrame, unmount } = render(
+        React.createElement(StatusBar, {
+          model: 'anthropic/claude',
+          state: 'idle',
+          projectName: 'WrongStack',
+        } as StatusBarProps),
+      );
+      const raw = lastFrame() ?? '';
+      unmount();
+      expect(raw).toMatch(/\x1b\[38;2;/);
+      const backgrounds = new Set(
+        [...raw.matchAll(/\x1b\[48;2;(\d+);(\d+);(\d+)m/g)].map((match) =>
+          match.slice(1).join(','),
+        ),
+      );
+      expect(backgrounds.size).toBeGreaterThanOrEqual(3);
+      expect(raw).toContain('▶');
+    } finally {
+      theme.supportsBackground = previous;
+    }
   });
 
-  it('tints the update suffix with STACK_ORANGE truecolor', () => {
-    // The update suffix must be tinted with STACK_ORANGE (#FD9F02 = truecolor
-    // \x1b[38;2;253;159;2m). Render a raw (non-ANSI-stripped) frame —
-    // stripping SGR before matching would silently swallow this assertion.
-    // Pinning the escape stops a future refactor from swapping the brand
-    // orange for theme.warn (pastel yellow) unnoticed.
-    const { lastFrame, unmount } = render(
-      React.createElement(StatusBar, {
-        model: 'anthropic/claude',
-        state: 'idle',
-        version: '0.7.0',
-        latestVersion: '0.8.1',
-        updateAvailable: true,
-      } as StatusBarProps),
-    );
-    const raw = lastFrame() ?? '';
-    unmount();
-    expect(raw).toMatch(/\x1b\[38;2;253;159;2m.*\(update v0\.8\.1\)/);
+  it('keeps the update suffix inside the neutral status segment', () => {
+    const previous = theme.supportsBackground;
+    theme.supportsBackground = true;
+    try {
+      const { lastFrame, unmount } = render(
+        React.createElement(StatusBar, {
+          model: 'anthropic/claude',
+          state: 'idle',
+          version: '0.7.0',
+          latestVersion: '0.8.1',
+          updateAvailable: true,
+        } as StatusBarProps),
+      );
+      const raw = lastFrame() ?? '';
+      unmount();
+      expect(raw).toContain('(update v0.8.1)');
+      expect(raw).toMatch(/\x1b\[38;2;/);
+      expect(raw).not.toMatch(/\x1b\[38;2;253;159;2m/);
+    } finally {
+      theme.supportsBackground = previous;
+    }
   });
 
   it('renders the update chip monochrome (no orange SGR) in no-color mode', () => {
@@ -68,29 +83,28 @@ describe('StatusBar version-chip SGR color pins', () => {
     // would make a negative SGR assertion vacuous (it could never fail).
     // Asserting on the raw frame actually catches a regression where no-color
     // mode still emits orange truecolor.
-    const { lastFrame, unmount } = render(
-      React.createElement(StatusBar, {
-        model: 'anthropic/claude',
-        state: 'idle',
-        version: '0.7.0',
-        latestVersion: '0.8.1',
-        updateAvailable: true,
-        mode: 'no-color',
-      } as StatusBarProps),
-    );
-    const raw = lastFrame() ?? '';
-    unmount();
-    expect(raw).toContain('v0.7.0');
-    expect(raw).toContain('(update v0.8.1)');
-    // The brand-orange truecolor (STACK_ORANGE #FD9F02 = 253;159;2) must not
-    // survive in no-color mode. Assert the specific orange SGR rather than
-    // "any truecolor": the unrelated `+N dropped` overflow marker emits
-    // theme.textMuted truecolor unconditionally (not gated by monochrome), so
-    // a blanket `not.toMatch(/\x1b\[38;2;/)` could fail spuriously when line 1
-    // overflows — even though the chip is correctly monochrome. (The marker's
-    // unconditional color is a separate pre-existing powerline-rail concern,
-    // not a version-chip regression.)
-    expect(raw).not.toMatch(/\x1b\[38;2;253;159;2m/);
+    const previous = theme.supportsBackground;
+    theme.supportsBackground = true;
+    try {
+      const { lastFrame, unmount } = render(
+        React.createElement(StatusBar, {
+          model: 'anthropic/claude',
+          state: 'idle',
+          version: '0.7.0',
+          latestVersion: '0.8.1',
+          updateAvailable: true,
+          mode: 'no-color',
+        } as StatusBarProps),
+      );
+      const raw = lastFrame() ?? '';
+      unmount();
+      expect(raw).toContain('v0.7.0');
+      expect(raw).toContain('(update v0.8.1)');
+      expect(raw).not.toMatch(/\x1b\[48;2;/);
+      expect(raw).not.toMatch(/\x1b\[38;2;253;159;2m/);
+    } finally {
+      theme.supportsBackground = previous;
+    }
   });
 });
 

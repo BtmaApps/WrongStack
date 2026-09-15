@@ -24,8 +24,6 @@ export interface PwshInput {
   timeout_ms?: number | undefined;
   run_in_background?: boolean | undefined;
   background?: boolean | undefined;
-  sandbox_permissions?: string | undefined;
-  justification?: string | undefined;
 }
 
 export interface PwshOutput {
@@ -50,11 +48,10 @@ export const PWSH_TOOL_DESCRIPTION =
 export const PWSH_TOOL_USAGE_HINT =
   'Best practices & sandbox protocol for pwsh:\n' +
   '- **Stateless**: No cwd, variables, or functions persist between calls. Use `workdir` to set the directory.\n' +
-  '- **Paths & Environs**: Use native Windows paths (`C:\\...`) and read env vars via `$env:NAME` (and `$env:DSH_*`).\n' +
+  '- **Paths & Environs**: Use native Windows paths (`C:\\...`) and read env vars via `$env:NAME`.\n' +
   '- **Exit Codes**: Non-zero exits are reported as `[exit code: N]`. On Windows, a force-killed command settles as exit code 1 (interruption).\n' +
-  '- **Background**: Set `run_in_background: true` for long-running processes (returns job id; manage via job_output/job_kill).\n' +
-  '- **Sandboxing**: Under read-only sandbox, pwsh runs in `ConstrainedLanguage` mode (prefer cmdlets, basic types; .NET reflection and COM fail). Workspace-write runs in `FullLanguage`.\n' +
-  '- **Escalation**: If denied by policy (`[sandbox: file access denied]`), retry once with `sandbox_permissions` plus a one-sentence `justification`.';
+  '- **Background**: Set `run_in_background: true` for long-running processes; the result carries the PID (stop it with `Stop-Process -Id <pid>`).\n' +
+  '- **Not a sandbox**: Commands run in `FullLanguage` mode with your user privileges. A call refused by permission policy is final — do not retry it with extra fields.';
 
 /**
  * Bootstrap PowerShell script wrapper with robust progress suppression,
@@ -222,16 +219,6 @@ export const pwshTool: Tool<PwshInput, PwshOutput> = {
       background: {
         type: 'boolean',
         description: 'Alias for run_in_background.',
-      },
-      sandbox_permissions: {
-        type: 'string',
-        description:
-          'Escalation mode if retrying a sandbox-denied command (e.g., workspace-write).',
-      },
-      justification: {
-        type: 'string',
-        description:
-          'One-sentence justification when retrying a denied command with sandbox_permissions.',
       },
     },
     required: ['command'],

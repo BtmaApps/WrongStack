@@ -71,9 +71,9 @@ describe('statusline layout reducer', () => {
       reducer(unseeded, { type: 'statuslineSetDensity', item: 'cost' }).statuslinePicker
         .layoutSeeded,
     ).toBe(true);
-    expect(
-      reducer(unseeded, { type: 'statuslineResetLayout' }).statuslinePicker.layoutSeeded,
-    ).toBe(true);
+    expect(reducer(unseeded, { type: 'statuslineResetLayout' }).statuslinePicker.layoutSeeded).toBe(
+      true,
+    );
   });
 
   it('assigns a chip to an explicit line, clamping out-of-range values', () => {
@@ -96,6 +96,24 @@ describe('statusline layout reducer', () => {
     expect(back.statuslinePicker.lines.project).toBe(4);
     const forward = reducer(back, { type: 'statuslineMoveLine', item: 'project', delta: 1 });
     expect(forward.statuslinePicker.lines.project).toBe(1);
+  });
+
+  it('moves a chip earlier and later within its effective line', () => {
+    const earlier = reducer(openPicker(), {
+      type: 'statuslineMoveOrder',
+      item: 'model',
+      delta: -1,
+    });
+    const identity = earlier.statuslinePicker.order.filter(
+      (item) => effectiveLine(item, earlier.statuslinePicker.lines) === 1,
+    );
+    expect(identity.indexOf('model')).toBe(identity.indexOf('git') - 1);
+    expect(earlier.statuslinePicker.hint).toContain('position');
+
+    const later = reducer(earlier, { type: 'statuslineMoveOrder', item: 'model', delta: 1 });
+    expect(later.statuslinePicker.order.indexOf('model')).toBeGreaterThan(
+      later.statuslinePicker.order.indexOf('git'),
+    );
   });
 
   it('cycles density and stores `auto` as the absence of a pin', () => {
@@ -141,6 +159,7 @@ describe('statusline layout reducer', () => {
     const next = reducer(dirty, { type: 'statuslineResetLayout' });
     expect(next.statuslinePicker.lines).toEqual({});
     expect(next.statuslinePicker.densities).toEqual({});
+    expect(next.statuslinePicker.order).toEqual([]);
     expect(next.statuslinePicker.hiddenItems).toEqual(['git']);
     expect(effectiveLine('cost', next.statuslinePicker.lines)).toBe(DEFAULT_LINES.cost);
   });

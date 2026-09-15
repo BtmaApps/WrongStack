@@ -76,7 +76,7 @@ interface InterfaceContractGuardConfig {
 }
 
 const DEFAULTS: InterfaceContractGuardConfig = {
-  enabled: false,
+  enabled: true,
   extensions: ['.ts', '.tsx'],
   maxFindings: 50,
   maxFiles: 2_000,

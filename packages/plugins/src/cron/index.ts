@@ -12,6 +12,9 @@ const COORDINATION_CRON_CAPABILITY = 'coordination.cron';
 
 const API_VERSION = '^0.1.10';
 
+/** Largest delay setTimeout honours; anything above is clamped to 1 ms. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 interface CronJob {
   name: string;
   intervalMs: number;
@@ -252,7 +255,9 @@ const plugin: Plugin = {
           name: { type: 'string', description: 'Unique name for this cron job' },
           intervalMs: {
             type: 'number',
-            description: 'Interval between runs in milliseconds (minimum 1000)',
+            minimum: 1000,
+            maximum: MAX_TIMER_DELAY_MS,
+            description: `Interval between runs in milliseconds (1000 to ${MAX_TIMER_DELAY_MS})`,
           },
           action: {
             type: 'string',
@@ -294,6 +299,14 @@ const plugin: Plugin = {
         if (Number.isNaN(intervalMs) || rawInterval === undefined || rawInterval === null) {
           throw new ToolValidationError({
             message: 'intervalMs must be a number >= 1000',
+            field: 'intervalMs',
+          });
+        }
+        // setTimeout clamps any delay above 2^31-1 ms to 1 ms, so an
+        // oversized interval fired the job on every tick instead of never.
+        if (intervalMs > MAX_TIMER_DELAY_MS) {
+          throw new ToolValidationError({
+            message: `intervalMs must be <= ${MAX_TIMER_DELAY_MS} (about 24.8 days)`,
             field: 'intervalMs',
           });
         }

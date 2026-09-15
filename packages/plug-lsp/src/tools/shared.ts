@@ -33,10 +33,24 @@ export async function requireServer(
   signal: AbortSignal,
 ): Promise<LSPServer> {
   const server = await registry.findForPath(filePath, signal);
-  if (!server) {
-    throw new LSPError(LSPErrorCode.ServerNotFound, `No LSP server is configured for ${filePath}`);
+  if (server) return server;
+  // `findForPath` returns null both when no server claims the language and
+  // when the configured one is not ready (failed to spawn, still starting,
+  // exited). Reporting both as "not configured" sent the model to fix config
+  // that was fine; name the server and its state instead.
+  const language =
+    typeof registry.languageIdForPath === 'function' ? registry.languageIdForPath(filePath) : null;
+  const configured =
+    language && typeof registry.list === 'function'
+      ? registry.list().find((candidate) => candidate.config.languages.includes(language))
+      : undefined;
+  if (configured) {
+    throw new LSPError(
+      LSPErrorCode.ServerNotReady,
+      `LSP server "${configured.name}" for ${language} is ${configured.state}, not ready for ${filePath}`,
+    );
   }
-  return server;
+  throw new LSPError(LSPErrorCode.ServerNotFound, `No LSP server is configured for ${filePath}`);
 }
 
 export async function readDocumentContent(

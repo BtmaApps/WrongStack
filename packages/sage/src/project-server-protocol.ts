@@ -5,6 +5,7 @@ import type {
   MemoryScope,
   ScoredEntry,
 } from '@wrongstack/core/types';
+import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
 import type {
   CandidateDecision,
@@ -31,7 +32,6 @@ import type {
   SessionConsolidationResult,
   UpdateSageInput,
 } from './types.js';
-import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 
 export const SAGE_PROJECT_SERVER_PROTOCOL_VERSION = 1;
 
@@ -268,6 +268,146 @@ export interface SageServerOperations {
 }
 
 export type SageServerOperationName = keyof SageServerOperations;
+
+// ─── H9: shallow dispatch-args validation (docs/sage-phase4-design.md) ───
+
+/**
+ * Shallow shape kinds a required dispatch arg may take. Deliberately NOT a
+ * schema language: only existence and primitive/array/object shape are
+ * checked, unknown fields are tolerated, and nested shapes are left to the
+ * store methods (the same minimum-validation philosophy as
+ * `validateMemoryShape`). Optional args are never listed — validation is for
+ * required fields only.
+ */
+export type SageFieldKind = 'string' | 'number' | 'boolean' | 'string[]' | 'object' | 'any';
+
+/** `[fieldName, kind]` for one required dispatch arg. */
+export type SageFieldSpec = readonly [field: string, kind: SageFieldKind];
+
+/**
+ * Required top-level args per operation, keyed by {@link SageServerOperationName}.
+ *
+ * The `satisfies` makes adding a new operation without declaring (or
+ * deliberately waiving) its required-args spec a compile error, so the table
+ * cannot drift behind `SageServerOperations`. Ops whose args are fully
+ * optional declare `[]`; their handlers already tolerate `undefined` args.
+ *
+ * Ops NOT listed with strict kinds on purpose: nested payloads
+ * (`rememberSage.input`, `updateSage.patch`, `createCandidate.input`,
+ * `consolidateSession.input`, …) are validated as `object` here and checked
+ * in depth by the store methods they are handed to (secret guard,
+ * `validateMemoryShape`, `clamp01`, decision policy). Validating those shapes
+ * here would duplicate that logic and drift against it.
+ */
+export const SAGE_DISPATCH_FIELD_SPECS = {
+  ping: [],
+  readAll: [],
+  read: [['scope', 'string']],
+  remember: [['text', 'string']],
+  forget: [['query', 'string']],
+  consolidate: [['scope', 'string']],
+  clear: [],
+  list: [],
+  search: [['query', 'string']],
+  findRelated: [['text', 'string']],
+  scoreRelevant: [['context', 'object']],
+  stats: [],
+  listSage: [],
+  listSagePage: [],
+  getSage: [['id', 'string']],
+  rememberSage: [['input', 'object']],
+  updateSage: [
+    ['id', 'string'],
+    ['patch', 'object'],
+  ],
+  deleteSage: [['id', 'string']],
+  retrieveForPath: [['options', 'object']],
+  searchSage: [['query', 'string']],
+  searchSageWithBreakdown: [['query', 'string']],
+  unifiedSearch: [['query', 'object']],
+  findRelatedSage: [['memoryIds', 'string[]']],
+  recordInjection: [
+    ['memoryIds', 'string[]'],
+    ['trigger', 'string'],
+  ],
+  recordUse: [
+    ['memoryIds', 'string[]'],
+    ['source', 'string'],
+  ],
+  retrieveForAudience: [['context', 'object']],
+  graphFor: [['query', 'string']],
+  verify: [],
+  hygiene: [],
+  listCandidates: [],
+  createCandidate: [['input', 'object']],
+  resolveCandidate: [
+    ['candidateId', 'string'],
+    ['decision', 'string'],
+  ],
+  acceptCandidate: [['candidateId', 'string']],
+  rejectCandidate: [
+    ['candidateId', 'string'],
+    ['reason', 'string'],
+  ],
+  recoverSage: [['id', 'string']],
+  backfillRecoverable: [],
+  findMemoriesForFile: [['filePath', 'string']],
+  readAudit: [],
+  importLegacyFiles: [['files', 'string[]']],
+  consolidateSession: [['input', 'object']],
+} as const satisfies Record<SageServerOperationName, readonly SageFieldSpec[]>;
+
+function sageFieldMatchesKind(value: unknown, kind: SageFieldKind): boolean {
+  switch (kind) {
+    case 'string':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number' && Number.isFinite(value);
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'string[]':
+      return Array.isArray(value) && value.every((item) => typeof item === 'string');
+    case 'object':
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'any':
+      return true;
+  }
+}
+
+export class SageInvalidArgsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidSageRequestArgs';
+  }
+}
+
+/**
+ * Shallow dispatch-args check for one operation (H9,
+ * docs/sage-phase4-design.md).
+ *
+ * Returns `null` when `rawArgs` satisfies the op's required-field spec;
+ * otherwise a human-readable reason naming the first offending field. The
+ * dispatch head turns a non-null result into an `InvalidSageRequestArgs`
+ * error, which the connection handler renders as the response frame's
+ * `errorName` — the same wire shape `UnauthorizedSageRequest` uses.
+ */
+export function validateDispatchArgs(op: SageServerOperationName, rawArgs: unknown): string | null {
+  const spec = SAGE_DISPATCH_FIELD_SPECS[op];
+  if (spec.length === 0) return null;
+  if (rawArgs === undefined || rawArgs === null) {
+    return `missing args object; required: ${spec.map(([field]) => field).join(', ')}`;
+  }
+  if (typeof rawArgs !== 'object' || Array.isArray(rawArgs)) {
+    return 'args must be an object';
+  }
+  const args = rawArgs as Record<string, unknown>;
+  for (const [field, kind] of spec) {
+    const value = args[field];
+    if (value === undefined) return `missing required arg "${field}"`;
+    if (!sageFieldMatchesKind(value, kind)) return `arg "${field}" must be of type ${kind}`;
+  }
+  return null;
+}
 
 export type SageProjectServerClientMessage =
   | {

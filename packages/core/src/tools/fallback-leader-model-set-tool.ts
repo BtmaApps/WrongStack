@@ -38,6 +38,7 @@ const LEADER_MODEL_SET_SCHEMA: JSONSchema = {
       description: 'New value for the toggle. Required for "toggle".',
     },
   },
+  required: ['action'],
   additionalProperties: false,
 };
 

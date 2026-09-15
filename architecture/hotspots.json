@@ -23,11 +23,11 @@
       "relativeImports": 18
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 872,
+      "lines": 878,
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 941,
+      "lines": 947,
       "relativeImports": 43
     },
     "packages/cli/src/fleet/host.ts": {
@@ -55,7 +55,7 @@
       "relativeImports": 14
     },
     "packages/cli/src/slash-commands/settings-mutations.ts": {
-      "lines": 1055,
+      "lines": 1064,
       "relativeImports": 5
     },
     "packages/cli/src/slash-commands/tool.ts": {
@@ -91,7 +91,7 @@
       "relativeImports": 10
     },
     "packages/core/src/coordination/delegation/run-delegation.ts": {
-      "lines": 1130,
+      "lines": 1134,
       "relativeImports": 9
     },
     "packages/core/src/coordination/director-tools.ts": {
@@ -99,7 +99,7 @@
       "relativeImports": 18
     },
     "packages/core/src/coordination/director.ts": {
-      "lines": 1108,
+      "lines": 1113,
       "relativeImports": 43
     },
     "packages/core/src/coordination/fleet-supervisor.ts": {
@@ -227,7 +227,7 @@
       "relativeImports": 1
     },
     "packages/plugins/src/git-autocommit/index.ts": {
-      "lines": 1066,
+      "lines": 1071,
       "relativeImports": 0
     },
     "packages/plugins/src/loop-breaker/index.ts": {
@@ -279,7 +279,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 928,
+      "lines": 935,
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -287,8 +287,12 @@
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
-      "lines": 1033,
-      "relativeImports": 43
+      "lines": 1058,
+      "relativeImports": 45
+    },
+    "packages/sage/src/store-helpers.ts": {
+      "lines": 825,
+      "relativeImports": 2
     },
     "packages/sage/src/tools/memory-tools.ts": {
       "lines": 1047,
@@ -355,7 +359,7 @@
       "relativeImports": 6
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 847,
+      "lines": 834,
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {
@@ -363,19 +367,19 @@
       "relativeImports": 4
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 857,
+      "lines": 861,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
-      "lines": 808,
+      "lines": 816,
       "relativeImports": 10
     },
     "packages/tui/src/app-state.ts": {
-      "lines": 1017,
+      "lines": 1023,
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
-      "lines": 981,
+      "lines": 999,
       "relativeImports": 59
     },
     "packages/tui/src/components/agents-monitor.tsx": {
@@ -411,7 +415,7 @@
       "relativeImports": 11
     },
     "packages/tui/src/hooks/use-picker-keys-tools-settings.ts": {
-      "lines": 869,
+      "lines": 877,
       "relativeImports": 6
     },
     "packages/tui/src/input-validation.ts": {

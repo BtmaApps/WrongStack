@@ -1,6 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import { buildChildEnv, buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
 import type { ServerConfig } from '../types.js';
+import { resolveServerCommand } from './command-resolver.js';
 
 /**
  * Spawn a language server.
@@ -29,6 +30,31 @@ export function safeSpawn(cfg: ServerConfig, cwd: string): ChildProcessWithoutNu
     windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     windowsHide: true,
   });
+}
+
+/**
+ * The concrete executable to spawn for a configured server command.
+ *
+ * Node does not apply PATHEXT, so on Windows a bare `typescript-language-server`
+ * ENOENTs even though its `.cmd` shim sits on PATH. Auto-discovery resolved its
+ * own presets, but a server the user configured by hand kept the bare name and
+ * could never start on Windows (audit 2026-09-15). Resolution goes through
+ * `resolveServerCommand` with its default project-local gate (WS-SEC-01), so a
+ * binary found only inside the opened repository is still not adopted.
+ */
+export async function resolveSpawnCommand(
+  command: string,
+  cwd: string,
+  platform: NodeJS.Platform = process.platform,
+  resolve: (command: string, cwd: string) => Promise<string | null> = resolveServerCommand,
+): Promise<string> {
+  if (platform !== 'win32') return command;
+  if (/[\\/]/.test(command) || /\.(exe|cmd|bat|com)$/i.test(command)) return command;
+  try {
+    return (await resolve(command, cwd)) ?? command;
+  } catch {
+    return command;
+  }
 }
 
 function resolveCommandInvocation(

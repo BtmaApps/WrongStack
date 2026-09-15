@@ -33,6 +33,7 @@ import {
   resolveCandidateOp,
   type SqliteCandidateHost,
 } from './sqlite-store-candidate-ops.js';
+import { reconcileAcceptedCandidates } from './sqlite-store-candidates.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
 import { recordSqliteInjection, recordSqliteUse } from './sqlite-store-counters.js';
@@ -79,6 +80,7 @@ import { getSqliteSageStats } from './sqlite-store-stats.js';
 import { updateSqliteSage } from './sqlite-store-update.js';
 import { upsertSqliteCandidate, upsertSqliteMemory } from './sqlite-store-upsert.js';
 import { verifySqliteSage } from './sqlite-store-verify.js';
+import { mergeLiveCounterFields } from './store-helpers.js';
 import type {
   CandidateDecision,
   CreateCandidateInput,
@@ -209,6 +211,22 @@ export class SqliteSageStore implements MemoryStore {
       syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
       migrateFromJsonl: () => this.migrateFromJsonl(),
     });
+    // H2 (docs/sage-phase4-design.md): reconcile candidates whose memoryId
+    // annotation was lost to a crash between rememberSage and the annotation
+    // write. Recovery failure is audited, never fatal — the store must open.
+    try {
+      await this.runMutation(() =>
+        reconcileAcceptedCandidates({
+          stmt: (sql) => this.stmt(sql),
+          nowIso: () => this.nowIso(),
+          audit: (event, data) => this.audit(event, data),
+        }),
+      );
+    } catch (error) {
+      this.audit('memory.candidate_accept_reconcile_failed', {
+        details: { error: error instanceof Error ? error.message : String(error) },
+      });
+    }
     this.initialized = true;
   }
 
@@ -397,7 +415,14 @@ export class SqliteSageStore implements MemoryStore {
   }
 
   private upsertMemory(m: Sage): void {
-    upsertSqliteMemory((sql) => this.stmt(sql), m);
+    // H6 (docs/sage-phase4-design.md): the counter chain json_set's advisory
+    // fields into `data` independently of this whole-column write, so an
+    // advisory bump that committed after the caller read the row must survive
+    // the replace.
+    const previous = this.stmt('SELECT data FROM memories WHERE id = ?').get(m.id) as
+      | { data: string }
+      | undefined;
+    upsertSqliteMemory((sql) => this.stmt(sql), mergeLiveCounterFields(previous?.data, m));
   }
 
   private upsertCandidate(candidate: MemoryCandidate, canonicalText?: string): void {

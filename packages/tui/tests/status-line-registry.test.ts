@@ -73,6 +73,15 @@ describe('partitionRailEntries', () => {
     expect(rails[2]!.entries.map((e) => e.id)).toEqual(['yolo']);
   });
 
+  it('applies a custom left-to-right order within each assigned line', () => {
+    const rails = partitionRailEntries(
+      [{ entries: [entry('project'), entry('git'), entry('model')], fallbackLine: 1 }],
+      {},
+      ['model', 'project', 'git'],
+    );
+    expect(rails[0]!.entries.map((e) => e.id)).toEqual(['model', 'project', 'git']);
+  });
+
   it('moves alias spans with their parent key', () => {
     const rails = partitionRailEntries(
       [

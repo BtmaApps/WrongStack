@@ -90,7 +90,7 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     project = undefined;
   });
 
-  it('opens the lane-model panel instead of adding the text fallback to chat', async () => {
+  it('opens interactive panels and applies statusline line keys through a real PTY', async () => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'wstack-subagent-models-home-'));
     project = fs.mkdtempSync(path.join(os.tmpdir(), 'wstack-subagent-models-project-'));
     execFileSync('git', ['init'], { cwd: project, stdio: 'ignore' });
@@ -173,6 +173,31 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     };
 
     await expectSoon('Enter send · @ file · / commands', 90_000);
+
+    const statuslineStart = output.length;
+    await type('/statusline');
+    child.write('\r');
+    await expectSoon('STATUS LINE', 15_000, statuslineStart);
+    await expectSoon('[1] 2 3 4', 15_000, statuslineStart);
+
+    const lineMoveStart = output.length;
+    child.write('3');
+    await expectSoon('1 2 [3] 4', 15_000, lineMoveStart);
+
+    const orderMoveStart = output.length;
+    child.write(`${ESC}[1;2B`);
+    await expectSoon('project → position 2 on line 3', 15_000, orderMoveStart);
+    await sleep(500);
+    const statuslineConfig = JSON.parse(
+      fs.readFileSync(path.join(home, '.wrongstack', 'profiles', 'default', 'statusline.json'), 'utf8'),
+    ) as { lines?: Record<string, number>; order?: string[] };
+    expect(statuslineConfig.lines?.['project']).toBe(3);
+    expect(statuslineConfig.order?.indexOf('project')).toBeGreaterThan(
+      statuslineConfig.order?.indexOf('yolo') ?? -1,
+    );
+    child.write(ESC);
+    await sleep(500);
+
     const commandStart = output.length;
     await type('/subagent-models');
     child.write('\r');

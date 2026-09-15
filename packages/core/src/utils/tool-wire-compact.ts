@@ -19,8 +19,16 @@ export interface CompactWireToolDefinition {
   inputSchema: Record<string, unknown>;
 }
 
-const TOOL_DESCRIPTION_MAX_CHARS = 400;
-const SCHEMA_DESCRIPTION_MAX_CHARS = 120;
+/**
+ * Wire budgets for description prose. They are a ceiling against runaway
+ * prose, not a trim target: every catalog description must fit, because
+ * text past the budget never reaches the model. At 400/120 the cut silently
+ * dropped ~14k characters of guidance across 60 tools (secret-handling and
+ * code-execution warnings, required value formats, enum semantics) — audit
+ * 2026-09-15. `tool-wire-budget.test.ts` keeps the catalog inside these.
+ */
+export const TOOL_DESCRIPTION_MAX_CHARS = 2048;
+export const SCHEMA_DESCRIPTION_MAX_CHARS = 768;
 
 const compactCache = new WeakMap<object, CompactWireToolDefinition>();
 

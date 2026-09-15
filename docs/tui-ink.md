@@ -452,8 +452,8 @@ Both `env` and `isTTY` are overridable for testability.
 
 | Profile | Activate With | Usage |
 |---------|--------------|-------|
-| `unicode` | default | Portable Unicode set — works on any modern terminal without special fonts |
-| `nerd` | `WRONGSTACK_TUI_ICON_STYLE=nerd` | Rich Nerd Font icons (requires Nerd Font installed) |
+| `unicode` | automatic fallback or `WRONGSTACK_TUI_ICON_STYLE=unicode` | Portable Unicode set — works on any modern terminal without special fonts |
+| `nerd` | automatic local detection or `WRONGSTACK_TUI_ICON_STYLE=nerd` | Rich Nerd Font icons (requires Nerd Font installed and selected in the terminal) |
 | `ascii` | `WRONGSTACK_TUI_ICON_STYLE=ascii` | Pure ASCII — CI captures, basic terminals |
 
 ### 6.2 42 Semantic Glyphs
@@ -799,7 +799,7 @@ Based on mailbox broadcast activity during this session:
 5. Add panel-local shortcut hints for panels that own keyboard input
 
 ### 20.2 Design Considerations
-- **No font installation**: WrongStack never silently installs or changes system fonts — Nerd Font is user's choice via `WRONGSTACK_TUI_ICON_STYLE=nerd`
+- **No font installation**: WrongStack never silently installs or changes system fonts; it detects an existing local Nerd Font and uses the Nerd profile automatically. SSH cannot expose the client font, so remote sessions require an explicit `WRONGSTACK_TUI_ICON_STYLE=nerd` override.
 - **Alternate screen**: The TUI owns a full alternate buffer, so terminal-native scrollback is unavailable while it is visible; the normal shell screen is restored on exit
 - **Performance**: `React.memo` on history/input prevents keystroke churn; display retention is capped at 400 entries / 1 MiB; height-cache windowing, markdown LRU caching, and `fleetBatch` coalescing bound hot paths
 - **Ghost artifacts**: Resize handler erases from cursor to end-of-screen to prevent reflow ghosts

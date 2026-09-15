@@ -157,8 +157,9 @@ describe('StatusBar 4-rail chip composition', () => {
     const { idsByLine } = await capture(90);
 
     const identity = idsByLine.get(0) ?? [];
-    // Shorten-before-drop: at 90 the identity rail concedes detail, not chips.
-    for (const id of ['project', 'working_dir', 'git', 'model', 'tools']) {
+    // Shorten-before-drop keeps the core identity; optional static tail trivia
+    // may be dropped to pay for the visible segment padding at this width.
+    for (const id of ['project', 'working_dir', 'git', 'model']) {
       expect(identity).toContain(id);
     }
 

@@ -780,8 +780,13 @@ const plugin: Plugin = {
               commitScope = await stageFiles(files);
             } catch (err: unknown) {
               /* v8 ignore next -- stageFiles only throws Error; the String(err) branch is defensive. */
+              const detail = err instanceof Error ? err.message : String(err);
+              // stageFiles already phrases its own refusals this way; wrapping
+              // them again printed "Failed to stage files: Failed to stage files: …".
               throw new Error(
-                `Failed to stage files: ${err instanceof Error ? err.message : String(err)}`,
+                detail.startsWith('Failed to stage files')
+                  ? detail
+                  : `Failed to stage files: ${detail}`,
                 { cause: err },
               );
             }

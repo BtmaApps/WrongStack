@@ -1,7 +1,7 @@
 import * as dns from 'node:dns/promises';
 import * as net from 'node:net';
-import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
 import { FetchError, ToolValidationError } from '@wrongstack/core/types';
+import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 /**
@@ -150,15 +150,18 @@ export async function guardedFetch(
     // Re-validate every hop. A public host can 302 to 169.254.169.254 (cloud metadata),
     // or DNS can rebind between hops; checking only the initial URL is insufficient.
     const parsed = new URL(currentUrl);
+    // Hop 0 is the caller's own URL; calling it a "redirect" sent callers such
+    // as read_url_content looking for a redirect that never happened.
+    const target = redirectCount === 0 ? '' : 'redirect to ';
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       throw new ToolValidationError({
-        message: `fetch: redirect to unsupported protocol "${parsed.protocol}"`,
+        message: `fetch: ${target}unsupported protocol "${parsed.protocol}"`,
         field: 'url',
       });
     }
     if (parsed.protocol === 'http:' && !ALLOW_PRIVATE) {
       throw new ToolValidationError({
-        message: 'fetch: redirect to http:// blocked (HTTPS required by default)',
+        message: `fetch: ${target}http:// blocked (HTTPS required by default)`,
         field: 'url',
       });
     }

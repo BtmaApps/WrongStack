@@ -78,7 +78,7 @@ interface DeadCodeDetectorConfig {
 }
 
 const DEFAULTS: DeadCodeDetectorConfig = {
-  enabled: false,
+  enabled: true,
   extensions: ['.ts', '.tsx', '.js', '.jsx'],
   defaultDepth: 3,
   maxDepth: 10,
@@ -329,7 +329,7 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description: 'Master switch.',
       },
       extensions: {

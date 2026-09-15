@@ -15,7 +15,11 @@ import {
   normalizeYoloConfirmKinds,
   resolveYoloConfirmKinds,
 } from '@wrongstack/core/security';
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 import {
   AgentError,
   type Config,
@@ -32,6 +36,7 @@ import type { TerminalRenderer } from '../renderer.js';
 import {
   loadStatuslineDensities,
   loadStatuslineLines,
+  loadStatuslineOrder,
   saveStatuslineLayout as persistStatuslineLayout,
 } from '../services/statusline-config.js';
 import { patchConfig } from '../utils.js';
@@ -177,6 +182,15 @@ export async function setupCommandHostState(input: CommandHostStateInput) {
     currentDensities = { ...next };
     await persistStatuslineLayout({ densities: next });
   };
+  const statuslineOrder = await loadStatuslineOrder();
+  let currentOrder: StatuslineOrder = [...statuslineOrder];
+  const setStatuslineOrder = (next: StatuslineOrder) => {
+    currentOrder = [...next];
+  };
+  const saveStatuslineOrder = async (next: StatuslineOrder) => {
+    currentOrder = [...next];
+    await persistStatuslineLayout({ order: next });
+  };
   const agentsMonitorController = createAgentsMonitorController();
   const onPanelOpen: { current: ((action: string) => boolean) | null } = { current: null };
   const goalHost = createGoalHost({
@@ -272,6 +286,10 @@ export async function setupCommandHostState(input: CommandHostStateInput) {
     getCurrentStatuslineDensities: () => currentDensities,
     setStatuslineDensities,
     saveStatuslineDensities,
+    statuslineOrder: [...statuslineOrder],
+    getCurrentStatuslineOrder: () => currentOrder,
+    setStatuslineOrder,
+    saveStatuslineOrder,
     agentsMonitorController,
     onPanelOpen,
     goalHost,

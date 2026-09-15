@@ -1,10 +1,23 @@
+import { promises as fsp } from 'node:fs';
 import { ToolCapabilities } from '../security/capabilities.js';
 import { ToolValidationError } from '../types/errors.js';
 import type { Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
+import { expandGlob } from '../utils/glob-expand.js';
 import type { CollabSessionOptions } from './collab-debug.js';
 import type * as Host from './director-host-contracts.js';
 import { validateFleetEventEmission } from './fleet-event-validation.js';
+
+/** True when at least one target path (after glob expansion) is a readable file. */
+async function anyReadableTarget(targetPaths: readonly string[]): Promise<boolean> {
+  for (const pattern of targetPaths) {
+    for (const file of await expandGlob(pattern)) {
+      const stat = await fsp.stat(file).catch(() => undefined);
+      if (stat?.isFile()) return true;
+    }
+  }
+  return false;
+}
 
 export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
   return {
@@ -60,6 +73,14 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
       if (!i.targetPaths?.length) {
         throw new ToolValidationError({
           message: 'collab_debug: targetPaths is required and must be non-empty.',
+          field: 'targetPaths',
+        });
+      }
+      // Unreadable targets enter the snapshot as empty files, so a session
+      // over nothing but missing paths reported `approve` with zero bugs.
+      if (!(await anyReadableTarget(i.targetPaths))) {
+        throw new ToolValidationError({
+          message: `collab_debug: no readable file matches targetPaths (${i.targetPaths.join(', ')}).`,
           field: 'targetPaths',
         });
       }

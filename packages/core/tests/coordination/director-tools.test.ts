@@ -731,7 +731,9 @@ describe('collab_debug tool', () => {
 
   it('runs a collaborative debug session', async () => {
     const res = await makeCollabDebugTool(asDir()).execute(
-      { targetPaths: ['src/a.ts'], timeoutMs: 1000 },
+      // collab_debug refuses targets with no readable file; vitest runs with
+      // a package or repo root as cwd, both of which carry package.json.
+      { targetPaths: ['package.json'], timeoutMs: 1000 },
       {} as never,
       {} as never,
     );
@@ -743,7 +745,11 @@ describe('collab_debug tool', () => {
       new Error('collab boom'),
     );
     await expect(
-      makeCollabDebugTool(asDir()).execute({ targetPaths: ['x'] }, {} as never, {} as never),
+      makeCollabDebugTool(asDir()).execute(
+        { targetPaths: ['package.json'] },
+        {} as never,
+        {} as never,
+      ),
     ).rejects.toThrow(/collab_debug failed: collab boom/);
   });
 });

@@ -178,6 +178,23 @@ export class BrowserSessionManager {
         timeout: this.operationTimeoutMs,
       }),
     );
+    // Only the requested URL is checked above. A redirect to a blocked
+    // address is refused by the network proxy with a 403 page, so `goto`
+    // still resolved and the tool reported success with the blocked
+    // address as the session URL.
+    const landed = session.page.url();
+    try {
+      await assertBrowserUrlAllowed(landed, {
+        allowPrivateHosts: this.allowPrivateHosts,
+        allowedPrivateOrigins: this.allowedPrivateOrigins,
+        navigation: true,
+      });
+    } catch {
+      await this.runPageOperation(session, signal, () => session.page.goto('about:blank'));
+      throw new Error(
+        `browser: navigation was redirected to a blocked address (${safeBrowserUrl(landed)})`,
+      );
+    }
     return this.summary(session);
   }
 
@@ -348,8 +365,14 @@ export class BrowserSessionManager {
     signal: AbortSignal,
   ): Promise<unknown> {
     const session = this.requireOwned(id, ownerId);
+    // page.evaluate has no timeout of its own: an expression that never
+    // settles held the call until the host's iteration timeout.
     const result = await this.runPageOperation(session, signal, () =>
-      session.page.evaluate(expression),
+      settleWithin(
+        session.page.evaluate(expression),
+        this.operationTimeoutMs,
+        `browser: evaluation did not settle within ${this.operationTimeoutMs}ms`,
+      ),
     );
     const serialized = JSON.stringify(result);
     if (serialized && serialized.length > this.maxSnapshotChars) {
@@ -493,6 +516,8 @@ export class BrowserSessionManager {
       await session.context.close().catch(() => undefined);
       this.sessions.delete(session.id);
       await this.closeBrowserIfIdle();
+    }).catch((err: unknown) => {
+      throw withoutAnsi(err);
     });
   }
 
@@ -532,6 +557,31 @@ export async function browserInstallationDiagnostics(): Promise<{
       message: 'Playwright Chromium is unavailable. Run "pnpm exec playwright install chromium".',
     };
   }
+}
+
+/** Reject with `message` when `promise` has not settled within `ms`. */
+function settleWithin<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  // The abandoned evaluation settles (or rejects on page close) later.
+  promise.catch(() => undefined);
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+const ESC = String.fromCharCode(27);
+const ANSI_SGR = new RegExp(`${ESC}\\[[0-9;]*m`, 'gu');
+
+/**
+ * Playwright call logs carry terminal colour codes; they reached the model
+ * and the UI as raw `ESC[2m` noise. Keeps the error's name and cause.
+ */
+function withoutAnsi(err: unknown): unknown {
+  if (!(err instanceof Error) || !err.message.includes(`${ESC}[`)) return err;
+  const clean = new Error(err.message.replace(ANSI_SGR, ''), { cause: err });
+  clean.name = err.name;
+  return clean;
 }
 
 function pushBounded<T>(target: T[], value: T, limit: number): void {

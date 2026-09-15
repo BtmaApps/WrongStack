@@ -110,6 +110,7 @@ export function AppStatusRegion({
     hiddenItems,
     lines,
     densities,
+    order,
     sessionCount,
     memoryContextMonitor,
     memoryRecordTotal,
@@ -201,6 +202,7 @@ export function AppStatusRegion({
           hiddenItems={mergeComposerOwnedChips(hiddenItems)}
           statuslineLines={lines}
           statuslineDensities={densities}
+          statuslineOrder={order}
           mode={liveStatuslineMode}
           visibleChips={state.statuslinePicker.visibleChips}
           events={events}

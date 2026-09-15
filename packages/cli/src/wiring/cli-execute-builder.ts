@@ -96,6 +96,9 @@ export async function runCliExecution(params: {
   statuslineDensities?: RC['statuslineDensities'];
   setStatuslineDensities?: NonNullable<RC['setStatuslineDensities']>;
   saveStatuslineDensities?: NonNullable<RC['saveStatuslineDensities']>;
+  statuslineOrder?: RC['statuslineOrder'];
+  setStatuslineOrder?: NonNullable<RC['setStatuslineOrder']>;
+  saveStatuslineOrder?: NonNullable<RC['saveStatuslineOrder']>;
   setYoloMode: NonNullable<RC['getYolo']>;
   autonomyMode: ReturnType<RC['getAutonomy']>;
   setAutonomyMode: NonNullable<RC['setAutonomy']>;
@@ -193,6 +196,9 @@ export async function runCliExecution(params: {
     statuslineDensities,
     setStatuslineDensities,
     saveStatuslineDensities,
+    statuslineOrder,
+    setStatuslineOrder,
+    saveStatuslineOrder,
     setYoloMode,
     autonomyMode,
     setAutonomyMode,
@@ -348,6 +354,9 @@ export async function runCliExecution(params: {
         statuslineDensities,
         setStatuslineDensities,
         saveStatuslineDensities,
+        statuslineOrder,
+        setStatuslineOrder,
+        saveStatuslineOrder,
         getYolo: setYoloMode,
         onYolo: setYoloMode,
         getAutonomy: () => autonomyMode,

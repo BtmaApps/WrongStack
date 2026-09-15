@@ -421,3 +421,98 @@ export async function resolveSqliteCandidate(
     applied,
   };
 }
+
+// ─── H2 accepted-candidate reconciliation (docs/sage-phase4-design.md) ──
+
+export interface SqliteReconcileContext {
+  stmt: (sql: string) => ReturnType<DatabaseSync['prepare']>;
+  nowIso: () => string;
+  audit: (event: string, data?: Record<string, unknown>) => void;
+}
+
+export interface CandidateReconciliationResult {
+  /** Candidates re-linked to the active memory the crashed accept wrote. */
+  relinked: number;
+  /** Candidates released back to `pending` (no matching active memory). */
+  released: number;
+  /** Candidates inside the grace window — left for the next sweep. */
+  skipped: number;
+}
+
+/** Skip candidates accepted more recently than this. */
+export const RECONCILE_GRACE_MS = 60_000;
+
+/**
+ * Reconcile candidates the accept flow left `accepted` without a `memoryId`.
+ *
+ * `acceptSqliteCandidate` writes the claim and the target memory in separate
+ * transactions (the target write goes through `rememberSage`'s secret guard,
+ * canonical dedupe, and FTS sync). A hard crash between the two leaves the
+ * candidate `accepted` with no `memoryId`, and the claim CAS makes re-accept a
+ * no-op — the memory exists but nothing links it. This sweep closes that
+ * window: it re-links the candidate to the ACTIVE memory with the same
+ * canonical text, or — when no such memory exists — releases it back to
+ * `pending` so it becomes reviewable again. Never deletes anything.
+ *
+ * Runs once per store initialize (after schema init). Candidates accepted
+ * within `graceMs` of now are skipped so a live accept in a concurrent
+ * store opener is not preempted mid-write.
+ */
+export function reconcileAcceptedCandidates(
+  ctx: SqliteReconcileContext,
+  graceMs = RECONCILE_GRACE_MS,
+): CandidateReconciliationResult {
+  const nowMs = Date.parse(ctx.nowIso());
+  const result: CandidateReconciliationResult = { relinked: 0, released: 0, skipped: 0 };
+  const rows = ctx
+    .stmt("SELECT data, canonical_text FROM candidates WHERE status = 'accepted'")
+    .all() as Array<{ data: string; canonical_text: string | null }>;
+  for (const row of rows) {
+    let candidate: MemoryCandidate;
+    try {
+      candidate = sqliteRowToCandidate(row);
+    } catch {
+      continue; // Skip corrupt rows, like every other candidate scan.
+    }
+    if (candidate.memoryId) continue; // Fully annotated — nothing to reconcile.
+    const acceptedAtMs = Date.parse(candidate.updatedAt);
+    if (!Number.isFinite(acceptedAtMs) || nowMs - acceptedAtMs < graceMs) {
+      result.skipped++;
+      continue;
+    }
+    // Match on the same normalizeTextKey canonical key every writer uses:
+    // the remember dedupe binds it (sqlite-store-remember), the upsert
+    // column stores it (sqlite-store-upsert), and the initialize backfill
+    // (sqlite-store-initialize) repopulates it — any other expression
+    // would miss the memory the crashed accept actually wrote.
+    const memory = ctx
+      .stmt(
+        `SELECT id FROM memories WHERE canonical_text = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
+      )
+      .get(normalizeTextKey(candidate.text)) as { id: string } | undefined;
+    const stamp = ctx.nowIso();
+    if (memory) {
+      const annotated: MemoryCandidate = { ...candidate, memoryId: memory.id, updatedAt: stamp };
+      ctx
+        .stmt("UPDATE candidates SET data = ?, updated_at = ? WHERE id = ? AND status = 'accepted'")
+        .run(JSON.stringify(annotated), stamp, candidate.id);
+      result.relinked++;
+      ctx.audit('memory.candidate_accept_reconciled', {
+        memoryId: memory.id,
+        details: { candidateId: candidate.id, outcome: 'relinked' },
+      });
+      continue;
+    }
+    const released: MemoryCandidate = { ...candidate, status: 'pending', updatedAt: stamp };
+    ctx
+      .stmt(
+        "UPDATE candidates SET data = ?, status = 'pending', updated_at = ? WHERE id = ? AND status = 'accepted'",
+      )
+      .run(JSON.stringify(released), stamp, candidate.id);
+    result.released++;
+    ctx.audit('memory.candidate_accept_reconciled', {
+      details: { candidateId: candidate.id, outcome: 'released' },
+    });
+  }
+  return result;
+}

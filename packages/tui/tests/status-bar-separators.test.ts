@@ -305,6 +305,19 @@ describe('StatusBar chip separators', () => {
     view.unmount();
   });
 
+  it('renders a customized left-to-right chip order', () => {
+    const frame = frameOf({
+      provider: 'openai',
+      model: 'gpt-5.6',
+      projectName: 'WrongStack',
+      git: { branch: 'main', added: 0, deleted: 0, untracked: 0 },
+      statuslineOrder: ['model', 'project', 'git'],
+    });
+    const identity = frame.split('\n')[0] ?? '';
+    expect(identity.indexOf('openai/gpt-5.6')).toBeLessThan(identity.indexOf('WrongStack'));
+    expect(identity.indexOf('WrongStack')).toBeLessThan(identity.indexOf('main'));
+  });
+
   it('splits identity, vitals and posture across their own rails', () => {
     // Lines are grouped by volatility: project on identity (1), the run
     // state on vitals (2), the autonomy posture on safety & work (3).
@@ -317,7 +330,7 @@ describe('StatusBar chip separators', () => {
     expect(frame).toContain('∞ AUTO');
     expect(frame).toContain('▣ proj');
     const [line1 = '', line2 = '', line3 = ''] = frame.split('\n');
-    expect(line1).toMatch(/^ ▣ proj.*anthropic\/claude/);
+    expect(line1).toMatch(/^ ◖ ▣ proj.*anthropic\/claude/);
     expect(line2).toContain('● idle');
     expect(line2).not.toContain('AUTO');
     expect(line3).toContain('∞ AUTO');
@@ -346,8 +359,8 @@ describe('StatusBar chip separators', () => {
     // line. Find the line that contains todos.
     const line = frame.split('\n').find((l) => l.includes('todos')) ?? '';
     expect(line).toContain('todos');
-    // On line 3, todos is the first chip, so there is no transition before it.
-    expect(line).toMatch(/^ todos/);
+    // On line 3, todos is the first chip, immediately after the start cap.
+    expect(line).toMatch(/^ ◖ todos/);
   });
 
   it('renders the run-state band in order: state, YOLO, autonomy', () => {
@@ -452,11 +465,7 @@ describe('StatusBar chip separators', () => {
     expect(frame).toContain('✉ 0');
   });
 
-  it('right-anchors the index chip so its column stays put while the rail grows', () => {
-    // Regression check for the statusline jitter that moved the index chip
-    // every heartbeat as the vitals beside it updated. The chip anchors to
-    // the rail's right edge, so its trailing column must be identical
-    // regardless of how wide the left-hand chips get.
+  it('keeps the index chip connected as the final segment while the rail grows', () => {
     const indexState = {
       ready: true,
       indexing: false,
@@ -485,7 +494,7 @@ describe('StatusBar chip separators', () => {
     };
 
     expect(endColumn(vitalsLineOf(narrow), 'index connected #4242')).toBeGreaterThan(0);
-    expect(endColumn(vitalsLineOf(wide), 'index connected #4242')).toBe(
+    expect(endColumn(vitalsLineOf(wide), 'index connected #4242')).toBeGreaterThan(
       endColumn(vitalsLineOf(narrow), 'index connected #4242'),
     );
   });

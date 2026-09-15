@@ -113,7 +113,12 @@ export async function expandGlob(pattern: string): Promise<string[]> {
   const baseNorm = base.replace(/\\/g, '/');
   const relPat =
     base === '.'
-      ? normalized
+      ? // A leading `./` is shell noise, not a directory segment: walk() matches
+        // literal segments against readdir entries and readdir never yields `.`,
+        // so the prefix must not reach the segment matcher — `./*.ts` must
+        // expand exactly like `*.ts`. `.\` forms arrive here already
+        // slash-normalized.
+        normalized.replace(/^(?:\.\/)+/u, '')
       : normalized.slice(baseNorm.length + (baseNorm.endsWith('/') ? 0 : 1));
 
   async function walk(dir: string, pat: string): Promise<void> {

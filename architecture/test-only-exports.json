@@ -638,7 +638,9 @@
     ],
     "packages/core/src/utils/tool-wire-compact.ts": [
       "compactDescription",
-      "findSemanticBoundary"
+      "findSemanticBoundary",
+      "SCHEMA_DESCRIPTION_MAX_CHARS",
+      "TOOL_DESCRIPTION_MAX_CHARS"
     ],
     "packages/core/src/utils/wstack-paths.ts": [
       "bootstrapProfileName"
@@ -984,6 +986,9 @@
     ],
     "packages/sage/src/project-server-endpoint.ts": [
       "SAGE_PROJECT_SERVER_METADATA_FILE"
+    ],
+    "packages/sage/src/project-server-protocol.ts": [
+      "SAGE_DISPATCH_FIELD_SPECS"
     ],
     "packages/sage/src/retrieval/format.ts": [
       "memoryFormatCoverage"
@@ -1386,6 +1391,7 @@
     "packages/tui/src/components/statusline-picker.tsx": [
       "getExpiresInLabel",
       "ITEM_LINE",
+      "lineSelectorText",
       "STREAM_CHIP_EXPIRES_IN_MINUTES"
     ],
     "packages/tui/src/components/worktree-monitor.tsx": [
@@ -1539,7 +1545,8 @@
       "resetTuiMemoryCounters"
     ],
     "packages/tui/src/ui-glyphs.ts": [
-      "glyphSet"
+      "glyphSet",
+      "hasInstalledNerdFont"
     ],
     "packages/tui/src/workbench-slash.ts": [
       "renderWorkbenchReport"

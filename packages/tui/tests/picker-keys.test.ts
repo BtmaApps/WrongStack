@@ -1880,6 +1880,99 @@ describe('usePickerKeys — statusline picker', () => {
     runPickerKey(host, '', key({ escape: true }), false);
     expect(host.dispatch).toHaveBeenCalledWith({ type: 'statuslineClose' });
   });
+
+  it('assigns the focused chip directly with the 1-4 line keys', () => {
+    const host = makeHost(
+      baseState({
+        statuslinePicker: { open: true, field: 0, hiddenItems: [], visibleChips: [] },
+      }),
+    );
+
+    for (const line of [1, 2, 3, 4] as const) {
+      host.dispatch.mockClear();
+      runPickerKey(host, String(line), key(), false);
+      expect(host.dispatch).toHaveBeenCalledWith({
+        type: 'statuslineSetLine',
+        item: 'project',
+        line,
+      });
+    }
+  });
+
+  it('moves the focused chip order with Shift+Up/Down', () => {
+    const host = makeHost(
+      baseState({
+        statuslinePicker: {
+          open: true,
+          field: 1,
+          hiddenItems: [],
+          visibleChips: [],
+          order: [],
+        },
+      }),
+    );
+
+    runPickerKey(host, '', key({ shift: true, upArrow: true }), false);
+    expect(host.dispatch).toHaveBeenCalledWith({
+      type: 'statuslineMoveOrder',
+      item: 'working_dir',
+      delta: -1,
+    });
+  });
+
+  it('moves the focused chip earlier/later with terminal-safe bracket keys', () => {
+    const host = makeHost(
+      baseState({
+        statuslinePicker: {
+          open: true,
+          field: 1,
+          hiddenItems: [],
+          visibleChips: [],
+          order: [],
+        },
+      }),
+    );
+
+    runPickerKey(host, '[', key(), false);
+    expect(host.dispatch).toHaveBeenLastCalledWith({
+      type: 'statuslineMoveOrder',
+      item: 'working_dir',
+      delta: -1,
+    });
+    runPickerKey(host, ']', key(), false);
+    expect(host.dispatch).toHaveBeenLastCalledWith({
+      type: 'statuslineMoveOrder',
+      item: 'working_dir',
+      delta: 1,
+    });
+  });
+
+  it('moves the focused chip with the primary o/O order shortcut', () => {
+    const host = makeHost(
+      baseState({
+        statuslinePicker: {
+          open: true,
+          field: 1,
+          hiddenItems: [],
+          visibleChips: [],
+          order: [],
+        },
+      }),
+    );
+
+    runPickerKey(host, 'o', key(), false);
+    expect(host.dispatch).toHaveBeenLastCalledWith({
+      type: 'statuslineMoveOrder',
+      item: 'working_dir',
+      delta: 1,
+    });
+    runPickerKey(host, 'O', key({ shift: true }), false);
+    expect(host.dispatch).toHaveBeenLastCalledWith({
+      type: 'statuslineMoveOrder',
+      item: 'working_dir',
+      delta: -1,
+    });
+  });
 });
 
 describe('usePickerKeys — project picker', () => {

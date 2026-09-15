@@ -3,6 +3,7 @@ import {
   effectiveDensity,
   effectiveLine,
   LINE_TITLES,
+  resolveStatuslineOrder,
   STATUSLINE_ITEMS,
 } from '@wrongstack/core/statusline';
 import type { Action } from '../app-action-type.js';
@@ -24,6 +25,7 @@ const panelPickerActionTypes = [
   'statuslineToggle',
   'statuslineSetLine',
   'statuslineMoveLine',
+  'statuslineMoveOrder',
   'statuslineSetDensity',
   'statuslineToggleLine',
   'statuslineResetLayout',
@@ -100,9 +102,10 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
           visibleChips: state.statuslinePicker.visibleChips,
           lines: action.lines ?? state.statuslinePicker.lines,
           densities: action.densities ?? state.statuslinePicker.densities,
+          order: action.order ?? state.statuslinePicker.order,
           filter: '',
           filtering: false,
-          layoutSeeded: action.lines != null || action.densities != null,
+          layoutSeeded: action.lines != null || action.densities != null || action.order != null,
           hint: undefined,
         },
       };
@@ -115,7 +118,7 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       // Navigation walks the FILTERED fields so `/cost` + ↓ doesn't stall on
       // rows the picker isn't drawing. With no filter this is the plain
       // wrap-around over STATUSLINE_ITEMS the mouse hit-test assumes.
-      const fields = navigableFields(state.statuslinePicker.filter);
+      const fields = navigableFields(state.statuslinePicker.filter, state.statuslinePicker.order);
       const at = fields.indexOf(state.statuslinePicker.field);
       const from = at >= 0 ? at : 0;
       const next = fields[(from + action.delta + fields.length) % fields.length]!;
@@ -172,6 +175,28 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
         },
       };
     }
+    case 'statuslineMoveOrder': {
+      const cur = state.statuslinePicker;
+      const resolved = resolveStatuslineOrder(cur.order);
+      const line = effectiveLine(action.item, cur.lines);
+      const siblings = resolved.filter((item) => effectiveLine(item, cur.lines) === line);
+      const at = siblings.indexOf(action.item);
+      const target = Math.min(siblings.length - 1, Math.max(0, at + action.delta));
+      if (at < 0 || target === at) return state;
+      const other = siblings[target]!;
+      const itemIndex = resolved.indexOf(action.item);
+      const otherIndex = resolved.indexOf(other);
+      [resolved[itemIndex], resolved[otherIndex]] = [resolved[otherIndex]!, resolved[itemIndex]!];
+      return {
+        ...state,
+        statuslinePicker: {
+          ...cur,
+          order: resolved,
+          layoutSeeded: true,
+          hint: `${action.item} → position ${target + 1} on line ${line}`,
+        },
+      };
+    }
     case 'statuslineSetDensity': {
       const cur = state.statuslinePicker;
       const current = effectiveDensity(action.item, cur.densities);
@@ -218,8 +243,9 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
           ...state.statuslinePicker,
           lines: {},
           densities: {},
+          order: [],
           layoutSeeded: true,
-          hint: 'layout reset — default lines and densities restored',
+          hint: 'layout reset — default lines, order and densities restored',
         },
       };
     case 'statuslineFilter': {

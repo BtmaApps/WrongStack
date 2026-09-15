@@ -108,7 +108,7 @@ interface RefactorSuggesterConfig {
 }
 
 const DEFAULTS: RefactorSuggesterConfig = {
-  enabled: false,
+  enabled: true,
   extensions: ['.ts', '.tsx', '.js', '.jsx'],
   maxSuggestions: 5,
   rules: { longFunctionLines: 50, maxParams: 5, maxNesting: 3 },
@@ -360,7 +360,7 @@ const plugin: Plugin = {
   configSchema: {
     type: 'object',
     properties: {
-      enabled: { type: 'boolean', default: false, description: 'Master switch.' },
+      enabled: { type: 'boolean', default: true, description: 'Master switch.' },
       extensions: {
         type: 'array',
         items: { type: 'string' },

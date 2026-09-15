@@ -123,15 +123,14 @@ describe('nodeText', () => {
 });
 
 describe('StatusBar overflow handling (width-budget)', () => {
-  it('keeps one unpainted column inset on both sides', async () => {
+  it('keeps the left inset and lets the connected rail end at its content', async () => {
     const lines = await frameAt(100, {
       projectName: 'WrongStack',
       version: '1.0.5',
     });
     expect(lines[0]).toMatch(/^ /);
-    // Ink omits trailing blank cells from the frame string. A 99-column row
-    // therefore proves the rightmost content ends one cell before col 100.
-    expect(displayWidth(lines[0] ?? '')).toBe(99);
+    expect(lines[0]).toMatch(/◗$/);
+    expect(displayWidth(lines[0] ?? '')).toBeLessThan(99);
   });
 
   it('publishes click spans and fit budget inside the one-cell inset', async () => {

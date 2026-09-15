@@ -1,12 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  type ChipMeta,
+  getExpiresInLabel,
+  isChipExpired,
+  lineSelectorText,
   STATUSLINE_ITEMS,
   StatuslinePicker,
-  isChipExpired,
-  getExpiresInLabel,
-  type ChipMeta,
 } from '../src/components/statusline-picker.js';
 
 // Simple ChipMeta factory — only fields needed by isChipExpired / getExpiresInLabel
@@ -110,6 +111,11 @@ describe('getExpiresInLabel', () => {
 });
 
 describe('StatuslinePicker render', () => {
+  it('renders a fixed-width 1-4 selector with the active line bracketed', () => {
+    expect(lineSelectorText(1)).toBe('[1] 2 3 4');
+    expect(lineSelectorText(3)).toBe('1 2 [3] 4');
+  });
+
   it('shows idle stream chips as auto, not off', () => {
     const { lastFrame, unmount } = render(
       React.createElement(StatuslinePicker, {
@@ -190,8 +196,7 @@ describe('StatuslinePicker render', () => {
       }),
     );
     const frame = lastFrame() ?? '';
-    // The moved marker (L3*) tells the user this line is theirs, not the default.
-    expect(frame).toContain('L3*');
+    expect(frame).toContain('1 2 [3] 4');
     unmount();
   });
 

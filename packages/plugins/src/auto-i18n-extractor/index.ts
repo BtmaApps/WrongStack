@@ -76,7 +76,7 @@ interface AutoI18nConfig {
 }
 
 const DEFAULTS: AutoI18nConfig = {
-  enabled: false,
+  enabled: true,
   fileExtensions: ['.tsx', '.jsx', '.vue'],
   minLength: 2,
   maxContextStrings: 10,

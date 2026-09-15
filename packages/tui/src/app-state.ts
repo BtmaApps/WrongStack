@@ -1,4 +1,8 @@
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 // State, Action, and supporting types extracted from app-reducer.ts.
 // This file has NO React or Ink dependencies — pure type definitions.
 import type {
@@ -489,6 +493,8 @@ export type State = {
     lines: StatuslineLines;
     /** Per-chip density pin being edited. */
     densities: StatuslineDensities;
+    /** Custom left-to-right chip order being edited. */
+    order: StatuslineOrder;
     /** Text filter over chip names/descriptions. */
     filter: string;
     /** True while `/` is capturing filter keystrokes. */

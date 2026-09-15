@@ -522,6 +522,10 @@ const plugin: Plugin = {
       },
       permission: 'auto',
       mutating: true,
+      // It rewrites project source files, so it declares the same capability
+      // as the built-in writers: the agent-state write gate and capability
+      // allowlists key on `fs.write`, not on `mutating`.
+      capabilities: ['fs.write'],
       category: 'Project',
       async execute(input: Record<string, unknown>) {
         // Bump the per-session counter on every invocation — before the

@@ -3,6 +3,8 @@ import { isValidElement } from 'react';
 import { Text } from '../ink.js';
 import { displayWidth } from '../terminal-width.js';
 import { theme } from '../theme.js';
+import { mixHexColors } from '../theme-utils.js';
+import { glyphs } from '../ui-glyphs.js';
 
 export function visibleNodeText(node: React.ReactNode): string {
   if (node == null || typeof node === 'boolean') return '';
@@ -38,8 +40,16 @@ export function visibleNodeText(node: React.ReactNode): string {
   return '';
 }
 
-/** Columns between two adjacent chips on a rail. */
-export const RAIL_SEP_COST = 2;
+/**
+ * Columns between adjacent chip payloads: one transition glyph plus one
+ * padding cell on each side of the incoming payload.
+ */
+export const RAIL_SEP_COST = 3;
+
+/** Start cap + left/right payload padding owned by the first chip. */
+const RAIL_FIRST_CHROME_COST = 3;
+/** End cap after the final chip (and optional omission marker). */
+const RAIL_END_CAP_COST = 1;
 
 export interface RailSpanEntry {
   /** Stable identifier used by the mouse hit-test ('model', 'todos', …). */
@@ -78,9 +88,9 @@ export interface RailLayout {
   items: RailLayoutItem[];
   /** Ids the fitter had to drop entirely (rendered as the `+N` marker). */
   droppedIds: string[];
-  /** Whether the right-anchored chip fits and will be drawn. */
+  /** Whether the reserved priority-tail chip fits and will be drawn. */
   rightVisible: boolean;
-  /** Filler columns between the last left chip and the right anchor. */
+  /** Reserved for layout consumers; connected tails use no filler gap. */
   gap: number;
   /** Columns the rail actually consumes (left chips + separators + anchor). */
   used: number;
@@ -141,11 +151,16 @@ export function layoutRail(
   const leftWidth = (): number => {
     let total = 0;
     for (let i = 0; i < keep; i++) total += chips[i]!.widths[chips[i]!.level]!;
-    return total + Math.max(0, keep - 1) * RAIL_SEP_COST;
+    if (keep === 0) return 0;
+    return (
+      total + RAIL_FIRST_CHROME_COST + Math.max(0, keep - 1) * RAIL_SEP_COST + RAIL_END_CAP_COST
+    );
   };
   const total = (): number => {
     const dropped = chips.length - keep;
-    const anchor = rightVisible ? (keep > 0 ? RAIL_SEP_COST : 0) + rightWidth : 0;
+    const anchor = rightVisible
+      ? rightWidth + RAIL_SEP_COST + (keep === 0 ? RAIL_END_CAP_COST : 0)
+      : 0;
     return leftWidth() + anchor + markerWidth(dropped);
   };
 
@@ -185,20 +200,20 @@ export function layoutRail(
   let col = 0;
   for (let i = 0; i < keep; i++) {
     const chip = chips[i]!;
-    if (i > 0) col += RAIL_SEP_COST;
+    const chrome = i === 0 ? RAIL_FIRST_CHROME_COST : RAIL_SEP_COST;
     items.push({
       id: chip.id,
       start: col,
-      len: chip.widths[chip.level]!,
+      len: chrome + chip.widths[chip.level]!,
       level: chip.level,
       node: chip.nodes[chip.level]!,
     });
-    col += chip.widths[chip.level]!;
+    col += chrome + chip.widths[chip.level]!;
   }
 
   const droppedIds = chips.slice(keep).map((chip) => chip.id);
   const used = total();
-  const gap = rightVisible ? Math.max(0, budget - used) : 0;
+  const gap = 0;
   return { items, droppedIds, rightVisible, gap, used };
 }
 
@@ -207,12 +222,12 @@ interface PowerlineRailProps {
   segments: Array<React.ReactElement | RailSpanEntry>;
   budget: number;
   /**
-   * Optional right-anchored segment. When provided, the rail reserves
-   * space for this segment at the right edge of the budget so its
-   * position is independent of how wide the left segments are —
-   * preventing visual jitter when the left side updates frequently.
+   * Optional priority-tail segment. The fitter reserves it before dropping
+   * ordinary chips, then the renderer joins it to the same connected rail.
    */
   rightAnchor?: React.ReactElement | null | undefined;
+  /** Keep the segmented silhouette but emit no foreground/background colors. */
+  monochrome?: boolean | undefined;
 }
 
 function toEntries(segments: PowerlineRailProps['segments']): RailSpanEntry[] {
@@ -221,41 +236,104 @@ function toEntries(segments: PowerlineRailProps['segments']): RailSpanEntry[] {
   );
 }
 
+function segmentBackground(index: number): string {
+  const colors = [theme.accent, theme.brand, theme.success, theme.warn, theme.brandPrimary];
+  return mixHexColors(colors[index % colors.length]!, theme.surfaceRaised, 0.48);
+}
+
+interface CapsuleProps {
+  items: RailLayoutItem[];
+  dropped?: number | undefined;
+  droppedAfter?: number | undefined;
+  monochrome: boolean;
+}
+
+function RailCapsule({
+  items,
+  dropped = 0,
+  droppedAfter = items.length - 1,
+  monochrome,
+}: CapsuleProps): React.ReactElement {
+  const painted = !monochrome && theme.supportsBackground;
+  const backgrounds = items.map((_, index) => segmentBackground(index));
+
+  return (
+    <Text>
+      {items.map((item, index) => {
+        const background = backgrounds[index]!;
+        const previous = index > 0 ? backgrounds[index - 1]! : undefined;
+        return (
+          <Text key={item.id}>
+            {index === 0 ? (
+              <Text color={painted ? background : undefined}>{glyphs.segmentStart}</Text>
+            ) : (
+              <Text
+                color={painted ? previous : undefined}
+                backgroundColor={painted ? background : undefined}
+              >
+                {glyphs.segmentTransition}
+              </Text>
+            )}
+            <Text
+              color={painted ? theme.textPrimary : undefined}
+              backgroundColor={painted ? background : undefined}
+            >
+              {' '}
+              {visibleNodeText(item.node)}{' '}
+              {index === droppedAfter && dropped > 0 ? `+${dropped} ` : null}
+            </Text>
+          </Text>
+        );
+      })}
+      {items.length > 0 ? (
+        <Text color={painted ? backgrounds.at(-1) : undefined}>{glyphs.segmentEnd}</Text>
+      ) : null}
+    </Text>
+  );
+}
+
 /**
- * Status segments on the terminal's natural background.
- * No per-chip backgrounds, transition glyphs, or segment caps — just clean
- * chips separated by whitespace. The caller owns any outer side inset.
+ * Theme-aware, Powerline-style status capsules. Chip payloads keep their
+ * semantic foreground colors while low-contrast surface tones provide the
+ * connected silhouette. The renderer and layout fitter share the exact cap,
+ * transition, padding and anchor costs, keeping overflow and pointer spans
+ * aligned with the cells on screen.
  */
 export function PowerlineRail({
   segments,
   budget,
   rightAnchor,
+  monochrome = false,
 }: PowerlineRailProps): React.ReactElement {
-  // Empty lines still occupy one row, but status rails deliberately inherit
-  // the terminal background instead of painting a full-width surface band.
+  // Empty logical rails still occupy one row so the detailed layout remains
+  // stable while live chips appear and disappear.
   if (segments.length === 0 && !rightAnchor) {
     return <Text> </Text>;
   }
 
   const layout = layoutRail(toEntries(segments), budget, rightAnchor);
   const dropped = layout.droppedIds.length;
+  const capsuleItems = [...layout.items];
+  if (layout.rightVisible && rightAnchor) {
+    capsuleItems.push({
+      id: 'right-anchor',
+      start: 0,
+      len: displayWidth(visibleNodeText(rightAnchor)) + RAIL_SEP_COST,
+      level: 0,
+      node: rightAnchor,
+    });
+  }
 
   const content = (
     <Text>
-      {layout.items.map((item, index) => (
-        <Text key={item.id}>
-          {index > 0 ? '  ' : null}
-          {item.node}
-        </Text>
-      ))}
-      {layout.rightVisible && rightAnchor ? (
-        <Text>
-          {layout.items.length > 0 ? '  ' : null}
-          {layout.gap > 0 ? ' '.repeat(layout.gap) : null}
-          {rightAnchor}
-        </Text>
+      {capsuleItems.length > 0 ? (
+        <RailCapsule
+          items={capsuleItems}
+          dropped={dropped}
+          droppedAfter={layout.items.length - 1}
+          monochrome={monochrome}
+        />
       ) : null}
-      {dropped > 0 ? <Text color={theme.textMuted}>{` +${dropped}`}</Text> : null}
     </Text>
   );
 

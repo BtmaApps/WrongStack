@@ -340,6 +340,11 @@ export class Director implements DirectorFleetHost, ICoordinator {
       coordinator: this.coordinator,
       stateCheckpoint: this.stateCheckpoint,
       isWorkComplete: () => this.workCompleteFlag,
+      dispatchableSubagentIds: () =>
+        this.coordinator
+          .getStatus()
+          .subagents.filter((s) => s.status !== 'stopped')
+          .map((s) => s.id),
       addTaskToManifest: (subagentId, taskId) => {
         if (this.fleetManager) {
           this.fleetManager.addTaskToSubagent(subagentId, taskId);

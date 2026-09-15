@@ -1,4 +1,4 @@
-import type { Tool } from '@wrongstack/core/types';
+import { type Tool, ToolValidationError } from '@wrongstack/core/types';
 import TurndownService from 'turndown';
 import { guardedFetch } from './_fetch-guard.js';
 
@@ -32,6 +32,40 @@ export interface ReadUrlContentOutput {
 }
 
 const DEFAULT_MAX_BYTES = 131_072;
+
+/**
+ * Read at most `limit` bytes of the body, then cancel the stream. `res.text()`
+ * buffered the entire response before the maxBytes cut, so a multi-GB body
+ * was held in memory for a 128KB answer (audit 2026-09-15). Responses without
+ * a readable stream (test doubles) fall back to `text()`.
+ */
+async function readBounded(
+  res: Response,
+  limit: number,
+): Promise<{ text: string; truncated: boolean }> {
+  const reader = res.body?.getReader();
+  if (!reader) return { text: await res.text(), truncated: false };
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  let truncated = false;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      chunks.push(value);
+      received += value.byteLength;
+      if (received > limit) {
+        truncated = true;
+        await reader.cancel().catch(() => {});
+        break;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return { text: Buffer.concat(chunks).subarray(0, limit).toString('utf8'), truncated };
+}
 const TIMEOUT_MS = 25_000;
 
 export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput> = {
@@ -66,6 +100,7 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
       },
       maxBytes: {
         type: 'number',
+        minimum: 1,
         description: 'Maximum bytes to retrieve (default: 128KB).',
       },
     },
@@ -87,7 +122,17 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     });
 
     const contentType = res.headers.get('content-type') ?? 'text/plain';
-    const rawBody = await res.text();
+    if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(contentType)) {
+      await res.body?.cancel().catch(() => {});
+      throw new ToolValidationError({
+        message: `read_url_content: refusing to read binary content-type "${contentType}"`,
+        field: 'url',
+      });
+    }
+    const { text: rawBody, truncated: readTruncated } = await readBounded(
+      res,
+      Math.max(maxBytes, DEFAULT_MAX_BYTES) * 4,
+    );
 
     let content: string;
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
@@ -106,6 +151,10 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
     if (Buffer.byteLength(content, 'utf8') > maxBytes) {
       const buf = Buffer.from(content, 'utf8');
       content = `${buf.subarray(0, maxBytes).toString('utf8')}\n\n[Content truncated at ${maxBytes} bytes]`;
+    } else if (readTruncated) {
+      content = `${content}
+
+[Content truncated: response body exceeded the read limit]`;
     }
 
     return {

@@ -69,7 +69,7 @@ export function buildTelegramSettingsCommand(opts: SlashCommandContext): SlashCo
     category: 'Config',
     aliases: ['tg-settings'],
     description: 'Toggle which agent events are reported to Telegram.',
-    argsHint: '[session-end|delegate|long-tool|poll|chat <value>]',
+    argsHint: '[session-end|delegate|long-tool|poll|chat <value>|all]',
     help: HELP,
 
     async run(args) {

@@ -1,5 +1,9 @@
 /** A coherent, switchable glyph language for TUI chrome. */
 
+import { readdirSync } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 export type IconStyle = 'unicode' | 'nerd' | 'ascii';
 
 interface UiGlyphs {
@@ -284,8 +288,8 @@ const UNICODE: UiGlyphs = Object.freeze({
   treeThrough: '│ ',
 });
 
-// Optional Nerd Font profile. WrongStack never assumes this font is present;
-// users opt in with WRONGSTACK_TUI_ICON_STYLE=nerd.
+// Optional Nerd Font profile. Explicit env selection always wins; without it,
+// local desktop installs are detected from the OS font directories below.
 const NERD: UiGlyphs = Object.freeze({
   ...UNICODE,
   brand: '󰚩',
@@ -459,11 +463,127 @@ const ASCII: UiGlyphs = Object.freeze({
   treeThrough: '| ',
 });
 
-export function resolveIconStyle(env: NodeJS.ProcessEnv = process.env): IconStyle {
+interface FontDirectoryEntry {
+  name: string;
+  isDirectory: boolean;
+}
+
+interface NerdFontDetectionOptions {
+  platform?: NodeJS.Platform | undefined;
+  homeDir?: string | undefined;
+  env?: NodeJS.ProcessEnv | undefined;
+  readDirectory?: ((directory: string) => readonly FontDirectoryEntry[]) | undefined;
+}
+
+const NERD_FONT_FILE_RE = /nerd[-_ ]?font/i;
+const FONT_FILE_RE = /\.(?:otf|ttc|ttf)$/i;
+const MAX_FONT_SCAN_ENTRIES = 8_192;
+const MAX_FONT_SCAN_DEPTH = 4;
+
+function isRemoteTerminal(env: NodeJS.ProcessEnv): boolean {
+  return Boolean(env['SSH_CONNECTION'] || env['SSH_CLIENT'] || env['SSH_TTY']);
+}
+
+function fontDirectories(
+  platform: NodeJS.Platform,
+  homeDir: string,
+  env: NodeJS.ProcessEnv,
+): string[] {
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  if (platform === 'win32') {
+    return [
+      env['LOCALAPPDATA'] ? paths.join(env['LOCALAPPDATA'], 'Microsoft', 'Windows', 'Fonts') : '',
+      paths.join(env['SystemRoot'] || 'C:\\Windows', 'Fonts'),
+    ].filter(Boolean);
+  }
+  if (platform === 'darwin') {
+    return [paths.join(homeDir, 'Library', 'Fonts'), '/Library/Fonts', '/System/Library/Fonts'];
+  }
+  return [
+    paths.join(homeDir, '.local', 'share', 'fonts'),
+    paths.join(homeDir, '.fonts'),
+    '/usr/local/share/fonts',
+    '/usr/share/fonts',
+    ...(env['WSL_DISTRO_NAME'] ? ['/mnt/c/Windows/Fonts'] : []),
+  ];
+}
+
+function readFontDirectory(directory: string): FontDirectoryEntry[] {
+  return readdirSync(directory, { withFileTypes: true }).map((entry) => ({
+    name: entry.name,
+    isDirectory: entry.isDirectory(),
+  }));
+}
+
+/**
+ * Best-effort local Nerd Font discovery.
+ *
+ * Font rendering belongs to the terminal host. An SSH server cannot inspect
+ * the client's selected font, so remote sessions deliberately stay on the
+ * portable Unicode profile unless `WRONGSTACK_TUI_ICON_STYLE=nerd` is set.
+ * Local scans are bounded and ignore symlinks to keep TUI module startup fast
+ * and deterministic even in unusually large system font trees.
+ */
+export function hasInstalledNerdFont(options: NerdFontDetectionOptions = {}): boolean {
+  const platform = options.platform ?? process.platform;
+  const homeDir = options.homeDir ?? os.homedir();
+  const env = options.env ?? process.env;
+  if (isRemoteTerminal(env)) return false;
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+
+  const readDirectory = options.readDirectory ?? readFontDirectory;
+  const pending = fontDirectories(platform, homeDir, env).map((directory) => ({
+    directory,
+    depth: 0,
+  }));
+  const visited = new Set<string>();
+  let scanned = 0;
+
+  while (pending.length > 0 && scanned < MAX_FONT_SCAN_ENTRIES) {
+    const current = pending.shift();
+    if (!current || visited.has(current.directory)) continue;
+    visited.add(current.directory);
+    let entries: readonly FontDirectoryEntry[];
+    try {
+      entries = readDirectory(current.directory);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      scanned += 1;
+      if (scanned > MAX_FONT_SCAN_ENTRIES) return false;
+      if (entry.isDirectory) {
+        if (current.depth < MAX_FONT_SCAN_DEPTH) {
+          pending.push({
+            directory: paths.join(current.directory, entry.name),
+            depth: current.depth + 1,
+          });
+        }
+        continue;
+      }
+      if (FONT_FILE_RE.test(entry.name) && NERD_FONT_FILE_RE.test(entry.name)) return true;
+    }
+  }
+  return false;
+}
+
+let installedNerdFont: boolean | undefined;
+
+function detectInstalledNerdFont(env: NodeJS.ProcessEnv): boolean {
+  if (env !== process.env) return hasInstalledNerdFont({ env });
+  installedNerdFont ??= hasInstalledNerdFont({ env });
+  return installedNerdFont;
+}
+
+export function resolveIconStyle(
+  env: NodeJS.ProcessEnv = process.env,
+  detectNerdFont: (env: NodeJS.ProcessEnv) => boolean = detectInstalledNerdFont,
+): IconStyle {
   const raw = env.WRONGSTACK_TUI_ICON_STYLE?.trim().toLowerCase();
   if (raw === 'nerd' || raw === 'nerd-font' || raw === 'nerdfont') return 'nerd';
   if (raw === 'ascii' || raw === 'plain') return 'ascii';
-  return 'unicode';
+  if (raw) return 'unicode';
+  return detectNerdFont(env) ? 'nerd' : 'unicode';
 }
 
 export function glyphSet(style: IconStyle = resolveIconStyle()): UiGlyphs {

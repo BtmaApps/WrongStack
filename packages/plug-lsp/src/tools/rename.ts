@@ -1,4 +1,5 @@
 import type { Tool } from '@wrongstack/core/types';
+import { ToolValidationError } from '@wrongstack/core/types';
 import { summarizeWorkspaceEdit } from '../formatters/workspace-edit.js';
 import { humanToLSP } from '../position.js';
 import { supportsRename } from '../server/capabilities.js';
@@ -29,10 +30,19 @@ export function createRenameTool(deps: ToolDeps): Tool<RenameInput, string> {
     inputSchema: {
       type: 'object',
       properties: {
-        path: { type: 'string' },
-        line: { type: 'integer' },
-        character: { type: 'integer' },
-        new_name: { type: 'string' },
+        path: { type: 'string', description: 'File containing the symbol.' },
+        line: { type: 'integer', minimum: 1, description: '1-based line of the symbol.' },
+        character: {
+          type: 'integer',
+          minimum: 1,
+          description: '1-based column inside the symbol name.',
+        },
+        new_name: {
+          type: 'string',
+          minLength: 1,
+          pattern: '^\\S+$',
+          description: 'New identifier. No whitespace.',
+        },
       },
       required: ['path', 'line', 'character', 'new_name'],
     },
@@ -41,6 +51,15 @@ export function createRenameTool(deps: ToolDeps): Tool<RenameInput, string> {
     timeoutMs: 15_000,
     maxOutputBytes: 65_536,
     async execute(input, ctx, opts) {
+      // The server does not validate the name: "bad name" was applied across
+      // every reference and broke the code in two files (audit 2026-09-15).
+      // Refuse before the server is asked, since the edit is written at once.
+      if (!/^\S+$/.test(input.new_name)) {
+        throw new ToolValidationError({
+          message: `lsp_rename: new_name must be a non-empty identifier without whitespace, got ${JSON.stringify(input.new_name)}`,
+          field: 'new_name',
+        });
+      }
       try {
         const signal = opts?.signal ?? ctx?.signal;
         const file = resolveInputPath(input.path, ctx);
@@ -65,7 +84,7 @@ export function createRenameTool(deps: ToolDeps): Tool<RenameInput, string> {
         );
         if (!edit) return 'Rename produced no edits.';
         const summary = summarizeWorkspaceEdit(edit, ctx.cwd);
-        const applied = await applyWorkspaceEdit(edit, deps.tracker);
+        const applied = await applyWorkspaceEdit(edit, deps.tracker, ctx.projectRoot ?? ctx.cwd);
         return `${summary}\nApplied: ${applied.edits} edits across ${applied.files.length} files.`;
       } catch (err) {
         throw toToolError(err);

@@ -1,12 +1,14 @@
-import type React from 'react';
 import {
   clampLine,
   DEFAULT_LINES,
+  resolveStatuslineOrder,
   STATUSLINE_ITEMS,
   type StatuslineItem,
   type StatuslineLine,
   type StatuslineLines,
+  type StatuslineOrder,
 } from '@wrongstack/core/statusline';
+import type React from 'react';
 import type { RailSpanEntry } from './powerline-rail.js';
 import {
   buildAsyncChipEntries,
@@ -88,12 +90,25 @@ export interface RailSource {
 export function partitionRailEntries(
   sources: readonly RailSource[],
   lines: StatuslineLines = {},
+  order: StatuslineOrder = [],
 ): DetailedRail[] {
   const rails: DetailedRail[] = [1, 2, 3, 4].map(() => ({ entries: [], rightAnchor: null }));
   for (const source of sources) {
     for (const entry of source.entries) {
       const line = assignedLine(canonicalChipKey(entry.id), source.fallbackLine, lines);
       rails[line - 1]!.entries.push(entry);
+    }
+  }
+  if (order.length > 0) {
+    const ranks = new Map(resolveStatuslineOrder(order).map((item, index) => [item, index]));
+    for (const rail of rails) {
+      rail.entries.sort((a, b) => {
+        const aKey = canonicalChipKey(a.id);
+        const bKey = canonicalChipKey(b.id);
+        const aRank = aKey ? (ranks.get(aKey) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+        const bRank = bKey ? (ranks.get(bKey) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+        return aRank - bRank;
+      });
     }
   }
   return rails;
@@ -131,6 +146,8 @@ export interface DetailedRailBuildOptions {
   indexChip: React.ReactElement | null;
   /** Per-chip line overrides; absent = `DEFAULT_LINES`. */
   lines?: StatuslineLines | undefined;
+  /** Custom left-to-right chip order; absent = canonical contract order. */
+  order?: StatuslineOrder | undefined;
 }
 
 /**
@@ -145,30 +162,41 @@ export function buildDetailedRails(
   opts: DetailedRailBuildOptions,
 ): DetailedRail[] {
   const lines = opts.lines ?? {};
+  const order = opts.order ?? [];
+  const workspaceEntries = buildWorkspaceChipEntries(
+    p,
+    opts.modelChip,
+    opts.modelShortChip,
+    opts.modelMicroChip,
+  );
+  const vitalsEntries = buildVitalsChipEntries(p);
+  // Once a user customizes ordering, formerly-reserved tail chips become
+  // ordinary ordered entries too — every chip in the picker then obeys the
+  // same Shift+Up/Down contract. The untouched default keeps its priority-tail
+  // fitting behavior for backward compatibility.
+  if (order.length > 0) {
+    if (opts.versionChip) workspaceEntries.push({ id: 'version', node: opts.versionChip });
+    if (opts.indexChip) vitalsEntries.push({ id: 'index', node: opts.indexChip });
+  }
   const rails = partitionRailEntries(
     [
-      {
-        entries: buildWorkspaceChipEntries(
-          p,
-          opts.modelChip,
-          opts.modelShortChip,
-          opts.modelMicroChip,
-        ),
-        fallbackLine: 1,
-      },
-      { entries: buildVitalsChipEntries(p), fallbackLine: 2 },
+      { entries: workspaceEntries, fallbackLine: 1 },
+      { entries: vitalsEntries, fallbackLine: 2 },
       { entries: buildSafetyWorkEntries(p), fallbackLine: 3 },
       { entries: buildAsyncChipEntries(p), fallbackLine: 4 },
     ],
     lines,
+    order,
   );
-  placeAnchors(
-    rails,
-    [
-      { key: 'version', node: opts.versionChip },
-      { key: 'index', node: opts.indexChip },
-    ],
-    lines,
-  );
+  if (order.length === 0) {
+    placeAnchors(
+      rails,
+      [
+        { key: 'version', node: opts.versionChip },
+        { key: 'index', node: opts.indexChip },
+      ],
+      lines,
+    );
+  }
   return rails;
 }

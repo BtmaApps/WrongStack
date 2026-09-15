@@ -346,6 +346,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       visibleChips: [],
       lines: {},
       densities: {},
+      order: [],
       filter: '',
       filtering: false,
       layoutSeeded: false,

@@ -41,6 +41,14 @@ export interface AppEnvironmentDeps
     | 'setStatuslineHiddenItems'
     | 'saveStatuslineHiddenItems'
     | 'statuslineLines'
+    | 'setStatuslineLines'
+    | 'saveStatuslineLines'
+    | 'statuslineDensities'
+    | 'setStatuslineDensities'
+    | 'saveStatuslineDensities'
+    | 'statuslineOrder'
+    | 'setStatuslineOrder'
+    | 'saveStatuslineOrder'
     | 'titleController'
     | 'chime'
     | 'confirmExit'
@@ -115,6 +123,14 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
     setStatuslineHiddenItems,
     saveStatuslineHiddenItems,
     statuslineLines,
+    setStatuslineLines,
+    saveStatuslineLines,
+    statuslineDensities,
+    setStatuslineDensities,
+    saveStatuslineDensities,
+    statuslineOrder,
+    setStatuslineOrder,
+    saveStatuslineOrder,
     titleController,
     chime,
     confirmExit,
@@ -153,6 +169,14 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
     setStatuslineHiddenItems,
     saveStatuslineHiddenItems,
     statuslineLines,
+    setStatuslineLines,
+    saveStatuslineLines,
+    statuslineDensities,
+    setStatuslineDensities,
+    saveStatuslineDensities,
+    statuslineOrder,
+    setStatuslineOrder,
+    saveStatuslineOrder,
   });
   const {
     liveModel,
@@ -171,6 +195,8 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
     setLines,
     densities,
     setDensities,
+    order,
+    setOrder,
     setSessionCount,
     hiddenItemsRef,
     setMemoryContextMonitor,
@@ -185,6 +211,8 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
   linesRef.current = lines;
   const densitiesRef = useRef(densities);
   densitiesRef.current = densities;
+  const orderRef = useRef(order);
+  orderRef.current = order;
 
   const projectRoot = agent.ctx.projectRoot;
   const projectName = React.useMemo(() => {
@@ -240,10 +268,13 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
     layoutSeeded: state.statuslinePicker.layoutSeeded,
     pickerLines: state.statuslinePicker.lines,
     pickerDensities: state.statuslinePicker.densities,
+    pickerOrder: state.statuslinePicker.order,
     lines,
     densities,
+    order,
     setLines,
     setDensities,
+    setOrder,
   });
 
   useStreamChipExpiration({
@@ -314,6 +345,7 @@ export function useAppEnvironment(deps: AppEnvironmentDeps) {
     refreshGoalSummary,
     linesRef,
     densitiesRef,
+    orderRef,
     projectRoot,
     projectName,
     workingDirChip,

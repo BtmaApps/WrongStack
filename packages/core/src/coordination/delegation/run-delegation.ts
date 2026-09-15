@@ -687,7 +687,11 @@ export async function settleDelegation(
             ? 'subagent_timeout'
             : result.status === 'stopped'
               ? 'aborted'
-              : 'budget_exhausted';
+              : // Every other failure used to read "budget_exhausted", so a worker
+                // that crashed told the leader to raise a budget instead.
+                result.error?.kind?.startsWith('budget_')
+                ? 'budget_exhausted'
+                : 'error';
       const errorKind = result.error?.kind;
       const retryable = result.error?.retryable;
       const backoffMs = result.error?.backoffMs;

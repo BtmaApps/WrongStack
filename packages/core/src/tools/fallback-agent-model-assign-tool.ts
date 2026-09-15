@@ -1,4 +1,5 @@
 import { isValidMatrixKey } from '../coordination/model-matrix.js';
+import { parseModelRef } from '../core/model-ref.js';
 import { ToolValidationError } from '../types/errors.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
 import { isFavoriteRef, notFavoriteError, profileList } from './fallback-manage-helpers.js';
@@ -24,7 +25,7 @@ const AGENT_MODEL_ASSIGN_SCHEMA: JSONSchema = {
     model: {
       type: 'string',
       description:
-        'Model id (e.g. "claude-haiku-3", "gpt-4o-mini"). When omitted together with provider, ' +
+        'Model id (e.g. "claude-haiku-3") or a full "provider/model" ref. When omitted together with provider, ' +
         'the role falls back to the leader model. Must be in your favorites list.',
     },
     profile: {
@@ -160,26 +161,37 @@ export function createAgentModelAssignTool(
       }
 
       if (input.model) {
-        const effectiveProvider = input.provider ?? config.provider;
-        const ref = `${effectiveProvider}/${input.model}`;
+        // Favorites and every sibling tool take "provider/model" refs. This
+        // branch prefixed the leader provider onto whatever it got, so a ref
+        // became "leader/provider/model" and was refused as not a favorite.
+        const parsed = parseModelRef(input.model);
+        if (parsed.provider && input.provider && parsed.provider !== input.provider) {
+          throw new ToolValidationError({
+            message: `model "${input.model}" names provider "${parsed.provider}" but provider is "${input.provider}". Pass one or make them match.`,
+            field: 'provider',
+          });
+        }
+        const explicitProvider = input.provider ?? parsed.provider;
+        const modelId = parsed.provider ? parsed.model : input.model;
+        const ref = `${explicitProvider ?? config.provider}/${modelId}`;
         if (!isFavoriteRef(ref, config)) {
           throw new ToolValidationError({ message: notFavoriteError(ref, config), field: 'model' });
         }
         const matrix = { ...((config.modelMatrix ?? {}) as Record<string, unknown>) };
         const previousRuntime = (matrix[input.role] as Record<string, unknown>)?.modelRuntime;
-        matrix[input.role] = input.provider
+        matrix[input.role] = explicitProvider
           ? {
-              provider: input.provider,
-              model: input.model,
+              provider: explicitProvider,
+              model: modelId,
               ...(previousRuntime ? { modelRuntime: previousRuntime } : {}),
             }
-          : { model: input.model, ...(previousRuntime ? { modelRuntime: previousRuntime } : {}) };
+          : { model: modelId, ...(previousRuntime ? { modelRuntime: previousRuntime } : {}) };
         await opts.updateConfig((cfg) => {
           cfg.modelMatrix = matrix;
         });
-        const display = input.provider
-          ? `${input.provider}/${input.model}`
-          : `${input.model} (leader provider)`;
+        const display = explicitProvider
+          ? `${explicitProvider}/${modelId}`
+          : `${modelId} (leader provider)`;
         return { status: 'ok', message: `✓ "${input.role}" → ${display}` };
       }
 

@@ -29,9 +29,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import {
-  releaseHandle,
   collectSourceFilesAsync,
   matchesExtension,
+  releaseHandle,
   withinProject,
 } from '../runtime/index.js';
 
@@ -97,7 +97,7 @@ interface AccessibilityAuditorConfig {
 }
 
 const DEFAULTS: AccessibilityAuditorConfig = {
-  enabled: false,
+  enabled: true,
   includeExtensions: ['.tsx', '.jsx', '.html', '.vue'],
   maxFindings: 50,
   severity: 'warn',

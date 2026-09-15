@@ -116,9 +116,11 @@ describe('git_autocommit', () => {
   it('reports a staging failure when no provided file exists', async () => {
     fsm.existsSync.mockReturnValue(false);
     const tools = setup();
+    // One prefix only: the wrapper used to re-prefix stageFiles' own message
+    // ("Failed to stage files: Failed to stage files: …", audit 2026-09-15).
     await expect(
       tools.git_autocommit!.execute({ type: 'fix', message: 'x', files: ['ghost.ts'] }),
-    ).rejects.toThrow(/Failed to stage files/);
+    ).rejects.toThrow(/^Failed to stage files: none of the specified files exist on disk$/);
   });
 
   it('refuses to commit with an empty index by default instead of absorbing the tree', async () => {

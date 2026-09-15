@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-15T11:46:48.759Z
+**Generated:** 2026-09-15T17:17:52.566Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3800 |
-| Production source lines | 928974 |
-| Test files | 3404 |
+| Production source lines | 930381 |
+| Test files | 3427 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12138 |
+| Relative module edges | 12145 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 9 |
@@ -29,9 +29,9 @@ PASS — no blocking architecture-health errors.
 |---|---:|---:|---|
 | @wrongstack/acp | 42 | 39 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/bench | 26 | 52 | @wrongstack/core |
-| @wrongstack/cli | 494 | 502 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
+| @wrongstack/cli | 494 | 505 | @wrongstack/acp, @wrongstack/bench, @wrongstack/core, @wrongstack/desktop, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/persistence, @wrongstack/plug-lsp, @wrongstack/plugins, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/security-scanner, @wrongstack/simpleui, @wrongstack/techstack, @wrongstack/telegram, @wrongstack/tools, @wrongstack/tui, @wrongstack/vector-memory, @wrongstack/webui, @wrongstack/webui-hq, @wrongstack/webui-protocol, @wrongstack/webui-server, @wrongstack/wrongtrace |
 | @wrongstack/codebase-index-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/tools |
-| @wrongstack/core | 864 | 768 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/core | 864 | 772 | @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/desktop | 40 | 26 | @wrongstack/core, @wrongstack/webui, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/governance | 39 | 28 | @wrongstack/persistence |
 | @wrongstack/kanban | 87 | 67 | @wrongstack/persistence, @wrongstack/primitives |
@@ -39,22 +39,22 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/mailbox-mcp | 5 | 7 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 37 | 38 | @wrongstack/core |
 | @wrongstack/persistence | 6 | 9 | — |
-| @wrongstack/plug-lsp | 50 | 41 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plug-lsp | 50 | 44 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 3 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 83 | 125 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 83 | 127 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 6 | 5 | — |
-| @wrongstack/providers | 70 | 66 | @wrongstack/core |
+| @wrongstack/providers | 70 | 67 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
-| @wrongstack/runtime | 13 | 17 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
-| @wrongstack/sage | 107 | 94 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/runtime | 13 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
+| @wrongstack/sage | 107 | 98 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 38 | 38 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 18 | 27 | @wrongstack/core |
 | @wrongstack/simpleui | 98 | 73 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 50 | 37 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
-| @wrongstack/telegram | 27 | 34 | @wrongstack/core |
-| @wrongstack/tools | 214 | 250 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/telegram | 27 | 35 | @wrongstack/core |
+| @wrongstack/tools | 214 | 254 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 393 | 352 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 19 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 553 | 384 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
@@ -87,17 +87,18 @@ None.
 | Lines | File |
 |---:|---|
 | 1581 | `packages/providers/src/openai-codex.ts` |
-| 1130 | `packages/core/src/coordination/delegation/run-delegation.ts` |
+| 1134 | `packages/core/src/coordination/delegation/run-delegation.ts` |
 | 1119 | `apps/desktop/src/main/runtime-manager.ts` |
+| 1113 | `packages/core/src/coordination/director.ts` |
 | 1109 | `packages/tools/src/codebase-index/indexer.ts` |
-| 1108 | `packages/core/src/coordination/director.ts` |
 | 1103 | `packages/cli/src/subcommands/handlers/hq.ts` |
 | 1097 | `packages/mcp/src/client.ts` |
 | 1096 | `packages/simpleui/src/simple-ui-session.tsx` |
-| 1066 | `packages/plugins/src/git-autocommit/index.ts` |
+| 1071 | `packages/plugins/src/git-autocommit/index.ts` |
+| 1064 | `packages/cli/src/slash-commands/settings-mutations.ts` |
 | 1062 | `packages/webui/src/components/SkillDetailView.tsx` |
+| 1058 | `packages/sage/src/sqlite-store.ts` |
 | 1057 | `packages/webui-server/src/server/ws-payload-validation.ts` |
-| 1055 | `packages/cli/src/slash-commands/settings-mutations.ts` |
 | 1054 | `packages/webui-server/src/server/routes.ts` |
 | 1053 | `packages/tools/src/codebase-index/writer.ts` |
 | 1051 | `packages/core/src/index.ts` |
@@ -116,12 +117,11 @@ None.
 | 1034 | `packages/core/src/hq/protocol/core.ts` |
 | 1034 | `packages/core/src/types/session.ts` |
 | 1033 | `packages/cli/src/plugin-management.ts` |
-| 1033 | `packages/sage/src/sqlite-store.ts` |
 | 1030 | `packages/tools/src/codebase-index/writer-graph-reader.ts` |
 | 1026 | `packages/sage/src/types.ts` |
 | 1023 | `packages/tools/src/codebase-index/background-indexer.ts` |
+| 1023 | `packages/tui/src/app-state.ts` |
 | 1021 | `packages/webui/src/hooks/ws-handlers/misc-handlers.ts` |
-| 1017 | `packages/tui/src/app-state.ts` |
 | 1015 | `packages/webui-server/src/server/git-handlers.ts` |
 | 1015 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 1015 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
@@ -134,12 +134,12 @@ None.
 | 1003 | `packages/kanban/src/types.ts` |
 | 1002 | `packages/webui/src/components/ChronicleDashboard.tsx` |
 | 999 | `packages/kanban/src/manager/assignment.ts` |
+| 999 | `packages/tui/src/app.tsx` |
 | 996 | `packages/webui/src/stores/fleet-store.ts` |
-| 984 | `packages/tui/src/components/agents-monitor.tsx` |
 
 ## Exports only tests reference
 
-- 961 runtime exports are referenced by tests and by no other production file.
+- 966 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

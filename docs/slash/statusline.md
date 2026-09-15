@@ -19,13 +19,19 @@ look — each rail changes at a predictable rate.
 
 | Line | Name | Changes | Chips |
 |---|---|---|---|
-| 1 | IDENTITY | never, mid-session | `project` `working_dir` `git` `model` `mode` `prompt_variant` `theme` `sessions` `tools` · right: `version` |
-| 2 | VITALS | every token | `state` `context` `tokens` `cost` `cache` `elapsed` `queue` `hint` · right: `index` |
+| 1 | IDENTITY | never, mid-session | `project` `working_dir` `git` `model` `mode` `prompt_variant` `theme` `sessions` `tools` · tail: `version` |
+| 2 | VITALS | every token | `state` `context` `tokens` `cost` `cache` `elapsed` `queue` `hint` · tail: `index` |
 | 3 | SAFETY & WORK | a few times per turn | `yolo` `autonomy` `eternal_stage` `breaker` `quota` `token_saving` `processes` `side_effects` `dropped_tools` `goal` `todos` `plan` `tasks` |
 | 4 | ASYNC | on its own schedule | `fleet` `fleet_agents` `mailbox` `brain` `debug_stream` `memory_context` `next_steps` `auto_proceed` `enhance` |
 
 Lines 1–2 always render; 3 and 4 open only when they have content, so a
 vanilla session keeps a two-line footprint.
+
+Each rendered rail is a connected Powerline-style capsule. Five rotating
+tones derived from the active theme (`accent`, `brand`, `success`, `warn`,
+`brandPrimary`) separate adjacent chips without hard-coded gray. The start, transition and end shapes follow the
+active Unicode / Nerd Font / ASCII glyph profile. `no-color` keeps the same
+segmented silhouette without emitting background colors.
 
 `hint` sits on VITALS rather than on a conditional rail on purpose: it appears
 and disappears several times within one turn, and parking it on line 3 or 4
@@ -62,10 +68,10 @@ negotiation: it renders that form at every width, and can only be dropped.
 | `/statusline <item> density auto\|full\|short\|micro` | Pin a chip's density |
 | `/statusline all on\|off` | Enable/disable every chip |
 | `/statusline reset` | Restore default chip visibility (layout untouched) |
-| `/statusline layout reset` | Restore default lines and densities (visibility untouched) |
+| `/statusline layout reset` | Restore default lines, order and densities (visibility untouched) |
 
 `/statusline` with no arguments and no TUI prints every chip with its state,
-line and density. Run `/help statusline` for the full item list.
+line, order and density. Run `/help statusline` for the full item list.
 
 ## The picker
 
@@ -76,12 +82,14 @@ The interactive picker (TUI) opens on a bare `/statusline`, or by clicking the
 |---|---|
 | `↑` `↓` | select (walks the filtered rows) |
 | `←` `→` / `Enter` | chip on/off |
-| `1`–`4` | move the chip to that line |
-| `[` `]` | shift the chip one line up/down (wraps) |
+| `1`–`4` | move the chip to that line; each row shows `1 2 [3] 4` beside on/off with the active line bracketed |
+| `o` / `O` | move the chip later/earlier within its current line |
+| `[` `]` | alternate shortcut for moving earlier/later within its current line |
+| `Shift+↑` `Shift+↓` | alternate shortcut for moving earlier/later within the current line |
 | `d` | cycle density: auto → full → short → micro |
 | `a` | turn every chip on the focused line on/off |
 | `/` | filter by chip name or description (`Esc` clears) |
-| `r` | reset layout (lines + densities) |
+| `r` | reset layout (lines + order + densities) |
 | `Esc` | close |
 
 The strip at the top of the picker is **measured, not mocked**: it reads the
@@ -118,19 +126,21 @@ while in `minimum` mode.
 
 ## Persistence
 
-`~/.wrongstack/profiles/<name>/statusline.json`, schema v3:
+`~/.wrongstack/profiles/<name>/statusline.json`, schema v4:
 
 ```json
 {
   "version": 3,
   "chips": { "project": true, "theme": false },
   "lines": { "todos": 2 },
-  "densities": { "cache": "micro" }
+  "densities": { "cache": "micro" },
+  "order": ["model", "project", "git"]
 }
 ```
 
 `lines` and `densities` are sparse — an absent key means "contract default"
-and "let the fitter choose". v1 (flat boolean map) and v2 (`chips` + `lines`)
+and "let the fitter choose". An empty `order` means canonical order; a custom
+order is normalized and any newly-added chips append automatically. v1–v3
 files are migrated in place on first read.
 
 ## Code reference

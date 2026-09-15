@@ -1,5 +1,11 @@
-import { CouncilOrchestrator } from '../execution/council-orchestrator.js';
 import type { FallbackProfileManager } from '../core/fallback-profile-manager.js';
+import { CouncilOrchestrator } from '../execution/council-orchestrator.js';
+import type { CouncilPersonaRegistry } from '../execution/council-personas.js';
+import {
+  type CouncilProfileRegistry,
+  DEFAULT_COUNCIL_PROFILE_REGISTRY,
+} from '../execution/council-profiles.js';
+import { validateCouncilOptions } from '../execution/council-prompts.js';
 import type {
   CouncilLLMCaller,
   CouncilOption,
@@ -8,12 +14,6 @@ import type {
   CouncilResult,
 } from '../types/council.js';
 import type { JSONSchema, Tool } from '../types/tool.js';
-import type { CouncilPersonaRegistry } from '../execution/council-personas.js';
-import {
-  type CouncilProfileRegistry,
-  DEFAULT_COUNCIL_PROFILE_REGISTRY,
-} from '../execution/council-profiles.js';
-import { validateCouncilOptions } from '../execution/council-prompts.js';
 
 export const COUNCIL_TOOL_NAME = 'council';
 export const MAX_COUNCIL_TOOL_OPTIONS = 12;
@@ -117,8 +117,10 @@ export function createCouncilTool(
       const noSeatRan = result.validVoteCount === 0 && (result.errors?.length ?? 0) > 0;
       if (result.status === 'failed' || result.status === 'cancelled' || noSeatRan) {
         const detail = result.errors?.length ? ` Errors: ${result.errors.join('; ')}` : '';
+        // Orchestrator reasons already end in a period ("Council quorum was not met.").
+        const reason = (result.reason ?? 'no valid votes').replace(/\.+$/u, '');
         throw new Error(
-          `Council ${result.status === 'cancelled' ? 'was cancelled' : 'failed'}: ${result.reason ?? 'no valid votes'}.${detail}`,
+          `Council ${result.status === 'cancelled' ? 'was cancelled' : 'failed'}: ${reason}.${detail}`,
         );
       }
       return result;

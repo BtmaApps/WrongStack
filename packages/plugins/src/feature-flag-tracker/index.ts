@@ -80,7 +80,7 @@ const DEFAULT_PATTERNS: string[] = [
 ];
 
 const DEFAULTS: FeatureFlagTrackerConfig = {
-  enabled: false,
+  enabled: true,
   extensions: ['.ts', '.tsx', '.js', '.jsx'],
   patterns: [],
   maxFindings: 50,

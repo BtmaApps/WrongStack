@@ -72,6 +72,8 @@ interface NotifyHubState {
   stopHookUnregister: null | (() => void);
   eventUnsubscribers: Array<() => void>;
   circuitWarned: boolean;
+  /** Why a configured webhook was refused at setup; null when none was refused. */
+  disabledReason: string | null;
 }
 
 const state: NotifyHubState = {
@@ -80,6 +82,7 @@ const state: NotifyHubState = {
   stopHookUnregister: null,
   eventUnsubscribers: [],
   circuitWarned: false,
+  disabledReason: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -391,8 +394,18 @@ const plugin: Plugin = {
     }
     state.eventUnsubscribers = [];
 
-    const cfg = readConfig(api.config.extensions?.['notify-hub']);
+    state.disabledReason = null;
+    const rawCfg = api.config.extensions?.['notify-hub'] as Record<string, unknown> | undefined;
+    const cfg = readConfig(rawCfg);
     let active = cfg.enabled && cfg.webhookUrl.length > 0;
+    // normalizeWebhookUrl drops a refused URL to '', which notify_send then
+    // reported as "no webhookUrl configured" — wrong for a user who set one.
+    const rawUrl = rawCfg?.['webhookUrl'] ?? rawCfg?.['webhook_url'] ?? rawCfg?.['url'];
+    if (cfg.enabled && typeof rawUrl === 'string' && rawUrl.trim() && !cfg.webhookUrl) {
+      state.disabledReason =
+        'webhookUrl was refused: it must be an http(s) URL without credentials that does not target localhost or a private address';
+      api.log.warn(`notify-hub: ${state.disabledReason}`);
+    }
 
     // ── SSRF defense: resolve hostname via DNS and reject private IPs ────
     // The string-level normalizeWebhookUrl already blocks literal private
@@ -404,6 +417,7 @@ const plugin: Plugin = {
         const url = new URL(cfg.webhookUrl);
         const hostnameBlocked = await hasPrivateResolvedIP(url.hostname);
         if (hostnameBlocked) {
+          state.disabledReason = `webhookUrl was refused: ${url.hostname} resolves to a private/local IP`;
           api.log.warn(
             `notify-hub: webhook URL resolves to a private/local IP (${url.hostname}) — disabling plugin`,
           );
@@ -502,7 +516,8 @@ const plugin: Plugin = {
         const ch = state.channel;
         if (!ch) {
           throw new Error(
-            'no webhookUrl configured — set config.extensions["notify-hub"].webhookUrl to enable deliveries',
+            state.disabledReason ??
+              'no webhookUrl configured — set config.extensions["notify-hub"].webhookUrl to enable deliveries',
           );
         }
         const inp = (input ?? {}) as Record<string, unknown>;

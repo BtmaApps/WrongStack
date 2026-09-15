@@ -109,7 +109,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
         type: 'string',
         enum: ['markdown', 'text', 'raw'],
         description:
-          'Output format. "markdown" is recommended for HTML pages; for non-HTML content types it falls back to plain text (JSON is pretty-printed).',
+          'Output format. "markdown" (default for HTML) converts HTML to Markdown; "text" strips HTML to plain text; "raw" returns the body unmodified. JSON is pretty-printed except in raw.',
       },
     },
     required: ['url'],
@@ -218,7 +218,16 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
         throw describeFetchError(err, trimmedUrl, ctrl.signal.aborted);
       }
 
-      const ct = res.headers.get('content-type') ?? 'application/octet-stream';
+      // A body-less response (204 No Content, 205, 304, or an explicit zero
+      // length) usually has no content-type; defaulting it to octet-stream
+      // refused a successful empty response as "binary".
+      const bodyless =
+        res.status === 204 ||
+        res.status === 205 ||
+        res.status === 304 ||
+        res.headers.get('content-length') === '0';
+      const ct =
+        res.headers.get('content-type') ?? (bodyless ? 'text/plain' : 'application/octet-stream');
       if (/^image\/|^audio\/|^video\/|application\/octet-stream/.test(ct)) {
         throw new FetchError({
           message: `fetch: refusing to read binary content-type "${ct}"`,
@@ -273,12 +282,13 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       const text = Buffer.concat(chunks).toString('utf8');
 
       const isHtml = ct.includes('text/html');
-      const isJson = /[\/+]json(;|$)/i.test(ct);
+      const isJson = /[/+]json(;|$)/i.test(ct);
       const format = input.format ?? (isHtml ? 'markdown' : 'text');
       let content: string;
       if (format === 'raw') content = text;
       else if (format === 'markdown' && isHtml) content = TD.turndown(text);
       else if (format === 'markdown' && isJson) content = `\`\`\`json\n${prettyJson(text)}\n\`\`\``;
+      else if (isHtml) content = htmlToPlainText(text);
       else if (isJson) content = prettyJson(text);
       else content = text;
 
@@ -346,6 +356,29 @@ function describeFetchError(err: unknown, url: string, timedOut: boolean): Fetch
     // text version stays in the message for human readability.
     cause: err,
   });
+}
+
+/**
+ * `format: "text"` on an HTML page used to return the markup unchanged —
+ * identical to `raw`, scripts included. Drop non-content elements, keep block
+ * boundaries as line breaks, and decode the common entities.
+ */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<(script|style|noscript|template|svg|head)\b[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(br|\/p|\/div|\/li|\/h[1-6]|\/tr|\/section|\/article|\/pre)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/[ \t\f\v]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function prettyJson(s: string): string {

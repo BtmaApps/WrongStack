@@ -14,8 +14,12 @@
 // to the EventBus instead of being driven by the component that
 // happens to mount first.
 
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 import { useState } from 'react';
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
 import type { StatuslineItem } from '../components/statusline-picker.js';
 
 export type AutonomyStage = 'off' | 'suggest' | 'auto' | 'eternal' | 'eternal-parallel';
@@ -46,6 +50,8 @@ interface UseStatuslineStateOptions {
   statuslineLines?: StatuslineLines | undefined;
   /** Per-chip density pin (schema v3); absent keys leave the rail fitter free. */
   statuslineDensities?: StatuslineDensities | undefined;
+  /** Custom left-to-right order (schema v4); empty means canonical. */
+  statuslineOrder?: StatuslineOrder | undefined;
 }
 
 interface UseStatuslineState {
@@ -67,6 +73,8 @@ interface UseStatuslineState {
   setLines: (v: StatuslineLines) => void;
   densities: StatuslineDensities;
   setDensities: (v: StatuslineDensities) => void;
+  order: StatuslineOrder;
+  setOrder: (v: StatuslineOrder) => void;
   sessionCount: number;
   setSessionCount: (v: number) => void;
 }
@@ -96,6 +104,7 @@ export function useStatuslineState(opts: UseStatuslineStateOptions): UseStatusli
   );
   const [lines, setLines] = useState<StatuslineLines>(opts.statuslineLines ?? {});
   const [densities, setDensities] = useState<StatuslineDensities>(opts.statuslineDensities ?? {});
+  const [order, setOrder] = useState<StatuslineOrder>(opts.statuslineOrder ?? []);
   const [sessionCount, setSessionCount] = useState<number>(0);
 
   return {
@@ -117,6 +126,8 @@ export function useStatuslineState(opts: UseStatuslineStateOptions): UseStatusli
     setLines,
     densities,
     setDensities,
+    order,
+    setOrder,
     sessionCount,
     setSessionCount,
   };

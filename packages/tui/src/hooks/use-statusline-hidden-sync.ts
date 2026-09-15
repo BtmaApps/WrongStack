@@ -1,5 +1,9 @@
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 import { useEffect } from 'react';
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
 import type { StatuslineItem } from '../components/statusline-picker.js';
 
 export function statuslineHiddenDiffers(
@@ -65,27 +69,33 @@ interface UseStatuslineLayoutSyncOptions {
   layoutSeeded: boolean;
   pickerLines: StatuslineLines;
   pickerDensities: StatuslineDensities;
+  pickerOrder: StatuslineOrder;
   lines: StatuslineLines;
   densities: StatuslineDensities;
+  order: StatuslineOrder;
   setLines: (lines: StatuslineLines) => void;
   setDensities: (densities: StatuslineDensities) => void;
+  setOrder: (order: StatuslineOrder) => void;
 }
 
 /**
  * The layout twin of {@link useStatuslineHiddenSync}: reducer-owned line and
- * density edits land in the statusline state hook, which re-renders the bar
+ * density/order edits land in the statusline state hook, which re-renders the bar
  * and (via `use-tui-environment-state`) persists them. Without this the
- * picker's `1-4` / `d` keys would only change the picker's own view.
+ * picker's `1-4` / `Shift+Up/Down` / `d` keys would only change its own view.
  */
 export function useStatuslineLayoutSync({
   pickerOpen,
   layoutSeeded,
   pickerLines,
   pickerDensities,
+  pickerOrder,
   lines,
   densities,
+  order,
   setLines,
   setDensities,
+  setOrder,
 }: UseStatuslineLayoutSyncOptions): void {
   useEffect(() => {
     if (!pickerOpen || !layoutSeeded) return;
@@ -96,4 +106,14 @@ export function useStatuslineLayoutSync({
     if (!pickerOpen || !layoutSeeded) return;
     if (statuslineLayoutDiffers(densities, pickerDensities)) setDensities({ ...pickerDensities });
   }, [pickerOpen, layoutSeeded, pickerDensities, densities, setDensities]);
+
+  useEffect(() => {
+    if (!pickerOpen || !layoutSeeded) return;
+    if (
+      pickerOrder.length !== order.length ||
+      pickerOrder.some((item, index) => item !== order[index])
+    ) {
+      setOrder([...pickerOrder]);
+    }
+  }, [pickerOpen, layoutSeeded, pickerOrder, order, setOrder]);
 }

@@ -20,7 +20,11 @@ import type { BrainAutoRisk } from '@wrongstack/core/execution';
 import type { JournalEntry } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type {
   AttachmentStore,
@@ -352,6 +356,10 @@ export interface ControllerDeps {
   statuslineDensities?: StatuslineDensities | undefined;
   setStatuslineDensities?: ((densities: StatuslineDensities) => void) | undefined;
   saveStatuslineDensities?: ((densities: StatuslineDensities) => Promise<void>) | undefined;
+  /** Custom left-to-right statusline order (schema v4). */
+  statuslineOrder?: StatuslineOrder | undefined;
+  setStatuslineOrder?: ((order: StatuslineOrder) => void) | undefined;
+  saveStatuslineOrder?: ((order: StatuslineOrder) => Promise<void>) | undefined;
   getYolo?: (() => boolean) | undefined;
   onYolo?: ((setTo?: boolean) => boolean) | undefined;
   getAutonomy?: (() => AutonomyMode) | undefined;

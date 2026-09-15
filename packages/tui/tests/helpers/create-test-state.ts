@@ -186,6 +186,7 @@ export function createTestState(
       visibleChips: [],
       lines: {},
       densities: {},
+      order: [],
       filter: '',
       filtering: false,
       layoutSeeded: false,

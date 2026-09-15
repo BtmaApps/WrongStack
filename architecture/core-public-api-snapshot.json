@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.14",
+  "packageVersion": "1.0.15",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1035,11 +1035,13 @@
         "export function defaultChipEnabledMap",
         "export function effectiveDensity",
         "export function effectiveLine",
+        "export function resolveStatuslineOrder",
         "export type StatuslineDensities",
         "export type StatuslineDensity",
         "export type StatuslineItem",
         "export type StatuslineLine",
-        "export type StatuslineLines"
+        "export type StatuslineLines",
+        "export type StatuslineOrder"
       ]
     },
     {
@@ -1083,7 +1085,7 @@
         "export { DefaultPathResolver } from './path-resolver.js';",
         "export { DefaultTokenCounter } from './token-counter.js';",
         "export { ProviderCacheLedger } from './provider-cache-ledger.js';",
-        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, everArtServer, filesystemServer, githubServer, googleMapsServer, miniMaxVisionServer, playwrightServer, resolveMcpServerConfig, sentinelServer, slackServer, sshManagerServer, zaiVisionServer, } from './mcp-servers.js';",
+        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, dockerServer, everArtServer, fetchServer, filesystemServer, gitServer, githubServer, gitlabServer, googleMapsServer, memoryServer, miniMaxVisionServer, playwrightServer, postgresServer, puppeteerServer, resolveMcpServerConfig, sentinelServer, sentryServer, sequentialThinkingServer, slackServer, sqliteServer, sshManagerServer, zaiVisionServer, } from './mcp-servers.js';",
         "export { assertProjectRootOutsideStateDir, type BootConfigOptions, type BootConfigResult, bootConfig, flagsToConfigPatch, } from '../boot.js';"
       ]
     },
@@ -1449,7 +1451,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 193,
-      "sourceLines": 55817
+      "sourceLines": 55862
     },
     {
       "directory": "core",
@@ -1505,7 +1507,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1796
+      "sourceLines": 1945
     },
     {
       "directory": "kernel",
@@ -1610,7 +1612,7 @@
       "classification": "host/application concern",
       "intendedOwner": "CLI/TUI presentation contract; host rendering stays outside Core",
       "sourceFiles": 1,
-      "sourceLines": 338
+      "sourceLines": 365
     },
     {
       "directory": "storage",
@@ -1631,7 +1633,7 @@
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
       "sourceFiles": 20,
-      "sourceLines": 4079
+      "sourceLines": 4093
     },
     {
       "directory": "types",
@@ -1645,7 +1647,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 70,
-      "sourceLines": 12297
+      "sourceLines": 12310
     },
     {
       "directory": "wiring",

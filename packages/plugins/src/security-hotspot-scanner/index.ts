@@ -87,7 +87,7 @@ interface SecurityHotspotConfig {
 }
 
 const DEFAULTS: SecurityHotspotConfig = {
-  enabled: false,
+  enabled: true,
   severity: 'warn',
   maxFindings: 10,
   scanOnChange: [
@@ -334,7 +334,7 @@ const plugin: Plugin = {
   configSchema: {
     type: 'object',
     properties: {
-      enabled: { type: 'boolean', default: false, description: 'Master switch.' },
+      enabled: { type: 'boolean', default: true, description: 'Master switch.' },
       severity: {
         type: 'string',
         enum: ['warn', 'block'],

@@ -25,6 +25,7 @@ import {
 import {
   encodeSageProjectServerMessage,
   SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
+  SageInvalidArgsError,
   type SageProjectServerClientMessage,
   type SageProjectServerInfo,
   type SageProjectServerMessage,
@@ -32,6 +33,7 @@ import {
   type SageRequestMetadata,
   type SageServerOperationName,
   type SageServerOperations,
+  validateDispatchArgs,
 } from './project-server-protocol.js';
 import type { SageServiceLike } from './service-contract.js';
 import type {
@@ -361,6 +363,11 @@ async function dispatch(
   rawArgs: unknown,
   signal: AbortSignal,
 ): Promise<unknown> {
+  // H9 (docs/sage-phase4-design.md): reject malformed args with a named
+  // protocol error BEFORE any store call — the transport catch maps
+  // `error.name` onto the response frame's `errorName`.
+  const argsError = validateDispatchArgs(op, rawArgs);
+  if (argsError) throw new SageInvalidArgsError(argsError);
   await ready;
   switch (op) {
     case 'ping':

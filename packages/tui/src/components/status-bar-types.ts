@@ -3,6 +3,7 @@ import type {
   StatuslineDensities,
   StatuslineLine,
   StatuslineLines,
+  StatuslineOrder,
 } from '@wrongstack/core/statusline';
 import type { AutonomyStage, TokenCounter, TokenSavingTier } from '@wrongstack/core/types';
 import type { GitInfo } from '../git-info.js';
@@ -255,6 +256,8 @@ export interface StatusBarProps {
    * already at its narrowest form.
    */
   statuslineDensities?: StatuslineDensities | undefined;
+  /** Custom left-to-right chip order (detailed mode). */
+  statuslineOrder?: StatuslineOrder | undefined;
   /**
    * Statusline density. The prop default 'detailed' is kept for back-compat
    * with tests/callers that omit `mode`; the user-facing default is 'minimum'

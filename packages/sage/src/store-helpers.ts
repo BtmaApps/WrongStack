@@ -759,3 +759,66 @@ export function legacyScopeFilterClause(scope: MemoryScope): {
     params: [legacyToSageScope(scope), scope],
   };
 }
+
+// ─── Live advisory counters (H6, docs/sage-phase4-design.md) ────────────
+
+const LIVE_COUNTER_COUNT_KEYS = ['injectionCount', 'useCount'] as const;
+const LIVE_COUNTER_STAMP_KEYS = ['lastUsedAt', 'lastAccessedAt'] as const;
+
+function isValidIsoStamp(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Carry live advisory counters forward through a whole-column memory write.
+ *
+ * `recordSqliteInjection` / `recordSqliteUse` run on the independent counter
+ * chain and `json_set` four keys inside `data`: `injectionCount`, `useCount`,
+ * `lastUsedAt`, `lastAccessedAt`. A content write (remember merge, update,
+ * verification) replaces the whole column from an in-memory object that was
+ * read earlier — an advisory bump committing between that read and the
+ * write-back would be silently lost. Merging from the row that is about to be
+ * replaced keeps the bump (H6, docs/sage-phase4-design.md).
+ *
+ * - No previous row (`previousData` undefined/empty) → `next` returned
+ *   untouched: new memories have nothing to reconcile.
+ * - A corrupt or non-object previous row → `next` untouched: counters are
+ *   advisory and loss-tolerant, and must never fail a content write.
+ * - Counts take the max of both sides; ISO stamps keep the newer (byte-wise —
+ *   both producers write `toISOString()` output). Keys absent on both sides
+ *   stay absent; every other field comes from `next` unchanged.
+ */
+export function mergeLiveCounterFields(previousData: string | undefined, next: Sage): Sage {
+  if (!previousData) return next;
+  let previous: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(previousData);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return next;
+    previous = parsed as Record<string, unknown>;
+  } catch {
+    return next;
+  }
+  const merged = { ...next } as Sage & Record<string, unknown>;
+  for (const key of LIVE_COUNTER_COUNT_KEYS) {
+    const previousValue: unknown = previous[key];
+    const nextValue: unknown = merged[key];
+    const previousCount =
+      typeof previousValue === 'number' && Number.isFinite(previousValue) ? previousValue : 0;
+    const nextCount = typeof nextValue === 'number' && Number.isFinite(nextValue) ? nextValue : 0;
+    if (previousCount > 0 || nextCount > 0) merged[key] = Math.max(previousCount, nextCount);
+  }
+  for (const key of LIVE_COUNTER_STAMP_KEYS) {
+    const previousStamp = isValidIsoStamp(previous[key]) ? previous[key] : undefined;
+    const nextStamp = isValidIsoStamp(merged[key]) ? merged[key] : undefined;
+    if (previousStamp === undefined) {
+      if (nextStamp !== undefined) merged[key] = nextStamp;
+      continue;
+    }
+    if (nextStamp === undefined) {
+      merged[key] = previousStamp;
+      continue;
+    }
+    merged[key] = previousStamp >= nextStamp ? previousStamp : nextStamp;
+  }
+  return merged;
+}

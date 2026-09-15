@@ -1,6 +1,6 @@
 /**
  * Focused coverage for services/statusline-config.ts — the statusline config
- * loader (schema v3: `{version: 3, chips, lines, densities}`). Uses the
+ * loader (schema v4: `{version: 4, chips, lines, densities, order}`). Uses the
  * WRONGSTACK_STATUSLINE_CONFIG env override to point at a temp file so no
  * real home directory is touched.
  */
@@ -14,6 +14,7 @@ import {
   ensureStatuslineConfig,
   loadStatuslineConfig,
   loadStatuslineLines,
+  loadStatuslineOrder,
   STATUSLINE_CONFIG_KEYS,
   STATUSLINE_CONFIG_VERSION,
   type StatuslineDocument,
@@ -30,7 +31,7 @@ function doc(
   chips: StatuslineDocument['chips'],
   lines: StatuslineDocument['lines'] = {},
 ): StatuslineDocument {
-  return { version: STATUSLINE_CONFIG_VERSION, chips, lines, densities: {} };
+  return { version: STATUSLINE_CONFIG_VERSION, chips, lines, densities: {}, order: [] };
 }
 
 beforeEach(async () => {
@@ -253,13 +254,14 @@ describe('statusline config (schema v3)', () => {
   });
 });
 
-describe('statusline density persistence (schema v3)', () => {
+describe('statusline density persistence (schema v4)', () => {
   it('round-trips density pins alongside chips and lines', async () => {
     await saveStatuslineConfig({
       version: STATUSLINE_CONFIG_VERSION,
       chips: { ...DEFAULTS, state: false },
       lines: { todos: 2 },
       densities: { cache: 'micro', model: 'short' },
+      order: [],
     } as StatuslineDocument);
     const config = await loadStatuslineConfig();
     expect(config.chips.state).toBe(false);
@@ -276,6 +278,7 @@ describe('statusline density persistence (schema v3)', () => {
         lines: {},
         // `auto` is the absence of a pin, so it must never reach disk.
         densities: { cache: 'auto', model: 'huge', not_a_chip: 'micro', cost: 'full' },
+        order: [],
       }),
       'utf8',
     );
@@ -295,6 +298,7 @@ describe('statusline density persistence (schema v3)', () => {
     const raw = JSON.parse(await fs.readFile(cfgFile, 'utf8')) as Record<string, unknown>;
     expect(raw['version']).toBe(STATUSLINE_CONFIG_VERSION);
     expect(raw['densities']).toEqual({});
+    expect(raw['order']).toEqual([]);
   });
 
   it('preserves stored chips when only the layout is written', async () => {
@@ -303,11 +307,34 @@ describe('statusline density persistence (schema v3)', () => {
       chips: { ...DEFAULTS, git: false },
       lines: {},
       densities: {},
+      order: [],
     } as StatuslineDocument);
     await saveStatuslineLayout({ densities: { cost: 'short' } });
     const config = await loadStatuslineConfig();
     expect(config.chips.git).toBe(false);
     expect(config.densities).toEqual({ cost: 'short' });
+  });
+});
+
+describe('statusline order persistence (schema v4)', () => {
+  it('round-trips a custom order and appends omitted chips canonically', async () => {
+    await saveStatuslineLayout({ order: ['model', 'project', 'git'] });
+    const order = await loadStatuslineOrder();
+    expect(order.slice(0, 3)).toEqual(['model', 'project', 'git']);
+    expect(new Set(order).size).toBe(STATUSLINE_CONFIG_KEYS.length);
+  });
+
+  it('migrates a v3 document with an empty canonical order', async () => {
+    await fs.writeFile(
+      cfgFile,
+      JSON.stringify({ version: 3, chips: DEFAULTS, lines: {}, densities: {} }),
+      'utf8',
+    );
+    const config = await ensureStatuslineConfig();
+    expect(config.order).toEqual([]);
+    const raw = JSON.parse(await fs.readFile(cfgFile, 'utf8')) as Record<string, unknown>;
+    expect(raw['version']).toBe(STATUSLINE_CONFIG_VERSION);
+    expect(raw['order']).toEqual([]);
   });
 });
 
@@ -329,6 +356,7 @@ describe('concurrent document mutations (single-flight RMW)', () => {
         chips: canonicalChips(),
         lines: { model: 2 },
         densities: { model: 'full' },
+        order: [],
       }),
       'utf8',
     );
@@ -353,6 +381,7 @@ describe('concurrent document mutations (single-flight RMW)', () => {
         chips: canonicalChips(),
         lines: { model: 2 },
         densities: {},
+        order: [],
       }),
       'utf8',
     );
@@ -372,6 +401,7 @@ describe('concurrent document mutations (single-flight RMW)', () => {
         chips: canonicalChips(),
         lines: { model: 2 },
         densities: {},
+        order: [],
       }),
       'utf8',
     );

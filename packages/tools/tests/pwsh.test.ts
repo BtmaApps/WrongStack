@@ -10,7 +10,13 @@ describe('pwshTool', () => {
     expect(pwshTool.mutating).toBe(true);
     expect(pwshTool.riskTier).toBe('destructive');
     expect(pwshTool.description).toContain('Execute a PowerShell command');
-    expect(pwshTool.usageHint).toContain('ConstrainedLanguage');
+    // The hint once described a sandbox, an escalation retry and job tools
+    // that do not exist; a model following it retried refused calls forever.
+    expect(pwshTool.usageHint).toContain('Not a sandbox');
+    expect(pwshTool.usageHint).not.toMatch(
+      /ConstrainedLanguage|sandbox_permissions|job_output|job_kill/,
+    );
+    expect(Object.keys(pwshTool.inputSchema.properties ?? {})).not.toContain('sandbox_permissions');
   });
 
   it('runs a simple PowerShell command and captures output', async () => {

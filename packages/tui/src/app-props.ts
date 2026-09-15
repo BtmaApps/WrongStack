@@ -2,7 +2,11 @@ import type { Agent } from '@wrongstack/core/agent';
 import type { CoordinatorEvent, Director } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { SlashCommandRegistry } from '@wrongstack/core/registry';
-import type { StatuslineDensities, StatuslineLines } from '@wrongstack/core/statusline';
+import type {
+  StatuslineDensities,
+  StatuslineLines,
+  StatuslineOrder,
+} from '@wrongstack/core/statusline';
 import type { QueueStore } from '@wrongstack/core/storage';
 import type {
   AttachmentStore,
@@ -676,15 +680,19 @@ export interface AppProps {
    * Optional: hosts that don't load it keep the core contract defaults.
    */
   statuslineLines?: StatuslineLines | undefined;
-  setStatuslineLines?: (lines: StatuslineLines) => void;
-  saveStatuslineLines?: (lines: StatuslineLines) => Promise<void>;
+  setStatuslineLines?: ((lines: StatuslineLines) => void) | undefined;
+  saveStatuslineLines?: ((lines: StatuslineLines) => Promise<void>) | undefined;
   /**
    * Per-chip density pin (statusline.json schema v3). Absent keys leave the
    * chip to the rail fitter.
    */
   statuslineDensities?: StatuslineDensities | undefined;
-  setStatuslineDensities?: (densities: StatuslineDensities) => void;
-  saveStatuslineDensities?: (densities: StatuslineDensities) => Promise<void>;
+  setStatuslineDensities?: ((densities: StatuslineDensities) => void) | undefined;
+  saveStatuslineDensities?: ((densities: StatuslineDensities) => Promise<void>) | undefined;
+  /** Custom left-to-right chip order (statusline.json schema v4). */
+  statuslineOrder?: StatuslineOrder | undefined;
+  setStatuslineOrder?: ((order: StatuslineOrder) => void) | undefined;
+  saveStatuslineOrder?: ((order: StatuslineOrder) => Promise<void>) | undefined;
   /**
    * Controller for the agents monitor overlay. App installs a dispatch-backed
    * setter on mount so the `/agents on|off` slash command can toggle the

@@ -146,7 +146,7 @@ export function buildTodosCommand(opts: SlashCommandContext): SlashCommand {
               message:
                 unknownSubcommand(
                   cmd,
-                  ['show', 'clear', 'add', 'done', 'done-all', 'remove'],
+                  ['show', 'clear', 'add', 'done', 'done-all', 'remove', 'rm'],
                   'todos',
                 ) +
                 '\n\nRelated: /plan (session-persistent roadmap) | /tasks (structured tasks with priorities)',

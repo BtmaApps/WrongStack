@@ -11,25 +11,25 @@ function segment(text: string): React.ReactElement {
 }
 
 describe('PowerlineRail', () => {
-  it('renders chips separated by single space, no transitions or caps', () => {
+  it('renders chips as one connected, capped status capsule', () => {
     const view = render(
       React.createElement(PowerlineRail, {
         budget: 80,
         segments: [segment('● READY'), segment('Opus 4.8'), segment('ctx 57%')],
       }),
     );
-    expect(stripAnsi(view.lastFrame() ?? '')).toBe('● READY  Opus 4.8  ctx 57%');
+    expect(stripAnsi(view.lastFrame() ?? '')).toBe('◖ ● READY ▶ Opus 4.8 ▶ ctx 57% ◗');
     view.unmount();
   });
 
-  it('inherits the terminal background', () => {
+  it('keeps the connected silhouette when background colors are unavailable', () => {
     const view = render(
       React.createElement(PowerlineRail, {
         budget: 80,
         segments: [segment('READY'), segment('main')],
       }),
     );
-    expect(stripAnsi(view.lastFrame() ?? '')).toBe('READY  main');
+    expect(stripAnsi(view.lastFrame() ?? '')).toBe('◖ READY ▶ main ◗');
     view.unmount();
   });
 
@@ -49,13 +49,13 @@ describe('PowerlineRail', () => {
   it('exact-fit rail reserves omission marker width', () => {
     const view = render(
       React.createElement(PowerlineRail, {
-        budget: 15,
+        budget: 20,
         segments: [segment('READY'), segment('MODEL'), segment('CONTEXT')],
       }),
     );
     const frame = stripAnsi(view.lastFrame() ?? '');
     expect(frame).toContain('+1');
-    expect(displayWidth(frame)).toBeLessThanOrEqual(15);
+    expect(displayWidth(frame)).toBeLessThanOrEqual(20);
     view.unmount();
   });
 

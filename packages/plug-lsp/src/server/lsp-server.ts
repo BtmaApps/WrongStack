@@ -29,7 +29,7 @@ import type {
 } from 'vscode-languageserver-protocol';
 import type { ServerConfig, ServerState } from '../types.js';
 import { LSPError, LSPErrorCode } from '../types.js';
-import { safeSpawn } from '../utils/safe-spawn.js';
+import { resolveSpawnCommand, safeSpawn } from '../utils/safe-spawn.js';
 import { pathToUri, uriKey, uriToPath } from '../utils/uri.js';
 import { Connection } from './connection.js';
 import { initializeServer } from './initialize.js';
@@ -100,7 +100,14 @@ export class LSPServer {
     this.state = 'starting';
     this.processReachedReady = false;
     this.ctx.events.emit('lsp.server.starting', { name: this.name, command: this.config.command });
-    const child = safeSpawn(this.config, this.ctx.rootPath);
+    const command = await resolveSpawnCommand(this.config.command, this.ctx.rootPath);
+    // A shutdown requested while the command was being resolved wins; spawning
+    // now would start a process nothing will ever stop.
+    if ((this.state as ServerState) !== 'starting') return;
+    const child = safeSpawn(
+      command === this.config.command ? this.config : { ...this.config, command },
+      this.ctx.rootPath,
+    );
     this.child = child;
     child.stderr.on('data', (chunk: Buffer) => this.captureStderr(chunk));
     child.on('exit', (code, sig) => {

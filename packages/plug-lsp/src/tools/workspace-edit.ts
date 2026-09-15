@@ -14,15 +14,35 @@ interface ApplyWorkspaceEditResult {
 export async function applyWorkspaceEdit(
   edit: WorkspaceEdit,
   tracker: DocumentTracker,
+  projectRoot: string,
 ): Promise<ApplyWorkspaceEditResult> {
   const entries = editsByPath(edit);
-  const ops: Array<{ path: string; original: string; next: string; edits: number }> = [];
+  const targets: Array<[string, TextEdit[]]> = [];
   for (const [file, edits] of entries) {
     // `editsByPath` keys custom-scheme targets (`jdt:`, `vscode-remote:`) by
     // their URI, which is not a writable filesystem path. Only `file:` targets
     // resolve to an absolute path, so skip anything else rather than failing
     // the whole edit on read.
     if (!path.isAbsolute(file)) continue;
+    targets.push([file, edits]);
+  }
+
+  // Reads may leave the project (definitions jump into dependencies), but
+  // writes may not: the server-provided edit was written to any absolute
+  // path it named. Refuse the whole edit before touching a single file.
+  const outside = await filesOutsideRoot(
+    targets.map(([file]) => file),
+    projectRoot,
+  );
+  if (outside.length > 0) {
+    throw new LSPError(
+      LSPErrorCode.ApplyEditFailed,
+      `Refusing to apply workspace edit outside the project root (${projectRoot}): ${outside.join(', ')}`,
+    );
+  }
+
+  const ops: Array<{ path: string; original: string; next: string; edits: number }> = [];
+  for (const [file, edits] of targets) {
     const original = await fs.readFile(file, 'utf8');
     ops.push({ path: file, original, next: applyTextEdits(original, edits), edits: edits.length });
   }
@@ -48,6 +68,24 @@ export async function applyWorkspaceEdit(
 
   for (const op of ops) await tracker.fileWritten(op.path);
   return { files: ops.map((op) => op.path), edits: ops.reduce((sum, op) => sum + op.edits, 0) };
+}
+
+/** Targets whose lexical or real (symlink-resolved) path leaves `projectRoot`. */
+async function filesOutsideRoot(files: readonly string[], projectRoot: string): Promise<string[]> {
+  const root = path.resolve(projectRoot);
+  const realRoot = await fs.realpath(root).catch(() => root);
+  const outside: string[] = [];
+  for (const file of files) {
+    const lexical = path.resolve(file);
+    const real = await fs.realpath(lexical).catch(() => lexical);
+    if (!isWithin(root, lexical) || !isWithin(realRoot, real)) outside.push(file);
+  }
+  return outside;
+}
+
+function isWithin(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 export function applyTextEdits(original: string, edits: TextEdit[]): string {

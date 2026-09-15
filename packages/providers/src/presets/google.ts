@@ -382,7 +382,12 @@ function sanitizeSchemaForGemini(node: unknown): Record<string, unknown> | undef
   if (typeof node !== 'object') return undefined;
   const src = node as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(src)) {
+  for (const [rawKey, v] of Object.entries(src)) {
+    // Gemini accepts `anyOf` but not `oneOf`. Dropping `oneOf` left a property
+    // such as telegram's `chat_id` (string | integer) with no type at all on
+    // the wire. The alternatives in tool schemas are disjoint, so `anyOf`
+    // carries the same shape; runtime validation still enforces `oneOf`.
+    const k = rawKey === 'oneOf' && !('anyOf' in src) ? 'anyOf' : rawKey;
     if (!GEMINI_ALLOWED_KEYS.has(k)) continue;
     if (k === 'properties' && v && typeof v === 'object') {
       const props: Record<string, unknown> = {};

@@ -139,6 +139,17 @@ function remoteError(message: string, name?: string): Error {
   return error;
 }
 
+/**
+ * Symmetric counterpart of the server's `MAX_CLIENT_WRITE_BUFFER_BYTES`
+ * (project-server.ts): the same 8 MB ceiling on bytes queued for outbound
+ * write. A stalled daemon must not grow this process's heap without bound —
+ * destroying the socket routes pending calls through the existing
+ * transport-death rejection and the connect/election reconnect, and the
+ * daemon re-reads its state from SQLite on the next connection (H4,
+ * docs/sage-phase4-design.md).
+ */
+const MAX_SERVER_WRITE_BUFFER_BYTES = 8 * 1024 * 1024;
+
 export class SageProjectServerConnection {
   private socket: net.Socket | null = null;
   private info: SageProjectServerInfo | null = null;
@@ -649,7 +660,16 @@ export class SageProjectServerConnection {
 
   private write(message: object): void {
     const socket = this.socket;
-    if (socket && !socket.destroyed) socket.write(encodeSageProjectServerMessage(message));
+    if (!socket || socket.destroyed) return;
+    // The boolean return of socket.write is deliberately ignored: this cap is
+    // the backstop, and per-write drain awaiting would serialize callers
+    // behind slow I/O. Mirror of the server's writeEncoded — keep the two
+    // thresholds in sync.
+    if (socket.writableLength > MAX_SERVER_WRITE_BUFFER_BYTES) {
+      socket.destroy(new Error('SAGE server fell too far behind on reads'));
+      return;
+    }
+    socket.write(encodeSageProjectServerMessage(message));
   }
 
   private spawnDetachedServer(): void {

@@ -41,7 +41,7 @@ function railSpans(
 }
 
 describe('rail span projection (hit-test geometry)', () => {
-  it('lays segments out 0-based with 2-space separators, mirroring PowerlineRail', () => {
+  it('lays spans over each segment cap/transition and payload, mirroring PowerlineRail', () => {
     const spans = railSpans(
       [
         { id: 'yolo', node: chip('YOLO') },
@@ -51,9 +51,9 @@ describe('rail span projection (hit-test geometry)', () => {
       120,
     );
     expect(spans).toEqual([
-      { id: 'yolo', start: 0, len: 4, level: 0 },
-      { id: 'model', start: 6, len: 'openai/gpt-5.6'.length, level: 0 },
-      { id: 'state', start: 6 + 'openai/gpt-5.6'.length + 2, len: 4, level: 0 },
+      { id: 'yolo', start: 0, len: 7, level: 0 },
+      { id: 'model', start: 7, len: 'openai/gpt-5.6'.length + 3, level: 0 },
+      { id: 'state', start: 7 + 'openai/gpt-5.6'.length + 3, len: 7, level: 0 },
     ]);
   });
 
@@ -64,15 +64,15 @@ describe('rail span projection (hit-test geometry)', () => {
         { id: 'b', node: chip('bbbbbbbbbb') },
         { id: 'c', node: chip('cccccccccc') },
       ],
-      // Only the first two fit once the `+N` omission marker is reserved.
-      26,
+      // Two capsuled chips and the `+N` omission marker fit exactly.
+      30,
     );
     expect(spans.map((s) => s.id)).toEqual(['a', 'b']);
   });
 
   it('always keeps the first segment even when over budget', () => {
     const spans = railSpans([{ id: 'a', node: chip('aaaaaaaaaa') }], 4);
-    expect(spans).toEqual([{ id: 'a', start: 0, len: 10, level: 0 }]);
+    expect(spans).toEqual([{ id: 'a', start: 0, len: 13, level: 0 }]);
   });
 
   it('trims trailing segments to make room for a right anchor', () => {
@@ -82,7 +82,7 @@ describe('rail span projection (hit-test geometry)', () => {
         { id: 'a', node: chip('aaaaaaaaaa') },
         { id: 'b', node: chip('bbbbbbbbbb') },
       ],
-      24,
+      27,
       anchor,
     );
     expect(withAnchor.map((s) => s.id)).toEqual(['a']);
@@ -91,7 +91,7 @@ describe('rail span projection (hit-test geometry)', () => {
         { id: 'a', node: chip('aaaaaaaaaa') },
         { id: 'b', node: chip('bbbbbbbbbb') },
       ],
-      24,
+      27,
     );
     expect(withoutAnchor.map((s) => s.id)).toEqual(['a', 'b']);
   });
@@ -111,7 +111,7 @@ describe('rail span projection (hit-test geometry)', () => {
     // Both survive: the fitter concedes detail, not chips.
     expect(spans.map((s) => s.id)).toEqual(['fat', 'thin']);
     expect(spans[0]!.level).toBe(1);
-    expect(spans[0]!.len).toBe(8);
+    expect(spans[0]!.len).toBe(11);
   });
 
   it('drops only once every chip is at its narrowest level', () => {
@@ -133,10 +133,10 @@ describe('rail span projection (hit-test geometry)', () => {
         { id: 'pinned', node: chip('P'.repeat(20)), alt: [chip('P')], lo: 0, hi: 0 },
         { id: 'free', node: chip('f'.repeat(20)), alt: [chip('f')] },
       ],
-      24,
+      28,
     );
     expect(spans[0]!.level).toBe(0);
-    expect(spans[0]!.len).toBe(20);
+    expect(spans[0]!.len).toBe(23);
     expect(spans[1]!.level).toBe(1);
   });
 });

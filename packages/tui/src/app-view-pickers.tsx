@@ -285,6 +285,7 @@ export function AppViewPickers({
           hiddenItems={state.statuslinePicker.hiddenItems}
           lines={state.statuslinePicker.lines}
           densities={state.statuslinePicker.densities}
+          order={state.statuslinePicker.order}
           visibleChips={state.statuslinePicker.visibleChips}
           filter={state.statuslinePicker.filter}
           filtering={state.statuslinePicker.filtering}

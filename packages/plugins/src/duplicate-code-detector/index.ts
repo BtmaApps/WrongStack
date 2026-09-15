@@ -154,7 +154,7 @@ interface DuplicateCodeDetectorConfig {
 }
 
 const DEFAULTS: DuplicateCodeDetectorConfig = {
-  enabled: false,
+  enabled: true,
   minLines: 8,
   threshold: 0.8,
   extensions: ['.ts', '.tsx', '.js', '.jsx'],
@@ -495,7 +495,7 @@ const plugin: Plugin = {
   configSchema: {
     type: 'object',
     properties: {
-      enabled: { type: 'boolean', default: false, description: 'Master switch.' },
+      enabled: { type: 'boolean', default: true, description: 'Master switch.' },
       minLines: {
         type: 'number',
         minimum: 2,

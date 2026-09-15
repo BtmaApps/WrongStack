@@ -4,12 +4,14 @@ import * as path from 'node:path';
 import {
   clampLine,
   defaultChipEnabledMap,
+  resolveStatuslineOrder,
   STATUSLINE_DENSITY_LEVELS,
   STATUSLINE_ITEMS,
   type StatuslineDensities,
   type StatuslineDensity,
   type StatuslineItem,
   type StatuslineLines,
+  type StatuslineOrder,
 } from '@wrongstack/core/statusline';
 import { ERROR_CODES, FsError } from '@wrongstack/core/types';
 import { atomicWrite, resolveWstackPaths, toErrorMessage } from '@wrongstack/core/utils';
@@ -21,8 +23,9 @@ const CONFIG_ENV = 'WRONGSTACK_STATUSLINE_CONFIG';
  *  v1 — flat boolean map.
  *  v2 — `{chips, lines}`.
  *  v3 — adds `densities` (per-chip full/short/micro pin).
+ *  v4 — adds `order` (custom left-to-right chip order).
  */
-export const STATUSLINE_CONFIG_VERSION = 3;
+export const STATUSLINE_CONFIG_VERSION = 4;
 
 /**
  * The persistence vocabulary IS the core contract — one list, so a new chip
@@ -35,8 +38,8 @@ export type StatuslineConfigKey = StatuslineItem;
 export type StatuslineConfig = { [K in StatuslineConfigKey]?: boolean | undefined };
 
 /**
- * v3 statusline.json document: the chip on/off map, the sparse per-chip line
- * assignment, and the sparse per-chip density pin. Absent `lines` keys mean
+ * v4 statusline.json document: on/off map, sparse per-chip line assignment,
+ * sparse density pins, and optional custom left-to-right order. Absent `lines` keys mean
  * "render on the contract's default line" (`DEFAULT_LINES`); absent
  * `densities` keys mean "let the rail fitter choose".
  */
@@ -45,6 +48,7 @@ export interface StatuslineDocument {
   chips: StatuslineConfig;
   lines: StatuslineLines;
   densities: StatuslineDensities;
+  order: StatuslineOrder;
 }
 
 /**
@@ -61,6 +65,7 @@ function emptyDocument(): StatuslineDocument {
     chips: { ...DEFAULTS },
     lines: {},
     densities: {},
+    order: [],
   };
 }
 
@@ -120,6 +125,16 @@ function normalizeDensities(value: unknown): StatuslineDensities {
   return densities;
 }
 
+function normalizeOrder(value: unknown): StatuslineOrder {
+  if (!Array.isArray(value)) return [];
+  const items = value.filter(
+    (item): item is StatuslineItem =>
+      typeof item === 'string' && (STATUSLINE_CONFIG_KEYS as readonly string[]).includes(item),
+  );
+  const resolved = resolveStatuslineOrder(items);
+  return resolved.every((item, index) => item === STATUSLINE_ITEMS[index]) ? [] : resolved;
+}
+
 /**
  * Interpret raw file contents. A `{chips|lines|densities}` document is read
  * as-is; anything else — including the v1 flat boolean map — is treated as
@@ -133,13 +148,17 @@ function parseDocument(value: unknown): StatuslineDocument {
   // stored layout (chips fall back to DEFAULTS; layout is preserved).
   if (
     isRecord(value) &&
-    (isRecord(value['chips']) || isRecord(value['lines']) || isRecord(value['densities']))
+    (isRecord(value['chips']) ||
+      isRecord(value['lines']) ||
+      isRecord(value['densities']) ||
+      Array.isArray(value['order']))
   ) {
     return {
       version: STATUSLINE_CONFIG_VERSION,
       chips: normalizeChips(value['chips']),
       lines: normalizeLines(value['lines']),
       densities: normalizeDensities(value['densities']),
+      order: normalizeOrder(value['order']),
     };
   }
   return {
@@ -147,6 +166,7 @@ function parseDocument(value: unknown): StatuslineDocument {
     chips: normalizeChips(value),
     lines: {},
     densities: {},
+    order: [],
   };
 }
 
@@ -165,12 +185,19 @@ function needsRewrite(value: unknown): boolean {
     if (value['version'] !== STATUSLINE_CONFIG_VERSION) return true;
     if (isMissingKnownChips(value['chips'])) return true;
     // A missing/non-record layout record is malformed, not canonical.
-    if (!isRecord(value['lines']) || !isRecord(value['densities'])) return true;
+    if (
+      !isRecord(value['lines']) ||
+      !isRecord(value['densities']) ||
+      !Array.isArray(value['order'])
+    )
+      return true;
     // Rewrite when the layout is not already canonical so clamped/dropped
     // values do not persist indefinitely on disk.
     return (
       JSON.stringify(normalizeLines(value['lines'])) !== JSON.stringify(value['lines']) ||
-      JSON.stringify(normalizeDensities(value['densities'])) !== JSON.stringify(value['densities'])
+      JSON.stringify(normalizeDensities(value['densities'])) !==
+        JSON.stringify(value['densities']) ||
+      JSON.stringify(normalizeOrder(value['order'])) !== JSON.stringify(value['order'])
     );
   }
   return true;
@@ -241,6 +268,7 @@ export async function saveStatuslineConfig(config: StatuslineDocument): Promise<
           chips: normalizeChips(config.chips),
           lines: normalizeLines(config.lines),
           densities: normalizeDensities(config.densities),
+          order: normalizeOrder(config.order),
         },
         null,
         2,
@@ -269,9 +297,14 @@ export async function loadStatuslineDensities(): Promise<StatuslineDensities> {
   return (await loadStatuslineConfig()).densities;
 }
 
+/** Load custom left-to-right chip order (empty means canonical order). */
+export async function loadStatuslineOrder(): Promise<StatuslineOrder> {
+  return (await loadStatuslineConfig()).order;
+}
+
 /**
  * Every read-modify-write of the document runs inside this single-flight
- * chain. Two overlapping saves (the TUI's independent lines and densities
+ * chain. Overlapping saves (the TUI's independent lines, densities and order
  * persistence effects — a reset arms both in one commit — or a /statusline
  * command racing a picker edit) each read the file before either write
  * lands, so an unqueued last writer resurrects its stale read and silently
@@ -292,13 +325,14 @@ function queueDocMutation<T>(mutate: () => Promise<T>): Promise<T> {
 }
 
 /**
- * Persist a new layout (lines and/or densities) while preserving the stored
+ * Persist a new layout (lines, densities and/or order) while preserving the stored
  * chip toggles. Values are re-normalized (unknown keys dropped, clamped) so a
  * malformed caller cannot write garbage to disk.
  */
 export async function saveStatuslineLayout(layout: {
   lines?: StatuslineLines | undefined;
   densities?: StatuslineDensities | undefined;
+  order?: StatuslineOrder | undefined;
 }): Promise<void> {
   await queueDocMutation(async () => {
     // ensure (not load) so a corrupt file is quarantined before the RMW —
@@ -308,6 +342,7 @@ export async function saveStatuslineLayout(layout: {
       ...doc,
       lines: normalizeLines(layout.lines ?? doc.lines),
       densities: normalizeDensities(layout.densities ?? doc.densities),
+      order: normalizeOrder(layout.order ?? doc.order),
     });
   });
 }
@@ -328,4 +363,9 @@ export async function saveStatuslineChips(chips: StatuslineConfig): Promise<void
 /** Back-compat alias: persist only the line assignment. */
 export async function saveStatuslineLines(lines: StatuslineLines): Promise<void> {
   await saveStatuslineLayout({ lines });
+}
+
+/** Back-compat-sized helper: persist only the custom chip order. */
+export async function saveStatuslineOrder(order: StatuslineOrder): Promise<void> {
+  await saveStatuslineLayout({ order });
 }

@@ -84,7 +84,11 @@ The wordmark and route label render in the brand gradient (orange → pink).
 
 The TUI defaults to a portable Unicode icon set, so the segmented status rail,
 composer frame, and tool cards work without installing a special font. Two
-additional profiles are available through `WRONGSTACK_TUI_ICON_STYLE`:
+When no override is set, WrongStack checks the local OS font directories once
+at startup and automatically selects the Nerd profile when it finds an
+installed Nerd Font. SSH sessions stay on portable Unicode because the server
+cannot inspect the client terminal's font. Explicit profiles are available
+through `WRONGSTACK_TUI_ICON_STYLE`:
 
 ```powershell
 # Rich Powerline + development icons (requires a Nerd Font in the terminal)

@@ -63,17 +63,139 @@ export const braveSearchServer = (): MCPServerConfig => ({
   permission: 'confirm',
 });
 
-/**
- * Block (Block, Inc.) — Postgres database access via SQL.
- * Useful for running queries against a connected database during development.
- */
-export const blockServer = (): MCPServerConfig => ({
-  name: 'block',
-  description: 'Postgres database access via SQL (Block MCP server)',
+/** GitLab API: issues, PRs, repos, search, file operations. Requires GITLAB_PERSONAL_ACCESS_TOKEN. */
+export const gitlabServer = (): MCPServerConfig => ({
+  name: 'gitlab',
+  description:
+    'GitLab API — issues, merge requests, projects (requires GITLAB_PERSONAL_ACCESS_TOKEN)',
   transport: 'stdio',
   command: 'npx',
-  args: ['-y', '@modelcontextprotocol/server-block'],
+  args: ['-y', '@modelcontextprotocol/server-gitlab'],
+  passthroughEnv: ['GITLAB_PERSONAL_ACCESS_TOKEN', 'GITLAB_API_URL'],
   permission: 'confirm',
+});
+
+/**
+ * PostgreSQL — database inspection and read-only query execution.
+ * Provided by @modelcontextprotocol/server-postgres.
+ */
+export const postgresServer = (): MCPServerConfig => ({
+  name: 'postgres',
+  description: 'PostgreSQL database access — schema inspection and read-only queries',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-postgres'],
+  passthroughEnv: ['DATABASE_URL', 'POSTGRES_CONNECTION_STRING'],
+  permission: 'confirm',
+});
+
+/**
+ * SQLite — database inspection and SQL execution via mcp-server-sqlite.
+ */
+export const sqliteServer = (): MCPServerConfig => ({
+  name: 'sqlite',
+  description: 'SQLite database inspection and queries (mcp-server-sqlite)',
+  transport: 'stdio',
+  command: 'uvx',
+  args: ['mcp-server-sqlite', '--db-path', './database.db'],
+  permission: 'confirm',
+});
+
+/**
+ * Git — local repository operations, diffs, log, commit via mcp-server-git.
+ */
+export const gitServer = (): MCPServerConfig => ({
+  name: 'git',
+  description: 'Git repository inspection, diffs, log, commit (mcp-server-git)',
+  transport: 'stdio',
+  command: 'uvx',
+  args: ['mcp-server-git', '--repository', '.'],
+  permission: 'confirm',
+});
+
+/**
+ * Memory — Knowledge Graph based persistent memory across conversations.
+ * Provided by @modelcontextprotocol/server-memory.
+ */
+export const memoryServer = (): MCPServerConfig => ({
+  name: 'memory',
+  description: 'Knowledge Graph persistent memory (@modelcontextprotocol/server-memory)',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-memory'],
+  permission: 'auto',
+});
+
+/**
+ * Sequential Thinking — dynamic and reflective problem-solving tool.
+ * Provided by @modelcontextprotocol/server-sequential-thinking.
+ */
+export const sequentialThinkingServer = (): MCPServerConfig => ({
+  name: 'sequential-thinking',
+  description: 'Sequential thinking and problem solving (@modelcontextprotocol/server-sequential-thinking)',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+  permission: 'auto',
+});
+
+/**
+ * Puppeteer — browser automation via @modelcontextprotocol/server-puppeteer.
+ */
+export const puppeteerServer = (): MCPServerConfig => ({
+  name: 'puppeteer',
+  description: 'Browser automation via Puppeteer (navigate, click, screenshot, evaluate)',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-puppeteer'],
+  permission: 'confirm',
+});
+
+/**
+ * Docker — container and image management, logs, monitoring via docker-mcp.
+ */
+export const dockerServer = (): MCPServerConfig => ({
+  name: 'docker',
+  description: 'Docker container, image, and log management (docker-mcp)',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', 'docker-mcp'],
+  permission: 'confirm',
+});
+
+/**
+ * Fetch — web page fetcher and markdown conversion via mcp-server-fetch.
+ */
+export const fetchServer = (): MCPServerConfig => ({
+  name: 'fetch',
+  description: 'Web page fetching and markdown conversion (mcp-server-fetch)',
+  transport: 'stdio',
+  command: 'uvx',
+  args: ['mcp-server-fetch'],
+  permission: 'auto',
+});
+
+/**
+ * Sentry — error and crash tracking via sentry-mcp. Requires SENTRY_AUTH_TOKEN.
+ */
+export const sentryServer = (): MCPServerConfig => ({
+  name: 'sentry',
+  description: 'Sentry error and crash tracking (sentry-mcp, requires SENTRY_AUTH_TOKEN)',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', 'sentry-mcp'],
+  passthroughEnv: ['SENTRY_AUTH_TOKEN'],
+  permission: 'confirm',
+});
+
+/**
+ * Block / Postgres database access preset (alias for postgresServer).
+ * Uses official @modelcontextprotocol/server-postgres.
+ */
+export const blockServer = (): MCPServerConfig => ({
+  ...postgresServer(),
+  name: 'block',
+  description: 'Postgres database access via SQL (@modelcontextprotocol/server-postgres)',
 });
 
 /**
@@ -105,16 +227,22 @@ export const slackServer = (): MCPServerConfig => ({
 });
 
 /**
- * AWS knowledge base — EC2, S3, Lambda, IAM, CloudFormation, cost management.
- * Requires AWS access key + secret in environment.
+ * AWS knowledge base & API management — EC2, S3, Lambda, IAM, CloudFormation, CloudWatch.
+ * Provided by @yawlabs/aws-mcp. Requires AWS credentials in environment or AWS SSO.
  */
 export const awsServer = (): MCPServerConfig => ({
   name: 'aws',
-  description: 'AWS — EC2, S3, Lambda, IAM, CloudFormation, costs. Requires AWS credentials',
+  description: 'AWS — EC2, S3, Lambda, IAM, CloudFormation, CloudWatch (yawlabs/aws-mcp)',
   transport: 'stdio',
   command: 'npx',
-  args: ['-y', '@modelcontextprotocol/server-aws'],
-  passthroughEnv: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'AWS_SESSION_TOKEN'],
+  args: ['-y', '@yawlabs/aws-mcp'],
+  passthroughEnv: [
+    'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_REGION',
+    'AWS_SESSION_TOKEN',
+    'AWS_PROFILE',
+  ],
   permission: 'confirm',
 });
 
@@ -132,7 +260,10 @@ export const googleMapsServer = (): MCPServerConfig => ({
   permission: 'confirm',
 });
 
-/** Sentinel — security vulnerability scanning (sentinel-labs). */
+/**
+ * Sentinel — security vulnerability scanning.
+ * @deprecated sentinel.ai endpoint is unmaintained. Preserved for backward compatibility.
+ */
 export const sentinelServer = (): MCPServerConfig => ({
   name: 'sentinel',
   description: 'Security vulnerability scanning (Sentinel)',
@@ -165,18 +296,16 @@ export const zaiVisionServer = (): MCPServerConfig => ({
 });
 
 /**
- * Playwright — browser automation: navigate, click, type, screenshot, evaluate JS.
- * Spawns a headless Chromium browser via @modelcontextprotocol/server-playwright.
- * Tools can read and interact with live web pages — permission defaults to
- * `confirm` because form submission / DOM mutation is possible.
+ * Playwright — browser automation: navigate, snapshot, click, type, evaluate JS.
+ * Spawns headless browser via Microsoft's official @playwright/mcp.
  */
 export const playwrightServer = (): MCPServerConfig => ({
   name: 'playwright',
   description:
-    'Browser automation — navigate, screenshot, click, type, evaluate JS (headless Chromium)',
+    'Browser automation — navigate, snapshot, click, type, evaluate JS (Microsoft Playwright)',
   transport: 'stdio',
   command: 'npx',
-  args: ['-y', '@modelcontextprotocol/server-playwright'],
+  args: ['-y', '@playwright/mcp@latest'],
   permission: 'confirm',
 });
 
@@ -319,11 +448,21 @@ export function resolveMcpServerConfig(
 export const allServers = (): Record<string, MCPServerConfig> => ({
   filesystem: { ...filesystemServer(), enabled: false },
   github: { ...githubServer(), enabled: false },
+  gitlab: { ...gitlabServer(), enabled: false },
+  postgres: { ...postgresServer(), enabled: false },
+  sqlite: { ...sqliteServer(), enabled: false },
+  git: { ...gitServer(), enabled: false },
+  memory: { ...memoryServer(), enabled: false },
+  'sequential-thinking': { ...sequentialThinkingServer(), enabled: false },
+  puppeteer: { ...puppeteerServer(), enabled: false },
   context7: { ...context7Server(), enabled: false },
+  fetch: { ...fetchServer(), enabled: false },
   'brave-search': { ...braveSearchServer(), enabled: false },
+  docker: { ...dockerServer(), enabled: false },
   block: { ...blockServer(), enabled: false },
   everart: { ...everArtServer(), enabled: false },
   slack: { ...slackServer(), enabled: false },
+  sentry: { ...sentryServer(), enabled: false },
   aws: { ...awsServer(), enabled: false },
   'google-maps': { ...googleMapsServer(), enabled: false },
   sentinel: { ...sentinelServer(), enabled: false },

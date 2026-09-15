@@ -90,6 +90,9 @@ export type StatuslineLines = Partial<Record<StatuslineItem, StatuslineLine>>;
  */
 export type StatuslineDensities = Partial<Record<StatuslineItem, StatuslineDensity>>;
 
+/** Optional custom left-to-right chip order; missing items retain canonical order. */
+export type StatuslineOrder = StatuslineItem[];
+
 /**
  * Ordered list of statusline items — grouped by display line, then in
  * RENDER order within each line so consumers iterate the statusline
@@ -242,6 +245,30 @@ export function defaultChipEnabledMap(): Record<StatuslineItem, boolean> {
 
 /** Total number of statusline chips in the contract. */
 export const STATUSLINE_FIELD_COUNT = STATUSLINE_ITEMS.length;
+
+/**
+ * Normalize a partial/custom order into one complete, duplicate-free sequence.
+ * Unknown saved keys are ignored and newly-added chips append in canonical
+ * order, so older profiles migrate without losing new statusline features.
+ */
+export function resolveStatuslineOrder(
+  order: readonly StatuslineItem[] | undefined,
+): StatuslineItem[] {
+  const known = new Set<StatuslineItem>(STATUSLINE_ITEMS);
+  const seen = new Set<StatuslineItem>();
+  const resolved: StatuslineItem[] = [];
+  for (const item of order ?? []) {
+    if (!known.has(item) || seen.has(item)) continue;
+    seen.add(item);
+    resolved.push(item);
+  }
+  for (const item of STATUSLINE_ITEMS) {
+    if (seen.has(item)) continue;
+    seen.add(item);
+    resolved.push(item);
+  }
+  return resolved;
+}
 
 /** Human-readable name of each rail, used by the picker's section headers. */
 export const LINE_TITLES: Record<StatuslineLine, string> = {
