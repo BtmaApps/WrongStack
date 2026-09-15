@@ -137,7 +137,13 @@ function buildMemoryEvidenceBlocks(ctx: Pick<Context, 'memoryEvidence'>): TextBl
     if (remaining <= 0) break;
     const text = entry.text.trim();
     if (!text) continue;
-    const bounded = text.slice(0, remaining);
+    // Cut at a line boundary when the budget runs out: memory evidence is one
+    // fenced memory per line, and a half line loses its closing fence.
+    let bounded = text.slice(0, remaining);
+    if (bounded.length < text.length) {
+      const lastBreak = bounded.lastIndexOf('\n');
+      if (lastBreak > 0) bounded = bounded.slice(0, lastBreak);
+    }
     remaining -= bounded.length;
     // `formatMemoryEvidenceBlock` owns the fence and neutralizes the delimiter
     // inside the body — memory text is attacker-influenceable, and a literal
