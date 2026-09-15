@@ -48,10 +48,10 @@ describe('LSPServer.start during shutdown', () => {
     // start() runs synchronously up to the command-resolution await.
     const started = server.start();
     expect(server.state).toBe('starting');
-    server.state = 'stopped';
+    server.state = 'shutting_down';
     await started;
 
-    expect(server.state).toBe('stopped');
+    expect(server.state).toBe('shutting_down');
     expect((server as unknown as { child: unknown }).child).toBeNull();
   });
 });
