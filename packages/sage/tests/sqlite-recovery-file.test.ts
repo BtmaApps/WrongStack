@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SqliteSageStore } from '../src/sqlite-store.js';
 
@@ -199,5 +200,27 @@ describe('SQLite recovery and file memory operations', () => {
     expect(result.symbolMatches[0]?.matchStrength).toBe(1);
     expect(result.relatedMatches).toHaveLength(1);
     expect(result.totalCount).toBe(3);
+  });
+});
+
+// Static source-hygiene detector (anchored regression). Commit 3bbe66a22 wrote
+// raw NUL (U+0000) bytes into duplicateKey()'s template literal, which made
+// this file binary to git, ripgrep, and text readers — the recovery rewrite
+// shipped as an unreviewable "Bin 7692 -> 9952" diff and formatters skipped
+// the file. The separators must stay written as `\u0000` escape sequences.
+describe('sqlite-store-recovery source hygiene', () => {
+  const recoverySourceUrl = new URL('../src/sqlite-store-recovery.ts', import.meta.url);
+
+  it('contains no raw NUL bytes (valid UTF-8 text source)', async () => {
+    const source = await fs.readFile(fileURLToPath(recoverySourceUrl));
+    expect(
+      source.includes(0),
+      'raw NUL byte in sqlite-store-recovery.ts — write the separator as the \\u0000 escape, not a literal U+0000',
+    ).toBe(false);
+  });
+
+  it('keeps the duplicateKey separator as the \\u0000 escape sequence', async () => {
+    const source = await fs.readFile(fileURLToPath(recoverySourceUrl), 'utf8');
+    expect(source).toContain('\\u0000');
   });
 });
