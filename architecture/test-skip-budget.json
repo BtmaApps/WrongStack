@@ -312,6 +312,11 @@
       "fingerprint": "c0819fc3befcf009"
     },
     {
+      "file": "packages/tools/tests/browser-manager-guard-regressions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "38f99c1d70b10685"
+    },
+    {
       "file": "packages/tools/tests/browser-manager.test.ts",
       "kind": "skipIf",
       "fingerprint": "8f0a065f34a0d18f"

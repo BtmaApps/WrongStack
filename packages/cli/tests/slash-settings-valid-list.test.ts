@@ -29,7 +29,7 @@ function settingsCtx(): SlashCommandContext {
 }
 
 function helpDocumentedSettings(): string[] {
-  return [...new Set([...SETTINGS_HELP.matchAll(/\/settings ([a-z0-9-]+)/g)].map((m) => m[1]))];
+  return [...new Set([...SETTINGS_HELP.matchAll(/\/settings ([a-z0-9-]+)/g)].map((m) => m[1] ?? ''))];
 }
 
 describe('buildSettingsCommand valid-list drift', () => {
