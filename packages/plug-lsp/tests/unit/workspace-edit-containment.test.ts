@@ -77,6 +77,16 @@ describe('applyWorkspaceEdit project-root containment', () => {
     expect(await fs.readFile(outside, 'utf8')).toBe('alpha;\n');
   });
 
+  it('falls back to the lexical root when the root cannot be resolved', async () => {
+    const missingRoot = path.join(await tempDir('plug-lsp-gone-'), 'does-not-exist');
+    const result = await applyWorkspaceEdit(
+      { changes: {} },
+      { fileWritten: vi.fn() } as never,
+      missingRoot,
+    );
+    expect(result).toEqual({ files: [], edits: 0 });
+  });
+
   it('still applies an edit confined to the root', async () => {
     const root = await tempDir('plug-lsp-root-');
     await fs.mkdir(path.join(root, 'src'));

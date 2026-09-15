@@ -36,4 +36,22 @@ describe('LSPServer.start during shutdown', () => {
     expect(server.state).toBe('shutting_down');
     expect(starting).not.toHaveBeenCalled();
   });
+
+  it('does not spawn when a shutdown lands while the command is resolving', async () => {
+    const events = new EventBus();
+    const server = new LSPServer(
+      'probe',
+      { command: process.execPath, languages: ['typescript'] },
+      { cwd: process.cwd(), rootPath: process.cwd(), log, events },
+    );
+
+    // start() runs synchronously up to the command-resolution await.
+    const started = server.start();
+    expect(server.state).toBe('starting');
+    server.state = 'stopped';
+    await started;
+
+    expect(server.state).toBe('stopped');
+    expect((server as unknown as { child: unknown }).child).toBeNull();
+  });
 });

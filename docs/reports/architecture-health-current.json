@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T17:59:20.237Z",
+  "generatedAt": "2026-09-15T18:27:10.601Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3800,
-    "testFiles": 3427,
+    "testFiles": 3429,
     "sourceLines": 930383,
     "workspaceEdges": 128,
     "moduleEdges": 12145,
@@ -393,7 +393,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 50,
-      "testFiles": 44,
+      "testFiles": 46,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -407,7 +407,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 44
+          "testFiles": 46
         }
       ]
     },
@@ -10572,6 +10572,12 @@
         ]
       },
       {
+        "file": "packages/plug-lsp/tests/unit/lsp-server-resolved-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plug-lsp/tests/unit/lsp-server-start-shutdown-guard.test.ts",
         "projects": [
           "root-node"
@@ -10603,6 +10609,12 @@
       },
       {
         "file": "packages/plug-lsp/tests/unit/rename-name-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/unit/require-server-states.test.ts",
         "projects": [
           "root-node"
         ]
