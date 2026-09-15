@@ -1,9 +1,10 @@
 import { FileText, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
+import { onPanelActivation } from './lib/panel-events.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
-import type { FileEditMeta } from './types.js';
 import type { SimpleSocket } from './lib/ws.js';
+import type { FileEditMeta } from './types.js';
 
 interface FileDiffPanelProps {
   /** The file edits to show — when multiple, the left list lets you switch. */
@@ -106,7 +107,20 @@ export function FileDiffPanel({ files, initialIndex = 0, socketRef, onClose }: F
       }
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    // Exclusive-surface rule: every modal surface closes when a DIFFERENT
+    // panel activates — Settings/Context/Mailbox via the exclusive-close
+    // effect in simple-ui-session, MemoryDrawer/PromptLibrary/VectorMemoryPanel/
+    // ToolSidebar via their own onPanelActivation subscriptions. The diff
+    // overlay was the one surface missing this, so opening e.g. Settings over
+    // an open diff stacked two aria-modal dialogs with dueling focus traps.
+    // The panel's own open-file-diff activation must not close it.
+    const unsubActivation = onPanelActivation((panel) => {
+      if (panel !== 'open-file-diff') onClose();
+    });
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      unsubActivation();
+    };
   }, [onClose]);
 
   return (
