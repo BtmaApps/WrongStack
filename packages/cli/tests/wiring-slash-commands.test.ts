@@ -123,6 +123,7 @@ describe('setupSlashCommands', () => {
       chips: DEFAULTS,
       lines: {},
       densities: {},
+      order: [],
     });
   });
 
