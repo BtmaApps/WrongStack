@@ -7,6 +7,7 @@ export interface PublishOptions {
   dryRun: boolean;
   verifyOnly: boolean;
   verify: boolean;
+  gateLayers: boolean;
   pack: boolean;
   packDestination: string;
   tarballsDir: string | null;
@@ -42,5 +43,15 @@ export function partitionLive<T extends { name: string; version: string }>(
     checkOriginHasVersion?: typeof checkOriginHasVersion;
   },
 ): Promise<{ live: T[]; staged: T[]; pending: T[] }>;
+
+export function confirmOnOrigin<T extends { name: string; version: string }>(
+  packages: T[],
+  options: { registry: string },
+  deps?: {
+    checkOriginHasVersion?: typeof checkOriginHasVersion;
+    attempts?: number;
+    pauseMs?: number;
+  },
+): Promise<{ missing: { pkg: T; reason: string }[] }>;
 
 export function main(argv: string[]): Promise<number>;

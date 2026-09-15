@@ -265,8 +265,11 @@ registry can observe a package before its dependencies. That shipped a real
 outage in 0.317.2: `wrongstack` landed on npm 25 seconds ahead of its
 transitive dependency `@wrongstack/webui-hq`, and every `npm i -g wrongstack`
 in that window failed with `ETARGET`. `scripts/publish-workspace.mjs` publishes
-in dependency layers and polls the registry until each layer is actually
-resolvable before starting the next, so the install target is always last.
+in dependency layers, one layer at a time, so the install target always reaches
+npm last. Locally it does not wait for the CDN between layers: once every layer
+is published it confirms all packages on the npm origin in one pass and reports
+which ones the CDN already serves (`pnpm release:verify` waits for the rest).
+CI passes `--gate-layers`, which polls the CDN after each layer instead.
 
 ---
 

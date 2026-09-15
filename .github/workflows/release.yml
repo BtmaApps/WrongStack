@@ -291,10 +291,11 @@ jobs:
         # ahead of `@wrongstack/webui-hq` and every install in that window
         # died with ETARGET. It now runs `scripts/publish-workspace.mjs`,
         # which publishes in dependency layers and polls the registry until
-        # each layer is resolvable before starting the next. Verification is
-        # network-bound, so  caps each layer at 120s and the job
-        # timeout above accounts for the worst-case sum.
-        run: node scripts/publish-workspace.mjs --tarballs-dir release-tarballs --verify-timeout 120
+        # each layer is resolvable before starting the next (`--gate-layers`;
+        # local releases skip that wait). Verification is network-bound, so
+        # --verify-timeout caps each layer at 120s and the job timeout above
+        # accounts for the worst-case sum.
+        run: node scripts/publish-workspace.mjs --tarballs-dir release-tarballs --gate-layers --verify-timeout 120
 
       - name: Summary
         if: always()

@@ -27,12 +27,15 @@
  *  2. Publishes one layer at a time. (`pnpm publish` has no
  *     `--workspace-concurrency`, so the recursive publish could not just be
  *     serialized in place - the ordering has to come from outside pnpm.)
- *  3. After each layer, polls the registry until EVERY package in it resolves
- *     - abbreviated packument contains the version, and its tarball is
- *     fetchable - before publishing the next layer.
+ *  3. After the last layer, confirms once that the npm origin holds every
+ *     package, then reports (without waiting) which ones the CDN edge already
+ *     serves.
  *
- * Step 3 is the load-bearing one: it makes "the entrypoint is on npm before
- * its dependencies are" unrepresentable rather than unlikely.
+ * Step 2 is the load-bearing one: layers reach the origin strictly in
+ * dependency order, so "the entrypoint is on npm before its dependencies are"
+ * cannot happen. `--gate-layers` (CI) additionally polls the CDN edge after
+ * each layer until it serves it - that closes the few-minute edge-cache window
+ * too, at the cost of turning a local release into half an hour.
  *
  * Resuming a partial release
  * --------------------------
@@ -88,6 +91,9 @@ const USAGE = `Usage: node scripts/publish-workspace.mjs [options] [-- <extra pn
   --dry-run              pass --dry-run to pnpm/npm; skip registry verification
   --verify-only          verify the working-tree versions are live; publish nothing
   --no-verify            publish in order but skip registry verification
+  --gate-layers          wait for the CDN to serve each layer before the next
+                        (slow; used by CI). Default: publish every layer back to
+                        back, then confirm all packages on the npm origin once.
   --registry <url>       registry URL (default $WRONGSTACK_PUBLISH_REGISTRY or ${DEFAULT_REGISTRY})
   --verify-timeout <s>   per-layer verification budget, seconds (default 300)
   --verify-interval <s>  verification poll interval, seconds (default 5)
@@ -133,6 +139,7 @@ export function parseArgs(argv) {
     dryRun: false,
     verifyOnly: false,
     verify: true,
+    gateLayers: false,
     pack: false,
     packDestination: 'artifacts/npm-packs',
     tarballsDir: null,
@@ -202,6 +209,9 @@ export function parseArgs(argv) {
         break;
       case '--no-verify':
         options.verify = false;
+        break;
+      case '--gate-layers':
+        options.gateLayers = true;
         break;
       case '--registry':
         options.registry = valueAt(i, flag).replace(/\/+$/, '');
@@ -471,6 +481,48 @@ export async function partitionLive(layer, { registry }, deps = {}) {
 }
 
 /**
+ * Confirm the registry origin holds every package - the post-release check.
+ *
+ * Retries a couple of times for transient network errors only; the origin is
+ * write-consistent, so a package `pnpm publish` reported as accepted is there
+ * on the first read.
+ *
+ * @template {{name: string, version: string}} T
+ * @param {T[]} packages
+ * @param {{registry: string}} options
+ * @param {{checkOriginHasVersion?: typeof checkOriginHasVersion,
+ *          attempts?: number, pauseMs?: number}} [deps] injection seam for tests
+ * @returns {Promise<{missing: {pkg: T, reason: string}[]}>}
+ */
+export async function confirmOnOrigin(packages, { registry }, deps = {}) {
+  const checkOrigin = deps.checkOriginHasVersion ?? checkOriginHasVersion;
+  const attempts = deps.attempts ?? 3;
+  const pauseMs = deps.pauseMs ?? 2_000;
+  let pending = packages;
+  /** @type {Map<string, string>} */
+  const reasons = new Map();
+  for (let attempt = 1; ; attempt += 1) {
+    const results = await Promise.all(
+      pending.map(async (pkg) => ({
+        pkg,
+        result: await checkOrigin(registry, pkg.name, pkg.version),
+      })),
+    );
+    pending = [];
+    for (const { pkg, result } of results) {
+      if (result.ok) continue;
+      reasons.set(pkg.name, result.reason);
+      pending.push(pkg);
+    }
+    if (pending.length === 0 || attempt >= attempts) break;
+    await sleep(pauseMs);
+  }
+  return {
+    missing: pending.map((pkg) => ({ pkg, reason: reasons.get(pkg.name) ?? 'unknown' })),
+  };
+}
+
+/**
  * Poll until every package in the layer resolves, or the budget runs out.
  * @param {import('./lib/publishable-packages.d.mts').PublishablePackage[]} layer
  * @param {{registry: string, timeoutMs: number, intervalMs: number}} options
@@ -594,14 +646,17 @@ export async function main(argv) {
   }
 
   const verify = options.verify && !options.dryRun;
+  const allPackages = layers.flat();
 
   if (options.verifyOnly) {
-    console.log(`Verifying working-tree versions against ${options.registry} ...`);
+    console.log(
+      `Verifying ${allPackages.length} working-tree version(s) against ${options.registry} ...`,
+    );
     try {
-      for (const [index, layer] of layers.entries()) {
-        console.log(`\nLayer ${index + 1}/${layers.length}`);
-        await verifyLayer(layer, options);
-      }
+      // One concurrent pass over everything: nothing is being published, so
+      // there is no ordering to protect and polling layer by layer only
+      // multiplies the wait by the layer count.
+      await verifyLayer(allPackages, options);
     } catch (error) {
       console.error(`\n${error.message}`);
       return 1;
@@ -610,35 +665,38 @@ export async function main(argv) {
     return 0;
   }
 
+  // Resume: ask the registry ONCE, up front, what it already holds and publish
+  // only the rest. On a fresh release this skips nothing; after a partial
+  // release it is the whole recovery.
+  /** @type {Set<string>} */
+  let liveNames = new Set();
+  /** @type {Set<string>} */
+  let stagedNames = new Set();
+  if (!options.dryRun) {
+    const partitioned = await partitionLive(allPackages, options);
+    liveNames = new Set(partitioned.live.map((p) => p.name));
+    stagedNames = new Set(partitioned.staged.map((p) => p.name));
+  }
+
   for (const [index, layer] of layers.entries()) {
     console.log(`\n-- Layer ${index + 1}/${layers.length}: ${layer.length} package(s)`);
 
-    // Resume: ask the registry what it already serves and publish only the rest.
-    // On a fresh release this costs one round trip per package and skips
-    // nothing; after a partial release it is the whole recovery.
-    let todo = layer;
     /**
      * Published by an earlier run but not yet servable. Skipped by the publish
-     * step and added back for verification — see `partitionLive`.
-     * @type {typeof layer}
+     * step; re-verified by the gate (or the final origin check) — see
+     * `partitionLive`.
      */
-    let staged = [];
-    if (!options.dryRun) {
-      const partitioned = await partitionLive(layer, options);
-      staged = partitioned.staged;
-      for (const p of partitioned.live) {
-        console.log(`   SKIP ${p.name}@${p.version} - already live on the registry`);
-      }
-      for (const p of staged) {
-        console.log(`   SKIP ${p.name}@${p.version} - npm already has it; waiting on propagation`);
-      }
-      todo = partitioned.pending;
-      if (todo.length === 0 && staged.length === 0) {
-        // Nothing to publish and nothing in flight: `live` came from the same
-        // check `verifyLayer` polls, so the layer is already proven.
-        console.log('   layer already complete');
-        continue;
-      }
+    let staged = layer.filter((p) => stagedNames.has(p.name));
+    let todo = layer.filter((p) => !liveNames.has(p.name) && !stagedNames.has(p.name));
+    for (const p of layer.filter((p) => liveNames.has(p.name))) {
+      console.log(`   SKIP ${p.name}@${p.version} - already live on the registry`);
+    }
+    for (const p of staged) {
+      console.log(`   SKIP ${p.name}@${p.version} - npm already has it`);
+    }
+    if (todo.length === 0 && staged.length === 0) {
+      console.log('   layer already complete');
+      continue;
     }
 
     if (todo.length > 0) console.log(`   publishing ${todo.length} package(s)`);
@@ -724,10 +782,12 @@ export async function main(argv) {
       todo = [];
     }
 
-    if (!verify) {
-      console.log('   (verification skipped)');
-      continue;
-    }
+    // Without the gate, `pnpm publish` exiting 0 is the proof: npm accepted the
+    // layer, and layers still reach the origin strictly in dependency order.
+    // What is skipped is waiting for the CDN edge between layers - the part
+    // that turned a release into half an hour. The final origin check below
+    // covers everything in one pass.
+    if (!verify || !options.gateLayers) continue;
     console.log(`   verifying layer ${index + 1} against ${options.registry} ...`);
     try {
       await verifyLayer([...staged, ...todo], options);
@@ -759,16 +819,57 @@ export async function main(argv) {
     }
   }
 
-  if (verify && options.settleMs > 0) {
+  if (options.dryRun) {
+    console.log('\nDry run complete - nothing was published.');
+    return 0;
+  }
+  if (!verify) {
+    console.log('\nAll layers published (verification skipped).');
+    return 0;
+  }
+
+  if (options.settleMs > 0) {
     console.log(`\nSettling for ${Math.round(options.settleMs / 1000)}s ...`);
     await sleep(options.settleMs);
   }
 
-  console.log(
-    options.dryRun
-      ? '\nDry run complete - nothing was published.'
-      : '\nAll layers published and confirmed resolvable.',
+  if (options.gateLayers) {
+    console.log('\nAll layers published and confirmed resolvable.');
+    return 0;
+  }
+
+  // Final check, once, over every package. The origin is write-consistent, so
+  // this answers "did every publish land?" in seconds instead of waiting on
+  // CDN propagation.
+  console.log(`\nConfirming ${allPackages.length} package(s) on the npm origin ...`);
+  const { missing } = await confirmOnOrigin(allPackages, options);
+  if (missing.length > 0) {
+    console.error(
+      `\nnpm does not hold ${missing.length} package(s):\n` +
+        missing.map(({ pkg, reason }) => `  ${pkg.name}@${pkg.version} - ${reason}`).join('\n'),
+    );
+    console.error(RESUME_HINT);
+    return 1;
+  }
+  console.log(`   OK  npm holds all ${allPackages.length} package(s)`);
+
+  // Informational single pass over the CDN edge - what `npm i` / `wstack update`
+  // sees right now. Never waited on: the release is already complete.
+  const edge = await Promise.all(
+    allPackages.map(async (p) => (await checkPublished(options.registry, p.name, p.version)).ok),
   );
+  const notOnEdge = allPackages.filter((_, i) => !edge[i]);
+  if (notOnEdge.length === 0) {
+    console.log('\nRelease complete - every package is already installable.');
+  } else {
+    console.log(
+      `\nRelease complete. CDN serves ${allPackages.length - notOnEdge.length}/${allPackages.length} ` +
+        `so far; still propagating (usually a few minutes): ` +
+        `${notOnEdge.map((p) => p.name).join(', ')}\n` +
+        'Until then `wstack update` may still see the previous version. ' +
+        '`pnpm release:verify` waits until everything is installable.',
+    );
+  }
   return 0;
 }
 

@@ -7,6 +7,7 @@ import {
 import {
   checkOriginHasVersion,
   checkPublished,
+  confirmOnOrigin,
   parseArgs,
   partitionLive,
 } from '../../../../scripts/publish-workspace.mjs';
@@ -136,6 +137,11 @@ describe('publish-workspace argument parsing', () => {
     expect(options.verify).toBe(true);
     expect(options.dryRun).toBe(false);
     expect(options.registry).toBe('https://registry.npmjs.org');
+  });
+
+  it('does not wait on the CDN between layers unless --gate-layers is passed', () => {
+    expect(parseArgs([]).gateLayers).toBe(false);
+    expect(parseArgs(['--gate-layers']).gateLayers).toBe(true);
   });
 
   it('routes arguments after `--` to pnpm rather than parsing them as its own', () => {
@@ -375,6 +381,68 @@ describe('origin truth vs edge truth', () => {
     );
 
     expect(originCalls).toBe(0);
+  });
+});
+
+/**
+ * The 1.0.15 release spent ~30 minutes polling the CDN edge between layers for
+ * packages npm had already accepted. The post-release check asks the origin
+ * once instead.
+ */
+describe('post-release origin confirmation', () => {
+  const pkg = (name: string) => ({ name, version: '1.0.15' });
+
+  it('passes on the first read when npm holds everything', async () => {
+    let calls = 0;
+    const { missing } = await confirmOnOrigin(
+      [pkg('a'), pkg('b')],
+      { registry: 'https://registry.test' },
+      {
+        checkOriginHasVersion: async () => {
+          calls += 1;
+          return { ok: true };
+        },
+        pauseMs: 0,
+      },
+    );
+    expect(missing).toEqual([]);
+    expect(calls).toBe(2);
+  });
+
+  it('retries only the missing packages and recovers from a transient error', async () => {
+    const seen: string[] = [];
+    const { missing } = await confirmOnOrigin(
+      [pkg('a'), pkg('b')],
+      { registry: 'https://registry.test' },
+      {
+        checkOriginHasVersion: async (_registry, name) => {
+          seen.push(name);
+          if (name === 'b' && seen.filter((n) => n === 'b').length === 1) {
+            return { ok: false, reason: 'origin packument fetch failed: ECONNRESET' };
+          }
+          return { ok: true };
+        },
+        pauseMs: 0,
+      },
+    );
+    expect(missing).toEqual([]);
+    expect(seen).toEqual(['a', 'b', 'b']);
+  });
+
+  it('names what npm still lacks after the retry budget', async () => {
+    const { missing } = await confirmOnOrigin(
+      [pkg('a'), pkg('b')],
+      { registry: 'https://registry.test' },
+      {
+        checkOriginHasVersion: async (_registry, name) =>
+          name === 'b'
+            ? { ok: false, reason: 'version missing from origin packument' }
+            : { ok: true },
+        attempts: 2,
+        pauseMs: 0,
+      },
+    );
+    expect(missing).toEqual([{ pkg: pkg('b'), reason: 'version missing from origin packument' }]);
   });
 });
 
