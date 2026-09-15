@@ -230,7 +230,7 @@ describe('gitTool runGit error paths', () => {
   });
 
   it('handles truncated output in runGit', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     // Large log output that may exceed MAX_OUTPUT (100000)
     const result = await gitTool.execute(
       { command: 'log', format: 'oneline', limit: 1000 },
@@ -294,15 +294,29 @@ describe('gitTool buildArgs edge cases', () => {
   });
 
   it('checkout works with just files (no branch)', async () => {
-    const ctx = makeCtx(process.cwd());
-    // Just files, no branch specified
-    const result = await gitTool.execute(
-      { command: 'checkout', files: 'README.md' },
-      ctx,
-      makeOpts(),
-    );
-    // May fail if file doesn't exist or has conflicts, but shouldn't crash
-    expect(result).toHaveProperty('exitCode');
+    // checkout MUTATES the working tree, so it must not run against the
+    // shared real checkout — use a throwaway repo instead.
+    const repo = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'git-checkout-files-')));
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: repo, stdio: 'ignore' });
+      execFileSync('git', ['config', 'user.email', 't@t'], { cwd: repo, stdio: 'ignore' });
+      execFileSync('git', ['config', 'user.name', 't'], { cwd: repo, stdio: 'ignore' });
+      await fs.writeFile(path.join(repo, 'README.md'), 'seed\n');
+      execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'ignore' });
+      execFileSync('git', ['commit', '-qm', 'init'], { cwd: repo, stdio: 'ignore' });
+
+      const ctx = makeCtx(repo);
+      // Just files, no branch specified — restores the seeded path from the
+      // index without ever touching the shared real checkout.
+      const result = await gitTool.execute(
+        { command: 'checkout', files: 'README.md' },
+        ctx,
+        makeOpts(),
+      );
+      expect(result.exitCode).toBe(0);
+    } finally {
+      await fs.rm(repo, { recursive: true, force: true });
+    }
   });
 
   it('commit handles missing message gracefully', async () => {
@@ -331,7 +345,7 @@ describe('gitTool runGit close handling', () => {
 
 describe('gitTool truncation', () => {
   it('marks truncated true when stdout exceeds MAX_OUTPUT', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     const result = await gitTool.execute({ command: 'log', limit: 10000 }, ctx, makeOpts());
     // Output is now normalized + head/tail-truncated to the unified command
     // cap (32 KiB), so when `truncated` is set the returned stdout is capped
@@ -344,7 +358,7 @@ describe('gitTool truncation', () => {
   });
 
   it('marks truncated true when stderr exceeds MAX_OUTPUT', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     const result = await gitTool.execute({ command: 'log' }, ctx, makeOpts());
     expect(typeof result.truncated).toBe('boolean');
   });
@@ -352,7 +366,7 @@ describe('gitTool truncation', () => {
 
 describe('gitTool stdout capping', () => {
   it('caps stdout at MAX_OUTPUT in close handler', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     const result = await gitTool.execute(
       { command: 'log', format: 'oneline', limit: 5000 },
       ctx,
@@ -363,7 +377,7 @@ describe('gitTool stdout capping', () => {
   });
 
   it('caps stderr at MAX_OUTPUT in close handler', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     const result = await gitTool.execute({ command: 'status' }, ctx, makeOpts());
     expect(result.stderr.length).toBeLessThanOrEqual(100000);
   });
@@ -439,7 +453,7 @@ describe('gitTool buildArgs edge cases', () => {
 
   it('buildArgs handles commit with dry_run and message and files', async () => {
     // All three conditional paths in buildArgs commit case (lines 156-162)
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     const result = await gitTool.execute(
       { command: 'commit', dry_run: true, message: 'chore: test', files: 'x.txt' },
       ctx,
@@ -593,7 +607,7 @@ describe('gitTool worktree hardening', () => {
 
 describe('gitTool runGit stdout/stderr MAX_OUTPUT cap', () => {
   it('stdout is capped at MAX_OUTPUT and truncated flag is set', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     // Request a very large log that will exceed 100000 chars of output
     const result = await gitTool.execute(
       { command: 'log', format: 'oneline', limit: 10000 },
@@ -606,7 +620,7 @@ describe('gitTool runGit stdout/stderr MAX_OUTPUT cap', () => {
   });
 
   it('stderr is capped at MAX_OUTPUT even when stdout is small', async () => {
-    const ctx = makeCtx(process.cwd());
+    const ctx = makeCtx(repoRoot);
     // Use an invalid git command to produce stderr output without much stdout
     const result = await gitTool.execute(
       { command: 'log', format: 'oneline', limit: 1 },
