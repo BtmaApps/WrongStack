@@ -84,6 +84,24 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(withoutTools[0]?.text?.length ?? 0).toBeLessThan(withTools[0]?.text?.length ?? 0);
   });
 
+  it('directs Pro sessions to a local lazy Kanban tool before MCP', async () => {
+    const direct = [mkTool('tool_search'), mkTool('tool_use')];
+    const builder = new DefaultSystemPromptBuilder({ todayIso: '2026-05-13' });
+    const blocks = await builder.build({
+      cwd: tmp,
+      projectRoot: tmp,
+      tools: direct,
+      catalogTools: [...direct, mkTool('kanban')],
+      systemVariant: 'pro',
+    });
+    const prompt = blocks.map((block) => block.text).join('\n');
+
+    expect(prompt).toContain('Search the registered local catalog with `tool_search`');
+    expect(prompt).toContain('using the returned `inputSchema`');
+    expect(prompt).toContain('Prefer that local built-in');
+    expect(prompt).not.toContain('No task-tracking tool is registered in this request');
+  });
+
   it('keeps the fully assembled prompt free of unregistered canonical tool references', async () => {
     const canonical = new Set(RUNTIME_CAPABILITY_MANIFEST.flatMap((entry) => entry.tools));
     const mentions = (text: string, name: string): boolean => {

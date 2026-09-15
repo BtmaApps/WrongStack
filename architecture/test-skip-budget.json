@@ -107,6 +107,11 @@
       "fingerprint": "a75af38dbbc13e19"
     },
     {
+      "file": "packages/core/tests/utils/win32-exe-search.test.ts",
+      "kind": "runIf",
+      "fingerprint": "b0cd19c2059fe839"
+    },
+    {
       "file": "packages/core/tests/worktree/worktree-manager.test.ts",
       "kind": "skipIf",
       "fingerprint": "5fa25ae1a877547c"

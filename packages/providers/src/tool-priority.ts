@@ -20,6 +20,9 @@ import type { Tool } from '@wrongstack/core/types';
 /** P0 — core file/shell operations the model needs every turn. */
 const CRITICAL_TOOLS = new Set(['read', 'write', 'edit', 'bash', 'exec', 'grep', 'glob']);
 
+/** Atomic pair that keeps every withheld tool discoverable and callable. */
+const LAZY_TOOL_GATEWAYS = new Set(['tool_search', 'tool_use']);
+
 /** P1 — indexed discovery, version control, and essential utilities. */
 const ESSENTIAL_TOOLS = new Set([
   'diff',
@@ -114,8 +117,8 @@ const LOW_PRIORITY_SUFFIXES = ['_status', '_test'] as const;
 /**
  * Score a single tool for filtering priority.
  *
- * @returns A number 0–6 where 0 is the highest priority (never dropped first)
- *          and 6 is the lowest (dropped first).
+ * @returns A number 0–6 where 0 is the highest priority and 6 is the lowest.
+ *          The lazy gateway pair is reserved atomically by the list filter.
  */
 export function scoreTool(tool: Tool): number {
   const name = tool.name;
@@ -155,19 +158,39 @@ export function scoreTool(tool: Tool): number {
 export function filterToolsByMaxCount(tools: readonly Tool[], maxTools: number): Tool[] {
   if (tools.length <= maxTools) return [...tools];
 
+  const lazyGatewayCount = tools.reduce(
+    (count, tool) => count + (LAZY_TOOL_GATEWAYS.has(tool.name) ? 1 : 0),
+    0,
+  );
+  if (lazyGatewayCount > maxTools) {
+    throw new Error(
+      `Provider maxTools=${maxTools} cannot preserve ${lazyGatewayCount} lazy tool gateways; configure at least ${lazyGatewayCount}.`,
+    );
+  }
+
+  const reserveLazyGateways = lazyGatewayCount === LAZY_TOOL_GATEWAYS.size;
+  const availableSlots = maxTools - (reserveLazyGateways ? lazyGatewayCount : 0);
+
   // Decorate with score + original index for stable sort.
-  const scored = tools.map((tool, index) => ({
-    tool,
-    score: scoreTool(tool),
-    index,
-  }));
+  const scored = tools
+    .map((tool, index) => ({
+      tool,
+      score: scoreTool(tool),
+      index,
+    }))
+    .filter(({ tool }) => !reserveLazyGateways || !LAZY_TOOL_GATEWAYS.has(tool.name));
 
   // Sort by priority ascending; ties broken by original registration order.
   scored.sort((a, b) => a.score - b.score || a.index - b.index);
 
   // Keep the top `maxTools`, then restore original order so the provider
   // sees tools in the same sequence every request (cache-friendly).
-  const kept = scored.slice(0, maxTools);
+  const kept = scored.slice(0, availableSlots);
+  if (reserveLazyGateways) {
+    for (const [index, tool] of tools.entries()) {
+      if (LAZY_TOOL_GATEWAYS.has(tool.name)) kept.push({ tool, score: -1, index });
+    }
+  }
   kept.sort((a, b) => a.index - b.index);
 
   return kept.map((s) => s.tool);

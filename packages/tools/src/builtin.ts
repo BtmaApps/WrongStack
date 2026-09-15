@@ -177,7 +177,7 @@ export const BUILTIN_TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   design:
     'Choose, preview, or materialize a UI design kit (e.g. minimal-clarity, neo-brutalist) for the active stack. Lists available kits, previews tokens, or writes a design-token source file to the project.',
   tool_search:
-    'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Use it before concluding a capability is unavailable; invoke what you find with tool_use.',
+    'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
   tool_use:
     'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
 };

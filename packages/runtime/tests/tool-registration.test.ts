@@ -4,6 +4,7 @@ import { DefaultPluginAPI } from '@wrongstack/core/plugin';
 import { ProviderRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import type { MemoryStore, Tool } from '@wrongstack/core/types';
 import { LegacyMemoryPortAdapter } from '@wrongstack/sage';
+import { toolSearchTool } from '@wrongstack/tools/tool-search';
 import { describe, expect, it } from 'vitest';
 import { registerCanonicalHostTools } from '../src/tool-registration.js';
 
@@ -74,6 +75,35 @@ describe('canonical host tool registration', () => {
     expect(registry.listForProvider()).toHaveLength(58);
     expect(registry.get('browser_open')).toBeDefined();
     expect(registry.listForProvider().map((tool) => tool.name)).not.toContain('browser_open');
+  });
+
+  it('keeps every enabled lazy tool discoverable with an invocation schema', async () => {
+    const registry = new ToolRegistry();
+    registerCanonicalHostTools({ registry, tier: 'minimal' });
+    const direct = registry.listForProvider();
+    const catalog = registry.list();
+    const directNames = new Set(direct.map((tool) => tool.name));
+    const lazy = catalog.filter((tool) => !directNames.has(tool.name));
+    const ctx = {
+      cwd: 'C:/project',
+      projectRoot: 'C:/project',
+      tools: direct,
+      catalogTools: catalog,
+    } as never;
+
+    expect([...directNames]).toEqual(expect.arrayContaining(['tool_search', 'tool_use']));
+    expect(lazy.length).toBeGreaterThan(0);
+    for (const expected of lazy) {
+      const result = await toolSearchTool.execute(
+        { query: expected.name, limit: 100 },
+        ctx,
+        { signal: new AbortController().signal },
+      );
+      const discovered = result.tools.find((tool) => tool.name === expected.name);
+      expect(discovered?.inputSchema, `${expected.name} has no lazy invocation schema`).toEqual(
+        expected.inputSchema,
+      );
+    }
   });
 
   it('exposes plugin-registered tools to the provider under a token-saving tier', () => {

@@ -12,6 +12,9 @@ export interface ToolSearchOutput {
   tools: {
     name: string;
     description: string;
+    /** Exact schema required by tool_use for an on-demand invocation. */
+    inputSchema: Tool['inputSchema'];
+    usageHint?: string | undefined;
     permission: string;
     mutating: boolean;
   }[];
@@ -28,7 +31,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
   category: 'Meta',
   description:
     'Search the catalog of available tools by name or description. Use this to discover which tool to use for a task, ' +
-    'including tools whose schemas were withheld from this request to save tokens.',
+    'including tools whose schemas were withheld from this request to save tokens. Results include the exact input schema needed by tool_use.',
   usageHint:
     'SELF-DISCOVERY TOOL:\n\n' +
     '- Use when you need to find the right tool for a job.\n' +
@@ -104,6 +107,8 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     const results = filtered.slice(0, limit).map((t: Tool) => ({
       name: t.name,
       description: t.description,
+      inputSchema: t.inputSchema,
+      ...(t.usageHint ? { usageHint: t.usageHint } : {}),
       permission: t.permission,
       mutating: t.mutating,
     }));

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { kanbanTool } from '../src/kanban.js';
 import { toolSearchTool } from '../src/tool-search.js';
 
 const makeCtx = (tools: any[] = []) => ({ cwd: '/fake', tools, projectRoot: '/fake' }) as any;
@@ -37,12 +38,38 @@ describe('toolSearchTool', () => {
     const lazy = {
       name: 'browser_open',
       description: 'Open browser',
+      usageHint: 'Open a browser at the requested URL.',
       permission: 'auto',
       mutating: false,
+      inputSchema: {
+        type: 'object',
+        properties: { url: { type: 'string' } },
+        required: ['url'],
+      },
     };
     const ctx = { ...makeCtx(direct), catalogTools: [...direct, lazy] };
     const result = await executeToolSearch({ query: 'browser' }, ctx);
     expect(result.tools.map((tool) => tool.name)).toEqual(['browser_open']);
+    expect(result.tools[0]).toMatchObject({
+      usageHint: 'Open a browser at the requested URL.',
+      inputSchema: {
+        type: 'object',
+        properties: { url: { type: 'string' } },
+        required: ['url'],
+      },
+    });
+  });
+
+  it('returns the lazy Kanban action schema needed for tool_use', async () => {
+    const ctx = { ...makeCtx([]), catalogTools: [kanbanTool] };
+    const result = await executeToolSearch({ query: 'kanban' }, ctx);
+    const schema = result.tools[0]?.inputSchema as {
+      properties?: { action?: { enum?: string[] } };
+    };
+
+    expect(result.tools[0]?.name).toBe('kanban');
+    expect(schema.properties?.action?.enum).toContain('workbench');
+    expect(schema.properties?.action?.enum).toContain('create_board');
   });
 
   it('filters by description query', async () => {

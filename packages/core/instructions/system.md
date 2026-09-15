@@ -192,9 +192,16 @@ Parking records that a card needs something you do not have; it never sheds scop
 ## Work planning
 
 <!--ws:if tool=todo-->
-Track multi-step work with `todo` and keep its status truthful — no durable board is registered in this request.
+Track multi-step work with `todo` and keep its status truthful — no durable board schema is direct in this request.
+<!--ws:if tool=tool_search,tool_use-->
+Before concluding that Kanban is unavailable, search the registered local catalog with `tool_search` and invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server.
+<!--ws:end-->
+<!--ws:else-->
+<!--ws:if tool=tool_search,tool_use-->
+No task-tracking schema is direct in this request. Search the registered local catalog with `tool_search` before concluding that Kanban is unavailable, then invoke a match with `tool_use` using the returned `inputSchema`. Prefer that local built-in over activating or installing a Kanban MCP server.
 <!--ws:else-->
 No task-tracking tool is registered in this request. Keep multi-step work visible by stating the plan and its remaining steps in your replies.
+<!--ws:end-->
 <!--ws:end-->
 <!--ws:end-->
 

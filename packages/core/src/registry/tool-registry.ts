@@ -12,6 +12,8 @@ import {
   normalizeToolDescriptionMode,
 } from '../utils/tool-description-mode.js';
 
+const LAZY_TOOL_GATEWAYS = new Set(['tool_search', 'tool_use']);
+
 /**
  * A function that wraps (decorates) an existing tool. Receives the
  * original tool and returns a modified version — typically the same
@@ -293,6 +295,13 @@ export class ToolRegistry {
     meta?: { caller?: string },
   ): boolean {
     if (!this.tools.has(name) || this._disabled.has(name)) return false;
+    // A restricted provider surface is safe only while both lazy gateways are
+    // callable. If an operator explicitly disables either gateway, fail open
+    // to the complete enabled catalog instead of orphaning every hidden tool.
+    // The selected gateway itself remains disabled as requested.
+    if (LAZY_TOOL_GATEWAYS.has(name) && this._providerToolNames) {
+      this._providerToolNames = undefined;
+    }
     this._disabled.set(name, {
       reason,
       at: Date.now(),
@@ -407,6 +416,12 @@ export class ToolRegistry {
     const skipped: string[] = [];
     const at = Date.now();
     for (const name of candidates) {
+      // Auto-thinning may reduce the catalog, but it must never remove the
+      // only route to tools intentionally withheld from the provider surface.
+      if (LAZY_TOOL_GATEWAYS.has(name)) {
+        skipped.push(name);
+        continue;
+      }
       if (!this.tools.has(name)) {
         skipped.push(name);
         continue;

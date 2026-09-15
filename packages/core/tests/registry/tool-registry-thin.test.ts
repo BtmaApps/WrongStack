@@ -73,6 +73,16 @@ describe('ToolRegistry.thinUnderused', () => {
     expect(() => registry.thinUnderused(['read'], 'pipeline')).not.toThrow();
     expect(registry.isDisabled('read')).toBe(true);
   });
+
+  it('never auto-thins the lazy discovery and execution gateways', () => {
+    const { registry } = makeRegistry(['tool_search', 'tool_use', 'read']);
+    const result = registry.thinUnderused(['tool_search', 'tool_use', 'read'], 'pipeline');
+
+    expect(result.thinned).toEqual(['read']);
+    expect(result.skipped).toEqual(['tool_search', 'tool_use']);
+    expect(registry.isDisabled('tool_search')).toBe(false);
+    expect(registry.isDisabled('tool_use')).toBe(false);
+  });
 });
 
 describe('ToolRegistry.enableAutoThinned', () => {

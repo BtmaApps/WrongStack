@@ -59,6 +59,19 @@ describe('ToolRegistry', () => {
     expect(clone.listForProvider().map((tool) => tool.name)).toEqual(['read']);
   });
 
+  it('fails open to the enabled catalog when a lazy gateway is manually disabled', () => {
+    const r = new ToolRegistry();
+    r.register(t('tool_search'));
+    r.register(t('tool_use'));
+    r.register(t('kanban'));
+    r.setProviderToolNames(['tool_search', 'tool_use']);
+
+    expect(r.listForProvider().map((tool) => tool.name)).not.toContain('kanban');
+    expect(r.disable('tool_search')).toBe(true);
+    expect(r.listForProvider().map((tool) => tool.name)).toEqual(['tool_use', 'kanban']);
+    expect(r.isDisabled('tool_search')).toBe(true);
+  });
+
   it('rejects duplicate register', () => {
     const r = new ToolRegistry();
     r.register(t('a'));

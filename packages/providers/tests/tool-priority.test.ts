@@ -63,6 +63,7 @@ describe('scoreTool', () => {
 
   it('scores meta tools at priority 5', () => {
     expect(scoreTool(makeTool('tool_search'))).toBe(5);
+    expect(scoreTool(makeTool('tool_use'))).toBe(5);
     expect(scoreTool(makeTool('tool_help'))).toBe(5);
     expect(scoreTool(makeTool('set_working_dir'))).toBe(5);
   });
@@ -148,6 +149,17 @@ describe('filterToolsByMaxCount', () => {
     const result = filterToolsByMaxCount(tools, 1);
     expect(result).toHaveLength(1);
     expect(result[0]!.name).toBe('read');
+  });
+
+  it('keeps both lazy gateways under a tight provider limit', () => {
+    const tools = makeTools('read', 'write', 'tool_search', 'tool_use', 'kanban');
+    const result = filterToolsByMaxCount(tools, 2);
+    expect(result.map((tool) => tool.name)).toEqual(['tool_search', 'tool_use']);
+  });
+
+  it('rejects a provider limit that cannot preserve the lazy gateway pair', () => {
+    const tools = makeTools('read', 'tool_search', 'tool_use');
+    expect(() => filterToolsByMaxCount(tools, 1)).toThrow(/cannot preserve 2 lazy tool gateways/);
   });
 
   it('returns a new array (does not mutate input)', () => {
