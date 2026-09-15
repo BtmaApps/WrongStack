@@ -625,7 +625,7 @@ describe('lock resilience', () => {
     // permanently empty, /api/sessions/:id/* permanently 404).
     const root = await freshRoot();
     const registryPath = path.join(root, 'session-registry.json');
-    await fs.writeFile(registryPath, ' '.repeat(6088), 'utf8');
+    await fs.writeFile(registryPath, '\u0000'.repeat(6088), 'utf8');
 
     const reg = new SessionRegistry(root);
     expect(await reg.list()).toHaveLength(0); // read is corruption-tolerant

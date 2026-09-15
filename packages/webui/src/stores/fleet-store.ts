@@ -918,7 +918,7 @@ const EMPTY_SESSION_TOTALS: SessionFleetTotals = Object.freeze({
  * Agents with no `sessionId` at all. They belong to no tab, so they are
  * counted once under this key rather than added to every tab's totals.
  */
-const UNATTRIBUTED = ' unattributed';
+const UNATTRIBUTED = '\u0000unattributed';
 
 const totalsCache = new WeakMap<Map<string, SubagentView>, Map<string, SessionFleetTotals>>();
 
