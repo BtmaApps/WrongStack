@@ -127,6 +127,31 @@ describe('WorktreeManager (stubbed git)', () => {
     expect(commit!.indexOf('-c')).toBeLessThan(commit!.indexOf('commit'));
   });
 
+  it('merge with squash:false threads the fallback identity into the merge argv', async () => {
+    // `git merge --no-ff` creates its merge commit directly, so the identity
+    // fallback must ride along on the merge invocation itself.
+    const { calls, run } = stubRunner((args) => {
+      if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+      if (args[0] === 'config') return { code: 0, stdout: '', stderr: '' }; // no identity
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const h = await wm.allocate('p', { slugHint: 'noff' });
+    const res = await wm.merge(h, { squash: false });
+    expect(res.ok).toBe(true);
+    const merge = calls.map((c) => c.args).find((a) => a.includes('merge'));
+    expect(merge).toBeTruthy();
+    expect(merge!).toEqual([
+      '-c',
+      'user.name=Goal',
+      '-c',
+      'user.email=goal@agent.local',
+      'merge',
+      '--no-ff',
+      h.branch,
+    ]);
+  });
+
   it('commitAll does NOT override an existing git identity', async () => {
     const { calls, run } = stubRunner((args) => {
       if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
@@ -484,6 +509,48 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       // so we don't assert the directory is gone here.
       expect(wm.get('phase-1')).toBeUndefined();
     } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  it('no-ff merge (squash:false) succeeds with no git identity configured', async () => {
+    const base = await makeRepo();
+    // Hide identity the way a fresh CI container looks: empty GIT_CONFIG_GLOBAL
+    // + no system config + no GIT_AUTHOR_*/GIT_COMMITTER_* env. The manager's
+    // git children inherit process.env via buildChildEnv, so this makes the
+    // in-test manager identity-less. Restored in `finally` (vitest's default
+    // forks pool = per-file process, so the mutation cannot leak across files).
+    const saved = { ...process.env };
+    const emptyGlobalConfig = path.join(base, 'empty-gitconfig');
+    await fs.writeFile(emptyGlobalConfig, '', 'utf8');
+    delete process.env['GIT_AUTHOR_NAME'];
+    delete process.env['GIT_AUTHOR_EMAIL'];
+    delete process.env['GIT_COMMITTER_NAME'];
+    delete process.env['GIT_COMMITTER_EMAIL'];
+    process.env['GIT_CONFIG_GLOBAL'] = emptyGlobalConfig;
+    process.env['GIT_CONFIG_NOSYSTEM'] = '1';
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h = await wm.allocate('p', { slugHint: 'noff-identity' });
+      await fs.writeFile(path.join(h.dir, 'new.txt'), 'hello\n', 'utf8');
+      const c = await wm.commitAll(h, 'feat: add new.txt');
+      expect(c.committed).toBe(true);
+
+      const m = await wm.merge(h, { squash: false });
+      // Regression: `git merge --no-ff` creates its merge commit directly.
+      // Without the identity fallback on the merge argv it failed with
+      // "Committer identity unknown" and was misreported as
+      // { conflict: true } with the handle parked needs-review.
+      expect(m.ok).toBe(true);
+      expect(m.conflict).not.toBe(true);
+      expect(h.status).toBe('merged');
+      const onBase = await fs.readFile(path.join(base, 'new.txt'), 'utf8');
+      expect(onBase.replace(/\r/g, '')).toBe('hello\n');
+
+      await wm.release(h, { keep: false });
+      expect(wm.get('p')).toBeUndefined();
+    } finally {
+      process.env = saved;
       await fs.rm(base, { recursive: true, force: true });
     }
   }, 120_000);

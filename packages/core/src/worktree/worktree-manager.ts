@@ -177,9 +177,14 @@ export class WorktreeManager {
       return { ok: false, stderr: checkout.stderr };
     }
 
+    // A --no-ff merge creates its merge commit directly — thread the identity
+    // fallback so it succeeds on identity-less machines exactly like every
+    // explicit `git commit` path (a -c override is a no-op for --squash,
+    // which commits nothing itself).
+    const idArgs = squash ? [] : await this.identityArgs(this.projectRoot);
     const mergeArgs = squash
       ? ['merge', '--squash', handle.branch]
-      : ['merge', '--no-ff', handle.branch];
+      : [...idArgs, 'merge', '--no-ff', handle.branch];
     const merged = await this.runGit(mergeArgs, this.projectRoot);
 
     // Detect conflicts from BOTH the exit code AND the index/output probes.
