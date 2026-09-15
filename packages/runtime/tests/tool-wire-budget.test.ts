@@ -2,6 +2,10 @@ import * as coordination from '@wrongstack/core/coordination';
 import { contextManagerTool } from '@wrongstack/core/infrastructure';
 import * as coreTools from '@wrongstack/core/tools';
 import type { JSONSchema, Tool } from '@wrongstack/core/types';
+import {
+  SCHEMA_DESCRIPTION_MAX_CHARS,
+  TOOL_DESCRIPTION_MAX_CHARS,
+} from '@wrongstack/core/utils';
 import { createSageTools } from '@wrongstack/sage';
 import { builtinTools } from '@wrongstack/tools/builtin';
 import {
@@ -12,10 +16,6 @@ import {
 } from '@wrongstack/tools/memory';
 import { createVectorMemoryTools } from '@wrongstack/vector-memory';
 import { describe, expect, it } from 'vitest';
-import {
-  SCHEMA_DESCRIPTION_MAX_CHARS,
-  TOOL_DESCRIPTION_MAX_CHARS,
-} from '../../core/src/utils/tool-wire-compact.js';
 
 /**
  * Text past the wire budget never reaches the model: every provider format

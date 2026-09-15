@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T17:26:21.392Z",
+  "generatedAt": "2026-09-15T17:39:37.025Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 36,
     "sourceFiles": 3800,
     "testFiles": 3427,
-    "sourceLines": 930381,
+    "sourceLines": 930383,
     "workspaceEdges": 128,
     "moduleEdges": 12145,
     "nonCommandSlashImports": 0,
@@ -22,7 +22,7 @@
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
-    "testOnlyExports": 966
+    "testOnlyExports": 964
   },
   "errors": [],
   "packageCycles": [],
@@ -24062,14 +24062,6 @@
     {
       "file": "packages/core/src/utils/tool-wire-compact.ts",
       "name": "findSemanticBoundary"
-    },
-    {
-      "file": "packages/core/src/utils/tool-wire-compact.ts",
-      "name": "SCHEMA_DESCRIPTION_MAX_CHARS"
-    },
-    {
-      "file": "packages/core/src/utils/tool-wire-compact.ts",
-      "name": "TOOL_DESCRIPTION_MAX_CHARS"
     },
     {
       "file": "packages/core/src/utils/wstack-paths.ts",

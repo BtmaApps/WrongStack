@@ -160,6 +160,10 @@ export default defineConfig({
     // worker processes themselves don't re-read NODE_OPTIONS set here).
     env: {
       NODE_OPTIONS: '--max-old-space-size=4096',
+      // Production auto-detects installed Nerd Fonts; pin the portable glyph
+      // profile so a developer's font install cannot change TUI snapshots.
+      // Mirrors packages/tui/vitest.config.ts.
+      WRONGSTACK_TUI_ICON_STYLE: 'unicode',
     },
     // Hermetic ~/.wrongstack: redirects all global state to a per-worker temp
     // dir (WRONGSTACK_HOME) so tests never read the user's real config (live

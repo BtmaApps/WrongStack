@@ -483,7 +483,7 @@
         "export { sessionScopedPath } from './session-scoped-path.js';",
         "export { slugify } from './slug.js';",
         "export { type CoercionResult, coerceAgainstSchema, type ValidationError, type ValidationResult, validateAgainstSchema, } from './json-schema-validate.js';",
-        "export { type CompactToolDefinitionForWireOptions, type CompactWireToolDefinition, compactSchemaDescriptions, compactToolDefinitionForWire, normalizeTopLevelToolSchema, type ToolWireDefinitionLike, } from './tool-wire-compact.js';",
+        "export { type CompactToolDefinitionForWireOptions, type CompactWireToolDefinition, compactSchemaDescriptions, compactToolDefinitionForWire, normalizeTopLevelToolSchema, SCHEMA_DESCRIPTION_MAX_CHARS, TOOL_DESCRIPTION_MAX_CHARS, type ToolWireDefinitionLike, } from './tool-wire-compact.js';",
         "export { type CompileFail, type CompileResult, capSubject, compileUserRegex, MAX_SUBJECT_LEN, } from './regex-guard.js';",
         "export { type ContextBreakdown, getContextBreakdown } from './context-breakdown.js';",
         "export { type DeepMergeOptions, deepMerge, FORBIDDEN_PROTO_KEYS, isPrimitiveArray, } from './deep-merge.js';",
@@ -1647,7 +1647,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 70,
-      "sourceLines": 12310
+      "sourceLines": 12312
     },
     {
       "directory": "wiring",

@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 589,
+      "files": 590,
       "typeOnly": 55,
-      "runtimeOrMixed": 562
+      "runtimeOrMixed": 563
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -19657,6 +19657,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/runtime/src/vision.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/runtime/tests/tool-wire-budget.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

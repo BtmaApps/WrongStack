@@ -638,9 +638,7 @@
     ],
     "packages/core/src/utils/tool-wire-compact.ts": [
       "compactDescription",
-      "findSemanticBoundary",
-      "SCHEMA_DESCRIPTION_MAX_CHARS",
-      "TOOL_DESCRIPTION_MAX_CHARS"
+      "findSemanticBoundary"
     ],
     "packages/core/src/utils/wstack-paths.ts": [
       "bootstrapProfileName"

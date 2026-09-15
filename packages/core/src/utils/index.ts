@@ -230,6 +230,8 @@ export {
   compactSchemaDescriptions,
   compactToolDefinitionForWire,
   normalizeTopLevelToolSchema,
+  SCHEMA_DESCRIPTION_MAX_CHARS,
+  TOOL_DESCRIPTION_MAX_CHARS,
   type ToolWireDefinitionLike,
 } from './tool-wire-compact.js';
 export { isUlid, ulid } from './ulid.js';

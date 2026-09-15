@@ -53,7 +53,11 @@ async function candidateRow(
     .get(candidateId) as { data: string; status: string; updated_at: string } | undefined;
   expect(row, `candidate ${candidateId} must exist`).toBeTruthy();
   const parsed = JSON.parse(row!.data) as { memoryId?: string };
-  return { status: row!.status, memoryId: parsed.memoryId, updatedAt: row!.updated_at };
+  return {
+    status: row!.status,
+    ...(parsed.memoryId !== undefined ? { memoryId: parsed.memoryId } : {}),
+    updatedAt: row!.updated_at,
+  };
 }
 
 /** Simulate the hard-crash window: claimed to `accepted`, never annotated. */
