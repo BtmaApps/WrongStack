@@ -621,6 +621,37 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
     }
   }, 120_000);
 
+  it('allocate after commitAll returns the same worktree (committing is a live state)', async () => {
+    const base = await makeRepo();
+    try {
+      const wm = new WorktreeManager({ projectRoot: base });
+      const h1 = await wm.allocate('p', { slugHint: 'idem' });
+      await fs.writeFile(path.join(h1.dir, 'work.txt'), 'work\n', 'utf8');
+      await wm.commitAll(h1, 'feat: committed, not yet merged');
+
+      // Regression: 'committing' is a live, owned state (webui-server's
+      // ACTIVE_STATUSES already includes it). Re-allocation used to fall
+      // through the reuse guard and mint a duplicate checkout + branch while
+      // the manager forgot the original — orphaning the committed-but-
+      // unmerged first checkout until /worktree clean.
+      const h2 = await wm.allocate('p', { slugHint: 'idem' });
+      expect(h2.id).toBe(h1.id);
+      expect(h2.dir).toBe(h1.dir);
+      expect(h2.branch).toBe(h1.branch);
+      expect(wm.get('p')?.id).toBe(h1.id);
+
+      // Boundary: once the unit of work is merged, a repeat allocate mints a
+      // fresh worktree — the merged one is complete.
+      const m = await wm.merge(h1, { squash: true });
+      expect(m.ok).toBe(true);
+      const h3 = await wm.allocate('p', { slugHint: 'idem' });
+      expect(h3.id).not.toBe(h1.id);
+      expect(h3.status).toBe('active');
+    } finally {
+      await fs.rm(base, { recursive: true, force: true });
+    }
+  }, 120_000);
+
   it('commitAll on a clean tree returns committed:false', async () => {
     const base = await makeRepo();
     try {

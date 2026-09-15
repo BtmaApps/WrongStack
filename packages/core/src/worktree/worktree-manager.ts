@@ -65,7 +65,16 @@ export class WorktreeManager {
   /** Create a fresh worktree + branch forked from the current base branch. */
   async allocate(ownerId: string, opts: AllocateOpts = {}): Promise<WorktreeHandle> {
     const existing = this.handles.get(ownerId);
-    if (existing && (existing.status === 'allocating' || existing.status === 'active')) {
+    // 'committing' is a live, owned state too: an in-flight or completed-but-
+    // unmerged commit means the owner still owns this worktree, and
+    // re-allocation must reuse it instead of minting a duplicate checkout and
+    // branch that orphan the first one.
+    if (
+      existing &&
+      (existing.status === 'allocating' ||
+        existing.status === 'active' ||
+        existing.status === 'committing')
+    ) {
       return existing;
     }
 
