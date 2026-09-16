@@ -134,6 +134,8 @@
     "emptyFinishedStats": "{{completed}} terminés · {{failed}} échecs"
   },
   "changes": {
+    "confirmDiscardTitle": "Abandonner les modifications dans {{path}} ?",
+    "confirmDiscardMsg": "Cette action est irréversible.",
     "fileCount_one": "{{count}} fichier",
     "fileCount_other": "{{count}} fichiers",
     "refreshTitle": "Actualiser les modifications",
@@ -1219,6 +1221,7 @@
     "backgroundTitle": "Tâche détachée — continue après l’arrêt de la CLI/WebUI",
     "confirmKillBackground": "Terminer le processus détaché en arrière-plan {{pid}} ?",
     "confirmKillAll": "Terminer les {{count}} processus en cours ?",
+    "killAllTitle": "Terminer tous les processus",
     "killTitle": "Tuer PID {{pid}}"
   },
   "diff": {
@@ -2078,6 +2081,8 @@
     "label": "Panneau latéral"
   },
   "memoryManager": {
+    "discardTitle": "Abandonner les modifications non enregistrées ?",
+    "discardConfirm": "Abandonner les modifications non enregistrées de la mémoire ? Cette action est irréversible.",
     "deleteTitle": "Supprimer cette mémoire ?",
     "backToList": "Retour à la liste des mémoires",
     "copyId": "Copier l'ID de la mémoire",
@@ -2560,6 +2565,7 @@
     "consolidatedWithModel": "Acquis consolidés avec {{model}}.",
     "consolidatedPlain": "Acquis consolidés.",
     "resetConfirm": "Réinitialiser toutes les données propres au projet pour l'agent « {{role}} » ?",
+    "resetTitle": "Réinitialiser le rôle de l’agent",
     "loadCustomizationFailed": "Échec du chargement de la personnalisation",
     "loadRuntimePolicyFailed": "Échec du chargement de la politique d'exécution",
     "runtimePolicySaveFailed": "Échec de l'enregistrement de la politique d'exécution",

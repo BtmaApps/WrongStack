@@ -134,6 +134,8 @@
     "emptyFinishedStats": "{{completed}} completati · {{failed}} falliti"
   },
   "changes": {
+    "confirmDiscardTitle": "Scartare le modifiche in {{path}}?",
+    "confirmDiscardMsg": "Questa operazione non può essere annullata.",
     "fileCount_one": "{{count}} file",
     "fileCount_other": "{{count}} file",
     "refreshTitle": "Aggiorna modifiche",
@@ -1219,6 +1221,7 @@
     "backgroundTitle": "Processo scollegato — continua dopo la chiusura di CLI/WebUI",
     "confirmKillBackground": "Terminare il processo scollegato in background {{pid}}?",
     "confirmKillAll": "Terminare tutti i {{count}} processi in esecuzione?",
+    "killAllTitle": "Termina tutti i processi",
     "killTitle": "Termina PID {{pid}}"
   },
   "diff": {
@@ -2078,6 +2081,8 @@
     "label": "Pannello laterale"
   },
   "memoryManager": {
+    "discardTitle": "Scartare le modifiche non salvate?",
+    "discardConfirm": "Scartare le modifiche non salvate della memoria? Questa operazione non può essere annullata.",
     "deleteTitle": "Eliminare questa memoria?",
     "backToList": "Torna all'elenco delle memorie",
     "copyId": "Copia ID memoria",
@@ -2560,6 +2565,7 @@
     "consolidatedWithModel": "Apprendimenti consolidati con {{model}}.",
     "consolidatedPlain": "Apprendimenti consolidati.",
     "resetConfirm": "Reimpostare tutti i dati specifici del progetto per l'agente \"{{role}}\"?",
+    "resetTitle": "Reimposta il ruolo dell’agente",
     "loadCustomizationFailed": "Impossibile caricare la personalizzazione",
     "loadRuntimePolicyFailed": "Impossibile caricare i criteri di runtime",
     "runtimePolicySaveFailed": "Salvataggio dei criteri di runtime non riuscito",

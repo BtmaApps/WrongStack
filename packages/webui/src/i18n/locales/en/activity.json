@@ -142,6 +142,8 @@
     "emptyFinishedStats": "{{completed}} done · {{failed}} failed"
   },
   "changes": {
+    "confirmDiscardTitle": "Discard changes in {{path}}?",
+    "confirmDiscardMsg": "This cannot be undone.",
     "fileCount_one": "{{count}} file",
     "fileCount_other": "{{count}} files",
     "refreshTitle": "Refresh changes",
@@ -1285,6 +1287,7 @@
     "backgroundTitle": "Detached job — survives CLI/WebUI shutdown",
     "confirmKillBackground": "Terminate detached background process {{pid}}?",
     "confirmKillAll": "Terminate all {{count}} running processes?",
+    "killAllTitle": "Terminate All Processes",
     "killTitle": "Kill PID {{pid}}"
   },
   "diff": {
@@ -2139,6 +2142,8 @@
     "label": "Side panel"
   },
   "memoryManager": {
+    "discardTitle": "Discard Unsaved Changes?",
+    "discardConfirm": "Discard the unsaved memory changes? This cannot be undone.",
     "deleteTitle": "Delete this memory?",
     "backToList": "Back to memory list",
     "copyId": "Copy memory ID",
@@ -2621,6 +2626,7 @@
     "consolidatedWithModel": "Learnings consolidated with {{model}}.",
     "consolidatedPlain": "Learnings consolidated.",
     "resetConfirm": "Reset all project-specific data for agent \"{{role}}\"?",
+    "resetTitle": "Reset Agent Role",
     "loadCustomizationFailed": "Failed to load customization",
     "loadRuntimePolicyFailed": "Failed to load runtime policy",
     "runtimePolicySaveFailed": "Runtime policy save failed",

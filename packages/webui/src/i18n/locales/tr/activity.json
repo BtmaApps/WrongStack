@@ -134,6 +134,8 @@
     "emptyFinishedStats": "{{completed}} tamamlandı · {{failed}} başarısız"
   },
   "changes": {
+    "confirmDiscardTitle": "{{path}} dosyasındaki değişiklikler atılsın mı?",
+    "confirmDiscardMsg": "Bu işlem geri alınamaz.",
     "fileCount_one": "{{count}} dosya",
     "fileCount_other": "{{count}} dosya",
     "refreshTitle": "Değişiklikleri yenile",
@@ -1280,6 +1282,7 @@
     "backgroundTitle": "Bağımsız iş — CLI/WebUI kapansa da çalışmaya devam eder",
     "confirmKillBackground": "Bağımsız arka plan süreci {{pid}} sonlandırılsın mı?",
     "confirmKillAll": "Çalışan {{count}} sürecin tamamı sonlandırılsın mı?",
+    "killAllTitle": "Tüm Süreçleri Sonlandır",
     "killTitle": "PID {{pid}} sonlandır"
   },
   "diff": {
@@ -2139,6 +2142,8 @@
     "label": "Yan panel"
   },
   "memoryManager": {
+    "discardTitle": "Kaydedilmemiş değişiklikler atılsın mı?",
+    "discardConfirm": "Bellekte kaydedilmemiş değişiklikler atılsın mı? Bu işlem geri alınamaz.",
     "deleteTitle": "Bu bellek silinsin mi?",
     "backToList": "Bellek listesine dön",
     "copyId": "Bellek kimliğini kopyala",
@@ -2621,6 +2626,7 @@
     "consolidatedWithModel": "Öğrenilenler {{model}} ile birleştirildi.",
     "consolidatedPlain": "Öğrenilenler birleştirildi.",
     "resetConfirm": "\"{{role}}\" ajanı için tüm projeye özel veriler sıfırlansın mı?",
+    "resetTitle": "Ajan Rolünü Sıfırla",
     "loadCustomizationFailed": "Özelleştirme yüklenemedi",
     "loadRuntimePolicyFailed": "Çalışma zamanı ilkesi yüklenemedi",
     "runtimePolicySaveFailed": "Çalışma zamanı ilkesi kaydedilemedi",

@@ -134,6 +134,8 @@
     "emptyFinishedStats": "{{completed}} fertig · {{failed}} fehlgeschlagen"
   },
   "changes": {
+    "confirmDiscardTitle": "Änderungen in {{path}} verwerfen?",
+    "confirmDiscardMsg": "Dies kann nicht rückgängig gemacht werden.",
     "fileCount_one": "{{count}} Datei",
     "fileCount_other": "{{count}} Dateien",
     "refreshTitle": "Änderungen aktualisieren",
@@ -1219,6 +1221,7 @@
     "backgroundTitle": "Abgekoppelter Prozess — läuft nach dem Beenden von CLI/WebUI weiter",
     "confirmKillBackground": "Abgekoppelten Hintergrundprozess {{pid}} beenden?",
     "confirmKillAll": "Alle {{count}} laufenden Prozesse beenden?",
+    "killAllTitle": "Alle Prozesse beenden",
     "killTitle": "PID {{pid}} beenden"
   },
   "diff": {
@@ -2078,6 +2081,8 @@
     "label": "Seitenleiste"
   },
   "memoryManager": {
+    "discardTitle": "Nicht gespeicherte Änderungen verwerfen?",
+    "discardConfirm": "Die nicht gespeicherten Speicheränderungen verwerfen? Dies kann nicht rückgängig gemacht werden.",
     "deleteTitle": "Diesen Speicher löschen?",
     "backToList": "Zurück zur Speicherliste",
     "copyId": "Speicher-ID kopieren",
@@ -2560,6 +2565,7 @@
     "consolidatedWithModel": "Gelerntes mit {{model}} konsolidiert.",
     "consolidatedPlain": "Gelerntes konsolidiert.",
     "resetConfirm": "Alle projektspezifischen Daten für den Agenten „{{role}}“ zurücksetzen?",
+    "resetTitle": "Agentenrolle zurücksetzen",
     "loadCustomizationFailed": "Anpassung konnte nicht geladen werden",
     "loadRuntimePolicyFailed": "Laufzeitrichtlinie konnte nicht geladen werden",
     "runtimePolicySaveFailed": "Speichern der Laufzeitrichtlinie fehlgeschlagen",

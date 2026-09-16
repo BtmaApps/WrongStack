@@ -134,6 +134,8 @@
     "emptyFinishedStats": "{{completed}} completados · {{failed}} fallidos"
   },
   "changes": {
+    "confirmDiscardTitle": "¿Descartar los cambios en {{path}}?",
+    "confirmDiscardMsg": "Esta acción no se puede deshacer.",
     "fileCount_one": "{{count}} archivo",
     "fileCount_other": "{{count}} archivos",
     "refreshTitle": "Actualizar cambios",
@@ -1219,6 +1221,7 @@
     "backgroundTitle": "Tarea desvinculada — continúa tras cerrar la CLI/WebUI",
     "confirmKillBackground": "¿Terminar el proceso desvinculado en segundo plano {{pid}}?",
     "confirmKillAll": "¿Terminar los {{count}} procesos en ejecución?",
+    "killAllTitle": "Terminar todos los procesos",
     "killTitle": "Matar PID {{pid}}"
   },
   "diff": {
@@ -2078,6 +2081,8 @@
     "label": "Panel lateral"
   },
   "memoryManager": {
+    "discardTitle": "¿Descartar los cambios no guardados?",
+    "discardConfirm": "¿Descartar los cambios no guardados de la memoria? Esta acción no se puede deshacer.",
     "deleteTitle": "¿Eliminar esta memoria?",
     "backToList": "Volver a la lista de memorias",
     "copyId": "Copiar ID de memoria",
@@ -2560,6 +2565,7 @@
     "consolidatedWithModel": "Aprendizajes consolidados con {{model}}.",
     "consolidatedPlain": "Aprendizajes consolidados.",
     "resetConfirm": "¿Restablecer todos los datos específicos del proyecto del agente «{{role}}»?",
+    "resetTitle": "Restablecer el rol del agente",
     "loadCustomizationFailed": "No se pudo cargar la personalización",
     "loadRuntimePolicyFailed": "No se pudo cargar la política de ejecución",
     "runtimePolicySaveFailed": "Error al guardar la política de ejecución",
