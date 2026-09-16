@@ -1,4 +1,5 @@
-<!-- verified: 2026-09-16 | sources: MDN, web.dev Baseline, caniuse -->
+<!-- verified: 2026-09-16 | live check against MDN, web.dev Baseline, caniuse -->
+<!-- One row below is explicitly marked UNVERIFIED. Do not assert it without checking. -->
 
 # HTML & platform APIs baseline
 
@@ -9,9 +10,9 @@ Re-verify anything below if `verified:` is more than 90 days old.
 | Feature | Tier | Replaces |
 |---|---|---|
 | **`<dialog>` + `showModal()`** | Widely available | Custom modal with a hand-rolled focus trap, scroll lock, and `Escape` handler |
-| **Popover API** (`popover`, `popovertarget`) | Widely available | JS-managed dropdown/tooltip open state and light-dismiss |
+| **Popover API** (`popover`, `popovertarget`) | **Newly available** (Baseline Jan 2025; reaches *widely available* ~Jul 2027) | JS-managed dropdown/tooltip open state and light-dismiss — pair with a fallback for older targets |
 | `::backdrop` | Widely available | A manually rendered overlay div |
-| Anchor positioning | Limited (Chromium first) | Collision libraries — enhance only, keep a static fallback position |
+| **Anchor positioning** | **Baseline since Jan 2026** (see `css.md`) | Popper / Floating UI for placement and flipping |
 
 `<dialog>` gives focus management, inertness of the background, `Escape` to
 close, and `::backdrop` for free. Reaching for a modal library is now the
@@ -24,8 +25,8 @@ exception that needs justifying.
 | Constraint validation (`required`, `pattern`, `:user-invalid`) | Widely available | Prefer `:user-invalid` over `:invalid` — it waits until the user has interacted |
 | `<input type="date|time|color|range">` | Widely available | Check the design impact; native pickers vary by platform |
 | `<datalist>` | Widely available | Simple autocomplete without a library |
-| `field-sizing: content` | Newly available | Auto-growing textarea without JS measurement |
-| `<selectlist>` / customizable select | Limited | Enhance only; custom select remains the fallback |
+| **`field-sizing: content`** | **Baseline since Jun 2026** | Auto-growing textarea without JS measurement |
+| **Customizable select** (`appearance: base-select`, `::picker(select)`) | **Limited** — Chrome/Edge 135+; Safari shipping/TP around 27; Firefox behind a flag in Nightly | Purely additive: an unsupporting browser renders a normal native select |
 | `inputmode`, `enterkeyhint`, `autocomplete` | Widely available | Mobile keyboard correctness — cheap, routinely forgotten |
 
 Always set `autocomplete` on real fields (name, email, address, one-time-code).
@@ -47,10 +48,11 @@ It is an accessibility and conversion win, and it is free.
 | Feature | Tier | Notes |
 |---|---|---|
 | Landmarks (`header/nav/main/aside/footer`) | Widely available | One `main`, one `h1` |
-| `<details>` / `<summary>`, `name` for exclusive accordion | Widely available (`name`: newly) | Accordion without JS |
+| `<details>` / `<summary>` | Widely available | A real disclosure widget in the a11y tree, keyboard-operable, zero JS |
+| `<details name="…">` (exclusive accordion) | Newly available | Accordion without JS |
 | `inert` | Widely available | Disable a background region wholesale |
+| **Declarative Shadow DOM** | **Widely available** — Chrome/Edge 111+, Firefox 123+, Safari 16.4+ | SSR-able components with no client JS for first render |
 | `<template>` + Web Components | Widely available | Only when framework-independence is a requirement |
-| Declarative Shadow DOM | Newly available | SSR-able components |
 
 ## Platform APIs commonly hand-rolled
 
@@ -63,7 +65,7 @@ It is an accessibility and conversion win, and it is free.
 | `Intl.*` (`NumberFormat`, `DateTimeFormat`, `RelativeTimeFormat`, `ListFormat`) | Widely available | Hand-written date/number/list formatting — **always** use `Intl` |
 | `navigator.clipboard` | Widely available | `document.execCommand('copy')` |
 | View Transition API | Newly available | Hand-built FLIP transitions |
-| Speculation Rules (prerender/prefetch) | Limited (Chromium) | Enhance only |
+| Speculation Rules (prerender/prefetch) | **UNVERIFIED** — last live check could not confirm a tier | Do not assert support for this one; check before recommending it |
 
 ## Reminders that keep costing time
 

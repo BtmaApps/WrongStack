@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T06:42:28.143Z",
+  "generatedAt": "2026-09-16T07:37:49.765Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 36,
     "sourceFiles": 3800,
     "testFiles": 3442,
-    "sourceLines": 931307,
+    "sourceLines": 931504,
     "workspaceEdges": 128,
     "moduleEdges": 12154,
     "nonCommandSlashImports": 0,
@@ -22454,7 +22454,7 @@
     },
     {
       "file": "packages/webui/src/components/CodeMap.tsx",
-      "lines": 932,
+      "lines": 949,
       "relativeImports": 12
     },
     {

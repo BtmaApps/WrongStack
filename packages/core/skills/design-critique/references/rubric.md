@@ -8,6 +8,22 @@ screen region). A score without a citation is a feeling.
 
 ---
 
+## Before scoring: surface type
+
+The axes below are written for a **page**. On an **app screen** two of them are
+scored differently, because the rules they encode are page rules:
+
+| Axis | On an app screen |
+|---|---|
+| **Structure** | Ignore "centered monotony" and "hero + three cards". Ask instead: does one element earn the focal point, or is every tile the same weight? Is there a lane/tile rhythm, or one uniform grid? |
+| **Typography** | The 60–75ch measure applies to prose blocks only. Tables, labels and numeric cells are exempt; judge tabular figures, label tracking, and whether the value/label size jump survives greyscale. |
+
+On a **component in isolation**, Structure and Copy are usually `n/a`.
+
+Mark an inapplicable axis `n/a (<surface>)`. Never invent a middling score for
+it: the overall score is the lowest axis, so a fabricated 3/5 silently sets the
+floor.
+
 ## Scoring bands (apply to every axis)
 
 | Score | Meaning |

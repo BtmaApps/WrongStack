@@ -455,7 +455,7 @@
       "relativeImports": 2
     },
     "packages/webui/src/components/CodeMap.tsx": {
-      "lines": 932,
+      "lines": 949,
       "relativeImports": 12
     },
     "packages/webui/src/components/ContextDashboard.tsx": {

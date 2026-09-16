@@ -82,6 +82,26 @@ these is legitimate when the brief chose it on purpose and says why.
 | P5 | Error text that names the exception | Developer-facing string in a user surface | What happened, why, and what to do next |
 | P6 | Button labels "Submit" / "Click here" | Generic control naming | The verb of the action: "Create workspace" |
 
+## What the engine checks, and what it deliberately does not
+
+`design {action:"verify"}` mechanizes the rows marked **[verify]**. The rest are
+judgment calls for `design-critique`. That split is not arbitrary — each
+candidate below was measured against a real 404-file UI before being accepted or
+rejected, and the rejections are as informative as the rules:
+
+| Candidate | Measured | Verdict |
+|---|---|---|
+| Raw interactive element with no focus styling (S4) | 162 files | **Rejected.** The project sets `:focus-visible` globally in one stylesheet; a file-scoped rule cannot see it, so every hit was false. Focus coverage is an a11y audit, not a regex. |
+| Mixed icon stroke widths (I2) | 4 files | **Rejected.** Two were canvas/graph views where varying stroke width carries meaning. Signal too thin, intent too easy to misread. |
+| Table without tabular figures (T7) | 4 files | **Deferred.** Half the hits were a table primitive and a generic markdown renderer, neither of which should hardcode numerals. |
+| Generic empty-state label (S3) | 1 file | **Accepted.** Zero noise, and it matches only when the generic phrase is the entire label. |
+| Decorative gradient background (C7/L9) | — | **Rejected by design.** Kits like `aurora-gradient` and `soft-glass` sanction exactly this. A kit-independent rule cannot judge it. |
+| Two adjacent sections sharing a skeleton | — | **Judgment only.** The repeated-block rule needs 4 copies before it fires, tuned that way to avoid flagging legitimate label classes. Two near-identical cards back to back is the most common real case and lands below the threshold — which is precisely what a critique is for. |
+
+The lesson for anyone adding a rule: **measure it against a real corpus first.**
+Three of this file's rules were wrong on their first draft, and the corpus said
+so before any user did.
+
 ## How to use this file
 
 - **Before building**: skim the section for what you're about to write.
