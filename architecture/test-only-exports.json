@@ -1692,6 +1692,9 @@
       "HUB_RANK",
       "rankAccentWidth"
     ],
+    "packages/webui/src/components/ConfirmModal.tsx": [
+      "alertModal"
+    ],
     "packages/webui/src/components/CustomRosterPanel.tsx": [
       "CustomRosterPanel",
       "setCustomRosterWS"
