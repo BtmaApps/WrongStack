@@ -147,7 +147,7 @@ export function ToolsPage() {
           index="01"
           eyebrow="Execution contract"
           title="A tool call is a controlled transaction, not an unchecked shell escape."
-          description="Every built-in follows the same lifecycle. The model proposes structured input; WrongStack decides whether and how that proposal may become an action."
+          description="Every built-in follows the same lifecycle. Enabled local and MCP tools with deferred schemas remain discoverable through tool_search and callable through tool_use. Permission checks still apply to execution."
         />
         <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line lg:grid-cols-4">
           {[

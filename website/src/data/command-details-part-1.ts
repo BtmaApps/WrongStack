@@ -1,6 +1,16 @@
 import type { CommandDetailMap } from './command-detail-types';
 
 export const commandDetailsPart1: CommandDetailMap = {
+  '/bughunt': {
+    purpose: 'Investigate a scoped defect with evidence before and after a minimal fix.',
+    behavior:
+      'In a Solo session, `/bughunt [scope]` starts one round. `/bughunt --rounds 3 packages/tui` authorizes three sequential rounds; WebUI also offers scope and round controls. A round may fix one proven root cause. The prompt asks for a failing reproduction, an unaffected control case, unchanged passing checks after the fix, and a retained regression. A round budget does not promise a bug count.',
+    before: 'Choose a bounded scope and record the starting revision and existing changes.',
+    during:
+      'Trace a reachable production path and reproduce the defect before editing. Report verification gaps explicitly.',
+    after:
+      'Review the outcome: fixed-and-verified, fixed-verification-incomplete, no-proven-bug, or blocked. These reports are not automatically certified by the application.',
+  },
   '/btw': {
     purpose:
       'Ask a quick side question without derailing the current task or polluting the main conversation thread.',

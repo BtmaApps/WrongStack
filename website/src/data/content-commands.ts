@@ -77,6 +77,7 @@ const commandRows: Array<[string, string]> = [
   ['/brain', 'Inspect the decision arbiter, ask it a question or set its risk ceiling.'],
   ['/coordinator', 'Control multi-session autonomous goal coordination.'],
   ['/review', 'Run a model-driven code review pass.'],
+  ['/bughunt', 'Investigate a scoped bug with reproduction evidence and an optional round budget.'],
   ['/mailbox', 'Read and send cross-agent project mailbox messages.'],
   ['/mailbox-demo', 'Exercise mailbox routing during development.'],
   ['/mailbox-serve', 'Expose the project mailbox through its HTTP bridge.'],
@@ -136,6 +137,7 @@ export const COMMAND_COUNT = commandRows.length;
 
 const categories: Record<Exclude<CommandCategory, 'All'>, string[]> = {
   Workflow: [
+    '/bughunt',
     '/sdd',
     '/btw',
     '/next',
@@ -294,6 +296,10 @@ const featuredUsage: Record<string, { usage: string[]; note?: string }> = {
   },
   '/sessions': {
     usage: ['/sessions', '/resume', '/sessions rename <id> "release work"'],
+  },
+  '/bughunt': {
+    usage: ['/bughunt', '/bughunt packages/core', '/bughunt --rounds 3 packages/tui'],
+    note: 'Solo sessions only. A round budget authorizes investigations, not a guaranteed number of fixes.',
   },
   '/sdd': {
     usage: ['/sdd "add OAuth account switching"', '/sdd status'],

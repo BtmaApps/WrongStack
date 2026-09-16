@@ -4,6 +4,12 @@ import { Link } from '@/lib/router';
 
 const workflows = [
   [
+    'Proof-Driven Bug Hunter',
+    'Investigate a bounded scope with a failing reproduction, control case, and retained regression. Rounds are an investigation budget.',
+    '/bughunt --rounds 3 packages/tui',
+    '/commands/bughunt',
+  ],
+  [
     'Direct prompt',
     'One bounded request with an obvious finish condition.',
     'wstack "refactor src/auth.ts"',

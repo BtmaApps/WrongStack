@@ -12,8 +12,8 @@ export function DesignStudioPage() {
             Ship UI that <span className="text-brand">looks deliberate.</span>
           </>
         }
-        description="WrongStack's Design Studio gives you 48+ curated design kits — from neo-brutalist to luxury-serif. Pin one, materialize CSS tokens, and the agent builds UI that is already themed, responsive, dark/light, and WCAG AA."
-        aside={<ExternalDoc path="docs/design/README.md">Open Design Studio docs</ExternalDoc>}
+        description="Choose a design direction, pin a curated kit, and materialize its tokens. Design-craft guides composition, design-critique guides review, and web-platform-baseline covers platform and accessibility practices. Verify the result in your actual UI."
+        aside={<ExternalDoc path="docs/slash/design.md">Open Design Studio docs</ExternalDoc>}
       />
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
@@ -21,14 +21,24 @@ export function DesignStudioPage() {
           index="01"
           eyebrow="One command"
           title="Pick a kit and start building."
-          description="The design tool has five actions. Most of the time you only need two: list to browse, use to commit."
+          description="Browse with list, read foundations, and pin a kit with use. Adjust tokens with set or tune, materialize them, then verify the implementation."
         />
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               icon: Search,
               label: 'list',
-              body: 'Browse all 48+ curated design kits with aesthetic descriptions, color previews and stack compatibility.',
+              body: 'Browse curated kits, including flat-design, pixel-8bit, and grunge-press, with stack compatibility.',
+            },
+            {
+              icon: Layers3,
+              label: 'foundations',
+              body: 'Read the shared design foundations before choosing a kit.',
+            },
+            {
+              icon: Wand2,
+              label: 'tune',
+              body: 'Adjust semantic choices such as radius, density, and font without hand-editing every token.',
             },
             {
               icon: Paintbrush,
@@ -48,7 +58,7 @@ export function DesignStudioPage() {
             {
               icon: Eye,
               label: 'verify',
-              body: 'Scan UI files for off-palette colors, missing dark variants, and contrast violations.',
+              body: 'Scan UI files for supported token and design-rule violations. Follow up with visual and accessibility checks.',
             },
           ].map(({ icon: Icon, label, body }) => (
             <article key={label} className="rounded-xl border border-line bg-card p-5">
@@ -72,6 +82,18 @@ export function DesignStudioPage() {
           />
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
+              {
+                name: 'flat-design',
+                desc: 'Solid color blocks, zero elevation, and separation by fill.',
+              },
+              {
+                name: 'pixel-8bit',
+                desc: 'Integer pixel grids, hard offset shadows, and crisp edges.',
+              },
+              {
+                name: 'grunge-press',
+                desc: 'Stamped ink, dirty neutrals, and one oxide accent.',
+              },
               {
                 name: 'neo-brutalist',
                 desc: 'Hard borders, blunt shadows, mono type, high contrast. Bold and raw.',
@@ -131,8 +153,8 @@ export function DesignStudioPage() {
             ))}
           </div>
           <p className="mt-5 text-right text-xs text-faint">
-            48+ kits available. Run <code className="font-mono text-brand">/design list</code> for
-            the full catalog.
+            Explore the full kit collection. Run{' '}
+            <code className="font-mono text-brand">/design list</code> for the full catalog.
           </p>
         </div>
       </section>
@@ -227,11 +249,11 @@ export function DesignStudioPage() {
           eyebrow="Commands"
           title="The full design workflow in five actions."
         />
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               cmd: 'list',
-              desc: 'Browse all 48+ kits with aesthetic descriptions and stack compatibility.',
+              desc: 'Browse the kit catalog with aesthetic descriptions and stack compatibility.',
             },
             {
               cmd: 'use <kit>',

@@ -13,7 +13,7 @@ export function SkillsPage() {
           </>
         }
         description="Skills are installable packages of instructions, trigger words, and capability declarations. They auto-activate when you mention their keywords — no mode switch, no manual loading."
-        aside={<ExternalDoc path="docs/skills/README.md">Open Skills docs</ExternalDoc>}
+        aside={<ExternalDoc path="docs/skills.md">Open Skills docs</ExternalDoc>}
       />
 
       <section className="mx-auto max-w-[1380px] px-4 py-20 sm:px-6 sm:py-28 lg:px-10 lg:py-36">
@@ -98,7 +98,7 @@ export function SkillsPage() {
               icon: PackageOpen,
               title: 'Bundled',
               path: 'Shipped with @wrongstack/core',
-              body: '50+ skills ship with WrongStack: security scanners, testing patterns, API design guides, refactoring workflows. Always available.',
+              body: 'Bundled skills cover security, testing, and refactoring, plus design-craft, design-critique, and web-platform-baseline for UI implementation and review.',
             },
             {
               icon: Globe,

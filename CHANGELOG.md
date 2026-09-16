@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.19] — 2026-09-16
+
+This entry consolidates changes since 1.0.9, including the intermediate
+1.0.10–1.0.18 versions. The date follows the 1.0.19 version commit.
+
+### Added
+
+- **Proof-Driven Bug Hunter.** `/bughunt [scope]` supports a single investigation
+  or an explicit sequential round budget (`--rounds`). WebUI provides scope and
+  round controls. The prompt requires a pre-fix failing reproduction, an
+  unaffected control, unchanged post-fix checks, and a retained regression.
+  Reports distinguish verified fixes, incomplete verification, no proven bug,
+  and blocked work; these are model instructions, not automatic certification.
+- **Design skills and kits.** `design-craft`, `design-critique`, and
+  `web-platform-baseline` add direction selection, visual review, and platform
+  guidance. `flat-design`, `pixel-8bit`, and `grunge-press` join the kit catalog.
+- **Kanban activity and queue visibility.** Task-scoped activity history, parked
+  task visibility, and queue-health information improve investigation of work
+  that is waiting, blocked, or intentionally deferred.
+
+### Changed
+
+- **WebUI Code Atlas navigation.** Click from package to file to symbol, follow
+  the workspace breadcrumb, and use visible Open, Relations, and Activity actions.
+- **Richer working surfaces.** WebUI tool cards expose execution details and
+  grouped activity; SimpleUI consolidates workspace utilities and file management.
+  TUI gains theme-colored statusline capsules, ordering controls, and font-aware
+  icons. Navigation and dialogs better accommodate small screens.
+- **Deferred tools remain callable.** `tool_search` searches enabled local and
+  MCP tools and returns their schemas; `tool_use` invokes tools that are not
+  directly exposed in the provider's current tool list.
+- **Shared agent contracts.** Leader prompt variants and specialist roles share
+  instructions for evidence, memory, tool coordination, and work tracking.
+- **Runaway protection is opt-in.** The loop-breaker defaults to disabled, with
+  `maxSteps: 0` meaning no total-call cap. When enabled, counters are scoped to
+  the owning session and reset for a new user turn.
+
+### Fixed
+
+- **Memory and persistence recovery.** SAGE and vector-memory recovery paths,
+  memory evidence boundaries, and memory selection handle long-running sessions
+  more reliably. Registry writes are atomic and retry transient Windows failures.
+- **Kanban and todo consistency.** Projection, assignment, completion, and
+  persistence fixes preserve board work across tools and client surfaces.
+- **Bug Hunt continuation lifecycle.** Replaced history, unmount, a replacement
+  hunt, and aborted or failed rounds cancel queued TUI continuations; duplicate
+  completion notifications cannot spend an extra round.
+- **MCP startup and authorization.** Stdio servers start in the project working
+  directory; rejected OAuth refresh requests require reauthorization; bare
+  `mcp serve --http` binds an available ephemeral port.
+- **Client workflow recovery.** Structured input dialogs support cancellation
+  and submit timeouts; SimpleUI closes file diffs when another panel opens;
+  model switching acknowledges activation without waiting for catalog refresh.
+- **Worktree and runtime consistency.** Failed removals retain manager state,
+  commits preserve live allocation state, and agent prompt/role-skill imports
+  avoid a runtime module cycle.
+
 ### Security
 
 - **Windows: bare command names no longer resolve from the opened repository.**

@@ -271,10 +271,11 @@ export const commandDetailsPart2: CommandDetailMap = {
     purpose:
       'Choose which TUI status-bar instruments are visible — customize the information density of your terminal UI.',
     behavior:
-      'The TUI status line shows mode, model, token usage, goal, YOLO state, and more. `/statusline` lists available instruments. `/statusline <instrument> on|off` toggles visibility. You can create a minimal bar for focus or a dense bar for full situational awareness.',
+      'The TUI status line shows mode, model, token usage, goal, YOLO state, and more. `/statusline` opens the TUI picker (or lists configuration in the REPL), with visibility, rail, density, and ordering controls. `/statusline <instrument> on|off` toggles visibility. You can create a minimal bar for focus or a dense bar for full situational awareness.',
     before:
       'Decide which information you need visible at all times vs. what you can check on demand.',
-    during: 'The status bar updates immediately. Changes persist for the session.',
+    during:
+      'The themed capsule rails update immediately. Configuration persists in the active profile statusline.json.',
     after:
       'Observe the status bar for a few turns. Adjust if it feels too sparse or too cluttered.',
   },

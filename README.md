@@ -45,25 +45,30 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.9
+### What's new in 1.0.19
 
-- **Delegation no longer freezes the leader.** `delegate` returns as soon as a
-  background worker starts, delivers its result at the leader's next iteration
-  boundary, and can auto-wake an idle interactive leader. Use `wait: true` when
-  the result must gate the next step.
-- **Releases are quicker to iterate on and safer to install.** `pnpm
-  release:fast` skips only the audit and instrumented-coverage gates CI covers,
-  while the release matrix now verifies that the packed providers package
-  installs with npm 10.
-- **Long-running sessions recover more cleanly.** ACP cancellation covers
-  session startup as well as an active prompt; clearing history leaves the
-  writer usable; active sessions cannot be renamed underneath their writer.
-- **TUI and WebUI state stays bounded.** Picker lists use their actual terminal
-  height, and turn undo removes the execution records belonging to discarded
-  messages.
-- **Provider compatibility is restored for npm users.** Cloudflare gateway
-  routing uses the compatible AI SDK 7 providers, avoiding npm's peer-dependency
-  replacement loop.
+Highlights accumulated since 1.0.9:
+
+- **Explore code directly.** WebUI Code Atlas drills from packages to files to
+  symbols with one click, a workspace breadcrumb, and visible Open, Relations,
+  and Activity actions. Rich tool cards expose execution details in the chat.
+- **Investigate bugs with evidence.** `/bughunt [scope]` runs one investigation;
+  `/bughunt --rounds 3 packages/tui` authorizes three sequential rounds. The
+  workflow asks for a failing reproduction, an unaffected control, the same
+  passing check after the fix, and a retained regression. Rounds are an
+  investigation budget, not a promised number of bugs.
+- **Build UI with a deliberate design direction.** New `design-craft`,
+  `design-critique`, and `web-platform-baseline` skills complement Design Studio.
+  The kit catalog adds `flat-design`, `pixel-8bit`, and `grunge-press`.
+- **Keep tools discoverable.** Enabled tools whose schemas are deferred remain
+  available through `tool_search` and `tool_use`, including local and MCP tools.
+- **Track work across surfaces.** Kanban improves task activity history, parked
+  work visibility, and queue health. SimpleUI groups workspace utilities and
+  file management in a shared launcher; TUI statusline capsules support custom
+  ordering and font-aware icons.
+- **Recover more reliably.** Memory recovery, Windows registry writes, MCP
+  startup, and session handling have been hardened. Shared agent instructions
+  keep the evidence, memory, and work-tracking contracts consistent across roles.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -560,7 +565,7 @@ Full walk-through: [`docs/architecture.md`](docs/architecture.md).
 
 ## Status
 
-- **v1.0.9** — current release; semver from 1.0.0 onward
+- **v1.0.19** — current release; semver from 1.0.0 onward
 - Full release verification: `pnpm release:check` (18 gates) before publishing
 - Coverage thresholds (root Vitest): ≥76% lines / ≥75% functions / ≥66% branches / ≥75% statements
 - Every package and app builds clean with TypeScript strict + `noUncheckedIndexedAccess`

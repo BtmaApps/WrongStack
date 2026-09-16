@@ -245,34 +245,34 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Keep the leader moving while the work fans out.
+                Explore the code. Prove the fix. Shape the interface.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                Background delegation delivers completed work back at a safe iteration boundary,
-                while release checks now prove the packed provider bundle installs with npm 10.
+                Since 1.0.9: direct Code Atlas navigation, evidence-led Bug Hunt rounds, new design
+                skills, and clearer work tracking across the terminal and browser.
               </p>
             </div>
             <a
               href={`${repoUrl}/blob/main/CHANGELOG.md`}
               className="group inline-flex shrink-0 items-center gap-2 text-sm font-bold text-fg"
             >
-              Read 1.0.9 release notes
+              Read {version} release notes
               <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
           </div>
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Background delegation',
-                'Return task identifiers immediately, then deliver the worker result without polling.',
+                'Code Atlas navigation',
+                'Drill from packages to files to symbols, with visible Open, Relations, and Activity actions.',
               ],
               [
-                'Reliable session recovery',
-                'ACP cancellation, session clearing and durable background-work records handle interrupted work cleanly.',
+                'Proof-Driven Bug Hunter',
+                'Investigate a scoped round with a reproduction, control case, and regression; report when no bug is proven.',
               ],
               [
-                'Bounded interfaces',
-                'TUI pickers respect the real terminal height and WebUI undo removes discarded execution state.',
+                'Design with direction',
+                'Use design-craft, design-critique, and new kits to choose a direction, build it, and review the result.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">

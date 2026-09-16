@@ -540,7 +540,7 @@ export const pluginDetailsPart3: Record<string, PluginDetail> = {
   'loop-breaker': {
     version: '0.1.0',
     longDescription:
-      'Detects runaway tool-call loops before they burn the session: exact-repeat streaks, A-B-A-B oscillations, edits that produce no diff, and repeated identical errors. Thresholds first inject a warning, then block the repeating call (warn mode only ever warns). Counters and the last detection are visible via loop_breaker_status.',
+      'Detects runaway tool-call loops before they burn the session: exact-repeat streaks, A-B-A-B oscillations, edits that produce no diff, and repeated identical errors. Thresholds first inject a warning, then block the repeating call (warn mode only ever warns). Counters and the last detection are visible via loop_breaker_status. State belongs to the owning session and resets for a new user turn. The plugin is opt-in; maxSteps: 0 leaves the total tool-call count unlimited.',
     tools: [
       {
         name: 'loop_breaker_status',

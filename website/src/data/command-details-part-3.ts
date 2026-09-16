@@ -59,7 +59,7 @@ export const commandDetailsPart3: CommandDetailMap = {
     purpose:
       'Browse, pin, and materialize a curated Design Studio kit — apply a cohesive design system to UI work.',
     behavior:
-      'WrongStack Design Studio offers 48+ curated design kits (neo-brutalist, minimal-clarity, cyberpunk-neon, etc.). `/design list` shows all kits. `/design use <kit-id>` loads and pins one. `/design materialize` writes CSS custom properties and Tailwind v4 @theme tokens to a file. `/design verify` scans UI files for off-palette colors.',
+      'WrongStack Design Studio includes flat-design, pixel-8bit, and grunge-press alongside its existing kits. The design-craft, design-critique, and web-platform-baseline skills guide selection and review. `/design list` shows all kits. `/design use <kit-id>` loads and pins one. `/design materialize` writes CSS custom properties and Tailwind v4 @theme tokens to a file. `/design verify` scans UI files for off-palette colors.',
     before: 'Browse kits with `/design list`. Choose one that matches your project aesthetic.',
     during:
       'Using a kit pins it for the session. Materialize writes tokens to the configured output path.',

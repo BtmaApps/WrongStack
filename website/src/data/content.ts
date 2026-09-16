@@ -556,7 +556,7 @@ export const surfaces = [
     launch: 'wstack --tui',
     best: 'Long interactive coding sessions',
     traits: [
-      'Keyboard-driven panels',
+      'Configurable statusline capsules',
       'Live service health',
       'Fleet/agent monitors',
       'Copyable history and streams',
@@ -573,8 +573,8 @@ export const surfaces = [
     best: 'Visual inspection and browser-based work',
     traits: [
       'Standalone or shared agent',
-      'Monaco editor',
-      'Auto-advancing ports',
+      'Monaco editor and Code Atlas',
+      'Rich tool cards and Bug Hunt',
       'Token-gated remote access',
     ],
     icon: Globe2,
@@ -584,12 +584,12 @@ export const surfaces = [
     name: 'SimpleUI',
     tagline: 'The lightweight chat',
     description:
-      'A stripped-down browser chat for the agent—conversation, live tool progress and agent tabs without the full workspace. Fast to open when you just want to talk to the agent.',
+      'A lightweight browser chat with live tool progress, agent tabs, and a shared launcher for workspace utilities, file management, and diffs.',
     launch: 'wstack --simpleui',
     best: 'Quick browser chat without the full workspace',
     traits: [
-      'Minimal chat surface',
-      'Live tool progress',
+      'Workspace and utilities launcher',
+      'File management and diffs',
       'Agent tabs and transcript',
       'Shares the CLI agent',
     ],
@@ -760,7 +760,7 @@ export const pageMeta: Record<SiteRoute, { title: string; description: string }>
   '/design-studio': {
     title: 'Design Studio — WrongStack',
     description:
-      '48+ curated design kits. Pin one, materialize CSS tokens, and the agent builds themed, accessible UI.',
+      'Curated design kits and design skills. Choose a direction, materialize tokens, and review the resulting UI.',
   },
   '/skills': {
     title: 'Skills — WrongStack',

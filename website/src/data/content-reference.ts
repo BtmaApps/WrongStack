@@ -223,7 +223,7 @@ export const ecosystemPillars = [
     icon: ScanSearch,
     headline: 'Package repeatable expert behavior',
     body: 'Skills are portable SKILL.md instruction sets discovered from project, user, foreign-agent and bundled layers. Eager or progressive injection keeps the prompt bounded.',
-    facts: ['33 bundled skills', 'First-seen shadowing by name', 'GitHub and registry install'],
+    facts: ['36 bundled skills', 'First-seen shadowing by name', 'GitHub and registry install'],
     command: '/skill',
   },
   {

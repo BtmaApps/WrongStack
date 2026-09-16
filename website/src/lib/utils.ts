@@ -20,8 +20,14 @@ export const META = {
   domain: 'wrongstack.com',
 } as const;
 
-/** 33 bundled skills — README / packages/core/skills canonical list. */
+/** Bundled skills from packages/core/skills; counts derive from this catalog. */
 export const skills = [
+  { name: 'design-craft', description: 'Choose and implement a deliberate visual direction' },
+  {
+    name: 'design-critique',
+    description: 'Review UI composition, usability, and visual consistency',
+  },
+  { name: 'web-platform-baseline', description: 'Apply HTML, CSS, and accessibility foundations' },
   { name: 'api-design', description: 'REST conventions, pagination, auth, and error taxonomy' },
   { name: 'audit-log', description: 'Analyze session logs and event streams' },
   { name: 'auto-review', description: 'Continuous review configuration and operation' },
@@ -349,6 +355,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.19',
+    date: '2026-09-16',
+    tagline: 'Code Atlas, evidence-led Bug Hunt, design skills and reliable work tracking',
+    consolidated: true,
+    latest: true,
+    highlights: [
+      'Consolidates changes since 1.0.9, including intermediate 1.0.10–1.0.18 versions',
+      'Code Atlas adds package-to-file-to-symbol navigation and visible Open, Relations, and Activity actions',
+      'Proof-Driven Bug Hunter supports scoped rounds with reproduction, control-case, and regression evidence',
+      'Design Studio adds flat-design, pixel-8bit, and grunge-press kits alongside three design skills',
+      'Deferred local and MCP tools remain discoverable through tool_search and callable through tool_use',
+      'Kanban activity, SimpleUI utilities, TUI statusline controls, memory recovery, and Windows persistence improve',
+      'Windows command lookup and HQ authentication/session revocation boundaries are hardened',
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-09-05',
     tagline: 'Production-ready — kernel stable, semver starts here',
@@ -495,7 +517,7 @@ export const changelog: ChangelogEntry[] = [
     date: '2026-08-18',
     tagline: 'All bundled skills follow the v2 structure with explicit in-lane guardrails',
     highlights: [
-      'All 29 bundled skills now carry an explicit "Out of scope" section and a "Before returning" checklist, with docs/SKILL-TEMPLATE.md codifying the standard structure for future authoring',
+      'The bundled skills at this release carry an explicit "Out of scope" section and a "Before returning" checklist, with docs/SKILL-TEMPLATE.md codifying the standard structure for future authoring',
     ],
   },
   {
