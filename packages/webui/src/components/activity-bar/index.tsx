@@ -4,7 +4,6 @@ import {
   BrainCircuit,
   ChartNoAxesCombined,
   Check,
-  ClipboardList,
   Columns3,
   Command,
   FlaskConical,
@@ -23,7 +22,6 @@ import {
   Pencil,
   Rocket,
   RotateCcw,
-  ScrollText,
   Settings as SettingsIcon,
   ShieldAlert,
   Sparkles,
@@ -94,13 +92,12 @@ const PANELS: PanelDef[] = [
 // "…" utilities menu (Ctrl+9 / palette unchanged) — its standalone icon was
 // redundant with that menu's full Settings section.
 // Views follow the delivery pipeline, top to bottom:
-//   define (Requirements → SDD spec → Goal → Kanban) → execute (Agent Roster)
+//   define (SDD spec [Requirements, Wizard, Board, Specs] → Goal → Kanban) → execute (Agent Roster)
 //   → inspect (CodeMap → TechStack → Repository History) → review (Chronicle
-//   → Prompt Journal → Chimera) → retain (Memory).
+//   → Chimera) → retain (Memory). Prompt Journal lives beside the chat input.
 // Order also decides what stays visible on short viewports — the first N
 // views keep their slot, the rest fall into the "…" overflow menu.
 const VIEWS: ViewDef[] = [
-  { id: 'intake', icon: <ClipboardList size={16} />, label: 'Requirements' },
   { id: 'sddhub', icon: <Wand2 size={16} />, label: 'SDD' },
   { id: 'goal', icon: <Rocket size={16} />, label: 'Goal' },
   { id: 'kanban', icon: <Columns3 size={16} />, label: 'Kanban' },
@@ -112,7 +109,6 @@ const VIEWS: ViewDef[] = [
   { id: 'provider-test', icon: <FlaskConical size={16} />, label: 'Provider Test' },
   { id: 'history', icon: <GitFork size={16} />, label: 'Repository History' },
   { id: 'chronicle', icon: <ChartNoAxesCombined size={16} />, label: 'Chronicle' },
-  { id: 'prompts', icon: <ScrollText size={16} />, label: 'Prompt Journal' },
   { id: 'chimera', icon: <ShieldAlert size={16} />, label: 'Chimera Reviews' },
   { id: 'memory', icon: <BrainCircuit size={16} />, label: 'Memory' },
 ];

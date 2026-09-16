@@ -15,6 +15,7 @@ import type {
   ConcreteTokenSavingTier,
   DisabledToolMeta,
   MemoryPort,
+  SkillLoader,
   TokenSavingTier,
   ToolDescriptionModeConfig,
   ToolResultRenderModeConfig,
@@ -78,6 +79,8 @@ interface RegisterBuiltinToolsDeps {
    * Omit (or pass `undefined`) to keep the CLI on the SAGE-only surface.
    */
   vectorMemoryStore?: VectorMemoryStore | undefined;
+  /** Registers the `skill` tool the progressive skill manifest points at. Omit when skills are off. */
+  skillLoader?: SkillLoader | undefined;
   events: EventBus;
   wpaths: Pick<WstackPaths, 'projectDir'>;
 }
@@ -92,6 +95,7 @@ export function registerBuiltinTools(deps: RegisterBuiltinToolsDeps): void {
     memory: { enabled: deps.config.features.memory, store: deps.memoryStore },
     vectorMemory: deps.vectorMemoryStore ? { store: deps.vectorMemoryStore } : undefined,
     nextSteps: { enabled: deps.config.tools?.nextsteps?.enabled === true },
+    skillLoader: deps.skillLoader,
     coordinationTools: [
       makeMailboxTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),
       makeMailSendTool({ projectDir: deps.wpaths.projectDir, events: deps.events }),

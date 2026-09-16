@@ -8,6 +8,7 @@ description: |
   mailbox", "send to WrongStack", "wrongstack mail", "broadcast to the
   fleet", "tell the wrongstack agents", "is anyone online in
   wrongstack", or "register me with wrongstack".
+audience: roster
 version: 1.1.0
 required-capabilities: []
 required-tools: [mailbox]
@@ -35,20 +36,18 @@ agent) how to talk to it.
 
 ## What this skill assumes
 
-Since commit `46427ea4` (feat/mailbox-daemon), every WrongStack
-surface (REPL/TUI/WebUI/eternal-autonomy) **auto-bootstraps** the mailbox
-bridge on startup. The first surface to come up for a given project
-joins an existing instance or spawns a fresh `wstack mailbox serve`
-child process; a second surface on the same project joins the first's
-bridge rather than spawning a duplicate. The per-project lock
-(`.mailbox-bridge.lock`) and token file (`.mailbox.token`) make
-discovery trivial.
+The bridge is opt-in. It runs when someone starts `wstack mailbox serve`
+(or `/mailbox-serve` inside WrongStack), or when a WrongStack surface boots
+with `features.mailboxBridge: "auto"` in the project config — the default is
+`"off"`. Once one instance is running, later starts for the same project join
+it instead of spawning a duplicate. The per-project lock
+(`.mailbox-bridge.lock`) and token file (`.mailbox.token`) make discovery
+possible without environment variables.
 
 So the realistic scenarios for an external agent are:
 
-1. **A WrongStack surface is already running for the project** (most
-   common). Read the bridge URL + token from the per-project files —
-   no env vars, no manual `wstack mailbox serve`, no user prompt.
+1. **A bridge is already running for the project.** Read its URL and
+   token from the per-project lock file — no env vars, no user prompt.
 2. **No WrongStack surface is running, but `wstack` is on PATH.**
    `mbWithBootstrap()` (see Patterns below) spawns the bridge itself
    for the duration of the agent's session and cleans up at exit.
@@ -158,15 +157,15 @@ The mailbox is local; 10 s is generous.
 ## Discovering the bridge: `mbWithBootstrap()`
 
 The plain `mb()` helper above assumes `WRONGSTACK_MAILBOX_URL` and
-`WRONGSTACK_MAILBOX_TOKEN` are set. After the auto-bootstrap wiring,
-external agents usually don't have those env vars — they need to
-discover the bridge from the per-project lock file (or spawn one).
+`WRONGSTACK_MAILBOX_TOKEN` are set. External agents usually don't have
+those env vars — they discover the bridge from the per-project lock file (or
+spawn one).
 
 `mbWithBootstrap()` handles all three scenarios from the
 "What this skill assumes" section:
 
 1. **Env vars set** → use them directly.
-2. **No env vars, but a WrongStack surface is running** → read the
+2. **No env vars, but a bridge is running** → read the
    `.mailbox-bridge.lock` and `.mailbox.token` files from the project
    directory to discover the running bridge.
 3. **No env vars, no surface running, but `wstack` is on PATH** →
@@ -174,10 +173,21 @@ discover the bridge from the per-project lock file (or spawn one).
    lock to appear (the bootstrap helper writes it within ~200 ms of
    `listen()` returning). Use this when you want full self-service.
 
-The helper takes a `projectDir` (the absolute path to the user's
-WrongStack project root) and returns a configured `mb(path, body)`
-function. Call it once at agent startup; use the returned `mb` for
-every subsequent route call.
+The helper takes two paths:
+
+- `projectDir` — WrongStack's per-project **state directory**, not the
+  repository: `~/.wrongstack/projects/<slug>/`. The slug is the repository
+  folder name (lowercased, runs of non-alphanumerics collapsed to `-`), a
+  hyphen, and 6 hex characters of a hash of the canonical repository path —
+  for example `my-app-3f9a1c`. Don't try to compute the hash; list
+  `~/.wrongstack/projects/<folder-slug>-*/` and take the directory that holds
+  `.mailbox-bridge.lock` (ask the user when more than one does).
+  `wstack mailbox serve` also prints it as `Project dir:`.
+- `repoRoot` — the repository itself, used as the working directory when the
+  helper has to start a bridge.
+
+It returns a configured `mb(path, body)` function. Call it once at agent
+startup; use the returned `mb` for every subsequent route call.
 
 ```ts
 /**
@@ -188,7 +198,7 @@ every subsequent route call.
  *   1. WRONGSTACK_MAILBOX_URL + WRONGSTACK_MAILBOX_TOKEN env vars
  *      (highest precedence — used as-is).
  *   2. <projectDir>/.mailbox-bridge.lock  (the per-project lock file
- *      written by every running WrongStack surface — read its
+ *      written by the running bridge — read its
  *      `url` + `token` fields).
  *   3. <projectDir>/.mailbox.token         (the token file, in case
  *      the URL is set in env but the token isn't, or vice versa).
@@ -202,6 +212,7 @@ every subsequent route call.
  */
 async function mbWithBootstrap(
   projectDir: string,
+  repoRoot: string,
 ): Promise<(path: string, body?: unknown) => Promise<unknown>> {
   // 1. Env vars win outright.
   if (process.env.WRONGSTACK_MAILBOX_URL && process.env.WRONGSTACK_MAILBOX_TOKEN) {
@@ -243,7 +254,7 @@ async function mbWithBootstrap(
       const { spawn } = await import('node:child_process');
       const isWin = process.platform === 'win32';
       const child = spawn('wstack', ['mailbox', 'serve'], {
-        cwd: projectDir,
+        cwd: repoRoot, // `wstack mailbox serve` resolves the project from its cwd
         detached: !isWin,
         stdio: 'ignore',
         windowsHide: true,
@@ -292,9 +303,13 @@ Usage:
 
 ```ts
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 
-const mb = await mbWithBootstrap('/path/to/wrongstack/project');
+const mb = await mbWithBootstrap(
+  path.join(os.homedir(), '.wrongstack', 'projects', 'my-app-3f9a1c'),
+  '/path/to/my-app',
+);
 const { data } = await mb('/mailbox/query', {
   to: agentId,
   incompleteOnly: true,
@@ -491,8 +506,8 @@ await mb('/mailbox/check', { agentId, markRead: false });
 ### Ack in batches
 
 If you've just consumed a backlog through custom `/mailbox/query` filters,
-don't ack them one at a time. Use `/mailbox/ack-many` — one HTTP request,
-one file-lock acquisition, one JSONL rewrite inside WrongStack:
+don't ack them one at a time. Use `/mailbox/ack-many` — one HTTP request
+and one batched write inside WrongStack:
 
 ```ts
 await mb('/mailbox/ack-many', {
@@ -647,10 +662,9 @@ await mb('/mailbox/send', {
 
 ## Anti-patterns
 
-- **Don't bypass the HTTP layer to read the JSONL directly.** The
-  bridge exists so external agents don't have to honor the file-lock
-  protocol. Reading the file directly can race with `GlobalMailbox.ack`
-  rewrites and silently corrupt state.
+- **Don't bypass the HTTP layer to read the mailbox store directly.** The
+  store is a SQLite database owned by the running WrongStack process; going
+  around the bridge skips identity, read receipts, and change events.
 - **Don't reuse one `agentId` across multiple external sessions.** If
   two processes register under the same id, heartbeats overwrite each
   other and read receipts become unreliable.
@@ -727,20 +741,19 @@ The script is **idempotent** — re-running overwrites existing copies
 with the latest bundled version.
 
 After installation, the external agent can talk to any WrongStack
-project whose bridge is already running (most common case — the user
-opens `wstack --repl` or `wstack --webui` and the bridge
-auto-bootstraps). `mbWithBootstrap()` handles discovery without
+project whose bridge is already running (started by
+`wstack mailbox serve`, `/mailbox-serve`, or a surface booting with
+`features.mailboxBridge: "auto"`). `mbWithBootstrap()` handles discovery without
 requiring the user to copy URL/token env vars around.
 
-If no WrongStack surface is running yet, the user starts one —
-`wstack --repl`, `wstack --webui`, `wstack --eternal`, or `wstack
-mailbox serve` standalone all work. The first one to come up for a
-given project starts the bridge; subsequent surfaces join it via the
+If no bridge is running, the user runs `wstack mailbox serve` in the
+repository, or enables `features.mailboxBridge: "auto"` so WrongStack
+surfaces start it on boot. Later starts join the running bridge through the
 per-project lock.
 
 ## Out of scope
 
-- **Don't open Mailbox files directly.** No `_mailbox.sqlite`, no legacy JSONL, no bridge locks, no token files. The bridge and `mb()` / `mbWithBootstrap()` are the only paths; bypassing them breaks trust and audit.
+- **Don't open the mailbox store directly.** No `_mailbox.sqlite`, no legacy JSONL. Read `.mailbox-bridge.lock` and `.mailbox.token` only to discover the bridge; every mailbox operation goes through its routes.
 - **Don't impersonate `hq@...` or another agent.** Use a stable, honest `agentId` for your own identity. The bridge does not enforce sender identity; impersonation is on you, and it's the kind of thing that gets the bridge shut down.
 - **Don't hardcode the token.** Read it from `.mailbox.token`, `.mailbox-bridge.lock`, or accept it from the user. Re-read after a 401. Tokens rotate on every fresh bridge start.
 - **Don't let requests hang.** `AbortSignal.timeout(10_000)` is mandatory. The mailbox is local; 10 s is generous, and a hung bridge will wedge the agent.
@@ -748,19 +761,19 @@ per-project lock.
 - **Don't use SSE events as authoritative.** `GET /mailbox/events` is a wake-up hint, not a snapshot. After every event, reconcile through `/mailbox/query` or `/mailbox/check`.
 - **Don't broadcast without thinking.** `to: "*"` reaches every online agent. One broadcast per task, with a clear subject. The WebUI marks broadcasts with a different color and humans notice noise.
 - **Don't ack in a loop when `ack-many` fits.** If you have more than one unread message, use `/mailbox/ack-many` — one request, one lock, one rewrite.
-- **Don't skip `register_self`.** Without registration, the WebUI can't show you as online, and heartbeats are unreconciled.
+- **Don't skip registration.** Without `/mailbox/agents/register`, the WebUI can't show you as online, and heartbeats are unreconciled.
 - **Don't randomize your `agentId`.** Read receipts and history break if your id changes every poll. Pick a stable convention and reuse it.
 - **Don't promise features the bridge doesn't expose.** The bridge is mailbox only. For the full WrongStack tool surface, use `wstack mcp serve`; for SMTP/IMAP, push back — WrongStack's mailbox is internal.
 
 ## Before returning
 
-- [ ] No Mailbox files opened or edited directly; bridge and `mb()` only
+- [ ] Mailbox store never opened directly; lock and token files read only for discovery
 - [ ] Stable, honest `agentId`; no impersonation of `hq@...` or other agents
 - [ ] Token read from `.mailbox.token` or `.mailbox-bridge.lock`, not hardcoded
-- [ ] `mbWithBootstrap()` used for discovery when env vars aren't set
+- [ ] `mbWithBootstrap()` given the state directory and the repository root when env vars aren't set
 - [ ] All requests carry `AbortSignal.timeout(10_000)`
-- [ ] `register_self` called with stable name and role before any traffic
-- [ ] Heartbeat every 30 s; `deregister_self` on clean shutdown
+- [ ] Registered via `/mailbox/agents/register` with a stable id before any traffic
+- [ ] Heartbeat every 30 s while alive
 - [ ] SSE preferred for real-time; polling ≥ 1 Hz, ≤ 5–10 s
 - [ ] `ack-many` used when more than one message needs acknowledgement
 - [ ] Broadcast only with clear subject, at most once per task

@@ -36,7 +36,6 @@ import {
   envFlag,
   findFreePort,
   findInstalledPackageJson,
-  integrationConnectSources,
   isStrictPort,
   type PendingConfirm,
   resolveAuthToken,
@@ -333,10 +332,16 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     requireToken,
     deferListen: surface === 'simpleui',
     strictPort,
-    // HQ / WrongProxy status chips fetch those endpoints straight from the
-    // browser; without their origins in `connect-src` the page's own CSP
-    // blocks the probe and both chips report a healthy server as down.
-    getExtraConnectSrc: () => integrationConnectSources(opts.appConfig),
+    // Resolve the same-origin health probes from live preferences, including
+    // changes made after boot, just like the standalone WebUI host.
+    getIntegrationTarget: (kind) => {
+      const meta = opts.agent.ctx.meta;
+      const enabledKey = kind === 'hq' ? 'hqEnabled' : 'wrongProxyEnabled';
+      const urlKey = kind === 'hq' ? 'hqUrl' : 'wrongProxyUrl';
+      return meta[enabledKey] === true && typeof meta[urlKey] === 'string'
+        ? (meta[urlKey] as string)
+        : undefined;
+    },
     ...(opts.getVectorMemoryStore ? { getVectorMemoryStore: opts.getVectorMemoryStore } : {}),
     ...(opts.vectorMemoryModelCacheDir
       ? { vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir }

@@ -87,6 +87,34 @@ describe('skill description parsing', () => {
     const math = entries.find((e) => e.name === 'math')!;
     expect(math.trigger).toContain('Quick math helper');
   });
+
+  it('ends the trigger at a sentence break that falls on a line break', async () => {
+    const dir = path.join(profileSkills(globalRoot), 'wrapped');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'SKILL.md'),
+      '---\nname: wrapped\ndescription: |\n  Use this skill when proposing, reviewing, or troubleshooting git commits,\n  branches, or pull requests.\n  Triggers: user mentions "commit", "branch".\n---\n# body',
+    );
+    const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
+    const loader = new DefaultSkillLoader({ paths });
+    const wrapped = (await loader.listEntries()).find((e) => e.name === 'wrapped')!;
+    expect(wrapped.trigger).toBe(
+      'Use this skill when proposing, reviewing, or troubleshooting git commits, branches, or pull requests.',
+    );
+  });
+
+  it('does not end the trigger at an abbreviation', async () => {
+    const dir = path.join(profileSkills(globalRoot), 'abbrev');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'SKILL.md'),
+      '---\nname: abbrev\ndescription: "Use when a change needs checks, e.g. typecheck and tests. Triggers: verify."\n---\n# body',
+    );
+    const paths = resolveWstackPaths({ projectRoot, globalRoot, userHome: tmp });
+    const loader = new DefaultSkillLoader({ paths });
+    const abbrev = (await loader.listEntries()).find((e) => e.name === 'abbrev')!;
+    expect(abbrev.trigger).toBe('Use when a change needs checks, e.g. typecheck and tests.');
+  });
 });
 
 // ---------------------------------------------------------------------------

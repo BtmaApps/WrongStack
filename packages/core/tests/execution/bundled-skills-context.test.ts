@@ -13,12 +13,17 @@ import type { Tool } from '../../src/types/tool.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bundledDir = path.resolve(here, '..', '..', 'skills');
-const operationalSkills = [
-  'auto-review',
-  'mailbox-bridge',
-  'mnemosyne',
-  'wrongstack-mailbox',
-] as const;
+const operationalSkills = ['auto-review', 'mailbox-bridge', 'mnemosyne'] as const;
+/** Attached to roster roles by name (`audience: roster`); never in the main prompt. */
+const rosterOnlySkills = ['wrongstack-mailbox', 'plugin-author'] as const;
+
+function expectHiddenFromPrompt(text: string): void {
+  for (const name of rosterOnlySkills) {
+    expect(text).not.toContain(`**${name}**`);
+    expect(text).not.toContain(`## Skill: ${name}`);
+    expect(text).not.toContain(`| \`${name}\` |`);
+  }
+}
 
 describe('bundled operational skills → prompt context', () => {
   let tmp: string;
@@ -77,11 +82,14 @@ describe('bundled operational skills → prompt context', () => {
   it('discovers every operational skill from the bundled layer', async () => {
     const manifests = await loader().list();
 
-    for (const name of operationalSkills) {
+    for (const name of [...operationalSkills, ...rosterOnlySkills]) {
       expect(manifests.find((entry) => entry.name === name)).toMatchObject({
         name,
         source: 'bundled',
       });
+    }
+    for (const name of rosterOnlySkills) {
+      expect(manifests.find((entry) => entry.name === name)?.audience).toBe('roster');
     }
 
     const bundledNames = manifests
@@ -99,6 +107,7 @@ describe('bundled operational skills → prompt context', () => {
     }
     expect(text).toContain('Auto Review — Built-in Plugin');
     expect(text).toContain('Mnemosyne — SAGE Memory Custodian');
+    expectHiddenFromPrompt(text);
   });
 
   it('injects their deterministic name and trigger manifest in progressive mode', async () => {
@@ -110,6 +119,7 @@ describe('bundled operational skills → prompt context', () => {
     }
     expect(text).toContain('Call the `skill` tool to load a skill before relying on it.');
     expect(text).not.toContain('## Skill: mnemosyne');
+    expectHiddenFromPrompt(text);
   });
 
   it('keeps every operational trigger in context when the eager body budget overflows', async () => {
@@ -123,5 +133,6 @@ describe('bundled operational skills → prompt context', () => {
       /(?:Available skills \(load|Other available skills \(not injected — load) with the `skill` tool\)/,
     );
     expect(text).not.toContain('## Skill: mnemosyne');
+    expectHiddenFromPrompt(text);
   });
 });

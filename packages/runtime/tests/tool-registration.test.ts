@@ -77,6 +77,32 @@ describe('canonical host tool registration', () => {
     expect(registry.listForProvider().map((tool) => tool.name)).not.toContain('browser_open');
   });
 
+  it('registers the real skill tool on the direct surface when a skill loader is given', async () => {
+    // Regression: the host wiring that registered `skill` was deleted with a
+    // dead parallel wiring module, while the default progressive manifest kept
+    // telling the model to "call the `skill` tool" — every skill was unloadable.
+    const manifest = {
+      name: 'demo-skill',
+      description: 'Demo skill.',
+      path: 'C:/skills/demo-skill/SKILL.md',
+    } as never;
+    const loader = {
+      list: async () => [manifest],
+      listEntries: async () => [],
+      find: async (name: string) => (name === 'demo-skill' ? manifest : undefined),
+      readBody: async () => '---\nname: demo-skill\n---\n# Demo body',
+    } as never;
+    for (const tier of ['minimal', 'off'] as const) {
+      const registry = new ToolRegistry();
+      registerCanonicalHostTools({ registry, tier, skillLoader: loader });
+      expect(registry.isExposedToProvider('skill'), `tier ${tier}`).toBe(true);
+    }
+
+    const registry = new ToolRegistry();
+    registerCanonicalHostTools({ registry, tier: 'minimal' });
+    expect(registry.get('skill')).toBeUndefined();
+  });
+
   it('keeps every enabled lazy tool discoverable with an invocation schema', async () => {
     const registry = new ToolRegistry();
     registerCanonicalHostTools({ registry, tier: 'minimal' });
@@ -94,11 +120,9 @@ describe('canonical host tool registration', () => {
     expect([...directNames]).toEqual(expect.arrayContaining(['tool_search', 'tool_use']));
     expect(lazy.length).toBeGreaterThan(0);
     for (const expected of lazy) {
-      const result = await toolSearchTool.execute(
-        { query: expected.name, limit: 100 },
-        ctx,
-        { signal: new AbortController().signal },
-      );
+      const result = await toolSearchTool.execute({ query: expected.name, limit: 100 }, ctx, {
+        signal: new AbortController().signal,
+      });
       const discovered = result.tools.find((tool) => tool.name === expected.name);
       expect(discovered?.inputSchema, `${expected.name} has no lazy invocation schema`).toEqual(
         expected.inputSchema,

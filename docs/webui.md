@@ -224,7 +224,7 @@ short viewports); selecting one collapses the side panel.
 | View | What it is |
 |---|---|
 | `roster` | Agent Roster: catalog, live fleet, self-learning, office map |
-| `sddhub` | Spec-Driven Development wizard, board and run controls |
+| `sddhub` | Spec-Driven Development hub: Requirements Intake, Wizard, board, and specifications |
 | `kanban` | Task board, inspector, verification and contract graph |
 | `goal` | AutoPhase goal runner and phase timeline |
 | `codemap` | Code Atlas graph, relations and live activity overlay |
@@ -232,7 +232,6 @@ short viewports); selecting one collapses the side panel.
 | `chronicle` | Session chronicle metrics, facets and query dashboard |
 | `prompts` | Prompt journal and prompt library |
 | `chimera` | Chimera post-session review reports |
-| `intake` | Requirements intake questionnaire |
 | `memory` | SAGE memory manager (+ vector memory as its third lens) |
 | `settings` | Settings panel (lives in the "…" utilities menu, not the bar) |
 
@@ -241,6 +240,7 @@ short viewports); selecting one collapses the side panel.
 
 | View | Opened by |
 |---|---|
+| `intake` | palette / deep link (redirects to SDD Hub's Requirements tab) |
 | `context` | palette → "Context Dashboard" |
 | `sessions` | session list / `F10` |
 | `session-inspect` | drill-down from a session row |

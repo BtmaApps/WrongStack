@@ -5,22 +5,20 @@ import type {
   ConcreteTokenSavingTier,
   DisabledToolMeta,
   MemoryPort,
+  SkillLoader,
   Tool,
   ToolDescriptionModeConfig,
   ToolResultRenderModeConfig,
 } from '@wrongstack/core/types';
 import { applyToolDescriptionModes, applyToolResultRenderModes } from '@wrongstack/core/utils';
 import { createSageTools, getSageService } from '@wrongstack/sage';
-import { nextStepsTool } from '@wrongstack/tools';
+import { BROWSER_TOOL_NAMES, makeSkillTool, nextStepsTool } from '@wrongstack/tools';
 import {
   forgetTool,
   relatedMemoryTool,
   rememberTool,
   searchMemoryTool,
 } from '@wrongstack/tools/memory';
-import {
-  BROWSER_TOOL_NAMES,
-} from '@wrongstack/tools';
 import { registerBuiltinToolTier, selectBuiltinToolsForTier } from '@wrongstack/tools/tool-tier';
 import { createVectorMemoryTools, type VectorMemoryStore } from '@wrongstack/vector-memory';
 import { wireKanbanPorts } from './kanban-ports.js';
@@ -69,6 +67,14 @@ export interface CanonicalHostToolRegistrationOptions {
    * keeps producing `<nextsteps>` the way it always has.
    */
   nextSteps?: { enabled: boolean } | undefined;
+  /**
+   * Skill loader for the `skill` tool. The progressive skill manifest (the
+   * default `skills.mode`) only lists names and triggers and tells the model to
+   * "call the `skill` tool" for the body, so a host that passes a loader to the
+   * prompt builder but not here ships a manifest whose every entry is
+   * unloadable. Pass `undefined` when `features.skills` is off.
+   */
+  skillLoader?: SkillLoader | undefined;
   descriptionMode?: ToolDescriptionModeConfig | undefined;
   resultRenderMode?: ToolResultRenderModeConfig | undefined;
   disabledTools?: readonly string[] | undefined;
@@ -161,6 +167,9 @@ export function registerCanonicalHostTools(
 
   if (options.nextSteps?.enabled) options.registry.register(nextStepsTool);
 
+  const skillTool = options.skillLoader ? makeSkillTool(options.skillLoader) : undefined;
+  if (skillTool) options.registry.register(skillTool);
+
   for (const tool of options.coordinationTools ?? []) options.registry.register(tool);
 
   if (options.tier !== 'off') {
@@ -168,6 +177,9 @@ export function registerCanonicalHostTools(
     for (const name of DIRECT_LAZY_GATEWAYS) directNames.add(name);
     if (options.contextTool) directNames.add(options.contextTool.name);
     if (options.nextSteps?.enabled) directNames.add(nextStepsTool.name);
+    // The skill manifest is always in the prompt, so its loader must be too —
+    // a manifest that points at a lazy-only tool is a manifest nobody follows.
+    if (skillTool) directNames.add(skillTool.name);
     for (const tool of options.coordinationTools ?? []) directNames.add(tool.name);
     if (options.memory?.enabled && memoryStore) {
       for (const name of ['remember', 'search_memory', 'memory_search']) {

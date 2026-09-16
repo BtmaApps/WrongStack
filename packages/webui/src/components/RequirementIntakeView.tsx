@@ -6,6 +6,7 @@
  *   POST /api/requirement-intakes/:id/submit          (submit)
  * The submitted text is preserved verbatim as the record's original request.
  */
+import { Check, ChevronDown, ChevronRight, Copy, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,15 +14,27 @@ import { Input } from '@/components/ui/input';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 
-interface IntakeRecord {
+export interface IntakeRecord {
   id: string;
   title: string;
+  originalRequest?: string;
+  normalizedSummary?: string;
   requestType: string;
   status: string;
   priority: string;
+  requestedBy?: string;
+  businessGoal?: string;
+  targetUsers?: string[];
+  expectedOutcome?: string;
+  scopeNotes?: string;
+  constraints?: string[];
   isVibeMode?: boolean;
   updatedAt: number;
   createdAt: number;
+}
+
+export interface RequirementIntakeViewProps {
+  onStartSdd?: (intake: IntakeRecord) => void;
 }
 
 interface IntakeListResponse {
@@ -67,7 +80,9 @@ function relativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-export function RequirementIntakeView(): React.ReactElement {
+export function RequirementIntakeView({
+  onStartSdd,
+}: RequirementIntakeViewProps = {}): React.ReactElement {
   const { t } = useAppTranslation();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [intakes, setIntakes] = useState<IntakeRecord[]>([]);
@@ -81,6 +96,14 @@ export function RequirementIntakeView(): React.ReactElement {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formNotice, setFormNotice] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyRequest = useCallback((id: string, text: string) => {
+    void navigator.clipboard?.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -349,47 +372,157 @@ export function RequirementIntakeView(): React.ReactElement {
             </div>
           ) : (
             <ul className="space-y-2">
-              {intakes.map((intake) => (
-                <li key={intake.id} className="rounded-md border border-border/70 bg-card/60 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div
-                        className="truncate text-sm font-medium text-foreground"
-                        title={intake.title}
-                      >
-                        {intake.title}
+              {intakes.map((intake) => {
+                const isExpanded = expandedId === intake.id;
+                const isCopied = copiedId === intake.id;
+                return (
+                  <li
+                    key={intake.id}
+                    className="overflow-hidden rounded-md border border-border/70 bg-card/60 transition-colors"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isExpanded ? null : intake.id)}
+                      className="flex w-full items-start justify-between gap-2 p-3 text-left transition-colors hover:bg-accent/40"
+                    >
+                      <div className="flex min-w-0 items-start gap-2">
+                        <span className="mt-0.5 shrink-0 text-muted-foreground">
+                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                        <div className="min-w-0">
+                          <div
+                            className="truncate text-sm font-medium text-foreground"
+                            title={intake.title}
+                          >
+                            {intake.title}
+                          </div>
+                          <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                            {intake.id}
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                        {intake.id}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-                      {intake.isVibeMode ? (
-                        <Badge
-                          variant="outline"
-                          className="border-primary/40 bg-primary/10 text-[10px] text-primary"
-                        >
-                          🌊 VIBE
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                        {intake.isVibeMode ? (
+                          <Badge
+                            variant="outline"
+                            className="border-primary/40 bg-primary/10 text-[10px] text-primary"
+                          >
+                            🌊 VIBE
+                          </Badge>
+                        ) : null}
+                        <Badge variant="secondary" className="text-[10px]">
+                          {intake.requestType}
                         </Badge>
+                        <Badge
+                          className={cn(
+                            'text-[10px]',
+                            STATUS_STYLE[intake.status] ?? 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {intake.status}
+                        </Badge>
+                      </div>
+                    </button>
+
+                    {isExpanded ? (
+                      <div className="space-y-3 border-t border-border/40 bg-muted/20 px-3 py-3 text-xs">
+                        {intake.originalRequest ? (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                              <span>{t('activity:reqIntake.originalRequest')}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 gap-1 px-1.5 text-[10px]"
+                                onClick={() => copyRequest(intake.id, intake.originalRequest!)}
+                              >
+                                {isCopied ? (
+                                  <Check size={10} className="text-success" />
+                                ) : (
+                                  <Copy size={10} />
+                                )}
+                                <span>
+                                  {isCopied
+                                    ? t('activity:reqIntake.copied')
+                                    : t('activity:reqIntake.copyRequest')}
+                                </span>
+                              </Button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded border border-border/60 bg-background p-2 font-mono text-xs text-foreground">
+                              {intake.originalRequest}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {intake.businessGoal ? (
+                          <div>
+                            <span className="font-semibold text-muted-foreground">
+                              Business Goal:{' '}
+                            </span>
+                            <span className="text-foreground">{intake.businessGoal}</span>
+                          </div>
+                        ) : null}
+
+                        {intake.expectedOutcome ? (
+                          <div>
+                            <span className="font-semibold text-muted-foreground">
+                              Expected Outcome:{' '}
+                            </span>
+                            <span className="text-foreground">{intake.expectedOutcome}</span>
+                          </div>
+                        ) : null}
+
+                        {intake.targetUsers && intake.targetUsers.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-muted-foreground">
+                              Target Users:
+                            </span>
+                            {intake.targetUsers.map((u, i) => (
+                              <Badge key={i} variant="outline" className="text-[10px]">
+                                {u}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {intake.constraints && intake.constraints.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-muted-foreground">
+                              Constraints:
+                            </span>
+                            {intake.constraints.map((c, i) => (
+                              <Badge
+                                key={i}
+                                variant="outline"
+                                className="border-destructive/30 text-[10px] text-destructive/80"
+                              >
+                                {c}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-center justify-between gap-2 border-t border-border/40 px-3 py-2 text-[11px] text-muted-foreground">
+                      <div>
+                        {intake.priority} · updated {relativeTime(intake.updatedAt)}
+                      </div>
+                      {onStartSdd ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 gap-1 px-2 text-[11px]"
+                          onClick={() => onStartSdd(intake)}
+                        >
+                          <Wand2 size={11} />
+                          <span>{t('activity:reqIntake.startSddSpec')}</span>
+                        </Button>
                       ) : null}
-                      <Badge variant="secondary" className="text-[10px]">
-                        {intake.requestType}
-                      </Badge>
-                      <Badge
-                        className={cn(
-                          'text-[10px]',
-                          STATUS_STYLE[intake.status] ?? 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        {intake.status}
-                      </Badge>
                     </div>
-                  </div>
-                  <div className="mt-1.5 text-[11px] text-muted-foreground">
-                    {intake.priority} · updated {relativeTime(intake.updatedAt)}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

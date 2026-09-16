@@ -211,6 +211,7 @@ export class DefaultSkillLoader implements SkillLoader {
             name: fm.name,
             description: fm.description,
             trigger: fm.trigger,
+            audience: fm.audience,
             version: fm.version,
             license: fm.license,
             compatibility: fm.compatibility,
@@ -266,6 +267,7 @@ export class DefaultSkillLoader implements SkillLoader {
         name: s.name,
         trigger,
         scope: parsed.scope,
+        audience: s.audience,
         source: s.source,
         originTool: s.originTool,
         path: s.path,
@@ -341,12 +343,7 @@ export class DefaultSkillLoader implements SkillLoader {
  * Used by listEntries() when the description has already been parsed from frontmatter.
  */
 function parseDescriptionFromText(desc: string): { trigger: string; scope: string[] } {
-  // Extract first sentence as trigger
-  const firstSentenceEnd = desc.indexOf('. ');
-  const trigger =
-    firstSentenceEnd !== -1
-      ? desc.slice(0, firstSentenceEnd + 1).trim()
-      : (desc.trim().split('\n')[0] ?? '');
+  const trigger = firstSentence(desc);
 
   // Extract scope from parenthetical: "Covers X, Y, and Z" or "for A, B, C"
   const scope: string[] = [];
@@ -364,4 +361,23 @@ function parseDescriptionFromText(desc: string): { trigger: string; scope: strin
   }
 
   return { trigger, scope };
+}
+
+/** Abbreviations whose trailing period does not end a sentence. */
+const NON_TERMINAL_ABBREVIATION = /\b(?:e\.g|i\.e|etc|vs|cf)$/i;
+
+/**
+ * First sentence of a description, whitespace-collapsed. Block-scalar
+ * descriptions keep their line breaks, so a sentence routinely ends in ".\n";
+ * searching for ". " alone skipped that boundary and cut the trigger at a line
+ * break mid-clause ("…troubleshooting git commits,"). Falls back to the first
+ * line when the description has no sentence terminator at all.
+ */
+function firstSentence(desc: string): string {
+  for (const match of desc.matchAll(/[.!?](?=\s|$)/g)) {
+    const end = (match.index ?? 0) + 1;
+    if (NON_TERMINAL_ABBREVIATION.test(desc.slice(0, end - 1))) continue;
+    return desc.slice(0, end).replace(/\s+/g, ' ').trim();
+  }
+  return (desc.trim().split('\n')[0] ?? '').trim();
 }

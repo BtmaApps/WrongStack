@@ -37,7 +37,7 @@ const ROW_HEIGHT = 48;
 const LANE_GAP = 15;
 
 export const COMMIT_DETAIL_PANEL_CLASS =
-  'flex h-[44%] min-h-[230px] max-h-[460px] shrink-0 flex-col overflow-hidden border-t border-border/70 bg-card/35 shadow-[0_-16px_40px_-34px_hsl(var(--primary)/0.8)] sm:h-[36%] sm:max-h-[390px] sm:flex-row';
+  'ws-commit-detail flex h-[44%] min-h-[230px] max-h-[460px] shrink-0 flex-col overflow-hidden border-t border-border/70 bg-card/35 shadow-[0_-16px_40px_-34px_hsl(var(--primary)/0.8)] sm:h-[36%] sm:max-h-[390px] sm:flex-row';
 
 interface GraphLayout {
   lanes: number[];
@@ -251,12 +251,15 @@ function CommitDetail({
   commit: HistoryCommit | null;
   detail: DetailPayload | null;
   loading: boolean;
-  onOpenFile: (file: NonNullable<DetailPayload['files']>[number]) => void;
+  onOpenFile: (
+    file: NonNullable<DetailPayload['files']>[number],
+    trigger: HTMLButtonElement,
+  ) => void;
 }) {
   const [copied, setCopied] = useState(false);
   if (!commit) {
     return (
-      <section className="flex h-[34%] min-h-[210px] shrink-0 items-center justify-center border-t border-border/70 bg-card/30 p-6 text-center text-xs text-muted-foreground">
+      <section className="ws-commit-detail flex h-[34%] min-h-[210px] shrink-0 items-center justify-center border-t border-border/70 bg-card/30 p-6 text-center text-xs text-muted-foreground">
         Select a commit to inspect its files and metadata.
       </section>
     );
@@ -267,11 +270,13 @@ function CommitDetail({
   const body = detail?.body?.split(/\r?\n/).slice(1).join('\n').trim();
   return (
     <section className={COMMIT_DETAIL_PANEL_CLASS}>
-      <div className="w-full max-w-none shrink-0 overflow-y-auto border-b border-border/70 px-5 py-4 sm:w-[34%] sm:min-w-[250px] sm:max-w-[440px] sm:border-b-0 sm:border-r">
+      <div className="ws-commit-metadata min-w-0 w-full max-w-none shrink-0 overflow-y-auto border-b border-border/70 px-5 py-4 sm:w-[34%] sm:min-w-[250px] sm:max-w-[440px] sm:border-b-0 sm:border-r">
         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-muted-foreground">
           <CircleDot className="h-3.5 w-3.5 text-primary" /> Commit details
         </div>
-        <h2 className="mt-3 text-sm font-semibold leading-5 text-foreground">{commit.subject}</h2>
+        <h2 className="mt-3 break-words text-sm font-semibold leading-5 text-foreground">
+          {commit.subject}
+        </h2>
         <div className="mt-3 flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-[10px] font-bold text-primary">
             {initials(commit.author)}
@@ -342,8 +347,8 @@ function CommitDetail({
           </div>
         )}
       </div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
-        <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+      <div className="ws-commit-files min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
           Changed files
         </div>
         {loading ? (
@@ -359,13 +364,18 @@ function CommitDetail({
               <button
                 key={file.path}
                 type="button"
-                onClick={() => onOpenFile(file)}
+                onClick={(event) => onOpenFile(file, event.currentTarget)}
                 className="group w-full rounded-lg border border-transparent px-2 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.055]"
               >
                 <div className="flex items-center gap-2">
                   <FileCode2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate text-[11px]" title={file.path}>
-                    {file.path}
+                  <span className="min-w-0 flex-1" title={file.path}>
+                    <span className="block truncate text-xs font-medium">
+                      {file.path.split('/').at(-1)}
+                    </span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {file.path}
+                    </span>
                   </span>
                   <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
                 </div>
@@ -401,6 +411,7 @@ export function RepositoryHistoryView() {
   const [fileDiffLoading, setFileDiffLoading] = useState(false);
   const selectedHashRef = useRef<string | null>(null);
   const fileDiffTargetRef = useRef<string | null>(null);
+  const fileDiffTriggerRef = useRef<HTMLButtonElement | null>(null);
   selectedHashRef.current = selectedHash;
 
   const requestHistory = useCallback(
@@ -499,8 +510,12 @@ export function RepositoryHistoryView() {
         null,
     );
   };
-  const openCommitFile = (file: NonNullable<DetailPayload['files']>[number]) => {
+  const openCommitFile = (
+    file: NonNullable<DetailPayload['files']>[number],
+    trigger: HTMLButtonElement,
+  ) => {
     if (!client || !selectedHash) return;
+    fileDiffTriggerRef.current = trigger;
     fileDiffTargetRef.current = `${selectedHash}:${file.path}`;
     setFileDiff(null);
     setFileDiffLoading(true);
@@ -510,10 +525,10 @@ export function RepositoryHistoryView() {
 
   return (
     <div
-      className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_48%_-20%,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--background))]"
+      className="ws-history-view relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_48%_-20%,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--background))]"
       data-testid="repository-history-view"
     >
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div className="ws-history-browser flex min-h-0 min-w-0 flex-1 overflow-hidden">
         <RefList refs={history?.refs ?? []} activeRef={activeRef} onSelect={selectRef} />
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="shrink-0 border-b border-border/70 bg-card/30 px-4 py-3 backdrop-blur-xl sm:px-5">
@@ -553,12 +568,14 @@ export function RepositoryHistoryView() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search commits, authors, hashes…"
+                  aria-label="Search commits, authors, hashes"
                   className="h-9 w-full rounded-lg border border-border/70 bg-background/60 pl-9 pr-3 text-xs outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
                 />
               </label>
               <label className="relative xl:hidden">
                 <Filter className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <select
+                  aria-label="Filter branches"
                   value={activeRef}
                   onChange={(event) => selectRef(event.target.value)}
                   className="h-9 max-w-[190px] appearance-none rounded-lg border border-border/70 bg-background/60 pl-8 pr-7 text-xs outline-none"
@@ -608,8 +625,10 @@ export function RepositoryHistoryView() {
             </button>
           )}
 
-          <div className="grid h-7 shrink-0 grid-cols-[minmax(0,1fr)_120px_82px_48px] items-center border-b border-border/70 bg-muted/20 px-3 text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[minmax(0,1fr)_160px_92px_58px]">
-            <span style={{ paddingLeft: graphWidth + 10 }}>Graph / commit message</span>
+          <div className="ws-history-columns grid h-7 shrink-0 grid-cols-[minmax(0,1fr)_120px_82px_48px] items-center border-b border-border/70 bg-muted/20 px-3 text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[minmax(0,1fr)_160px_92px_58px]">
+            <span className="truncate" style={{ paddingLeft: graphWidth + 10 }}>
+              Graph / commit message
+            </span>
             <span>Author</span>
             <span>Commit</span>
             <span>When</span>
@@ -653,7 +672,7 @@ export function RepositoryHistoryView() {
                         }
                       }}
                       className={cn(
-                        'absolute left-0 grid w-full grid-cols-[minmax(0,1fr)_120px_82px_48px] items-center border-b border-border/45 pr-3 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_160px_92px_58px]',
+                        'ws-history-columns absolute left-0 grid w-full grid-cols-[minmax(0,1fr)_120px_82px_48px] items-center border-b border-border/45 pr-3 text-left transition-colors sm:grid-cols-[minmax(0,1fr)_160px_92px_58px]',
                         active
                           ? 'bg-primary/[0.075] shadow-[inset_2px_0_hsl(var(--primary))]'
                           : 'hover:bg-muted/35',
@@ -742,7 +761,15 @@ export function RepositoryHistoryView() {
         onOpenFile={openCommitFile}
       />
       <Dialog open={fileDiffOpen} onOpenChange={setFileDiffOpen}>
-        <DialogContent className="h-[min(86dvh,860px)] max-w-[min(94vw,1180px)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:p-0">
+        <DialogContent
+          className="h-[min(86dvh,860px)] max-w-[min(94vw,1180px)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:p-0"
+          onCloseAutoFocus={(event) => {
+            if (fileDiffTriggerRef.current?.isConnected) {
+              event.preventDefault();
+              fileDiffTriggerRef.current.focus();
+            }
+          }}
+        >
           <DialogHeader className="border-b border-border/70 bg-card/80 px-5 py-4 pr-12">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">

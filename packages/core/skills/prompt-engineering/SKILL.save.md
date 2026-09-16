@@ -1,29 +1,18 @@
-# Prompt Engineering — WrongStack (Compact)
+# Prompt Engineering (Compact)
 
-Designs, critiques, and fixes system prompts, tool descriptions, and skill definitions.
+Most prompt failures are failures of clarity, not emphasis. Brief the model like a capable colleague with none of your context.
 
 ## Rules
 
-1. Static content first, volatile last — cache-friendly prompts cost less.
-2. First sentence of skill description = trigger — keep it specific.
-3. Tool descriptions must say: when to use, key parameters, what it returns.
-4. Remove filler ("Please be helpful", "Sure, I'd be happy to") — wastes tokens.
-5. Always read before edit — agents should read first, then edit.
+1. State the goal and the reason behind each rule.
+2. Describe good output: format, length, audience, done condition.
+3. Examples get copied: keep them varied and consistent with the rules.
+4. Separate instructions, context, and data; long material before the question.
+5. Reserve strong wording for real hard constraints; shouting causes over-application.
+6. Remove filler; resolve contradictions and state precedence.
+7. Stable content first, volatile content last.
+8. Test against fixed representative and edge-case inputs; change one thing at a time.
 
-## WrongStack's 4-layer prompt structure
+## Tool and skill descriptions
 
-```
-Layer 1: Identity     — Who you are (static, cacheable)
-Layer 2: Tool usage   — Tools and usage hints (static)
-Layer 3: Environment  — Context, skills, modes (semistatic)
-Layer 4: Volatile     — Session state, errors, mode prompt (dynamic)
-```
-
-## Anti-patterns
-
-| Anti-pattern | Fix |
-|--------------|-----|
-| "Please be helpful" | Remove it |
-| Vague parameter docs | Add concrete examples |
-| Long preamble | Put question first |
-| Ambiguous pronouns | Name the specific thing |
+Say when to use it and when not (name the alternative), inputs with formats, output shape, and failure handling. A skill's first sentence is its manifest trigger: a concrete situation plus the phrases users type.

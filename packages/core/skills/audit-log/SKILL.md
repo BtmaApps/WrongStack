@@ -1,199 +1,151 @@
 ---
 name: audit-log
 description: |
-  Use this skill when analyzing WrongStack session logs, event streams, or
-  system traces to surface patterns, anomalies, or operational insights.
-  Triggers: user says "audit", "session analysis", "log analysis", "usage patterns".
-version: 1.3.0
-required-capabilities: [filesystem.read, code.inspect]
-required-tools: [bash, exec, grep, read]
+  Use this skill when analyzing WrongStack session journals to explain what happened in a session — tool usage and failures, token spend and cache efficiency, compactions, delegations, loops, and errors.
+  Triggers: user says "audit", "session analysis", "analyze the session", "log analysis", "why did this session cost so much", "token usage", "what went wrong in that run", "usage patterns".
+version: 2.0.0
+required-capabilities: [filesystem.read]
+required-tools: []
+optional-capabilities: [execution.shell, code.inspect]
 ---
 
-# Audit Log Agent — WrongStack
-
-Analyzes session logs, event streams, and system traces to surface patterns, anomalies, and actionable insights.
+# Audit Log — WrongStack session journals
 
 ## Overview
 
-Parses WrongStack session JSONL files to extract tool usage patterns, error distributions, cost trends, and context anomalies. Produces a structured report with prioritized findings.
+Every WrongStack session is journaled as JSONL: one event per line, in order.
+The journal is the ground truth for what the agent did, what it cost, and where
+it went wrong. Analyze it from the file, report numbers that trace back to
+specific events, and never summarize a session you did not parse.
 
 ## Rules
 
-1. Always parse from the source JSONL — never summarize what you didn't read.
-2. Analyze one session at a time, or aggregate with clear labeling per session.
-3. Cite specific data in reports: iteration numbers, tool names, error messages.
-4. Flag repeated failures (same tool, 5+ times) as a real issue, not noise.
-5. Report cost trends in context of iteration count — a spike means context growth.
+1. Parse the journal; don't infer from memory, the UI, or the session title.
+2. Scope every figure: one session, or an aggregate labelled per session.
+3. Cite evidence — event type, timestamp, tool name, tool call id — for every
+   finding.
+4. Stream the file line by line; journals can be hundreds of megabytes. Skip
+   and count malformed lines instead of aborting.
+5. Treat content as sensitive. `user_input`, tool inputs, and tool results can
+   hold secrets and personal data; quote only what a finding needs, redacted.
+6. The analysis is read-only. Never edit, truncate, or rewrite a journal.
 
-## Patterns
+## Where journals live
 
-### Do
+- Project sessions: `~/.wrongstack/projects/<project>/sessions/` (one JSONL per
+  session).
+- Subagent transcripts are separate files; an `agent_session_linked` event in
+  the parent journal carries the child's `agentSessionId` and `transcriptPath`.
 
-```json
-// ✅ Good — parse tool call counts from session JSONL
-{
-  "iterations": 23,
-  "toolCalls": [
-    { "tool": "read", "count": 142, "failures": 3 },
-    { "tool": "bash", "count": 89, "failures": 12 }
-  ],
-  "costPerIteration": [0.04, 0.04, 0.11, 0.18]
+## Event reference
+
+| `type` | Key fields | Use it for |
+|---|---|---|
+| `session_start` / `session_resumed` | `id`, `model`, `provider` | Session identity and starting model |
+| `user_input` | `content` | Turn boundaries; what was asked |
+| `llm_request` | `model`, `messageCount`, `estimatedInputTokens`, `toolCount` | Context growth per request |
+| `llm_response` | `stopReason`, `usage`, `model`, `provider` | Tokens actually billed; stop reasons |
+| tool_use | `id`, `name`, `input` | Tool call counts and repeated calls |
+| `tool_result` | `id`, `isError`, `content` | Failures — join to tool_use on `id` |
+| `compaction` | `before`, `after`, `level`, `reductions` | Context pressure |
+| `error` | `message`, `phase` | Runtime failures |
+| `mode_changed` | `from`, `to` | Behaviour shifts mid-session |
+| `delegate_started` / `delegate_completed` | `target`, `ok`, `status`, `durationMs`, `toolCalls`, `costUsd` | Delegated work and its outcome |
+| `agent_spawned` / `agent_stopped` / `agent_error` | `agentId`, `role`, `reason` | Subagent lifecycle |
+| `session_end` | `usage`, `pendingToolUses` | Final usage; tool calls left unanswered |
+
+`usage` holds `input`, `output`, `cacheRead`, and `cacheWrite` (plus
+`cacheWrite5m` / `cacheWrite1h` when the provider reports them). Journals
+written by older versions may lack newer fields; tolerate their absence.
+
+## What to compute
+
+| Question | Computation |
+|---|---|
+| Which tools failed? | `tool_result.isError` joined to `tool_use.name` by `id`; rate per tool |
+| Did it loop? | The same tool_use name and identical `input` repeated; long runs of calls with no `user_input` |
+| Where did tokens go? | Sum `llm_response.usage` per turn; growth in `llm_request.estimatedInputTokens` |
+| Is caching working? | `cacheRead / (input + cacheRead + cacheWrite)` per request; a sudden drop means the prompt prefix changed |
+| Was context under pressure? | `compaction` count, levels, and `before → after` |
+| Did delegation pay off? | `delegate_completed` ok/status, `durationMs`, `costUsd` per target |
+| Did it end cleanly? | `session_end.pendingToolUses`, final `stopReason`, trailing `error` events |
+
+## Script
+
+Save outside the repository (a temp dir) and run with
+`node tool-stats.mjs <journal.jsonl>`:
+
+```js
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
+
+const toolById = new Map();
+const tools = {};
+const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+const counts = { compaction: 0, error: 0, malformed: 0 };
+
+for await (const line of createInterface({ input: createReadStream(process.argv[2]) })) {
+  if (!line.trim()) continue;
+  let event;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    counts.malformed++;
+    continue;
+  }
+  if (event.type === 'tool_use') {
+    toolById.set(event.id, event.name);
+    tools[event.name] ??= { calls: 0, errors: 0 };
+    tools[event.name].calls++;
+  } else if (event.type === 'tool_result' && event.isError) {
+    const name = toolById.get(event.id);
+    if (name) tools[name].errors++;
+  } else if (event.type === 'llm_response' && event.usage) {
+    for (const key of Object.keys(tokens)) tokens[key] += event.usage[key] ?? 0;
+  } else if (event.type in counts) {
+    counts[event.type]++;
+  }
 }
+
+console.log(JSON.stringify({ tools, tokens, counts }, null, 2));
 ```
 
-```typescript
-// ✅ Extract error distribution
-const errorsByType = events
-  .filter(e => e.type === 'error')
-  .reduce((acc, e) => {
-    acc[e.error.type] = (acc[e.error.type] || 0) + 1;
-    return acc;
-  }, {});
-```
+## Report
 
-### Don't
-
-```typescript
-// ❌ Bad — report without citing data
-"bash had some failures" // no count, no iteration, no error type
-
-// ❌ Bad — mix sessions without labeling
-// Analyzed 3 sessions together with no per-session breakdown
-```
-
-## Workflow
-
-```
-1. Collect:  Read session logs from path or sessionRoot
-2. Parse:    Extract events: tool calls, iterations, errors, usage
-3. Analyze:  Group by category, detect anomalies
-4. Report:  Structured markdown summary
-```
-
-## What to look for
-
-### Tool usage patterns
-- **Over-used tools**: 100+ calls to the same tool = possibly a loop
-- **Consistent failures**: same tool failing 5x+ = bug or misconfiguration
-- **Unusual sequences**: 50 writes in a row with no reads = wrong approach
-- **Tool entropy**: too many different tools in one iteration = unfocused task
-
-### Error patterns
-- **Same error repeating**: `ToolExecutionError` 47x across iterations = systemic issue
-- **Error clustering**: all errors in `bash` tool = command timeout pattern
-- **Error rate by type**: which error type is most common?
-- **Error distribution**: are errors clustered in specific packages or tools?
-
-### Cost patterns
-- **Token growth**: tokens/iteration trending up = context bloat
-- **Provider cost**: which model is most expensive per call?
-- **Cost spikes**: sudden 3x increase = large file reads or excessive tool calls
-- **Iteration cost variance**: avg $0.04/iter → $0.11/iter = context growing
-
-### Context management
-- **High tool count per iteration**: >50 tool calls = possible loop or unfocused task
-- **Compaction events**: context compaction triggered 3x in one session = too much context
-- **Session restart**: same session restarting multiple times = crash loop
-- **Long iterations**: single iteration >5min = stuck or waiting on something
-
-## Session file structure
-
-WrongStack session logs are JSONL files. Each line is a JSON event. Key event types:
-
-```
-{"type": "iteration_start", "iteration": 1, "timestamp": "..."}
-{"type": "tool_call", "tool": "read", "input": {"path": "src/index.ts"}, "duration_ms": 12}
-{"type": "tool_result", "tool": "read", "output_lines": 45}
-{"type": "error", "error": {"type": "ToolExecutionError", "message": "...", "tool": "bash"}}
-{"type": "compaction", "reason": "context_near_limit", "tokens_removed": 1200}
-{"type": "cost", "input_tokens": 3400, "output_tokens": 890, "cost_usd": 0.11}
-{"type": "iteration_end", "iteration": 1, "stop_reason": "end_turn"}
-```
-
-When reading a session file:
-1. `grep` for event types you need (e.g., `grep '"type": "error"' session.jsonl`)
-2. `read` the full file for detailed analysis
-3. Track iteration boundaries via `iteration_start` / `iteration_end` events
-4. Sum `cost_usd` per iteration for cost trend analysis
-
-## Input
-
-```json
-{
-  "task": "analyze | report | trends",
-  "sessionPath": "<path to session JSONL>",
-  "focus": "errors | tools | usage | all"
-}
-```
-
-## Output format
-
-```
-## Audit Report — <date>
+```text
+## Session audit — <session id> (<model>, <start> → <end>)
 
 ### Summary
-- Total iterations: N
-- Total tool calls: N
-- Error rate: X%
-- Cost: $X.XX
+Turns 14 · tool calls 212 (9.4% failed) · tokens in 1.9M / out 48k · cache hit 81% · compactions 2
 
-### Top Errors (by count)
-1. `ToolExecutionError` — 47x — concentrated in `bash` tool, command timeout
-2. `PermissionDenied` — 12x — `exec` tool, no trust file entry
+### Findings
+1. The bash tool failed 17/60 calls; 12 are the same `pnpm test` timing out
+   (tool_use ids …, 10:42–10:58). Cause: watch mode never exits.
+2. Cache hit fell from 88% to 12% at 11:03 after mode_changed plan → default;
+   the prefix changed, and the next 6 requests paid full input price.
 
-### Tool Usage
-| Tool | Calls | Failures | Avg Duration |
-|------|-------|----------|--------------|
-| read | 142   | 3        | 45ms |
-| bash | 89    | 12       | 2300ms |
-
-### Anomalies
-- High bash failure rate (13.5%) — likely command timeout
-- 3 iterations with >50 tool calls — possible loop, review iteration 14
-
-### Cost Trend
-- Iteration 1-10: avg $0.04/iteration
-- Iteration 11-20: avg $0.11/iteration (context growth)
-
-<nextsteps>
-1. Run the session tests and the type checker
-</nextsteps>
-
-Investigate iterations 14–20 in the session log for the bash command timeout pattern. Review iteration 14's tool call count for loop behavior.
+### Coverage
+Parsed 18,402 lines, 3 malformed and skipped. Subagent transcripts not included.
 ```
 
 ## Anti-patterns
 
-- **Don't summarize what you didn't parse** — be precise, cite the data
-- **Don't mix sessions** — analyze one at a time or aggregate clearly
-- **Don't skip error context** — the raw error message is the source of truth
-- **Don't ignore cost trends** — growing costs indicate context bloat
-- **Don't ignore repeated failures** — same tool failing 5x = real issue
-
-## Out of scope
-
-- **Don't summarize sessions you didn't parse.** Cite the data: iteration, tool name, error message. Reports without counts and citations are guesses.
-- **Don't mix sessions without labeling.** Either analyze one session at a time, or aggregate with clear per-session breakdown. Combined-with-no-labels is fake coverage.
-- **Don't treat repeated failures as noise.** Same tool failing 5+ times is a real issue, not background. Report the concentration.
-- **Don't ignore cost trends.** A spike from $0.04/iter to $0.11/iter means context growth, not a model change. Cost trend is a leading indicator.
-- **Don't claim a cost cause you didn't verify.** "Probably the model is more expensive" is not analysis. State the iteration, the token count, the file reads, and the cause the data supports.
-- **Don't run live session mutations.** This skill is read-only over the JSONL stream. No state changes to sessions, no live editing of logs.
-- **Don't bypass session boundaries.** Each session's events stand on their own; cross-session analysis is a separate scope, not a free hand to mix.
+- **Reporting totals with no evidence** — every number traces to events.
+- **Mixing sessions** without per-session labels.
+- **Reading a huge journal whole** into context instead of streaming it.
+- **Pasting raw tool output** with secrets into the report.
+- **Guessing a cause** the events don't support — say "unexplained" instead.
 
 ## Before returning
 
-- [ ] Parsed from the source JSONL, not from summaries or memory
-- [ ] One session analyzed at a time, or aggregate with explicit per-session labels
-- [ ] Every claim cites the data: iteration number, tool name, error message, cost figure
-- [ ] Repeated failures (same tool, 5+ times) called out, not folded into noise
-- [ ] Cost trend reported in context of iteration count, not in isolation
-- [ ] No session log mutated; read-only held
-- [ ] Summary counts match the findings listed; nothing padded
-- [ ] Anomalies named with a probable cause the data supports
+- [ ] Journal parsed from disk; malformed lines counted, not fatal
+- [ ] Every finding cites event types, times, and ids
+- [ ] Tool failures joined by id; token and cache figures from `usage`
+- [ ] Coverage stated (lines parsed, subagent transcripts included or not)
+- [ ] Nothing sensitive quoted unredacted; journal untouched
 
 ## Skills in scope
 
-- `bug-hunter` — for turning audit findings into concrete bugs to fix
-- `refactor-planner` — for addressing systemic issues found in logs
-- `security-scanner` — for security-adjacent findings (leaked keys, injection patterns in logs)
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `observability` — for turning recurring findings into better runtime signals
+- `bug-hunter` — for locating the code behind a recurring tool failure
+- `output-standards` — for the `<nextsteps>` shape in the report

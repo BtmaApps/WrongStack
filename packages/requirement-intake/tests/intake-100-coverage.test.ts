@@ -420,10 +420,16 @@ describe('Requirement Intake 100% Coverage Suite', () => {
       // Check exists returns true for existing record
       expect(await store.exists(created.record.id)).toBe(true);
 
-      // Perform updates to exceed MAX_HISTORY_ENTRIES (50)
-      for (let i = 0; i < MAX_HISTORY_ENTRIES + 5; i++) {
-        await service.updateIntake(created.record.id, { scopeNotes: `Note update ${i}` }, ctx);
-      }
+      // Pre-fill history to exceed MAX_HISTORY_ENTRIES inside a single store.update call
+      await store.update(created.record.id, {}, (rec) => {
+        for (let i = 0; i < MAX_HISTORY_ENTRIES + 5; i++) {
+          rec.history.push({
+            at: Date.now(),
+            actor: 'user_1',
+            action: 'updated',
+          });
+        }
+      });
 
       const reloaded = await store.load(created.record.id);
       expect(reloaded!.history.length).toBe(MAX_HISTORY_ENTRIES);

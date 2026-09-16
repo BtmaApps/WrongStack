@@ -1,5 +1,6 @@
 import {
   Bot,
+  Building2,
   Check,
   Command,
   Menu,
@@ -20,6 +21,7 @@ import { useAppTranslation } from '@/i18n';
 import { getPalette, PALETTES } from '@/lib/palettes';
 import { cn } from '@/lib/utils';
 import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
+import { openMainView } from './activity-bar/nav';
 import { CronTrigger } from './CronTrigger';
 import { InspectorTrigger } from './InspectorPanel';
 import { NotificationMenu } from './NotificationMenu';
@@ -159,6 +161,16 @@ export function WorkbenchTopbar({
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const wrongProxy = useWrongProxyStatus();
   const hq = useHqStatus();
+  const agentRosterActiveTab = useUIStore((s) => s.agentRosterActiveTab);
+  const officeMapActive = currentView === 'roster' && agentRosterActiveTab === 'officemap';
+  const openOfficeMap = () => {
+    useUIStore.getState().setAgentRosterActiveTab('officemap');
+    openMainView('roster');
+  };
+  const openIntegrations = () => {
+    useUIStore.getState().setSettingsActiveTab('integrations');
+    onSettings();
+  };
 
   const wrongProxyTooltip =
     wrongProxy.status === 'connected'
@@ -250,6 +262,10 @@ export function WorkbenchTopbar({
                 <Settings className="h-4 w-4" />
                 <span>{t('activity:topbar.settings')}</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openOfficeMap} className="gap-2">
+                <Building2 className="h-4 w-4" />
+                <span>{t('activity:agentRoster.tabOfficeMap')}</span>
+              </DropdownMenuItem>
               <div className="border-t border-border/60 my-1 px-2 py-1 space-y-1 text-[11px] text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <span>Backend WS</span>
@@ -269,16 +285,18 @@ export function WorkbenchTopbar({
                       'font-mono font-medium',
                       wrongProxy.status === 'connected'
                         ? 'text-success'
-                        : wrongProxy.status === 'error'
+                        : wrongProxy.status !== 'disabled'
                           ? 'text-destructive'
                           : 'text-muted-foreground',
                     )}
                   >
                     {wrongProxy.status === 'connected'
                       ? 'Connected'
-                      : wrongProxy.status === 'error'
-                        ? 'Offline'
-                        : 'Disabled'}
+                      : wrongProxy.status === 'checking'
+                        ? 'Checking'
+                        : wrongProxy.status === 'error'
+                          ? 'Offline'
+                          : 'Disabled'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -288,16 +306,18 @@ export function WorkbenchTopbar({
                       'font-mono font-medium',
                       hq.status === 'connected'
                         ? 'text-success'
-                        : hq.status === 'error'
+                        : hq.status !== 'disabled'
                           ? 'text-destructive'
                           : 'text-muted-foreground',
                     )}
                   >
                     {hq.status === 'connected'
                       ? 'Connected'
-                      : hq.status === 'error'
-                        ? 'Offline'
-                        : 'Disabled'}
+                      : hq.status === 'checking'
+                        ? 'Checking'
+                        : hq.status === 'error'
+                          ? 'Offline'
+                          : 'Disabled'}
                   </span>
                 </div>
               </div>
@@ -480,12 +500,12 @@ export function WorkbenchTopbar({
             {/* WrongProxy Status */}
             <button
               type="button"
-              onClick={onSettings}
+              onClick={openIntegrations}
               className={cn(
                 'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
                 wrongProxy.status === 'connected'
                   ? 'border-border/70 text-success hover:bg-accent/60'
-                  : wrongProxy.status === 'error'
+                  : wrongProxy.status !== 'disabled'
                     ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
                     : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
               )}
@@ -499,12 +519,12 @@ export function WorkbenchTopbar({
             {/* HQ Status */}
             <button
               type="button"
-              onClick={onSettings}
+              onClick={openIntegrations}
               className={cn(
                 'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/60 transition-colors',
                 hq.status === 'connected'
                   ? 'border-border/70 text-success hover:bg-accent/60'
-                  : hq.status === 'error'
+                  : hq.status !== 'disabled'
                     ? 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20'
                     : 'border-border/50 text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent/60',
               )}
@@ -535,6 +555,21 @@ export function WorkbenchTopbar({
               title={t('activity:topbar.settings')}
             >
               <Settings className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={openOfficeMap}
+              className={cn(
+                'inline-flex h-8 w-8 items-center justify-center rounded-md border hover:bg-accent/60',
+                officeMapActive
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border/70 bg-background/60 text-muted-foreground hover:text-foreground',
+              )}
+              title={`${t('activity:agentRoster.tabOfficeMap')} (F11)`}
+              aria-label={t('activity:agentRoster.tabOfficeMap')}
+              aria-pressed={officeMapActive}
+            >
+              <Building2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

@@ -1,19 +1,17 @@
-# TypeScript Strict Mode — WrongStack (Compact)
+# TypeScript Strict (Compact)
 
-Strict TypeScript patterns for WrongStack: exhaustive switch, branded types, discriminated unions, and `noUncheckedIndexedAccess`.
+Let the type checker carry invariants, within the project's own tsconfig.
 
 ## Rules
 
-1. Never silence errors with `as any` or double assertions — validate or narrow values at trust boundaries.
-2. Don't use `!` non-null assertion — silence the type checker without explanation.
-3. Always annotate return types on exported functions.
-4. Use `Promise<unknown>` or generics instead of `Promise<any>`.
-5. Be specific with types — `Function` and `Object` are too broad.
-6. Enable `noUncheckedIndexedAccess` — always handle the `undefined` case.
+1. Respect the project's tsconfig; tightening flags repo-wide is a separate, requested change.
+2. Fix type errors instead of silencing them: no `as any`, double assertions, or unexplained suppressions.
+3. Narrow external data from `unknown` at trust boundaries (guards or the project's schema library).
+4. Prefer narrowing to `!` and `as`.
+5. Model finite states as discriminated unions; end exhaustive switches with a `never` check.
+6. Annotate return types of exported functions.
+7. Run the type checker before calling the work done.
 
-## Key patterns
+## Fixing an error
 
-- **Exhaustive switch**: Create `assertNever(x: never)` and use it in the `default` branch of every switch on a union.
-- **Branded types**: `type UserId = string & { readonly __brand: 'UserId' }` for invariant string types.
-- **Discriminated unions**: Prefer `{ status: 'success'; data: T } | { status: 'error'; error: E }` over optional fields.
-- **noUncheckedIndexedAccess**: Use `items.at(0)` or `if (items[0] !== undefined)` — never assume array access succeeds.
+Read the whole error chain, decide whether the value or the declared type is wrong, fix at the source, re-run.

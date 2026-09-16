@@ -37,10 +37,10 @@ describe('ActivityBar desktop responsive overflow (compact / desktop shell)', ()
 
     expect(split.overflowPanelIds).toEqual([]);
     // At 520px compact: 10 slots → 6 panels + 4 views fit. Views follow the
-    // delivery pipeline, so the planning surfaces (Requirements → SDD → Goal
-    // → Kanban) keep their slots while secondary views overflow.
-    expect(split.visibleViewIds).toEqual(['intake', 'sddhub', 'goal', 'kanban']);
-    expect(split.overflowViewIds).toContain('roster');
+    // delivery pipeline, so the primary surfaces (SDD → Goal → Kanban → Roster)
+    // keep their slots while secondary views overflow.
+    expect(split.visibleViewIds).toEqual(['sddhub', 'goal', 'kanban', 'roster']);
+    expect(split.overflowViewIds).toContain('codemap');
     expect(split.overflowViewIds).toContain('history');
   });
 

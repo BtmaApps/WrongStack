@@ -7,14 +7,15 @@
 
 import { Columns2, FileDiff, Loader2, Minus, Plus, RefreshCw, Rows3, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { useConfigStore, useGitChangesStore } from '@/stores';
-import { cn } from '@/lib/utils';
 import { DiffView } from './DiffView';
-import { EmptyState } from './ui/empty-state';
 import { MonacoDiffView } from './MonacoDiffView';
+import { confirmModal } from './ConfirmModal';
+import { EmptyState } from './ui/empty-state';
 
 /** How long the diff spinner may run before flipping to an error + retry. */
 const DIFF_TIMEOUT_MS = 10_000;
@@ -72,8 +73,8 @@ export function ChangesView({ className }: { className?: string }) {
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/70 bg-card/75 shadow-sm">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/70 px-3 py-2">
-          <div className="min-w-0 flex items-center gap-2">
-            <div>
+          <div className="min-w-0 flex max-w-full flex-1 basis-48 items-center gap-2">
+            <div className="min-w-0">
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
                 {t('activity:changesView.sourceControl')}
               </div>
@@ -82,13 +83,13 @@ export function ChangesView({ className }: { className?: string }) {
               </div>
             </div>
             {currentFile?.staged && (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
+              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary uppercase">
                 Staged
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center gap-2">
             {/* Git staging actions */}
             <div className="flex items-center gap-1 border-r border-border/70 pr-2">
               {currentFile?.staged ? (
@@ -112,10 +113,20 @@ export function ChangesView({ className }: { className?: string }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (
-                        window.confirm(`Discard changes in ${selectedPath}? This cannot be undone.`)
-                      ) {
+                    onClick={async () => {
+                      if (!selectedPath) return;
+                      const ok = await confirmModal({
+                        title: t('activity:changes.confirmDiscardTitle', {
+                          path: selectedPath,
+                          defaultValue: `Discard changes in ${selectedPath}?`,
+                        }),
+                        message: t('activity:changes.confirmDiscardMsg', {
+                          defaultValue: 'This cannot be undone.',
+                        }),
+                        confirmLabel: t('common:action.discard', { defaultValue: 'Discard' }),
+                        danger: true,
+                      });
+                      if (ok) {
                         discardGit?.(selectedPath);
                       }
                     }}

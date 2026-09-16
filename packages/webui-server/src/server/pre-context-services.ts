@@ -250,6 +250,12 @@ export async function createPreContextServices(
     modelCapabilities?.maxContextTokens,
   );
 
+  // ── Skill loader ── created before the registry so the `skill` tool the
+  // progressive manifest points at is registered alongside it.
+  const skillLoader = config.features.skills
+    ? new DefaultSkillLoader({ paths: wpaths })
+    : undefined;
+
   // ── Tool registry (+ memory + mailbox tools) ──
   const toolRegistry = opts.services?.toolRegistry ?? new ToolRegistry();
   const memoryStore = container.resolve(TOKENS.MemoryStore);
@@ -260,6 +266,7 @@ export async function createPreContextServices(
       tier: tokenSavingTier,
       memory: { enabled: config.features.memory, store: memoryStore },
       nextSteps: { enabled: config.tools?.nextsteps?.enabled === true },
+      skillLoader,
       coordinationTools: [
         makeMailboxTool({ projectDir: wpaths.projectDir, events }),
         makeMailSendTool({ projectDir: wpaths.projectDir, events }),
@@ -397,10 +404,7 @@ export async function createPreContextServices(
     'custom',
   );
 
-  // ── Skill loader/installer ──
-  const skillLoader = config.features.skills
-    ? new DefaultSkillLoader({ paths: wpaths })
-    : undefined;
+  // ── Skill installer (loader is created before the tool registry) ──
   const skillInstaller = config.features.skills
     ? new SkillInstaller({
         manifestPath: path.join(wpaths.configDir, 'installed-skills.json'),

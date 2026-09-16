@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AgentRuntimePolicyEditor } from '@/components/AgentRuntimePolicyEditor';
+import { confirmModal } from './ConfirmModal';
 import { useAppTranslation } from '@/i18n';
 import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
@@ -201,7 +202,13 @@ function CustomizationTab({
 
   const runReset = useCallback(
     async (role: string) => {
-      if (!window.confirm(t('activity:agentRoster.resetConfirm', { role }))) return;
+      const ok = await confirmModal({
+        title: t('activity:agentRoster.resetTitle', { defaultValue: 'Reset Agent Role' }),
+        message: t('activity:agentRoster.resetConfirm', { role }),
+        confirmLabel: t('common:action.reset', { defaultValue: 'Reset' }),
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await sendRosterMessage('agent-roster.reset', { role });
         setSelectedRole(null);
@@ -210,7 +217,7 @@ function CustomizationTab({
         /* ignore */
       }
     },
-    [onRefresh],
+    [onRefresh, t],
   );
 
   const runCreate = useCallback(async () => {

@@ -2130,6 +2130,7 @@
     "memoriesLabel_other": "{{count}} anı"
   },
   "sddhub": {
+    "tabRequirements": "Gereksinimler",
     "tabProject": "SDD Projesi",
     "tabBoard": "Canlı SDD Panosu",
     "tabSpecs": "Spesifikasyonlar"
@@ -3220,7 +3221,11 @@
     "intakeRecords": "Alım kayıtları",
     "loading": "Yükleniyor…",
     "noIntakeRecordsYetFileThe": "Henüz alım kaydı yok — ilkini yukarıdan oluşturun.",
-    "describeTheFeatureBugFixRefactorOrChange": "Özelliği, hata düzeltmesini, yeniden düzenlemeyi veya değişikliği açıklayın…"
+    "describeTheFeatureBugFixRefactorOrChange": "Özelliği, hata düzeltmesini, yeniden düzenlemeyi veya değişikliği açıklayın…",
+    "startSddSpec": "SDD Şartnamesi Başlat",
+    "originalRequest": "Özgün Talep",
+    "copyRequest": "Talebi kopyala",
+    "copied": "Kopyalandı!"
   },
   "verifyReport": {
     "verificationReport": "Doğrulama Raporu",

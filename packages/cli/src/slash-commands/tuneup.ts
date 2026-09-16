@@ -153,7 +153,7 @@ function parseArgs(args: string): ParsedArgs {
 
 async function gatherInput(opts: SlashCommandContext, power: boolean): Promise<TuneupInput> {
   const config = opts.configStore.get();
-  const skillMode: 'eager' | 'progressive' = config.skills?.mode ?? 'eager';
+  const skillMode: 'eager' | 'progressive' = config.skills?.mode ?? 'progressive';
   const eagerMaxChars = config.skills?.eagerMaxChars ?? DEFAULT_EAGER_MAX_CHARS;
 
   const [skills, memoryFiles, update, trust, configIssues, sessionBytes] = await Promise.all([

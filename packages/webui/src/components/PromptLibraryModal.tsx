@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import { useUIStore } from '@/stores';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 interface PromptVar {
   name: string;
@@ -265,26 +265,44 @@ export function PromptLibraryModal() {
       }}
     >
       <DialogContent
-        className="max-w-4xl h-[80dvh] p-0 gap-0 overflow-hidden"
-        showCloseButton={false}
+        className="flex max-w-4xl h-[85dvh] flex-col p-0 gap-0 overflow-hidden"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           searchRef.current?.focus();
         }}
       >
-        <DialogTitle className="sr-only">{t('activity:promptLib.heading')}</DialogTitle>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border py-3 pl-3 pr-14">
+          {(selected || creating) && (
+            <button
+              type="button"
+              aria-label={t('common:action.back')}
+              onClick={() => {
+                setSelected(null);
+                setCreating(false);
+                setCreateError(null);
+              }}
+              className="h-8 w-8 shrink-0 border border-border text-muted-foreground hover:bg-accent sm:hidden"
+            >
+              ←
+            </button>
+          )}
+          <DialogTitle className="text-base">{t('activity:promptLib.heading')}</DialogTitle>
+        </div>
         <DialogDescription className="sr-only">
           {t('activity:promptLib.searchPlaceholder')}
         </DialogDescription>
-        <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 overflow-hidden">
           {/* Left: search + categories + results */}
-          <div className="flex min-h-0 min-w-0 w-1/2 flex-col border-r border-border">
+          <div
+            className={`${selected || creating ? 'hidden sm:flex' : 'flex'} min-h-0 min-w-0 w-full flex-col border-border sm:w-1/2 sm:border-r`}
+          >
             <div className="border-b border-border p-3">
               <input
                 ref={searchRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('activity:promptLib.searchPlaceholder')}
+                aria-label={t('activity:promptLib.searchPlaceholder')}
                 className="w-full rounded border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
               />
               <button
@@ -374,7 +392,9 @@ export function PromptLibraryModal() {
           </div>
 
           {/* Right: preview + variables + insert, OR the authoring form */}
-          <div className="flex min-h-0 min-w-0 w-1/2 flex-col">
+          <div
+            className={`${selected || creating ? 'flex' : 'hidden sm:flex'} min-h-0 min-w-0 w-full flex-col sm:w-1/2`}
+          >
             {creating ? (
               <>
                 <div className="flex items-center justify-between border-b border-border p-3">
@@ -394,15 +414,18 @@ export function PromptLibraryModal() {
                 </div>
                 <div className="min-h-0 min-w-0 flex-1 space-y-2 overflow-auto overscroll-contain p-3 text-xs">
                   <input
+                    autoFocus
                     value={draft.title}
                     onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                     placeholder={t('activity:promptLib.titlePlaceholder')}
+                    aria-label={t('activity:promptLib.titlePlaceholder')}
                     className="w-full rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
                   />
                   <input
                     value={draft.description}
                     onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                     placeholder={t('activity:promptLib.descPlaceholder')}
+                    aria-label={t('activity:promptLib.descPlaceholder')}
                     className="w-full rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
                   />
                   <div className="flex gap-2">
@@ -411,6 +434,7 @@ export function PromptLibraryModal() {
                       value={draft.category}
                       onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
                       placeholder={t('activity:promptLib.categoryPlaceholder')}
+                      aria-label={t('activity:promptLib.categoryPlaceholder')}
                       className="w-1/2 rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
                     />
                     <datalist id="prompt-category-list">
@@ -422,6 +446,7 @@ export function PromptLibraryModal() {
                       value={draft.tagsCsv}
                       onChange={(e) => setDraft((d) => ({ ...d, tagsCsv: e.target.value }))}
                       placeholder={t('activity:promptLib.tagsPlaceholder')}
+                      aria-label={t('activity:promptLib.tagsPlaceholder')}
                       className="w-1/2 rounded border border-border bg-background px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
@@ -429,6 +454,7 @@ export function PromptLibraryModal() {
                     value={draft.content}
                     onChange={(e) => setDraft((d) => ({ ...d, content: e.target.value }))}
                     placeholder={t('activity:promptLib.contentPlaceholder')}
+                    aria-label={t('activity:promptLib.contentPlaceholder')}
                     rows={6}
                     className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono outline-none focus:ring-1 focus:ring-primary"
                   />
@@ -475,6 +501,7 @@ export function PromptLibraryModal() {
                             }))
                           }
                           placeholder={t('activity:promptLib.varNamePlaceholder')}
+                          aria-label={t('activity:promptLib.varNamePlaceholder')}
                           className="w-1/3 rounded border border-border bg-background px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary"
                         />
                         <input
@@ -488,6 +515,7 @@ export function PromptLibraryModal() {
                             }))
                           }
                           placeholder={t('activity:promptLib.varDescPlaceholder')}
+                          aria-label={t('activity:promptLib.varDescPlaceholder')}
                           className="flex-1 rounded border border-border bg-background px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary"
                         />
                         <button
@@ -543,6 +571,7 @@ export function PromptLibraryModal() {
                             }))
                           }
                           placeholder={t('activity:promptLib.enumPlaceholder')}
+                          aria-label={t('activity:promptLib.enumPlaceholder')}
                           className="flex-1 rounded border border-border bg-background px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary"
                         />
                       </div>
@@ -565,10 +594,10 @@ export function PromptLibraryModal() {
               </>
             ) : selected ? (
               <>
-                <div className="flex items-start justify-between border-b border-border p-3">
-                  <div>
-                    <div className="text-sm font-semibold">{selected.title}</div>
-                    <div className="text-xs text-muted-foreground">
+                <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border p-3">
+                  <div className="min-w-0">
+                    <div className="break-words text-sm font-semibold">{selected.title}</div>
+                    <div className="break-all text-xs text-muted-foreground">
                       {selected.category} · {selected.slug}
                     </div>
                   </div>
@@ -604,7 +633,7 @@ export function PromptLibraryModal() {
                           'mt-0.5 w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary';
                         if (v.enum && v.enum.length > 0) {
                           return (
-                            <div key={v.name}>
+                            <label key={v.name} className="block">
                               {label}
                               <select
                                 value={varValues[v.name] ?? ''}
@@ -618,12 +647,12 @@ export function PromptLibraryModal() {
                                   </option>
                                 ))}
                               </select>
-                            </div>
+                            </label>
                           );
                         }
                         if (v.multiline) {
                           return (
-                            <div key={v.name}>
+                            <label key={v.name} className="block">
                               {label}
                               <textarea
                                 value={varValues[v.name] ?? ''}
@@ -631,18 +660,18 @@ export function PromptLibraryModal() {
                                 rows={4}
                                 className={`${fieldClass} resize-y font-mono`}
                               />
-                            </div>
+                            </label>
                           );
                         }
                         return (
-                          <div key={v.name}>
+                          <label key={v.name} className="block">
                             {label}
                             <input
                               value={varValues[v.name] ?? ''}
                               onChange={(e) => set(e.target.value)}
                               className={fieldClass}
                             />
-                          </div>
+                          </label>
                         );
                       })}
                     </div>

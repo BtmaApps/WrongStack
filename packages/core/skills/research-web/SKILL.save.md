@@ -8,7 +8,7 @@ Conducts current-data web research with discipline: when to search, how to cross
 2. Two-source minimum: single-source is tentative, two agreeing is signal.
 3. Inject, don't repeat — use context_manager add_note after research.
 4. Respect the stop rule: 2-3 searches + 1-2 fetches per topic.
-5. Match tool to task: search/fetch for discovery, search/fetch for detail.
+5. Match tool to task: `search` for discovery, `fetch` to read a known page or a raw registry endpoint.
 
 ## Workflow
 

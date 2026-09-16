@@ -29,6 +29,7 @@ import {
   NodeContextMenu,
   RenamePromptModal,
 } from './FileExplorer/FileExplorerModals.js';
+import { confirmModal } from './ConfirmModal';
 import { TreeRow } from './FileExplorer/TreeRow.js';
 import {
   collectAllFiles,
@@ -252,16 +253,18 @@ export function FileExplorer() {
   }, [createPrompt, createName]);
 
   const handleDelete = useCallback(
-    (node: TreeNode) => {
+    async (node: TreeNode) => {
       setNodeMenu(null);
       const isDir = node.type === 'directory';
       // Both kinds are destructive on disk — confirm files exactly like
       // directories (and like ChangesPanel's discard).
-      const ok = window.confirm(
-        isDir
+      const ok = await confirmModal({
+        title: isDir
           ? t('activity:fileExplorer.confirmDeleteDir', { name: node.name })
           : t('activity:fileExplorer.confirmDeleteFile', { name: node.name }),
-      );
+        confirmLabel: t('common:action.delete'),
+        danger: true,
+      });
       if (!ok) return;
       getWSClient().send({
         type: 'files.delete',

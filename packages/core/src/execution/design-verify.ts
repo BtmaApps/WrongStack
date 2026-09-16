@@ -14,8 +14,16 @@
 import type { DesignKitTokens } from '../types/design-kit.js';
 import { colorToHex, isColorToken } from './design-color.js';
 
-/** Which design axis a violation belongs to. */
-export type DesignAxis = 'color' | 'radius' | 'spacing' | 'type' | 'motion';
+/**
+ * Which design axis a violation belongs to.
+ *
+ * `composition` is the taste axis: patterns that pass every token check and
+ * still read as generated-by-default UI (gradient-filled headings, stock
+ * elevation, emoji standing in for icons, four identical centered sections,
+ * marketing filler copy). Token adherence and taste are independent failures —
+ * a screen can score 100% on-palette and still be slop.
+ */
+export type DesignAxis = 'color' | 'radius' | 'spacing' | 'type' | 'motion' | 'composition';
 
 export interface DesignViolation {
   file: string;
@@ -36,6 +44,16 @@ export interface DesignVerifyReport {
   /** 0..1 — share of color signals that are on-palette. 1 when no signals. */
   score: number;
   ok: boolean;
+  /**
+   * Files that carried no class attribute and no color literal at all — the
+   * scanner had nothing to read in them.
+   *
+   * This is not a detail: a react-native / flutter / swiftui / compose screen
+   * expresses the kit as theme constants and a numeric scale, so it scores a
+   * clean 100% no matter what it looks like. Without this count, "0 violations"
+   * on a native stack silently reads as "clean" when it means "not checked".
+   */
+  filesWithNoSignal: number;
 }
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g;
@@ -54,11 +72,171 @@ const RAW_RADIUS_RE = /border-radius:\s*([^;{}]+)/gi;
 const TW_GENERIC_RE =
   /\b(?:bg|text|border|ring|from|to|via|fill|stroke|decoration|outline|shadow|accent|caret|divide)-(?:slate|gray|grey|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/g;
 
+// ── Composition ("slop") signals ─────────────────────────────────────────────
+// Every rule below is kit-independent: it is drift under EVERY kit, so it can
+// fire without knowing which kit is pinned. Kit-sanctioned looks (glass panels
+// under `soft-glass`, aurora washes under `aurora-gradient`) are deliberately
+// NOT encoded here — judging those needs the kit body, which is the
+// `design-critique` skill's job, not a regex's.
+
+/** `bg-clip-text` + `text-transparent` — gradient-filled headline. */
+const GRADIENT_TEXT_CLIP_RE = /\bbg-clip-text\b/;
+const GRADIENT_TEXT_FILL_RE = /\btext-transparent\b/;
+/** Stock Tailwind elevation instead of the kit's `shadow-1…shadow-4` ramp. */
+const TW_ELEVATION_RE = /\bshadow-(?:sm|md|lg|xl|2xl)\b/g;
+/** Hardcoded font family (CSS declaration or arbitrary Tailwind value). */
+const FONT_DECL_RE = /font-family:\s*([^;{}]+)/gi;
+const TW_FONT_ARBITRARY_RE = /\bfont-\[[^\]]+\]/g;
+/** Placeholder / launch-copy boilerplate that ships as if it were product copy. */
+const FILLER_COPY_RE =
+  /(lorem ipsum|seamlessly integrat\w*|unlock the (?:power|potential)|to the next level|game[-\s]?chang\w+|revolutioniz\w+|cutting[-\s]?edge|elevate your|supercharge your|transform the way you)/gi;
+/**
+ * An emoji sitting where an icon belongs (first child of a heading/control).
+ *
+ * Deliberately narrowed to the pictographic planes. An earlier draft also swept
+ * U+2190–U+27BF and caught `→ ← ↵ ▸ ◀ ✗ ⚠ ★ ● ≈` plus `⌘K` across a real dense
+ * operator UI — those are typographic symbols doing legitimate work, not emoji
+ * standing in for an icon set. A pictograph that is explicitly decorative
+ * (`aria-hidden`) is also exempt; it is already handled correctly.
+ */
+const EMOJI_ICON_RE =
+  /<(?:h[1-6]|button|li|a|span|p|div)\b[^>]*>\s*\{?\s*['"`]?\s*([\u{1F300}-\u{1FAFF}])/gu;
+/** File-level monotony signals. */
+const TEXT_CENTER_RE = /\btext-center\b/g;
+const SECTION_TAG_RE = /<section\b/g;
+const CLASS_ATTR_RE = /(?:className|class)=["']([^"']{40,})["']/g;
+/**
+ * A repeated class string only counts as a repeated *block* when it describes a
+ * container. Without this, a long label class (`text-[11px] uppercase
+ * text-muted-foreground`) reused on four dropdown labels reads as a copy-pasted
+ * card grid, which it is not — measured against a real 404-file UI.
+ */
+const CONTAINER_CLASS_RE = /\b(?:rounded|border|bg-|p-|px-|py-|grid|flex)/;
+/**
+ * A line that is entirely a comment — JS/TS line comment, block-comment body,
+ * or a CSS comment opener. Scanning those produces findings about prose rather
+ * than about markup: a doc-comment naming `shadow-sm` was itself reported as
+ * stock elevation during a real run.
+ */
+/**
+ * Mark every line that is entirely a comment.
+ *
+ * A single line regex was not enough, and the gap was found by dogfooding: JSX
+ * comments open with `{/*`, which `^\s*\/\*` never matches, so every
+ * `{/* … *␣/}` in a React file was scanned as markup. Multi-line block comments
+ * leaked for the same reason — their middle lines match no opener pattern, they
+ * need state.
+ *
+ * A trailing comment on a line of real code is deliberately NOT stripped: the
+ * code on that line is still code.
+ */
+function markCommentLines(lines: string[]): boolean[] {
+  const flags: boolean[] = [];
+  let inBlock = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (inBlock) {
+      flags.push(true);
+      if (line.includes('*/')) inBlock = false;
+      continue;
+    }
+    if (line.startsWith('//')) {
+      flags.push(true);
+      continue;
+    }
+    const opensBlock = line.startsWith('/*') || line.startsWith('{/*');
+    if (opensBlock || line.startsWith('*')) {
+      flags.push(true);
+      if (opensBlock && !line.includes('*/')) inBlock = true;
+      continue;
+    }
+    flags.push(false);
+  }
+  return flags;
+}
+/**
+ * Pure black / pure white surfaces. `TW_GENERIC_RE` lists only the named
+ * scales, so these slipped through — and they are the most untuned default of
+ * all: every kit's neutrals carry a little chroma, and `bg-white` next to them
+ * reads dead.
+ */
+const ABSOLUTE_COLOR_RE = /\b(?:bg|text|border|ring|fill|stroke|divide)-(?:white|black)\b/g;
+/** Any class attribute on one line — no length floor, unlike `CLASS_ATTR_RE`. */
+const CLASS_ATTR_LINE_RE = /(?:className|class)=["']([^"']+)["']/g;
+/** Caps at default tracking read as a mistake; caps need opened letter-spacing. */
+const UPPERCASE_RE = /\buppercase\b/;
+const TRACKING_RE = /\btracking-/;
+/**
+ * A border AND a heavy kit elevation on one surface = two elevation strategies
+ * at once. Scoped to the kit ramp (`shadow-2`…`shadow-4`) on purpose: stock
+ * Tailwind shadows are already reported by `TW_ELEVATION_RE`, and flagging them
+ * twice would just be noise.
+ */
+const KIT_ELEVATION_RE = /\bshadow-[2-4]\b/;
+const BORDER_UTILITY_RE = /\bborder(?:-[trblxy])?\b/;
+/**
+ * Anything the scanner can actually read. A file with none of these was not
+ * checked, however clean its result looks — see `filesWithNoSignal`.
+ */
+const SCANNABLE_SIGNAL_RE = /className=|class=|#[0-9a-fA-F]{3,8}\b|oklch\(|rgba?\(|hsla?\(/;
+/** Control labels that name the mechanism instead of the action. */
+const GENERIC_LABEL_RE = />\s*(Submit|Click here)\s*</g;
+/**
+ * An empty state that says nothing. Matches only when the generic phrase is the
+ * WHOLE label — "No data available for this range, try widening it" is a good
+ * empty state and must not be flagged.
+ */
+const EMPTY_STATE_FILLER_RE =
+  />\s*(No data(?: available)?|No items|Nothing here|No results(?: found)?|No records)\s*<|["'](No data(?: available)?|No items|Nothing here|No results(?: found)?|No records)["']/gi;
+/** How many centered sections / identical blocks before it reads as a template. */
+const CENTERED_SECTION_LIMIT = 4;
+const REPEATED_BLOCK_LIMIT = 4;
+
 function kebab(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/_/g, '-')
     .toLowerCase();
+}
+
+/** A hard offset shadow: `4px 4px 0 …` — an offset with no blur. */
+const HARD_SHADOW_RE = /^-?\d+px\s+-?\d+px\s+0(\s|$)/;
+
+/**
+ * Does this kit express elevation as a hard stamped offset rather than a soft
+ * shadow?
+ *
+ * Border + elevation is only a conflict when the elevation is SOFT — two ways of
+ * saying "this floats". When the kit's own ramp is a zero-blur offset
+ * (`pixel-8bit`, `grunge-press`, `neo-brutalist`), border + offset IS the kit's
+ * signature, and flagging it would make the engine fight the kit it is enforcing.
+ * Read from the token values, so no kit id or tag list is needed.
+ */
+function usesHardShadows(tokens: DesignKitTokens): boolean {
+  for (const set of [tokens.light, tokens.dark]) {
+    if (!set) continue;
+    for (const key of ['shadow-2', 'shadow-3', 'shadow-4', 'shadow']) {
+      const value = set[key]?.trim();
+      if (value && HARD_SHADOW_RE.test(value)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * A kit that expresses no elevation at all — every ramp step is `none`
+ * (`flat-design`). Under such a kit `shadow-3` is a valid token name that
+ * resolves to nothing, so "two elevation strategies stacked" is the wrong thing
+ * to say: there is one border and one no-op. Measured on a probe screen.
+ */
+function usesNoElevation(tokens: DesignKitTokens): boolean {
+  for (const set of [tokens.light, tokens.dark]) {
+    if (!set) continue;
+    const steps = ['shadow-2', 'shadow-3', 'shadow-4'].map((k) => set[k]?.trim().toLowerCase());
+    const declared = steps.filter((v) => v !== undefined);
+    if (declared.length > 0 && declared.every((v) => v === 'none')) return true;
+  }
+  return false;
 }
 
 function buildPalette(tokens: DesignKitTokens): { hexes: Set<string>; names: string[] } {
@@ -87,18 +265,33 @@ export function verifyFiles(
   // Files that reference token names via CSS var / Tailwind token utility are
   // "token-driven" — we don't flag their literal-free color usage.
   const tokenNamePatterns = names.map((n) => kebab(n));
+  // Kits whose elevation ramp is a hard stamped offset sanction border+shadow.
+  const hardShadowKit = usesHardShadows(tokens);
+  // Kits with no elevation at all need a different message entirely.
+  const noElevationKit = usesNoElevation(tokens);
 
   const violations: DesignViolation[] = [];
   let onPalette = 0;
   let offPalette = 0;
 
+  let filesWithNoSignal = 0;
   for (const { path, text } of files) {
+    if (!SCANNABLE_SIGNAL_RE.test(text)) filesWithNoSignal++;
     const lines = text.split('\n');
+    const commentLine = markCommentLines(lines);
+    const flagAt = (
+      lineNo: number,
+      snippet: string,
+      reason: string,
+      axis: DesignAxis = 'color',
+    ) => {
+      violations.push({ file: path, line: lineNo, snippet: snippet.slice(0, 80), reason, axis });
+    };
     lines.forEach((lineText, i) => {
+      if (commentLine[i]) return; // prose about the code, not the code
       const lineNo = i + 1;
-      const flag = (snippet: string, reason: string, axis: DesignAxis = 'color') => {
-        violations.push({ file: path, line: lineNo, snippet: snippet.slice(0, 80), reason, axis });
-      };
+      const flag = (snippet: string, reason: string, axis: DesignAxis = 'color') =>
+        flagAt(lineNo, snippet, reason, axis);
 
       // Hardcoded hex + function colors → on/off palette.
       for (const re of [HEX_RE, FUNC_COLOR_RE]) {
@@ -121,6 +314,17 @@ export function verifyFiles(
       for (const m of lineText.matchAll(TW_GENERIC_RE)) {
         offPalette++;
         flag(m[0], 'generic Tailwind palette utility — use kit token colors');
+      }
+
+      // Pure black / white — the same class of drift, missed by the named scales.
+      ABSOLUTE_COLOR_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(ABSOLUTE_COLOR_RE)) {
+        offPalette++;
+        flag(
+          m[0],
+          'pure black/white — use the kit surface + foreground tokens (its neutrals ' +
+            'carry chroma; absolute values read untuned beside them)',
+        );
       }
 
       // ── Non-color axes: radius / spacing bypass ──────────────────────────
@@ -150,6 +354,110 @@ export function verifyFiles(
         );
       }
 
+      // ── Composition axis: token-clean code that still reads as generated ──
+      if (GRADIENT_TEXT_CLIP_RE.test(lineText) && GRADIENT_TEXT_FILL_RE.test(lineText)) {
+        flag(
+          lineText.trim(),
+          'gradient-filled text — the single most recognizable generated-UI tell; ' +
+            'carry the emphasis with size/weight/measure instead',
+          'composition',
+        );
+      }
+      TW_ELEVATION_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(TW_ELEVATION_RE)) {
+        flag(
+          m[0],
+          "stock Tailwind elevation — use the kit's elevation ramp (shadow-1…shadow-4)",
+          'composition',
+        );
+      }
+      EMOJI_ICON_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(EMOJI_ICON_RE)) {
+        if (/aria-hidden/.test(m[0])) continue; // explicitly decorative — fine
+        flag(
+          m[0].trim(),
+          'emoji used as UI iconography — use a real icon set (emoji render per-platform ' +
+            'and carry no accessible name)',
+          'composition',
+        );
+      }
+      FILLER_COPY_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(FILLER_COPY_RE)) {
+        flag(
+          m[0],
+          'filler / launch-copy boilerplate — write copy that says what the product does',
+          'composition',
+        );
+      }
+      GENERIC_LABEL_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(GENERIC_LABEL_RE)) {
+        flag(
+          m[0].trim(),
+          `"${m[1]}" names the mechanism, not the action — label the control with its ` +
+            'verb ("Create workspace")',
+          'composition',
+        );
+      }
+
+      EMPTY_STATE_FILLER_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(EMPTY_STATE_FILLER_RE)) {
+        flag(
+          (m[1] ?? m[2] ?? m[0]).trim(),
+          'empty state that says nothing — say what belongs here, why it is empty, and ' +
+            'the one action that fills it',
+          'composition',
+        );
+      }
+
+      // Per-class-attribute craft rules.
+      CLASS_ATTR_LINE_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(CLASS_ATTR_LINE_RE)) {
+        const cls = m[1] ?? '';
+        if (UPPERCASE_RE.test(cls) && !TRACKING_RE.test(cls)) {
+          flag(
+            cls.slice(0, 60),
+            'all-caps at default tracking — caps need opened letter-spacing (tracking-wide)',
+            'type',
+          );
+        }
+        if (!hardShadowKit && KIT_ELEVATION_RE.test(cls)) {
+          if (noElevationKit) {
+            flag(
+              cls.slice(0, 60),
+              "this kit's elevation ramp is `none` — the shadow utility resolves to nothing; " +
+                'separate surfaces with a fill difference instead',
+              'composition',
+            );
+          } else if (BORDER_UTILITY_RE.test(cls)) {
+            flag(
+              cls.slice(0, 60),
+              'border and heavy elevation stacked — pick one elevation strategy; if both, ' +
+                'the shadow should be near-invisible',
+              'composition',
+            );
+          }
+        }
+      }
+      // Type axis: the kit owns the typeface; a literal family bypasses it.
+      TW_FONT_ARBITRARY_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(TW_FONT_ARBITRARY_RE)) {
+        flag(
+          m[0],
+          'hardcoded font family — use the kit font tokens (font-sans/display/mono)',
+          'type',
+        );
+      }
+      FONT_DECL_RE.lastIndex = 0;
+      for (const m of lineText.matchAll(FONT_DECL_RE)) {
+        const val = (m[1] ?? '').trim();
+        if (!val || val.includes('var(') || /^(inherit|initial|unset|revert)$/i.test(val)) continue;
+        flag(
+          `font-family: ${val}`,
+          'hardcoded font family — use var(--font-*) / the kit font tokens',
+          'type',
+        );
+      }
+
       // Count token-name usages as on-palette signals (var(--primary), bg-primary…).
       for (const tn of tokenNamePatterns) {
         if (tn.length < 2) continue;
@@ -161,6 +469,61 @@ export function verifyFiles(
         }
       }
     });
+
+    // ── File-level composition: monotony a per-line scan cannot see ──────────
+    // Comment lines are blanked rather than dropped, so the line COUNT — and
+    // every line number derived from an offset below — still matches the file.
+    const codeLines = lines.map((l, i) => (commentLine[i] ? '' : l));
+    const codeText = codeLines.join('\n');
+    const centered = [...codeText.matchAll(TEXT_CENTER_RE)].length;
+    const sections = [...codeText.matchAll(SECTION_TAG_RE)].length;
+    if (centered >= CENTERED_SECTION_LIMIT && sections >= 2) {
+      const at = codeLines.findIndex((l) => /\btext-center\b/.test(l));
+      flagAt(
+        at + 1,
+        `text-center ×${centered}`,
+        `${centered} centered blocks across ${sections} sections — vary the layout rhythm; ` +
+          'a page where every section is a centered stack reads as a template',
+        'composition',
+      );
+    }
+    // Line numbers come from the match offset, not from a substring search.
+    // `lines.findIndex((l) => l.includes(cls))` reported the first line merely
+    // CONTAINING the class — which is routinely a different, longer class
+    // attribute: AnalyticsDashboard's ×6 panel group starts at line 346 but was
+    // reported at 149, the StatCard whose class has the group's string as a prefix.
+    const lineStarts = [0];
+    for (let i = 0; i < codeText.length; i++) {
+      if (codeText[i] === '\n') lineStarts.push(i + 1);
+    }
+    const lineOf = (offset: number): number => {
+      let lo = 0;
+      let hi = lineStarts.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if ((lineStarts[mid] ?? 0) <= offset) lo = mid;
+        else hi = mid - 1;
+      }
+      return lo + 1;
+    };
+    const blocks = new Map<string, { count: number; firstLine: number }>();
+    for (const m of codeText.matchAll(CLASS_ATTR_RE)) {
+      const cls = m[1] ?? '';
+      const seen = blocks.get(cls);
+      if (seen) seen.count++;
+      else blocks.set(cls, { count: 1, firstLine: lineOf(m.index ?? 0) });
+    }
+    for (const [cls, { count, firstLine }] of blocks) {
+      if (count < REPEATED_BLOCK_LIMIT) continue;
+      if (!CONTAINER_CLASS_RE.test(cls)) continue; // a repeated label is not a repeated block
+      flagAt(
+        firstLine,
+        `${cls.slice(0, 60)} ×${count}`,
+        `identical block repeated ${count}× — map over data with one component, and let the ` +
+          'items differ (size, span, emphasis) instead of shipping a uniform grid',
+        'composition',
+      );
+    }
   }
 
   const total = onPalette + offPalette;
@@ -172,6 +535,7 @@ export function verifyFiles(
     violations,
     score,
     ok: violations.length === 0,
+    filesWithNoSignal,
   };
 }
 

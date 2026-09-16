@@ -107,6 +107,7 @@ export interface HqSessionSnapshotPayload {
    *  process instead of guessing from machine/project metadata. */
   clientId?: string;
   clientKind: HqClientKind;
+  clientVersion?: string;
   machineId: string;
   hostname?: string;
   pid?: number;
@@ -160,6 +161,7 @@ export interface HqSessionSummary {
   status: HqSessionStatus;
   provider?: string;
   model?: string;
+  clientVersion?: string;
   startedAt?: string;
   lastActivityAt: string;
   costUsd?: number;

@@ -68,7 +68,8 @@ export interface DirectoryNode {
 }
 
 const NODE_WIDTH = 236;
-const NODE_HEIGHT = 108;
+// Reserve room for the persistent actions and optional concept summary.
+const NODE_HEIGHT = 156;
 const X_GAP = 150;
 const Y_GAP = 52;
 

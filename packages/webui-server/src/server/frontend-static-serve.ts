@@ -150,6 +150,7 @@ export interface StaticServeOptions {
    * while the standalone one reads them correctly.
    */
   getExtraConnectSrc?: CreateHttpServerOptions['getExtraConnectSrc'];
+  getIntegrationTarget?: CreateHttpServerOptions['getIntegrationTarget'];
 }
 
 /**
@@ -365,6 +366,7 @@ export async function startStaticServe(
     allowedHostnames: opts.allowedHostnames,
     intakeService,
     ...(opts.getExtraConnectSrc ? { getExtraConnectSrc: opts.getExtraConnectSrc } : {}),
+    ...(opts.getIntegrationTarget ? { getIntegrationTarget: opts.getIntegrationTarget } : {}),
     ...(opts.getVectorMemoryStore ? { getVectorMemoryStore: opts.getVectorMemoryStore } : {}),
     ...(opts.vectorMemoryModelCacheDir
       ? { vectorMemoryModelCacheDir: opts.vectorMemoryModelCacheDir }

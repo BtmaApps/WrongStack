@@ -20,6 +20,14 @@ scored differently, because the rules they encode are page rules:
 
 On a **component in isolation**, Structure and Copy are usually `n/a`.
 
+On a **kiosk / public terminal** every axis applies unchanged, but the six craft
+scores are not the verdict on their own. A kiosk is judged first on physical
+fitness — distance legibility, 64px+ targets with mis-tap spacing, a visible way
+back from every committing step, no session remnants, and nothing essential at
+the bottom of a tall panel. Report those as a pass/fail list beside the scores; a
+kiosk that scores well on craft and fails one of them is a failing screen, because
+the person cannot refresh, log in again, or ask for help.
+
 Mark an inapplicable axis `n/a (<surface>)`. Never invent a middling score for
 it: the overall score is the lowest axis, so a fabricated 3/5 silently sets the
 floor.

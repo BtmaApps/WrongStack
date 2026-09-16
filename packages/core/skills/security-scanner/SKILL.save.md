@@ -1,4 +1,4 @@
-# Security Scanner — WrongStack (Compact)
+# Security Scanner (Compact)
 
 Scans code, configs, and dependencies for security issues. Reports with severity and concrete remediation.
 
@@ -15,7 +15,7 @@ Scans code, configs, and dependencies for security issues. Reports with severity
 | Pattern | Severity |
 |---------|----------|
 | Hardcoded GitHub token `ghp_[a-zA-Z0-9]{36}` | CRITICAL |
-| Hardcoded AWS key `[A-Z0-9]{20}` | CRITICAL |
+| Hardcoded AWS key `AKIA[0-9A-Z]{16}` (`ASIA` for temporary keys) | CRITICAL |
 | Private key PEM `-----BEGIN.*PRIVATE KEY-----` | CRITICAL |
 | `innerHTML = x` — use `textContent` | HIGH |
 | `exec(\`cmd ${input}\`)` — use `execFile` with args | HIGH |

@@ -130,10 +130,10 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
     ]);
     // First four views by default order.
     expect(split.visibleViewIds.slice(0, 4)).toEqual([
-      'intake',
       'sddhub',
       'goal',
       'kanban',
+      'roster',
     ]);
   });
 

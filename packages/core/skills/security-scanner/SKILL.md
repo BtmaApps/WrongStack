@@ -1,8 +1,8 @@
 ---
 name: security-scanner
 description: |
-  Use this skill when scanning code or configuration for security vulnerabilities
-  in WrongStack. Triggers: user says "security", "vulnerability", "CVE", "secret",
+  Use this skill when scanning code or configuration for security vulnerabilities.
+  Triggers: user says "security", "vulnerability", "CVE", "secret",
   "injection", "XSS", "SQL injection", "audit security", "supply chain".
 version: 1.3.0
 required-capabilities: [filesystem.read, code.inspect]
@@ -10,7 +10,7 @@ required-tools: []
 optional-capabilities: [dependencies.manage]
 ---
 
-# Security Scanner — WrongStack
+# Security Scanner
 
 ## Overview
 
@@ -64,8 +64,8 @@ const query = "SELECT * FROM users WHERE id = " + userId;
 
 ```
 1. Scope:  Accept paths or use sensible defaults
-2. Secrets:  Regex scan for credential patterns
-3. Injection:  Pattern match dangerous constructs
+2. Secrets:  Credential patterns (plus the secret_scanner_test tool when that plugin is loaded)
+3. Injection:  The security-ast-scan tool per file when available, then read every hit
 4. Config:  Check TLS, crypto, auth configurations
 5. Audit:  Run package audit
 6. Report:  Prioritized markdown with remediation
@@ -86,7 +86,7 @@ const query = "SELECT * FROM users WHERE id = " + userId;
 | Pattern | Example | Level |
 |---------|---------|-------|
 | GitHub token | `ghp_[a-zA-Z0-9]{36}` | CRITICAL |
-| AWS Access Key | `[A-Z0-9]{20}` | CRITICAL |
+| AWS Access Key | `(AKIA|ASIA)[0-9A-Z]{16}` | CRITICAL |
 | AWS Secret | base64 40-char | CRITICAL |
 | Private Key PEM | `-----BEGIN.*PRIVATE KEY-----` | CRITICAL |
 | JWT | `eyJ[a-zA-Z0-9_-]+` | HIGH |
@@ -126,11 +126,15 @@ element.textContent = userInput;
 
 | Construct | Safe alternative |
 |-----------|-------------------|
-| `eval(str)` | `new Function()` or parse then evaluate |
+| `eval(str)`, `new Function(str)` | Parse instead (`JSON.parse`, a real parser); `new Function` evaluates strings exactly like `eval` |
 | `innerHTML = x` | `textContent` or DOMPurify.sanitize |
 | `exec(\`cmd ${input}\`)` | `execFile` with args array |
 | `SQL = "SELECT * FROM " + table` | parameterized query |
 | `fs.readFile(path + userInput)` | `path.resolve` + allowlist |
+| `fetch(userSuppliedUrl)` (SSRF) | Allowlist hosts; block private, loopback, and metadata addresses after DNS resolution |
+| `Object.assign(target, JSON.parse(body))` (prototype pollution) | Reject `__proto__` and `constructor` keys; validate with a schema |
+| `/orders/:id` loaded without an ownership check (broken object-level authorization) | Authorize against the specific object on every request |
+| `new RegExp(userInput)`, nested quantifiers on user input (ReDoS) | Escape input, bound its length, use linear-time patterns |
 
 ## Configuration checks
 

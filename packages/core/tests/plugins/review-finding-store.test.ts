@@ -104,6 +104,27 @@ describe('upsert', () => {
     expect(result.reopened).toBe(0);
   });
 
+  it('dedupes duplicate fingerprints within the same upsert batch', async () => {
+    const f1 = makeFinding({ id: 'batch-1', fingerprint: 'batch-fp' });
+    const f2 = makeFinding({ id: 'batch-2', fingerprint: 'batch-fp' });
+    const result = await store.upsert([f1, f2], {
+      sessionId: 's1',
+      reportId: 'r1',
+      agentId: 'a1',
+      model: 'm1',
+    });
+    expect(result.created).toBe(1);
+    expect(result.relinked).toBe(1);
+    expect(result.reopened).toBe(0);
+
+    const all = await store.list({ limit: 100 });
+    expect(all).toHaveLength(1);
+    expect(all[0]!.id).toBe('batch-1');
+
+    const events = await store.getEvents('batch-1');
+    expect(events.map((e) => e.eventType)).toEqual(['created', 'relinked']);
+  });
+
   it('reopens resolved findings with same fingerprint', async () => {
     const f1 = makeFinding({ fingerprint: 'reopen-fp' });
     await store.upsert([f1], { sessionId: 's1', reportId: 'r1', agentId: 'a1', model: 'm1' });

@@ -57,8 +57,17 @@ export function SddWizard({
   const error = useSddWizardStore((s) => s.error);
   const startedRunId = useSddWizardStore((s) => s.startedRunId);
   const setStartedRunId = useSddWizardStore((s) => s.setStartedRunId);
+  const prefilledGoal = useSddWizardStore((s) => s.prefilledGoal);
+  const setPrefilledGoal = useSddWizardStore((s) => s.setPrefilledGoal);
 
   const [goal, setGoal] = useState('');
+
+  useEffect(() => {
+    if (prefilledGoal) {
+      setGoal(prefilledGoal);
+      setPrefilledGoal('');
+    }
+  }, [prefilledGoal, setPrefilledGoal]);
   const [reply, setReply] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [graphOpen, setGraphOpen] = useState(true);

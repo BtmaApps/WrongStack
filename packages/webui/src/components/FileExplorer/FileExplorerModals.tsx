@@ -1,4 +1,3 @@
-import type React from 'react';
 import { FilePlus, FolderPlus, Trash2 } from 'lucide-react';
 import { useAppTranslation } from '@/i18n';
 import type { TreeNode } from '@/stores/file-store';
@@ -43,7 +42,7 @@ import type { CreatePromptState, CrumbContext, RenamePromptState } from './types
  * it would strand keyboard input on the hidden tree.
  */
 function restoreTreeFocus(): void {
-  if (document.querySelector('[role="dialog"]')) return;
+  if (document.querySelector('[role="dialog"]:not([aria-hidden="true"]):not([inert])')) return;
   document.getElementById('ws-file-tree')?.focus();
 }
 

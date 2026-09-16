@@ -40,6 +40,7 @@ Keep it concise, actionable, and focused on one domain.
 | `name` | ✅ | Unique identifier. Lowercase letters, digits, hyphens; must match the parent directory (agentskills.io). First-seen wins on collisions across layers. |
 | `description` | ✅ | One-sentence trigger summary. The agent uses this to decide relevance. |
 | `trigger` | ❌ | Explicit "Use when…" trigger shown in the available-skills list. Optional — defaults to the first sentence of `description`. |
+| `audience` | ❌ | `roster` — attached to roster roles by name and kept out of the main agent's prompt; `external` — shipped for other coding agents and kept out of WrongStack prompts. Both stay loadable with the `skill` tool. Omit for skills every agent should see. |
 | `version` | ❌ | SemVer string. Informational only — not used for comparison. |
 | `license` | ❌ | License name or bundled license file (agentskills.io). |
 | `compatibility` | ❌ | Environment requirements — intended product, system packages, network (agentskills.io). |
@@ -107,15 +108,15 @@ Control which foreign tools are scanned with `skills.foreignSources` (default: a
 |---|---|---|
 | `readClaudeSkills` | `true` | Read the `.claude/skills/` layers (project + user). |
 | `foreignSources` | `true` (all) | Scan other agents' skill dirs (`~/.codex/skills`, `~/.cursor/skills-cursor`, `~/.agents/skills`, …). Pass a tool-id list to restrict, or `false` to disable. |
-| `mode` | `'eager'` | `'eager'` injects every skill body into the prompt; `'progressive'` injects only a name+trigger manifest (the agent loads bodies via the `skill` tool). |
+| `mode` | `'progressive'` | `'progressive'` injects only a name+trigger manifest (the agent loads bodies via the `skill` tool); `'eager'` injects skill bodies into the prompt up to `eagerMaxChars`. |
 | `eagerMaxChars` | `24000` | In eager mode, the total chars of skill bodies injected (highest-priority first); the rest become a load-on-demand manifest. Bounds prompt cost when many skills are discovered. Ignored in progressive mode. |
 | `extraDirs` | `[]` | Extra directories to scan (lowest priority). **User config only** — stripped from a repo-committed `<project>/.wrongstack/config.json`. |
 
 ## Progressive disclosure & the `skill` tool
 
-By default (`mode: 'eager'`) discovered skill bodies are injected into the system prompt up to the configured budget. Set `skills.mode: 'progressive'` to follow the agentskills.io three-tier model instead: the prompt carries only each skill's name + trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand.
+By default (`mode: 'progressive'`) WrongStack follows the agentskills.io three-tier model: the prompt carries only each skill's name + trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand. Set `skills.mode: 'eager'` to inject discovered skill bodies into the system prompt up to the configured budget instead.
 
-Discovery and context ordering are deterministic: layers are traversed by priority and entries inside each layer are sorted by skill name. The environment block always receives every discovered name and trigger. In eager mode, bodies are added in that same stable order until `eagerMaxChars`; overflow remains in the manifest. In progressive mode, the manifest is the context contract and the `skill` tool is the deterministic body/resource loading path.
+Discovery and context ordering are deterministic: layers are traversed by priority and entries inside each layer are sorted by skill name. The environment block always receives every discovered name and trigger, except skills whose `audience` is `roster` or `external`. In eager mode, bodies are added in that same stable order until `eagerMaxChars`; overflow remains in the manifest. In progressive mode, the manifest is the context contract and the `skill` tool is the deterministic body/resource loading path.
 
 The `skill` tool also handles **bundled resources** (tier 3) — scripts, references, assets, any subdirectory:
 
@@ -127,7 +128,7 @@ Use the `skill` tool (not `read`) for skill resources: it works for foreign skil
 
 ```jsonc
 // ~/.wrongstack/profiles/<name>/config.json
-{ "skills": { "mode": "progressive" } }
+{ "skills": { "mode": "eager" } }
 ```
 
 ## Importing skills (`/skill-import`)
@@ -148,7 +149,7 @@ Foreign skills are usable as-is, but to **own, edit, or commit** one, import it 
 
 ## Bundled skills
 
-WrongStack ships with 29 bundled skills:
+WrongStack ships with 36 bundled skills:
 
 | Skill | Description |
 |---|---|
@@ -157,6 +158,9 @@ WrongStack ships with 29 bundled skills:
 | `auto-review` | Configure and operate the built-in continuous code-review plugin |
 | `bug-hunter` | Systematic bug and code smell detection, severity ranking |
 | `chimera` | Post-session code quality review of changed files |
+| `code-review` | On-demand review of a PR, branch, or diff: blast radius and severity-ranked findings |
+| `codebase-navigation` | Orient, locate, and trace code with the codebase index before reading files |
+| `debugging` | Root-cause an observed failure: reproduce, localize, fix at the cause, prove it |
 | `docker-deploy` | Docker containerization, multi-stage builds, image scanning |
 | `git-flow` | Commit message style, branch hygiene, safe history operations |
 | `mailbox-bridge` | Loopback HTTP bridge that exposes the project's shared WrongStack mailbox so external agents (Claude Code, Aider, scripts) can read, send, and acknowledge messages |
@@ -177,8 +181,12 @@ WrongStack ships with 29 bundled skills:
 | `tech-stack` | Package version validation, ecosystem preference maps, dead-package detection |
 | `testing` | vitest patterns, mocking, coverage, unit/integration/e2e test strategy |
 | `typescript-strict` | Strict null checks, exhaustive switch, branded types, discriminated unions |
+| `verify-before-done` | Prove a change works with the project's own checks before reporting it done |
 | `data-governance` | Schema ownership, PII handling, retention, lineage, access policy, migration safety |
 | `design-system` | Build consistent interfaces from shared visual tokens and component rules |
+| `design-craft` | The taste layer over `design-system`: forced composition/type/color/copy decisions, the brief, and the slop inventory |
+| `design-critique` | Scored, evidenced audit of an existing UI across structure, type, color, surface, states, and copy |
+| `web-platform-baseline` | Dated, refreshable modern CSS/HTML/a11y facts with a staleness rule — never assert browser support from memory |
 | `wrongstack-kanban` | Deterministic Kanban task lifecycle, verification, and evidence enforcement |
 | `wrongstack-mailbox-mcp` | Coordinate with agents through the project-scoped Mailbox MCP server |
 

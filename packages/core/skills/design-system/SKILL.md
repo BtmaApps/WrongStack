@@ -1,8 +1,8 @@
 ---
 name: design-system
 description: |
-  Use this skill BEFORE writing or restyling ANY user-facing interface in
-  WrongStack. It drives the Design Studio engine: commit to a kit, tune it
+  Use this skill BEFORE writing or restyling ANY user-facing interface. It
+  drives the WrongStack Design Studio engine: commit to a kit, tune it
   (radius / density / font / motion), materialize the tokens into a real theme
   file, build against those tokens, then verify adherence. Trigger it whenever
   the user asks to build, redesign, restyle, "make it look better", or ship a

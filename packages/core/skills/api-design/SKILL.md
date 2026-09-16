@@ -1,168 +1,126 @@
 ---
 name: api-design
 description: |
-  Use this skill when designing, reviewing, or refactoring REST APIs in WrongStack.
-  Triggers: user says "API", "endpoint", "REST", "request", "response", "JSON",
-  "HTTP", "status code", "pagination", "query params", "request body".
-version: 1.1.0
+  Use this skill when designing, implementing, or reviewing an HTTP API — endpoints, request and response shapes, errors, pagination, versioning, and authorization.
+  Triggers: user says "API", "endpoint", "REST", "route", "status code", "pagination", "request body", "response shape", "OpenAPI", "versioning", "idempotency", "rate limit".
+version: 2.0.0
 required-capabilities: [filesystem.read]
 required-tools: []
 optional-capabilities: [filesystem.write, verification.run]
 ---
 
-# API Design — WrongStack
+# API Design
 
 ## Overview
 
-Designs and reviews REST APIs for WrongStack services. WrongStack uses JSON over HTTPS, conventional HTTP status codes, and cursor-based pagination. APIs are consumed by the TUI, webui, and external integrations.
+An API is a contract that outlives its first client. The most important
+decisions are the ones that are expensive to change later: resource shapes,
+error format, pagination, and what counts as a breaking change. When the
+project already has API conventions — an existing router, error helper, or
+OpenAPI spec — follow them; consistency beats any rule below.
 
 ## Rules
 
-1. Use conventional HTTP status codes: `200` (ok), `201` (created), `400` (bad request), `401` (unauthorized), `403` (forbidden), `404` (not found), `500` (server error).
-2. Always return consistent error shape: `{ "error": { "code": "ERROR_CODE", "message": "Human readable" } }`.
-3. Use plural nouns for resource names: `/sessions` not `/session`.
-4. Pagination: cursor-based for large datasets, not offset-based.
-5. Request validation: validate on server, return `400` with field-level errors.
-6. Idempotency: `POST` to `/resources` creates; `PUT` to `/resources/:id` replaces.
-7. No secrets in URLs — put auth in headers, not query params.
-8. Versioning: prefix with `/v1/` when breaking changes are inevitable.
+1. Read the existing API first: a neighbouring endpoint, the error helper, the
+   validation library, and any OpenAPI or schema file. Extend the pattern.
+2. Authorize every request against the specific object, not just "is logged
+   in". Loading `/orders/:id` must check the caller may see that order
+   (broken object-level authorization is the most common API vulnerability).
+3. Validate input at the edge with a schema; reject unknown or malformed fields
+   with a 4xx that names the field.
+4. Use status codes for what they mean, and never return 200 with an error body.
+5. One error shape across the API. Without an existing convention, use RFC 9457
+   problem details (`type`, `title`, `status`, `detail`, plus field errors).
+6. Additive changes only within a version. Removing or renaming a field,
+   tightening validation, or changing a type is breaking.
+7. Make retries safe: GET, PUT, and DELETE are idempotent; accept an
+   `Idempotency-Key` for POSTs that create or charge.
+8. Credentials go in headers, never in URLs or query strings.
 
-## Patterns
+## Status codes
 
-### Do
+| Code | Use for |
+|---|---|
+| 200 | Success with a body |
+| 201 | Created — include the resource or its `Location` |
+| 202 | Accepted for asynchronous processing |
+| 204 | Success with no body |
+| 400 | Malformed request (unparseable, wrong types) |
+| 401 | Missing or invalid credentials |
+| 403 | Authenticated, not allowed |
+| 404 | Not found — also when hiding existence from an unauthorized caller |
+| 409 | Conflicts with current state (duplicate, version mismatch) |
+| 422 | Well-formed but fails business validation |
+| 429 | Rate limited — include `Retry-After` |
+| 500 / 503 | Server fault / temporarily unavailable |
 
-```typescript
-// ✅ Consistent error shape
-interface ErrorResponse {
-  error: {
-    code: string; // machine-readable: "VALIDATION_ERROR"
-    message: string;    // human-readable: "name is required"
-    details?: unknown;  // optional field-level errors
-  };
-}
+## Shapes
 
-// ✅ Cursor-based pagination
-interface PaginatedResponse<T> {
-  data: T[];
-  nextCursor: string | null;  // null = last page
-  hasMore: boolean;
-}
+```http
+POST /v1/orders
+Idempotency-Key: 5c1f…
+Content-Type: application/json
 
-// GET /sessions?cursor=abc123&limit=20
+{ "items": [{ "sku": "A-100", "qty": 2 }] }
 
-// ✅ Proper status codes
-if (!resource) return Response.json({ error: { code: 'NOT_FOUND', message: '...' } }, { status: 404 });
-if (!auth) return Response.json({ error: { code: 'UNAUTHORIZED', message: '...' } }, { status: 401 });
+201 Created
+Location: /v1/orders/ord_81f2
+{ "id": "ord_81f2", "status": "pending", "items": [...], "createdAt": "2026-09-15T10:00:00Z" }
 ```
 
-### Don't
+```http
+422 Unprocessable Content
+Content-Type: application/problem+json
 
-```typescript
-// ❌ Inconsistent error shape
-Response.json({ message: 'Not found' }); // no code, no standard shape
-
-// ❌ Secrets in URL
-GET /api/data?apiKey=sk-xxx  // ❌ put in Authorization header
-
-// ❌ Offset pagination (fragile on mutations)
-GET /users?offset=100&limit=20  // ❌ gaps after insert/delete
-
-// ❌ 200 for errors
-Response.json({ error: '...' }, { status: 200 }); // lies about outcome
-```
-
-## Request/response patterns
-
-### Create resource (POST)
-
-```
-POST /sessions
-Body: { "provider": "anthropic", "model": "<model-id>" }
-201: { "id": "sess_abc", "provider": "anthropic", ... }
-400: { "error": { "code": "VALIDATION_ERROR", "message": "model is required" } }
-```
-
-### Get resource (GET)
-
-```
-GET /sessions/sess_abc
-200: { "id": "sess_abc", "status": "running", ... }
-404: { "error": { "code": "NOT_FOUND", "message": "Session not found" } }
-```
-
-### List with pagination
-
-```
-GET /sessions?cursor=sess_xyz&limit=20
-200: {
-  "data": [...],
-  "nextCursor": "sess_aaa",
-  "hasMore": true
+{
+  "type": "https://example.com/problems/validation",
+  "title": "Invalid order",
+  "status": 422,
+  "errors": [{ "field": "items[0].qty", "message": "must be at least 1" }]
 }
 ```
 
-### Update resource (PUT)
+- Resource names are plural nouns; actions that aren't CRUD become sub-resources
+  or explicit verbs (`POST /orders/:id/cancel`).
+- Timestamps in ISO 8601 UTC; money as integer minor units plus a currency code.
+- `PATCH` for partial updates, `PUT` for full replacement.
 
-```
-PUT /sessions/sess_abc
-Body: { "status": "paused" }
-200: { "id": "sess_abc", "status": "paused", ... }
-400: { "error": { "code": "INVALID_STATUS", "message": "Must be running or paused" } }
-```
+## Pagination
 
-## Error codes
+| Style | Use when | Shape |
+|---|---|---|
+| Cursor | Large or frequently changing collections | `?limit=50&cursor=…` → `{ data, nextCursor }` (`null` on the last page) |
+| Offset | Small, stable collections; UIs that jump to page N | `?limit=50&offset=100` → `{ data, total }` |
 
-| Code | HTTP | When |
-|------|------|------|
-| `VALIDATION_ERROR` | 400 | Request body/params invalid |
-| `UNAUTHORIZED` | 401 | Missing or invalid auth |
-| `FORBIDDEN` | 403 | Auth valid but no permission |
-| `NOT_FOUND` | 404 | Resource doesn't exist |
-| `CONFLICT` | 409 | Duplicate resource |
-| `RATE_LIMITED` | 429 | Too many requests |
-| `INTERNAL_ERROR` | 500 | Server-side failure |
+Always cap `limit` on the server and sort by a stable, unique key.
 
-## Authentication
+## Review checklist for a new or changed endpoint
 
-- Bearer token in `Authorization` header: `Authorization: Bearer <token>`
-- API key in `X-API-Key` header for machine-to-machine
-- Never use query params for auth credentials
+- Who can call it, and is ownership of the target object checked?
+- What happens on a duplicate or retried request?
+- What does a client see for every failure mode, and is it the shared error shape?
+- Is it backwards compatible for existing clients?
+- Is the list bounded (pagination, limit cap) and is abuse bounded (rate limit)?
+- Does the OpenAPI spec or schema change with it?
 
-## WrongStack-specific notes
+## Anti-patterns
 
-- **WrongStack CLI**: Most API calls go through the CLI's internal tool wrappers, not raw HTTP.
-- **Session management**: Sessions are created/managed via the CLI, not a public REST API.
-- **MCP tools**: MCP servers expose tools, not REST endpoints — this skill is for any HTTP APIs WrongStack exposes.
-
-## Out of scope
-
-- **Don't design MCP tool surfaces here.** MCP servers expose tools, not REST endpoints. For tool registration, plugin contract, and tool description, see the `plugin-author` skill instead.
-- **Don't design WrongStack session management as a public API.** Sessions are created and managed through the CLI's internal tool wrappers, not a public REST surface. This skill is for the HTTP APIs WrongStack exposes outward.
-- **Don't ship inconsistent error shapes.** Every error uses `{ "error": { "code", "message", "details?" } }`. Variations break automation that depends on the shape.
-- **Don't put secrets in URLs.** `?apiKey=…` is a leak. Headers — `Authorization` and `X-API-Key` — are the only auth channels.
-- **Don't use offset pagination for large datasets.** Cursor-based only. Offset pagination breaks on insert/delete; gaps and duplicates follow.
-- **Don't return 200 for errors.** The status code is the contract; `200` with an error body lies about the outcome. Use the right code.
-- **Don't use singular nouns for collections.** `/sessions` not `/session`. The resource is the set; the item is `/sessions/:id`.
-- **Don't ship breaking changes without a `/v1/` prefix.** Versioning is a contract with the consumer; renames are breaking.
-- **Don't accept client-side validation as a substitute.** Validate on the server, return `400` with field-level errors. The client is an untrusted input source.
+- **200 with `{ "error": … }`** — breaks every client's error handling.
+- **Leaking internals** in errors (stack traces, SQL, file paths).
+- **Unbounded list endpoints** — one large tenant takes the service down.
+- **Silent breaking changes** — a renamed field is a production incident for someone.
+- **Returning a whole database row** — exposes fields that were never part of the contract.
 
 ## Before returning
 
-- [ ] Conventional HTTP status codes used; no `200` for errors
-- [ ] Error shape consistent: `{ "error": { "code", "message", "details? } }`
-- [ ] Plural nouns for resources; `/v1/` prefix for breaking-change endpoints
-- [ ] Cursor-based pagination for large datasets, not offset
-- [ ] Auth in headers (`Authorization: Bearer`, `X-API-Key`); no secrets in URLs
-- [ ] Server-side validation with `400` + field-level errors
-- [ ] Idempotency rules followed: `POST` creates, `PUT` replaces
-- [ ] `sdd` spec opened for non-trivial endpoints before coding
-- [ ] `security-scanner` run on the implementation
-- [ ] `<nextsteps>` mirrors the open follow-ups in priority order
+- [ ] Follows the project's existing router, validation, and error conventions
+- [ ] Object-level authorization checked on every resource access
+- [ ] Input validated at the edge; one error shape; correct status codes
+- [ ] Retries safe; collections paginated with a capped limit
+- [ ] No breaking change to an existing version; spec updated alongside
 
 ## Skills in scope
 
-- `sdd` — for spec-driven API design with acceptance criteria
-- `typescript-strict` — for type-safe request/response types
-- `security-scanner` — for scanning API implementations for injection, auth, and secrets
-- `testing` — for writing integration tests against API endpoints
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `security-scanner` — for authorization, injection, and exposure review
+- `typescript-strict` — for typed request and response contracts
+- `testing` — for contract and integration tests on the endpoint

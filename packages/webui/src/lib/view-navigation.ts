@@ -1,4 +1,5 @@
 import { MOD_KEY_LABEL } from '@/lib/platform';
+import { useSddWizardStore } from '@/stores/sdd-wizard-store';
 import { type Activity, useUIStore, type View } from '@/stores/ui-store';
 
 /**
@@ -22,7 +23,6 @@ export type MainView =
   | 'codemap'
   | 'techstack'
   | 'chronicle'
-  | 'intake'
   | 'prompts'
   | 'chimera'
   | 'history';
@@ -39,7 +39,8 @@ export type UnlistedView =
   | 'debug'
   | 'refresh-debug'
   | 'analytics'
-  | 'deadcode';
+  | 'deadcode'
+  | 'intake';
 
 /**
  * Every view the app can display. Derived from `VIEWS` in the UI store rather
@@ -162,6 +163,11 @@ export function openMainView(view: MainView): void {
 }
 
 export function navigateToView(view: AppView): void {
+  if (view === 'intake') {
+    useSddWizardStore.getState().setActiveHubTab('requirements');
+    openMainView('sddhub');
+    return;
+  }
   const activity = VIEW_ACTIVITY[view];
   if (activity) {
     showPanel(activity);

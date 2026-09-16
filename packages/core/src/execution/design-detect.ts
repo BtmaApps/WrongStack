@@ -37,6 +37,14 @@ import { verifyFiles } from './design-verify.js';
 
 const META_KEY = 'designStudio';
 
+/**
+ * Session flag: the "no kit pinned, so nothing was checked" notice has been
+ * given. Kept as its own `ctx.meta` key rather than a `DesignStudioState` field
+ * because the state object is part of the published type surface, and this is
+ * transport bookkeeping, not design state.
+ */
+const UNPINNED_NOTICE_KEY = 'designStudioUnpinnedNotice';
+
 export function getDesignState(ctx: {
   meta: Record<string, unknown>;
 }): DesignStudioState | undefined {
@@ -212,11 +220,27 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
         const name = out.toolUse?.name;
         if (!name || !WRITE_TOOLS.has(name)) return out;
         if (out.result?.is_error) return out;
-        const state = getDesignState(out.ctx);
-        if (!state?.activeKit) return out; // no pinned palette → nothing to check
         const input = out.toolUse.input as { path?: unknown } | undefined;
         const p = typeof input?.path === 'string' ? input.path : '';
         if (!p || !detectFrontendFile(p)) return out;
+
+        const state = getDesignState(out.ctx);
+        if (!state?.activeKit) {
+          // No pinned kit → no palette to verify against, so this write goes out
+          // unchecked. Returning silently is the dangerous shape: zero findings
+          // reads exactly like a clean pass, and the craft rules treat "zero
+          // composition findings" as the floor. Say it once per session — on
+          // every write it would be noise that gets tuned out.
+          if (!out.ctx.meta[UNPINNED_NOTICE_KEY]) {
+            out.ctx.meta[UNPINNED_NOTICE_KEY] = true;
+            out.result.content +=
+              '\n\n⚠️ Design Studio: no kit is pinned, so frontend writes are NOT being ' +
+              'design-checked — this is "unverified", not "clean". Pin one with the `design` ' +
+              'tool (`list` to see the roster, `use` to pin) before judging the result, or ' +
+              'state explicitly that the screen is going out unchecked.';
+          }
+          return out;
+        }
 
         const ctx = out.ctx;
         const { default: fs } = await import('node:fs/promises');

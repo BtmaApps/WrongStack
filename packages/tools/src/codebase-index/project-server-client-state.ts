@@ -115,7 +115,28 @@ export function resolveProjectIndexDaemonAvailability(
   for (const rel of ['./project-server.js', './codebase-index/project-server.js']) {
     try {
       const url = new URL(rel, import.meta.url);
-      if (url.protocol === 'file:' && fs.existsSync(fileURLToPath(url))) {
+      if (url.protocol !== 'file:') continue;
+      const file = fileURLToPath(url);
+      // Primary probe: the seam existing callers and tests mock, and the
+      // fast path for the common available case.
+      if (fs.existsSync(file)) {
+        builtUrl = url;
+        break;
+      }
+      // existsSync folds transient stat errors (EMFILE/EPERM/EBUSY spikes
+      // under full-suite parallel load) into false. Verify with statSync
+      // before declaring the build missing: ENOENT = genuinely absent; any
+      // other error (or a contradictory success) = assume present — the
+      // recoverable direction, since a spawn against a missing file is a
+      // guarded dead child the retry loop survives, while a false negative
+      // was fatal to the connect window (mailbox/SAGE sibling flakes,
+      // observed 2026-09-15).
+      try {
+        fs.statSync(file);
+        builtUrl = url;
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') continue;
         builtUrl = url;
         break;
       }

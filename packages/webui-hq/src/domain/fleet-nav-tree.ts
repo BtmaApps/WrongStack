@@ -24,6 +24,7 @@ export interface NavClient {
   sessionId: string;
   label: string;
   clientKind?: string | undefined;
+  version?: string | undefined;
   status?: string | undefined;
   synthetic: boolean;
   /** Carried from an earlier snapshot — see `retainFleetTopology`. */
@@ -97,6 +98,7 @@ export function buildNavFromTopology(topology: FleetTopology): NavMachine[] {
       sessionId: node.sessionId,
       label: node.label,
       clientKind: node.clientKind,
+      ...(node.version !== undefined ? { version: node.version } : {}),
       status: node.status,
       synthetic: node.isSyntheticSession === true,
       ...(node.retained === true ? { retained: true } : {}),

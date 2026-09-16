@@ -269,7 +269,7 @@ export function QuickModelSwitcher() {
       }}
     >
       <DialogContent
-        className="max-w-xl gap-0 p-0 overflow-hidden pt-[15dvh]"
+        className="flex max-w-xl flex-col gap-0 p-0 overflow-hidden"
         showCloseButton={false}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -329,7 +329,7 @@ export function QuickModelSwitcher() {
                 favoritesOnly ? 'fill-warning text-warning' : 'text-muted-foreground',
               )}
             />
-            <span className="text-[11px] whitespace-nowrap">
+            <span className="hidden text-[11px] whitespace-nowrap sm:inline">
               {t('activity:modelSwitcher.favoritesOnly')}
             </span>
           </button>
@@ -355,7 +355,7 @@ export function QuickModelSwitcher() {
               </select>
             </div>
           )}
-          <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+          <span className="hidden text-[10px] text-muted-foreground font-mono shrink-0 sm:inline">
             {switchingTarget
               ? t('settings:toast.switchingToTarget', { target: switchingTarget })
               : '↑↓ · Enter · Esc'}
@@ -403,7 +403,7 @@ export function QuickModelSwitcher() {
             <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{autoHint}</span>
           )}
         </div>
-        <div className="max-h-[50dvh] overflow-y-auto py-1">
+        <div className="min-h-0 max-h-[50dvh] overflow-y-auto overscroll-contain py-1">
           {candidates.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {saved.length === 0

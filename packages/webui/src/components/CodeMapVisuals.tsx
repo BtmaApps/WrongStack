@@ -1,5 +1,5 @@
 import { Handle, type NodeTypes, Position } from '@xyflow/react';
-import { Box, ExternalLink, FileCode, Package, Radio } from 'lucide-react';
+import { Activity, Box, ExternalLink, FileCode, Network, Package, Radio } from 'lucide-react';
 import { memo } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -135,7 +135,12 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
   } = data;
   const style = NODE_STYLE[graphNode.kind];
   const Icon = style.icon;
-  const canOpen = graphNode.kind !== 'symbol';
+  const canOpen = graphNode.kind === 'package' || (graphNode.kind === 'file' && !!graphNode.file);
+  const openLabel = t(
+    graphNode.kind === 'package'
+      ? 'activity:codeMapTree.openFileMap'
+      : 'activity:codeMap.openSymbolMap',
+  );
   const subtitle =
     graphNode.kind === 'symbol'
       ? `${graphNode.symbolKind ?? 'symbol'}${graphNode.line ? ` · L${graphNode.line}` : ''}`
@@ -146,7 +151,7 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
   return (
     <div
       className={cn(
-        'group relative w-[236px] border bg-card text-card-foreground shadow-[0_8px_24px_hsl(var(--shadow-color)/0.08)] transition-[opacity,box-shadow,border-color,background-color]',
+        'group relative w-[236px] pointer-events-auto border bg-card text-card-foreground shadow-[0_8px_24px_hsl(var(--shadow-color)/0.08)] transition-[opacity,box-shadow,border-color,background-color]',
         style.accent,
         rankAccentWidth(graphNode.rank),
         selected &&
@@ -192,18 +197,18 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
       />
       <button
         type="button"
-        className="block w-full text-left"
+        className="nodrag nopan block w-full cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-primary"
         onClick={(event) => {
           if (event.shiftKey && graphNode.file) {
             data.onShowHistory(graphNode.file);
             return;
           }
-          data.onSelect(graphNode);
+          if (canOpen) data.onOpen(graphNode);
+          else data.onSelect(graphNode);
         }}
-        onDoubleClick={() => canOpen && data.onOpen(graphNode)}
         aria-label={`${graphNode.kind} ${graphNode.label}`}
       >
-        <div className="flex items-start gap-3 p-3 pr-10">
+        <div className="flex items-start gap-3 p-3">
           <span
             className={cn(
               'flex h-8 w-8 shrink-0 items-center justify-center border',
@@ -271,17 +276,49 @@ function CodeMapNodeView({ data }: { data: CodeMapNodeData }): React.ReactElemen
           )}
         </div>
       </button>
-      {canOpen && (
+      <div className="nodrag nopan flex items-center border-t bg-muted/20">
         <button
           type="button"
-          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center border border-transparent text-muted-foreground opacity-0 transition hover:border-border hover:bg-muted hover:text-foreground group-hover:opacity-100 focus:opacity-100"
-          onClick={() => data.onOpen(graphNode)}
-          title={graphNode.kind === 'package' ? 'Open file map' : 'Open symbol map'}
-          aria-label={`Open ${graphNode.label} map`}
+          className="flex h-8 cursor-pointer items-center gap-1 px-2 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onSelect(graphNode);
+          }}
+          aria-label={`${t('activity:codeMap.relations')}: ${graphNode.label}`}
+          aria-pressed={selected}
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <Network className="h-3.5 w-3.5" /> {t('activity:codeMap.relations')}
         </button>
-      )}
+        {canOpen && (
+          <button
+            type="button"
+            className="ml-auto flex h-8 min-w-0 cursor-pointer items-center gap-1 px-2 text-[10px] text-primary hover:bg-primary/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              data.onOpen(graphNode);
+            }}
+            title={openLabel}
+            aria-label={`Open ${graphNode.label} map`}
+          >
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />{' '}
+            <span className="truncate">{openLabel}</span>
+          </button>
+        )}
+        {graphNode.file && (
+          <button
+            type="button"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={(event) => {
+              event.stopPropagation();
+              data.onShowHistory(graphNode.file!);
+            }}
+            aria-label={`${t('activity:codeMap.activity')}: ${graphNode.label}`}
+            title={t('activity:codeMap.activity')}
+          >
+            <Activity className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       <Handle
         type="source"
         position={Position.Right}

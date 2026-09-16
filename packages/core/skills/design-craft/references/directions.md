@@ -98,16 +98,26 @@ These style words have no kit. Do not silently pin the nearest one: name the gap
 then pin the closest kit and layer the motif with `design {action:"set"}` and
 explicit component decisions.
 
-| Style word | Closest kit | What you must add yourself |
+Three rules govern every motif below, and they are what separate a motif from a
+mess:
+
+1. **The motif lives in one named role and recurs there.** A torn edge on one card
+   is a mistake; a torn edge on every section header is a system.
+2. **Never under body text.** Texture, grain and blend modes belong to the
+   background layer. Legibility outranks atmosphere, always.
+3. **The kit still owns radius, spacing, type, motion and elevation.** The motif
+   adds a surface treatment; it does not get to renegotiate the scales.
+
+| Style word | Closest kit | What you must add yourself — concretely |
 |---|---|---|
-| Duotone | `monochrome` + `set` two brand hues | Blend modes on imagery |
-| Isometric / 3D | any + explicit spec | Projection, shading, layer order |
-| Stained glass | `comic-pop` | Heavy outlines, jewel fills |
-| Watercolor, painted | `cottagecore` | Bleeding edges, paper grain |
-| Chalkboard | `retro-terminal` inverted, or `e-ink` | Chalk texture, hand-drawn stroke |
-| Paper craft, origami | `scandinavian` | Fold lines, layered cut-outs |
-| Tropical, paradise | `warm-organic` + `set` turquoise/coral | Motif illustration |
-| Underwater, ocean | `aurora-gradient` + `set` ocean hues | Caustics, buoyancy in motion |
+| Duotone | `monochrome` + `set` two brand hues | `filter: grayscale(1)` on the image, then the two hues as a gradient over it with `mix-blend-mode: multiply` (shadows) and `screen` (highlights). Applies to imagery only — never to UI chrome |
+| Isometric / 3D | any + explicit spec | One projection, fixed: `transform: rotateX(54.7deg) rotateZ(45deg)`. Shade the three faces with three fixed tints of a single token (top lightest, left darkest) so depth reads without a second hue |
+| Stained glass | `comic-pop` | `border-thick` in near-black between every fill, fills drawn from a 5-hue jewel set, and `filter: drop-shadow(0 0 8px <fill>)` for the lit-from-behind glow. The outline is the system; the hues vary |
+| Watercolor, painted | `cottagecore` | Soft edges via `mask-image` with a feathered SVG on section backgrounds, plus a tiled `feTurbulence` grain at low opacity. Bleed happens at section boundaries, never inside a text block |
+| Chalkboard | `e-ink` inverted, or `retro-terminal` | Slate ground, chalk dust as a tiled SVG at ~6% opacity, and rules drawn as SVG lines with `stroke-dasharray` + `stroke-linecap: round` so they read hand-drawn. Type stays a real face — do not fake handwriting at body size |
+| Paper craft, origami | `scandinavian` | Two stacked layers offset 2–3px with a `clip-path` fold line between them; only the top layer takes a shadow, and only from the kit ramp. The fold direction is fixed per role |
+| Tropical, paradise | `warm-organic` + `set` turquoise/coral | Motif as one corner SVG per section at most, at low opacity, always in the same corner. The palette does the work; the illustration is punctuation |
+| Underwater, ocean | `aurora-gradient` + `set` ocean hues | Caustics as a slow `@keyframes` on a masked overlay, 8s+, and buoyancy as a 2–3px drift on hover. Both gated behind `prefers-reduced-motion` — this motif is the easiest one to make someone seasick with |
 
 ### Directions the style vocabulary is missing
 

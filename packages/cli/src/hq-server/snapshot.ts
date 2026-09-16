@@ -229,9 +229,11 @@ export function buildSnapshot(
       // hiding precisely the agents an operator needs to see. A publisher
       // that dies takes its whole session with it via HQ_STALE_SNAPSHOT_MS,
       // so nothing here is load-bearing for eviction.
+      const clientVersion = tracked.payload.clientVersion ?? client.version;
       sessionById.set(tracked.payload.sessionId, {
         ...tracked.payload,
         clientId: client.clientId,
+        ...(clientVersion !== undefined ? { clientVersion } : {}),
       });
     }
 
@@ -401,12 +403,15 @@ export function buildSnapshot(
       if (typeof agent.costUsd === 'number') sessionCost += agent.costUsd;
     }
     const provider = s.agents.find((a) => a.model !== undefined)?.model;
+    const clientVersion =
+      s.clientVersion ?? (s.clientId ? clientRecordById.get(s.clientId)?.version : undefined);
     return {
       sessionId: s.sessionId,
       projectId: s.projectId,
       clientId: s.clientId ?? `${s.machineId}:${s.clientKind}`,
       status: s.status === 'active' ? 'running' : 'idle',
       ...(provider !== undefined ? { model: provider } : {}),
+      ...(clientVersion !== undefined ? { clientVersion } : {}),
       startedAt: s.startedAt,
       lastActivityAt: s.lastActivityAt,
       ...(sessionCost > 0 ? { costUsd: sessionCost } : {}),

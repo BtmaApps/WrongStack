@@ -469,7 +469,7 @@ export function CommandPalette() {
       }}
     >
       <DialogContent
-        className="max-w-2xl gap-0 p-0 overflow-hidden pt-[14dvh]"
+        className="flex max-w-2xl flex-col gap-0 p-0 overflow-hidden"
         // The palette has its own footer; hide the default Radix close X so
         // it doesn't overlap the search input. Escape + backdrop still work.
         showCloseButton={false}
@@ -510,7 +510,7 @@ export function CommandPalette() {
           <kbd className="text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">Esc</kbd>
         </div>
 
-        <div className="max-h-[60dvh] overflow-y-auto">
+        <div className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain">
           {filtered.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {t('commandPalette:noMatches', { query })}

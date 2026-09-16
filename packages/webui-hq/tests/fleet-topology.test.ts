@@ -105,6 +105,66 @@ describe('buildFleetTopology', () => {
     ]);
   });
 
+  it('attaches version to terminal nodes and renders a version chip', () => {
+    const topology = buildFleetTopology(
+      baseSnapshot({
+        clients: [
+          {
+            clientId: 'client-1',
+            kind: 'tui',
+            version: '1.0.16',
+            machineId: 'machine-1',
+            hostname: 'devbox',
+            connected: true,
+            lastSeenAt: '2026-07-09T00:00:00.000Z',
+            projectId: 'proj-1',
+            capabilities: ['session.summary'],
+          },
+        ],
+        projects: [
+          {
+            projectId: 'proj-1',
+            projectName: 'WrongStack',
+            projectRootDisplay: '/ws',
+            machineIds: ['machine-1'],
+            activeClients: 1,
+            activeSessions: 1,
+            activeSubagents: 0,
+            totalCostUsd: 0,
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            status: 'active',
+          },
+        ],
+        liveSessions: [
+          {
+            sessionId: 'sess-1',
+            clientId: 'client-1',
+            clientKind: 'tui',
+            clientVersion: '1.0.16',
+            machineId: 'machine-1',
+            projectId: 'proj-1',
+            projectName: 'WrongStack',
+            projectRoot: '/ws',
+            status: 'active',
+            startedAt: '2026-07-09T00:00:00.000Z',
+            lastActivityAt: '2026-07-09T00:00:00.000Z',
+            agentCount: 0,
+            agents: [],
+          },
+        ],
+      }),
+    );
+
+    const terminal = topology.nodes.find((n) => n.kind === 'terminal');
+    expect(terminal).toBeDefined();
+    expect(terminal?.version).toBe('1.0.16');
+    expect(terminal?.chips).toContain('v1.0.16');
+
+    // Searching by version string finds the terminal node
+    const filtered = filterFleetTopologyByQuery(topology, '1.0.16');
+    expect(filtered.nodes.some((n) => n.kind === 'terminal')).toBe(true);
+  });
+
   it('keeps connected session-telemetry clients visible while waiting for session telemetry', () => {
     const topology = buildFleetTopology(
       baseSnapshot({
@@ -640,5 +700,43 @@ describe('buildFleetTopology — edge cases', () => {
     );
     // Disconnected client should not appear as a node.
     expect(topology.nodes).toHaveLength(0);
+  });
+
+  it('uses singular project chips for a single session without a project record', () => {
+    // No snapshot.projects entry: counts fall back to the live-session scan.
+    // The fallback count (1) must drive singular/plural, not a 0 default.
+    const topology = buildFleetTopology(
+      baseSnapshot({
+        liveSessions: [
+          {
+            sessionId: 'sess-1',
+            clientKind: 'tui',
+            machineId: 'machine-1',
+            hostname: 'devbox',
+            projectId: 'orphan-proj',
+            projectName: 'Orphan',
+            projectRoot: '/tmp/orphan',
+            status: 'active',
+            startedAt: '2026-09-16T07:00:00.000Z',
+            lastActivityAt: '2026-09-16T08:00:00.000Z',
+            agentCount: 0,
+            agents: [],
+          },
+        ],
+        machines: [
+          {
+            machineId: 'machine-1',
+            hostname: 'devbox',
+            clientCount: 1,
+            sessionCount: 1,
+            agentCount: 0,
+            projectIds: ['orphan-proj'],
+            lastActivityAt: '2026-09-16T08:00:00.000Z',
+          },
+        ],
+      }),
+    );
+    const project = topology.nodes.find((n) => n.kind === 'project');
+    expect(project?.chips?.slice(0, 2)).toEqual(['1 client', '1 terminal']);
   });
 });

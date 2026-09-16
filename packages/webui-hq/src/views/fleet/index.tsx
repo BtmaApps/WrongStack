@@ -129,6 +129,11 @@ function FleetFlowNode({
           <KindIcon kind={data.kind} />
         )}
         <span className="min-w-0 flex-1 truncate text-xs font-medium">{data.label}</span>
+        {data.version && (
+          <Badge tone="idle" className="px-1 py-0 text-[9px] font-mono leading-none shrink-0">
+            v{data.version.replace(/^v/, '')}
+          </Badge>
+        )}
       </div>
       {data.sub !== undefined && (
         <div className="truncate font-mono text-[10px] text-muted-foreground">{data.sub}</div>
@@ -337,7 +342,14 @@ function FleetCompactList({ topology }: { topology: FleetTopology }): React.Reac
                   <span className="flex items-center gap-1.5">
                     <KindIcon kind={node.kind} />
                     <span className="flex min-w-0 flex-col leading-tight">
-                      <strong className="truncate">{node.label}</strong>
+                      <span className="flex items-center gap-1.5 truncate">
+                        <strong className="truncate">{node.label}</strong>
+                        {node.version && (
+                          <Badge tone="idle" className="px-1 py-0 text-[9px] font-mono leading-none shrink-0">
+                            v{node.version.replace(/^v/, '')}
+                          </Badge>
+                        )}
+                      </span>
                       <small className="text-[10px] text-muted-foreground">
                         {node.kind.replace('-', ' ')}
                       </small>

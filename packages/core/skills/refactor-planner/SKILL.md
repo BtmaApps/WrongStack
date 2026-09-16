@@ -2,7 +2,7 @@
 name: refactor-planner
 description: |
   Use this skill when planning a multi-file refactor, code modernization, or
-  technical debt resolution in WrongStack. Trigger on the explicit vocabulary —
+  technical debt resolution. Trigger on the explicit vocabulary —
   "refactor", "technical debt", "modernize", "clean up", "restructure",
   "decompose" — and on the task shape, which is how it usually arrives: "this
   file is 2000 lines", "split this up", "extract X into its own module",
@@ -16,7 +16,7 @@ required-capabilities: [filesystem.read, code.inspect, work.plan]
 required-tools: []
 ---
 
-# Refactor Planner — WrongStack
+# Refactor Planner
 
 ## Overview
 
@@ -55,7 +55,11 @@ plan to the executing agent, phase by phase.
 Rule 1 and the anti-pattern list both call this the most important part, so do it
 from evidence, not from intuition.
 
-**Derive it from imports.** Grep the actual `import` / `require` / `from`
+**Derive it from the code.** When the codebase index is available, the
+codebase-impact-analysis tool returns a symbol's production callers and affected
+tests, the codebase-incoming-calls and codebase-outgoing-calls tools give both
+edge directions, and the codebase-repo-map tool shows which files are hubs.
+Without the index, grep the actual `import` / `require` / `from`
 statements across the target set. Directory layout, file naming, and the mental
 model in someone's head all lie; the import statements don't.
 
@@ -327,7 +331,7 @@ parallelizes.
 
 ## Before delivering the plan
 
-- Graph derived from actual imports, with the arrow convention stated
+- Graph derived from actual imports or the codebase index, with the arrow convention stated
 - Cycles found, listed, and scheduled first
 - Every module in scope scored on all four risk factors
 - Modules under 50% coverage get characterization tests as their first task

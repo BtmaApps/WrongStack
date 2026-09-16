@@ -371,6 +371,8 @@ export function LiveConsoleView(): React.ReactElement {
               <Badge tone="info" title={controlTarget.client?.clientId}>
                 {controlTarget.session.hostname ?? controlTarget.session.machineId} ·{' '}
                 {controlTarget.session.clientKind.toUpperCase()}
+                {(controlTarget.client?.version ?? controlTarget.session.clientVersion) &&
+                  ` · v${(controlTarget.client?.version ?? controlTarget.session.clientVersion)!.replace(/^v/, '')}`}
               </Badge>
             )}
             {controlTarget?.mailboxServeActive === true && (

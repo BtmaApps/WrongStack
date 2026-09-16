@@ -134,6 +134,14 @@ async function openCoreFileMap(): Promise<void> {
   await waitFor(() => expect(graphNode('agent.ts')).toBeDefined());
 }
 
+function graphAction(label: string, action: string): HTMLElement {
+  const button = graphNode(label)
+    .closest('.react-flow__node')
+    ?.querySelector(`button[aria-label="${action}"]`);
+  if (!(button instanceof HTMLElement)) throw new Error(`Graph action not found: ${action}`);
+  return button;
+}
+
 function graphNode(label: string): HTMLElement {
   const text = screen.getAllByText(label).find((element) => element.closest('.react-flow__node'));
   const node = text?.closest('button');
@@ -195,11 +203,11 @@ describe('CodeMap component', () => {
     expect(screen.queryByText(/codebase-index/)).toBeNull();
   });
 
-  it('focuses a node on click and renders its incoming/outgoing relation tree', async () => {
+  it('focuses a node with its relation action and renders its incoming/outgoing relation tree', async () => {
     mockAllGraphs();
     render(<CodeMap />);
     await waitFor(() => expect(graphNode('@wrongstack/core')).toBeDefined());
-    const core = graphNode('@wrongstack/core');
+    const core = graphAction('@wrongstack/core', 'Relations: @wrongstack/core');
 
     fireEvent.click(core);
 
@@ -225,6 +233,39 @@ describe('CodeMap component', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeDefined();
   });
 
+  it('drills into packages and files with one click and returns via the breadcrumb', async () => {
+    mockAllGraphs();
+    render(<CodeMap />);
+    await waitFor(() => expect(graphNode('@wrongstack/core')).toBeDefined());
+    fireEvent.click(graphNode('@wrongstack/core'));
+    await waitFor(() => expect(graphNode('agent.ts')).toBeDefined());
+    fireEvent.click(graphNode('agent.ts'));
+    await waitFor(() => expect(graphNode('runAgent')).toBeDefined());
+
+    const breadcrumb = screen.getByRole('navigation', { name: 'Code map breadcrumb' });
+    expect(breadcrumb.querySelector('[aria-current="page"]')?.getAttribute('title')).toBe(
+      agentFile,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await waitFor(() => expect(graphNode('agent.ts')).toBeDefined());
+    expect(graphAction('agent.ts', 'Relations: agent.ts').getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'workspace' }));
+    await waitFor(() => expect(graphNode('@wrongstack/core')).toBeDefined());
+  });
+
+  it('exposes symbol and activity actions directly on file cards', async () => {
+    mockAllGraphs();
+    render(<CodeMap />);
+    await openCoreFileMap();
+    fireEvent.click(graphAction('agent.ts', 'Activity: agent.ts'));
+    expect(screen.getByText(agentFile)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Close activity' }));
+    fireEvent.click(graphAction('agent.ts', 'Open agent.ts map'));
+    await waitFor(() => expect(graphNode('runAgent')).toBeDefined());
+  });
+
   it('navigates back from file graph to the cached package graph', async () => {
     mockAllGraphs();
     render(<CodeMap />);
@@ -242,7 +283,7 @@ describe('CodeMap component', () => {
     mockAllGraphs();
     render(<CodeMap />);
     await waitFor(() => expect(graphNode('@wrongstack/core')).toBeDefined());
-    const core = graphNode('@wrongstack/core');
+    const core = graphAction('@wrongstack/core', 'Relations: @wrongstack/core');
     fireEvent.click(core);
 
     fireEvent.click(screen.getByRole('button', { name: 'Relations' }));

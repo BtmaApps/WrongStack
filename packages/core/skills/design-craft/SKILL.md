@@ -14,7 +14,7 @@ optional-capabilities: [web.research]
 ## Why this exists
 
 `design-system` guarantees the UI is **consistent**: one kit, real tokens, no
-literals, `design` `{action:"verify"}` clean. That is necessary and not
+literals, and a clean `design` verify pass. That is necessary and not
 sufficient. A screen can score 100% on-palette and still be instantly
 recognizable as machine-generated, because the tells live in decisions tokens
 never encode:
@@ -38,7 +38,7 @@ Tokens are the grammar. This skill is the writing. Run both.
 4. **Sections differ.** No two adjacent sections share the same skeleton.
 5. **Copy is real.** No filler, no placeholder marketing voice, ever — not even
    in a draft.
-6. **The floor is mechanical.** `design` `{action:"verify"}` now reports a
+6. **The floor is mechanical.** The `design` tool's verify action now reports a
    `composition` axis. Zero composition findings is the floor, not the goal.
 
 ---
@@ -78,6 +78,32 @@ Rules for the brief:
 
 ---
 
+## Step 0.5 — Resolve the direction (and offer real alternatives)
+
+People name a design in style words: "brutalist", "glassmorphism", "swiss",
+"make it look premium". A style word carries a look but no system — no radius
+scale, no spacing rhythm, no type ramp, no motion curve, no elevation steps. Your
+job is to resolve it to a kit, which carries all five, and then keep going.
+
+```
+skill({ name: "design-craft", resource: "references/directions.md" })
+```
+
+That file maps the style vocabulary to kits, lists the style words that have **no**
+kit (say so, then pin the closest and add the motif deliberately), and names the
+two words that are not directions at all: "dark mode" and "light mode" select
+nothing, because every kit already ships both from one token set.
+
+**When the ask is "show me options", three neighbours are not options.** Force
+contrast on named axes — chroma, era, decoration, density, register — and require
+any two proposals to differ on at least two of them. Offer each as one line of
+brief with the condition that makes it the right pick, not as a mood board. The
+user picks one; it goes in the brief; the loop continues. Never build three real
+screens to choose a direction.
+
+**A direction is where the design starts, never where it ends.** "It's brutalist"
+is not an answer to "what is the focal point". Everything below still applies.
+
 ## The seven forced decisions
 
 Every one of these has a wrong default the model reaches for automatically.
@@ -98,7 +124,12 @@ Decide deliberately, write it in the brief.
 ## The slop inventory (top offenders)
 
 The full annotated list is in
-`skill` ({ name: "design-craft", resource: "references/slop-inventory.md" }).
+the slop inventory, loaded with the `skill` tool:
+
+```
+skill({ name: "design-craft", resource: "references/slop-inventory.md" })
+```
+
 The ones that account for most of the damage:
 
 | Pattern | Why it reads as generated | Replace with |
@@ -143,12 +174,38 @@ If you cannot name what a transition explains, delete it.
 
 Depth references, loaded on demand:
 
-- `skill` ({ name: "design-craft", resource: "references/composition.md" }) — layout archetypes beyond hero+cards, asymmetry, rhythm, grid breaks
-- `skill` ({ name: "design-craft", resource: "references/typography.md" }) — pairing, scale ratios, measure, optical corrections
-- `skill` ({ name: "design-craft", resource: "references/color.md" }) — OKLCH craft, 60/30/10, dark-mode re-tuning, accessible accents
-- `skill` ({ name: "design-craft", resource: "references/copy.md" }) — UI voice, empty states, error text, the banned register
+Load any of these with the `skill` tool:
+
+```
+skill({ name: "design-craft", resource: "references/composition.md" })
+skill({ name: "design-craft", resource: "references/typography.md" })
+skill({ name: "design-craft", resource: "references/color.md" })
+skill({ name: "design-craft", resource: "references/copy.md" })
+```
+
+- `composition.md` — layout archetypes beyond hero+cards, asymmetry, rhythm, grid breaks
+- `typography.md` — pairing, scale ratios, measure, optical corrections
+- `color.md` — OKLCH craft, 60/30/10, dark-mode re-tuning, accessible accents
+- `copy.md` — UI voice, empty states, error text, the banned register
 
 ---
+
+## The machine floor is web-only — know when it is silent
+
+The `composition` axis reads utility classes and CSS. A **react-native, flutter,
+swiftui or compose** screen has none of those: its kit materializes theme
+constants and a numeric `scale`, so the scanner finds nothing to read and reports
+zero violations on a file it never actually checked.
+
+**On a native stack, "0 findings" means "not checkable", not "clean."** Measured:
+a React Native screen scored 100% with 0 violations while carrying 0 class
+attributes — the result was structurally guaranteed regardless of what the screen
+looked like. Verify reports this explicitly, and when it does, the floor for that
+screen is the checklist below plus a `design-critique` pass, not the tool result.
+
+Everything else in this skill applies unchanged on every stack — the brief, the
+seven decisions, the slop inventory and the rhythm rules are about composition,
+not about CSS.
 
 ## Currency
 

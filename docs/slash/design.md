@@ -73,7 +73,7 @@ turn (no manual `verify` needed). It's silent when the file is on-palette.
 
 ## Bundled kits
 
-**50 curated kits** ship bundled — run `/design` (or open the WebUI gallery) to
+**53 curated kits** ship bundled — run `/design` (or open the WebUI gallery) to
 browse them all. A sampling across the range:
 
 - **Product / UI:** `minimal-clarity`, `linear-dark`, `dark-pro`, `corporate-trust`,

@@ -1,21 +1,20 @@
-# Modern Node.js (>= 22) — WrongStack (Compact)
+# Modern Node.js (Compact)
 
-Node.js >= 22 patterns: ESM-only, native fetch with AbortSignal, Web Streams.
+Use the platform first, matching the project's module system and Node version.
 
 ## Rules
 
-1. Always use ESM (`import` with `.js` extension) — never `require()`.
-2. Always use `node:` protocol for built-in modules.
-3. Always use `AbortSignal.timeout()` for long-running operations.
-4. Never use axios, node-fetch, or got — native fetch is sufficient.
-5. Always handle `ENOENT` on file reads — use try/catch or `access` first.
-6. Use `Promise.allSettled` when partial failure is acceptable.
+1. Match the module system; don't convert CJS to ESM as a side effect.
+2. Import built-ins with the `node:` prefix.
+3. Bound every wait: `AbortSignal.timeout()` on fetch, child processes, and delays; combine with `AbortSignal.any`.
+4. Prefer built-ins (fetch, randomUUID, node:test) over new dependencies.
+5. Handle `ENOENT` by reading in try/catch and branching on `err.code`; `access` first is a race.
+6. No `*Sync` I/O or CPU-heavy loops on request paths.
+7. Child-process arguments as arrays (`execFile`/`spawn`), never interpolated shell strings.
+8. Await or handle every promise.
 
 ## Key patterns
 
-- **ESM**: `import * as fs from 'node:fs/promises'`, `import { helper } from './helper.js'`
-- **fetch**: `const res = await fetch(url, { signal: AbortSignal.timeout(5000) })`
-- **Atomic write**: write to `.tmp`, then `rename(tmp, target)`
-- **Parallel**: `const results = await Promise.allSettled(tasks.map(t => t.run()))`
-- **Streams**: `response.body.getReader()` with `TextDecoder`
-- **AbortSignal**: Combine signals with `AbortSignal.any([userSignal, timeoutSignal])`
+- Cancellable delay: `setTimeout(ms, value, { signal })` from `node:timers/promises`.
+- Atomic write: write a temp file, then `rename`.
+- Partial failure: `Promise.allSettled`.

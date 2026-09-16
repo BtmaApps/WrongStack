@@ -1,26 +1,18 @@
-# API Design — WrongStack (Compact)
+# API Design (Compact)
 
-Designs and reviews REST APIs for WrongStack services. JSON over HTTPS, conventional HTTP status codes, cursor-based pagination.
+An API is a contract; follow the project's existing API conventions before any rule here.
 
 ## Rules
 
-1. Use conventional HTTP status codes: 200 (ok), 201 (created), 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 500 (server error).
-2. Always return consistent error shape: `{ "error": { "code": "ERROR_CODE", "message": "Human readable" } }`.
-3. Use plural nouns for resource names: `/sessions` not `/session`.
-4. Pagination: cursor-based for large datasets, not offset-based.
-5. Request validation: validate on server, return 400 with field-level errors.
-6. Idempotency: POST to /resources creates; PUT to /resources/:id replaces.
-7. No secrets in URLs — put auth in headers, not query params.
-8. Versioning: prefix with `/v1/` when breaking changes are inevitable.
+1. Read a neighbouring endpoint, the error helper, validation library, and any OpenAPI spec first.
+2. Authorize against the specific object on every request (object-level authorization).
+3. Validate input at the edge with a schema; name the failing field.
+4. Correct status codes (201, 204, 409, 422, 429 with Retry-After); never 200 with an error body.
+5. One error shape; default to RFC 9457 problem details.
+6. Additive changes only within a version.
+7. Retry-safe: idempotent verbs, `Idempotency-Key` for creating POSTs.
+8. Credentials in headers, never URLs.
 
-## Error codes
+## Collections
 
-| Code | HTTP | When |
-|------|------|------|
-| VALIDATION_ERROR | 400 | Request invalid |
-| UNAUTHORIZED | 401 | Missing/invalid auth |
-| FORBIDDEN | 403 | No permission |
-| NOT_FOUND | 404 | Resource missing |
-| CONFLICT | 409 | Duplicate |
-| RATE_LIMITED | 429 | Too many requests |
-| INTERNAL_ERROR | 500 | Server failure |
+Cursor pagination for large or changing data, offset for small stable data; always cap `limit`.

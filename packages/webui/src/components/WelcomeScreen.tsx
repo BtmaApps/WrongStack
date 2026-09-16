@@ -115,7 +115,7 @@ export function WelcomeScreen() {
           `${content}
 
 ## WebUI run configuration (mandatory)
-This is round 1/${bugHuntMaxBugs}. Complete exactly one proven bug in this round: discovery, proof, fix, verification, and cleanup. Stop after the round report; the WebUI will start another round only after this one finishes successfully and only while below the configured limit. Stay strictly within ${scopeText}.`,
+This is round 1/${bugHuntMaxBugs}. Investigate at most one proven bug in this round: discovery, proof, fix, verification, and cleanup. If no legitimate proof is possible, report no-proven-bug or blocked without changing production code. Stop after the round report; the WebUI will start another round only after this one finishes successfully and only while below the configured limit. Stay strictly within ${scopeText}.`,
           { scope: bugHuntScope, maxBugs: bugHuntMaxBugs, currentRound: 1 },
         );
       },
@@ -214,12 +214,10 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
   }, [sessionId, setPrefs, subagentsAllowed, wsUrl]);
 
   return (
-    <div className="flex flex-col gap-5 py-5 sm:py-7 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-5 py-4 sm:py-6 max-w-4xl mx-auto w-full">
       {/* ── Session start panel ── */}
-      <div className="ws-surface relative overflow-hidden rounded-xl p-5 sm:p-6">
+      <div className="relative overflow-hidden p-3 sm:p-5">
         {/* Decorative gradient blob — subtle visual depth */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br from-primary/8 via-primary/5 to-transparent blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-gradient-to-tr from-accent/8 to-transparent blur-3xl pointer-events-none" />
 
         <div className="relative flex flex-col gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -227,7 +225,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
               src="/wrongstack.svg"
               alt="WrongStack"
               draggable={false}
-              className="ws-brand-logo h-16 w-16 shrink-0 border border-border/70 shadow-sm shadow-primary/20 sm:h-20 sm:w-20"
+              className="ws-brand-logo h-12 w-12 shrink-0 border border-border sm:h-14 sm:w-14"
             />
             <div className="min-w-0">
               <h2 className="text-xl font-semibold tracking-tight">
@@ -240,7 +238,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 pl-[76px] sm:pl-[92px]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pl-[60px] sm:pl-[68px]">
             {provider && model && (
               <p className="truncate text-xs text-muted-foreground/80 font-mono">
                 {provider} / {model}
@@ -280,7 +278,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
                 {!subagentsAllowed ? t('setup:welcome.on') : t('setup:welcome.off')}
               </span>
             </button>
-            <div className="rounded-md border border-primary/35 bg-primary/8 p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
                   {bugHuntState === 'loading' ? (
@@ -350,7 +348,7 @@ Record the baseline, every attempt, and every keep/revert verdict in \`PERF_LOG.
                 {t('setup:welcome.bugHunterError')}
               </p>
             )}
-            <div className="mt-3 rounded-md border border-primary/35 bg-primary/8 p-4">
+            <div className="mt-3 rounded-md border border-border bg-card p-4">
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
                   {perfState === 'loading' ? (

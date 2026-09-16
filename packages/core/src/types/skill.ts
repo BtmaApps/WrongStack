@@ -7,6 +7,11 @@ export interface SkillManifest {
    * to the first sentence of `description` (see parseDescriptionFromText).
    */
   trigger?: string | undefined;
+  /**
+   * Frontmatter `audience`. `roster` means the skill is loaded by roster roles
+   * through `skillNames` and is withheld from the main agent's prompt manifest.
+   */
+  audience?: string | undefined;
   version?: string | undefined;
   /** agentskills.io optional frontmatter fields. */
   license?: string | undefined;
@@ -42,6 +47,8 @@ export interface SkillEntry {
   trigger: string;
   /** Comma-separated scope items */
   scope: string[];
+  /** Mirrors {@link SkillManifest.audience}. */
+  audience?: string | undefined;
   source: SkillManifest['source'];
   /** For `foreign` sources: the originating tool id. */
   originTool?: string | undefined;

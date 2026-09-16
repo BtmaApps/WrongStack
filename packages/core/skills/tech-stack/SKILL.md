@@ -2,7 +2,7 @@
 name: tech-stack
 description: |
   Use this skill when validating package versions, checking for outdated dependencies,
-  or evaluating third-party libraries in WrongStack. Triggers: user says "dependency",
+  or evaluating third-party libraries in any ecosystem. Triggers: user says "dependency",
   "package version", "outdated", "npm audit", "deprecated package", "tech stack".
 version: 1.3.0
 required-capabilities: [dependencies.manage]
@@ -10,7 +10,7 @@ required-tools: []
 optional-capabilities: [web.research]
 ---
 
-# Tech Stack Validator — WrongStack (Language-Agnostic)
+# Tech Stack Validator (Language-Agnostic)
 
 ## Overview
 

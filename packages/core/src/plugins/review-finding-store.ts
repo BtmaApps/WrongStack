@@ -148,6 +148,7 @@ export class JsonlFindingStore implements FindingStore {
             );
             match.finding.status = 'active';
             match.finding.resolution = undefined;
+            match.events.push(reopenEvent);
             // Re-persist the finding record so status + cleared resolution survive reads.
             const updatedRecord: FindingRecord = { __finding: 1, data: match.finding };
             await fsp.appendFile(
@@ -167,6 +168,7 @@ export class JsonlFindingStore implements FindingStore {
               match.finding.status,
               context,
             );
+            match.events.push(relinkEvent);
             await fsp.appendFile(
               this.filePath,
               JSON.stringify({ __findingEvent: 1, data: relinkEvent }) + LINE_SEPARATOR,
@@ -184,6 +186,10 @@ export class JsonlFindingStore implements FindingStore {
             JSON.stringify({ __findingEvent: 1, data: createdEvent }) +
             LINE_SEPARATOR;
           await fsp.appendFile(this.filePath, lines, { encoding: 'utf8', mode: SECRET_FILE_MODE });
+          // Track this batch's creations in-memory so later items with the
+          // same fingerprint in the SAME upsert dedupe instead of creating
+          // a second record.
+          existing.push({ finding, events: [createdEvent] });
           result.created++;
         }
       }

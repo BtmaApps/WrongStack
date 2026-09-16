@@ -372,6 +372,14 @@ export function CockpitView(): React.ReactElement {
     return { total, busy, waiting, errored, activeSessions };
   }, [sessions]);
 
+  const clientVersions = useMemo(() => {
+    const versions = new Set<string>();
+    for (const c of clients) {
+      if (c.version) versions.add(`v${c.version.replace(/^v/, '')}`);
+    }
+    return Array.from(versions);
+  }, [clients]);
+
   const topProjects = useMemo(
     () =>
       [...projects]
@@ -608,6 +616,12 @@ export function CockpitView(): React.ReactElement {
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             <StatTile label="machines" value={machines.length} />
             <StatTile label="clients" value={clients.length} />
+            {clientVersions.length > 0 && (
+              <StatTile
+                label={clientVersions.length === 1 ? 'version' : 'versions'}
+                value={clientVersions.join(', ')}
+              />
+            )}
             <StatTile
               label="sessions"
               value={agents.activeSessions}

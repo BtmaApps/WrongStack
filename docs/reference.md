@@ -91,10 +91,11 @@ mode prompt overrides conflicting baseline defaults.
 
 ---
 
-## Bundled skills (29)
+## Bundled skills (36)
 
 Skills are auto-activating capability packs matched on their trigger sentence.
-The bundle covers API design, testing, security scanning, refactor planning,
-git flow, TypeScript strict mode, modern Node/React, and more. See
+The bundle covers debugging, code review, codebase navigation, verification
+before done, API design, testing, security scanning, refactor planning, git
+flow, TypeScript strict mode, modern Node/React, and more. See
 [skills](skills.md) for the catalog and [skill authoring](skills.md#writing-effective-skills)
 via the `skill-creator` skill.

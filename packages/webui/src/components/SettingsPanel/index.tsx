@@ -388,25 +388,29 @@ export function SettingsPanel() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-gradient-to-b from-background/90 via-background/60 to-background/80">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-card/60 backdrop-blur-xl shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+      <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-card shrink-0">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
             <Settings2 className="h-5 w-5" />
           </span>
-          <div>
-            <h1 className="text-lg font-semibold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              {t('settings:title')}
-            </h1>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold text-foreground">{t('settings:title')}</h1>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {provider && activeModel ? `${provider} / ${activeModel}` : t('settings:subtitle')}
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => showPanel('chat')}>
-          <X className="h-4 w-4" />
-        </Button>
         <Button variant="ghost" size="sm" onClick={() => setResetOpen(true)}>
           {t('settings:resetLabel')}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          aria-label={t('common:action.close')}
+          onClick={() => showPanel('chat')}
+        >
+          <X className="h-4 w-4" />
         </Button>
       </header>
 
@@ -415,10 +419,10 @@ export function SettingsPanel() {
           <Tabs
             value={settingsActiveTab}
             onValueChange={setSettingsActiveTab}
-            className="grid min-h-[calc(100dvh-9rem)] gap-3 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-5"
+            className="grid items-start gap-3 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-5"
           >
-            <div className="relative min-w-0">
-              <TabsList className="flex h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-card/60 p-1.5 shadow-sm [scrollbar-gutter:stable] lg:sticky lg:top-4 lg:flex-col lg:overflow-visible lg:rounded-xl lg:bg-card/60 lg:p-2">
+            <div className="relative min-w-0 lg:sticky lg:top-4">
+              <TabsList className="flex h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-lg border border-border/60 bg-card/60 p-1.5 shadow-sm [scrollbar-gutter:stable] lg:max-h-[calc(100dvh-12rem)] lg:flex-col lg:overflow-y-auto lg:rounded-xl lg:bg-card/60 lg:p-2">
                 {TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}

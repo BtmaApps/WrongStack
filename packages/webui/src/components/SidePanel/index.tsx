@@ -8,6 +8,7 @@
 
 import { PanelLeftClose } from 'lucide-react';
 import { useEffect } from 'react';
+import { useViewport } from '@/hooks/useViewport';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,8 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
   const wsConnected = useConfigStore((s) => s.wsConnected);
   const { client } = useWebSocket();
   const { t } = useAppTranslation();
+  const { width } = useViewport();
+  const isOverlay = width > 0 && width < 768;
   const panelWidth = desktopShell
     ? `min(${Math.min(sidebarWidth, 280)}px, calc(100vw - 2.5rem))`
     : `min(${sidebarWidth}px, calc(100vw - 3rem))`;
@@ -91,8 +94,9 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
         style={{
           width: panelWidth,
         }}
-        role="dialog"
-        aria-modal="true"
+        {...(isOverlay
+          ? { role: 'dialog', 'aria-modal': true as const }
+          : { role: 'complementary' })}
         aria-label={t('activity:sidebar.label')}
         className={cn(
           'fixed inset-y-0 z-40 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-r border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl animate-slide-in md:relative md:inset-auto md:z-auto md:shadow-none',

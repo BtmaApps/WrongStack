@@ -42,7 +42,19 @@ Before you assert any fact from a reference:
 | **> 180 days**, or the fact decides the architecture | Verify first, then answer. Update the reference file with the new date and the corrected fact. |
 
 Never silently "refresh" a fact from memory. A date you cannot evidence is a
-guess wearing a date. The same rule applies to anything you remember about
+guess wearing a date.
+
+**This has already happened once, in this file's own references.** The first
+revision of `css.md` and `html.md` was written from model knowledge and stamped
+with that day's date without a single live check. A later verification pass found
+**7 of 14 tiers wrong** — anchor positioning, `text-box-trim` and `field-sizing`
+were marked unavailable months after they had reached Baseline (the "stale
+caution" failure, which makes code hand-roll what the platform already does),
+while scroll-driven animations, `text-wrap: pretty` and the Popover API were
+marked more available than they are (the "stale confidence" failure). So: when
+you write a `verified:` date, the check must have happened in that turn, and the
+sources must be named on the line. If you cannot verify a row, mark it
+`UNVERIFIED` and say so rather than guessing a tier. The same rule applies to anything you remember about
 framework defaults (Tailwind, React, the kit stacks) — those live in
 `tech-stack` and `research-web`, and rot the same way.
 
@@ -55,14 +67,16 @@ sources minimum, per the `research-web` rules.
 
 Load on demand — do not paste these into a plan wholesale:
 
-- `skill` ({ name: "web-platform-baseline", resource: "references/css.md" }) —
+Load these with the `skill` tool — `skill({ name: "web-platform-baseline", resource: "references/<file>.md" })`:
+
+- `references/css.md` —
   layout, container queries, `:has()`, subgrid, nesting, `color-mix()`, OKLCH,
   `text-wrap`, cascade layers, scroll-driven animation, `@starting-style`,
   anchor positioning
-- `skill` ({ name: "web-platform-baseline", resource: "references/html.md" }) —
+- `references/html.md` —
   `<dialog>`, popover, `<details>` interop, form controls, `field-sizing`,
   lazy/priority hints, view transitions
-- `skill` ({ name: "web-platform-baseline", resource: "references/a11y.md" }) —
+- `references/a11y.md` —
   WCAG 2.2 additions, focus appearance, target size, `prefers-*` queries,
   accessible names, live regions
 

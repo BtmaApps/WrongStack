@@ -1,165 +1,115 @@
 ---
 name: prompt-engineering
 description: |
-  Use this skill when designing, critiquing, or fixing system prompts,
-  tool descriptions, skill definitions, or LLM instruction text in WrongStack.
-  Triggers: user mentions "prompt", "system instruction", "skill description", "tool hint", "usage hint", "system prompt".
-version: 1.2.0
+  Use this skill when designing, critiquing, or fixing system prompts, tool descriptions, skill definitions, or other LLM instruction text — including when a model ignores, over-applies, or misreads its instructions.
+  Triggers: user mentions "prompt", "system prompt", "system instruction", "tool description", "skill description", "few-shot", "the model keeps ignoring", "eval", "usage hint".
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
+optional-capabilities: [verification.run]
 ---
 
-# Prompt Engineering — WrongStack
+# Prompt Engineering
 
 ## Overview
 
-Designs, critiques, and fixes system prompts, tool descriptions, and skill definitions for LLM agents. WrongStack uses a 4-layer prompt structure — static content first, volatile last for cache efficiency.
+Current models follow instructions closely, so most prompt failures are
+failures of clarity, not of emphasis: a missing reason, a buried or
+contradictory rule, an example that teaches the wrong thing, or a tool whose
+purpose overlaps another. Write prompts the way you would brief a capable new
+colleague who has none of your context, then check them against real inputs.
 
 ## Rules
 
-1. Static content first, volatile last — cache-friendly prompts cost less per token.
-2. First sentence of skill description = trigger — keep it specific and actionable.
-3. Tool descriptions must say: when to use, key parameters, what it returns.
-4. Remove filler ("Please be helpful", "Sure, I'd be happy to") — wastes tokens.
-5. Always read before edit — agents should grep/read first, then edit.
-6. Skill descriptions should list specific trigger keywords, not generic descriptions.
+1. State the goal and the reason. A rule with its "why" generalizes to cases
+   the rule didn't list; a bare rule gets applied literally.
+2. Say what good output looks like — format, length, audience, and when the
+   task is done. Prefer "do X" over a list of things not to do.
+3. Use examples deliberately. They are copied closely, so make them varied,
+   representative, and consistent with the written rules.
+4. Structure long prompts. Separate instructions, context, and data with
+   headings or XML-style tags; put long reference material before the question
+   that uses it.
+5. Calibrate emphasis. Capitals and "CRITICAL" on every line make a model
+   over-apply rules to cases they were never meant for; reserve strong wording
+   for genuine hard constraints.
+6. Remove filler and resolve contradictions. Every sentence should change
+   behaviour; when two instructions can conflict, state which wins.
+7. Order for caching: stable content (identity, tools, standing rules) first,
+   volatile content (session state, recent errors) last.
+8. Test against a fixed set of inputs, including edge cases and inputs the
+   prompt should decline. Change one thing at a time and read the outputs, not
+   just a score.
 
-## Patterns
+## Tool descriptions
 
-### Do
+A model picks tools from their names and descriptions alone. Each description
+answers:
 
-```markdown
-# ✅ Good — specific trigger
-Use this skill when writing or reviewing React 19+ code.
+- **When to use it — and when not.** Name the neighbouring tool to prefer
+  instead ("for exact text use grep; for symbols use this").
+- **Inputs.** Required versus optional, formats, units, limits, and one
+  concrete example value for anything non-obvious.
+- **Output.** The shape of what comes back, so the next step can be planned.
+- **Failure.** What errors look like and what to do about them.
 
-# ✅ Good — tool description with all three parts
-Search file contents with regex. Pattern is regex. Use output_mode to select
-content (matched lines), files_with_matches (file list), or count (line counts).
-Always read before edit — grep first to locate the target.
+```text
+✅ Search indexed code symbols by name or concept and return ranked definitions
+   with file and line. Use before broad grep when locating a function, type, or
+   module; use grep for exact strings or regexes. `kind` narrows to functions,
+   classes, or interfaces. If the index is empty, build it first.
 
-# ✅ Good — skill description with trigger keywords
-Use this skill when designing system prompts or tool descriptions
-for LLM agents. Covers structure, specificity, and common pitfalls.
-Triggers: user mentions "prompt", "system instruction", "tool hint".
+❌ Searches the codebase.
 ```
 
-### Don't
+## Skill descriptions
 
-```markdown
-# ❌ Bad — vague trigger
-This skill is about Docker.
+The description decides whether a skill is ever loaded, so it is written for
+selection, not for documentation:
 
-# ❌ Bad — filler
-Please be helpful and use your best judgment.
+- The first sentence is the trigger shown in the skill manifest — a concrete
+  situation ("when writing or fixing tests in any project"), not a topic ("this
+  skill is about tests").
+- Follow with the phrases users actually type, including symptoms
+  ("flaky", "keeps failing"), not only the formal names.
+- Scope it honestly. An over-broad trigger crowds out better skills; one that
+  says "in <product>" may never fire for the user's own project.
+- In WrongStack skill bodies, a tool name wrapped in backticks, or "use/run/call"
+  followed by a backticked name, is treated as a required tool — the skill is
+  dropped where that tool is absent. Write optional tool names in plain text.
 
-# ❌ Bad — tool description missing parameters
-Search files using grep.
-```
+## Diagnosing a misbehaving prompt
 
-## WrongStack's 4-layer structure
-
-```
-Layer 1: Identity     — Who you are (static, cacheable)
-Layer 2: Tool usage   — Available tools and their usage hints (static)
-Layer 3: Environment  — Project context, skills, modes, plan (semistatic)
-Layer 4: Volatile     — Session state, recent errors, mode prompt (dynamic)
-```
-
-Static content first. Volatile content last. Cache-friendly prompts cost less per token.
-
-## Trigger sentences (skill descriptions)
-
-The **first sentence** of a skill description is its trigger. This is the only thing the skill loader matches on.
-
-```
-# Good — specific trigger
-Use this skill when deploying Docker containers to staging.
-
-# Bad — vague
-This skill is about Docker.
-
-# Good — pattern matchable
-Use this skill when writing or reviewing React 19+ code.
-
-# Bad — not actionable
-This skill covers modern React patterns.
-```
-
-## Tool description rules
-
-Every tool in WrongStack has: `name`, `description`, `usageHint`, `inputSchema`.
-
-The `usageHint` is what appears in the system prompt. It must say:
-1. **When to use it** — not just what it does
-2. **Key parameters** — the important inputs
-3. **What it returns** — so the model knows what to do next
-
-```
-# Good
-Search file contents with regex. Pattern is regex. Use output_mode to select
-content (matched lines), files_with_matches (file list), or count (line counts).
-Always read before edit — grep first to locate the target.
-
-# Bad
-Search files using grep.
-```
-
-## Common tool chain patterns (for system prompt builder)
-
-```
-Inspect → Edit:    glob/read → locate → edit
-Search → Operate:   grep/glob → identify → batch_tool_use or edit
-Verify → Report:    write/edit/patch → read back → confirm
-Batch Replace:     grep with pattern → replace with glob → verify
-```
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Ignores an instruction | Buried in a long block, or contradicted elsewhere | Move it near the task, remove the conflict, give the reason |
+| Applies a rule where it doesn't fit | Absolute or shouted wording | State the scope and the exception; drop the capitals |
+| Output format drifts | No example or schema | Show one exact example, or require a schema |
+| Too verbose or too terse | No length or audience guidance | State the reader and the expected length |
+| Calls the wrong tool | Overlapping tool descriptions | Add "use X instead when…" to both |
+| Invents facts | No permission to say "unknown" | Tell it what to do when information is missing |
 
 ## Anti-patterns
 
-| Anti-pattern | Why it's bad | Fix |
-|---|---|---|
-| "Please be helpful" | Wastes tokens, implies the model isn't | Remove it |
-| "You are a helpful AI" | Already implied by default identity | Remove it |
-| "Sure, I'd be happy to" | Same — filler, no information | Remove it |
-| Vague parameter docs | Model doesn't know when to use tool | Add concrete examples |
-| Long preamble before the question | Model reads it, then reads the actual question | Put question first |
-| Ambiguous pronouns | "do it again" — which tool, which file? | Name the specific thing |
-
-## Skill SKILL.md rules
-
-See `skill-creator` skill for the format. Key points:
-- First sentence = trigger condition
-- Include concrete code examples in "Do" and "Don't" sections
-- End with "Skills in scope" so agents know to delegate
-
-## Out of scope
-
-- **Don't ship filler in prompts.** "Please be helpful", "Sure, I'd be happy to", "You are a helpful AI" — every filler line costs tokens and adds no signal. Strip it.
-- **Don't write vague trigger sentences.** "This skill is about Docker" matches nothing. "Use this skill when deploying Docker containers to a production cluster" matches.
-- **Don't describe a tool by what it does alone.** Tool descriptions need when to use, key parameters, and what it returns. "Search files" is incomplete; "Search file contents with regex. Pattern is regex. Use output_mode to select…" is the bar.
-- **Don't put volatile content before static content.** Cache-friendly prompts put identity, tools, and instructions first; session state and recent errors last. Reversing the order costs tokens per turn.
-- **Don't write a long preamble before the question.** The model reads the preamble, then the question. Put the question first.
-- **Don't use ambiguous pronouns.** "Do it again" — which tool, which file? Name the specific thing.
-- **Don't claim trigger keywords cover a domain they don't.** Trigger keywords must be specific. Generic phrases like "improve" or "help with" match too much and the loader can't disambiguate.
-- **Don't re-invent the agent's identity.** WrongStack's system prompt already establishes who the agent is. Don't repeat it; layer domain-specific instruction on top.
-- **Don't design prompts the way you'd write a doc.** Prompts are instruction; docs are reference. Reference material goes in skill `references/`, not in the trigger-matching body.
+- **Identity filler** ("You are a helpful assistant") and politeness padding —
+  they cost tokens and change nothing.
+- **Rules without reasons**, so edge cases are guessed.
+- **Examples that contradict the rules** — the example wins.
+- **Fixing one bad output by adding one more rule**, until the prompt is a pile
+  of patches; find the underlying ambiguity instead.
+- **Judging a prompt change from a single run.**
 
 ## Before returning
 
-- [ ] No filler ("Please be helpful", "Sure, I'd be happy to", "You are a helpful AI")
-- [ ] Skill description's first sentence is a concrete trigger; trigger keywords follow
-- [ ] Tool descriptions cover when to use, key parameters, what it returns
-- [ ] Static content first; volatile content last
-- [ ] No long preamble before the actual question
-- [ ] No ambiguous pronouns; specific things named
-- [ ] Trigger keywords specific enough to disambiguate
-- [ ] Skill body under ~500 lines; deep material in `references/`
-- [ ] Concrete `Do` / `Don't` examples, not abstract principles
-- [ ] `Skill in scope` lists the hand-off targets with a reason for each
-- [ ] `<nextsteps>` mirrors open follow-up prompt-tuning tasks in priority order
+- [ ] Goal, reasons, and success criteria stated
+- [ ] No contradictions; precedence stated where rules can conflict
+- [ ] Examples consistent with the rules and varied
+- [ ] Emphasis reserved for real hard constraints
+- [ ] Tool and skill descriptions say when to use, inputs, outputs, and alternatives
+- [ ] Checked against representative and edge-case inputs
 
 ## Skills in scope
 
-- `skill-creator` — for creating new skills (primary — prompt-engineering feeds into skill creation)
-- `typescript-strict` — for TypeScript-specific prompt typing
-- `react-modern` — for React component prompt conventions
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `skill-creator` — for the WrongStack SKILL.md format and authoring workflow
+- `output-standards` — for WrongStack's final-message and `<nextsteps>` conventions
+- `testing` — for turning prompt checks into repeatable evaluations

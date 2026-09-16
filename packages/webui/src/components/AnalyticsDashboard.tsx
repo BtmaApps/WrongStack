@@ -320,10 +320,14 @@ export function AnalyticsDashboard() {
   // allocating a fresh array on every render.
   const reversedEvents = useMemo(() => [...events].reverse(), [events]);
   const eventPage = usePagination(reversedEvents, 20);
+  const scrollRef = useScrollPosition<HTMLDivElement>('analytics');
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-[hsl(var(--surface-2)/0.45)] p-4">
+      <div
+        ref={scrollRef}
+        className="flex h-full min-h-0 items-center justify-center bg-[hsl(var(--surface-2)/0.45)] p-4"
+      >
         <div className="ws-surface flex items-center gap-2 rounded-xl px-4 py-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           {t('activity:analytics.loading')}
@@ -334,7 +338,7 @@ export function AnalyticsDashboard() {
 
   return (
     <div
-      ref={useScrollPosition('analytics')}
+      ref={scrollRef}
       className="h-full min-h-0 min-w-0 overflow-y-auto overscroll-contain bg-[hsl(var(--surface-2)/0.45)] p-4 sm:p-6"
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">

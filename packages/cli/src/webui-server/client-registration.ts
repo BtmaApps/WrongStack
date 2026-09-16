@@ -8,6 +8,7 @@ import {
   type HqCommandController,
 } from '../hq-command-controller.js';
 import { startCliHqConnection } from '../hq-publisher.js';
+import { CLI_VERSION } from '../version.js';
 
 export interface WebuiHqControlHooks {
   interruptLeader: (sessionId?: string) => boolean;
@@ -51,6 +52,7 @@ export function createWebuiClientRegistration(
     events: deps.events,
     hqSessionId: deps.hqSessionId,
     getSessionId: deps.getSessionId,
+    clientVersion: CLI_VERSION,
     ...(deps.listSessions ? { listSessions: deps.listSessions } : {}),
     ...(deps.isSessionOwnedElsewhere
       ? { isSessionOwnedElsewhere: deps.isSessionOwnedElsewhere }

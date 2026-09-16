@@ -2,10 +2,10 @@
 name: bug-hunter
 description: |
   Use this skill when scanning source code for bugs, anti-patterns, code smells,
-  or quality issues in a WrongStack project. Trigger on the explicit vocabulary —
+  or quality issues in a codebase. Trigger on the explicit vocabulary —
   "bug", "bug hunt", "scan for issues", "find problems", "anti-pattern", "code
   smell", "static analysis" — and on the task shape, which is how it usually
-  arrives: "why does this crash", "audit these files", "is this safe to merge",
+  arrives: "audit these files", "scan this module",
   "check for leaks", "something's wrong in X", "look for anything dangerous
   here", "clean pass before release". Also use it when running as a cascade
   agent behind a chimera review, or as a fan-out worker auditing a chunk of
@@ -16,7 +16,7 @@ required-tools: []
 optional-capabilities: [verification.run]
 ---
 
-# Bug Hunter — WrongStack
+# Bug Hunter
 
 Scans code for bugs and code smells. Outputs a prioritized hit list with
 file:line references.
@@ -65,6 +65,21 @@ in the report, open it and answer three questions:
 
 If you cannot state the input that triggers it and what breaks, it is not a
 finding. Drop it.
+
+### Start from the index and scanners when they exist
+
+When the codebase index and quality tools are available, let them narrow the
+search and grep for the rest:
+
+- the security-ast-scan tool for injection, hardcoded secrets, prototype
+  pollution, ReDoS, unsafe eval, and N+1 queries in a file;
+- the dead-code-scan tool for unreferenced exports (candidates only — dynamic
+  imports and config-driven registration are invisible to it);
+- the codebase-incoming-calls tool to confirm a suspicious function is
+  reachable and to see how many callers inherit the defect.
+
+Tool output is a candidate list like any grep hit: every finding is read
+before it ships.
 
 ### Exclude before you scan
 
@@ -245,8 +260,9 @@ Dispatched by a leader across a chunk of files (typically 5–10 per worker).
 
 ### 3. Cascade agent (behind a chimera review)
 
-The runtime spawns bug-hunter automatically when a chimera review contains
-findings at or above `cascadeOn`. In this mode:
+When the user opts in with `cascadeOn` (`high` or `critical`; default `off`),
+the runtime spawns bug-hunter for verified chimera findings at or above that
+severity. In this mode:
 
 - You receive the review report and the list of changed files as your task.
 - You **investigate each finding, read the flagged files, and apply fixes** —
@@ -290,6 +306,8 @@ sizing and briefing rules before dispatching.
 
 ## Skills in scope
 
+- `debugging` — when starting from an observed failure rather than a scan
+- `code-review` — for reviewing a specific change set
 - `security-scanner` — for hardcoded secrets and injection vectors
 - `refactor-planner` — for fixing findings across multiple files
 - `typescript-strict` — for TypeScript type safety rules

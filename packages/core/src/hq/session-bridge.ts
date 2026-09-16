@@ -232,6 +232,7 @@ export function startSessionTelemetryBridge(opts: SessionTelemetryBridgeOptions)
     return {
       sessionId: opts.sessionId,
       clientKind: identity.kind,
+      ...(identity.version !== undefined ? { clientVersion: identity.version } : {}),
       machineId: identity.machineId,
       projectId: project.projectId,
       projectName: opts.projectName ?? project.projectName,

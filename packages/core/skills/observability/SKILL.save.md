@@ -1,34 +1,14 @@
-# Observability — WrongStack (Compact)
+# Observability (Compact)
 
-Instruments WrongStack code with structured logs, traces, and metrics.
+Instrument so the next incident is answered from telemetry, using the project's existing logger and tracing.
 
 ## Rules
 
-1. Log at the right level: DEBUG (dev), INFO (normal), WARN (recoverable), ERROR (needs attention).
-2. Structured logs only — JSON to stdout, not plain text to files.
-3. Every significant event needs a `traceId`.
-4. Never log secrets, tokens, or PII — redact before logging.
-5. Logs must answer: what happened, what context, what was the outcome.
-
-## Log schema
-
-```json
-{
-  "level": "info|warn|error",
-  "traceId": "uuid",
-  "event": "event_name",
-  "timestamp": "ISO8601",
-  "duration_ms": 12,
-  "outcome": "success|failure|timeout"
-}
-```
-
-## Metrics
-
-| Metric | Type | Why |
-|--------|------|-----|
-| `tool.executions` | Counter | How often each tool runs |
-| `tool.duration_ms` | Histogram | Latency per tool |
-| `session.iterations` | Gauge | Active iterations |
-| `error.count` | Counter | Errors by type |
-| `context.tokens` | Gauge | Context size |
+1. Use the project's logger and conventions; never add a second logging stack.
+2. Structured events with stable names and fields, not sentences.
+3. Levels mean something: error needs a human, debug is off in production.
+4. Carry a request/trace id across async boundaries and into every log line.
+5. No secrets or personal data; configure redaction once in the logger.
+6. Log an error once, where it is handled, with the error object.
+7. Bounded metric labels (route templates, error classes), never ids or raw URLs.
+8. Spans around outbound HTTP, database, queue, and cache calls.

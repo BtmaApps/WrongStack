@@ -2069,6 +2069,7 @@
     "memoriesLabel_other": "{{count}} ricordi"
   },
   "sddhub": {
+    "tabRequirements": "Requisiti",
     "tabProject": "Progetto SDD",
     "tabBoard": "Bacheca SDD live",
     "tabSpecs": "Specifiche"
@@ -3159,7 +3160,11 @@
     "intakeRecords": "Record di intake",
     "loading": "Caricamento…",
     "noIntakeRecordsYetFileThe": "Nessun record di intake — crea il primo qui sopra.",
-    "describeTheFeatureBugFixRefactorOrChange": "Descrivi la funzionalità, la correzione, il refactoring o la modifica…"
+    "describeTheFeatureBugFixRefactorOrChange": "Descrivi la funzionalità, la correzione, il refactoring o la modifica…",
+    "startSddSpec": "Avvia specifica SDD",
+    "originalRequest": "Richiesta originale",
+    "copyRequest": "Copia richiesta",
+    "copied": "Copiato!"
   },
   "verifyReport": {
     "verificationReport": "Rapporto di verifica",

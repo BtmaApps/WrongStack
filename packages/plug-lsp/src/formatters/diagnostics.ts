@@ -36,11 +36,16 @@ export function formatDiagnostics(
       .sort(compareDiagnostics)
       .slice(0, opts.maxPerFile);
     if (filtered.length === 0) continue;
+    // `maxTotal` caps the grand total across files: the file that crosses the
+    // line is truncated to the remaining budget instead of being emitted whole
+    // (which both overshot the cap and hid every later file from the output).
+    const shown = filtered.slice(0, Math.max(0, opts.maxTotal - total));
+    if (shown.length === 0) break;
     files++;
-    total += filtered.length;
-    const lines = filtered.map((d) => formatDiagnostic(d));
+    total += shown.length;
+    const lines = shown.map((d) => formatDiagnostic(d));
     sections.push(
-      `${displayPath(file, opts.cwd)} (${filtered.length}):\n${lines.map((l) => `  ${l}`).join('\n')}`,
+      `${displayPath(file, opts.cwd)} (${shown.length}):\n${lines.map((l) => `  ${l}`).join('\n')}`,
     );
     if (total >= opts.maxTotal) break;
   }

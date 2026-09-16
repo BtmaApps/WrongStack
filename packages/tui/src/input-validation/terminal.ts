@@ -100,7 +100,7 @@ export function validatePasteContent(content: string): ValidationResult<string> 
         error: `paste: C0 control char 0x${code.toString(16)} at position ${i} is not allowed.`,
       };
     }
-    if (code > 0 && code < 0x09) nonPrintableCount++;
+    if (code === 0x7f || (code >= 0x80 && code <= 0x9f)) nonPrintableCount++;
   }
 
   // Reject binary-looking paste: >30% non-printable (excluding common whitespace)

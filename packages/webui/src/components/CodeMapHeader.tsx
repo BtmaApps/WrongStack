@@ -1,9 +1,9 @@
 import { ArrowLeft, ChevronRight, Home, Network, Radio } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { LiveAgentPresence } from '@/stores/codemap-activity-store';
 import type { CodeMapGraphResponse, CodeMapScope } from './codemap-model';
 import { relativeFilePath } from './codemap-model';
-import { useAppTranslation } from '@/i18n';
 
 interface CodeMapHeaderProps {
   scope: CodeMapScope;
@@ -24,7 +24,7 @@ export function CodeMapHeader({
 }: CodeMapHeaderProps): React.ReactElement {
   const { t } = useAppTranslation();
   return (
-    <header className="flex h-[62px] shrink-0 items-center gap-4 border-b bg-card px-4">
+    <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b bg-card px-4 py-3">
       <div className="flex min-w-[220px] items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center border border-primary bg-primary/10 text-primary">
           <Network className="h-4 w-4" />
@@ -39,7 +39,7 @@ export function CodeMapHeader({
         </div>
       </div>
       <nav
-        className="flex min-w-0 flex-1 items-center gap-1 font-mono text-[10px]"
+        className="order-last flex w-full min-w-0 items-center gap-1 overflow-x-auto border-t pt-2 font-mono text-[11px] [&>button]:shrink-0 [&>svg]:shrink-0"
         aria-label={t('activity:codeMap.codeMapBreadcrumb')}
       >
         {scope.level !== 'packages' && (
@@ -48,7 +48,10 @@ export function CodeMapHeader({
             className="mr-1 flex h-7 w-7 items-center justify-center border text-muted-foreground hover:bg-muted"
             onClick={() => {
               if (scope.level === 'symbols')
-                navigate({ level: 'files', package: scope.package ?? '(root)' });
+                navigate(
+                  { level: 'files', package: scope.package ?? '(root)' },
+                  `file:${scope.file}`,
+                );
               else navigate({ level: 'packages' });
             }}
             aria-label={t('activity:codeMap.back')}
@@ -60,6 +63,7 @@ export function CodeMapHeader({
           type="button"
           className="flex items-center gap-1.5 px-1.5 py-1 text-muted-foreground hover:text-foreground"
           onClick={() => navigate({ level: 'packages' })}
+          aria-current={scope.level === 'packages' ? 'page' : undefined}
         >
           <Home className="h-3 w-3" /> workspace
         </button>
@@ -68,7 +72,8 @@ export function CodeMapHeader({
             <ChevronRight className="h-3 w-3 text-muted-foreground" />
             <button
               type="button"
-              className="max-w-[220px] truncate px-1.5 py-1 hover:text-primary"
+              className="whitespace-nowrap px-1.5 py-1 hover:text-primary"
+              aria-current={scope.level === 'files' ? 'page' : undefined}
               onClick={() => navigate({ level: 'files', package: scope.package ?? '(root)' })}
             >
               {scope.package ?? '(root)'}
@@ -78,7 +83,11 @@ export function CodeMapHeader({
         {scope.level === 'symbols' && (
           <>
             <ChevronRight className="h-3 w-3 text-muted-foreground" />
-            <span className="truncate px-1.5 py-1 text-primary">
+            <span
+              className="whitespace-nowrap px-1.5 py-1 text-primary"
+              aria-current="page"
+              title={scope.file}
+            >
               {relativeFilePath({
                 id: '',
                 label: scope.file,
@@ -90,7 +99,7 @@ export function CodeMapHeader({
           </>
         )}
       </nav>
-      <div className="hidden items-center gap-5 xl:flex">
+      <div className="ml-auto hidden items-center gap-5 xl:flex">
         <div
           className={cn(
             'flex h-8 items-center gap-2 border px-2.5',

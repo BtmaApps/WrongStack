@@ -41,6 +41,25 @@ describe('HQ publisher factory env config', () => {
     second?.close();
   });
 
+  it('populates client version in publisher client identity', () => {
+    const pubDefault = createHqPublisherFromEnv({
+      clientKind: 'cli',
+      projectRoot: process.cwd(),
+      config: { url: 'http://127.0.0.1:3499', enabled: true },
+    });
+    expect(pubDefault?.identity.version).toBeDefined();
+    pubDefault?.close();
+
+    const pubCustom = createHqPublisherFromEnv({
+      clientKind: 'cli',
+      clientVersion: '2.5.0',
+      projectRoot: process.cwd(),
+      config: { url: 'http://127.0.0.1:3499', enabled: true },
+    });
+    expect(pubCustom?.identity.version).toBe('2.5.0');
+    pubCustom?.close();
+  });
+
   it('uses WRONGSTACK_HQ_TOKEN when explicitly provided', async () => {
     await withTempDir(async (dir) => {
       await writeHqAuthFile(dir, {

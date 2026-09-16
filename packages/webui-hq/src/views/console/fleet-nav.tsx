@@ -13,6 +13,7 @@ import { Bot, ChevronRight, FolderGit2, MonitorSmartphone, SquareTerminal } from
 import type * as React from 'react';
 import { useMemo, useState } from 'react';
 import { EmptyState, StatusDot } from '../../components/hq/primitives.js';
+import { Badge } from '../../components/ui/badge.js';
 import { useHqStore } from '../../data/store/index.js';
 import { buildNavFromTopology } from '../../domain/fleet-nav-tree.js';
 import { buildFleetTopology } from '../../domain/fleet-topology.js';
@@ -156,6 +157,14 @@ export function FleetNav({
                                 <StatusDot tone={activityTone(client.status)} />
                                 <SquareTerminal className="size-3 shrink-0" />
                                 <span className="truncate">{client.label}</span>
+                                {client.version && (
+                                  <Badge
+                                    tone="idle"
+                                    className="ml-1 px-1 py-0 text-[9px] font-mono leading-none shrink-0"
+                                  >
+                                    v{client.version.replace(/^v/, '')}
+                                  </Badge>
+                                )}
                                 {client.agents.length > 0 && (
                                   <span className="tabular ml-auto text-[10px] text-muted-foreground">
                                     {client.agents.length}

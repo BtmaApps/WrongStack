@@ -40,13 +40,13 @@ export function useWrongProxyStatus(): IntegrationProbeState {
   const url = useLocalPrefs((s) => s.wrongProxyUrl);
 
   const [state, setState] = useState<IntegrationProbeState>(() => ({
-    status: enabled ? 'checking' : 'disabled',
+    status: enabled && url.trim() ? 'checking' : 'disabled',
     latencyMs: null,
     url: url || 'http://localhost:3444',
   }));
 
   useEffect(() => {
-    if (!enabled || !url) {
+    if (!enabled || !url.trim()) {
       setState({
         status: 'disabled',
         latencyMs: null,
@@ -55,6 +55,7 @@ export function useWrongProxyStatus(): IntegrationProbeState {
       return;
     }
 
+    setState({ status: 'checking', latencyMs: null, url: url.trim().replace(/\/+$/, '') });
     let disposed = false;
     const probe = async () => {
       const trimmed = url.trim().replace(/\/+$/, '');
@@ -102,13 +103,13 @@ export function useHqStatus(): IntegrationProbeState {
   const token = useLocalPrefs((s) => s.hqToken);
 
   const [state, setState] = useState<IntegrationProbeState>(() => ({
-    status: enabled && url ? 'checking' : 'disabled',
+    status: enabled && url.trim() ? 'checking' : 'disabled',
     latencyMs: null,
     url: url || '',
   }));
 
   useEffect(() => {
-    if (!enabled || !url) {
+    if (!enabled || !url.trim()) {
       setState({
         status: 'disabled',
         latencyMs: null,
@@ -117,6 +118,7 @@ export function useHqStatus(): IntegrationProbeState {
       return;
     }
 
+    setState({ status: 'checking', latencyMs: null, url: url.trim().replace(/\/+$/, '') });
     let disposed = false;
     const probe = async () => {
       const trimmed = url.trim().replace(/\/+$/, '');

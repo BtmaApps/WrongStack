@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import { hostname } from 'node:os';
 import { basename } from 'node:path';
 import type { HqClientConfig } from '../types/config.js';
@@ -23,6 +24,23 @@ import {
   type HqPublisherOptions,
   type HqSocketFactory,
 } from './publisher.js';
+
+const req = createRequire(import.meta.url);
+
+function readCoreVersion(): string {
+  const candidates = ['../../package.json', '../package.json'];
+  for (const rel of candidates) {
+    try {
+      const pkg = req(rel) as { version?: unknown };
+      if (typeof pkg.version === 'string' && pkg.version.length > 0) return pkg.version;
+    } catch {
+      // try next
+    }
+  }
+  return 'dev';
+}
+
+export const CORE_VERSION = readCoreVersion();
 
 export interface HqPublisherEnvConfig {
   url: string;
@@ -189,6 +207,8 @@ export function deriveHqProjectId(projectRoot: string, projectAlias?: string): s
 
 export interface CreateHqPublisherOptions {
   clientKind: HqClientIdentity['kind'];
+  clientVersion?: string;
+  version?: string;
   projectRoot: string;
   projectName?: string;
   machineId?: string;
@@ -222,11 +242,17 @@ export function createHqPublisherFromEnv(
   const projectAlias = config.projectAlias?.trim() || undefined;
   const projectName =
     projectAlias ?? options.projectName ?? (basename(options.projectRoot) || 'unknown');
+  const version =
+    options.clientVersion ??
+    options.version ??
+    process.env['WRONGSTACK_VERSION'] ??
+    CORE_VERSION;
 
   const client: HqClientIdentity = {
     clientId: `${machineId}:${options.clientKind}:${process.pid}:${randomUUID().slice(0, 8)}`,
     kind: options.clientKind,
     machineId,
+    ...(version && version !== 'dev' ? { version } : version === 'dev' ? { version: 'dev' } : {}),
     ...(host ? { hostname: host } : {}),
     pid: process.pid,
     startedAt: new Date().toISOString(),

@@ -216,7 +216,7 @@ describe('optimization writes skill addenda and unblocks the buffer', () => {
       true,
     );
     captureLearnedFromAgentOutputDetailed(
-      '## LEARNED\nAlways state the verification you actually performed rather than implying it.',
+      '## LEARNED\nKeep status updates short and in plain language.',
       'verifier',
       projectRoot,
       true,

@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
    ========================================================================= */
 
 export const META = {
-  version: '1.0.16',
+  version: '1.0.17',
   repo: 'https://github.com/WrongStack/WrongStack',
   npm: 'wrongstack',
   node: '22',
@@ -20,12 +20,15 @@ export const META = {
   domain: 'wrongstack.com',
 } as const;
 
-/** 29 bundled skills — README / packages/core/skills canonical list. */
+/** 33 bundled skills — README / packages/core/skills canonical list. */
 export const skills = [
   { name: 'api-design', description: 'REST conventions, pagination, auth, and error taxonomy' },
   { name: 'audit-log', description: 'Analyze session logs and event streams' },
   { name: 'auto-review', description: 'Continuous review configuration and operation' },
-  { name: 'bug-hunter', description: 'Systematic debugging and anti-pattern detection' },
+  { name: 'bug-hunter', description: 'Scan code for bugs and anti-patterns' },
+  { name: 'code-review', description: 'Review a PR, branch, or diff before it merges' },
+  { name: 'codebase-navigation', description: 'Find and trace code with the codebase index' },
+  { name: 'debugging', description: 'Root-cause an observed failure and prove the fix' },
   { name: 'chimera', description: 'Post-session code quality review of changed files' },
   {
     name: 'docker-deploy',
@@ -59,6 +62,7 @@ export const skills = [
   { name: 'tech-stack', description: 'Validate package versions, reject dead/obsolete tech' },
   { name: 'testing', description: 'Vitest patterns, mocks, coverage, and test strategy' },
   { name: 'typescript-strict', description: 'Strict TypeScript for bulletproof code' },
+  { name: 'verify-before-done', description: 'Prove a change works before calling it done' },
   {
     name: 'wrongstack-mailbox',
     description: 'External-facing mailbox client for cross-agent coordination',

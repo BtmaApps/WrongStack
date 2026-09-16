@@ -544,7 +544,17 @@ const SKILL_VOCABULARY: Record<string, readonly string[]> = {
   'audit-log': ['audit', 'log', 'logging', 'trace', 'provenance', 'ledger'],
   'bug-hunter': ['bug', 'defect', 'repro', 'root cause', 'regression', 'crash'],
   chimera: ['review', 'reviewer', 'critique', 'adversarial', 'second opinion'],
+  'code-review': ['code review', 'pull request', 'diff', 'merge request', 'blast radius'],
+  'codebase-navigation': [
+    'navigate',
+    'entry point',
+    'call graph',
+    'repo map',
+    'architecture',
+    'where is',
+  ],
   'data-governance': ['pii', 'retention', 'governance', 'gdpr', 'data policy'],
+  debugging: ['debug', 'stack trace', 'reproduce', 'bisect', 'hang', 'root cause', 'flaky'],
   'docker-deploy': ['docker', 'container', 'image', 'compose', 'deploy', 'k8s'],
   'git-flow': ['git', 'branch', 'commit', 'rebase', 'merge', 'worktree', 'pr'],
   mnemosyne: ['memory', 'recall', 'knowledge base'],
@@ -563,6 +573,7 @@ const SKILL_VOCABULARY: Record<string, readonly string[]> = {
   'tech-stack': ['dependency', 'version', 'upgrade', 'toolchain', 'stack'],
   testing: ['test', 'vitest', 'jest', 'coverage', 'assert', 'fixture', 'mock', 'spec file'],
   'typescript-strict': ['typescript', 'tsc', 'type', 'generic', 'strict', 'noemit', '.d.ts'],
+  'verify-before-done': ['verify', 'verification', 'evidence', 'definition of done', 'done'],
   'wrongstack-mailbox': ['mailbox', 'message', 'inbox', 'broadcast'],
 };
 

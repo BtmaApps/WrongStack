@@ -24,7 +24,8 @@ export function controlClientLabel(client: HqClientRecord, snapshot: HqSnapshot 
   );
   const host = client.hostname ?? client.machineId;
   const projectName = project?.projectName ?? client.projectId;
-  const process = `${client.kind.toUpperCase()}${client.pid !== undefined ? ` · pid ${client.pid}` : ''}`;
+  const versionStr = client.version ? ` (v${client.version.replace(/^v/, '')})` : '';
+  const process = `${client.kind.toUpperCase()}${versionStr}${client.pid !== undefined ? ` · pid ${client.pid}` : ''}`;
   const identity = session?.sessionId ?? client.clientId;
   return `${host} › ${projectName} › ${process} › ${shortId(identity)}`;
 }

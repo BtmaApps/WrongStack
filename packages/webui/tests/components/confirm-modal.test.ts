@@ -24,4 +24,14 @@ describe('confirmModal', () => {
     useConfirmModalStore.getState().settle(true);
     await expect(second).resolves.toBe(true);
   });
+
+  it('alertModal opens with hideCancel and resolves upon settle', async () => {
+    const { alertModal } = await import('../../src/components/ConfirmModal');
+    const p = alertModal({ title: 'Important Alert', message: 'Something occurred.' });
+    expect(useConfirmModalStore.getState().request?.title).toBe('Important Alert');
+    expect(useConfirmModalStore.getState().request?.hideCancel).toBe(true);
+    useConfirmModalStore.getState().settle(true);
+    await expect(p).resolves.toBeUndefined();
+    expect(useConfirmModalStore.getState().request).toBeNull();
+  });
 });

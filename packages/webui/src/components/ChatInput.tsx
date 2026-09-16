@@ -38,7 +38,6 @@ import { useChatSubmit } from './ChatInput/use-chat-submit.js';
 import { usePasteDrop } from './ChatInput/use-paste-drop.js';
 import { useRefineTimeout } from './ChatInput/use-refine-timeout.js';
 import { useSpeechRecognition } from './ChatInput/use-speech-recognition.js';
-import { PromptLibraryModal } from './PromptLibraryModal.js';
 import { toast } from './Toaster';
 
 export { resolveCancelInput };
@@ -312,7 +311,6 @@ export function ChatInput({
 
   return (
     <div className="flex flex-col gap-2">
-      <PromptLibraryModal />
       {pasteHint && (
         <PasteHintBar pasteHint={pasteHint} onDismiss={() => setPasteHint(null)} t={t} />
       )}

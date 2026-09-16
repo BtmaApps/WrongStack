@@ -373,6 +373,7 @@
   }
 
   html {
+    color-scheme: light;
     height: 100%;
     min-height: 0;
     -webkit-font-smoothing: antialiased;
@@ -390,6 +391,24 @@
       "calt" 1,
       "ss03" 1;
     letter-spacing: -0.012em;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea {
+    accent-color: hsl(var(--primary));
   }
 
   h1,
@@ -504,9 +523,9 @@
 
 @layer components {
   .ws-surface {
-    background: hsl(var(--card) / 0.88);
-    border: 1px solid hsl(var(--border) / 0.72);
-    box-shadow: 0 14px 40px -30px hsl(var(--shadow-color) / 0.45);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.04);
   }
 
   .ws-surface-muted {
@@ -529,6 +548,19 @@
     border-color: hsl(var(--primary) / 0.34);
     background: hsl(var(--primary) / 0.12);
     color: hsl(var(--primary));
+  }
+
+  .ws-dialog {
+    box-shadow: 0 24px 64px -16px hsl(var(--shadow-color) / 0.4);
+    scroll-padding-block: 1.25rem;
+  }
+
+  @media (pointer: coarse) {
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"] {
+      min-height: 44px;
+    }
   }
 
   .led {
@@ -562,6 +594,54 @@
 }
 
 /* — Scrollbars — */
+/* History keeps its desktop split, but stacks bounded sections when a split
+   would leave the commit list or changed files without usable height. */
+@media (max-width: 639px), (max-height: 520px) {
+  .ws-history-view {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ws-history-browser {
+    flex: none;
+    min-height: 380px;
+    height: 65dvh;
+  }
+
+  .ws-commit-detail {
+    display: block;
+    flex: none;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .ws-commit-metadata {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    max-height: 240px;
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .ws-commit-files {
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 639px) {
+  .ws-history-columns {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+
+  .ws-history-columns > :nth-child(2),
+  .ws-history-columns > :nth-child(4) {
+    display: none;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -1620,9 +1700,24 @@ kbd {
     visibility 0s linear 140ms;
 }
 
+/* Only transcript panes crossfade. Whole views must disappear immediately
+   so their content cannot show through the next view's translucent surfaces. */
+.ws-view-parked:not(.ws-view-pane) {
+  transition: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ws-view-pane,
   .ws-view-parked {
     transition: none;
   }
+}
+
+/* ── Code Atlas Canvas ──────────────────────────────────────────────────
+ * ReactFlow sets pointer-events: none on node wrappers when elements are
+ * non-selectable / non-draggable. Ensure custom interactive codemap cards
+ * always receive mouse clicks and hover events across all browsers.
+ */
+.react-flow__node-codemap {
+  pointer-events: all !important;
 }

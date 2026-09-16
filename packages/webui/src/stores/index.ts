@@ -112,6 +112,7 @@ export {
   useSddBoardStore,
 } from './sdd-board-store.js';
 export {
+  type SddTab,
   type SddWizardPhase,
   type SddWizardSnapshot,
   useSddWizardStore,

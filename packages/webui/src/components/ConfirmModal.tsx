@@ -40,6 +40,8 @@ interface ConfirmModalOptions {
   danger?: boolean | undefined;
   /** Which choice receives focus and Enter. Defaults to confirm for compatibility. */
   defaultAction?: 'confirm' | 'cancel' | undefined;
+  /** If true, the cancel button is omitted, acting as an alert dialog. */
+  hideCancel?: boolean | undefined;
 }
 
 interface ConfirmRequest extends ConfirmModalOptions {
@@ -90,6 +92,28 @@ export function confirmModalChoice(options: ConfirmModalOptions): Promise<Confir
   });
 }
 
+/** Ask the user to acknowledge an alert. Resolves when dismissed or OK is clicked. */
+export interface AlertModalOptions {
+  title: string;
+  message?: string | undefined;
+  details?: string[] | undefined;
+  okLabel?: string | undefined;
+}
+
+export function alertModal(options: AlertModalOptions): Promise<void> {
+  return new Promise<void>((resolve) => {
+    useConfirmModalStore.getState().open({
+      title: options.title,
+      message: options.message,
+      details: options.details,
+      confirmLabel: options.okLabel,
+      hideCancel: true,
+      defaultAction: 'confirm',
+      resolve: () => resolve(),
+    });
+  });
+}
+
 export function ConfirmModalHost() {
   const { t } = useAppTranslation();
   const request = useConfirmModalStore((s) => s.request);
@@ -133,21 +157,24 @@ export function ConfirmModalHost() {
           )}
         </DialogHeader>
         <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            autoFocus={request?.defaultAction === 'cancel'}
-            onClick={() => settle(false)}
-          >
-            {request?.cancelLabel ?? t('common:action.cancel')}
-          </Button>
+          {!request?.hideCancel && (
+            <Button
+              variant="outline"
+              size="sm"
+              autoFocus={request?.defaultAction === 'cancel'}
+              onClick={() => settle(false)}
+            >
+              {request?.cancelLabel ?? t('common:action.cancel')}
+            </Button>
+          )}
           <Button
             variant={request?.danger ? 'destructive' : 'default'}
             size="sm"
-            autoFocus={request?.defaultAction !== 'cancel'}
+            autoFocus={request?.defaultAction !== 'cancel' || request?.hideCancel}
             onClick={() => settle(true)}
           >
-            {request?.confirmLabel ?? t('common:action.confirm')}
+            {request?.confirmLabel ??
+              (request?.hideCancel ? t('common:action.ok') : t('common:action.confirm'))}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,7 @@
 ---
 name: wrongstack-mailbox-mcp
 description: Coordinate with WrongStack agents through the project-scoped Mailbox MCP server. Use when an external coding agent needs to inspect unread or incomplete messages, query conversation history, discover online agents, send direct/reply/broadcast/steer messages, acknowledge outcomes, maintain its presence, soft-delete or restore messages, watch for changes, or perform explicitly authorized Mailbox administration without reading Mailbox files or SQLite directly.
+audience: external
 version: 1.0.0
 required-capabilities: [mcp.dynamic]
 required-tools: [mcp_use]

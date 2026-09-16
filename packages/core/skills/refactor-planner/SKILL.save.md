@@ -1,4 +1,4 @@
-# Refactor Planner — WrongStack (Compact)
+# Refactor Planner (Compact)
 
 Analyzes code structure and produces a phased refactoring plan with risk assessment, dependency ordering, and rollback strategy.
 

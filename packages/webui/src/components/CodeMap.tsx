@@ -2,7 +2,7 @@
  * Code Atlas — persistent code tree, dependency canvas, and relation inspector.
  *
  * The explorer never disappears while the user moves package → file → symbol.
- * A graph click focuses relationships; explicit open actions change scope.
+ * A graph click opens packages/files; the relation action focuses relationships.
  *
  * Performance notes:
  * - Activity store is subscribed via selectors (not the whole store).
@@ -380,6 +380,21 @@ function CodeMapInner(): React.ReactElement {
     },
     [navigate],
   );
+  const handleFlowCanvasNodeClick = useCallback(
+    (_event: React.MouseEvent, flowNode: Node): void => {
+      const nodeData = flowNode.data as CodeMapNodeData | undefined;
+      if (!nodeData?.graphNode) return;
+      const canOpen =
+        nodeData.graphNode.kind === 'package' ||
+        (nodeData.graphNode.kind === 'file' && Boolean(nodeData.graphNode.file));
+      if (canOpen) {
+        handleOpenNode(nodeData.graphNode);
+      } else {
+        handleSelectNode(nodeData.graphNode);
+      }
+    },
+    [handleOpenNode, handleSelectNode],
+  );
 
   const activityFlowKey = useMemo(
     () =>
@@ -421,6 +436,7 @@ function CodeMapInner(): React.ReactElement {
           id: node.id,
           type: 'codemap',
           position,
+          style: { pointerEvents: 'all' as const },
           data: {
             graphNode: node,
             selected: node.id === selectedId,
@@ -882,6 +898,7 @@ function CodeMapInner(): React.ReactElement {
             flowEdges={flowEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onNodeClick={handleFlowCanvasNodeClick}
             agentTrailCount={agentTrailCount}
           />
         </main>

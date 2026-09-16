@@ -23,12 +23,12 @@
  * @module MainViewSlot
  */
 import { Suspense } from 'react';
-import { ErrorBoundary } from './ErrorBoundary';
-import { PanelSuspense } from './PanelSuspense';
-import { showPanel } from './activity-bar/nav';
-import { PANEL_CLOSE_TO_CHAT_SENTINEL, VIEW_REGISTRY, type ViewMeta } from './view-registry';
 import { useAppTranslation } from '@/i18n';
 import type { View } from '@/stores/ui-store';
+import { showPanel } from './activity-bar/nav';
+import { ErrorBoundary } from './ErrorBoundary';
+import { PanelSuspense } from './PanelSuspense';
+import { PANEL_CLOSE_TO_CHAT_SENTINEL, VIEW_REGISTRY, type ViewMeta } from './view-registry';
 
 interface MainViewSlotProps {
   view: View;
@@ -67,7 +67,7 @@ export function MainViewSlot({
   );
 
   return (
-    <ErrorBoundary level="panel" name={t(meta.boundaryNameKey)}>
+    <ErrorBoundary key={view} level="panel" name={t(meta.boundaryNameKey)}>
       <Suspense fallback={suspenseFallback}>{content}</Suspense>
     </ErrorBoundary>
   );

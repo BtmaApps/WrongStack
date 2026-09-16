@@ -1,162 +1,115 @@
 ---
 name: observability
 description: |
-  Use this skill when instrumenting logs, traces, or metrics in WrongStack,
-  or when setting up observability for a new feature. Triggers: user says
-  "log", "trace", "metrics", "observability", "instrument", "structured logging",
-  "opentelemetry", "log level", "debug", "monitoring".
-version: 1.1.0
+  Use this skill when adding or reviewing logging, metrics, or tracing in an application, or when a production problem can't be diagnosed from the signals that exist today.
+  Triggers: user says "logging", "logs", "trace", "tracing", "metrics", "observability", "instrument", "OpenTelemetry", "structured logging", "log level", "correlation id", "monitoring", "alert".
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [code.inspect]
 ---
 
-# Observability — WrongStack
+# Observability
 
 ## Overview
 
-Instruments WrongStack code with structured logs, traces, and metrics. WrongStack uses structured logging (JSON to stdout), and pairs with `audit-log` for session analysis. The goal: every significant event is traceable from input to output.
+Instrument so that the next incident can be answered from telemetry instead of
+by adding logs and redeploying. Work with what the project already has — its
+logger (pino, winston, structlog, slog, log/zap), metrics client, and any
+OpenTelemetry setup. Adding a second logging stack is almost always wrong.
 
 ## Rules
 
-1. Log at the right level: `DEBUG` (dev only), `INFO` (normal flow), `WARN` (recoverable), `ERROR` (needs attention).
-2. Structured logs only — JSON to stdout, not plain text to files.
-3. Every significant event needs a `traceId` — correlate across tools.
-4. Never log secrets, tokens, or PII — redact before logging.
-5. Logs must answer: what happened, what context, what was the outcome.
-6. Metrics: count errors, measure latency, track active sessions.
-7. Traces: every tool call should be a span with timing.
+1. Use the project's existing logger and conventions; find how a neighbouring
+   module logs before adding a line.
+2. Log structured events, not sentences: a stable event name plus fields
+   (`logger.info({ orderId, durationMs }, 'order.charged')`), so logs can be
+   filtered and aggregated.
+3. Levels mean something: `error` needs a human, `warn` is degraded but
+   handled, `info` is a meaningful business or lifecycle event, `debug` is
+   off in production.
+4. Correlate: carry a request or trace id through async boundaries
+   (OpenTelemetry context or AsyncLocalStorage) and attach it to every log line.
+5. Never log secrets, tokens, credentials, or personal data. Configure redaction
+   once in the logger (for example pino `redact` paths), not per call site.
+6. Log an error once, where it is handled, with the error object and context —
+   not at every layer it passes through.
+7. Metrics use bounded label values. User ids, raw URLs, and error messages as
+   labels explode cardinality; use route templates and error classes.
+8. Trace the I/O: spans around outbound HTTP, database, queue, and cache calls,
+   with status recorded on failure. Prefer auto-instrumentation where it exists.
+
+## What to instrument
+
+| Signal | For | Examples |
+|---|---|---|
+| Logs | What happened to one request or job | `payment.failed` with order id, provider code, attempt |
+| Metrics | How the system behaves in aggregate | Request rate, error rate, latency histogram per route (RED); queue depth, pool saturation (USE) |
+| Traces | Where the time went across calls | Span per inbound request and per outbound dependency |
+
+Start from the question an on-call engineer will ask — "why did checkout fail
+for this customer?", "which dependency made p99 spike?" — and make sure the
+answer is recorded.
 
 ## Patterns
 
-### Do
+```ts
+// Redaction configured once, at the logger.
+const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  redact: ['req.headers.authorization', 'req.headers.cookie', '*.password', '*.token'],
+});
 
-```typescript
-// ✅ Structured log — JSON to stdout
-console.log(JSON.stringify({
-  level: 'info',
-  traceId: context.traceId,
-  event: 'tool_executed',
-  tool: 'read',
-  path: 'src/index.ts',
-  duration_ms: 12,
-  outcome: 'success',
-}));
-
-// ✅ Error with context
-console.log(JSON.stringify({
-  level: 'error',
-  traceId: context.traceId,
-  event: 'tool_failed',
-  tool: 'bash',
-  command: 'pnpm test',
-  error: err.message,
-  duration_ms: 30000,
-  outcome: 'timeout',
-}));
-
-// ✅ Trace span around a tool call
-import { trace, SpanStatusCode } from '@opentelemetry/api';
-const span = trace.getTracer('wrongstack').startSpan('bash');
+// One structured event, with correlation and the error object.
 try {
-  const result = await bash(cmd);
-  span.setStatus({ code: SpanStatusCode.OK });
-  return result;
+  await chargeCard(order);
+  logger.info({ orderId: order.id, durationMs: Date.now() - started }, 'order.charged');
 } catch (err) {
-  span.recordException(err);
-  span.setStatus({ code: SpanStatusCode.ERROR });
-  throw err;
-} finally {
-  span.end();
+  logger.error({ err, orderId: order.id, traceId: currentTraceId() }, 'order.charge_failed');
+  throw new PaymentError('charge failed', { cause: err });
 }
 ```
 
-### Don't
+```ts
+// A span around an outbound dependency.
+const tracer = trace.getTracer('checkout');
 
-```typescript
-// ❌ Plain text log
-console.log('User logged in'); // not structured, hard to search
-
-// ❌ Logging secrets
-console.log(JSON.stringify({ token: bearerToken })); // redact!
-
-// ❌ Log level confusion
-console.log('DEBUG: entering function'); // INFO/WARN/ERROR only in prod
-
-// ❌ Missing traceId
-console.log(JSON.stringify({ event: 'tool_executed' })); // no correlation
-```
-
-## Log levels
-
-| Level | When to use | Example |
-|-------|-------------|---------|
-| `DEBUG` | Dev-only detail | "entering parseArgs with 3 args" |
-| `INFO` | Normal flow | "tool executed", "session started" |
-| `WARN` | Recoverable issue | "retry attempt 2/3", "cache miss" |
-| `ERROR` | Needs attention | "tool timeout", "auth failure" |
-
-## Structured log schema
-
-Every log should include:
-
-```json
-{
-  "level": "info | warn | error",
-  "traceId": "uuid",
-  "event": "event_name",
-  "timestamp": "ISO8601",
-  "duration_ms": 12,
-  "outcome": "success | failure | timeout",
-  "context": { /* optional extra */ }
+export async function reserveStock(sku: string, qty: number): Promise<void> {
+  await tracer.startActiveSpan('inventory.reserve', async (span) => {
+    span.setAttributes({ 'inventory.sku': sku, 'inventory.qty': qty });
+    try {
+      await inventoryClient.reserve(sku, qty);
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      span.end();
+    }
+  });
 }
 ```
 
-## Metrics to track
+## Anti-patterns
 
-| Metric | Type | Why |
-|--------|------|-----|
-| `tool.executions` | Counter | How often each tool runs |
-| `tool.duration_ms` | Histogram | Latency per tool |
-| `session.iterations` | Gauge | Active iterations per session |
-| `error.count` | Counter | Errors by type |
-| `context.tokens` | Gauge | Context size per session |
-
-## WrongStack-specific notes
-
-- **Session logs**: WrongStack writes session JSONL to `sessionRoot` — see `audit-log` skill for analysis.
-- **Log output**: All logs go to stdout as JSON — CI captures them, not file logs.
-- **Redaction**: Use `redactKeys()` helper — never log `Authorization`, `token`, `apiKey`, `secret`.
-- **Tool tracing**: Each tool wrapper should emit a structured log on start and end.
-
-## Out of scope
-
-- **Don't log secrets, tokens, or PII.** Redact at the boundary. A single `Authorization` header in a log line is a credential leak; redact `token`, `apiKey`, `secret`, `Authorization` keys before they reach the stream.
-- **Don't use plain text logs.** JSON to stdout is the contract. `console.log('User logged in')` is unsearchable and breaks log aggregators.
-- **Don't emit logs without a `traceId`.** Correlation across tools is the whole point. A log without a trace is an event with no story.
-- **Don't use DEBUG level in production.** DEBUG is dev-only. Production logs are `INFO`, `WARN`, `ERROR`; DEBUG in prod is noise that hides real signals.
-- **Don't log and ignore.** Every log entry should answer: what happened, what context, what was the outcome. A `console.log('done')` after a side effect is process for process's sake.
-- **Don't write to file logs from app code.** CI captures stdout. File logs bypass the pipeline and become unsearchable tribal knowledge.
-- **Don't skip trace spans on tool calls.** Every tool wrapper should open a span on start and end it on completion, with timing. Without spans, latency questions are unanswerable.
-- **Don't conflate counters and gauges.** Counters increment (`tool.executions`); gauges track current state (`session.iterations`). Mixing them produces nonsense dashboards.
-- **Don't include exception objects in span attributes.** `span.recordException(err)` is the OpenTelemetry path; serialization into a JSON log is its own discipline.
+- **`console.log` in a codebase with a logger** — unstructured, unleveled, unredacted.
+- **Logging and rethrowing at every layer** — one failure becomes ten error lines.
+- **Logging whole request or user objects** — the fastest path to leaking personal data.
+- **High-cardinality metric labels** — breaks the metrics backend and the bill.
+- **Alerts on causes instead of symptoms** — page on user-facing error rate and
+  latency, not on CPU.
 
 ## Before returning
 
-- [ ] All logs are JSON to stdout, never plain text or file logs
-- [ ] Every entry has `level`, `traceId`, `event`, `timestamp`, `outcome`
-- [ ] No secrets, tokens, `Authorization`, `apiKey`, or PII in any log line
-- [ ] DEBUG level only in dev; production uses `INFO` / `WARN` / `ERROR`
-- [ ] Tool wrappers emit structured start + end events with `duration_ms`
-- [ ] OpenTelemetry spans opened on tool entry, closed on exit with status
-- [ ] Counters vs. gauges respected; histograms used for latency
-- [ ] Redaction centralized at the serialization boundary, not per call site
-- [ ] Log volume and pattern sanity-checked against `audit-log` skill's metrics
+- [ ] Uses the project's existing logger, metrics, and tracing setup
+- [ ] Structured events with stable names; levels used deliberately
+- [ ] Correlation id present across async boundaries
+- [ ] No secrets or personal data; redaction configured centrally
+- [ ] Errors logged once, at the handling site
+- [ ] Metric labels bounded; outbound I/O traced
 
 ## Skills in scope
 
-- `audit-log` — for analyzing the logs this skill produces
-- `bug-hunter` — for finding bugs via error trace patterns
-- `security-scanner` — for ensuring no secrets leak into logs
-- `node-modern` — for async tracing patterns with AbortSignal
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `security-scanner` — for confirming nothing sensitive reaches logs
+- `data-governance` — for retention and personal-data classification of telemetry
+- `node-modern` — for async context propagation in Node.js

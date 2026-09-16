@@ -25,19 +25,19 @@ optional-capabilities: [web.research]
 ## Overview
 
 WrongStack-internal agents (CLI, TUI, WebUI, ACP) already share one
-project-level mailbox at `~/.wrongstack/projects/<slug>/_mailbox.jsonl`.
+project-level mailbox, a SQLite store at
+`~/.wrongstack/projects/<slug>/_mailbox.sqlite`.
 This skill starts a thin loopback HTTP server that wraps that exact same
 `GlobalMailbox` so external coding agents — Claude Code, Aider, Continue,
 a user's own scripts — can read and send messages on the same channel
-without going through the JSONL file or implementing the file-lock
-protocol.
+without touching the store directly.
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
 │                    WrongStack project dir                          │
 │                                                                    │
 │   ~/.wrongstack/projects/<slug>/                                  │
-│   ├── _mailbox.jsonl            ← shared message store              │
+│   ├── _mailbox.sqlite           ← shared message store              │
 │   ├── _mailbox.registry.json    ← agent heartbeats                  │
 │   └── _mailbox.clients.json     ← REPL/TUI/WebUI/external clients   │
 │                                                                    │
@@ -60,7 +60,7 @@ protocol.
 ```
 
 The bridge does NOT introduce a parallel store. External calls go through
-`GlobalMailbox`, so file locking, mtime-bounded reads, agent heartbeats,
+`GlobalMailbox`, so agent heartbeats,
 read receipts, and HQ telemetry happen exactly as they do for
 WrongStack-internal callers. An external agent and a WrongStack-internal
 agent posting to the same `agentId` are indistinguishable to the rest of
@@ -99,6 +99,11 @@ Or, if the user is already in a WrongStack REPL/TUI:
 ```
 /mailbox-serve
 ```
+
+To have every WrongStack surface start or join the bridge on boot, set
+`features.mailboxBridge: "auto"` in the project config. The default is
+`"off"`, because nothing inside WrongStack needs the bridge — only external
+agents do.
 
 The server prints its bind URL and writes the bearer token to
 `~/.wrongstack/projects/<slug>/.mailbox.token` (mode `0600`). The token
@@ -157,7 +162,7 @@ Every error response follows the WrongStack API convention:
 | `UNAUTHORIZED` | 401 | Missing or wrong bearer token. |
 | `NOT_FOUND` | 404 | No route for the request method + URL. |
 | `RATE_LIMITED` | 429 | More than 120 authenticated requests in the rolling 60-second window. |
-| `INTERNAL_ERROR` | 500 | `GlobalMailbox` threw (e.g. file-lock contention, disk full). |
+| `INTERNAL_ERROR` | 500 | `GlobalMailbox` threw (e.g. store unavailable, disk full). |
 
 ### Limits
 
@@ -173,7 +178,7 @@ Every error response follows the WrongStack API convention:
 
 The HQ command center (`wstack --hq`) shares this exact `GlobalMailbox`.
 When an operator sends a prompt from the HQ screen, it lands in the same
-`_mailbox.jsonl` an external agent reads through `/mailbox/query` — so an
+`_mailbox.sqlite` store an external agent reads through `/mailbox/query` — so an
 external agent participating via this bridge sees HQ prompts too.
 
 HQ delivers a prompt one of two ways:
@@ -302,8 +307,8 @@ curl -X POST http://127.0.0.1:34827/mailbox/ack-many \
   ]}'
 ```
 
-The batch path takes a single file lock and does one rewrite — preferred
-over N sequential `/mailbox/ack` calls.
+The batch path applies every ack in one write — preferred over N sequential
+`/mailbox/ack` calls.
 
 ## How it ends
 
@@ -315,13 +320,13 @@ hooks for any log-shipper watching the process.
 
 ## Health watchdog
 
-`packages/core/src/coordination/mailbox-health.ts` (bundled with the
-bridge) provides a `MailboxHealthWatchdog` that periodically probes
-`/healthz` and posts a `mailbox-bridge-down` status event to the project
-mailbox if the bridge stops responding. Wire it up once via the
-`mailbox:watchdog:start` slash command or by calling
-`mailbox-health:start()` from a custom subcommand. Default probe interval
-is 15 s.
+`packages/core/src/coordination/mailbox-health.ts` provides a
+`MailboxHealthWatchdog` that probes `/healthz` and sends a
+`mailbox-bridge-down` message to the project mailbox when the bridge stops
+responding (and a recovery message when it returns). Nothing starts it
+automatically and no slash command exists for it: host code constructs
+`new MailboxHealthWatchdog({ mailbox, url })` and calls `start()`. Defaults:
+probe every 15 s, 3 s timeout, alert after 2 consecutive failures.
 
 ## Security notes
 
@@ -349,7 +354,7 @@ is 15 s.
 - **Don't treat the bearer as identity-bound.** Every caller uses the same project token. The bridge does not separately authorize `steer`/control messages or prevent impersonation; the caller can claim any `from`, `type`, or `readerId`. Add an identity-aware trusted proxy before exposing beyond mutually trusted local clients.
 - **Don't expose the filesystem, shell, or non-mailbox tools through the bridge.** It is the mailbox surface only. If a caller needs more, they need a different bridge.
 - **Don't start the bridge for an external agent that already speaks MCP natively.** Use `wstack mcp serve` to expose WrongStack's full tool registry including the mailbox tool. Two bridges for the same purpose is operational debt.
-- **Don't run as a long-lived daemon for the caller.** The bridge is short-lived; spawn it for the duration of the caller's session and let it exit. `mbWithBootstrap()` is the pattern.
+- **Don't start a second bridge for the same project.** The per-project lock makes later starts join the running bridge; an extra instance on another port only splits external agents between two endpoints.
 - **Don't hardcode a token into prompts or committed code.** Read it from `.mailbox.token` or accept it from the environment; re-read after a 401.
 - **Don't send `control` messages through the bridge.** Control is a runtime-only surface; the bridge doesn't expose it, and the only legitimate override is `steer` via the `mailbox_manage` route, not through the bridge.
 

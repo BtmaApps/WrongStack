@@ -99,6 +99,34 @@ describe('registerBuiltinTools', () => {
     expect(calls.some((c) => c.kind === 'default')).toBe(true);
   });
 
+  it('registers the skill tool the progressive manifest points at when given a skill loader', () => {
+    // Regression: this registration was lost with a deleted wiring module, so
+    // the default prompt told the model to "call the `skill` tool" that no host
+    // registered.
+    const withLoader = makeFakeToolRegistry();
+    registerBuiltinTools({
+      toolRegistry: withLoader.registry as never,
+      compactor: {},
+      config: { features: { memory: false } },
+      memoryStore: null,
+      skillLoader: { find: vi.fn(), readBody: vi.fn() } as never,
+      events: makeEvents() as never,
+      wpaths: makeWpaths() as never,
+    });
+    expect(coordinationNames(withLoader.calls)).toEqual(['skill', ...COORDINATION_TOOLS]);
+
+    const withoutLoader = makeFakeToolRegistry();
+    registerBuiltinTools({
+      toolRegistry: withoutLoader.registry as never,
+      compactor: {},
+      config: { features: { memory: false } },
+      memoryStore: null,
+      events: makeEvents() as never,
+      wpaths: makeWpaths() as never,
+    });
+    expect(coordinationNames(withoutLoader.calls)).toEqual(COORDINATION_TOOLS);
+  });
+
   it('skips memory tools when config.features.memory is false', () => {
     const { registry, calls } = makeFakeToolRegistry();
     registerBuiltinTools({

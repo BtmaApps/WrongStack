@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { showPanel } from '@/lib/view-navigation';
 import { type GitChangedFile, useConfigStore, useGitChangesStore, useUIStore } from '@/stores';
 import { useAppTranslation } from '@/i18n';
+import { confirmModal } from '../ConfirmModal';
 import { WorktreesPanel } from './WorktreesPanel';
 
 /** Visual treatment for each git status letter. */
@@ -49,6 +50,7 @@ function FileRow({
   onUnstage?: () => void;
   onDiscard?: () => void;
 }) {
+  const { t } = useAppTranslation();
   const meta = STATUS_META[file.status] ?? STATUS_META.M;
   const { name, dir } = splitPath(file.path);
   return (
@@ -115,9 +117,20 @@ function FileRow({
             {onDiscard && (
               <button
                 type="button"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Discard changes in ${file.path}? This cannot be undone.`)) {
+                  const ok = await confirmModal({
+                    title: t('activity:changes.confirmDiscardTitle', {
+                      path: file.path,
+                      defaultValue: `Discard changes in ${file.path}?`,
+                    }),
+                    message: t('activity:changes.confirmDiscardMsg', {
+                      defaultValue: 'This cannot be undone.',
+                    }),
+                    confirmLabel: t('common:action.discard', { defaultValue: 'Discard' }),
+                    danger: true,
+                  });
+                  if (ok) {
                     onDiscard();
                   }
                 }}

@@ -1,24 +1,15 @@
-# Modern React (19+) — WrongStack (Compact)
+# Modern React (Compact)
 
-React 19+ patterns: Server Components by default, `use` hook for promises, clean client boundary management.
+Establish the setup first: React version, and RSC framework (Next.js App Router) or client-only app.
 
 ## Rules
 
-1. Default to Server Components — mark `'use client'` only for interactive code.
-2. Keep the client boundary minimal.
-3. Don't use `useEffect` for data fetching — use Server Components or `use(promise)`.
-4. Don't use `forwardRef` in new code — `ref` is a regular prop in React 19.
-5. Use named exports for components.
-6. Event handlers must have explicit types: `React.MouseEvent<HTMLButtonElement>`.
-
-## Hook guide
-
-| Hook | When to use | Anti-pattern |
-|------|-------------|--------------|
-| `useState` | Local state | Don't sync with props via useEffect |
-| `useTransition` | Non-blocking updates | Don't use for urgent changes |
-| `useDeferredValue` | Deferring expensive rendering | Don't use for simple state |
-| `useCallback` | Stable function refs for deps | Don't memoize everything |
-| `useMemo` | Expensive computations | Don't memoize trivial calcs |
-| `use` | Awaiting promises in render | Only in component render |
-| `useEffect` | Side effects only | Not for data fetching |
+1. Server Components, `'use client'`, and server actions only in RSC frameworks; client-only apps fetch through the project's data layer.
+2. Derive values during render instead of syncing them into state with effects.
+3. Effects sync external systems only; user-caused changes go in event handlers.
+4. Effects clean up, and async effects guard against stale responses.
+5. Never mutate state or props.
+6. Stable keys from data identity, not array indexes.
+7. Memoize after measuring, or not at all with the React Compiler.
+8. Framework file conventions win (Next.js route files need default exports).
+9. Accessible by default: semantic elements, labels, keyboard, focus.

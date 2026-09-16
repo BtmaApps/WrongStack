@@ -2069,6 +2069,7 @@
     "memoriesLabel_other": "{{count}} souvenirs"
   },
   "sddhub": {
+    "tabRequirements": "Exigences",
     "tabProject": "Projet SDD",
     "tabBoard": "Tableau SDD en direct",
     "tabSpecs": "Spécifications"
@@ -3159,7 +3160,11 @@
     "intakeRecords": "Enregistrements de recueil",
     "loading": "Chargement…",
     "noIntakeRecordsYetFileThe": "Aucun enregistrement pour l'instant — créez le premier ci-dessus.",
-    "describeTheFeatureBugFixRefactorOrChange": "Décrivez la fonctionnalité, la correction, la refactorisation ou le changement…"
+    "describeTheFeatureBugFixRefactorOrChange": "Décrivez la fonctionnalité, la correction, la refactorisation ou le changement…",
+    "startSddSpec": "Démarrer la spécification SDD",
+    "originalRequest": "Demande d'origine",
+    "copyRequest": "Copier la demande",
+    "copied": "Copié !"
   },
   "verifyReport": {
     "verificationReport": "Rapport de vérification",

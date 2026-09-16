@@ -1,243 +1,152 @@
 ---
 name: react-modern
 description: |
-  Use this skill when writing or reviewing React 19+ code in WrongStack.
-  Triggers: user mentions "React", "component", "useState", "useEffect",
-  "Server Component", "Client Component", "Suspense", "useTransition", "use hook".
-version: 1.2.0
+  Use this skill when writing, reviewing, or debugging React components and hooks — state, effects, data fetching, forms, Server and Client Components — in whatever React setup the project uses.
+  Triggers: user mentions "React", "component", "hook", "useState", "useEffect", "re-render", "Server Component", "use client", "Suspense", "useTransition", "useActionState", "Next.js", "JSX", "TSX".
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
-optional-capabilities: [verification.run]
+optional-capabilities: [verification.run, browser.interact]
 ---
 
-# Modern React (19+) — WrongStack
+# Modern React
 
 ## Overview
 
-React 19+ patterns: Server Components by default, `use` hook for promises, `useTransition` for non-blocking updates, and clean client boundary management. WrongStack uses TypeScript throughout.
+Most React bugs come from the same few places: state that should have been
+derived, effects used as event handlers, and data fetching that races. Before
+applying any pattern, establish the setup — the React version in package.json,
+and whether a framework with Server Components (Next.js App Router, React
+Router framework mode) is in play or it is a client-only app (Vite, CRA, Expo).
+Several "modern" rules only apply to one of the two.
 
 ## Rules
 
-1. Default to Server Components — mark `'use client'` only for interactive code.
-2. Keep the client boundary minimal — avoid unnecessary serialization errors.
-3. Avoid `useEffect` for data fetching — prefer Server Components or `use(promise)`.
-4. Avoid `forwardRef` in new code — `ref` is a regular prop in React 19.
-5. Use named exports for components — default exports hinder refactoring.
-6. Event handlers must have explicit types: `React.MouseEvent<HTMLButtonElement>`.
+1. Match the setup. Server Components, `'use client'`, and server actions exist
+   only in RSC frameworks. In a client-only app, fetch through the project's data
+   layer (TanStack Query, SWR, a loader) instead.
+2. Derive, don't sync. If a value can be computed from props or state during
+   render, compute it; don't mirror it into state with an effect.
+3. Effects are for synchronizing with external systems (subscriptions, DOM
+   APIs, timers, non-React widgets). User-caused changes belong in event
+   handlers.
+4. Every effect that subscribes or starts work returns a cleanup, and every
+   async effect guards against stale responses (abort or ignore flag).
+5. Never mutate state or props; update with new objects and arrays.
+6. Keys are stable identities from the data — never array indexes for lists
+   that reorder, insert, or delete.
+7. Memoize after measuring, or not at all when the React Compiler is enabled.
+   `useMemo`/`useCallback` exist for expensive work and referential stability
+   a child or effect actually depends on.
+8. Follow the framework's file conventions over style preferences — Next.js
+   `page.tsx`, `layout.tsx`, and route files require a default export even when
+   the codebase otherwise prefers named exports.
+9. Accessible by default: semantic elements, labels on inputs, keyboard
+   operability, focus management for dialogs.
 
 ## Patterns
 
-### Do
-
 ```tsx
-// ✅ Server Component — direct await
-async function Profile({ userId }: { userId: string }) {
-  const user = await fetch(`/api/users/${userId}`).then(r => r.json());
-  return <div>{user.name}</div>;
+// Derived value — no state, no effect.
+function Cart({ items }: { items: CartItem[] }) {
+  const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  return <p>Total: {formatMoney(total)}</p>;
 }
 
-// ✅ Client Component — use(promise) for thenables
-import { use } from 'react';
-function UserData({ promise }: { promise: Promise<User> }) {
-  const user = use(promise);
-  return <div>{user.name}</div>;
+// Effect that syncs with an external system, with cleanup.
+function useOnlineStatus(): boolean {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
+  return online;
 }
 
-// ✅ useTransition for non-urgent updates
-const [isPending, startTransition] = useTransition();
-startTransition(() => setPage(page + 1));
+// Client-only fetch without a data library: abort stale requests.
+function useUser(id: string) {
+  const [state, setState] = useState<{ user?: User; error?: Error }>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchUser(id, controller.signal)
+      .then((user) => setState({ user }))
+      .catch((error: Error) => {
+        if (error.name !== 'AbortError') setState({ error });
+      });
+    return () => controller.abort();
+  }, [id]);
+  return state;
+}
 ```
 
-### Don't
-
 ```tsx
-// ❌ Bad — useEffect for data fetching
-useEffect(() => { fetchData().then(setData); }, []);
-
-// ❌ Bad — forwardRef in new code
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(...)
-
-// ❌ Bad — default export
-export default function Button() { ... }
-```
-
-## Component types
-
-```tsx
-// ✅ Server Component (default) — for data fetching and static UI
-async function UserList() {
-  const users = await db.query('SELECT * FROM users');
-  return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+// RSC frameworks only: server data in a Server Component, interactivity in a leaf.
+export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await getUser(id); // runs on the server
+  return <ProfileHeader user={user} />;
 }
 
-// ❌ Client Component — mark only when needed
+// React 19 form action with pending and error state.
 'use client';
-import { useState } from 'react';
-function Counter() {
-  const [count, setCount] = useState(0);
-  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+function RenameForm({ rename }: { rename: (prev: State, data: FormData) => Promise<State> }) {
+  const [state, action, pending] = useActionState(rename, { error: null });
+  return (
+    <form action={action}>
+      <label htmlFor="name">Name</label>
+      <input id="name" name="name" required />
+      <button type="submit" disabled={pending}>Save</button>
+      {state.error ? <p role="alert">{state.error}</p> : null}
+    </form>
+  );
 }
 ```
 
-Rule: Default to Server Components. Mark `'use client'` only for interactive code. Keep the client boundary minimal.
+## React 19 notes
 
-## Data fetching
+- `ref` is a regular prop for function components; new code doesn't need
+  `forwardRef`.
+- `use(promise)` suspends on a promise, which must be created outside render
+  (passed from a Server Component, or cached) — a promise created during render
+  is recreated on every render.
+- Actions (`useActionState`, `useFormStatus`, `useOptimistic`) replace most
+  hand-rolled pending and error state for forms.
 
-```tsx
-// ✅ Server Component — direct await
-async function Profile({ userId }: { userId: string }) {
-  const user = await fetch(`/api/users/${userId}`).then(r => r.json());
-  return <div>{user.name}</div>;
-}
+## Debugging re-renders and stale values
 
-// ✅ Client Component — use(promise) for thenables
-import { use } from 'react';
-function UserData({ promise }: { promise: Promise<User> }) {
-  const user = use(promise);
-  return <div>{user.name}</div>;
-}
-
-// ❌ Bad — useEffect for data fetching
-useEffect(() => { fetchData().then(setData); }, []);
-```
-
-## State management
-
-```tsx
-// ✅ useState for local state
-const [count, setCount] = useState(0);
-
-// ✅ useTransition for non-urgent updates
-const [isPending, startTransition] = useTransition();
-startTransition(() => {
-  setPage(page + 1);
-});
-
-// ✅ useReducer for state machines
-const [state, dispatch] = useReducer(reducer, initialState);
-
-// ❌ useEffect for derived state
-// Bad: compute during render instead
-const fullName = firstName + ' ' + lastName;
-```
-
-## Hook rules
-
-| Hook | When to use | Anti-pattern |
-|------|-------------|--------------|
-| `useState` | Local component state | Don't sync with props via useEffect |
-| `useReducer` | Complex state logic | Don't chain useState for related state |
-| `useTransition` | Non-blocking updates | Don't use for urgent state changes |
-| `useDeferredValue` | Deferring expensive rendering | Don't use for urgent state changes |
-| `useCallback` | Stable function references for deps | Don't memoize everything — measure first |
-| `useMemo` | Expensive computations | Don't memoize trivial calculations |
-| `use` | Awaiting promises in render | Don't use outside component render |
-| `useEffect` | Side effects only | Don't use for data fetching or derived state |
-
-## Patterns
-
-### Do
-
-```tsx
-// ✅ useDeferredValue for expensive search
-function SearchResults({ query }: { query: string }) {
-  const deferredQuery = useDeferredValue(query);
-  // deferredQuery lags behind query — renders are non-blocking
-}
-
-// ✅ useCallback for stable deps in child
-const handleClick = useCallback(() => {
-  setCount(c => c + 1);
-}, []);
-
-// ✅ useMemo for expensive transformations
-const sorted = useMemo(
-  () => items.slice().sort((a, b) => a.name.localeCompare(b.name)),
-  [items]
-);
-```
-
-### Don't
-
-```tsx
-// ❌ useMemo for trivial operations
-const doubled = useMemo(() => count * 2, [count]); // not worth it
-
-// ❌ useCallback when deps change every render
-const handleClick = useCallback(() => {
-  doSomething(obj); // obj changes every render — no benefit
-}, [obj]);
-
-// ❌ useDeferredValue for simple state
-const [name, setName] = useState('');
-const deferredName = useDeferredValue(name); // overkill
-```
-
-### Common React 19 changes
-
-- `ref` is a regular prop — no more `forwardRef`
-- Server Components can be nested without serialization
-- `use(promise)` — await thenables directly in components
-- Actions — server functions callable from client
+| Symptom | Usual cause | Fix |
+|---|---|---|
+| Effect runs in a loop | Object or function dependency recreated each render | Move it inside the effect, or derive a primitive dependency |
+| Handler sees an old value | Closure captured stale state | Functional update `setX((prev) => …)`, or read the latest value inside the effect |
+| Input loses focus while typing | Component defined inside another component, or unstable key | Hoist the component; stable keys |
+| List items swap state | Index keys on a reordering list | Keys from item identity |
+| Hydration mismatch | Rendering time, randomness, or browser-only values on the server | Render those after mount, or pass them from the server |
 
 ## Anti-patterns
 
-| Anti-pattern | Why bad | Fix |
-|---|---|---|
-| `useEffect` to sync props to state | Causes extra render, stale data | Use controlled component or lift state |
-| Class components in new code | Deprecated | Use function components + hooks |
-| `forwardRef` in new code | `ref` is a regular prop in React 19 | Pass `ref` as a normal prop |
-| Default exports for components | Hinders refactoring | Named exports |
-| Mixing Server/Client boundaries | Serialization errors | Keep boundary clean |
-
-## TypeScript patterns
-
-```tsx
-// ✅ Props with explicit type
-interface ButtonProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary';
-}
-
-// ✅ Event handler types
-const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => { ... };
-
-// ✅ useRef with nullable initial
-const inputRef = useRef<HTMLInputElement>(null);
-```
-
-## Out of scope
-
-- **Don't default to Client Components.** Server Components are the default in React 19+. Mark `'use client'` only for interactive code; the boundary carries a serialization cost.
-- **Don't reach for `useEffect` when fetching data.** Use Server Components or `use(promise)`. The `useEffect` + fetch + `setState` dance is the pattern React 19 replaced.
-- **Don't reach for `forwardRef` in new code.** `ref` is a regular prop in React 19. `forwardRef` is the old way; the new way is `function Button({ ref, ...props })`.
-- **Don't use default exports for components.** Named exports only. Default exports hinder refactoring and tree-shaking; named exports are the convention.
-- **Don't use class components in new code.** Function components + hooks. Class components are deprecated in modern React.
-- **`useEffect` is the wrong tool for syncing props to state.** It causes an extra render and stale data. Lift state or use a controlled component.
-- **`useMemo` is overkill for trivial calculations.** `useMemo(() => count * 2, [count])` is more expensive than the multiplication. Measure before memoizing.
-- **Don't reach for `useCallback` when deps change every render.** `useCallback(fn, [obj])` where `obj` is fresh each render provides no stability. Reach for it only when child deps actually benefit.
-- **Don't mix Server/Client boundaries carelessly.** Serialization errors at the boundary are some of the hardest to debug. Keep the boundary clean.
-- **Don't call React's `use()` outside component render.** It's a render-only hook.
+- **An effect that sets state from props** — derive it, or reset with a `key`.
+- **Fetching in an effect without abort or ignore** — responses arrive out of order.
+- **`'use client'` at the top of a whole route tree** in an RSC app — it ships
+  everything to the browser.
+- **Memoizing everything by default** — cost without a measured benefit.
+- **Class components or `forwardRef` in new code** on React 19.
 
 ## Before returning
 
-- [ ] Server Components by default; `'use client'` only for interactive code
-- [ ] No `useEffect` for data fetching; Server Components or `use(promise)` instead
-- [ ] No `forwardRef` in new code; `ref` is a regular prop
-- [ ] Named exports for components; no default exports
-- [ ] No class components in new code; function components + hooks only
-- [ ] Event handlers carry explicit types (`React.MouseEvent<HTMLButtonElement>`)
-- [ ] `useState` for local state; `useReducer` for state machines
-- [ ] `useTransition` for non-urgent updates; `useDeferredValue` for expensive search
-- [ ] `useMemo` / `useCallback` only where profiling showed a need
-- [ ] `useEffect` reserved for side effects (subscriptions, manual DOM, focus); not for derived state or data fetching
-- [ ] Props interface explicit; no `any` or `Function`
-- [ ] `<nextsteps>` mirrors any open follow-up (boundary cleanup, hook refactor, prop typing)
+- [ ] Setup identified: React version, and RSC framework or client-only
+- [ ] No state mirrored from props; effects only sync external systems, with cleanup
+- [ ] Async work guarded against stale responses
+- [ ] Stable keys; no state or prop mutation
+- [ ] Framework file conventions respected
+- [ ] Inputs labelled, keyboard path works
 
 ## Skills in scope
 
-- `typescript-strict` — for TypeScript patterns
-- `node-modern` — for React server components with Node.js
-- `bug-hunter` — for React-specific bugs (stale closures, memory leaks)
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `typescript-strict` — for component and hook typing
+- `design-system` — for styling against the project's tokens
+- `testing` — for behaviour-level component tests

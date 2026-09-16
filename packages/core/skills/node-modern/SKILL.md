@@ -1,221 +1,118 @@
 ---
 name: node-modern
 description: |
-  Use this skill when writing, reviewing, or refactoring Node.js >= 22
-  TypeScript code in WrongStack. Triggers: ESM imports, fetch usage, AbortSignal,
-  node: protocol, Web Streams, or any async patterns.
-version: 1.2.0
+  Use this skill when writing, reviewing, or refactoring Node.js code — modules, async flow, cancellation, file and process I/O, HTTP — on a current Node.js release.
+  Triggers: user mentions "Node", "Node.js", "ESM", "CommonJS", "require", "import", "fetch", "AbortSignal", "AbortController", "stream", "child_process", "spawn", "fs", "event loop".
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: []
 optional-capabilities: [verification.run]
 ---
 
-# Modern Node.js (>= 22) — WrongStack
+# Modern Node.js
 
 ## Overview
 
-Node.js >= 22 patterns: ESM-only imports, native fetch with AbortSignal, Web Streams, and async patterns. WrongStack uses ESM throughout — no CommonJS in new code.
+Current Node.js ships most of what older code pulled from npm: global fetch,
+`AbortSignal.timeout`, `node:test`, Web Streams, promise-based `fs` and timers.
+Use the platform first, and match the module system and Node version the project
+declares (`"type"` and `"engines"` in package.json, `.nvmrc`, CI config).
 
 ## Rules
 
-1. Always use ESM (`import` with `.js` extension) — never `require()`.
-2. Always use `node:` protocol for built-in modules.
-3. Always use `AbortSignal.timeout()` for long-running operations (fetch, spawn, setTimeout).
-4. Never use axios, node-fetch, or got — native fetch is sufficient.
-5. Always handle `ENOENT` on file reads — use try/catch or `access` first.
-6. Use `Promise.allSettled` when partial failure is acceptable.
+1. Match the module system. In an ESM package (`"type": "module"` or `.mjs`)
+   write ES `import` statements, with explicit file extensions on relative imports when the
+   project compiles with NodeNext. Don't convert a CommonJS package to ESM as a
+   side effect of another change.
+2. Import built-ins with the `node:` prefix (`node:fs/promises`, `node:path`).
+3. Give every operation that can wait a deadline: pass an `AbortSignal` to
+   fetch calls, child processes, and timers; combine user cancellation with a
+   timeout using `AbortSignal.any`.
+4. Prefer built-ins over dependencies — global fetch over axios/node-fetch,
+   `node:crypto` `randomUUID` over uuid — unless the project already
+   standardizes on the dependency.
+5. Handle `ENOENT` by reading inside try/catch and branching on `err.code`;
+   checking `access` first is a race (TOCTOU).
+6. Never block the event loop in a server or CLI hot path: no `*Sync` fs calls
+   or CPU-heavy loops on request paths.
+7. Pass arguments to child processes as an array (`execFile`/`spawn`), never by
+   interpolating into a shell string.
+8. Every promise is awaited, returned, or explicitly handled; let entry points
+   report unhandled rejections instead of swallowing them.
 
 ## Patterns
 
-### Do
-
-```typescript
-// ✅ ESM with .js extension and node: protocol
-import * as fs from 'node:fs/promises';
-import { createServer } from 'node:http';
-import { helper } from './helper.js';
-
-// ✅ Native fetch with AbortSignal
-const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-
-// ✅ Atomic write
-const tmp = `${target}.${randomBytes(4).toString('hex')}.tmp`;
-await writeFile(tmp, data);
-await rename(tmp, target);
-
-// ✅ Parallel with allSettled
-const results = await Promise.allSettled(tasks.map(t => t.run()));
-```
-
-### Don't
-
-```typescript
-// ❌ CommonJS
-const fs = require('fs/promises');
-
-// ❌ No AbortSignal — hangs forever on timeout
-await fetch(url);
-
-// ❌ axios in new code
-const res = await axios.get(url);
-
-// ❌ Swallowing AbortError silently
-try {
-  await fetch(url);
-} catch (e) {
-  // AbortError means timeout — log it or handle explicitly
-}
-```
-
-## Imports — always ESM
-
 ```ts
-// ✅ Always — node: protocol for built-ins
-import * as fs from 'node:fs/promises';
-import { createServer } from 'node:http';
-import { join, resolve } from 'node:path';
-
-// ✅ ESM with .js extension in relative imports
-import { helper } from './helper.js';
-import { types } from '../types/index.js';
-
-// ❌ Never — CommonJS
-const fs = require('fs/promises');
-```
-
-## fetch — native only
-
-```ts
-// ✅ Native fetch (Node 18+)
-const res = await fetch('https://api.example.com/data', {
-  signal: AbortSignal.timeout(5000),
-});
-
-// ❌ Never — axios, node-fetch, got
-const res = await axios.get('https://api.example.com/data');
-```
-
-## AbortSignal — everywhere that takes time
-
-```ts
-// ✅ Timeout on fetch
-await fetch(url, { signal: AbortSignal.timeout(5000) });
-
-// ✅ Timeout on child_process
-const child = spawn('pnpm', ['test'], { signal: AbortSignal.timeout(30_000) });
-
-// ✅ Combined signals
-const combined = AbortSignal.any([userSignal, timeoutSignal]);
-
-// ✅ setTimeout with signal (Node 22+)
-setTimeout(handler, 1000, { signal: userSignal });
-```
-
-## Async patterns
-
-```ts
-// ✅ Atomic write pattern
-import { rename, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-const tmp = `${target}.${randomBytes(4).toString('hex')}.tmp`;
-await writeFile(tmp, data);
-await rename(tmp, target);
+import { readFile, rename, writeFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
+import { promisify } from 'node:util';
 
-// ✅ Sequential with error handling
-for (const file of files) {
+const execFileAsync = promisify(execFile);
+
+// Deadline plus user cancellation.
+export async function getJson(url: string, signal?: AbortSignal): Promise<unknown> {
+  const deadline = AbortSignal.timeout(10_000);
+  const res = await fetch(url, { signal: signal ? AbortSignal.any([signal, deadline]) : deadline });
+  if (!res.ok) throw new Error(`GET ${url} failed with ${res.status}`);
+  return res.json();
+}
+
+// Missing file is an expected outcome, not an exception.
+export async function readOptional(path: string): Promise<string | undefined> {
   try {
-    await processFile(file);
+    return await readFile(path, 'utf8');
   } catch (err) {
-    console.error(`Failed ${file}: ${err}`);
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw err;
   }
 }
 
-// ✅ Parallel with allSettled (when partial failure is ok)
-const results = await Promise.allSettled(tasks.map(t => t.run()));
-const failures = results.filter(r => r.status === 'rejected');
-```
-
-## Web Streams
-
-```ts
-// ✅ Readable stream from fetch
-const response = await fetch('https://api.example.com/stream');
-const reader = response.body!.getReader();
-const decoder = new TextDecoder();
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  process.stdout.write(decoder.decode(value));
+// Atomic replace: readers never observe a half-written file.
+export async function writeAtomic(target: string, data: string): Promise<void> {
+  const tmp = `${target}.${randomBytes(4).toString('hex')}.tmp`;
+  await writeFile(tmp, data);
+  await rename(tmp, target);
 }
+
+// Cancellable delay — the promise API takes a signal; the global setTimeout does not.
+await delay(500, undefined, { signal: AbortSignal.timeout(5_000) });
+
+// Arguments as an array — no shell, no injection.
+const { stdout } = await execFileAsync('git', ['log', '--oneline', '-5'], {
+  signal: AbortSignal.timeout(15_000),
+});
+
+// Partial failure is acceptable: collect every outcome.
+const results = await Promise.allSettled(urls.map((url) => getJson(url)));
+const failed = results.filter((r) => r.status === 'rejected');
 ```
+
+In ESM, `__dirname` doesn't exist: use `import.meta.dirname` on current Node, or
+`path.dirname(fileURLToPath(import.meta.url))` on older releases.
 
 ## Anti-patterns
 
-| Anti-pattern | Why bad | Fix |
+| Anti-pattern | Why it hurts | Instead |
 |---|---|---|
-| `require()` in new code | WrongStack uses ESM | Prefer `import` with `.js` extension |
-| `__dirname` without `fileURLToPath` | ESM doesn't have `__dirname` | `path.dirname(fileURLToPath(import.meta.url))` |
-| Mixing `fs.readFile` callback with `await` | Callback API doesn't return a promise | Use `fs.promises.readFile` |
-| Swallowing `AbortError` silently | Means timeout/abort happened | Log it or handle explicitly |
-| `process.cwd()` without fallback | May not match user's cwd | Accept `cwd` as a parameter |
-| Not handling `ENOENT` on file reads | File may not exist | Use try/catch or `access` first |
-
-## package.json scripts
-
-```json
-{
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "node ../../scripts/build-package.mjs",
-    "test": "vitest run"
-  }
-}
-```
-
-## TypeScript config for Node 22+
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true
-  }
-}
-```
-
-## Out of scope
-
-- **Don't use `require()`.** ESM only. `import { x } from './y.js'` with the `.js` extension, even in TS source.
-- **Don't use axios, node-fetch, or got.** Native fetch is sufficient. Third-party HTTP clients are an obsolete layer.
-- **Don't call fetch without `AbortSignal.timeout()`**. Every long-running operation needs a timeout. A request that hangs forever is a CI failure waiting to happen.
-- **Don't use `__dirname` directly in ESM.** ESM doesn't have it. `path.dirname(fileURLToPath(import.meta.url))` is the replacement.
-- **Don't mix callback `fs` with `await`.** Callback APIs don't return promises. Use `fs.promises.*` for `await`able access.
-- **Don't swallow `AbortError` silently.** An `AbortError` means a timeout or abort — it is signal, not success. Log it or handle it explicitly.
-- **Don't trust `process.cwd()` blindly.** It may not match the user's cwd. Accept `cwd` as a parameter and default sensibly.
-- **Don't use setTimeout for cancellable delays in new code.** `setTimeout(handler, ms, { signal })` (Node 22+) is the cancellable form.
-- **Don't write non-atomic file updates.** Use the write-temp + rename pattern. A crash mid-write leaves the file in an indeterminate state otherwise.
-- **Don't enable axios or got for "familiarity".** Node 22+ ships everything you need.
+| `fetch(url)` with no signal | Hangs forever on a stalled server | `AbortSignal.timeout()` |
+| `exec(\`cmd ${input}\`)` | Shell injection | `execFile` with an argument array |
+| `existsSync` then `readFile` | Race between check and use | try/catch on the read |
+| `readFileSync` in a request handler | Blocks every other request | `node:fs/promises` |
+| Catching an `AbortError` and continuing silently | Hides timeouts and cancellations | Rethrow, or report it as a timeout |
+| `writeFile` directly over a config or state file | A crash leaves it truncated | Write to a temp file, then rename |
 
 ## Before returning
 
-- [ ] ESM only; no `require()`, no `module.exports`
-- [ ] All relative imports use the `.js` extension
-- [ ] Built-in modules imported via the `node:` protocol (`node:fs/promises`, `node:http`, `node:path`)
-- [ ] fetch carries `AbortSignal.timeout()` for any operation that can wait
-- [ ] `__dirname` replaced with `path.dirname(fileURLToPath(import.meta.url))`
-- [ ] `fs.promises.*` for awaited file access; no callback `fs`
-- [ ] `AbortError` caught and handled explicitly, not swallowed
-- [ ] `cwd` accepted as parameter; `process.cwd()` is not a default
-- [ ] File writes atomic: `writeFile(tmp)` + `rename(tmp, target)`
-- [ ] `Promise.allSettled` for parallel tasks where partial failure is acceptable
-- [ ] `<nextsteps>` mirrors any open follow-up (timeout wiring, ESM migration, abort handling)
+- [ ] Module system and Node version match what the project declares
+- [ ] Built-ins imported with `node:`; no new dependency the platform covers
+- [ ] Every network call, child process, and delay is cancellable or bounded
+- [ ] Child-process arguments passed as arrays
+- [ ] Missing-file and abort cases handled deliberately; no floating promises
 
 ## Skills in scope
 
-- `typescript-strict` — strict TypeScript patterns
-- `react-modern` — React Server Components with Node.js
-- `bug-hunter` — catching async/await bugs, unhandled rejections
-- `sdd` — for setting up new Node.js features with a spec first
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `typescript-strict` — for typing Node.js APIs and boundaries
+- `security-scanner` — for shell, path, and SSRF exposure in I/O code
+- `testing` — for testing async and time-based logic with fake timers

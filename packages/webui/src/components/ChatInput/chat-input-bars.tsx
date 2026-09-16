@@ -1,5 +1,6 @@
-import { BookOpen, Cpu } from 'lucide-react';
+import { BookOpen, Cpu, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { openMainView } from '@/lib/view-navigation';
 import type { useFileReferenceStore } from '@/stores';
 import { FileReferenceChip } from '../FileReferenceChip.js';
 import type { ImageAttachment } from './image-attachments.js';
@@ -185,6 +186,15 @@ export function ModelAndPromptBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-1">
+      <button
+        type="button"
+        onClick={() => openMainView('prompts')}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        title={t('activity:promptJournal.title')}
+        aria-label={t('activity:promptJournal.title')}
+      >
+        <History className="h-3.5 w-3.5" aria-hidden />
+      </button>
       <button
         type="button"
         onClick={onOpenPromptLibrary}

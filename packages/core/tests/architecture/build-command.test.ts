@@ -11,7 +11,11 @@ const repoFile = (path: string): string => readFileSync(resolve(REPO_ROOT, path)
 describe('build command invariants', () => {
   it('documents the repository topological build runner in the docker-deploy skill', () => {
     const dockerSkill = repoFile('packages/core/skills/docker-deploy/SKILL.md');
-    expect(dockerSkill).toContain('`pnpm build`');
+    // The v2.0.0 skill rewrite documents the runner inside the Dockerfile
+    // pattern (`RUN pnpm build && pnpm prune --prod`) instead of a backticked
+    // prose literal — assert on the runner itself, not its markup. The
+    // prohibition on the flat recursive build (`pnpm -r build`) stands.
+    expect(dockerSkill).toContain('pnpm build');
     expect(dockerSkill).not.toContain('pnpm -r build');
   });
 });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
 import { useConfigStore } from '@/stores';
+import { confirmModal } from '../ConfirmModal';
 import type { SageEntry, SageGraphEdge, SageStats, SageStatus } from '@/types';
 import { collectMemoryTags, filterMemories, selectRelatedMemories } from './selectors';
 import type { MemoryDraft } from './shared';
@@ -345,13 +346,20 @@ export function useMemoryManagerState() {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const confirmDiscard = useCallback(() => {
+  const confirmDiscard = useCallback(async () => {
     if (!dirty || (!editing && !creating)) return true;
-    return window.confirm('Discard the unsaved memory changes?');
-  }, [creating, dirty, editing]);
+    return confirmModal({
+      title: t('activity:memoryManager.discardTitle', { defaultValue: 'Discard Unsaved Changes?' }),
+      message: t('activity:memoryManager.discardConfirm', {
+        defaultValue: 'Discard the unsaved memory changes? This cannot be undone.',
+      }),
+      confirmLabel: t('common:action.discard', { defaultValue: 'Discard' }),
+      danger: true,
+    });
+  }, [creating, dirty, editing, t]);
 
-  const openCreate = useCallback(() => {
-    if (!confirmDiscard()) return;
+  const openCreate = useCallback(async () => {
+    if (!(await confirmDiscard())) return;
     const next = emptyDraft();
     setDraft(next);
     setBaselineDraft(next);
@@ -362,8 +370,8 @@ export function useMemoryManagerState() {
   }, [confirmDiscard]);
 
   const openMemory = useCallback(
-    (id: string) => {
-      if (!confirmDiscard()) return;
+    async (id: string) => {
+      if (!(await confirmDiscard())) return;
       setSelectedId(id);
       setCreating(false);
       setEditing(false);
@@ -387,8 +395,8 @@ export function useMemoryManagerState() {
     [resolveMemory, selectedMemory],
   );
 
-  const cancelEditor = useCallback(() => {
-    if (!confirmDiscard()) return;
+  const cancelEditor = useCallback(async () => {
+    if (!(await confirmDiscard())) return;
     setEditing(false);
     setCreating(false);
     setMutationError(null);

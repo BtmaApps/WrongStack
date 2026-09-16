@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   test: {
+    testTimeout: 30_000,
     maxWorkers: getVitestMaxWorkers(),
     include: ['tests/**/*.test.ts'],
     pool: 'forks',

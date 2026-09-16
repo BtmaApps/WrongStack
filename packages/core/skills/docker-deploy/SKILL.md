@@ -1,183 +1,134 @@
 ---
 name: docker-deploy
 description: |
-  Use this skill when building, containerizing, or deploying WrongStack
-  with Docker. Triggers: user says "docker", "container", "dockerfile",
-  "image", "docker-compose", "deploy", "containerize", "registry",
-  "multi-stage", "distroless".
-version: 1.1.0
+  Use this skill when writing or reviewing a Dockerfile, docker-compose setup, or container image build for a project, or when debugging a container that won't build, start, or stay healthy.
+  Triggers: user says "docker", "Dockerfile", "container", "image", "docker compose", "containerize", "multi-stage", "distroless", "registry", "healthcheck", "image size".
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write, execution.shell]
 required-tools: []
 ---
 
-# Docker Deploy — WrongStack
+# Docker Deploy
 
 ## Overview
 
-Containerizes and deploys WrongStack with Docker. WrongStack is a Node.js CLI tool — containerize it for CI/CD, cloud deployment, or self-hosted setups. Use multi-stage builds to keep images small and distroless base images for security.
+A good image is small, reproducible, runs as a non-root user, and rebuilds
+quickly because its layers are ordered by how often they change. Start from the
+project as it is: the language and package manager (lockfile), the build
+command, the start command, the port, and what the process needs at runtime
+(environment, volumes, writable paths).
 
 ## Rules
 
-1. Multi-stage build: build stage (with dev deps) + runtime stage (production deps only).
-2. Use `node:*` base image with pinned version — not `node:latest`.
-3. Never run as root in the container — use a non-root user.
-4. Pass secrets via environment variables, not baked into the image.
-5. Health check: `docker healthcheck` pointing to the CLI's self-check command.
-6. Tag images with git SHA: `wrongstack:$GIT_SHA` — never `latest` in production.
-7. Scan images for vulnerabilities: `trivy image` or `docker scout` before push.
-8. Use `.dockerignore` to exclude `node_modules`, `dist`, `.git`, `*.test.ts`.
+1. Multi-stage builds: build with the toolchain and dev dependencies, ship a
+   runtime stage with only production artifacts.
+2. Pin the base image to a specific version tag (optionally a digest); never
+   `latest`.
+3. Order layers for caching: copy dependency manifests and the lockfile,
+   install, then copy the source.
+4. Install from the lockfile (`npm ci`, `pnpm install --frozen-lockfile`,
+   `pip install -r` with hashes, `go mod download`).
+5. Run as a non-root user, and make only the paths the app writes to writable.
+6. No secrets in the image — no `ARG`/`ENV` for credentials, no copied `.env`.
+   Pass them at runtime, or use BuildKit secret mounts for build-time access.
+7. Use the exec form for `ENTRYPOINT`/`CMD` so signals reach the process, and
+   add an init (`--init`, or `tini`) when the app spawns children.
+8. Keep a `.dockerignore` that excludes `.git`, dependency folders, build output,
+   local env files, and tests.
+9. Add a `HEALTHCHECK` for long-running services, pointing at a cheap readiness
+   endpoint; one-shot jobs and CLIs don't need one.
 
 ## Patterns
 
-### Do
+Node.js service with pnpm:
 
 ```dockerfile
-# ✅ Multi-stage build — small production image
-FROM node:22-alpine AS builder
+# syntax=docker/dockerfile:1
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml .pnpmfile.cjs ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm build
+RUN pnpm build && pnpm prune --prod
 
-FROM node:22-alpine AS runtime
+FROM node:22-bookworm-slim AS runtime
+ENV NODE_ENV=production
 WORKDIR /app
-# Copy only what's needed
-COPY --from=builder /app/packages/cli/dist ./dist/
-COPY --from=builder /app/node_modules ./node_modules/
-COPY --from=builder /app/packages/cli/package.json ./
-
-# Non-root user
-RUN addgroup -S wrongstack && adduser -S wrongstack -G wrongstack
-USER wrongstack
-
-ENTRYPOINT ["node", "dist/index.js"]
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/package.json ./
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/server.js"]
 ```
+
+Build-time secret without baking it into a layer:
+
+```dockerfile
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc pnpm install --frozen-lockfile
+```
+
+```bash
+docker build --secret id=npmrc,src=$HOME/.npmrc -t app:$(git rev-parse --short HEAD) .
+```
+
+Compose for local development (the top-level `version:` key is obsolete):
 
 ```yaml
-# ✅ docker-compose.yml — development
-version: '3.9'
 services:
-  wrongstack:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  app:
+    build: .
+    ports: ["3000:3000"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:17
     environment:
-      - WRONGSTACK_CONFIG_DIR=/app/.wrongstack
-      - WRONGSTACK_SESSION_ROOT=/app/sessions
-    volumes:
-      - .:/app
-      - wrongstack-data:/app/.wrongstack
-    stdin_open: true
-    tty: true
-
+      POSTGRES_PASSWORD: dev-only
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
 volumes:
-  wrongstack-data:
+  db-data:
 ```
 
-```bash
-# ✅ Build with git SHA tag
-IMAGE_TAG="wrongstack:$(git rev-parse --short HEAD)"
-docker build -t "$IMAGE_TAG" .
-docker tag "$IMAGE_TAG" "registry.example.com/wrongstack:$IMAGE_TAG"
-docker push "registry.example.com/wrongstack:$IMAGE_TAG"
-```
+## Debugging a container
 
-### Don't
+| Symptom | Check |
+|---|---|
+| Build cache never hits | Source copied before the dependency install; missing `.dockerignore` |
+| Exits immediately | `docker logs <id>`; the `CMD` path relative to `WORKDIR`; missing build output in the runtime stage |
+| Works locally, fails in the image | Missing runtime env var, native module built for a different libc (alpine vs glibc), dev dependency needed at runtime |
+| Permission denied | Writing to a path owned by root while running as non-root |
+| Ctrl+C or stop takes 10 s | Shell-form `CMD` swallowing signals; no init process |
+| Unhealthy | Run the healthcheck command yourself inside the container |
 
-```dockerfile
-# ❌ Running as root
-FROM node:22
-WORKDIR /app
-COPY . .
-RUN npm install && npm run build
-ENTRYPOINT ["npm", "start"]
+## Anti-patterns
 
-# ❌ No .dockerignore — copies everything
-# node_modules, .git, dist/ end up in the image
-
-# ❌ Secrets baked into image
-ARG API_KEY
-RUN echo $API_KEY > /app/config.key  # ❌
-```
-
-## Dockerfile best practices
-
-| Practice | Why |
-|----------|-----|
-| Pin base image version | `node:22-alpine` not `node:latest` |
-| Multi-stage build | 1GB → ~150MB image size |
-| Non-root user | Security: container compromise ≠ host root |
-| `.dockerignore` | Smaller image, faster builds |
-| No `latest` tag | Reproducibility — you always know which SHA |
-| Health check | Kubernetes/docker-compose health monitoring |
-
-## Environment variables
-
-```bash
-# Required at runtime
-WRONGSTACK_CONFIG_DIR=/app/.wrongstack
-WRONGSTACK_SESSION_ROOT=/app/sessions
-
-# Optional
-WRONGSTACK_PROVIDER=anthropic
-WRONGSTACK_MODEL=<model-id>
-WRONGSTACK_API_KEY=${ANTHROPIC_API_KEY}  # from secrets manager
-```
-
-## Health check
-
-```dockerfile
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node dist/index.js diag-doctor || exit 1
-```
-
-## Image scanning
-
-```bash
-# Scan before push
-trivy image wrongstack:$GIT_SHA
-
-# Block critical vulnerabilities
-trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL wrongstack:$GIT_SHA
-```
-
-## WrongStack-specific notes
-
-- **WrongStack CLI entry point**: `packages/cli/dist/index.js` after build.
-- **pnpm workspaces**: Build from repo root with `pnpm build` before `docker build`; WrongStack's build runner topologically orders workspace dependencies.
-- **Session storage**: Sessions are stored at `WRONGSTACK_SESSION_ROOT` — mount a volume for persistence.
-- **Config**: Config is at `WRONGSTACK_CONFIG_DIR` — mount for config persistence across restarts.
-
-## Out of scope
-
-- **Don't run as root in the container.** A non-root user is mandatory. A container compromise that lands root on the host is the failure this rule exists to prevent.
-- **Don't use `node:latest` or unversioned base images.** Pin to `node:22-alpine` (or current). Reproducibility starts at the base.
-- **Don't bake secrets into the image.** Pass via environment variables at runtime. A `RUN echo $API_KEY > /app/config.key` is a permanent secret in the image layer.
-- **Don't skip the `.dockerignore`.** Without it, `node_modules`, `dist`, `.git`, and `*.test.ts` end up in the image — bigger, slower, more attack surface.
-- **Don't tag production images `latest`.** Tag with the git SHA. `latest` is a moving target; production needs a specific commit.
-- **Don't ship without a `HEALTHCHECK`.** Orchestrators need a probe; an image without one can't be load-balanced cleanly.
-- **Don't skip image scanning.** `trivy image` or `docker scout` before push. Critical vulnerabilities are blocking.
-- **Don't mix build and runtime stages.** Multi-stage is the rule: build with dev deps, runtime with production deps only. A 1GB image is a build hygiene failure.
-- **Don't deploy without persistent volume mounts.** Sessions at `WRONGSTACK_SESSION_ROOT` and config at `WRONGSTACK_CONFIG_DIR` need volumes; container restarts lose data otherwise.
+- **`COPY . .` before installing dependencies** — every source change reinstalls everything.
+- **Secrets in `ARG`/`ENV`** — visible in image history to anyone who pulls it.
+- **Running as root** "because it works".
+- **`latest` tags** in anything deployed.
+- **One giant stage** that ships compilers and dev dependencies to production.
 
 ## Before returning
 
-- [ ] Multi-stage build; runtime stage is production-deps only
-- [ ] Base image pinned to a specific tag (`node:22-alpine`, not `latest`)
-- [ ] Non-root user; `USER wrongstack` set before `ENTRYPOINT`
-- [ ] Secrets via env at runtime, not baked into the image
-- [ ] `.dockerignore` excludes `node_modules`, `dist`, `.git`, `*.test.ts`
-- [ ] Image tagged with git SHA, not `latest`
-- [ ] `HEALTHCHECK` directive points to the CLI's self-check command
-- [ ] `trivy image` or `docker scout` run before push; critical vulns blocked
-- [ ] Volumes mounted for `WRONGSTACK_SESSION_ROOT` and `WRONGSTACK_CONFIG_DIR`
-- [ ] Build runs from repo root with `pnpm build` before `docker build` (workspace order)
+- [ ] Multi-stage; runtime stage holds only production artifacts
+- [ ] Base image pinned; dependencies installed from the lockfile
+- [ ] Layers ordered so source changes don't invalidate the install
+- [ ] Non-root user; no secrets in layers; `.dockerignore` present
+- [ ] Exec-form start command; healthcheck for services
+- [ ] Image built and the container started successfully, if the environment allows
 
 ## Skills in scope
 
-- `security-scanner` — for scanning Dockerfiles and container configs for vulnerabilities
-- `git-flow` — for tagging releases and managing Docker image versions
-- `node-modern` — for Node.js-specific containerization patterns
-- `observability` — for logging and tracing in containerized environments
-- `output-standards` — for standardized `<nextsteps>` formatting
+- `security-scanner` — for image and configuration exposure review
+- `observability` — for logs and health endpoints in containers
+- `tech-stack` — for choosing and pinning base image versions

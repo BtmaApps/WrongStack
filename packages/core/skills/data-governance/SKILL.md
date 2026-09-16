@@ -3,7 +3,7 @@ name: data-governance
 description: |
   Use this skill when designing or reviewing data governance: schema ownership,
   PII handling, retention, lineage, access policy, and migration safety for
-  WrongStack services and stores.
+  services and data stores.
   Triggers: user says "data governance", "PII", "schema ownership", "retention policy", "data lineage", "migration safety".
 trigger: Use when designing or reviewing schema ownership, PII handling, retention, data lineage, access policy, or migration safety.
 version: 1.1.0
@@ -12,9 +12,9 @@ required-tools: []
 optional-capabilities: [code.inspect]
 ---
 
-# Data Governance — WrongStack
+# Data Governance
 
-Designs and reviews data governance for WrongStack services: schema ownership, PII handling, retention, lineage, access policy, and migration safety.
+Designs and reviews data governance for services and data stores: schema ownership, PII handling, retention, lineage, access policy, and migration safety.
 
 ## Overview
 

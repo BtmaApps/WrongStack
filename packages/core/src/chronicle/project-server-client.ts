@@ -24,6 +24,16 @@ import type { ChronicleEvent, ChronicleEventInput } from './types.js';
 
 const CONNECT_ATTEMPT_TIMEOUT_MS = 750;
 const SERVER_START_TIMEOUT_MS = 10_000;
+/**
+ * Minimum spacing between detached-server spawn attempts inside one
+ * `connectWithElection` window. The first spawn still fires immediately;
+ * re-arming is cadence-bounded so a dead first daemon is recovered without
+ * flooding the machine with losing candidates (the endpoint bind IS the
+ * election, so an extra spawn that cannot win exits without side effects).
+ * Mirrors the mailbox/SAGE clients' fix for the same single-shot-spawn
+ * defect.
+ */
+const SPAWN_RETRY_CADENCE_MS = 750;
 const DEFAULT_CALL_TIMEOUT_MS = 30_000;
 const APPEND_CALL_TIMEOUT_MS = 60_000;
 const DEFAULT_BATCH_WINDOW_MS = 5;
@@ -81,9 +91,42 @@ export type ChronicleDaemonAvailability =
   /** No server entry point exists in any known output layout. */
   | { readonly kind: 'missing-build' };
 
+/**
+ * Transient-tolerant entrypoint probe. ENOENT means the layout genuinely
+ * does not exist; ANY other stat failure (EMFILE/EPERM/EBUSY spikes under
+ * full-suite parallel load) is "unknown", and `fs.existsSync` folds that
+ * into false — one transient miss then threw "Built Chronicle project
+ * server is unavailable" straight out of the connect loop and failed the
+ * caller (mailbox/SAGE sibling flake, observed 2026-09-15). Assume-present
+ * is the recoverable direction: a dead spawn is guarded and cadence-
+ * retryable, while a false negative was fatal to the connect window.
+ */
+function probeFileExists(filePath: string): boolean {
+  try {
+    // Primary probe: the seam existing callers and tests mock, and the fast
+    // path for the common available case.
+    if (fs.existsSync(filePath)) return true;
+  } catch {
+    // existsSync itself failed — fall through to the stat verification.
+  }
+  // existsSync folds transient stat errors (EMFILE/EPERM/EBUSY spikes under
+  // full-suite parallel load) into false. Verify with statSync before
+  // declaring the build missing: ENOENT = genuinely absent; any other error
+  // (or a contradictory success) = assume present — the recoverable
+  // direction, since a dead spawn is guarded and cadence-retryable while a
+  // false negative was fatal to the connect window (mailbox/SAGE sibling
+  // flakes, observed 2026-09-15).
+  try {
+    fs.statSync(filePath);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException)?.code !== 'ENOENT';
+  }
+}
+
 export function resolveChronicleDaemonAvailability(
   moduleUrl = import.meta.url,
-  exists: (filePath: string) => boolean = fs.existsSync,
+  exists: (filePath: string) => boolean = probeFileExists,
 ): ChronicleDaemonAvailability {
   if (
     process.env['WRONGSTACK_CHRONICLE_INLINE'] ||
@@ -97,7 +140,7 @@ export function resolveChronicleDaemonAvailability(
 
 export function resolveChronicleProjectServerUrl(
   moduleUrl = import.meta.url,
-  exists: (filePath: string) => boolean = fs.existsSync,
+  exists: (filePath: string) => boolean = probeFileExists,
 ): URL | null {
   const availability = resolveChronicleDaemonAvailability(moduleUrl, exists);
   return availability.kind === 'available' ? availability.url : null;
@@ -224,7 +267,7 @@ export class ChronicleProjectServerClient {
   private async connectWithElection(spawnIfMissing: boolean): Promise<void> {
     const deadline =
       Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
-    let spawned = false;
+    let lastSpawnAt = 0;
     let lastError: unknown = new Error('Chronicle project server unavailable');
     while (Date.now() < deadline) {
       try {
@@ -234,9 +277,21 @@ export class ChronicleProjectServerClient {
         lastError = error;
       }
       if (!spawnIfMissing) break;
-      if (!spawned) {
-        this.spawnDetachedServer();
-        spawned = true;
+      const now = Date.now();
+      if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS) {
+        // A synchronous throw from the spawn path — the resolver transiently
+        // failing to stat the dist entrypoint under load — must not unwind
+        // the whole retry window (mailbox sibling flake, observed 2026-09-15).
+        // Degrade to "this tick spawned nothing"; lastSpawnAt stays unset so
+        // the next tick retries immediately rather than waiting out the
+        // cadence. Cadence-bounded re-arming also recovers a dead first
+        // daemon, which the old single-shot `spawned` flag made fatal.
+        try {
+          this.spawnDetachedServer();
+          lastSpawnAt = now;
+        } catch {
+          // Resolution failures are retryable by the loop below.
+        }
       }
       await delay(75);
     }

@@ -35,6 +35,22 @@ decides every component below.
 6. Type does the rest: one humanist sans, wide size jumps, heavy weights for
    headings rather than color changes.
 
+## Where this kit fights a kiosk
+
+Rule 2 — separation by fill, with blocks touching edge to edge — is correct on a
+pointer-driven screen and **dangerous on a public terminal**. Two 64px targets
+separated by a 1px seam means a mis-tap selects the neighbour, and the person at a
+ticket machine cannot undo a purchase as easily as they can move a mouse.
+
+On kiosk and public-terminal surfaces: keep fill separation as the visual
+language, but put a real gap — one full spacing step — between adjacent
+*interactive* targets. Non-interactive blocks may still touch. Measured on a fare
+kiosk built with this kit: `gap-px` between zone buttons passed every token check
+and every craft axis, and still failed the physical mis-tap test.
+
+The general form of this: a kit's aesthetic rule is scoped to the surfaces the kit
+was chosen for. When the surface changes the physics, the physics wins.
+
 ## Color
 - Light: bg `oklch(97% 0 0)`, surface `oklch(100% 0 0)`, fg `oklch(22% 0.01 250)`,
   primary `oklch(52% 0.19 250)` (confident blue — L is 52%, not higher, because
@@ -51,6 +67,10 @@ decides every component below.
 ## Typography
 - Humanist sans (Inter / Segoe UI / system-ui). One family, no serif pairing.
 - Wide jumps between steps — flat has no depth to signal importance, so size does.
+- This kit adds a step the shared ramp does not have: **`text-4xl` (3rem / 48px)**,
+  for the one number or state a kiosk must be readable from two metres away. The
+  shared ramp stops at `text-3xl` (30px), which is a fine display size at a desk
+  and too small standing in a station. Use it for exactly one element per screen.
 - Weights 400 body / 600 headings / 700 display. Avoid muted-color de-emphasis as
   the only tool; prefer size and weight.
 

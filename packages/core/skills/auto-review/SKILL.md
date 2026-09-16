@@ -34,7 +34,7 @@ iteration.completed → git diff → trailing quiet window → chimera.review_ne
                                                   ↓
                                     chimera.report_available notification
                                                   ↓
-                                    stop; wait for explicit user action
+                                    stop (with cascadeOn set: follow-up fix agents)
 ```
 
 ## Status
@@ -78,6 +78,8 @@ Enable it in your config:
 | `debounceMs` | number | 15000 | Required file-quiet period before a mid-session review starts |
 | `maxFilesPerBatch` | number | 15 | Files per review call |
 | `maxConcurrentReviews` | number | 2 | Parallel review subagent cap |
+| `cascadeOn` | `off` \| `high` \| `critical` | `off` | Opt-in follow-up agents (bug-hunter / security-scanner) for verified findings at or above this severity |
+| `maxCascadeDepth` | number | 2 | Max fix → re-review cycles when `cascadeOn` is set |
 
 ## Slash commands
 
@@ -97,21 +99,22 @@ Enable it in your config:
 - **Skipped** — `.wrongstack/` files
 - **Deleted files** are silently omitted
 
-## Passive completion boundary
+## Completion and opt-in cascade
 
 Every completed review is persisted and announced through
-`chimera.report_available`. It does not become a normal assistant response,
-wake the leader, spawn a fix agent, or trigger a re-review. Legacy `cascadeOn`
-and `maxCascadeDepth` config values are compatibility-only and resolve to the
-passive policy. The user can inspect the mailbox and explicitly ask the leader
-to act later.
+`chimera.report_available`. By default (`cascadeOn: "off"`) that is the end: it
+does not become a normal assistant response, wake the leader, or spawn a fix
+agent, and the user decides later whether to act. Setting `cascadeOn` to
+`"high"` or `"critical"` opts in to follow-up agents (bug-hunter /
+security-scanner) for verified findings at or above that severity, bounded by
+`maxCascadeDepth` fix → re-review cycles.
 
 ## Out of scope
 
 - **Don't enable auto-review without `--director`.** The subagent pipeline requires Director mode; without it, review events silently skip. Verify the director is on before flipping the plugin.
 - **Don't start the plugin while a session is mid-flight without a clear contract.** Auto-review dispatches reviewers at trailing-quiet windows; the user has to know it's running.
 - **Don't read untracked files.** `??` files are never reviewed. If a reviewer needs a file, the workflow must have it staged or tracked first.
-- **Don't manually trigger a fix from a report.** Auto-review is passive — the report goes to the mailbox and notifies UIs. A follow-up fix is a separate user-initiated turn.
+- **Don't manually trigger a fix from a report.** The report goes to the mailbox and notifies UIs. A follow-up fix is a separate user-initiated turn unless the user opted in with `cascadeOn`.
 - **Don't re-route the report to mailbox peers or the leader.** Runtime handles persistence and notification. Manual mailbox traffic from auto-review is double-handling.
 - **Don't tune `maxFilesPerBatch` above 15** without measuring cost. Larger batches cut parallelism gains and inflate single-review latency.
 - **Don't set the debounce below 5s.** Too-aggressive debounce starts reviews while the user is still mid-edit; they hit a reviewer they didn't ask for.
@@ -123,13 +126,12 @@ to act later.
 - [ ] `git` is available in the session working directory
 - [ ] Only git-tracked files are reviewed; untracked files skipped
 - [ ] Reports go to the mailbox + `chimera.report_available` notification, not to peer mail
-- [ ] No mutating follow-up spawned from the report (passive completion)
+- [ ] Follow-up fix agents only when `cascadeOn` is explicitly set
 - [ ] Debounce and `maxFilesPerBatch` tuned for the workload, not at default
 
 ## Skills in scope
 
 - `chimera` — for the review output format and severity rules
-- `shadow-agent` — for cron-based background monitoring pattern
 - `node-modern` — for understanding the TypeScript plugin code
 - `git-flow` — for git diff detection patterns
 - `multi-agent` — for subagent delegation and fleet management

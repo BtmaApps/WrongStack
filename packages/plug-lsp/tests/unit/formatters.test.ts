@@ -26,7 +26,7 @@ describe('formatters', () => {
         cwd,
         severityFilter: ['error', 'warning'],
         maxPerFile: 2,
-        maxTotal: 1,
+        maxTotal: 10,
       },
     );
 
@@ -36,6 +36,47 @@ describe('formatters', () => {
     expect(
       formatDiagnostics(new Map(), { cwd, severityFilter: ['error'], maxPerFile: 1, maxTotal: 1 }),
     ).toBe('No LSP diagnostics.');
+  });
+
+  // Regression (round r1-1d2c18d4-diag-cap): the file that crosses `maxTotal`
+  // used to be emitted whole — the cap only gated whole files after it — so
+  // `lsp_diagnostics { limit: 5 }` could report 6+ diagnostics from one file
+  // and silently hide every later file.
+  it('truncates the file that crosses maxTotal instead of overshooting the cap', () => {
+    const out = formatDiagnostics(
+      new Map<string, Diagnostic[]>([
+        [
+          `${cwd}/overflow.ts`,
+          ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'].map((m) => diagnostic(0, 0, 1, m)),
+        ],
+        [`${cwd}/control.ts`, ['c1', 'c2'].map((m) => diagnostic(0, 0, 1, m))],
+      ]),
+      { cwd, severityFilter: ['error', 'warning'], maxPerFile: 10, maxTotal: 5 },
+    );
+    expect(out).toContain('overflow.ts (5):');
+    expect(out).toContain('Total: 5 diagnostics in 1 files.');
+    expect(out).not.toContain('control.ts');
+  });
+
+  it('spends the remaining maxTotal budget on the next file', () => {
+    const out = formatDiagnostics(
+      new Map<string, Diagnostic[]>([
+        [`${cwd}/a.ts`, ['a1', 'a2'].map((m) => diagnostic(0, 0, 1, m))],
+        [`${cwd}/b.ts`, ['b1', 'b2'].map((m) => diagnostic(0, 0, 1, m))],
+      ]),
+      { cwd, severityFilter: ['error'], maxPerFile: 10, maxTotal: 3 },
+    );
+    expect(out).toContain('a.ts (2):');
+    expect(out).toContain('b.ts (1):');
+    expect(out).toContain('Total: 3 diagnostics in 2 files.');
+  });
+
+  it('reports nothing when maxTotal leaves no budget for the first file', () => {
+    const out = formatDiagnostics(
+      new Map<string, Diagnostic[]>([[`${cwd}/x.ts`, [diagnostic(0, 0, 1, 'boom')]]]),
+      { cwd, severityFilter: ['error'], maxPerFile: 10, maxTotal: 0 },
+    );
+    expect(out).toBe('No LSP diagnostics.');
   });
 
   it('formats missing severity, markup messages, sources without codes, and empty files', () => {

@@ -16,6 +16,12 @@ export interface ParsedSkillFrontmatter {
    * otherwise the trigger falls back to the first sentence of `description`.
    */
   trigger?: string | undefined;
+  /**
+   * Who the skill is for (WrongStack extension). `roster` marks a skill that is
+   * attached to roster roles by name and must stay out of the main agent's
+   * prompt; absent means every agent sees it.
+   */
+  audience?: string | undefined;
   /** WrongStack extension; informational only. */
   version?: string | undefined;
   license?: string | undefined;
@@ -41,6 +47,7 @@ const SCALAR_KEYS = new Set([
   'name',
   'description',
   'trigger',
+  'audience',
   'version',
   'license',
   'compatibility',

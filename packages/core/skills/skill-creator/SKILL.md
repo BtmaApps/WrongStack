@@ -1,7 +1,7 @@
 ---
 name: skill-creator
 description: |
-  Use this skill when the user wants to create a new AI skill in WrongStack.
+  Use this skill when the user wants to create or improve a WrongStack skill (SKILL.md).
   Triggers: user says "create a skill", "new skill", "add a skill", "skill definition".
 version: 1.3.0
 required-capabilities: [filesystem.write, runtime.admin]

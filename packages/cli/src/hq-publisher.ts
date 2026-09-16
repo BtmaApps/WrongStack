@@ -2,6 +2,7 @@ import type { CreateHqPublisherOptions, HqPublisher, HqSocketLike } from '@wrong
 import { createHqPublisherFromEnv, resolveHqConfig } from '@wrongstack/core/hq';
 import { WebSocket } from 'ws';
 import { createKanbanHqSync, type KanbanHqSyncStats } from './kanban-hq-sync.js';
+import { CLI_VERSION } from './version.js';
 
 type CliHqPublisherOptions = Omit<CreateHqPublisherOptions, 'socketFactory'> & {
   socketFactory?: CreateHqPublisherOptions['socketFactory'];
@@ -27,6 +28,7 @@ function nodeWsSocketFactory(url: string): HqSocketLike {
 
 export function createCliHqPublisher(options: CliHqPublisherOptions): HqPublisher | undefined {
   return createHqPublisherFromEnv({
+    clientVersion: options.clientVersion ?? options.version ?? CLI_VERSION,
     ...options,
     socketFactory: options.socketFactory ?? nodeWsSocketFactory,
   });

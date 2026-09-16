@@ -61,6 +61,8 @@ export interface SddWizardSnapshot {
   busy: boolean;
 }
 
+export type SddTab = 'requirements' | 'project' | 'board' | 'specs';
+
 interface SddWizardState {
   /** Latest interview snapshot, or null before a session starts. */
   snapshot: SddWizardSnapshot | null;
@@ -70,10 +72,16 @@ interface SddWizardState {
   error: string | null;
   /** runId once a run has been kicked off from the wizard. */
   startedRunId: string | null;
+  /** Active tab inside SddHub container. */
+  activeHubTab: SddTab;
+  /** Prefilled goal prompt for the wizard (e.g. when kicked off from an intake record). */
+  prefilledGoal: string;
   setSnapshot: (s: SddWizardSnapshot) => void;
   setAgentText: (t: string) => void;
   setError: (e: string | null) => void;
   setStartedRunId: (id: string | null) => void;
+  setActiveHubTab: (tab: SddTab) => void;
+  setPrefilledGoal: (goal: string) => void;
   reset: () => void;
 }
 
@@ -82,6 +90,8 @@ export const useSddWizardStore = create<SddWizardState>()((set) => ({
   agentText: '',
   error: null,
   startedRunId: null,
+  activeHubTab: 'project',
+  prefilledGoal: '',
   setSnapshot: (snapshot) => {
     // A discard ack clears local state so the goal form returns.
     if (snapshot.discarded || (snapshot.phase === 'idle' && !snapshot.sessionId)) {
@@ -98,5 +108,15 @@ export const useSddWizardStore = create<SddWizardState>()((set) => ({
   setAgentText: (agentText) => set({ agentText }),
   setError: (error) => set({ error }),
   setStartedRunId: (startedRunId) => set({ startedRunId }),
-  reset: () => set({ snapshot: null, agentText: '', error: null, startedRunId: null }),
+  setActiveHubTab: (activeHubTab) => set({ activeHubTab }),
+  setPrefilledGoal: (prefilledGoal) => set({ prefilledGoal }),
+  reset: () =>
+    set({
+      snapshot: null,
+      agentText: '',
+      error: null,
+      startedRunId: null,
+      activeHubTab: 'project',
+      prefilledGoal: '',
+    }),
 }));

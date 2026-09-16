@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkbenchTopbar } from '../../src/components/WorkbenchTopbar';
 import { type SubagentView, useFleetStore, useUIStore } from '../../src/stores';
+import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/i18n', () => ({
   useAppTranslation: () => ({
@@ -160,8 +161,45 @@ describe('WorkbenchTopbar responsive component', () => {
 
     fireEvent.click(wrongProxyBtn);
     expect(onSettings).toHaveBeenCalledTimes(1);
+    expect(useUIStore.getState().settingsActiveTab).toBe('integrations');
 
+    useUIStore.getState().setSettingsActiveTab('general');
     fireEvent.click(hqBtn);
     expect(onSettings).toHaveBeenCalledTimes(2);
+    expect(useUIStore.getState().settingsActiveTab).toBe('integrations');
   });
+
+  it.each([
+    [true, 'http://localhost:3499', true, 'text-success', 'Connected'],
+    [true, 'http://localhost:3499', false, 'text-destructive', 'Unreachable'],
+    [false, 'http://localhost:3499', true, 'text-muted-foreground/40', 'Disabled'],
+    [true, '   ', true, 'text-muted-foreground/40', 'Disabled'],
+  ])(
+    'renders enabled=%s url=%s connected=%s correctly',
+    async (enabled, url, connected, color, label) => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({ connected, latencyMs: 4 }),
+      } as Response);
+      useLocalPrefs.setState({
+        hqEnabled: enabled,
+        hqUrl: url,
+        wrongProxyEnabled: enabled,
+        wrongProxyUrl: url,
+      });
+      const { unmount } = renderTopbar();
+      try {
+        await waitFor(() => {
+          for (const id of ['wrongproxy-status-button', 'hq-status-button']) {
+            expect(screen.getByTestId(id).classList.contains(color)).toBe(true);
+            expect(screen.getByTestId(id).getAttribute('title')).toContain(label);
+          }
+        });
+      } finally {
+        unmount();
+        fetchSpy.mockRestore();
+        useLocalPrefs.setState({ hqEnabled: false, wrongProxyEnabled: false });
+      }
+    },
+  );
 });

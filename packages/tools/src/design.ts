@@ -407,13 +407,40 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         .slice(0, 25)
         .map((v) => `  ${v.file}:${v.line} — ${v.reason}: ${v.snippet}`)
         .join('\n');
+      // Break the count down by axis: "on-palette %" only describes color, and
+      // a composition hit means token-clean code that still reads as generated.
+      const byAxis = new Map<string, number>();
+      for (const v of report.violations) {
+        const axis = v.axis ?? 'color';
+        byAxis.set(axis, (byAxis.get(axis) ?? 0) + 1);
+      }
+      const axisLine = [...byAxis]
+        .sort((a, b) => b[1] - a[1])
+        .map(([axis, n]) => `${axis}: ${n}`)
+        .join(', ');
+      const composition = byAxis.get('composition') ?? 0;
+      // A native-stack screen (react-native / flutter / swiftui / compose) carries
+      // theme constants, not utility classes, so the scanner reads nothing and the
+      // file scores a clean 100% regardless of what it looks like. Saying nothing
+      // here lets "0 violations" pass for "clean" when it means "not checked".
+      const unchecked = report.filesWithNoSignal
+        ? `\n\n${report.filesWithNoSignal} of ${report.filesScanned} file(s) carried no class or color ` +
+          'signal and were NOT checked — native stacks express the kit as theme constants. ' +
+          'A clean result on those means "not checkable", not "clean": review them by hand ' +
+          'against the materialized theme, or load the `design-critique` skill.'
+        : '';
       const summary =
         `Adherence: ${pct}% on-palette across ${report.filesScanned} file(s). ` +
-        `${report.violations.length} violation(s).` +
+        `${report.violations.length} violation(s)${axisLine ? ` (${axisLine})` : ''}.` +
         (report.violations.length
           ? `\n${top}${report.violations.length > 25 ? `\n  …and ${report.violations.length - 25} more` : ''}` +
-            `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).`
-          : '\nNo off-palette colors found — UI adheres to the kit palette.');
+            `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).` +
+            (composition
+              ? `\n${composition} composition finding(s): this code is token-clean but reads as default-generated UI. ` +
+                'Load the `design-craft` skill and fix the pattern, not the token.'
+              : '')
+          : '\nNo off-palette colors found — UI adheres to the kit palette.') +
+        unchecked;
       return {
         action,
         kit: active.kit,

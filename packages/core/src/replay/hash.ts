@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Message } from '../types/messages.js';
 import type { Request } from '../types/provider.js';
+import type { Tool } from '../types/tool.js';
 
 /**
  * Idea #2 from IDEAS.md — Deterministic Replay.
@@ -67,13 +68,34 @@ function semanticMessage(message: Message): Omit<Message, 'ts' | '_estTokens' | 
   return semantic;
 }
 
+/**
+ * Strip a tool down to what the provider actually receives.
+ *
+ * `Tool` carries several runtime bookkeeping fields that are set at
+ * registration time and never sent to the LLM:
+ *
+ *   - `_estDefTokens`    — token estimate cache, mutated on every registration
+ *   - `timeoutMs`        — executor timeout, not part of the tool definition
+ *   - `estimatedDurationMs` — TUI spinner hint, not sent to the provider
+ *   - `managesOwnTimeout` — execution policy, not sent to the provider
+ *
+ * Including these in the hash makes the digest a function of *when* the tool
+ * was registered, so a recorded response can never be found again and
+ * `mode: 'replay'` throws on the first call it was asked to serve.
+ */
+function semanticTool(tool: Tool): Omit<Tool, '_estDefTokens' | 'timeoutMs' | 'estimatedDurationMs' | 'managesOwnTimeout'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { _estDefTokens: _toks, timeoutMs: _to, estimatedDurationMs: _dur, managesOwnTimeout: _own, ...semantic } = tool;
+  return semantic as Omit<Tool, '_estDefTokens' | 'timeoutMs' | 'estimatedDurationMs' | 'managesOwnTimeout'>;
+}
+
 export function hashRequest(request: Request): string {
   // Pick only the fields that affect the response. See stability rules.
   const payload = {
     model: request.model,
     system: request.system,
     messages: request.messages.map(semanticMessage),
-    tools: request.tools,
+    tools: request.tools?.map(semanticTool),
     maxTokens: request.maxTokens,
     temperature: request.temperature,
     topP: request.topP,

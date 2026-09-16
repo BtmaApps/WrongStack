@@ -977,7 +977,7 @@
       "description": "Autonomously discover, prove, fix, and verify exactly one real bug per round.",
       "category": "debugging",
       "tags": ["autonomous", "bug-hunt", "proof", "regression", "fix"],
-      "checksum": "465bd4be90b1e522f9c4d6206ee414e406d0f7d2154f84517431ea8b317aa19e",
+      "checksum": "4dab8f8e654ec59848a73ba6b5337a076a1d9b0bcc4898f4c357a181b10ed5d1",
       "file": "prompts/debugging/proof-driven-bug-hunter.json"
     },
     {

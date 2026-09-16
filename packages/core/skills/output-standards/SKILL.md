@@ -188,5 +188,4 @@ When a **subagent** completes its task, it MUST:
 - `bug-hunter` — inherits output-standards for bug reports
 - `security-scanner` — inherits output-standards for security findings
 - `refactor-planner` — inherits output-standards for refactoring plans
-- `architect` — inherits output-standards for architecture analysis
 - `tech-stack` — inherits output-standards for dependency reports

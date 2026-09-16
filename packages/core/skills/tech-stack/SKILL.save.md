@@ -1,4 +1,4 @@
-# Tech Stack Validator — WrongStack (Compact)
+# Tech Stack Validator (Compact)
 
 Validates package/library/framework choices before they are committed.
 

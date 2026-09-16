@@ -30,6 +30,7 @@ export function CodeMapCanvasSurface({
   flowEdges,
   onNodesChange,
   onEdgesChange,
+  onNodeClick,
   agentTrailCount,
 }: {
   loading: boolean;
@@ -40,6 +41,7 @@ export function CodeMapCanvasSurface({
   flowEdges: Edge[];
   onNodesChange: OnNodesChange<Node>;
   onEdgesChange: OnEdgesChange<Edge>;
+  onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   agentTrailCount: number;
 }): React.ReactElement {
   const { t } = useAppTranslation();
@@ -88,6 +90,7 @@ export function CodeMapCanvasSurface({
           edges={flowEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           nodesConnectable={false}
           nodesDraggable={false}

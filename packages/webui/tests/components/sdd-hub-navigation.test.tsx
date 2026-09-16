@@ -6,11 +6,16 @@ vi.mock('@/i18n', () => ({
   useAppTranslation: () => ({
     t: (key: string) =>
       ({
+        'activity:sddhub.tabRequirements': 'Requirements',
         'activity:sddhub.tabProject': 'Project',
         'activity:sddhub.tabBoard': 'Board',
         'activity:sddhub.tabSpecs': 'Specs',
       })[key] ?? key,
   }),
+}));
+
+vi.mock('../../src/components/RequirementIntakeView', () => ({
+  RequirementIntakeView: () => <div>Requirements content</div>,
 }));
 
 vi.mock('../../src/components/SddWizard', () => ({
@@ -45,9 +50,11 @@ describe('SddHub navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Simulate run started' }));
 
     expect(boardTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('Requirements content')).toBeTruthy();
     expect(screen.getByText('Project content')).toBeTruthy();
     expect(screen.getByText('Board content')).toBeTruthy();
     expect(screen.getByText('Specs content')).toBeTruthy();
+    expect(document.getElementById('sdd-hub-panel-requirements')?.hidden).toBe(true);
     expect(document.getElementById('sdd-hub-panel-project')?.hidden).toBe(true);
     expect(document.getElementById('sdd-hub-panel-board')?.hidden).toBe(false);
   });
@@ -55,9 +62,14 @@ describe('SddHub navigation', () => {
   it('supports roving focus with Arrow, Home, and End keys', () => {
     render(<SddHub />);
 
+    const requirementsTab = screen.getByRole('tab', { name: 'Requirements' });
     const projectTab = screen.getByRole('tab', { name: 'Project' });
     const boardTab = screen.getByRole('tab', { name: 'Board' });
     const specsTab = screen.getByRole('tab', { name: 'Specs' });
+
+    fireEvent.keyDown(requirementsTab, { key: 'ArrowRight' });
+    expect(projectTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(projectTab);
 
     fireEvent.keyDown(projectTab, { key: 'ArrowRight' });
     expect(boardTab.getAttribute('aria-selected')).toBe('true');
@@ -68,7 +80,7 @@ describe('SddHub navigation', () => {
     expect(document.activeElement).toBe(specsTab);
 
     fireEvent.keyDown(specsTab, { key: 'Home' });
-    expect(projectTab.getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(projectTab);
+    expect(requirementsTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(requirementsTab);
   });
 });

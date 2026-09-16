@@ -22,6 +22,7 @@ export interface FleetTopologyNode extends Record<string, unknown> {
   sessionId?: string;
   agentId?: string;
   clientKind?: string;
+  version?: string;
   agent?: HqSessionAgentSummary;
   session?: HqSessionSnapshotPayload;
   isSyntheticSession?: boolean;
@@ -122,6 +123,7 @@ export function filterFleetTopologyByQuery(topology: FleetTopology, query: strin
       node.sub,
       node.status,
       node.clientKind,
+      node.version,
       node.serviceMode,
       node.machineId,
       node.projectId,
@@ -364,6 +366,7 @@ function syntheticSessionFromClient(
     sessionId,
     clientId: client.clientId,
     clientKind: client.kind,
+    ...(client.version !== undefined ? { clientVersion: client.version } : {}),
     machineId: client.machineId,
     ...(client.hostname !== undefined ? { hostname: client.hostname } : {}),
     ...(client.pid !== undefined ? { pid: client.pid } : {}),
@@ -499,9 +502,14 @@ export function buildFleetTopology(snapshot: HqSnapshot | null): FleetTopology {
     const project = projects.get(session.projectId);
     const pId = projectKey(machineId, session.projectId);
     if (!nodeIds.has(pId)) {
+      const fallbackCount = sortedSessions.filter(
+        (s) => s.machineId === machineId && s.projectId === session.projectId,
+      ).length;
+      const clientCount = project?.activeClients ?? fallbackCount;
+      const terminalCount = project?.activeSessions ?? fallbackCount;
       const chips = [
-        `${project?.activeClients ?? sortedSessions.filter((s) => s.machineId === machineId && s.projectId === session.projectId).length} client${(project?.activeClients ?? 0) === 1 ? '' : 's'}`,
-        `${project?.activeSessions ?? sortedSessions.filter((s) => s.machineId === machineId && s.projectId === session.projectId).length} terminal${(project?.activeSessions ?? 0) === 1 ? '' : 's'}`,
+        `${clientCount} client${clientCount === 1 ? '' : 's'}`,
+        `${terminalCount} terminal${terminalCount === 1 ? '' : 's'}`,
       ];
       if (project?.gitBranch !== undefined) chips.push(project.gitBranch);
       const mailboxServeCount = (snapshot.clients ?? []).filter(
@@ -530,8 +538,14 @@ export function buildFleetTopology(snapshot: HqSnapshot | null): FleetTopology {
     if (!nodeIds.has(tId)) {
       const isSynthetic = session.sessionId.startsWith('client:') && session.agents.length === 0;
       const serviceMode = session.clientKind === 'mailbox' ? 'mailbox-serve' : undefined;
+      const clientRecord = (snapshot.clients ?? []).find(
+        (candidate) => candidate.clientId === session.clientId,
+      );
+      const version = session.clientVersion ?? clientRecord?.version;
+      const versionChip = version ? `v${version.replace(/^v/, '')}` : undefined;
       const chips = [
         serviceMode === 'mailbox-serve' ? 'mailbox serve' : session.clientKind,
+        ...(versionChip !== undefined ? [versionChip] : []),
         session.status,
         ...(serviceMode === undefined
           ? [`${session.agentCount} agent${session.agentCount === 1 ? '' : 's'}`]
@@ -555,6 +569,7 @@ export function buildFleetTopology(snapshot: HqSnapshot | null): FleetTopology {
         ...(session.clientId !== undefined ? { clientId: session.clientId } : {}),
         sessionId: session.sessionId,
         clientKind: session.clientKind,
+        ...(version !== undefined ? { version } : {}),
         session,
         isSyntheticSession: isSynthetic,
         ...(serviceMode !== undefined ? { serviceMode } : {}),

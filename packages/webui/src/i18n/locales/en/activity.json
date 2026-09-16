@@ -2130,6 +2130,7 @@
     "route": "Route"
   },
   "sddhub": {
+    "tabRequirements": "Requirements",
     "tabProject": "SDD Project",
     "tabBoard": "Live SDD Board",
     "tabSpecs": "Specifications"
@@ -3220,7 +3221,11 @@
     "intakeRecords": "Intake records",
     "loading": "Loading…",
     "noIntakeRecordsYetFileThe": "No intake records yet — file the first one above.",
-    "describeTheFeatureBugFixRefactorOrChange": "Describe the feature, bug fix, refactor, or change…"
+    "describeTheFeatureBugFixRefactorOrChange": "Describe the feature, bug fix, refactor, or change…",
+    "startSddSpec": "Start SDD Spec",
+    "originalRequest": "Original Request",
+    "copyRequest": "Copy request",
+    "copied": "Copied!"
   },
   "verifyReport": {
     "verificationReport": "Verification Report",

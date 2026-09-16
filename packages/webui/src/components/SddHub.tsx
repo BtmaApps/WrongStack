@@ -1,36 +1,38 @@
-import { type KeyboardEvent, useCallback, useEffect, useState } from 'react';
+import { type KeyboardEvent, useCallback, useEffect } from 'react';
 import { useAppTranslation } from '@/i18n';
-import { showPanel } from '@/lib/view-navigation';
 import { cn } from '@/lib/utils';
-import { useSddWizardStore } from '@/stores';
+import { showPanel } from '@/lib/view-navigation';
+import { type SddTab, useSddWizardStore } from '@/stores';
+import { RequirementIntakeView } from './RequirementIntakeView';
 import { SddBoardView } from './SddBoardView';
 import { SddWizard } from './SddWizard';
 import { SpecsView } from './SpecsView';
 
-type SddTab = 'project' | 'board' | 'specs';
-
 const TABS: { id: SddTab; labelKey: string }[] = [
+  { id: 'requirements', labelKey: 'activity:sddhub.tabRequirements' },
   { id: 'project', labelKey: 'activity:sddhub.tabProject' },
   { id: 'board', labelKey: 'activity:sddhub.tabBoard' },
   { id: 'specs', labelKey: 'activity:sddhub.tabSpecs' },
 ];
 
 /**
- * SddHub — unified tabbed container that replaces three separate menu items
- * ("New SDD Project", "Live SDD Board", "Specifications") with one screen
- * and three top tabs. Each tab renders its respective existing component.
+ * SddHub — unified tabbed container for the entire spec-driven workflow:
+ * Requirements Intake → New SDD Project / Wizard → Live Board → Specifications.
+ * Each tab renders its respective component without unmounting sibling tabs.
  *
  * Listens for `sdd.run.started` (via the wizard store) so a run kicked off
  * from Specs, Kanban, or the Project tab always flips to the Live Board.
  */
 export function SddHub(): React.ReactElement {
   const { t } = useAppTranslation();
-  const [activeTab, setActiveTab] = useState<SddTab>('project');
+  const activeTab = useSddWizardStore((s) => s.activeHubTab);
+  const setActiveTab = useSddWizardStore((s) => s.setActiveHubTab);
+  const setPrefilledGoal = useSddWizardStore((s) => s.setPrefilledGoal);
   const startedRunId = useSddWizardStore((s) => s.startedRunId);
   const setStartedRunId = useSddWizardStore((s) => s.setStartedRunId);
 
   const onClose = () => showPanel('chat');
-  const showBoard = useCallback(() => setActiveTab('board'), []);
+  const showBoard = useCallback(() => setActiveTab('board'), [setActiveTab]);
 
   // Any surface that starts an SDD run sets startedRunId — flip to Board once.
   useEffect(() => {
@@ -96,6 +98,34 @@ export function SddHub(): React.ReactElement {
 
       {/* Keep every panel mounted so switching tabs does not discard draft or run configuration state. */}
       <div className="min-h-0 flex-1 overflow-hidden">
+        <div
+          id="sdd-hub-panel-requirements"
+          role="tabpanel"
+          aria-labelledby="sdd-hub-tab-requirements"
+          hidden={activeTab !== 'requirements'}
+          className="h-full overflow-hidden"
+        >
+          <RequirementIntakeView
+            onStartSdd={async (intake) => {
+              try {
+                const res = await fetch(
+                  `/api/requirement-intakes/${encodeURIComponent(intake.id)}`,
+                );
+                if (res.ok) {
+                  const data = (await res.json()) as {
+                    record?: { originalRequest?: string; title?: string };
+                  };
+                  setPrefilledGoal(data.record?.originalRequest || intake.title);
+                } else {
+                  setPrefilledGoal(intake.title);
+                }
+              } catch {
+                setPrefilledGoal(intake.title);
+              }
+              setActiveTab('project');
+            }}
+          />
+        </div>
         <div
           id="sdd-hub-panel-project"
           role="tabpanel"

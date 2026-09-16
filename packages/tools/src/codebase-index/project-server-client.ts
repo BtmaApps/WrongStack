@@ -59,6 +59,17 @@ import {
 } from './project-server-protocol.js';
 import type { OpName, OpShapes } from './worker-protocol.js';
 
+/**
+ * Minimum spacing between detached-server spawn attempts inside one
+ * `connectWithElection` window. The first spawn still fires immediately;
+ * re-arming is cadence-bounded so a dead first daemon is recovered without
+ * flooding the machine with losing candidates (the endpoint bind plus the
+ * buildId handshake IS the election, so an extra spawn that cannot win exits
+ * without side effects). Mirrors the mailbox/SAGE clients' fix for the same
+ * single-shot-spawn defect.
+ */
+const SPAWN_RETRY_CADENCE_MS = 750;
+
 export {
   getProjectIndexServerConnectionState,
   isProjectIndexServerAvailable,
@@ -396,7 +407,7 @@ class ProjectServerConnection {
   private async connectWithElection(spawnIfMissing: boolean): Promise<void> {
     const deadline =
       Date.now() + (spawnIfMissing ? SERVER_START_TIMEOUT_MS : CONNECT_ATTEMPT_TIMEOUT_MS);
-    let spawned = false;
+    let lastSpawnAt = 0;
     let staleAttempts = 0;
     let lastError: unknown = new Error('codebase-index server unavailable');
     while (Date.now() < deadline) {
@@ -409,15 +420,29 @@ class ProjectServerConnection {
           staleAttempts++;
           if (!spawnIfMissing) break;
           if (staleAttempts >= 3) this.forceKillServer(error.pid);
-          spawned = false;
+          // A stale build is known-dead: force an immediate re-spawn on the
+          // next tick instead of waiting out the cadence.
+          lastSpawnAt = 0;
           await delay(100);
           continue;
         }
       }
       if (!spawnIfMissing) break;
-      if (!spawned) {
-        this.spawnDetachedServer();
-        spawned = true;
+      const now = Date.now();
+      if (now - lastSpawnAt >= SPAWN_RETRY_CADENCE_MS) {
+        // A synchronous throw from the spawn path — the resolver transiently
+        // failing to stat the dist entrypoint under load — must not unwind
+        // the whole retry window (mailbox sibling flake, observed 2026-09-15).
+        // Degrade to "this tick spawned nothing"; lastSpawnAt stays unset so
+        // the next tick retries immediately. Cadence-bounded re-arming also
+        // recovers a dead first daemon, which the old single-shot `spawned`
+        // flag made fatal.
+        try {
+          this.spawnDetachedServer();
+          lastSpawnAt = now;
+        } catch {
+          // Resolution failures are retryable by the loop below.
+        }
       }
       await delay(75);
     }

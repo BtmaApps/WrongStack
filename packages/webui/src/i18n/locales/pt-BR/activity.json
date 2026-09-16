@@ -2069,6 +2069,7 @@
     "memoriesLabel_other": "{{count}} memórias"
   },
   "sddhub": {
+    "tabRequirements": "Requisitos",
     "tabProject": "Projeto SDD",
     "tabBoard": "Painel SDD ao vivo",
     "tabSpecs": "Especificações"
@@ -3159,7 +3160,11 @@
     "intakeRecords": "Registros de coleta",
     "loading": "Carregando…",
     "noIntakeRecordsYetFileThe": "Ainda não há registros — crie o primeiro acima.",
-    "describeTheFeatureBugFixRefactorOrChange": "Descreva o recurso, a correção, a refatoração ou a alteração…"
+    "describeTheFeatureBugFixRefactorOrChange": "Descreva o recurso, a correção, a refatoração ou a alteração…",
+    "startSddSpec": "Iniciar especificação SDD",
+    "originalRequest": "Solicitação original",
+    "copyRequest": "Copiar solicitação",
+    "copied": "Copiado!"
   },
   "verifyReport": {
     "verificationReport": "Relatório de verificação",

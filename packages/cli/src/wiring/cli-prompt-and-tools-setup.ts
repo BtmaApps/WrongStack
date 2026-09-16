@@ -108,6 +108,9 @@ export async function setupCliPromptAndTools(params: {
     tier,
     memoryStore,
     vectorMemoryStore,
+    // Same gate the prompt builder uses (`skillsEnabled`), so the manifest and
+    // the tool that loads its entries are present or absent together.
+    skillLoader: config.features.skills ? skillLoader : undefined,
     events,
     wpaths,
   });

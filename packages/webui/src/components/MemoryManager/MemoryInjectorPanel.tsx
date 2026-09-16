@@ -1,8 +1,8 @@
 import { Activity, Brain, Clock, PanelRightClose, Tag } from 'lucide-react';
 import { memo, useEffect } from 'react';
 import { useAppTranslation } from '@/i18n';
-import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 import { cn } from '@/lib/utils';
+import { useMemoryInjectorTraceStore } from '@/stores/memory-injector-store';
 
 interface MemoryInjectorPanelProps {
   open: boolean;
@@ -121,6 +121,8 @@ export const MemoryInjectorPanel = memo(function MemoryInjectorPanel({
           open ? 'translate-x-0' : 'translate-x-full',
         )}
         role="dialog"
+        aria-hidden={!open}
+        inert={!open}
         aria-label={t('activity:sageMemory.injectedHeading', 'Memory Context')}
         data-testid="memory-injector-panel"
       >

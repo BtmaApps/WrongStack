@@ -1,4 +1,4 @@
-# Bug Hunter — WrongStack (Compact)
+# Bug Hunter (Compact)
 
 Scans code for bugs and code smells. Outputs a prioritized hit list with file:line references.
 

@@ -79,7 +79,12 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
     });
 
     expect(sendMessage).toHaveBeenCalledWith(
-      expect.stringContaining('This is round 1/1. Complete exactly one proven bug in this round'),
+      expect.stringContaining(
+        'This is round 1/1. Investigate at most one proven bug in this round',
+      ),
+    );
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.stringContaining('report no-proven-bug or blocked without changing production code'),
     );
     expect(useChatStore.getState().messages).toEqual([
       expect.objectContaining({
@@ -117,7 +122,9 @@ describe('WelcomeScreen Proof-Driven Bug Hunter shortcut', () => {
     });
 
     expect(sendMessage).toHaveBeenCalledWith(
-      expect.stringContaining('This is round 1/3. Complete exactly one proven bug in this round'),
+      expect.stringContaining(
+        'This is round 1/3. Investigate at most one proven bug in this round',
+      ),
     );
     expect(sendMessage).toHaveBeenCalledWith(
       expect.stringContaining('packages/webui and all of its descendants'),

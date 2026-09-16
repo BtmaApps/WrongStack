@@ -56,6 +56,7 @@ export interface WebuiClientPresenceDeps {
   getSessionWriter?:
     | ((sessionId: string) => import('@wrongstack/core/types').SessionWriter | undefined)
     | undefined;
+  clientVersion?: string | undefined;
   startHqConnection: (options: WebuiHqConnectionOptions) => WebuiHqConnection;
   /**
    * Build the HQ command handler. The approval registry is handed in rather
@@ -114,6 +115,7 @@ export function createWebuiClientPresence(deps: WebuiClientPresenceDeps): WebuiC
 
       hqConnection = deps.startHqConnection({
         clientKind: 'webui',
+        ...(deps.clientVersion !== undefined ? { clientVersion: deps.clientVersion } : {}),
         projectRoot,
         projectName,
         appConfig: deps.appConfig,

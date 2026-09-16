@@ -4,35 +4,35 @@
  */
 
 import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  Mail,
-  Tag,
-  User,
   AlertCircle,
-  FileText,
-  HelpCircle,
-  Send,
-  RotateCw,
+  ArrowLeft,
   Bell,
+  CheckCircle2,
   Circle,
+  Clock,
+  FileText,
+  Globe,
+  HelpCircle,
+  Lock,
+  Mail,
   MessageSquare,
   Reply,
+  RotateCw,
   Search,
+  Send,
+  Tag,
+  User,
   X,
-  Lock,
-  Globe,
 } from 'lucide-react';
 import { useEffect } from 'react';
-import { LazyMarkdown as ReactMarkdown } from './MessageBubble/LazyMarkdown.js';
+import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { useAppTranslation, i18n } from '@/i18n';
 import { showPanel } from '@/lib/view-navigation';
-import { useUIStore } from '@/stores/ui-store';
-import { EmptyState } from './ui/empty-state';
-import { markdownComponents } from './MessageBubble/utils';
 import { classifyMailboxRecipient } from '@/stores/mailbox-store';
+import { useUIStore } from '@/stores/ui-store';
+import { LazyMarkdown as ReactMarkdown } from './MessageBubble/LazyMarkdown.js';
+import { markdownComponents } from './MessageBubble/utils';
+import { EmptyState } from './ui/empty-state';
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ export function MailboxDetailView({ className }: { className?: string }) {
 
           <div
             className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+              'hidden h-9 w-9 shrink-0 items-center justify-center sm:flex',
               msg.completed ? 'bg-success/10' : 'bg-primary/10',
             )}
           >
@@ -182,7 +182,9 @@ export function MailboxDetailView({ className }: { className?: string }) {
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-foreground truncate">{msg.subject}</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate" title={msg.subject}>
+                {msg.subject}
+              </h2>
               {msg.completed && (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-success/25 bg-success/8 px-1.5 py-0.5 text-[10px] font-semibold text-success">
                   <CheckCircle2 className="h-3 w-3" />
@@ -243,115 +245,117 @@ export function MailboxDetailView({ className }: { className?: string }) {
         </div>
 
         {/* ── Body ── */}
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        <article
+          aria-label={msg.subject}
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
+        >
           <div className="mx-auto w-full max-w-4xl px-4 py-5">
             <div className="markdown-content prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
               <ReactMarkdown components={markdownComponents}>{msg.body}</ReactMarkdown>
             </div>
           </div>
-        </div>
+          {/* ── Metadata footer ── */}
+          <div className="border-t border-border/70 bg-muted/20 px-4 py-3 shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs [&>div]:min-w-0">
+              {/* Type */}
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Tag className="h-3 w-3 shrink-0" />
+                <span>{typeLabel}</span>
+              </div>
 
-        {/* ── Metadata footer ── */}
-        <div className="border-t border-border/70 bg-muted/20 px-4 py-3 shrink-0">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs">
-            {/* Type */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Tag className="h-3 w-3 shrink-0" />
-              <span>{typeLabel}</span>
-            </div>
+              {/* Priority */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
+                    priorityClass,
+                  )}
+                >
+                  {msg.priority || 'normal'}
+                </span>
+              </div>
 
-            {/* Priority */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-                  priorityClass,
+              {/* From */}
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <User className="h-3 w-3 shrink-0" />
+                <span className="truncate" title={msg.from}>
+                  {msg.from}
+                </span>
+              </div>
+
+              {/* Recipient scope */}
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                {recipient.scope === 'session' ? (
+                  <Lock className="h-3 w-3 shrink-0 text-warning" />
+                ) : (
+                  <Globe className="h-3 w-3 shrink-0 text-primary" />
                 )}
-              >
-                {msg.priority || 'normal'}
-              </span>
-            </div>
+                <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0">
+                  {t('activity:mailbox.scopeLabel')}
+                </span>
+                <span className="truncate">{recipientScopeLabel}</span>
+              </div>
 
-            {/* From */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <User className="h-3 w-3 shrink-0" />
-              <span className="truncate" title={msg.from}>
-                {msg.from}
-              </span>
-            </div>
+              {/* Timestamp */}
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
+                <span>{fmtTime(msg.timestamp)}</span>
+              </div>
 
-            {/* Recipient scope */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              {recipient.scope === 'session' ? (
-                <Lock className="h-3 w-3 shrink-0 text-warning" />
-              ) : (
-                <Globe className="h-3 w-3 shrink-0 text-primary" />
+              {/* Reply To */}
+              {msg.replyTo && (
+                <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                  <Reply className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {t('activity:mailbox.replyTo', { id: msg.replyTo })}
+                  </span>
+                </div>
               )}
-              <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0">
-                {t('activity:mailbox.scopeLabel')}
-              </span>
-              <span className="truncate">{recipientScopeLabel}</span>
+
+              {/* Completed by */}
+              {msg.completed && msg.completedBy && (
+                <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
+                  <span>
+                    {msg.completedAt
+                      ? t('activity:mailbox.completedByAt', {
+                          name: msg.completedBy,
+                          time: fmtTime(msg.completedAt),
+                        })
+                      : t('activity:mailbox.completedBy', { name: msg.completedBy })}
+                  </span>
+                </div>
+              )}
+
+              {/* Outcome */}
+              {msg.outcome && (
+                <div className="flex items-start gap-1.5 text-muted-foreground col-span-2 sm:col-span-4">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0 mt-0.5">
+                    {t('activity:mailbox.outcome')}
+                  </span>
+                  <span>{msg.outcome}</span>
+                </div>
+              )}
+
+              {/* Task Context */}
+              {msg.taskContext && (
+                <div className="flex items-start gap-1.5 text-muted-foreground col-span-2 sm:col-span-4">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0 mt-0.5">
+                    {t('activity:mailbox.task')}
+                  </span>
+                  <span>{msg.taskContext}</span>
+                </div>
+              )}
             </div>
 
-            {/* Timestamp */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Clock className="h-3 w-3 shrink-0" />
-              <span>{fmtTime(msg.timestamp)}</span>
-            </div>
-
-            {/* Reply To */}
-            {msg.replyTo && (
-              <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-                <Reply className="h-3 w-3 shrink-0" />
-                <span className="truncate">
-                  {t('activity:mailbox.replyTo', { id: msg.replyTo })}
-                </span>
-              </div>
-            )}
-
-            {/* Completed by */}
-            {msg.completed && msg.completedBy && (
-              <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-                <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
-                <span>
-                  {msg.completedAt
-                    ? t('activity:mailbox.completedByAt', {
-                        name: msg.completedBy,
-                        time: fmtTime(msg.completedAt),
-                      })
-                    : t('activity:mailbox.completedBy', { name: msg.completedBy })}
-                </span>
-              </div>
-            )}
-
-            {/* Outcome */}
-            {msg.outcome && (
-              <div className="flex items-start gap-1.5 text-muted-foreground col-span-2 sm:col-span-4">
-                <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0 mt-0.5">
-                  {t('activity:mailbox.outcome')}
-                </span>
-                <span>{msg.outcome}</span>
-              </div>
-            )}
-
-            {/* Task Context */}
-            {msg.taskContext && (
-              <div className="flex items-start gap-1.5 text-muted-foreground col-span-2 sm:col-span-4">
-                <span className="text-[10px] font-semibold uppercase tracking-wide shrink-0 mt-0.5">
-                  {t('activity:mailbox.task')}
-                </span>
-                <span>{msg.taskContext}</span>
+            {/* Read by list */}
+            {Object.keys(msg.readBy ?? {}).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <ReadByList readBy={msg.readBy} />
               </div>
             )}
           </div>
-
-          {/* Read by list */}
-          {Object.keys(msg.readBy ?? {}).length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <ReadByList readBy={msg.readBy} />
-            </div>
-          )}
-        </div>
+        </article>
       </div>
     </div>
   );

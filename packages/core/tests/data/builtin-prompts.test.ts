@@ -155,6 +155,18 @@ describe('builtin prompt dataset', () => {
     expect(entry.content).toContain('.temp_files/proof-driven-bug-hunter/<round-id>/');
     expect(entry.content).toContain('Never delete `.temp_files/` wholesale');
     expect(entry.content).toContain('Do not hunt or fix a second issue');
+    const seed = fs
+      .readFileSync(path.join(dataDir, '_seed', 'debugging.jsonl'), 'utf8')
+      .split('\n')
+      .filter((line) => line.trim() && !line.trim().startsWith('//'))
+      .map((line) => JSON.parse(line) as { slug: string; content: string })
+      .find((prompt) => prompt.slug === entry.slug);
+    expect(seed?.content).toBe(entry.content);
+    expect(entry.content).toContain('same assertions and fixtures');
+    expect(entry.content).toContain('not proof');
+    expect(entry.content).toContain('Do not rediscover or count the same root cause');
+    expect(entry.content).toContain('fixed-verification-incomplete');
+    expect(entry.content).toContain('next-round continuation is already authorized');
   });
 
   it('ships a prompt for every performance mode', () => {

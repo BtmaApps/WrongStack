@@ -35,11 +35,40 @@ describe('makeDesignVerifyToolCallMiddleware', () => {
     expect(out.result.content).toContain('#123456');
   });
 
-  it('stays silent with no pinned kit', async () => {
+  it('says once that an unpinned frontend write went out unchecked', async () => {
+    // This used to assert silence. Silence was wrong: with no kit pinned there
+    // is no palette, so `verifyFiles` reports nothing — and "no findings" reads
+    // exactly like "clean" to whoever is reading the tool result, while the
+    // craft rules treat zero composition findings as the floor. Same reasoning
+    // as `filesWithNoSignal` for native stacks: unchecked must not look clean.
     const mw = makeDesignVerifyToolCallMiddleware();
     const ctx = { projectRoot: root, meta: {} } as any; // no activeKit
     await fs.writeFile(path.join(root, 'bad2.css'), '.x { color: #123456; }');
     const out = await mw.handler(payloadFor('bad2.css', ctx), async (p) => p);
+    expect(out.result.content).toMatch(/no kit is pinned/);
+    expect(out.result.content).toMatch(/NOT being design-checked/);
+  });
+
+  it('gives the unpinned notice once per session, not on every write', async () => {
+    // A warning repeated on every frontend write is a warning that gets tuned
+    // out — and it would bury the real findings once a kit is pinned.
+    const mw = makeDesignVerifyToolCallMiddleware();
+    const ctx = { projectRoot: root, meta: {} } as any;
+    await fs.writeFile(path.join(root, 'first.css'), '.x { color: #123456; }');
+    await fs.writeFile(path.join(root, 'second.css'), '.y { color: #654321; }');
+    const first = await mw.handler(payloadFor('first.css', ctx), async (p) => p);
+    const second = await mw.handler(payloadFor('second.css', ctx), async (p) => p);
+    expect(first.result.content).toMatch(/no kit is pinned/);
+    expect(second.result.content).toBe('wrote file');
+  });
+
+  it('stays silent for a non-frontend file even with no kit pinned', async () => {
+    // The unpinned notice is about UI going out unchecked, so it must not fire
+    // for files the design engine would never have checked anyway.
+    const mw = makeDesignVerifyToolCallMiddleware();
+    const ctx = { projectRoot: root, meta: {} } as any;
+    await fs.writeFile(path.join(root, 'server.md'), 'color: #123456');
+    const out = await mw.handler(payloadFor('server.md', ctx), async (p) => p);
     expect(out.result.content).toBe('wrote file');
   });
 

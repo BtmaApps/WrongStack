@@ -1,9 +1,10 @@
 ---
 name: sdd
 description: |
-  Use this skill when starting a non-trivial implementation, bug fix, or refactor
-  in WrongStack. Triggers: user says "/sdd", "spec", "specification", "task graph",
-  "SDD", "acceptance criteria", or starts a new feature.
+  Use this skill when the user wants a written spec, acceptance criteria, or a task
+  graph before a non-trivial implementation, or runs the WrongStack /sdd workflow.
+  Triggers: user says "/sdd", "spec", "specification", "task graph", "SDD",
+  "acceptance criteria".
 version: 2.1.0
 required-capabilities: [work.plan, filesystem.write]
 required-tools: []
@@ -19,7 +20,7 @@ Every non-trivial change starts with a spec. The spec is the source of truth —
 
 1. Every non-trivial task needs a spec before writing code — you'll rewrite it anyway.
 2. Spec must have acceptance criteria — without them, you can't know when it's done.
-3. Tasks must have dependencies — everything is a dependency of something.
+3. Record real dependencies between tasks, and only real ones — unchained tasks are the ones that can run in parallel.
 4. Spec must be specific: "Users authenticate via OAuth2 with PKCE" not "improve auth".
 5. Skipping `/sdd` for urgent tasks backfires — the spec is what makes "urgent" possible.
 6. When the spec reveals a multi-file refactor, delegate to `refactor-planner` first.
@@ -125,7 +126,7 @@ Stage shown in real-time. Pause stops after current iteration completes.
 
 - **Writing code before the spec** — you'll rewrite it anyway
 - **Spec that's too vague** — "improve auth" is not a spec, "Users authenticate via OAuth2 with PKCE" is
-- **Tasks with no dependencies** — everything is a dependency of something
+- **Invented dependencies** — chaining independent tasks serializes work that could run in parallel
 - **Spec without acceptance criteria** — how do you know when it's done?
 - **Skipping /sdd for urgent tasks** — the spec is what makes "urgent" possible
 
@@ -142,7 +143,7 @@ Stage shown in real-time. Pause stops after current iteration completes.
 
 - [ ] Spec has explicit acceptance criteria the verifier can run as commands
 - [ ] Every requirement is specific enough to be tested, not "improve X"
-- [ ] Tasks have dependencies; no orphan tasks at the leaves
+- [ ] Real dependencies recorded; independent tasks left unchained so they can run in parallel
 - [ ] Spec template matches the work type (feature/bugfix/refactor/infra/integration/cli-command)
 - [ ] Multi-file refactors are routed to `refactor-planner`, not absorbed into SDD tasks
 - [ ] Critical path called out; bottlenecks named; parallel groups identified

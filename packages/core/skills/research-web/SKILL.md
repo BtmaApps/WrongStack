@@ -35,8 +35,8 @@ provides the deep methodology and patterns the mode prompt can't fit.
 4. Respect the stop rule. 2-3 searches + 1-2 fetches per topic. If no clear
    answer after that, surface the ambiguity rather than research-looping.
 5. Cite every claim. Domain name minimum; date if visible on the page.
-6. Match tool to task. `search` for discovery, `fetch` for detail,
-   `fetch` for raw API responses, `search` for source-code-specific queries.
+6. Match tool to task. `search` for discovery; `fetch` to read a known page
+   or a raw registry/API endpoint.
 
 ## Research Workflow Taxonomy
 
@@ -73,8 +73,6 @@ See "Subagent Delegation" section below.
 |------|----------|-----------|
 | `search` | Broad discovery, finding current URLs, getting an overview | Deep detail (use `fetch` after) |
 | `fetch` | Reading a specific page for detail, authoritative confirmation | Broad queries (use `search` first) |
-| `search` | Technical docs, source code, API references (DuckDuckGo) | General web queries (use `search`) |
-| `fetch` | Raw API responses (JSON), registry endpoints, structured data | HTML pages (use `fetch` for markdown conversion) |
 | `context_manager` | Injecting research findings into conversation for future turns | Research itself (this is the *output* tool) |
 
 ### Decision heuristic

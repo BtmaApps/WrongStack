@@ -80,6 +80,18 @@ function fenceIfUntrusted(
   });
 }
 
+/**
+ * Frontmatter audiences whose skills never reach the main agent's prompt.
+ * `roster` skills are attached to roster roles by name — the fleet host context
+ * loads their bodies directly — and `external` skills ship for other coding
+ * agents. Both stay loadable through the `skill` tool and listed by `/skill`.
+ */
+const PROMPT_HIDDEN_AUDIENCES: ReadonlySet<string> = new Set(['roster', 'external']);
+
+export function isSkillHiddenFromPrompt(audience: string | undefined): boolean {
+  return audience !== undefined && PROMPT_HIDDEN_AUDIENCES.has(audience.trim().toLowerCase());
+}
+
 export async function buildProgressiveSkillManifestText(
   loader: SkillLoader,
   availableToolNames: readonly string[] = [],
@@ -95,6 +107,7 @@ export async function buildProgressiveSkillManifestText(
     ];
     const manifests = new Map((await loader.list()).map((manifest) => [manifest.name, manifest]));
     for (const e of entries) {
+      if (isSkillHiddenFromPrompt(e.audience)) continue;
       const manifest = manifests.get(e.name);
       if (
         manifest &&
@@ -124,6 +137,7 @@ export async function buildFullSkillBodiesText(
     const overflow: string[] = [];
     let used = 0;
     for (const s of skills) {
+      if (isSkillHiddenFromPrompt(s.audience)) continue;
       if (
         missingRuntimeCapabilities(s.requiredCapabilities, availableToolNames).length > 0 ||
         missingRequiredRuntimeTools(s.requiredTools, availableToolNames).length > 0
@@ -177,6 +191,7 @@ export async function buildCompactSkillBodiesText(
     const overflow: string[] = [];
     let used = 0;
     for (const s of skills) {
+      if (isSkillHiddenFromPrompt(s.audience)) continue;
       if (
         missingRuntimeCapabilities(s.requiredCapabilities, availableToolNames).length > 0 ||
         missingRequiredRuntimeTools(s.requiredTools, availableToolNames).length > 0

@@ -5,6 +5,7 @@ import { useAppTranslation } from '@/i18n';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { cn } from '@/lib/utils';
 import { useActiveSessionId, useConfigStore } from '@/stores';
+import { confirmModal } from './ConfirmModal';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 
 // Processes are bounded (shell spawns), show all without pagination.
@@ -87,17 +88,18 @@ export function ProcessMonitor({
   const running = processes.filter((p) => p.status === 'running');
 
   const handleKill = useCallback(
-    (proc: TrackedProcess) => {
-      if (
-        proc.background &&
-        !window.confirm(
-          t('activity:process.confirmKillBackground', {
+    async (proc: TrackedProcess) => {
+      if (proc.background) {
+        const ok = await confirmModal({
+          title: t('activity:process.killTitle', { defaultValue: 'Terminate Process' }),
+          message: t('activity:process.confirmKillBackground', {
             pid: proc.pid,
             defaultValue: `Terminate detached background process ${proc.pid}?`,
           }),
-        )
-      ) {
-        return;
+          confirmLabel: t('common:action.stop', { defaultValue: 'Terminate' }),
+          danger: true,
+        });
+        if (!ok) return;
       }
       const payload = ws.client.withSession?.({ pid: proc.pid }) ?? { pid: proc.pid };
       ws.client.send?.({ type: 'process.kill', payload });
@@ -105,17 +107,17 @@ export function ProcessMonitor({
     [t, ws.client],
   );
 
-  const handleKillAll = useCallback(() => {
-    if (
-      !window.confirm(
-        t('activity:process.confirmKillAll', {
-          count: running.length,
-          defaultValue: `Terminate all ${running.length} running processes?`,
-        }),
-      )
-    ) {
-      return;
-    }
+  const handleKillAll = useCallback(async () => {
+    const ok = await confirmModal({
+      title: t('activity:process.killAllTitle', { defaultValue: 'Terminate All Processes' }),
+      message: t('activity:process.confirmKillAll', {
+        count: running.length,
+        defaultValue: `Terminate all ${running.length} running processes?`,
+      }),
+      confirmLabel: t('common:action.stop', { defaultValue: 'Terminate All' }),
+      danger: true,
+    });
+    if (!ok) return;
     const payload = ws.client.withSession?.({}) ?? (sessionId ? { sessionId } : {});
     ws.client.send?.({ type: 'process.killAll', payload });
   }, [running.length, t, ws.client, sessionId]);

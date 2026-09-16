@@ -15,7 +15,7 @@ interface EmptyStateAction {
 }
 
 interface EmptyStateProps {
-  /** Icon component (lucide-react element). Rendered in a tinted circle. */
+  /** Icon component (lucide-react element). Rendered in a square tile. */
   icon?: ReactNode;
   /** Primary heading. */
   title: string;
@@ -45,21 +45,21 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="ws-surface flex max-w-md flex-col items-center gap-3 rounded-xl p-6 text-center text-muted-foreground">
+      <div className="flex w-full max-w-md flex-col items-center gap-4 p-5 sm:p-8 text-center text-muted-foreground">
         {icon && (
-          <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <span className="flex h-12 w-12 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
             {icon}
           </span>
         )}
         <div>
           <p className="text-base font-semibold text-foreground">{title}</p>
-          {description && <p className="mt-1 text-sm">{description}</p>}
+          {description && <p className="mt-2 text-sm leading-relaxed">{description}</p>}
         </div>
         {action && (
           <button
             type="button"
             onClick={action.onClick}
-            className="mt-1 rounded-md border border-border/70 bg-card/70 px-4 py-2 text-sm text-foreground shadow-sm transition-colors hover:bg-accent"
+            className="mt-1 rounded-none border border-border/70 bg-card/70 px-4 py-2 text-sm text-foreground shadow-sm transition-colors hover:bg-accent"
           >
             {action.label}
           </button>

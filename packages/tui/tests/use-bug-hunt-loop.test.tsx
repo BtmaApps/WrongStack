@@ -11,6 +11,53 @@ describe('useBugHuntLoop', () => {
     vi.useRealTimers();
   });
 
+  it.each(['clear', 'unmount', 'replacement', 'abort'] as const)(
+    'cancels a scheduled continuation on %s before it can submit',
+    (transition) => {
+      vi.useFakeTimers();
+      const dispatch = vi.fn<(action: Action) => void>();
+      const submit = vi.fn<(command: string) => void>();
+      const { result, rerender, unmount } = renderHook(
+        ({ gen }) => useBugHuntLoop(dispatch, submit, gen),
+        { initialProps: { gen: 0 } },
+      );
+      act(() => result.current.onBugHuntStarted('/bughunt --rounds 3 packages/tui', 3));
+      act(() => result.current.onRunFinished('done'));
+      expect(submit).not.toHaveBeenCalled();
+
+      act(() => {
+        if (transition === 'clear') rerender({ gen: 1 });
+        else if (transition === 'unmount') unmount();
+        else if (transition === 'replacement')
+          result.current.onBugHuntStarted('/bughunt --rounds 2 packages/core', 2);
+        else result.current.onRunFinished('aborted');
+      });
+      act(() => vi.runOnlyPendingTimers());
+      expect(submit).not.toHaveBeenCalled();
+      expect(
+        result.current.consumeReplay(
+          "This is round 2/3; we're continuing the bug hunt. Stay within the original scope: packages/tui.",
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it('ignores duplicate completion while the next round is still scheduled', () => {
+    vi.useFakeTimers();
+    const dispatch = vi.fn<(action: Action) => void>();
+    const submit = vi.fn<(command: string) => void>();
+    const { result } = renderHook(() => useBugHuntLoop(dispatch, submit));
+    act(() => result.current.onBugHuntStarted('/bughunt --rounds 3', 3));
+    act(() => {
+      result.current.onRunFinished('done');
+      result.current.onRunFinished('done');
+    });
+    act(() => vi.runOnlyPendingTimers());
+    expect(submit).toHaveBeenCalledExactlyOnceWith(
+      "This is round 2/3; we're continuing the bug hunt.",
+    );
+  });
+
   it('keeps the original 25-round budget across re-submissions and never opens a 26th prompt', () => {
     vi.useFakeTimers();
     const dispatch = vi.fn<(action: Action) => void>();

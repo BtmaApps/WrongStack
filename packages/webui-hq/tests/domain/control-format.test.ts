@@ -37,3 +37,32 @@ describe('shortId', () => {
     );
   });
 });
+
+describe('controlClientLabel', () => {
+  it('formats client label with version when available', async () => {
+    const { controlClientLabel } = await import('../../src/domain/control-format.js');
+    const client = {
+      clientId: 'c1',
+      kind: 'tui' as const,
+      version: '1.0.16',
+      machineId: 'm1',
+      hostname: 'devbox',
+      connected: true,
+      lastSeenAt: '2026-09-02T13:00:00.000Z',
+      projectId: 'p1',
+      capabilities: [],
+    };
+    const snapshot = {
+      generatedAt: '2026-09-02T13:00:00.000Z',
+      clients: [client],
+      projects: [{ projectId: 'p1', projectName: 'WrongStack', projectRootDisplay: '/p1', machineIds: ['m1'], activeClients: 1, activeSessions: 0, activeSubagents: 0, totalCostUsd: 0, lastActivityAt: '2026-09-02T13:00:00.000Z', status: 'active' as const }],
+      sessions: [],
+      fleets: [],
+      mailboxes: [],
+      totals: { activeProjects: 1, activeClients: 1, activeSessions: 0, activeSubagents: 0, unreadMailboxMessages: 0, incompleteMailboxMessages: 0, totalCostUsd: 0 },
+    };
+    const label = controlClientLabel(client, snapshot);
+    expect(label).toContain('TUI (v1.0.16)');
+    expect(label).toContain('devbox › WrongStack');
+  });
+});

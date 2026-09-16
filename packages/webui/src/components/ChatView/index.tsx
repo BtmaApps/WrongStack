@@ -169,7 +169,7 @@ export function ChatView() {
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           className={cn(
-            'ws-view-pane relative mx-2 mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/70 bg-card/55 shadow-sm sm:mx-3 lg:mx-4 lg:mt-3',
+            'ws-view-pane relative mx-2 mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none border border-border/70 bg-card/55 sm:mx-3 lg:mx-4 lg:mt-3',
             !subagentMode && 'ws-view-parked',
           )}
           {...(!subagentMode ? { inert: true, 'aria-hidden': true } : {})}
@@ -185,7 +185,7 @@ export function ChatView() {
         </div>
         <div
           className={cn(
-            'ws-view-pane relative mx-2 mt-2 min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-card/55 shadow-sm sm:mx-3 lg:mx-4 lg:mt-3',
+            'ws-view-pane relative mx-2 mt-2 min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border border-border/70 bg-card/55 sm:mx-3 lg:mx-4 lg:mt-3',
             subagentMode && 'ws-view-parked',
           )}
           {...(subagentMode ? { inert: true, 'aria-hidden': true } : {})}

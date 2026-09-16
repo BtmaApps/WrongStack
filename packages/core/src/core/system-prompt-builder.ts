@@ -40,6 +40,7 @@ import { buildEnvironment } from './system-prompt-environment.js';
 import { renderDomainGlossary } from './system-prompt-glossary.js';
 import { buildMemoryAndSkills, renderOnlineAgents } from './system-prompt-memory-skills.js';
 import { type ActivePlanCache, readActivePlanBlock } from './system-prompt-plan.js';
+import { isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';
 import { compactTrigger } from './system-prompt-skill-text.js';
 
 export { effectiveShell, shellGuidanceBlock } from './system-prompt-shell.js';
@@ -339,6 +340,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         if (entries.length > 0) {
           const lines: string[] = [];
           for (const e of entries) {
+            if (isSkillHiddenFromPrompt(e.audience)) continue;
             const manifest = manifests.get(e.name);
             if (
               manifest &&

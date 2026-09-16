@@ -142,6 +142,10 @@ describe('createRuntimePickerDeps', () => {
     result.getBrainLog.mockReturnValue([
       { kind: 'decision', question: 'seconds', outcome: 'yes', at: 9_990_000 },
       { kind: 'decision', question: 'minutes', outcome: 'yes', at: 9_700_000 },
+      { kind: 'decision', question: 'one minute exact', outcome: 'yes', at: 9_940_000 },
+      { kind: 'decision', question: 'minute boundary 3570s', outcome: 'yes', at: 6_430_000 },
+      { kind: 'decision', question: 'minute boundary 3599s', outcome: 'yes', at: 6_401_000 },
+      { kind: 'decision', question: 'hour boundary 3600s', outcome: 'yes', at: 6_400_000 },
       { kind: 'decision', question: 'hours', outcome: 'yes', at: 2_800_000 },
     ]);
     const deps = createRuntimePickerDeps(result as never);
@@ -163,6 +167,12 @@ describe('createRuntimePickerDeps', () => {
       log: [
         expect.objectContaining({ question: 'seconds', age: '10s' }),
         expect.objectContaining({ question: 'minutes', age: '5m' }),
+        expect.objectContaining({ question: 'one minute exact', age: '1m' }),
+        // Minute labels must stay in [1,59]m: rounding (not flooring) used to
+        // emit the out-of-range "60m" for the whole [3570s, 3600s) window.
+        expect.objectContaining({ question: 'minute boundary 3570s', age: '59m' }),
+        expect.objectContaining({ question: 'minute boundary 3599s', age: '59m' }),
+        expect.objectContaining({ question: 'hour boundary 3600s', age: '1h' }),
         expect.objectContaining({ question: 'hours', age: '2h' }),
       ],
     });

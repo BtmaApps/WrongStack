@@ -28,8 +28,8 @@ function buildContinuationMessage(active: ActiveBugHunt): string {
  * controller only after it notifies this hook; submitting synchronously here
  * makes the next round look like mid-run input and can leave it queued.
  */
-function submitAfterCurrentRun(submit: (command: string) => void, command: string): void {
-  setTimeout(() => submit(command), 0);
+function submitAfterCurrentRun(submit: () => void): ReturnType<typeof setTimeout> {
+  return setTimeout(submit, 0);
 }
 
 /** Coordinates single-round or explicitly bounded `/bughunt` runs in the TUI. */
@@ -40,6 +40,13 @@ export function useBugHuntLoop(
 ) {
   const activeRef = useRef<ActiveBugHunt | null>(null);
   const replayCommandRef = useRef<string | null>(null);
+  const pendingSubmitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingSubmit = useCallback(() => {
+    if (pendingSubmitRef.current !== null) clearTimeout(pendingSubmitRef.current);
+    pendingSubmitRef.current = null;
+    replayCommandRef.current = null;
+  }, []);
+  useEffect(() => cancelPendingSubmit, [cancelPendingSubmit]);
 
   // /clear (and any wholesale history replacement, e.g. /resume) ends any
   // hunt. The reducer half (bugHuntRunning / bugHuntContinue) is reset by the
@@ -56,9 +63,10 @@ export function useBugHuntLoop(
     if (historyGen === undefined) return;
     if (historyGen === lastHistoryGenRef.current) return;
     lastHistoryGenRef.current = historyGen;
+    cancelPendingSubmit();
     activeRef.current = null;
     replayCommandRef.current = null;
-  }, [historyGen]);
+  }, [historyGen, cancelPendingSubmit]);
 
   const onBugHuntStarted = useCallback(
     (command: string, totalRounds?: number) => {
@@ -73,6 +81,7 @@ export function useBugHuntLoop(
         });
         return;
       }
+      cancelPendingSubmit();
       activeRef.current = {
         command,
         scope: parseBugHuntScope(command),
@@ -81,15 +90,17 @@ export function useBugHuntLoop(
       };
       dispatch({ type: 'bugHuntRunningOpen', info: { currentRound: 1, totalRounds } });
     },
-    [dispatch],
+    [dispatch, cancelPendingSubmit],
   );
 
   const onRunFinished = useCallback(
     (status: 'done' | 'aborted' | 'failed' | 'max_iterations') => {
       const active = activeRef.current;
       if (!active) return;
+      if (status === 'done' && pendingSubmitRef.current !== null) return;
       dispatch({ type: 'bugHuntRunningClose' });
       if (status !== 'done') {
+        cancelPendingSubmit();
         activeRef.current = null;
         dispatch({
           type: 'addEntry',
@@ -123,7 +134,6 @@ export function useBugHuntLoop(
         // submit path. It must not be placed in the composer for the user to
         // press Enter again.
         const continuation = buildContinuationMessage(snapshot);
-        replayCommandRef.current = continuation;
         dispatch({
           type: 'bugHuntRunningOpen',
           info: {
@@ -131,14 +141,19 @@ export function useBugHuntLoop(
             totalRounds: snapshot.totalRounds,
           },
         });
-        submitAfterCurrentRun(submit, continuation);
+        pendingSubmitRef.current = submitAfterCurrentRun(() => {
+          pendingSubmitRef.current = null;
+          if (activeRef.current !== active) return;
+          replayCommandRef.current = continuation;
+          submit(continuation);
+        });
       };
 
       // Only an explicit --rounds budget reaches this branch. Continue as
       // soon as the previous round succeeds; plain /bughunt is single-shot.
       continueWithNextRound();
     },
-    [dispatch, submit],
+    [dispatch, submit, cancelPendingSubmit],
   );
 
   const consumeReplay = useCallback((command: string): boolean => {
