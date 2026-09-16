@@ -125,12 +125,20 @@ const CONTAINER_CLASS_RE = /\b(?:rounded|border|bg-|p-|px-|py-|grid|flex)/;
  * comments open with `{/*`, which `^\s*\/\*` never matches, so every
  * `{/* … *␣/}` in a React file was scanned as markup. Multi-line block comments
  * leaked for the same reason — their middle lines match no opener pattern, they
- * need state.
+ * need state. Measured after the fix: across 1079 React/TUI files it removes 12
+ * false findings, most of them hex-shaped text like `= #121318` or `issue #323`.
+ *
+ * Exported because measurement must use the same rule as enforcement. Auditing
+ * a screen, a plain `grep -c "gap-px"` reported a utility that was not there —
+ * the only match was a comment saying it had been removed. Any script that
+ * counts design patterns should import this rather than re-derive it; a second
+ * copy drifts from this one silently.
  *
  * A trailing comment on a line of real code is deliberately NOT stripped: the
- * code on that line is still code.
+ * code on that line is still code, and loosening it would blind the scan to
+ * `<div className="shadow-lg"> {/* ok *␣/}`.
  */
-function markCommentLines(lines: string[]): boolean[] {
+export function markCommentLines(lines: string[]): boolean[] {
   const flags: boolean[] = [];
   let inBlock = false;
   for (const raw of lines) {
