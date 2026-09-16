@@ -370,14 +370,26 @@ export function useMemoryManagerState() {
   }, [confirmDiscard]);
 
   const openMemory = useCallback(
-    async (id: string) => {
-      if (!(await confirmDiscard())) return;
-      setSelectedId(id);
-      setCreating(false);
-      setEditing(false);
-      setMutationError(null);
+    (id: string) => {
+      const applySelection = () => {
+        setSelectedId(id);
+        setCreating(false);
+        setEditing(false);
+        setMutationError(null);
+      };
+      // Fast path: with nothing to discard, the selection must land in the
+      // same click. `confirmDiscard` is async, so awaiting it unconditionally
+      // deferred every selection by a microtask — clicking a list row or a
+      // search-breakdown hit then opened the detail panel too late.
+      if (!dirty || (!editing && !creating)) {
+        applySelection();
+        return;
+      }
+      void confirmDiscard().then((accepted) => {
+        if (accepted) applySelection();
+      });
     },
-    [confirmDiscard],
+    [confirmDiscard, creating, dirty, editing],
   );
 
   const openEdit = useCallback(
