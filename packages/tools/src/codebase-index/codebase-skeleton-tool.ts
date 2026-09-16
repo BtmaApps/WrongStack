@@ -61,6 +61,10 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
   permission: 'auto',
   mutating: false,
   capabilities: ['fs.read'],
+  // A skeleton is structural source data: dropping its middle can hide declarations
+  // and make downstream analysis incorrect. The directory input is already bounded
+  // by maxFiles, so preserve the complete serialized result for the model.
+  preserveFullOutput: true,
   timeoutMs: 30_000,
   inputSchema: {
     type: 'object',
@@ -90,6 +94,9 @@ export const codebaseSkeletonTool: Tool<CodebaseSkeletonInput, CodebaseSkeletonO
     },
     required: ['path'],
     additionalProperties: false,
+  },
+  serialize(output) {
+    return JSON.stringify(output, null, 2) ?? '';
   },
   async execute(input, ctx, execOpts) {
     const signal = execOpts?.signal ?? ctx?.signal;

@@ -177,7 +177,13 @@ function parseCommitMessage(message: string, cfg: CommitValidatorConfig): Parsed
 
   // Regex: type(scope)!: subject  or  type: subject  or  type!: subject
   // Groups: 1=type, 2=scope (optional), 3=breaking marker, 4=subject
-  const match = firstLine.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(?:\(([^)]+)\))?(!)?:\s*(.+)$/);
+  // The separator is `\s+` (colon + whitespace), matching the documented
+  // `<type>[(scope)][!]: <description>` format and the Conventional Commits
+  // spec ("a description MUST follow the colon and space"). `\s*` here let
+  // `feat:x` through the gate as valid, while semver-bump's parser (and the
+  // ecosystem's conventional-commits-parser) require the space — the commit
+  // was validated as a feat but silently bumped as a chore.
+  const match = firstLine.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(?:\(([^)]+)\))?(!)?:\s+(.+)$/);
 
   if (!match) {
     errors.push(

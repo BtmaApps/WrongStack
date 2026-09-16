@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KanbanBoard, KanbanBoardSummary, KanbanColumn, KanbanTask } from '@wrongstack/kanban';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KanbanView } from '../../src/components/KanbanView';
 import { useKanbanStore } from '../../src/stores';
 
@@ -212,6 +212,80 @@ describe('KanbanView board auto-select', () => {
     fireEvent.click(screen.getByRole('button', { name: /Board B/ }));
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'kanban.get', payload: { boardId: boardB.id } }),
+    );
+  });
+});
+
+describe('KanbanView board creation', () => {
+  it('creates a plain board, like every other creation path', () => {
+    // This used to send a hard-coded managed lifecycle, so "make me a board"
+    // produced a strict-gated board from the browser and an ungated one from
+    // `/kanban create`, the `create_board` tool and the session/run mirrors.
+    // Managed mode is an audited opt-in via `adopt_managed_lifecycle`.
+    render(<KanbanView />);
+
+    fireEvent.change(screen.getByPlaceholderText('New board'), {
+      target: { value: 'Fresh board' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create board' }));
+
+    const create = sendMock.mock.calls
+      .map(([message]) => message as { type: string; payload?: Record<string, unknown> })
+      .find((message) => message.type === 'kanban.create');
+    expect(create).toBeDefined();
+    expect(create?.payload?.title).toBe('Fresh board');
+    expect(create?.payload).not.toHaveProperty('lifecycle');
+  });
+
+  it('ignores a blank title instead of creating an untitled board', () => {
+    render(<KanbanView />);
+    fireEvent.change(screen.getByPlaceholderText('New board'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create board' }));
+    expect(sendMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'kanban.create' }));
+  });
+});
+
+describe('KanbanView polling', () => {
+  it('does not poll the board — push (kanban.get broadcast) is the update path', () => {
+    vi.useFakeTimers();
+    try {
+      seedActive(board('board-a', 'Board A'));
+      render(<KanbanView />);
+      sendMock.mockClear();
+
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+
+      const polled = sendMock.mock.calls
+        .map(([message]) => (message as { type: string }).type)
+        .filter((type) => type === 'kanban.get' || type === 'kanban.health');
+      expect(polled).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refreshes queue health when the pushed board actually changed', () => {
+    // Health does not ride the board broadcast, so it follows `updatedAt` —
+    // which moves on every committed mutation and stays put for a no-op.
+    const boardA = board('board-a', 'Board A');
+    seedActive(boardA);
+    render(<KanbanView />);
+    sendMock.mockClear();
+
+    act(() => {
+      useKanbanStore.setState({ activeBoard: { ...boardA } });
+    });
+    expect(sendMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'kanban.health' }));
+
+    act(() => {
+      useKanbanStore.setState({
+        activeBoard: { ...boardA, updatedAt: '2026-07-20T13:00:00.000Z' },
+      });
+    });
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'kanban.health', payload: { boardId: 'board-a' } }),
     );
   });
 });

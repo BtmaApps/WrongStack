@@ -22,6 +22,7 @@ export interface KanbanQueueAnomalySignal {
   /** Stable identifier; safe to use as a translation key suffix. */
   code:
     | 'stale_assignments'
+    | 'parked'
     | 'heartbeat_due'
     | 'dependency_blocked'
     | 'failed_retryable'
@@ -38,6 +39,11 @@ export interface KanbanQueueAnomalySignal {
 export function kanbanQueueAnomalySignals(health: KanbanQueueHealth): KanbanQueueAnomalySignal[] {
   const signals: KanbanQueueAnomalySignal[] = [
     { code: 'stale_assignments', count: health.staleAssignments.count },
+    // Ranked directly under a stale lease: both mean work has stopped and will
+    // not restart on its own, but a parked card additionally means retrying it
+    // unchanged is known to be pointless. `parked` is optional on the health
+    // record (hand-built literals omit it), so an absent value reads as zero.
+    { code: 'parked', count: health.parked?.count ?? 0 },
     { code: 'failed', count: health.counts.failed },
     { code: 'blocked', count: health.counts.blocked },
     { code: 'failed_retryable', count: health.failedRetryable.count },

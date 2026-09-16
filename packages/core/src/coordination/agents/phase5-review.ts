@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, MEDIUM_BUDGET, TOOLS } from './types.js';
 
 /** Phase 5 · Review — read-only quality, security, a11y, and compliance gates. */
@@ -9,7 +9,6 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
       name: 'Reviewer',
       role: 'reviewer',
       tools: [...TOOLS.inspect, 'git'],
-      prompt: agentPrompt('reviewer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -38,7 +37,6 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
       name: 'Code Reviewer',
       role: 'code-reviewer',
       tools: [...TOOLS.inspect, 'git', 'codebase-impact-analysis', 'codebase-invariant-check'],
-      prompt: agentPrompt('code-reviewer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -64,7 +62,6 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
       name: 'Security Reviewer',
       role: 'security-reviewer',
       tools: [...TOOLS.inspect, 'git'],
-      prompt: agentPrompt('security-reviewer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -95,7 +92,6 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
       name: 'Accessibility',
       role: 'accessibility',
       tools: [...TOOLS.read],
-      prompt: agentPrompt('accessibility'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -121,7 +117,6 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
       name: 'Compliance',
       role: 'compliance',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('compliance'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -143,3 +138,10 @@ export const REVIEW_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(REVIEW_AGENTS);

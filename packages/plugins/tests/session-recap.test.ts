@@ -122,16 +122,17 @@ describe('session-recap plugin', () => {
       expect(call).toBeDefined();
     });
 
-    it('subscribes to provider.response + tool.* + tool.result events', () => {
+    it('subscribes to provider.response + tool.* events (no dead tool.result)', () => {
       const api = createMockAPI({ withMailbox: true });
       sessionRecapPlugin.setup(api as never);
       // onEvent is called for 'provider.response'.
       const onEventCalls = vi.mocked(api.onEvent).mock.calls.map((c) => c[0]);
       expect(onEventCalls).toContain('provider.response');
-      // onPattern is called for 'tool.*' and 'tool.result'.
+      // Commit counting rides the real `tool.*` events — core has no
+      // `tool.result` emitter, so a subscription to it could never fire.
       const onPatternCalls = vi.mocked(api.onPattern).mock.calls.map((c) => c[0]);
       expect(onPatternCalls).toContain('tool.*');
-      expect(onPatternCalls).toContain('tool.result');
+      expect(onPatternCalls).not.toContain('tool.result');
     });
 
     it('configSchema defines enabled, subjectPrefix, includeTranscriptTail, maxBodyChars', () => {
@@ -255,12 +256,19 @@ describe('session-recap plugin', () => {
         | ((p: unknown) => void)
         | undefined;
       usageHandler?.({ model: 'gpt-4o', usage: { input: 100, output: 50 } });
-      const toolResultHandler = vi
+      const toolEvents = vi
         .mocked(api.onPattern)
-        .mock.calls.find((c) => c?.[0] === 'tool.result')?.[1] as
+        .mock.calls.find((c) => c?.[0] === 'tool.*')?.[1] as
         | ((_e: string, p: unknown) => void)
         | undefined;
-      toolResultHandler?.('tool.result', { tool: 'git_autocommit', isError: false });
+      // Core's real emission shapes: tool.started carries name/id/input;
+      // tool.completed carries the same id with no input and no result.
+      toolEvents?.('tool.started', {
+        name: 'git_autocommit',
+        id: 'tu_1',
+        input: { files: ['a.txt'] },
+      });
+      toolEvents?.('tool.completed', { name: 'git_autocommit', id: 'tu_1' });
 
       const hook = getHook(api, 'Stop');
       await hook({ cwd: '/tmp', sessionId: 'sess-42' });
@@ -550,5 +558,131 @@ describe('session-recap plugin', () => {
       expect(status.aiSummary).toBe(true);
       expect(status.llmAvailable).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression (bug-hunt r3): non-finite provider usage must not poison totals
+// ---------------------------------------------------------------------------
+
+describe('session-recap: non-finite provider usage', () => {
+  function getUsageHandler(api: PluginAPI): (p: unknown) => void {
+    const call = vi.mocked(api.onEvent).mock.calls.find((c) => c?.[0] === 'provider.response');
+    if (!call?.[1]) throw new Error('provider.response handler not registered');
+    return call[1] as (p: unknown) => void;
+  }
+
+  it('normalizes NaN/Infinity usage to 0 and keeps finite accumulation', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const usageHandler = getUsageHandler(api);
+    usageHandler({ model: 'gpt-4o', usage: { input: NaN, output: Infinity } });
+    usageHandler({ model: 'gpt-4o', usage: { input: 100, output: 50 } });
+
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+
+    expect(api.mailbox!.send).toHaveBeenCalledTimes(1);
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as {
+      subject: string;
+      body: string;
+    };
+    // The subject is the human-visible header; the old code leaked "NaN tokens".
+    expect(sendArg.subject).not.toContain('NaN');
+    // JSON.stringify renders NaN/Infinity as null — totals must be finite numbers.
+    const recap = JSON.parse(sendArg.body) as {
+      tokens: { total: { input: number; output: number } };
+    };
+    expect(recap.tokens.total).toEqual({ input: 100, output: 50 });
+  });
+
+  it('control: finite-only usage still accumulates and reports correctly', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const usageHandler = getUsageHandler(api);
+    usageHandler({ model: 'gpt-4o', usage: { input: 100, output: 50 } });
+
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { subject: string };
+    expect(sendArg.subject).toContain('150 tokens');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression (post-hunt): commit counting over real core tool events
+// ---------------------------------------------------------------------------
+
+describe('session-recap: commit counting over real core tool events', () => {
+  function getToolEvents(api: PluginAPI): (eventName: string, payload: unknown) => void {
+    const call = vi.mocked(api.onPattern).mock.calls.find((c) => c?.[0] === 'tool.*');
+    if (!call?.[1]) throw new Error('tool.* handler not registered');
+    return call[1] as (eventName: string, payload: unknown) => void;
+  }
+
+  it('counts a non-dry-run git_autocommit completion as a commit', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    // Real emission shapes: tool.started carries name/id/input
+    // (tool-executor.ts); tool.completed carries the same id with no input
+    // and no result content (tool-executor-logging.ts). Core has no
+    // `tool.result` event — the previous subscription to it was dead code,
+    // so commits were never counted.
+    toolEvents('tool.started', {
+      name: 'git_autocommit',
+      id: 'tu_1',
+      input: { files: ['a.txt'] },
+    });
+    toolEvents('tool.completed', { name: 'git_autocommit', id: 'tu_1' });
+
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { body: string };
+    const recap = JSON.parse(sendArg.body) as { commits: number };
+    expect(recap.commits).toBe(1);
+  });
+
+  it('never counts a dry_run preview (snake or camel input key)', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    toolEvents('tool.started', {
+      name: 'git_autocommit',
+      id: 'tu_dry_1',
+      input: { dry_run: true },
+    });
+    toolEvents('tool.started', {
+      name: 'git_autocommit',
+      id: 'tu_dry_2',
+      input: { dryRun: true },
+    });
+    toolEvents('tool.completed', { name: 'git_autocommit', id: 'tu_dry_1' });
+    toolEvents('tool.completed', { name: 'git_autocommit', id: 'tu_dry_2' });
+
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { body: string };
+    const recap = JSON.parse(sendArg.body) as { commits: number };
+    expect(recap.commits).toBe(0);
+  });
+
+  it('does not count a failed git_autocommit, and does not resurrect its id', async () => {
+    const api = createMockAPI({ withMailbox: true });
+    sessionRecapPlugin.setup(api as never);
+    const toolEvents = getToolEvents(api);
+    toolEvents('tool.started', {
+      name: 'git_autocommit',
+      id: 'tu_fail',
+      input: { files: ['a.txt'] },
+    });
+    toolEvents('tool.failed', { name: 'git_autocommit', id: 'tu_fail' });
+    // A completion after the failure must not resurrect the tracked id.
+    toolEvents('tool.completed', { name: 'git_autocommit', id: 'tu_fail' });
+
+    await getHook(api, 'Stop')({ sessionId: 's1' });
+
+    const sendArg = vi.mocked(api.mailbox!.send).mock.calls[0]?.[0] as { body: string };
+    const recap = JSON.parse(sendArg.body) as { commits: number };
+    expect(recap.commits).toBe(0);
   });
 });

@@ -144,6 +144,7 @@ function telegramFromConfig(cfg: Config): {
   allowedOutboundChats: Array<string | number>;
   allowedUserIds: Array<string | number>;
   allowGroupApprovals: boolean;
+  pollIntervalSec: number;
   notifyOnSessionEnd: boolean;
   notifyOnDelegate: boolean;
   longToolThresholdMs: number;
@@ -160,6 +161,7 @@ function telegramFromConfig(cfg: Config): {
     allowedOutboundChats: [...(tg.allowedOutboundChats ?? [])],
     allowedUserIds: [...(tg.allowedUsers ?? [])],
     allowGroupApprovals: tg.allowGroupApprovals ?? false,
+    pollIntervalSec: tg.pollIntervalSec ?? 2,
     notifyOnSessionEnd: tg.notifyOnSessionEnd ?? false,
     notifyOnDelegate: tg.notifyOnDelegate ?? true,
     longToolThresholdMs: tg.longToolThresholdMs ?? 30_000,
@@ -543,6 +545,12 @@ const plugin: Plugin = {
             'allowedUsers',
             (r, f) => {
               r.allowedUserIds = f.allowedUserIds;
+            },
+          ],
+          [
+            'pollIntervalSec',
+            (_r, f) => {
+              bot.poller.setPollIntervalMs(f.pollIntervalSec * 1000);
             },
           ],
           [

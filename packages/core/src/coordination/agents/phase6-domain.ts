@@ -1,5 +1,5 @@
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, HEAVY_BUDGET, MEDIUM_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 /** Phase 6 · Domain — specialists for the major slices of a system. */
 export const DOMAIN_AGENTS: AgentDefinition[] = [
@@ -9,7 +9,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Database',
       role: 'database',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('database'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -37,7 +36,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'API',
       role: 'api',
       tools: [...TOOLS.build, 'fetch'],
-      prompt: agentPrompt('api'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -65,7 +63,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Auth',
       role: 'auth',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('auth'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -94,7 +91,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Data',
       role: 'data',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('data'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -122,7 +118,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Frontend',
       role: 'frontend',
       tools: [...TOOLS.build, 'fetch'],
-      prompt: agentPrompt('frontend'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -150,7 +145,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Backend',
       role: 'backend',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('backend'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -178,7 +172,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'Designer',
       role: 'designer',
       tools: [...TOOLS.docs, 'design'],
-      prompt: agentPrompt('designer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -205,7 +198,6 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
       name: 'iOS',
       role: 'ios',
       tools: [...TOOLS.build, 'fetch'],
-      prompt: agentPrompt('ios'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -235,3 +227,10 @@ export const DOMAIN_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(DOMAIN_AGENTS);

@@ -156,7 +156,10 @@ export const useToolStatsStore = create<ToolStatsState>((set) => ({
       };
       return { sessions: { ...withSession, [sessionId]: nextSession } };
     }),
-  recordDelegateStarted: (sessionId, delegation) =>
+  // Starting a delegation only bumps the counter; the payload matters on
+  // completion (see recordDelegateCompleted, which reads ok/toolCalls). The
+  // parameter stays for signature symmetry with the rest of the recorders.
+  recordDelegateStarted: (sessionId, _delegation) =>
     set((state) => {
       const { sessions: withSession, session } = upsertSession(state.sessions, sessionId);
       const nextSession: ToolStatsSession = {

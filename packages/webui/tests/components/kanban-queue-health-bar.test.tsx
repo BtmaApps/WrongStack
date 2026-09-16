@@ -101,6 +101,43 @@ describe('KanbanQueueHealthBar', () => {
     expect(container.textContent).toMatch(/4\s*blocked by deps/i);
   });
 
+  it('says why a board with parked cards is not healthy', () => {
+    // `hasKanbanQueueAnomalies` already counts parked, so the "Healthy" badge
+    // vanished — with nothing on the bar explaining it. That silent-drop is
+    // the same defect this suite was written for.
+    const { container } = render(
+      <KanbanQueueHealthBar
+        queueHealth={health({ parked: { count: 3, tasks: [] } })}
+        runningCostTotal={0}
+      />,
+    );
+
+    expect(screen.queryByText(/healthy/i)).toBeNull();
+    expect(container.textContent).toMatch(/3\s*parked/i);
+  });
+
+  it('hides the parked pill when nothing is parked', () => {
+    const { container } = render(
+      <KanbanQueueHealthBar
+        queueHealth={health({ parked: { count: 0, tasks: [] } })}
+        runningCostTotal={0}
+      />,
+    );
+
+    expect(container.textContent).not.toMatch(/parked/i);
+    expect(screen.getByText(/healthy/i)).toBeTruthy();
+  });
+
+  it('renders a health record that omits the optional parked bucket', () => {
+    // Several call sites build KanbanQueueHealth by hand without it.
+    const record = health();
+    expect(record.parked).toBeUndefined();
+    const { container } = render(
+      <KanbanQueueHealthBar queueHealth={record} runningCostTotal={0} />,
+    );
+    expect(container.textContent).not.toContain('undefined');
+  });
+
   it('renders the running cost only when there is one', () => {
     const { rerender, container } = render(
       <KanbanQueueHealthBar queueHealth={health()} runningCostTotal={0} />,

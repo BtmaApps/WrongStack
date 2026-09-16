@@ -4,7 +4,7 @@
 
 ## What to avoid
 
-<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=3; wins=3 -->
+<!-- learned-stamp: category=warning; capturedAt=2026-09-12T21:38:03.000Z; applied=4; wins=4 -->
 - **Always treat `mail_inbox` returning `tool lacks allowed capability` as UNKNOWN (mailbox scan unavailable), never as "no control messages" — emit `shadow: quiet` with exactly one caveat line naming the denied tool, and never escalate or invoke `terminate_subagent` without a readable explicit `hoop`/`shadow` command. When `fleet action=status` and `fleet action=health` are clean, that is the fleet verdict; the injection `[FLEET PULSE]` block is FYI noise, not mailbox evidence.**
   - *Why:* Known failure mode — skipping this has caused real defects in this codebase. The cost of getting it wrong outweighs the cost of the check.
   - *How:* `mail_inbox`

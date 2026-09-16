@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import commitValidatorPlugin from '../src/commit-validator';
 
 interface MockApi {
@@ -319,5 +319,79 @@ describe('bodyRequired config', () => {
       toolInput: { command: `git commit -m "${msg}"` },
     });
     expect(result).toBeUndefined();
+  });
+});
+
+// Regression (bug-hunt r1): the subject separator is colon+space. The old
+// `\s*` spelling accepted `feat:x` as a valid feat, while semver-bump's
+// parseConventional (and conventional-commits-parser) require the space and
+// classified such commits as chore — validated as feat, bumped as chore.
+describe('subject separator requires whitespace after the colon', () => {
+  it('blocks "feat:x" (missing space, plain type)', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'bash',
+      toolInput: { command: 'git commit -m "feat:x"' },
+    });
+    expect(result?.decision).toBe('block');
+    expect(result?.reason).toContain('conventional-commit format');
+  });
+
+  it('blocks "feat(api):x" (missing space, scoped)', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'bash',
+      toolInput: { command: 'git commit -m "feat(api):x"' },
+    });
+    expect(result?.decision).toBe('block');
+  });
+
+  it('blocks "fix:x" (missing space, secondary type)', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'bash',
+      toolInput: { command: 'git commit -m "fix:x"' },
+    });
+    expect(result?.decision).toBe('block');
+  });
+
+  it('blocks a missing-space message on the git_autocommit path too', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'git_autocommit',
+      toolInput: { message: 'feat:x' },
+    });
+    expect(result?.decision).toBe('block');
+  });
+
+  it('still allows tab after the colon (whitespace, matching semver-bump)', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'git_autocommit',
+      toolInput: { message: 'feat:\tsubject' },
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it('still allows "feat: x" and "feat(api)!: x" (unchanged behavior)', async () => {
+    const api = makeApi();
+    commitValidatorPlugin.setup(api as never);
+    const hook = getHook(api);
+    await expect(
+      hook({ toolName: 'bash', toolInput: { command: 'git commit -m "feat: x"' } }),
+    ).resolves.toBeUndefined();
+    await expect(
+      hook({ toolName: 'bash', toolInput: { command: 'git commit -m "feat(api)!: x"' } }),
+    ).resolves.toBeUndefined();
   });
 });

@@ -275,6 +275,31 @@ describe('verifyFiles — a rule must never fight the kit it enforces', () => {
     const v = verifyFiles(softShadowKit, [{ path: 'a.tsx', text: stacked }]).violations;
     expect(v.some((x) => /elevation strategy/.test(x.reason))).toBe(true);
   });
+
+  it('does not sanction shadow-2/3/4 from the base shadow token — utilities resolve to the ramp', () => {
+    // comic-pop shape (real kit): ONLY the base `shadow` key is a hard offset;
+    // its shadow-2/3/4 scale is absent, and readTokens() merges the foundations
+    // base scales under every kit — so the shadow-3 utility resolves to the
+    // SOFT foundations default, not to the kit's hard stamp. Border + soft
+    // shadow-3 is exactly the "two elevation strategies" stack this rule
+    // exists to catch; the base key must not suppress it.
+    const comicPopMerged: DesignKitTokens = {
+      light: {
+        bg: 'oklch(97% 0.07 105)',
+        'shadow-2': '0 2px 8px oklch(0% 0 0 / 0.08)',
+        'shadow-3': '0 8px 24px oklch(0% 0 0 / 0.12)',
+        shadow: '4px 4px 0 oklch(15% 0 0)',
+      },
+      dark: {
+        bg: 'oklch(20% 0.05 300)',
+        'shadow-2': '0 2px 8px oklch(0% 0 0 / 0.2)',
+        'shadow-3': '0 8px 24px oklch(0% 0 0 / 0.45)',
+        shadow: '4px 4px 0 oklch(96% 0 0)',
+      },
+    };
+    const v = verifyFiles(comicPopMerged, [{ path: 'a.tsx', text: stacked }]).violations;
+    expect(v.some((x) => /elevation strategy/.test(x.reason))).toBe(true);
+  });
 });
 
 describe('verifyFiles — a none-elevation kit gets an accurate message', () => {

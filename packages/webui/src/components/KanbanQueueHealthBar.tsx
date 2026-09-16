@@ -73,6 +73,18 @@ export function KanbanQueueHealthBar({ queueHealth, runningCostTotal }: KanbanQu
           {queueHealth.staleAssignments.count} {t('activity:kanban.statusStale')}
         </span>
       )}
+      {/* Parked cards make the bar drop its "Healthy" badge (they are an
+          anomaly signal), so without this pill the bar would go quiet without
+          saying why — the same defect the comment below records. Optional
+          because several call sites build KanbanQueueHealth by hand. */}
+      {(queueHealth.parked?.count ?? 0) > 0 && (
+        <span
+          title={t('activity:kanban.parkedTasks')}
+          className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive"
+        >
+          {queueHealth.parked?.count} {t('activity:kanban.parked')}
+        </span>
+      )}
       {/* "Healthy" used to be computed here from three of the six signals, so a
           board with failed or retryable-failed cards showed a green badge next
           to its own red failure pill. `hasKanbanQueueAnomalies` is the shared

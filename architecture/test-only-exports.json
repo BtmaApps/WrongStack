@@ -360,6 +360,7 @@
       "chronicleSqliteAllocatedBytes"
     ],
     "packages/core/src/coordination/agents/agent-prompts.ts": [
+      "agentPrompt",
       "agentPromptCacheSize"
     ],
     "packages/core/src/coordination/agents/dispatch-log.ts": [
@@ -726,8 +727,7 @@
       "TEST_EVENT_CONTEXT"
     ],
     "packages/kanban/src/verification/completion-park.ts": [
-      "DEFAULT_MAX_VERIFICATION_ATTEMPTS",
-      "isParked"
+      "DEFAULT_MAX_VERIFICATION_ATTEMPTS"
     ],
     "packages/kanban/src/verification/verification-report.ts": [
       "renderVerificationReportMarkdown"

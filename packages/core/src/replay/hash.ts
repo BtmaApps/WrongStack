@@ -71,22 +71,33 @@ function semanticMessage(message: Message): Omit<Message, 'ts' | '_estTokens' | 
 /**
  * Strip a tool down to what the provider actually receives.
  *
- * `Tool` carries several runtime bookkeeping fields that are set at
- * registration time and never sent to the LLM:
+ * Every provider wire converter (`toolsToAnthropic`, `toolsToOpenAI`,
+ * `toolsToResponses`, `toolsToGemini`) projects a tool through
+ * `compactToolDefinitionForWire` and sends exactly `name`, `description`
+ * and `inputSchema` — nothing else. `Tool` carries far more than that:
+ * permission policy (`permission`, `mutating`, `riskTier`, `subjectKey`,
+ * `subjectFields`, `capabilities`), executor policy (`timeoutMs`,
+ * `managesOwnTimeout`, `maxOutputBytes`), UI/guidance metadata (`icon`,
+ * `usageHint`, `selection`, `category`, `estimatedDurationMs`) and the
+ * `_estDefTokens` registration cache. Those fields are edited independently
+ * of the definition the model sees — a security pass reclassifying
+ * `riskTier`, a config flipping `permission`, an `icon`/`usageHint` copy
+ * tweak — so hashing them made the digest a function of configuration and
+ * UI metadata rather than of the prompt: a recorded response could never be
+ * found again and `mode: 'replay'` threw on the first call it was asked to
+ * serve.
  *
- *   - `_estDefTokens`    — token estimate cache, mutated on every registration
- *   - `timeoutMs`        — executor timeout, not part of the tool definition
- *   - `estimatedDurationMs` — TUI spinner hint, not sent to the provider
- *   - `managesOwnTimeout` — execution policy, not sent to the provider
- *
- * Including these in the hash makes the digest a function of *when* the tool
- * was registered, so a recorded response can never be found again and
- * `mode: 'replay'` throws on the first call it was asked to serve.
+ * The compacted wire forms are pure functions of the same three fields, so
+ * hashing the uncompacted triple is equality-equivalent and keeps the
+ * `semanticMessage` convention: hash the live semantic values, not the
+ * adapter output.
  */
-function semanticTool(tool: Tool): Omit<Tool, '_estDefTokens' | 'timeoutMs' | 'estimatedDurationMs' | 'managesOwnTimeout'> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { _estDefTokens: _toks, timeoutMs: _to, estimatedDurationMs: _dur, managesOwnTimeout: _own, ...semantic } = tool;
-  return semantic as Omit<Tool, '_estDefTokens' | 'timeoutMs' | 'estimatedDurationMs' | 'managesOwnTimeout'>;
+function semanticTool(tool: Tool): {
+  name: string;
+  description: string;
+  inputSchema: Tool['inputSchema'];
+} {
+  return { name: tool.name, description: tool.description, inputSchema: tool.inputSchema };
 }
 
 export function hashRequest(request: Request): string {

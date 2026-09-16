@@ -223,7 +223,13 @@ const HARD_SHADOW_RE = /^-?\d+px\s+-?\d+px\s+0(\s|$)/;
 function usesHardShadows(tokens: DesignKitTokens): boolean {
   for (const set of [tokens.light, tokens.dark]) {
     if (!set) continue;
-    for (const key of ['shadow-2', 'shadow-3', 'shadow-4', 'shadow']) {
+    // Only the ramp steps feed the `shadow-2…4` utilities. The BASE `shadow`
+    // key is a separate token that names no scale step, and `readTokens()`
+    // merges the foundations scale under every kit — so a base-hard kit
+    // (comic-pop) still resolves `shadow-2/3` to the foundations SOFT
+    // defaults, which is exactly the float the stacked rule exists to catch.
+    // Sanctioning off the base key suppressed that finding.
+    for (const key of ['shadow-2', 'shadow-3', 'shadow-4']) {
       const value = set[key]?.trim();
       if (value && HARD_SHADOW_RE.test(value)) return true;
     }

@@ -106,9 +106,12 @@ describe('message extraction — flag spellings', () => {
     expect(out?.decision).toBe('block');
   });
 
-  it('accepts a valid bare unquoted -m value', async () => {
+  it('extracts and validates a bare unquoted -m value', async () => {
+    // The bare form carries a single token (`type:subject`), which the
+    // colon+space rule rejects. It must still be SEEN and blocked — the old
+    // extraction hole silently returned no decision (undefined) here.
     const out = await check('git commit -m chore:tidy');
-    expect(out?.decision).not.toBe('block');
+    expect(out?.decision).toBe('block');
   });
 
   it('sees --message="…"', async () => {

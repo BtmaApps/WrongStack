@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-16T10:14:09.721Z",
+  "generatedAt": "2026-09-16T18:35:58.075Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,22 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3800,
-    "testFiles": 3442,
-    "sourceLines": 931699,
+    "sourceFiles": 3803,
+    "testFiles": 3446,
+    "sourceLines": 932784,
     "workspaceEdges": 128,
-    "moduleEdges": 12157,
+    "moduleEdges": 12168,
     "nonCommandSlashImports": 0,
-    "runtimeModuleCycles": 0,
+    "runtimeModuleCycles": 1,
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 965
   },
-  "errors": [],
+  "errors": [
+    "2 unexcepted module cycle(s)",
+    "ARCH-CYCLE-TYPE-29: exception no longer matches an active cycle"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -215,8 +218,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 864,
-      "testFiles": 778,
+      "sourceFiles": 865,
+      "testFiles": 779,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -231,7 +234,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 778
+          "testFiles": 779
         }
       ]
     },
@@ -283,8 +286,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 87,
-      "testFiles": 67,
+      "sourceFiles": 88,
+      "testFiles": 68,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -298,7 +301,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 67
+          "testFiles": 68
         }
       ]
     },
@@ -734,8 +737,8 @@
     {
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
-      "sourceFiles": 214,
-      "testFiles": 255,
+      "sourceFiles": 215,
+      "testFiles": 256,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -751,7 +754,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 255
+          "testFiles": 256
         }
       ]
     },
@@ -889,7 +892,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 229,
-      "testFiles": 217,
+      "testFiles": 218,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -915,7 +918,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 217
+          "testFiles": 218
         }
       ]
     },
@@ -966,7 +969,21 @@
     }
   ],
   "cycles": {
-    "runtime": [],
+    "runtime": [
+      {
+        "kind": "runtime-module-cycle",
+        "members": [
+          "packages/core/src/coordination/agents/agent-prompts.ts",
+          "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
+          "packages/core/src/coordination/agents/project-agent-capture.ts",
+          "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
+          "packages/core/src/coordination/agents/project-agent-identity.ts",
+          "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+          "packages/core/src/coordination/agents/role-skills.ts"
+        ]
+      }
+    ],
     "type": [
       {
         "kind": "type-module-cycle",
@@ -1001,8 +1018,12 @@
           "packages/core/src/coordination/agents/phase9-meta.ts",
           "packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts",
           "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
+          "packages/core/src/coordination/agents/project-agent-capture.ts",
+          "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
           "packages/core/src/coordination/agents/project-agent-identity.ts",
           "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+          "packages/core/src/coordination/agents/role-skills.ts",
           "packages/core/src/coordination/dispatcher.ts",
           "packages/core/src/coordination/fleet.ts",
           "packages/core/src/coordination/multi-agent-coordinator.ts",
@@ -1089,11 +1110,57 @@
       "ARCH-CYCLE-TYPE-12",
       "ARCH-CYCLE-TYPE-13",
       "ARCH-CYCLE-TYPE-14",
-      "ARCH-CYCLE-TYPE-29",
       "ARCH-CYCLE-TYPE-30",
       "ARCH-CYCLE-TYPE-31"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "runtime-module-cycle",
+        "members": [
+          "packages/core/src/coordination/agents/agent-prompts.ts",
+          "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
+          "packages/core/src/coordination/agents/project-agent-capture.ts",
+          "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
+          "packages/core/src/coordination/agents/project-agent-identity.ts",
+          "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+          "packages/core/src/coordination/agents/role-skills.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/core/src/coordination/agents/agent-prompts.ts",
+          "packages/core/src/coordination/agents/index.ts",
+          "packages/core/src/coordination/agents/phase1-discovery.ts",
+          "packages/core/src/coordination/agents/phase2-planning.ts",
+          "packages/core/src/coordination/agents/phase3-build.ts",
+          "packages/core/src/coordination/agents/phase3-wave1-platform.ts",
+          "packages/core/src/coordination/agents/phase3-wave2-meta.ts",
+          "packages/core/src/coordination/agents/phase4-verify.ts",
+          "packages/core/src/coordination/agents/phase5-review.ts",
+          "packages/core/src/coordination/agents/phase6-domain.ts",
+          "packages/core/src/coordination/agents/phase7-knowledge.ts",
+          "packages/core/src/coordination/agents/phase8-delivery.ts",
+          "packages/core/src/coordination/agents/phase8-wave3-products.ts",
+          "packages/core/src/coordination/agents/phase9-meta.ts",
+          "packages/core/src/coordination/agents/phase9-wave4-platform-meta.ts",
+          "packages/core/src/coordination/agents/project-agent-auto-optimize.ts",
+          "packages/core/src/coordination/agents/project-agent-capture.ts",
+          "packages/core/src/coordination/agents/project-agent-directive-outcome.ts",
+          "packages/core/src/coordination/agents/project-agent-identity.ts",
+          "packages/core/src/coordination/agents/project-agent-optimizer.ts",
+          "packages/core/src/coordination/agents/project-agent-skill-layer.ts",
+          "packages/core/src/coordination/agents/role-skills.ts",
+          "packages/core/src/coordination/dispatcher.ts",
+          "packages/core/src/coordination/fleet.ts",
+          "packages/core/src/coordination/multi-agent-coordinator.ts",
+          "packages/core/src/execution/parallel-eternal-engine.ts",
+          "packages/core/src/types/autonomy.ts",
+          "packages/core/src/types/index.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -6582,6 +6649,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/core/shared-system-contract.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/core/side-effect.test.ts",
         "projects": [
           "root-node"
@@ -9919,6 +9992,12 @@
       },
       {
         "file": "packages/kanban/tests/manager.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/parked-visibility.test.ts",
         "projects": [
           "root-node"
         ]
@@ -14850,6 +14929,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/kanban-activity-history.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/kanban-completion-gate.test.ts",
         "projects": [
           "root-node"
@@ -18510,6 +18595,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/kanban-message-catalog.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/kanban-mirror-and-supervisor-extended.test.ts",
         "projects": [
           "root-node"
@@ -22039,7 +22130,7 @@
     },
     {
       "file": "packages/core/src/core/system-prompt-builder.ts",
-      "lines": 967,
+      "lines": 987,
       "relativeImports": 26
     },
     {
@@ -22124,7 +22215,7 @@
     },
     {
       "file": "packages/kanban/src/manager/assignment.ts",
-      "lines": 999,
+      "lines": 1008,
       "relativeImports": 13
     },
     {
@@ -22414,7 +22505,7 @@
     },
     {
       "file": "packages/tui/src/kanban-slash.ts",
-      "lines": 1005,
+      "lines": 1014,
       "relativeImports": 1
     },
     {
@@ -22434,7 +22525,7 @@
     },
     {
       "file": "packages/webui/src/components/activity-bar/index.tsx",
-      "lines": 863,
+      "lines": 869,
       "relativeImports": 1
     },
     {
@@ -22820,6 +22911,11 @@
       "relativeImports": 6
     },
     {
+      "file": "packages/tui/src/kanban-slash.ts",
+      "lines": 1014,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/acp/src/client/acp-session.ts",
       "lines": 1013,
       "relativeImports": 19
@@ -22830,14 +22926,14 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/kanban/src/manager/assignment.ts",
+      "lines": 1008,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/core/src/execution/brain-runtime.ts",
       "lines": 1007,
       "relativeImports": 14
-    },
-    {
-      "file": "packages/tui/src/kanban-slash.ts",
-      "lines": 1005,
-      "relativeImports": 1
     },
     {
       "file": "packages/kanban/src/types.ts",
@@ -22848,11 +22944,6 @@
       "file": "packages/webui/src/components/ChronicleDashboard.tsx",
       "lines": 1002,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/kanban/src/manager/assignment.ts",
-      "lines": 999,
-      "relativeImports": 13
     },
     {
       "file": "packages/tui/src/app.tsx",
@@ -23585,6 +23676,10 @@
     {
       "file": "packages/core/src/chronicle/sqlite-compaction.ts",
       "name": "chronicleSqliteAllocatedBytes"
+    },
+    {
+      "file": "packages/core/src/coordination/agents/agent-prompts.ts",
+      "name": "agentPrompt"
     },
     {
       "file": "packages/core/src/coordination/agents/agent-prompts.ts",
@@ -24325,10 +24420,6 @@
     {
       "file": "packages/kanban/src/verification/completion-park.ts",
       "name": "DEFAULT_MAX_VERIFICATION_ATTEMPTS"
-    },
-    {
-      "file": "packages/kanban/src/verification/completion-park.ts",
-      "name": "isParked"
     },
     {
       "file": "packages/kanban/src/verification/verification-report.ts",

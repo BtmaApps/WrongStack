@@ -585,7 +585,6 @@ export function SettingsPanel({
               {lanes.map((lane, index) => (
                 <div
                   // Lane identity IS its position, so the index is the stable key.
-                  // biome-ignore lint/suspicious/noArrayIndexKey: lane position is the identity
                   key={`lane-${index}`}
                   className="settings-subagent-lane"
                 >

@@ -1,5 +1,5 @@
+import { defineLazyAgentPrompt } from './agent-prompts.js';
 import { type AgentDefinition, LIGHT_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 /**
  * Phase 3 · Tech Stack — dependency version watchdog.
@@ -13,13 +13,21 @@ import { agentPrompt } from './agent-prompts.js';
  */
 export const TECHSTACK_AGENTS: AgentDefinition[] = [
   {
-    config: {
-      id: 'tech-stack',
-      name: 'TechStack',
-      role: 'tech-stack',
-      tools: [...TOOLS.read, 'fetch', 'mailbox'],
-      prompt: agentPrompt('tech-stack-watchdog'),
-    },
+    // The only definition whose prompt file name differs from its role, and the
+    // only phase array `index.ts` does NOT fold into `ALL_AGENT_DEFINITIONS` —
+    // so it never passes through `assignSkillsToAgents`, where every catalog
+    // role gets its lazy prompt accessor. It installs its own, naming the
+    // watchdog brief explicitly: role `tech-stack` is the single-shot validator
+    // in the catalog proper, and the two prompts must stay distinct.
+    config: defineLazyAgentPrompt(
+      {
+        id: 'tech-stack',
+        name: 'TechStack',
+        role: 'tech-stack',
+        tools: [...TOOLS.read, 'fetch', 'mailbox'],
+      },
+      'tech-stack-watchdog',
+    ),
     budget: LIGHT_BUDGET,
     capability: {
       phase: 'build',

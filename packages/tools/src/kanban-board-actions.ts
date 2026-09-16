@@ -14,9 +14,11 @@ import {
   getBoard,
   getKanbanOrchestrationSnapshot,
   getKanbanQueueHealth,
+  listBoardHistory,
   listBoards,
   listKanbanEvents,
   listReadyTasks,
+  listTaskActivity,
   parseLinesIntoTasks,
   removeBoard,
   searchKanban,
@@ -29,7 +31,13 @@ import {
   duplicateBoardOptions,
 } from './kanban-board-inputs.js';
 import { requireBoard } from './kanban-split-task-handler.js';
-import { conflict, invalidInput, notFound, okBoard } from './kanban-tool-results.js';
+import {
+  conflict,
+  invalidInput,
+  notFound,
+  okBoard,
+  resolveTaskRef,
+} from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 import { taskFileToSerializedGraph } from './session-kanban.js';
 
@@ -313,11 +321,34 @@ export async function handleKanbanBoardAction(
     }
     case 'events': {
       if (!input.boardId) throw invalidInput('events requires boardId.', 'boardId');
-      const eventList = await listKanbanEvents(projectRoot, input.boardId);
       const limit =
         typeof input.limit === 'number' && Number.isFinite(input.limit) && input.limit > 0
           ? Math.floor(input.limit)
           : undefined;
+      // A card's own history used to be unreachable on a busy board: the only
+      // route to it was the whole board log, and the transcript serializer caps
+      // that at KANBAN_TRANSCRIPT_ITEM_CAP most-recent entries — so an older
+      // card's events fell outside the window entirely and no argument could
+      // bring them back. `listTaskActivity` filters the SAME log at the source.
+      // It returns newest-first; re-reverse so this action stays chronological
+      // whether or not a taskId was given.
+      if (input.taskId) {
+        const board = await getBoard(projectRoot, input.boardId);
+        if (!board) throw notFound('Board not found.');
+        const task = resolveTaskRef(board, input.taskId);
+        if (!task) throw notFound('Task not found on this board.');
+        const activity = (
+          await listTaskActivity(projectRoot, input.boardId, task.id, {
+            ...(limit !== undefined ? { limit } : {}),
+          })
+        ).reverse();
+        return {
+          ok: true,
+          message: `${activity.length} event(s) for "${task.title}".`,
+          events: activity,
+        };
+      }
+      const eventList = await listKanbanEvents(projectRoot, input.boardId);
       const events = limit !== undefined ? eventList.slice(-limit) : eventList;
       return {
         ok: true,
@@ -328,13 +359,40 @@ export async function handleKanbanBoardAction(
         events,
       };
     }
+    case 'board_history': {
+      // Board history is a GLOBAL append-only log, separate from the per-board
+      // event rows `events` reads, and it deliberately outlives board deletion
+      // — so it is the only way to answer "what happened to the board that is
+      // no longer here". The WebUI has had it since protocol v6; the agent had
+      // no path to it at all. `boardId` is optional: omit it for the whole
+      // project.
+      const entries = await listBoardHistory(projectRoot, input.boardId);
+      const limit =
+        typeof input.limit === 'number' && Number.isFinite(input.limit) && input.limit > 0
+          ? Math.floor(input.limit)
+          : undefined;
+      const history = limit !== undefined ? entries.slice(-limit) : entries;
+      return {
+        ok: true,
+        message: input.boardId
+          ? `${history.length} history entry(ies) for board ${input.boardId}.`
+          : `${history.length} history entry(ies) across every board in this project.`,
+        history,
+      };
+    }
     case 'queue_health': {
       const health = await getKanbanQueueHealth(projectRoot, {
         ...(input.boardId !== undefined ? { boardId: input.boardId } : {}),
       });
       return {
         ok: true,
-        message: `Counts: startable=${health.counts.startable}, running=${health.counts.running}, stale=${health.staleAssignments.count}.`,
+        // Parked is in the headline because it is the one count that changes
+        // what the caller should DO: those cards spent their refusal budget,
+        // so re-running them unchanged refuses again. Optional on the record
+        // because several call sites build KanbanQueueHealth by hand.
+        message:
+          `Counts: startable=${health.counts.startable}, running=${health.counts.running}, ` +
+          `stale=${health.staleAssignments.count}, parked=${health.parked?.count ?? 0}.`,
         queueHealth: health,
       };
     }

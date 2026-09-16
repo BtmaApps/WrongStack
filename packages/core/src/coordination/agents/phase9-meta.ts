@@ -1,5 +1,5 @@
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, LIGHT_BUDGET, MEDIUM_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 /** Phase 9 · Meta — agents that improve the agent system itself. */
 export const META_AGENTS: AgentDefinition[] = [
@@ -9,7 +9,6 @@ export const META_AGENTS: AgentDefinition[] = [
       name: 'Skill Manager',
       role: 'skill-manage',
       tools: [...TOOLS.write],
-      prompt: agentPrompt('skill-manage'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -34,7 +33,6 @@ export const META_AGENTS: AgentDefinition[] = [
       name: 'Self-Improving',
       role: 'self-improving',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('self-improving'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -60,7 +58,6 @@ export const META_AGENTS: AgentDefinition[] = [
       name: 'Context',
       role: 'context',
       tools: [...TOOLS.inspect, 'remember', 'forget'],
-      prompt: agentPrompt('context'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -87,7 +84,6 @@ export const META_AGENTS: AgentDefinition[] = [
       name: 'Cost',
       role: 'cost',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('cost'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -115,7 +111,6 @@ export const META_AGENTS: AgentDefinition[] = [
       name: 'Tech Stack Validator',
       role: 'tech-stack',
       tools: ['search', 'fetch', 'read', 'grep', 'glob', 'outdated', 'audit', 'json', 'mailbox'],
-      prompt: agentPrompt('tech-stack'),
     },
     budget: {
       timeoutMs: 120_000,
@@ -152,3 +147,10 @@ export const META_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(META_AGENTS);

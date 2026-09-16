@@ -157,6 +157,10 @@ function NotificationItem({
 
         {!item.read && (
           <span
+            // A bare <span> supports no aria-label, so this dot announced
+            // nothing to a screen reader. It carries meaning (unread), so it
+            // gets the role that makes its label part of the a11y tree.
+            role="img"
             className="h-1.5 w-1.5 rounded-full bg-primary shrink-0"
             aria-label="Unread indicator"
           />

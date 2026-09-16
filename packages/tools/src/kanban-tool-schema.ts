@@ -51,6 +51,8 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
         'heartbeat_assignment',
         'recover_stale',
         'events',
+        'board_history',
+        'record_activity',
         'queue_health',
         'add_dependency',
         'add_goal_metric',
@@ -64,6 +66,8 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
         'split_atomic',
         'assess_atomicity',
         'propose_decomposition',
+        'approve_decomposition',
+        'reject_decomposition',
         'get_contract_graph',
         'configure_contract_graph',
         'upsert_contract_node',
@@ -302,6 +306,17 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     },
     contractEdgeRationale: { type: 'string' },
     note: { type: 'string' },
+    activityKind: {
+      type: 'string',
+      description:
+        'record_activity: what happened. The summary goes in `note`; `activityDetails` carries any longer body.',
+      enum: ['decision', 'attempt', 'result', 'blocker', 'observation'],
+    },
+    activityOutcome: {
+      type: 'string',
+      enum: ['succeeded', 'failed', 'partial', 'skipped', 'unknown'],
+    },
+    activityDetails: { type: 'string' },
     author: { type: 'string' },
     url: { type: 'string' },
     linkTitle: { type: 'string' },
@@ -324,6 +339,11 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
       // checks must not be able to switch it off; it may only tighten. Turning
       // a gate off stays a human decision, made through board config.
       enum: ['strict', 'soft'],
+    },
+    proposalId: {
+      type: 'string',
+      description:
+        'approve_decomposition / reject_decomposition: the proposal id reported by propose_decomposition.',
     },
     subtasks: {
       type: 'array',

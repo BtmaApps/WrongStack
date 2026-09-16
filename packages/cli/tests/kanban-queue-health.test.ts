@@ -138,4 +138,24 @@ describe('Kanban queue health (Sprint 2 helper)', () => {
     expect(blockedIds.has(blockedReady!.task.id)).toBe(true);
     expect(blockedIds.has(freeReady!.task.id)).toBe(false);
   });
+
+  it('puts the parked count in the one-line headline the model actually reads', async () => {
+    // `queueHealth` carries the full record, but an agent acts on `message`.
+    // Parked is the count that changes what it should do — those cards spent
+    // their refusal budget, so re-running them unchanged refuses again. This
+    // asserts the headline SHAPE; that the number tracks a real gate refusal
+    // is covered by packages/kanban/tests/parked-visibility.test.ts.
+    const board = await createBoard(tmpDir, { title: 'Headline board' });
+    await addTask(tmpDir, board.id, { title: 'Ordinary', status: 'ready' });
+
+    const toolResult = (await kanbanTool.execute(
+      { action: 'queue_health', boardId: board.id },
+      { projectRoot: tmpDir, eventSessionId: () => TEST_QUEUE_SESSION_ID } as never,
+      { signal: new AbortController().signal },
+    )) as { ok: boolean; message: string };
+
+    expect(toolResult.ok).toBe(true);
+    expect(toolResult.message).toContain('parked=0');
+    expect(toolResult.message).not.toContain('parked=undefined');
+  });
 });

@@ -237,7 +237,8 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
       });
     }
 
-    const meta = (ctx.meta ??= {}) as Record<string, unknown>;
+    ctx.meta ??= {};
+    const meta = ctx.meta as Record<string, unknown>;
     const sessionTaskPath = meta['task.path'] as string | undefined;
     let taskPath: string | undefined;
 

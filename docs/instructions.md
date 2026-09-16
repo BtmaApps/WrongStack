@@ -10,6 +10,47 @@ WrongStack's durable system instructions are file-backed and layered:
 
 Later layers override earlier layers field-by-field.
 
+## Shared system contract
+
+The three identity variants compose common policy from `shared/system/*.md` using
+`{{shared:name}}` markers. Intent/authority, evidence, architecture, task tracking,
+tool availability, and memory rules have one source; Standard and Pro also share
+the detailed tool workflows. Variant files retain their presentation and reasoning
+depth. Shared text is expanded before live-tool conditionals are evaluated, both
+in the bundle loader and the default prompt export.
+
+Markers resolve only to bundled `shared/system/<name>.md` files, never to files in
+a project or profile. Names contain lowercase letters and hyphens; missing,
+invalid, or nested fragments fail explicitly. Markdown identity overrides may
+reuse those bundled markers. JSON/in-memory overrides remain literal. Project
+identity overrides still receive the project-guidance fence; using a shared
+marker does not grant them system authority.
+
+Follow-on suggestions are complete prompts submitted verbatim to the LLM, in the
+user's language. Each names work for the agent (target, action, useful verification
+or output), never a manual chore, approval request, or question for the user.
+Human-only actions stay outside `<nextsteps>`. With open todos, suggestions are
+omitted. With no useful follow-on work, both the tag and any ceremonial closing
+sentence can be omitted. The same contract applies to the structured `nextsteps`
+tool and the live request gate.
+
+Structured tool prompts retain whitespace and line breaks. The runtime uses a
+marked JSON string (`<!--ws:nextstep-json-->`) on the item line only when text
+would collide with the line/tag format or the trailing `auto="true"` marker.
+The shared parser decodes it once; ordinary model-authored prompts keep their
+existing syntax. In structured tool prompts, a literal `auto="true"` never grants
+automatic execution. Tool input projections and the pending slot accept at most four
+non-empty prompts; legacy prose parsing continues to support older six-item lists.
+
+Block recognition is shared by the host and clients through the browser-safe
+`@wrongstack/core/utils/next-steps` module; `@wrongstack/tools/next-steps` remains
+a compatible entry point. Only complete blocks with usable list items suppress
+pending tool suggestions. Fenced examples and malformed/empty blocks do not.
+A later block cannot lend its closing tag to an earlier unfinished block. Raw
+`/suggest` list parsing also excludes fenced examples. When an answer ends in an
+open code fence, the host appends its matching closing marker before the tool
+suggestions, keeping metadata outside the example without rewriting streamed text.
+
 ## Supported Files
 
 Use Markdown for the common system prompt sections:

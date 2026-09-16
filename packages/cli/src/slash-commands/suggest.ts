@@ -6,7 +6,7 @@ import type { SlashCommand } from '@wrongstack/core/types';
 import { color, toErrorMessage } from '@wrongstack/core/utils';
 import { parseNextSteps } from '@wrongstack/tools/next-steps';
 import type { SlashCommandContext } from './command-context.js';
-import { setSuggestions } from './suggestion-store.js';
+import { setAutoSuggestions, setSuggestions } from './suggestion-store.js';
 
 /**
  * Collect project context for the suggestion subagent.
@@ -58,9 +58,14 @@ function buildSuggestPrompt(contextText: string): string {
     'Based on the current project state below, generate 3-5 exact natural-language',
     'prompt messages that the user could submit back to the coding agent through the',
     'TUI or WebUI. Each prompt must ask the agent to perform useful work immediately.',
+    'Generate prompt messages only; do not execute the proposed work in this request.',
     'Agent-directed imperatives are valid and do not need to be shell commands.',
     'Never output a human-only chore or an instruction that expects the user to do',
     'the work after selecting it. Be specific — mention relevant files or tools.',
+    'The recipient is the LLM, not the user. Each item is submitted verbatim as',
+    'the next user prompt: name the target, action, and useful verification or output.',
+    'Omit approval requests, questions for the user, and mixed agent/human checklists.',
+    "Use the user's language when it is known from the supplied context.",
     'Do NOT include preamble, explanation, or wrap the output in code blocks.',
     '',
     'Rules:',
@@ -81,9 +86,20 @@ function buildSuggestPrompt(contextText: string): string {
 /** Reuse subagent-generated suggestions within this window to avoid a fresh
  *  spawn on rapid re-invocation. `/suggest --fresh` bypasses it. */
 const SUGGEST_CACHE_TTL_MS = 60_000;
-let suggestCache: { suggestions: string[]; at: number } | null = null;
 
 export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
+  // A registry can outlive a conversation; neither another command instance
+  // nor a new conversation may inherit these generated prompts.
+  let suggestCache:
+    | {
+        suggestions: string[];
+        at: number;
+        context: Context | undefined;
+        scope: string;
+        lastMessage: Context['messages'][number] | undefined;
+      }
+    | undefined;
+  let requestVersion = 0;
   return {
     name: 'suggest',
     aliases: ['next-steps', 'what-next'],
@@ -102,14 +118,29 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
       '',
       'Use `/next list` to see the current suggestions at any time.',
     ].join('\n'),
-    async run(args: string, _ctx: Context) {
-      const trimmed = args.trim().toLowerCase();
-      const fast = /\b(--fast|-f)\b/.test(trimmed);
-      const fresh = /--fresh\b/.test(trimmed);
+    async run(args: string, ctx?: Context) {
+      const flags = new Set(args.trim().toLowerCase().split(/\s+/));
+      const fast = flags.has('--fast') || flags.has('-f');
+      const fresh = flags.has('--fresh');
+      const context = ctx ?? opts.context;
+      const currentScope = () => JSON.stringify([opts.projectRoot, opts.cwd, context?.session?.id]);
+      const scope = currentScope();
+      const lastMessage = context?.messages?.at(-1);
+      const version = ++requestVersion;
+      const isCurrent = () =>
+        version === requestVersion &&
+        scope === currentScope() &&
+        lastMessage === context?.messages?.at(-1);
+      const superseded = () => ({ message: color.dim('Discarded stale suggestion result.') });
+      // An explicit request for new suggestions retires the previous automatic
+      // action, even while a model generation is still running.
+      setAutoSuggestions([]);
 
       // ── Fast path: heuristic suggestions (no subagent) ──────────────────
       if (fast) {
+        suggestCache = undefined;
         const suggestions = await generateHeuristicSuggestions(opts);
+        if (!isCurrent()) return superseded();
         setSuggestions(suggestions);
         opts.onSuggestions?.(suggestions);
         const display = formatSuggestions(suggestions);
@@ -119,7 +150,9 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
       // ── Full path: subagent-powered suggestions ─────────────────────────
       if (!opts.onSpawnAndWait) {
         // Fall back to heuristic if subagent not available
+        suggestCache = undefined;
         const suggestions = await generateHeuristicSuggestions(opts);
+        if (!isCurrent()) return superseded();
         setSuggestions(suggestions);
         opts.onSuggestions?.(suggestions);
         const display =
@@ -130,7 +163,13 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
       }
 
       // Reuse a recent result rather than spawning again, unless --fresh.
-      if (!fresh && suggestCache && Date.now() - suggestCache.at < SUGGEST_CACHE_TTL_MS) {
+      if (
+        !fresh &&
+        suggestCache?.context === context &&
+        suggestCache?.scope === scope &&
+        suggestCache?.lastMessage === lastMessage &&
+        Date.now() - suggestCache.at < SUGGEST_CACHE_TTL_MS
+      ) {
         setSuggestions(suggestCache.suggestions);
         opts.onSuggestions?.(suggestCache.suggestions);
         const ageSec = Math.round((Date.now() - suggestCache.at) / 1000);
@@ -142,10 +181,12 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
         };
       }
 
+      suggestCache = undefined;
       const contextText = await collectContext({
         cwd: opts.cwd,
         projectRoot: opts.projectRoot,
       });
+      if (!isCurrent()) return superseded();
 
       const task = buildSuggestPrompt(contextText);
 
@@ -155,21 +196,18 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
         const raw = await opts.onSpawnAndWait(task, {
           name: 'suggest',
         });
+        if (!isCurrent()) return superseded();
 
         // Parse the subagent output — extract numbered lines
         const suggestions = parseSuggestions(raw);
-        if (suggestions.length === 0) {
-          const fallback: string[] = [];
-          setSuggestions(fallback);
-          opts.onSuggestions?.(fallback);
-          return { message: formatSuggestions(fallback) };
-        }
-
         setSuggestions(suggestions);
         opts.onSuggestions?.(suggestions);
-        suggestCache = { suggestions, at: Date.now() };
+        // Empty is a real result; retaining an older positive cache would
+        // resurrect tasks the latest generation deliberately withdrew.
+        suggestCache = { suggestions, at: Date.now(), context, scope, lastMessage };
         return { message: formatSuggestions(suggestions) };
       } catch (err) {
+        if (!isCurrent()) return superseded();
         const msg = `Suggestion generation failed: ${toErrorMessage(err)}`;
         opts.renderer.writeWarning(msg);
         return { message: msg };
@@ -184,19 +222,13 @@ export function buildSuggestCommand(opts: SlashCommandContext): SlashCommand {
  */
 function parseSuggestions(raw: string): string[] {
   const trimmed = raw.trim();
-  if (/^none\b/i.test(trimmed) || /no (?:pending actions|further steps)/i.test(trimmed)) {
+  if (/^none[.!]?$/i.test(trimmed)) {
     return [];
   }
 
-  const { texts } = parseNextSteps(raw, false); // permissive, no heading required
-  if (texts.length > 0) return texts;
-
-  // Fallback: take the first 5 non-empty lines that look like suggestions
-  return raw
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 10 && !l.startsWith('#') && !l.startsWith('```'))
-    .slice(0, 5);
+  // Only explicit list items are selectable. A model's explanation or error
+  // must not become an executable prompt merely because it is a long line.
+  return parseNextSteps(raw, false).texts.slice(0, 5);
 }
 
 /**

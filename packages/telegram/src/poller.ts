@@ -4,7 +4,7 @@ import type { OffsetStore } from './offset-store.js';
 import type { PollLock } from './poll-lock.js';
 export class Poller {
   private readonly api: () => TelegramApiClient;
-  private readonly pollIntervalMs: number;
+  private pollIntervalMs: number;
   private readonly log: Logger;
   // Not readonly: start() swaps in a fresh controller when a previous stop()
   // aborted this one (see start()).
@@ -59,6 +59,9 @@ export class Poller {
   }
   get conflictStreak(): number {
     return this._conflictStreak;
+  }
+  setPollIntervalMs(pollIntervalMs: number): void {
+    this.pollIntervalMs = pollIntervalMs;
   }
   start(): void {
     if (this.pollActive) return;

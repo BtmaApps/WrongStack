@@ -180,6 +180,35 @@ const CORPUS: Case[] = [
     ]),
   },
   { label: 'oversized board', board: oversizedBoard() },
+  {
+    // A parked card keeps its ordinary status — `blocked` on a legacy board,
+    // `review` on a managed one — so nothing else in the corpus distinguishes
+    // it. Both cleaners must still name it.
+    label: 'parked card (legacy board, blocked)',
+    board: board([
+      task('parked-legacy', {
+        status: 'blocked',
+        park: {
+          reason: 'Done requires every acceptance criterion to be explicitly passed.',
+          parkedAt: NOW_ISO,
+          attempts: 2,
+        },
+      }),
+    ]),
+  },
+  {
+    label: 'parked card (managed board, still in review)',
+    board: managed([
+      task('parked-managed', {
+        status: 'review',
+        park: {
+          reason: 'Atomic task verification verdict is "failed".',
+          parkedAt: NOW_ISO,
+          attempts: 2,
+        },
+      }),
+    ]),
+  },
 
   // ── Divergence axes ───────────────────────────────────────────────────
   {

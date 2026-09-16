@@ -1,7 +1,7 @@
 import * as https from 'node:https';
 import { ConfigError } from '@wrongstack/core/types';
 import type { HttpDispatcher } from '@wrongstack/core/utils';
-import { Agent as UndiciAgent, fetch as undiciFetch } from 'undici';
+import type { Agent as UndiciAgent } from 'undici';
 import {
   authorizationHeaderForToken,
   canonicalMcpResource,
@@ -31,6 +31,31 @@ const nativeGlobalFetch = globalThis.fetch;
 // Every transport's pinned Agent registers here so long-running processes
 // (MCP server mode, eternal autonomy) tear their connection pools down on
 // exit instead of leaking sockets.
+/**
+ * `undici` is materialized on the first authorized request, not at import time.
+ *
+ * The package costs ~85 ms to load and this module is reachable from the
+ * `@wrongstack/mcp` barrel, so every process that merely constructed an MCP
+ * client paid for it even when no HTTP transport was ever dialed.
+ *
+ * The pinning contract is unchanged — the Agent still performs the single DNS
+ * resolution the dial uses, still carries the TLS options, and is still paired
+ * with the package's own `fetch` (Node's global fetch rejects a foreign
+ * dispatcher ABI).
+ *
+ * The load lives inside the helpers rather than in a caller-side preamble: an
+ * "await this first" ordering rule is invisible at the call site, and a caller
+ * that reaches `pinnedDispatcher()` directly would otherwise fail.
+ */
+let undiciModule: typeof import('undici') | undefined;
+let undiciLoad: Promise<typeof import('undici')> | undefined;
+async function ensureUndici(): Promise<typeof import('undici')> {
+  if (undiciModule) return undiciModule;
+  undiciLoad ??= import('undici');
+  undiciModule = await undiciLoad;
+  return undiciModule;
+}
+
 const pinnedAgents = new Set<UndiciAgent>();
 let pinnedAgentsCleanupRegistered = false;
 /* v8 ignore next 6 -- process 'beforeExit' cleanup; not deterministically triggerable in-test. */
@@ -234,8 +259,8 @@ export abstract class BaseHTTPTransport {
         // server opted in — re-checked on every redirect hop. Overrides a
         // subclass's plain TLS dispatcher; the pinned Agent embeds the same
         // TLS options, so certificate behavior is unchanged.
-        this.applyPinnedDispatcher(fetchOpts);
-        const res = await this.dispatcherFetch()(currentUrl, fetchOpts);
+        await this.applyPinnedDispatcher(fetchOpts);
+        const res = await (await this.dispatcherFetch())(currentUrl, fetchOpts);
         if (
           res.status !== 301 &&
           res.status !== 302 &&
@@ -351,7 +376,7 @@ export abstract class BaseHTTPTransport {
     }
   }
 
-  private dispatcherFetch(): typeof globalThis.fetch {
+  private async dispatcherFetch(): Promise<typeof globalThis.fetch> {
     // Honors test/user fetch shims. SECURITY NOTE: only the native path
     // enforces the resolution-bound policy at the dial (its Agent runs the
     // pinning lookup); a shim ignores RequestInit.dispatcher, so dial-time
@@ -360,12 +385,13 @@ export abstract class BaseHTTPTransport {
     // already process compromise, the same assumption tools/_fetch-guard.ts
     // makes. The policy is exercised end-to-end against real dials in
     // packages/mcp/tests/transport-pinning.test.ts.
-    return globalThis.fetch === nativeGlobalFetch
-      ? (undiciFetch as unknown as typeof globalThis.fetch)
-      : globalThis.fetch;
+    if (globalThis.fetch !== nativeGlobalFetch) return globalThis.fetch;
+    const undici = await ensureUndici();
+    return undici.fetch as unknown as typeof globalThis.fetch;
   }
 
-  private pinnedDispatcher(): UndiciAgent {
+  private async pinnedDispatcher(): Promise<UndiciAgent> {
+    const undici = await ensureUndici();
     if (!this.pinnedAgent) {
       // allowH2: false keeps the proven HTTP/1.1 transport (undici 8's H2
       // streams can emit late unhandled errors after fetch rejects). The
@@ -378,7 +404,7 @@ export abstract class BaseHTTPTransport {
       // head-of-line block each other; releasePinnedDispatcher() tears the
       // pool down on close, and the beforeExit sweep is the backstop.
       const tls = this.tlsOptions;
-      this.pinnedAgent = new UndiciAgent({
+      this.pinnedAgent = new undici.Agent({
         allowH2: false,
         connect: {
           ...(tls ? { ca: tls.ca, rejectUnauthorized: tls.rejectUnauthorized } : {}),
@@ -393,8 +419,8 @@ export abstract class BaseHTTPTransport {
     return this.pinnedAgent;
   }
 
-  private applyPinnedDispatcher(fetchOpts: RequestInit): void {
-    fetchOpts.dispatcher = this.pinnedDispatcher() as never as HttpDispatcher;
+  private async applyPinnedDispatcher(fetchOpts: RequestInit): Promise<void> {
+    fetchOpts.dispatcher = (await this.pinnedDispatcher()) as never as HttpDispatcher;
   }
 
   /**

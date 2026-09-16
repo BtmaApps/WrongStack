@@ -13,14 +13,25 @@ export function modePrompt(id: string): string {
   return '';
 }
 
+/**
+ * Resolved once per process: the candidate list is identical for every call and
+ * ordering it costs three `statSync` probes. `DEFAULT_MODES` alone asks for 18
+ * prompts, so the uncached version spent 54 syscalls re-deriving a constant.
+ */
+let cachedDirCandidates: string[] | undefined;
+
 function modePromptDirCandidates(): string[] {
+  if (cachedDirCandidates) return cachedDirCandidates;
   const here = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
     path.resolve(here, '../../instructions/modes'),
     path.resolve(here, '../instructions/modes'),
     path.resolve(here, 'instructions/modes'),
   ];
-  return candidates.sort((a, b) => Number(!isDirectory(a)) - Number(!isDirectory(b)));
+  cachedDirCandidates = candidates.sort(
+    (a, b) => Number(!isDirectory(a)) - Number(!isDirectory(b)),
+  );
+  return cachedDirCandidates;
 }
 
 function isDirectory(candidate: string): boolean {

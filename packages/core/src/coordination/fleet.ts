@@ -5,7 +5,7 @@
  */
 import { ToolCapabilities } from '../security/capabilities.js';
 import type { SubagentConfig } from '../types/multi-agent.js';
-import { agentPrompt } from './agents/agent-prompts.js';
+import { cloneWithLazyPrompt, defineLazyAgentPrompt } from './agents/agent-prompts.js';
 import {
   ALL_AGENT_DEFINITIONS,
   ROLE_SKILL_SETS,
@@ -19,13 +19,15 @@ function defineAgent(
   promptRole: string = id,
   provider?: string,
 ): SubagentConfig {
-  return {
-    id,
-    name,
-    role: id,
-    prompt: agentPrompt(promptRole),
-    ...(provider === undefined ? {} : { provider }),
-  };
+  return defineLazyAgentPrompt(
+    {
+      id,
+      name,
+      role: id,
+      ...(provider === undefined ? {} : { provider }),
+    },
+    promptRole,
+  );
 }
 
 /**
@@ -56,10 +58,9 @@ export const SECURITY_SCANNER_AGENT = defineAgent('security-scanner', 'Security 
  * Shadow Agent — one-shot fleet monitoring and intervention.
  * Use for: quiet anomaly checks and on-demand intervention.
  */
-const SHADOW_AGENT: SubagentConfig = {
-  ...defineAgent('shadow-agent', 'Shadow'),
+const SHADOW_AGENT: SubagentConfig = cloneWithLazyPrompt(defineAgent('shadow-agent', 'Shadow'), {
   skillNames: [...SHADOW_AGENT_SKILLS],
-};
+});
 
 /**
  * Read-only discovery surface for the Explore Companion.
@@ -96,39 +97,41 @@ export const EXPLORE_COMPANION_TOOLS: readonly string[] = [
  * 75-definition catalog count stays intact. Probes are assigned, never
  * awaited; idle reaping comes from the FLEET_ROSTER_BUDGETS entry.
  */
-export const EXPLORE_COMPANION_AGENT: SubagentConfig = {
-  ...defineAgent('explore-companion', 'Explore Companion'),
-  tools: [...EXPLORE_COMPANION_TOOLS],
-  // Read-only, triple-enforced: allowlist has no write/bash, and the
-  // disabled list blocks the escape hatches explicitly.
-  disabledTools: [
-    'write',
-    'edit',
-    'replace',
-    'patch',
-    'bash',
-    'exec',
-    'delegate',
-    'spawn_subagent',
-    'assign_task',
-    'search',
-    'codebase-index',
-    'codebase-ast-replace',
-    'codebase-invariant-check',
-    'codebase-targeted-test',
-  ],
-  allowedCapabilities: [
-    ToolCapabilities.FS_READ,
-    ToolCapabilities.COORDINATION_RESULT_SUBMIT,
-    ToolCapabilities.SESSION_NOTE,
-  ],
-  skillNames: [...ROLE_SKILL_SETS['explore-companion']],
-  spawnBudgetExempt: true,
-  // Findings travel via submit_result; the host posts a session.note
-  // to the leader. Not the leader's stream.
-  textStream: 'silent',
-  toolStream: 'silent',
-};
+export const EXPLORE_COMPANION_AGENT: SubagentConfig = cloneWithLazyPrompt(
+  defineAgent('explore-companion', 'Explore Companion'),
+  {
+    tools: [...EXPLORE_COMPANION_TOOLS],
+    // Read-only, triple-enforced: allowlist has no write/bash, and the
+    // disabled list blocks the escape hatches explicitly.
+    disabledTools: [
+      'write',
+      'edit',
+      'replace',
+      'patch',
+      'bash',
+      'exec',
+      'delegate',
+      'spawn_subagent',
+      'assign_task',
+      'search',
+      'codebase-index',
+      'codebase-ast-replace',
+      'codebase-invariant-check',
+      'codebase-targeted-test',
+    ],
+    allowedCapabilities: [
+      ToolCapabilities.FS_READ,
+      ToolCapabilities.COORDINATION_RESULT_SUBMIT,
+      ToolCapabilities.SESSION_NOTE,
+    ],
+    skillNames: [...ROLE_SKILL_SETS['explore-companion']],
+    spawnBudgetExempt: true,
+    // Findings travel via submit_result; the host posts a session.note
+    // to the leader. Not the leader's stream.
+    textStream: 'silent',
+    toolStream: 'silent',
+  },
+);
 
 /**
  * Chaos Monkey ("Kaos Maymunu") — one-shot mutation-testing saboteur.
@@ -141,22 +144,24 @@ export const EXPLORE_COMPANION_AGENT: SubagentConfig = {
  * and hands this agent an exact apply/run/restore checklist; the agent
  * never invents mutants.
  */
-export const CHAOS_MONKEY_AGENT: SubagentConfig = {
-  ...defineAgent('chaos-monkey', 'Chaos Monkey'),
-  tools: [...TOOLS.build],
-  skillNames: ['testing', 'typescript-strict'],
-  spawnBudgetExempt: true,
-  // Run in the live checkout: mutation targets are usually freshly
-  // written and uncommitted — a worktree spawned from HEAD would not
-  // contain them and every mutant would drift. The mutation_test tool
-  // honors this value as its default; callers can still override per
-  // call via its `chaosWorktree` input when targets are committed and
-  // isolation is wanted.
-  worktree: 'off',
-  // Report travels via submit_result + final text, not the leader's stream.
-  textStream: 'silent',
-  toolStream: 'silent',
-};
+export const CHAOS_MONKEY_AGENT: SubagentConfig = cloneWithLazyPrompt(
+  defineAgent('chaos-monkey', 'Chaos Monkey'),
+  {
+    tools: [...TOOLS.build],
+    skillNames: ['testing', 'typescript-strict'],
+    spawnBudgetExempt: true,
+    // Run in the live checkout: mutation targets are usually freshly
+    // written and uncommitted — a worktree spawned from HEAD would not
+    // contain them and every mutant would drift. The mutation_test tool
+    // honors this value as its default; callers can still override per
+    // call via its `chaosWorktree` input when targets are committed and
+    // isolation is wanted.
+    worktree: 'off',
+    // Report travels via submit_result + final text, not the leader's stream.
+    textStream: 'silent',
+    toolStream: 'silent',
+  },
+);
 
 /**
  * Critic Agent — evaluates code quality, architecture decisions, and
@@ -195,10 +200,12 @@ export const GENERIC_AGENT = defineAgent('generic', 'Generic Project Agent');
 function withDispatchMetadata(definition: (typeof ALL_AGENT_DEFINITIONS)[number]): SubagentConfig {
   const summary = definition.capability?.summary?.trim();
   if (!summary) return definition.config;
-  return {
-    ...definition.config,
+  // Descriptor copy, not a spread: this runs for all 75 catalog roles at module
+  // scope, and a spread would resolve every lazy `prompt` right here — undoing
+  // the deferral for anyone who imports `fleet.ts`.
+  return cloneWithLazyPrompt(definition.config, {
     dispatch: { summary, keywords: [...(definition.capability.keywords ?? [])] },
-  };
+  });
 }
 
 export const FLEET_ROSTER: Record<string, SubagentConfig> = {

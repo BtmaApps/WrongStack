@@ -1,5 +1,6 @@
 import { getProcessRegistry } from '@wrongstack/tools';
 import type React from 'react';
+import { useMemo } from 'react';
 import { effectiveAgentSwarmPanelMode, effectivePanelPositions } from './app-ui-state.js';
 import type { AppViewProps } from './app-view-contract.js';
 import { AgentsMonitor } from './components/agents-monitor.js';
@@ -148,6 +149,10 @@ export function AppStatusRegion({
   // double-rendering the routed panel.
   const panelPositions: PanelPositionMap = effectivePanelPositions(state, liveSettings);
   const routedToBottom = (id: PanelId): boolean => panelPositions[id] === 'bottom';
+  const effectiveHiddenItems = useMemo(
+    () => mergeComposerOwnedChips(hiddenItems),
+    [hiddenItems],
+  );
 
   return (
     <>
@@ -199,7 +204,7 @@ export function AppStatusRegion({
           // suppress the duplicate `state` chip. Keep `model` governed by
           // the user's statusline settings so the live provider/model route
           // remains visible beside the project/workdir information.
-          hiddenItems={mergeComposerOwnedChips(hiddenItems)}
+          hiddenItems={effectiveHiddenItems}
           statuslineLines={lines}
           statuslineDensities={densities}
           statuslineOrder={order}

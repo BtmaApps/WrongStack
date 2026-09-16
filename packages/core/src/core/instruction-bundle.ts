@@ -2,6 +2,7 @@ import { statSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { expandSharedSystemInstructions } from '../utils/instruction-file.js';
 
 export interface SystemInstructionBundle {
   identity?: string | undefined;
@@ -171,7 +172,7 @@ async function readInstructionDir(
   ]);
   const fromMarkdown: InstructionBundle = {
     system: {
-      ...(identity !== undefined ? { identity } : {}),
+      ...(identity !== undefined ? { identity: expandSharedSystemInstructions(identity) } : {}),
       ...(leaderAfterTask !== undefined ? { leaderAfterTask } : {}),
     },
     sections,

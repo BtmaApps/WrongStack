@@ -75,14 +75,29 @@ export async function handleMailboxGateway(
     res.end(JSON.stringify(preliminaryAccess.body));
     return;
   }
-  const projectRoot = await resolveHqProjectRoot(gatewayGlobalRoot, { projectId });
-  if (!projectRoot) {
+  const resolution = await resolveHqProjectRoot(gatewayGlobalRoot, { projectId });
+  if (resolution.status === 'unavailable') {
+    // The project exists on this machine; its owner just is not answering. A
+    // 404 here reads as "no such project" and tells the caller to give up.
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '1' });
+    res.end(
+      JSON.stringify({
+        error: {
+          code: 'UNAVAILABLE',
+          message: `Project ${projectId} is not reachable right now; retry shortly.`,
+        },
+      }),
+    );
+    return;
+  }
+  if (resolution.status !== 'found') {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({ error: { code: 'NOT_FOUND', message: `Unknown project: ${projectId}` } }),
     );
     return;
   }
+  const projectRoot = resolution.projectRoot;
   const suffix = match[2];
   // Preserve the query string (e.g. `?sinceMs=…`) so the router's
   // `parseSinceMs` sees per-request overrides. Without this the HQ
@@ -162,15 +177,21 @@ export async function handleApiMailboxSend(
   }
 
   const mbGlobalRoot = path.dirname(dataDir);
-  const projectRoot = await resolveHqProjectRoot(mbGlobalRoot, {
+  const mbResolution = await resolveHqProjectRoot(mbGlobalRoot, {
     sessionId: mbody.sessionId,
     projectId: mbody.projectId,
   });
-  if (typeof projectRoot !== 'string' || projectRoot.length === 0) {
+  if (mbResolution.status === 'unavailable') {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '1' });
+    res.end(JSON.stringify({ error: 'target project mailbox is not reachable right now' }));
+    return;
+  }
+  if (mbResolution.status !== 'found' || mbResolution.projectRoot.length === 0) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'could not resolve target project mailbox' }));
     return;
   }
+  const projectRoot = mbResolution.projectRoot;
 
   const to = typeof mbody.to === 'string' ? mbody.to : 'leader';
   const subject = typeof mbody.subject === 'string' ? mbody.subject : 'HQ prompt';
@@ -348,15 +369,21 @@ export async function handleMailboxAction(
   }
 
   const actGlobalRoot = path.dirname(dataDir);
-  const projectRoot = await resolveHqProjectRoot(actGlobalRoot, {
+  const actResolution = await resolveHqProjectRoot(actGlobalRoot, {
     sessionId: abody.sessionId,
     projectId: abody.projectId,
   });
-  if (typeof projectRoot !== 'string' || projectRoot.length === 0) {
+  if (actResolution.status === 'unavailable') {
+    res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '1' });
+    res.end(JSON.stringify({ error: 'target project mailbox is not reachable right now' }));
+    return;
+  }
+  if (actResolution.status !== 'found' || actResolution.projectRoot.length === 0) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'could not resolve target project mailbox' }));
     return;
   }
+  const projectRoot = actResolution.projectRoot;
 
   try {
     const { actionToAckInput } = await import('@wrongstack/core/coordination');

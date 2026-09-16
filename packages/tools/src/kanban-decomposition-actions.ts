@@ -3,6 +3,7 @@ import type { KanbanTask } from '@wrongstack/kanban';
 import {
   assessTaskAtomicity,
   proposeTaskDecomposition,
+  resolveDecompositionProposal,
   updateTask,
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
@@ -71,8 +72,56 @@ export async function handleKanbanDecompositionAction(
       const message =
         result.proposal.status === 'applied'
           ? `Decomposition applied: ${result.proposal.appliedChildTaskIds?.length ?? 0} child tasks created (parent marked atomic).`
-          : 'Decomposition proposal recorded — awaiting approval (board policy is "propose"). It can be approved from the WebUI or via update_task.';
+          : `Decomposition proposal ${result.proposal.id} recorded — awaiting approval (board policy is "propose"). Resolve it with approve_decomposition (or reject_decomposition) and proposalId "${result.proposal.id}"; approving is what actually creates the child cards.`;
       return okTask(result.board, result.task, message);
+    }
+    // Approving is a three-phase operation: mark the proposal, create the
+    // children, then stamp `applied` with their ids. The old message here sent
+    // the caller to the WebUI (unreachable for an agent) or to `update_task`,
+    // which writes `task.decomposition` verbatim — recording an approval while
+    // skipping the phase that creates the children, and hiding the card from
+    // the pending-approval queue (it keys on status === 'proposed'). The result
+    // was a card marked approved with nothing split. This is the real path.
+    case 'approve_decomposition':
+    case 'reject_decomposition': {
+      if (!input.boardId || !input.taskId || !input.proposalId) {
+        throw invalidInput(`${input.action} requires boardId, taskId, and proposalId.`);
+      }
+      const approve = input.action === 'approve_decomposition';
+      if (!approve && input.subtasks?.length) {
+        throw invalidInput(
+          'subtasks are edits to a proposal being approved; a rejection takes only a note.',
+          'subtasks',
+        );
+      }
+      const resolved = await resolveDecompositionProposal(
+        projectRoot,
+        input.boardId,
+        input.taskId,
+        input.proposalId,
+        {
+          action: approve ? 'approve' : 'reject',
+          ...(input.note !== undefined ? { reason: input.note } : {}),
+          ...(approve && input.subtasks?.length ? { editedSubtasks: input.subtasks } : {}),
+          ...(ctx.agentId !== undefined ? { resolvedBy: ctx.agentId } : {}),
+        },
+        eventContext,
+      );
+      // `null` covers both "no such proposal" and "already resolved" — the
+      // proposal is only resolvable from the 'proposed' state.
+      if (!resolved) {
+        throw notFound(
+          `No open decomposition proposal ${input.proposalId} on this task (it may already be resolved).`,
+        );
+      }
+      const childCount = resolved.proposal.appliedChildTaskIds?.length ?? 0;
+      return okTask(
+        resolved.board,
+        resolved.task,
+        approve
+          ? `Decomposition applied: ${childCount} child card(s) created; the parent is now a container verified through them.`
+          : 'Decomposition proposal rejected; the card keeps its current shape.',
+      );
     }
     case 'verify_completion': {
       if (!input.boardId || !input.taskId) {

@@ -47,7 +47,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'brief',
     name: 'Brief',
     description: 'Ultra-compact responses for low-context, high-speed work',
-    prompt: modePrompt('brief'),
+    prompt: '',
     tags: ['lite', 'fast', 'concise', 'token-saving'],
     toolPreferences: ['read', 'edit', 'bash'],
     suggestedSkills: [],
@@ -56,7 +56,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'review-lite',
     name: 'Review Lite',
     description: 'Token-saving code review: changed files only, top correctness/security risks',
-    prompt: modePrompt('review-lite'),
+    prompt: '',
     tags: ['lite', 'review', 'quality', 'token-saving'],
     toolPreferences: ['git', 'diff', 'read', 'grep'],
     suggestedSkills: ['bug-hunter', 'typescript-strict'],
@@ -65,7 +65,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'audit-lite',
     name: 'Audit Lite',
     description: 'Token-saving security triage for a small diff or named file',
-    prompt: modePrompt('audit-lite'),
+    prompt: '',
     tags: ['lite', 'security', 'audit', 'token-saving'],
     toolPreferences: ['grep', 'read', 'git'],
     suggestedSkills: ['security-scanner'],
@@ -74,7 +74,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'plan-lite',
     name: 'Plan Lite',
     description: 'Token-saving planning: 3-6 actionable steps, minimal design debate',
-    prompt: modePrompt('plan-lite'),
+    prompt: '',
     tags: ['lite', 'planning', 'architecture', 'token-saving'],
     toolPreferences: ['tree', 'glob', 'read', 'grep'],
     suggestedSkills: ['refactor-planner'],
@@ -83,7 +83,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'debug-lite',
     name: 'Debug Lite',
     description: 'Token-saving bug triage: one hypothesis, nearest evidence, narrow check',
-    prompt: modePrompt('debug-lite'),
+    prompt: '',
     tags: ['lite', 'debug', 'triage', 'token-saving'],
     toolPreferences: ['read', 'grep', 'test', 'logs'],
     suggestedSkills: ['bug-hunter'],
@@ -92,7 +92,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'test-lite',
     name: 'Test Lite',
     description: 'Token-saving tests: one focused regression or narrow verification target',
-    prompt: modePrompt('test-lite'),
+    prompt: '',
     tags: ['lite', 'testing', 'qa', 'token-saving'],
     toolPreferences: ['test', 'read', 'grep'],
     suggestedSkills: ['testing'],
@@ -101,7 +101,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'refactor-lite',
     name: 'Refactor Lite',
     description: 'Token-saving cleanup: small scoped behavior-preserving changes',
-    prompt: modePrompt('refactor-lite'),
+    prompt: '',
     tags: ['lite', 'refactor', 'token-saving'],
     toolPreferences: ['read', 'edit', 'test'],
     suggestedSkills: ['typescript-strict'],
@@ -110,7 +110,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'research-lite',
     name: 'Research Lite',
     description: 'Token-saving web research: one search, one authoritative fetch, short answer',
-    prompt: modePrompt('research-lite'),
+    prompt: '',
     tags: ['lite', 'research', 'web', 'token-saving'],
     toolPreferences: ['search', 'fetch'],
     suggestedSkills: ['research-web'],
@@ -120,7 +120,7 @@ export const DEFAULT_MODES: Mode[] = [
     name: 'Review Deep',
     description:
       'Comprehensive code review across contracts, edge cases, lifecycle, errors, concurrency',
-    prompt: modePrompt('code-reviewer'),
+    prompt: '',
     tags: ['deep', 'review', 'quality', 'security'],
     toolPreferences: ['read', 'grep', 'git', 'diff', 'test'],
     suggestedSkills: ['bug-hunter', 'security-scanner', 'typescript-strict', 'testing'],
@@ -129,7 +129,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'code-auditor',
     name: 'Audit Deep',
     description: 'Comprehensive security audit with category coverage and exploitability notes',
-    prompt: modePrompt('code-auditor'),
+    prompt: '',
     tags: ['deep', 'security', 'audit', 'compliance'],
     toolPreferences: ['grep', 'read', 'audit', 'bash'],
     suggestedSkills: ['security-scanner', 'bug-hunter', 'audit-log'],
@@ -138,7 +138,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'architect',
     name: 'Architecture Deep',
     description: 'Comprehensive architecture and cross-module contract analysis',
-    prompt: modePrompt('architect'),
+    prompt: '',
     tags: ['deep', 'architecture', 'design', 'scalability'],
     toolPreferences: ['read', 'glob', 'tree', 'diff'],
     suggestedSkills: ['api-design', 'refactor-planner', 'node-modern', 'docker-deploy'],
@@ -148,7 +148,7 @@ export const DEFAULT_MODES: Mode[] = [
     name: 'Debug Deep',
     description:
       'Comprehensive root-cause analysis with traces, logs, assumptions, and verification',
-    prompt: modePrompt('debugger'),
+    prompt: '',
     tags: ['deep', 'debug', 'investigation', 'error-resolution'],
     toolPreferences: ['read', 'grep', 'bash', 'logs', 'test'],
     suggestedSkills: ['bug-hunter', 'audit-log', 'observability'],
@@ -157,7 +157,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'tester',
     name: 'Test Deep',
     description: 'Comprehensive QA mode for coverage, boundaries, isolation, and integration gaps',
-    prompt: modePrompt('tester'),
+    prompt: '',
     tags: ['deep', 'testing', 'qa', 'quality'],
     toolPreferences: ['read', 'grep', 'test', 'bash'],
     suggestedSkills: ['testing', 'bug-hunter', 'typescript-strict'],
@@ -166,7 +166,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'devops',
     name: 'DevOps Deep',
     description: 'Comprehensive infrastructure, deployment, observability, and operations review',
-    prompt: modePrompt('devops'),
+    prompt: '',
     tags: ['deep', 'devops', 'infrastructure', 'operations'],
     toolPreferences: ['read', 'bash', 'grep', 'logs', 'git'],
     suggestedSkills: ['docker-deploy', 'observability', 'security-scanner'],
@@ -176,7 +176,7 @@ export const DEFAULT_MODES: Mode[] = [
     name: 'Refactor Deep',
     description:
       'Comprehensive modernization/refactor mode with contracts and verification discipline',
-    prompt: modePrompt('refactorer'),
+    prompt: '',
     tags: ['deep', 'refactor', 'modernization', 'improvement'],
     toolPreferences: ['read', 'edit', 'test', 'git', 'grep'],
     suggestedSkills: ['refactor-planner', 'typescript-strict', 'node-modern', 'testing'],
@@ -186,7 +186,7 @@ export const DEFAULT_MODES: Mode[] = [
     name: 'UI Design Deep',
     description:
       'Comprehensive design-first frontend/mobile UI work with kit, tokens, and accessibility',
-    prompt: modePrompt('ui-design'),
+    prompt: '',
     tags: ['deep', 'ui', 'frontend', 'mobile', 'design'],
     toolPreferences: ['design', 'write', 'edit', 'read', 'scaffold'],
     suggestedSkills: ['react-modern'],
@@ -195,7 +195,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'teach',
     name: 'Teach Deep',
     description: 'Mentor mode with explanations, mental models, trade-offs, and takeaways',
-    prompt: modePrompt('teach'),
+    prompt: '',
     tags: ['deep', 'teaching', 'mentor', 'learning'],
     toolPreferences: ['read', 'edit', 'explain'],
     suggestedSkills: ['prompt-engineering', 'skill-creator', 'node-modern', 'typescript-strict'],
@@ -204,7 +204,7 @@ export const DEFAULT_MODES: Mode[] = [
     id: 'research-web',
     name: 'Research Deep',
     description: 'Comprehensive current-data research with cross-checking and reusable findings',
-    prompt: modePrompt('research-web'),
+    prompt: '',
     tags: ['deep', 'research', 'web', 'current-data', 'up-to-date'],
     toolPreferences: ['search', 'fetch', 'context_manager'],
     suggestedSkills: [
@@ -216,3 +216,54 @@ export const DEFAULT_MODES: Mode[] = [
     ],
   },
 ];
+
+/**
+ * Mode prompt bodies live on disk. Building this catalog used to read all
+ * 18 of them at module load — and `types/index.ts` re-exports
+ * `DEFAULT_MODES`, so every consumer of the core barrel paid for prompts it
+ * would never show. Each id matches its prompt file name, so the accessor is
+ * installed here instead, resolving on first read.
+ *
+ * Enumerable + configurable so spreads, `Object.keys` and JSON round-trips are
+ * unchanged; writable so a host that overrides a built-in mode's prompt still can.
+ */
+const LAZY_MODE_PROMPT_IDS = new Set<string>([
+  'brief',
+  'review-lite',
+  'audit-lite',
+  'plan-lite',
+  'debug-lite',
+  'test-lite',
+  'refactor-lite',
+  'research-lite',
+  'code-reviewer',
+  'code-auditor',
+  'architect',
+  'debugger',
+  'tester',
+  'devops',
+  'refactorer',
+  'ui-design',
+  'teach',
+  'research-web',
+]);
+
+for (const mode of DEFAULT_MODES) {
+  if (!LAZY_MODE_PROMPT_IDS.has(mode.id)) continue;
+  const id = mode.id;
+  Object.defineProperty(mode, 'prompt', {
+    configurable: true,
+    enumerable: true,
+    get: (): string => modePrompt(id),
+    // Define on the receiver, so an override applied to a COPY of the mode
+    // lands on that copy instead of mutating the shared catalog entry.
+    set(this: Mode, value: string) {
+      Object.defineProperty(this, 'prompt', {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    },
+  });
+}

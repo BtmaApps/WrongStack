@@ -123,7 +123,7 @@
       "relativeImports": 15
     },
     "packages/core/src/core/system-prompt-builder.ts": {
-      "lines": 967,
+      "lines": 987,
       "relativeImports": 26
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
@@ -191,7 +191,7 @@
       "relativeImports": 6
     },
     "packages/kanban/src/manager/assignment.ts": {
-      "lines": 999,
+      "lines": 1008,
       "relativeImports": 13
     },
     "packages/kanban/src/server/project-server.ts": {
@@ -423,7 +423,7 @@
       "relativeImports": 13
     },
     "packages/tui/src/kanban-slash.ts": {
-      "lines": 1005,
+      "lines": 1014,
       "relativeImports": 1
     },
     "packages/tui/src/reducers/composer.ts": {
@@ -439,7 +439,7 @@
       "relativeImports": 13
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
-      "lines": 863,
+      "lines": 869,
       "relativeImports": 1
     },
     "packages/webui/src/components/AudienceMemoryPanel.tsx": {

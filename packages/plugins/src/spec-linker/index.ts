@@ -46,8 +46,8 @@
 
 import * as fs from 'node:fs/promises';
 import type { Plugin } from '@wrongstack/core/types';
-import { releaseHandle } from '../runtime/index.js';
 import { PLUGIN_CATALOG, PLUGIN_NAMES } from '../catalog.js';
+import { releaseHandle } from '../runtime/index.js';
 
 // ---------------------------------------------------------------------------
 // Module-scope state (H1 audit pattern)
@@ -238,8 +238,7 @@ function findUnlinkedReferences(lines: string[], names: string[]): string[] {
     for (const name of names) {
       const re = getWrapLineRegex(name);
       re.lastIndex = 0;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(line)) !== null) {
+      for (let m = re.exec(line); m !== null; m = re.exec(line)) {
         const leadingLen = m[1]!.length;
         const nameStart = m.index + leadingLen;
         const nameEnd = nameStart + m[2]!.length;
@@ -298,9 +297,8 @@ function wrapLineReferences(line: string): string {
 
   for (const name of PLUGIN_NAMES) {
     const re = getWrapLineRegex(name);
-    let m: RegExpExecArray | null;
     re.lastIndex = 0;
-    while ((m = re.exec(line)) !== null) {
+    for (let m = re.exec(line); m !== null; m = re.exec(line)) {
       const leadingLen = m[1]!.length;
       const nameStart = m.index + leadingLen;
       const nameEnd = nameStart + m[2]!.length;

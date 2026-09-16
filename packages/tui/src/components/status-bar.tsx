@@ -1,7 +1,7 @@
 import { effectiveDensity, type StatuslineDensity } from '@wrongstack/core/statusline';
 import { expectDefined } from '@wrongstack/core/utils';
 import type React from 'react';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   computeTokenFingerprint,
   useChipStalenessGuard,
@@ -93,7 +93,7 @@ export type {
  * the rendered entries themselves, so an empty rail never renders and a
  * vanilla session keeps its two-line footprint.
  */
-export function StatusBar({
+export const StatusBar = memo(function StatusBar({
   model,
   provider,
   version,
@@ -477,4 +477,4 @@ export function StatusBar({
       )}
     </Box>
   );
-}
+});

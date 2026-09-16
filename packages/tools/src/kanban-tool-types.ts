@@ -3,6 +3,7 @@ import type {
   AssignKanbanTaskInput,
   KanbanAgentRunStatus,
   KanbanBoard,
+  KanbanBoardHistoryEntry,
   KanbanBoardSummary,
   KanbanCompletionGateEnforcement,
   KanbanContractEdgeType,
@@ -15,6 +16,8 @@ import type {
   KanbanDecompositionSubtask,
   KanbanEvent,
   KanbanLifecycleStage,
+  KanbanManualActivityKind,
+  KanbanManualActivityOutcome,
   KanbanOrchestrationSnapshot,
   KanbanQueueHealth,
   KanbanSearchResult,
@@ -66,6 +69,8 @@ export type KanbanAction =
   | 'heartbeat_assignment'
   | 'recover_stale'
   | 'events'
+  | 'board_history'
+  | 'record_activity'
   | 'queue_health'
   | 'add_dependency'
   | 'add_goal_metric'
@@ -79,6 +84,8 @@ export type KanbanAction =
   | 'split_atomic'
   | 'assess_atomicity'
   | 'propose_decomposition'
+  | 'approve_decomposition'
+  | 'reject_decomposition'
   | 'get_contract_graph'
   | 'configure_contract_graph'
   | 'upsert_contract_node'
@@ -103,6 +110,7 @@ export const KANBAN_READ_ONLY_ACTIONS = [
   'get_task',
   'get_chain',
   'events',
+  'board_history',
   'queue_health',
   'get_contract_graph',
 ] as const satisfies readonly KanbanAction[];
@@ -264,8 +272,19 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   atomicityDecomposition?: 'auto' | 'propose' | undefined;
   /** create_board/update_board: completion-gate enforcement. */
   gateEnforcement?: KanbanCompletionGateEnforcement | undefined;
-  /** propose_decomposition: 2+ proposed subtasks. */
+  /**
+   * propose_decomposition: 2+ proposed subtasks.
+   * approve_decomposition: optional edits replacing the proposed subtasks.
+   */
   subtasks?: KanbanDecompositionSubtask[] | undefined;
+  /** approve_decomposition / reject_decomposition: the proposal to resolve. */
+  proposalId?: string | undefined;
+  /** record_activity: what kind of activity this was. */
+  activityKind?: KanbanManualActivityKind | undefined;
+  /** record_activity: how it turned out. */
+  activityOutcome?: KanbanManualActivityOutcome | undefined;
+  /** record_activity: optional longer detail behind the summary. */
+  activityDetails?: string | undefined;
 }
 
 export interface KanbanToolOutput {
@@ -293,6 +312,8 @@ export interface KanbanToolOutput {
   tasks?: KanbanSearchResult[] | undefined;
   recoveredTasks?: KanbanTask[] | undefined;
   events?: KanbanEvent[] | undefined;
+  /** board_history: global board-lifecycle log, which outlives deleted boards. */
+  history?: KanbanBoardHistoryEntry[] | undefined;
   queueHealth?: KanbanQueueHealth | undefined;
   children?: KanbanTask[] | undefined;
   chain?: KanbanTask[] | undefined;

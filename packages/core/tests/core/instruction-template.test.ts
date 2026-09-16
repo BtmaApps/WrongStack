@@ -11,6 +11,7 @@ import {
   isDeprecatedRuntimeToolAlias,
   normalizeRuntimeToolName,
 } from '../../src/types/runtime-capability-manifest.js';
+import { expandSharedSystemInstructions } from '../../src/utils/instruction-file.js';
 
 function ctx(
   tools: readonly string[],
@@ -196,7 +197,9 @@ describe('bundled instruction tool-reference integrity', () => {
     const instructions = path.resolve(here, '..', '..', 'instructions');
 
     for (const name of ['system.md', 'system-lite.md', 'system-pro.md']) {
-      const raw = await fs.readFile(path.join(instructions, name), 'utf8');
+      const raw = expandSharedSystemInstructions(
+        await fs.readFile(path.join(instructions, name), 'utf8'),
+      );
       const withTracking = renderInstructionLayer(raw, ctx(['todo', 'kanban']));
       expect(withTracking, name).toContain('## Todo status lifecycle');
       expect(withTracking, name).toContain('completed → Done');
@@ -301,7 +304,9 @@ describe('bundled instruction tool-reference integrity', () => {
       { tools: ['read', 'grep', 'glob', 'search'], tier: 'medium' as const },
     ];
     for (const name of ['system.md', 'system-lite.md', 'system-pro.md']) {
-      const raw = await fs.readFile(path.join(instructions, name), 'utf8');
+      const raw = expandSharedSystemInstructions(
+        await fs.readFile(path.join(instructions, name), 'utf8'),
+      );
       const referenced = new Set<string>(
         RUNTIME_CAPABILITY_MANIFEST.flatMap((entry) => [...entry.tools]),
       );

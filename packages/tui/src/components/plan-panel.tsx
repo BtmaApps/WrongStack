@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { resolveWstackPaths, sessionScopedPath } from '@wrongstack/core/utils';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
@@ -111,6 +111,7 @@ export function usePlanPanelData(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | undefined>(undefined);
+  const lastFingerprintRef = useRef<string>('');
 
   const load = useCallback(
     async (scope_: 'session' | 'project', quiet = false) => {
@@ -120,9 +121,14 @@ export function usePlanPanelData(
         const filePath = planFilePath(projectRoot, sessionId, scope_);
         let content: string;
         try {
+          const stat = await fs.stat(filePath);
+          const fingerprint = `${scope_}:${stat.mtimeMs}:${stat.size}`;
+          if (quiet && fingerprint === lastFingerprintRef.current) return;
+          lastFingerprintRef.current = fingerprint;
           content = await fs.readFile(filePath, 'utf-8');
         } catch {
           // File doesn't exist yet
+          lastFingerprintRef.current = '';
           setItems([]);
           setTitle(undefined);
           setUpdatedAt(undefined);

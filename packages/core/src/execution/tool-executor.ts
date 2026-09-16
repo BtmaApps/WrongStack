@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { areSubagentsAllowed } from '../coordination/session-subagent-policy.js';
 import { type Context, resolveEventSessionId } from '../core/context.js';
 import {
   getDangerousCapabilities,
@@ -9,7 +10,6 @@ import {
   ToolCapabilities,
 } from '../security/capabilities.js';
 import { describeWriteTargets } from '../security/permission-helpers.js';
-import { areSubagentsAllowed } from '../coordination/session-subagent-policy.js';
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { ToolResultRenderMode, ToolResultRenderModeConfig } from '../types/config.js';
 import { isWrongStackError } from '../types/errors.js';
@@ -28,18 +28,18 @@ import { createToolOutputSerializer } from '../utils/tool-output-serializer.js';
 import { resolveToolResultRenderMode } from '../utils/tool-result-render-mode.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { toolErrorResult } from './tool-error-taxonomy.js';
+import { validateToolInputAndHooks } from './tool-executor-guard.js';
 import {
   logToolFailure as logToolFailureEvent,
   logToolSuccess as logToolSuccessEvent,
 } from './tool-executor-logging.js';
 import { deniedResult, unknownToolResult } from './tool-executor-results.js';
+import { runToolWithTimeout } from './tool-executor-runner.js';
 import {
   classifyToolError,
   hashPermissionInput,
   maybePersistLargeToolOutput,
 } from './tool-executor-support.js';
-import { validateToolInputAndHooks } from './tool-executor-guard.js';
-import { runToolWithTimeout } from './tool-executor-runner.js';
 
 export { classifyToolError } from './tool-executor-support.js';
 
@@ -571,7 +571,9 @@ export class ToolExecutor {
     const output = await this.runWithTimeout(tool, use.input, ctx.signal, ctx, use.id);
     const text = this.serializer.serialize(output, { toolName: tool.name, input: use.input, tool });
     const scrubbed = this.opts.secretScrubber.scrub(text);
-    return maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
+    return tool.preserveFullOutput
+      ? scrubbed
+      : maybePersistLargeToolOutput(tool.name, scrubbed, budgetHint);
   }
 
   private settleToolOutput(
@@ -580,7 +582,12 @@ export class ToolExecutor {
     text: string,
     budget: number,
   ): { block: ToolResultBlock; bytes: number } {
-    const { text: capped, newBudget } = this.serializer.enforceCap(text, budget);
+    const { text: capped, newBudget } = tool.preserveFullOutput
+      ? {
+          text,
+          newBudget: Math.max(0, budget - Buffer.byteLength(text, 'utf8')),
+        }
+      : this.serializer.enforceCap(text, budget);
     this.hintRenderMode(tool.name);
     this.opts.renderer?.writeToolResult(tool.name, capped, false);
     return {

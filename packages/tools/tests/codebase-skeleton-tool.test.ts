@@ -286,6 +286,42 @@ private:
     }
   });
 
+  it('serializes the complete result without clipping nested file skeletons', () => {
+    const nestedSkeleton = `${'export interface Complete {}\n'.repeat(100)}tail-marker`;
+    const output = {
+      path: 'src',
+      isDir: true,
+      skeleton: nestedSkeleton,
+      stats: {
+        originalLines: 100,
+        skeletonLines: 100,
+        tokenSavingsPercent: 0,
+        symbolCount: 100,
+        fileCount: 1,
+      },
+      files: [
+        {
+          file: 'src/complete.ts',
+          lang: 'ts' as const,
+          skeleton: nestedSkeleton,
+          stats: {
+            originalLines: 100,
+            skeletonLines: 100,
+            tokenSavingsPercent: 0,
+            symbolCount: 100,
+          },
+        },
+      ],
+    };
+
+    expect(codebaseSkeletonTool.description).toMatch(/^Extract an AST-based skeleton/);
+    expect(codebaseSkeletonTool.preserveFullOutput).toBe(true);
+    expect(codebaseSkeletonTool.serialize?.(output, { path: 'src' })).toBe(
+      JSON.stringify(output, null, 2),
+    );
+    expect(codebaseSkeletonTool.serialize?.(output, { path: 'src' })).toContain('tail-marker');
+  });
+
   it('throws error for non-existent file or directory', async () => {
     await expect(
       codebaseSkeletonTool.execute(

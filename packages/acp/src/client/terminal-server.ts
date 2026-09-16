@@ -99,7 +99,9 @@ export class TerminalServer {
     this.instanceId = `term_srv_${randomBytes(4).toString('hex')}`;
     this.maxTerminals = this.clampFiniteInt(opts.maxTerminals, 32);
     this.abortSignal = opts.signal;
-    if (opts.signal) {
+    if (opts.signal?.aborted) {
+      this.dispose();
+    } else if (opts.signal) {
       opts.signal.addEventListener('abort', this.abortHandler, { once: true });
     }
   }

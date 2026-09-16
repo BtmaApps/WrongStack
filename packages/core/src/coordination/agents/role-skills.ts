@@ -1,3 +1,4 @@
+import { cloneWithLazyPrompt } from './agent-prompts.js';
 import { inferRuntimeCapabilities } from './capability-manifest.js';
 import type { AgentDefinition } from './types.js';
 
@@ -359,14 +360,16 @@ export function assignSkillsToAgents(definitions: readonly AgentDefinition[]): A
       );
     }
     const skills = ROLE_SKILL_SETS[role as CatalogRoleWithSkills];
+    // Descriptor copy, not a spread: the phase definitions carry `prompt` as a
+    // lazy accessor, and spreading would resolve all 75 role briefs from disk
+    // right here — at module load, for every importer of the catalog.
     return {
       ...definition,
-      config: {
-        ...definition.config,
+      config: cloneWithLazyPrompt(definition.config, {
         capabilities: inferRuntimeCapabilities(definition.config.tools ?? []),
         skillNames: skills.slice(0, MAX_EAGER_ROSTER_SKILLS),
         skillPool: [...skills],
-      },
+      }),
     };
   });
 }

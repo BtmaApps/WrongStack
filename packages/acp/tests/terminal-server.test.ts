@@ -440,6 +440,28 @@ describe('TerminalServer.dispose()', () => {
     expect(abortRemoves[0]?.[1]).toBe(addedListener);
   });
 
+  it('is already disposed when constructed with an aborted signal', () => {
+    const ac = new AbortController();
+    ac.abort();
+    const s = new TerminalServer({
+      projectRoot,
+      commandTimeoutMs: 5_000,
+      signal: ac.signal,
+    });
+
+    try {
+      expect(() =>
+        s.create({
+          sessionId: 's1',
+          command: 'node',
+          args: ['-e', 'process.exit(0)'],
+        }),
+      ).toThrow(/disposed/);
+    } finally {
+      s.dispose();
+    }
+  });
+
   it('is idempotent — repeated calls are no-ops', () => {
     const ac = new AbortController();
     const { removeSpy } = spyOnAbortListeners(ac);

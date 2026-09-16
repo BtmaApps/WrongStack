@@ -214,7 +214,8 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
   /** Cached rendered online agents string, keyed by content fingerprint. */
   private _lastOnlineAgents?: { hash: string; text: string } | undefined;
   /**
-   * Cached full buildToolUsage output — keyed by tools array ref + tier.
+   * Cached full buildToolUsage output — keyed by tools, instruction bundle,
+   * tier, audience, and model context size.
    * Deliberately NOT keyed by the online-agents fingerprint: the live peer
    * snapshot moved out of this layer into the `peers` volatile block, so
    * layer2 stays byte-stable (and provider-cache-friendly) while agents
@@ -226,6 +227,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         tier: string;
         subagent: boolean;
         maxContextTokens: number;
+        instructions: InstructionBundle;
         text: string;
       }
     | undefined;
@@ -238,7 +240,13 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
    * change".
    */
   private _identityCache?:
-    | { toolsRef: readonly Tool[]; tier: string; subagent: boolean; text: string }
+    | {
+        toolsRef: readonly Tool[];
+        tier: string;
+        subagent: boolean;
+        instructions: InstructionBundle;
+        text: string;
+      }
     | undefined;
   constructor(private readonly opts: DefaultSystemPromptBuilderOptions = {}) {}
 
@@ -554,7 +562,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
   }
 
   /**
-   * Render the identity layer, memoized on the tool set / tier / role triple.
+   * Render the identity layer, memoized on the bundle / tool set / tier / role.
    *
    * The rendering itself is a couple of regex passes over ~40 KB, which is
    * cheap but happens on every turn; the tool set is stable for the life of a
@@ -573,6 +581,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     if (
       cached &&
       cached.toolsRef === ctx.tools &&
+      cached.instructions === instructions &&
       cached.tier === tplCtx.tier &&
       cached.subagent === tplCtx.subagent
     ) {
@@ -585,6 +594,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     );
     this._identityCache = {
       toolsRef: ctx.tools,
+      instructions,
       tier: tplCtx.tier,
       subagent: tplCtx.subagent,
       text,
@@ -608,9 +618,10 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     const key = effective ?? 'default';
     const cached = this._instructionBundles.get(key);
     if (cached) return cached;
-    const loading = loadInstructionBundle(
-      paths ? { ...paths, ...(effective ? { systemVariant: effective } : {}) } : paths,
-    ).then((bundle) =>
+    const loading = loadInstructionBundle({
+      ...paths,
+      ...(effective ? { systemVariant: effective } : {}),
+    }).then((bundle) =>
       this.opts.instructionBundle
         ? mergeInstructionBundle(bundle, this.opts.instructionBundle)
         : bundle,
@@ -672,6 +683,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     const maxContextTokens = this.modelCapabilities()?.maxContextTokens ?? 0;
     if (
       this._toolsUsageCache?.toolsRef === tools &&
+      this._toolsUsageCache?.instructions === instructions &&
       this._toolsUsageCache?.tier === tier &&
       this._toolsUsageCache?.subagent === subagent &&
       this._toolsUsageCache?.maxContextTokens === maxContextTokens
@@ -904,11 +916,19 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     }
 
     // Store cache — keyed by tools reference (B2 snapshot) + tier + subagent +
-    // maxContextTokens, so it auto-invalidates when tools change, the token-saving
+    // maxContextTokens + instruction bundle, so it auto-invalidates on a variant
+    // switch, when tools change, the token-saving
     // tier changes, the prompt is for a different audience (host vs subagent),
     // or a /model switch changes the context-management threshold.
     const text = lines.join('\n');
-    this._toolsUsageCache = { toolsRef: tools, tier, subagent, maxContextTokens, text };
+    this._toolsUsageCache = {
+      toolsRef: tools,
+      tier,
+      subagent,
+      maxContextTokens,
+      instructions,
+      text,
+    };
     return text;
   }
 

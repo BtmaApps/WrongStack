@@ -469,13 +469,13 @@ describe('mcp 100% coverage suite', () => {
     await (provider as any).refresh(value, unAborted.signal);
   });
 
-  it('covers transport-base.ts pinnedDispatcher with tls options', () => {
+  it('covers transport-base.ts pinnedDispatcher with tls options', async () => {
     const transport = new SSETransport({
       name: 'sse-tls',
       url: 'https://example.com',
       tls: { ca: 'fake-cert', rejectUnauthorized: true },
     });
-    const dispatcher = (transport as any).pinnedDispatcher();
+    const dispatcher = await (transport as any).pinnedDispatcher();
     expect(dispatcher).toBeDefined();
     transport.close();
   });

@@ -1,19 +1,6 @@
 import { type Tool, ToolValidationError } from '@wrongstack/core/types';
-import TurndownService from 'turndown';
 import { guardedFetch } from './_fetch-guard.js';
-
-const TD = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-});
-
-TD.addRule('stripDangerousElements', {
-  filter: ['script', 'style', 'noscript'],
-  replacement: () => '',
-});
-
-const PRUNED_BOILERPLATE_TAGS = new Set(['nav', 'header', 'footer', 'aside', 'svg', 'iframe']);
-TD.remove((node) => PRUNED_BOILERPLATE_TAGS.has(node.nodeName.toLowerCase()));
+import { getTurndown } from './_turndown.js';
 
 export interface ReadUrlContentInput {
   /** Target web page URL to read. */
@@ -136,7 +123,7 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
 
     let content: string;
     if (contentType.includes('text/html') || contentType.includes('application/xhtml+xml')) {
-      content = TD.turndown(rawBody).trim();
+      content = (await getTurndown()).turndown(rawBody).trim();
     } else if (contentType.includes('application/json')) {
       try {
         const parsed = JSON.parse(rawBody);

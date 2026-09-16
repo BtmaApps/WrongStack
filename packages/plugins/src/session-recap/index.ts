@@ -85,6 +85,14 @@ interface RecapState {
   stopHookUnregister: null | (() => void);
   /** Event listener unsubscribers. */
   eventUnsubscribers: Array<() => void>;
+  /**
+   * git_autocommit tool-use ids seen via `tool.started`, mapped to whether
+   * the call was a dry_run preview. `tool.completed` carries neither the
+   * tool input nor its return content, so started/completed are correlated
+   * by id: only a non-dry-run completion created a commit. Entries are
+   * removed on completed/failed, so the map stays tiny.
+   */
+  gitAutocommitDryRuns: Map<string, boolean>;
 }
 
 const state: RecapState = {
@@ -103,6 +111,7 @@ const state: RecapState = {
   lastActivityAt: null,
   stopHookUnregister: null,
   eventUnsubscribers: [],
+  gitAutocommitDryRuns: new Map(),
 };
 
 // ---------------------------------------------------------------------------
@@ -175,6 +184,17 @@ function bumpModelUsage(model: string, inputTokens: number, outputTokens: number
   m.invocations += 1;
   state.totalInputTokens += inputTokens;
   state.totalOutputTokens += outputTokens;
+}
+
+/**
+ * Provider usage is an untrusted response boundary. `typeof === 'number'`
+ * accepts NaN/Infinity, and one non-finite response poisons every later
+ * total (`NaN + finite === NaN`) — the mailbox recap subject then reports
+ * "NaN tokens" for the rest of the session. Same invariant as token-budget /
+ * token-throttle / cost-tracker: non-finite numeric input normalizes to 0.
+ */
+function toFiniteUsage(value: number): number {
+  return Number.isFinite(value) ? value : 0;
 }
 
 function bumpToolCount(name: string): void {
@@ -359,6 +379,7 @@ const plugin: Plugin = {
     state.totalOutputTokens = 0;
     state.perModel.clear();
     state.toolCounts.clear();
+    state.gitAutocommitDryRuns.clear();
     state.commitCount = 0;
     state.startedAt = null;
     state.lastActivityAt = null;
@@ -386,7 +407,7 @@ const plugin: Plugin = {
         } | null;
         const model = p?.model ?? 'unknown';
         const u = p?.usage;
-        const input =
+        const input = toFiniteUsage(
           typeof u?.['input'] === 'number'
             ? u['input']
             : typeof u?.['inputTokens'] === 'number'
@@ -395,8 +416,9 @@ const plugin: Plugin = {
                 ? u['promptTokens']
                 : typeof u?.['prompt_tokens'] === 'number'
                   ? u['prompt_tokens']
-                  : 0;
-        const output =
+                  : 0,
+        );
+        const output = toFiniteUsage(
           typeof u?.['output'] === 'number'
             ? u['output']
             : typeof u?.['outputTokens'] === 'number'
@@ -405,7 +427,8 @@ const plugin: Plugin = {
                 ? u['completionTokens']
                 : typeof u?.['completion_tokens'] === 'number'
                   ? u['completion_tokens']
-                  : 0;
+                  : 0,
+        );
         bumpModelUsage(model, input, output);
       });
       state.eventUnsubscribers.push(offUsage);
@@ -419,7 +442,12 @@ const plugin: Plugin = {
         // eventName is `tool.started`, `tool.completed`, etc. `tool` is
         // the tool NAME on some events and the whole `Tool` object on
         // others (`tool.confirm_needed`), so read `.name` off an object.
-        const p = payload as { tool?: unknown; name?: unknown } | null;
+        const p = payload as {
+          tool?: unknown;
+          name?: unknown;
+          id?: unknown;
+          input?: unknown;
+        } | null;
         const rawTool = p?.tool;
         const nameOf = (v: unknown): string | undefined =>
           typeof v === 'string'
@@ -429,31 +457,30 @@ const plugin: Plugin = {
               : undefined;
         const toolName = nameOf(rawTool) ?? nameOf(p?.name) ?? eventName;
         bumpToolCount(toolName);
-        // Detect commits: the `git_autocommit` tool reports a
-        // successful commit via its result. We treat any `git_*`
-        // tool success as a potential commit; the exact tracking
-        // happens in the tool-result handler.
-        if (toolName === 'git_autocommit' || toolName.startsWith('git ')) {
-          // Most git operations don't create a commit; only the
-          // dedicated git_autocommit tool is treated as such.
-          // We still bump on any git_* tool below.
+        // Commit tracking. Core emits `tool.started` / `tool.completed` /
+        // `tool.failed` — there is no `tool.result` event (the previous
+        // subscription here could never fire, so commits were never
+        // counted). `tool.completed` carries neither the tool input nor
+        // its return content, so git_autocommit calls are correlated by
+        // tool-use id against `tool.started`, whose payload carries the
+        // raw input: a dry_run preview completes successfully without
+        // creating a commit, and only a non-dry-run completion counts.
+        if (toolName === 'git_autocommit' && p !== null) {
+          const id = typeof p.id === 'string' ? p.id : null;
+          if (id !== null) {
+            if (eventName === 'tool.started') {
+              const ti = (p.input ?? {}) as Record<string, unknown>;
+              state.gitAutocommitDryRuns.set(id, ti['dry_run'] === true || ti['dryRun'] === true);
+            } else if (eventName === 'tool.completed') {
+              if (state.gitAutocommitDryRuns.get(id) === false) state.commitCount += 1;
+              state.gitAutocommitDryRuns.delete(id);
+            } else if (eventName === 'tool.failed') {
+              state.gitAutocommitDryRuns.delete(id);
+            }
+          }
         }
       });
       state.eventUnsubscribers.push(offTool);
-
-      // Tool results — we only want to count git_autocommit as a
-      // commit on success. Use a tighter pattern.
-      const offResult = api.onPattern('tool.result', (_event: string, payload: unknown) => {
-        const p = payload as {
-          tool?: string;
-          isError?: boolean;
-          result?: { committed?: boolean };
-        } | null;
-        if (p?.tool === 'git_autocommit' && p.isError === false) {
-          state.commitCount += 1;
-        }
-      });
-      state.eventUnsubscribers.push(offResult);
     }
 
     // ── Register the Stop hook ────────────────────────────────────────
@@ -699,6 +726,7 @@ const plugin: Plugin = {
       }
     }
     state.eventUnsubscribers = [];
+    state.gitAutocommitDryRuns.clear();
     const final = {
       recapsPublished: state.recapsPublished,
       recapsErrored: state.recapsErrored,

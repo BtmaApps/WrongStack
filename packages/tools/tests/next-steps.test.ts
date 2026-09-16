@@ -514,3 +514,41 @@ describe('code fences (fenced examples are documentation, not metadata)', () => 
     expect(out).toContain('1. Draft');
   });
 });
+describe('tool-encoded prompt text', () => {
+  it.each(['not-json', '{}', '42', 'null', '"   "'])(
+    'rejects malformed or non-prompt encoded data (%s)',
+    (value) => {
+      const text = `<nextsteps>\n1. <!--ws:nextstep-json-->${value} auto="true"\n</nextsteps>`;
+      expect(parseNextSteps(text).steps).toEqual([]);
+      expect(parseNextSteps(text, false).steps).toEqual([]);
+    },
+  );
+
+  it('does not reinterpret entity or JSON-looking text in ordinary model prompts', () => {
+    const text = 'Search for "&amp;" and "\\n" in the parser.';
+    expect(parseNextSteps(`<nextsteps>\n1. ${text}\n</nextsteps>`).texts).toEqual([text]);
+  });
+});
+
+describe('nextsteps candidate boundaries', () => {
+  it.each([
+    '<nextsteps>\n</nextsteps>',
+    '<nextsteps>\nThis is not a prompt list.\n</nextsteps>',
+    '<nextsteps>\n1. Unfinished old suggestion auto="true"',
+    '<nextsteps/>\n1. Not a real block',
+    '<nextsteps>\n1. <!--ws:nextstep-json-->null\n</nextsteps>',
+  ])('finds a valid block after a malformed candidate (%j)', (prefix) => {
+    const valid = '<nextsteps>\n1. Inspect the current parser\n</nextsteps>';
+    const parsed = parseNextSteps(`${prefix}\n\n${valid}`);
+    expect(parsed.texts).toEqual(['Inspect the current parser']);
+    expect(parsed.autoTexts).toEqual([]);
+    expect(parsed.stripped).toBe(prefix);
+  });
+
+  it('does not promote fenced numbered examples in raw suggestion mode', () => {
+    const text = '```text\n1. Example only auto="true"\n```\n1. Inspect the current parser';
+    const parsed = parseNextSteps(text, false);
+    expect(parsed.texts).toEqual(['Inspect the current parser']);
+    expect(parsed.autoTexts).toEqual([]);
+  });
+});

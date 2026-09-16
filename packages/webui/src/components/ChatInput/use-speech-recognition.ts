@@ -25,25 +25,36 @@ interface SpeechRecognitionInstance {
   onend: () => void;
 }
 
+type SpeechRecognitionCtor = new () => SpeechRecognitionInstance;
+
+/**
+ * The vendor-prefixed constructor, when this browser has one.
+ *
+ * `SpeechRecognition` is not in lib.dom, so reaching it needs a cast. Typing
+ * the cast as the constructor (rather than `any`) keeps `new` checked and lets
+ * the instance flow into `SpeechRecognitionInstance` without a second cast —
+ * and gives both call sites one shape instead of two hand-written ones.
+ */
+function speechRecognitionCtor(): SpeechRecognitionCtor | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
 export function useSpeechRecognition({ onTranscript }: { onTranscript: (text: string) => void }) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const SpeechRecognition =
-      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .SpeechRecognition ||
-      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .webkitSpeechRecognition;
-    setIsSupported(Boolean(SpeechRecognition));
+    setIsSupported(Boolean(speechRecognitionCtor()));
   }, []);
 
   const toggleListening = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = speechRecognitionCtor();
     if (!SpeechRecognition) return;
 
     if (isListening) {
@@ -53,7 +64,7 @@ export function useSpeechRecognition({ onTranscript }: { onTranscript: (text: st
     }
 
     try {
-      const recognition = new SpeechRecognition() as SpeechRecognitionInstance;
+      const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = false;
       recognition.lang = navigator.language || 'en-US';

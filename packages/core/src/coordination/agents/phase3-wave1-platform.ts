@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import type { BundledAgentSkill } from './role-skills.js';
 import {
   type AgentDefinition,
@@ -128,7 +128,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Android',
       role: 'android',
       tools: [...TOOLS.build, 'fetch'],
-      prompt: agentPrompt('android'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -145,7 +144,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Desktop',
       role: 'desktop',
       tools: [...TOOLS.build, 'fetch'],
-      prompt: agentPrompt('desktop'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -162,7 +160,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Realtime',
       role: 'realtime',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('realtime'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -187,7 +184,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Distributed Systems',
       role: 'distributed-systems',
       tools: [...TOOLS.inspect, 'plan', 'test'],
-      prompt: agentPrompt('distributed-systems'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -212,7 +208,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Concurrency',
       role: 'concurrency',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('concurrency'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -236,7 +231,6 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
       name: 'Platform Engineer',
       role: 'platform-engineer',
       tools: [...TOOLS.build, 'install', 'git'],
-      prompt: agentPrompt('platform-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -256,3 +250,10 @@ export const WAVE1_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(WAVE1_AGENTS);

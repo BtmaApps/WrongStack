@@ -1,39 +1,8 @@
 import type { Tool, ToolStreamEvent } from '@wrongstack/core/types';
 import { FetchError, ToolError, ToolValidationError } from '@wrongstack/core/types';
-import TurndownService from 'turndown';
 import { ALLOW_PRIVATE, assertNotPrivate, guardedFetch } from './_fetch-guard.js';
+import { getTurndown } from './_turndown.js';
 import { truncateMiddle } from './_util.js';
-
-/**
- * Singleton Turndown instance for HTML→Markdown conversion.
- * Pre-configured with sensible defaults; code blocks are handled via the
- * default fenced code rule. Reused across all fetch calls.
- */
-const TD = new TurndownService({
-  // Use `# Title` for headings, not setext underline style (`Title\n=====`).
-  headingStyle: 'atx',
-  // Don't wrap code blocks in <pre> — render them as triple-backtick blocks.
-  codeBlockStyle: 'fenced',
-});
-
-// Strip <script>/<style>/<noscript> before turndown sees them. The old
-// hand-rolled converter did this via regex; turndown's DOM-based approach
-// may keep their text content unless we remove the elements first.
-// Using turndown's own addRule mechanism keeps the logic co-located.
-TD.addRule('stripDangerousElements', {
-  filter: ['script', 'style', 'noscript'],
-  replacement: () => '',
-});
-
-// Prune boilerplate chrome before conversion: navigation menus, page
-// headers/footers, sidebars, inline SVG markup, and iframes carry almost no
-// information for the agent but routinely dominate the converted markdown of
-// real-world pages. Removing the elements (not just their tags) is the single
-// biggest token win for the fetch tool. A filter function (rather than a tag
-// list) keeps the match case-insensitive — SVG elements keep lowercase
-// nodeNames while HTML elements report uppercase.
-const PRUNED_BOILERPLATE_TAGS = new Set(['nav', 'header', 'footer', 'aside', 'svg', 'iframe']);
-TD.remove((node) => PRUNED_BOILERPLATE_TAGS.has(node.nodeName.toLowerCase()));
 
 export type FetchFormat = 'markdown' | 'text' | 'raw';
 
@@ -286,7 +255,7 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       const format = input.format ?? (isHtml ? 'markdown' : 'text');
       let content: string;
       if (format === 'raw') content = text;
-      else if (format === 'markdown' && isHtml) content = TD.turndown(text);
+      else if (format === 'markdown' && isHtml) content = (await getTurndown()).turndown(text);
       else if (format === 'markdown' && isJson) content = `\`\`\`json\n${prettyJson(text)}\n\`\`\``;
       else if (isHtml) content = htmlToPlainText(text);
       else if (isJson) content = prettyJson(text);

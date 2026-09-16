@@ -60,6 +60,10 @@
       "types": "./dist/utils/expect-defined.d.ts",
       "import": "./dist/utils/expect-defined.js"
     },
+    "./utils/next-steps": {
+      "types": "./dist/utils/next-steps.d.ts",
+      "import": "./dist/utils/next-steps.js"
+    },
     "./utils/sage-output-block": {
       "types": "./dist/utils/sage-output-block.d.ts",
       "import": "./dist/utils/sage-output-block.js"

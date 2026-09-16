@@ -250,6 +250,44 @@ describe('HQ mailbox message actions (POST /api/mailbox/messages/:id/action)', (
     expect(res.status).toBe(404);
   });
 
+  it('returns 503, not 404, for a known project whose owner is not answering', async () => {
+    // Resolution probes each project's session-catalog daemon on a path that
+    // never spawns, and every per-project failure — daemon gone, IPC refused,
+    // timeout — used to collapse into the same `404 Unknown project` as a
+    // project that never existed. A caller could not tell "give up" from
+    // "try again in a second".
+    //
+    // The project directory is the discriminator: it is created with the
+    // project's first daemon and outlives it (only the metadata file is removed
+    // on exit). Here the directory exists and no daemon does, which is exactly
+    // the state a lapsed lease leaves behind.
+    const h = await startOpenHqServer();
+    await fs.mkdir(path.join(tempRoot, 'projects', 'known-but-silent'), { recursive: true });
+
+    const res = await postAction(h, 'some-mail', {
+      action: 'mark-read',
+      readerId: 'hq-operator',
+      projectId: 'known-but-silent',
+    });
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBe('1');
+  });
+
+  it('does not treat a traversing projectId as a known project', async () => {
+    // The id arrives from the URL/body, so the directory probe must never join
+    // a value that could escape `<globalRoot>/projects/`.
+    const h = await startOpenHqServer();
+    for (const projectId of ['..', '../..', 'a/b', 'a\\b']) {
+      const res = await postAction(h, 'some-mail', {
+        action: 'mark-read',
+        readerId: 'hq-operator',
+        projectId,
+      });
+      expect(res.status, `projectId ${projectId}`).toBe(404);
+    }
+  });
+
   it('returns 400 for a malformed request', async () => {
     const h = await startOpenHqServer();
     const badAction = await postAction(h, 'm1', {

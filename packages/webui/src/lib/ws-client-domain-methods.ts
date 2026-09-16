@@ -1,5 +1,4 @@
-import { safeId } from '@/lib/utils';
-import type { WSClientMessage, WSModelSwitchResult, WSServerMessage } from '../types';
+import type { WSClientMessage } from '../types';
 import type { ProviderCustomModelWire } from '../types/client-message';
 import type { ContextEditorMessage, ContextEditorRemoval } from '../types/runtime';
 import type { WSSendOptions } from './ws-client-contracts';
@@ -380,7 +379,7 @@ const domainMethods = {
   },
 };
 
-export function installWsClientDomainMethods(ctor: { prototype: any }): void {
+export function installWsClientDomainMethods(ctor: { prototype: object }): void {
   Object.assign(ctor.prototype, domainMethods);
 }
 

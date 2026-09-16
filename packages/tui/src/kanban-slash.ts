@@ -742,6 +742,15 @@ export function renderHealthReport(health: KanbanQueueHealth): string {
         ? `  (first: ${summarizeSearchResult(health.heartbeatDue.tasks[0])})`
         : ''),
   );
+  // Parked cards are the one signal here that will not clear on its own: the
+  // gate refused them until the budget ran out, so re-running them unchanged
+  // refuses again. Optional on the record because several call sites build a
+  // KanbanQueueHealth literal by hand.
+  const parkedCount = health.parked?.count ?? 0;
+  attention.push(
+    `    parked              ${parkedCount}` +
+      (parkedCount > 0 ? `  (first: ${summarizeSearchResult(health.parked?.tasks[0])})` : ''),
+  );
   attention.push('');
 
   const stamps: string[] = ['  **Activity**'];

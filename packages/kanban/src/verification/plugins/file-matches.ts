@@ -80,9 +80,8 @@ export class FileMatchesPlugin implements VerifierPlugin {
         const globalFlags = flags.includes('g') ? flags : `${flags}g`;
         const globalCompiled = compileSafeRegex(config.pattern, globalFlags);
         const scanRegex = globalCompiled.ok ? globalCompiled.regex : regex;
-        let m: RegExpExecArray | null;
         scanRegex.lastIndex = 0;
-        while ((m = scanRegex.exec(capped)) !== null) {
+        for (let m = scanRegex.exec(capped); m !== null; m = scanRegex.exec(capped)) {
           const lineNo = capped.slice(0, m.index).split('\n').length;
           lineNumbers.push(lineNo);
           if (!scanRegex.global) break;

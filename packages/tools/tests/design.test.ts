@@ -154,4 +154,44 @@ describe('designTool', () => {
       designTool.execute({ action: 'materialize', out: 'tuned.css' }, ctx, opts),
     ).rejects.toThrow(/already exists/);
   });
+
+  // ── The verify summary must be axis-aware: the remediation footer and the
+  // unchecked caveat describe the PALETTE axis, and must not make claims the
+  // radius/spacing/type axes refute. ──
+
+  it('does not claim a file went unchecked when its radius/type axes flagged it', async () => {
+    const ctx = makeCtx();
+    await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+    // No className, no color literal, no color function: the palette axis has
+    // nothing here — but the radius and type axes still scan the file.
+    await fs.writeFile(
+      path.join(root, 'styles.css'),
+      '.card {\n  border-radius: 8px;\n  font-family: Arial, sans-serif;\n}\n',
+    );
+
+    const res = await designTool.execute({ action: 'verify', files: ['styles.css'] }, ctx, opts);
+
+    // Sanity: the file WAS checked and flagged by the non-color axes…
+    expect(res.output).toContain('hardcoded radius');
+    expect(res.output).toMatch(/hardcoded font family/);
+    // …so the summary must not claim it went unchecked.
+    expect(res.output).not.toMatch(/were NOT checked/);
+  });
+
+  it('does not tell a 100%-on-palette report to replace off-palette colors', async () => {
+    const ctx = makeCtx();
+    await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+    // Token-clean slop: 100% on-palette, composition-axis hit only.
+    await fs.writeFile(
+      path.join(root, 'hero.tsx'),
+      '<h1 className="bg-clip-text text-transparent">Hi</h1>\n',
+    );
+
+    const res = await designTool.execute({ action: 'verify', files: ['hero.tsx'] }, ctx, opts);
+
+    expect(res.output).toMatch(/composition finding/);
+    // The color remediation contradicts the composition advice on a report
+    // with zero color violations.
+    expect(res.output).not.toContain('Replace off-palette colors');
+  });
 });

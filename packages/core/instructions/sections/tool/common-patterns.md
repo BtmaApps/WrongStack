@@ -1,7 +1,7 @@
 ## Common patterns
 
 <!--ws:if tool=clarify-->
-- **Autonomous default over interrupt:** adopt standard best practices and drive through next steps autonomously; reserve `clarify` only for irreversible or destructive forks
+- **Autonomous default over interrupt:** investigate safely and continue authorized work; use `clarify` only when undiscoverable information materially changes scope, authorization, or the result
 <!--ws:end-->
 <!--ws:if tool=codebase-search tool=read tool=edit tool=grep-->
 - **Inspect before edit:** live `codebase-search` -> `read` target -> `edit`; use `grep` for exact-text confirmation
@@ -51,7 +51,7 @@
 <!--ws:if tool=remember-->
 - **Remember useful files:** When you discover a useful file, `remember` its role with `kind: "file_note"`, an `anchor` to that path, tags: #path
 - **Remember conventions:** When you notice a pattern, `remember` it with `kind: "convention"`, appropriate scope, and tags
-- **Remember decisions:** Before resolving ambiguity, `remember` the decision with `kind: "decision"` so future turns don't re-litigate
+- **Remember decisions:** After verifying a durable decision, `remember` it with `kind: "decision"` so future turns can recover its evidence
 <!--ws:end-->
 <!--ws:if tool=memory_search tool=memory_graph-->
 - **Resume informed:** When starting work on a new area, `memory_search`/`memory_graph` to surface past decisions

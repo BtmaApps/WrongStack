@@ -290,15 +290,17 @@ describe('session-recap', () => {
       usage: { prompt_tokens: 150, completion_tokens: 75 },
     });
 
-    // Fire tool events
+    // Fire tool events (core's real event names — there is no tool.result
+    // emitter; commit counting correlates tool.started/tool.completed by id).
     const toolPattern = patternHandlers['tool.*'];
     expect(toolPattern).toBeDefined();
-    toolPattern!('tool.started', { tool: 'git_autocommit' });
+    toolPattern!('tool.started', {
+      tool: 'git_autocommit',
+      id: 'tu_ga',
+      input: { files: ['a.txt'] },
+    });
     toolPattern!('tool.started', { name: 'read_file' });
-
-    const resultPattern = patternHandlers['tool.result'];
-    expect(resultPattern).toBeDefined();
-    resultPattern!('tool.result', { tool: 'git_autocommit', isError: false });
+    toolPattern!('tool.completed', { name: 'git_autocommit', id: 'tu_ga' });
 
     // Status tool
     const statusTool = api.tools.get('session_recap_status');

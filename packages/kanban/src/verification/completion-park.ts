@@ -123,21 +123,13 @@ export function applyGateRefusal(
 }
 
 /**
- * Start the budget over.
+ * Start the budget over, and the parked predicate.
  *
- * Called when a card genuinely passes, and available to any path that
- * materially re-scopes a card — a park earned by an old contract must not
- * outlive it.
+ * Both live in a leaf module so the re-scoping paths in `manager/` can share
+ * this rule without closing an import cycle — see `refusal-budget.ts`. They are
+ * re-exported here because this is where callers expect to find them.
  */
-export function clearGateRefusals(task: KanbanTask): void {
-  delete task.verificationAttempts;
-  delete task.park;
-}
-
-/** Whether retrying this card unchanged is known to be pointless. */
-export function isParked(task: KanbanTask): boolean {
-  return task.park !== undefined;
-}
+export { clearGateRefusals, isParked } from './refusal-budget.js';
 
 /**
  * Persist one refusal in its own board write.

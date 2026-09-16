@@ -251,33 +251,13 @@ describe('DefaultSystemPromptBuilder', () => {
   });
 
   it('renders the Architecture discipline guidance in every identity variant', async () => {
-    // Substance shared by all three tiers, whatever the phrasing depth.
-    // Lite pluralizes the pattern names ("factories", "strategies"), so those
-    // stems live in the per-variant lists instead of here.
-    const shared = ['singleton', 'adapter', 'typed events', '~200 lines', 'inward'];
-    const perVariant: Record<'default' | 'lite' | 'pro', string[]> = {
-      default: [
-        '## Architecture discipline',
-        'factory',
-        'strategy',
-        'Program to interfaces',
-        'Dependencies point inward',
-      ],
-      lite: [
-        'Architecture discipline for code you write',
-        'factories create multi-provider',
-        'strategies replace',
-        'Apply design patterns by trigger, not ceremony',
-      ],
-      pro: [
-        '## Architecture discipline',
-        '### The five constitutional patterns',
-        '### Self-correction pass',
-        'factory',
-        'strategy',
-        'Dependencies always point inward',
-      ],
-    };
+    const shared = [
+      'Match the existing project architecture',
+      'concrete duplication',
+      'a useful testing boundary',
+      'number of switch cases alone is not a reason',
+      'Do not add speculative interfaces',
+    ];
     // `tools: []` is the harshest render path: anything the conditional-block
     // or tool-reference filter drops would silently vanish here first. No
     // `globalDir`/`projectDir` on purpose — this asserts the bundled
@@ -289,7 +269,7 @@ describe('DefaultSystemPromptBuilder', () => {
       });
       const blocks = await b.build({ cwd: tmp, projectRoot: tmp, tools: [] });
       const identity = (blocks[0]?.text ?? '').toLowerCase();
-      for (const needle of [...shared, ...perVariant[variant]]) {
+      for (const needle of shared) {
         expect(identity, `[${variant}] expected to contain "${needle}"`).toContain(
           needle.toLowerCase(),
         );
@@ -298,15 +278,13 @@ describe('DefaultSystemPromptBuilder', () => {
   });
 
   it('renders evidence-led implementation guidance in every identity variant', async () => {
-    const expected: Record<'default' | 'lite' | 'pro', string[]> = {
-      default: ['## Evidence-led implementation', 'no quota exists for findings', 'baseline'],
-      lite: ['no defect reproduced', 'permanent regression/behavior test', 'baseline failures'],
-      pro: [
-        '**Proof standard.**',
-        'there is no finding quota',
-        'permanent regression/behavior test',
-      ],
-    };
+    const expected = [
+      '## Evidence-led implementation',
+      'no quota exists for findings',
+      'permanent regression/behavior test',
+      'baseline',
+      'arbitrary sleeps',
+    ];
 
     for (const variant of ['default', 'lite', 'pro'] as const) {
       const builder = new DefaultSystemPromptBuilder({
@@ -315,7 +293,7 @@ describe('DefaultSystemPromptBuilder', () => {
       });
       const blocks = await builder.build({ cwd: tmp, projectRoot: tmp, tools: [] });
       const identity = (blocks[0]?.text ?? '').toLowerCase();
-      for (const needle of expected[variant]) {
+      for (const needle of expected) {
         expect(identity, `[${variant}] expected to contain "${needle}"`).toContain(
           needle.toLowerCase(),
         );

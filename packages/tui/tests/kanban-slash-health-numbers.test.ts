@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { KanbanQueueHealth } from '@wrongstack/kanban';
 import { createBoard, getKanbanQueueHealth, listReadyTasks } from '@wrongstack/kanban';
 import { addDependency, addTask } from '@wrongstack/kanban/test-support';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -46,5 +47,65 @@ describe('/kanban health', () => {
     // And the old field is not what is being shown: `counts.ready` is 0 here,
     // so a regression to it would print "startable 0" against 2 ready tasks.
     expect(text).not.toMatch(/startable 0\b/);
+  });
+
+  /**
+   * The report is a pure function of the health record, so the parked cases
+   * feed it a literal — the real gate→health path is covered end-to-end by
+   * `packages/kanban/tests/parked-visibility.test.ts`.
+   */
+  function healthRecord(overrides: Partial<KanbanQueueHealth> = {}): KanbanQueueHealth {
+    return {
+      generatedAt: '2026-09-16T00:00:00.000Z',
+      boardIds: ['board-1'],
+      counts: {
+        ready: 0,
+        startable: 0,
+        queued: 0,
+        running: 0,
+        review: 0,
+        failed: 0,
+        completed: 0,
+        pending: 0,
+        archived: 0,
+        blocked: 0,
+      },
+      dependencyBlocked: { count: 0, tasks: [] },
+      staleAssignments: { count: 0, tasks: [] },
+      failedRetryable: { count: 0, tasks: [] },
+      heartbeatDue: { count: 0, tasks: [] },
+      ...overrides,
+    };
+  }
+
+  it('lists parked cards among the attention signals', () => {
+    const text = renderHealthReport(
+      healthRecord({
+        parked: {
+          count: 2,
+          tasks: [
+            {
+              board: { id: 'board-1', title: 'Health numbers' },
+              task: { id: 't1', title: 'Migrate schema' },
+            },
+          ] as unknown as KanbanQueueHealth['dependencyBlocked']['tasks'],
+        },
+      }),
+    );
+
+    expect(text).toMatch(/parked\s+2/);
+    expect(text).toContain('Migrate schema');
+  });
+
+  it('prints a zero parked line rather than omitting the signal', () => {
+    // A signal that disappears when it is clear reads as "not measured".
+    expect(renderHealthReport(healthRecord())).toMatch(/parked\s+0/);
+  });
+
+  it('treats a health record without the optional parked bucket as zero', () => {
+    // Several call sites build KanbanQueueHealth by hand and omit it; the
+    // report must not print "undefined" or throw for them.
+    const text = renderHealthReport(healthRecord());
+    expect(text).not.toContain('undefined');
   });
 });

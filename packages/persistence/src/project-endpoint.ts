@@ -54,11 +54,36 @@ export const _projectEndpointOps = {
   createConnection: net.createConnection,
 };
 
+/**
+ * Real implementation behind a test-overridable op, resolved at CALL time.
+ *
+ * Two constraints meet here. Indexing a namespace import with a variable
+ * (`fsPromises[name]`) defeats bundler analysis, so the access has to name its
+ * members literally. But hoisting those members into a module-level map reads
+ * them at IMPORT time, which breaks every test that partially mocks
+ * `node:fs/promises`: the mock has no `mkdir` yet when this module loads, and
+ * the whole package fails to import. The switch satisfies both — literal member
+ * names, read only when the op is actually needed.
+ */
+function fsFallback(name: 'mkdir' | 'chmod' | 'stat' | 'rm'): unknown {
+  switch (name) {
+    case 'mkdir':
+      return fsPromises.mkdir;
+    case 'chmod':
+      return fsPromises.chmod;
+    case 'stat':
+      return fsPromises.stat;
+    default:
+      return fsPromises.rm;
+  }
+}
+
 function fsOp<K extends 'mkdir' | 'chmod' | 'stat' | 'rm'>(
   name: K,
 ): NonNullable<(typeof _projectEndpointOps)[K]> {
-  return (_projectEndpointOps[name] ??
-    fsPromises[name]) as NonNullable<(typeof _projectEndpointOps)[K]>;
+  return (_projectEndpointOps[name] ?? fsFallback(name)) as NonNullable<
+    (typeof _projectEndpointOps)[K]
+  >;
 }
 
 /** How long a liveness probe waits before calling the endpoint unreachable. */

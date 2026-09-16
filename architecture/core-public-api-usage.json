@@ -4,8 +4,8 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 319,
-      "typeOnly": 255,
+      "files": 321,
+      "typeOnly": 257,
       "runtimeOrMixed": 81
     },
     "@wrongstack/core/agent-catalog": {
@@ -146,7 +146,7 @@
     "@wrongstack/core/session-catalog": {
       "files": 10,
       "typeOnly": 0,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/skills": {
       "files": 8,
@@ -224,6 +224,11 @@
       "runtimeOrMixed": 13
     },
     "@wrongstack/core/utils/ip-guard": {
+      "files": 1,
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    "@wrongstack/core/utils/next-steps": {
       "files": 1,
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -936,6 +941,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/slash-suggest.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/tests/slash-tasks.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1447,6 +1458,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/kanban-acceptance-criteria.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/kanban-activity-history.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -9512,7 +9529,7 @@
       "specifier": "@wrongstack/core/session-catalog",
       "file": "packages/cli/tests/hq-mailbox-mutation.test.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/session-catalog",
@@ -21211,6 +21228,12 @@
     {
       "specifier": "@wrongstack/core/utils/ip-guard",
       "file": "packages/providers/src/redirect-safe-fetch.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils/next-steps",
+      "file": "packages/tools/src/next-steps.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -46,7 +46,8 @@ let _defaultRequire: ModuleLoader | undefined;
 let _cachedDefaultDatabaseSync: DatabaseSyncConstructor | undefined;
 
 function getDefaultRequire(): ModuleLoader {
-  return (_defaultRequire ??= createRequire(import.meta.url));
+  _defaultRequire ??= createRequire(import.meta.url);
+  return _defaultRequire;
 }
 
 /**
@@ -55,9 +56,7 @@ function getDefaultRequire(): ModuleLoader {
  * The SQL surface WrongStack relies on (`exec`, `prepare`, `get`, `all`, `run`,
  * and `close`) is shared by both implementations.
  */
-export function loadRuntimeDatabaseSync(
-  loadModule?: ModuleLoader,
-): DatabaseSyncConstructor {
+export function loadRuntimeDatabaseSync(loadModule?: ModuleLoader): DatabaseSyncConstructor {
   const isDefault = loadModule === undefined;
   if (isDefault && _cachedDefaultDatabaseSync) {
     return _cachedDefaultDatabaseSync;

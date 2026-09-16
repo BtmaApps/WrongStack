@@ -11,7 +11,8 @@ selected with `/next 1`, `/next 1 2 3`, etc.
 | Usage | Effect |
 |---|---|
 | `/suggest` | Generate suggestions using a lightweight subagent (analyzes git status, project context) |
-| `/suggest --fast` | Heuristic-only suggestions (no subagent, instant) |
+| `/suggest --fast` or `/suggest -f` | Heuristic-only suggestions (no subagent) |
+| `/suggest --fresh` | Regenerate instead of reusing a recent result |
 
 ## How it works
 
@@ -21,6 +22,17 @@ selected with `/next 1`, `/next 1 2 3`, etc.
 2. Spawns a lightweight subagent with the context
 3. Subagent generates 3-5 numbered suggestions
 4. Suggestions are stored for `/next` selection
+
+Each suggestion is a complete prompt addressed to the coding agent. Selecting
+one submits its text as the next user message; it must not ask the human to
+perform manual work or answer an approval question. Generation itself does not
+execute the proposed work. Unstructured explanation/error text is not promoted
+into selectable prompts, and `NONE` produces an empty list.
+
+Repeated calls may reuse a result for up to 60 seconds within the same command,
+conversation, and last-message state. A fresh empty result replaces the old
+cache. Late results from superseded requests are discarded. Explicitly asking
+for new suggestions clears the old automatic-submission queue.
 
 ### Fast mode (`--fast`)
 

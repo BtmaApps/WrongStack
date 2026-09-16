@@ -23,6 +23,7 @@ export const KANBAN_TRANSCRIPT_ITEM_CAP = 100;
  */
 const KANBAN_LIST_FIELDS: ReadonlyArray<{ field: keyof KanbanToolOutput; tail?: boolean }> = [
   { field: 'events', tail: true },
+  { field: 'history', tail: true },
   { field: 'tasks' },
   { field: 'boards' },
   { field: 'recoveredTasks' },

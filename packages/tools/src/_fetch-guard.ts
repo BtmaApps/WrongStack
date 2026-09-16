@@ -2,7 +2,7 @@ import * as dns from 'node:dns/promises';
 import * as net from 'node:net';
 import { FetchError, ToolValidationError } from '@wrongstack/core/types';
 import { isPrivateIPv4, isPrivateIPv6 } from '@wrongstack/core/utils';
-import { Agent, fetch as undiciFetch } from 'undici';
+import type { Agent } from 'undici';
 
 /**
  * SSRF guard machinery shared by the `fetch` and `search` tools. Split out of
@@ -89,29 +89,59 @@ export function guardedLookup(
 // are caught by assertNotPrivate's pre-check instead.
 // Destroyed on process exit so long-running processes (eternal autonomy,
 // MCP server mode) don't let the connection pool grow unboundedly.
+/**
+ * `undici` is loaded on first guarded fetch, not at import time.
+ *
+ * Importing the package costs ~85 ms, and `@wrongstack/tools` re-exports the
+ * fetch and search tools from its barrel — so every process that merely loaded
+ * tools (CLI, TUI, webui-server, and the techstack/runtime packages that depend
+ * on them) paid for a network stack it usually never used.
+ *
+ * Nothing about the SSRF guarantees changes: the pinned Agent still performs the
+ * single DNS resolution the dial uses, and it is still paired with the package's
+ * own `fetch` (Node's global fetch rejects a foreign dispatcher ABI). Only the
+ * moment the module is materialized moves.
+ *
+ * The load lives inside the two helpers rather than in a caller-side preamble:
+ * an "await this first" ordering rule is invisible at the call site, and the
+ * one caller that reaches a helper directly would dial unpinned or throw.
+ */
+let undiciModule: typeof import('undici') | undefined;
+let undiciLoad: Promise<typeof import('undici')> | undefined;
+async function ensureUndici(): Promise<typeof import('undici')> {
+  if (undiciModule) return undiciModule;
+  undiciLoad ??= import('undici');
+  undiciModule = await undiciLoad;
+  return undiciModule;
+}
+
 let pinnedAgent: Agent | undefined;
-function getPinnedDispatcher(): Agent {
+async function getPinnedDispatcher(): Promise<Agent> {
+  const undici = await ensureUndici();
   if (!pinnedAgent) {
     // Undici 8 enables HTTP/2 negotiation by default. Its H2 stream can emit a
     // late, unhandled `error` after fetch already rejected when the peer closes
     // the TLS socket, terminating the whole WrongStack process. The fetch tool
     // does not need multiplexing, so retain the proven HTTP/1.1 transport while
     // preserving the pinned DNS lookup and connection pooling.
-    pinnedAgent = new Agent({ allowH2: false, connect: { lookup: guardedLookup as never } });
+    pinnedAgent = new undici.Agent({
+      allowH2: false,
+      connect: { lookup: guardedLookup as never },
+    });
   }
   return pinnedAgent;
 }
 
-function dispatcherFetch(): typeof globalThis.fetch {
+async function dispatcherFetch(): Promise<typeof globalThis.fetch> {
   // Node's built-in global fetch is backed by its own bundled undici version.
   // Passing an Agent from the workspace's `undici` package to that different
   // dispatcher ABI fails on recent Node with:
   //   UND_ERR_INVALID_ARG: invalid onRequestStart method
   // Use the matching package fetch+Agent pair in real runs, but keep honoring
   // test/user fetch shims that replace globalThis.fetch after this module loads.
-  return globalThis.fetch === nativeGlobalFetch
-    ? (undiciFetch as unknown as typeof globalThis.fetch)
-    : globalThis.fetch;
+  if (globalThis.fetch !== nativeGlobalFetch) return globalThis.fetch;
+  const undici = await ensureUndici();
+  return undici.fetch as unknown as typeof globalThis.fetch;
 }
 // Clean up the global dispatcher on exit — undici Agents maintain connection
 // pools and DNS caches that should be torn down in long-running processes.
@@ -177,9 +207,9 @@ export async function guardedFetch(
       redirect: 'manual' as const,
       signal,
       headers,
-      dispatcher: getPinnedDispatcher(),
+      dispatcher: await getPinnedDispatcher(),
     };
-    const res = await dispatcherFetch()(currentUrl, init as never as RequestInit);
+    const res = await (await dispatcherFetch())(currentUrl, init as never as RequestInit);
     if (res.status < 300 || res.status > 399) {
       return res;
     }

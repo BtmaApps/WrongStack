@@ -78,9 +78,10 @@ export function buildLiveNextStepsGateBlock(
         'On the final response, you MUST take exactly one branch:',
         '1. If at least one genuinely useful follow-on action exists, include a balanced <nextsteps> block containing 1-4 exact prompt messages that can be submitted back to you through the current TUI or WebUI input.',
         'Every item must ask the agent to perform work. Never put a human-only chore or an instruction addressed to the user inside <nextsteps>; natural-language agent-directed imperatives are valid and need not be shell commands.',
+        "The recipient is the LLM, not the user. Each item is the next user prompt, submitted verbatim: name its target, action, and useful verification or output in the user's language. Omit manual chores, approval requests, and questions for the user.",
         ...toolRoute,
-        '2. If no useful follow-on action truly exists, omit <nextsteps> and explicitly tell the user in normal prose that no further steps are needed for this task.',
-        'Silently omitting both is invalid. Do not decide by chance, tone, or response length, and do not invent filler suggestions.',
+        '2. If no useful follow-on action truly exists, omit <nextsteps>. No special closing sentence is required; the outcome and relevant evidence are enough.',
+        'Do not invent filler suggestions or defer unfinished authorized work into a suggestion.',
         '[/nextsteps_gate]',
       ].join('\n'),
     };

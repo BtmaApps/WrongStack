@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequirementIntakeView } from '@/components/RequirementIntakeView';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -131,5 +132,48 @@ describe('RequirementIntakeView', () => {
 
     const submitButton = screen.getByRole('button', { name: /File \+ submit/ });
     expect(submitButton).toHaveProperty('disabled', true);
+  });
+
+  it('keeps the Copied indicator for the full window when a second record is copied mid-window', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        projectId: 'proj_alpha',
+        intakes: [
+          { ...INTAKES[0], originalRequest: 'Alpha verbatim request' },
+          { ...INTAKES[1], originalRequest: 'Beta verbatim request' },
+        ],
+      }),
+    );
+
+    render(<RequirementIntakeView />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Expand record A and copy its original request.
+    fireEvent.click(screen.getByRole('button', { name: /Add email-based password reset/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Copy request/ }));
+    expect(screen.getByText('Copied!')).toBeTruthy();
+
+    // Copy record B 1s into A's 1.5s indicator window.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Fix flaky CI retry/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Copy request/ }));
+    expect(screen.getByText('Copied!')).toBeTruthy();
+
+    // t=1600ms — the stale first timer fires pre-fix and wrongly clears B's indicator.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(screen.getByText('Copied!')).toBeTruthy();
+
+    // B's own window ends at t=2500ms.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.queryByText('Copied!')).toBeNull();
   });
 });

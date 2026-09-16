@@ -73,9 +73,42 @@ const seedProject = async (slug: string): Promise<ProjectFixture> => {
     pid: process.pid,
     startedAt: new Date().toISOString(),
   });
+  // Hold one connection open to the seeded project's session-catalog daemon
+  // for the life of the test.
+  //
+  // Without it the daemon can vanish mid-test and the gateway answers 404
+  // "Unknown project" — which reads as "that project does not exist" and fails
+  // the mutation assertions with `expected 400 but got 404`. The chain:
+  // a session lease lives 30s (SESSION_CATALOG_DEFAULT_LEASE_MS) and is renewed
+  // every 5s (HEARTBEAT_INTERVAL_MS), so under full-suite load — this file took
+  // 27s for 31 cases in the 3000-file run — six missed heartbeats expire it.
+  // `queryLiveLeases` reaps expired leases, `listLive()` then returns empty,
+  // and with no client connected `scheduleIdleStop` stops the daemon after its
+  // 250ms disconnected grace. It removes its metadata on the way out, so the
+  // registry's probe (`callExisting`, which must never spawn) finds no live
+  // owner, breaks immediately, and the empty result becomes a 404.
+  //
+  // `scheduleIdleStop` returns early while `clients.size > 0`, so a single held
+  // connection removes that mechanism outright instead of racing it. Three
+  // earlier passes tried timing-side hardening here (port 0, transient retries,
+  // longer timeouts) and the flake survived all of them; this one does not
+  // depend on the box being fast enough.
+  //
+  // Note WRONGSTACK_SESSION_CATALOG_IDLE_MS cannot substitute for this: the
+  // disconnected grace is `Math.min(idleMs, 250)`, so raising it changes nothing.
+  const { SessionCatalogProjectClient: KeepAliveClient } = await import(
+    '@wrongstack/core/session-catalog'
+  );
+  const keepAlive = new KeepAliveClient({
+    projectDir: path.join(globalRoot, 'projects', slug),
+    projectRoot,
+  });
+  await keepAlive.ping();
   return {
     projectRoot,
     cleanup: async () => {
+      // Release the keep-alive first so the daemon is free to exit below.
+      await keepAlive.close().catch(() => undefined);
       // The gateway reached a real project owner over IPC; that daemon has
       // to exit before the temp tree it sits in can be removed.
       await disposeProjectMailbox(resolveProjectDir(projectRoot, wstackGlobalRoot()));

@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   finalizeTaskCompletion,
   getBoard,
@@ -13,7 +14,6 @@ import {
   recoverStaleTaskAssignments,
   resolveGateEnforcement,
 } from '@wrongstack/kanban';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import { systemSessionId } from '@wrongstack/primitives';
 import { publishKanbanBoard } from './kanban-broadcast.js';
 import { errMessage } from './ws-utils.js';
@@ -449,13 +449,19 @@ function healthSummary(health: KanbanQueueHealth): string {
     `${health.counts.failed} failed`,
     `${health.staleAssignments.count} stale`,
     `${health.dependencyBlocked.count} dependency-blocked`,
+    `${health.parked?.count ?? 0} parked`,
   ].join(' · ');
 }
 
 function buildAuditPrompt(board: KanbanBoard, health: KanbanQueueHealth): string {
+  // A parked card carries its ordinary status, so without the park note it
+  // reads to the supervisor exactly like one that is merely blocked — and the
+  // obvious recommendation ("re-run it") is the one thing that cannot work.
   const taskLines = board.tasks.map(
     (task) =>
-      `- ${task.id}: ${task.title} [task=${task.status}; assignment=${task.assignment?.status ?? 'none'}; column=${task.columnId}]`,
+      `- ${task.id}: ${task.title} [task=${task.status}; assignment=${task.assignment?.status ?? 'none'}; column=${task.columnId}` +
+      (task.park ? `; PARKED after ${task.park.attempts} refusals: ${task.park.reason}` : '') +
+      ']',
   );
   return [
     'You are the explicitly configured WrongStack Kanban supervisor.',

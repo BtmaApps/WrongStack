@@ -1,5 +1,5 @@
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, HEAVY_BUDGET, LIGHT_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 const PLAN_TOOLS = [...TOOLS.read, ...TOOLS.index, 'plan', 'todo'];
 
@@ -11,7 +11,6 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
       name: 'Analyst',
       role: 'analyst',
       tools: [...PLAN_TOOLS],
-      prompt: agentPrompt('analyst'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -37,7 +36,6 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
       name: 'Planner',
       role: 'planner',
       tools: [...PLAN_TOOLS],
-      prompt: agentPrompt('planner'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -64,7 +62,6 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
       name: 'Architect',
       role: 'architect',
       tools: [...PLAN_TOOLS],
-      prompt: agentPrompt('architect'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -91,7 +88,6 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
       name: 'Critic',
       role: 'critic',
       tools: [...TOOLS.read],
-      prompt: agentPrompt('critic'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -118,7 +114,6 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
       name: 'Refactor Planner',
       role: 'refactor-planner',
       tools: [...PLAN_TOOLS, 'diff'],
-      prompt: agentPrompt('refactor-planner'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -140,3 +135,10 @@ export const PLANNING_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(PLANNING_AGENTS);

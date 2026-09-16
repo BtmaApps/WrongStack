@@ -241,6 +241,12 @@ async function captureFileForHook(
     return { path, content, bytes: st.size };
   } catch (err) {
     if (signal.aborted) throw err;
+    // Mirror captureFile: only a genuinely missing file may be recorded as
+    // "did not exist" — EACCES/EISDIR/EBUSY must not become a false
+    // existed:false / notRestoredFileDidNotExist record for a file that was
+    // there. The rethrow is contained by the hook's failurePolicy:'open'
+    // (recovery automation must not stall writes).
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     return { path, content: null, bytes: 0 };
   }
 }
@@ -249,7 +255,12 @@ async function captureFileForHook(
 export function retainedSnapshotBytes(): number {
   let total = 0;
   for (const snap of state.snapshots) {
-    for (const f of snap.files) total += f.content === null ? 0 : f.content.length;
+    for (const f of snap.files) {
+      // The budget is denominated in bytes; content.length counts UTF-16
+      // code units, which undercounts multi-byte content ('€' is 1 unit
+      // but 3 UTF-8 bytes). Buffer.byteLength is the memory actually held.
+      total += f.content === null ? 0 : Buffer.byteLength(f.content, 'utf8');
+    }
   }
   return total;
 }

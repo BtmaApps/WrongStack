@@ -7,10 +7,10 @@
  * write — so the count-based ring alone allowed tens to hundreds of MiB to
  * accumulate for the life of the session.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -149,6 +149,40 @@ describe('retained-bytes budget', () => {
 
     const status = await tool(api, 'checkpoint_list').execute({});
     expect(status.counters.retainedBytes).toBeGreaterThan(0);
+    plugin.teardown?.(api as Any);
+  });
+
+  it('counts real UTF-8 bytes, not UTF-16 units, for multibyte content', async () => {
+    // '€' is 1 UTF-16 unit but 3 UTF-8 bytes: 10 chars are 10 length units
+    // but 30 real bytes. The budget is denominated in bytes, so the counter
+    // must count bytes — the old content.length sum reported 10.
+    const api = makeApi({ checkpoint: { enabled: true, autoCapture: false } });
+    await plugin.setup(api as Any);
+    await fs.writeFile(path.join(tmpDir, 'euro.txt'), '€'.repeat(10), 'utf8');
+    await tool(api, 'checkpoint_create').execute({ paths: ['euro.txt'] });
+
+    const status = await tool(api, 'checkpoint_list').execute({});
+    expect(status.counters.retainedBytes).toBe(30);
+    plugin.teardown?.(api as Any);
+  });
+
+  it('evicts on real UTF-8 bytes even when UTF-16 units fit the budget', async () => {
+    // Two captures of 400 chars are 800 UTF-16 units (fits the 1024-byte
+    // budget floor under the old content.length sum) but 2400 real bytes
+    // (does not fit). The oldest snapshot must be evicted. readConfig
+    // rejects budgets below 1024, hence the 1024 floor.
+    const api = makeApi({
+      checkpoint: { enabled: true, autoCapture: false, maxSnapshots: 500, maxTotalBytes: 1024 },
+    });
+    await plugin.setup(api as Any);
+    await fs.writeFile(path.join(tmpDir, 'euro.txt'), '€'.repeat(400), 'utf8');
+    const create = tool(api, 'checkpoint_create');
+    await create.execute({ paths: ['euro.txt'] });
+    await create.execute({ paths: ['euro.txt'] });
+
+    const status = await tool(api, 'checkpoint_list').execute({});
+    expect(status.counters.evictedForBytes).toBe(1);
+    expect(status.snapshots.length).toBe(1);
     plugin.teardown?.(api as Any);
   });
 });

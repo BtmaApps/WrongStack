@@ -1,8 +1,8 @@
 import * as fs from 'node:fs/promises';
-import { deepMerge as deepMergeCore, toErrorMessage } from '@wrongstack/core/utils';
 import type { Context } from '@wrongstack/core/agent';
 import type { Tool } from '@wrongstack/core/types';
 import { ToolValidationError } from '@wrongstack/core/types';
+import { deepMerge as deepMergeCore, toErrorMessage } from '@wrongstack/core/utils';
 import { capSubject, compileUserRegex } from './_regex.js';
 import { safeResolveReal } from './_util.js';
 
@@ -690,7 +690,7 @@ function validateJsonSchema(
       const props = s['properties'] as Record<string, Record<string, unknown>>;
       const obj = value as Record<string, unknown>;
       for (const [k, propSchema] of Object.entries(props)) {
-        if (Object.prototype.hasOwnProperty.call(obj, k)) {
+        if (Object.hasOwn(obj, k)) {
           check(obj[k], propSchema, `${path}.${k}`);
         }
       }

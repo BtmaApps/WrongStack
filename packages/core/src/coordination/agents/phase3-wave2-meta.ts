@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import type { BundledAgentSkill } from './role-skills.js';
 import {
   type AgentDefinition,
@@ -128,7 +128,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Threat Modeler',
       role: 'threat-modeler',
       tools: [...TOOLS.read, 'write'],
-      prompt: agentPrompt('threat-modeler'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -155,7 +154,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Secure Coding Coach',
       role: 'secure-coding-coach',
       tools: [...TOOLS.read],
-      prompt: agentPrompt('secure-coding-coach'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -179,7 +177,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Resilience Engineer',
       role: 'resilience-engineer',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('resilience-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -204,7 +201,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Chaos Engineer',
       role: 'chaos-engineer',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('chaos-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -227,7 +223,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Compliance Auditor',
       role: 'compliance-auditor',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('compliance-auditor'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -252,7 +247,6 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
       name: 'Privacy Engineer',
       role: 'privacy-engineer',
       tools: [...TOOLS.build, 'audit'],
-      prompt: agentPrompt('privacy-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -275,3 +269,10 @@ export const WAVE2_AGENTS: AgentDefinition[] = [
 ];
 
 void skillSet;
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(WAVE2_AGENTS);

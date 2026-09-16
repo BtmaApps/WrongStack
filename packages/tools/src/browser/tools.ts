@@ -592,7 +592,9 @@ export function enableBrowserSuite(registry: { enable(name: string): boolean }):
 }
 
 /** Bulk disable all browser automation tools in a ToolRegistry so they do not enter context. */
-export function disableBrowserSuite(registry: { disable(name: string, reason?: any): boolean }): number {
+export function disableBrowserSuite(registry: {
+  disable(name: string, reason?: 'user' | 'auto-thinned'): boolean;
+}): number {
   let count = 0;
   for (const name of BROWSER_TOOL_NAMES) {
     if (registry.disable(name, 'user')) count++;
@@ -601,8 +603,13 @@ export function disableBrowserSuite(registry: { disable(name: string, reason?: a
 }
 
 /** Check whether all browser tools are currently enabled in the registry. */
-export function isBrowserSuiteEnabled(registry: { isDisabled(name: string): boolean; get(name: string): unknown }): boolean {
-  return BROWSER_TOOL_NAMES.every((name) => !registry.isDisabled(name) && registry.get(name) !== undefined);
+export function isBrowserSuiteEnabled(registry: {
+  isDisabled(name: string): boolean;
+  get(name: string): unknown;
+}): boolean {
+  return BROWSER_TOOL_NAMES.every(
+    (name) => !registry.isDisabled(name) && registry.get(name) !== undefined,
+  );
 }
 
 export async function shutdownBrowserTools(): Promise<void> {
@@ -610,4 +617,3 @@ export async function shutdownBrowserTools(): Promise<void> {
   managers.clear();
   await Promise.all(active.map((manager) => manager.dispose()));
 }
-

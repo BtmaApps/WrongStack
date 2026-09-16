@@ -10,11 +10,15 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { expandSharedSystemInstructions } from '../../src/utils/instruction-file.js';
 
 const INSTRUCTIONS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'instructions');
 
 const read = (...segments: string[]) =>
-  readFileSync(join(INSTRUCTIONS, ...segments), 'utf8').replace(/\s+/g, ' ');
+  expandSharedSystemInstructions(readFileSync(join(INSTRUCTIONS, ...segments), 'utf8')).replace(
+    /\s+/g,
+    ' ',
+  );
 
 const VARIANTS = [
   ['system.md', read('system.md')],

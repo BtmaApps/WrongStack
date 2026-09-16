@@ -1,12 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import * as path from 'node:path';
 import { validateProjectAgentConfig } from './project-agent-config-validation.js';
-import {
-  agentsDir,
-  isProjectAgentRoleName,
-  roleDir,
-  writeTextAtomically,
-} from './project-agent-paths.js';
+import type { ProjectAgentConfig, RoleKnowledgeManifest } from './project-agent-identity-types.js';
 import { splitLearnedEntries } from './project-agent-learning-entries.js';
 import {
   classifyLearnedEntry,
@@ -17,7 +12,12 @@ import {
   parseStructuredLearnedEntriesFromContent,
   renderLearnedInstructions,
 } from './project-agent-learning-structured.js';
-import type { ProjectAgentConfig, RoleKnowledgeManifest } from './project-agent-identity-types.js';
+import {
+  agentsDir,
+  isProjectAgentRoleName,
+  roleDir,
+  writeTextAtomically,
+} from './project-agent-paths.js';
 
 /**
  * Write or update the learned instruction buffer for a given role.

@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, MEDIUM_BUDGET, SPECIALIST_TOOLS, TOOLS } from './types.js';
 
 /** Phase 8 · Delivery & Ops — ship it, run it, keep it healthy. */
@@ -9,7 +9,6 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       name: 'Git',
       role: 'git',
       tools: [...TOOLS.vcs, 'bash'],
-      prompt: agentPrompt('git'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -38,7 +37,6 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       name: 'Release',
       role: 'release',
       tools: [...TOOLS.vcs, 'bash', 'json'],
-      prompt: agentPrompt('release'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -64,7 +62,6 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       name: 'DevOps',
       role: 'devops',
       tools: [...TOOLS.build, ...SPECIALIST_TOOLS.mcp],
-      prompt: agentPrompt('devops'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -100,7 +97,6 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       name: 'Observability',
       role: 'observability',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('observability'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -129,7 +125,6 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       name: 'Dependency',
       role: 'dependency',
       tools: [...TOOLS.deps, 'bash'],
-      prompt: agentPrompt('dependency'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -153,3 +148,10 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(DELIVERY_AGENTS);

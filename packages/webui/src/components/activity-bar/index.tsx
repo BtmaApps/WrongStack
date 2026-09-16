@@ -363,7 +363,9 @@ export function ActivityBar({ desktopShell = false }: { desktopShell?: boolean |
     setDragOverId(null);
     e.dataTransfer.effectAllowed = 'move';
   };
-  const onDragOver = (group: 'panel' | 'view', id: string) => (e: React.DragEvent) => {
+  // `_group` is part of the call shape every handler factory here shares; this
+  // one decides purely from `id`.
+  const onDragOver = (_group: 'panel' | 'view', id: string) => (e: React.DragEvent) => {
     if (!reorderMode || dragId == null || dragId === id) return;
     if (isLockedId(id)) return;
     e.preventDefault();
@@ -845,6 +847,10 @@ function ActivityIcon({
       {/* Lock badge — pinned icons in edit mode */}
       {locked && reorderMode && (
         <span
+          // A bare <span> has no role that supports aria-label, so the badge
+          // announced nothing. It is an icon conveying meaning, so give it the
+          // role that makes the label part of the accessibility tree.
+          role="img"
           aria-label="locked"
           className="absolute -top-1 -left-1 h-3.5 w-3.5 flex items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border"
         >

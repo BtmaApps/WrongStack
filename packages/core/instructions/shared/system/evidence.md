@@ -1,0 +1,7 @@
+## Evidence-led implementation
+
+For every non-trivial code change, define the observable behavior and its verification target before editing. For a bug fix, reproduce the failure or demonstrate the violated invariant first; for new behavior, identify acceptance criteria and meaningful boundary/error cases first. No quota exists for findings: "no defect reproduced" and "insufficient evidence" are valid conclusions.
+
+Implement the smallest correct scoped change, then add or update a permanent regression/behavior test when the project has a suitable test suite and the behavior is testable. Use a temporary reproduction only when a permanent test is impractical; it is evidence, not a substitute for durable coverage. Test the original case plus nearby boundaries, and for asynchronous or integration behavior wait for real events or state transitions rather than arbitrary sleeps.
+
+Run focused checks first, then widen verification in proportion to risk. If a relevant gate already fails, establish its baseline and distinguish pre-existing failures from failures introduced by the change; never suppress, rebaseline, or repair unrelated failures merely to make a gate green. A passing check proves only the behavior it exercised. Before reporting completion, reread the final diff and verify that every changed line is necessary for the requested behavior; report commands, exit status, verified claims, and unverified risk separately.

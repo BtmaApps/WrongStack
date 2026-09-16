@@ -11,6 +11,7 @@ export const KANBAN_READ_ACTIONS = [
   'get_chain',
   'events',
   'queue_health',
+  'board_history',
   'get_contract_graph',
 ] as const;
 
@@ -47,10 +48,16 @@ export const KANBAN_MANAGE_ACTIONS = [
   'remove_check',
   'add_note',
   'add_link',
+  'record_activity',
   'verify_completion',
   'split_atomic',
   'assess_atomicity',
   'propose_decomposition',
+  // Resolving a proposal creates child cards (approve) or closes the proposal
+  // (reject). Neither removes durable work, so both belong with split_task in
+  // the manage tier rather than behind --destructive.
+  'approve_decomposition',
+  'reject_decomposition',
   // Contract-map editing, removals included. The map is advisory metadata
   // about a card rather than the card itself, and the same tier that can add
   // a node should be able to take it back — requiring `--destructive` to undo

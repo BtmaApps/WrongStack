@@ -14,6 +14,7 @@ import {
   DEFAULT_COLUMNS,
   type UpdateKanbanTaskInput,
 } from '../types-operations.js';
+import { clearGateRefusals } from '../verification/refusal-budget.js';
 import { nowIso, requireNonBlank, statusForColumn, uniqueStrings } from './basic-helpers.js';
 import { normalizeChainMetadata, normalizeDependencyIds } from './task-chain-internal.js';
 import {
@@ -209,6 +210,12 @@ export function applyTaskPatch(
   const previousColumnId = task.columnId;
   const previousChainId = task.chain?.chainId;
   let shouldReorder = false;
+  // A park is a verdict about a particular scope of work. Capture the fields
+  // that define that scope so a genuine re-scope can return the card's refusal
+  // budget at the end of this patch.
+  const previousTitle = task.title;
+  const previousDescription = task.description;
+  const previousChildIds = (task.childTaskIds ?? []).join(',');
   if (input.title !== undefined) task.title = requireNonBlank(input.title, 'Kanban task title');
   if (input.description !== undefined) task.description = input.description;
   if (input.dueDate !== undefined) {
@@ -335,6 +342,22 @@ export function applyTaskPatch(
   if (input.decomposition !== undefined) {
     if (input.decomposition === null) delete task.decomposition;
     else task.decomposition = { ...input.decomposition };
+  }
+  // Re-scoping the card returns its refusal budget: a park earned against work
+  // that has since been redefined is a verdict about a card that no longer
+  // exists, and `verificationAttempts` never counted down, so without this a
+  // parked card re-parked on its first refusal forever.
+  //
+  // `successCriteria` is deliberately NOT a trigger. `verify_completion` writes
+  // the whole array back on every run (with updated check statuses), so keying
+  // on it would reset the budget on each verification and leave the gate with
+  // no budget at all.
+  if (
+    task.title !== previousTitle ||
+    task.description !== previousDescription ||
+    (task.childTaskIds ?? []).join(',') !== previousChildIds
+  ) {
+    clearGateRefusals(task);
   }
   if (shouldReorder) {
     if (previousColumnId !== task.columnId) normalizeColumnTaskOrders(board, previousColumnId);

@@ -3,6 +3,7 @@ goal description and turn it into a clear, unambiguous, actionable mission
 with concrete, verifiable deliverables.
 
 Rules:
+- Preserve the original goal's scope, constraints, uncertainty, and authorization. Clarify stated deliverables; do not invent features, file paths, architectural choices, permissions, or side effects. Do not turn a review or diagnosis into an instruction to edit. Any missing decision remains explicit rather than guessed.
 - The refined goal must be self-contained — someone reading only the
   refined goal should understand exactly what to do without seeing the
   original.

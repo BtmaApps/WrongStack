@@ -503,6 +503,26 @@
       ]
     },
     {
+      "subpath": "./utils/next-steps",
+      "target": {
+        "types": "./dist/utils/next-steps.d.ts",
+        "import": "./dist/utils/next-steps.js"
+      },
+      "source": "packages/core/src/utils/next-steps.ts",
+      "declarations": [
+        "export const stripNextSteps",
+        "export function closingCodeFence",
+        "export function indexInsideCodeFence",
+        "export function isFinalTurnStopReason",
+        "export function parseNextSteps",
+        "export function projectNextStepsToolInput",
+        "export function stripNextStepsBlock",
+        "export interface ParseNextStepsOptions",
+        "export interface ParseNextStepsResult",
+        "export interface ParsedNextStep"
+      ]
+    },
+    {
       "subpath": "./utils/sage-output-block",
       "target": {
         "types": "./dist/utils/sage-output-block.d.ts",
@@ -1451,14 +1471,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 193,
-      "sourceLines": 55932
+      "sourceLines": 56043
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 56,
-      "sourceLines": 13025
+      "sourceLines": 13065
     },
     {
       "directory": "design",
@@ -1472,7 +1492,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 59,
-      "sourceLines": 19020
+      "sourceLines": 19033
     },
     {
       "directory": "extension",
@@ -1584,7 +1604,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository/runtime implementation",
       "sourceFiles": 3,
-      "sourceLines": 248
+      "sourceLines": 259
     },
     {
       "directory": "security",
@@ -1640,14 +1660,14 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 73,
-      "sourceLines": 13752
+      "sourceLines": 13825
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 70,
-      "sourceLines": 12312
+      "sourceFiles": 71,
+      "sourceLines": 12688
     },
     {
       "directory": "wiring",

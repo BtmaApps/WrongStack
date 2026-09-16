@@ -269,3 +269,61 @@ describe('checkpoint plugin', () => {
     expect(api.log.info).toHaveBeenCalledWith('checkpoint: teardown complete', expect.any(Object));
   });
 });
+
+// Regression (bug-hunt r2): captureFileForHook recorded ANY error (EACCES,
+// EISDIR, EBUSY...) as content:null = "did not exist at capture time", so an
+// existing-but-unreadable target produced a false checkpoint_list
+// existed:false / checkpoint_restore notRestoredFileDidNotExist record — the
+// exact failure captureFile's invariant comment warns against ("restore would
+// then silently skip the file"). Non-ENOENT capture errors now propagate
+// (contained by the hook's registered failurePolicy:'open'); only a genuine
+// ENOENT may be recorded as absent.
+describe('auto-capture: capture errors must not record a false absence', () => {
+  it('does not record an existing-but-unreadable target (directory) as absent', async () => {
+    const api = makeApi();
+    checkpointPlugin.setup(api as never);
+    const hook = getHook(api);
+    const dir = join(tmp, 'sub');
+    mkdirSync(dir);
+    await expect(hook({ toolName: 'write', toolInput: { path: dir } })).rejects.toThrow();
+    const list = await getTool(api, 'checkpoint_list').execute({});
+    const snapshots = list['snapshots'] as Array<{
+      files: Array<{ path: string; existed: boolean }>;
+    }>;
+    const falseAbsence = snapshots
+      .flatMap((s) => s.files)
+      .find((f) => f.path === dir && f.existed === false);
+    expect(falseAbsence).toBeUndefined();
+  });
+
+  it('control: a real file still captures as existed: true', async () => {
+    const api = makeApi();
+    checkpointPlugin.setup(api as never);
+    const hook = getHook(api);
+    const file = join(tmp, 'a.txt');
+    writeFileSync(file, 'original');
+    await hook({ toolName: 'write', toolInput: { path: file } });
+    const list = await getTool(api, 'checkpoint_list').execute({});
+    const snapshots = list['snapshots'] as Array<{
+      files: Array<{ path: string; existed: boolean }>;
+    }>;
+    expect(snapshots.flatMap((s) => s.files).find((f) => f.path === file)).toMatchObject({
+      existed: true,
+    });
+  });
+
+  it('control: a genuinely missing path still classifies as existed: false', async () => {
+    const api = makeApi();
+    checkpointPlugin.setup(api as never);
+    const hook = getHook(api);
+    const missing = join(tmp, 'not-created-yet.txt');
+    await hook({ toolName: 'write', toolInput: { path: missing } });
+    const list = await getTool(api, 'checkpoint_list').execute({});
+    const snapshots = list['snapshots'] as Array<{
+      files: Array<{ path: string; existed: boolean }>;
+    }>;
+    expect(snapshots.flatMap((s) => s.files).find((f) => f.path === missing)).toMatchObject({
+      existed: false,
+    });
+  });
+});

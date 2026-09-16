@@ -1,6 +1,6 @@
 import type React from 'react';
 import type { MutableRefObject } from 'react';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Box, type DOMElement, measureElement, Text, useInput } from '../ink.js';
 import { theme } from '../theme.js';
 import { LIVE_TOOL_STREAM_COPY_ID } from './history/copy-geometry.js';
@@ -138,7 +138,7 @@ interface InspectOverlayProps {
   headerRef?: MutableRefObject<DOMElement | null> | undefined;
 }
 
-export function InspectOverlay({
+export const InspectOverlay = memo(function InspectOverlay({
   title,
   body,
   scroll,
@@ -244,4 +244,4 @@ export function InspectOverlay({
       </Box>
     </Box>
   );
-}
+});

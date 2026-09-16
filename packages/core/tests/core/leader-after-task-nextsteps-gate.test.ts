@@ -20,6 +20,17 @@ function render(toolNames: string[]): string {
 }
 
 describe('leader-after-task `nextsteps` tool gate', () => {
+  it.each([{ tools: [] }, { tools: ['nextsteps'] }])(
+    'keeps suggestions as LLM prompts ($tools)',
+    ({ tools }) => {
+      const out = render(tools);
+      expect(out).toContain('The recipient is the LLM, not the user');
+      expect(out).toContain('submitted verbatim as the next user prompt');
+      expect(out).toContain('If only a human can perform the action, omit it');
+      expect(out).toContain('No special closing sentence is required');
+      expect(out).not.toContain('Never omit both the tag and that explanation');
+    },
+  );
   it('says nothing about the tool when it is not registered', () => {
     const out = render(['todo', 'read']);
 

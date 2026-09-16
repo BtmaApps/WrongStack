@@ -1,5 +1,10 @@
-import { isFinalTurnStopReason, parseNextSteps } from '@wrongstack/tools/next-steps';
+import {
+  isFinalTurnStopReason,
+  parseNextSteps,
+  projectNextStepsToolInput,
+} from '@wrongstack/tools/next-steps';
 import { describe, expect, it } from 'vitest';
+import type { Context } from '../src/core/context.js';
 import {
   clearPendingNextSteps,
   hasNextStepsTag,
@@ -10,7 +15,6 @@ import {
   renderNextStepsBlock,
   writePendingNextSteps,
 } from '../src/core/next-steps-slot.js';
-import type { Context } from '../src/core/context.js';
 import type { Response } from '../src/types/provider.js';
 
 /**
@@ -48,6 +52,44 @@ function textOf(r: Response): string {
 }
 
 describe('renderNextStepsBlock ↔ parseNextSteps round-trip', () => {
+  it.each([
+    'Parserdaki "iki  boşluk" davranışını incele.',
+    'Verify this snippet:\n```ts\n  const value = "a  b";\n```',
+    'Preserve Windows lines:\r\n  first\r\n  second',
+    'Preserve Unicode separators:\u2028first\u2029second',
+    'Inspect the literal </nextsteps> in the parser.',
+    'Explain the literal attribute auto="true"',
+    '  Keep boundary whitespace  ',
+    '<!--ws:nextstep-json-->"Keep this marker literal"',
+  ])('preserves a structured prompt without inventing metadata: %j', (text) => {
+    const c = ctx();
+    writePendingNextSteps(c, [{ text }]);
+    const output = maybeAppendPendingNextSteps(c, res('Done.'));
+    const parsed = parseNextSteps(textOf(output));
+    expect(parsed.texts).toEqual([text]);
+    expect(parsed.autoTexts).toEqual([]);
+    expect(parsed.stripped).toBe('Done.');
+    expect(parseNextSteps(textOf(output), false).texts).toEqual([text]);
+    expect(projectNextStepsToolInput({ steps: [{ text }] }).map((step) => step.text)).toEqual([
+      text,
+    ]);
+  });
+
+  it('keeps explicit auto separate from an encoded prompt ending in literal auto syntax', () => {
+    const text = 'Explain auto="true"';
+    const parsed = parseNextSteps(renderNextStepsBlock([{ text, auto: true }]));
+    expect(parsed.texts).toEqual([text]);
+    expect(parsed.autoTexts).toEqual([text]);
+  });
+
+  it('keeps the structured UI fallback within the same accepted count as the slot', () => {
+    const steps = Array.from({ length: 7 }, (_, i) => ({ text: `Inspect parser ${i}` }));
+    const c = ctx();
+    writePendingNextSteps(c, steps);
+    expect(projectNextStepsToolInput({ steps }).map((step) => step.text)).toEqual(
+      readPendingNextSteps(c)!.map((step) => step.text),
+    );
+  });
   it('produces a block the canonical parser accepts verbatim', () => {
     const steps: PendingNextStep[] = [
       { text: 'Run the parser tests and fix any failures' },
@@ -95,14 +137,14 @@ describe('renderNextStepsBlock ↔ parseNextSteps round-trip', () => {
 });
 
 describe('slot access', () => {
-  it('normalizes text and keeps auto on the first item only', () => {
+  it('preserves prompt whitespace and keeps auto on the first item only', () => {
     const c = ctx();
     writePendingNextSteps(c, [
       { text: '  Run   the tests  ', auto: true },
       { text: 'Second', auto: true },
     ]);
     expect(readPendingNextSteps(c)).toEqual([
-      { text: 'Run the tests', auto: true },
+      { text: '  Run   the tests  ', auto: true },
       { text: 'Second' },
     ]);
   });
@@ -138,6 +180,32 @@ describe('slot access', () => {
 });
 
 describe('maybeAppendPendingNextSteps', () => {
+  it.each([
+    'The literal `<nextsteps>` names the format.',
+    '```xml\n<nextsteps>\n1. Example only\n</nextsteps>\n```',
+    '~~~xml\n<nextsteps>\n1. Example only\n</nextsteps>\n~~~',
+    '<nextsteps/>',
+    '<nextsteps>\n</nextsteps>',
+    '<nextsteps>\n1. Unfinished example',
+    '<nextsteps>\n1. <!--ws:nextstep-json-->not-json\n</nextsteps>',
+  ])('does not let non-actionable markup hide a tool prompt: %j', (body) => {
+    expect(hasNextStepsTag(body)).toBe(false);
+    const c = ctx();
+    writePendingNextSteps(c, [{ text: 'Inspect the real parser' }]);
+    const output = textOf(maybeAppendPendingNextSteps(c, res(body)));
+    expect(output.startsWith(body)).toBe(true);
+    expect(parseNextSteps(output).texts).toEqual(['Inspect the real parser']);
+    expect(readPendingNextSteps(c)).toBeUndefined();
+  });
+
+  it('keeps the appended tool block outside an unfinished code fence', () => {
+    const c = ctx();
+    const body = 'An example:\n````xml\n<nextsteps>\n1. Example only';
+    writePendingNextSteps(c, [{ text: 'Inspect the real parser' }]);
+    const output = textOf(maybeAppendPendingNextSteps(c, res(body)));
+    expect(output.startsWith(body)).toBe(true);
+    expect(parseNextSteps(output).texts).toEqual(['Inspect the real parser']);
+  });
   it('appends to the last text block and empties the slot', () => {
     const c = ctx();
     writePendingNextSteps(c, [{ text: 'Run the parser tests' }]);
@@ -200,6 +268,16 @@ describe('maybeAppendPendingNextSteps', () => {
     const out = maybeAppendPendingNextSteps(c, res(typed));
 
     expect(parseNextSteps(textOf(out)).texts).toEqual(['From the message']);
+    expect(readPendingNextSteps(c)).toBeUndefined();
+  });
+
+  it('respects an existing block in an earlier text part of the final response', () => {
+    const c = ctx();
+    writePendingNextSteps(c, [{ text: 'From the tool' }]);
+    const input = res(renderNextStepsBlock([{ text: 'From the message' }]));
+    input.content.push({ type: 'text', text: '\nThe checks passed.' });
+    const output = maybeAppendPendingNextSteps(c, input);
+    expect(output).toBe(input);
     expect(readPendingNextSteps(c)).toBeUndefined();
   });
 

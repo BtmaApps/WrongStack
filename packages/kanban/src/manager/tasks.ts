@@ -20,6 +20,7 @@ import type {
   UpdateKanbanGoalMetricInput,
   UpdateKanbanTaskInput,
 } from '../types-operations.js';
+import { clearGateRefusals } from '../verification/refusal-budget.js';
 import {
   applyTaskPatch,
   cloneTaskForBoard,
@@ -534,6 +535,9 @@ export async function addCheckToTask(
       ...(check.notes !== undefined ? { notes: check.notes } : {}),
     };
     task.successCriteria = [...(task.successCriteria ?? []), newCheck];
+    // The card is now held to something it was not held to when the gate
+    // refused it, so the refusal budget starts over.
+    clearGateRefusals(task);
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
     event = createKanbanEvent(board.id, task, 'task.check.added', {
@@ -580,6 +584,16 @@ export async function updateCheckOnTask(
     if (patch.status && patch.status !== 'pending' && !check.checkedAt) {
       check.checkedAt = nowIso();
     }
+    // Rewriting what a criterion ASSERTS re-scopes the card, so the refusal
+    // budget starts over. Ticking a criterion's status does not: that is the
+    // ordinary verification flow, and resetting there would hand the card an
+    // unlimited budget and make the gate unable to ever park anything.
+    if (
+      (patch.description !== undefined && patch.description !== before.description) ||
+      (patch.type !== undefined && patch.type !== before.type)
+    ) {
+      clearGateRefusals(task);
+    }
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
     event = createKanbanEvent(board.id, task, 'task.check.updated', {
@@ -621,6 +635,10 @@ export async function removeCheckFromTask(
     if (!task || index === -1) return null;
     const [removed] = task.successCriteria!.splice(index, 1);
     if (task.successCriteria!.length === 0) delete task.successCriteria;
+    // Dropping a criterion is the truthful escape this function exists for
+    // (see above). Leaving a spent budget behind would defeat it: the card
+    // would re-park on its very next refusal.
+    clearGateRefusals(task);
     for (const node of board.contractGraph?.nodes ?? []) {
       if (node.checkId === checkId) delete node.checkId;
     }

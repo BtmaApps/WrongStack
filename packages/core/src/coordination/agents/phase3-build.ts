@@ -1,5 +1,5 @@
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, HEAVY_BUDGET, MEDIUM_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 /** Phase 3 · Build — write, refactor, migrate, and fix code. */
 export const BUILD_AGENTS: AgentDefinition[] = [
@@ -9,7 +9,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Executor',
       role: 'executor',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('executor'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -34,7 +33,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Refactor',
       role: 'refactor',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('refactor'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -60,7 +58,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Simplifier',
       role: 'simplifier',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('simplifier'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -86,7 +83,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Migration',
       role: 'migration',
       tools: [...TOOLS.build, 'install', 'outdated'],
-      prompt: agentPrompt('migration'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -112,7 +108,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Vision',
       role: 'vision',
       tools: [...TOOLS.write, 'fetch'],
-      prompt: agentPrompt('vision'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -138,7 +133,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Debugger',
       role: 'debugger',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('debugger'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -166,7 +160,6 @@ export const BUILD_AGENTS: AgentDefinition[] = [
       name: 'Tracer',
       role: 'tracer',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('tracer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -187,3 +180,10 @@ export const BUILD_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(BUILD_AGENTS);

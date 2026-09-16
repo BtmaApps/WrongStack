@@ -869,6 +869,7 @@ export async function getKanbanQueueHealth(
   const staleAssignments: KanbanSearchResult[] = [];
   const failedRetryable: KanbanSearchResult[] = [];
   const heartbeatDue: KanbanSearchResult[] = [];
+  const parked: KanbanSearchResult[] = [];
   const classificationCounts = {
     claimable: 0,
     stage_blocked: 0,
@@ -959,6 +960,13 @@ export async function getKanbanQueueHealth(
       ) {
         failedRetryable.push(result);
       }
+      // A parked card has spent its verification budget: it will not clear
+      // itself and nothing will retry it. Terminal cards are excluded because
+      // a passing verification calls `clearGateRefusals`, so a completed card
+      // carrying a park record is stale data rather than live attention.
+      if (task.park !== undefined && task.status !== 'completed' && task.status !== 'archived') {
+        parked.push(result);
+      }
     }
   }
 
@@ -984,6 +992,7 @@ export async function getKanbanQueueHealth(
     staleAssignments: { count: staleAssignments.length, tasks: staleAssignments },
     failedRetryable: { count: failedRetryable.length, tasks: failedRetryable },
     heartbeatDue: { count: heartbeatDue.length, tasks: heartbeatDue },
+    parked: { count: parked.length, tasks: parked },
     ...(input.includeClassifications === false
       ? {}
       : {

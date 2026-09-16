@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import type { BundledAgentSkill } from './role-skills.js';
 import {
   type AgentDefinition,
@@ -126,7 +126,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'Payments',
       role: 'payments',
       tools: [...new Set([...TOOLS.build, ...TOOLS.write, ...TOOLS.inspect, 'fetch'])],
-      prompt: agentPrompt('payments'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -151,7 +150,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'Messaging',
       role: 'messaging',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('messaging'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -176,7 +174,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'Search Relevance',
       role: 'search-relevance',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('search-relevance'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -201,7 +198,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'Storage',
       role: 'storage',
       tools: [...TOOLS.build, 'fetch', 'logs'],
-      prompt: agentPrompt('storage'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -226,7 +222,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'ML Engineer',
       role: 'ml-engineer',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('ml-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -249,7 +244,6 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
       name: 'Data Governance',
       role: 'data-governance',
       tools: [...TOOLS.read, 'write', 'audit'],
-      prompt: agentPrompt('data-governance'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -270,3 +264,10 @@ export const WAVE3_AGENTS: AgentDefinition[] = [
 ];
 
 void skillSet;
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(WAVE3_AGENTS);

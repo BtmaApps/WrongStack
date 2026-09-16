@@ -208,17 +208,7 @@ export const TOOLS = {
   /** Dependency management + CVE audit. */
   deps: ['read', 'grep', 'glob', 'install', 'outdated', 'audit', 'json', 'mailbox'],
   /** Documentation authoring. */
-  docs: [
-    'read',
-    'grep',
-    'glob',
-    'search',
-    'tree',
-    ...INDEX_READ,
-    'write',
-    'edit',
-    'mailbox',
-  ],
+  docs: ['read', 'grep', 'glob', 'search', 'tree', ...INDEX_READ, 'write', 'edit', 'mailbox'],
   /** Web research. */
   research: ['read', 'grep', 'glob', 'search', 'fetch', 'mailbox'],
 } as const satisfies Record<string, readonly string[]>;

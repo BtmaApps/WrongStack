@@ -12,6 +12,23 @@ const textCache = new Map<string, string>();
 /** Resolved once — the candidate roots only depend on this module's location. */
 let rootCandidates: string[] | undefined;
 
+/** Expand shared, bundled system policy before evaluating tool conditionals.
+ * Names cannot contain paths; project/profile text cannot redirect these reads.
+ * Shared fragments are terminal (no nested includes).
+ */
+export function expandSharedSystemInstructions(text: string): string {
+  return text.replace(/\{\{shared:([^{}]+)\}\}/g, (_marker, name: string) => {
+    if (!/^[a-z-]+$/.test(name)) {
+      throw new Error(`Invalid shared system instruction: ${name}`);
+    }
+    const fragment = readBundledInstructionText(`shared/system/${name}.md`);
+    if (!fragment || fragment.includes('{{shared:')) {
+      throw new Error(`Invalid shared system instruction: ${name}`);
+    }
+    return fragment;
+  });
+}
+
 export function readBundledInstructionText(relativePath: string): string {
   if (typeof relativePath !== 'string' || relativePath.length === 0) return '';
   const cached = textCache.get(relativePath);

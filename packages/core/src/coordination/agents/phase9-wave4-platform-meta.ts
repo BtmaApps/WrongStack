@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import type { BundledAgentSkill } from './role-skills.js';
 import {
   type AgentDefinition,
@@ -123,7 +123,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Plugin Author',
       role: 'plugin-author',
       tools: [...TOOLS.write, 'fetch'],
-      prompt: agentPrompt('plugin-author'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -148,7 +147,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Tool Author',
       role: 'tool-author',
       tools: [...TOOLS.write, 'install'],
-      prompt: agentPrompt('tool-author'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -173,7 +171,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Prompt Evaluator',
       role: 'prompt-evaluator',
       tools: [...TOOLS.read, 'write'],
-      prompt: agentPrompt('prompt-evaluator'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -197,7 +194,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Benchmark Engineer',
       role: 'benchmark-engineer',
       tools: [...TOOLS.read, 'write', 'logs'],
-      prompt: agentPrompt('benchmark-engineer'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -221,7 +217,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Memory Curator',
       role: 'memory-curator',
       tools: [...TOOLS.read, ...SPECIALIST_TOOLS.memory],
-      prompt: agentPrompt('memory-curator'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -245,7 +240,6 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
       name: 'Fleet Coordinator',
       role: 'fleet-coordinator',
       tools: [...TOOLS.read, 'plan'],
-      prompt: agentPrompt('fleet-coordinator'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -266,3 +260,10 @@ export const WAVE4_AGENTS: AgentDefinition[] = [
 ];
 
 void skillSet;
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(WAVE4_AGENTS);

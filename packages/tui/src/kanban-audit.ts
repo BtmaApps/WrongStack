@@ -42,6 +42,7 @@ export const ALL_AUDIT_CODES = [
   'missing-labels',
   'missing-subtasks',
   'missing-success-criteria',
+  'parked-card',
   'skipped-lifecycle-state',
   'stale-review',
   'stale-running-task',
@@ -182,6 +183,7 @@ export function auditKanbanBoard(
     if (TERMINAL_STATUSES.has(task.status)) continue;
 
     addRequiredDetailIssues(issues, task, requireDueDate, managed);
+    addParkedIssue(issues, task);
     addRunningIssue(issues, task, now, liveIdentities);
     addReviewIssue(issues, task, now, reviewStaleAfterMs);
     if (lifecycleOrder.length > 1) addLifecycleIssue(issues, task, lifecycleOrder);
@@ -323,6 +325,30 @@ function boardByteSize(board: KanbanBoard): number {
     // HQ either, but that is a different problem than being too large.
     return 0;
   }
+}
+
+/**
+ * A card the completion gate gave up on.
+ *
+ * `task.park` is set once the verification budget is spent, and it is the only
+ * record saying that retrying the card unchanged is pointless. It is
+ * deliberately not a third status — a parked managed card stays in Review and a
+ * parked legacy card stays `blocked` — which is exactly why it needs surfacing
+ * here: on the board it is indistinguishable from work that is merely waiting.
+ *
+ * `warning`, not `error`: parking is an honest, reversible state produced by a
+ * gate working correctly, not a malfunction. It needs a decision, not a repair.
+ */
+function addParkedIssue(issues: KanbanAuditIssue[], task: AuditableTask): void {
+  const park = task.park;
+  if (!park) return;
+  pushIssue(
+    issues,
+    task,
+    'parked-card',
+    'warning',
+    `Parked after ${park.attempts} refused completion${park.attempts === 1 ? '' : 's'}: ${park.reason}`,
+  );
 }
 
 function addRunningIssue(

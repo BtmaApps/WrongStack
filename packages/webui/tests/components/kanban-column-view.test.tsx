@@ -193,6 +193,60 @@ describe('KanbanColumnView intelligence cache', () => {
   });
 });
 
+describe('KanbanColumnView parked cards', () => {
+  // Parking is not a status — the card keeps `blocked`/`review` so the queue
+  // keeps working — so the badge is the only thing on the board that says
+  // "verification gave up on this one".
+  const park = {
+    reason: 'Done requires every acceptance criterion to be explicitly passed.',
+    parkedAt: '2026-07-21T12:00:00.000Z',
+    attempts: 2,
+  };
+
+  it('badges a parked card and carries the recorded reason in its tooltip', () => {
+    renderColumn({ tasks: [task({ status: 'blocked', park })] });
+
+    const badge = screen.getByTitle(/Parked after 2 refused completion/);
+    expect(badge.textContent).toBe('parked');
+    expect(badge.getAttribute('title')).toContain(park.reason);
+  });
+
+  it('does not badge a card that is not parked', () => {
+    renderColumn({ tasks: [task({ status: 'blocked' })] });
+    expect(screen.queryByText('parked')).toBeNull();
+  });
+
+  it('drops the badge once the card reaches a terminal state', () => {
+    // `task.park` is never cleared, so a card that was parked and later
+    // resolved would otherwise keep the badge forever on the Done column.
+    renderColumn({ tasks: [task({ status: 'completed', park })] });
+    expect(screen.queryByText('parked')).toBeNull();
+  });
+
+  it('re-derives when a card parks without any other field changing', () => {
+    // The derivation is cached on a fingerprint of the task inputs; a park
+    // written by the completion gate changes nothing else on the card, so
+    // `task.park` has to be part of that fingerprint or the badge never shows.
+    const { rerender, props } = renderColumn({ tasks: [task({ status: 'blocked' })] });
+    expect(screen.queryByText('parked')).toBeNull();
+
+    rerender(
+      <KanbanColumnView
+        board={board({ tasks: [task({ status: 'blocked', park })] })}
+        column={props.column}
+        selectedTaskId={null}
+        dragTaskId={null}
+        setDragTaskId={props.setDragTaskId}
+        onSelectTask={props.onSelectTask}
+        onDeleteTask={props.onDeleteTask}
+        onMoveTask={props.onMoveTask}
+      />,
+    );
+
+    expect(screen.getByText('parked')).toBeTruthy();
+  });
+});
+
 describe('KanbanColumnView two-step delete', () => {
   it('deletes only after a second click confirms', () => {
     const { props } = renderColumn();

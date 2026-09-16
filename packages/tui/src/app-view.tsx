@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useCallback } from 'react';
 import { AppStatusRegion } from './app-status-region.js';
 import { buildSidebarOpenFlags, resolveAppSidebarLayout } from './app-ui-state.js';
 import type { AppViewProps } from './app-view-contract.js';
@@ -19,6 +20,7 @@ import { useTerminalSize } from './hooks/use-terminal-size.js';
 import { Box } from './ink.js';
 import { estimateSidebarMaxScroll } from './reducers/workspace-panels.js';
 import { theme } from './theme.js';
+import type { ToolResultViewMode } from './tool-result-view-mode.js';
 import { PANEL_IDS, type PanelId, SIDEBAR_PANEL_LIMIT } from './ui-contracts.js';
 import { glyphs } from './ui-glyphs.js';
 
@@ -121,6 +123,24 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
     ? resolveInspectOverlayContent(state.inspectOverlay, state.entries, state.toolStream)
     : null;
 
+  const onToolResultViewChange = useCallback(
+    (entryIds: readonly number[], mode: ToolResultViewMode) => {
+      runtime.dispatch({ type: 'toolResultViewSet', entryIds, mode });
+    },
+    [runtime.dispatch],
+  );
+
+  const onInspectScroll = useCallback(
+    (delta: number) => {
+      runtime.dispatch({ type: 'inspectOverlayScroll', delta });
+    },
+    [runtime.dispatch],
+  );
+
+  const onInspectClose = useCallback(() => {
+    runtime.dispatch({ type: 'inspectOverlayClose' });
+  }, [runtime.dispatch]);
+
   return (
     <PanelShortcutsProvider value={state.buffer.length === 0}>
       <Box
@@ -138,8 +158,8 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                 scroll={state.inspectOverlay.scroll}
                 termCols={mainColumnWidth}
                 viewportRows={state.viewportRows}
-                onScroll={(delta) => runtime.dispatch({ type: 'inspectOverlayScroll', delta })}
-                onClose={() => runtime.dispatch({ type: 'inspectOverlayClose' })}
+                onScroll={onInspectScroll}
+                onClose={onInspectClose}
                 copied={state.copiedEntryId === state.inspectOverlay.entryId}
                 headerRef={runtime.inspectOverlayHeaderRef}
               />
@@ -171,9 +191,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                 }
                 toolResultViewMode={toolResultViewMode}
                 toolResultViewOverrides={state.toolResultViewOverrides}
-                onToolResultViewChange={(entryIds, mode) =>
-                  runtime.dispatch({ type: 'toolResultViewSet', entryIds, mode })
-                }
+                onToolResultViewChange={onToolResultViewChange}
                 layoutStore={layoutStore}
                 copiedEntryId={state.copiedEntryId}
                 onRequestOlderEntries={runtime.onRequestOlderEntries}

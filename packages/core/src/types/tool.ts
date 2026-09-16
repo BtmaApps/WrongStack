@@ -163,6 +163,16 @@ export interface Tool<I = unknown, O = unknown> {
    */
   subjectFields?: readonly string[] | undefined;
   maxOutputBytes?: number | undefined;
+  /**
+   * Return the serialized tool result to the model without artifact previewing
+   * or iteration-budget truncation. The output still consumes the remaining
+   * iteration budget for accounting; an oversized result reduces it to zero.
+   *
+   * Use only when completeness is part of the tool contract and the tool
+   * already bounds its own work. Most tools must stay on the default bounded
+   * path to avoid flooding the model context.
+   */
+  preserveFullOutput?: boolean | undefined;
   timeoutMs?: number | undefined;
   /**
    * The tool owns its timeout/idle policy and only needs the executor to
@@ -299,8 +309,9 @@ export interface Tool<I = unknown, O = unknown> {
    * — the tool owns its own pretty-printing.
    *
    * Return a string representation of the output that the model will see in
-   * its tool_result block. The serializer applies the iteration output cap
-   * AFTER this runs, so don't worry about truncation.
+   * its tool_result block. By default the executor applies artifact previewing
+   * and the iteration output cap after this runs. Tools whose contract requires
+   * the complete serialized result may explicitly set `preserveFullOutput`.
    *
    * P3 #21 (before-release.md): `renderToolObject()` is a god function with
    * 30+ per-tool branches, far from each tool's definition. New tools that

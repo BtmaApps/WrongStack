@@ -61,6 +61,7 @@ const coreEntries = entryMap([
   'src/types/session-timeline.ts',
   'src/utils/index.ts',
   'src/utils/expect-defined.ts',
+  'src/utils/next-steps.ts',
   'src/utils/error.ts',
   'src/utils/child-env.ts',
   'src/utils/sage-output-block.ts',

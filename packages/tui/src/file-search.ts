@@ -13,6 +13,12 @@ const IGNORED_DIRS = new Set([
   'coverage',
   '.idea',
   '.vscode',
+  '.venv',
+  'venv',
+  'target',
+  'vendor',
+  '.gradle',
+  '.yarn',
 ]);
 
 const MAX_FILES_INDEXED = 5000;

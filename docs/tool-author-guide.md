@@ -45,6 +45,7 @@ interface Tool<I, O> {
   mutating: boolean;               // hints UI; doesn't enforce anything
   riskTier?: 'safe' | 'standard' | 'destructive';
   maxOutputBytes?: number;
+  preserveFullOutput?: boolean;      // opt out of output previewing/truncation
   timeoutMs?: number;
   estimatedDurationMs?: number;    // TUI spinner hint only
   execute(input: I, ctx: Context, opts: { signal: AbortSignal }): Promise<O>;
@@ -65,6 +66,7 @@ interface Tool<I, O> {
 | `riskTier` | Optional risk classification: `safe`, `standard`, or `destructive`. YOLO auto-approves non-denied calls; when YOLO is off, risk can inform prompts. |
 | `capabilities` | Optional capability tags (e.g. `['fs.read']`, `['net.outbound']`). Used by the permission policy and plugin mutation rules to decide who can invoke or modify the tool. See **Capability Model** below. |
 | `maxOutputBytes` | Hard cap. The executor truncates and emits a warning. |
+| `preserveFullOutput` | Opt out of artifact previewing and iteration-budget truncation when completeness is part of the tool contract. Use sparingly and only with bounded inputs; the result still consumes the remaining budget for accounting. |
 | `timeoutMs` | Hard cap. After this, the executor aborts via the run's `AbortController`. |
 
 ---

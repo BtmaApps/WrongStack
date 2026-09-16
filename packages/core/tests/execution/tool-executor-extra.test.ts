@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { classifyToolError } from '../../src/execution/tool-executor.js';
+import type { ErrorCode, ErrorSubsystem } from '../../src/types/errors.js';
 import {
+  ERROR_CODES,
   FetchError,
   ToolValidationError,
   WrongStackError,
-  ERROR_CODES,
 } from '../../src/types/errors.js';
-import type { ErrorCode, ErrorSubsystem } from '../../src/types/errors.js';
 import { ToolErrorCategory } from '../../src/types/tool.js';
 import type { ConfirmAwaiter } from '../../src/types/tool-executor.js';
 
@@ -651,6 +651,29 @@ describe('ToolExecutor — additional coverage', () => {
       const executor = makeExecutor([tool], { perIterationOutputCapBytes: 10_000 });
       const result = await executor.executeBatch([makeUse('big')], makeCtx(), 'sequential');
       expect(result.remainingBudget).toBeGreaterThanOrEqual(0);
+    });
+
+    it('returns complete output after the shared iteration budget is exhausted', async () => {
+      const completeOutput = `${'full-skeleton-😀\n'.repeat(2_000)}tail-marker`;
+      const filler = makeTool({
+        name: 'filler',
+        execute: vi.fn().mockResolvedValue('x'.repeat(1_000)),
+      });
+      const tool = makeTool({
+        name: 'codebase-skeleton',
+        preserveFullOutput: true,
+        execute: vi.fn().mockResolvedValue(completeOutput),
+      });
+      const executor = makeExecutor([filler, tool], { perIterationOutputCapBytes: 1_000 });
+
+      const result = await executor.executeBatch(
+        [makeUse('filler'), makeUse('codebase-skeleton')],
+        makeCtx(),
+        'sequential',
+      );
+
+      expect((result.outputs[1]!.result as ToolResultBlock).content).toBe(completeOutput);
+      expect(result.remainingBudget).toBe(0);
     });
   });
 

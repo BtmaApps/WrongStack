@@ -367,6 +367,43 @@ describe('plugin entry', () => {
     await plugin.teardown?.(api2);
   });
 
+  it('applies a hot-reloaded poll interval after the next poll tick', async () => {
+    vi.useFakeTimers();
+    const api = makeApi();
+    const telegram = api.config.extensions[PLUGIN_NAME] as Record<string, unknown>;
+    Object.assign(telegram, {
+      inboundMode: 'disabled',
+      pollIntervalSec: 1,
+      singleInstanceLock: false,
+      offsetStoragePath: '',
+    });
+    await plugin.setup(api);
+
+    const previous = structuredClone(api.config);
+    const next = structuredClone(api.config);
+    (next.extensions[PLUGIN_NAME] as Record<string, unknown>).pollIntervalSec = 5;
+    const reload = vi.mocked(api.onConfigChange).mock.calls[0]?.[0];
+    expect(reload).toBeTypeOf('function');
+    reload?.(next, previous);
+
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockClear();
+    const pollCalls = () =>
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/getUpdates')).length;
+
+    // The already-scheduled tick still fires at the original interval.
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(pollCalls()).toBe(1);
+
+    // The completed tick must schedule its successor using the live value.
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(pollCalls()).toBe(1);
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(pollCalls()).toBe(2);
+
+    await plugin.teardown?.(api);
+  });
+
   it('leaves no registrations or listeners when preflight fails', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

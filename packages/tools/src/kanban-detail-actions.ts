@@ -6,6 +6,7 @@ import {
   addLinkToTask,
   addNoteToTask,
   getKanbanWorkbench,
+  recordTaskActivity,
   removeCheckFromTask,
   updateCheckOnTask,
   updateGoalMetricOnTask,
@@ -156,6 +157,38 @@ export async function handleKanbanDetailAction(
       );
       if (!board) throw notFound('Check not found on this task.');
       return okBoard(board, 'Acceptance criterion removed.');
+    }
+    case 'record_activity': {
+      // The WebUI could write this (kanban.task.activity.add) and the agent
+      // could not — so the durable "what was attempted and how it went" record
+      // on a card was only ever populated by a human watching the board.
+      // Unlike add_note (a comment on the card) this appends a typed
+      // `task.activity.<kind>` event to the card's activity stream and does not
+      // change the card's content.
+      if (!input.boardId || !input.taskId || !input.activityKind || !input.note) {
+        throw invalidInput(
+          'record_activity requires boardId, taskId, activityKind, and note (the one-line summary).',
+        );
+      }
+      const board = await recordTaskActivity(
+        projectRoot,
+        input.boardId,
+        input.taskId,
+        {
+          kind: input.activityKind,
+          summary: input.note,
+          ...(input.activityOutcome !== undefined ? { outcome: input.activityOutcome } : {}),
+          ...(input.activityDetails !== undefined ? { details: input.activityDetails } : {}),
+        },
+        eventContext,
+      );
+      if (!board) throw notFound('Task not found.');
+      return okBoard(
+        board,
+        `Activity recorded on the card (${input.activityKind}${
+          input.activityOutcome ? `, ${input.activityOutcome}` : ''
+        }).`,
+      );
     }
     case 'add_note': {
       if (!input.boardId || !input.taskId || !input.note)

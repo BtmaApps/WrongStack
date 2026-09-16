@@ -1,7 +1,7 @@
-import { useAppTranslation } from '@/i18n';
 import type { KanbanBoard, KanbanColumn, KanbanTask } from '@wrongstack/kanban';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { kanbanMetadataText } from '@/lib/kanban-metadata';
 import { type TaskVerificationState, verificationStateOf } from '@/lib/kanban-verification';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,16 @@ export interface TaskCardIntelligence {
   evidenceCount: number;
   /** A decomposition proposal awaiting approval. */
   pendingDecomposition: boolean;
+  /**
+   * Set once verification has spent its refusal budget on this card.
+   *
+   * Parking is deliberately not a status — a parked managed card stays in
+   * Review, a parked legacy card stays `blocked` — so without this the card
+   * looks exactly like one that is merely waiting, and the single most
+   * actionable fact about it (retrying it unchanged will refuse again) was
+   * readable only by opening the inspector.
+   */
+  parked: { reason: string; attempts: number } | null;
 }
 
 export function deriveTaskCardIntelligence(
@@ -87,6 +97,10 @@ export function deriveTaskCardIntelligence(
     atomicityVerdict: task.atomicityAssessment?.verdict ?? null,
     evidenceCount: task.verificationReport?.attachments.length ?? 0,
     pendingDecomposition: task.decomposition?.status === 'proposed',
+    parked:
+      task.park && task.status !== 'completed' && task.status !== 'archived'
+        ? { reason: task.park.reason, attempts: task.park.attempts }
+        : null,
   };
 }
 
@@ -96,8 +110,9 @@ export function deriveTaskCardIntelligence(
  * (kanban.task.update / kanban.task.verification_completed, task removal)
  * swap a task WITHOUT bumping board.revision, so revision alone cannot
  * invalidate the cache — this signature changes exactly when the
- * derivation's board inputs change, and stays byte-identical across the
- * 5 s poll (same content). Keep this list in sync with
+ * derivation's board inputs change, and stays byte-identical when the same
+ * content arrives again (a daemon-event broadcast that re-sends an unchanged
+ * board, a parent re-render). Keep this list in sync with
  * deriveTaskCardIntelligence / analyzeTaskRisk when they grow a new input.
  */
 function boardIntelligenceSignature(board: KanbanBoard): string {
@@ -116,7 +131,7 @@ function boardIntelligenceSignature(board: KanbanBoard): string {
 /**
  * Compact key for the TASK-side inputs deriveTaskCardIntelligence reads.
  * The board-side inputs are covered by boardIntelligenceSignature; the
- * combined key must stay stable across the 5 s board poll (same content)
+ * combined key must stay stable when the same board content arrives again
  * and change on any real input change.
  *
  * Keep in sync with deriveTaskCardIntelligence AND analyzeTaskRisk: the
@@ -137,6 +152,7 @@ function taskIntelligenceKey(task: KanbanTask): string {
     task.atomicityAssessment?.verdict ?? '',
     task.verificationReport?.attachments.length ?? 0,
     task.decomposition?.status ?? '',
+    task.park ? `${task.park.attempts}:${task.park.reason}` : '',
     assignment
       ? JSON.stringify({
           provider: assignment.provider,
@@ -204,8 +220,8 @@ export function KanbanColumnView({
 
   // Per-card intelligence derives from the whole board (dependencies,
   // presence, assignment) and used to re-run analyzeTaskRisk for every card
-  // on every render — including the 5 s board poll, which hands the store a
-  // fresh board object with the SAME content. The cache key pairs the
+  // on every render — including a broadcast that hands the store a fresh
+  // board object with the SAME content. The cache key pairs the
   // board-content signature (see boardIntelligenceSignature) with a
   // fingerprint of the task inputs the derivation reads (see
   // taskIntelligenceKey), so poll renders serve the cached derivation while
@@ -457,6 +473,17 @@ export function KanbanColumnView({
                 {intelligence.activeUsers > 0 && (
                   <span className="rounded bg-success/10 px-1.5 py-0.5 text-success">
                     {intelligence.activeUsers} active
+                  </span>
+                )}
+                {intelligence.parked && (
+                  <span
+                    className="rounded bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive"
+                    title={t('activity:kanban.parkedReason', {
+                      attempts: intelligence.parked.attempts,
+                      reason: intelligence.parked.reason,
+                    })}
+                  >
+                    {t('activity:kanban.parked')}
                   </span>
                 )}
                 {intelligence.failed && (

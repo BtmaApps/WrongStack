@@ -7,7 +7,7 @@
  * The submitted text is preserved verbatim as the record's original request.
  */
 import { Check, ChevronDown, ChevronRight, Copy, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,11 +98,24 @@ export function RequirementIntakeView({
   const [formNotice, setFormNotice] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // One indicator window at a time: a new copy must cancel the previous timer,
+  // or that timer fires mid-window and clears the NEWEST record's "Copied!".
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copyRequest = useCallback((id: string, text: string) => {
     void navigator.clipboard?.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
+    if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => {
+      copiedTimerRef.current = null;
+      setCopiedId(null);
+    }, 1500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) clearTimeout(copiedTimerRef.current);
+    };
   }, []);
 
   const load = useCallback(async () => {

@@ -1,5 +1,5 @@
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, LIGHT_BUDGET, MEDIUM_BUDGET, TOOLS } from './types.js';
-import { agentPrompt } from './agent-prompts.js';
 
 /** Phase 7 · Knowledge — documentation, diagrams, localization, and prompts. */
 export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
@@ -9,7 +9,6 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
       name: 'Document',
       role: 'document',
       tools: [...TOOLS.docs],
-      prompt: agentPrompt('document'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -36,7 +35,6 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
       name: 'UML',
       role: 'uml',
       tools: [...TOOLS.read, 'write', 'edit'],
-      prompt: agentPrompt('uml'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -63,7 +61,6 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
       name: 'I18n',
       role: 'i18n',
       tools: [...TOOLS.write],
-      prompt: agentPrompt('i18n'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -90,7 +87,6 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
       name: 'Prompt',
       role: 'prompt',
       tools: [...TOOLS.write],
-      prompt: agentPrompt('prompt'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -110,3 +106,10 @@ export const KNOWLEDGE_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(KNOWLEDGE_AGENTS);

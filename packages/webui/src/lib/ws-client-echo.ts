@@ -76,7 +76,10 @@ export class WsClientEchoSuppression {
    * matches the audit's instruction that suppression must be correlated
    * end-to-end, never type-keyed.
    */
-  consumeSuppressedChatEcho(responseType: string, msg?: WSServerMessage): boolean {
+  // `_responseType` is unused ON PURPOSE — see above: suppression is correlated
+  // by requestId end-to-end, never keyed by message type. It stays in the
+  // signature because every caller passes it positionally.
+  consumeSuppressedChatEcho(_responseType: string, msg?: WSServerMessage): boolean {
     if (!msg) return false;
     const requestId = (msg.payload as { requestId?: unknown } | undefined)?.requestId;
     if (typeof requestId !== 'string' || requestId.length === 0) return false;

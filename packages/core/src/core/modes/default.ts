@@ -1,8 +1,9 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { expandSharedSystemInstructions } from '../../utils/instruction-file.js';
 
-export const PROMPT = readBundledInstructionFile('system.md');
+export const PROMPT = expandSharedSystemInstructions(readBundledInstructionFile('system.md'));
 
 /**
  * Leader-only after-task affordances. The full text lives in

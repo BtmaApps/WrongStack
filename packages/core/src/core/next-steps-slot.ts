@@ -17,17 +17,17 @@
  * cannot tell the difference between a block the model typed and one the tool
  * produced, which is exactly the point.
  *
- * ## Why this module duplicates the tag knowledge
+ * ## Shared syntax
  *
- * `core` sits below `tools` in the package DAG (enforced by
- * `package-boundaries.test.ts`), so it cannot import the parser. The overlap is
- * deliberately kept to the tag name and the item line shape; the round-trip
- * test in `tests/next-steps-slot.test.ts` feeds this renderer's output through
- * the real parser so the two cannot drift apart unnoticed.
+ * Core owns the browser-safe parser in `utils/next-steps.ts`. The tools package
+ * keeps its existing import path as a compatibility re-export. Detection here
+ * and extraction in every UI therefore agree on which blocks are actionable;
+ * round-trip tests keep the renderer aligned with that same parser.
  */
 
 import { isTextBlock } from '../types/blocks.js';
 import type { Response } from '../types/provider.js';
+import { closingCodeFence, parseNextSteps } from '../utils/next-steps.js';
 import { hasOpenTodos } from '../utils/todos-format.js';
 import type { Context } from './context.js';
 
@@ -51,9 +51,6 @@ const SLOT_KEY = 'nextsteps.pending';
  */
 export const MAX_PENDING_NEXT_STEPS = 4;
 
-/** Matches an already-present `<nextsteps>` opening tag, attributes and all. */
-const NEXT_STEPS_TAG_RE = /<nextsteps\b[^>]*>/i;
-
 // ── Slot access ────────────────────────────────────────────────────────────
 
 /**
@@ -68,8 +65,8 @@ export function writePendingNextSteps(
 ): void {
   const cleaned: PendingNextStep[] = [];
   for (const step of steps) {
-    const text = typeof step?.text === 'string' ? step.text.replace(/\s+/g, ' ').trim() : '';
-    if (!text) continue;
+    const text = typeof step?.text === 'string' ? step.text : '';
+    if (!text.trim()) continue;
     // Only the first accepted item may opt into unattended execution — the
     // same rule the parser applies to `auto="true"` (next-steps.ts).
     cleaned.push(step.auto === true && cleaned.length === 0 ? { text, auto: true } : { text });
@@ -107,7 +104,7 @@ export function clearPendingNextSteps(ctx: Pick<Context, 'meta'>): void {
 
 /** True when the text already carries a `<nextsteps>` block the model wrote. */
 export function hasNextStepsTag(text: string): boolean {
-  return NEXT_STEPS_TAG_RE.test(text);
+  return parseNextSteps(text).steps.length > 0;
 }
 
 /**
@@ -120,7 +117,22 @@ export function hasNextStepsTag(text: string): boolean {
 export function renderNextStepsBlock(steps: readonly PendingNextStep[]): string {
   const lines = steps.map((step, i) => {
     const auto = i === 0 && step.auto === true ? ' auto="true"' : '';
-    return `${i + 1}. ${step.text}${auto}`;
+    // Keep ordinary prompts readable and legacy-compatible. Prompts that can
+    // collide with line/XML/auto syntax use a marked JSON string on one line.
+    // Escape angle brackets inside JSON so literal closing tags cannot end the
+    // surrounding block. The browser-safe parser decodes only this marker.
+    const needsEncoding =
+      /[\r\n\u2028\u2029<>]/.test(step.text) ||
+      step.text.trim() !== step.text ||
+      /\s+auto="true"$/.test(step.text);
+    const text = needsEncoding
+      ? `<!--ws:nextstep-json-->${JSON.stringify(step.text)
+          .replace(/</g, '\\u003c')
+          .replace(/>/g, '\\u003e')
+          .replace(/\u2028/g, '\\u2028')
+          .replace(/\u2029/g, '\\u2029')}`
+      : step.text;
+    return `${i + 1}. ${text}${auto}`;
   });
   return `<nextsteps>\n${lines.join('\n')}\n</nextsteps>`;
 }
@@ -176,19 +188,24 @@ export function maybeAppendPendingNextSteps(
   }
 
   const lastTextIndex = res.content.findLastIndex(isTextBlock);
-  if (lastTextIndex >= 0) {
-    const block = res.content[lastTextIndex];
-    if (block && isTextBlock(block) && hasNextStepsTag(block.text)) {
-      clearPendingNextSteps(ctx);
-      return res;
-    }
+  const responseText = res.content
+    .filter(isTextBlock)
+    .map((block) => block.text)
+    .join('');
+  if (hasNextStepsTag(responseText)) {
+    clearPendingNextSteps(ctx);
+    return res;
   }
 
   const rendered = renderNextStepsBlock(steps);
   const content = [...res.content];
   const target = lastTextIndex >= 0 ? content[lastTextIndex] : undefined;
   if (target && isTextBlock(target)) {
-    const separator = target.text.trim() ? '\n\n' : '';
+    // A final answer can end inside a code example. Close that fence before
+    // appending metadata, otherwise every UI correctly treats it as code.
+    // Only append bytes so canonical-response streaming reconciliation holds.
+    const fence = closingCodeFence(responseText);
+    const separator = fence ? `\n${fence}\n\n` : target.text.trim() ? '\n\n' : '';
     content[lastTextIndex] = { ...target, text: `${target.text}${separator}${rendered}` };
   } else {
     // A turn that ended with no prose at all (tool-only response that still

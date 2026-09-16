@@ -233,6 +233,93 @@ function agentOverlayFingerprint(id: string, projectRoot: string): string {
   return fp;
 }
 
+/**
+ * Install `prompt` on a catalog config as a lazy accessor that resolves through
+ * {@link agentPrompt} on first read.
+ *
+ * The phase catalogs used to call `agentPrompt()` eagerly in their array
+ * literals — 76 roles × (one base-prompt `readFileSync` + three overlay
+ * `statSync` + the identity/learned reads inside
+ * `buildProjectContextualizedPrompt`) — and `AGENT_CATALOG` is re-exported from
+ * the core barrel, so *importing core at all* paid that bill. It was ~60 ms of
+ * every CLI and TUI cold start, for ~438 KB of prompt text that a session which
+ * never delegates never reads.
+ *
+ * Deliberately NOT memoized here: `agentPrompt` owns the cache, and its
+ * overlay-fingerprint check is what lets a mid-process `learned.md` capture
+ * reach the next spawn. Caching the string in this closure would pin the first
+ * generation forever and silently break the capture→inject loop.
+ *
+ * The accessor is enumerable (so spreads, `Object.keys` and JSON round-trips
+ * still see `prompt`) and carries a setter that re-defines the key as a plain
+ * data property, so existing `cfg.prompt = …` overrides — `director-tools.ts`
+ * applies `system_prompt` that way — keep working instead of throwing in strict
+ * mode. Note that any SPREAD of the config materializes the prompt, which is
+ * why the two catalog funnels that used to spread — `assignSkillsToAgents` and
+ * `withDispatchMetadata` — copy by descriptor via {@link cloneWithLazyPrompt}.
+ */
+export function defineLazyAgentPrompt<T extends object>(config: T, role: string): T {
+  Object.defineProperty(config, 'prompt', {
+    configurable: true,
+    enumerable: true,
+    get: (): string => agentPrompt(role),
+    // Writes land on the RECEIVER, not on the config captured above.
+    // `cloneWithLazyPrompt` copies this accessor by descriptor, so the closure
+    // variable is the ORIGINAL config — redefining it there would move another
+    // object's prompt and leave the clone still reading through the getter, so
+    // the override silently vanished.
+    set(this: T, value: string) {
+      Object.defineProperty(this, 'prompt', {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    },
+  });
+  return config;
+}
+
+/**
+ * Install the lazy `prompt` accessor on every definition in a phase catalog,
+ * keyed on each one's own role.
+ *
+ * The phase arrays are exported in their own right — `index.ts` re-exports them
+ * and tests read `DISCOVERY_AGENTS[0].config.prompt` directly — so the accessor
+ * has to live on the raw definitions, not only on the catalog copies that
+ * `assignSkillsToAgents` produces. Roles whose prompt file name differs from
+ * their role id install their own accessor in the literal instead (see
+ * `phase3-techstack.ts`) and are left alone here.
+ */
+export function applyLazyPrompts<T extends { config: { role?: string | undefined } }>(
+  definitions: readonly T[],
+): readonly T[] {
+  for (const definition of definitions) {
+    const role = definition.config.role;
+    if (!role) continue;
+    if (Object.getOwnPropertyDescriptor(definition.config, 'prompt')) continue;
+    defineLazyAgentPrompt(definition.config, role);
+  }
+  return definitions;
+}
+
+/**
+ * Copy a config and merge `extra` WITHOUT resolving a lazy `prompt`.
+ *
+ * A spread or a destructure reads every own enumerable key, which invokes the
+ * accessor installed by {@link defineLazyAgentPrompt} and re-introduces exactly
+ * the eager cost it exists to avoid — and `fleet.ts` spreads all 75 catalog
+ * configs at module scope to attach dispatch metadata. `getOwnPropertyDescriptors`
+ * copies the accessor itself rather than its value, so the clone stays lazy.
+ */
+export function cloneWithLazyPrompt<T extends object, E extends object>(
+  config: T,
+  extra: E,
+): T & E {
+  const clone = Object.defineProperties({}, Object.getOwnPropertyDescriptors(config));
+  return Object.assign(clone, extra) as T & E;
+}
+
 export function agentPrompt(id: string): string {
   // The policy body itself is a single shared suffix; return it directly
   // when the sentinel key is requested (used by tests / docs).

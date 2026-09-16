@@ -20,7 +20,7 @@ const todo = (id: string, status: TodoItem['status'], content = `todo ${id}`): T
 });
 
 describe('buildLiveNextStepsGateBlock', () => {
-  it('requires nextsteps or an explicit no-further-steps explanation when no todos are open', () => {
+  it('offers agent prompts or a quiet finish when no todos are open', () => {
     const block = buildLiveNextStepsGateBlock({
       agentId: 'leader',
       todos: [todo('done', 'completed')],
@@ -35,8 +35,12 @@ describe('buildLiveNextStepsGateBlock', () => {
     expect(block?.text).toContain('submitted back to you through the current TUI or WebUI input');
     expect(block?.text).toContain('Never put a human-only chore');
     expect(block?.text).toContain('need not be shell commands');
-    expect(block?.text).toContain('explicitly tell the user');
-    expect(block?.text).toContain('Silently omitting both is invalid');
+    expect(block?.text).toContain('The recipient is the LLM, not the user');
+    expect(block?.text).toContain(
+      'Omit manual chores, approval requests, and questions for the user',
+    );
+    expect(block?.text).toContain('No special closing sentence is required');
+    expect(block?.text).not.toContain('Silently omitting both is invalid');
   });
 
   it('requires omission and exposes the current open todo snapshot', () => {

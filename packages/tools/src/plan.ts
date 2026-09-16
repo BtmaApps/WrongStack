@@ -201,7 +201,8 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
       });
     }
 
-    const meta = (ctx.meta ??= {}) as Record<string, unknown>;
+    ctx.meta ??= {};
+    const meta = ctx.meta as Record<string, unknown>;
     const sessionPlanPath = meta['plan.path'] as string | undefined;
     let planPath: string | undefined;
 

@@ -221,37 +221,51 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
     }
   }, [activeBoardId, fetchBoardHistory]);
 
-  // ── Live polling — fallback refresh every 5s while active ──
-  // The primary update path is now push-based: the server broadcasts kanban.get
-  // via a file watcher whenever the board JSON changes on disk. This poll
-  // exists only as a safety net for edge cases the watcher may miss.
-  // Reduced from 3s to 5s to cut redundant WS traffic.
+  // ── Queue health follows the pushed board, not a timer ──
+  //
+  // There is no board poll. `subscribeKanbanDaemonEvents` (webui-server) is the
+  // update path: the daemon emits one event per committed mutation, the server
+  // coalesces per board over 300 ms, re-reads through the IPC owner and
+  // broadcasts `kanban.get`; it also reconciles every board on reconnect, which
+  // is the case the old poll was actually written for.
+  //
+  // What that push does NOT carry is queue health, so refresh it whenever the
+  // board we were pushed actually changed. `updatedAt` moves on every committed
+  // mutation and `mutateBoard` skips the write entirely for a no-op, so this
+  // fires on real changes and stays quiet otherwise.
+  //
+  // The poll it replaces ran every 5 s per open tab and cost a full board read
+  // plus a full-board fan-out to every connected client, with queue-health
+  // classification for every task on top. Its comment described a file watcher
+  // over board JSON on disk — an architecture that no longer exists; kanban has
+  // been daemon-owned SQLite since protocol v6.
   useEffect(() => {
     if (!activeBoardId) return;
-    const interval = setInterval(() => {
-      ws.send({ type: 'kanban.get', payload: { boardId: activeBoardId } });
-      ws.send({ type: 'kanban.health', payload: { boardId: activeBoardId } });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [activeBoardId, ws]);
+    ws.send({ type: 'kanban.health', payload: { boardId: activeBoardId } });
+  }, [activeBoardId, activeBoard?.updatedAt, ws]);
 
-  // ── Board-list poll — fallback every 8s ──
-  // Primary path is push-based (file watcher broadcasts kanban.get). Re-list
-  // less aggressively since push covers the active board.
+  // ── Board-list safety net ──
+  // Board creation, deletion and renames broadcast `kanban.list` from the
+  // server, so this only has to cover a board appearing from a source that did
+  // not broadcast (another session's mirror, an out-of-band write). Slow on
+  // purpose: the sidebar is not a live feed.
   useEffect(() => {
     const interval = setInterval(() => {
       ws.send({
         type: 'kanban.list',
         payload: { page: boardPage, pageSize: BOARD_PAGE_SIZE, activeSessionIds },
       });
-    }, 8000);
+    }, 30_000);
     return () => clearInterval(interval);
   }, [activeSessionIds, boardPage, ws]);
 
+  // The Workbench spans every board and nothing pushes it, so it is the one
+  // surface that genuinely needs a timer. It is also bounded (8 per lane), and
+  // the Focus tab re-requests it on selection.
   useEffect(() => {
     const interval = setInterval(() => {
       ws.send({ type: 'kanban.workbench', payload: { limitPerLane: 8, alertLimit: 8 } });
-    }, 15_000);
+    }, 60_000);
     return () => clearInterval(interval);
   }, [ws]);
 
@@ -322,19 +336,15 @@ export function KanbanView({ onClose }: { onClose?: (() => void) | undefined }) 
     const title = newBoardTitle.trim();
     if (!title) return;
     setNewBoardTitle('');
-    sendKanban('kanban.create', {
-      title,
-      lifecycle: {
-        mode: 'managed',
-        columns: {
-          backlog: 'backlog',
-          todo: 'todo',
-          running: 'in-progress',
-          review: 'review',
-          done: 'done',
-        },
-      },
-    });
+    // Plain board, like every other creation path (`/kanban create`, the tool's
+    // `create_board`, the session and run mirrors). This used to hard-code a
+    // managed lifecycle, so the same intent — "make me a board" — produced a
+    // strict-gated board from the browser and an ungated one from anywhere
+    // else, and an agent working the board was held to a contract nothing had
+    // announced. Managed mode stays what it already was everywhere else: a
+    // deliberate, audited act via `adopt_managed_lifecycle`, which requires an
+    // actor and a comment and is recorded in the board history.
+    sendKanban('kanban.create', { title });
   };
 
   const createTask = () => {

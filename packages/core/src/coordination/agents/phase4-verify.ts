@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import {
   type AgentDefinition,
   HEAVY_BUDGET,
@@ -15,7 +15,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Verifier',
       role: 'verifier',
       tools: [...TOOLS.inspect, 'bash', 'exec', 'lint', 'typecheck', 'test', 'git'],
-      prompt: agentPrompt('verifier'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -44,7 +43,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Test',
       role: 'test',
       tools: [...TOOLS.build],
-      prompt: agentPrompt('test'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -71,7 +69,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'E2E',
       role: 'e2e',
       tools: [...TOOLS.build, 'fetch', 'e2e_plan', ...SPECIALIST_TOOLS.browser],
-      prompt: agentPrompt('e2e'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -107,7 +104,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Browser',
       role: 'browser',
       tools: [...TOOLS.read, 'fetch', ...SPECIALIST_TOOLS.browser],
-      prompt: agentPrompt('browser'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -139,7 +135,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Performance',
       role: 'performance',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('performance'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -167,7 +162,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Chaos',
       role: 'chaos',
       tools: [...TOOLS.build, 'logs'],
-      prompt: agentPrompt('chaos'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -194,7 +188,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Security Scanner',
       role: 'security-scanner',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('security-scanner'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -226,7 +219,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Bug Hunter',
       role: 'bug-hunter',
       tools: [...TOOLS.inspect, 'dead-code-scan'],
-      prompt: agentPrompt('bug-hunter'),
     },
     budget: HEAVY_BUDGET,
     capability: {
@@ -256,7 +248,6 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
       name: 'Audit Log',
       role: 'audit-log',
       tools: [...TOOLS.inspect],
-      prompt: agentPrompt('audit-log'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -281,3 +272,10 @@ export const VERIFY_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(VERIFY_AGENTS);

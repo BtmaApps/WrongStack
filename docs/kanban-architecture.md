@@ -598,9 +598,12 @@ actions to agents. Important actions:
 | `add_check`, `update_check`, `remove_check` | Write acceptance criteria; `checkType` + `checkNotes` make one executable ([§19](#19-completion-verification)) |
 | `verify_completion` | Run the criteria and persist the report |
 | `workbench` | Bounded Now/Next/Blocked/Review view across boards |
+| `events` | A board's event log, or one card's history with `taskId` |
+| `record_activity` | Append a typed attempt/result/blocker note to a card's activity stream |
+| `board_history` | The global board-lifecycle log, which outlives deleted boards |
 | `start_task` | Claim a card and bind it to this run |
 | `transition_task` | Move a managed card one lifecycle stage |
-| `assess_atomicity`, `propose_decomposition`, `split_atomic` | Size and split scope |
+| `assess_atomicity`, `propose_decomposition`, `approve_decomposition`, `reject_decomposition`, `split_atomic` | Size and split scope |
 | `upsert_contract_node`, `add_contract_edge`, … | Author the card contract map ([§18](#18-card-contract-and-atomicity)) |
 | `export_task_graph`, `sync_task_graph` | Exchange TaskGraph data |
 
@@ -1046,6 +1049,7 @@ Three of them were traps, because the state could be entered but not left:
 | `dependency-incomplete` | `add_dependency` had no inverse; `update_task` collapsed an empty `dependsOn` to "not supplied", so a dependency recorded by mistake could only be escaped by completing work nobody wanted, or deleting the blocking card | `update_task` with an explicit `dependsOn: []` clears it |
 | `task-detail-missing` on `childTaskIds` | `split_atomic` set `atomic` and nothing could unset it. Delete the children and the parent was stranded: it demanded children forever | `update_task` with `atomic: false` makes it an executable leaf again |
 | `acceptance-criteria-incomplete` | Done refuses while any criterion is not `passed`, and criteria could be added but not removed — so a criterion that turned out not to apply left only two options, both bad: park the card, or mark it `passed`, which is a lie | `remove_check` drops it |
+| A parked card | `verificationAttempts` only counted up, and only a passing verification reset it. A card that parked therefore sat at or above its budget forever and re-parked on its first refusal — which defeated the `remove_check` escape directly above it: you could drop the criterion and still be parked one refusal later | Re-scoping returns the budget. Adding, removing or rewriting a criterion, or changing the card's description or children, clears the park and the counter. Ticking a criterion's status does not (that is the ordinary verification flow) |
 
 Two related corrections came with them. The dependency refusal was written
 three times — the lifecycle gate and two branches of the assignment gate — so
@@ -1136,7 +1140,12 @@ scored by the same rules.
 
 A verdict of `needs_decomposition` does not block anything. It appends a
 one-line nudge to the tool result naming the failing criteria and suggesting
-`propose_decomposition`. `split_atomic` then creates children with `atomic`
+`propose_decomposition`. Under the `propose` policy the proposal is recorded and
+waits: `approve_decomposition` (optionally carrying edited `subtasks`) is what
+actually creates the child cards, and `reject_decomposition` closes it. Writing
+`decomposition.status` through `update_task` records an approval without
+creating anything and hides the card from the pending queue — the tool used to
+suggest exactly that, and no longer does. `split_atomic` then creates children with `atomic`
 pre-set on the parent; children inherit `priority` and `boundary`
 unconditionally, `labels` and `dependsOn` by default, and `assignee`,
 `assignment`, `successCriteria` and `goalMetrics` only behind an explicit
@@ -1183,6 +1192,41 @@ word means the same thing on every path: managed boards gate inside
 the async callers (`mark_assignment`, the WebUI dispatch `onDone` handler, the
 supervisor sweep) call `finalizeTaskCompletion()`; SDD runs are verified by
 their own engine, and their mirror boards are created with enforcement `off`.
+
+### The refusal budget
+
+*(This section's other use of "park" — a completed assignment parked in `review`
+awaiting finalization — is unrelated to the parking described here.)*
+
+The gate could say no forever: a refused card went back to `review`, nothing was
+counted, and on a managed board every card downstream of it stayed unreachable.
+So refusals are counted on the card, and when the budget is spent the card is
+*parked* — durably marked "retrying this unchanged is pointless", with the
+refusal's own words attached — and the worker moves to the next ready card.
+Verification guards Done without stalling progress.
+
+- **Budget**: `completionGate.maxVerificationAttempts`, default 2, clamped to at
+  least 1 (a card that can never park is the wedge this exists to prevent).
+- **Only two refusal codes spend it**: `acceptance-criteria-incomplete` and
+  `parent-child-incomplete` — refusals naming evidence that does not exist. A
+  missing `transitionAction`, a WIP limit or an unmet dependency is fixable on
+  the very next call, and parking a card for one of those would punish a typo
+  and bury the instruction.
+- **Parking is not a third status.** On a plain board a parked card takes
+  `status: 'blocked'`, which every readiness and queue path already understands.
+  On a managed board status is derived from the lifecycle stage and
+  `assertManagedTaskPatchAllowed` rejects out-of-band status writes, so the card
+  stays in Review and `task.park` alone carries the signal.
+- **The budget comes back.** A passing verification or a Done transition clears
+  it, and so does a genuine re-scope: adding, removing or rewriting an
+  acceptance criterion, or changing the card's description or children. Ticking
+  a criterion's *status* is not a re-scope — `verify_completion` rewrites the
+  whole criteria array on every run, so treating that as one would leave the
+  gate unable to park anything.
+
+Parking is visible rather than silent: the queue classifier appends the reason,
+queue health carries a `parked` bucket, both Cleaner implementations emit
+`parked-card`, and the card shows a `parked` badge ([§20](#20-queue-semantics)).
 
 Enforcement resolves per board:
 
@@ -1243,6 +1287,7 @@ its own red failure pill. `queue-anomalies.ts` is now the single definition:
 | Signal | Source |
 |---|---|
 | `stale_assignments` | Leases past their TTL |
+| `parked` | Cards whose verification budget ran out ([§19](#19-completion-verification)) |
 | `failed` | Cards in `failed` |
 | `blocked` | Cards in `blocked` |
 | `failed_retryable` | Failed cards still within retry policy |

@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import { hashRequest, stableStringify } from '../../src/replay/hash.js';
 import type { Request } from '../../src/types/provider.js';
+import type { Tool } from '../../src/types/tool.js';
+import { compactToolDefinitionForWire } from '../../src/utils/tool-wire-compact.js';
 
 function makeBaseRequest(): Request {
   return {
@@ -29,10 +31,14 @@ describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
-        execute: async function (_: unknown) { return { contents: '' }; },
+        execute: async (_: unknown) => ({ contents: '' }),
         validate: (_: unknown) => [],
       },
     ];
@@ -63,10 +69,14 @@ describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
-        execute: async function (_: unknown) { return { contents: '' }; },
+        execute: async (_: unknown) => ({ contents: '' }),
         validate: (_: unknown) => [],
       },
     ];
@@ -113,7 +123,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -125,7 +139,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -151,7 +169,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -163,7 +185,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -188,7 +214,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -200,7 +230,11 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
       {
         name: 'read',
         description: 'Read a file',
-        inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' } },
+          required: ['path'],
+        },
         permission: 'confirm' as const,
         mutating: false,
         execute: noopExecute,
@@ -217,5 +251,118 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
 
     // This FAILS on unfixed code. After fix: PASS.
     expect(hashWithout).toBe(hashWith);
+  });
+});
+
+// ── Regression (round 20260916-i18n-discard): the tool digest is the WIRE triple ──
+//
+// semanticTool() projects to exactly {name, description, inputSchema} — the
+// fields every provider wire converter sends (toolsToAnthropic / toolsToOpenAI /
+// toolsToResponses / toolsToGemini all map through compactToolDefinitionForWire).
+// Everything else on Tool (permission policy, executor policy, UI/guidance
+// metadata) is edited independently of the prompt, so a difference in it must
+// NOT move the digest: the provider payload is byte-identical and a recorded
+// response must still be found. A previous fix stripped four such fields via a
+// deny-list; the deny-list left the rest of the non-wire surface in the hash.
+
+describe('wire-invariance: non-provider Tool fields never change the hash', () => {
+  const baseTool = {
+    name: 'read',
+    description: 'Read a file',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+    permission: 'auto' as const,
+    mutating: false,
+    execute: noopExecute,
+  } satisfies Tool;
+
+  it('hashes identically when only permission differs (config-driven, never sent)', () => {
+    const a = makeBaseRequest();
+    a.tools = [baseTool];
+    const b = makeBaseRequest();
+    b.tools = [{ ...baseTool, permission: 'confirm' as const }];
+
+    expect(compactToolDefinitionForWire(b.tools[0]!)).toEqual(
+      compactToolDefinitionForWire(a.tools[0]!),
+    );
+    expect(hashRequest(b)).toBe(hashRequest(a));
+  });
+
+  it('hashes identically when icon/riskTier/capabilities differ', () => {
+    const a = makeBaseRequest();
+    a.tools = [
+      { ...baseTool, icon: 'file' as const, riskTier: 'safe' as const, capabilities: ['fs.read'] },
+    ];
+    const b = makeBaseRequest();
+    b.tools = [
+      {
+        ...baseTool,
+        icon: 'edit' as const,
+        riskTier: 'standard' as const,
+        capabilities: ['fs.read', 'fs.write'],
+      },
+    ];
+
+    expect(compactToolDefinitionForWire(b.tools[0]!)).toEqual(
+      compactToolDefinitionForWire(a.tools[0]!),
+    );
+    expect(hashRequest(b)).toBe(hashRequest(a));
+  });
+
+  it('hashes identically when usageHint/selection/category/subject*/maxOutputBytes differ', () => {
+    const a = makeBaseRequest();
+    a.tools = [
+      {
+        ...baseTool,
+        usageHint: 'hint A',
+        selection: { doNotUseWhen: 'never for binary files', useInstead: ['x'] },
+        category: 'files',
+        subjectKey: 'path',
+        subjectFields: ['path'],
+        maxOutputBytes: 1024,
+      },
+    ];
+    const b = makeBaseRequest();
+    b.tools = [
+      {
+        ...baseTool,
+        usageHint: 'hint B',
+        selection: { doNotUseWhen: 'never for directories' },
+        category: 'search',
+        subjectKey: 'command',
+        subjectFields: ['command'],
+        maxOutputBytes: 2048,
+      },
+    ];
+
+    expect(compactToolDefinitionForWire(b.tools[0]!)).toEqual(
+      compactToolDefinitionForWire(a.tools[0]!),
+    );
+    expect(hashRequest(b)).toBe(hashRequest(a));
+  });
+
+  it('still reacts to the wire-visible triple (description / inputSchema / name)', () => {
+    const a = makeBaseRequest();
+    a.tools = [baseTool];
+
+    const b = makeBaseRequest();
+    b.tools = [{ ...baseTool, description: 'Read a file v2' }];
+    expect(hashRequest(b)).not.toBe(hashRequest(a));
+
+    const c = makeBaseRequest();
+    c.tools = [
+      {
+        ...baseTool,
+        inputSchema: {
+          type: 'object',
+          properties: { path: { type: 'string' }, encoding: { type: 'string' } },
+          required: ['path'],
+        },
+      },
+    ];
+    expect(hashRequest(c)).not.toBe(hashRequest(a));
+
+    const d = makeBaseRequest();
+    d.tools = [{ ...baseTool, name: 'readx' }];
+    expect(hashRequest(d)).not.toBe(hashRequest(a));
   });
 });

@@ -20,6 +20,42 @@ function run(input: unknown, c = ctx()) {
 }
 
 describe('nextStepsTool', () => {
+  it('reports the accepted non-empty prompts and their actual auto flag', async () => {
+    const c = ctx();
+    const result = await run(
+      { steps: [{ text: '   ', auto: true }, { text: 'Inspect the parser' }] },
+      c,
+    );
+    expect(result).toEqual({ accepted: 1, auto: false });
+    expect(readPendingNextSteps(c as never)).toEqual([{ text: 'Inspect the parser' }]);
+  });
+
+  it('rejects an all-whitespace list without replacing a valid pending list', async () => {
+    const c = ctx();
+    await run({ steps: [{ text: 'Inspect the parser' }] }, c);
+    await expect(run({ steps: [{ text: ' \n\t ' }] }, c)).rejects.toThrow('non-empty text');
+    expect(readPendingNextSteps(c as never)).toEqual([{ text: 'Inspect the parser' }]);
+  });
+  it('describes agent-directed prompts even when only the schema is exposed', () => {
+    expect(nextStepsTool.usageHint).toContain('The recipient is the LLM, not the user');
+    expect(nextStepsTool.usageHint).toContain(
+      'Omit manual chores, approval requests, questions for the user',
+    );
+    expect(JSON.stringify(nextStepsTool.inputSchema)).toContain(
+      'submitted verbatim back to the LLM',
+    );
+    expect(JSON.stringify(nextStepsTool.inputSchema)).toContain(
+      'Never advice, a question, or a manual chore',
+    );
+  });
+
+  it('preserves a Turkish agent prompt verbatim for the next request', async () => {
+    const c = ctx();
+    const text =
+      'Ayarlar sayfasını tarayıcı araçlarıyla incele, konsol hatasını yeniden üret ve nedenini raporla.';
+    await run({ steps: [{ text }] }, c);
+    expect(readPendingNextSteps(c as never)).toEqual([{ text }]);
+  });
   it('parks the steps and reports how many were accepted', async () => {
     const c = ctx();
     const out = await run({ steps: [{ text: 'Run the tests' }, { text: 'Update the docs' }] }, c);

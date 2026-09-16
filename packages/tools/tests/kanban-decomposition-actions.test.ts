@@ -37,6 +37,15 @@ vi.mock('@wrongstack/kanban', () => {
       proposal: { status: 'applied', appliedChildTaskIds: ['c1', 'c2'] },
     }),
     updateTask: vi.fn().mockResolvedValue(board),
+    resolveDecompositionProposal: vi.fn().mockResolvedValue({
+      board,
+      task: board.tasks[0],
+      proposal: {
+        id: 'proposal-1',
+        status: 'applied',
+        appliedChildTaskIds: ['c1', 'c2'],
+      },
+    }),
     verifyTaskCompletion: vi.fn().mockResolvedValue({
       report: {
         verdict: 'passed',
@@ -218,6 +227,165 @@ describe('handleKanbanDecompositionAction', () => {
       );
       expect(result?.ok).toBe(true);
       expect(result?.message).toContain('awaiting approval');
+    });
+  });
+
+  describe('approve_decomposition / reject_decomposition', () => {
+    // An agent could propose a split but not resolve it: the tool told it to
+    // use the WebUI (unreachable) or `update_task`, which writes
+    // `task.decomposition` verbatim — recording an approval while skipping the
+    // phase that creates the children.
+    it('tells the caller how to resolve a pending proposal, and names it', async () => {
+      const { proposeTaskDecomposition } = await import('@wrongstack/kanban');
+      vi.mocked(proposeTaskDecomposition).mockResolvedValueOnce({
+        board: {
+          id: 'b1',
+          tasks: [],
+          columns: [],
+          title: 'B',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          version: 1,
+        },
+        task: {
+          id: 't1',
+          title: 'Test Task',
+          columnId: 'todo',
+          order: 0,
+          priority: 'medium',
+          status: 'pending',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        proposal: {
+          id: 'proposal-9',
+          taskId: 't1',
+          status: 'proposed',
+          mode: 'approval',
+          proposedSubtasks: [{ title: 'Sub 1' }, { title: 'Sub 2' }],
+          proposedAt: '2026-01-01T00:00:00.000Z',
+          appliedChildTaskIds: [],
+        },
+      });
+      const result = await handleKanbanDecompositionAction(
+        projectRoot,
+        {
+          action: 'propose_decomposition',
+          boardId: 'b1',
+          taskId: 't1',
+          subtasks: [{ title: 'Sub 1' }, { title: 'Sub 2' }],
+        },
+        mockCtx(),
+      );
+      expect(result?.message).toContain('approve_decomposition');
+      expect(result?.message).toContain('proposal-9');
+      // The two dead ends it used to name.
+      expect(result?.message).not.toContain('WebUI');
+      expect(result?.message).not.toContain('update_task');
+    });
+
+    it('fails without a proposalId', async () => {
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          { action: 'approve_decomposition', boardId: 'b1', taskId: 't1' },
+          mockCtx(),
+        ),
+        'INVALID_INPUT',
+        'requires boardId, taskId, and proposalId',
+      );
+    });
+
+    it('approves through the real path and reports the children it created', async () => {
+      const { resolveDecompositionProposal } = await import('@wrongstack/kanban');
+      const result = await handleKanbanDecompositionAction(
+        projectRoot,
+        {
+          action: 'approve_decomposition',
+          boardId: 'b1',
+          taskId: 't1',
+          proposalId: 'proposal-1',
+        },
+        mockCtx(),
+      );
+      expect(result?.ok).toBe(true);
+      expect(result?.message).toContain('2 child card(s) created');
+      expect(vi.mocked(resolveDecompositionProposal).mock.calls.at(-1)?.[4]).toMatchObject({
+        action: 'approve',
+        resolvedBy: 'test-agent',
+      });
+    });
+
+    it('passes subtasks as edits when approving', async () => {
+      const { resolveDecompositionProposal } = await import('@wrongstack/kanban');
+      await handleKanbanDecompositionAction(
+        projectRoot,
+        {
+          action: 'approve_decomposition',
+          boardId: 'b1',
+          taskId: 't1',
+          proposalId: 'proposal-1',
+          subtasks: [{ title: 'Edited 1' }, { title: 'Edited 2' }],
+        },
+        mockCtx(),
+      );
+      expect(vi.mocked(resolveDecompositionProposal).mock.calls.at(-1)?.[4]).toMatchObject({
+        editedSubtasks: [{ title: 'Edited 1' }, { title: 'Edited 2' }],
+      });
+    });
+
+    it('rejects with a reason and refuses subtask edits', async () => {
+      const { resolveDecompositionProposal } = await import('@wrongstack/kanban');
+      await handleKanbanDecompositionAction(
+        projectRoot,
+        {
+          action: 'reject_decomposition',
+          boardId: 'b1',
+          taskId: 't1',
+          proposalId: 'proposal-1',
+          note: 'The card is already atomic.',
+        },
+        mockCtx(),
+      );
+      expect(vi.mocked(resolveDecompositionProposal).mock.calls.at(-1)?.[4]).toMatchObject({
+        action: 'reject',
+        reason: 'The card is already atomic.',
+      });
+
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          {
+            action: 'reject_decomposition',
+            boardId: 'b1',
+            taskId: 't1',
+            proposalId: 'proposal-1',
+            subtasks: [{ title: 'A' }, { title: 'B' }],
+          },
+          mockCtx(),
+        ),
+        'INVALID_INPUT',
+        'a rejection takes only a note',
+      );
+    });
+
+    it('reports an already-resolved proposal as NOT_FOUND rather than ok', async () => {
+      const { resolveDecompositionProposal } = await import('@wrongstack/kanban');
+      vi.mocked(resolveDecompositionProposal).mockResolvedValueOnce(null);
+      await expectKanbanError(
+        handleKanbanDecompositionAction(
+          projectRoot,
+          {
+            action: 'approve_decomposition',
+            boardId: 'b1',
+            taskId: 't1',
+            proposalId: 'gone',
+          },
+          mockCtx(),
+        ),
+        'NOT_FOUND',
+        'already be resolved',
+      );
     });
   });
 

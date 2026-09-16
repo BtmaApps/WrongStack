@@ -1,4 +1,4 @@
-import { agentPrompt } from './agent-prompts.js';
+import { applyLazyPrompts } from './agent-prompts.js';
 import { type AgentDefinition, LIGHT_BUDGET, MEDIUM_BUDGET, TOOLS } from './types.js';
 
 /** Phase 1 · Discovery — map the territory before any work begins. */
@@ -9,7 +9,6 @@ export const DISCOVERY_AGENTS: AgentDefinition[] = [
       name: 'Explore',
       role: 'explore',
       tools: [...TOOLS.read, ...TOOLS.index],
-      prompt: agentPrompt('explore'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -38,7 +37,6 @@ export const DISCOVERY_AGENTS: AgentDefinition[] = [
       name: 'Search',
       role: 'search',
       tools: [...TOOLS.read, ...TOOLS.index],
-      prompt: agentPrompt('search'),
     },
     budget: MEDIUM_BUDGET,
     capability: {
@@ -66,7 +64,6 @@ export const DISCOVERY_AGENTS: AgentDefinition[] = [
       name: 'Research',
       role: 'research',
       tools: [...TOOLS.research],
-      prompt: agentPrompt('research'),
     },
     budget: LIGHT_BUDGET,
     capability: {
@@ -88,3 +85,10 @@ export const DISCOVERY_AGENTS: AgentDefinition[] = [
     },
   },
 ];
+
+/**
+ * Resolve each role brief from disk on first read rather than at module load.
+ * These arrays are exported in their own right, so the accessor belongs on the
+ * raw definitions — `assignSkillsToAgents` copies it by descriptor.
+ */
+applyLazyPrompts(DISCOVERY_AGENTS);

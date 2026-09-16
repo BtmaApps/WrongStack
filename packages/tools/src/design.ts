@@ -419,22 +419,28 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
         .map(([axis, n]) => `${axis}: ${n}`)
         .join(', ');
       const composition = byAxis.get('composition') ?? 0;
+      const colorHits = byAxis.get('color') ?? 0;
       // A native-stack screen (react-native / flutter / swiftui / compose) carries
-      // theme constants, not utility classes, so the scanner reads nothing and the
-      // file scores a clean 100% regardless of what it looks like. Saying nothing
-      // here lets "0 violations" pass for "clean" when it means "not checked".
+      // theme constants, not utility classes, so the palette axis reads nothing and
+      // the file scores a clean 100% regardless of what it looks like. Saying nothing
+      // here lets "0 violations" pass for "clean" when it means "not checked" — but
+      // the claim must stay scoped to the palette axis: radius/spacing/type still
+      // scan those files, so an unchecked file can carry non-color findings.
       const unchecked = report.filesWithNoSignal
         ? `\n\n${report.filesWithNoSignal} of ${report.filesScanned} file(s) carried no class or color ` +
-          'signal and were NOT checked — native stacks express the kit as theme constants. ' +
-          'A clean result on those means "not checkable", not "clean": review them by hand ' +
-          'against the materialized theme, or load the `design-critique` skill.'
+          'signal — the palette axis had nothing to check in them (native stacks express the ' +
+          'kit as theme constants), so a clean palette result there means "not checkable", ' +
+          'not "clean": review them by hand against the materialized theme, or load the ' +
+          '`design-critique` skill.'
         : '';
       const summary =
         `Adherence: ${pct}% on-palette across ${report.filesScanned} file(s). ` +
         `${report.violations.length} violation(s)${axisLine ? ` (${axisLine})` : ''}.` +
         (report.violations.length
           ? `\n${top}${report.violations.length > 25 ? `\n  …and ${report.violations.length - 25} more` : ''}` +
-            `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).` +
+            (colorHits
+              ? `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).`
+              : '') +
             (composition
               ? `\n${composition} composition finding(s): this code is token-clean but reads as default-generated UI. ` +
                 'Load the `design-craft` skill and fix the pattern, not the token.'

@@ -13,7 +13,38 @@ export interface ClassifyTaskForQueueOptions {
   heartbeatIntervalMs?: number | undefined;
 }
 
+/**
+ * Classify a card for the queue, and say so when it is parked.
+ *
+ * Parking never changes the bucket: a parked managed card is still in Review
+ * and a parked legacy card is still `blocked`, and every readiness, queue and
+ * projection path already understands those. What none of them could express
+ * is WHY the card stopped — `task.park` was written by the completion gate and
+ * read by nothing that reports on a board, so a card that had spent its
+ * verification budget looked exactly like one still waiting its turn.
+ *
+ * The reason is appended LAST so the primary bucket reason stays at
+ * `reasons[0]` for every existing reader.
+ */
 export function classifyTaskForQueue(
+  board: KanbanBoard,
+  task: KanbanTask,
+  options: ClassifyTaskForQueueOptions = {},
+): KanbanTaskQueueClassification {
+  const classification = classifyQueueBucket(board, task, options);
+  if (!task.park) return classification;
+  const attempts = task.park.attempts;
+  return {
+    ...classification,
+    reasons: [
+      ...classification.reasons,
+      `Parked after ${attempts} refused completion${attempts === 1 ? '' : 's'}: ${task.park.reason} ` +
+        'Retrying it unchanged will refuse again — resolve what the reason names, or re-scope the card.',
+    ],
+  };
+}
+
+function classifyQueueBucket(
   board: KanbanBoard,
   task: KanbanTask,
   options: ClassifyTaskForQueueOptions = {},

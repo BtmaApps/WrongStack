@@ -490,6 +490,20 @@ export interface KanbanQueueHealth {
     count: number;
     tasks: KanbanSearchResult[];
   };
+  /**
+   * Cards whose verification budget ran out — the completion gate refused them
+   * enough times that the board parked them (see `verification/completion-park.ts`).
+   *
+   * Optional because several surfaces build a `KanbanQueueHealth` literal by
+   * hand; `getKanbanQueueHealth` always emits it. Readers must treat an absent
+   * value as zero rather than as "no parked cards were checked".
+   */
+  parked?:
+    | {
+        count: number;
+        tasks: KanbanSearchResult[];
+      }
+    | undefined;
   /** Canonical queue classifier diagnostics. Counts are diagnostic; existing count buckets stay unchanged. */
   classifications?: KanbanQueueClassificationSummary | undefined;
   /** Wall-clock timestamps of the most recent dispatch and most recent stale recovery. */

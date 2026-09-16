@@ -19,7 +19,7 @@ import { rebuildSystemPrompt } from '../src/server/system-prompt-rebuild.js';
 /** A line that appears in system-pro.md and in neither other variant. */
 const PRO_MARKER = 'Assumption ledger';
 /** Likewise for system-lite.md. */
-const LITE_MARKER = 'Use only tools that appear in the live tool list';
+const LITE_MARKER = 'Use direct tools or the supported discovery route described below';
 
 let tmp: string;
 

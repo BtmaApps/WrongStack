@@ -33,6 +33,9 @@ import {
   createBoard,
   finalizeTaskCompletion,
   getBoard,
+  removeCheckFromTask,
+  updateCheckOnTask,
+  updateTask,
   updateTaskAssignment,
 } from './helpers/session-manager.js';
 
@@ -180,6 +183,92 @@ describe('applyGateRefusal', () => {
 
     expect(task.verificationAttempts).toBeUndefined();
     expect(task.park).toBeUndefined();
+  });
+});
+
+describe('re-scoping a parked card returns its budget', () => {
+  /**
+   * `verificationAttempts` only ever counted up, and nothing but a pass reset
+   * it. So once a card parked it sat at or above its budget forever: the next
+   * single refusal re-parked it immediately, however thoroughly the work had
+   * been fixed in between. "Fix it and try again" was one-shot.
+   *
+   * `removeCheckFromTask` makes the cost concrete — it exists precisely so an
+   * irrelevant criterion can be dropped instead of being marked passed, which
+   * would be a lie. Without a budget reset that escape was defeated on the very
+   * next refusal.
+   */
+  async function parked() {
+    const { boardId, taskId } = await refusableCard(1);
+    await finalizeTaskCompletion(tmpDir, boardId, taskId);
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeDefined();
+    expect(task.verificationAttempts).toBe(1);
+    return { boardId, taskId, checkId: task.successCriteria![0]!.id };
+  }
+
+  it('a new acceptance criterion clears the park and the counter', async () => {
+    const { boardId, taskId } = await parked();
+    await addCheckToTask(tmpDir, boardId, taskId, {
+      description: 'Second criterion',
+      type: 'manual',
+      status: 'pending',
+    });
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeUndefined();
+    expect(task.verificationAttempts).toBeUndefined();
+  });
+
+  it('dropping the criterion that blocked it clears the park', async () => {
+    const { boardId, taskId, checkId } = await parked();
+    await removeCheckFromTask(tmpDir, boardId, taskId, checkId);
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeUndefined();
+    expect(task.verificationAttempts).toBeUndefined();
+  });
+
+  it('rewriting what a criterion asserts clears the park', async () => {
+    const { boardId, taskId, checkId } = await parked();
+    await updateCheckOnTask(tmpDir, boardId, taskId, checkId, {
+      description: 'Reviewer confirmed the migration plan instead',
+    });
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeUndefined();
+  });
+
+  it('ticking a criterion does NOT clear the budget', async () => {
+    // This is the ordinary verification flow. Resetting here would hand every
+    // card an unlimited budget and the gate could never park anything.
+    const { boardId, taskId, checkId } = await parked();
+    await updateCheckOnTask(tmpDir, boardId, taskId, checkId, { status: 'failed' });
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeDefined();
+    expect(task.verificationAttempts).toBe(1);
+  });
+
+  it('rewriting the description or the children clears the budget', async () => {
+    const { boardId, taskId } = await parked();
+    await updateTask(tmpDir, boardId, taskId, { description: 'Narrowed to the schema only.' });
+    expect((await taskOf(boardId, taskId)).park).toBeUndefined();
+  });
+
+  it('an unrelated patch leaves the park alone', async () => {
+    const { boardId, taskId } = await parked();
+    await updateTask(tmpDir, boardId, taskId, { priority: 'high' });
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeDefined();
+    expect(task.verificationAttempts).toBe(1);
+  });
+
+  it('writing successCriteria back unchanged does NOT clear the budget', async () => {
+    // `verify_completion` persists the whole array on every run. Keying the
+    // reset on that field would silently disable the refusal budget.
+    const { boardId, taskId } = await parked();
+    const before = await taskOf(boardId, taskId);
+    await updateTask(tmpDir, boardId, taskId, { successCriteria: before.successCriteria! });
+    const task = await taskOf(boardId, taskId);
+    expect(task.park).toBeDefined();
+    expect(task.verificationAttempts).toBe(1);
   });
 });
 
