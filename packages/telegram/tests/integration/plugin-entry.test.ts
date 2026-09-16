@@ -227,9 +227,9 @@ describe('plugin entry', () => {
 
   it('scrubs raw credentials from every notification class', async () => {
     const api = makeApi();
-    (api.config.extensions[PLUGIN_NAME] as Record<string, unknown>).notifyOnSessionEnd = true;
-    (api.config.extensions[PLUGIN_NAME] as Record<string, unknown>).notifyOnDelegate = true;
-    (api.config.extensions[PLUGIN_NAME] as Record<string, unknown>).longToolThresholdMs = 1;
+    (api.config.extensions![PLUGIN_NAME] as Record<string, unknown>).notifyOnSessionEnd = true;
+    (api.config.extensions![PLUGIN_NAME] as Record<string, unknown>).notifyOnDelegate = true;
+    (api.config.extensions![PLUGIN_NAME] as Record<string, unknown>).longToolThresholdMs = 1;
     await plugin.setup(api);
 
     const fetchMock = vi.mocked(globalThis.fetch);
@@ -370,7 +370,7 @@ describe('plugin entry', () => {
   it('applies a hot-reloaded poll interval after the next poll tick', async () => {
     vi.useFakeTimers();
     const api = makeApi();
-    const telegram = api.config.extensions[PLUGIN_NAME] as Record<string, unknown>;
+    const telegram = api.config.extensions![PLUGIN_NAME] as Record<string, unknown>;
     Object.assign(telegram, {
       inboundMode: 'disabled',
       pollIntervalSec: 1,
@@ -381,7 +381,7 @@ describe('plugin entry', () => {
 
     const previous = structuredClone(api.config);
     const next = structuredClone(api.config);
-    (next.extensions[PLUGIN_NAME] as Record<string, unknown>).pollIntervalSec = 5;
+    (next.extensions![PLUGIN_NAME] as Record<string, unknown>).pollIntervalSec = 5;
     const reload = vi.mocked(api.onConfigChange).mock.calls[0]?.[0];
     expect(reload).toBeTypeOf('function');
     reload?.(next, previous);
@@ -529,7 +529,7 @@ describe('plugin entry', () => {
 
   it('routes notification events through the outbound queue', async () => {
     const api = makeApi();
-    (api.config.extensions[PLUGIN_NAME] as Record<string, unknown>).notifyOnSessionEnd = true;
+    (api.config.extensions![PLUGIN_NAME] as Record<string, unknown>).notifyOnSessionEnd = true;
     await plugin.setup(api);
 
     // Trigger one of the three notification events. The session.ended handler

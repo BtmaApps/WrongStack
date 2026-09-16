@@ -1,4 +1,6 @@
-import { cloneWithLazyPrompt } from './agent-prompts.js';
+// Leaf module, NOT './agent-prompts.js': that import closed a runtime cycle
+// (agent-prompts → project-agent-identity → project-agent-skill-layer → here).
+import { cloneWithLazyPrompt } from './agent-prompt-clone.js';
 import { inferRuntimeCapabilities } from './capability-manifest.js';
 import type { AgentDefinition } from './types.js';
 

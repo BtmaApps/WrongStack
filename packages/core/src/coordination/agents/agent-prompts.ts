@@ -304,21 +304,11 @@ export function applyLazyPrompts<T extends { config: { role?: string | undefined
 }
 
 /**
- * Copy a config and merge `extra` WITHOUT resolving a lazy `prompt`.
- *
- * A spread or a destructure reads every own enumerable key, which invokes the
- * accessor installed by {@link defineLazyAgentPrompt} and re-introduces exactly
- * the eager cost it exists to avoid — and `fleet.ts` spreads all 75 catalog
- * configs at module scope to attach dispatch metadata. `getOwnPropertyDescriptors`
- * copies the accessor itself rather than its value, so the clone stays lazy.
+ * Re-exported from a leaf module. The implementation lives in
+ * `agent-prompt-clone.ts` because `role-skills.ts` also needs it, and importing
+ * it from here closed a runtime module cycle through `project-agent-identity.js`.
  */
-export function cloneWithLazyPrompt<T extends object, E extends object>(
-  config: T,
-  extra: E,
-): T & E {
-  const clone = Object.defineProperties({}, Object.getOwnPropertyDescriptors(config));
-  return Object.assign(clone, extra) as T & E;
-}
+export { cloneWithLazyPrompt } from './agent-prompt-clone.js';
 
 export function agentPrompt(id: string): string {
   // The policy body itself is a single shared suffix; return it directly
