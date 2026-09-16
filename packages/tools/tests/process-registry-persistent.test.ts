@@ -47,8 +47,8 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
 
 import { _resetProcessRegistry } from '../src/process-registry.js';
 import {
-  PersistentProcessRegistry,
   getPersistentProcessRegistry,
+  PersistentProcessRegistry,
   resetPersistentProcessRegistry,
 } from '../src/process-registry-persistent.js';
 
@@ -168,6 +168,21 @@ describe('PersistentProcessRegistry', () => {
     it('adds a new pattern', async () => {
       await registry.addProtectedPattern('myapp');
       expect(vi.mocked(fs.writeFile)).toHaveBeenCalled();
+    });
+
+    it('retries a transient Windows EPERM while atomically publishing', async () => {
+      const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' });
+      vi.mocked(fs.rename).mockRejectedValueOnce(
+        Object.assign(new Error('simulated Windows sharing violation'), { code: 'EPERM' }),
+      );
+
+      try {
+        await expect(registry.addProtectedPattern('windows-retry')).resolves.toBeUndefined();
+        expect(vi.mocked(fs.rename)).toHaveBeenCalledTimes(2);
+      } finally {
+        if (platformDescriptor) Object.defineProperty(process, 'platform', platformDescriptor);
+      }
     });
 
     it('does not re-add existing patterns', async () => {

@@ -15,8 +15,9 @@
 import * as fs from 'node:fs/promises';
 // Note: fsSync imported for potential future use with synchronous file operations
 import * as os from 'node:os';
-import { wstackGlobalRoot } from '@wrongstack/core/utils';
 import * as path from 'node:path';
+import { wstackGlobalRoot } from '@wrongstack/core/utils';
+import { atomicWrite } from '@wrongstack/persistence';
 import { getProcessRegistry, type ProcessRegistryImpl } from './process-registry.js';
 
 const REGISTRY_FILE = 'process-registry.json';
@@ -223,13 +224,11 @@ async function readRegistryFile(filePath: string): Promise<PersistentRegistryDat
 }
 
 /**
- * Write the registry file atomically using rename.
+ * Write the registry file through the shared atomic persistence primitive.
+ * Its Windows rename path retries transient sharing violations while leaving
+ * the previous registry untouched if the bounded retries are exhausted.
  */
 async function writeRegistryFile(filePath: string, data: PersistentRegistryData): Promise<void> {
-  // Unique per call: concurrent writers (heartbeat sync + unregister/
-  // register run under the same pid) must never share a tmp file, or the
-  // first rename consumes it and the second fails with ENOENT (seen on CI).
-  const tmpPath = `${filePath}.tmp.${process.pid}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 8)}`;
   const content = JSON.stringify(
     data,
     (_k, v) => {
@@ -241,8 +240,7 @@ async function writeRegistryFile(filePath: string, data: PersistentRegistryData)
     2,
   );
 
-  await fs.writeFile(tmpPath, content, 'utf-8');
-  await fs.rename(tmpPath, filePath);
+  await atomicWrite(filePath, content);
 }
 
 /**
