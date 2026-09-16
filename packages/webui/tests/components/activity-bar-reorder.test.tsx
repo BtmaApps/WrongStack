@@ -104,7 +104,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
     { id: 'design', label: 'Design Studio', icon: null! },
   ];
   const VIEWS: NonNullable<Parameters<typeof splitDesktopActivityBarItems>[2]> = [
-    { id: 'intake', label: 'Requirements', icon: null! },
+    { id: 'provider-test', label: 'Provider Test', icon: null! },
     { id: 'sddhub', label: 'SDD', icon: null! },
     { id: 'goal', label: 'Goal', icon: null! },
     { id: 'kanban', label: 'Kanban', icon: null! },
@@ -161,7 +161,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
     const customViews = resolveActivityOrder(VIEWS, [
       'roster',
       'goal',
-      'intake',
+      'provider-test',
       'sddhub',
       'kanban',
       'codemap',
@@ -179,7 +179,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
     expect(split.visibleViewIds.slice(0, 4)).toEqual([
       'roster',
       'goal',
-      'intake',
+      'provider-test',
       'sddhub',
     ]);
   });

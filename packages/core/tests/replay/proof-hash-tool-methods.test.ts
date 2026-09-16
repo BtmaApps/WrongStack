@@ -15,6 +15,11 @@ function makeBaseRequest(): Request {
   };
 }
 
+// `Tool.execute` is required by the type but irrelevant to hashing: functions
+// are dropped by `stableStringify`, so every literal below carries the same
+// one and the hash comparisons stay symmetric.
+const noopExecute = async (): Promise<unknown> => ({});
+
 // ── Diagnostic: what JSON does hashRequest produce for tools with functions? ───
 
 describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
@@ -111,6 +116,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
       },
     ];
 
@@ -122,6 +128,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
         _estDefTokens: 42, // runtime token estimate — set by ToolRegistry, differs per run
       },
     ];
@@ -147,6 +154,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
       },
     ];
 
@@ -158,6 +166,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
         timeoutMs: 30000, // runtime config — differs per run, not sent to provider
       },
     ];
@@ -182,6 +191,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
       },
     ];
 
@@ -193,6 +203,7 @@ describe('CONFIRMED BUG: tool _estDefTokens (runtime cache) makes hash unstable'
         inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
         permission: 'confirm' as const,
         mutating: false,
+        execute: noopExecute,
         estimatedDurationMs: 5000, // runtime hint — not sent to provider
       },
     ];
