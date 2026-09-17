@@ -74,4 +74,17 @@ describe('runShellHook', () => {
     const r = await runShellHook({ command: 'definitely-not-a-real-binary-xyz --nope' }, input());
     expect(r).toBeNull();
   });
+
+  it('does not crash when a stdin-ignoring hook receives a payload larger than the pipe buffer', async () => {
+    // Regression: child.stdin.end() had no 'error' listener, so a hook that
+    // exits without reading stdin left the pending write against a closed
+    // pipe (EPIPE/EOF) — an uncaught 'error' event that killed the whole
+    // agent process instead of failing just this hook.
+    const exit0 = write('exit0.mjs', 'process.exit(0);\n');
+    const r = await runShellHook(
+      { command: `node ${exit0}`, timeoutMs: 5_000 },
+      input({ toolInput: { blob: 'B'.repeat(200_000) } }),
+    );
+    expect(r).toBeNull(); // exit 0 + no stdout -> no outcome, and no crash
+  });
 });

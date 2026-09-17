@@ -320,6 +320,14 @@ export async function runShellHookDetailed(
     });
 
     // Feed the payload and close stdin so the command isn't left waiting.
+    // The write can still fail ASYNCHRONOUSLY: a hook command that exits
+    // without reading stdin leaves the pending write against a closed pipe
+    // (EPIPE/EOF), and without an 'error' listener on the stream that
+    // failure is an uncaught exception that kills the whole agent process —
+    // the child 'error'/'close' handlers cover process errors only.
+    child.stdin?.on('error', () => {
+      /* handled: the child's close/error handlers settle the invocation */
+    });
     try {
       child.stdin?.end(`${JSON.stringify(input)}\n`);
     } catch {
