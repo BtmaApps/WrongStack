@@ -52,8 +52,10 @@ describe('PluginToggleList — full catalog rendering', () => {
     render(<PluginToggleList />);
     // agent-handoff: official, defaultState 'inactive', name-derived label.
     expect(getSwitchByLabel('Agent Handoff').getAttribute('aria-checked')).toBe('false');
-    // config-validator: official, defaultState 'active', name-derived label.
-    expect(getSwitchByLabel('Config Validator').getAttribute('aria-checked')).toBe('true');
+    // config-validator: official, defaultState 'inactive', name-derived label.
+    expect(getSwitchByLabel('Config Validator').getAttribute('aria-checked')).toBe('false');
+    // context-pins: official, defaultState 'active', name-derived label.
+    expect(getSwitchByLabel('Context Pins').getAttribute('aria-checked')).toBe('true');
   });
 
   it('renders the catalog summary as a hint under each plugin', () => {

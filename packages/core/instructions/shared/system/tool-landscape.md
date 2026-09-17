@@ -208,10 +208,10 @@ Use these only for UI behavior, visual checks, accessibility inspection, or E2E 
 {{tools:cron_schedule,cron_cancel,cron_list,watch_start,watch_stop,watch_list}}
 <!--ws:end-->
 
-<!--ws:if tool=secret_scanner_test,dead_code_scan,dead-code-scan,detect_duplicate_code,error_lens_history-->
+<!--ws:if tool=secret_scanner_test,dead-code-scan,detect_duplicate_code,error_lens_history-->
 ### Security & Diagnostics
-{{tools:secret_scanner_test,dead_code_scan,dead-code-scan,detect_duplicate_code,error_lens_history}}
-<!--ws:if tool=dead_code_scan,dead-code-scan,detect_duplicate_code-->
+{{tools:secret_scanner_test,dead-code-scan,detect_duplicate_code,error_lens_history}}
+<!--ws:if tool=dead-code-scan,detect_duplicate_code-->
 - Run the dead-code and duplicate-code scanners above before large refactors.
 <!--ws:end-->
 <!--ws:end-->
