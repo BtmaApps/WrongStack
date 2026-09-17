@@ -104,7 +104,10 @@ function isNodeError(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === 'object' && err !== null && 'code' in err;
 }
 
-async function acquireLock(lockfilePath: string, timeoutMs = 5000): Promise<() => Promise<void>> {
+export async function acquireLock(
+  lockfilePath: string,
+  timeoutMs = 5000,
+): Promise<() => Promise<void>> {
   const start = Date.now();
   const pidStr = String(process.pid);
   const hostStr = os.hostname();
@@ -122,13 +125,22 @@ async function acquireLock(lockfilePath: string, timeoutMs = 5000): Promise<() =
 
   while (Date.now() - start < timeoutMs) {
     try {
-      // Try to create the lock file exclusively
-      await fs.writeFile(lockfilePath, `${pidStr}:${hostStr}:${Date.now()}`, { flag: 'wx' });
+      // Try to create the lock file exclusively. Remember the exact content
+      // this acquisition wrote: the release closure below may only remove the
+      // lock while it is still OURS. If a holder stalls past LOCK_STALE_MS,
+      // another instance steals the lock and replaces the file; blindly
+      // unlinking on release would delete the NEW holder's lock and admit a
+      // third writer into the section (same RACE-002/S7 contract as
+      // withFileLock in @wrongstack/persistence).
+      const token = `${pidStr}:${hostStr}:${Date.now()}`;
+      await fs.writeFile(lockfilePath, token, { flag: 'wx' });
       return async () => {
         try {
+          const current = await fs.readFile(lockfilePath, 'utf-8');
+          if (current !== token) return;
           await fs.unlink(lockfilePath);
         } catch {
-          // Lock file may have been cleaned up by another process
+          // Lock file is already gone (stolen or cleaned up) — nothing to release.
         }
       };
     } catch (err) {
@@ -157,7 +169,17 @@ async function acquireLock(lockfilePath: string, timeoutMs = 5000): Promise<() =
           // Windows — without it a crashed holder's lock wedges the registry,
           // and with it every kill-guard, permanently.
           if (holderDead || staleByAge) {
-            await fs.unlink(lockfilePath).catch(() => {});
+            // Re-read right before removing. Between our read and this unlink
+            // another stealer may already have removed the stale lock and
+            // become the fresh holder; unlinking now would destroy THAT
+            // holder's live lock and put two writers in the section. Only
+            // steal while the file still holds exactly the stale content we
+            // observed (same recheck discipline as withFileLock in
+            // @wrongstack/persistence).
+            const recheck = await fs.readFile(lockfilePath, 'utf-8').catch(() => undefined);
+            if (recheck === content) {
+              await fs.unlink(lockfilePath).catch(() => {});
+            }
             continue;
           }
         } catch {
