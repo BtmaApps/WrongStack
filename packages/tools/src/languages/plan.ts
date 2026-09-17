@@ -133,10 +133,7 @@ export function validateCommandPlan(
 ): string[] {
   const errors: string[] = [];
   if (plan.profileId !== profile.id) errors.push('profile id does not match');
-  if (!isInside(plan.cwd, projectRoot))
-    errors.push(
-      `DEBUG cwd=${plan.cwd} root=${projectRoot} cand=${canonicalExisting(plan.cwd)}`,
-    );
+  if (!isInside(plan.cwd, projectRoot)) errors.push('cwd is outside project root');
   if (plan.args.length > MAX_ARGUMENTS) errors.push(`argument count exceeds ${MAX_ARGUMENTS}`);
   if (plan.args.some((arg) => arg.length > MAX_ARGUMENT_LENGTH || /[\r\n\0]/.test(arg))) {
     errors.push('arguments contain an invalid or oversized value');
