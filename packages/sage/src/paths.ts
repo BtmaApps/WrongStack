@@ -24,13 +24,20 @@ export function resolveSagePaths(projectRoot: string, directory = DEFAULT_SAGE_D
     containmentTarget = fs.realpathSync(rootDir);
   } catch {
     const parentDir = path.dirname(rootDir);
-    let realParent: string;
+    let canonicalParent: string;
     try {
-      realParent = fs.realpathSync(parentDir);
+      canonicalParent = fs.realpathSync(parentDir);
     } catch {
-      realParent = path.resolve(parentDir);
+      // Parent doesn't exist yet. Mirror it under the canonical root instead
+      // of resolving it in place: on macOS os.tmpdir() is `/var/folders/...`,
+      // a symlink to `/private/var/folders/...`, and comparing the raw path
+      // against canonicalProjectRoot would wrongly read as an escape.
+      canonicalParent = path.join(
+        canonicalProjectRoot,
+        path.relative(resolvedProjectRoot, parentDir),
+      );
     }
-    containmentTarget = path.join(realParent, path.basename(rootDir));
+    containmentTarget = path.join(canonicalParent, path.basename(rootDir));
   }
   const relative = path.relative(canonicalProjectRoot, containmentTarget);
   if (escapesRoot(relative)) {

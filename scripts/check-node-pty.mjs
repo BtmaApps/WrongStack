@@ -13,10 +13,13 @@
  *   - Microsoft publishing a prebuilt for the Node major version on
  *     windows-x64 but not the actual ABI patch level (the 1.1.0 line's
  *     pre-NAPI prebuilds stopped at Node 22, which is why f651b229 moved to
- *     1.2.0-beta.14). Re-pinned to stable 1.1.0 in the security-report
- *     Phase-4 pass (2026-09-01): verified empirically — the 1.1.0 prebuild
- *     resolves and passes this smoke check on Node 24.13 / ABI 137 / win32
- *     with no compile step, so the prerelease channel is no longer needed.
+ *     1.2.0-beta.14). A security-report Phase-4 pass (2026-09-01) re-pinned
+ *     to stable 1.1.0 after verifying it on Node 24.13 / ABI 137 / win32 —
+ *     but 1.1.0's posix_spawnp call fails outright on darwin 27 (macOS 27):
+ *     pty.spawn of even `/bin/echo` throws "posix_spawnp failed.", so the
+ *     smoke gate broke on every macOS dev machine. 1.2.0-beta.15
+ *     (2026-08-03, past the install cooldown) was verified empirically on
+ *     darwin-arm64 + Node 24.13 and re-pinned on 2026-09-17.
  *   - Dist/ artifacts referencing node-pty by path but the symlink
  *     missing in `packages/<pkg>/node_modules/node-pty`.
  *

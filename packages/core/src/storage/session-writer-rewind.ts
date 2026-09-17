@@ -27,11 +27,16 @@ export async function deleteRewoundSubagentTranscripts(
   const deleted: string[] = [];
   for (const transcriptPath of transcriptPaths) {
     const resolved = path.resolve(transcriptPath);
-    const relative = path.relative(realAllowedRoot, resolved);
+    // Containment must compare two canonical paths. On macOS os.tmpdir() is
+    // `/var/folders/...`, a symlink to `/private/var/folders/...`; comparing
+    // the raw resolved path against the real allowed root would always read
+    // as an escape and silently skip every deletion.
+    const realResolved = await fsp.realpath(resolved).catch(() => resolved);
+    const relative = path.relative(realAllowedRoot, realResolved);
     if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
     await fsp.rm(resolved, { force: true }).then(
       () => {
-        deleted.push(resolved);
+        deleted.push(realResolved);
       },
       (err) => {
         console.warn(
