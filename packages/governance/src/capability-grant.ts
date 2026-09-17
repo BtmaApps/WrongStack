@@ -539,4 +539,22 @@ export class GovernanceCapabilityGrantRegistry {
       if (record.revokedAtMs !== undefined) this.records.delete(grantId);
     }
   }
+
+  /**
+   * True when at least one grant is still usable (neither expired nor revoked).
+   *
+   * The daemon's idle shutdown asks this before stopping: a live grant means a
+   * client still holds credentials it expects to rotate, and the rotation is
+   * what keeps the daemon's activity clock warm. Stopping underneath one would
+   * break an admin session that is merely between requests.
+   *
+   * Prunes first, so the answer reflects the clock rather than stale records.
+   * That emits `grant_expired` audit events for anything it reaps, which is
+   * why the caller must not poll this: the idle timer asks at most once per
+   * idle window.
+   */
+  hasActiveGrants(): boolean {
+    this.pruneInactive();
+    return this.records.size > 0;
+  }
 }

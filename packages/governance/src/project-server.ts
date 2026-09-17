@@ -31,6 +31,19 @@ type ServerState = 'idle' | 'starting' | 'ready' | 'closing' | 'closed';
 
 const GOVERNANCE_IPC_MAX_CONNECTIONS = 128;
 const GOVERNANCE_IPC_SOCKET_TIMEOUT_MS = 10_000;
+/**
+ * Idle window before the daemon asks its host to stop.
+ *
+ * Deliberately much longer than the five minutes the sibling project daemons
+ * use, because governance is request-per-connection: the client opens a socket,
+ * writes one frame and closes it, so `sockets.size === 0` is the NORMAL state
+ * between calls and says nothing about whether a session is alive. The real
+ * heartbeat is the credential lease, which rotates on a 60 minute TTL renewed
+ * 5 minutes early (`credential-lease-controller.ts`) — roughly every 55
+ * minutes. A window shorter than that would kill a daemon out from under a live
+ * admin session that simply had nothing to say yet.
+ */
+const GOVERNANCE_DEFAULT_IDLE_MS = 90 * 60_000;
 
 interface GovernanceProjectServerOptions {
   readonly projectRoot: string;
@@ -41,6 +54,24 @@ interface GovernanceProjectServerOptions {
   readonly onDaemonShutdownResponseFlushed?:
     | ((notice: GovernanceDaemonShutdownNotice) => void)
     | undefined;
+  /**
+   * Idle window in milliseconds; defaults to {@link GOVERNANCE_DEFAULT_IDLE_MS}.
+   *
+   * A constructor option rather than an environment variable on purpose:
+   * `governanceDaemonEnvironment()` passes the child an ALLOWLIST (PATH, TMP,
+   * TZ, …), so a `WRONGSTACK_*` knob would be stripped before the daemon ever
+   * read it — and widening that allowlist would loosen a deliberate
+   * sanitization boundary. Threading it through the bootstrap request instead
+   * would mean versioning the IPC protocol. This keeps both untouched and is
+   * what lets tests drive a short window.
+   */
+  readonly idleMs?: number | undefined;
+  /**
+   * Called once the server has been idle for {@link idleMs}. The daemon wires
+   * this to its own `stop(0)`. When omitted NO idle timer is armed at all, so
+   * a server constructed without it behaves exactly as before.
+   */
+  readonly onIdle?: (() => void) | undefined;
 }
 
 function requestIdFromUnknown(input: unknown): string {
@@ -107,6 +138,8 @@ export class GovernanceProjectServer {
   private authenticated: AuthenticatedGovernanceProjectService | null = null;
   private grants: GovernanceCapabilityGrantRegistry | null = null;
   private lastListenerError: Error | null = null;
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastActivityAt = Date.now();
 
   constructor(options: GovernanceProjectServerOptions) {
     if (options.projectId.trim().length === 0) throw new Error('projectId must not be empty.');
@@ -169,6 +202,8 @@ export class GovernanceProjectServer {
       this.state = 'ready';
       for (const socket of this.pendingSockets) this.accept(socket);
       this.pendingSockets.clear();
+      this.lastActivityAt = Date.now();
+      this.scheduleIdleStop();
     } catch (error) {
       this.state = 'closing';
       for (const socket of this.pendingSockets) socket.destroy();
@@ -216,6 +251,8 @@ export class GovernanceProjectServer {
   async close(): Promise<void> {
     if (this.state === 'closed') return;
     this.state = 'closing';
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
     for (const socket of this.sockets) socket.destroy();
     this.sockets.clear();
     this.pendingSockets.clear();
@@ -226,6 +263,43 @@ export class GovernanceProjectServer {
     this.store = null;
     this.grants = null;
     this.state = 'closed';
+  }
+
+  /**
+   * Arm the idle shutdown. NEVER re-arms an already-armed timer.
+   *
+   * The `this.idleTimer` guard matters: re-arming from a caller that runs more
+   * often than the window resets the countdown forever, which is exactly how
+   * the mailbox and kanban daemons ended up never idling out. The only place
+   * that re-arms here is the timer's own callback, after it has decided the
+   * daemon is still busy — so the interval between arms is always `idleMs`.
+   *
+   * "Busy" is three things, in order: a request is in flight (`sockets`), a
+   * usable credential grant exists (its rotation is the session's heartbeat),
+   * or the activity clock moved since this timer was armed.
+   */
+  private scheduleIdleStop(): void {
+    const onIdle = this.options.onIdle;
+    if (!onIdle || this.state !== 'ready' || this.idleTimer) return;
+    const idleMs = this.options.idleMs ?? GOVERNANCE_DEFAULT_IDLE_MS;
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = undefined;
+      if (this.state !== 'ready') return;
+      if (this.sockets.size > 0 || this.pendingSockets.size > 0) {
+        this.scheduleIdleStop();
+        return;
+      }
+      if (this.grants?.hasActiveGrants()) {
+        this.scheduleIdleStop();
+        return;
+      }
+      if (Date.now() - this.lastActivityAt < idleMs) {
+        this.scheduleIdleStop();
+        return;
+      }
+      onIdle();
+    }, idleMs);
+    this.idleTimer.unref?.();
   }
 
   private async ensureEndpointParent(): Promise<void> {
@@ -308,6 +382,10 @@ export class GovernanceProjectServer {
   }
 
   private handleLine(socket: net.Socket, line: string): void {
+    // Single funnel for every request on every connection, so this is the one
+    // honest activity signal. Connection churn is not: governance opens a fresh
+    // socket per request, so counting sockets would read "idle" between calls.
+    this.lastActivityAt = Date.now();
     let input: unknown;
     try {
       input = JSON.parse(line);

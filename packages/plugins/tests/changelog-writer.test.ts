@@ -61,7 +61,10 @@ describe('per-session reset', () => {
     // write cleared the buffer, so an unwritten session's entries were carried
     // into the next one and rendered as its work. The mock has no onEvent of
     // its own — the subscription is guarded, so the test must supply one.
-    const api = { ...makeApi(), onEvent: vi.fn(() => vi.fn()) };
+    const api = {
+      ...makeApi(),
+      onEvent: vi.fn((_event: string, _handler: () => void) => vi.fn()),
+    };
     changelogWriterPlugin.setup(api as never);
 
     await getTool(api as never, 'changelog_add').execute({ text: 'session A entry' });
@@ -70,7 +73,7 @@ describe('per-session reset', () => {
 
     const sessionEnded = api.onEvent.mock.calls.find(([e]: unknown[]) => e === 'session.ended');
     expect(sessionEnded).toBeDefined();
-    (sessionEnded![1] as () => void)();
+    sessionEnded![1]();
 
     const after = (await changelogWriterPlugin.health!()) as { counters: Record<string, number> };
     expect(after.counters['pendingEntries']).toBe(0);

@@ -110,7 +110,10 @@ describe('checkpoint plugin', () => {
     // ring, so a snapshot captured in one session stayed restorable in the
     // next — and checkpoint_restore defaults to the NEWEST snapshot, which
     // could write another session's captured content over a live file.
-    const api = { ...makeApi(), onEvent: vi.fn(() => vi.fn()) };
+    const api = {
+      ...makeApi(),
+      onEvent: vi.fn((_event: string, _handler: () => void) => vi.fn()),
+    };
     checkpointPlugin.setup(api as never);
     const hook = getHook(api as never);
 
@@ -122,7 +125,7 @@ describe('checkpoint plugin', () => {
 
     const sessionEnded = api.onEvent.mock.calls.find(([e]: unknown[]) => e === 'session.ended');
     expect(sessionEnded).toBeDefined();
-    (sessionEnded![1] as () => void)();
+    sessionEnded![1]();
 
     const after = await getTool(api as never, 'checkpoint_list').execute({});
     expect((after['snapshots'] as unknown[]).length).toBe(0);

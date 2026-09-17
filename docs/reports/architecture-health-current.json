@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-17T09:22:59.767Z",
+  "generatedAt": "2026-09-17T09:33:04.182Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3801,
-    "testFiles": 3443,
-    "sourceLines": 929270,
+    "testFiles": 3444,
+    "sourceLines": 929380,
     "workspaceEdges": 128,
     "moduleEdges": 12189,
     "nonCommandSlashImports": 0,
@@ -263,7 +263,7 @@
       "name": "@wrongstack/governance",
       "dir": "packages/governance",
       "sourceFiles": 39,
-      "testFiles": 28,
+      "testFiles": 29,
       "workspaceDependencies": [
         "@wrongstack/persistence"
       ],
@@ -276,7 +276,7 @@
         {
           "path": "packages/governance/tsconfig.test.json",
           "error": null,
-          "testFiles": 28
+          "testFiles": 29
         }
       ]
     },
@@ -9661,6 +9661,12 @@
       },
       {
         "file": "packages/governance/tests/project-daemon-entrypoint.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/governance/tests/project-server-idle.test.ts",
         "projects": [
           "root-node"
         ]

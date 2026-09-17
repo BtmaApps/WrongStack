@@ -39,12 +39,22 @@ function getResponseHandler(api: MockApi): (payload: unknown) => void {
   return (call as unknown[])[1] as (payload: unknown) => void;
 }
 
-function getStatusTool(api: MockApi): { execute: (input: unknown) => Promise<unknown> } {
+interface TokenBudgetStatus {
+  consumed: number;
+  requestCount: number;
+  breakdown: { prompt: number; completion: number };
+  percent: number;
+  remaining: number;
+  warningFired: boolean;
+  stopFired: boolean;
+}
+
+function getStatusTool(api: MockApi): { execute: (input: unknown) => Promise<TokenBudgetStatus> } {
   const call = api.tools.register.mock.calls.find(
     ([t]: unknown[]) => (t as { name: string }).name === 'token_budget_status',
   );
   if (!call) throw new Error('token_budget_status tool not registered');
-  return call[0] as { execute: (input: unknown) => Promise<unknown> };
+  return call[0] as { execute: (input: unknown) => Promise<TokenBudgetStatus> };
 }
 
 function getStopHook(

@@ -101,6 +101,11 @@ async function run(): Promise<void> {
         }),
       },
       onDaemonShutdownResponseFlushed: () => void stop(0),
+      // No client has spoken for the idle window and no credential grant is
+      // live: nothing is using this project's control plane, so release it.
+      // Every sibling project daemon does this; governance was the only one
+      // with no idle path at all, so once started it lived until killed.
+      onIdle: () => void stop(0),
     });
   let server = createServer();
   let startupLease: GovernanceDaemonStartupLease | undefined;
@@ -140,6 +145,15 @@ async function run(): Promise<void> {
   process.once('SIGINT', () => void stop(0));
   process.once('SIGTERM', () => void stop(0));
   process.once('disconnect', () => {
+    // DO NOT stop on a post-bootstrap disconnect. This IPC channel is one-shot:
+    // `daemon-launcher.ts` calls `child.disconnect()` + `child.unref()` as soon
+    // as the bootstrap handshake succeeds (the daemon is spawned `detached`
+    // with `stdio: ['ignore','ignore','ignore','ipc']`), precisely so the
+    // daemon outlives the CLI that started it. So a disconnect AFTER bootstrap
+    // is the success signal, not an orphan signal — treating it as "nobody is
+    // attached" kills every daemon the instant it finishes launching (13
+    // governance tests fail with `connected: false`, tried 2026-09-17).
+    // Only a disconnect BEFORE bootstrap is a failed launch.
     if (!bootstrapComplete) void stop(1);
   });
 
