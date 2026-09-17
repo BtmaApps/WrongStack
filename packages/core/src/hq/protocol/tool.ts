@@ -75,7 +75,15 @@ export interface HqApprovalRequestedPayload {
 export interface HqApprovalResolvedPayload {
   toolUseId: string;
   toolName: string;
-  decision: 'yes' | 'no' | 'always' | 'deny' | 'abort';
+  decision:
+    | 'yes'
+    | 'no'
+    | 'always'
+    | 'always-exact'
+    | 'always-command'
+    | 'always-tool'
+    | 'deny'
+    | 'abort';
   source: 'brain_timeout' | 'abort' | 'user';
   rationale?: string;
 }

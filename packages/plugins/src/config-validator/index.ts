@@ -246,6 +246,23 @@ export function validateJson(text: string, isJsonc: boolean, fileName: string): 
   }
 }
 
+/**
+ * A `key:` line, capturing the key and whatever follows the colon.
+ *
+ * The key alternation accepts a quoted key BEFORE the bare form, because a
+ * bare key cannot contain a colon: the old pattern (`[^:]*?`) simply failed
+ * to match any line whose key holds one — `'@scope/pkg@file:///D:/repo':`,
+ * every URL-shaped key a lockfile is full of. A line that fails to match is
+ * not harmless: see the pop below.
+ */
+const YAML_KEY_RE = /^\s*((?:'[^']*'|"[^"]*"|[^\s#'"][^:]*?))\s*:(?:\s+(.*))?$/;
+
+/** `|`, `>`, with optional chomping/indent indicators and a trailing comment. */
+const BLOCK_SCALAR_RE = /^[|>][+-]?\d*\s*(?:#.*)?$/;
+
+/** Strip a leading `- ` so `- run: |` is seen as the key line it contains. */
+const LIST_ITEM_PREFIX_RE = /^(\s*)-\s+/;
+
 export function validateYaml(text: string): string[] {
   const problems: string[] = [];
   const lines = text.split('\n');
@@ -254,6 +271,15 @@ export function validateYaml(text: string): string[] {
   // (`- …`) resets scopes deeper than itself so repeated item shapes
   // (`- name: …` per element) don't count as duplicates.
   const stack: Array<{ level: number; keys: Set<string> }> = [];
+  // Indent of the key that opened a block scalar (`|` / `>`), or null when
+  // not inside one. Everything indented deeper than that key is opaque text,
+  // not YAML, so no rule below may read it. Without this, a GitHub workflow's
+  // `run: |` body was parsed as YAML: shell lines became "keys" (this repo's
+  // own ci.yml reported `duplicate key "echo "FAIL"`) and any shell line with
+  // one double quote tripped the unclosed-quote rule. The hook hands these
+  // straight to the model as "fix these before moving on", so a false
+  // positive costs a turn and invites an edit to a correct file.
+  let blockScalarLevel: number | null = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] as string;
     const lineNo = i + 1;
@@ -261,28 +287,47 @@ export function validateYaml(text: string): string[] {
     // Tabs in indentation are illegal in YAML.
     const indent = /^([ \t]*)/.exec(line)?.[1] ?? '';
     if (indent.includes('\t')) {
+      // Inside a block scalar a tab is ordinary text (Makefiles, shell
+      // heredocs), not an indentation error.
+      if (blockScalarLevel !== null && indent.length > blockScalarLevel) continue;
       problems.push(`YAML: tab character in indentation at line ${lineNo} (YAML requires spaces)`);
       continue;
+    }
+    const level = indent.length;
+    if (blockScalarLevel !== null) {
+      if (level > blockScalarLevel) continue;
+      blockScalarLevel = null;
     }
     // Document separator starts a fresh key space.
     if (/^---\s*$/.test(line.trim())) {
       stack.length = 0;
       continue;
     }
-    const level = indent.length;
-    if (line.trim().startsWith('-')) {
-      // New list element: children of the previous element go out of scope.
-      while (stack.length > 0 && (stack[stack.length - 1] as { level: number }).level > level) {
-        stack.pop();
+    // Pop deeper scopes for EVERY content line, not only for lines that parse
+    // as a key. The pop used to live inside the key branch, so a key line the
+    // pattern could not read left the stack holding the previous sibling's
+    // children — and the next nested key was reported as a duplicate of a key
+    // belonging to a different parent.
+    while (stack.length > 0 && (stack[stack.length - 1] as { level: number }).level > level) {
+      stack.pop();
+    }
+
+    // A list item's own `key: value` still opens a block scalar (`- run: |`),
+    // so look inside it — but leave duplicate tracking alone, since repeated
+    // item shapes are legitimate.
+    const listPrefix = LIST_ITEM_PREFIX_RE.exec(line);
+    if (listPrefix) {
+      const body = line.slice(listPrefix[0].length);
+      const itemKey = YAML_KEY_RE.exec(body);
+      if (itemKey && BLOCK_SCALAR_RE.test((itemKey[2] ?? '').trim())) {
+        blockScalarLevel = listPrefix[0].length;
       }
       continue;
     }
-    const keyMatch = /^ *([^\s#][^:]*?):(?:\s|$)/.exec(line);
+
+    const keyMatch = YAML_KEY_RE.exec(line);
     if (keyMatch) {
       const key = (keyMatch[1] ?? '').trim();
-      while (stack.length > 0 && (stack[stack.length - 1] as { level: number }).level > level) {
-        stack.pop();
-      }
       let top = stack[stack.length - 1];
       if (!top || top.level < level) {
         top = { level, keys: new Set<string>() };
@@ -292,6 +337,10 @@ export function validateYaml(text: string): string[] {
         problems.push(`YAML: duplicate key "${key}" at line ${lineNo}`);
       }
       top.keys.add(key);
+      if (BLOCK_SCALAR_RE.test((keyMatch[2] ?? '').trim())) {
+        blockScalarLevel = level;
+        continue;
+      }
     }
     // Unclosed quote heuristic: an odd number of unescaped double
     // quotes on one line (YAML strings rarely span lines quoted).
@@ -411,7 +460,7 @@ const plugin: Plugin = {
       // (outside the project root, blocked by a guard) still reached the read
       // below, turning a rejected tool call into a working read oracle. Every
       // sibling PostToolUse hook in this package checks this: type-gate:343,
-      // auto-i18n-extractor, code-metrics, test-coverage-gate.
+      // auto-i18n-extractor, test-coverage-gate.
       if (input.toolResult?.isError) return;
       state.invocations += 1;
       const ti = (input.toolInput ?? {}) as Record<string, unknown>;
@@ -461,9 +510,13 @@ const plugin: Plugin = {
       };
     };
 
-    state.hookUnregister = api.registerHook('PostToolUse', 'write|edit', hook as never, {
-      background: true,
-    });
+    // Foreground, deliberately. A background PostToolUse entry's
+    // `additionalContext` is never collected (see `scheduleBackground` in
+    // `core/hooks/runner.ts`), so in the background this hook read and
+    // parsed the written file and then discarded the problem report — the
+    // one thing it exists to deliver. The size guard (`maxFileBytes`) and
+    // the extension filter keep the foreground cost bounded.
+    state.hookUnregister = api.registerHook('PostToolUse', 'write|edit', hook as never);
 
     // ── config_validator_status tool ──────────────────────────────────
     api.tools.register({

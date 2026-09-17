@@ -1,14 +1,20 @@
+import { computeContextWindowBudget } from '../execution/context-budget.js';
+import { AgentError, ERROR_CODES } from '../types/errors.js';
 import type { Request } from '../types/provider.js';
 import {
   estimateMessageTokens,
   estimateRequestTokens,
+  estimateRequestTokensUpperBound,
   getCalibrationState,
   type RequestTokenBreakdown,
-  realAnchoredInputTokens,
 } from '../utils/token-estimate.js';
 import type { AgentInternals } from './agent-internals.js';
 import type { AgentResponseHandler } from './agent-response.js';
 import { type RunOptions, resolveEventSessionId } from './context.js';
+import {
+  readRealAnchoredContextTokens,
+  recordContextRequestBasis,
+} from './context-usage-anchor.js';
 
 export interface AgentLoopContextManager {
   refreshProviderContextLimit(
@@ -38,6 +44,9 @@ export function createAgentLoopContextManager(
   let _lastEmittedToolCount = -1;
   let _lastEmittedRevision = -1;
   let _lastEmittedMaxContext = -1;
+  let _lastEmittedAccountingIdentity = '';
+  let _lastEmittedSystemRef: unknown = null;
+  let _lastEmittedToolsRef: unknown = null;
   let _lastPreFlightMsgCount = -1;
   let _lastPreFlightToolCount = -1;
   let _lastPreFlightRevision = -1;
@@ -48,6 +57,7 @@ export function createAgentLoopContextManager(
   let _lastCompactionRequestTokens: number | undefined;
   let _lastCompactionMaxContext = -1;
   let _lastCompactionWasNoop = false;
+  let _lastCompactionAccountingIdentity = '';
 
   let _cachedSysRef: unknown = null;
   let _cachedToolsRef: readonly unknown[] | null = null;
@@ -78,6 +88,8 @@ export function createAgentLoopContextManager(
     const previousMaxContext = currentMaxContext();
 
     if (routeChanged) {
+      a.ctx.lastRealInputTokens = undefined;
+      delete a.ctx.meta['realAnchorMsgCount'];
       delete a.ctx.meta['providerOverflowMaxContext'];
       delete a.ctx.meta['contextLimitBaseline'];
       delete a.ctx.meta['providerLimitEffectiveMaxContext'];
@@ -216,6 +228,7 @@ export function createAgentLoopContextManager(
     );
 
     a.ctx.lastRequestTokens = preFlight.total;
+    recordContextRequestBasis(a.ctx, req);
     _lastPreFlightMsgCount = req.messages.length;
     _lastPreFlightToolCount = (req.tools ?? []).length;
     _lastPreFlightRevision = a.ctx.state.revision;
@@ -253,7 +266,9 @@ export function createAgentLoopContextManager(
         meta.msgCount === msgCount &&
         meta.toolCount === toolCount &&
         meta.revision === revision &&
-        _lastPreFlightRevision === revision
+        _lastPreFlightRevision === revision &&
+        _cachedSysRef === a.ctx.systemPrompt &&
+        _cachedToolsRef === a.ctx.tools
       ) {
         return stashed;
       }
@@ -261,11 +276,24 @@ export function createAgentLoopContextManager(
 
     const refreshed = estimateMessageTokens(a.ctx.messages) + systemAndToolsOverhead();
     a.ctx.lastRequestTokens = refreshed;
+    recordContextRequestBasis(a.ctx);
     _lastPreFlightMsgCount = msgCount;
     _lastPreFlightToolCount = toolCount;
     _lastPreFlightRevision = revision;
     a.ctx.meta['lastRequestTokensAt'] = { msgCount, toolCount, revision };
     return refreshed;
+  }
+
+  function compactionAccountingIdentity(): string {
+    const key = calibrationKey();
+    const cal = getCalibrationState(key);
+    return JSON.stringify([
+      key,
+      cal.ratio,
+      cal.calibrated,
+      a.ctx.lastRealInputTokens,
+      a.ctx.meta?.['realAnchorMsgCount'],
+    ]);
   }
 
   async function compactContextIfNeeded(): Promise<boolean> {
@@ -275,7 +303,9 @@ export function createAgentLoopContextManager(
     const toolsRef = a.ctx.tools;
     const systemRef = a.ctx.systemPrompt;
     const requestTokens = a.ctx.lastRequestTokens;
+    const accountingIdentity = compactionAccountingIdentity();
     if (
+      _lastCompactionAccountingIdentity === accountingIdentity &&
       _lastCompactionMsgCount === msgCount &&
       _lastCompactionRevision === revision &&
       _lastCompactionToolsRef === toolsRef &&
@@ -296,6 +326,7 @@ export function createAgentLoopContextManager(
     _lastCompactionToolsRef = a.ctx.tools;
     _lastCompactionSystemRef = a.ctx.systemPrompt;
     _lastCompactionMaxContext = maxContext;
+    _lastCompactionAccountingIdentity = compactionAccountingIdentity();
     const changed =
       a.ctx.state.revision !== beforeRevision ||
       a.ctx.messages !== beforeMessages ||
@@ -340,15 +371,77 @@ export function createAgentLoopContextManager(
       }
     }
 
+    // The request pipeline can add wire-only system blocks, tools or messages.
+    // Durable-history compaction cannot remove those; check the actual rebuilt
+    // request before any provider call when context-window management is active.
+    if (
+      !a.ctx.signal?.aborted &&
+      a.pipelines.contextWindow.size() > 0 &&
+      a.ctx.meta?.['contextAutoCompact'] !== false
+    ) {
+      const routeKey = `${prepared.provider.id}/${req.model}`;
+      const inputTokens = estimateRequestTokensUpperBound(
+        req.messages,
+        req.system,
+        req.tools ?? [],
+        routeKey,
+      ).total;
+      const reserve = (key: string): number | undefined => {
+        const value = a.ctx.meta?.[key];
+        return typeof value === 'number' && Number.isFinite(value) && value >= 0
+          ? Math.floor(value)
+          : undefined;
+      };
+      // The live context may already point to the next provider. This request
+      // must use the window resolved for its captured route, not the new tab state.
+      const routeLimit = a.ctx.meta?.['effectiveMaxContext'];
+      const nativeLimit = prepared.provider.capabilities.maxContext;
+      const maxContext =
+        typeof routeLimit === 'number' && Number.isFinite(routeLimit) && routeLimit > 0
+          ? routeLimit
+          : typeof nativeLimit === 'number' && Number.isFinite(nativeLimit) && nativeLimit > 0
+            ? nativeLimit
+            : 200_000;
+      const budget = computeContextWindowBudget({
+        maxContext,
+        inputTokens,
+        maxOutput: prepared.provider.capabilities.maxOutput,
+        outputReserveTokens: reserve('contextOutputReserveTokens'),
+        safetyBufferTokens: reserve('contextSafetyBufferTokens'),
+      });
+      if (budget.overflowTokens > 0) {
+        throw new AgentError({
+          message: 'Prepared request exceeds the context input budget after compaction',
+          code: ERROR_CODES.AGENT_CONTEXT_OVERFLOW,
+          recoverable: true,
+          context: {
+            providerId: prepared.provider.id,
+            modelId: req.model,
+            maxContext: budget.maxContext,
+            inputTokens,
+            availableInputTokens: budget.availableInputTokens,
+            overflowTokens: budget.overflowTokens,
+          },
+        });
+      }
+    }
     return { req, provider: prepared.provider, preFlight };
   }
 
   function emitContextPct(): void {
+    const anchored = readRealAnchoredContextTokens(a.ctx);
     const msgCount = a.ctx.messages.length;
     const toolCount = (a.ctx.tools ?? []).length;
     const maxContext = currentMaxContext();
     const revision = a.ctx.state.revision;
+    const accountingIdentity = compactionAccountingIdentity();
+    const systemRef = a.ctx.systemPrompt;
+    const toolsRef = a.ctx.tools;
+    const overheadChanged =
+      systemRef !== _lastEmittedSystemRef || toolsRef !== _lastEmittedToolsRef;
     if (
+      !overheadChanged &&
+      accountingIdentity === _lastEmittedAccountingIdentity &&
       msgCount === _lastEmittedMsgCount &&
       toolCount === _lastEmittedToolCount &&
       revision === _lastEmittedRevision &&
@@ -361,8 +454,12 @@ export function createAgentLoopContextManager(
     _lastEmittedToolCount = toolCount;
     _lastEmittedRevision = revision;
     _lastEmittedMaxContext = maxContext;
+    _lastEmittedAccountingIdentity = accountingIdentity;
+    _lastEmittedSystemRef = systemRef;
+    _lastEmittedToolsRef = toolsRef;
 
     if (
+      overheadChanged ||
       msgCount !== _lastPreFlightMsgCount ||
       toolCount !== _lastPreFlightToolCount ||
       revision !== _lastPreFlightRevision
@@ -371,13 +468,6 @@ export function createAgentLoopContextManager(
     }
 
     let total: number;
-    const anchored = realAnchoredInputTokens(
-      a.ctx.messages,
-      a.ctx.lastRealInputTokens,
-      typeof a.ctx.meta?.['realAnchorMsgCount'] === 'number'
-        ? (a.ctx.meta['realAnchorMsgCount'] as number)
-        : undefined,
-    );
     const stashed = a.ctx.lastRequestTokens;
     if (anchored !== null) {
       total = anchored;

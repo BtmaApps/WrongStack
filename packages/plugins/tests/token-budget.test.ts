@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import tokenBudgetPlugin from '../src/token-budget';
 
 interface MockApi {
@@ -105,6 +105,44 @@ describe('token accumulation', () => {
     tokenBudgetPlugin.setup(api as never);
     const handler = getResponseHandler(api);
     expect(() => handler({ ctx: { model: 'gpt-4o' } })).not.toThrow();
+  });
+});
+
+describe('per-session reset', () => {
+  function getSessionEndedHandler(api: MockApi): () => void {
+    const call = api.onEvent.mock.calls.find(([event]: unknown[]) => event === 'session.ended');
+    if (!call) throw new Error('session.ended handler not registered');
+    return (call as unknown[])[1] as () => void;
+  }
+
+  // The plugin is set up once per PROCESS, but the budget is per SESSION and
+  // the host outlives any one session (the WebUI opens additional sessions in
+  // the same process). Without this reset a finished session's tokens carried
+  // into the next one, and a latched `stopFired` kept blocking a brand-new
+  // session with a total the user never spent there.
+  it('clears totals when a session ends', async () => {
+    const api = makeApi();
+    tokenBudgetPlugin.setup(api as never);
+    getResponseHandler(api)({ usage: { input: 1000, output: 500 }, ctx: { model: 'gpt-4o' } });
+    expect((await getStatusTool(api).execute({})).consumed).toBe(1500);
+
+    getSessionEndedHandler(api)();
+
+    const status = await getStatusTool(api).execute({});
+    expect(status.consumed).toBe(0);
+    expect(status.requestCount).toBe(0);
+  });
+
+  it('releases the Stop block so the next session can run', async () => {
+    const api = makeApi({ extensions: { 'token-budget': { limit: 1000 } } });
+    tokenBudgetPlugin.setup(api as never);
+    getResponseHandler(api)({ usage: { input: 900, output: 200 }, ctx: { model: 'gpt-4o' } });
+    expect(getStopHook(api)({})?.decision).toBe('block');
+
+    getSessionEndedHandler(api)();
+
+    expect(getStopHook(api)({})).toBeUndefined();
+    expect((await getStatusTool(api).execute({})).stopFired).toBe(false);
   });
 });
 

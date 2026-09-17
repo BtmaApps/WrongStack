@@ -18,6 +18,13 @@ import { hasCapability, ToolCapabilities } from './capabilities.js';
 import { explainPermissionTrace } from './permission-explain.js';
 import { type TrustPolicyDiagnostic, validateTrustPolicy } from './permission-policy-schema.js';
 import {
+  exactApprovalKey,
+  isPersistentApproval,
+  isScopedApprovalPattern,
+  matchingApprovalScope,
+  scopedApprovalPattern,
+} from './scoped-approval.js';
+import {
   ALL_DESTRUCTIVE_KINDS,
   attachesWellKnownCredential,
   classifyDestructiveCommand,
@@ -48,29 +55,9 @@ import {
   shellCommandLineFromInput,
 } from './permission-helpers.js';
 
-/**
- * Combine an exact-name trust entry with the wildcard entry that also matched.
- *
- * Deny is the union of both levels — a narrow "always allow" must never be able
- * to drop a broad guardrail. Everything permissive (allow / auto / trustWorkdir
- * / denyPrivate) comes from the more specific entry when it says anything, so
- * exact-name rules still win where they are meant to.
- */
-export function mergeTrustEntries(
-  exact: TrustPolicy[string] | undefined,
-  wildcard: TrustPolicy[string] | undefined,
-): TrustPolicy[string] | undefined {
-  if (!exact) return wildcard;
-  if (!wildcard) return exact;
+import { mergeTrustEntries } from './trust-entry.js';
 
-  const deny = [...(wildcard.deny ?? []), ...(exact.deny ?? [])];
-  const merged: TrustPolicy[string] = {
-    ...wildcard,
-    ...exact,
-  };
-  if (deny.length > 0) merged.deny = [...new Set(deny)];
-  return merged;
-}
+export { mergeTrustEntries } from './trust-entry.js';
 
 export interface PermissionPolicyOptions {
   trustFile: string;
@@ -86,7 +73,9 @@ export interface PermissionPolicyOptions {
     tool: Tool,
     input: unknown,
     suggestedPattern: string,
-  ) => Promise<'yes' | 'no' | 'always' | 'deny'>;
+  ) => Promise<
+    'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'
+  >;
   inputReader?: InputReader | undefined;
 }
 
@@ -95,6 +84,7 @@ export const DEFAULT_ALWAYS_TRUST_TTL_MS = 24 * 60 * 60 * 1000;
 export class DefaultPermissionPolicy implements PermissionPolicy {
   private policy: TrustPolicy = {};
   private loaded = false;
+  private policyChanges: Promise<void> = Promise.resolve();
   private readonly trustFile: string;
   private yolo: boolean;
   private sessionDenied = new Map<string, boolean>();
@@ -237,7 +227,25 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     return this.policyDiagnostics.map((diagnostic) => ({ ...diagnostic }));
   }
 
-  async reload(): Promise<void> {
+  private serializePolicyChange(change: () => Promise<void>): Promise<void> {
+    const pending = this.policyChanges.then(change);
+    // A failed disk write must not poison later policy edits.
+    this.policyChanges = pending.catch(() => undefined);
+    return pending;
+  }
+
+  reload(): Promise<void> {
+    return this.serializePolicyChange(() => this.loadPolicy());
+  }
+
+  private refreshPolicyIndex(): void {
+    this.wildcardEntries = Object.entries(this.policy)
+      .filter(([key]) => key.includes('*'))
+      .map(([pattern, value]) => ({ pattern, value }));
+    this._evalCache.clear();
+  }
+
+  private async loadPolicy(): Promise<void> {
     this.policyDiagnostics = [];
     this.policyInvalid = false;
     try {
@@ -278,10 +286,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         ];
       }
     }
-    this.wildcardEntries = [];
-    for (const [key, val] of Object.entries(this.policy)) {
-      if (key.includes('*')) this.wildcardEntries.push({ pattern: key, value: val });
-    }
+    this.refreshPolicyIndex();
     this.sessionDenied.clear();
     this.sessionAllowed.clear();
     this._evalCache.clear();
@@ -332,7 +337,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // is the user refusing a command, which is a fail-CLOSED answer worth
     // honouring everywhere, and the one-shot allow is consumed by the very
     // call that requested it.
-    const evalKey = `${ctx.session?.id ?? '__default__'}::${cacheKey}::${permissionFingerprint(tool)}::y${
+    const evalKey = `${ctx.session?.id ?? '__default__'}::${cacheKey}::${permissionFingerprint(tool)}::${exactApprovalKey(input, ctx)}::y${
       this.effectiveYolo(ctx) ? 1 : 0
     }`;
 
@@ -398,8 +403,33 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // rather than blocks. Absent `allowUntil` (a hand-authored entry) never
     // expires.
     const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
+    const scope =
+      allowUnexpired && !denyUnevaluated
+        ? matchingApprovalScope(entry?.allow ?? [], tool, input, ctx)
+        : undefined;
+    if (scope) {
+      const destructive =
+        tool.riskTier === 'destructive' || this.destructiveKindOf(tool, input, ctx) !== undefined;
+      if (scope !== 'exact' && destructive) {
+        return {
+          permission: 'confirm',
+          source: 'trust',
+          riskTier: 'destructive',
+          reason: 'Broad approval does not cover destructive calls',
+        };
+      }
+      return { permission: 'auto', source: 'trust', reason: `matched ${scope} approval` };
+    }
     const allowMatches = hasShellSubject(tool) ? matchesCommandTrust : matchesTrust;
-    if (allowUnexpired && entry?.allow && subject && allowMatches(entry.allow, subject)) {
+    if (
+      allowUnexpired &&
+      entry?.allow &&
+      subject &&
+      allowMatches(
+        entry.allow.filter((p) => !isScopedApprovalPattern(p)),
+        subject,
+      )
+    ) {
       const decision: PermissionDecision = {
         permission: 'auto',
         source: 'trust',
@@ -417,8 +447,8 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     if (!this.effectiveYolo(ctx) && this.isSensitiveReadCall(tool, input)) {
       if (this.promptDelegate) {
         const userDecision = await this.promptDelegate(tool, input, subject ?? tool.name);
-        if (userDecision === 'always') {
-          if (subject === undefined) {
+        if (isPersistentApproval(userDecision)) {
+          if (subject === undefined && userDecision === 'always') {
             return {
               permission: 'auto',
               source: 'user',
@@ -427,7 +457,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
           }
           await this.trust({
             tool: tool.name,
-            pattern: subject,
+            pattern: scopedApprovalPattern(userDecision, tool, input, ctx, subject ?? tool.name),
             ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
           });
           return {
@@ -511,8 +541,8 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
 
     if (this.promptDelegate) {
       const decision = await this.promptDelegate(tool, input, subject ?? tool.name);
-      if (decision === 'always') {
-        if (subject === undefined) {
+      if (isPersistentApproval(decision)) {
+        if (subject === undefined && decision === 'always') {
           return {
             permission: 'auto',
             source: 'user',
@@ -521,7 +551,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         }
         await this.trust({
           tool: tool.name,
-          pattern: subject,
+          pattern: scopedApprovalPattern(decision, tool, input, ctx, subject ?? tool.name),
           ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
         });
         return { permission: 'auto', source: 'user', reason: 'user always-allowed' };
@@ -542,50 +572,38 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     return isSensitiveReadCall(tool, input);
   }
 
-  async trust(rule: { tool: string; pattern: string; ttlMs?: number }): Promise<void> {
-    if (!this.loaded) await this.reload();
-    if (this.policyInvalid) {
-      throw new Error('Cannot update trust rules while trust.json is invalid; repair it first.');
-    }
-    const entry = this.policy[rule.tool] ?? {};
-    entry.allow = Array.from(new Set([...(entry.allow ?? []), rule.pattern]));
-    // W6 #9: only a prompt-driven `always` passes `ttlMs`; a hand-authored
-    // trust.json entry stays permanent. Re-granting an already-timed rule
-    // refreshes the window rather than silently making it permanent again.
-    if (rule.ttlMs !== undefined) entry.allowUntil = Date.now() + rule.ttlMs;
-    this.policy[rule.tool] = entry;
-    this._evalCache.clear();
-    try {
-      await atomicWrite(this.trustFile, JSON.stringify(this.policy, null, 2));
-    } catch (err) {
-      const existing = this.policy[rule.tool];
-      if (existing?.allow) {
-        const idx = existing.allow.indexOf(rule.pattern);
-        if (idx !== -1) existing.allow.splice(idx, 1);
-      }
-      throw err;
-    }
+  trust(rule: { tool: string; pattern: string; ttlMs?: number }): Promise<void> {
+    return this.persistRule('allow', rule);
   }
 
-  async deny(rule: { tool: string; pattern: string }): Promise<void> {
-    if (!this.loaded) await this.reload();
-    if (this.policyInvalid) {
-      throw new Error('Cannot update deny rules while trust.json is invalid; repair it first.');
-    }
-    const entry = this.policy[rule.tool] ?? {};
-    entry.deny = Array.from(new Set([...(entry.deny ?? []), rule.pattern]));
-    this.policy[rule.tool] = entry;
-    this._evalCache.clear();
-    try {
-      await atomicWrite(this.trustFile, JSON.stringify(this.policy, null, 2));
-    } catch (err) {
-      const existing = this.policy[rule.tool];
-      if (existing?.deny) {
-        const idx = existing.deny.indexOf(rule.pattern);
-        if (idx !== -1) existing.deny.splice(idx, 1);
+  deny(rule: { tool: string; pattern: string }): Promise<void> {
+    return this.persistRule('deny', rule);
+  }
+
+  private persistRule(
+    kind: 'allow' | 'deny',
+    rule: { tool: string; pattern: string; ttlMs?: number },
+  ): Promise<void> {
+    return this.serializePolicyChange(async () => {
+      if (!this.loaded) await this.loadPolicy();
+      if (this.policyInvalid) {
+        throw new Error(
+          `Cannot update ${kind === 'allow' ? 'trust' : 'deny'} rules while trust.json is invalid; repair it first.`,
+        );
       }
-      throw err;
-    }
+      const previous = this.policy[rule.tool] ?? {};
+      const entry = {
+        ...previous,
+        [kind]: [...new Set([...(previous[kind] ?? []), rule.pattern])],
+      };
+      if (kind === 'allow' && rule.ttlMs !== undefined) entry.allowUntil = Date.now() + rule.ttlMs;
+      const next = { ...this.policy, [rule.tool]: entry };
+      // Publish only after persistence succeeds. Failed/redundant writes leave
+      // the old deny, expiry, wildcard index, and cached decisions intact.
+      await atomicWrite(this.trustFile, JSON.stringify(next, null, 2));
+      this.policy = next;
+      this.refreshPolicyIndex();
+    });
   }
 
   denyOnce(rule: { tool: string; pattern: string }): void {
@@ -609,6 +627,8 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
         sessionAllowed: this.sessionAllowed,
         yolo: this.effectiveYolo(ctx),
         promptDelegatePresent: this.promptDelegate !== undefined,
+        isDestructiveCall: (t, inp, c) =>
+          t.riskTier === 'destructive' || this.destructiveKindOf(t, inp, c) !== undefined,
         isSensitiveReadCall: (t, inp) => this.isSensitiveReadCall(t, inp),
         yoloBlockedAsDestructive: (t, inp, c) => this.yoloBlockedAsDestructive(t, inp, c),
       },

@@ -146,3 +146,22 @@ describe('Composer permission bar', () => {
     expect(document.activeElement).toBe(props.textareaRef.current);
   });
 });
+
+it.each([
+  ['Same input / args', 'always-exact'],
+  ['Command, any args', 'always-command'],
+  ['Tool, any input', 'always-tool'],
+])('sends the explicit %s approval scope', (label, decision) => {
+  const props = composerProps({
+    id: 'scope',
+    toolName: 'exec',
+    input: { command: 'uv', args: ['run', 'pytest'] },
+  });
+  const { container } = mountComposer(props);
+  const button = [...container.querySelectorAll('button')].find(
+    (button) => button.textContent === label,
+  );
+  expect(button).toBeDefined();
+  act(() => button?.click());
+  expect(props.decideConfirm).toHaveBeenCalledExactlyOnceWith(decision);
+});

@@ -1,0 +1,120 @@
+{
+  "skill": "hunt-webui-server-delta",
+  "base": "3984ebef1",
+  "reviewed_paths": [
+    "packages/webui-server/src/server/provider/model-test.ts",
+    "packages/webui-server/src/server/provider-routes.ts",
+    "packages/webui-server/src/server/node-pty-spawn-helper.ts",
+    "packages/webui-server/src/server/terminal-ws-handler.ts",
+    "packages/webui-server/src/server/shell-open.ts",
+    "packages/webui-server/src/server/http-server.ts",
+    "packages/webui-server/src/server/http-server/security-helpers.ts",
+    "packages/webui-server/src/server/http-server/static-file-handler.ts",
+    "packages/webui-server/src/server/http-server/api-router.ts",
+    "packages/webui-server/src/server/http-server/integration-status.ts",
+    "packages/webui-server/src/server/http-server/integration-connect-src.ts",
+    "packages/webui-server/src/server/frontend-static-serve.ts",
+    "packages/webui-server/src/server/start-webui.ts",
+    "packages/webui-server/src/server/routes.ts",
+    "packages/webui-server/src/server/ws-payload-preferences.ts",
+    "packages/webui-server/src/server/prefs-handlers.ts",
+    "packages/webui-server/src/server/pref-helpers.ts",
+    "packages/webui-server/src/server/session-scoped-prefs.ts",
+    "packages/webui-server/src/server/session-handlers.ts",
+    "packages/webui-server/src/server/session-handler-helpers.ts",
+    "packages/webui-server/src/server/session-history.ts",
+    "packages/webui-server/src/server/conversation-operations.ts",
+    "packages/webui-server/src/server/conversation-routes.ts",
+    "packages/webui-server/src/server/memory-handlers.ts",
+    "packages/webui-server/src/server/embedded-host-adapters.ts",
+    "packages/webui-server/src/server/embedded-message-router.ts",
+    "packages/webui-server/src/server/message-dispatcher.ts",
+    "packages/webui-server/src/server/leader-auto-wake-host.ts",
+    "packages/webui-server/src/server/collab/membership.ts",
+    "packages/webui-server/src/server/collab/collab-context.ts",
+    "packages/webui-server/src/server/collaboration-ws-handler.ts",
+    "packages/webui-server/src/server/privileged-actions.ts",
+    "packages/core/src/core/user-input-awaiter.ts",
+    "packages/core/src/coordination/session-subagent-models.ts",
+    "packages/core/src/storage/config-loader/in-project-policy.ts"
+  ],
+  "coverage": [
+    {
+      "id": "WEBUI-MODELTEST-SSRF",
+      "status": "covered",
+      "evidence": "provider-routes.ts:470-510 accepts only requestId/providerId/modelIds, each checked against SAFE_CONFIG_KEY, plus bounded integers for timeoutMs and maxTokens. The payload has no baseUrl, apiKey or config field. model-test.ts:285-288 looks the provider up by id in the saved providers (ctx.loadConfigProviders) and builds it from that saved config. The endpoint and key are therefore whatever the operator already saved. In-project config cannot inject 'providers' or 'baseUrl' (in-project-policy.ts:68-69, 129-132). Errors go through DefaultSecretScrubber before the 800-char slice (model-test.ts:88, 96). Only the token-authenticated WS reaches it, which is the same principal that can already provider.save a baseUrl.",
+      "gap": "The test path skips routeProviderCfgThroughProxy (unlike model.switch in routes.ts). This is a functional inconsistency, not a security issue."
+    },
+    {
+      "id": "WEBUI-PTY-SPAWN",
+      "status": "covered",
+      "evidence": "node-pty-spawn-helper.ts:84-106 resolves the package dir with req.resolve('node-pty/package.json') and chmods +x only <pkg>/{build/Release,build/Debug,prebuilds/<platform>-<arch>}/spawn-helper. No WS or user input reaches the path. It is a no-op on win32. spawnHelperChmodCommand single-quote-escapes the path and only puts it in a log or hint string, never executes it. terminal-ws-handler.ts changes are a hint string and the repair call in defaultLoadNodePty; the authorizeWebUIAction gate is unchanged. shell-open.ts change is errMessage only.",
+      "gap": ""
+    },
+    {
+      "id": "WEBUI-HTTP-AUTH-NEWROUTES",
+      "status": "covered",
+      "evidence": "The new GET /api/integrations/(hq|wrong-proxy)/status (http-server.ts:293-301) is dispatched after the Origin/Host guard, the requireAccessToken 401 and the origin-less mutation gate (http-server.ts:224-289). integration-status.ts takes no target from the request: the resolver reads context.meta hqUrl/wrongProxyUrl (start-webui.ts:465-471). probeUrl allows only http/https, rejects userinfo, forces a fixed path, clears query and hash, and returns only connected/latency/status. The CLI host does not wire getIntegrationTarget, so it returns 503. api-router.ts change replaces decodeURIComponent with strictDecodeParam, which is stricter. The 500 log now strips the query token (http-server.ts:330).",
+      "gap": "Pre-existing: requireAccessToken is configurable. Did not re-audit the non-token loopback mode, which is outside this delta."
+    },
+    {
+      "id": "WEBUI-STATIC-PATH",
+      "status": "covered",
+      "evidence": "static-file-handler.ts:42-53 does path.join(distDir, url.pathname), then path.resolve, then isInsideDist (security-helpers.ts:194-198: resolved === root || startsWith(root + sep)). URL parsing already normalizes '..' and the resolve check catches encoded forms. The delta only adds the CSP extra-connect-src argument. frontend-static-serve.ts only forwards getExtraConnectSrc.",
+      "gap": ""
+    },
+    {
+      "id": "WEBUI-CSP-CONNECTSRC",
+      "status": "covered",
+      "evidence": "integration-connect-src.ts:18-26 reads only config.hq.url and config.tools.wrongProxy.url. Both are on the in-project denylist (in-project-policy.ts:89, 169, 354), so repo config cannot set them. cspConnectOrigin (security-helpers.ts:115-130) re-serializes through new URL to scheme://host[:port] with an http/https/ws/wss allowlist. A hostname cannot carry ';' or spaces after WHATWG parsing, so there is no header or directive injection. The widening only affects connect-src, and the source is operator-owned.",
+      "gap": ""
+    },
+    {
+      "id": "WEBUI-WS-MASSASSIGN",
+      "status": "covered",
+      "evidence": "New pref keys: disabledModels (string array, validated in ws-payload-preferences.ts STRING_ARRAY_PREF_KEYS) and subagentModelPlan (shape validator with forbidden proto keys, then core normalizeSubagentModelPlan, which whitelists provider/model/tier/fallbackProfile/label/modelRuntime/enabled/lock). No autonomy, yolo, permission or confirm field is reachable. subagentModelPlan is removed from the persisted payload (prefs-handlers.ts destructure). computeConfigPrefUpdates (routes.ts) is an explicit field whitelist that replaced in-place mutation of the frozen config. Callers of setSessionSubagentModelPlan are operator surfaces only: the WS prefs, the CLI slash command and the panel. No tool path exists.",
+      "gap": "modelRuntime is passed through as an opaque object. It is the same Config['modelRuntime'] shape modelMatrix already accepts from the same principal."
+    },
+    {
+      "id": "WEBUI-SESSION-IDOR",
+      "status": "covered",
+      "evidence": "user.input_submit (conversation-operations.ts submitUserInput) takes payload.sessionId, falling back to the current session, and emits user.input_submitted. The core awaiter (user-input-awaiter.ts:13-16) requires both an exact requestId match and a sessionId match. Every WS client holds the same access token. Collab clients share the authenticated socket, and authorizeWebUIAction always evaluates as actor 'remote-client', so the WebUI has no lower-trust WS principal to escalate from. The notifyDisplayed, rehydrateDelegations and applyModelSwitch additions in session-handlers act on sessions the connection itself declares, resumes or creates. leader-auto-wake-host runtime turns take their prompt from the core delivery hub, not from a WS frame. memory-handlers review-candidate accept routes through Sage.resolveCandidate for an id already present in pending candidates.",
+      "gap": "Pre-existing design: any token holder can target any session id. Not new in this delta."
+    }
+  ],
+  "candidates": [],
+  "rejected": [
+    {
+      "title": "provider.test.run sends stored API key to attacker-chosen baseUrl",
+      "reason": "The payload carries only SAFE_CONFIG_KEY ids. The endpoint comes from the saved provider config (model-test.ts:285-288), which in-project config cannot set, and the caller is the token-holding operator who can already edit providers."
+    },
+    {
+      "title": "provider.test.run skips authorizeWebUIAction while siblings use it",
+      "reason": "No provider.* sibling (provider.test, provider.save, model.switch) uses authorizeWebUIAction. Only terminal, process exit and a few desktop actions do, so this is not a guard-skip regression."
+    },
+    {
+      "title": "SSRF via /api/integrations/*/status",
+      "reason": "The target is operator metadata (hqUrl/wrongProxyUrl), the path is fixed, userinfo is rejected, the response body is not relayed (only status and latency), and the route is behind the token and Origin gates."
+    },
+    {
+      "title": "CSP connect-src injection via hq.url / tools.wrongProxy.url",
+      "reason": "Both keys are in-project-denylisted and re-serialized through URL to an origin with a scheme allowlist, so no directive delimiter survives."
+    },
+    {
+      "title": "Command injection or attacker-controlled chmod in node-pty spawn-helper repair",
+      "reason": "The path comes from require.resolve of node-pty plus constant segments. The chmod command string is only logged or shown, never executed."
+    },
+    {
+      "title": "Mass assignment of autonomy/yolo through subagentModelPlan or disabledModels",
+      "reason": "Core normalizer and validator whitelist the fields, no autonomy or permission fields exist, and the plan is not persisted to config.json."
+    },
+    {
+      "title": "Cross-session answer to ask_user form via user.input_submit",
+      "reason": "It needs an exact requestId and a sessionId match, and all WS clients are the same token-holding principal."
+    },
+    {
+      "title": "Access token leaked in 500 error log",
+      "reason": "This was fixed in the delta: http-server.ts:330 now logs the path without the query string and a scrubbed error."
+    }
+  ]
+}

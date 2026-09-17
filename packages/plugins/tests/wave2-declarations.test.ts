@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import prDrafterPlugin from '../src/pr-drafter/index.js';
-import smartRenamePlugin from '../src/smart-rename/index.js';
 import testGeneratorPlugin from '../src/test-generator/index.js';
 
 function collectTools(plugin: { setup: (api: never) => void }) {
@@ -29,16 +28,16 @@ function collectTools(plugin: { setup: (api: never) => void }) {
  * the executor through `plugin_manager action:'use'`) no PreToolUse hook.
  */
 describe('file-writing plugin tools declare what they do', () => {
-  it.each([
-    ['smart_rename', smartRenamePlugin],
-    ['pr_draft', prDrafterPlugin],
-  ])('%s declares fs.write and asks for confirmation', (name, plugin) => {
-    const tool = collectTools(plugin as never).find((t) => t['name'] === name);
-    expect(tool, `${name} should be registered`).toBeDefined();
-    expect(tool?.['mutating']).toBe(true);
-    expect(tool?.['capabilities']).toContain('fs.write');
-    expect(tool?.['permission']).toBe('confirm');
-  });
+  it.each([['pr_draft', prDrafterPlugin]])(
+    '%s declares fs.write and asks for confirmation',
+    (name, plugin) => {
+      const tool = collectTools(plugin as never).find((t) => t['name'] === name);
+      expect(tool, `${name} should be registered`).toBeDefined();
+      expect(tool?.['mutating']).toBe(true);
+      expect(tool?.['capabilities']).toContain('fs.write');
+      expect(tool?.['permission']).toBe('confirm');
+    },
+  );
 });
 
 describe('generate_unit_tests only reads source files', () => {

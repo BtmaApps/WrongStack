@@ -171,3 +171,54 @@ describe('ToolExecutor — executeBatch', () => {
     expect(out.result).toBeDefined();
   });
 });
+
+describe('ToolExecutor scoped inline approval', () => {
+  it.each(['yes', 'always-exact', 'always-command', 'always-tool'] as const)(
+    'executes %s once and remembers only persistent scopes',
+    async (decision) => {
+      const tool = createMockTool({ name: 'exec', result: 'ok' });
+      tool.subjectKey = 'command';
+      const execute = vi.spyOn(tool, 'execute');
+      const trust = vi.fn(async () => undefined);
+      const events = new EventBus();
+      const persisted = vi.fn();
+      events.on('trust.persisted', persisted);
+      const policy = {
+        evaluate: vi.fn(async () => ({ permission: 'confirm', source: 'default' })),
+        trust,
+      };
+      const executor = new ToolExecutor(makeRegistry([tool]), {
+        permissionPolicy: policy as never,
+        events,
+        secretScrubber: { ...noopScrubber, scrubObject: <T>(value: T): T => value },
+        confirmAwaiter: async () => decision,
+      });
+      const result = await executor.executeBatch(
+        [makeToolUse('exec', 'scoped', { command: 'uv', args: ['run', 'pytest'] })],
+        makeCtx(),
+        'sequential',
+      );
+      expect(result.outputs[0]?.result.type).toBe('tool_result');
+      expect(execute).toHaveBeenCalledTimes(1);
+      if (decision !== 'yes')
+        expect(persisted).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            tool: 'exec',
+            scope: decision.slice('always-'.length),
+            pattern: expect.stringContaining('wrongstack-approval:v1:'),
+            displayPattern: expect.any(String),
+          }),
+        );
+      if (decision === 'yes') {
+        expect(trust).not.toHaveBeenCalled();
+        expect(persisted).not.toHaveBeenCalled();
+      } else
+        expect(trust).toHaveBeenCalledExactlyOnceWith({
+          tool: 'exec',
+          pattern: expect.stringContaining(
+            `wrongstack-approval:v1:${decision.slice('always-'.length)}`,
+          ),
+        });
+    },
+  );
+});

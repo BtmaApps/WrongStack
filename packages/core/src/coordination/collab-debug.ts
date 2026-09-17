@@ -29,6 +29,7 @@
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as fsp from 'node:fs/promises';
+import * as path from 'node:path';
 import type { SubagentConfig, TaskResult } from '../types/multi-agent.js';
 import { expandGlob } from '../utils/glob-expand.js';
 import type { CollabDirectorHost } from './collab-director-host.js';
@@ -43,6 +44,36 @@ import { validateFleetEventEmission } from './fleet-event-validation.js';
  */
 export const DEFAULT_MAX_TARGET_FILES = 30;
 
+/**
+ * Confine one collab target to the project root (WS-2026-09-17-01).
+ *
+ * Every sibling file tool routes through `ensureInsideRoot` /
+ * `resolveRealInsideRoot`; this path had no equivalent, so a user who enabled
+ * `tools.restrictToProjectRoot` got confinement on read/edit/grep/glob and not
+ * here — and `collab_debug` embeds what it reads into three subagent prompts,
+ * i.e. straight out to the provider.
+ *
+ * Resolution goes through `realpath`, so an in-root symlink aimed outside is
+ * refused too (CWE-59). A path that does not exist resolves lexically: it would
+ * fail the read anyway, and deciding it here keeps the answer stable.
+ *
+ * @returns the resolved path when reading it is allowed, `null` when refused.
+ */
+export async function resolveCollabTargetInsideRoot(
+  filePath: string,
+  projectRoot: string | undefined,
+  allowOutsideProjectRoot: boolean | undefined,
+): Promise<string | null> {
+  // Unrestricted access, or no root to measure against: nothing to enforce.
+  // Mirrors `resolveRealInsideRoot`, which returns immediately in that case.
+  if (allowOutsideProjectRoot === true || !projectRoot) return filePath;
+  const realTarget = await fsp.realpath(filePath).catch(() => path.resolve(filePath));
+  const realRoot = await fsp.realpath(projectRoot).catch(() => path.resolve(projectRoot));
+  const rel = path.relative(realRoot, realTarget);
+  const inside = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  return inside ? realTarget : null;
+}
+
 /** ID prefixes for the three collab-debug agent roles. Used by ownsSubagent. */
 const COLLAB_ID_PREFIXES = ['bug-hunter-', 'refactor-planner-', 'critic-'];
 
@@ -50,11 +81,6 @@ const COLLAB_ID_PREFIXES = ['bug-hunter-', 'refactor-planner-', 'critic-'];
 // Types
 // ---------------------------------------------------------------------------
 
-/**
- * Alert levels the Director can emit when a collab session needs attention.
- * These flow through the FleetBus so the host can display them in the UI.
- */
-export { DirectorAlertLevel } from './collab-debug-types.js';
 export type {
   BugFinding,
   CollabBudgetConfig,
@@ -66,12 +92,17 @@ export type {
   CriticEvaluation,
   DirectorAlert,
   DirectorCancelCollabPayload,
-  RefactorPlan,
   RefactorPhase,
+  RefactorPlan,
   SharedFileEntry,
   SharedFileSnapshot,
 } from './collab-debug-types.js';
-import { DirectorAlertLevel } from './collab-debug-types.js';
+/**
+ * Alert levels the Director can emit when a collab session needs attention.
+ * These flow through the FleetBus so the host can display them in the UI.
+ */
+export { DirectorAlertLevel } from './collab-debug-types.js';
+
 import type {
   BugFinding,
   BugFoundPayload,
@@ -85,6 +116,7 @@ import type {
   RefactorPlanPayload,
   SharedFileSnapshot,
 } from './collab-debug-types.js';
+import { DirectorAlertLevel } from './collab-debug-types.js';
 
 export class CollabSession extends EventEmitter {
   readonly sessionId: string;
@@ -177,7 +209,24 @@ export class CollabSession extends EventEmitter {
     const allFiles: string[] = [];
     for (const pattern of this.options.targetPaths) {
       const expanded = await expandGlob(pattern);
-      allFiles.push(...expanded);
+      for (const file of expanded) {
+        // The confinement check belongs HERE because this is the read site.
+        // `expandGlob` runs again in this method, so a check performed before
+        // the call is a TOCTOU window rather than a control (WS-2026-09-17-01).
+        const resolved = await resolveCollabTargetInsideRoot(
+          file,
+          this.options.projectRoot,
+          this.options.allowOutsideProjectRoot,
+        );
+        if (resolved === null) {
+          throw new Error(
+            `[collab_debug] refusing to read "${file}": it resolves outside the project root ` +
+              `(${this.options.projectRoot}). Targets must stay inside the project while ` +
+              `tools.restrictToProjectRoot is enabled.`,
+          );
+        }
+        allFiles.push(file);
+      }
     }
     const limit = this.effectiveFileLimit();
     if (allFiles.length > limit) {

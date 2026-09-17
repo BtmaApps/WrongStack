@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.19",
+  "packageVersion": "1.0.20",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1029,6 +1029,7 @@
         "export { decryptConfigSecrets, encryptConfigSecrets, isSecretField } from './config-secrets.js';",
         "export { describeWriteTargets } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
+        "export { isPersistentApproval, scopedApprovalPattern } from './scoped-approval.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
         "export { type KanbanGovernancePort, kanbanGovernance, setKanbanGovernance, } from './kanban-governance-port.js';"
@@ -1464,21 +1465,21 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 41,
-      "sourceLines": 11813
+      "sourceLines": 11862
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 194,
-      "sourceLines": 56064
+      "sourceLines": 56196
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 56,
-      "sourceLines": 13065
+      "sourceFiles": 58,
+      "sourceLines": 13316
     },
     {
       "directory": "design",
@@ -1491,8 +1492,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 59,
-      "sourceLines": 19033
+      "sourceFiles": 60,
+      "sourceLines": 19238
     },
     {
       "directory": "extension",
@@ -1513,28 +1514,28 @@
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner",
       "sourceFiles": 6,
-      "sourceLines": 1317
+      "sourceLines": 1381
     },
     {
       "directory": "hq",
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 53,
-      "sourceLines": 11604
+      "sourceLines": 11637
     },
     {
       "directory": "infrastructure",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1945
+      "sourceLines": 1965
     },
     {
       "directory": "kernel",
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 19,
-      "sourceLines": 4108
+      "sourceLines": 4128
     },
     {
       "directory": "models",
@@ -1610,15 +1611,15 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 20,
-      "sourceLines": 7597
+      "sourceFiles": 22,
+      "sourceLines": 7820
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5042
+      "sourceLines": 5088
     },
     {
       "directory": "skills",
@@ -1660,14 +1661,14 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 73,
-      "sourceLines": 13825
+      "sourceLines": 13827
     },
     {
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 71,
-      "sourceLines": 12688
+      "sourceLines": 12767
     },
     {
       "directory": "wiring",

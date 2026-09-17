@@ -88,7 +88,7 @@ export function startAcpHqTelemetry(options: AcpHqTelemetryOptions): AcpHqTeleme
    */
   const resolveApproval = (
     toolUseId: string,
-    decision: 'yes' | 'no' | 'always' | 'deny',
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny',
     sessionId?: string,
   ): boolean => {
     if (sessionId !== undefined) {

@@ -1,0 +1,201 @@
+{
+  "skill": "hunt-tools-delta",
+  "base": "3984ebef1",
+  "reviewed_paths": [
+    "packages/tools/src/exec.ts",
+    "packages/tools/src/pwsh.ts",
+    "packages/tools/src/bash.ts",
+    "packages/tools/src/git.ts",
+    "packages/tools/src/install.ts",
+    "packages/tools/src/typecheck.ts",
+    "packages/tools/src/lint.ts",
+    "packages/tools/src/format.ts",
+    "packages/tools/src/outdated.ts",
+    "packages/tools/src/audit.ts",
+    "packages/tools/src/session-shell.ts",
+    "packages/tools/src/win32.ts",
+    "packages/tools/src/_win32-resolve.ts",
+    "packages/tools/src/_spawn-stream.ts",
+    "packages/tools/src/_util.ts",
+    "packages/tools/src/_danger-detect.ts",
+    "packages/tools/src/browser/security.ts",
+    "packages/tools/src/codebase-index/toolchain-scripts.ts",
+    "packages/tools/src/codebase-index/worker.ts",
+    "packages/tools/src/codebase-index/go-parser.ts",
+    "packages/tools/src/codebase-index/py-parser.ts",
+    "packages/tools/src/codebase-index/parser-batch.ts",
+    "packages/tools/src/codebase-index/indexer.ts",
+    "packages/tools/src/codebase-index/project-server-client.ts",
+    "packages/tools/src/codebase-index/codebase-targeted-test-tool.ts",
+    "packages/tools/src/glob.ts",
+    "packages/tools/src/grep.ts",
+    "packages/tools/src/replace.ts",
+    "packages/tools/src/patch.ts",
+    "packages/tools/src/tree.ts",
+    "packages/tools/src/diff.ts",
+    "packages/tools/src/logs.ts",
+    "packages/tools/src/design.ts",
+    "packages/tools/src/tool-use.ts",
+    "packages/tools/src/mode.ts",
+    "packages/tools/src/plan.ts",
+    "packages/tools/src/task.ts",
+    "packages/tools/src/process-registry.ts",
+    "packages/core/src/types/mode.ts",
+    "packages/core/src/security/permission-helpers.ts",
+    "packages/cli/src/wiring/codebase-index.ts"
+  ],
+  "coverage": [
+    {
+      "id": "TOOLS-EXEC-CMDI",
+      "status": "covered",
+      "evidence": "exec.ts delta is a refusal-shape refactor (return {allowed:false} -> throw). Order still: breaker -> isExecCommandAllowed -> checkExecKillCommand -> validateArgs (BLOCKED_ARG_PATTERNS + BLOCKED_OPTION_NAMES incl git -c/-C/--exec/--upload-pack/--exec-path/--git-dir) -> safeResolveReal(cwd). Spawn uses resolveWin32Command + isWinCmdShim + buildWin32CmdShimInvocation (core metachar block); env via buildChildEnv. isWinCmdShim is now case-insensitive (/\\.(cmd|bat)$/i), which closes a .CMD/.BAT uppercase gap in exec/outdated/_spawn-stream. pwsh/bash deltas are throw refactors plus a tightened PIPE_TO_SHELL_PATTERN; permission confirm. node/npx/bun/python arg tables are empty by design (exec is confirm-gated).",
+      "gap": "exec-allowlist.ts / exec.ts BLOCKED tables not changed in delta; not re-audited in depth (e.g. node -e, npm exec are allowed by design under confirm)."
+    },
+    {
+      "id": "TOOLS-GIT-ARGINJ",
+      "status": "covered",
+      "evidence": "git.ts delta converts validateBranchInput/validateWorktreeInput to throwing assertSafeBranch/assertSafeWorktreeInput, and adds a refusal for 'worktree add' without a path (it used to fall back silently to 'worktree list'). buildArgs has no raw args field; files always go after '--'; checkout branch is followed by '--'; env is buildChildEnv; permission confirm; findGitDir bounded at projectRoot. diff.ts still rejects a/b starting with '-' (blocks --output=), but see TD-001 on implicit --no-index.",
+      "gap": ""
+    },
+    {
+      "id": "TOOLS-SPAWN-TOOLCHAIN",
+      "status": "covered",
+      "evidence": "lint/format/typecheck/install/outdated/audit deltas only turn spawn failures and 'unavailable' runs into throws. lint.ts adds ensureInsideRoot on files, which is a hardening. install still enforces PKG_NAME_RE and no leading '-'. All go through spawnStream (resolveWin32Command + shim + buildChildEnv). codebase_targeted_test runs go test/pytest/npx (repo code execution by design) and is permission confirm.",
+      "gap": "Language bridge (languages/legacy-bridge, languages/execute.ts) not re-audited; unchanged in delta."
+    },
+    {
+      "id": "TOOLS-CODEBASE-TOOLCHAIN-SCRIPTS",
+      "status": "covered",
+      "evidence": "toolchain-scripts.ts embeds fixed Go (go/ast) and Python (ast.parse) programs. Repo source goes over stdin only and is parsed, never imported or executed. Scripts are written with fs.mkdtemp + flag 'wx' (no symlink/pre-creation or sys.path module planting). goSpawnOptions sets cwd to the private script dir with GOTOOLCHAIN=local and GOWORK=off, so the repo's go.mod/go.work toolchain directive is never read. pySpawnOptions cwd is the script dir, so the repo is not on sys.path. No cargo/rust subprocess (rs-parser is tree-sitter/regex). worker.ts delta is DataCloneError handling only. Indexing runs automatically via setupCodebaseIndexing -> ensureCodebaseIndexServer (cli/src/wiring/codebase-index.ts:101) without approval, so any executable-lookup weakness in that path is unapproved (see TD-002).",
+      "gap": "runToolchainChild passes the full process.env (not buildChildEnv) to the fixed parser children. Low impact, since the child program is trusted, but it is an env-sanitizer bypass: GOFLAGS or PYTHONSTARTUP from the user env would apply (user-trusted env, not attacker)."
+    },
+    {
+      "id": "TOOLS-PATH-CONTAINMENT",
+      "status": "candidate",
+      "evidence": "glob/grep/tree/logs/patch/replace/lint/diff(files path) all still use safeResolveReal / ensureInsideRoot. glob and grep add stat checks; grep adds a default-ignored-dir root check; replace adds a not-found throw with lstat; patch keeps safeResolveReal(directory) plus realRoot comparison; design.ts delta is refusal-shape only. Gap found: diff.ts a/b refs are not contained and git's implicit no-index mode turns them into arbitrary file paths (TD-001, pre-existing code in a changed file).",
+      "gap": "json.ts (413-line churn) not deeply re-read; spot check deferred."
+    },
+    {
+      "id": "TOOLS-AUTONOMY-ESCALATION",
+      "status": "covered",
+      "evidence": "mode.ts only switches ModeStore modes. core/src/types/mode.ts Mode has only prompt/tags/toolPreferences/suggestedSkills, no permission/autonomy/tool-grant fields. tool-use.ts keeps the deny gate, the recursion block and governed nested execution, and now throws on nested failure. A grep of tools/src for autonomy|yolo|permissionMode|allowedTools|grantTools finds only comments. plan/task diffs contain no permission/autonomy/capability lines.",
+      "gap": "kanban-lifecycle-actions.ts (452-line churn) was only grep-checked for autonomy terms."
+    },
+    {
+      "id": "TOOLS-WIN-CWD-EXE-SEARCH",
+      "status": "candidate",
+      "evidence": "No absolute-path resolver is used at several bare-name spawn sites whose effective cwd is the untrusted project (explicit cwd option, or inherited process cwd = launch dir). resolveWin32Command (_win32-resolve.ts:32-65) walks PATH only and returns the bare name when nothing is found; findOnPath exists only in plugin-sdk. See TD-002 for the site list.",
+      "gap": "libuv/Bun executable search order is a runtime fact; needs a Windows validation run."
+    }
+  ],
+  "candidates": [
+    {
+      "id": "TD-001",
+      "title": "diff tool (permission:auto) reads arbitrary files outside project root via git diff implicit --no-index on a/b refs",
+      "attack_class": "path traversal / containment bypass (arbitrary file read) via argument semantics",
+      "attacker": "Prompt-injected LLM (e.g. hostile repo content or fetched page) that can emit a diff tool call; no user approval needed because diff is permission:'auto'",
+      "entry": "diff tool input {a: 'C:/Users/<u>/.ssh/id_rsa' (or ~/.wrongstack/... credentials, /etc/shadow-readable file), b: 'package.json'} with no files and no staged",
+      "trace": [
+        "packages/tools/src/diff.ts:65 — permission: 'auto' (no confirm)",
+        "packages/tools/src/diff.ts:152-181 — a/b validated only for non-empty and no leading '-' (flag injection); no path containment",
+        "packages/tools/src/diff.ts:193-200 — only input.path goes through safeResolveReal; basePath defaults to ctx.cwd",
+        "packages/tools/src/diff.ts:202 / 269-285 — findGitDir walks up to 20 parents (unbounded by projectRoot, unlike git.ts)",
+        "packages/tools/src/diff.ts:212-222 — args = ['diff','--no-color', a, b]; no '--' separator when files is absent",
+        "packages/tools/src/diff.ts:238 / 304 — spawn('git', args, {cwd: gitDir}); result.stdout returned to the model",
+        "git builtin/diff.c (documented in git-diff(1)) — with exactly two trailing paths where at least one is outside the working tree, git switches to --no-index and diffs the two filesystem files, so the full content of the outside file appears as '+'/'-' lines",
+        "packages/core/src/security/permission-helpers.ts:423-430 — inputPathLooksSensitive only inspects keys path/file/file_path/filePath/target/targetPath, not a/b, so the sensitive-read gate does not fire"
+      ],
+      "control_analysis": "The leading-dash guard blocks --no-index/--output spelled as options, but git enables no-index implicitly from path arguments, so no option is needed. Containment (safeResolveReal) is applied to input.path and files-mode paths but not to refs, and the sensitive-read heuristic keys on other field names. The code is unchanged in this area since the baseline (pre-existing), but it sits in a changed file and is a classic 'guard exists, sibling input bypasses it' case.",
+      "sink": "git diff --no-index output of an out-of-root file returned as tool output to the LLM (can then be exfiltrated with other auto tools or shown in HQ/webui transcripts)",
+      "affected_principal": "Local user running WrongStack (file-system confidentiality: SSH keys, provider credentials, other projects)",
+      "result": "Unapproved read of any file readable by the user, outside the project root",
+      "conditions": "git on PATH; project (or a parent within 20 levels) is a git repo; LLM supplies two positional refs where at least one resolves to a path outside the working tree; files omitted. Behaviour of git's implicit no-index is documented but version-dependent.",
+      "next_validation": "In a scratch git repo on this machine run `git diff --no-color C:/Windows/win.ini README.md` (no --) and confirm no-index output; then call the diff tool with {a: '<outside file>', b: '<repo file>'} in a unit harness and verify content is returned without a permission prompt. Fix: always push '--end-of-options' before refs and validate refs with `git rev-parse --verify --end-of-options <ref>^{commit}` (or reject refs that resolve as existing filesystem paths), and bound findGitDir at projectRoot.",
+      "proposed_verdict": "needs_validation",
+      "confidence": 0.8
+    },
+    {
+      "id": "TD-002",
+      "title": "Windows: bare-name spawns with untrusted-project cwd let a repo-shipped git.exe/rg.exe/python.exe run, including unapproved paths (auto-index, grep, diff)",
+      "attack_class": "binary planting / untrusted search path (CWE-426) via libuv current-directory-first executable lookup",
+      "attacker": "Author of a hostile repository the user clones or extracts and opens with wstack/webui on Windows; no LLM cooperation needed for the auto-index path",
+      "entry": "Repository root contains git.exe (or git.com), rg.exe, python3.exe/python.exe/py.exe, docker.exe, patch.exe",
+      "trace": [
+        "packages/cli/src/wiring/codebase-index.ts:101 — setupCodebaseIndexing automatically calls ensureCodebaseIndexServer on startup (no approval)",
+        "packages/tools/src/codebase-index/project-server-client.ts:720 — spawn(process.execPath, ...) with no cwd option: the index server inherits the launch cwd (normally the project root)",
+        "packages/tools/src/codebase-index/indexer.ts:138-150 — execFile('git', ['-C', projectRoot, ...]) with no cwd and no resolver; called from findGitSourceFiles (indexer.ts:168,176-184,342,1078)",
+        "packages/tools/src/codebase-index/py-parser.ts:65-83 — resolveWin32Command(name) falls back to the bare name if not on PATH; commandIsAvailable spawns it with no cwd (process cwd) during indexing",
+        "packages/tools/src/grep.ts:232 (detectRg) and grep.ts:314 — spawn('rg', ...) bare, no cwd; grep permission 'auto' (grep.ts:80)",
+        "packages/tools/src/diff.ts:304 — spawn('git', args, {cwd: gitDir}) bare, cwd = repo root; diff permission 'auto' (diff.ts:65)",
+        "packages/tools/src/git.ts:465 — spawn('git', args, {cwd: gitDir}) bare (confirm)",
+        "packages/tools/src/replace.ts:474 (no cwd) and replace.ts:496 ({cwd: base}) — spawn('rg') bare (confirm)",
+        "packages/tools/src/patch.ts:515,532,566 — spawn('patch'|'git', {cwd}) bare (confirm)",
+        "packages/tools/src/logs.ts:201 — spawn('docker', {cwd}) bare (confirm)",
+        "packages/tools/src/_win32-resolve.ts:32-65 — resolveWin32Command (used by exec/_spawn-stream/outdated/go/py) returns an absolute path only when found on PATH; else the bare name (then the same cwd lookup applies). A relative or empty PATH entry (e.g. trailing ';') makes accessSync resolve relative to process cwd and return a relative 'x.exe'",
+        "packages/tools/src/process-registry.ts:128 — spawn('taskkill') bare, no cwd (process cwd)"
+      ],
+      "control_analysis": "No absolute-path resolution happens at the git/rg/docker/patch sites. Where resolveWin32Command is used it prefers PATH, which protects exec/spawnStream only while the tool is installed. On Windows, libuv's search_path checks the spawn cwd (or the process cwd when none is given) for <name>.com/<name>.exe before PATH, and is not known to honor NoDefaultCurrentDirectoryInExePath. Even the git-installed case is exposed at the bare sites, because the cwd check comes first. The index-server path runs without any permission prompt, and grep/diff are permission:auto.",
+      "sink": "child_process.spawn/execFile executing the attacker's binary as the user",
+      "affected_principal": "Windows user opening an untrusted repository with the WrongStack CLI/TUI/WebUI",
+      "result": "Arbitrary code execution as the user on project open (auto-index git ls-files / rev-parse), or on first grep/diff tool call, without approval",
+      "conditions": "Windows host; runtime is Node/libuv (Bun's spawn lookup may differ and must be checked separately); process cwd or spawn cwd equals the repo root (the normal launch pattern); indexing config block present (default, not --bare); the attacker binary committed in the repo root (git allows committing .exe files). For py-parser the bare fallback needs Python absent from PATH.",
+      "next_validation": "On Windows (Node runtime used by wstack): create a temp dir containing a harmless git.exe/rg.exe that writes a marker file, set process cwd there, and call spawn('git',['--version'],{cwd:dir}) and execFile('git',...) without cwd; confirm whether the planted binary runs before PATH. Repeat under Bun if wstack ships on Bun. Then launch wstack in that dir with indexing enabled and check the marker. Fix: resolve every tool binary to an absolute path from PATH, excluding cwd and relative PATH entries (a single resolver used by all sites), and fail closed when not found.",
+      "proposed_verdict": "needs_validation",
+      "confidence": 0.6
+    }
+  ],
+  "rejected": [
+    {
+      "title": "toolchain-scripts executes repo code (go.mod toolchain, python import)",
+      "reason": "Source is fed on stdin to fixed go/ast and ast.parse programs; the Go cwd is a mkdtemp dir with GOTOOLCHAIN=local and GOWORK=off; the Python cwd is the script dir, so the repo is not on sys.path. The script is written with 'wx' into a mkdtemp dir. No cargo/tsconfig plugin execution."
+    },
+    {
+      "title": "exec refusal refactor weakens gating",
+      "reason": "Gating order and checks unchanged; refusals now throw rather than return, which is stricter for executor accounting."
+    },
+    {
+      "title": "Windows .cmd/.bat shim argument injection (BatBadBut) in exec/spawnStream/outdated",
+      "reason": "All shim paths use buildWin32CmdShimInvocation (core metachar block). The delta's isWinCmdShim makes detection case-insensitive, closing an uppercase .CMD bypass rather than opening one."
+    },
+    {
+      "title": "git tool option injection via branch/worktreePath/files",
+      "reason": "assertSafeBranch rejects leading '-' and ' --' for every command; worktreePath has a dash and containment check; files follow '--'; checkout appends '--'; no raw args; permission confirm."
+    },
+    {
+      "title": "git fetch/pull with branch set to a URL (ext:: / file://)",
+      "reason": "The ext transport is disabled by default (protocol.allow user-only); the git tool is permission:confirm; no config injection possible (no -c)."
+    },
+    {
+      "title": "diff tool --output= flag injection",
+      "reason": "Leading-dash refs are rejected; files follow '--'; context is integer-sanitized. (Separate implicit no-index issue filed as TD-001.)"
+    },
+    {
+      "title": "mode tool escalates autonomy/permissions",
+      "reason": "The Mode type has no permission/autonomy/tool-grant fields; it only injects prompt text and tool preferences."
+    },
+    {
+      "title": "tool_use meta-tool bypasses deny/confirm",
+      "reason": "It keeps the deny check and the recursion block, and routes through GOVERNED_TOOL_EXECUTOR (the governed path); it throws when unavailable."
+    },
+    {
+      "title": "lint/format/typecheck file args escape project root",
+      "reason": "lint now has an ensureInsideRoot per file (new in delta); format already had it; typecheck has no file args; all are permission confirm."
+    },
+    {
+      "title": "codebase_targeted_test runs repo test code",
+      "reason": "Executing repo tests is the tool's purpose and it is permission:'confirm'; the runner is spawned via spawnStream with shim protection."
+    },
+    {
+      "title": "grep rg pattern option injection",
+      "reason": "Args end with '--', pattern, base; base goes through safeResolveReal; globs are passed as --glob values."
+    },
+    {
+      "title": "logs docker container name injection",
+      "reason": "The regex validation is now applied before argv construction and throws; the name is placed as the final positional arg."
+    },
+    {
+      "title": "browser/security.ts localhost trailing-dot bypass",
+      "reason": "The delta adds trailing-dot and case normalization before the localhost block in both assert and pinned-target paths, which is a hardening. The redaction regex rewrite is a redaction-quality change, not access control."
+    }
+  ]
+}

@@ -179,7 +179,7 @@ export interface HqApproveCommand {
   type: 'approve';
   /** The tool call the prompt belongs to — the id carried in `approval.requested`. */
   toolUseId: string;
-  decision: 'yes' | 'no' | 'always' | 'deny';
+  decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny';
   sessionId?: string;
 }
 export interface HqAnswerInputCommand {
@@ -441,7 +441,15 @@ export function validateHqCommand(queued: HqQueuedCommand): HqCommand | null {
       const decision = p['decision'];
       // Closed set on purpose: `abort` is a lifecycle outcome the run produces
       // for itself, never something an operator sends.
-      if (decision !== 'yes' && decision !== 'no' && decision !== 'always' && decision !== 'deny') {
+      if (
+        decision !== 'yes' &&
+        decision !== 'no' &&
+        decision !== 'always' &&
+        decision !== 'always-exact' &&
+        decision !== 'always-command' &&
+        decision !== 'always-tool' &&
+        decision !== 'deny'
+      ) {
         return null;
       }
       return withSessionId<HqApproveCommand>(

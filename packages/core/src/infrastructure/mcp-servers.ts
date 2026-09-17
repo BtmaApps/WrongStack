@@ -123,7 +123,10 @@ export const memoryServer = (): MCPServerConfig => ({
   transport: 'stdio',
   command: 'npx',
   args: ['-y', '@modelcontextprotocol/server-memory'],
-  permission: 'auto',
+  // Persistent cross-conversation memory is a write surface the operator should
+  // see at least once, and it is reached through the same npx path as every
+  // other preset (security-check 2026-09-17).
+  permission: 'confirm',
 });
 
 /**
@@ -132,11 +135,15 @@ export const memoryServer = (): MCPServerConfig => ({
  */
 export const sequentialThinkingServer = (): MCPServerConfig => ({
   name: 'sequential-thinking',
-  description: 'Sequential thinking and problem solving (@modelcontextprotocol/server-sequential-thinking)',
+  description:
+    'Sequential thinking and problem solving (@modelcontextprotocol/server-sequential-thinking)',
   transport: 'stdio',
   command: 'npx',
   args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
-  permission: 'auto',
+  // Lowest-risk of the three (no network, no filesystem), changed with them so
+  // the newly added presets share one posture rather than three
+  // (security-check 2026-09-17).
+  permission: 'confirm',
 });
 
 /**
@@ -172,7 +179,13 @@ export const fetchServer = (): MCPServerConfig => ({
   transport: 'stdio',
   command: 'uvx',
   args: ['mcp-server-fetch'],
-  permission: 'auto',
+  // `confirm`, unlike the other read-only-looking presets: this server fetches
+  // arbitrary URLs WITHOUT the SSRF controls in tools/src/_fetch-guard.ts that
+  // the built-in `fetch` tool is held to — no private/loopback/metadata block,
+  // no per-hop redirect revalidation, no pinned-resolution dial. Running it
+  // unprompted would give prompt injection a cleaner egress path than the
+  // guarded tool it superficially resembles (security-check 2026-09-17).
+  permission: 'confirm',
 });
 
 /**
@@ -281,7 +294,8 @@ export const zaiVisionServer = (): MCPServerConfig => ({
   description: 'Z.AI Vision MCP — image analysis and screenshot understanding',
   transport: 'stdio',
   command: 'npx',
-  args: ['-y', '@z_ai/mcp-server@latest'],
+  // Pinned rather than floating — see the note on `playwrightServer`.
+  args: ['-y', '@z_ai/mcp-server@0.1.5'],
   env: { Z_AI_MODE: 'ZAI' },
   passthroughEnv: ['Z_AI_API_KEY'],
   allowedTools: [
@@ -305,7 +319,13 @@ export const playwrightServer = (): MCPServerConfig => ({
     'Browser automation — navigate, snapshot, click, type, evaluate JS (Microsoft Playwright)',
   transport: 'stdio',
   command: 'npx',
-  args: ['-y', '@playwright/mcp@latest'],
+  // Pinned, not `@latest` (security-check 2026-09-17, DEP-NOTE-001): `npx`
+  // resolves this at every server start, so a floating tag runs whatever was
+  // published most recently — outside `pnpm-lock.yaml` and outside the
+  // `minimumReleaseAge: 1440` cooldown that SECURITY.md calls the strongest
+  // defence against a compromised-maintainer publish. Bumping this is a
+  // deliberate review event, exactly like an `allowBuilds` entry.
+  args: ['-y', '@playwright/mcp@0.0.81'],
   permission: 'confirm',
 });
 

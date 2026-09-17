@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
+import { ConversationState } from '../../src/core/conversation-state.js';
 import { createStrategyCompactor } from '../../src/execution/strategy-compactor.js';
 import type { Message } from '../../src/types/messages.js';
 import type { Provider } from '../../src/types/provider.js';
@@ -152,5 +153,96 @@ describe('createStrategyCompactor', () => {
     );
     expect(JSON.stringify(append.mock.calls[0]?.[0])).not.toContain('_estTokens');
     expect(flush).toHaveBeenCalledOnce();
+  });
+});
+
+function ownedJournalContext(
+  messages: Message[],
+  writer: Context['session'],
+  provider?: Provider,
+): Context {
+  const ctx = {
+    messages,
+    todos: [],
+    meta: {},
+    tools: [],
+    systemPrompt: [],
+    model: 'test-model',
+    messageLimits: { maxMessages: 0, maxMessageTokens: 0 },
+    session: writer,
+    provider,
+    signal: new AbortController().signal,
+  } as unknown as Context;
+  Object.defineProperty(ctx, 'state', { value: new ConversationState(ctx) });
+  return ctx;
+}
+
+describe('compaction snapshot writer ownership', () => {
+  it('journals an active run through its pinned writer', async () => {
+    const liveAppend = vi.fn(async () => undefined);
+    const pinnedAppend = vi.fn(async () => undefined);
+    const ctx = ownedJournalContext(manyTurns(), {
+      id: 'live',
+      append: liveAppend,
+      flush: vi.fn(async () => undefined),
+    } as unknown as Context['session']);
+    ctx.activeRunSessionWriter = {
+      id: 'pinned',
+      append: pinnedAppend,
+      flush: vi.fn(async () => undefined),
+    } as unknown as Context['session'];
+    await createStrategyCompactor({ preserveK: 3 }).compact(ctx, { aggressive: true });
+    expect(pinnedAppend).toHaveBeenCalledOnce();
+    expect(liveAppend).not.toHaveBeenCalled();
+  });
+
+  it('does not snapshot an earlier compaction into a newly selected session after an LLM await', async () => {
+    const previousAppend = vi.fn(async () => undefined);
+    const nextAppend = vi.fn(async () => undefined);
+    const provider = makeProvider();
+    const messages = manyTurns();
+    messages.splice(
+      1,
+      0,
+      {
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: 'old-read', name: 'read', input: { path: 'old.txt' } }],
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 'old-read', content: 'old output '.repeat(10000) },
+        ],
+      },
+    );
+    const ctx = ownedJournalContext(
+      messages,
+      {
+        id: 'previous',
+        append: previousAppend,
+        flush: vi.fn(async () => undefined),
+      } as unknown as Context['session'],
+      provider,
+    );
+    provider.complete = async () => {
+      ctx.session = {
+        id: 'next',
+        append: nextAppend,
+        flush: vi.fn(async () => undefined),
+      } as unknown as Context['session'];
+      return {
+        model: 'test-model',
+        content: [{ type: 'text', text: 'old summary' }],
+        stopReason: 'end_turn',
+        usage: { input: 100, output: 1 },
+      };
+    };
+    const report = await createStrategyCompactor({
+      strategy: 'intelligent',
+      preserveK: 3,
+      eliseThreshold: 100,
+    }).compact(ctx, { aggressive: true });
+    expect(report.reductions.some((r) => r.phase === 'elision' && r.saved > 0)).toBe(true);
+    expect(nextAppend).not.toHaveBeenCalled();
   });
 });

@@ -463,7 +463,9 @@ export function SimpleUiSession() {
   /** Answer the pending permission prompt on the wire and clear it. Reads
    *  through pendingConfirmRef (not the render closure) so the dispatch is
    *  correct regardless of when the ref mirror last refreshed. */
-  const decideConfirm = (decision: 'yes' | 'no' | 'always') => {
+  const decideConfirm = (
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+  ) => {
     const confirm = pendingConfirmRef.current;
     if (!confirm) return;
     socketRef.current?.send('tool.confirm_result', {
@@ -475,9 +477,12 @@ export function SimpleUiSession() {
   };
   /** Mirror for the global Y/N/A shortcut — decideConfirm is recreated per
    *  render, and the shortcut listener must not re-register on every render. */
-  const decideConfirmRef = useRef<((decision: 'yes' | 'no' | 'always') => void) | undefined>(
-    undefined,
-  );
+  const decideConfirmRef = useRef<
+    | ((
+        decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+      ) => void)
+    | undefined
+  >(undefined);
   decideConfirmRef.current = decideConfirm;
 
   useGlobalShortcuts({

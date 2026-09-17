@@ -110,12 +110,22 @@ export function derivePendingApprovals(
 }
 
 /** The four answers an operator can give. Matches the local surfaces exactly. */
-export type ApprovalDecision = 'yes' | 'no' | 'always' | 'deny';
+export type ApprovalDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 export const APPROVAL_DECISION_LABEL: Record<ApprovalDecision, string> = {
   yes: 'Allow once',
   no: 'Refuse once',
   always: 'Always allow',
+  'always-exact': 'Remember exact input',
+  'always-command': 'Command, any arguments',
+  'always-tool': 'Tool, any input',
   deny: 'Deny permanently',
 };
 

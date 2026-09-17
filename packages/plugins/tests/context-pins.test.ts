@@ -177,6 +177,38 @@ describe('context-pins plugin', () => {
     expect(existsSync(outside)).toBe(false);
   });
 
+  it('persists to the host-seeded project directory even though it is outside the cwd', async () => {
+    // The CLI seeds `<projectDir>/context-pins.json` (wiring/plugins.ts), and
+    // projectDir is `~/.wrongstack/projects/<hash>/` — outside the cwd. The
+    // cwd-only containment rejected exactly that path, so EVERY host-seeded
+    // store was silently in-memory while pin_add answered `persisted: true`,
+    // in a plugin that promises pins "persist across sessions".
+    const projectDir = mkdtempSync(join(tmpdir(), 'ws-project-dir-'));
+    const filePath = join(projectDir, 'context-pins.json');
+    try {
+      const api = makeApi({ extensions: { 'context-pins': { filePath } } });
+      (api.config as Record<string, unknown>)['paths'] = { projectDir };
+      contextPinsPlugin.setup(api as never);
+      const result = await getTool(api, 'pin_add').execute({ text: 'seeded fact' });
+      expect(result['persisted']).toBe(true);
+      expect(result['storage']).toBe('file');
+      expect(existsSync(filePath)).toBe(true);
+      expect(readFileSync(filePath, 'utf-8')).toContain('seeded fact');
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports in-memory storage honestly when no filePath is configured', async () => {
+    // `persistPins('')` used to return true — "nothing to write" reported as
+    // "written", which is what hid the bug above.
+    const api = makeApi();
+    contextPinsPlugin.setup(api as never);
+    const result = await getTool(api, 'pin_add').execute({ text: 'x' });
+    expect(result['persisted']).toBe(false);
+    expect(result['storage']).toBe('memory');
+  });
+
   it('enabled:false rejects pin_add and skips the contributor', async () => {
     const api = makeApi({ extensions: { 'context-pins': { enabled: false } } });
     contextPinsPlugin.setup(api as never);

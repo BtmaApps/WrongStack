@@ -20,6 +20,7 @@
 import type { Tool } from '@wrongstack/core/types';
 import { subjectForToolInput } from '@wrongstack/core/utils';
 import { describe, expect, it } from 'vitest';
+import { matchesCommandTrust } from '../../core/src/security/permission-helpers.js';
 import * as tools from '../src/index.js';
 
 /**
@@ -118,6 +119,10 @@ describe('exec renders the full invocation (WS-046b)', () => {
   it('glob-escapes the rendered line so it round-trips as a trust pattern', () => {
     // The subject doubles as the stored pattern; unescaped metacharacters
     // would make a stored rule match more than the command it came from.
-    expect(subject({ command: 'grep', args: ['[0-9]*'] })).toBe('grep \\[0-9\\]\\*');
+    const pattern = subject({ command: 'grep', args: ['[0-9]*'] })!;
+    expect(matchesCommandTrust([pattern], pattern)).toBe(true);
+    expect(matchesCommandTrust([pattern], subject({ command: 'grep', args: ['0123'] })!)).toBe(
+      false,
+    );
   });
 });

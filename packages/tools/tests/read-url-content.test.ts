@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readUrlContentTool } from '../src/index.js';
 import * as fetchGuard from '../src/_fetch-guard.js';
+import { readUrlContentTool } from '../src/index.js';
+import { MAX_READ_URL_BYTES } from '../src/read-url-content.js';
 
 const makeOpts = () => ({ signal: new AbortController().signal });
 
@@ -71,5 +72,54 @@ describe('read_url_content tool', () => {
     await expect(readUrlContentTool.execute({}, {} as never, makeOpts())).rejects.toThrow(
       'read_url_content requires a valid `url` parameter.',
     );
+  });
+
+  // WS-2026-09-17-02. `maxBytes` is model-supplied; without a ceiling it set the
+  // read limit (`maxBytes * 4`) and so the only bound on the buffered chunks.
+  // Asserted on the real execute path, which is also the path a direct (non
+  // executor-validated) caller takes — the schema `maximum` cannot cover that.
+  it('clamps an oversized maxBytes so the buffered read stays bounded', async () => {
+    const CHUNK = 256 * 1024;
+    const TOTAL_CHUNKS = 24; // 6 MiB available — more than the clamped limit
+    const chunk = new Uint8Array(CHUNK).fill(0x61); // 'a'
+    let pulled = 0;
+    let served = 0;
+    let cancelled = false;
+
+    const reader = {
+      read: async () => {
+        if (served >= TOTAL_CHUNKS) return { value: undefined, done: true };
+        served++;
+        pulled += CHUNK;
+        return { value: chunk, done: false };
+      },
+      cancel: async () => {
+        cancelled = true;
+      },
+      releaseLock: () => {},
+    };
+
+    vi.spyOn(fetchGuard, 'guardedFetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      url: 'https://example.com/huge.txt',
+      headers: new Headers({ 'content-type': 'text/plain' }),
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const output = await readUrlContentTool.execute(
+      { url: 'https://example.com/huge.txt', maxBytes: 50_000_000 },
+      {} as never,
+      makeOpts(),
+    );
+
+    // The clamped limit is MAX_READ_URL_BYTES * 4; the loop stops on the first
+    // chunk that crosses it, so allow one chunk of overshoot and no more.
+    expect(pulled).toBeLessThanOrEqual(MAX_READ_URL_BYTES * 4 + CHUNK);
+    // Proves the stream was torn down rather than drained to completion.
+    expect(cancelled).toBe(true);
+    expect(served).toBeLessThan(TOTAL_CHUNKS);
+    // Returned content still honours the clamped byte budget.
+    expect(output.content).toContain('[Content truncated at');
   });
 });

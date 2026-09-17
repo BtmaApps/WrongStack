@@ -12,7 +12,7 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     name: 'cost-tracker',
     risk: 'low',
     summary: 'Tracks LLM token usage and estimated cost per session with per-model breakdown',
-    defaultState: 'active',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -74,18 +74,11 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     canDisable: true,
   },
   {
-    name: 'todo-tracker',
-    risk: 'low',
-    summary: 'Persistent, project-scoped todo backlog that survives across sessions',
-    defaultState: 'active',
-    canDisable: true,
-  },
-  {
     name: 'token-budget',
     risk: 'medium',
     summary:
       'Enforces a per-session token budget — warns at a threshold and stops the agent loop when the limit is hit',
-    defaultState: 'active',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -109,7 +102,7 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     risk: 'low',
     summary:
       'PostToolUse hook that injects a compact git diff into the LLM context after every write or edit',
-    defaultState: 'active',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -145,14 +138,6 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     canDisable: true,
   },
   {
-    name: 'knowledge-graph',
-    risk: 'low',
-    summary:
-      'Accumulates structured (subject, relation, object) facts about the project and queries them across sessions',
-    defaultState: 'active',
-    canDisable: true,
-  },
-  {
     name: 'todo-listener',
     risk: 'low',
     summary:
@@ -181,7 +166,7 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     risk: 'low',
     summary:
       'Detects runaway tool-call loops (identical repeats and A-B-A-B oscillation) — warns the model, then blocks',
-    defaultState: 'active',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -204,8 +189,8 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     name: 'process-guard',
     risk: 'high',
     summary:
-      'Blocks kill commands (taskkill, Stop-Process, kill, pkill, wmic) that target active WrongStack processes or their host terminals.',
-    defaultState: 'active',
+      'Reports kill commands (taskkill, Stop-Process, kill, pkill, wmic) seen by bash/exec; the refusal itself is enforced by the built-in bash/exec kill guards.',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -245,7 +230,7 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     risk: 'low',
     summary:
       'Validates JSON/JSONC/YAML/TOML files right after write/edit and reports syntax problems in the same turn',
-    defaultState: 'active',
+    defaultState: 'inactive',
     canDisable: true,
   },
   {
@@ -360,14 +345,6 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     canDisable: true,
   },
   {
-    name: 'semantic-search-indexer',
-    risk: 'low',
-    summary:
-      'Builds an in-memory keyword index over project source files and answers ranked search queries',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
     name: 'auto-i18n-extractor',
     risk: 'low',
     summary:
@@ -439,33 +416,10 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     canDisable: true,
   },
   {
-    name: 'dead-code-detector',
-    risk: 'low',
-    summary:
-      'Lightweight regex-based scan for exported identifiers that appear unused anywhere in the project',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
     name: 'duplicate-code-detector',
     risk: 'low',
     summary:
       'Finds duplicated code blocks across source files using normalized-line fingerprinting',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
-    name: 'code-metrics',
-    risk: 'low',
-    summary:
-      'Computes per-file line counts, function counts, and cyclomatic-complexity-like scores',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
-    name: 'refactor-suggester',
-    risk: 'low',
-    summary: 'Suggests refactoring opportunities using regex-based smell detection',
     defaultState: 'inactive',
     canDisable: true,
   },
@@ -482,27 +436,6 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     risk: 'low',
     summary:
       'Generates traceable release notes from conventional commits with optional LLM polishing',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
-    name: 'smart-rename',
-    risk: 'medium',
-    summary: 'Whole-word identifier rename inside a single source file',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
-    name: 'feature-flag-tracker',
-    risk: 'low',
-    summary: 'Scans source files for feature-flag-like expressions and reports usages',
-    defaultState: 'inactive',
-    canDisable: true,
-  },
-  {
-    name: 'interface-contract-guard',
-    risk: 'medium',
-    summary: 'Checks TypeScript interfaces for visible implementers and warns about contract drift',
     defaultState: 'inactive',
     canDisable: true,
   },

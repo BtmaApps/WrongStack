@@ -47,7 +47,9 @@ interface TokenThrottleConfig {
 }
 
 const DEFAULTS: TokenThrottleConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit.
+  enabled: true,
   tokensPerMinute: 100_000,
   maxDelayMs: 30_000,
   charsPerToken: 4,
@@ -57,7 +59,7 @@ function readConfig(raw: unknown): TokenThrottleConfig {
   if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
   const r = raw as Record<string, unknown>;
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     tokensPerMinute:
       typeof r['tokensPerMinute'] === 'number' && r['tokensPerMinute'] > 0
         ? r['tokensPerMinute']

@@ -91,7 +91,14 @@ export interface HqCommandController {
   resolveApproval?:
     | ((
         toolUseId: string,
-        decision: 'yes' | 'no' | 'always' | 'deny',
+        decision:
+          | 'yes'
+          | 'no'
+          | 'always'
+          | 'always-exact'
+          | 'always-command'
+          | 'always-tool'
+          | 'deny',
         sessionId?: string | undefined,
       ) => boolean)
     | undefined;
@@ -462,7 +469,13 @@ async function dispatch(
       const decision = payload['decision'];
       if (
         toolUseId.length === 0 ||
-        (decision !== 'yes' && decision !== 'no' && decision !== 'always' && decision !== 'deny')
+        (decision !== 'yes' &&
+          decision !== 'no' &&
+          decision !== 'always' &&
+          decision !== 'always-exact' &&
+          decision !== 'always-command' &&
+          decision !== 'always-tool' &&
+          decision !== 'deny')
       ) {
         return { commandId, status: 'rejected', message: 'malformed approve command' };
       }

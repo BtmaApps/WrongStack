@@ -738,15 +738,71 @@ function simpleQuery(data: unknown, path: string): unknown {
 
 function formatOutput(data: unknown, format: string): string {
   if (format === 'json5') {
-    return JSON.stringify(data, null, 2)
-      .replace(/,\s*}/g, '}')
-      .replace(/,\s*\]/g, ']');
+    return stripTrailingCommas(JSON.stringify(data, null, 2));
   }
   if (format === 'yaml') {
     return toYaml(data);
   }
   return JSON.stringify(data, null, 2);
 }
+
+/**
+ * JSON.stringify never emits syntax-level trailing commas, so every
+ * `,`-before-closer sequence in its output lives INSIDE a string literal —
+ * and the naive regex strip this replaced (`,\s*}` / `,\s*\]`) corrupted
+ * exactly those: the value "a, } b" rendered as "a} b". Walk the output
+ * tracking string-literal state (with escape handling) and elide
+ * `,\s*[}\]]` only outside strings; on stringify output the strip is a
+ * verified no-op, which is the point — rendering must never be able to
+ * alter string content.
+ */
+function stripTrailingCommas(json: string): string {
+  let out = '';
+  let i = 0;
+  let inString = false;
+  while (i < json.length) {
+    const ch = json[i]!;
+    if (inString) {
+      out += ch;
+      if (ch === '\\') {
+        out += json[i + 1] ?? '';
+        i += 2;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      i += 1;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === ',') {
+      let j = i + 1;
+      while (j < json.length && /\s/.test(json[j]!)) j += 1;
+      if (json[j] === '}' || json[j] === ']') {
+        i = j;
+        continue;
+      }
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * YAML resolves these plain scalars as null/bool/number, not strings — a
+ * string value like "123" or "true" emitted unquoted would read back as a
+ * different type. Quoting is over-inclusive on purpose ("no"/"on" stay
+ * strings); under-quoting silently corrupts the rendered data.
+ */
+const YAML_NON_STRING_SCALAR =
+  /^(?:~|null|true|false|yes|no|on|off|\.inf|\.nan|[-+]?[0-9][0-9_]*|0[xob][0-9a-fA-F_]+|[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][-+]?[0-9]+)?)$/i;
+/** Leading YAML indicator characters (or trimmable whitespace) force quoting. */
+const YAML_NEEDS_QUOTING = /^[-?:,[\]{}#&*!|>'"%@` \t]|[ \t]$/;
 
 function toYaml(data: unknown, indent = 0): string {
   if (data === null) return 'null\n';
@@ -755,7 +811,14 @@ function toYaml(data: unknown, indent = 0): string {
   if (typeof data === 'boolean') return String(data) + '\n';
   if (typeof data === 'number') return String(data) + '\n';
   if (typeof data === 'string') {
-    if (data.includes('\n') || data.includes(':') || data.includes('#') || data.startsWith('-')) {
+    if (
+      data === '' ||
+      data.includes('\n') ||
+      data.includes(':') ||
+      data.includes('#') ||
+      YAML_NON_STRING_SCALAR.test(data) ||
+      YAML_NEEDS_QUOTING.test(data)
+    ) {
       return `"${data.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"\n`;
     }
     return data + '\n';
@@ -786,7 +849,10 @@ function toYaml(data: unknown, indent = 0): string {
     if (entries.length === 0) return '{}\n';
     return entries
       .map(([k, v]) => {
-        const safeKey = /[:#\s]/.test(k) ? `"${k.replace(/"/g, '\\"')}"` : k;
+        const safeKey =
+          k === '' || /[:#\s]/.test(k) || YAML_NON_STRING_SCALAR.test(k)
+            ? `"${k.replace(/"/g, '\\"')}"`
+            : k;
         if (
           typeof v === 'object' &&
           v !== null &&

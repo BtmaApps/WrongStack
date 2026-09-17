@@ -100,8 +100,10 @@ describe('window math', () => {
 });
 
 describe('token-throttle plugin', () => {
-  it('is inert when disabled', () => {
-    expect(setup().extensions.register).not.toHaveBeenCalled();
+  it('registers by default; enabled:false turns it off', () => {
+    // Opting in belongs to host enablement, not this switch.
+    expect(setup().extensions.register).toHaveBeenCalledTimes(1);
+    expect(setup({ enabled: false }).extensions.register).not.toHaveBeenCalled();
   });
 
   it('passes calls through and records usage when under budget', async () => {

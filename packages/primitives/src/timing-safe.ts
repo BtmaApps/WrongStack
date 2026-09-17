@@ -4,10 +4,14 @@
  * `a !== b` on a secret returns as soon as two bytes differ, so the time it
  * takes leaks how long a guess's shared prefix was — enough to recover a token
  * byte by byte given enough attempts against an endpoint that does not rate
- * limit. The four project-daemon IPC servers (chronicle, session-catalog,
- * kanban, codebase-index) all compared their `authToken` that way, while every
- * other credential surface in the repo already used `timingSafeEqual` — one of
- * them fixed as WS-110 for exactly this reason.
+ * limit. The project-daemon IPC servers all compared their `authToken` that
+ * way, while every other credential surface in the repo already used
+ * `timingSafeEqual` — one of them fixed as WS-110 for exactly this reason.
+ *
+ * All six now call this helper: chronicle, session-catalog, kanban,
+ * codebase-index and mailbox were converted first; SAGE was missed by that
+ * sweep and kept a raw `supplied !== authToken` until 2026-09-17. If you add
+ * a seventh daemon, it belongs on this list.
  *
  * This lives in `primitives` because it is a dependency leaf and the callers
  * span packages that do not otherwise share code: `@wrongstack/core`,

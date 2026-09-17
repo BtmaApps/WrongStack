@@ -123,9 +123,9 @@ export function fsWriteTargetPaths(tool: Tool | undefined, input: unknown): stri
 export function describeWriteTargets(tool: Tool | undefined, input: unknown): string[] {
   if (typeof tool?.writeTargets === 'function') {
     try {
-      const declared = tool.writeTargets(input).filter(
-        (p): p is string => typeof p === 'string' && p.length > 0,
-      );
+      const declared = tool
+        .writeTargets(input)
+        .filter((p): p is string => typeof p === 'string' && p.length > 0);
       if (declared.length > 0) return declared;
     } catch {
       // fall back to the heuristic below
@@ -332,9 +332,7 @@ function expandHome(p: string): string {
 
 function normalizeForCompare(value: string): string {
   const expanded = expandHome(unescapeGlobSubject(value));
-  const forward = stripAdsSuffix(
-    expanded.replace(/\\/g, '/').replace(/\/+$/, ''),
-  );
+  const forward = stripAdsSuffix(expanded.replace(/\\/g, '/').replace(/\/+$/, ''));
   return process.platform === 'win32' ? forward.toLowerCase() : forward;
 }
 
@@ -419,12 +417,44 @@ function pathLooksSensitive(rawPath: string): boolean {
   return isProtectedAgentStatePath(normalized);
 }
 
+/**
+ * Path-bearing input keys this gate inspects.
+ *
+ * The list was singular-only (`path`, `file`, `target`, …), so a tool whose
+ * path field is PLURAL was structurally invisible here — `collab_debug` reads
+ * every entry of `targetPaths` and one character kept it off this list
+ * (WS-2026-09-17-01). Plural keys carry arrays, so the value scan below handles
+ * both shapes; a key that is merely absent costs nothing.
+ */
+const SENSITIVE_PATH_INPUT_KEYS = [
+  'path',
+  'paths',
+  'file',
+  'files',
+  'file_path',
+  'file_paths',
+  'filePath',
+  'filePaths',
+  'target',
+  'targets',
+  'targetPath',
+  'targetPaths',
+] as const;
+
+/** Depth-1 scan: a string value, or any string inside an array value. */
+function valueLooksSensitive(value: unknown): boolean {
+  if (typeof value === 'string') return pathLooksSensitive(value);
+  if (Array.isArray(value)) {
+    return value.some((entry) => typeof entry === 'string' && pathLooksSensitive(entry));
+  }
+  return false;
+}
+
 export function inputPathLooksSensitive(input: unknown): boolean {
   if (!input || typeof input !== 'object') return false;
   const obj = input as Record<string, unknown>;
-  for (const key of ['path', 'file', 'file_path', 'filePath', 'target', 'targetPath']) {
-    const value = obj[key];
-    if (typeof value === 'string' && pathLooksSensitive(value)) return true;
+  for (const key of SENSITIVE_PATH_INPUT_KEYS) {
+    if (valueLooksSensitive(obj[key])) return true;
   }
   return false;
 }

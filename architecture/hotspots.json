@@ -83,11 +83,11 @@
       "relativeImports": 8
     },
     "packages/core/src/chronicle/project-server.ts": {
-      "lines": 894,
+      "lines": 943,
       "relativeImports": 18
     },
     "packages/core/src/coordination/collab-debug.ts": {
-      "lines": 915,
+      "lines": 964,
       "relativeImports": 10
     },
     "packages/core/src/coordination/delegation/run-delegation.ts": {
@@ -127,8 +127,8 @@
       "relativeImports": 26
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
-      "lines": 973,
-      "relativeImports": 12
+      "lines": 1010,
+      "relativeImports": 14
     },
     "packages/core/src/execution/brain-runtime.ts": {
       "lines": 1007,
@@ -147,7 +147,7 @@
       "relativeImports": 7
     },
     "packages/core/src/hq/protocol/core.ts": {
-      "lines": 1034,
+      "lines": 1043,
       "relativeImports": 13
     },
     "packages/core/src/index.ts": {
@@ -195,7 +195,7 @@
       "relativeImports": 13
     },
     "packages/kanban/src/server/project-server.ts": {
-      "lines": 857,
+      "lines": 874,
       "relativeImports": 10
     },
     "packages/kanban/src/types.ts": {
@@ -231,7 +231,7 @@
       "relativeImports": 0
     },
     "packages/plugins/src/loop-breaker/index.ts": {
-      "lines": 826,
+      "lines": 838,
       "relativeImports": 0
     },
     "packages/plugins/src/path-guard/shell-targets.ts": {
@@ -239,28 +239,20 @@
       "relativeImports": 1
     },
     "packages/plugins/src/prompt-firewall/index.ts": {
-      "lines": 955,
+      "lines": 958,
       "relativeImports": 2
     },
     "packages/plugins/src/secret-scanner/index.ts": {
       "lines": 939,
       "relativeImports": 2
     },
-    "packages/plugins/src/semantic-search-indexer/index.ts": {
-      "lines": 966,
-      "relativeImports": 0
-    },
     "packages/plugins/src/semver-bump/index.ts": {
       "lines": 829,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {
-      "lines": 876,
+      "lines": 878,
       "relativeImports": 1
-    },
-    "packages/plugins/src/todo-tracker/index.ts": {
-      "lines": 904,
-      "relativeImports": 0
     },
     "packages/primitives/src/regex-ambiguity.ts": {
       "lines": 843,
@@ -279,7 +271,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 935,
+      "lines": 995,
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
@@ -315,7 +307,7 @@
       "relativeImports": 18
     },
     "packages/simpleui/src/simple-ui-session.tsx": {
-      "lines": 1096,
+      "lines": 1101,
       "relativeImports": 51
     },
     "packages/tools/src/bash.ts": {
@@ -351,7 +343,7 @@
       "relativeImports": 24
     },
     "packages/tools/src/json.ts": {
-      "lines": 804,
+      "lines": 870,
       "relativeImports": 2
     },
     "packages/tools/src/kanban-lifecycle-actions.ts": {
@@ -375,7 +367,7 @@
       "relativeImports": 10
     },
     "packages/tui/src/app-state.ts": {
-      "lines": 1023,
+      "lines": 1032,
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {

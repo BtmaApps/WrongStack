@@ -33,8 +33,8 @@
 import { existsSync } from 'node:fs';
 import type { Plugin } from '@wrongstack/core/types';
 import {
-  releaseHandle,
   type LanguageRuntime,
+  releaseHandle,
   resolveNodeBin,
   resolveRunnerCommand,
   runRunnerCommand,
@@ -90,7 +90,9 @@ interface TypeGateConfig {
 }
 
 const DEFAULTS: TypeGateConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit.
+  enabled: true,
   command: '',
   tsConfigPath: 'tsconfig.json',
   timeoutMs: 60_000,
@@ -130,7 +132,7 @@ function readConfig(raw: unknown): TypeGateConfig {
   const failSeverity = rawSeverity === 'block' ? 'block' : DEFAULTS.failSeverity;
 
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     command: typeof r['command'] === 'string' ? r['command'] : DEFAULTS.command,
     tsConfigPath: typeof rawPath === 'string' ? rawPath : DEFAULTS.tsConfigPath,
     timeoutMs:

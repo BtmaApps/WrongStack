@@ -1,3 +1,4 @@
+import { isPersistentApproval } from '../security/scoped-approval.js';
 /**
  * Approval mirroring — puts the permission prompts raised by TUI, WebUI and
  * SimpleUI on the HQ dashboard, and lets an operator answer them from there.
@@ -38,7 +39,14 @@ import type { HqApprovalRequestedPayload, HqApprovalResolvedPayload } from './pr
 import { summarizeHqToolArgs } from './redaction.js';
 
 /** The four answers an operator can give. `abort` is produced by the run, never sent. */
-export type HqApprovalDecision = 'yes' | 'no' | 'always' | 'deny';
+export type HqApprovalDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 /**
  * How long an `always` answer stays good before HQ must ask again.
@@ -73,7 +81,7 @@ export function approvalGrantExpiry(
   nowMs: number,
   ttlMs?: number | undefined,
 ): number | undefined {
-  if (decision !== 'always') return undefined;
+  if (!isPersistentApproval(decision)) return undefined;
   if (ttlMs === undefined || !Number.isFinite(ttlMs)) return undefined;
   return nowMs + ttlMs;
 }
@@ -383,7 +391,7 @@ export function createApprovalRegistry(events: EventBus): ApprovalRegistry {
       // An explicit `Infinity` is still the opt-out — the helper returns
       // undefined for a non-finite TTL, and an absent field already means
       // "never lapses" everywhere else in the protocol.
-      if (decision === 'always') {
+      if (isPersistentApproval(decision)) {
         const grantedUntil = approvalGrantExpiry(
           decision,
           Date.now(),

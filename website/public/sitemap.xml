@@ -159,7 +159,6 @@
   <url><loc>https://wrongstack.com/plugins/template-engine</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/semver-bump</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/secret-scanner</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/todo-tracker</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/token-budget</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/lint-gate</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/branch-guard</loc><priority>0.8</priority></url>
@@ -168,7 +167,6 @@
   <url><loc>https://wrongstack.com/plugins/format-on-save</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/test-runner-gate</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/import-organizer</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/knowledge-graph</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/todo-listener</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/session-recap</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/spec-linker</loc><priority>0.8</priority></url>
@@ -184,10 +182,8 @@
   <url><loc>https://wrongstack.com/plugins/license-audit-gate</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/security-hotspot-scanner</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/api-compatibility-gate</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/dead-code-detector</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/migration-planner</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/schema-evolution-guard</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/semantic-search-indexer</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/config-validator</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/notify-hub</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/changelog-writer</loc><priority>0.8</priority></url>
@@ -203,13 +199,8 @@
   <url><loc>https://wrongstack.com/plugins/test-flake-detector</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/performance-regression-gate</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/type-gate</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/code-metrics</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/duplicate-code-detector</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/feature-flag-tracker</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/interface-contract-guard</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/refactor-suggester</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/release-notes-generator</loc><priority>0.8</priority></url>
-  <url><loc>https://wrongstack.com/plugins/smart-rename</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/process-guard</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/test-generator</loc><priority>0.8</priority></url>
   <url><loc>https://wrongstack.com/plugins/wrongstack-plug-lsp</loc><priority>0.8</priority></url>

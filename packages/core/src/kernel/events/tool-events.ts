@@ -136,7 +136,7 @@ export interface ToolEventMap {
    * Fired when a tool call needs confirmation
    * is registered on the executor. The TUI renders a confirmation dialog
    * from this event. Resolution is driven by calling the resolve function
-   * passed in the payload with a decision string ('yes' | 'no' | 'always' | 'deny').
+   * passed in the payload with a decision string ('yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny').
    */
   'tool.confirm_needed': {
     sessionId?: string | undefined;
@@ -151,7 +151,16 @@ export interface ToolEventMap {
     boundaryReason?: string | undefined;
     /** Wall-clock deadline after which Brain becomes the decision authority. */
     deadlineAt: number;
-    resolve: (decision: 'yes' | 'no' | 'always' | 'deny') => void;
+    resolve: (
+      decision:
+        | 'yes'
+        | 'no'
+        | 'always'
+        | 'always-exact'
+        | 'always-command'
+        | 'always-tool'
+        | 'deny',
+    ) => void;
   };
   /**
    * Fired when a visible prompt settles, whatever settled it: a human answer
@@ -167,7 +176,15 @@ export interface ToolEventMap {
     sessionId?: string | undefined;
     toolUseId: string;
     toolName: string;
-    decision: 'yes' | 'no' | 'always' | 'deny' | 'abort';
+    decision:
+      | 'yes'
+      | 'no'
+      | 'always'
+      | 'always-exact'
+      | 'always-command'
+      | 'always-tool'
+      | 'deny'
+      | 'abort';
     source: 'brain_timeout' | 'abort' | 'user';
     rationale?: string | undefined;
   };

@@ -32,7 +32,14 @@ import type { ApprovalRegistry } from '@wrongstack/core/hq';
 import { describeWriteTargets } from '@wrongstack/core/security';
 import type { Tool } from '@wrongstack/core/types';
 
-type PromptDecision = 'yes' | 'no' | 'always' | 'deny';
+type PromptDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 type PromptDelegate = (
   tool: Tool,
@@ -123,7 +130,14 @@ export function makeMirroredPromptDelegate(deps: MirroredPromptDelegateDeps): Pr
       // policy treats anything that is not an explicit grant as a refusal, and
       // so does the card.
       const decision: PromptDecision =
-        typed === 'yes' || typed === 'always' || typed === 'deny' ? typed : 'no';
+        typed === 'yes' ||
+        typed === 'always' ||
+        typed === 'always-exact' ||
+        typed === 'always-command' ||
+        typed === 'always-tool' ||
+        typed === 'deny'
+          ? typed
+          : 'no';
       finish(decision);
       return decision;
     } finally {

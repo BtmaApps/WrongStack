@@ -10,9 +10,9 @@ import {
   everArtServer,
   fetchServer,
   filesystemServer,
-  gitServer,
   githubServer,
   gitlabServer,
+  gitServer,
   googleMapsServer,
   kanbanServer,
   mailboxServer,
@@ -25,9 +25,9 @@ import {
   sentinelServer,
   sentryServer,
   sequentialThinkingServer,
-  sshManagerServer,
   slackServer,
   sqliteServer,
+  sshManagerServer,
   zaiVisionServer,
 } from '../../src/infrastructure/mcp-servers.js';
 import type { MCPServerConfig } from '../../src/types/config.js';
@@ -186,5 +186,39 @@ describe('built-in MCP server presets (V0-D)', () => {
         }
       }
     }
+  });
+
+  /**
+   * security-check 2026-09-17 (DEP-NOTE-001).
+   *
+   * `npx`/`uvx` resolve a preset's package at every server start, so a floating
+   * tag executes whatever was published most recently — outside
+   * `pnpm-lock.yaml` and outside the `minimumReleaseAge: 1440` cooldown that
+   * SECURITY.md calls the single most effective defence against a
+   * compromised-maintainer publish.
+   *
+   * Enumerated over every preset rather than grepped as a pattern, so a NEW
+   * preset that reintroduces a floating tag fails here too.
+   */
+  it('no preset pins a floating version tag', () => {
+    const floating = /@(?:latest|next|canary|beta|alpha)$/;
+    for (const [label, factory] of presets) {
+      for (const arg of factory().args ?? []) {
+        expect(
+          floating.test(arg),
+          `${label}: "${arg}" is a floating tag — pin an exact version (it bypasses the lockfile and the install cooldown)`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('the presets added in 2026-09 require confirmation before running', () => {
+    // `fetch` is the load-bearing one: mcp-server-fetch performs arbitrary URL
+    // fetches WITHOUT the SSRF controls in tools/src/_fetch-guard.ts that the
+    // built-in `fetch` tool is held to, so running it unprompted would be a
+    // cleaner egress path than the guarded tool it resembles.
+    expect(fetchServer().permission).toBe('confirm');
+    expect(memoryServer().permission).toBe('confirm');
+    expect(sequentialThinkingServer().permission).toBe('confirm');
   });
 });

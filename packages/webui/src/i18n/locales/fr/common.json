@@ -43,6 +43,11 @@
     "all": "Tous"
   },
   "confirm": {
+    "approvalScope": "Mémoriser l’autorisation pour",
+    "scopeExact": "Cette entrée et ces arguments exacts",
+    "scopeCommand": "Cet exécutable avec tous les arguments",
+    "scopeTool": "{{tool}} — toutes les entrées",
+    "scopeHint": "Toujours mémorise cette portée pour le projet. Les autorisations larges demandent encore confirmation pour les opérations destructrices.",
     "title": "Approbation requise : {{tool}}",
     "descriptionEdit": "L'agent souhaite modifier un fichier. Examinez la demande ci-dessous et décidez s'il faut poursuivre.",
     "descriptionTool": "L'agent souhaite exécuter cet outil. Examinez la demande ci-dessous et décidez s'il faut poursuivre.",

@@ -124,9 +124,11 @@ describe('todo-listener plugin', () => {
       expect(props?.cooldownMs).toBeDefined();
     });
 
-    it('defaultConfig is quiet unless explicitly enabled', () => {
+    it('defaultConfig enables the listener; opting out is explicit', () => {
+      // Opting in belongs to host enablement, not this switch — the plugin is
+      // catalog-inactive, so it only loads when the user asks for it.
       const defaults = todoListenerPlugin.defaultConfig as Record<string, unknown>;
-      expect(defaults.enabled).toBe(false);
+      expect(defaults.enabled).toBe(true);
       expect(defaults.subjectPrefix).toBe('todo: ');
       expect(defaults.broadcastOnChange).toBe(true);
       expect(defaults.cooldownMs).toBe(30_000);
@@ -221,7 +223,7 @@ describe('todo-listener plugin', () => {
       expect(status.counters.skipped).toBe(1);
     });
 
-    it('does not fire by default', async () => {
+    it('fires by default now that the master switch defaults on', async () => {
       const api = createMockAPI({ withMailbox: true });
       todoListenerPlugin.setup(api as never);
       const hook = getHook(api);
@@ -230,7 +232,7 @@ describe('todo-listener plugin', () => {
         toolInput: { todos: [{ id: '1', content: 'a', status: 'pending' }] },
         toolResult: { content: 'ok', isError: false },
       });
-      expect(api.mailbox?.send).not.toHaveBeenCalled();
+      expect(api.mailbox?.send).toHaveBeenCalled();
     });
 
     it('does not fire when enabled=false', async () => {

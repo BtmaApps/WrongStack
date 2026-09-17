@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import { createConversationOperations } from '../src/server/conversation-operations.js';
+import type { PendingConfirm } from '../src/server/pending-confirms.js';
 
 const ws = {} as WebSocket;
 
@@ -12,6 +13,7 @@ function harness(options: { busy?: boolean } = {}) {
   const begin = vi.fn(() => (options.busy ? undefined : controller));
   const end = vi.fn();
   const abort = vi.fn();
+  const pendingConfirms = new Map<string, PendingConfirm>();
   const routes = createConversationOperations({
     getAgent: () =>
       ({
@@ -26,13 +28,13 @@ function harness(options: { busy?: boolean } = {}) {
       }) as never,
     getSessionId: () => 'session-live',
     runControl: { begin, end, abort },
-    pendingConfirms: new Map(),
+    pendingConfirms,
     submitUserInput: vi.fn(),
     send: (_ws, message) => sent.push(message),
     notifyAbort: (_ws, message) => aborted.push(message),
     getMaxIterations: () => 7,
   });
-  return { routes, sent, aborted, controller, run, begin, end, abort };
+  return { routes, pendingConfirms, sent, aborted, controller, run, begin, end, abort };
 }
 
 describe('createConversationOperations', () => {
@@ -385,5 +387,39 @@ describe('topic advice session ownership', () => {
       type: 'topic.advice_result',
       payload: { sessionId: 'sess_front' },
     });
+  });
+});
+
+describe('scoped approval transport', () => {
+  it.each(['always-exact', 'always-command', 'always-tool'] as const)(
+    'delivers %s only to the owning session',
+    async (decision) => {
+      const h = harness();
+      const resolve = vi.fn();
+      h.pendingConfirms.set('approval', { sessionId: 'session-live', resolve });
+      await h.routes.confirmTool(ws, {
+        type: 'tool.confirm_result',
+        payload: { id: 'approval', decision, sessionId: 'other' },
+      });
+      expect(resolve).not.toHaveBeenCalled();
+      expect(h.pendingConfirms.has('approval')).toBe(true);
+      await h.routes.confirmTool(ws, {
+        type: 'tool.confirm_result',
+        payload: { id: 'approval', decision, sessionId: 'session-live' },
+      });
+      expect(resolve).toHaveBeenCalledExactlyOnceWith(decision);
+      expect(h.pendingConfirms.has('approval')).toBe(false);
+    },
+  );
+  it('keeps a prompt pending after an unknown decision', async () => {
+    const h = harness();
+    const resolve = vi.fn();
+    h.pendingConfirms.set('approval', { sessionId: 'session-live', resolve });
+    await h.routes.confirmTool(ws, {
+      type: 'tool.confirm_result',
+      payload: { id: 'approval', decision: 'allow-everything' },
+    });
+    expect(resolve).not.toHaveBeenCalled();
+    expect(h.pendingConfirms.has('approval')).toBe(true);
   });
 });

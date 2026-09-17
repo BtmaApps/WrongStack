@@ -614,7 +614,8 @@ describe('SelectiveCompactor', () => {
 
       const saved = await (compactor as any).runSelector(ctx, 100);
 
-      expect(saved).toBeGreaterThanOrEqual(0);
+      expect(saved.saved).toBeGreaterThanOrEqual(0);
+      expect(saved.stale).toBeUndefined();
     });
   });
 

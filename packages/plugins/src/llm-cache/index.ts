@@ -101,7 +101,9 @@ interface LlmCacheConfig {
 }
 
 const DEFAULTS: LlmCacheConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit.
+  enabled: true,
   maxEntries: 256,
   ttlMs: 0,
   onlyDeterministic: true,
@@ -117,7 +119,7 @@ function readConfig(raw: unknown): LlmCacheConfig {
   const rawZero =
     r['zeroUsageOnHit'] ?? r['zero_usage_on_hit'] ?? r['zeroUsage'] ?? r['zero_usage'];
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     maxEntries:
       typeof rawMax === 'number' && rawMax >= 1 ? Math.floor(rawMax) : DEFAULTS.maxEntries,
     ttlMs: typeof rawTtl === 'number' && rawTtl >= 0 ? rawTtl : DEFAULTS.ttlMs,

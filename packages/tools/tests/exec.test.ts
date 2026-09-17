@@ -484,6 +484,20 @@ describe('exec command policy (configurable allowlist)', () => {
       'rg',
       'pytest',
       'uv',
+      'uvx',
+      'pipx',
+      'pdm',
+      'conda',
+      'nox',
+      'pyright',
+      'bazel',
+      'just',
+      'rustup',
+      'golangci-lint',
+      'swift',
+      'flutter',
+      'zig',
+      'shellcheck',
       'poetry',
       'composer',
       'phpunit',
@@ -523,6 +537,54 @@ describe('exec command policy (configurable allowlist)', () => {
     expect(isExecCommandAllowed('rm')).toBe(false); // removed from defaults
     expect(isExecCommandAllowed('docker')).toBe(false); // removed
     expect(isExecCommandAllowed('go')).toBe(true); // default preserved
+  });
+
+  it('matches Windows aliases consistently for defaults, allow, and deny', () => {
+    const windows = process.platform === 'win32';
+    expect(isExecCommandAllowed('UV.EXE')).toBe(windows);
+    expect(isExecCommandAllowed('uv run pytest')).toBe(false);
+    expect(isExecCommandAllowed('./uv')).toBe(false);
+    expect(isExecCommandAllowed('C:\\tools\\uv.exe')).toBe(false);
+    configureExecPolicy({ allow: ['custom-runner'], deny: ['uv', 'git'] });
+    expect(isExecCommandAllowed('CUSTOM-RUNNER.CMD')).toBe(windows);
+    expect(isExecCommandAllowed('uv.exe')).toBe(false);
+    expect(isExecCommandAllowed('GIT.EXE')).toBe(false);
+    configureExecPolicy({ allow: ['uv'], deny: ['UV.EXE'] });
+    expect(isExecCommandAllowed('uv')).toBe(!windows);
+  });
+
+  it('keeps hard argument guards for explicitly configured executable paths', async () => {
+    const command = process.platform === 'win32' ? 'C:\\tools\\GIT.EXE' : '/opt/tools/git';
+    configureExecPolicy({ allow: [command] });
+    await expect(
+      execTool.execute({ command, args: ['-C', '..', 'status'] }, makeCtx2(), makeOpts2()),
+    ).rejects.toThrow('Blocked option');
+  });
+
+  it('keeps hard argument guards for Windows executable aliases', async () => {
+    const command = process.platform === 'win32' ? 'GIT.EXE' : 'git';
+    await expect(
+      execTool.execute(
+        { command, args: ['-c', 'alias.x=!echo bypass', 'x'] },
+        makeCtx2(),
+        makeOpts2(),
+      ),
+    ).rejects.toThrow('Blocked option');
+  });
+
+  it('retains destructive classification for permitted aliases without launching them', async () => {
+    const sb = await mkRealSandbox();
+    try {
+      const command = process.platform === 'win32' ? 'GIT.EXE' : 'git';
+      const result = await execTool.execute({ command, args: ['reset', '--hard'] }, sb.ctx, {
+        ...makeOpts2(),
+        signal: AbortSignal.abort(),
+      });
+      expect(result.stderr).toBe('Aborted');
+      expect(result.danger?.level).toBe('destructive');
+    } finally {
+      await sb.cleanup();
+    }
   });
 
   it('is rebuilt from defaults each call (not cumulative)', () => {

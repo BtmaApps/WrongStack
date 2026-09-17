@@ -18,6 +18,7 @@ import {
   resolveWin32Command,
 } from './_win32-resolve.js';
 import { DEFAULT_ALLOWED_COMMANDS } from './exec-allowlist.js';
+import { execSafetyCommandName, normalizeExecCommandName } from './exec-command-name.js';
 import { checkExecKillCommand } from './exec-kill-guard.js';
 import { getProcessRegistry, redactCommand } from './process-registry.js';
 
@@ -25,9 +26,11 @@ const isWin = process.platform === 'win32';
 
 // The live, effective allowlist: DEFAULT ∪ config.allow − config.deny. Replaced
 // wholesale by configureExecPolicy(); defaults until boot wires the config.
-let allowedCommands: Set<string> = new Set(DEFAULT_ALLOWED_COMMANDS);
+let allowedCommands: Set<string> = new Set([...DEFAULT_ALLOWED_COMMANDS].map(normalizeCmd));
 
-const normalizeCmd = (c: string): string => c.trim();
+function normalizeCmd(c: string): string {
+  return normalizeExecCommandName(c);
+}
 
 /**
  * Apply the configured exec command policy. Recomputes the effective allowlist
@@ -41,7 +44,7 @@ const normalizeCmd = (c: string): string => c.trim();
 export function configureExecPolicy(
   opts: { allow?: readonly string[] | undefined; deny?: readonly string[] | undefined } = {},
 ): void {
-  const next = new Set(DEFAULT_ALLOWED_COMMANDS);
+  const next = new Set([...DEFAULT_ALLOWED_COMMANDS].map(normalizeCmd));
   for (const c of opts.allow ?? []) {
     const n = normalizeCmd(c);
     if (n) next.add(n);
@@ -52,7 +55,7 @@ export function configureExecPolicy(
 
 /** Reset the exec allowlist to the built-in defaults (tests / re-init). */
 export function resetExecPolicy(): void {
-  allowedCommands = new Set(DEFAULT_ALLOWED_COMMANDS);
+  allowedCommands = new Set([...DEFAULT_ALLOWED_COMMANDS].map(normalizeCmd));
 }
 
 // -----------------------------------------------------------------------
@@ -324,7 +327,8 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
   usageHint:
     'PREFERRED SHELL TOOL for most cases.\n\n' +
     'Use this instead of `bash` whenever possible.\n' +
-    '- `command` must be in the allowlist. Defaults cover JS (node/npm/pnpm/yarn/bun/deno/tsc/vitest/eslint/biome), Go (`go build`/`go test`), Rust (cargo), Python (python/pip), Ruby (gem/bundle), JVM (java/mvn/gradle), .NET (dotnet), native (make/cmake), and git. Users can extend it via `tools.exec.allow` in config.\n' +
+    '- `command` must be in the allowlist. Defaults cover JS (node/npm/pnpm/yarn/bun/deno/tsc/vitest/eslint/biome), Go, Rust, Python (python/pip/uv/uvx/pipx/poetry/pdm/conda/pytest/ruff), Ruby, JVM, .NET, native builds (make/cmake/bazel/just), Swift, Dart/Flutter, Zig, and git. Users can extend it via `tools.exec.allow` in config.\n' +
+    '- Supply only the executable in `command` (e.g. "uv") and put subcommands/options in `args` (e.g. ["run", "pytest"]). Windows executable suffixes and casing are normalized for policy checks; explicit paths require their own trusted allow entry.\n' +
     '- Arguments are passed as a clean array (no shell interpretation).\n' +
     '- `cwd` is validated to stay inside the project.\n' +
     '- If a command is not allowlisted, the error explains how to add it; for one-off arbitrary commands, fall back to `bash` (with strong justification).\n' +
@@ -415,11 +419,12 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     // render a banner for 'caution' / 'destructive' levels. The `bypass`
     // argument is wired from `config.tools.exec.danger.bypass` (see
     // `configureDangerBypass`); rule ids in that set are skipped.
-    const danger: DangerAssessment = detectDanger(cmd, args, dangerBypass);
+    const safetyCmd = execSafetyCommandName(cmd);
+    const danger: DangerAssessment = detectDanger(safetyCmd, args, dangerBypass);
 
     // Kill guard: check if the command targets protected WrongStack processes
     // (taskkill /F /IM node.exe, Stop-Process -Name node, wmic process delete, etc.)
-    const killCheck = await checkExecKillCommand(cmd, args);
+    const killCheck = await checkExecKillCommand(safetyCmd, args);
     if (killCheck.blocked) {
       throw new Error(
         `exec: ${killCheck.reason ?? 'Kill command blocked: targets a protected WrongStack process.'}`,
@@ -427,7 +432,7 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     }
 
     // Validate args against per-command security patterns
-    const argError = validateArgs(cmd, args);
+    const argError = validateArgs(safetyCmd, args);
     if (argError) {
       throw new Error(`exec: ${argError}`);
     }

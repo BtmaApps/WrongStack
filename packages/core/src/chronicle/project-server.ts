@@ -79,6 +79,10 @@ const DEFAULT_MAX_BYTES = 512 * 1024 * 1024;
 interface ClientState {
   socket: net.Socket;
   buffer: string;
+  /** Wall clock at accept, so the silent-client sweep can age this socket. */
+  connectedAt: number;
+  /** Set on the first inbound byte. A socket that never speaks is reaped. */
+  spoken: boolean;
   /**
    * Request ids whose dispatch has not produced a response yet. `stop()`
    * answers each of these with a clean stopping rejection BEFORE the socket
@@ -143,6 +147,29 @@ const endpoint = chronicleProjectServerEndpoint(parsed.projectDir);
 const metadataPath = chronicleProjectServerMetadataPath(parsed.projectDir);
 const idleInput = Number(process.env['WRONGSTACK_CHRONICLE_SERVER_IDLE_MS']);
 const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : DEFAULT_IDLE_MS;
+/**
+ * A socket that connects and then never sends a single byte pins this daemon
+ * open forever: `clients.size` stays above zero, so `scheduleIdleStop()`
+ * returns early and the idle shutdown is never armed. Measured before this
+ * existed — with idle=2s, a silent connection kept the daemon alive past 20s,
+ * three runs out of three. It needs no auth token either, because
+ * `clients.add` happens on connect, before any message is validated.
+ *
+ * Reaping ONLY sockets that have never spoken is what makes this safe. A real
+ * client sends its first frame immediately; one that goes quiet after working
+ * has spoken and keeps its connection. Dropping a never-spoken socket cannot
+ * fail a caller: nothing can be in flight on it, and the client re-establishes
+ * on its next request (`ensureConnected` in the project-server client).
+ *
+ * The sweep deliberately does NOT call `scheduleIdleStop()` — that is the
+ * re-arm starvation fixed in the mailbox and kanban daemons. `destroy()` fires
+ * `close`, and the existing close handler owns the idle bookkeeping.
+ */
+const DEFAULT_SILENT_CLIENT_MS = 120_000;
+const silentInput = Number(process.env['WRONGSTACK_CHRONICLE_SERVER_SILENT_CLIENT_MS']);
+const silentClientMs =
+  Number.isFinite(silentInput) && silentInput >= 1_000 ? silentInput : DEFAULT_SILENT_CLIENT_MS;
+const silentSweepMs = Math.min(30_000, Math.max(1_000, Math.floor(silentClientMs / 4)));
 const startedAt = new Date().toISOString();
 /**
  * Per-process auth token. WS-027: this daemon owns the project's chronicle —
@@ -183,6 +210,7 @@ const clients = new Set<ClientState>();
 const journals = new Map<string, ChronicleJournal>();
 let activeRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
+let silentClientSweep: ReturnType<typeof setInterval> | undefined;
 let stopping = false;
 let watcher: ChronicleFileObserver | undefined;
 let watcherLastError: string | undefined;
@@ -644,6 +672,7 @@ async function handleMessage(
 }
 
 function onData(state: ClientState, chunk: string): void {
+  state.spoken = true;
   state.buffer += chunk;
   if (state.buffer.length > CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS) {
     state.socket.destroy(new Error('Chronicle project server request exceeded frame limit'));
@@ -723,6 +752,8 @@ async function stop(_reason: string): Promise<void> {
   stopping = true;
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
+  if (silentClientSweep) clearInterval(silentClientSweep);
+  silentClientSweep = undefined;
   // WS-059: remove metadata BEFORE releasing the endpoint. The bind is the
   // ownership election, so while it is still held no successor daemon can
   // exist — and therefore none can have its metadata deleted by the
@@ -783,7 +814,13 @@ const server = net.createServer((socket) => {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = undefined;
   socket.setEncoding('utf8');
-  const state: ClientState = { socket, buffer: '', unsettled: new Set<number>() };
+  const state: ClientState = {
+    socket,
+    buffer: '',
+    connectedAt: Date.now(),
+    spoken: false,
+    unsettled: new Set<number>(),
+  };
   clients.add(state);
   // Greet only once the token is readable on disk — see `metadataWritten`.
   void metadataWritten.then(() => {
@@ -799,6 +836,18 @@ const server = net.createServer((socket) => {
     scheduleIdleStop();
   });
 });
+
+// See `silentClientMs`: drops only sockets that connected and never sent a
+// byte, so the idle shutdown can actually be reached. `close` does the rest.
+silentClientSweep = setInterval(() => {
+  const cutoff = Date.now() - silentClientMs;
+  for (const state of clients) {
+    if (!state.spoken && state.connectedAt < cutoff) {
+      state.socket.destroy(new Error('Chronicle client connected without ever sending a request'));
+    }
+  }
+}, silentSweepMs);
+silentClientSweep.unref?.();
 
 // The bind is the ownership election, including the probe-then-reclaim ladder
 // for an endpoint whose owner died without cleanup. Shared with every other

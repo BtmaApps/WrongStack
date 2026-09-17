@@ -1,33 +1,35 @@
 import type { Context } from '../core/context.js';
+import { contextHistoryVersion } from '../core/context-history-version.js';
+import { noOpLogger } from '../infrastructure/logger.js';
 import { LLMSelector } from '../models/llm-selector.js';
 import { isTextBlock } from '../types/blocks.js';
+import type { Compactor, CompactReport } from '../types/compactor.js';
 import type { Logger } from '../types/logger.js';
-import { noOpLogger } from '../infrastructure/logger.js';
-import {
-  type CompactionSummaryCache,
-  compactionSummaryKey,
-  defaultCompactionSummaryCache,
-} from './compaction-summary-cache.js';
-import type { CompactReport, Compactor } from '../types/compactor.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request } from '../types/provider.js';
 import type { MessageSelector, SelectorResult } from '../types/selector.js';
-import { estimateRequestTokens } from '../utils/token-estimate.js';
-import { repairToolUseAdjacency } from '../utils/message-invariants.js';
-import { readBundledInstructionText } from '../utils/instruction-file.js';
 import { buildCompactionPreview } from '../utils/compaction-preview.js';
 import {
   buildContextEvidenceDigest,
   checkCompactionQuality,
   injectEvidenceFloor,
 } from '../utils/context-evidence.js';
+import { readBundledInstructionText } from '../utils/instruction-file.js';
+import { repairToolUseAdjacency } from '../utils/message-invariants.js';
+import { estimateRequestTokens } from '../utils/token-estimate.js';
 import {
-  dedupStaleReads,
   eliseOldToolResults as coreEliseOldToolResults,
+  dedupStaleReads,
   estimateMessages,
   findPreserveStart,
   setCompactionDebugLogger,
 } from './compaction-core.js';
+import { markStaleCompactionReport, stampCompactionReport } from './compaction-result-state.js';
+import {
+  type CompactionSummaryCache,
+  compactionSummaryKey,
+  defaultCompactionSummaryCache,
+} from './compaction-summary-cache.js';
 
 /**
  * Options for SelectiveCompactor — the most configurable compactor.
@@ -154,8 +156,22 @@ export class SelectiveCompactor implements Compactor {
     const targetBudget = this.computeTargetBudget(load);
 
     if (afterPhase1 > targetBudget) {
-      const savedSelective = await this.runSelector(ctx, targetBudget);
-      if (savedSelective > 0) reductions.push({ phase: 'selective', saved: savedSelective });
+      const selective = await this.runSelector(ctx, targetBudget);
+      if (selective.stale) {
+        return markStaleCompactionReport(
+          stampCompactionReport(
+            {
+              before: beforeTokens,
+              after: this.estimateTokens(ctx.messages),
+              fullRequestTokensBefore: beforeFull,
+              fullRequestTokensAfter: this.estimateFullRequest(ctx),
+              reductions,
+            },
+            ctx,
+          ),
+        );
+      }
+      if (selective.saved > 0) reductions.push({ phase: 'selective', saved: selective.saved });
     }
 
     const repair = this.repairProtocolAdjacency(ctx);
@@ -186,16 +202,19 @@ export class SelectiveCompactor implements Compactor {
       afterTokens = this.estimateTokens(ctx.messages);
       afterFull = this.estimateFullRequest(ctx);
     }
-    return {
-      before: beforeTokens,
-      after: afterTokens,
-      fullRequestTokensBefore: beforeFull,
-      fullRequestTokensAfter: afterFull,
-      reductions,
-      repaired,
-      evidenceDigest,
-      quality,
-    };
+    return stampCompactionReport(
+      {
+        before: beforeTokens,
+        after: afterTokens,
+        fullRequestTokensBefore: beforeFull,
+        fullRequestTokensAfter: afterFull,
+        reductions,
+        repaired,
+        evidenceDigest,
+        quality,
+      },
+      ctx,
+    );
   }
 
   /**
@@ -223,30 +242,51 @@ export class SelectiveCompactor implements Compactor {
    * Run the LLM selector to decide what to keep vs collapse.
    * Returns the token savings achieved.
    */
-  private async runSelector(ctx: Context, targetBudget: number): Promise<number> {
+  private async runSelector(
+    ctx: Context,
+    targetBudget: number,
+  ): Promise<{ saved: number; stale?: boolean }> {
     const before = this.estimateTokens(ctx.messages);
+    const historyVersion = contextHistoryVersion(ctx);
+    const owner = ctx.session;
 
     let result: SelectorResult;
     try {
       result = await this.selector.select(ctx.messages, targetBudget);
     } catch {
+      if (
+        ctx.signal?.aborted ||
+        contextHistoryVersion(ctx) !== historyVersion ||
+        ctx.session !== owner
+      )
+        return { saved: 0, stale: true };
       // Fallback to aggressive recency preservation
-      return this.aggressiveRecencyTrim(ctx);
+      return { saved: this.aggressiveRecencyTrim(ctx) };
     }
 
+    if (
+      ctx.signal?.aborted ||
+      contextHistoryVersion(ctx) !== historyVersion ||
+      ctx.session !== owner
+    )
+      return { saved: 0, stale: true };
+
     // Execute the selector's plan
-    await this.executePlan(ctx, result);
+    if (!(await this.executePlan(ctx, result))) return { saved: 0, stale: true };
 
     const after = this.estimateTokens(ctx.messages);
-    return Math.max(0, before - after);
+    return { saved: Math.max(0, before - after) };
   }
 
   /**
    * Execute a SelectorResult plan: collapse/remove ranges and
    * insert summaries where the selector provided them.
    */
-  private async executePlan(ctx: Context, plan: SelectorResult): Promise<void> {
-    if (ctx.messages.length === 0) return;
+  private async executePlan(ctx: Context, plan: SelectorResult): Promise<boolean> {
+    if (ctx.messages.length === 0) return true;
+    const historyVersion = contextHistoryVersion(ctx);
+    const owner = ctx.session;
+    const sourceLength = ctx.messages.length;
 
     // Process collapsed ranges in reverse order to preserve indices. We work
     // on a local copy and commit through `ctx.state.replaceMessages` at the
@@ -262,6 +302,8 @@ export class SelectiveCompactor implements Compactor {
       .filter((range) => range.from >= 0 && range.from <= range.to)
       .sort((a, b) => b.from - a.from);
 
+    if (sortedCollapsed.length === 0) return true;
+
     for (const range of sortedCollapsed) {
       if (range.from < 0 || range.to >= messages.length || range.from > range.to) continue;
 
@@ -269,6 +311,12 @@ export class SelectiveCompactor implements Compactor {
       let summary = range.summary;
       if (!summary) {
         summary = await this.summarizeRange(toSummarize, ctx);
+        if (
+          ctx.signal?.aborted ||
+          contextHistoryVersion(ctx) !== historyVersion ||
+          ctx.session !== owner
+        )
+          return false;
       }
 
       // The selector works from a compact overview. Preserve deterministic
@@ -285,7 +333,10 @@ export class SelectiveCompactor implements Compactor {
       messages.splice(range.from, range.to - range.from + 1, summaryMsg);
     }
 
-    ctx.state.replaceMessages(messages);
+    // Append-only updates do not invalidate the plan, but they were not in
+    // its local copy. Preserve everything queued while range summaries ran.
+    ctx.state.replaceMessages([...messages, ...ctx.messages.slice(sourceLength)]);
+    return true;
   }
 
   private async summarizeRange(messages: Message[], ctx: Context): Promise<string> {

@@ -603,7 +603,16 @@ export type State = {
     toolName: string;
     input: unknown;
     suggestedPattern: string;
-    resolve: (decision: 'yes' | 'no' | 'always' | 'deny') => void;
+    resolve: (
+      decision:
+        | 'yes'
+        | 'no'
+        | 'always'
+        | 'always-exact'
+        | 'always-command'
+        | 'always-tool'
+        | 'deny',
+    ) => void;
     /** True when the call was classified destructive. */
     destructive: boolean;
     boundaryReason?: string | undefined;

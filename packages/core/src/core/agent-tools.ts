@@ -6,6 +6,7 @@
 import type { BrainRisk } from '../coordination/brain.js';
 import { TOKENS } from '../kernel/tokens.js';
 import { describeWriteTargets } from '../security/permission-helpers.js';
+import { approvalRecord, isPersistentApproval } from '../security/scoped-approval.js';
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { SessionEvent } from '../types/session.js';
 import type { Tool } from '../types/tool.js';
@@ -113,7 +114,9 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
     riskTier?: import('../types/tool.js').RiskTier | undefined;
     boundaryReason?: string | undefined;
     writeTargets?: string[] | undefined;
-  }): Promise<'yes' | 'no' | 'always' | 'deny' | 'abort'> {
+  }): Promise<
+    'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny' | 'abort'
+  > {
     // Headless deadlock guard (P1 #4, before-release.md): if no UI layer has
     // subscribed to `tool.confirm_needed`, emitting the event leaves the
     // resolver promise pending forever — the tool neither executes nor fails
@@ -153,7 +156,15 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
       // harmless no-op, so a late UI answer after abort is safely ignored.
       const signal = a.ctx.signal;
       const settle = (
-        choice: 'yes' | 'no' | 'always' | 'deny' | 'abort',
+        choice:
+          | 'yes'
+          | 'no'
+          | 'always'
+          | 'always-exact'
+          | 'always-command'
+          | 'always-tool'
+          | 'deny'
+          | 'abort',
         source: 'brain_timeout' | 'abort' | 'user' = 'user',
         rationale?: string,
       ) => {
@@ -363,14 +374,21 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
         });
 
         // Persist trust/deny rules
-        if (decision === 'always') {
+        if (isPersistentApproval(decision)) {
           try {
-            await a.permission.trust({ tool: tool.name, pattern: result.suggestedPattern });
+            const approval = approvalRecord(
+              decision,
+              tool,
+              result.input,
+              a.ctx,
+              result.suggestedPattern,
+            );
+            await a.permission.trust({ tool: tool.name, pattern: approval.pattern });
             a.events.emit('trust.persisted', {
               sessionId: resolveEventSessionId(a.ctx),
               tool: tool.name,
-              pattern: result.suggestedPattern,
-              decision,
+              ...approval,
+              decision: 'always',
             });
           } catch {
             /* best-effort */
@@ -382,7 +400,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
               sessionId: resolveEventSessionId(a.ctx),
               tool: tool.name,
               pattern: result.suggestedPattern,
-              decision,
+              decision: 'deny',
             });
           } catch {
             /* best-effort */
@@ -404,7 +422,7 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
         }
 
         const reRunResult =
-          decision === 'yes' || decision === 'always'
+          decision === 'yes' || isPersistentApproval(decision)
             ? await executeSingleWithDecision(
                 tool,
                 {

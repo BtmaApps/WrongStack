@@ -249,8 +249,13 @@ export function handleTrustPersisted(msg: WSServerMessage) {
   // Toast only, and a toast belongs to the tab on screen — tool trust itself
   // is a project-wide decision, so there is no per-tab record to keep here.
   if (!isActiveSessionMessage(msg)) return;
-  const p = msg.payload as { tool: string; pattern: string; decision: 'always' | 'deny' };
-  const label = `${p.tool}: ${p.pattern}`;
+  const p = msg.payload as {
+    tool: string;
+    pattern: string;
+    displayPattern?: string;
+    decision: 'always' | 'deny';
+  };
+  const label = `${p.tool}: ${p.displayPattern ?? p.pattern}`;
   if (p.decision === 'always') toast.success(`Always allowed ${label}`);
   else toast.warn(`Denied ${label}`);
 }

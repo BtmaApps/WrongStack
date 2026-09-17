@@ -129,6 +129,51 @@ describe('Session Catalog project server IPC', () => {
     }
   });
 
+  // A socket that connects and then never sends a single byte used to pin the
+  // daemon open forever: `clients.size` stayed above zero, so
+  // `scheduleIdleStop()` returned early and the idle shutdown was never armed.
+  // No auth token was needed either — `clients.add` happens on connect, before
+  // any message is validated. Measured before the fix: still alive 15s after a
+  // silent connect with a 2s idle window.
+  //
+  // The reap keys off "has this socket EVER spoken", not "recently", so a
+  // client that worked and then went quiet keeps its connection. Events here
+  // are gated on `client.subscribed`, and subscribing requires sending a
+  // request, so a never-spoken socket is receiving nothing anyway.
+  it('does not stay alive for a client that connects and never sends a request', async () => {
+    const fixture = await makeTempRoot('session-catalog-silent-client');
+    const endpoint = sessionCatalogProjectServerEndpoint(fixture.root);
+    const metadataPath = sessionCatalogProjectServerMetadataPath(fixture.root);
+    const previousIdle = process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'];
+    const previousSilent = process.env['WRONGSTACK_SESSION_CATALOG_SILENT_CLIENT_MS'];
+    process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'] = '300';
+    // 1s silent window => sweep = min(30s, max(1s, 250ms)) = 1s.
+    process.env['WRONGSTACK_SESSION_CATALOG_SILENT_CLIENT_MS'] = '1000';
+    try {
+      await importDaemonInstance(
+        '../../src/session-catalog/project-server.ts',
+        ['--project-dir', fixture.root, '--project-root', fixture.root],
+        Date.now(),
+      );
+      await waitForMetadataFile<{ authToken: string }>(metadataPath);
+      const client = await connectFrame(endpoint);
+      expect((await client.nextFrame()).type).toBe('hello');
+      // Deliberately send nothing: the daemon must still reach its idle stop.
+      await waitForMetadataRemoval(metadataPath, 15_000);
+      await waitForEndpointClosed(endpoint, 5_000);
+      client.socket.destroy();
+    } finally {
+      if (previousIdle === undefined) delete process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'];
+      else process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS'] = previousIdle;
+      if (previousSilent === undefined) {
+        delete process.env['WRONGSTACK_SESSION_CATALOG_SILENT_CLIENT_MS'];
+      } else {
+        process.env['WRONGSTACK_SESSION_CATALOG_SILENT_CLIENT_MS'] = previousSilent;
+      }
+      await fixture.release();
+    }
+  });
+
   it('exits promptly after the last client releases its project lease', async () => {
     const fixture = await makeTempRoot('session-catalog-disconnect-idle');
     const endpoint = sessionCatalogProjectServerEndpoint(fixture.root);

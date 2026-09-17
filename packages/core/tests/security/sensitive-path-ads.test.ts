@@ -36,6 +36,39 @@ describe('an ADS suffix cannot hide a sensitive path', () => {
   );
 });
 
+/**
+ * Regression for WS-2026-09-17-01 (2026-09-17 audit).
+ *
+ * The key list was singular-only, so a tool whose path field is PLURAL never
+ * reached the sensitive-path patterns at all. `collab_debug` reads every entry
+ * of `targetPaths` and embeds the contents in three subagent prompts, and one
+ * character — the trailing `s` — kept it off this list entirely.
+ */
+describe('plural path keys are inspected, not just singular ones', () => {
+  it.each([
+    ['targetPaths', ['src/index.ts', '/home/me/.aws/credentials']],
+    ['paths', ['.env']],
+    ['files', ['package.json', 'id_rsa']],
+    ['filePaths', ['C:\\Users\\me\\project\\.env']],
+    ['file_paths', ['.npmrc']],
+    ['targets', ['/home/me/.aws/credentials::$DATA']],
+  ])('flags a sensitive entry inside %s', (key, value) => {
+    expect(inputPathLooksSensitive({ [key]: value })).toBe(true);
+  });
+
+  it('does not flag a plural key whose entries are all ordinary', () => {
+    expect(inputPathLooksSensitive({ targetPaths: ['src/a.ts', 'src/b.ts'] })).toBe(false);
+  });
+
+  it('still flags a plural key holding a bare string', () => {
+    expect(inputPathLooksSensitive({ paths: '.env' })).toBe(true);
+  });
+
+  it('ignores non-string entries rather than throwing', () => {
+    expect(inputPathLooksSensitive({ files: [42, null, { nested: '.env' }] })).toBe(false);
+  });
+});
+
 describe('the ADS strip does not create false positives', () => {
   it.each([
     'src/index.ts',

@@ -34,6 +34,10 @@ interface ClientState {
   socket: net.Socket;
   buffer: string;
   subscribed: boolean;
+  /** Wall clock at accept, so the silent-client sweep can age this socket. */
+  connectedAt: number;
+  /** Set on the first inbound byte. A socket that never speaks is reaped. */
+  spoken: boolean;
   /**
    * Request ids whose dispatch has not produced a response yet. `stop()`
    * answers each of these with a clean stopping rejection BEFORE the socket
@@ -67,6 +71,28 @@ const authToken = randomBytes(32).toString('hex');
 const idleInput = Number(process.env['WRONGSTACK_SESSION_CATALOG_IDLE_MS']);
 const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : 5 * 60_000;
 const disconnectedIdleMs = Math.min(idleMs, 250);
+/**
+ * A socket that connects and then never sends a single byte pins this daemon
+ * open forever: `clients.size` stays above zero, so `scheduleIdleStop()`
+ * returns early and the idle shutdown is never armed. Measured before this
+ * existed: with idle=2s, a silent connection kept the daemon alive past 15s.
+ * It needs no auth token either — `clients.add` happens on connect, before
+ * any message is validated.
+ *
+ * Reaping ONLY sockets that have never spoken is what makes this safe. Events
+ * here are gated on `client.subscribed`, and subscribing requires sending a
+ * request, so a never-spoken socket receives nothing and can be dropped. The
+ * client re-establishes through its reconnect path on the next call.
+ *
+ * The sweep deliberately does NOT call `scheduleIdleStop()` — that is the
+ * re-arm starvation fixed in the mailbox and kanban daemons. `destroy()` fires
+ * `close`, and the existing close handler owns the idle bookkeeping.
+ */
+const DEFAULT_SILENT_CLIENT_MS = 120_000;
+const silentInput = Number(process.env['WRONGSTACK_SESSION_CATALOG_SILENT_CLIENT_MS']);
+const silentClientMs =
+  Number.isFinite(silentInput) && silentInput >= 1_000 ? silentInput : DEFAULT_SILENT_CLIENT_MS;
+const silentSweepMs = Math.min(30_000, Math.max(1_000, Math.floor(silentClientMs / 4)));
 const serverInfo: SessionCatalogServerInfo = {
   protocolVersion: SESSION_CATALOG_PROTOCOL_VERSION,
   pid: process.pid,
@@ -103,6 +129,7 @@ let stopping = false;
 /** Drives the AbortSignal passed to in-flight dispatch handlers so stop() can cancel them. */
 const dispatchAbortController = new AbortController();
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
+let silentClientSweep: ReturnType<typeof setInterval> | undefined;
 const clients = new Set<ClientState>();
 const MAX_CLIENTS = 256;
 let eventSequence = 0;
@@ -524,6 +551,7 @@ async function handleMessage(
 }
 
 function onData(state: ClientState, chunk: string): void {
+  state.spoken = true;
   state.buffer += chunk;
   if (state.buffer.length > SESSION_CATALOG_MAX_FRAME_CHARS) {
     state.socket.destroy(new Error('Session Catalog request exceeded frame limit'));
@@ -586,6 +614,8 @@ async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
   if (idleTimer) clearTimeout(idleTimer);
+  if (silentClientSweep) clearInterval(silentClientSweep);
+  silentClientSweep = undefined;
   // Answer in-flight requests BEFORE the transport goes away (unsettled →
   // clean rejection), then end() — NOT destroy() — so the rejection bytes are
   // flushed before FIN: write() + destroy() in the same tick loses the pending
@@ -658,6 +688,8 @@ const server = net.createServer((socket) => {
     socket,
     buffer: '',
     subscribed: false,
+    connectedAt: Date.now(),
+    spoken: false,
     unsettled: new Set<number>(),
   };
   clients.add(state);
@@ -678,6 +710,20 @@ const server = net.createServer((socket) => {
     scheduleIdleStop(disconnectedIdleMs);
   });
 });
+
+// See `silentClientMs`: drops only sockets that connected and never sent a
+// byte, so the idle shutdown can actually be reached. `close` does the rest.
+silentClientSweep = setInterval(() => {
+  const cutoff = Date.now() - silentClientMs;
+  for (const state of clients) {
+    if (!state.spoken && state.connectedAt < cutoff) {
+      state.socket.destroy(
+        new Error('Session Catalog client connected without ever sending a request'),
+      );
+    }
+  }
+}, silentSweepMs);
+silentClientSweep.unref?.();
 
 // The bind is the ownership election, including the probe-then-reclaim ladder
 // for an endpoint whose owner died without cleanup. Shared with every other

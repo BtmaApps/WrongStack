@@ -644,13 +644,6 @@ export const pluginCatalog = [
     source: 'Suite',
   },
   {
-    name: 'todo-tracker',
-    risk: 'low',
-    summary: 'Persistent project-scoped todo backlog.',
-    defaultState: 'active',
-    source: 'Suite',
-  },
-  {
     name: 'token-budget',
     risk: 'medium',
     summary: 'Warns or stops when token budgets are exceeded.',
@@ -704,13 +697,6 @@ export const pluginCatalog = [
     risk: 'medium',
     summary: 'Sorts imports and applies safe linter fixes after edits.',
     defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'knowledge-graph',
-    risk: 'low',
-    summary: 'Stores and queries durable project knowledge graph facts.',
-    defaultState: 'active',
     source: 'Suite',
   },
   {
@@ -821,14 +807,6 @@ export const pluginCatalog = [
     source: 'Suite',
   },
   {
-    name: 'dead-code-detector',
-    risk: 'low',
-    summary:
-      'Scans for suspicious exported symbols that appear unused on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
     name: 'migration-planner',
     risk: 'low',
     summary: 'Builds evidence-backed migration checklists with optional LLM risk analysis.',
@@ -839,13 +817,6 @@ export const pluginCatalog = [
     name: 'schema-evolution-guard',
     risk: 'high',
     summary: 'Warns on destructive database or API schema changes.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'semantic-search-indexer',
-    risk: 'low',
-    summary: 'Builds an in-memory keyword index for project source search.',
     defaultState: 'inactive',
     source: 'Suite',
   },
@@ -955,14 +926,6 @@ export const pluginCatalog = [
     source: 'Suite',
   },
   {
-    name: 'code-metrics',
-    risk: 'low',
-    summary:
-      'Computes LOC, comment ratio, function count, and approximate cyclomatic complexity on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
     name: 'duplicate-code-detector',
     risk: 'low',
     summary:
@@ -971,40 +934,9 @@ export const pluginCatalog = [
     source: 'Suite',
   },
   {
-    name: 'feature-flag-tracker',
-    risk: 'low',
-    summary:
-      'Scans source files for feature-flag usage and reports flag inventory on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'interface-contract-guard',
-    risk: 'medium',
-    summary:
-      'Warns when TypeScript interfaces change or lack implementers when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'refactor-suggester',
-    risk: 'low',
-    summary:
-      'Flags long functions, deep nesting, many parameters, magic numbers, and console.log on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
     name: 'release-notes-generator',
     risk: 'low',
     summary: 'Builds traceable release notes with optional hash-preserving LLM polish.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'smart-rename',
-    risk: 'medium',
-    summary: 'Whole-word symbol rename with preview and optional apply.',
     defaultState: 'inactive',
     source: 'Suite',
   },

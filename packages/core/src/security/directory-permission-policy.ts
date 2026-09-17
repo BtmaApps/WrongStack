@@ -408,7 +408,9 @@ export class DirectoryPermissionPolicy implements PermissionPolicy {
           tool: Tool,
           input: unknown,
           suggestedPattern: string,
-        ) => Promise<'yes' | 'no' | 'always' | 'deny'>)
+        ) => Promise<
+          'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'
+        >)
       | undefined,
   ): void {
     this.inner.setPromptDelegate?.(delegate);

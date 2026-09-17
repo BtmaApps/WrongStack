@@ -4,7 +4,14 @@ import type { Tool } from '../types/tool.js';
 import { matchGlob } from '../utils/glob-match.js';
 import { subjectForToolInput } from '../utils/tool-subject.js';
 import { hasCapability, ToolCapabilities } from './capabilities.js';
-import { isInsideAgentStateRoot, matchesTrust } from './permission-helpers.js';
+import {
+  hasShellSubject,
+  isInsideAgentStateRoot,
+  matchesCommandTrust,
+  matchesTrust,
+} from './permission-helpers.js';
+import { isScopedApprovalPattern, matchingApprovalScope } from './scoped-approval.js';
+import { mergeTrustEntries } from './trust-entry.js';
 
 export interface PermissionExplainContext {
   policy: TrustPolicy;
@@ -15,6 +22,7 @@ export interface PermissionExplainContext {
   yolo: boolean;
   promptDelegatePresent: boolean;
   isSensitiveReadCall(tool: Tool, input: unknown): boolean;
+  isDestructiveCall?(tool: Tool, input: unknown, ctx: Context): boolean;
   yoloBlockedAsDestructive(tool: Tool, input: unknown, ctx: Context): boolean;
 }
 
@@ -60,7 +68,7 @@ export function explainPermissionTrace(
       break;
     }
   }
-  const entry = state.policy[tool.name] ?? namespaceEntry;
+  const entry = mergeTrustEntries(state.policy[tool.name], namespaceEntry);
   const namespaceSource = namespaceEntry
     ? `wildcard entry matched (${Object.keys(state.policy).find((k) => k.includes('*') && matchGlob(k, tool.name))})`
     : 'no namespace match';
@@ -96,6 +104,32 @@ export function explainPermissionTrace(
     'no session-level soft deny for this tool+subject',
   );
 
+  // 4. Trust deny
+  if (entry?.deny && subject && matchesTrust(entry.deny, subject)) {
+    add(
+      'trust deny',
+      true,
+      'deny',
+      'deny',
+      `subject "${subject}" matched a deny pattern in trust file`,
+    );
+    winnerIndex = steps.length - 1;
+    return {
+      toolName: tool.name,
+      subject,
+      steps,
+      winnerIndex,
+      decision: { permission: 'deny', source: 'deny', reason: 'matched deny pattern' },
+    };
+  }
+  add(
+    'trust deny',
+    false,
+    'deny',
+    'deny',
+    `no deny pattern matched (namespace: ${namespaceSource})`,
+  );
+
   // 3. Session soft allow (one-shot)
   if (state.sessionAllowed.has(cacheKey)) {
     add(
@@ -126,32 +160,6 @@ export function explainPermissionTrace(
     'no session-level one-shot allow for this tool+subject',
   );
 
-  // 4. Trust deny
-  if (entry?.deny && subject && matchesTrust(entry.deny, subject)) {
-    add(
-      'trust deny',
-      true,
-      'deny',
-      'deny',
-      `subject "${subject}" matched a deny pattern in trust file`,
-    );
-    winnerIndex = steps.length - 1;
-    return {
-      toolName: tool.name,
-      subject,
-      steps,
-      winnerIndex,
-      decision: { permission: 'deny', source: 'deny', reason: 'matched deny pattern' },
-    };
-  }
-  add(
-    'trust deny',
-    false,
-    'deny',
-    'deny',
-    `no deny pattern matched (namespace: ${namespaceSource})`,
-  );
-
   // 5. Tool default deny
   if (tool.permission === 'deny') {
     add(
@@ -178,8 +186,48 @@ export function explainPermissionTrace(
     `tool "${tool.name}" has permission: "${tool.permission}"`,
   );
 
+  const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
+  const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
+  const scope =
+    entry?.allow && !denyUnevaluated && allowUnexpired
+      ? matchingApprovalScope(entry.allow, tool, input, ctx)
+      : undefined;
+  if (scope) {
+    const destructive =
+      scope !== 'exact' &&
+      (state.isDestructiveCall?.(tool, input, ctx) ??
+        state.yoloBlockedAsDestructive(tool, input, ctx));
+    const permission = destructive ? 'confirm' : 'auto';
+    add(
+      'scoped trust',
+      true,
+      permission,
+      'trust',
+      `matched ${scope} approval${destructive ? '; destructive call still requires approval' : ''}`,
+    );
+    return {
+      toolName: tool.name,
+      subject,
+      steps,
+      winnerIndex: steps.length - 1,
+      decision: {
+        permission,
+        source: 'trust',
+        ...(destructive ? { riskTier: 'destructive' as const } : {}),
+      },
+    };
+  }
   // 6. Trust allow
-  if (entry?.allow && subject && matchesTrust(entry.allow, subject)) {
+  const allowMatches = hasShellSubject(tool) ? matchesCommandTrust : matchesTrust;
+  if (
+    allowUnexpired &&
+    entry?.allow &&
+    subject &&
+    allowMatches(
+      entry.allow.filter((p) => !isScopedApprovalPattern(p)),
+      subject,
+    )
+  ) {
     add(
       'trust allow',
       true,
@@ -205,7 +253,7 @@ export function explainPermissionTrace(
   );
 
   // 7. Trust auto
-  if (entry?.auto) {
+  if (entry?.auto && !denyUnevaluated) {
     add('trust auto', true, 'auto', 'trust', `trust file has auto: true for "${tool.name}"`);
     winnerIndex = steps.length - 1;
     return {

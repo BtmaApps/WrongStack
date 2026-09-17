@@ -169,17 +169,19 @@ describe('type-gate plugin', () => {
     expect(result?.decision).toBe('block');
   });
 
-  it('does not run by default', async () => {
+  it('runs by default now that the master switch defaults on', async () => {
+    // It used to require a literal `enabled: true` on top of host enablement,
+    // so `wstack plugin enable type-gate` produced a gate that never ran tsc.
+    // Turning it off is still one explicit `enabled: false` (next test).
     const api = makeApi();
     typeGatePlugin.setup(api as never);
     const hook = getHook(api);
-    const result = await hook({
+    await hook({
       toolName: 'write',
       toolInput: { path: 'src/foo.ts' },
       toolResult: { content: '', isError: false },
     });
-    expect(result).toBeUndefined();
-    expect(execFileSync).not.toHaveBeenCalled();
+    expect(execFileSync).toHaveBeenCalled();
   });
 
   it('enabled:false disables the hook', async () => {

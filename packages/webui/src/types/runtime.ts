@@ -57,7 +57,15 @@ export interface WSToolConfirmResolved {
   payload: SessionScopedPayload & {
     id: string;
     toolName: string;
-    decision: 'yes' | 'no' | 'always' | 'deny' | 'abort';
+    decision:
+      | 'yes'
+      | 'no'
+      | 'always'
+      | 'always-exact'
+      | 'always-command'
+      | 'always-tool'
+      | 'deny'
+      | 'abort';
     source: 'brain_timeout' | 'abort';
     rationale?: string | undefined;
   };
@@ -67,7 +75,7 @@ export interface WSToolConfirmResult {
   type: 'tool.confirm_result';
   payload: SessionScopedPayload & {
     id: string;
-    decision: 'yes' | 'no' | 'always' | 'deny';
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny';
   };
 }
 
@@ -76,6 +84,8 @@ export interface WSTrustPersisted {
   payload: SessionScopedPayload & {
     tool: string;
     pattern: string;
+    displayPattern?: string;
+    scope?: 'exact' | 'command' | 'tool';
     decision: 'always' | 'deny';
   };
 }

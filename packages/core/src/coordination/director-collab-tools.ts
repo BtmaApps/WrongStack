@@ -4,19 +4,42 @@ import { ToolValidationError } from '../types/errors.js';
 import type { Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
 import { expandGlob } from '../utils/glob-expand.js';
-import type { CollabSessionOptions } from './collab-debug.js';
+import { type CollabSessionOptions, resolveCollabTargetInsideRoot } from './collab-debug.js';
 import type * as Host from './director-host-contracts.js';
 import { validateFleetEventEmission } from './fleet-event-validation.js';
 
-/** True when at least one target path (after glob expansion) is a readable file. */
-async function anyReadableTarget(targetPaths: readonly string[]): Promise<boolean> {
+/**
+ * Whether any target is a readable file the session is allowed to read, plus
+ * the targets refused by project-root confinement.
+ *
+ * The confinement check runs here as well as at the read site: without it this
+ * probe still answers "does this out-of-root file exist?" for any path the
+ * model names — an existence oracle that survives refusing the read itself.
+ */
+async function anyReadableTarget(
+  targetPaths: readonly string[],
+  projectRoot: string | undefined,
+  allowOutsideProjectRoot: boolean | undefined,
+): Promise<{ readable: boolean; refused: string[] }> {
+  let readable = false;
+  const refused: string[] = [];
   for (const pattern of targetPaths) {
     for (const file of await expandGlob(pattern)) {
-      const stat = await fsp.stat(file).catch(() => undefined);
-      if (stat?.isFile()) return true;
+      const resolved = await resolveCollabTargetInsideRoot(
+        file,
+        projectRoot,
+        allowOutsideProjectRoot,
+      );
+      if (resolved === null) {
+        refused.push(file);
+        continue;
+      }
+      if (readable) continue;
+      const stat = await fsp.stat(resolved).catch(() => undefined);
+      if (stat?.isFile()) readable = true;
     }
   }
-  return false;
+  return { readable, refused };
 }
 
 export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
@@ -30,7 +53,11 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
       'Returns a structured report with overall verdict (approve / needs_revision / reject).',
     permission: 'auto',
     mutating: false,
-    capabilities: [ToolCapabilities.SUBAGENT_SPAWN],
+    // FS_READ is declared alongside SUBAGENT_SPAWN because this tool really does
+    // read files. Without it, capability allowlists and `isSensitiveReadCall`
+    // (which gates on FS_READ or a read-tool name) could not see the read at all
+    // (WS-2026-09-17-01).
+    capabilities: [ToolCapabilities.SUBAGENT_SPAWN, ToolCapabilities.FS_READ],
     inputSchema: {
       type: 'object',
       properties: {
@@ -63,7 +90,7 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
       },
       required: ['targetPaths'],
     },
-    async execute(input: unknown) {
+    async execute(input: unknown, ctx) {
       const i = input as {
         targetPaths?: string[] | undefined;
         timeoutMs?: number | undefined;
@@ -76,9 +103,28 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
           field: 'targetPaths',
         });
       }
+      // Carried into the session so the confinement is enforced at the read
+      // site too; this tool never saw `ctx` at all before (WS-2026-09-17-01).
+      const projectRoot = ctx?.projectRoot;
+      const allowOutsideProjectRoot = ctx?.allowOutsideProjectRoot;
+      const { readable, refused } = await anyReadableTarget(
+        i.targetPaths,
+        projectRoot,
+        allowOutsideProjectRoot,
+      );
+      if (refused.length > 0) {
+        const shown = refused.slice(0, 3).join(', ');
+        throw new ToolValidationError({
+          message:
+            `collab_debug: refusing ${refused.length} target(s) outside the project root ` +
+            `(${shown}${refused.length > 3 ? ', …' : ''}). Targets must stay inside ` +
+            `${projectRoot} while tools.restrictToProjectRoot is enabled.`,
+          field: 'targetPaths',
+        });
+      }
       // Unreadable targets enter the snapshot as empty files, so a session
       // over nothing but missing paths reported `approve` with zero bugs.
-      if (!(await anyReadableTarget(i.targetPaths))) {
+      if (!readable) {
         throw new ToolValidationError({
           message: `collab_debug: no readable file matches targetPaths (${i.targetPaths.join(', ')}).`,
           field: 'targetPaths',
@@ -89,6 +135,8 @@ export function makeCollabDebugTool(director: Host.DirectorCollabPort): Tool {
         timeoutMs: i.timeoutMs,
         maxTargetFiles: i.maxTargetFiles,
         contextWindow: i.contextWindow,
+        projectRoot,
+        allowOutsideProjectRoot,
       };
       try {
         const report = await director.spawnCollab(options);

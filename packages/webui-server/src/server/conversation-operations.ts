@@ -460,6 +460,12 @@ export function createConversationOperations(
         decision?: unknown;
       };
       if (typeof id !== 'string') return;
+      if (
+        !['yes', 'no', 'always', 'always-exact', 'always-command', 'always-tool', 'deny'].includes(
+          String(decision),
+        )
+      )
+        return;
       const confirm = ctx.pendingConfirms.get(id);
       if (!confirm) return;
 

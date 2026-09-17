@@ -38,7 +38,12 @@ export interface UseGlobalShortcutsOptions {
   pendingConfirmRef?: RefObject<PendingConfirm | null>;
   /** Live mirror of the prompt's decideConfirm dispatcher (recreated per
    *  render upstream, hence the ref instead of a closure). */
-  decideConfirmRef?: RefObject<((decision: 'yes' | 'no' | 'always') => void) | undefined>;
+  decideConfirmRef?: RefObject<
+    | ((
+        decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+      ) => void)
+    | undefined
+  >;
 }
 
 /**
@@ -156,7 +161,7 @@ export function useGlobalShortcuts(options: UseGlobalShortcutsOptions): void {
         if (!editable) {
           const key = event.key.toLowerCase();
           const decision =
-            key === 'y' ? 'yes' : key === 'n' ? 'no' : key === 'a' ? 'always' : null;
+            key === 'y' ? 'yes' : key === 'n' ? 'no' : key === 'a' ? 'always-exact' : null;
           if (decision) {
             event.preventDefault();
             decideConfirmRef?.current?.(decision);

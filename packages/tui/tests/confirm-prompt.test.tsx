@@ -27,17 +27,17 @@ vi.mock('../src/components/history/code-block.js', () => ({
 describe('confirmButtonSegments', () => {
   it('calculates segments correctly', () => {
     const segments = confirmButtonSegments('');
-    expect(segments).toHaveLength(4);
+    expect(segments).toHaveLength(6);
     expect(segments[0]!.decision).toBe('yes');
     expect(segments[0]!.start).toBe(0);
     expect(segments[1]!.decision).toBe('no');
-    expect(segments[2]!.decision).toBe('always');
-    expect(segments[3]!.decision).toBe('deny');
+    expect(segments[2]!.decision).toBe('always-exact');
+    expect(segments[5]!.decision).toBe('deny');
   });
 
   it('includes suggested pattern in always segment', () => {
     const segments = confirmButtonSegments('rm -rf');
-    const always = segments.find((s) => s.decision === 'always')!;
+    const always = segments.find((s) => s.decision === 'always-exact')!;
     expect(always.len).toBeGreaterThan(10);
   });
 
@@ -50,7 +50,7 @@ describe('confirmButtonSegments', () => {
 
   it('empty suggested pattern does not break segments', () => {
     const segments = confirmButtonSegments('');
-    expect(segments.length).toBe(4);
+    expect(segments.length).toBe(6);
     segments.forEach((s) => {
       expect(s.len).toBeGreaterThan(0);
     });
@@ -139,7 +139,7 @@ describe('ConfirmPrompt', () => {
     unmount();
   });
 
-  it('calls onDecision with "always" on "a" keypress', () => {
+  it('calls onDecision with "always-exact" on "a" keypress', () => {
     const onDecision = vi.fn();
     const { stdin, unmount } = render(
       React.createElement(ConfirmPrompt, {
@@ -151,7 +151,7 @@ describe('ConfirmPrompt', () => {
       }),
     );
     stdin.write('a');
-    expect(onDecision).toHaveBeenCalledWith('always');
+    expect(onDecision).toHaveBeenCalledWith('always-exact');
     unmount();
   });
 

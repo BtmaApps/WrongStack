@@ -19,6 +19,8 @@ import { hasMeaningfulContent, repairToolUseAdjacency } from '../utils/message-i
 import { formatTodoForModel, hasKanbanBoundTodos } from '../utils/todos-format.js';
 import type { AgentInternals } from './agent-internals.js';
 import { type Context, type RunOptions, resolveEventSessionId } from './context.js';
+import { bindRequestHistoryVersion, contextHistoryVersion } from './context-history-version.js';
+import { bindRequestPromptBasis, captureRequestPromptBasis } from './context-usage-anchor.js';
 import { type ContinueDirective, parseContinueDirective } from './continue-to-next-iteration.js';
 import { maybeAppendPendingNextSteps } from './next-steps-slot.js';
 import { bindRequestConversation } from './request-conversation-binding.js';
@@ -426,6 +428,8 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
         );
       }
     }
+    const historyVersion = contextHistoryVersion(a.ctx);
+    const promptBasis = captureRequestPromptBasis(a.ctx);
     stabilizePromptEpoch();
     // Cache-stable wire `system` vs the live-context tail. The tail (epoch
     // plan/contributor/glossary blocks + the per-request ledger, continuity,
@@ -518,6 +522,8 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       sessionId: conversationSessionId,
     });
     bindRequestProvider(request, provider);
+    bindRequestHistoryVersion(request, historyVersion);
+    bindRequestPromptBasis(request, promptBasis);
     return { request, provider };
   }
 

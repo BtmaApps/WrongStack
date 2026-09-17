@@ -267,6 +267,54 @@ describe('Headless confirm fallback (P1 #4)', () => {
     ]);
   }, 10_000);
 
+  it.each(['always-exact', 'always-command', 'always-tool'] as const)(
+    'persists %s through the event confirmation path',
+    async (decision) => {
+      const execute = vi.fn(async () => 'ok');
+      const tool: Tool = {
+        name: 'exec',
+        description: 'test executor',
+        inputSchema: { type: 'object' },
+        permission: 'confirm',
+        subjectKey: 'command',
+        mutating: true,
+        execute,
+      };
+      const provider = new MockProvider([
+        {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'scoped-1',
+              name: 'exec',
+              input: { command: 'uv', args: ['run', 'pytest'] },
+            },
+          ],
+          stopReason: 'tool_use',
+        },
+        { content: [{ type: 'text', text: 'done' }], stopReason: 'end_turn' },
+      ]);
+      const { agent, events, tmp } = await buildHeadlessAgent(provider, [tool]);
+      cleanupDirs.push(tmp);
+      const persisted = vi.fn();
+      events.on('trust.persisted', persisted);
+      events.on('tool.confirm_needed', (event) => event.resolve(decision));
+      expect((await agent.run('verify')).status).toBe('done');
+      expect(execute).toHaveBeenCalledTimes(1);
+      const saved = JSON.parse(await fs.readFile(path.join(tmp, 'trust.json'), 'utf8'));
+      expect(persisted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pattern: saved.exec.allow[0],
+          scope: decision.slice('always-'.length),
+          displayPattern: expect.any(String),
+        }),
+      );
+      expect(saved.exec.allow[0]).toContain(
+        `wrongstack-approval:v1:${decision.slice('always-'.length)}`,
+      );
+    },
+  );
+
   it('unblocks a pending confirm when the run is aborted (/interrupt path)', async () => {
     let executed = false;
     const danger: Tool = {

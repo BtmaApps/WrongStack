@@ -177,7 +177,14 @@ interface LoopBreakerConfig {
 }
 
 const DEFAULTS: LoopBreakerConfig = {
-  enabled: false,
+  // The master switch defaults ON, like every other official plugin's.
+  // It defaulted to false while the host catalog listed the plugin as
+  // default-active, so all three hooks below were registered and every
+  // one of them returned on its first line: the guard could not fire for
+  // anyone who had not hand-written a config block. Opting in belongs to
+  // host enablement (`DEFAULT_ACTIVE_PLUGINS` in plugins/src/manifest),
+  // never to this switch — see the plugin-enable-double-gate audit.
+  enabled: true,
   // Documented contract (feature matrix, plugin description): warn, then
   // block. A warn-only default meant an agent stuck re-issuing the same call
   // was never actually stopped unless the user happened to set any option.
@@ -238,7 +245,12 @@ function readConfig(raw: unknown): LoopBreakerConfig {
   const rawMaxSteps = r['maxSteps'] ?? r['max_steps'] ?? r['stepLimit'] ?? r['step_limit'];
 
   return {
-    enabled: r['enabled'] === true,
+    // `=== true` here was the second half of the same double gate as the
+    // `enabled: false` default: writing ANY option (`{ mode: 'block' }`)
+    // silently kept the guard off, because only the literal `enabled: true`
+    // could switch it on. Opting out now takes an explicit `enabled: false`,
+    // matching every sibling plugin in this package.
+    enabled: r['enabled'] !== false,
     mode,
     warnAfter,
     blockAfter,
@@ -436,8 +448,8 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
-        description: 'Opt-in master switch; disabled unless explicitly enabled.',
+        default: true,
+        description: 'Master switch; set false to turn the loop guard off.',
       },
       mode: {
         type: 'string',

@@ -1,4 +1,3 @@
-import { alwaysAllowUnavailableReason } from '@wrongstack/core/security';
 import type { InputReader, Tool } from '@wrongstack/core/types';
 import {
   color,
@@ -11,7 +10,14 @@ import {
 import { diffLineStyle } from './diff-renderer.js';
 import { theme } from './theme.js';
 
-type PromptDecision = 'yes' | 'no' | 'always' | 'deny';
+type PromptDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 /** Signature the Agent expects for confirming tool calls. */
 export type ConfirmAwaiter = (
@@ -19,7 +25,7 @@ export type ConfirmAwaiter = (
   input: unknown,
   toolUseId: string,
   suggestedPattern: string,
-) => Promise<'yes' | 'no' | 'always' | 'deny'>;
+) => Promise<'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'>;
 
 /**
  * The terminal approval prompt.
@@ -55,30 +61,21 @@ export function makePromptDelegate(reader: InputReader) {
 
     writeOut(color.dim('─────────────────\n'));
 
-    // WS-046: "always allow" is only offerable when the call carries a subject
-    // to remember. Without one, the trust file has nothing to key a rule on and
-    // the entry would be written but never matched — so the option is withheld
-    // and the reason shown, instead of presenting a choice that does nothing.
-    // Offering a dead option is worse than not offering it: the user concludes
-    // trust rules are broken and reaches for a blanket auto-approve.
-    const noAlwaysReason = alwaysAllowUnavailableReason(tool, input);
-    if (noAlwaysReason) {
-      writeOut(`${color.dim(`(no "always" for this call — ${noAlwaysReason})`)}\n`);
-    }
-
     const options = [
       { key: 'y', label: 'yes', value: 'yes' },
       { key: 'n', label: 'no', value: 'no' },
-      ...(noAlwaysReason ? [] : [{ key: 'a', label: 'always', value: 'always' }]),
+      { key: 'a', label: 'remember same input/args', value: 'always-exact' },
+      ...(tool.name === 'exec'
+        ? [{ key: 'c', label: 'remember executable with any args', value: 'always-command' }]
+        : []),
+      { key: 't', label: 'remember tool with any input', value: 'always-tool' },
       { key: 'd', label: 'deny', value: 'deny' },
     ];
     // `suggestedPattern` is derived from tool input, so it reaches the terminal
     // carrying whatever the model put there. `escapeGlobSubject` neutralizes
     // CSI/OSC only incidentally (it escapes `[` and `]`); two-character forms
     // like `ESC c` — a full terminal reset — pass straight through.
-    const alwaysHint = noAlwaysReason
-      ? ''
-      : `  ${theme.bold('[a]')}lways allow (${sanitizeTerminalText(suggestedPattern)})`;
+    const alwaysHint = `  ${theme.bold('[a]')} same input (${sanitizeTerminalText(suggestedPattern)})${tool.name === 'exec' ? '  [c] command, any args' : ''}  [t] tool, any input`;
     const answer = await reader.readKey(
       `${theme.bold('[y]')}es  ${theme.bold('[n]')}o${alwaysHint}  ${theme.bold('[d]')}eny: `,
       options,
@@ -96,7 +93,14 @@ export function makeConfirmAwaiter(reader: InputReader): ConfirmAwaiter {
   const delegate = makePromptDelegate(reader);
   return async (tool: Tool, input: unknown, _toolUseId: string, suggestedPattern: string) => {
     const result = await delegate(tool, input, suggestedPattern);
-    return result as 'yes' | 'no' | 'always' | 'deny';
+    return result as
+      | 'yes'
+      | 'no'
+      | 'always'
+      | 'always-exact'
+      | 'always-command'
+      | 'always-tool'
+      | 'deny';
   };
 }
 

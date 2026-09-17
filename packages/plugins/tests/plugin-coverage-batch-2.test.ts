@@ -2,8 +2,8 @@
  * Batch 2 supplementary tests — targeting uncovered branches across many plugins.
  * Covers: import-organizer, test-runner-gate, diff-summary, checkpoint,
  * agent-handoff, dependency-vulnerability-gate, doc-sync-guard,
- * feature-flag-tracker, performance-regression-gate, auto-i18n-extractor,
- * code-metrics, test-flake-detector, notify-hub, security-hotspot-scanner,
+ * performance-regression-gate, auto-i18n-extractor,
+ * test-flake-detector, notify-hub, security-hotspot-scanner,
  * config-validator, migration-planner, secret-scanner, dep-guard,
  * changelog-writer, prompt-firewall, spec-linker,
  * cost-tracker, loop-breaker, test-generator, path-guard,
@@ -11,7 +11,7 @@
  * auto-doc, error-lens, file-watcher, release-notes-generator,
  * git-autocommit, injection-shield, shell-check, token-budget,
  * auto-escalate, semver-bump, branch-guard, format-on-save,
- * todo-tracker, accessibility-auditor, session-recap, smart-rename,
+ * accessibility-auditor, session-recap,
  * type-gate, template-engine, todo-listener, llm-cache, cron
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,10 +46,8 @@ const plugins = {
   checkpoint: () => import('../src/checkpoint'),
   'dependency-vulnerability-gate': () => import('../src/dependency-vulnerability-gate'),
   'doc-sync-guard': () => import('../src/doc-sync-guard'),
-  'feature-flag-tracker': () => import('../src/feature-flag-tracker'),
   'performance-regression-gate': () => import('../src/performance-regression-gate'),
   'auto-i18n-extractor': () => import('../src/auto-i18n-extractor'),
-  'code-metrics': () => import('../src/code-metrics'),
   'test-flake-detector': () => import('../src/test-flake-detector'),
   'notify-hub': () => import('../src/notify-hub'),
   'security-hotspot-scanner': () => import('../src/security-hotspot-scanner'),
@@ -80,10 +78,8 @@ const plugins = {
   'semver-bump': () => import('../src/semver-bump'),
   'branch-guard': () => import('../src/branch-guard'),
   'format-on-save': () => import('../src/format-on-save'),
-  'todo-tracker': () => import('../src/todo-tracker'),
   'accessibility-auditor': () => import('../src/accessibility-auditor'),
   'session-recap': () => import('../src/session-recap'),
-  'smart-rename': () => import('../src/smart-rename'),
   'type-gate': () => import('../src/type-gate'),
   'todo-listener': () => import('../src/todo-listener'),
   'llm-cache': () => import('../src/llm-cache'),

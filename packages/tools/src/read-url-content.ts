@@ -21,6 +21,22 @@ export interface ReadUrlContentOutput {
 const DEFAULT_MAX_BYTES = 131_072;
 
 /**
+ * Hard ceiling on `maxBytes` (WS-2026-09-17-02).
+ *
+ * `maxBytes` is model-supplied and its schema declared `minimum` but no
+ * `maximum`; the shared validator enforces numeric bounds only where they are
+ * declared, so any magnitude passed. It then set the read limit below
+ * (`maxBytes * 4`), which is the only bound on the `chunks[]` buffer — so the
+ * very allocation `readBounded` was introduced to cap became attacker-chosen.
+ * The tool's own 25s timeout bounded it in practice; this bounds it on purpose.
+ *
+ * 1 MiB is 8x the default and far above anything a model can usefully consume
+ * in one tool result (`maxOutputBytes` is DEFAULT_MAX_BYTES), so the clamp is
+ * invisible to legitimate use.
+ */
+export const MAX_READ_URL_BYTES = 1_048_576;
+
+/**
  * Read at most `limit` bytes of the body, then cancel the stream. `res.text()`
  * buffered the entire response before the maxBytes cut, so a multi-GB body
  * was held in memory for a 128KB answer (audit 2026-09-15). Responses without
@@ -88,7 +104,8 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
       maxBytes: {
         type: 'number',
         minimum: 1,
-        description: 'Maximum bytes to retrieve (default: 128KB).',
+        maximum: MAX_READ_URL_BYTES,
+        description: 'Maximum bytes to retrieve (default: 128KB, max 1MB).',
       },
     },
     additionalProperties: false,
@@ -99,7 +116,15 @@ export const readUrlContentTool: Tool<ReadUrlContentInput, ReadUrlContentOutput>
       throw new Error('read_url_content requires a valid `url` parameter.');
     }
 
-    const maxBytes = input.maxBytes ?? DEFAULT_MAX_BYTES;
+    // Clamped here as well as bounded by the schema: the schema stops a model
+    // call at the executor, but this tool is also called directly (other hosts,
+    // tests), and that path never sees the validator. A non-finite value falls
+    // back to the default rather than poisoning the arithmetic below.
+    const requestedMaxBytes =
+      typeof input.maxBytes === 'number' && Number.isFinite(input.maxBytes)
+        ? Math.trunc(input.maxBytes)
+        : DEFAULT_MAX_BYTES;
+    const maxBytes = Math.min(Math.max(1, requestedMaxBytes), MAX_READ_URL_BYTES);
     const signal = opts?.signal ?? ctx?.signal ?? new AbortController().signal;
 
     const res = await guardedFetch(rawUrl, 5, signal, {

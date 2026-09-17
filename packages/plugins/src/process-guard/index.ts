@@ -63,22 +63,35 @@ const state: ProcessGuardState = {
 // Config
 // ---------------------------------------------------------------------------
 
+/**
+ * What this plugin does when it spots a kill-related command.
+ *
+ * There is deliberately no `block` here: this plugin CANNOT refuse a tool
+ * call. Its PreToolUse hook returns no decision — the refusal is performed
+ * downstream by `tools/src/bash-kill-guard.ts` and `exec-kill-guard.ts`,
+ * which run whether or not this plugin is loaded and which can see the
+ * resolved target PID. `block` is still accepted, as the historical spelling
+ * of the default, and means `observe`.
+ */
+type ProcessGuardMode = 'observe' | 'warn' | 'off';
+
 interface ProcessGuardConfig {
   enabled: boolean;
-  mode: 'block' | 'warn' | 'off';
+  mode: ProcessGuardMode;
 }
 
 const DEFAULTS: ProcessGuardConfig = {
   enabled: true,
-  mode: 'block',
+  mode: 'observe',
 };
 
 function readConfig(raw: unknown): ProcessGuardConfig {
   if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
   const r = raw as Record<string, unknown>;
+  const mode = r['mode'];
   return {
     enabled: r['enabled'] !== false,
-    mode: r['mode'] === 'warn' ? 'warn' : r['mode'] === 'off' ? 'off' : 'block',
+    mode: mode === 'warn' ? 'warn' : mode === 'off' ? 'off' : DEFAULTS.mode,
   };
 }
 
@@ -90,7 +103,7 @@ const plugin: Plugin = {
   name: 'process-guard',
   version: '0.1.0',
   description:
-    'Blocks kill commands (taskkill, Stop-Process, kill, pkill, wmic) that target active WrongStack processes or their host terminals.',
+    'Reports kill commands (taskkill, Stop-Process, kill, pkill, wmic) seen by bash/exec; the refusal itself is enforced by the built-in bash/exec kill guards.',
   apiVersion: '^0.1.10',
   capabilities: { tools: true, hooks: true },
   defaultConfig: { ...DEFAULTS },
@@ -100,9 +113,13 @@ const plugin: Plugin = {
       enabled: { type: 'boolean', default: true, description: 'Master switch.' },
       mode: {
         type: 'string',
-        enum: ['block', 'warn', 'off'],
-        default: 'block',
-        description: 'block = refuse the operation; warn = inject context; off = disable.',
+        // `block` is accepted as the historical spelling of the default and
+        // behaves as `observe`; removing it from the enum would fail config
+        // validation at load for anyone who had written it.
+        enum: ['observe', 'warn', 'off', 'block'],
+        default: 'observe',
+        description:
+          'observe = count and log only (default); warn = also tell the model a kill-related command was seen; off = disable. This plugin never refuses a call — the bash/exec kill guards do that. "block" is a deprecated alias for "observe".',
       },
     },
   },
@@ -171,6 +188,23 @@ const plugin: Plugin = {
           command: command.slice(0, 200),
         },
       );
+
+      // `warn` is the only mode with an effect the operator can see from the
+      // model's side. It used to be indistinguishable from the default: both
+      // counted and logged, and neither reached the conversation, so the
+      // setting read as a policy choice while changing nothing.
+      if (cfg.mode === 'warn') {
+        state.warns += 1;
+        api.metrics.counter('warns');
+        return {
+          decision: 'allow' as const,
+          additionalContext:
+            `process-guard: "${toolName}" is about to run a kill-related command. ` +
+            'If it targets a WrongStack process or its host terminal the built-in kill guard will refuse it. ' +
+            'Confirm you are killing the process you actually mean to kill.',
+        };
+      }
+      return;
     };
 
     state.hookUnregister = api.registerHook('PreToolUse', 'bash|exec', hook as never, {

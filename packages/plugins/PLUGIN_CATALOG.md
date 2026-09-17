@@ -14,7 +14,6 @@
 | template-engine | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/template-engine` | Expands file templates with variable substitution, conditionals, and loops |
 | semver-bump | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/semver-bump` | Conventional-commit-driven semver version bumps with changelog generation |
 | secret-scanner | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/secret-scanner` | Pre-tool hook that blocks (or optionally redacts) tools whose arguments contain plaintext credentials |
-| todo-tracker | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/todo-tracker` | Persistent, project-scoped todo backlog that survives across sessions |
 | token-budget | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/token-budget` | Enforces a per-session token budget — warns at a threshold and stops the agent loop when the limit is hit |
 | lint-gate | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/lint-gate` | Pre-tool hook that runs biome/eslint on would-be file content before write or edit commits |
 | branch-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/branch-guard` | Pre-tool hook that blocks commits, pushes, and merges to protected branches (default: main, master) |
@@ -23,14 +22,13 @@
 | format-on-save | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/format-on-save` | PostToolUse hook that runs biome format --write on the file after every write or edit |
 | test-runner-gate | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/test-runner-gate` | PostToolUse hook that runs the relevant test file after every write or edit to a source file |
 | import-organizer | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/import-organizer` | PostToolUse hook that re-sorts and de-duplicates imports in a file after every write or edit |
-| knowledge-graph | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/knowledge-graph` | Accumulates structured (subject, relation, object) facts about the project and queries them across sessions |
 | todo-listener | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/todo-listener` | PostToolUse hook on `todo` tool — broadcasts a status update to the project mailbox so other agents can see what this one is working on |
 | session-recap | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/session-recap` | Stop hook that posts a one-page session summary (tokens, tools, commits, last activity) to the project mailbox |
 | spec-linker | 0.2.0 | ^0.1.10 | `@wrongstack/plugins/spec-linker` | Markdown link auditor for plugin references. PostToolUse surfaces unlinked references; PreToolUse on `write` (autoFix) wraps them in markdown links via modifiedInput. |
 | loop-breaker | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/loop-breaker` | Detects runaway tool-call loops (identical repeats and A-B-A-B oscillation) — warns the model, then blocks |
 | gitignore-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/gitignore-guard` | PostToolUse hook that suggests or appends .gitignore entries for build-artifact-looking files after every write or edit |
 | path-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/path-guard` | Blocks or warns about writes, edits, and destructive shell commands touching protected paths (lockfiles, .env, .git, migrations) |
-| process-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/process-guard` | Blocks kill commands (taskkill, Stop-Process, kill, pkill, wmic) that target active WrongStack processes or their host terminals. |
+| process-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/process-guard` | Reports kill commands (taskkill, Stop-Process, kill, pkill, wmic) seen by bash/exec; the refusal itself is enforced by the built-in bash/exec kill guards. |
 | context-pins | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/context-pins` | Pin durable facts into the system prompt (pin_add/pin_remove/pin_list) — pins survive compaction and persist across sessions |
 | checkpoint | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/checkpoint` | In-session file snapshots: auto-captures content before every write/edit and restores any pre-edit state on demand |
 | error-lens | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/error-lens` | Distills failed command output into a compact digest (error line + project stack frames) and flags repeated failures |
@@ -50,7 +48,6 @@
 | plugin-stack-observer | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/plugin-stack-observer` | Observes the wrapProviderRunner stack and exposes it to operators (plugin_stack_status) and, optionally, to the LLM (system-prompt contributor). |
 | dependency-vulnerability-gate | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/dependency-vulnerability-gate` | PostToolUse hook that runs npm/pnpm audit after dependency installs and blocks or warns on vulnerabilities above a severity threshold |
 | migration-planner | 0.2.0 | ^0.1.10 | `@wrongstack/plugins/migration-planner` | Builds evidence-backed migration checklists with optional Council-reviewed risk analysis |
-| semantic-search-indexer | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/semantic-search-indexer` | Builds an in-memory keyword index over project source files and answers ranked search queries |
 | auto-i18n-extractor | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/auto-i18n-extractor` | Detects hardcoded user-facing strings in UI source files and suggests translation keys |
 | doc-sync-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/doc-sync-guard` | PostToolUse hook that tracks changed public source files and warns when README/docs edits omit them |
 | api-compatibility-gate | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/api-compatibility-gate` | PostToolUse hook that detects breaking API changes (removed exports) in entry-point files after writes or edits |
@@ -60,12 +57,6 @@
 | license-audit-gate | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/license-audit-gate` | PostToolUse hook that audits dependency licenses after package-manager install/add commands and blocks disallowed licenses |
 | accessibility-auditor | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/accessibility-auditor` | Audits .tsx/.jsx/.html/.vue files for common accessibility issues and reports findings after writes/edits |
 | security-hotspot-scanner | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/security-hotspot-scanner` | Scans source code for security anti-patterns and warns after writes/edits that introduce new hotspots |
-| dead-code-detector | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/dead-code-detector` | Lightweight regex-based scan for exported identifiers that appear unused anywhere in the project |
 | duplicate-code-detector | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/duplicate-code-detector` | Finds duplicated code blocks across source files using normalized-line fingerprinting |
-| code-metrics | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/code-metrics` | Computes per-file line counts, function counts, and cyclomatic-complexity-like scores |
-| refactor-suggester | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/refactor-suggester` | Suggests refactoring opportunities using regex-based smell detection |
 | test-generator | 0.2.0 | ^0.1.10 | `@wrongstack/plugins/test-generator` | Generates framework-correct test skeletons with optional host-routed LLM test authoring |
 | release-notes-generator | 0.2.0 | ^0.1.10 | `@wrongstack/plugins/release-notes-generator` | Generates traceable release notes from conventional commits with optional LLM polishing |
-| smart-rename | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/smart-rename` | Whole-word identifier rename inside a single source file |
-| feature-flag-tracker | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/feature-flag-tracker` | Scans source files for feature-flag-like expressions and reports usages |
-| interface-contract-guard | 0.1.0 | ^0.1.10 | `@wrongstack/plugins/interface-contract-guard` | Checks TypeScript interfaces for visible implementers and warns about contract drift |

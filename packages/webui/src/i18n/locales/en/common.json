@@ -43,6 +43,11 @@
     "all": "All"
   },
   "confirm": {
+    "approvalScope": "Remember approval for",
+    "scopeExact": "This exact input and arguments",
+    "scopeCommand": "This executable with any arguments",
+    "scopeTool": "{{tool}} — any input",
+    "scopeHint": "Used by Always for this project. Broad grants still require approval for destructive calls.",
     "title": "Approval required: {{tool}}",
     "descriptionEdit": "The agent wants to modify a file. Review the request below and decide whether to proceed.",
     "descriptionTool": "The agent wants to run this tool. Review the request below and decide whether to proceed.",

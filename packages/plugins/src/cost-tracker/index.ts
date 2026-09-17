@@ -118,6 +118,20 @@ const pricingOverrides: Record<string, ModelPricing> = {};
 const bundledFromRegistry: Record<string, ModelPricing> = {};
 
 /**
+ * How long `setup()` waits for the models registry before giving up and
+ * letting the session start.
+ *
+ * The loader runs plugin setups serially, so this is time every plugin
+ * behind cost-tracker spends waiting. A warm registry resolves in
+ * microseconds; this budget only bites on a cold, slow, or unreachable
+ * network, where the right answer is to start the session and price from
+ * the bundled table until the fetch lands.
+ *
+ * @internal
+ */
+const REGISTRY_HYDRATION_DEADLINE_MS = 2_000;
+
+/**
  * Snapshot of the most recent cost calculation, for `health()`.
  *
  * @internal
@@ -370,19 +384,24 @@ const plugin: Plugin = {
     }
 
     // Hydrate `bundledFromRegistry` from the host's models registry.
-    // This is now AWAITED (not fire-and-forget) so the registry layer
-    // is populated BEFORE setup() returns — guaranteeing the first
-    // `provider.response` event sees the full lookup chain.
     //
-    // The registry's `load()` is cached (subsequent calls are
-    // in-memory), so the await is near-instant on warm cache. On cold
-    // start the network fetch is bounded by the registry's own
-    // refreshTimeoutMs (default 15s). On any failure we log a warning
-    // and proceed with the bundled PRICING table — the lookup chain's
-    // other layers still cover common models.
+    // setup() AWAITS this so the registry layer is populated before it
+    // returns — the first `provider.response` event then sees the whole
+    // lookup chain. The registry's `load()` is cached, so on a warm cache
+    // the await is near-instant.
+    //
+    // The await is bounded, though, because the plugin loader runs every
+    // plugin's setup() SERIALLY (`core/plugin/loader.ts`): on a cold cache
+    // `load()` goes to the network, bounded only by the registry's own
+    // refreshTimeoutMs (15s by default), and every plugin queued behind
+    // this one waited out that fetch before the session could start. A
+    // pricing table is not worth stalling a boot for. Past the deadline we
+    // stop waiting and let the fetch land late — a `provider.response` in
+    // the meantime just prices from the bundled `PRICING` table, which is
+    // exactly what happens when no registry is configured at all.
     if (api.modelsRegistry) {
-      try {
-        const payload = await api.modelsRegistry.load();
+      const hydrate = async (): Promise<number> => {
+        const payload = await api.modelsRegistry!.load();
         let hydrated = 0;
         for (const provider of Object.values(payload)) {
           const providerModels = provider?.models;
@@ -407,16 +426,40 @@ const plugin: Plugin = {
             }
           }
         }
-        api.log.info('cost-tracker: hydrated pricing from models registry', {
-          models: hydrated,
-        });
-      } catch (err) {
-        // Defensive: a broken or absent registry must not break
-        // cost-tracking. The lookup chain falls through to PRICING.
-        api.log.warn(
-          'cost-tracker: failed to hydrate pricing from models registry — using bundled PRICING',
-          err,
-        );
+        return hydrated;
+      };
+
+      const running = hydrate().then(
+        (hydrated) => {
+          api.log.info('cost-tracker: hydrated pricing from models registry', {
+            models: hydrated,
+          });
+        },
+        (err: unknown) => {
+          // Defensive: a broken or absent registry must not break
+          // cost-tracking. The lookup chain falls through to PRICING.
+          api.log.warn(
+            'cost-tracker: failed to hydrate pricing from models registry — using bundled PRICING',
+            err,
+          );
+        },
+      );
+
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<'timeout'>((resolve) => {
+        deadline = setTimeout(() => resolve('timeout'), REGISTRY_HYDRATION_DEADLINE_MS);
+        // Do not hold the process open for a deadline nobody is waiting on.
+        deadline.unref?.();
+      });
+      try {
+        if ((await Promise.race([running.then(() => 'done' as const), timedOut])) === 'timeout') {
+          api.log.info(
+            'cost-tracker: models registry still loading — continuing with bundled PRICING',
+            { deadlineMs: REGISTRY_HYDRATION_DEADLINE_MS },
+          );
+        }
+      } finally {
+        if (deadline) clearTimeout(deadline);
       }
     }
 
@@ -657,7 +700,17 @@ const plugin: Plugin = {
       },
     });
 
-    // Write cost data to session log on shutdown
+    // Write cost data to session log on shutdown, then start the next
+    // session from zero.
+    //
+    // `sessionCost` is per SESSION, but this plugin is set up once per
+    // PROCESS and the host outlives any single session: the WebUI opens
+    // additional sessions in the same process (`session.new`) and clears
+    // context without reloading plugins. Nothing cleared these totals, so
+    // `cost_summary` reported the sum of every session the process had ever
+    // served while calling it "this session" — and the summary appended for
+    // session N+1 included session N's spend. The `cost_reset` tool did
+    // exactly this reset, but only when a user thought to ask for it.
     api.onEvent('session.ended', async () => {
       if (sessionCost.requests.length > 0) {
         try {
@@ -673,6 +726,12 @@ const plugin: Plugin = {
           // session.append is best-effort.
         }
       }
+      sessionCost.requests = [];
+      sessionCost.totalPromptTokens = 0;
+      sessionCost.totalCompletionTokens = 0;
+      sessionCost.totalTokens = 0;
+      sessionCost.totalCostUsd = 0;
+      sessionCost.byModel = {};
     });
 
     api.log.info('cost-tracker plugin loaded', { version: '0.1.0' });

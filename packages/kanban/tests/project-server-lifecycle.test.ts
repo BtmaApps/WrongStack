@@ -17,9 +17,9 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  kanbanProjectServerEndpoint,
   MAX_FRAME_CHARS,
   onData,
-  kanbanProjectServerEndpoint,
 } from '../src/server/project-server.js';
 
 // Emitted at the dist ROOT, not under dist/server/: `client.ts` is bundled
@@ -125,6 +125,31 @@ function why(child: ChildProcess): string {
 }
 
 describe('kanban project server lifecycle', { retry: 1 }, () => {
+  // `leaseTimer` (and the other periodic callers) invoke `scheduleIdleStop()`
+  // every CLIENT_LEASE_SWEEP_MS = 15s, and that function used to clear and
+  // re-arm the idle timer. So whenever the idle window was LONGER than the
+  // sweep, the countdown reset before it could ever fire and the daemon never
+  // exited — which is exactly the production shape: a 15s sweep against the
+  // five minute DEFAULT_IDLE_MS.
+  //
+  // The idle window here MUST stay above the 15s sweep. Every other test in
+  // this file uses 200ms or 3s, i.e. under the sweep, which is the only regime
+  // where a re-arming implementation still looks correct — that is why the bug
+  // survived. Measured before the fix: idle=5s exited at 5147ms, idle=25s was
+  // still alive after 50s.
+  it('exits when the idle window is longer than the lease sweep interval', async () => {
+    const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-kanban-sweep-'));
+    const child = startDaemon(projectRoot, 16_000);
+    try {
+      await waitForDaemonReady(child);
+      const code = await waitForExit(child, 45_000);
+      expect(code, why(child)).toBe(0);
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      await fs.rm(projectRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+    }
+  });
+
   it('exits after the idle window when no client ever connects', async () => {
     const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-kanban-idle-'));
     const child = startDaemon(projectRoot);

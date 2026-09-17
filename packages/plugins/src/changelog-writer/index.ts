@@ -442,6 +442,21 @@ const plugin: Plugin = {
       state.eventUnsubscribers.push(off);
     }
 
+    // Entries describe "this session's" work, but the plugin is set up once
+    // per PROCESS and the host outlives any one session (the WebUI opens
+    // additional sessions in the same process). Only a completed write
+    // cleared the buffer, so an unwritten session's entries were carried into
+    // the next one and rendered as its work. Registered OUTSIDE the
+    // collectCommits branch: a manually added note must be cleared too.
+    // Guarded like pr-drafter's subscription — minimal hosts omit onEvent.
+    if (api.onEvent) {
+      const offSession = api.onEvent('session.ended', () => {
+        state.entries = [];
+        state.filesTouched = new BoundedSet<string>({ max: 2_000 });
+      });
+      state.eventUnsubscribers.push(offSession);
+    }
+
     // ── changelog_add ─────────────────────────────────────────────────
     api.tools.register({
       name: 'changelog_add',

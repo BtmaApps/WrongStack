@@ -1,0 +1,52 @@
+{
+  "verifier": "orchestrator main session (did not hunt TD-*; hunter was a separate agent)",
+  "verdicts": [
+    {
+      "id": "TD-001",
+      "verdict": "rejected",
+      "severity": null,
+      "confidence": 15,
+      "verified_trace": [
+        "packages/tools/src/diff.ts:65 — permission 'auto', capabilities ['fs.read'] (confirmed)",
+        "packages/tools/src/diff.ts:160-181 — a/b only checked for empty and leading '-' (confirmed)",
+        "packages/tools/src/diff.ts:212-222 — args ['diff','--no-color',a,b] with no '--' when files absent (confirmed)",
+        "git-diff(1): with two paths where one is outside the work tree git uses --no-index implicitly; 'This form implies --exit-code' => exit status 1 whenever the files differ",
+        "packages/tools/src/diff.ts:244-247 — any non-zero exit throws `diff: git diff exited with code N: <stderr>`; stdout (the file content) is discarded"
+      ],
+      "disproof_attempts": [
+        "Content leak for differing files: DISPROVED — exit 1 path throws with stderr only (diff.ts:244-247).",
+        "Identical files (exit 0): output is empty; leaks nothing beyond equality.",
+        "--stat mode: same implied exit code; even on exit 0 it would print only counts.",
+        "Equivalent authority: read tool is also permission 'auto' with restrictToProjectRoot:false by default (types/default-config.ts:34), so non-sensitive out-of-root reads are already granted; only the sensitive-path gate (permission-helpers.ts:455-463) would be a real delta, and no content reaches the model anyway."
+      ],
+      "blocker": "",
+      "owner_check": "Optional confirmation in a scratch repo: `git diff --no-color <outside-file> README.md; echo $?` should print 1.",
+      "dedupe_with": null,
+      "hardening": "Push '--end-of-options' before refs (or validate with `git rev-parse --verify --end-of-options <ref>^{commit}`), bound findGitDir at projectRoot like git.ts, and include a/b in inputPathLooksSensitive keys — otherwise a future change that stops throwing on exit 1 (e.g. treating 'differences found' as success, a common 'fix') silently turns this into an unapproved sensitive-file read."
+    },
+    {
+      "id": "TD-002",
+      "verdict": "needs_validation",
+      "severity": null,
+      "confidence": 60,
+      "verified_trace": [
+        "packages/tools/src/grep.ts:232,314 — spawn('rg', …) bare; grep permission 'auto' (grep.ts:80)",
+        "packages/tools/src/replace.ts:474,496 — spawn('rg', …) bare",
+        "packages/tools/src/diff.ts:304 — spawn('git', args, {cwd: gitDir}) bare; permission 'auto'",
+        "packages/tools/src/git.ts:465 — spawn('git', …) bare",
+        "packages/tools/src/codebase-index/indexer.ts — execFile('git', …) bare",
+        "packages/cli/src/wiring/codebase-index.ts:101 — ensureCodebaseIndexServer started automatically at boot",
+        "packages/security-scanner/src/package-audit.ts (critic pass) — npm/pnpm audit via buildWin32CmdShimInvocation with cwd=projectRoot"
+      ],
+      "disproof_attempts": [
+        "Sites exist at HEAD: confirmed.",
+        "Resolved-to-absolute before spawn: not for git/rg/patch/docker sites; _win32-resolve.ts only used by exec/_spawn-stream/outdated/go/py and falls back to bare name.",
+        "NoDefaultCurrentDirectoryInExePath set in child/parent env: not set anywhere in repo (grep 0 hits); libuv may not honor it regardless.",
+        "Could not disprove: whether Node/libuv (and Bun, if shipped) on Windows searches the spawn cwd before PATH is a runtime fact not provable from repository source."
+      ],
+      "blocker": "Windows runtime executable search order for child_process.spawn without shell (libuv search_path) and for cmd.exe `call <bare>` — requires executing a harmless planted binary, excluded by source-only validation.",
+      "owner_check": "Windows scratch dir only: place a harmless rg.exe (copy of whoami.exe renamed) in an empty dir; `node -e \"console.log(require('child_process').spawnSync('rg',['--version'],{cwd:process.argv[1],encoding:'utf8'}).stdout)\" <dir>` — username output = planted binary ran. Repeat with a harmless npx.cmd and COMSPEC /d /c call \"npx\" for the cmd path.",
+      "dedupe_with": "HCM-004 (same root cause: bare executable name resolved with an untrusted project directory as the search cwd on Windows)"
+    }
+  ]
+}

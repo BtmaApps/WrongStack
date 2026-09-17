@@ -46,9 +46,19 @@ describe('plugin management', () => {
         defaultState: 'inactive',
       }),
     );
+    // cost-tracker became default-inactive in the 2026-09-17 default-state
+    // review: its setup() awaits the models.dev registry, and plugin setups
+    // run serially, so a cold fetch stalled every plugin behind it.
     expect(PLUGIN_AUDIT_ENTRIES).toContainEqual(
       expect.objectContaining({
         name: 'cost-tracker',
+        canDisable: true,
+        defaultState: 'inactive',
+      }),
+    );
+    expect(PLUGIN_AUDIT_ENTRIES).toContainEqual(
+      expect.objectContaining({
+        name: 'context-pins',
         canDisable: true,
         defaultState: 'active',
       }),
@@ -70,16 +80,16 @@ describe('plugin management', () => {
   it('toggles a default-active plugin off by writing a disabled override', async () => {
     await fs.writeFile(configPath, JSON.stringify({ features: { plugins: true } }));
 
-    const result = await runPluginManagementCommand(['toggle', 'cost-tracker'], {
+    const result = await runPluginManagementCommand(['toggle', 'context-pins'], {
       config: config(),
       configPath,
     });
 
     expect(result.code).toBe(0);
-    expect(result.patch?.plugins).toEqual([{ name: 'cost-tracker', enabled: false }]);
+    expect(result.patch?.plugins).toEqual([{ name: 'context-pins', enabled: false }]);
     expect(result.patch?.features).toMatchObject({ plugins: true });
     await expect(readConfig()).resolves.toMatchObject({
-      plugins: [{ name: 'cost-tracker', enabled: false }],
+      plugins: [{ name: 'context-pins', enabled: false }],
       features: { plugins: true },
     });
   });
@@ -89,11 +99,11 @@ describe('plugin management', () => {
       configPath,
       JSON.stringify({
         features: { plugins: true },
-        plugins: [{ name: 'cost-tracker', enabled: false }, 'agent-handoff'],
+        plugins: [{ name: 'context-pins', enabled: false }, 'agent-handoff'],
       }),
     );
 
-    const result = await runPluginManagementCommand(['toggle', 'cost-tracker'], {
+    const result = await runPluginManagementCommand(['toggle', 'context-pins'], {
       config: config(),
       configPath,
     });
@@ -454,14 +464,17 @@ describe('audit report agrees with the loader about extensions-enabled plugins',
   });
 
   it('reports a default-active plugin switched off through extensions as disabled', async () => {
-    // diff-summary is defaultState: 'active', so this row read "enabled
-    // default" before extensions could turn anything off.
+    // context-pins is defaultState: 'active', so this row read "enabled
+    // default" before extensions could turn anything off. It must name a
+    // plugin that is ACTUALLY default-active or the case is vacuous — this
+    // used to name diff-summary, which became default-inactive in the
+    // 2026-09-17 review and would have kept passing for the wrong reason.
     const row = rowFor(
       await auditReport({
         plugins: [],
-        extensions: { 'diff-summary': { enabled: false } },
+        extensions: { 'context-pins': { enabled: false } },
       } as never as Config),
-      'diff-summary',
+      'context-pins',
     );
     expect(row).toContain('disabled');
     expect(row).toContain('ext');
@@ -503,16 +516,16 @@ describe('toggle resolves enablement from the file it is about to rewrite', () =
 
     // Extensions layer says OFF; there is no `plugins[]` entry to contradict
     // it. Toggling must therefore turn it ON.
-    const result = await runPluginManagementCommand(['toggle', 'cost-tracker'], {
+    const result = await runPluginManagementCommand(['toggle', 'context-pins'], {
       config: config({
-        extensions: { 'cost-tracker': { enabled: false } },
+        extensions: { 'context-pins': { enabled: false } },
       } as Partial<Config>),
       configPath,
     });
 
     expect(result.code).toBe(0);
     expect(result.message).toContain('Enabled');
-    // cost-tracker is default-active, so "on" is expressed by the ABSENCE of a
+    // context-pins is default-active, so "on" is expressed by the ABSENCE of a
     // disable override, not by an entry.
     expect(result.patch?.plugins).toEqual([]);
   });
@@ -524,11 +537,11 @@ describe('toggle resolves enablement from the file it is about to rewrite', () =
       configPath,
       JSON.stringify({
         features: { plugins: true },
-        plugins: [{ name: 'cost-tracker', enabled: false }],
+        plugins: [{ name: 'context-pins', enabled: false }],
       }),
     );
 
-    const result = await runPluginManagementCommand(['toggle', 'cost-tracker'], {
+    const result = await runPluginManagementCommand(['toggle', 'context-pins'], {
       config: config(),
       configPath,
     });

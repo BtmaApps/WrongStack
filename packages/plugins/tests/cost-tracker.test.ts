@@ -46,6 +46,64 @@ describe('cost-tracker plugin', () => {
   });
 });
 
+// ── per-session reset ──────────────────────────────────────────────────────────
+
+describe('session.ended resets the session totals', () => {
+  function handlerFor(api: ReturnType<typeof makeApi>, event: string) {
+    const call = api.onEvent.mock.calls.find(([e]: any[]) => e === event);
+    if (!call) throw new Error(`${event} handler not registered`);
+    return call[1] as (payload?: unknown) => Promise<void> | void;
+  }
+
+  // `sessionCost` is per SESSION, but the plugin is set up once per PROCESS
+  // and the host outlives any one session (the WebUI opens additional
+  // sessions in the same process). Nothing cleared these totals, so
+  // cost_summary reported every session the process had ever served while
+  // calling it "this session", and each appended summary included the
+  // previous session's spend.
+  it('starts the next session from zero', async () => {
+    const api = makeApi();
+    await costTrackerPlugin.setup(api as any);
+    const summary = api.tools.register.mock.calls.find(
+      ([t]: any[]) => t.name === 'cost_summary',
+    )?.[0] as any;
+
+    await handlerFor(
+      api,
+      'provider.response',
+    )({
+      usage: { input: 1000, output: 500 },
+      ctx: { model: 'gpt-4o' },
+    });
+    expect((await summary.execute({})).usage.totalRequests).toBe(1);
+
+    await handlerFor(api, 'session.ended')({ id: 's1', sessionId: 's1' });
+
+    const after = await summary.execute({});
+    expect(after.usage.totalRequests).toBe(0);
+    expect(after.usage.totalTokens).toBe(0);
+    expect(after.usage.totalCostUsd).toBe(0);
+  });
+
+  it('appends the finished session summary before clearing it', async () => {
+    const api = makeApi();
+    await costTrackerPlugin.setup(api as any);
+    await handlerFor(
+      api,
+      'provider.response',
+    )({
+      usage: { input: 1000, output: 500 },
+      ctx: { model: 'gpt-4o' },
+    });
+
+    await handlerFor(api, 'session.ended')({ id: 's1', sessionId: 's1' });
+
+    expect(api.session.append).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'cost-tracker:session_summary', totalRequests: 1 }),
+    );
+  });
+});
+
 // ── cost_summary ────────────────────────────────────────────────────────────────
 
 describe('cost_summary tool', () => {

@@ -51,7 +51,7 @@ export type ConfirmAwaiter = (
   input: unknown,
   toolUseId: string,
   suggestedPattern: string,
-) => Promise<'yes' | 'no' | 'always' | 'deny'>;
+) => Promise<'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'>;
 
 export interface ToolExecutorOptions {
   permissionPolicy: import('../types/permission.js').PermissionPolicy;

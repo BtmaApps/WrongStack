@@ -110,6 +110,13 @@ describe('proposeTaskDecomposition', () => {
       subtasks: [
         { title: 'First', successCriteria: ['$ '] },
         { title: 'Second', successCriteria: ['verify:'] },
+        // The marker regex's trailing `\s*` backtracks, so a marker with
+        // trailing whitespace but no body still matches with `(.+)` holding
+        // only whitespace — it must still classify as manual, not as a
+        // command check whose empty notes would make the command verifier
+        // fall back to executing the marker text itself.
+        { title: 'Third', successCriteria: ['verify: '] },
+        { title: 'Fourth', successCriteria: ['$  '] },
       ],
     });
     const board = await getBoard(tmpDir, boardId);

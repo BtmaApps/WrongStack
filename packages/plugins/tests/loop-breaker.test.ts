@@ -152,16 +152,21 @@ describe('loop-breaker plugin', () => {
     expect(last?.decision).toBe('allow');
   });
 
+  // The guard used to require a literal `enabled: true`, from BOTH halves of
+  // a double gate: `DEFAULTS.enabled` was false, and `readConfig` accepted
+  // only `=== true`. So writing any other option left it silently off, and a
+  // user who enabled the plugin got three hooks that returned on their first
+  // line. Opting out is now an explicit `enabled: false` (covered below).
   it.each([
     ['no config at all', {}],
-    ['partial settings without enabled:true', { 'loop-breaker': { mode: 'block' } }],
-  ])('stays disabled with %s', (_label, extensions) => {
+    ['a partial config that omits `enabled`', { 'loop-breaker': { mode: 'block' } }],
+  ])('guards by default with %s', (_label, extensions) => {
     const api = makeApi({ extensions });
     loopBreakerPlugin.setup(api as never);
     const hook = getHook(api);
     const call = { toolName: 'bash', toolInput: { command: 'npm test' } };
     for (let i = 0; i < 4; i++) hook(call);
-    expect(hook(call)).toBeUndefined();
+    expect(hook(call)?.decision).toBe('block');
   });
 
   it('does not treat inputs that differ only below the canonicalize depth as repeats', () => {

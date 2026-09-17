@@ -191,7 +191,7 @@ export const telegramConfigSchema = {
       type: 'integer',
       minimum: 1,
       maximum: 100,
-      description: 'Per-chat burst size (default: 1)',
+      description: 'Per-chat burst size (default: 4)',
     },
     parseMode: {
       type: 'string',

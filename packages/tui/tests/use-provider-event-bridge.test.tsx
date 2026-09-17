@@ -78,6 +78,21 @@ describe('useProviderEventBridge', () => {
         },
       });
 
+      act(() => {
+        events.emit('trust.persisted', {
+          sessionId: 'session-1',
+          tool: 'exec',
+          pattern: 'wrongstack-approval:v1:command:hash',
+          displayPattern: 'uv (any arguments)',
+          scope: 'command',
+          decision: 'always',
+        });
+      });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: 'addEntry',
+        entry: { kind: 'info', text: '✓ always allowed: exec(uv (any arguments))' },
+      });
+
       unmount();
     } finally {
       vi.useRealTimers();

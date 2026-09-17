@@ -1,12 +1,13 @@
 import type { ContentBlock } from '../types/blocks.js';
-import type { Message } from '../types/messages.js';
 import type { AgentContext, TodoItem } from '../types/context.js';
 import type {
   ConversationStateApi,
   ReadonlyConversationState,
   StateChange,
 } from '../types/conversation-state.js';
+import type { Message } from '../types/messages.js';
 import { computeMessageTokens } from '../utils/token-estimate.js';
+import { bumpContextHistoryVersion } from './context-history-version.js';
 
 // Roadmap 10A: the type surface lives in the types/conversation-state.ts leaf
 // (dependency-safe for AgentContext); re-exported here for existing import paths.
@@ -28,6 +29,14 @@ function hasToolUseBlock(message: Message | undefined): boolean {
     Array.isArray(message.content) &&
     message.content.some((block) => block.type === 'tool_use')
   );
+}
+
+function invalidateConversationTokens(ctx: AgentContext): void {
+  bumpContextHistoryVersion(ctx);
+  ctx.lastRealInputTokens = undefined;
+  ctx.lastRequestTokens = undefined;
+  delete ctx.meta['realAnchorMsgCount'];
+  delete ctx.meta['lastRequestTokensAt'];
 }
 
 /**
@@ -112,6 +121,7 @@ export class ConversationState {
     this.emit({ kind: 'message_appended', message });
     if (overflow > 0) {
       this.ctx.messages.splice(0, overflow);
+      invalidateConversationTokens(this.ctx);
       // Dropping messages may orphan a tool_use or tool_result, breaking
       // strict-provider adjacency rules. Force a repair scan on the next
       // request pipeline run.
@@ -202,6 +212,16 @@ export class ConversationState {
       _estTokens: computeMessageTokens({ ...last, content }),
     };
     arr[arr.length - 1] = updated;
+    // Edits inside the consumed prefix invalidate its provider usage count.
+    // Unsent trailing messages remain part of the estimated delta.
+    const anchorCount = this.ctx.meta['realAnchorMsgCount'];
+    if (typeof anchorCount === 'number' && anchorCount > arr.length - 1) {
+      invalidateConversationTokens(this.ctx);
+    } else {
+      // An unsent edit preserves the previous anchor, but may still rewrite
+      // the prefix of a currently in-flight request.
+      bumpContextHistoryVersion(this.ctx);
+    }
     // Text/informational blocks never carry tool_use/tool_result, so
     // toolAdjacencyDirty is unaffected — no need to set it here.
     this.emit({ kind: 'message_updated', index: arr.length - 1, message: updated });
@@ -209,6 +229,9 @@ export class ConversationState {
   }
 
   replaceMessages(messages: Message[]): void {
+    // Rewinds, manual compaction and same-length edits all rewrite the prefix;
+    // the previous provider usage cannot describe the replacement history.
+    invalidateConversationTokens(this.ctx);
     // M1 (combined with the existing _estTokens loop): single pass over the
     // replacement messages that handles per-message token estimation AND
     // tool-block detection for the adjacency-dirty flag. The previous

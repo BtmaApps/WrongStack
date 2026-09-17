@@ -571,6 +571,19 @@ describe('session ws-handlers — provider / delegate / context', () => {
       expect(toast.success).toHaveBeenCalledWith('Always allowed bash: git *');
     });
 
+    it('shows the selected scope instead of an opaque stored rule', () => {
+      handleTrustPersisted(
+        msg('trust.persisted', {
+          tool: 'exec',
+          pattern: 'wrongstack-approval:v1:command:hash',
+          displayPattern: 'uv (any arguments)',
+          scope: 'command',
+          decision: 'always',
+        }),
+      );
+      expect(toast.success).toHaveBeenCalledWith('Always allowed exec: uv (any arguments)');
+    });
+
     it('confirms a deny', () => {
       handleTrustPersisted(
         msg('trust.persisted', { tool: 'bash', pattern: 'rm *', decision: 'deny' }),

@@ -1,3 +1,4 @@
+export { isPersistentApproval, scopedApprovalPattern } from './scoped-approval.js';
 // Security domain: secret scrubbing, vault encryption, permission policies
 
 export { noOpVault } from '../types/secret-vault.js';

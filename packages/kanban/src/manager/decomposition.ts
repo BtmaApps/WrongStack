@@ -52,13 +52,17 @@ function checksFromCriteria(criteria: string[] | undefined): KanbanCheck[] | und
   return criteria.map((description) => {
     // A marker alone (for example "$ ") has no executable body and remains
     // manual; classifying it as a command would only produce a verifier error.
+    // The regex's trailing `\s*` can backtrack, so a marker with trailing
+    // whitespace but no body ("verify: ") still matches with `(.+)` holding
+    // only whitespace — classify on the trimmed body, not on the match.
     const commandMatch = /^\s*(?:\$\s+|(?:run|verify|cmd)\s*:\s*)(.+)$/i.exec(description);
+    const commandBody = commandMatch?.[1]?.trim();
     return {
       id: randomUUID(),
       description,
       // The command verifier consumes notes first, keeping the marker out of execution.
-      ...(commandMatch?.[1] ? { notes: commandMatch[1].trim() } : {}),
-      type: commandMatch ? ('command' as const) : ('manual' as const),
+      ...(commandBody ? { notes: commandBody } : {}),
+      type: commandBody ? ('command' as const) : ('manual' as const),
       status: 'pending' as const,
     };
   });

@@ -364,8 +364,8 @@ export function estimateRequestTokens(
  * Record the actual API input token count after a provider call so
  * `estimateRequestTokensCalibrated` can self-correct on subsequent calls.
  *
- * Prefer passing `estimatedInputTokens` explicitly (the calibrated pre-flight
- * estimate from the middleware) — this avoids race conditions when other code
+ * Prefer passing `estimatedInputTokens` explicitly (the raw pre-flight
+ * estimate before calibration) — this avoids race conditions when other code
  * also calls `estimateRequestTokens` between the pre-flight and this call
  * (e.g. audit logging in agent.ts).
  *
@@ -462,6 +462,64 @@ const DENSITY_SAMPLE_PER_BLOCK = 4_096;
 /** Hard cap on total sampled chars so the density scan stays cheap. */
 const DENSITY_SAMPLE_TOTAL_CAP = 2_000_000;
 
+/** Walk structured wire values without another JSON.stringify of large payloads.
+ * Iterative traversal avoids stack overflow; node and character caps bound work.
+ */
+function* structuredDensityTexts(value: unknown): Generator<string> {
+  const pending: unknown[] = [value];
+  const seen = new WeakSet<object>();
+  let visited = 0;
+  while (pending.length > 0 && visited++ < 10_000) {
+    const current = pending.pop();
+    if (typeof current === 'string') {
+      yield current;
+    } else if (current !== null && typeof current === 'object' && !seen.has(current)) {
+      seen.add(current);
+      // Bound fan-out too: do not allocate a million-entry queue for one node.
+      for (const key in current) {
+        if (!Object.hasOwn(current, key)) continue;
+        yield key;
+        pending.push((current as Record<string, unknown>)[key]);
+        if (pending.length >= 10_000 - visited) break;
+      }
+    }
+  }
+}
+
+function* messageDensityTexts(messages: readonly Message[]): Generator<string> {
+  for (const m of messages) {
+    if (typeof m.content === 'string') {
+      yield m.content;
+    } else if (Array.isArray(m.content)) {
+      for (const b of m.content) {
+        if (b.type === 'text') yield b.text ?? '';
+        else if (b.type === 'thinking') yield b.thinking;
+        else if (b.type === 'tool_use') yield* structuredDensityTexts(b.input);
+        else if (b.type === 'tool_result') yield* structuredDensityTexts(b.content);
+      }
+    }
+  }
+}
+
+function* systemDensityTexts(system: unknown): Generator<string> {
+  if (typeof system === 'string') yield system;
+  else if (Array.isArray(system)) {
+    for (const block of system) {
+      if (block?.type === 'text' && typeof block.text === 'string') yield block.text;
+    }
+  }
+}
+
+function* toolDefinitionDensityTexts(
+  tools: { name: string; description?: string | undefined; inputSchema: unknown }[],
+): Generator<string> {
+  for (const tool of tools) {
+    if (tool && typeof tool === 'object') {
+      yield* structuredDensityTexts(compactToolDefinitionForWire(tool));
+    }
+  }
+}
+
 /**
  * Estimate a **token-density multiplier** for content that the flat 3.5
  * chars/token basis under-counts. The basis is tuned for ASCII English
@@ -472,7 +530,7 @@ const DENSITY_SAMPLE_TOTAL_CAP = 2_000_000;
  * multiplier in [1, 2.5] — always ≥ 1, so it can only push the estimate UP,
  * never down. Used only by the send-time overflow guard, never for display.
  */
-function textDensityMultiplier(messages: readonly Message[]): number {
+function textDensityMultiplier(texts: Iterable<string>): number {
   let sampled = 0;
   let nonAscii = 0;
   let maxRun = 0;
@@ -493,16 +551,8 @@ function textDensityMultiplier(messages: readonly Message[]): number {
     sampled += n;
   };
 
-  for (const m of messages) {
-    if (typeof m.content === 'string') {
-      consider(m.content);
-    } else if (Array.isArray(m.content)) {
-      for (const b of m.content) {
-        if (b.type === 'text') consider(b.text ?? '');
-        else if (b.type === 'tool_result' && typeof b.content === 'string') consider(b.content);
-        else if (b.type === 'thinking') consider(b.thinking);
-      }
-    }
+  for (const text of texts) {
+    consider(text);
     if (sampled >= DENSITY_SAMPLE_TOTAL_CAP) break;
   }
 
@@ -531,19 +581,33 @@ export function estimateRequestTokensUpperBound(
   calibrationKey: string = CALIBRATION_GLOBAL_KEY,
 ): RequestTokenBreakdown {
   const base = estimateRequestTokens(messages, systemPrompt, tools, calibrationKey);
-  const density = Array.isArray(messages)
-    ? textDensityMultiplier(messages as readonly Message[])
-    : 1;
   const cal = calState(calibrationKey);
   const calCeiling =
     cal.count >= MIN_SAMPLES_FOR_CALIBRATION ? Math.min(1.5, Math.max(1, cal.ratio)) : 1;
-  const mult = Math.max(density, calCeiling);
-  if (mult <= 1) return base;
+  // Keep component densities separate: dense schema prose must not inflate a
+  // large ASCII conversation, and a sparse history must not dilute the system.
+  const messageMultiplier = Math.max(
+    calCeiling,
+    Array.isArray(messages)
+      ? textDensityMultiplier(messageDensityTexts(messages as readonly Message[]))
+      : 1,
+  );
+  const systemMultiplier = Math.max(
+    calCeiling,
+    textDensityMultiplier(systemDensityTexts(systemPrompt)),
+  );
+  const toolMultiplier = Math.max(
+    calCeiling,
+    textDensityMultiplier(toolDefinitionDensityTexts(Array.isArray(tools) ? tools : [])),
+  );
+  const guardedMessages = Math.ceil(base.messages * messageMultiplier);
+  const guardedSystem = Math.ceil(base.systemPrompt * systemMultiplier);
+  const guardedTools = Math.ceil(base.tools * toolMultiplier);
   return {
-    messages: Math.ceil(base.messages * mult),
-    systemPrompt: Math.ceil(base.systemPrompt * mult),
-    tools: Math.ceil(base.tools * mult),
-    total: Math.ceil(base.total * mult),
+    messages: guardedMessages,
+    systemPrompt: guardedSystem,
+    tools: guardedTools,
+    total: guardedMessages + guardedSystem + guardedTools,
   };
 }
 

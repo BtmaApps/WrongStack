@@ -69,6 +69,40 @@ describe('setupEvents session scoping', () => {
     dispose();
   });
 
+  it('preserves the actual saved rule and its readable scope on the wire', () => {
+    const events = new EventBus();
+    const broadcast = vi.fn();
+    const dispose = setupEvents({
+      events,
+      broadcast,
+      clients: new Map(),
+      config: {},
+      context: {
+        session: { id: 'session-live' },
+        todos: [],
+        state: { onChange: vi.fn(), revision: 0 },
+      } as unknown as Context,
+      pendingConfirms: new Map(),
+    });
+    try {
+      const record = {
+        sessionId: 'session-live',
+        tool: 'exec',
+        pattern: 'wrongstack-approval:v1:command:hash',
+        displayPattern: 'uv (any arguments)',
+        scope: 'command' as const,
+        decision: 'always' as const,
+      };
+      events.emit('trust.persisted', record);
+      expect(broadcast).toHaveBeenCalledWith(expect.any(Map), {
+        type: 'trust.persisted',
+        payload: expect.objectContaining(record),
+      });
+    } finally {
+      dispose();
+    }
+  });
+
   it('forwards passive Chimera report notices to every browser surface', () => {
     const events = new EventBus();
     const broadcast = vi.fn();

@@ -21,6 +21,8 @@ import type { AgentToolHandler } from './agent-tools.js';
 import type { RunResult, UserInputPayload } from './agent-types.js';
 import { buildBtwBlock, consumeBtwNotes } from './btw.js';
 import { type RunOptions, resolveEventSessionId, resolveOwningSessionId } from './context.js';
+import { contextHistoryVersion, requestHistoryVersion } from './context-history-version.js';
+import { recordContextUsageAnchor, requestPromptStillCurrent } from './context-usage-anchor.js';
 import { consumeAutonomousContinue } from './continue-to-next-iteration.js';
 import { requestLimitExtension } from './iteration-limit.js';
 import { injectPendingMailboxMessages, removeInjectedMailboxBlocks } from './mailbox-loop.js';
@@ -445,28 +447,38 @@ export function createAgentLoopHandler(
 
         let res: Response;
         try {
+          const historyVersion = requestHistoryVersion(req) ?? contextHistoryVersion(a.ctx);
           res = await customRunner(a.ctx, req);
-          const key = loopContext.calibrationKey(req.model);
+          // Usage belongs to the route captured for this request, even if the
+          // user switched providers while its response was in flight.
+          const key = `${requestProvider.id}/${req.model}`;
           const cal = getCalibrationState(key);
           const calibratedTotal = cal.calibrated
             ? Math.round(preFlight.total * Math.min(1.5, Math.max(0.5, cal.ratio)))
             : preFlight.total;
           const realInputTokens = effectiveInputTokens(res.usage);
-          recordActualUsage(realInputTokens, calibratedTotal, key);
-          const previousRealInput = a.ctx.lastRealInputTokens;
-          const previousAnchorMsgCount =
-            typeof a.ctx.meta?.['realAnchorMsgCount'] === 'number'
-              ? (a.ctx.meta['realAnchorMsgCount'] as number)
-              : undefined;
+          // Calibration learns actual/raw, not actual/already-calibrated:
+          // feeding back the multiplier makes it converge to sqrt(actual/raw).
+          recordActualUsage(realInputTokens, preFlight.total, key);
           const anchorIsPlausible = realInputTokens >= calibratedTotal * 0.5;
-          const anchorAdvanced =
-            previousRealInput === undefined ||
-            realInputTokens > previousRealInput ||
-            (previousAnchorMsgCount !== undefined &&
-              loopContext.lastPreFlightMsgCount < previousAnchorMsgCount);
-          if (realInputTokens > 0 && anchorIsPlausible && anchorAdvanced) {
-            a.ctx.lastRealInputTokens = realInputTokens;
-            a.ctx.meta['realAnchorMsgCount'] = loopContext.lastPreFlightMsgCount;
+          const routeStillActive =
+            a.ctx.provider.id === requestProvider.id && a.ctx.model === req.model;
+          // Every plausible authoritative response consumes the latest prefix,
+          // including responses with equal or lower usage than the last turn.
+          const historyStillCurrent = contextHistoryVersion(a.ctx) === historyVersion;
+          if (
+            realInputTokens > 0 &&
+            anchorIsPlausible &&
+            routeStillActive &&
+            historyStillCurrent &&
+            requestPromptStillCurrent(a.ctx, req)
+          ) {
+            recordContextUsageAnchor(
+              a.ctx,
+              req,
+              realInputTokens,
+              loopContext.lastPreFlightMsgCount,
+            );
           }
           recoveryRetries = 0;
         } catch (err) {

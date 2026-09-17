@@ -120,4 +120,36 @@ describe('ConfirmDialog YOLO behavior', () => {
     expect(screen.getByTestId('confirm-args-preview').className).toContain('overflow-auto');
     expect(screen.getByText(/Brain takes over in/)).toBeTruthy();
   });
+  it.each(['always-exact', 'always-command', 'always-tool'])(
+    'sends the selected %s scope with the keyboard',
+    (scope) => {
+      render(<ConfirmDialog />);
+      act(() =>
+        useUIStore.getState().showConfirm({
+          id: 'scoped',
+          toolName: 'exec',
+          input: { command: 'uv', args: ['run', 'pytest'] },
+          suggestedPattern: 'uv run pytest',
+        }),
+      );
+      const select = screen.getByRole('combobox');
+      expect((select as HTMLSelectElement).value).toBe('always-exact');
+      fireEvent.change(select, { target: { value: scope } });
+      fireEvent.keyDown(window, { key: 'a' });
+      expect(sendConfirm).toHaveBeenCalledExactlyOnceWith('scoped', scope);
+    },
+  );
+
+  it('does not offer an executable-wide grant for a shell script', () => {
+    render(<ConfirmDialog />);
+    act(() =>
+      useUIStore.getState().showConfirm({
+        id: 'shell',
+        toolName: 'bash',
+        input: { command: 'git status; pwd' },
+        suggestedPattern: 'git status; pwd',
+      }),
+    );
+    expect(screen.queryByRole('option', { name: 'This executable with any arguments' })).toBeNull();
+  });
 });

@@ -85,15 +85,22 @@ describe('makePromptDelegate', () => {
     const offeredValues = (r: { readKey: ReturnType<typeof vi.fn> }): string[] =>
       ((r.readKey.mock.calls[0]?.[1] ?? []) as Array<{ value: string }>).map((o) => o.value);
 
-    it('withholds the [a] option and explains why for a subject-less tool', async () => {
+    it('offers explicit scopes even for a subject-less tool', async () => {
       captureStdout();
       const r = reader('yes');
       await makePromptDelegate(r)(execTool, { command: 'ls', cwd: '.' }, 'exec');
 
       // The explanation IS written to stdout by the delegate.
-      expect(getStdout()).toContain('no "always" for this call');
+      expect(getStdout()).not.toContain('no "always" for this call');
       expect(promptText(r)).not.toContain('lways allow');
-      expect(offeredValues(r)).toEqual(['yes', 'no', 'deny']);
+      expect(offeredValues(r)).toEqual([
+        'yes',
+        'no',
+        'always-exact',
+        'always-command',
+        'always-tool',
+        'deny',
+      ]);
     });
 
     it('still offers it when the call has a subject', async () => {
@@ -102,8 +109,8 @@ describe('makePromptDelegate', () => {
       await makePromptDelegate(r)(fakeTool, { path: '/a' }, 'edit:/a');
 
       expect(getStdout()).not.toContain('no "always" for this call');
-      expect(promptText(r)).toContain('lways allow (edit:/a)');
-      expect(offeredValues(r)).toEqual(['yes', 'no', 'always', 'deny']);
+      expect(promptText(r)).toContain(' same input (edit:/a)');
+      expect(offeredValues(r)).toEqual(['yes', 'no', 'always-exact', 'always-tool', 'deny']);
     });
   });
 

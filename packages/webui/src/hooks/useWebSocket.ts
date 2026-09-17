@@ -152,7 +152,17 @@ export function useWebSocket() {
 
   const { hideConfirm } = useUIStore();
   const sendConfirm = useCallback(
-    (id: string, decision: 'yes' | 'no' | 'always' | 'deny') => {
+    (
+      id: string,
+      decision:
+        | 'yes'
+        | 'no'
+        | 'always'
+        | 'always-exact'
+        | 'always-command'
+        | 'always-tool'
+        | 'deny',
+    ) => {
       client.sendConfirm(id, decision);
       // Retire the parked copy too, or switching back to this tab re-opens a
       // prompt that has already been answered.

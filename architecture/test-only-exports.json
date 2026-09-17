@@ -570,8 +570,7 @@
       "resetProviderQuota"
     ],
     "packages/core/src/security/permission-policy.ts": [
-      "DEFAULT_ALWAYS_TRUST_TTL_MS",
-      "mergeTrustEntries"
+      "DEFAULT_ALWAYS_TRUST_TTL_MS"
     ],
     "packages/core/src/security/secret-vault.ts": [
       "keyFileNeedsHardening"
@@ -896,16 +895,9 @@
       "KIND_ALIASES",
       "SCAN_WINDOW_LIMIT"
     ],
-    "packages/plugins/src/semantic-search-indexer/index.ts": [
-      "semanticIndexerCoverage"
-    ],
     "packages/plugins/src/semver-bump/index.ts": [
       "determineBump",
       "parseConventional"
-    ],
-    "packages/plugins/src/todo-tracker/index.ts": [
-      "createTodoTrackerPlugin",
-      "deriveProjectSlug"
     ],
     "packages/plugins/src/token-throttle/index.ts": [
       "computeThrottleDelay",
@@ -1233,6 +1225,9 @@
     ],
     "packages/tools/src/ps-slash.ts": [
       "getGlobalProcessStatus"
+    ],
+    "packages/tools/src/read-url-content.ts": [
+      "MAX_READ_URL_BYTES"
     ],
     "packages/tools/src/search.ts": [
       "__clearSearchCache",

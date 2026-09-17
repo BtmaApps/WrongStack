@@ -43,6 +43,11 @@
     "all": "Tutti"
   },
   "confirm": {
+    "approvalScope": "Ricorda autorizzazione per",
+    "scopeExact": "Questi esatti dati e argomenti",
+    "scopeCommand": "Questo eseguibile con qualsiasi argomento",
+    "scopeTool": "{{tool}} — qualsiasi input",
+    "scopeHint": "Sempre salva questo ambito per il progetto. Le autorizzazioni ampie richiedono comunque conferma per operazioni distruttive.",
     "title": "Approvazione richiesta: {{tool}}",
     "descriptionEdit": "L'agente vuole modificare un file. Rivedi la richiesta qui sotto e decidi se procedere.",
     "descriptionTool": "L'agente vuole eseguire questo strumento. Rivedi la richiesta qui sotto e decidi se procedere.",

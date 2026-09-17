@@ -10,6 +10,7 @@ import {
   ToolCapabilities,
 } from '../security/capabilities.js';
 import { describeWriteTargets } from '../security/permission-helpers.js';
+import { approvalRecord, isPersistentApproval } from '../security/scoped-approval.js';
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { ToolResultRenderMode, ToolResultRenderModeConfig } from '../types/config.js';
 import { isWrongStackError } from '../types/errors.js';
@@ -234,28 +235,45 @@ export class ToolExecutor {
         const writeTargets = describeWriteTargets(tool, use.input);
         if (this.opts.confirmAwaiter) {
           const awaiter = this.opts.confirmAwaiter;
-          const choice = await new Promise<'yes' | 'no' | 'always' | 'deny' | 'abort'>(
-            (resolve, reject) => {
-              const signal = ctx.signal;
-              const onAbort = () => resolve('abort');
-              if (signal.aborted) {
-                resolve('abort');
-                return;
-              }
-              signal.addEventListener('abort', onAbort, { once: true });
-              awaiter(tool, use.input, use.id, suggestedPattern).then(
-                (c) => {
-                  signal.removeEventListener('abort', onAbort);
-                  resolve(c);
-                },
-                (e) => {
-                  signal.removeEventListener('abort', onAbort);
-                  reject(e);
-                },
-              );
-            },
-          );
-          if (choice !== 'yes' && choice !== 'always') {
+          const choice = await new Promise<
+            | 'yes'
+            | 'no'
+            | 'always'
+            | 'always-exact'
+            | 'always-command'
+            | 'always-tool'
+            | 'deny'
+            | 'abort'
+          >((resolve, reject) => {
+            const signal = ctx.signal;
+            const onAbort = () => resolve('abort');
+            if (signal.aborted) {
+              resolve('abort');
+              return;
+            }
+            signal.addEventListener('abort', onAbort, { once: true });
+            awaiter(tool, use.input, use.id, suggestedPattern).then(
+              (c) => {
+                signal.removeEventListener('abort', onAbort);
+                resolve(c);
+              },
+              (e) => {
+                signal.removeEventListener('abort', onAbort);
+                reject(e);
+              },
+            );
+          });
+          if (isPersistentApproval(choice)) {
+            const approval = approvalRecord(choice, tool, use.input, ctx, suggestedPattern);
+            await this.opts.permissionPolicy.trust({ tool: tool.name, pattern: approval.pattern });
+            this.opts.events?.emit('trust.persisted', {
+              sessionId: resolveEventSessionId(ctx),
+              tool: tool.name,
+              ...approval,
+              decision: 'always',
+            });
+          }
+          if (choice !== 'yes' && !isPersistentApproval(choice)) {
             const result = {
               type: 'tool_result' as const,
               tool_use_id: use.id,

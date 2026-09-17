@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Context } from '@wrongstack/core/agent';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { ToolExecutor } from '@wrongstack/core/execution';
 import type { EventBus } from '@wrongstack/core/kernel';
+import { isPersistentApproval, scopedApprovalPattern } from '@wrongstack/core/security';
 import type { PermissionPolicy, ToolConfirmPendingResult } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { type PackageOperation, toLanguagePackageInput } from '@wrongstack/techstack';
 
 const HUMAN_APPROVAL_TIMEOUT_MS = 120_000;
@@ -39,10 +40,21 @@ export function createPackageOperationExecutor(options: {
       if (events.listenerCount('tool.confirm_needed') === 0) {
         throw new Error('No permission confirmation surface is connected');
       }
-      const decision = await new Promise<'yes' | 'no' | 'always' | 'deny'>((resolve) => {
+      const decision = await new Promise<
+        'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'
+      >((resolve) => {
         let settled = false;
         const deadlineAt = Date.now() + HUMAN_APPROVAL_TIMEOUT_MS;
-        const settle = (choice: 'yes' | 'no' | 'always' | 'deny') => {
+        const settle = (
+          choice:
+            | 'yes'
+            | 'no'
+            | 'always'
+            | 'always-exact'
+            | 'always-command'
+            | 'always-tool'
+            | 'deny',
+        ) => {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
@@ -116,8 +128,19 @@ export function createPackageOperationExecutor(options: {
         });
       });
       const rule = { tool: 'language_package', pattern: pending.suggestedPattern };
-      if (decision === 'always') await permissionPolicy.trust(rule);
-      else if (decision === 'yes') permissionPolicy.allowOnce(rule);
+      if (isPersistentApproval(decision)) {
+        await permissionPolicy.trust({
+          ...rule,
+          pattern: scopedApprovalPattern(
+            decision,
+            confirmTool,
+            pending.input,
+            context,
+            pending.suggestedPattern,
+          ),
+        });
+        if (decision !== 'always') permissionPolicy.allowOnce(rule);
+      } else if (decision === 'yes') permissionPolicy.allowOnce(rule);
       else if (decision === 'deny') await permissionPolicy.deny(rule);
       else permissionPolicy.denyOnce(rule);
       if (decision === 'deny' || decision === 'no') throw new Error('Package operation was denied');

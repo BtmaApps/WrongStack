@@ -292,6 +292,34 @@ describe('todo ↔ kanban flow never strands the run', () => {
     expect(ctx.currentKanbanBoardId).toBe(boardId);
   });
 
+  it('a todo row bound to a deleted card is re-opened as new work, not silently dropped', async () => {
+    // The dangerous shape: the row's stale binding survives the deletion, so
+    // every guard reads it as "already bound" — no replacement card is opened,
+    // the unresolved warning stays silent, and the board projection then drops
+    // the row entirely. Work vanished with no card, no warning, while the
+    // output still reported count: 1.
+    const ctx = makeCtx();
+    const boardId = await managedBoard();
+    ctx.currentKanbanBoardId = boardId;
+    const a = (await seedCard(boardId, 'Resurrected work'))!.task.id;
+    await todo(ctx, [row('1', 'Resurrected work', 'in_progress', boardId, a)]);
+
+    const deleted = await kanban(ctx, { action: 'delete_task', boardId, taskId: a });
+    expect(deleted.ok).toBe(true);
+
+    // Re-apply the row that still references the deleted card.
+    const result = await todo(ctx, [row('1', 'Resurrected work', 'pending', boardId, a)]);
+    expect(result).toBeDefined();
+
+    // The work must survive: a card for the row exists again and the compact
+    // list still carries it — never silently stranded.
+    const board = await getBoard(dir, boardId);
+    expect(board!.tasks.some((t) => t.title === 'Resurrected work')).toBe(true);
+    expect(ctx.todos.some((t) => t.content === 'Resurrected work')).toBe(true);
+    const warnings = (result.kanban_warnings ?? []).join(' ');
+    expect(warnings).not.toContain('could not be bound');
+  });
+
   it('merging two cards mid-run keeps the surface answerable', async () => {
     const ctx = makeCtx();
     const boardId = await managedBoard();

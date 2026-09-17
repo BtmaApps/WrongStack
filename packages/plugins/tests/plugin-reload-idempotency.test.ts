@@ -170,9 +170,11 @@ describe('setup() is idempotent for every official plugin', () => {
   );
 
   it('covers the whole official roster', () => {
-    // Guard against the list silently shrinking.
+    // Guard against the list silently shrinking. The floor dropped from 60 to
+    // 50 when the 2026-09-17 catalog review deleted nine plugins (65 → 56);
+    // it exists to catch accidental loss, not to pin an exact count.
     expect(plugins.length).toBe(OFFICIAL_PLUGIN_SPECIFIERS.length);
-    expect(plugins.length).toBeGreaterThan(60);
+    expect(plugins.length).toBeGreaterThan(50);
   });
 
   it('the stub itself reports stacking when nothing unregisters', () => {

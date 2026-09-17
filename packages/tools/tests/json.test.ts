@@ -114,6 +114,20 @@ describe('jsonTool', () => {
     expect(result.formatted).toBe('{\n  "a": 1\n}');
   });
 
+  it('preserves comma-before-closer sequences inside json5 string values', async () => {
+    const result = await jsonTool.execute({
+      data: '{"note":"a, } b","list":"[1, ] tail","q":"say \\", } done","n":1}',
+      format: 'json5',
+    });
+    // The trailing-comma strip is string-aware: `, }` / `, ]` sequences inside
+    // string values survive verbatim instead of being collapsed.
+    expect(result.formatted).toContain('a, } b');
+    expect(result.formatted).toContain('[1, ] tail');
+    expect(result.formatted).toContain(', } done');
+    expect(result.formatted).not.toContain('a} b');
+    expect(result.formatted).not.toContain('[1] tail');
+  });
+
   it('outputs as yaml format', async () => {
     const result = await jsonTool.execute({ data: '{"a":1}', format: 'yaml' });
     expect(result.formatted).toContain('a:');
@@ -137,6 +151,22 @@ describe('jsonTool', () => {
   it('emits plain yaml string values without quoting', async () => {
     const result = await jsonTool.execute({ data: '{"a":"plain"}', format: 'yaml' });
     expect(result.formatted).toContain('a: plain');
+  });
+
+  it('quotes yaml scalars that would re-parse as non-strings', async () => {
+    const result = await jsonTool.execute({
+      data: '{"code":"123","version":"1.2","flag":"true","empty":"","mapped":{"123":"x"},"plain":"hello world"}',
+      format: 'yaml',
+    });
+    expect(result.formatted).toBe(
+      'code: "123"\n' +
+        'version: "1.2"\n' +
+        'flag: "true"\n' +
+        'empty: ""\n' +
+        'mapped:\n' +
+        '  "123": x\n' +
+        'plain: hello world\n',
+    );
   });
 
   it('renders an empty array in yaml', async () => {

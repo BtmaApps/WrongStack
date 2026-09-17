@@ -26,6 +26,19 @@ const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_BACKGROUND_TIMEOUT_MS = 60_000;
 const MAX_TIMEOUT_MS = 10 * 60_000;
 
+/**
+ * Bounds on buffered background output.
+ *
+ * A background hook's result cannot join the turn that scheduled it, so it is
+ * held until the next boundary. Two things must stay bounded: how much one
+ * session can accumulate if nobody comes back for it, and how many sessions
+ * are tracked at once. The per-session key matters for correctness, not just
+ * memory — this runner is shared across WebUI sessions, and one session's
+ * advisory scan must never surface inside another's turn.
+ */
+const MAX_BACKGROUND_PARTS_PER_SESSION = 16;
+const MAX_BACKGROUND_SESSIONS = 32;
+
 /** Effective timeout for one hook entry, before clamping. */
 function hookTimeoutMs(entry: HookEntry): number {
   return entry.timeoutMs ?? (entry.background ? DEFAULT_BACKGROUND_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
@@ -136,8 +149,41 @@ export class HookRunner {
     { pending: { payload: HookInput; env: HookRunEnv } | null }
   >();
 
+  /**
+   * `additionalContext` produced by background hooks that finished after the
+   * turn that scheduled them, keyed by session and drained at the next
+   * boundary (`postToolUse` / `userPromptSubmit`).
+   */
+  private readonly pendingBackground = new Map<string, string[]>();
+
   constructor(private readonly opts: HookRunnerOptions) {
     this.registry = opts.registry;
+  }
+
+  private backgroundKey(env: HookRunEnv): string {
+    return env.session?.id ?? this.opts.sessionId?.() ?? '__default__';
+  }
+
+  private bufferBackgroundContext(env: HookRunEnv, text: string): void {
+    const key = this.backgroundKey(env);
+    const parts = this.pendingBackground.get(key) ?? [];
+    parts.push(text);
+    // Keep the newest: a stale scan is worth less than the one that just ran.
+    while (parts.length > MAX_BACKGROUND_PARTS_PER_SESSION) parts.shift();
+    this.pendingBackground.set(key, parts);
+    if (this.pendingBackground.size > MAX_BACKGROUND_SESSIONS) {
+      const oldest = this.pendingBackground.keys().next().value;
+      if (oldest !== undefined && oldest !== key) this.pendingBackground.delete(oldest);
+    }
+  }
+
+  /** Take (and clear) whatever this session's background hooks have produced. */
+  private drainBackgroundContext(env: HookRunEnv): string[] {
+    const key = this.backgroundKey(env);
+    const parts = this.pendingBackground.get(key);
+    if (!parts || parts.length === 0) return [];
+    this.pendingBackground.delete(key);
+    return parts;
   }
 
   /** Cheap guard so callers can skip building payloads when nothing listens. */
@@ -243,12 +289,13 @@ export class HookRunner {
       ...this.base(env),
     };
     const entries = this.matching('PostToolUse', toolName);
-    if (entries.length === 0) return {};
 
-    // Background hooks run fire-and-forget — the tool executor returns
-    // immediately without collecting their additionalContext. Use this for
-    // purely advisory hooks (format-on-save, code-metrics, dead-code scans,
-    // etc.) where same-turn feedback is not required.
+    // Background hooks run fire-and-forget: nothing waits on them, so their
+    // output cannot join THIS turn. It is no longer dropped, though — it is
+    // buffered and delivered at the next boundary (here, or userPromptSubmit).
+    // Dropping it meant an advisory plugin paid for its scan on every write
+    // and the model never saw a line of the result: type-gate ran tsc,
+    // dead-code-detector walked the repo, and both reported into a void.
     const foreground: HookEntry[] = [];
     for (const entry of entries) {
       if (entry.background) {
@@ -258,29 +305,34 @@ export class HookRunner {
       }
     }
 
-    // No foreground hooks — return immediately, don't wait for background.
-    if (foreground.length === 0) return {};
-
-    const results = await Promise.allSettled(
-      foreground.map((entry) => this.invoke(entry, payload, env)),
-    );
     const parts: string[] = [];
     let separate = false;
-    for (const result of results) {
-      if (result.status !== 'fulfilled' || !result.value?.additionalContext) continue;
-      parts.push(result.value.additionalContext);
-      if (result.value.contextAs === 'separate') separate = true;
+    if (foreground.length > 0) {
+      const results = await Promise.allSettled(
+        foreground.map((entry) => this.invoke(entry, payload, env)),
+      );
+      for (const result of results) {
+        if (result.status !== 'fulfilled' || !result.value?.additionalContext) continue;
+        parts.push(result.value.additionalContext);
+        if (result.value.contextAs === 'separate') separate = true;
+      }
     }
+    // Late arrivals from earlier turns ride along with this result.
+    parts.push(...this.drainBackgroundContext(env));
     return parts.length
       ? { additionalContext: parts.join('\n'), contextAs: separate ? 'separate' : 'inline' }
       : {};
   }
 
   async userPromptSubmit(prompt: string, env: HookRunEnv): Promise<PromptResult> {
+    // A turn that ran no tools still collects whatever a background hook
+    // finished since the last boundary.
+    const parts: string[] = [...this.drainBackgroundContext(env)];
     const entries = this.matching('UserPromptSubmit', undefined);
-    if (entries.length === 0) return {};
+    if (entries.length === 0) {
+      return parts.length ? { additionalContext: parts.join('\n') } : {};
+    }
     const payload: HookInput = { event: 'UserPromptSubmit', prompt, ...this.base(env) };
-    const parts: string[] = [];
     for (const entry of entries) {
       const outcome = await this.invoke(entry, payload, env);
       if (!outcome) continue;
@@ -334,7 +386,11 @@ export class HookRunner {
       let next: { payload: HookInput; env: HookRunEnv } | null = { payload, env };
       while (next !== null) {
         try {
-          await this.invoke(entry, next.payload, next.env);
+          const outcome = await this.invoke(entry, next.payload, next.env);
+          const text = outcome?.additionalContext;
+          if (typeof text === 'string' && text.length > 0) {
+            this.bufferBackgroundContext(next.env, text);
+          }
         } catch {
           // Background hooks are explicitly fail-open.
         }

@@ -1892,6 +1892,21 @@ The `exec` tool — the safer, structured alternative to `bash` — only runs co
 
 Extend or trim the list in config:
 
+The default `exec` list also includes Python environment and verification tools
+(`pipx`, `pipenv`, `pdm`, `conda`, `mamba`, `micromamba`, `nox`, `black`,
+`pyright`, `basedpyright`, `ty`, `coverage`), build runners (`bazel`, `bazelisk`,
+`just`, `task`, `scons`, `xmake`), and Swift, Dart/Flutter, Zig, Elixir, Erlang,
+OCaml and Clojure toolchains. The complete list lives in
+`packages/tools/src/exec-allowlist.ts`.
+
+Pass the executable separately from arguments: `{"command":"uv","args":["run","pytest"]}`.
+On Windows, casing and `.exe`/`.cmd`/`.bat`/`.com` suffixes are normalized for
+both `allow` and `deny`: denying `uv` also denies `UV.EXE`. POSIX names remain
+case-sensitive. Explicit executable paths do not inherit permission from their
+basename; add the exact path in trusted config when needed. Once permitted,
+paths and Windows aliases still receive the underlying command's argument,
+danger and protected-process checks. Allowlisting does not bypass permission checks.
+
 ```jsonc
 // ~/.wrongstack/profiles/<name>/config.json
 {
@@ -1908,6 +1923,22 @@ Extend or trim the list in config:
 - `allow` **expands** what the agent may execute, so it is honored **only from trusted config** (the active profile or project-private config). The config loader strips `tools.exec.allow` from the untrusted, repo-committed `<project>/.wrongstack/config.json` (with a `config.in_project_unsafe_fields_ignored` warning naming `tools.exec.allow`).
 - `deny` only ever **removes** commands, so it is honored from any source (in-project repo config included).
 - Per-argument hard-blocking is deliberately narrow: clear destructive / project-escape patterns (`rm -rf /`, unsafe `rm` targets, `git --exec=`, `git -C`, `git -c`, `find -exec`, publishing/deploying subcommands, `docker push`, …) are blocked, but normal development commands such as `pnpm run test`, `pnpm dlx ...`, `npx ...`, `node -e ...`, `python -m ...`, and `docker build` are allowed. `cwd` is confined to the project, args are passed as a clean array (no shell parsing), and every `exec` call is still gated by the `confirm` permission. For anything outside the allowlist, the model falls back to `bash`.
+
+**Approval scope.** Permission prompts distinguish allowing once from remembering
+an approval for this project. WebUI offers a scope selector beside **Always**;
+CLI/TUI use **a** for the exact input, **c** for the executable (structured `exec`
+calls only), and **t** for the tool. SimpleUI and HQ expose the same scope choices.
+
+- **Exact input / arguments:** only the identical input and working directory;
+  literal wildcard characters never widen this grant.
+- **Executable, any arguments:** the same `exec` command, with different arguments.
+  Shell scripts use exact-input or whole-tool approval because they may contain
+  multiple commands.
+- **Tool, any input:** any call through this tool; it does not authorize other tools.
+
+Explicit deny rules still win. Executable/tool-wide grants still prompt for
+calls classified as destructive. These choices do not bypass the `exec` command
+allowlist or its hard argument/process guards. Existing trust rules remain valid.
 
 **Autonomous goal.** The autonomous Goal verifier runs its verify command *without* per-call confirmation, so it keeps a narrower base allowlist (`pnpm`/`npm`/`yarn`/`bun`). It additionally honors your **explicit** `tools.exec.allow` opt-ins (not the broadened `exec` defaults), so a Go/Rust project can run e.g. `go test ./...` autonomously once you add `go` to `tools.exec.allow` and point `WRONGSTACK_GOAL_VERIFY_CMD` at it. Because `tools.exec.allow` is trusted-config-only, a repo still cannot widen what runs autonomously.
 

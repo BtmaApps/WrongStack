@@ -222,6 +222,75 @@ describe('HookRunner.postToolUse', () => {
     expect(deadlines['background']).toBeGreaterThan(5_000);
     expect(deadlines['explicit']).toBeLessThanOrEqual(2_000);
   });
+
+  // A background hook's additionalContext used to be dropped on the floor:
+  // nothing awaits a background hook, and postToolUse collected only the
+  // foreground results. Twenty advisory plugins therefore paid for their scan
+  // on every write — type-gate ran tsc, dead-code-detector walked the repo —
+  // and the model never saw a line of the result.
+  it('delivers a background result at the NEXT boundary, not the turn that scheduled it', async () => {
+    const reg = new HookRegistry();
+    const hook = vi.fn(() => ({ additionalContext: 'scan: 3 findings' }));
+    reg.registerInProcess('PostToolUse', 'write', hook, 'bg', { background: true });
+    const runner = new HookRunner({ registry: reg });
+    const result = { content: 'ok', isError: false };
+
+    const scheduling = await runner.postToolUse('write', {}, result, env);
+    expect(scheduling.additionalContext).toBeUndefined();
+
+    // `read` matches no hook, so these calls only drain. Wait on the DELIVERED
+    // effect rather than on the hook's call count: the count flips as soon as
+    // the hook function runs, while the buffering happens a microtask later
+    // when `invoke()` resolves. Draining an empty buffer is a no-op, so the
+    // retries are harmless.
+    await vi.waitFor(async () => {
+      const next = await runner.postToolUse('read', {}, result, env);
+      expect(next.additionalContext).toBe('scan: 3 findings');
+    });
+    expect(hook).toHaveBeenCalledTimes(1);
+
+    // Delivered once, not on every later call.
+    expect((await runner.postToolUse('read', {}, result, env)).additionalContext).toBeUndefined();
+  });
+
+  it("keeps one session's background output out of another session's turn", async () => {
+    // The runner is shared across WebUI sessions. An unkeyed buffer would let
+    // session A's advisory scan surface inside session B's turn — the same
+    // cross-session leak class as the token-budget/cost-tracker counters.
+    const reg = new HookRegistry();
+    const hook = vi.fn(() => ({ additionalContext: 'from session a' }));
+    reg.registerInProcess('PostToolUse', 'write', hook, 'bg', { background: true });
+    const runner = new HookRunner({ registry: reg });
+    const result = { content: 'ok', isError: false };
+    const a = { ...env, session: { id: 'a' } };
+    const b = { ...env, session: { id: 'b' } };
+
+    await runner.postToolUse('write', {}, result, a);
+
+    await vi.waitFor(async () => {
+      // Session b must never see it — before or after delivery to a.
+      expect((await runner.postToolUse('read', {}, result, b)).additionalContext).toBeUndefined();
+      expect((await runner.postToolUse('read', {}, result, a)).additionalContext).toBe(
+        'from session a',
+      );
+    });
+  });
+
+  it('delivers buffered background output on the next user prompt when no tool ran', async () => {
+    const reg = new HookRegistry();
+    const hook = vi.fn(() => ({ additionalContext: 'late scan' }));
+    reg.registerInProcess('PostToolUse', 'write', hook, 'bg', { background: true });
+    const runner = new HookRunner({ registry: reg });
+
+    await runner.postToolUse('write', {}, { content: 'ok', isError: false }, env);
+
+    await vi.waitFor(async () => {
+      expect((await runner.userPromptSubmit('next question', env)).additionalContext).toBe(
+        'late scan',
+      );
+    });
+    expect(hook).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('HookRunner.userPromptSubmit', () => {

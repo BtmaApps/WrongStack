@@ -104,7 +104,25 @@ function bindTodosToBoard(
     ];
     const task = candidates.find((candidate) => candidate && !used.has(candidate.id));
     if (!task) {
-      const { blockedBy: _discarded, ...rest } = item;
+      // No candidate matched. When the row claimed a binding on THIS board,
+      // that claimed card is gone (deleted, or another row just claimed it):
+      // strip the dead binding so createMissingManagedCards re-opens work for
+      // the row and the unresolved warning can still see it. Preserving the
+      // stale binding made every downstream guard believe the card still
+      // existed — the row was silently stranded (no card, no sync, no
+      // warning) and then dropped by the board projection.
+      const claimedHere =
+        item.kanbanBoardId === board.id || previousItem?.kanbanBoardId === board.id;
+      if (claimedHere) {
+        const {
+          blockedBy: _discarded,
+          kanbanBoardId: _deadBoardId,
+          kanbanTaskId: _deadTaskId,
+          ...rest
+        } = item;
+        return { ...rest };
+      }
+      const { blockedBy: _discardedUnbound, ...rest } = item;
       return { ...rest };
     }
     used.add(task.id);

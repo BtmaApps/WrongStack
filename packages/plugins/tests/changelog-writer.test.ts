@@ -54,6 +54,29 @@ function getTool(
   return call[0] as { execute: (input: unknown) => Promise<Record<string, unknown>> };
 }
 
+describe('per-session reset', () => {
+  it('clears pending entries when a session ends', async () => {
+    // Entries describe "this session's" work, but the plugin is set up once
+    // per PROCESS and the host outlives any one session. Only a completed
+    // write cleared the buffer, so an unwritten session's entries were carried
+    // into the next one and rendered as its work. The mock has no onEvent of
+    // its own — the subscription is guarded, so the test must supply one.
+    const api = { ...makeApi(), onEvent: vi.fn(() => vi.fn()) };
+    changelogWriterPlugin.setup(api as never);
+
+    await getTool(api as never, 'changelog_add').execute({ text: 'session A entry' });
+    const before = (await changelogWriterPlugin.health!()) as { counters: Record<string, number> };
+    expect(before.counters['pendingEntries']).toBe(1);
+
+    const sessionEnded = api.onEvent.mock.calls.find(([e]: unknown[]) => e === 'session.ended');
+    expect(sessionEnded).toBeDefined();
+    (sessionEnded![1] as () => void)();
+
+    const after = (await changelogWriterPlugin.health!()) as { counters: Record<string, number> };
+    expect(after.counters['pendingEntries']).toBe(0);
+  });
+});
+
 let tmp: string;
 let originalCwd: string;
 

@@ -1,16 +1,16 @@
 import type { Context } from '../core/context.js';
-import type { CompactReport, Compactor } from '../types/compactor.js';
-import type { ContextWindowPolicy } from '../types/context-window.js';
-import type { Message } from '../types/messages.js';
-import type { Logger } from '../types/logger.js';
 import { noOpLogger } from '../infrastructure/logger.js';
-import { estimateRequestTokens } from '../utils/token-estimate.js';
-import { repairToolUseAdjacency } from '../utils/message-invariants.js';
+import type { Compactor, CompactReport } from '../types/compactor.js';
+import type { ContextWindowPolicy } from '../types/context-window.js';
+import type { Logger } from '../types/logger.js';
+import type { Message } from '../types/messages.js';
 import {
   buildContextEvidenceDigest,
   checkCompactionQuality,
   injectEvidenceFloor,
 } from '../utils/context-evidence.js';
+import { repairToolUseAdjacency } from '../utils/message-invariants.js';
+import { estimateRequestTokens } from '../utils/token-estimate.js';
 import {
   buildLosslessDigest,
   buildSmartDigest,
@@ -20,6 +20,7 @@ import {
   hasTextContent,
   setCompactionDebugLogger,
 } from './compaction-core.js';
+import { stampCompactionReport } from './compaction-result-state.js';
 
 export interface CompactorOptions {
   preserveK?: number | undefined;
@@ -51,9 +52,9 @@ export interface CompactorOptions {
  *             This re-export exists for backward compatibility.
  */
 export {
-  DEFAULT_TOOLS_CONFIG,
-  DEFAULT_CONTEXT_CONFIG,
   DEFAULT_AUTONOMY_CONFIG,
+  DEFAULT_CONTEXT_CONFIG,
+  DEFAULT_TOOLS_CONFIG,
 } from '../types/default-config.js';
 
 export class HybridCompactor implements Compactor {
@@ -123,23 +124,26 @@ export class HybridCompactor implements Compactor {
       afterTokens = estimateMessages(ctx.messages);
       afterFull = this.estimateFullRequest(ctx);
     }
-    return {
-      before: beforeTokens,
-      after: afterTokens,
-      fullRequestTokensBefore: beforeFull,
-      fullRequestTokensAfter: afterFull,
-      reductions,
-      collapsedDigest,
-      evidenceDigest,
-      quality,
-      repaired: repaired.report.changed
-        ? {
-            removedToolUses: repaired.report.removedToolUses,
-            removedToolResults: repaired.report.removedToolResults,
-            removedMessages: repaired.report.removedMessages,
-          }
-        : undefined,
-    };
+    return stampCompactionReport(
+      {
+        before: beforeTokens,
+        after: afterTokens,
+        fullRequestTokensBefore: beforeFull,
+        fullRequestTokensAfter: afterFull,
+        reductions,
+        collapsedDigest,
+        evidenceDigest,
+        quality,
+        repaired: repaired.report.changed
+          ? {
+              removedToolUses: repaired.report.removedToolUses,
+              removedToolResults: repaired.report.removedToolResults,
+              removedMessages: repaired.report.removedMessages,
+            }
+          : undefined,
+      },
+      ctx,
+    );
   }
 
   /**

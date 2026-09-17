@@ -226,8 +226,10 @@ describe('B5 — emitContextPct elision on idle loops', () => {
     await agent.run('second message', {});
     expect(ctxPctEvents.length).toBe(2);
 
-    // Token count should have increased (more messages)
-    expect(ctxPctEvents[1]!.tokens).toBeGreaterThan(ctxPctEvents[0]!.tokens);
+    // The provider reports the same authoritative prompt usage each turn.
+    // Advancing the anchor must not count previously consumed messages twice.
+    expect(ctxPctEvents[0]!.tokens).toBeGreaterThan(50); // unsent assistant reply
+    expect(ctxPctEvents[1]!.tokens).toBe(ctxPctEvents[0]!.tokens);
   });
 
   it('uses the live provider maxContext after a model switch', async () => {
@@ -273,9 +275,11 @@ describe('B5 — emitContextPct elision on idle loops', () => {
     // All three turns emitted ctx.pct (because messages grew each time)
     expect(ctxPctEvents.length).toBe(3);
 
-    // Token counts should be strictly increasing
-    expect(ctxPctEvents[1]!.tokens).toBeGreaterThan(ctxPctEvents[0]!.tokens);
-    expect(ctxPctEvents[2]!.tokens).toBeGreaterThan(ctxPctEvents[1]!.tokens);
+    // Equal authoritative usage plus the same unsent assistant reply should
+    // stay stable; consumed messages must not accumulate in the delta.
+    expect(ctxPctEvents[0]!.tokens).toBeGreaterThan(50);
+    expect(ctxPctEvents[1]!.tokens).toBe(ctxPctEvents[0]!.tokens);
+    expect(ctxPctEvents[2]!.tokens).toBe(ctxPctEvents[0]!.tokens);
   });
 
   it('rebuilds a request after a same-length compaction rewrite', async () => {

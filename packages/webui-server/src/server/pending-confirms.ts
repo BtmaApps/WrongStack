@@ -1,4 +1,11 @@
-export type ConfirmDecision = 'yes' | 'no' | 'always' | 'deny';
+export type ConfirmDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 export interface PendingConfirm {
   resolve: (decision: ConfirmDecision) => void;

@@ -91,10 +91,14 @@ describe('fingerprintRequest / isDeterministic', () => {
 });
 
 describe('llm-cache plugin', () => {
-  it('is inert (no extension) when disabled by default', () => {
-    const api = setup(); // enabled defaults to false
-    expect(api.extensions.register).not.toHaveBeenCalled();
+  it('registers by default; enabled:false turns it off', () => {
+    // The internal master switch now defaults ON. Opting in belongs to host
+    // enablement (the catalog's defaultState), not to a second gate the user
+    // has to discover after `wstack plugin enable llm-cache` did nothing.
+    const api = setup();
+    expect(api.extensions.register).toHaveBeenCalledTimes(1);
     expect(api._tools.llm_cache_status).toBeDefined();
+    expect(setup({ enabled: false }).extensions.register).not.toHaveBeenCalled();
   });
 
   it('registers a wrapProviderRunner extension when enabled', () => {

@@ -1,8 +1,9 @@
 import type { Context } from '../core/context.js';
-import type { CompactReport, Compactor } from '../types/compactor.js';
+import type { Compactor, CompactReport } from '../types/compactor.js';
 import type { ContextWindowPolicy } from '../types/context-window.js';
 import type { Message } from '../types/messages.js';
 import { toErrorMessage } from '../utils/index.js';
+import { compactionReportStillCurrent } from './compaction-result-state.js';
 import { HybridCompactor } from './compactor.js';
 import { IntelligentCompactor } from './intelligent-compactor.js';
 import type { OneShotOrchestrator } from './one-shot-llm.js';
@@ -113,12 +114,16 @@ class JournaledCompactor implements Compactor {
   ): Promise<CompactReport> {
     const state = ctx.state;
     const revisionBefore = state.revision;
+    const sessionBefore = ctx.session;
+    const writer = ctx.activeRunSessionWriter ?? sessionBefore;
     const report = await this.inner.compact(ctx, compactOpts);
+    // Session selection may change while a selector/summarizer is pending.
+    // Never journal the old operation into the newly selected transcript.
+    if (ctx.session !== sessionBefore || !compactionReportStillCurrent(report, ctx)) return report;
     const changed =
       state.revision !== revisionBefore ||
       report.reductions.some((reduction) => reduction.saved > 0) ||
       report.repaired !== undefined;
-    const writer = ctx.session;
     if (!changed || !writer) return report;
 
     const messages = ctx.messages.map(stripTransientMessageFields);

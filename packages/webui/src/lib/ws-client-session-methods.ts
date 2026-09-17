@@ -61,7 +61,10 @@ export interface WsClientSessionMethods {
   sendAbort(sessionId?: string | undefined): void;
   subscribeSessions(sessionIds: string[]): void;
   clearSessionSubscription(): void;
-  sendConfirm(id: string, decision: 'yes' | 'no' | 'always' | 'deny'): void;
+  sendConfirm(
+    id: string,
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny',
+  ): void;
   switchModel(
     provider: string,
     model: string,
@@ -229,7 +232,11 @@ export const sessionMethods: WsClientSessionMethods = {
     this.replayOnNextSubscribe = true;
   },
 
-  sendConfirm(this: WsClientSessionHost, id: string, decision: 'yes' | 'no' | 'always' | 'deny'): void {
+  sendConfirm(
+    this: WsClientSessionHost,
+    id: string,
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny',
+  ): void {
     if (this.pendingConfirms.has(id)) {
       this.pendingConfirms.delete(id);
     }
@@ -297,13 +304,10 @@ export const sessionMethods: WsClientSessionMethods = {
         off();
         resolve(result);
       };
-      const off = this.on(
-        'codebase.index.server.shutdown_result',
-        (message) => {
-          if (message.payload.requestId && message.payload.requestId !== requestId) return;
-          finish(message.payload);
-        },
-      );
+      const off = this.on('codebase.index.server.shutdown_result', (message) => {
+        if (message.payload.requestId && message.payload.requestId !== requestId) return;
+        finish(message.payload);
+      });
       const timer = setTimeout(() => {
         finish({
           requestId,

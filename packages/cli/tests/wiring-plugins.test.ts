@@ -65,9 +65,6 @@ vi.mock('@wrongstack/plugins/semver-bump', () => ({
 vi.mock('@wrongstack/plugins/secret-scanner', () => ({
   default: { name: 'secret-scanner', register: vi.fn() },
 }));
-vi.mock('@wrongstack/plugins/todo-tracker', () => ({
-  default: { name: 'todo-tracker', register: vi.fn() },
-}));
 vi.mock('@wrongstack/plugins/token-budget', () => ({
   default: { name: 'token-budget', register: vi.fn() },
 }));
@@ -91,9 +88,6 @@ vi.mock('@wrongstack/plugins/test-runner-gate', () => ({
 }));
 vi.mock('@wrongstack/plugins/import-organizer', () => ({
   default: { name: 'import-organizer', register: vi.fn() },
-}));
-vi.mock('@wrongstack/plugins/knowledge-graph', () => ({
-  default: { name: 'knowledge-graph', register: vi.fn() },
 }));
 vi.mock('@wrongstack/plugins/spec-linker', () => ({
   default: { name: 'spec-linker', register: vi.fn() },
@@ -161,9 +155,6 @@ vi.mock('@wrongstack/plugins/dependency-vulnerability-gate', () => ({
 vi.mock('@wrongstack/plugins/migration-planner', () => ({
   default: { name: 'migration-planner', register: vi.fn() },
 }));
-vi.mock('@wrongstack/plugins/semantic-search-indexer', () => ({
-  default: { name: 'semantic-search-indexer', register: vi.fn() },
-}));
 vi.mock('@wrongstack/plugins/auto-i18n-extractor', () => ({
   default: { name: 'auto-i18n-extractor', register: vi.fn() },
 }));
@@ -194,26 +185,11 @@ vi.mock('@wrongstack/plugins/security-hotspot-scanner', () => ({
 vi.mock('@wrongstack/plugins/duplicate-code-detector', () => ({
   default: { name: 'duplicate-code-detector', register: vi.fn() },
 }));
-vi.mock('@wrongstack/plugins/code-metrics', () => ({
-  default: { name: 'code-metrics', register: vi.fn() },
-}));
-vi.mock('@wrongstack/plugins/refactor-suggester', () => ({
-  default: { name: 'refactor-suggester', register: vi.fn() },
-}));
 vi.mock('@wrongstack/plugins/test-generator', () => ({
   default: { name: 'test-generator', register: vi.fn() },
 }));
 vi.mock('@wrongstack/plugins/release-notes-generator', () => ({
   default: { name: 'release-notes-generator', register: vi.fn() },
-}));
-vi.mock('@wrongstack/plugins/smart-rename', () => ({
-  default: { name: 'smart-rename', register: vi.fn() },
-}));
-vi.mock('@wrongstack/plugins/feature-flag-tracker', () => ({
-  default: { name: 'feature-flag-tracker', register: vi.fn() },
-}));
-vi.mock('@wrongstack/plugins/interface-contract-guard', () => ({
-  default: { name: 'interface-contract-guard', register: vi.fn() },
 }));
 vi.mock('@wrongstack/plug-lsp', () => ({ default: { name: 'plug-lsp', register: vi.fn() } }));
 vi.mock('@wrongstack/telegram', () => ({ default: { name: 'telegram', register: vi.fn() } }));
@@ -453,40 +429,40 @@ describe('setupPlugins', () => {
     expect(names).toContain('plugin-stack-observer');
   });
 
-  // ── todo-tracker project-scoped filePath defaulting ───────────────────────
+  // ── context-pins project-scoped filePath defaulting ───────────────────────
 
-  it('injects default todo-tracker filePath from paths.projectDir', async () => {
+  it('injects default context-pins filePath from paths.projectDir', async () => {
     const deps = {
       ...baseDeps(),
       paths: { ...(fakePaths() as object), projectDir: '/p/proj' } as never,
     };
     await setupPlugins(deps as never);
     const [, opts] = loadPluginsMock.mock.calls[0]!;
-    // filePath is derived as <projectDir>/todo-tracker.json (join uses the
+    // filePath is derived as <projectDir>/context-pins.json (join uses the
     // host path separator; assert on both to stay cross-platform).
-    const fp = opts.pluginOptions['todo-tracker']?.filePath as string;
-    expect(fp).toBe(join('/p/proj', 'todo-tracker.json'));
+    const fp = opts.pluginOptions['context-pins']?.filePath as string;
+    expect(fp).toBe(join('/p/proj', 'context-pins.json'));
   });
 
-  it('does NOT override an explicit user-configured todo-tracker filePath', async () => {
+  it('does NOT override an explicit user-configured context-pins filePath', async () => {
     const deps = {
       ...baseDeps({
-        extensions: { 'todo-tracker': { filePath: '/custom/todos.json' } } as never,
+        extensions: { 'context-pins': { filePath: '/custom/pins.json' } } as never,
       }),
       paths: { ...(fakePaths() as object), projectDir: '/p/proj' } as never,
     };
     await setupPlugins(deps as never);
     const [, opts] = loadPluginsMock.mock.calls[0]!;
-    expect(opts.pluginOptions['todo-tracker']?.filePath).toBe('/custom/todos.json');
+    expect(opts.pluginOptions['context-pins']?.filePath).toBe('/custom/pins.json');
   });
 
-  it('does NOT inject todo-tracker filePath when paths.projectDir is absent', async () => {
+  it('does NOT inject context-pins filePath when paths.projectDir is absent', async () => {
     // fakePaths() has no projectDir → nothing to derive from.
     const deps = { ...baseDeps(), paths: fakePaths() };
     await setupPlugins(deps as never);
     const [, opts] = loadPluginsMock.mock.calls[0]!;
-    const tt = opts.pluginOptions['todo-tracker'] as { filePath?: string } | undefined;
-    expect(tt?.filePath).toBeUndefined();
+    const cp = opts.pluginOptions['context-pins'] as { filePath?: string } | undefined;
+    expect(cp?.filePath).toBeUndefined();
   });
 
   it('opts a single built-in out via config.plugins { enabled: false }', async () => {

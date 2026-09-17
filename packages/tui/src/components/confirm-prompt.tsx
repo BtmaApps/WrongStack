@@ -5,7 +5,14 @@ import { Box, Text, useInput } from '../ink.js';
 import { theme } from '../theme.js';
 import { DiffBlock, parseUnifiedDiff } from './history/code-block.js';
 
-export type ConfirmDecision = 'yes' | 'no' | 'always' | 'deny';
+export type ConfirmDecision =
+  | 'yes'
+  | 'no'
+  | 'always'
+  | 'always-exact'
+  | 'always-command'
+  | 'always-tool'
+  | 'deny';
 
 interface ConfirmPromptProps {
   toolName: string;
@@ -30,6 +37,9 @@ const BUTTON_COLOR: Record<ConfirmDecision, string> = {
   yes: 'green',
   no: 'red',
   always: 'cyan',
+  'always-exact': 'cyan',
+  'always-command': 'cyan',
+  'always-tool': 'yellow',
   deny: 'red',
 };
 
@@ -39,7 +49,10 @@ const BUTTON_COLOR: Record<ConfirmDecision, string> = {
  * (`confirmButtonSegments`), so they can never drift. `rest` carries the
  * trailing space that separates one button from the next.
  */
-function buttonLabels(suggestedPattern: string): Array<{
+function buttonLabels(
+  _suggestedPattern: string,
+  toolName = 'exec',
+): Array<{
   decision: ConfirmDecision;
   bracket: string;
   rest: string;
@@ -47,7 +60,11 @@ function buttonLabels(suggestedPattern: string): Array<{
   return [
     { decision: 'yes', bracket: '[y]', rest: 'es ' },
     { decision: 'no', bracket: '[n]', rest: 'o ' },
-    { decision: 'always', bracket: '[a]', rest: `lways (${suggestedPattern}) ` },
+    { decision: 'always-exact', bracket: '[a]', rest: ' same args ' },
+    ...(toolName === 'exec'
+      ? [{ decision: 'always-command' as const, bracket: '[c]', rest: ' command ' }]
+      : []),
+    { decision: 'always-tool', bracket: '[t]', rest: ' tool ' },
     { decision: 'deny', bracket: '[d]', rest: 'eny' },
   ];
 }
@@ -61,10 +78,11 @@ function buttonLabels(suggestedPattern: string): Array<{
  */
 export function confirmButtonSegments(
   suggestedPattern: string,
+  toolName = 'exec',
 ): Array<{ decision: ConfirmDecision; start: number; len: number }> {
   const out: Array<{ decision: ConfirmDecision; start: number; len: number }> = [];
   let col = 0;
-  for (const l of buttonLabels(suggestedPattern)) {
+  for (const l of buttonLabels(suggestedPattern, toolName)) {
     const len = l.bracket.length + l.rest.length;
     out.push({ decision: l.decision, start: col, len });
     col += len;
@@ -215,7 +233,11 @@ export function ConfirmPrompt({
     } else if (ch === 'n') {
       onDecision('no');
     } else if (ch === 'a') {
-      onDecision('always');
+      onDecision('always-exact');
+    } else if (ch === 'c' && toolName === 'exec') {
+      onDecision('always-command');
+    } else if (ch === 't') {
+      onDecision('always-tool');
     } else if (ch === 'd') {
       onDecision('deny');
     }
@@ -254,10 +276,14 @@ export function ConfirmPrompt({
           {renderDiff(diff, diffPath)}
         </Box>
       ) : null}
+      <Text dimColor>
+        Remember: [a] this input; {toolName === 'exec' ? '[c] executable, any args; ' : ''}[t] tool,
+        any input. Destructive calls still prompt.
+      </Text>
       <Text dimColor>─────────────────</Text>
       <Box flexDirection="row">
         <Text>
-          {buttonLabels(suggestedPattern).map((l) => (
+          {buttonLabels(suggestedPattern, toolName).map((l) => (
             <React.Fragment key={l.decision}>
               <Text bold color={BUTTON_COLOR[l.decision]}>
                 {l.bracket}

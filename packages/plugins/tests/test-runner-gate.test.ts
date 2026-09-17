@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Default implementation for mockExecFile shared between tests.
 // The plugin uses callback-based execFile; this simulates runner
@@ -318,7 +318,8 @@ describe('status tool', () => {
     const api = makeApi();
     await testRunnerGatePlugin.setup(api as never);
     const status = await getStatusTool(api).execute({});
-    expect(status.enabled).toBe(false);
+    // Master switch defaults ON; opting in belongs to host enablement.
+    expect(status.enabled).toBe(true);
     expect(status.command).toBe('npx vitest run');
     expect(status.counters.invocations).toBe(0);
   });

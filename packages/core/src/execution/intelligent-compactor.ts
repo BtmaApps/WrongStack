@@ -1,26 +1,20 @@
 import type { Context } from '../core/context.js';
+import { contextHistoryVersion } from '../core/context-history-version.js';
+import { noOpLogger } from '../infrastructure/logger.js';
 import type { TextBlock } from '../types/blocks.js';
 import { isTextBlock } from '../types/blocks.js';
-import type { CompactReport, Compactor } from '../types/compactor.js';
+import type { Compactor, CompactReport } from '../types/compactor.js';
+import type { Logger } from '../types/logger.js';
 import type { Message } from '../types/messages.js';
 import type { Provider, Request } from '../types/provider.js';
-import type { Logger } from '../types/logger.js';
-import { noOpLogger } from '../infrastructure/logger.js';
-import {
-  type CompactionSummaryCache,
-  compactionSummaryKey,
-  defaultCompactionSummaryCache,
-  isPlaceholderSummary,
-} from './compaction-summary-cache.js';
-import type { OneShotOrchestrator } from './one-shot-llm.js';
-import { estimateRequestTokens } from '../utils/token-estimate.js';
-import { repairToolUseAdjacency } from '../utils/message-invariants.js';
-import { readBundledInstructionText } from '../utils/instruction-file.js';
 import {
   buildContextEvidenceDigest,
   checkCompactionQuality,
   injectEvidenceFloor,
 } from '../utils/context-evidence.js';
+import { readBundledInstructionText } from '../utils/instruction-file.js';
+import { repairToolUseAdjacency } from '../utils/message-invariants.js';
+import { estimateRequestTokens } from '../utils/token-estimate.js';
 import {
   buildLosslessDigest,
   buildSmartDigest,
@@ -30,6 +24,14 @@ import {
   findSafeBoundary,
   setCompactionDebugLogger,
 } from './compaction-core.js';
+import { markStaleCompactionReport, stampCompactionReport } from './compaction-result-state.js';
+import {
+  type CompactionSummaryCache,
+  compactionSummaryKey,
+  defaultCompactionSummaryCache,
+  isPlaceholderSummary,
+} from './compaction-summary-cache.js';
+import type { OneShotOrchestrator } from './one-shot-llm.js';
 
 /**
  * Options for IntelligentCompactor.
@@ -148,6 +150,20 @@ export class IntelligentCompactor implements Compactor {
     let collapsedDigest: string | undefined;
     if (aggressive) {
       const phase2 = await this.summarizeAncientTurns(ctx);
+      if (phase2.stale) {
+        return markStaleCompactionReport(
+          stampCompactionReport(
+            {
+              before: beforeTokens,
+              after: estimateMessages(ctx.messages),
+              fullRequestTokensBefore: beforeFull,
+              fullRequestTokensAfter: this.estimateFullRequest(ctx),
+              reductions,
+            },
+            ctx,
+          ),
+        );
+      }
       if (phase2.digest !== undefined) {
         // Record completed summaries even with 0 token savings because the
         // enrichment preserves critical content across compaction.
@@ -175,23 +191,26 @@ export class IntelligentCompactor implements Compactor {
       afterTokens = estimateMessages(ctx.messages);
       afterFull = this.estimateFullRequest(ctx);
     }
-    return {
-      before: beforeTokens,
-      after: afterTokens,
-      fullRequestTokensBefore: beforeFull,
-      fullRequestTokensAfter: afterFull,
-      reductions,
-      collapsedDigest,
-      evidenceDigest,
-      quality,
-      repaired: repaired.report.changed
-        ? {
-            removedToolUses: repaired.report.removedToolUses,
-            removedToolResults: repaired.report.removedToolResults,
-            removedMessages: repaired.report.removedMessages,
-          }
-        : undefined,
-    };
+    return stampCompactionReport(
+      {
+        before: beforeTokens,
+        after: afterTokens,
+        fullRequestTokensBefore: beforeFull,
+        fullRequestTokensAfter: afterFull,
+        reductions,
+        collapsedDigest,
+        evidenceDigest,
+        quality,
+        repaired: repaired.report.changed
+          ? {
+              removedToolUses: repaired.report.removedToolUses,
+              removedToolResults: repaired.report.removedToolResults,
+              removedMessages: repaired.report.removedMessages,
+            }
+          : undefined,
+      },
+      ctx,
+    );
   }
 
   /**
@@ -214,7 +233,9 @@ export class IntelligentCompactor implements Compactor {
 
   private async summarizeAncientTurns(
     ctx: Context,
-  ): Promise<{ saved: number; digest?: string | undefined }> {
+  ): Promise<{ saved: number; digest?: string | undefined; stale?: boolean }> {
+    const historyVersion = contextHistoryVersion(ctx);
+    const owner = ctx.session;
     const messages = ctx.messages;
     const cutoff = Math.max(0, messages.length - this.preserveK * 2);
     if (cutoff <= 2) return { saved: 0 };
@@ -237,12 +258,27 @@ export class IntelligentCompactor implements Compactor {
       // Empty/placeholder results bypass the cache so a later compaction can retry.
       summaryText = await this.callSummarizer(ctx, summaryModel, summaryInput);
     } catch (err) {
+      if (
+        ctx.signal?.aborted ||
+        contextHistoryVersion(ctx) !== historyVersion ||
+        ctx.session !== owner
+      )
+        return { saved: 0, stale: true };
       this.logger.warn('Summarizer failed; falling back to lossless digest', { err });
       // Fallback: lossless rule-based digest (text preserved, tool I/O dropped).
       summaryText =
         buildLosslessDigest(toSummarize) ||
         `${toSummarize.length} earlier turns (semantic content preserved)`;
     }
+
+    // A summary of the previous prefix must never replace a rewind/edit or
+    // history belonging to a session selected while the LLM was pending.
+    if (
+      ctx.signal?.aborted ||
+      contextHistoryVersion(ctx) !== historyVersion ||
+      ctx.session !== owner
+    )
+      return { saved: 0, stale: true };
 
     // ── Type-aware enrichment ──────────────────────────────────────
     // Run buildSmartDigest on the same messages to extract critical

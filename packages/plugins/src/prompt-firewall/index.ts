@@ -580,7 +580,10 @@ interface PromptFirewallConfig {
 
 export function readConfig(raw: unknown): PromptFirewallConfig {
   const base: PromptFirewallConfig = {
-    enabled: false,
+    // Opt-in belongs to host enablement, not this switch — see the
+    // plugin-enable-double-gate audit. `redact` remains the default mode, so
+    // enabling the plugin strips secrets rather than refusing requests.
+    enabled: true,
     mode: 'redact',
     scanResponse: true,
     allow: [],
@@ -608,7 +611,7 @@ export function readConfig(raw: unknown): PromptFirewallConfig {
   const mode = rawMode === 'warn' ? 'warn' : rawMode === 'block' ? 'block' : 'redact';
   const rawScan = r['scanResponse'] ?? r['scan_response'];
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     mode,
     scanResponse: rawScan !== false,
     allow,
@@ -684,7 +687,7 @@ const plugin: Plugin = {
   // llm-cache, and llm-cache declares this plugin in optionalDeps, so the
   // firewall is the outer wrap: every request is scanned/redacted before
   // llm-cache can fingerprint or cache it.
-  defaultConfig: { enabled: false, mode: 'redact', scanResponse: true, allow: [] },
+  defaultConfig: { enabled: true, mode: 'redact', scanResponse: true, allow: [] },
   configSchema: {
     type: 'object',
     properties: {

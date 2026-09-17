@@ -217,6 +217,21 @@ export interface CollabSessionOptions {
    */
   budgetOverrides?: CollabBudgetOverrides | undefined;
   /**
+   * Project root the session's targets are confined to (WS-2026-09-17-01).
+   *
+   * The session reads every expanded target and embeds the contents in all
+   * three subagent prompts, so an unconfined target leaves the machine. The
+   * tool supplies this from `ctx.projectRoot`; when absent, no confinement is
+   * enforced (in-process callers that build a session directly).
+   */
+  projectRoot?: string | undefined;
+  /**
+   * Mirrors `Context.allowOutsideProjectRoot`. When true the confinement check
+   * is skipped, matching what every sibling file tool does. The shipped default
+   * is `true`; the check matters for a user who set `tools.restrictToProjectRoot`.
+   */
+  allowOutsideProjectRoot?: boolean | undefined;
+  /**
    * Called by the Director when a collab agent hits a soft budget limit.
    * The Director uses this to decide whether to cancel the session or extend.
    * Return 'cancel' to stop the session immediately; 'extend' to continue

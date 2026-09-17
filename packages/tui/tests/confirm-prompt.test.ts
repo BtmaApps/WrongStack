@@ -129,23 +129,24 @@ describe('ConfirmPrompt helpers', () => {
 });
 
 describe('confirmButtonSegments (button hit-test geometry)', () => {
-  it('lays out the four buttons left-to-right with contiguous columns', () => {
+  it('lays out explicit scope buttons with contiguous columns', () => {
     const segs = confirmButtonSegments('P');
-    expect(segs.map((s) => s.decision)).toEqual(['yes', 'no', 'always', 'deny']);
-    expect(segs[0]).toEqual({ decision: 'yes', start: 0, len: 6 }); // "[y]es "
-    expect(segs[1]).toEqual({ decision: 'no', start: 6, len: 5 }); // "[n]o "
-    // "[a]lways (" (10) + pattern (1) + ") " (2) = 13
-    expect(segs[2]).toEqual({ decision: 'always', start: 11, len: 13 });
-    expect(segs[3]).toEqual({ decision: 'deny', start: 24, len: 6 }); // "[d]eny"
+    expect(segs.map((s) => s.decision)).toEqual([
+      'yes',
+      'no',
+      'always-exact',
+      'always-command',
+      'always-tool',
+      'deny',
+    ]);
+    expect(segs[0]).toEqual({ decision: 'yes', start: 0, len: 6 });
+    for (let i = 1; i < segs.length; i++)
+      expect(segs[i]!.start).toBe(segs[i - 1]!.start + segs[i - 1]!.len);
   });
-
-  it('shifts the deny button right by the extra pattern length', () => {
-    const a = confirmButtonSegments('xx');
-    const b = confirmButtonSegments('xxxx');
-    expect(b[3]!.start - a[3]!.start).toBe(2);
-    // segments never overlap and stay ordered
-    for (let i = 1; i < a.length; i++) {
-      expect(a[i]!.start).toBe(a[i - 1]!.start + a[i - 1]!.len);
-    }
+  it('keeps geometry bounded independently of the suggested pattern', () => {
+    expect(confirmButtonSegments('x'.repeat(10000))).toEqual(confirmButtonSegments('x'));
+    expect(confirmButtonSegments('x', 'bash').map((s) => s.decision)).not.toContain(
+      'always-command',
+    );
   });
 });

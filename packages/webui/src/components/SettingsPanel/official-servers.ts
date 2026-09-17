@@ -109,7 +109,12 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
     description: 'Image analysis, screenshot understanding, and diagram interpretation.',
     transport: 'stdio',
     command: 'npx',
-    args: ['-y', '@z_ai/mcp-server@latest'],
+    // Pinned, not `@latest` (security-check 2026-09-17, DEP-NOTE-001): npx
+    // resolves this at every server start, so a floating tag runs whatever was
+    // published most recently — outside pnpm-lock.yaml and outside the
+    // `minimumReleaseAge: 1440` cooldown. Keep in step with the same preset in
+    // packages/core/src/infrastructure/mcp-servers.ts.
+    args: ['-y', '@z_ai/mcp-server@0.1.5'],
     env: { Z_AI_MODE: 'ZAI' },
     requiresEnvVars: ['Z_AI_API_KEY'],
     allowedTools: [

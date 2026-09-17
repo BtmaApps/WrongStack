@@ -40,7 +40,9 @@ interface ComposerProps {
   refineState: RefineState | null;
   submitWith: (mode: QueueMode) => void;
   abort: () => void;
-  decideConfirm: (decision: 'yes' | 'no' | 'always') => void;
+  decideConfirm: (
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+  ) => void;
   selectFile: (path: string) => void;
   clearQueue: () => void;
   removeQueued: (id: string) => void;
@@ -162,8 +164,20 @@ export function Composer({
             >
               Deny
             </button>
-            <button type="button" aria-keyshortcuts="a" onClick={() => decideConfirm('always')}>
-              Always
+            <button
+              type="button"
+              aria-keyshortcuts="a"
+              onClick={() => decideConfirm('always-exact')}
+            >
+              Same input / args
+            </button>
+            {pendingConfirm.toolName === 'exec' && (
+              <button type="button" onClick={() => decideConfirm('always-command')}>
+                Command, any args
+              </button>
+            )}
+            <button type="button" onClick={() => decideConfirm('always-tool')}>
+              Tool, any input
             </button>
             <button
               type="button"

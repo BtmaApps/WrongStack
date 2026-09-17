@@ -150,6 +150,23 @@ function readConfig(raw: unknown): TokenBudgetConfig {
  * previous registration is abandoned in the registry, unreachable, and
  * still firing.
  */
+/**
+ * Zero the running totals and the one-shot threshold latches.
+ *
+ * Shared by `setup()`, `teardown()`, and the `session.ended` subscription.
+ */
+function resetCounters(): void {
+  state.totalTokens = 0;
+  state.totalPromptTokens = 0;
+  state.totalCompletionTokens = 0;
+  state.requestCount = 0;
+  state.warningFired = false;
+  state.stopFired = false;
+  state.warnContextInjected = false;
+  state.stopContextInjected = false;
+  state.lastRequest = null;
+}
+
 function clearRegistrations(): void {
   for (const key of ['hookUnregister', 'postHookUnregister'] as const) {
     const off = state[key];
@@ -318,6 +335,18 @@ const plugin: Plugin = {
           limit: cfg.limit,
         });
       }
+    });
+
+    // The budget is per SESSION, but this plugin is set up once per PROCESS
+    // and the host outlives any single session: the WebUI opens additional
+    // sessions in the same process (`session.new`) and clears context without
+    // reloading plugins. Nothing reset these counters, so a finished session's
+    // tokens carried into the next one — and once `stopFired` latched, the
+    // Stop hook kept refusing to let a brand-new session run, with a reason
+    // quoting a total the user never spent there. loop-breaker learned the
+    // same lesson; it resets its per-run state on UserPromptSubmit.
+    api.onEvent('session.ended', () => {
+      resetCounters();
     });
 
     // Register a Stop hook that checks the budget. When the stop

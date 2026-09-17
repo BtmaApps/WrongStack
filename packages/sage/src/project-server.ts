@@ -15,6 +15,7 @@ import {
   useDaemonPerfDefaults,
 } from '@wrongstack/core/utils';
 import { bindProjectEndpoint } from '@wrongstack/persistence';
+import { timingSafeTokenEqual } from '@wrongstack/primitives';
 import { SqliteMemoryPort } from './memory-port.js';
 import { detectNinepStoreMount, ninepStoreRefusalMessage, readSelfMounts } from './mount-probe.js';
 import {
@@ -91,6 +92,10 @@ interface ClientState {
   socket: net.Socket;
   buffer: string;
   active: Map<number, AbortController>;
+  /** Wall clock at accept, so the silent-client sweep can age this socket. */
+  connectedAt: number;
+  /** Set on the first inbound byte. A socket that never speaks is reaped. */
+  spoken: boolean;
   /**
    * Request ids whose dispatch has not produced a response yet. `stop()`
    * answers each of these with a clean stopping rejection BEFORE the socket
@@ -157,6 +162,35 @@ if (ninepMountFsType) {
 }
 const idleMsInput = Number(process.env['WRONGSTACK_SAGE_SERVER_IDLE_MS']);
 const idleMs = Number.isFinite(idleMsInput) && idleMsInput >= 100 ? idleMsInput : DEFAULT_IDLE_MS;
+/**
+ * A socket that connects and then never sends a single byte pins this daemon
+ * open forever: `clients.add` happens on accept, so `clients.size` stays above
+ * zero, `scheduleIdleStop()` returns early and the idle timer is never armed.
+ * No auth token is needed — the socket is registered before any message is
+ * validated. Measured before this existed: with a 2s idle window a silent
+ * connection kept the daemon alive past 15s.
+ *
+ * Safe here even though `broadcast()` writes to every connected socket with no
+ * subscription filter, because the reap keys off "has this socket EVER
+ * spoken". The only consumer of SAGE events in the repo is
+ * `remote-memory-port.ts`, and it speaks: `connection.call(op, args, …)`.
+ * `onEvent()` itself is purely local — it appends to a listener Set and sends
+ * nothing — so subscribing never makes a socket look alive, and there is no
+ * listen-only mode on the port.
+ *
+ * NOTE: that unfiltered broadcast is a SEPARATE finding — events still reach
+ * any socket that sends anything at all, authenticated or not. Closing that is
+ * an authorization change and is deliberately not bundled here.
+ *
+ * The sweep deliberately does NOT call `scheduleIdleStop()` — doing that from
+ * a periodic timer is the re-arm starvation that kept the mailbox and kanban
+ * daemons alive forever. `destroy()` fires `close`, which owns the bookkeeping.
+ */
+const DEFAULT_SILENT_CLIENT_MS = 120_000;
+const silentInput = Number(process.env['WRONGSTACK_SAGE_SERVER_SILENT_CLIENT_MS']);
+const silentClientMs =
+  Number.isFinite(silentInput) && silentInput >= 1_000 ? silentInput : DEFAULT_SILENT_CLIENT_MS;
+const silentSweepMs = Math.min(30_000, Math.max(1_000, Math.floor(silentClientMs / 4)));
 const startedAt = new Date().toISOString();
 // Per-process auth token. Minted at startup, persisted to `server.json`,
 // required on every `request` message — closes the "same-UID process can
@@ -174,6 +208,7 @@ const store = new SqliteMemoryPort({
 const clients = new Set<ClientState>();
 let pendingRequests = 0;
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
+let silentClientSweep: ReturnType<typeof setInterval> | undefined;
 let stopping = false;
 let lastAutomaticHygieneAt = 0;
 let lastAutomaticHygieneReport: SageServerOperations['hygiene']['result'] | undefined;
@@ -587,7 +622,15 @@ function checkAuthToken(state: ClientState, message: SageProjectServerClientMess
       : message.type === 'shutdown'
         ? message.authToken
         : undefined;
-  if ((message.type === 'request' || message.type === 'shutdown') && supplied !== authToken) {
+  // Constant time: `!==` returns as soon as two characters differ, leaking how
+  // long a guess's shared prefix was — the WS-110 class. Every sibling project
+  // daemon was converted; SAGE was missed and still compared raw, with no rate
+  // limit in front of it. `timingSafeTokenEqual` treats a missing `supplied`
+  // as a mismatch, so the rejection below keeps its exact previous semantics.
+  if (
+    (message.type === 'request' || message.type === 'shutdown') &&
+    !timingSafeTokenEqual(supplied, authToken)
+  ) {
     send(state, {
       type: 'response',
       id: message.id,
@@ -667,6 +710,7 @@ function handleMessage(state: ClientState, message: SageProjectServerClientMessa
 }
 
 function onData(state: ClientState, chunk: string): void {
+  state.spoken = true;
   state.buffer += chunk;
   if (state.buffer.length > MAX_FRAME_BUFFER_CHARS) {
     state.socket.destroy(new Error('SAGE request frame exceeded maximum size'));
@@ -739,6 +783,8 @@ async function stop(_reason: string): Promise<void> {
   if (stopping) return;
   stopping = true;
   if (idleTimer) clearTimeout(idleTimer);
+  if (silentClientSweep) clearInterval(silentClientSweep);
+  silentClientSweep = undefined;
   idleTimer = undefined;
   // WS-059: remove metadata BEFORE releasing the endpoint. The bind is the
   // ownership election, so while it is still held no successor daemon can
@@ -821,6 +867,8 @@ const server = net.createServer((socket) => {
     socket,
     buffer: '',
     active: new Map(),
+    connectedAt: Date.now(),
+    spoken: false,
     unsettled: new Set<number>(),
     clientId,
   };
@@ -840,6 +888,18 @@ const server = net.createServer((socket) => {
     // This is consistent with the kanban and codebase-index servers.
   });
 });
+
+// See `silentClientMs`: drops only sockets that connected and never sent a
+// byte, so the idle shutdown can actually be reached. `close` does the rest.
+silentClientSweep = setInterval(() => {
+  const cutoff = Date.now() - silentClientMs;
+  for (const state of clients) {
+    if (!state.spoken && state.connectedAt < cutoff) {
+      state.socket.destroy(new Error('SAGE client connected without ever sending a request'));
+    }
+  }
+}, silentSweepMs);
+silentClientSweep.unref?.();
 
 // The bind is the ownership election, including the probe-then-reclaim ladder
 // for an endpoint left behind by a daemon that died without cleanup. That

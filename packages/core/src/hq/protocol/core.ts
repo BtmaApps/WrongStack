@@ -798,7 +798,16 @@ function isHqToolCompletedPayload(x: unknown): x is HqToolCompletedPayload {
   );
 }
 
-const HQ_APPROVAL_DECISIONS = new Set(['yes', 'no', 'always', 'deny', 'abort']);
+const HQ_APPROVAL_DECISIONS = new Set([
+  'yes',
+  'no',
+  'always',
+  'always-exact',
+  'always-command',
+  'always-tool',
+  'deny',
+  'abort',
+]);
 const HQ_APPROVAL_SOURCES = new Set(['brain_timeout', 'abort', 'user']);
 
 function isHqApprovalRequestedPayload(x: unknown): x is HqApprovalRequestedPayload {

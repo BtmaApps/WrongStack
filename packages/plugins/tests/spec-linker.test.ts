@@ -20,12 +20,13 @@
  *  - markdown-link / inline-code detection still works
  *  - `edit` is NOT auto-fixed (only `write` is)
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import specLinkerPlugin from '../src/spec-linker/index.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLUGIN_NAMES } from '../src/catalog.js';
+import specLinkerPlugin from '../src/spec-linker/index.js';
 
 // ---------------------------------------------------------------------------
 // Types + helpers
@@ -422,7 +423,7 @@ describe('spec-linker plugin', () => {
           'Second reference: token-budget.',
           'Third reference: lint-gate.',
           'Fourth reference: branch-guard.',
-          'Fifth reference: todo-tracker.',
+          'Fifth reference: context-pins.',
         ].join('\n'),
         'utf-8',
       );

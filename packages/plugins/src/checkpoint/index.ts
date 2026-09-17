@@ -338,6 +338,23 @@ const plugin: Plugin = {
 
     const cfg = readConfig(api.config.extensions?.['checkpoint']);
 
+    // Snapshots are "in-session" by this plugin's own contract — it restores
+    // "any pre-edit state from this session". But the plugin is set up once
+    // per PROCESS and the host outlives any one session (the WebUI opens
+    // additional sessions in the same process), and nothing ever cleared the
+    // ring. A snapshot captured in one session stayed restorable in the next,
+    // and `checkpoint_restore` defaults to the NEWEST snapshot — so a restore
+    // could write another session's captured content over a live file.
+    // Clearing the ring also releases its retained bytes: the budget is the
+    // sum of the snapshots' own `bytes`, not a separate counter.
+    // Guarded like pr-drafter's subscription — minimal hosts omit onEvent.
+    if (api.onEvent) {
+      api.onEvent('session.ended', () => {
+        state.snapshots = [];
+        state.nextId = 1;
+      });
+    }
+
     // ── Auto-capture hook ─────────────────────────────────────────────
     if (cfg.enabled && cfg.autoCapture) {
       const hook = async (

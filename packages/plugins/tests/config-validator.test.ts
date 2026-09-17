@@ -108,6 +108,64 @@ describe('validateYaml', () => {
   it('accepts a normal document', () => {
     expect(validateYaml('name: test\nsteps:\n  - run: build\n  - run: test')).toHaveLength(0);
   });
+
+  // Every case below produced a FALSE problem before the 2026-09-17 fix. This
+  // hook injects its findings as "fix these before moving on", so a false
+  // positive costs a turn and invites an edit to an already-correct file.
+  describe('false positives', () => {
+    it('does not read a block scalar body as YAML', () => {
+      // Shell inside `run: |` — the exact shape in this repo's own ci.yml,
+      // which used to report `duplicate key "echo "FAIL"`.
+      const yaml =
+        'jobs:\n  build:\n    steps:\n      - name: check\n        run: |\n          echo "FAIL"\n          echo "FAIL"\n';
+      expect(validateYaml(yaml)).toHaveLength(0);
+    });
+
+    it('does not read a block scalar opened on a list-item line', () => {
+      expect(
+        validateYaml('steps:\n  - run: |\n      name: not-a-key\n      name: still-not\n'),
+      ).toHaveLength(0);
+    });
+
+    it('does not read a folded scalar body as YAML', () => {
+      expect(validateYaml('desc: >\n  name: not a key\n  name: still not\n')).toHaveLength(0);
+    });
+
+    it('tolerates a tab inside a block scalar body', () => {
+      expect(validateYaml('script: |\n  \tindented with a tab\n')).toHaveLength(0);
+    });
+
+    it('handles keys containing a colon without corrupting the scope stack', () => {
+      // A key the pattern could not read left the previous sibling's children
+      // on the stack, so the next nested key looked like a duplicate. This is
+      // the pnpm-lock shape: `'@scope/pkg@file:///D:/repo':`.
+      const yaml =
+        "packages:\n  '@a/x@file:///D:/p/a':\n    resolution: {directory: ../a}\n  '@a/y@file:///D:/p/b':\n    resolution: {directory: ../b}\n";
+      expect(validateYaml(yaml)).toHaveLength(0);
+    });
+
+    it('handles an unparsable key line without inventing a duplicate', () => {
+      expect(
+        validateYaml("root:\n  'weird::key':\n    inner: 1\n  'other::key':\n    inner: 2\n"),
+      ).toHaveLength(0);
+    });
+  });
+
+  // The fix must not cost real detections.
+  describe('still catches real problems', () => {
+    it('flags a duplicate key after a block scalar ends', () => {
+      const yaml = 'script: |\n  echo hi\nname: a\nname: b\n';
+      expect(validateYaml(yaml)[0]).toContain('duplicate key "name"');
+    });
+
+    it('flags a duplicate key under the same parent', () => {
+      expect(validateYaml('server:\n  port: 1\n  port: 2\n')[0]).toContain('duplicate key "port"');
+    });
+
+    it('flags an unclosed quote outside a block scalar', () => {
+      expect(validateYaml('name: "unterminated\n')[0]).toContain('unclosed double quote');
+    });
+  });
 });
 
 describe('validateToml', () => {

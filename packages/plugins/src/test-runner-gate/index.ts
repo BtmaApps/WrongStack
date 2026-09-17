@@ -35,7 +35,7 @@ import { access } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join } from 'node:path';
 import type { Plugin } from '@wrongstack/core/types';
 import { buildWin32CmdShimInvocation, resolveWin32Command } from '@wrongstack/tools/win32';
-import { releaseHandle, BoundedMap, withinProject } from '../runtime/index.js';
+import { BoundedMap, releaseHandle, withinProject } from '../runtime/index.js';
 
 /**
  * Resolve a (command, args) pair for execFile so Windows .cmd shims launch
@@ -131,7 +131,9 @@ interface TestGateConfig {
 }
 
 const DEFAULTS: TestGateConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit.
+  enabled: true,
   runner: 'auto',
   command: '',
   timeoutMs: 30_000,
@@ -149,7 +151,7 @@ function readConfig(raw: unknown): TestGateConfig {
       ? r['runner']
       : 'auto';
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     runner,
     command: typeof r['command'] === 'string' ? r['command'] : DEFAULTS.command,
     timeoutMs:

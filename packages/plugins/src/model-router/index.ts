@@ -66,7 +66,10 @@ interface ModelRouterConfig {
 }
 
 const DEFAULTS: ModelRouterConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit. Routing still needs rules, and dryRun
+  // stays on by default.
+  enabled: true,
   dryRun: true,
   rules: [],
 };
@@ -95,7 +98,7 @@ function readConfig(raw: unknown): ModelRouterConfig {
     : [];
   const rawDryRun = r['dryRun'] ?? r['dry_run'];
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     dryRun: rawDryRun !== false,
     rules,
   };

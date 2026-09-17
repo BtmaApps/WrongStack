@@ -52,7 +52,9 @@ export interface CreateContainerOptions {
       tool: Tool,
       input: unknown,
       suggestedPattern: string,
-    ) => Promise<'yes' | 'no' | 'always' | 'deny'>;
+    ) => Promise<
+      'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'
+    >;
   };
   compactor?: { preserveK?: number | undefined; eliseThreshold?: number | undefined };
   systemPrompt?: Partial<DefaultSystemPromptBuilderOptions> | undefined;

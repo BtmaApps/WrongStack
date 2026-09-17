@@ -13,7 +13,7 @@
  * request via a `SystemPromptContributor`, so pins survive context
  * compaction by construction. Pins persist across sessions in a JSON
  * file (default: `<projectDir>/context-pins.json`, seeded by the CLI
- * host the same way `todo-tracker` gets its path).
+ * host the same way the host wiring seeds the path).
  *
  * Config (`config.extensions['context-pins']`):
  *
@@ -73,6 +73,8 @@ const state: ContextPinsState = {
 interface ContextPinsConfig {
   enabled: boolean;
   filePath: string;
+  /** True when a `filePath` WAS configured but resolved outside every root. */
+  filePathRejected: boolean;
   maxPins: number;
   maxPinChars: number;
 }
@@ -80,21 +82,58 @@ interface ContextPinsConfig {
 const DEFAULTS: ContextPinsConfig = {
   enabled: true,
   filePath: '',
+  filePathRejected: false,
   maxPins: 20,
   maxPinChars: 500,
 };
 
-function resolveProjectPath(rawPath: string, cwd = process.cwd()): string | null {
+/**
+ * Resolve the pin store path, accepting it only inside one of `roots`.
+ *
+ * The containment exists because `filePath` arrives through
+ * `config.extensions`, and in-project config is untrusted by this repo's own
+ * trust boundary — an absolute path or `..` traversal would turn pin
+ * persistence into arbitrary-file I/O.
+ *
+ * It used to admit ONE root, `process.cwd()`, which silently broke the only
+ * path the product actually uses: the CLI seeds
+ * `<projectDir>/context-pins.json` (`wiring/plugins.ts`), and `projectDir` is
+ * `~/.wrongstack/projects/<hash>/` — outside the cwd, therefore rejected,
+ * therefore `''`, therefore in-memory only. Pins silently never reached disk
+ * while `pin_add` reported `persisted: true`, in a plugin whose description
+ * promises they "persist across sessions". The host's own project directory
+ * is now a second accepted root; anything outside both is still refused.
+ */
+function resolveProjectPath(rawPath: string, roots: readonly string[]): string | null {
   if (typeof rawPath !== 'string' || rawPath.length === 0) return '';
-  const root = resolve(cwd);
-  const resolved = isAbsolute(rawPath) ? resolve(rawPath) : resolve(root, rawPath);
-  const rel = relative(root, resolved);
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return resolved;
+  // A relative path keeps resolving against the first root (the cwd), so the
+  // documented `.wrongstack/pins.json` spelling is unchanged.
+  const primary = resolve(roots[0] ?? process.cwd());
+  const resolved = isAbsolute(rawPath) ? resolve(rawPath) : resolve(primary, rawPath);
+  for (const root of roots) {
+    if (!root) continue;
+    const base = resolve(root);
+    const rel = relative(base, resolved);
+    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return resolved;
+  }
   return null;
 }
 
-function readConfig(raw: unknown): ContextPinsConfig {
-  if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
+/**
+ * The host's per-project state directory, when the host injected one.
+ *
+ * `wiring/plugins.ts` patches `paths` onto the config object every plugin
+ * receives, but `Config` does not declare the field and no other plugin reads
+ * it — hence the narrow local accessor rather than a shared helper. Absent or
+ * malformed, pins simply fall back to the cwd root.
+ */
+function hostProjectDir(api: unknown): string {
+  const paths = (api as { config?: { paths?: { projectDir?: unknown } } } | null)?.config?.paths;
+  return typeof paths?.projectDir === 'string' ? paths.projectDir : '';
+}
+
+function readConfig(raw: unknown, roots: readonly string[] = [process.cwd()]): ContextPinsConfig {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULTS, filePathRejected: false };
   const r = raw as Record<string, unknown>;
   const rawPath =
     typeof r['filePath'] === 'string'
@@ -108,9 +147,14 @@ function readConfig(raw: unknown): ContextPinsConfig {
             : DEFAULTS.filePath;
   const rawMaxPins = r['maxPins'] ?? r['max_pins'] ?? r['limit'];
   const rawMaxChars = r['maxPinChars'] ?? r['max_pin_chars'] ?? r['maxChars'] ?? r['max_chars'];
+  const resolvedPath = rawPath ? resolveProjectPath(rawPath, roots) : '';
   return {
     enabled: r['enabled'] !== false,
-    filePath: rawPath ? (resolveProjectPath(rawPath) ?? '') : '',
+    filePath: resolvedPath ?? '',
+    // A rejected path is not the same as "no path configured": the first is a
+    // misconfiguration the operator must hear about, the second is the
+    // documented in-memory mode. They used to collapse into the same silent ''.
+    filePathRejected: resolvedPath === null,
     maxPins:
       typeof rawMaxPins === 'number' && rawMaxPins >= 1 && rawMaxPins <= 100
         ? rawMaxPins
@@ -152,8 +196,17 @@ function loadPins(filePath: string): { pins: Pin[]; nextId: number } {
   }
 }
 
-async function persistPins(filePath: string): Promise<boolean> {
-  if (!filePath) return true;
+/**
+ * Where the pins actually ended up.
+ *
+ * `persistPins` used to return `true` for an empty path — "nothing to write"
+ * reported as "written". Every tool forwarded that as `persisted: true`, so a
+ * store that was silently in-memory was indistinguishable from one on disk.
+ */
+type PersistOutcome = 'file' | 'memory' | 'error';
+
+async function persistPins(filePath: string): Promise<PersistOutcome> {
+  if (!filePath) return 'memory';
   try {
     // Atomic tmp+rename so a crash mid-write can't tear the pin state.
     //
@@ -166,11 +219,11 @@ async function persistPins(filePath: string): Promise<boolean> {
       filePath,
       JSON.stringify({ pins: state.pins, nextId: state.nextId }, null, 2),
     );
-    return true;
+    return 'file';
   } catch {
     /* v8 ignore start */
     state.persistErrors += 1;
-    return false;
+    return 'error';
     /* v8 ignore stop */
   }
 }
@@ -227,7 +280,19 @@ const plugin: Plugin = {
       state.contributorUnregister = null;
     }
 
-    const cfg = readConfig(api.config.extensions?.['context-pins']);
+    // Two accepted roots: the cwd (the documented relative spelling) and the
+    // host's own per-project directory, which is where the CLI actually seeds
+    // this file. Passing only the cwd is what made every host-seeded store
+    // in-memory.
+    const cfg = readConfig(api.config.extensions?.['context-pins'], [
+      process.cwd(),
+      hostProjectDir(api),
+    ]);
+    if (cfg.filePathRejected) {
+      api.log.warn(
+        'context-pins: configured filePath resolves outside the project and the host project directory — pins will NOT persist across sessions',
+      );
+    }
     const loaded = loadPins(cfg.filePath);
     state.pins = loaded.pins.slice(0, cfg.maxPins);
     state.nextId = loaded.nextId;
@@ -294,8 +359,16 @@ const plugin: Plugin = {
         state.pins.push(pin);
         state.adds += 1;
         api.metrics.counter('adds');
-        const persisted = await persistPins(cfg.filePath);
-        return { ok: true, pin, persisted, totalPins: state.pins.length };
+        const storage = await persistPins(cfg.filePath);
+        // `persisted` now means "this pin is on disk" — nothing else. It used
+        // to be true for a store that was never written.
+        return {
+          ok: true,
+          pin,
+          persisted: storage === 'file',
+          storage,
+          totalPins: state.pins.length,
+        };
       },
     });
 
@@ -333,8 +406,14 @@ const plugin: Plugin = {
         if (removed === 0) throw new Error(`no pin matches "${key}"`);
         state.removals += removed;
         api.metrics.counter('removals', removed);
-        const persisted = await persistPins(cfg.filePath);
-        return { ok: true, removed, persisted, totalPins: state.pins.length };
+        const storage = await persistPins(cfg.filePath);
+        return {
+          ok: true,
+          removed,
+          persisted: storage === 'file',
+          storage,
+          totalPins: state.pins.length,
+        };
       },
     });
 
@@ -354,6 +433,10 @@ const plugin: Plugin = {
           totalPins: state.pins.length,
           maxPins: cfg.maxPins,
           filePath: cfg.filePath || null,
+          // Makes "these pins are only in memory" legible to the caller
+          // instead of leaving it to be inferred from a null path.
+          storage: cfg.filePath ? 'file' : 'memory',
+          filePathRejected: cfg.filePathRejected,
           counters: {
             adds: state.adds,
             removals: state.removals,

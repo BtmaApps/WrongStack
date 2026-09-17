@@ -1,10 +1,15 @@
 # @wrongstack/plugins
 
 First-party plugin collection for [WrongStack](https://github.com/WrongStack/WrongStack).
-Sixty-four focused, single-purpose plugins ship in this package. Passive,
-broadly applicable diagnostics and bounded safety checks load automatically;
-plugins with automatic mutation, policy enforcement, network egress, background
-work, or provider-call semantic changes are opt-in.
+Sixty-four focused, single-purpose plugins ship in this package. Only a small
+set loads automatically: bounded safety checks whose absence is a real hazard
+(`secret-scanner`, `injection-shield`, `dep-guard`) plus two passive,
+near-free diagnostics (`error-lens`, `context-pins`). Everything else is
+opt-in — including plugins that are merely *useful*, because a default-active
+plugin is paid for by every user on every session: its tools enter the wire
+description of every prompt, and its foreground hooks are awaited before each
+turn continues. Automatic mutation, policy enforcement, network egress,
+background work, and provider-call semantic changes are opt-in by rule.
 
 ## What this is
 
@@ -211,37 +216,7 @@ The `high_entropy_env` pattern from the output scrubber is
 intentionally omitted — too slow and too false-positive prone
 for a synchronous pre-tool gate.
 
-### 10. `todo-tracker` — persistent backlog
-
-**Tools**: `todo_tracker_list`, `todo_tracker_add`, `todo_tracker_complete`, `todo_tracker_drop`, `todo_tracker_remove`, `todo_tracker_pull`, `todo_tracker_status`
-
-Closes a gap that no existing tool fills: a **per-project backlog**
-that survives across sessions. The built-in `todo` tool mutates
-`ctx.todos` (session-scoped, auto-clears when all items complete);
-`PlanFile` and `TaskFile` are also session-scoped. This plugin
-writes a per-project JSON file with atomic write (temp + rename).
-
-**Cross-session bridge**: `todo_tracker_pull` returns active items
-for the LLM to re-register with the built-in `todo` tool (which
-mutates `ctx.todos`). The plugin never touches `ctx.todos` directly
-— that separation respects the existing session/tool boundary.
-
-**Storage**: per-project JSON at the path provided by
-`paths.projectDir` (via the host's wiring) or via the explicit
-[`todo-tracker`](./src/todo-tracker) `filePath` config field.
-
-```jsonc
-// Explicit override (use when the host doesn't supply paths.projectDir)
-{
-  "extensions": {
-    "todo-tracker": {
-      "filePath": "/abs/path/to/todo-tracker.json"
-    }
-  }
-}
-```
-
-### 11. `token-budget` — per-session token enforcement
+### 10. `token-budget` — per-session token enforcement
 
 **Tools**: `token_budget_status`
 **Hooks**: `Stop` + `PostToolUse` (matcher `*`)
@@ -268,7 +243,7 @@ crosses `stopPercent`, the `Stop` hook blocks the agent loop.
 `token_budget_status` tool reports the exact consumed/remaining
 breakdown.
 
-### 12. `lint-gate` — pre-write lint enforcement
+### 11. `lint-gate` — pre-write lint enforcement
 
 **Tools**: `lint_gate_status`
 **Hooks**: `PreToolUse` (matcher `write|edit`)
@@ -312,7 +287,7 @@ result is linted.
 }
 ```
 
-### 13. `branch-guard` — protected branch enforcement
+### 12. `branch-guard` — protected branch enforcement
 
 **Tools**: `branch_guard_status`
 **Hooks**: `PreToolUse` (matcher `bash|git_autocommit`)
@@ -343,7 +318,7 @@ git stash → git checkout -b feat/my-change → git stash pop → git commit ..
 Each operation type can be individually toggled. `git_autocommit`
 tool calls are treated as commits.
 
-### 14. `diff-summary` — post-write/edit diff injection
+### 13. `diff-summary` — post-write/edit diff injection
 
 **Tools**: `diff_summary_status`
 **Hooks**: `PostToolUse` (matcher `write|edit`)
@@ -374,7 +349,7 @@ and showing surrounding context.
 For untracked/new files: uses `git diff --no-index /dev/null <path>`.
 For non-git repos: silent fallback (no injection). Skips on tool errors.
 
-### 15. `commit-validator` — conventional-commit enforcement
+### 14. `commit-validator` — conventional-commit enforcement
 
 **Tools**: `commit_validator_status`
 **Hooks**: `PreToolUse` (matcher `bash|git_autocommit`)
@@ -410,7 +385,7 @@ conventional-commit format:
 Standard types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`,
 `test`, `build`, `ci`, `chore`, `revert`.
 
-### 16. `format-on-save` — automatic biome formatting
+### 15. `format-on-save` — automatic biome formatting
 
 **Tools**: `format_on_save_status`
 **Hooks**: `PostToolUse` (matcher `write|edit`)
@@ -438,7 +413,7 @@ hook is a silent no-op. Works alongside [`lint-gate`](./src/lint-gate)
 (which shows the diff AFTER) — together they form a complete write
 pipeline: lint → write → format → diff.
 
-### 17. `test-runner-gate` — automatic test execution
+### 16. `test-runner-gate` — automatic test execution
 
 **Tools**: `test_gate_status`
 **Hooks**: `PostToolUse` (matcher `write|edit`)
@@ -1038,7 +1013,7 @@ The H1 pattern:
    chokidar watchers are `close()`'d, caches are cleared. The
    unregister handle returned by `api.registerHook` is called.
 4. **`teardown` does not delete on-disk state.** File-based plugins
-   (e.g. `todo-tracker`) leave the file in place — the user may
+   (e.g. `context-pins`) leave the file in place — the user may
    return in a moment to read it.
 5. **`health()` reports per-session counters** for `/diag plugins`
    visibility.

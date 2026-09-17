@@ -1,0 +1,110 @@
+{
+  "run_status": "complete",
+  "scan": {
+    "date": "2026-09-15",
+    "head": "ed3689988",
+    "working_tree": "packages/sage/src/sqlite-store-{hygiene,search}.ts modified",
+    "baseline": "3984ebef1",
+    "profile": "standard",
+    "scope": "whole repository (delta-led; unchanged surfaces carried from verified 2026-09-10 audit)",
+    "validation": "source-only; no target code executed",
+    "verification_independence": "HCM-* verified by a separate agent that did not hunt them; TD-* verified by the orchestrator, which did not hunt them"
+  },
+  "confirmed": [
+    {
+      "id": "WS-2026-09-15-01",
+      "sources": ["HCM-001"],
+      "title": "HQ /ws/client accepts unauthenticated publishers on a password-protected network bind once no live client token remains",
+      "severity": "Medium",
+      "cvss_rationale": "AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N — network peer, no credential; requires non-loopback bind and all client tokens expired/revoked; impact is spoofed sessions/approval prompts and receipt of operator commands addressed to the rogue client; run-command still requires control.execute",
+      "cwe": "CWE-306",
+      "confidence": 80,
+      "locations": [
+        "packages/cli/src/hq-server/auth.ts:369-371",
+        "packages/cli/src/hq-server/upgrade-handler.ts:99-102",
+        "packages/cli/src/hq-server/ws.ts:225-229",
+        "packages/cli/src/hq-server.ts:149-157",
+        "packages/core/src/hq/exposure.ts:94-118"
+      ],
+      "remediation": "Make hqClientAuthRequired fail closed when any browser credential exists (passwordHash || browserTokens.size > 0 || requireBrowserAuth), matching the doc comment at auth.ts:363-368; keep explicit OPEN MODE only for the no-credential case; add a regression test with password + expired client token, validated by re-introducing the bug."
+    },
+    {
+      "id": "WS-2026-09-15-02",
+      "sources": ["HCM-003"],
+      "title": "In-process HQ password change/removal, TOTP enable and session revoke leave already-open /ws/browser sockets streaming",
+      "severity": "Low",
+      "cvss_rationale": "AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N — requires a socket already open at revocation time; read-only telemetry/transcripts/approvals; HTTP control is correctly cut",
+      "cwe": "CWE-613",
+      "confidence": 85,
+      "locations": [
+        "packages/cli/src/hq-server/routes/auth/password-routes.ts:373-374,408-409",
+        "packages/cli/src/hq-server/routes/auth/totp-routes.ts:341-343",
+        "packages/cli/src/hq-server/routes/auth/session-audit-routes.ts:55,62",
+        "packages/cli/src/hq-server.ts:469,527-561"
+      ],
+      "remediation": "Move socket eviction next to session deletion: one helper (e.g. revokeSessions(ids | 'all')) that deletes sessions AND closes browserSocketSessions entries, called from the watcher and from every in-process route; or snapshot previous auth before in-process apply."
+    }
+  ],
+  "needs_validation": [
+    {
+      "id": "WS-2026-09-15-NV1",
+      "sources": ["HCM-004", "TD-002"],
+      "priority": 1,
+      "title": "Windows: bare executable names are resolved with the untrusted project directory as the search cwd (MCP stdio via cmd.exe `call`, and git/rg/patch/docker/pnpm spawns via libuv), so a repository can plant the binary that runs",
+      "cwe": "CWE-427",
+      "trace": [
+        "packages/cli/src/wiring/lifecycle-plugins.ts:413-417; packages/webui-server/src/server/pre-context-services.ts:287-294; packages/cli/src/acp-mcp-servers.ts:58-63 — MCPRegistry cwd = project root / ACP session cwd",
+        "packages/mcp/src/registry-connect-loop.ts:220-230 — cfg.command passed verbatim",
+        "packages/mcp/src/client.ts:287-298 + packages/core/src/utils/win32-cmd.ts:33-44 — COMSPEC /d /c call \"<bare>\" with cwd",
+        "packages/core/src/utils/child-env.ts:236-286 — NoDefaultCurrentDirectoryInExePath not allowlisted, so an operator-set mitigation is stripped",
+        "packages/tools/src/grep.ts:232,314 (auto), diff.ts:304 (auto), git.ts:465, replace.ts:474,496, patch.ts, logs.ts, codebase-index/indexer.ts execFile('git') started at boot via packages/cli/src/wiring/codebase-index.ts:101",
+        "packages/security-scanner/src/package-audit.ts — npm/pnpm audit through the cmd shim with cwd = project root"
+      ],
+      "control_gap": "The repo already solved this class for LSP (plug-lsp command-resolver: allowProjectLocal default false + isInsideProject gate) and strips repo-defined mcpServers, but no shared resolver turns bare names into absolute paths outside the project for MCP/tools spawns.",
+      "blocker": "Windows runtime executable search order (cmd.exe current-directory-first for `call <bare>`; libuv search_path for spawn without shell) was not observed — source-only validation. Independent verifier proposed Confirmed/High on documented Windows semantics; the evidence gate keeps it unscored until observed.",
+      "owner_check": "Windows scratch dir only, harmless binaries: (1) dir containing npx.cmd that runs `echo SHADOWED`; spawnSync(process.env.COMSPEC, ['/d','/c','call \"npx\" --version'], {cwd: dir, windowsVerbatimArguments: true, encoding: 'utf8'}). (2) dir containing rg.exe = renamed copy of whoami.exe; spawnSync('rg', ['--version'], {cwd: dir, encoding: 'utf8'}). Output from the planted file = confirmed.",
+      "fix_direction": "One resolver (plugin-sdk findOnPath semantics) that resolves bare names to absolute paths from PATH, skips empty/relative PATH entries and the cwd, and refuses results inside the project root (reuse plug-lsp isInsideProject); use it at every spawn/execFile/cmd-shim site; add NoDefaultCurrentDirectoryInExePath=1 to buildChildEnv as defense in depth; add a site-enumerating architecture test validated by injection."
+    },
+    {
+      "id": "WS-2026-09-15-NV2",
+      "sources": ["HCM-002"],
+      "related": "WS-2026-09-15-01 (a tokenless peer can perform the same supersede)",
+      "title": "HQ client.hello supersedes another live publisher by clientId without binding clientId to the presenting token",
+      "cwe": "CWE-639",
+      "trace": [
+        "packages/cli/src/hq-server/ws.ts:248-271 — supersede on clientId match; authToken never compared",
+        "packages/cli/src/hq-server/ws.ts:358-363 — command_poll identity checked against the (now attacker-owned) registration",
+        "packages/cli/src/hq-server/routes/command-handlers.ts:62 — target resolved by clientId only",
+        "packages/core/src/hq/auth-store.ts:91-131 — HqToken has no clientId/machine binding"
+      ],
+      "blocker": "Whether client tokens are issued to mutually less-trusted principals, and whether a live victim clientId (machineId:kind:pid:8hex) is obtainable by a client-token holder — no /ws/client channel exposing it was found.",
+      "owner_check": "Two-token vitest: publisher A (token a) and publisher B (token b) hello with the same clientId; secure behavior refuses B's hello."
+    }
+  ],
+  "rejected": [
+    {"id": "TD-001", "title": "diff tool reads out-of-root files via git implicit --no-index", "reason": "no-index implies --exit-code; differing files exit 1 and diff.ts:244-247 throws with stderr only, discarding content; non-sensitive out-of-root reads are already granted to the auto read tool (restrictToProjectRoot:false default)", "hardening": "end-of-options before refs, bound findGitDir at projectRoot, include a/b in inputPathLooksSensitive"},
+    {"id": "HCM-REJ-TTL", "title": "approval TTL makes grants permanent", "reason": "expired allowUntil falls through to confirm; zero/negative TTL is already lapsed"},
+    {"id": "HCM-REJ-ALERTS", "title": "HQ alerts SSRF", "reason": "no outbound sink"},
+    {"id": "HCM-REJ-CMDSHIM", "title": "MCP cmd-shim argument injection", "reason": "metacharacters refused, tokens quoted (win32-cmd.ts)"},
+    {"id": "HCM-REJ-REPO-MCP", "title": "repo defines its own MCP server", "reason": "mcpServers stripped (in-project-policy.ts:70)"},
+    {"id": "HCM-REJ-AUTOWAKE", "title": "auto-wake bypasses approval", "reason": "woken turn waits on confirm and runs under existing permission mode"},
+    {"id": "HCM-REJ-DESKTOP", "title": "desktop renderer injects open-session state", "reason": "sender-bound + sanitizeOpenSessions"},
+    {"id": "WEBUI-REJECTED-8", "title": "8 webui-server hypotheses", "reason": "see findings/hunt-webui-server-delta.json"},
+    {"id": "TOOLS-REJECTED-13", "title": "13 tools hypotheses", "reason": "see findings/hunt-tools-delta.json"}
+  ],
+  "hardening": [
+    "diff tool: '--end-of-options' before refs, findGitDir bounded at projectRoot, a/b in the sensitive-read key list (TD-001)",
+    "HQ: store the session id bound to each browser socket for bare ?token= sockets as well, so precise eviction never needs the fail-closed fallback",
+    "buildChildEnv: always set NoDefaultCurrentDirectoryInExePath=1 on win32 (defense in depth for NV1)",
+    "pnpm audit on the updated lockfile not re-run in this session (DEP-NV-001; CI audit.yml covers high+)"
+  ],
+  "coverage_summary": {
+    "covered": 35,
+    "covered_carried": 13,
+    "candidate": 6,
+    "blocked": 0,
+    "deferred": 6,
+    "not_applicable": 8,
+    "out_of_scope": 3
+  }
+}

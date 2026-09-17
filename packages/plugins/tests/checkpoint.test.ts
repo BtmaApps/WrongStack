@@ -103,6 +103,31 @@ describe('checkpoint plugin', () => {
     expect(readFileSync(file, 'utf-8')).toBe('original');
   });
 
+  it('clears snapshots when a session ends', async () => {
+    // Snapshots are "in-session" by this plugin's own contract, but it is set
+    // up once per PROCESS and the host outlives any one session (the WebUI
+    // opens additional sessions in the same process). Nothing cleared the
+    // ring, so a snapshot captured in one session stayed restorable in the
+    // next — and checkpoint_restore defaults to the NEWEST snapshot, which
+    // could write another session's captured content over a live file.
+    const api = { ...makeApi(), onEvent: vi.fn(() => vi.fn()) };
+    checkpointPlugin.setup(api as never);
+    const hook = getHook(api as never);
+
+    const file = join(tmp, 'session-a.txt');
+    writeFileSync(file, 'session-a content');
+    await hook({ toolName: 'write', toolInput: { path: file } });
+    const before = await getTool(api as never, 'checkpoint_list').execute({});
+    expect((before['snapshots'] as unknown[]).length).toBe(1);
+
+    const sessionEnded = api.onEvent.mock.calls.find(([e]: unknown[]) => e === 'session.ended');
+    expect(sessionEnded).toBeDefined();
+    (sessionEnded![1] as () => void)();
+
+    const after = await getTool(api as never, 'checkpoint_list').execute({});
+    expect((after['snapshots'] as unknown[]).length).toBe(0);
+  });
+
   it('restore without id uses the newest snapshot', async () => {
     const api = makeApi();
     checkpointPlugin.setup(api as never);

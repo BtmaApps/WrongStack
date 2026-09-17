@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import type { Message } from '../../src/types/messages.js';
 import {
   computeMessageTokens,
   estimateMessageTokens,
@@ -14,7 +15,6 @@ import {
   recordActualUsage,
   resetCalibration,
 } from '../../src/utils/token-estimate.js';
-import type { Message } from '../../src/types/messages.js';
 
 afterEach(() => {
   resetCalibration();
@@ -509,4 +509,54 @@ describe('text content block without `text` (runtime contract: text is optional)
   it('send-guard estimateRequestTokensUpperBound does not throw on omitted text', () => {
     expect(() => estimateRequestTokensUpperBound([msg], 'system prompt', [])).not.toThrow();
   });
+});
+
+describe('send guard density outside ordinary message text', () => {
+  it.each(['system', 'tool schema', 'tool input', 'structured tool result'])(
+    'guards dense Unicode in %s',
+    (source) => {
+      const payload = '漢字'.repeat(10000);
+      const messages =
+        source === 'tool input'
+          ? [
+              {
+                role: 'assistant',
+                content: [{ type: 'tool_use', id: 'u', name: 'example', input: { payload } }],
+              },
+            ]
+          : source === 'structured tool result'
+            ? [
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: 'u',
+                      content: [{ type: 'text', text: payload }],
+                    },
+                  ],
+                },
+              ]
+            : [];
+      const system = source === 'system' ? [{ type: 'text', text: payload }] : [];
+      const tools =
+        source === 'tool schema'
+          ? [
+              {
+                name: 'example',
+                inputSchema: { type: 'object', properties: { value: { enum: [payload] } } },
+              },
+            ]
+          : [];
+      const key = 'density-regression/' + source;
+      resetCalibration(key);
+      try {
+        const raw = estimateRequestTokens(messages, system, tools, key);
+        const guard = estimateRequestTokensUpperBound(messages, system, tools, key);
+        expect(guard.total).toBeGreaterThan(raw.total * 1.5);
+      } finally {
+        resetCalibration(key);
+      }
+    },
+  );
 });

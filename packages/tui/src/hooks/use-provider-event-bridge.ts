@@ -497,7 +497,7 @@ export function useProviderEventBridge({
         type: 'addEntry',
         entry: {
           kind: 'info',
-          text: `${icon} ${label}: ${e.tool}(${e.pattern})`,
+          text: `${icon} ${label}: ${e.tool}(${e.displayPattern ?? e.pattern})`,
         },
       });
     });

@@ -148,12 +148,30 @@ function ApprovalCard({
             size="sm"
             variant="secondary"
             disabled={sending}
-            onClick={() => void answer(approval, 'always')}
+            onClick={() => void answer(approval, 'always-exact')}
             // Both of these write persistent policy on the remote machine, so
             // the pattern they would key on is named rather than implied.
             title={`Persists a trust rule for ${approval.suggestedPattern}`}
           >
-            Always allow
+            Same input / args
+          </Button>
+          {approval.toolName === 'exec' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={sending}
+              onClick={() => void answer(approval, 'always-command')}
+            >
+              Command, any args
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={sending}
+            onClick={() => void answer(approval, 'always-tool')}
+          >
+            Tool, any input
           </Button>
           <Button
             size="sm"

@@ -1847,6 +1847,8 @@ input:focus-visible,
 
 .permission-actions {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 5px;
 }

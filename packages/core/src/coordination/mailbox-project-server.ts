@@ -441,9 +441,29 @@ function onData(state: ClientState, chunk: string): void {
   }
 }
 
+/**
+ * Arm the idle shutdown, but NEVER re-arm an already-armed timer.
+ *
+ * The `idleTimer` guard is load-bearing. `leaseSweep` calls this on every
+ * tick, and the sweep interval is derived from the client lease
+ * (`min(10s, lease/3)` — 10s at the 45s default) while `idleMs` defaults to
+ * five minutes. A `clearTimeout` + re-arm here therefore reset the countdown
+ * every 10 seconds and the idle stop could never fire: with zero clients the
+ * daemon lived forever, and the longer the configured idle window the more
+ * certainly it starved.
+ *
+ * Measured before the fix (no client, default lease): idle=5s exited at
+ * 5164ms, idle=20s was still alive after 45s. The tests missed it because
+ * every one of them sets an idle far BELOW the sweep interval (150ms in
+ * `mailbox-project-server.test.ts`), which is the only regime where a
+ * re-arming implementation still works.
+ *
+ * Not re-arming is safe because the timer only exists while `clients.size`
+ * is 0: a connecting client clears it (see the `createServer` handler), and
+ * nothing else can register activity in the meantime.
+ */
 function scheduleIdleStop(): void {
-  if (stopping || clients.size > 0 || pendingRequests > 0) return;
-  if (idleTimer) clearTimeout(idleTimer);
+  if (stopping || clients.size > 0 || pendingRequests > 0 || idleTimer) return;
   idleTimer = setTimeout(() => void stop('idle-timeout'), idleMs);
   idleTimer.unref?.();
 }

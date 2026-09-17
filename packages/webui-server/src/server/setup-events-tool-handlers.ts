@@ -316,6 +316,8 @@ export function registerSetupEventsToolHandlers(options: {
         sessionId: e.sessionId,
         tool: e.tool,
         pattern: e.pattern,
+        ...(e.displayPattern !== undefined ? { displayPattern: e.displayPattern } : {}),
+        ...(e.scope !== undefined ? { scope: e.scope } : {}),
         decision: e.decision,
       }),
     });

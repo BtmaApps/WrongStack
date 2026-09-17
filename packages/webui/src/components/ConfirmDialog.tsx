@@ -127,11 +127,15 @@ export function ConfirmDialog() {
   const { sendConfirm, updatePrefs } = useWebSocket();
   const dialogRef = useRef<HTMLDivElement>(null);
   const resolvedRef = useRef(false);
+  const [approvalScope, setApprovalScope] = useState<
+    'always-exact' | 'always-command' | 'always-tool'
+  >('always-exact');
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (showConfirmDialog && confirmInfo) {
       resolvedRef.current = false;
+      setApprovalScope('always-exact');
     }
   }, [showConfirmDialog, confirmInfo?.id, confirmInfo]);
 
@@ -142,7 +146,9 @@ export function ConfirmDialog() {
     return () => window.clearInterval(timer);
   }, [showConfirmDialog, confirmInfo?.id, confirmInfo?.deadlineAt]);
 
-  const handleConfirm = (decision: 'yes' | 'no' | 'always' | 'deny') => {
+  const handleConfirm = (
+    decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny',
+  ) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     if (confirmInfo) {
@@ -197,7 +203,7 @@ export function ConfirmDialog() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return;
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault();
         handleConfirm('yes');
@@ -206,7 +212,7 @@ export function ConfirmDialog() {
         handleConfirm('no');
       } else if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
-        handleConfirm('always');
+        handleConfirm(approvalScope);
       } else if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         handleConfirm('deny');
@@ -218,7 +224,7 @@ export function ConfirmDialog() {
     dialogRef.current?.focus();
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showConfirmDialog, confirmInfo?.id]);
+  }, [showConfirmDialog, confirmInfo?.id, approvalScope]);
 
   if (!confirmInfo) {
     return null;
@@ -282,6 +288,25 @@ export function ConfirmDialog() {
             <SmartInputPreview toolName={confirmInfo.toolName} input={confirmInfo.input} />
           )}
 
+          <label className="block space-y-1 text-sm">
+            <span>{t('confirm.approvalScope')}</span>
+            <select
+              aria-label={t('confirm.approvalScope')}
+              className="w-full min-w-0 rounded border bg-background p-2"
+              value={approvalScope}
+              onChange={(event) => setApprovalScope(event.target.value as typeof approvalScope)}
+            >
+              <option value="always-exact">{t('confirm.scopeExact')}</option>
+              {confirmInfo.toolName === 'exec' && (
+                <option value="always-command">{t('confirm.scopeCommand')}</option>
+              )}
+              <option value="always-tool">
+                {t('confirm.scopeTool', { tool: confirmInfo.toolName })}
+              </option>
+            </select>
+            <span className="block text-xs text-muted-foreground">{t('confirm.scopeHint')}</span>
+          </label>
+
           {confirmInfo.suggestedPattern && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
               <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
@@ -341,7 +366,8 @@ export function ConfirmDialog() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleConfirm('always')}
+            data-testid="confirm-remember"
+            onClick={() => handleConfirm(approvalScope)}
             title={t('confirm.alwaysTitle')}
           >
             {t('action.always')}{' '}

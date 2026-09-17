@@ -43,6 +43,11 @@
     "all": "Tümü"
   },
   "confirm": {
+    "approvalScope": "Hatırlanacak izin kapsamı",
+    "scopeExact": "Yalnızca aynı girdi ve argümanlar",
+    "scopeCommand": "Bu komut, tüm argümanlarla",
+    "scopeTool": "{{tool}} — tüm girdiler",
+    "scopeHint": "Her Zaman seçeneği bu kapsamı proje için kaydeder. Geniş izinlerde yıkıcı işlemler ayrıca onay ister.",
     "title": "Onay gerekli: {{tool}}",
     "descriptionEdit": "Vekil bir dosyayı değiştirmek istiyor. Aşağıdaki isteği inceleyin ve devam edip etmeyeceğinize karar verin.",
     "descriptionTool": "Vekil bu aracı çalıştırmak istiyor. Aşağıdaki isteği inceleyin ve devam edip etmeyeceğinize karar verin.",

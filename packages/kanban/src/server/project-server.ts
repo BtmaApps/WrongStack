@@ -272,9 +272,26 @@ function stopAndExit(reason: string, gracefulSocket?: net.Socket): void {
     });
 }
 
+/**
+ * Arm the idle shutdown, but NEVER re-arm an already-armed timer.
+ *
+ * The `idleTimer` guard is load-bearing. `leaseTimer` (and the other periodic
+ * callers below) invoke this every `CLIENT_LEASE_SWEEP_MS` — 15 seconds —
+ * while `DEFAULT_IDLE_MS` is five minutes. A `clearTimeout` + re-arm here
+ * therefore reset the countdown every sweep and the idle stop could never
+ * fire: with zero clients the daemon lived forever, and the LONGER the
+ * configured idle window the more certainly it starved.
+ *
+ * Measured before the fix (no client): idle=5s exited at 5147ms, idle=25s was
+ * still alive after 50s. The suite missed it because its servers run with an
+ * idle far below the sweep interval, which is the only regime where a
+ * re-arming implementation still works.
+ *
+ * Not re-arming is safe because the timer only exists while `clients.size`
+ * is 0, and a connecting client clears it.
+ */
 function scheduleIdleStop(): void {
-  if (stopping || clients.size > 0) return;
-  if (idleTimer) clearTimeout(idleTimer);
+  if (stopping || clients.size > 0 || idleTimer) return;
   const idleInput = Number(process.env['WRONGSTACK_KANBAN_SERVER_IDLE_MS']);
   const idleMs = Number.isFinite(idleInput) && idleInput >= 100 ? idleInput : DEFAULT_IDLE_MS;
   idleTimer = setTimeout(() => stopAndExit('idle-timeout'), idleMs);

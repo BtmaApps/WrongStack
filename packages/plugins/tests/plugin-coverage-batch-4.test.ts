@@ -4,7 +4,6 @@
  * - factories
  * - plugin-stack-observer
  * - session-recap
- * - knowledge-graph
  * - config-validator
  * - type-gate
  * - notify-hub
@@ -345,113 +344,7 @@ describe('session-recap', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. knowledge-graph
-// ---------------------------------------------------------------------------
-describe('knowledge-graph', () => {
-  it('covers facts management, querying, contributor, remove, status, health, teardown', async () => {
-    const plugin = (await import('../src/knowledge-graph/index.js')).default;
-    let promptCb: (() => Promise<unknown[]>) | null = null;
-
-    const api = makeApi({
-      config: {
-        extensions: {
-          'knowledge-graph': {
-            enabled: true,
-            filePath: '',
-            contributeToSystemPrompt: true,
-          },
-        },
-      },
-      registerSystemPromptContributor: vi.fn((cb: () => Promise<unknown[]>) => {
-        promptCb = cb;
-        return vi.fn();
-      }),
-    });
-
-    plugin.teardown!(api as never);
-    plugin.setup(api as never);
-
-    // Empty contributor returns []
-    expect(promptCb).not.toBeNull();
-    expect(await promptCb!()).toEqual([]);
-
-    const addTool = api.tools.get('kg_add_fact')!;
-    const queryTool = api.tools.get('kg_query')!;
-    const removeTool = api.tools.get('kg_remove_fact')!;
-    const statusTool = api.tools.get('kg_status')!;
-
-    // Add facts
-    const add1 = (await addTool({
-      subject: 'api-service',
-      relation: 'depends_on',
-      object: 'postgres-db',
-      confidence: 'high',
-      source: 'docker-compose.yml',
-    })) as Record<string, unknown>;
-    expect(add1.ok).toBe(true);
-
-    const add2 = (await addTool({
-      subject: 'web-frontend',
-      relation: 'calls',
-      object: 'api-service',
-      confidence: 'low',
-    })) as Record<string, unknown>;
-    expect(add2.ok).toBe(true);
-
-    // Contributor now returns text block
-    const promptContrib = (await promptCb!()) as Array<{ type: string; text: string }>;
-    expect(promptContrib.length).toBe(1);
-    expect(promptContrib[0]!.text).toContain('api-service');
-
-    // Query with various filters
-    const q1 = (await queryTool({ query: 'postgres' })) as { returned: number };
-    expect(q1.returned).toBe(1);
-
-    const q2 = (await queryTool({ subject: 'web-frontend', confidence: 'low' })) as {
-      returned: number;
-    };
-    expect(q2.returned).toBe(1);
-
-    const q3 = (await queryTool({ relation: 'depends_on', object: 'postgres-db' })) as {
-      returned: number;
-    };
-    expect(q3.returned).toBe(1);
-
-    const q4 = (await queryTool({ limit: 1 })) as { returned: number };
-    expect(q4.returned).toBe(1);
-
-    // Remove fact
-    await expect(removeTool({ id: 'kg-999' })).rejects.toThrow(/no fact matches/);
-
-    const remOk = (await removeTool({ id: '1' })) as { ok: boolean; removed: number };
-    expect(remOk.ok).toBe(true);
-    expect(remOk.removed).toBe(1);
-
-    // Status
-    const status = (await statusTool({})) as Record<string, unknown>;
-    expect(status.ok).toBe(true);
-    expect(status.totalFacts).toBe(1);
-
-    // Health
-    const health = (await plugin.health!()) as { ok: boolean; message: string };
-    expect(health.ok).toBe(true);
-
-    // Teardown
-    plugin.teardown!(api as never);
-
-    // Setup disabled
-    const apiDisabled = makeApi({
-      config: { extensions: { 'knowledge-graph': { enabled: false } } },
-    });
-    plugin.setup(apiDisabled as never);
-    await expect(apiDisabled.tools.get('kg_add_fact')!({})).rejects.toThrow(/disabled/);
-    await expect(apiDisabled.tools.get('kg_query')!({})).rejects.toThrow(/disabled/);
-    await expect(apiDisabled.tools.get('kg_remove_fact')!({ id: '1' })).rejects.toThrow(/disabled/);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. config-validator
+// 4. config-validator
 // ---------------------------------------------------------------------------
 describe('config-validator', () => {
   it('covers validateJson, validateYaml, validateToml, validateFile, and hook execution', async () => {
@@ -548,7 +441,7 @@ key = "b"
 });
 
 // ---------------------------------------------------------------------------
-// 6. type-gate
+// 5. type-gate
 // ---------------------------------------------------------------------------
 describe('type-gate', () => {
   it('covers status, health variations, PostToolUse branches, teardown', async () => {
@@ -595,7 +488,7 @@ describe('type-gate', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. notify-hub
+// 6. notify-hub
 // ---------------------------------------------------------------------------
 describe('notify-hub', () => {
   it('covers notify_send tool, notify_hub_status, health, teardown', async () => {
@@ -650,7 +543,7 @@ describe('notify-hub', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. process-guard
+// 7. process-guard
 // ---------------------------------------------------------------------------
 describe('process-guard', () => {
   it('covers mode=off, kill detection hook, status tool, health, teardown', async () => {
@@ -716,7 +609,7 @@ describe('process-guard', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. agent-handoff
+// 8. agent-handoff
 // ---------------------------------------------------------------------------
 describe('agent-handoff', () => {
   it('covers handoff_note tool, handoff_status, health, teardown', async () => {

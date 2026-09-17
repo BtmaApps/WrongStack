@@ -386,7 +386,7 @@ describe('<DiffBlock /> rendering', () => {
     // `additionalContext` onto the serialized tool result with
     // `${serializedDiff}\n\n${notice}`. For write/edit that tail carries the
     // observability plugins — diff-summary (which injects a WHOLE second git
-    // diff), code-metrics, interface-contract-guard.
+    // diff), doc-sync-guard, security-hotspot-scanner.
     // extractUnifiedDiffText used to slice from the first diff marker to the
     // END of the string, so those notices rendered inside the Update diff
     // view as bogus context rows with continuing gutter line numbers.
@@ -416,9 +416,9 @@ describe('<DiffBlock /> rendering', () => {
       "+  { name: 'agent-handoff', risk: 'medium' },",
       '... (212 more lines truncated)',
       '',
-      '📊 code-metrics: packages/cli/src/plugin-management.ts — 474 lines (400 code, 30 comments, 44 blank), 12 function(s), complexity 18.',
+      '📊 doc-sync-guard: packages/cli/src/plugin-management.ts — 3 unlinked doc reference(s).',
       '',
-      '🛡️ interface-contract-guard: packages/cli/src/plugin-management.ts declares interface(s): PluginAuditEntry.',
+      '🛡️ security-hotspot-scanner: packages/cli/src/plugin-management.ts — 0 hotspot(s) found.',
     ].join('\n');
 
     it('renders only the tool diff, dropping the plugin observability tail', () => {
@@ -432,8 +432,8 @@ describe('<DiffBlock /> rendering', () => {
       // None of the plugin-notice text leaks into any parsed row.
       const bodies = (preview?.rows ?? []).map((r) => r.text).join('\n');
       expect(bodies).not.toContain('diff-summary');
-      expect(bodies).not.toContain('code-metrics: packages/cli/src/plugin-management.ts');
-      expect(bodies).not.toContain('interface-contract-guard');
+      expect(bodies).not.toContain('doc-sync-guard: packages/cli/src/plugin-management.ts');
+      expect(bodies).not.toContain('security-hotspot-scanner');
       expect(bodies).not.toContain('more lines truncated');
       expect(bodies).not.toContain('agent-handoff');
     });

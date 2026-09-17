@@ -48,6 +48,20 @@ import { loadExternalPlugins } from './external-plugins.js';
 export const DEPRECATED_PLUGIN_NAMES: Record<string, string> = {
   'web-search': 'use the built-in `search` and `fetch` tools',
   'json-path': 'use the built-in `json` tool with action: query | validate | transform | merge',
+  // Deleted in the 2026-09-17 catalog review. The first four produced
+  // findings that were noise by construction (each was run against this
+  // repo and mis-reported); the rest duplicated infrastructure the host
+  // already ships. Kept here so an existing config that still lists one
+  // warns and skips instead of failing to resolve the import.
+  'interface-contract-guard': 'removed — it reported plain data interfaces as unimplemented',
+  'refactor-suggester': 'removed — use `lint-gate` plus the built-in `grep` and `read` tools',
+  'feature-flag-tracker': 'removed — use the built-in `grep` tool with your own flag pattern',
+  'dead-code-detector': 'removed — use your linter / `tsc` and `duplicate-code-detector`',
+  'semantic-search-indexer': 'use the built-in `grep` tool or the codebase-index MCP server',
+  'knowledge-graph': 'use the built-in `remember` / `search_memory` / `find_related_memories`',
+  'todo-tracker': 'use the built-in `todo` tool and the Kanban board',
+  'smart-rename': 'use the built-in `replace` tool',
+  'code-metrics': 'removed — it reported numbers nothing acted on',
 };
 
 // Per-process dedupe so we don't spam the log if a user lists the
@@ -180,7 +194,7 @@ export interface PluginsWiringDeps {
     configDir: string;
     /**
      * Per-project root (`~/.wrongstack/projects/<slug>/`). Plugins that
-     * need project-scoped state (todo-tracker, etc.) should put their
+     * need project-scoped state (context-pins, etc.) should put their
      * files here so they follow the same lifecycle as goals/SDD
      * boards/tasks.
      */
@@ -354,21 +368,12 @@ export async function setupPlugins(
 
   // Workspace plugins that persist project-scoped state read ONLY their own
   // namespaced `config.extensions[name]` options — they never see the
-  // top-level `paths` injected below. Bridge that gap for todo-tracker by
+  // top-level `paths` injected below. Bridge that gap for context-pins by
   // seeding a default `filePath` derived from `paths.projectDir` when the
   // user hasn't set one explicitly. This mirrors how goals/SDD boards/tasks
   // live under `~/.wrongstack/projects/<slug>/` and follows the intent
   // documented on `PluginsWiringDeps.paths.projectDir`.
   if (paths?.projectDir) {
-    if (pluginOptions['todo-tracker'] === undefined) {
-      pluginOptions['todo-tracker'] = {};
-    }
-    const todoTrackerOpts = pluginOptions['todo-tracker'];
-    if (typeof todoTrackerOpts['filePath'] !== 'string' || todoTrackerOpts['filePath'] === '') {
-      todoTrackerOpts['filePath'] = join(paths.projectDir, 'todo-tracker.json');
-    }
-    // context-pins persists pinned facts the same way — project-scoped,
-    // next to goals/SDD boards/todo-tracker.
     const contextPinsOpts = pluginOptions['context-pins'] ?? {};
     pluginOptions['context-pins'] = contextPinsOpts;
     if (typeof contextPinsOpts['filePath'] !== 'string' || contextPinsOpts['filePath'] === '') {

@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/plugins",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "description": "Official WrongStack collection of focused plugins for code quality, security, observability, planning, and agent coordination",
   "license": "MIT",
   "author": "ECOSTACK TECHNOLOGY OÜ",
@@ -68,10 +68,6 @@
       "types": "./dist/secret-scanner.d.ts",
       "import": "./dist/secret-scanner.js"
     },
-    "./todo-tracker": {
-      "types": "./dist/todo-tracker.d.ts",
-      "import": "./dist/todo-tracker.js"
-    },
     "./token-budget": {
       "types": "./dist/token-budget.d.ts",
       "import": "./dist/token-budget.js"
@@ -103,10 +99,6 @@
     "./import-organizer": {
       "types": "./dist/import-organizer.d.ts",
       "import": "./dist/import-organizer.js"
-    },
-    "./knowledge-graph": {
-      "types": "./dist/knowledge-graph.d.ts",
-      "import": "./dist/knowledge-graph.js"
     },
     "./todo-listener": {
       "types": "./dist/todo-listener.d.ts",
@@ -212,10 +204,6 @@
       "types": "./dist/migration-planner.d.ts",
       "import": "./dist/migration-planner.js"
     },
-    "./semantic-search-indexer": {
-      "types": "./dist/semantic-search-indexer.d.ts",
-      "import": "./dist/semantic-search-indexer.js"
-    },
     "./auto-i18n-extractor": {
       "types": "./dist/auto-i18n-extractor.d.ts",
       "import": "./dist/auto-i18n-extractor.js"
@@ -252,21 +240,9 @@
       "types": "./dist/security-hotspot-scanner.d.ts",
       "import": "./dist/security-hotspot-scanner.js"
     },
-    "./dead-code-detector": {
-      "types": "./dist/dead-code-detector.d.ts",
-      "import": "./dist/dead-code-detector.js"
-    },
     "./duplicate-code-detector": {
       "types": "./dist/duplicate-code-detector.d.ts",
       "import": "./dist/duplicate-code-detector.js"
-    },
-    "./code-metrics": {
-      "types": "./dist/code-metrics.d.ts",
-      "import": "./dist/code-metrics.js"
-    },
-    "./refactor-suggester": {
-      "types": "./dist/refactor-suggester.d.ts",
-      "import": "./dist/refactor-suggester.js"
     },
     "./test-generator": {
       "types": "./dist/test-generator.d.ts",
@@ -275,18 +251,6 @@
     "./release-notes-generator": {
       "types": "./dist/release-notes-generator.d.ts",
       "import": "./dist/release-notes-generator.js"
-    },
-    "./smart-rename": {
-      "types": "./dist/smart-rename.d.ts",
-      "import": "./dist/smart-rename.js"
-    },
-    "./feature-flag-tracker": {
-      "types": "./dist/feature-flag-tracker.d.ts",
-      "import": "./dist/feature-flag-tracker.js"
-    },
-    "./interface-contract-guard": {
-      "types": "./dist/interface-contract-guard.d.ts",
-      "import": "./dist/interface-contract-guard.js"
     },
     "./runtime": {
       "types": "./dist/runtime.d.ts",

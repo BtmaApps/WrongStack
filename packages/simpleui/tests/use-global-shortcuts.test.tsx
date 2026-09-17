@@ -46,7 +46,9 @@ interface Harness {
   messagesRef: { current: Array<{ id: string; role: string; text: string }> };
   submitWith: MockFor<(mode: string) => void>;
   pendingConfirmRef: { current: PendingConfirm | null };
-  decideConfirm: MockFor<(decision: 'yes' | 'no' | 'always') => void>;
+  decideConfirm: MockFor<
+    (decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool') => void
+  >;
   refineEpochRef: { current: number };
   socketRef: { current: { send: ReturnType<typeof vi.fn> } | null };
   sessionIdRef: { current: string | null };
@@ -56,7 +58,13 @@ interface Harness {
   refineStateRef: { current: unknown };
   refineStartFiredRef: { current: boolean };
   submitWithRef: { current: (mode: string) => void };
-  decideConfirmRef: { current: ((decision: 'yes' | 'no' | 'always') => void) | undefined };
+  decideConfirmRef: {
+    current:
+      | ((
+          decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+        ) => void)
+      | undefined;
+  };
   root: Root;
 }
 
@@ -79,7 +87,12 @@ function renderHarness(): Harness {
     messagesRef: { current: [] },
     submitWith: vi.fn<(mode: string) => void>(),
     pendingConfirmRef: { current: null },
-    decideConfirm: vi.fn<(decision: 'yes' | 'no' | 'always') => void>(),
+    decideConfirm:
+      vi.fn<
+        (
+          decision: 'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool',
+        ) => void
+      >(),
     refineEpochRef: { current: 0 },
   };
 
@@ -221,7 +234,7 @@ describe('useGlobalShortcuts — permission prompt Y/N/A', () => {
     act(() => pressKey('n'));
     expect(h.decideConfirm).toHaveBeenCalledWith('no');
     act(() => pressKey('a'));
-    expect(h.decideConfirm).toHaveBeenCalledWith('always');
+    expect(h.decideConfirm).toHaveBeenCalledWith('always-exact');
   });
 
   it('stays inert without a pending prompt', () => {

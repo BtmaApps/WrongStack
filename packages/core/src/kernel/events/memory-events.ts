@@ -77,6 +77,9 @@ export interface MemoryEventMap {
     sessionId?: string | undefined;
     tool: string;
     pattern: string;
+    /** Human-readable scope; `pattern` is the actual rule written to disk. */
+    displayPattern?: string | undefined;
+    scope?: 'exact' | 'command' | 'tool' | undefined;
     decision: 'always' | 'deny';
   };
   // ── Memory store events — emitted by SageStore so plugins can react ──

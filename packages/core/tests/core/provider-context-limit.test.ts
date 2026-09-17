@@ -1,23 +1,33 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Agent, createDefaultPipelines } from '../../src/core/agent.js';
+import type { AgentInternals } from '../../src/core/agent-internals.js';
+import { createAgentLoopContextManager } from '../../src/core/agent-loop-context.js';
 import { Context } from '../../src/core/context.js';
+import { AutoCompactionMiddleware } from '../../src/execution/auto-compaction-middleware.js';
 import { DefaultErrorHandler } from '../../src/execution/error-handler.js';
 import { DefaultRetryPolicy } from '../../src/execution/retry-policy.js';
+import { createStrategyCompactor } from '../../src/execution/strategy-compactor.js';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { DefaultLogger } from '../../src/infrastructure/logger.js';
 import { DefaultTokenCounter } from '../../src/infrastructure/token-counter.js';
 import { Container } from '../../src/kernel/container.js';
 import { EventBus } from '../../src/kernel/events.js';
+import type { NextFn } from '../../src/kernel/pipeline.js';
 import { TOKENS } from '../../src/kernel/tokens.js';
 import { ProviderRegistry } from '../../src/registry/provider-registry.js';
 import { ToolRegistry } from '../../src/registry/tool-registry.js';
 import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js';
 import { DefaultSecretScrubber } from '../../src/security/secret-scrubber.js';
 import { DefaultSessionStore } from '../../src/storage/session-store.js';
-import type { Capabilities, Provider, Response } from '../../src/types/provider.js';
+import type { Capabilities, Provider, Request, Response } from '../../src/types/provider.js';
+import {
+  estimateRequestTokens,
+  getCalibrationState,
+  resetCalibration,
+} from '../../src/utils/token-estimate.js';
 
 function mockProviderWithProbe(opts: {
   id?: string;
@@ -93,6 +103,7 @@ async function buildAgentWithProbe(
   agent: Agent;
   events: EventBus;
   ctx: Context;
+  pipelines: ReturnType<typeof createDefaultPipelines>;
   tmp: string;
   session: { close: () => Promise<void> };
 }> {
@@ -152,7 +163,7 @@ async function buildAgentWithProbe(
     maxIterations: 10,
   });
 
-  return { agent, events, ctx, tmp, session };
+  return { agent, events, ctx, pipelines, tmp, session };
 }
 
 describe('refreshProviderContextLimit state machine', () => {
@@ -519,5 +530,440 @@ describe('refreshProviderContextLimit state machine', () => {
     const configuredEvents = maxCtxEvents.filter((e) => e.source === 'configured');
     expect(configuredEvents.length).toBeGreaterThan(0);
     expect(configuredEvents[0]!.maxContext).toBe(500_000);
+  });
+});
+
+describe('agent-loop usage accounting', () => {
+  it('learns actual/raw token ratio without feeding its calibrated estimate back into training', async () => {
+    const provider = mockProviderWithProbe({ id: 'usage-calibration-regression' });
+    provider.capabilities.streaming = false;
+    const key = `${provider.id}/test-model`;
+    resetCalibration(key);
+    provider.complete = async (req) => {
+      const raw = estimateRequestTokens(req.messages, req.system, req.tools ?? [], key).total;
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: Math.round(raw * 0.75), output: 1 },
+      };
+    };
+    const { agent, tmp, session } = await buildAgentWithProbe(provider);
+    try {
+      for (let i = 0; i < 8; i++) await agent.run(`turn ${i} ` + 'x'.repeat(1000), {});
+      expect(getCalibrationState(key).count).toBe(8);
+      expect(getCalibrationState(key).ratio).toBeCloseTo(0.75, 2);
+    } finally {
+      resetCalibration(key);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('advances the consumed-prefix anchor even when authoritative usage stays equal', async () => {
+    const provider = mockProviderWithProbe({ id: 'usage-anchor-regression' });
+    provider.capabilities.streaming = false;
+    let lastRequestCount = 0;
+    provider.complete = async (req) => {
+      lastRequestCount = req.messages.length;
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 1000, output: 1 },
+      };
+    };
+    const { agent, ctx, tmp, session } = await buildAgentWithProbe(provider);
+    try {
+      await agent.run('first', {});
+      await agent.run('second', {});
+      expect(ctx.lastRealInputTokens).toBe(1000);
+      expect(ctx.meta['realAnchorMsgCount']).toBe(lastRequestCount);
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('attributes an in-flight response to its captured provider rather than a live switch', async () => {
+    const provider = mockProviderWithProbe({ id: 'usage-original-provider' });
+    provider.capabilities.streaming = false;
+    const replacement = mockProviderWithProbe({ id: 'usage-replacement-provider' });
+    const oldKey = `${provider.id}/test-model`;
+    const newKey = `${replacement.id}/test-model`;
+    resetCalibration(oldKey);
+    resetCalibration(newKey);
+    const { agent, ctx, tmp, session } = await buildAgentWithProbe(provider);
+    provider.complete = async (req) => {
+      const raw = estimateRequestTokens(req.messages, req.system, req.tools ?? [], oldKey).total;
+      ctx.provider = replacement;
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: raw, output: 1 },
+      };
+    };
+    try {
+      await agent.run('hello', {});
+      expect(getCalibrationState(oldKey).count).toBe(1);
+      expect(getCalibrationState(newKey).count).toBe(0);
+      expect(ctx.lastRealInputTokens).toBeUndefined();
+    } finally {
+      resetCalibration(oldKey);
+      resetCalibration(newKey);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('context accounting at async request boundaries', () => {
+  it.each(['provider response', 'request pipeline', 'trailing user block'])(
+    'does not resurrect an old usage anchor after history replacement during %s',
+    async (stage) => {
+      const provider = mockProviderWithProbe({ id: 'inflight-history-regression' });
+      provider.capabilities.streaming = false;
+      const key = `${provider.id}/test-model`;
+      resetCalibration(key);
+      const { agent, ctx, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+      const rewrite = () =>
+        ctx.state.replaceMessages([{ role: 'user', content: 'rewritten '.repeat(10000) }]);
+      if (stage === 'request pipeline')
+        pipelines.request.use({
+          name: 'history-rewrite',
+          handler: async (req: Request, next: NextFn<Request>) => {
+            rewrite();
+            return next(req);
+          },
+        });
+      provider.complete = async (req) => {
+        const input = estimateRequestTokens(req.messages, req.system, req.tools ?? [], key).total;
+        if (stage === 'provider response') rewrite();
+        if (stage === 'trailing user block')
+          ctx.state.appendBlockToLastUserMessage({ type: 'text', text: 'extra '.repeat(10000) });
+        return {
+          model: req.model,
+          content: [{ type: 'text', text: 'ok' }],
+          stopReason: 'end_turn',
+          usage: { input, output: 1 },
+        };
+      };
+      try {
+        await agent.run('hello', {});
+        expect(getCalibrationState(key).count).toBe(1);
+        expect(ctx.lastRealInputTokens).toBeUndefined();
+        expect(ctx.meta['realAnchorMsgCount']).toBeUndefined();
+      } finally {
+        resetCalibration(key);
+        await session.close();
+        await fs.rm(tmp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(['system', 'messages', 'tool schema', 'dense system', 'dense message'])(
+    'does not send oversized pipeline %s after compacting only durable history',
+    async (field) => {
+      const provider = mockProviderWithProbe({
+        id: 'request-budget-regression',
+        maxContext: 10000,
+      });
+      provider.capabilities.streaming = false;
+      let providerCalls = 0;
+      provider.complete = async (req) => {
+        providerCalls++;
+        return {
+          model: req.model,
+          content: [{ type: 'text', text: 'ok' }],
+          stopReason: 'end_turn',
+          usage: { input: 10, output: 1 },
+        };
+      };
+      const { agent, ctx, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+      pipelines.contextWindow.use({
+        name: 'AutoCompaction',
+        handler: new AutoCompactionMiddleware(createStrategyCompactor(), 10000, undefined, {
+          warn: 0.5,
+          soft: 0.75,
+          hard: 0.9,
+        }).handler(),
+      });
+      pipelines.request.use({
+        name: 'oversized-wire-context',
+        handler: async (req: Request, next: NextFn<Request>) => {
+          const payload = field.startsWith('dense') ? '漢字'.repeat(10000) : 'extra '.repeat(10000);
+          if (field === 'system' || field === 'dense system')
+            return next({
+              ...req,
+              system: [...(req.system ?? []), { type: 'text', text: payload }],
+            });
+          if (field === 'tool schema')
+            return next({
+              ...req,
+              tools: [
+                {
+                  name: 'large',
+                  description: 'test',
+                  permission: 'auto',
+                  mutating: false,
+                  inputSchema: { type: 'object', properties: { value: { enum: [payload] } } },
+                  execute: async () => ({}),
+                },
+              ],
+            });
+          return next({ ...req, messages: [...req.messages, { role: 'user', content: payload }] });
+        },
+      });
+      try {
+        const result = await agent.run('hello', {});
+        expect(providerCalls).toBe(0);
+        expect(result.status).toBe('failed');
+        expect(result.error?.code).toBe('AGENT_CONTEXT_OVERFLOW');
+        expect(ctx.messages[0]?.content).toEqual([{ type: 'text', text: 'hello' }]);
+      } finally {
+        resetCalibration(`${provider.id}/test-model`);
+        await session.close();
+        await fs.rm(tmp, { recursive: true, force: true });
+      }
+    },
+  );
+});
+
+describe('append-only history while a provider response is pending', () => {
+  it('preserves the old request anchor and counts appended messages as its unsent delta', async () => {
+    const provider = mockProviderWithProbe({ id: 'inflight-append-regression' });
+    provider.capabilities.streaming = false;
+    const { agent, ctx, tmp, session } = await buildAgentWithProbe(provider);
+    provider.complete = async (req) => {
+      ctx.state.appendMessage({ role: 'user', content: 'unsent queued input' });
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 1000, output: 1 },
+      };
+    };
+    try {
+      const result = await agent.run('hello', {});
+      expect(result.status).toBe('done');
+      expect(ctx.lastRealInputTokens).toBe(1000);
+      expect(ctx.meta['realAnchorMsgCount']).toBe(1);
+      expect(ctx.messages[1]?.content).toBe('unsent queued input');
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('prepared-request budget route identity', () => {
+  it('uses the captured route window when a pipeline switches the live provider', async () => {
+    const provider = mockProviderWithProbe({ id: 'captured-budget-route', maxContext: 1000000 });
+    provider.capabilities.streaming = false;
+    const { agent, ctx, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+    const replacement = mockProviderWithProbe({ id: 'live-budget-route', maxContext: 1000 });
+    let calls = 0;
+    provider.complete = async (req) => {
+      calls++;
+      return {
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 100, output: 1 },
+      };
+    };
+    pipelines.contextWindow.use({
+      name: 'AutoCompaction',
+      handler: new AutoCompactionMiddleware(createStrategyCompactor(), 1000000, undefined, {
+        warn: 0.5,
+        soft: 0.75,
+        hard: 0.9,
+      }).handler(),
+    });
+    pipelines.request.use({
+      name: 'switch-live-provider',
+      handler: async (req: Request, next: NextFn<Request>) => {
+        ctx.provider = replacement;
+        return next({
+          ...req,
+          system: [...(req.system ?? []), { type: 'text', text: 'extra '.repeat(10000) }],
+        });
+      },
+    });
+    try {
+      const result = await agent.run('hello', {});
+      expect(calls).toBe(1);
+      expect(result.status).toBe('done');
+      expect(ctx.lastRealInputTokens).toBeUndefined();
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      resetCalibration(`${replacement.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('usage anchor prompt basis', () => {
+  const changePrompt = (ctx: Context, changed: string) => {
+    if (changed === 'system') ctx.systemPrompt = [{ type: 'text', text: 'new '.repeat(10000) }];
+    else
+      ctx.tools = [
+        {
+          name: 'large',
+          description: 'test',
+          permission: 'auto',
+          mutating: false,
+          inputSchema: { type: 'object', properties: { value: { enum: ['new '.repeat(10000)] } } },
+          execute: async () => ({}),
+        },
+      ];
+  };
+
+  it.each(['system', 'tools'])(
+    'invalidates real usage after the %s basis changes',
+    async (changed) => {
+      const provider = mockProviderWithProbe({ id: 'usage-basis-regression' });
+      provider.capabilities.streaming = false;
+      provider.complete = async (req) => ({
+        model: req.model,
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end_turn',
+        usage: { input: 1000, output: 1 },
+      });
+      const { agent, ctx, pipelines, events, tmp, session } = await buildAgentWithProbe(provider);
+      try {
+        await agent.run('hello', {});
+        expect(ctx.lastRealInputTokens).toBe(1000);
+        changePrompt(ctx, changed);
+        let tokens = 0;
+        events.on('ctx.pct', (event) => {
+          tokens = event.tokens;
+        });
+        const m = createAgentLoopContextManager(
+          { ctx, events, pipelines } as unknown as AgentInternals,
+          { response: {} as never },
+        );
+        m.emitContextPct();
+        expect(tokens).toBeGreaterThan(2000);
+        expect(ctx.lastRealInputTokens).toBeUndefined();
+      } finally {
+        resetCalibration(`${provider.id}/test-model`);
+        await session.close();
+        await fs.rm(tmp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(['system', 'tools'])(
+    'does not adopt stale usage when %s changes during the response',
+    async (changed) => {
+      const provider = mockProviderWithProbe({ id: 'usage-basis-race' });
+      provider.capabilities.streaming = false;
+      const { agent, ctx, tmp, session } = await buildAgentWithProbe(provider);
+      provider.complete = async (req) => {
+        changePrompt(ctx, changed);
+        return {
+          model: req.model,
+          content: [{ type: 'text', text: 'ok' }],
+          stopReason: 'end_turn',
+          usage: { input: 1000, output: 1 },
+        };
+      };
+      try {
+        await agent.run('hello', {});
+        expect(ctx.lastRealInputTokens).toBeUndefined();
+      } finally {
+        resetCalibration(`${provider.id}/test-model`);
+        await session.close();
+        await fs.rm(tmp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('anchors the durable prefix rather than counting wire-only messages', async () => {
+    const provider = mockProviderWithProbe({ id: 'usage-wire-prefix' });
+    provider.capabilities.streaming = false;
+    provider.complete = async (req) => ({
+      model: req.model,
+      content: [{ type: 'text', text: 'ok' }],
+      stopReason: 'end_turn',
+      usage: { input: 1000, output: 1 },
+    });
+    const { agent, ctx, pipelines, events, tmp, session } = await buildAgentWithProbe(provider);
+    pipelines.request.use({
+      name: 'wire-only-message',
+      handler: async (req: Request, next: NextFn<Request>) =>
+        next({
+          ...req,
+          messages: [...req.messages, { role: 'user', content: 'temporary evidence' }],
+        }),
+    });
+    let tokens = 0;
+    events.on('ctx.pct', (event) => {
+      tokens = event.tokens;
+    });
+    try {
+      await agent.run('hello', {});
+      expect(ctx.messages).toHaveLength(2);
+      expect(ctx.meta['realAnchorMsgCount']).toBe(1);
+      expect(tokens).toBeGreaterThan(1000);
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('fresh request stash after usage-basis invalidation', () => {
+  it('still compacts wire-only additions after a new prompt invalidates the previous usage anchor', async () => {
+    const provider = mockProviderWithProbe({ id: 'fresh-wire-stash', maxContext: 10000 });
+    provider.capabilities.streaming = false;
+    provider.complete = async (req) => ({
+      model: req.model,
+      content: [{ type: 'text', text: 'ok' }],
+      stopReason: 'end_turn',
+      usage: { input: 1000, output: 1 },
+    });
+    const { agent, ctx, events, pipelines, tmp, session } = await buildAgentWithProbe(provider);
+    try {
+      await agent.run('hello', {});
+      ctx.systemPrompt = [{ type: 'text', text: 'new epoch' }];
+      const m = createAgentLoopContextManager(
+        { ctx, events, pipelines } as unknown as AgentInternals,
+        { response: {} as never },
+      );
+      const prepared = m.stashRequestTokens({
+        model: ctx.model,
+        messages: ctx.messages,
+        tools: ctx.tools,
+        system: [...ctx.systemPrompt, { type: 'text', text: 'fresh '.repeat(3000) }],
+      });
+      expect(prepared.total).toBeGreaterThan(5000);
+      const compact = vi.fn(async () => ({
+        before: prepared.total,
+        after: 4000,
+        fullRequestTokensBefore: prepared.total,
+        fullRequestTokensAfter: 4000,
+        reductions: [],
+      }));
+      const mw = new AutoCompactionMiddleware({ compact }, 10000, undefined, {
+        warn: 0.5,
+        soft: 0.75,
+        hard: 0.9,
+      });
+      await mw.handler()(ctx, async (c) => c);
+      expect(compact).toHaveBeenCalledOnce();
+      expect(ctx.lastRealInputTokens).toBeUndefined();
+      expect(ctx.lastRequestTokens).toBe(prepared.total);
+    } finally {
+      resetCalibration(`${provider.id}/test-model`);
+      await session.close();
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
   });
 });

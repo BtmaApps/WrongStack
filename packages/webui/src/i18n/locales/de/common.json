@@ -43,6 +43,11 @@
     "all": "Alle"
   },
   "confirm": {
+    "approvalScope": "Freigabe merken für",
+    "scopeExact": "Genau diese Eingabe und Argumente",
+    "scopeCommand": "Dieses Programm mit beliebigen Argumenten",
+    "scopeTool": "{{tool}} — beliebige Eingaben",
+    "scopeHint": "Immer speichert diesen Umfang für das Projekt. Destruktive Aufrufe erfordern bei breiten Freigaben weiterhin eine Bestätigung.",
     "title": "Freigabe erforderlich: {{tool}}",
     "descriptionEdit": "Der Agent möchte eine Datei ändern. Überprüfe die Anfrage unten und entscheide, ob du fortfahren möchtest.",
     "descriptionTool": "Der Agent möchte dieses Tool ausführen. Überprüfe die Anfrage unten und entscheide, ob du fortfahren möchtest.",

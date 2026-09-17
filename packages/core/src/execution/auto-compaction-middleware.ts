@@ -1,4 +1,8 @@
 import { type Context, resolveEventSessionId } from '../core/context.js';
+import {
+  readRealAnchoredContextTokens,
+  requestTokenBasisStillCurrent,
+} from '../core/context-usage-anchor.js';
 import type { EventBus } from '../kernel/events.js';
 import type { MiddlewareHandler } from '../kernel/pipeline.js';
 import type { SessionEventBridge } from '../storage/session-event-bridge.js';
@@ -14,7 +18,6 @@ import {
   MAX_TOKEN_DENSITY_MULTIPLIER,
   MIN_CALIBRATION_MULTIPLIER,
   MIN_UNCALIBRATED_MULTIPLIER,
-  realAnchoredInputTokens,
 } from '../utils/token-estimate.js';
 import {
   collapseAcknowledgedToolReceipts,
@@ -22,6 +25,7 @@ import {
   enforceHardBudget,
   estimateMessages,
 } from './compaction-core.js';
+import { compactionReportStillCurrent } from './compaction-result-state.js';
 
 import { type ContextWindowBudgetSnapshot, computeContextWindowBudget } from './context-budget.js';
 
@@ -65,6 +69,21 @@ interface AutoCompactionOptions {
    * to memory consolidation, logging, or other side effects.
    */
   onCompact?: ((report: CompactReport) => void) | undefined;
+}
+
+/** Mutable bookkeeping for one conversation only. */
+class AutoCompactionState {
+  lastNoopAttempt: { level: PressureLevel; tokens: number } | null = null;
+  lastHygieneTokens: number | null = null;
+  _cachedCalibrationKey = '';
+  _cachedCalibrationRatio = -1;
+  _cachedCalibrated = false;
+  _cachedTokens = -1;
+  _cachedMsgCount = -1;
+  _cachedToolCount = -1;
+  _cachedRevision = -1;
+  _cachedSystemRef: unknown = null;
+  _cachedToolsRef: unknown = null;
 }
 
 /**
@@ -131,24 +150,19 @@ export class AutoCompactionMiddleware {
   private static readonly HYGIENE_GROWTH_RATIO = 0.15;
   private static readonly HYGIENE_MIN_GROWTH_TOKENS = 20_000;
 
-  /** Tracks the most recent no-op attempt so we can avoid re-firing per turn. */
-  private lastNoopAttempt: { level: PressureLevel; tokens: number } | null = null;
-
-  /** Context size at the last hygiene pass; anchors the growth interval. */
-  private lastHygieneTokens: number | null = null;
-
-  /**
-   * Cached token estimate from the last handler() invocation. When the
-   * message count and tool count haven't changed since the last estimate
-   * (autonomous idle loops), we skip the expensive O(n) token estimation
-   * and reuse this value. Reset to -1 when the context changes.
+  /** Runtime bookkeeping belongs to the context, even when a pipeline is shared.
+   * Weak keys also let closed conversations release their cached references.
    */
-  private _cachedTokens = -1;
-  private _cachedMsgCount = -1;
-  private _cachedToolCount = -1;
-  private _cachedRevision = -1;
-  private _cachedSystemRef: unknown = null;
-  private _cachedToolsRef: unknown = null;
+  private readonly contextStates = new WeakMap<Context, AutoCompactionState>();
+
+  private stateFor(ctx: Context): AutoCompactionState {
+    let state = this.contextStates.get(ctx);
+    if (!state) {
+      state = new AutoCompactionState();
+      this.contextStates.set(ctx, state);
+    }
+    return state;
+  }
 
   /**
    * @param compactor        Compactor to use for compaction.
@@ -234,7 +248,7 @@ export class AutoCompactionMiddleware {
       // Runtime gate — when auto-compaction is turned off via /settings the
       // middleware stays installed but does nothing, for the tab that turned
       // it off and no other.
-      if (!this.enabledFor(ctx)) return next(ctx);
+      if (!this.enabledFor(ctx) || ctx.signal?.aborted) return next(ctx);
 
       let tokens = this.estimateContextTokens(ctx);
       // A provider overflow can teach the session a route-specific effective
@@ -266,7 +280,7 @@ export class AutoCompactionMiddleware {
       if (!level) {
         // Load dropped back below all thresholds — any previously stuck state
         // is no longer relevant.
-        this.lastNoopAttempt = null;
+        this.stateFor(ctx).lastNoopAttempt = null;
         return next(ctx);
       }
 
@@ -278,26 +292,26 @@ export class AutoCompactionMiddleware {
       // the session. Gating on real pressure plus a growth interval turns that
       // into one rewrite per interval, leaving history append-only — and the
       // prompt prefix cacheable — for every turn in between.
-      if (this.shouldRunHygiene(level, tokens, budget.availableInputTokens)) {
+      if (this.shouldRunHygiene(ctx, level, tokens, budget.availableInputTokens)) {
         const changed = this.runHistoryHygiene(ctx);
         // Anchor the next interval on the post-hygiene size even when nothing
         // changed, so a session with nothing left to trim does not re-attempt
         // the full O(n) walk on every subsequent turn.
         tokens = changed ? this.estimateContextTokens(ctx) : tokens;
-        this.lastHygieneTokens = tokens;
+        this.stateFor(ctx).lastHygieneTokens = tokens;
         if (changed) {
           budget = contextWindowBudget(ctx, tokens, runtimeMaxContext);
           load = this.applySendGuard(ctx, budget.load, budget.availableInputTokens);
           const relevelled = pressureLevelFor(load, adaptiveThresholds);
           if (!relevelled) {
-            this.lastNoopAttempt = null;
+            this.stateFor(ctx).lastNoopAttempt = null;
             return next(ctx);
           }
           level = relevelled;
         }
       }
 
-      if (this.shouldSkipNoopRetry(level, tokens)) {
+      if (this.shouldSkipNoopRetry(ctx, level, tokens)) {
         return next(ctx);
       }
 
@@ -337,6 +351,7 @@ export class AutoCompactionMiddleware {
    * result across calls.
    */
   private estimateContextTokens(ctx: Context): number {
+    const state = this.stateFor(ctx);
     const msgCount = ctx.messages.length;
     const toolCount = (ctx.tools ?? []).length;
     const revision = ctx.state?.revision ?? -1;
@@ -346,24 +361,25 @@ export class AutoCompactionMiddleware {
     // messages), not a scaled estimate. Only the newest turn is estimated;
     // everything else is exact. Falls through to the estimate paths before
     // the first response or right after compaction shrank the array.
-    const anchorAt =
-      typeof ctx.meta?.['realAnchorMsgCount'] === 'number'
-        ? (ctx.meta['realAnchorMsgCount'] as number)
-        : undefined;
-    const anchored = realAnchoredInputTokens(ctx.messages, ctx.lastRealInputTokens, anchorAt);
+    const anchored = readRealAnchoredContextTokens(ctx);
     if (anchored !== null) return anchored;
     // Custom estimator — never cache; call fresh every invocation.
     if (this._estimator) return this._estimator(ctx);
+    const calibrationKey = `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`;
+    const cal = getCalibrationState(calibrationKey);
     if (
-      msgCount === this._cachedMsgCount &&
-      toolCount === this._cachedToolCount &&
-      revision === this._cachedRevision &&
-      ctx.systemPrompt === this._cachedSystemRef &&
-      ctx.tools === this._cachedToolsRef &&
-      this._cachedTokens >= 0
+      calibrationKey === state._cachedCalibrationKey &&
+      cal.ratio === state._cachedCalibrationRatio &&
+      cal.calibrated === state._cachedCalibrated &&
+      msgCount === state._cachedMsgCount &&
+      toolCount === state._cachedToolCount &&
+      revision === state._cachedRevision &&
+      ctx.systemPrompt === state._cachedSystemRef &&
+      ctx.tools === state._cachedToolsRef &&
+      state._cachedTokens >= 0
     ) {
       // Default estimator, context unchanged — reuse cached value.
-      return this._cachedTokens;
+      return state._cachedTokens;
     }
 
     const stashed = this.tryStashedTokens(ctx, msgCount, toolCount, revision);
@@ -373,7 +389,6 @@ export class AutoCompactionMiddleware {
       // populated `ctx.lastRequestTokens` this iteration. Apply the
       // per-(provider,model) calibration ratio and use it. This avoids
       // a third redundant O(n) walk per iteration.
-      const cal = getCalibrationState(`${ctx.provider?.id ?? 'unknown'}/${ctx.model}`);
       tokens = cal.calibrated
         ? Math.round(stashed * Math.min(1.5, Math.max(0.5, cal.ratio)))
         : stashed;
@@ -389,12 +404,15 @@ export class AutoCompactionMiddleware {
         `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
       ).total;
     }
-    this._cachedTokens = tokens;
-    this._cachedMsgCount = msgCount;
-    this._cachedToolCount = toolCount;
-    this._cachedRevision = revision;
-    this._cachedSystemRef = ctx.systemPrompt;
-    this._cachedToolsRef = ctx.tools;
+    state._cachedCalibrationKey = calibrationKey;
+    state._cachedCalibrationRatio = cal.ratio;
+    state._cachedCalibrated = cal.calibrated;
+    state._cachedTokens = tokens;
+    state._cachedMsgCount = msgCount;
+    state._cachedToolCount = toolCount;
+    state._cachedRevision = revision;
+    state._cachedSystemRef = ctx.systemPrompt;
+    state._cachedToolsRef = ctx.tools;
     return tokens;
   }
 
@@ -496,18 +514,19 @@ export class AutoCompactionMiddleware {
    * stays append-only (and therefore cacheable by the provider) in between.
    */
   private shouldRunHygiene(
+    ctx: Context,
     level: PressureLevel,
     tokens: number,
     availableInputTokens: number,
   ): boolean {
     if (level === 'hard') return true;
-    const last = this.lastHygieneTokens;
+    const last = this.stateFor(ctx).lastHygieneTokens;
     if (last === null) return true;
     // Compaction or a rewind can shrink the context below the last anchor.
     // Re-anchor on the smaller size instead of banking the drop as growth
     // that has already been spent.
     const anchor = Math.min(last, tokens);
-    this.lastHygieneTokens = anchor;
+    this.stateFor(ctx).lastHygieneTokens = anchor;
     const interval = Math.max(
       AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS,
       Math.floor(availableInputTokens * AutoCompactionMiddleware.HYGIENE_GROWTH_RATIO),
@@ -530,6 +549,7 @@ export class AutoCompactionMiddleware {
     toolCount: number,
     revision: number,
   ): number | null {
+    if (!requestTokenBasisStillCurrent(ctx)) return null;
     const stashed = ctx.lastRequestTokens;
     if (typeof stashed !== 'number' || stashed <= 0) return null;
     // The agent loop writes the (msg, tool) count it computed the stash at
@@ -551,16 +571,17 @@ export class AutoCompactionMiddleware {
 
   /** Invalidate every token view derived from the pre-rewrite conversation. */
   private invalidateTokenCaches(ctx: Context): void {
+    const state = this.stateFor(ctx);
     ctx.lastRequestTokens = undefined;
     ctx.lastRealInputTokens = undefined;
     delete ctx.meta['lastRequestTokensAt'];
     delete ctx.meta['realAnchorMsgCount'];
-    this._cachedTokens = -1;
-    this._cachedMsgCount = -1;
-    this._cachedToolCount = -1;
-    this._cachedRevision = -1;
-    this._cachedSystemRef = null;
-    this._cachedToolsRef = null;
+    state._cachedTokens = -1;
+    state._cachedMsgCount = -1;
+    state._cachedToolCount = -1;
+    state._cachedRevision = -1;
+    state._cachedSystemRef = null;
+    state._cachedToolsRef = null;
   }
 
   /**
@@ -568,8 +589,10 @@ export class AutoCompactionMiddleware {
    * level reduced nothing and context has not grown materially since. Prevents
    * a stuck preserveK window from spamming compaction events every iteration.
    */
-  private shouldSkipNoopRetry(level: PressureLevel, tokens: number): boolean {
-    const stuck = this.lastNoopAttempt;
+  private shouldSkipNoopRetry(ctx: Context, level: PressureLevel, tokens: number): boolean {
+    // Hard pressure must still pass the overflow check on every retry.
+    if (level === 'hard') return false;
+    const stuck = this.stateFor(ctx).lastNoopAttempt;
     if (!stuck) return false;
     // Escalation always retries — soft → hard might be reducible aggressively.
     if (LEVEL_RANK[level] > LEVEL_RANK[stuck.level]) return false;
@@ -577,7 +600,12 @@ export class AutoCompactionMiddleware {
     return delta < AutoCompactionMiddleware.NOOP_RETRY_DELTA_TOKENS;
   }
 
-  private recordAttempt(level: PressureLevel, tokens: number, report: CompactReport): void {
+  private recordAttempt(
+    ctx: Context,
+    level: PressureLevel,
+    tokens: number,
+    report: CompactReport,
+  ): void {
     // Prefer full-request tokens (accurate); fall back to message-only before/after.
     const before = report.fullRequestTokensBefore ?? report.before;
     const after = report.fullRequestTokensAfter ?? report.after;
@@ -589,9 +617,9 @@ export class AutoCompactionMiddleware {
     const reduced = saved >= minimumUsefulSaving;
     const repaired = !!report.repaired;
     if (reduced || repaired) {
-      this.lastNoopAttempt = null;
+      this.stateFor(ctx).lastNoopAttempt = null;
     } else {
-      this.lastNoopAttempt = { level, tokens };
+      this.stateFor(ctx).lastNoopAttempt = { level, tokens };
     }
   }
 
@@ -616,7 +644,10 @@ export class AutoCompactionMiddleware {
       if (ctx.state.revision !== revisionBefore) {
         this.invalidateTokenCaches(ctx);
       }
-      this.recordAttempt(pressure.level, pressure.tokens, report);
+      // A late summarizer/selector result may arrive after the run was stopped.
+      // Do not turn its no-op report into a destructive emergency trim.
+      if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
+      this.recordAttempt(ctx, pressure.level, pressure.tokens, report);
       this.onCompact?.(report);
       this.events?.emit('compaction.fired', {
         sessionId: resolveEventSessionId(ctx),
@@ -649,13 +680,17 @@ export class AutoCompactionMiddleware {
         ...(report.collapsedDigest ? { digest: truncateDigest(report.collapsedDigest) } : {}),
       });
 
+      if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
+
       // Stale file-read metadata from before the compaction boundary is no
       // longer useful and would cause hasRead() to skip legitimate re-reads.
       ctx.clearFileTracking();
 
       const afterTokens = report.fullRequestTokensAfter ?? report.after;
       let afterBudget = contextWindowBudget(ctx, afterTokens, runtimeMaxContext);
-      let afterLoad = afterBudget.load;
+      // Compactor reports are raw estimates. Dense content must pass the same
+      // upper-bound guard after compaction as before it.
+      let afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
       let stillHard = afterLoad >= pressure.hardThreshold;
 
       // Last-resort emergency trim — the no-overflow guarantee. When normal
@@ -673,7 +708,7 @@ export class AutoCompactionMiddleware {
             ctx.tools ?? [],
           ).total;
           afterBudget = contextWindowBudget(ctx, retryTokens, runtimeMaxContext);
-          afterLoad = afterBudget.load;
+          afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
           stillHard = afterLoad >= pressure.hardThreshold;
           ctx.clearFileTracking();
           this.events?.emit('compaction.emergency_trim', {
@@ -700,7 +735,7 @@ export class AutoCompactionMiddleware {
             ctx.tools ?? [],
           ).total;
           afterBudget = contextWindowBudget(ctx, retryTokens, runtimeMaxContext);
-          afterLoad = afterBudget.load;
+          afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
           stillHard = afterLoad >= pressure.hardThreshold;
           ctx.clearFileTracking();
           this.events?.emit('compaction.target_trim', {
@@ -756,6 +791,7 @@ export class AutoCompactionMiddleware {
         }
       }
     } catch (err) {
+      if (ctx.signal?.aborted) return;
       const error = err instanceof Error ? err : new Error(String(err));
       const fatal =
         this.failureMode === 'throw' ||
@@ -821,6 +857,7 @@ export class AutoCompactionMiddleware {
       ctx.messages,
       ctx.systemPrompt,
       ctx.tools ?? [],
+      `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
     ).total;
     const inflation = rawFull > 0 ? Math.max(1, guardFull / rawFull) : 1;
     const messageBudget = Math.max(1, Math.floor(targetGuardFull / inflation) - rawOverhead);

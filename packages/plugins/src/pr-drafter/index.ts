@@ -400,6 +400,21 @@ const plugin: Plugin = {
         state.totalOutputTokens += outputTokens;
       });
       state.eventUnsubscribers.push(offUsage);
+
+      // The draft describes "this session's work", but the plugin is set up
+      // once per PROCESS and the host outlives any one session (the WebUI
+      // opens additional sessions in the same process). Nothing cleared the
+      // collected commits, files, models or token totals, so a draft written
+      // in the second session silently included the first session's work.
+      const offSession = api.onEvent('session.ended', () => {
+        state.commits = [];
+        state.files = new Set();
+        state.models = new Set();
+        state.totalInputTokens = 0;
+        state.totalOutputTokens = 0;
+        state.toolCalls = 0;
+      });
+      state.eventUnsubscribers.push(offSession);
     }
 
     // Stop hook.

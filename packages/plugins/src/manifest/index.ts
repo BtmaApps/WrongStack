@@ -23,7 +23,6 @@ const OFFICIAL_PLUGIN_NAMES = [
   'template-engine',
   'semver-bump',
   'secret-scanner',
-  'todo-tracker',
   'token-budget',
   'lint-gate',
   'branch-guard',
@@ -32,7 +31,6 @@ const OFFICIAL_PLUGIN_NAMES = [
   'format-on-save',
   'test-runner-gate',
   'import-organizer',
-  'knowledge-graph',
   'todo-listener',
   'session-recap',
   'spec-linker',
@@ -59,7 +57,6 @@ const OFFICIAL_PLUGIN_NAMES = [
   'plugin-stack-observer',
   'dependency-vulnerability-gate',
   'migration-planner',
-  'semantic-search-indexer',
   'auto-i18n-extractor',
   'doc-sync-guard',
   'api-compatibility-gate',
@@ -69,15 +66,9 @@ const OFFICIAL_PLUGIN_NAMES = [
   'license-audit-gate',
   'accessibility-auditor',
   'security-hotspot-scanner',
-  'dead-code-detector',
   'duplicate-code-detector',
-  'code-metrics',
-  'refactor-suggester',
   'test-generator',
   'release-notes-generator',
-  'smart-rename',
-  'feature-flag-tracker',
-  'interface-contract-guard',
 ] as const;
 
 const MEDIUM_RISK_PLUGINS = new Set<string>([
@@ -106,8 +97,6 @@ const MEDIUM_RISK_PLUGINS = new Set<string>([
   'test-flake-detector',
   'performance-regression-gate',
   'type-gate',
-  'interface-contract-guard',
-  'smart-rename',
 ]);
 
 const HIGH_RISK_PLUGINS = new Set<string>([
@@ -123,19 +112,47 @@ const HIGH_RISK_PLUGINS = new Set<string>([
   'prompt-firewall',
 ]);
 
+/**
+ * Plugins that boot without the user asking for them.
+ *
+ * The bar is deliberately high, because every entry here is paid for on
+ * EVERY session by EVERY user: a default-active plugin adds its tools to
+ * the wire description of every prompt, and a hook it registers runs on
+ * every matching tool call — foreground PostToolUse hooks are awaited
+ * before the turn continues (`core/hooks/runner.ts`). A plugin earns a
+ * place only if it is a bounded safety check whose absence is a real
+ * hazard, or a passive diagnostic that costs approximately nothing.
+ *
+ * Eight plugins were removed from this set in the 2026-09-17 review:
+ *
+ *  - `cost-tracker` — `setup()` awaits `modelsRegistry.load()`, and the
+ *    loader runs setups SERIALLY (`core/plugin/loader.ts`), so a cold
+ *    models.dev fetch stalled every later plugin behind it.
+ *  - `token-budget` — ships `limit: 0`, which enforces nothing; it only
+ *    re-counts what cost-tracker already counts.
+ *  - `loop-breaker` — its own `enabled` defaulted to false, so three
+ *    wildcard hooks were registered and returned on their first line.
+ *    The internal switch now defaults ON, which is what makes opting in
+ *    here meaningful; see `plugin-enable-double-gate`.
+ *  - `process-guard` — observability only. Kill commands are actually
+ *    refused by `tools/src/bash-kill-guard.ts` and `exec-kill-guard.ts`,
+ *    which run whether or not this plugin is loaded.
+ *  - `diff-summary`, `config-validator` — useful, but they spawn git /
+ *    read and parse the written file on every write. Opt-in.
+ *  - `knowledge-graph`, `todo-tracker` — 11 tools between them on every
+ *    prompt, for state only some projects keep. Both were then deleted
+ *    from the catalog outright in the follow-up review: the built-in
+ *    memory tools and `todo` + `kanban` already own this ground.
+ *
+ * What stayed: the bounded safety checks (`secret-scanner`,
+ * `injection-shield`, `dep-guard`), plus two passive, near-free
+ * diagnostics (`error-lens`, `context-pins`).
+ */
 const DEFAULT_ACTIVE_PLUGINS = new Set<string>([
-  'cost-tracker',
   'secret-scanner',
-  'todo-tracker',
-  'token-budget',
-  'diff-summary',
-  'knowledge-graph',
-  'loop-breaker',
-  'process-guard',
   'context-pins',
   'error-lens',
   'dep-guard',
-  'config-validator',
   'injection-shield',
 ]);
 

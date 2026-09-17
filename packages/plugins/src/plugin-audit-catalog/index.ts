@@ -88,17 +88,24 @@ export const HOST_PLUGIN_AUDIT_ENTRIES: readonly PluginAuditEntry[] = [
     name: '@wrongstack/plug-lsp',
     risk: 'medium',
     summary: 'Language Server Protocol tools and slash commands.',
-    // Active by default: with `autoStart: 'lazy'` nothing is spawned until a
-    // file of a matching language is touched, and auto-discovery only adopts
-    // servers from the user's own environment — never from the opened
-    // repository. That second clause used to read "already installed on the
-    // machine", which was wrong: the resolver preferred
-    // `<repo>/node_modules/.bin` over PATH on an existence check alone, so a
-    // cloned repo could supply the executable and have it spawned unprompted
-    // (WS-SEC-01). Provenance is now decided by where the binary lives; see
-    // `plug-lsp/src/utils/command-resolver.ts`. Disable the plugin with
-    // `{ name: 'lsp', enabled: false }` in config.plugins.
-    defaultState: 'active',
+    // Inactive by default (2026-09-17). `autoStart: 'lazy'` delays the cost
+    // but does not remove it: the first touch of a matching file spawns a
+    // real language server as a child process, and a language server is the
+    // single heaviest thing this host can start — tsserver alone routinely
+    // holds hundreds of MB and pins a core while it indexes. Lazily paying
+    // that is still paying it, and a user who never invokes an LSP tool
+    // should not pay it at all.
+    //
+    // Provenance is NOT the reason for this default. Auto-discovery adopts
+    // servers only from the user's own environment, never from the opened
+    // repository: the resolver used to prefer `<repo>/node_modules/.bin`
+    // over PATH on an existence check alone, so a cloned repo could supply
+    // the executable and have it spawned unprompted (WS-SEC-01). That is
+    // fixed — provenance is decided by where the binary lives; see
+    // `plug-lsp/src/utils/command-resolver.ts`.
+    //
+    // Enable with `{ name: 'lsp', enabled: true }` in config.plugins.
+    defaultState: 'inactive',
     canDisable: true,
   },
   {

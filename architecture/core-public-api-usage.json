@@ -124,9 +124,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/registry": {
-      "files": 129,
+      "files": 128,
       "typeOnly": 62,
-      "runtimeOrMixed": 69
+      "runtimeOrMixed": 68
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1102,
+      "files": 1093,
       "typeOnly": 982,
-      "runtimeOrMixed": 333
+      "runtimeOrMixed": 324
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -204,9 +204,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/utils": {
-      "files": 590,
+      "files": 586,
       "typeOnly": 55,
-      "runtimeOrMixed": 563
+      "runtimeOrMixed": 559
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -8291,12 +8291,6 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
-      "file": "packages/plugins/tests/todo-tracker.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/registry",
       "file": "packages/providers/src/ai-gateway.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -8766,12 +8760,6 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/permission-prompt-mirror.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/permission-prompt.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9422,6 +9410,12 @@
       "file": "packages/webui-server/src/server/sdd-board-ws-handler.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/src/server/start-webui-remediation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",
@@ -13523,12 +13517,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/code-metrics/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/commit-validator/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -13554,12 +13542,6 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/cron/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/dead-code-detector/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13607,12 +13589,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/feature-flag-tracker/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/file-watcher/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -13646,18 +13622,6 @@
       "file": "packages/plugins/src/injection-shield/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/interface-contract-guard/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/knowledge-graph/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13739,12 +13703,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/refactor-suggester/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/release-notes-generator/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -13769,12 +13727,6 @@
     },
     {
       "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/semantic-search-indexer/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/semver-bump/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -13788,12 +13740,6 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/shell-check/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/smart-rename/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13838,12 +13784,6 @@
       "file": "packages/plugins/src/todo-listener/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/plugins/src/todo-tracker/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -19505,33 +19445,9 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/plugins/src/knowledge-graph/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/plugins/src/semantic-search-indexer/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/semver-bump/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 2
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/plugins/src/todo-tracker/index.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/plugins/tests/todo-tracker-fault-injection.test.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

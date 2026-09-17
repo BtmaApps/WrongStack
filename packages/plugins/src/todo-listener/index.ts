@@ -87,7 +87,9 @@ interface TodoListenerConfig {
 }
 
 const DEFAULTS: TodoListenerConfig = {
-  enabled: false,
+  // Opt-in belongs to host enablement, not this switch — see the
+  // plugin-enable-double-gate audit.
+  enabled: true,
   subjectPrefix: 'todo: ',
   broadcastOnChange: true,
   cooldownMs: 30_000,
@@ -97,7 +99,7 @@ function readConfig(raw: unknown): TodoListenerConfig {
   if (!raw || typeof raw !== 'object') return { ...DEFAULTS };
   const r = raw as Record<string, unknown>;
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     subjectPrefix:
       typeof r['subjectPrefix'] === 'string' ? r['subjectPrefix'] : DEFAULTS.subjectPrefix,
     broadcastOnChange: r['broadcastOnChange'] !== false,

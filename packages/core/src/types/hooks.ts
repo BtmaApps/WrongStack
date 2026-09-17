@@ -47,7 +47,7 @@ export interface HookRegistrationOptions {
    * PostToolUse only: when true, the hook runs fire-and-forget in the
    * background. The tool executor returns immediately without waiting for
    * the hook to complete. The hook's `additionalContext` is discarded —
-   * use this for purely advisory hooks (format-on-save, code-metrics,
+   * use this for purely advisory hooks (format-on-save, diff-summary,
    * etc.) where the LLM doesn't need same-turn feedback.
    *
    * PreToolUse hooks ignore this flag — they must complete before the

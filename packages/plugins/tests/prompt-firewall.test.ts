@@ -113,8 +113,12 @@ describe('detectSecrets / redactSecrets', () => {
 });
 
 describe('prompt-firewall plugin', () => {
-  it('is inert when disabled', () => {
-    expect(setup().extensions.register).not.toHaveBeenCalled();
+  it('registers by default; enabled:false turns it off', () => {
+    // Opting in belongs to host enablement, not this switch. `redact` is still
+    // the default mode, so enabling the plugin strips secrets rather than
+    // refusing requests.
+    expect(setup().extensions.register).toHaveBeenCalledTimes(1);
+    expect(setup({ enabled: false }).extensions.register).not.toHaveBeenCalled();
   });
 
   it('warn mode detects but passes the request through unchanged', async () => {

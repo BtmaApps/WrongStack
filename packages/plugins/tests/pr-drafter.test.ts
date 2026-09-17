@@ -51,6 +51,31 @@ describe('pr-drafter plugin', () => {
     expect(event).toBe('Stop');
   });
 
+  it('clears the collected session work when a session ends', async () => {
+    // The draft describes "this session's work", but the plugin is set up once
+    // per PROCESS and the host outlives any one session, so an unwritten
+    // session's commits, files and token totals were carried into the next
+    // session's draft.
+    const api = makeApi();
+    prDrafterPlugin.setup(api as never);
+    const postCall = api.registerHook.mock.calls.find(([e]: unknown[]) => e === 'PostToolUse');
+    expect(postCall).toBeDefined();
+    await (postCall![2] as (input: unknown) => Promise<void>)({
+      toolName: 'write',
+      toolInput: { path: 'src/a.ts' },
+      toolResult: { content: 'ok', isError: false },
+    });
+    const before = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    expect(before.counters['files']).toBe(1);
+
+    const sessionEnded = api.onEvent.mock.calls.find(([e]: unknown[]) => e === 'session.ended');
+    expect(sessionEnded).toBeDefined();
+    (sessionEnded![1] as () => void)();
+
+    const after = (await prDrafterPlugin.health!()) as { counters: Record<string, number> };
+    expect(after.counters['files']).toBe(0);
+  });
+
   it('pr_draft tool returns a preview when preview:true', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);

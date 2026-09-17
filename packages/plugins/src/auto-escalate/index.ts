@@ -63,7 +63,11 @@ const DEFAULT_PATTERNS = [
 ];
 
 const DEFAULTS = {
-  enabled: false,
+  // Opt-in belongs to host enablement (the catalog's defaultState), not to
+  // this switch. Defaulting it false while the plugin also demanded a literal
+  // `enabled: true` meant `wstack plugin enable auto-escalate` produced a
+  // plugin that registered nothing — the plugin-enable-double-gate trap.
+  enabled: true,
   escalation: [],
   retryablePatterns: DEFAULT_PATTERNS.map((p) => new RegExp(p, 'i')),
 };
@@ -93,7 +97,7 @@ function readConfig(raw: unknown): AutoEscalateConfig {
         })
     : base.retryablePatterns;
   return {
-    enabled: r['enabled'] === true,
+    enabled: r['enabled'] !== false,
     escalation,
     retryablePatterns: patterns.length > 0 ? patterns : base.retryablePatterns,
   };
@@ -151,7 +155,7 @@ const plugin: Plugin = {
     'On retryable provider errors, retries the turn with the next model in an escalation ladder (onError). Opt-in; defers to default recovery otherwise.',
   apiVersion: '^0.1.10',
   capabilities: { tools: true },
-  defaultConfig: { enabled: false, escalation: [], retryablePatterns: DEFAULT_PATTERNS },
+  defaultConfig: { enabled: true, escalation: [], retryablePatterns: DEFAULT_PATTERNS },
   configSchema: {
     type: 'object',
     properties: {

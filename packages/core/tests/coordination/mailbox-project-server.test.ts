@@ -461,6 +461,55 @@ describe('RemoteMailbox single-owner IPC', () => {
     }
   });
 
+  // The lease sweep also calls `scheduleIdleStop()`, which used to clear and
+  // re-arm the idle timer. Whenever the sweep ran more often than `idleMs` the
+  // countdown reset before it could fire and the daemon never idled out at all.
+  // Production hit this on every run: the sweep is `min(10s, lease/3)` — 10s at
+  // the 45s default lease — against a five minute idle window.
+  //
+  // This test MUST keep the idle window ABOVE the sweep interval. The test
+  // below uses idle=150ms, which is far UNDER the sweep and therefore kept
+  // passing for as long as the bug was live.
+  it('stops when idle even though the lease sweep runs more often than the idle window', async () => {
+    const previousIdle = process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS'];
+    const previousLease = process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'];
+    const previousInline = process.env['WRONGSTACK_MAILBOX_INLINE'];
+    // lease 300ms => sweep = min(10_000, max(100, 100)) = 100ms, well under idle.
+    process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'] = '300';
+    process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS'] = '1500';
+    delete process.env['WRONGSTACK_MAILBOX_INLINE'];
+    const mailbox = new RemoteMailbox({ projectDir, isolatedConnection: true });
+    try {
+      await mailbox.initialize();
+      expect((await mailbox.status()).pid).toBeGreaterThan(0);
+      const metadataPath = mailboxProjectServerMetadataPath(projectDir);
+      await mailbox.close();
+      const deadline = Date.now() + 10_000;
+      let stopped = false;
+      while (Date.now() < deadline) {
+        try {
+          await fs.access(metadataPath);
+        } catch {
+          stopped = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(stopped).toBe(true);
+    } finally {
+      await mailbox.close();
+      if (previousIdle === undefined) delete process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS'];
+      else process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS'] = previousIdle;
+      if (previousLease === undefined) {
+        delete process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'];
+      } else {
+        process.env['WRONGSTACK_MAILBOX_SERVER_CLIENT_LEASE_MS'] = previousLease;
+      }
+      if (previousInline === undefined) delete process.env['WRONGSTACK_MAILBOX_INLINE'];
+      else process.env['WRONGSTACK_MAILBOX_INLINE'] = previousInline;
+    }
+  });
+
   it('stops the owner after the last client disconnects and idle time elapses', async () => {
     const previousIdle = process.env['WRONGSTACK_MAILBOX_SERVER_IDLE_MS'];
     const previousInline = process.env['WRONGSTACK_MAILBOX_INLINE'];

@@ -31,7 +31,7 @@
 
 import { execFile } from 'node:child_process';
 import type { Plugin } from '@wrongstack/core/types';
-import { releaseHandle, BoundedMap, withinProject } from '../runtime/index.js';
+import { BoundedMap, releaseHandle, withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
 
@@ -477,9 +477,14 @@ const plugin: Plugin = {
       };
     };
 
-    state.hookUnregister = api.registerHook('PostToolUse', 'write|edit', hook, {
-      background: true,
-    });
+    // Foreground, deliberately. A background PostToolUse entry is scheduled
+    // fire-and-forget and its `additionalContext` is never collected (see
+    // `collect`/`scheduleBackground` in `core/hooks/runner.ts`) — so running
+    // this hook in the background spawned `git ls-files` + `git diff` on
+    // every write and then threw the diff away, which is the entire product
+    // of the plugin. The per-path throttle and the content-hash memo above
+    // are what keep the foreground cost bounded.
+    state.hookUnregister = api.registerHook('PostToolUse', 'write|edit', hook);
 
     // --- diff_summary_status tool ---
     api.tools.register({

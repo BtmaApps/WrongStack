@@ -863,6 +863,7 @@ describe('AutoCompactionMiddleware', () => {
   });
 
   it('does not re-run compaction after a no-op attempt at the same pressure level', async () => {
+    const ctx = mockContext(0);
     // Compactor that reports zero savings — simulates preserveK protecting
     // everything and no oversized tool_results outside the window.
     const noopCompactor: Compactor & { calls: number } = {
@@ -892,7 +893,7 @@ describe('AutoCompactionMiddleware', () => {
 
     // Three back-to-back iterations at the same pressure with no change
     for (let i = 0; i < 3; i++) {
-      await mw.handler()(mockContext(0), async (c) => c);
+      await mw.handler()(ctx, async (c) => c);
     }
 
     // First attempt fires; subsequent no-op-at-same-level attempts are skipped.
@@ -901,6 +902,7 @@ describe('AutoCompactionMiddleware', () => {
   });
 
   it('treats a negligible positive reduction as a no-op and backs off', async () => {
+    const ctx = mockContext(0);
     const tinyCompactor: Compactor & { calls: number } = {
       calls: 0,
       async compact() {
@@ -922,13 +924,14 @@ describe('AutoCompactionMiddleware', () => {
       { failureMode: 'continue' },
     );
 
-    await mw.handler()(mockContext(0), async (c) => c);
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
 
     expect(tinyCompactor.calls).toBe(1);
   });
 
   it('retries compaction after a no-op when context grows materially', async () => {
+    const ctx = mockContext(0);
     const noopCompactor: Compactor & { calls: number } = {
       calls: 0,
       async compact() {
@@ -953,21 +956,22 @@ describe('AutoCompactionMiddleware', () => {
       { failureMode: 'continue' },
     );
 
-    await mw.handler()(mockContext(0), async (c) => c); // initial no-op records stuck state
+    await mw.handler()(ctx, async (c) => c); // initial no-op records stuck state
     expect(noopCompactor.calls).toBe(1);
 
     // Tiny growth — still skipped
     currentRaw = 8050;
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
     expect(noopCompactor.calls).toBe(1);
 
     // Large growth — escalates from soft (8000=80%) to hard (10000=100%) → retries
     currentRaw = 10000;
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
     expect(noopCompactor.calls).toBe(2);
   });
 
   it('retries compaction after a no-op when pressure escalates to a higher level', async () => {
+    const ctx = mockContext(0);
     const noopCompactor: Compactor & { calls: number } = {
       calls: 0,
       async compact() {
@@ -992,16 +996,17 @@ describe('AutoCompactionMiddleware', () => {
       { failureMode: 'continue' },
     );
 
-    await mw.handler()(mockContext(0), async (c) => c); // no-op at soft
-    await mw.handler()(mockContext(0), async (c) => c); // skipped
+    await mw.handler()(ctx, async (c) => c); // no-op at soft
+    await mw.handler()(ctx, async (c) => c); // skipped
     expect(noopCompactor.calls).toBe(1);
 
     currentRaw = 9200; // 92% load → escalates to hard
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
     expect(noopCompactor.calls).toBe(2);
   });
 
   it('clears the no-op record when load drops back below all thresholds', async () => {
+    const ctx = mockContext(0);
     const noopCompactor: Compactor & { calls: number } = {
       calls: 0,
       async compact() {
@@ -1026,11 +1031,11 @@ describe('AutoCompactionMiddleware', () => {
       { failureMode: 'continue' },
     );
 
-    await mw.handler()(mockContext(0), async (c) => c); // no-op
+    await mw.handler()(ctx, async (c) => c); // no-op
     currentRaw = 3000; // 30% load → below warn
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
     currentRaw = 8000; // back up — stuck state cleared, should retry
-    await mw.handler()(mockContext(0), async (c) => c);
+    await mw.handler()(ctx, async (c) => c);
     expect(noopCompactor.calls).toBe(2);
   });
 

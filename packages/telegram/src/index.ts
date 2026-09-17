@@ -169,7 +169,7 @@ function telegramFromConfig(cfg: Config): {
     outboundQueuePerChat: tg.outboundQueuePerChat ?? 32,
     outboundQueueConcurrency: tg.outboundQueueConcurrency ?? 4,
     rateLimitTokensPerSecond: tg.rateLimitTokensPerSecond ?? 0.33,
-    rateLimitBurst: tg.rateLimitBurst ?? 1,
+    rateLimitBurst: tg.rateLimitBurst ?? 4,
     parseMode: tg.parseMode ?? '',
   };
 }
@@ -213,7 +213,7 @@ const plugin: Plugin = {
       outboundQueuePerChat: cfg.outboundQueuePerChat ?? 32,
       outboundQueueConcurrency: cfg.outboundQueueConcurrency ?? 4,
       rateLimitTokensPerSecond: cfg.rateLimitTokensPerSecond ?? 0.33,
-      rateLimitBurst: cfg.rateLimitBurst ?? 1,
+      rateLimitBurst: cfg.rateLimitBurst ?? 4,
       parseMode: cfg.parseMode ?? '',
     };
 
