@@ -417,7 +417,13 @@ export class ToolExecutor {
         const result = toolErrorResult(use, err, {
           scrubber: (s) => this.opts.secretScrubber.scrub(s),
         });
-        budget = this.budgetForString(result.content, budget);
+        // Error results are iteration output too: cap them with the same byte
+        // budget the success path enforces, or a single failing tool whose
+        // Error message is huge can defeat perIterationOutputCapBytes
+        // entirely (budgetForString only charges; it never truncates).
+        const cappedError = this.serializer.enforceCap(result.content, budget);
+        result.content = cappedError.text;
+        budget = cappedError.newBudget;
         if (err instanceof Error) span?.recordError(err);
         span?.setAttribute('tool.is_error', true);
         span?.setAttribute('tool.error_category', category);
@@ -448,7 +454,11 @@ export class ToolExecutor {
         if (isStructured) {
           result.content = scrubbed;
         }
-        budget = this.budgetForString(result.content, budget);
+        // Same cap discipline as the plain-Error catch above — structured
+        // describe() payloads are just as unbounded as Error messages.
+        const cappedError = this.serializer.enforceCap(result.content, budget);
+        result.content = cappedError.text;
+        budget = cappedError.newBudget;
         return { result, tool, durationMs: 0 };
       }
     };

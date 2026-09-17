@@ -736,4 +736,52 @@ describe('ToolExecutor — additional coverage', () => {
       expect(tool.execute).not.toHaveBeenCalled();
     });
   });
+
+  describe('tool-error results honor perIterationOutputCapBytes', () => {
+    it('control: a small error message passes through verbatim', async () => {
+      const tool = makeTool({
+        name: 'boom-small',
+        execute: vi.fn().mockRejectedValue(new Error('kaboom: detailed cause')),
+      });
+      const executor = makeExecutor([tool], { perIterationOutputCapBytes: 1_000 });
+      const result = await executor.executeBatch([makeUse('boom-small')], makeCtx(), 'sequential');
+      const block = result.outputs[0]!.result as ToolResultBlock;
+      expect(block.is_error).toBe(true);
+      expect(block.content).toContain('kaboom: detailed cause');
+    });
+
+    it('a failing tool with a huge message cannot defeat the iteration output cap', async () => {
+      const huge = 'E'.repeat(500_000);
+      const tool = makeTool({ name: 'boom', execute: vi.fn().mockRejectedValue(new Error(huge)) });
+      const executor = makeExecutor([tool], { perIterationOutputCapBytes: 1_000 });
+      const result = await executor.executeBatch([makeUse('boom')], makeCtx(), 'sequential');
+      const block = result.outputs[0]!.result as ToolResultBlock;
+      expect(block.is_error).toBe(true);
+      const content = (result.outputs[0]!.result as ToolResultBlock).content as string;
+      const bytes = Buffer.byteLength(content, 'utf8');
+      expect(
+        bytes,
+        `error block content is ${bytes} bytes — perIterationOutputCapBytes is not enforced on the tool-error path`,
+      ).toBeLessThanOrEqual(1_000);
+    });
+
+    it('structured WrongStackError payloads are capped too', async () => {
+      const structured = new WrongStackError({
+        message: 'S'.repeat(400_000),
+        code: ERROR_CODES.PROVIDER_OVERLOADED,
+        subsystem: 'general',
+      });
+      const tool = makeTool({ name: 'boom-wse', execute: vi.fn().mockRejectedValue(structured) });
+      const executor = makeExecutor([tool], { perIterationOutputCapBytes: 1_000 });
+      const result = await executor.executeBatch([makeUse('boom-wse')], makeCtx(), 'sequential');
+      const block = result.outputs[0]!.result as ToolResultBlock;
+      expect(block.is_error).toBe(true);
+      const content = (result.outputs[0]!.result as ToolResultBlock).content as string;
+      const bytes = Buffer.byteLength(content, 'utf8');
+      expect(
+        bytes,
+        `structured error block content is ${bytes} bytes — describe() payloads bypass the cap`,
+      ).toBeLessThanOrEqual(1_000);
+    });
+  });
 });
