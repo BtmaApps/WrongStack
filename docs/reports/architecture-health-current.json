@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-17T12:55:51.028Z",
+  "generatedAt": "2026-09-17T14:40:49.323Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -22435,6 +22435,11 @@
       "relativeImports": 13
     },
     {
+      "file": "packages/webui/src/components/activity-bar/index.tsx",
+      "lines": 869,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/webui/src/components/AudienceMemoryPanel.tsx",
       "lines": 909,
       "relativeImports": 0
@@ -22518,11 +22523,6 @@
       "file": "packages/webui/src/components/TechStackView/index.tsx",
       "lines": 865,
       "relativeImports": 5
-    },
-    {
-      "file": "packages/webui/src/components/activity-bar/index.tsx",
-      "lines": 869,
-      "relativeImports": 1
     },
     {
       "file": "packages/webui/src/hooks/ws-handlers/misc-handlers.ts",
