@@ -10,6 +10,7 @@
  *   - timeout path (using a very short timeout)
  */
 import * as fsp from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,12 +20,25 @@ import { FileServer, FsError } from '../src/client/file-server.js';
 let projectRoot: string;
 let server: FileServer;
 
+/**
+ * Mirror real realpath() for in-root probes: macOS os.tmpdir() is
+ * `/var/folders/...`, a symlink to `/private/var/folders/...`, so an
+ * identity fake disagrees with the canonicalized realRoot and every
+ * containment check reads as an escape. Synchronous internally so the
+ * promise settles in a microtask — fake-timer tests rely on that.
+ */
+function fakeRealpath(file: string): Promise<string> {
+  const rel = path.relative(projectRoot, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return Promise.resolve(file);
+  return Promise.resolve(path.join(realpathSync(projectRoot), rel));
+}
+
 function fakeOperations(overrides: Partial<FileServerOperations> = {}): FileServerOperations {
   return {
     stat: async () => ({ size: 0 }),
     readFile: async () => '',
     writeFile: async () => {},
-    realpath: async (file) => file,
+    realpath: fakeRealpath,
     rename: async () => {},
     unlink: async () => {},
     ...overrides,
@@ -222,7 +236,7 @@ describe('FileServer', () => {
           if (file.endsWith('.tmp')) {
             return path.join(path.dirname(projectRoot), 'outside', 'file');
           }
-          return file;
+          return fakeRealpath(file);
         },
         unlink,
       }),
