@@ -9,6 +9,9 @@ import type { Agent } from '@wrongstack/core/agent';
 import { EventBus } from '@wrongstack/core/kernel';
 import type { TaskStore } from '@wrongstack/core/tasking';
 import type { TaskGraph } from '@wrongstack/core/types';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SddBoardStore } from '../src/sdd-board-store.js';
 import { startSddRun } from '../src/start-sdd-run.js';
@@ -102,8 +105,13 @@ function gatedFactory(gate: Promise<void>): Parameters<typeof startSddRun>[0]['s
 }
 
 let warnSpy: ReturnType<typeof vi.spyOn>;
+let boardDir: string;
 
 beforeEach(() => {
+  // A throwaway store root per test. A hardcoded Windows-style path such as
+  // 'C:\nope' is relative on POSIX and would create that literal directory in
+  // the repo root.
+  boardDir = mkdtempSync(path.join(tmpdir(), 'sdd-kanban-'));
   for (const mock of Object.values(kanban)) mock.mockReset();
   kanban.subscribe.mockResolvedValue(() => undefined);
   kanban.drain.mockResolvedValue([]);
@@ -113,6 +121,7 @@ beforeEach(() => {
 
 afterEach(() => {
   warnSpy.mockRestore();
+  rmSync(boardDir, { recursive: true, force: true });
 });
 
 describe('startSddRun — kanban transport', () => {
@@ -128,7 +137,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: successFactory(),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
       // Omit controlTransport → defaults to kanban; subscribe/drain must
       // therefore be reached.
     });
@@ -151,7 +160,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: gatedFactory(gate),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
       controlDrainMs: 5,
     });
 
@@ -192,7 +201,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: gatedFactory(gate),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
       controlDrainMs: 5,
     });
 
@@ -227,7 +236,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: successFactory(),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
     });
     await handleA.completion;
     expect(warnSpy.mock.calls.flat().join('\n')).toContain('sdd.control_subscribe_failed');
@@ -243,7 +252,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: successFactory(),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
     });
     await handleB.completion;
     expect(warnSpy.mock.calls.flat().join('\n')).toContain('sub-string');
@@ -274,7 +283,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: factory,
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
     });
     // Let the run finish BEFORE the subscribe promise resolves.
     gate();
@@ -313,7 +322,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: gatedFactory(gate),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
       controlDrainMs: 5,
     });
 
@@ -342,7 +351,7 @@ describe('startSddRun — kanban transport', () => {
       projectRoot: '/proj',
       events: new EventBus(),
       subagentFactory: successFactory(),
-      boardStore: new SddBoardStore({ baseDir: 'C:\\nope' }),
+      boardStore: new SddBoardStore({ baseDir: boardDir }),
     });
     await handle.completion;
     // After run completion, controlDisposed=true. Firing the subscribe callback
@@ -365,7 +374,7 @@ describe('startSddRun — legacy-file initial drain commands (:300, :310)', () =
       priority: 'high',
       status: 'pending',
     });
-    const boardStore = new SddBoardStore({ baseDir: 'C:\\nope' });
+    const boardStore = new SddBoardStore({ baseDir: boardDir });
     // Gate the worker so the task stays in flight while the interval drain
     // picks up the appended command — otherwise the run finishes before the
     // next drain tick.
@@ -400,7 +409,7 @@ describe('startSddRun — legacy-file initial drain commands (:300, :310)', () =
   it('logs a non-Error legacy drain rejection via String(error) (:310)', async () => {
     const tracker = new TaskTracker({ store: makeFakeStore() });
     const graph = await tracker.createGraph('spec-1', 'Run');
-    const boardStore = new SddBoardStore({ baseDir: 'C:\\nope' });
+    const boardStore = new SddBoardStore({ baseDir: boardDir });
     vi.spyOn(boardStore, 'drainControl').mockRejectedValue('legacy-string');
 
     const handle = startSddRun({
@@ -431,7 +440,7 @@ describe('startSddRun — legacy-file initial drain commands (:300, :310)', () =
       priority: 'high',
       status: 'pending',
     });
-    const boardStore = new SddBoardStore({ baseDir: 'C:\\nope' });
+    const boardStore = new SddBoardStore({ baseDir: boardDir });
     // Gate the worker so the interval can tick and the appended command lands.
     let release!: () => void;
     const gate = new Promise<void>((r) => {
