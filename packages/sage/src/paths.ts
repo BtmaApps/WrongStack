@@ -19,26 +19,10 @@ export function resolveSagePaths(projectRoot: string, directory = DEFAULT_SAGE_D
   const resolvedProjectRoot = path.resolve(projectRoot);
   const rootDir = path.resolve(resolvedProjectRoot, directory);
   const canonicalProjectRoot = cachedRealpath(resolvedProjectRoot);
-  let containmentTarget: string;
-  try {
-    containmentTarget = fs.realpathSync(rootDir);
-  } catch {
-    const parentDir = path.dirname(rootDir);
-    let canonicalParent: string;
-    try {
-      canonicalParent = fs.realpathSync(parentDir);
-    } catch {
-      // Parent doesn't exist yet. Mirror it under the canonical root instead
-      // of resolving it in place: on macOS os.tmpdir() is `/var/folders/...`,
-      // a symlink to `/private/var/folders/...`, and comparing the raw path
-      // against canonicalProjectRoot would wrongly read as an escape.
-      canonicalParent = path.join(
-        canonicalProjectRoot,
-        path.relative(resolvedProjectRoot, parentDir),
-      );
-    }
-    containmentTarget = path.join(canonicalParent, path.basename(rootDir));
-  }
+  // Both sides must be canonicalized the same way (including the
+  // not-yet-existing case) or a symlinked ancestor such as macOS's
+  // /var/folders makes a project-relative directory read as an escape.
+  const containmentTarget = canonicalizeExisting(rootDir);
   const relative = path.relative(canonicalProjectRoot, containmentTarget);
   if (escapesRoot(relative)) {
     throw new Error('SAGE directory must stay inside the project root.');
@@ -57,6 +41,28 @@ export function resolveSagePaths(projectRoot: string, directory = DEFAULT_SAGE_D
     tmpDir: path.join(rootDir, 'tmp'),
     locksDir: path.join(rootDir, 'locks'),
   };
+}
+
+/**
+ * Canonicalize `dir` even when it does not exist: realpath the nearest
+ * existing ancestor and re-attach the missing tail. Required on macOS, where
+ * os.tmpdir() is `/var/folders/...`, a symlink to `/private/var/folders/...` —
+ * comparing a raw prefix against a canonical root (or vice versa) misreads
+ * containment as an escape. Returns path.resolve(dir) when no ancestor exists.
+ */
+function canonicalizeExisting(dir: string): string {
+  const missing: string[] = [];
+  let probe = path.resolve(dir);
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync(probe), ...missing);
+    } catch {
+      missing.unshift(path.basename(probe));
+      const parent = path.dirname(probe);
+      if (parent === probe) return path.resolve(dir);
+      probe = parent;
+    }
+  }
 }
 
 /**
@@ -85,16 +91,12 @@ function cachedRealpath(p: string): string {
   // filesystem, but for our purposes a single fs.realpathSync (which
   // throws on broken links) is sufficient — callers pass already-
   // resolved or relative paths that they expect to exist inside the
-  // project root. Silent fallback to path.resolve() when the target
-  // does not exist (e.g. creating a brand-new anchor for a file the
-  // user is about to write) keeps the function total — anchors are
-  // intentionally allowed to point at not-yet-existing paths.
-  let resolved: string;
-  try {
-    resolved = fs.realpathSync(p);
-  } catch {
-    resolved = path.resolve(p);
-  }
+  // project root. Fallback for a not-yet-existing path (e.g. creating a
+  // brand-new anchor for a file the user is about to write) canonicalizes
+  // the nearest existing ancestor so the result stays comparable to other
+  // canonical roots — anchors are intentionally allowed to point at
+  // not-yet-existing paths.
+  const resolved = canonicalizeExisting(p);
   while (realpathCache.size >= REALPATH_CACHE_MAX) {
     const oldest = realpathCache.keys().next().value;
     if (oldest === undefined) break;
@@ -125,14 +127,10 @@ export function normalizeProjectPath(projectRoot: string, inputPath: string): st
   // it differs) to the realpath'd parent.
   const parentDir = path.dirname(rawAbs);
   const callerBasename = path.basename(rawAbs);
-  let realParent: string;
-  try {
-    realParent = fs.realpathSync(parentDir);
-  } catch {
-    // Parent doesn't exist yet (e.g. a not-yet-created directory).
-    // Fall back to plain resolve so the function stays total.
-    realParent = path.resolve(parentDir);
-  }
+  // Canonicalize the parent even when it doesn't exist yet (see
+  // canonicalizeExisting): a raw parent under a symlinked tmpdir would
+  // otherwise compare against the canonical root as an escape.
+  const realParent = canonicalizeExisting(parentDir);
   // Now resolve the full leaf path to catch symlink escapes. The
   // escape check uses the resolved path; the return value preserves
   // the caller's literal basename so anchor identity keys (downstream

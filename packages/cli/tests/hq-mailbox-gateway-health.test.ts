@@ -1,3 +1,6 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { HqAuthState } from '../src/hq-server/auth-state.js';
 import { MailboxGatewayManager } from '../src/hq-server/mailbox-gateway-manager.js';
@@ -95,11 +98,26 @@ describe('MailboxGatewayManager.getHealth (W2 #14)', () => {
     expect(health.gateways[0]?.projectRoot).toBe(fullPath);
   });
 
-  it('handles Windows-style paths correctly (projectId = basename)', () => {
-    manager.getMailboxGateway('D:\\projects\\acme-web');
+  it('handles Windows-style paths correctly (projectId = basename)', async () => {
+    // getMailboxGateway eagerly creates mailbox state under projectDir. A
+    // Windows-style path is relative on POSIX, so binding it from the repo
+    // cwd would litter the checkout with a literal `D:\projects\acme-web`
+    // directory — run from a throwaway cwd instead.
+    const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'hq-gateway-win-'));
+    const originalCwd = process.cwd();
+    process.chdir(scratch);
+    try {
+      manager.getMailboxGateway('D:\\projects\\acme-web');
+    } finally {
+      process.chdir(originalCwd);
+    }
     const health = manager.getHealth();
-    expect(health.gateways[0]?.projectId).toBe('acme-web');
+    // The contract is "projectId = basename(projectDir)". On win32 that
+    // splits the backslash path to 'acme-web'; on POSIX the whole string is
+    // one (odd) directory name, so basename returns it verbatim.
+    expect(health.gateways[0]?.projectId).toBe(path.basename('D:\\projects\\acme-web'));
     expect(health.gateways[0]?.projectRoot).toBe('D:\\projects\\acme-web');
+    await fs.rm(scratch, { recursive: true, force: true });
   });
 
   it('sorts gateways by projectId for stable dashboard rendering', () => {
