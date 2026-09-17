@@ -44,6 +44,7 @@
     "tasking": { "classification": "agent-domain", "targetOwner": "core-review-required" },
     "tools": { "classification": "product-feature", "targetOwner": "tools" },
     "types": { "classification": "contract", "targetOwner": "contracts-or-core" },
+    "typesafe": { "classification": "infrastructure", "targetOwner": "core" },
     "utils": { "classification": "primitive-review-required", "targetOwner": "contracts-or-core" },
     "wiring": { "classification": "infrastructure", "targetOwner": "runtime-review-required" },
     "worktree": { "classification": "host-runtime", "targetOwner": "runtime-review-required" }

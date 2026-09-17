@@ -442,8 +442,8 @@ describe('AntigravityProvider', () => {
 
   interface Captured {
     url?: string;
-    headers?: Record<string, string>;
-    body?: string;
+    headers?: Record<string, string> | undefined;
+    body?: string | undefined;
   }
 
   function streamingFetch(captured: Captured, quotaBody?: unknown): typeof fetch {

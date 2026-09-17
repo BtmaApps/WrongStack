@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-17T21:34:53.243Z",
+  "generatedAt": "2026-09-17T21:43:46.209Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -24,9 +24,7 @@
     "testsWithMultipleTypechecks": 4,
     "testOnlyExports": 959
   },
-  "errors": [
-    "unclassified Core areas: typesafe"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -94,13 +92,12 @@
       "tasking",
       "tools",
       "types",
+      "typesafe",
       "utils",
       "wiring",
       "worktree"
     ],
-    "unclassified": [
-      "typesafe"
-    ],
+    "unclassified": [],
     "stale": []
   },
   "packages": [

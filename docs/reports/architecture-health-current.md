@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-17T21:34:53.243Z
+**Generated:** 2026-09-17T21:43:46.209Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-- unclassified Core areas: typesafe
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
