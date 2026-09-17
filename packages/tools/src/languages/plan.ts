@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { detectLanguageWorkspaces } from './detect.js';
 import { languageProfileRegistry } from './registry.js';
@@ -132,7 +133,10 @@ export function validateCommandPlan(
 ): string[] {
   const errors: string[] = [];
   if (plan.profileId !== profile.id) errors.push('profile id does not match');
-  if (!isInside(plan.cwd, projectRoot)) errors.push('cwd is outside project root');
+  if (!isInside(plan.cwd, projectRoot))
+    errors.push(
+      `DEBUG cwd=${plan.cwd} root=${projectRoot} cand=${canonicalExisting(plan.cwd)}`,
+    );
   if (plan.args.length > MAX_ARGUMENTS) errors.push(`argument count exceeds ${MAX_ARGUMENTS}`);
   if (plan.args.some((arg) => arg.length > MAX_ARGUMENT_LENGTH || /[\r\n\0]/.test(arg))) {
     errors.push('arguments contain an invalid or oversized value');
@@ -320,6 +324,22 @@ async function canonicalTarget(cwd: string, target: string, projectRoot: string)
 }
 
 function isInside(candidate: string, root: string): boolean {
-  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  const relative = path.relative(path.resolve(root), canonicalExisting(candidate));
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+/**
+ * realpath the candidate when it exists so the comparison is symlink-faithful:
+ * detection canonicalizes the project root (detect.ts canonicalDirectory), and
+ * on macOS os.tmpdir() is `/var/folders/...`, a symlink to
+ * `/private/var/folders/...` — comparing a raw plan.cwd against the canonical
+ * root would misread containment as an escape. Falls back to path.resolve for
+ * not-yet-existing candidates.
+ */
+function canonicalExisting(candidate: string): string {
+  try {
+    return realpathSync(candidate);
+  } catch {
+    return path.resolve(candidate);
+  }
 }
