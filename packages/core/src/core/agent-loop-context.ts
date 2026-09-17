@@ -1,6 +1,6 @@
-import { computeContextWindowBudget } from '../execution/context-budget.js';
 import { AgentError, ERROR_CODES } from '../types/errors.js';
 import type { Request } from '../types/provider.js';
+import { computeContextWindowBudget } from '../utils/context-budget.js';
 import {
   estimateMessageTokens,
   estimateRequestTokens,

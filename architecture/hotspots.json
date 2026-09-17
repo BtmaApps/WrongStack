@@ -127,7 +127,7 @@
       "relativeImports": 26
     },
     "packages/core/src/execution/auto-compaction-middleware.ts": {
-      "lines": 1010,
+      "lines": 1012,
       "relativeImports": 14
     },
     "packages/core/src/execution/brain-runtime.ts": {

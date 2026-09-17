@@ -9,6 +9,10 @@ import type { SessionEventBridge } from '../storage/session-event-bridge.js';
 import type { Compactor, CompactReport } from '../types/compactor.js';
 import type { ContextWindowAggressiveOn, ContextWindowPolicy } from '../types/context-window.js';
 import { AgentError, ERROR_CODES } from '../types/errors.js';
+import {
+  type ContextWindowBudgetSnapshot,
+  computeContextWindowBudget,
+} from '../utils/context-budget.js';
 import { repeatedReadPressure } from '../utils/context-evidence.js';
 import {
   estimateRequestTokens,
@@ -27,8 +31,6 @@ import {
 } from './compaction-core.js';
 import { compactionReportStillCurrent } from './compaction-result-state.js';
 
-import { type ContextWindowBudgetSnapshot, computeContextWindowBudget } from './context-budget.js';
-
 type PressureLevel = 'warn' | 'soft' | 'hard';
 const LEVEL_RANK: Record<PressureLevel, number> = { warn: 0, soft: 1, hard: 2 };
 
@@ -42,7 +44,7 @@ function pressureLevelFor(
   return null;
 }
 
-export type { ContextWindowBudgetSnapshot } from './context-budget.js';
+export type { ContextWindowBudgetSnapshot } from '../utils/context-budget.js';
 
 /** Max chars of collapse digest persisted to the session log line. */
 const MAX_DIGEST_LOG_CHARS = 4_000;

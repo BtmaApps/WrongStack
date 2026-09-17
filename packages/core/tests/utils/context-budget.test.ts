@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeContextWindowBudget,
   defaultContextOutputReserve,
-} from '../../src/execution/context-budget.js';
+} from '../../src/utils/context-budget.js';
 
 describe('defaultContextOutputReserve', () => {
   it.each([

@@ -239,7 +239,6 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     pack: 'development',
     exposure: 'on-demand',
     tools: [
-      'dead_code_scan',
       'detect_duplicate_code',
       'secret_scanner_test',
       'error_lens_history',

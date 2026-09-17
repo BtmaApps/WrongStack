@@ -9,7 +9,7 @@ import {
   ProviderError,
   type ProviderErrorKind,
 } from '../types/provider.js';
-import { defaultContextOutputReserve } from './context-budget.js';
+import { defaultContextOutputReserve } from '../utils/context-budget.js';
 import { NETWORK_ERR_RE } from './regex-patterns.js';
 
 /**

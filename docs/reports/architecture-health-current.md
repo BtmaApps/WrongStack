@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-17T09:33:04.182Z
+**Generated:** 2026-09-17T10:00:46.735Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3801 |
-| Production source lines | 929380 |
+| Production source lines | 929381 |
 | Test files | 3444 |
 | Workspace dependency edges | 128 |
 | Relative module edges | 12189 |
@@ -130,7 +130,7 @@ None.
 | 1014 | `packages/tui/src/kanban-slash.ts` |
 | 1013 | `packages/acp/src/client/acp-session.ts` |
 | 1013 | `packages/tui/src/input-validation.ts` |
-| 1010 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 1012 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 1008 | `packages/kanban/src/manager/assignment.ts` |
 | 1007 | `packages/core/src/execution/brain-runtime.ts` |
 | 1003 | `packages/kanban/src/types.ts` |
