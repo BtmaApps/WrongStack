@@ -9,7 +9,28 @@ health probe), and sign in with registered provider OAuth strategies.
 In the plain REPL (no TUI), `/auth` falls back to a read-only dashboard and
 points at `wstack auth`.
 
+In the WebUI, `/auth` opens **Settings → Providers**, including API keys and
+OAuth accounts. SimpleUI opens its **Provider credentials** panel; the key icon
+next to Settings opens the same panel. SimpleUI supports key add/update/delete,
+active-key selection, OAuth account aliases, and local/custom endpoints.
+
+Provider removal clears model routing references on every surface. Concurrent
+edits to different providers are preserved; conflicting edits to the same
+provider require a refresh. Invalid config files are preserved and reported.
+Credential reload follows the account currently running, including fallback
+accounts. If a changed or removed account cannot be rebuilt, new calls report
+an auth-profile error instead of using its old credentials. Reconfiguring the
+account allows the live session to recover.
+
 ## Usage
+
+Each saved alias is an auth profile: provider type, endpoint, keys, active key,
+and model settings are scoped to that account. Adding an account from the
+catalog suggests an unused alias; key management inside an existing profile
+is a separate operation. Fallback targets use `auth-profile-alias/model-id`.
+An explicit alias uses its own credentials and endpoint even when selected as
+the primary account. Legacy top-level `apiKey`/`baseUrl` remain supported for
+the primary canonical provider; they are not inherited by another account alias.
 
 | Usage | Effect (TUI) | Effect (REPL) |
 |---|---|---|

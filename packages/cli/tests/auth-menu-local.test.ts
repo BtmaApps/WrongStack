@@ -102,6 +102,70 @@ async function readSaved(configPath: string): Promise<Record<string, unknown>> {
 // --- Tests -----------------------------------------------------------------
 
 describe('runAuthLocal — Ollama (noAuth preset)', () => {
+  it('probes an existing local auth profile using its own endpoint and active credential without rewriting it', async () => {
+    const { deps, configPath } = await setupDeps({
+      preExisting: {
+        providers: {
+          'gpu-work': {
+            type: 'vllm',
+            family: 'openai-compatible',
+            baseUrl: 'http://127.0.0.1:8001/v1',
+            activeKey: 'work',
+            apiKeys: [
+              { label: 'old', apiKey: 'old-key', createdAt: '' },
+              { label: 'work', apiKey: 'work-key', createdAt: '' },
+            ],
+          },
+        },
+      },
+    });
+    const before = await fs.readFile(configPath, 'utf8');
+    const calls: Array<{ url: string; key: string | null }> = [];
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), key: new Headers(init?.headers).get('authorization') });
+      return new Response(JSON.stringify({ data: [{ id: 'local-model' }] }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    expect(
+      await runAuthLocal(deps, { name: 'vllm', alias: 'gpu-work', probeOnly: true, fetchImpl }),
+    ).toBe(0);
+    expect(calls).toEqual([{ url: 'http://127.0.0.1:8001/v1/models', key: 'Bearer work-key' }]);
+    expect(await fs.readFile(configPath, 'utf8')).toBe(before);
+  });
+  it('keeps separate local auth profile aliases and endpoints without changing the first profile', async () => {
+    const { deps, configPath } = await setupDeps({});
+    expect(
+      await runAuthLocal(deps, {
+        name: 'ollama',
+        alias: 'local-home',
+        baseUrl: 'http://127.0.0.1:11434/v1',
+        noProbe: true,
+      }),
+    ).toBe(0);
+    expect(
+      await runAuthLocal(deps, {
+        name: 'ollama',
+        alias: 'local-work',
+        baseUrl: 'http://127.0.0.1:11435/v1',
+        noProbe: true,
+      }),
+    ).toBe(0);
+    const saved = await readSaved(configPath);
+    expect(saved['local-home']).toMatchObject({
+      type: 'ollama',
+      baseUrl: 'http://127.0.0.1:11434/v1',
+    });
+    expect(saved['local-work']).toMatchObject({
+      type: 'ollama',
+      baseUrl: 'http://127.0.0.1:11435/v1',
+    });
+    const before = await fs.readFile(configPath, 'utf8');
+    expect(await runAuthLocal(deps, { name: 'ollama', alias: 'local-home', noProbe: true })).toBe(
+      1,
+    );
+    expect(await fs.readFile(configPath, 'utf8')).toBe(before);
+  });
   it('saves the preset config with the canonical base URL and no key entry', async () => {
     const { deps, configPath } = await setupDeps({});
     const code = await runAuthLocal(deps, { name: 'ollama', noProbe: true });

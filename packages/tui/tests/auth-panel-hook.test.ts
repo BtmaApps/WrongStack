@@ -373,15 +373,16 @@ describe('useAuthPanel standalone secret prompts', () => {
     expect(harness.state.authPanel.form?.presetId).toBe('ollama');
     expect(harness.state.authPanel.form?.fields.baseUrl).toBe('http://localhost:11434');
 
-    // noAuth preset → rows are baseUrl(0), cancel(1), save(2) → Save.
+    // noAuth preset → alias(0), baseUrl(1), cancel(2), save(3) → Save.
     act(() => {
-      harness.dispatch({ type: 'authMove', delta: 2 });
+      harness.dispatch({ type: 'authMove', delta: 3 });
       harness.controller.onAuthEnter();
     });
     // Save routed to the flow path — the probe view takes over, no prompts.
     expect(harness.state.authPanel.view).toBe('flow');
     expect(harness.state.authPanel.flowTitle).toBe('Add Ollama');
     expect(addLocal).toHaveBeenCalledWith('ollama', expect.anything(), {
+      alias: 'ollama',
       baseUrl: 'http://localhost:11434',
       apiKey: '',
     });

@@ -217,10 +217,11 @@ describe('Anthropic preset - parseStreamEvent error handling', () => {
     }
     expect(caught).toBeInstanceOf(ProviderError);
     expect((caught as ProviderError).providerId).toBe('anthropic');
-    expect((caught as ProviderError).body).toEqual({
+    expect((caught as ProviderError).body).toMatchObject({
       type: 'invalid_request_error',
       message: 'something went wrong',
     });
+    expect((caught as ProviderError).retryable).toBe(false);
   });
 
   it('returns empty array for empty data', async () => {
@@ -454,7 +455,62 @@ describe('Anthropic preset - message_delta edge cases', () => {
 });
 
 describe('Anthropic preset - finalizeStream edge case', () => {
-  it('synthesizes message_stop when upstream closed without message_stop', async () => {
+  it('synthesizes message_stop when the stop_reason arrived but message_stop did not', async () => {
+    const events = await collectFromPreset(
+      anthropicWireFormat,
+      sseBody([
+        JSON.stringify({
+          type: 'message_start',
+          message: { model: 'c', usage: { input_tokens: 1 } },
+        }),
+        JSON.stringify({
+          type: 'message_delta',
+          delta: { stop_reason: 'end_turn' },
+          usage: { output_tokens: 1 },
+        }),
+      ]),
+      'c',
+    );
+    expect(events.filter((e) => e.type === 'message_stop')).toHaveLength(1);
+  });
+
+  it('throws a retryable error when the stream is cut before any stop_reason', async () => {
+    await expect(
+      collectFromPreset(
+        anthropicWireFormat,
+        sseBody([
+          JSON.stringify({
+            type: 'message_start',
+            message: { model: 'c', usage: { input_tokens: 1 } },
+          }),
+          JSON.stringify({
+            type: 'content_block_delta',
+            index: 0,
+            delta: { type: 'text_delta', text: 'hal' },
+          }),
+        ]),
+        'c',
+      ),
+    ).rejects.toMatchObject({ retryable: true, status: 599 });
+  });
+
+  it('classifies a mid-stream overloaded_error as retryable', async () => {
+    await expect(
+      collectFromPreset(
+        anthropicWireFormat,
+        sseBody([
+          JSON.stringify({ type: 'message_start', message: { model: 'c' } }),
+          JSON.stringify({
+            type: 'error',
+            error: { type: 'overloaded_error', message: 'Overloaded' },
+          }),
+        ]),
+        'c',
+      ),
+    ).rejects.toMatchObject({ retryable: true, status: 529, kind: 'overloaded' });
+  });
+
+  it('synthesizes message_stop after text when upstream closed without message_stop', async () => {
     // Simulate a stream that sends message_start but no message_stop
     const events = await collectFromPreset(
       anthropicWireFormat,
@@ -474,7 +530,11 @@ describe('Anthropic preset - finalizeStream edge case', () => {
           delta: { type: 'text_delta', text: 'hi' },
         }),
         // no message_stop sent — finalizeStream should synthesize one
-        JSON.stringify({ type: 'message_delta', usage: { output_tokens: 1 } }),
+        JSON.stringify({
+          type: 'message_delta',
+          delta: { stop_reason: 'end_turn' },
+          usage: { output_tokens: 1 },
+        }),
       ]),
       'c',
     );

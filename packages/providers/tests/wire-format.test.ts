@@ -1,6 +1,6 @@
 import type { Request, StreamEvent } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createWireFormatFactory,
   defineWireFormat,
@@ -340,6 +340,36 @@ describe('WireFormatProvider — declarative wire format', () => {
 });
 
 describe('createWireFormatFactory', () => {
+  it('keeps the auth profile alias and sends its active multi-key credential', async () => {
+    const headers: Headers[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: unknown, init?: RequestInit) => {
+        headers.push(new Headers(init?.headers));
+        return new Response('Unauthorized', { status: 401 });
+      }),
+    );
+    try {
+      const provider = createWireFormatFactory(miniConfig).create({
+        type: 'work-account',
+        activeKey: 'work',
+        apiKeys: [
+          { label: 'old', apiKey: 'old-key', createdAt: '' },
+          { label: 'work', apiKey: 'work-key', createdAt: '' },
+        ],
+      });
+      expect(provider.id).toBe('work-account');
+      await expect(
+        provider.complete(
+          { model: 'model', messages: [], maxTokens: 1 },
+          { signal: new AbortController().signal },
+        ),
+      ).rejects.toMatchObject({ providerId: 'work-account', status: 401 });
+      expect(headers[0]?.get('authorization')).toBe('Bearer work-key');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it('returns a ProviderFactory whose create() builds a working provider', async () => {
     const factory = createWireFormatFactory(miniConfig);
     expect(factory.type).toBe('mini');

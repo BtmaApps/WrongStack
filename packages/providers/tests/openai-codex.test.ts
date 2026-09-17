@@ -6,7 +6,13 @@ import {
   type StreamEvent,
   type TextBlock,
 } from '@wrongstack/core/types';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetSharedOAuthRefreshState } from '../src/oauth-refresh-coordinator.js';
+
+// Coordinators share refreshes process-wide by refresh key; every test here
+// reuses the same fake keys, so start each one from a clean slate.
+beforeEach(() => resetSharedOAuthRefreshState());
+
 import {
   type CodexOAuthTokens,
   codexCacheSessionId,

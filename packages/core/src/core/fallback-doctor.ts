@@ -67,7 +67,16 @@ export function diagnoseFallbackConfig(
   tracker?: ProviderModelStatusTracker | undefined,
   opts?: { modelContextLimitMap?: Record<string, number> | undefined } | undefined,
 ): FallbackDiagnosticReport {
-  const mgr = new FallbackProfileManager(config, { statusTracker: tracker });
+  // Diagnose the CONFIGURED chain, not the runnable one. The manager already
+  // drops quarantined and calendar-blocked entries during normal resolution,
+  // so resolving through the runtime filters here handed this function a list
+  // those entries had been removed from — making checks 4 and 5 below
+  // unreachable and reporting a shorter chain with no explanation, which is
+  // precisely what the user runs the doctor to see.
+  const mgr = new FallbackProfileManager(config, {
+    statusTracker: tracker,
+    ignoreAvailability: true,
+  });
   const primary = { providerId: config.provider, model: config.model };
   const activeProfile = mgr.activeProfileName();
   const explicitChain = Object.freeze([...(config.fallbackModels ?? [])]);
@@ -76,6 +85,12 @@ export function diagnoseFallbackConfig(
   });
   const effectiveOrder = Object.freeze(
     effectiveCandidates.map((c) => `${c.providerId}/${c.model}`),
+  );
+  /** Candidates that are usable right now (the runtime view of the same chain). */
+  const runnableCandidates = effectiveCandidates.filter(
+    (c) =>
+      (!tracker || tracker.isAvailable(c.providerId, c.model)) &&
+      evaluateModelCalendar(config.modelAvailabilitySchedule, c.providerId, c.model).allowed,
   );
   const autoEnabled = config.fallbackAuto !== false;
 
@@ -86,7 +101,7 @@ export function diagnoseFallbackConfig(
     providersInChain.add(entry.providerId);
   }
 
-  // 1. Check for empty chain
+  // 1. Check for empty chain — configured, or wholly unusable right now.
   if (effectiveCandidates.length === 0) {
     warnings.push({
       code: 'EMPTY_CHAIN',
@@ -95,6 +110,14 @@ export function diagnoseFallbackConfig(
         'The effective fallback chain is empty. Any rate limit or outage on the primary model will immediately fail without recovery.',
       recommendation:
         'Add fallback models using /fallback add <provider/model> or enable smart defaults with /fallback auto on.',
+    });
+  } else if (runnableCandidates.length === 0) {
+    warnings.push({
+      code: 'EMPTY_CHAIN',
+      severity: 'critical',
+      message: `All ${effectiveCandidates.length} configured fallback candidate(s) are unavailable right now (quarantine or availability calendar), so a failure on the primary model has nowhere to go.`,
+      recommendation:
+        'See the per-model warnings below; wait for the quarantine to expire, adjust the availability calendar, or add a candidate that is not affected.',
     });
   }
 
@@ -231,7 +254,15 @@ export function simulateFallbackFailover(
     });
   }
 
-  const mgr = new FallbackProfileManager(config, { statusTracker: opts.statusTracker });
+  // Same reason as the doctor: the per-step "skipped because quarantined /
+  // calendar-blocked" branches below only exist if the chain still CONTAINS
+  // those entries. Resolving through the runtime filters removed them first,
+  // so the simulation silently showed a shorter chain and never once explained
+  // a skip — the one thing it is for.
+  const mgr = new FallbackProfileManager(config, {
+    statusTracker: opts.statusTracker,
+    ignoreAvailability: true,
+  });
   const candidates = mgr.resolveCandidates(primary);
   const steps: FallbackSimulationStep[] = [];
   let finalTarget: { providerId: string; model: string } | null = null;

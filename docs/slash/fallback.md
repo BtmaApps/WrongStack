@@ -3,6 +3,17 @@
 View or change the provider-continuity bridge, explicit/named fallback chains,
 favorite models, and smart-default policy used after retryable provider failure.
 
+The provider component of a reference is the **auth profile alias**, not the
+catalog provider type. For example, `personal-account/model-id` and
+`work-account/model-id` may both use `type: openai` while selecting different
+accounts and active keys. Switching profiles does not change either profile's
+`activeKey`, and a secondary profile cannot inherit the primary account's
+top-level credential or endpoint.
+
+Create accounts with `wstack auth openai --alias personal-account` and
+`wstack auth openai --alias work-account`, then use their aliases in the chain.
+Named fallback profiles group an ordered chain; auth profiles own credentials.
+
 This makes 429 storms recoverable without babysitting: after the primary model's
 per-model retry policy gives up, the chain engages and the agent stays on the
 working fallback while the primary is cooling down. Once the cooldown expires,

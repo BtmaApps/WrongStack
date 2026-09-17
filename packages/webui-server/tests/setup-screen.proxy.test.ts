@@ -5,14 +5,14 @@
  * real singleton) and the provider factory.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeProviderFromConfig } from '@wrongstack/providers';
-import {
-  applyProxyConfig,
-  __resetProxyConfigForTests,
-} from '@wrongstack/core/wiring/proxy-rewrite';
-import type { Config } from '@wrongstack/core/types';
 import type { ProviderRegistry } from '@wrongstack/core/registry';
+import type { Config } from '@wrongstack/core/types';
+import {
+  __resetProxyConfigForTests,
+  applyProxyConfig,
+} from '@wrongstack/core/wiring/proxy-rewrite';
+import { makeProviderFromConfig } from '@wrongstack/providers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@wrongstack/core/wiring/proxy-rewrite', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@wrongstack/core/wiring/proxy-rewrite')>();
@@ -58,6 +58,24 @@ beforeEach(() => {
 afterEach(() => __resetProxyConfigForTests());
 
 describe('resolveSetupProvider proxy rewrite', () => {
+  it('does not rewrite an account alias using a legacy primary endpoint', () => {
+    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
+    resolveSetupProvider({
+      config: {
+        ...openaiConfig(),
+        provider: 'work',
+        baseUrl: 'https://old-primary.example/v1',
+        providers: { work: { type: 'openai', apiKey: 'fixture-work' } },
+      },
+      needsProvider: false,
+      providerRegistry: registry,
+    });
+    expect(vi.mocked(makeProviderFromConfig).mock.lastCall?.[1].baseUrl).toBeUndefined();
+    expect(makeProviderFromConfig).toHaveBeenLastCalledWith(
+      'work',
+      expect.objectContaining({ type: 'openai' }),
+    );
+  });
   it('rewrites the configured provider baseUrl through the proxy when active', () => {
     applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
     const result = resolveSetupProvider({

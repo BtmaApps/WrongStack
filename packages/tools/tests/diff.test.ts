@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { promisify } from 'node:util';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { diffTool } from '../src/diff.js';
 
 let tmpDir: string;
@@ -16,6 +18,36 @@ afterEach(async () => {
 
 const makeCtx = () => ({ cwd: tmpDir, tools: [], projectRoot: tmpDir }) as any;
 const makeOpts = () => ({ signal: new AbortController().signal });
+
+const execFileP = promisify(execFile);
+
+// A hermetic two-commit git repo for every git-path test. These used to
+// derive their context from process.cwd(), which only worked when vitest ran
+// from the repo root: findGitDir(basePath, projectRoot) never walks above
+// projectRoot, so with cwd = packages/tools the repo .git one level up was
+// unreachable — 11 "not a git repository" failures under pnpm --filter tools.
+let sharedGitDir: string;
+let sharedGitCtx: any;
+beforeAll(async () => {
+  sharedGitDir = await fs.mkdtemp(path.join(os.tmpdir(), 'diff-git-fixture-'));
+  const git = async (...args: string[]) => {
+    await execFileP('git', ['-C', sharedGitDir, ...args]);
+  };
+  await git('init');
+  await git('config', 'user.email', 'diff-test@example.invalid');
+  await git('config', 'user.name', 'diff test');
+  await fs.writeFile(path.join(sharedGitDir, 'README.md'), 'fixture repo\n');
+  await git('add', '.');
+  await git('commit', '-m', 'base');
+  await fs.writeFile(path.join(sharedGitDir, 'a.txt'), 'line-1\nline-2 modified\n');
+  await git('add', '.');
+  await git('commit', '-m', 'second: a.txt changed');
+  sharedGitCtx = { cwd: sharedGitDir, tools: [], projectRoot: sharedGitDir } as any;
+});
+
+afterAll(async () => {
+  if (sharedGitDir) await fs.rm(sharedGitDir, { recursive: true, force: true });
+});
 
 describe('diffTool', () => {
   it('has correct metadata', () => {
@@ -47,7 +79,7 @@ describe('diffTool', () => {
   });
 
   it('handles staged diff', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ staged: true }, gitCtx, makeOpts());
     expect(result).toHaveProperty('mode');
   });
@@ -111,7 +143,7 @@ describe('diffTool', () => {
   });
 
   it('git path honors mode "stat" (runs git diff --stat)', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', mode: 'stat' }, gitCtx, makeOpts());
     expect(result.mode).toBe('stat');
     // --stat output never contains unified hunk headers.
@@ -119,14 +151,14 @@ describe('diffTool', () => {
   });
 
   it('git path maps side-by-side to unified and reports what it produced', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', mode: 'side-by-side' }, gitCtx, makeOpts());
     expect(result.mode).toBe('unified');
     expect(result.note).toMatch(/side-by-side/);
   });
 
   it('git path passes context as -U<n> without failing', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', context: 0 }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
     expect(result.mode).toBe('unified');
@@ -183,8 +215,8 @@ describe('diffTool', () => {
   });
 
   it('gitDiff uses a and b args to build git diff command', async () => {
-    // Use a real git repo - the WrongStack repo itself
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    // Hermetic two-commit fixture repo (see beforeAll).
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', b: 'HEAD~1' }, gitCtx, makeOpts());
     // Just verify it doesn't throw and produces a result
     expect(result).toHaveProperty('diff');
@@ -192,51 +224,51 @@ describe('diffTool', () => {
   });
 
   it('gitDiff truncates large output', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     // The diff field truncation happens when stdout > 100_000
     const result = await diffTool.execute({ a: 'HEAD' }, gitCtx, makeOpts());
     expect(typeof result.truncated).toBe('boolean');
   });
 
   it('gitDiff handles files as array', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ files: ['README.md'] }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
   });
 
   it('gitDiff handles comma-separated files', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ files: 'README.md' }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
   });
 
   it('gitDiff appends a files filter after the -- separator (a + files)', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', files: ['README.md'] }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
     expect(result.mode).toBe('unified');
   });
 
   it('gitDiff appends a comma-separated files filter (a + files string)', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', files: 'README.md' }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
   });
 
   it('gitDiff works with only b set (a undefined)', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ b: 'HEAD' }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
   });
 
   it('gitDiff adds --staged when staged is set alongside a ref', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     const result = await diffTool.execute({ a: 'HEAD', staged: true }, gitCtx, makeOpts());
     expect(result).toHaveProperty('diff');
   });
 
   it('gitDiff throws with git stderr on an invalid ref', async () => {
-    const gitCtx = { cwd: process.cwd(), tools: [], projectRoot: process.cwd() } as any;
+    const gitCtx = sharedGitCtx;
     // A bogus revision makes git exit non-zero — a failed call, not an ok diff.
     await expect(
       diffTool.execute({ a: 'HEAD~99999999', b: 'HEAD' }, gitCtx, makeOpts()),

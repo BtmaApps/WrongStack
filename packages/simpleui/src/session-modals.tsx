@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { AuthPanel } from './auth-panel.js';
 import { BrainPanel } from './brain-panel.js';
 import { CommandPalette } from './command-palette.js';
 import { ContextBreakdownModal } from './context-breakdown-modal.js';
@@ -120,6 +121,7 @@ export function SessionModals(props: SessionModalsProps) {
 
       <UtilityDock fileChangeCount={fileChangeCount} onOpenFileChanges={onOpenFileChanges} />
       <MemoryDrawer socketRef={socketRef} />
+      <AuthPanel socketRef={socketRef} />
       <FileExplorer socketRef={socketRef} />
       <PromptLibrary onRecall={onRecallPrompt} />
       <BrainPanel socketRef={socketRef} />

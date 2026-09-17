@@ -1,7 +1,10 @@
 import * as path from 'node:path';
 import { DefaultSecretVault } from '@wrongstack/core/security';
 import type { ProviderConfig } from '@wrongstack/core/types';
+import { ProviderConfigSnapshots } from '@wrongstack/providers';
 import { loadConfigProviders, mutateConfigProviders } from '../provider-config-utils.js';
+
+const snapshots = new ProviderConfigSnapshots();
 
 // Re-export the provider-record transforms the webui handlers need, so
 // callers have a single import surface for
@@ -57,7 +60,7 @@ export async function loadSavedProviders(
   globalConfigPath: string | undefined,
 ): Promise<Record<string, ProviderConfig>> {
   if (!globalConfigPath) return {};
-  return loadConfigProviders(globalConfigPath, getVault(globalConfigPath));
+  return snapshots.track(await loadConfigProviders(globalConfigPath, getVault(globalConfigPath)));
 }
 
 export async function saveProviders(
@@ -69,11 +72,14 @@ export async function saveProviders(
     globalConfigPath,
     getVault(globalConfigPath),
     (existing: Record<string, ProviderConfig>) => {
-      // Replace the entire providers map.
+      const merged = snapshots.merge(existing, providers);
       for (const key of Object.keys(existing)) delete existing[key];
-      Object.assign(existing, providers);
+      Object.assign(existing, merged);
+      for (const key of Object.keys(providers)) delete providers[key];
+      Object.assign(providers, merged);
     },
   );
+  snapshots.track(providers);
 }
 
 /**
@@ -108,10 +114,53 @@ export function createProviderConfigStore(
   globalConfigPath: string | undefined,
   configProvidersRef?: () => Record<string, ProviderConfig>,
 ): ProviderConfigStore {
+  if (configProvidersRef && globalConfigPath) {
+    const views = new WeakMap<
+      Record<string, ProviderConfig>,
+      { view: Record<string, ProviderConfig>; disk: Record<string, ProviderConfig> }
+    >();
+    const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    return {
+      load: async () => {
+        const disk = await loadSavedProviders(globalConfigPath);
+        const providers = structuredClone(configProvidersRef());
+        views.set(providers, { view: structuredClone(providers), disk });
+        return providers;
+      },
+      save: async (providers) => {
+        const baseline = views.get(providers);
+        if (!baseline) {
+          throw new Error('Load the provider list before saving. Refresh and try again.');
+        }
+        const pending = structuredClone(baseline.disk);
+        snapshots.track(pending);
+        for (const id of new Set([...Object.keys(baseline.view), ...Object.keys(providers)])) {
+          if (equal(baseline.view[id], providers[id])) continue;
+          if (!equal(baseline.view[id], baseline.disk[id])) {
+            throw new Error(
+              `Provider "${id}" comes from another config file. Edit its source config or create a new auth profile alias.`,
+            );
+          }
+          if (Object.hasOwn(providers, id)) pending[id] = structuredClone(providers[id]!);
+          else delete pending[id];
+        }
+        await saveProviders(globalConfigPath, pending);
+        // Preserve inherited rows in the UI, without copying their credentials
+        // into the writable file. Include concurrent edits to owned rows.
+        for (const id of Object.keys(providers)) {
+          if (equal(baseline.view[id], baseline.disk[id])) delete providers[id];
+        }
+        for (const [id, record] of Object.entries(pending)) {
+          if (equal(baseline.view[id], baseline.disk[id])) providers[id] = record;
+        }
+        views.set(providers, { view: structuredClone(providers), disk: structuredClone(pending) });
+      },
+    };
+  }
   return {
     load: () =>
       configProvidersRef
-        ? Promise.resolve(configProvidersRef())
+        ? Promise.resolve(snapshots.track(structuredClone(configProvidersRef())))
         : loadSavedProviders(globalConfigPath),
     save: (providers) => saveProviders(globalConfigPath, providers),
   };

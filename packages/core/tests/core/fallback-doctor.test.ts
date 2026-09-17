@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
 import {
   diagnoseFallbackConfig,
   simulateFallbackFailover,
@@ -147,5 +148,95 @@ describe('FallbackDoctor', () => {
     expect(warnings).toHaveLength(2);
     expect(warnings[0]?.target).toBe('anthropic/claude-3-7-sonnet');
     expect(warnings[0]?.message).toContain('Context window downgrade');
+  });
+  // The doctor and the simulator resolved their chain through the SAME runtime
+  // filters they then reported on: `FallbackProfileManager` already drops
+  // quarantined and calendar-blocked entries, so every warning and skip-step
+  // below was unreachable, and the two diagnostics answered "healthy"/"no
+  // skips" in exactly the situations a user runs them to understand.
+  describe('runtime availability reporting', () => {
+    const quarantined = (
+      blocked: ReadonlySet<string>,
+      lastErrorKind = 'rate_limit',
+    ): ProviderModelStatusTracker =>
+      ({
+        isAvailable: (providerId: string, model: string) => !blocked.has(`${providerId}/${model}`),
+        getStatus: (providerId: string, model: string) =>
+          blocked.has(`${providerId}/${model}`)
+            ? { lastErrorKind, stateExpiresAt: Date.now() + 42_000 }
+            : undefined,
+      }) as unknown as ProviderModelStatusTracker;
+
+    const twoProviderConfig = (extra?: Partial<Config>): Config =>
+      ({
+        provider: 'anthropic',
+        model: 'claude-3-7-sonnet',
+        fallbackModels: ['openai/gpt-4o', 'google/gemini-2.0-flash'],
+        providers: {
+          anthropic: { apiKey: 'ant-key', models: ['claude-3-7-sonnet'] },
+          openai: { apiKey: 'oai-key', models: ['gpt-4o'] },
+          google: { apiKey: 'gem-key', models: ['gemini-2.0-flash'] },
+        },
+        ...extra,
+      }) as unknown as Config;
+
+    it('keeps a quarantined candidate in the chain and explains it', () => {
+      const report = diagnoseFallbackConfig(
+        twoProviderConfig(),
+        quarantined(new Set(['openai/gpt-4o'])),
+      );
+
+      expect(report.effectiveOrder).toEqual(['openai/gpt-4o', 'google/gemini-2.0-flash']);
+      const warning = report.warnings.find((w) => w.code === 'MODEL_QUARANTINED');
+      expect(warning?.target).toBe('openai/gpt-4o');
+      expect(warning?.message).toContain('rate_limit');
+      expect(report.status).toBe('warning');
+    });
+
+    it('reports a calendar-blocked candidate instead of silently dropping it', () => {
+      const report = diagnoseFallbackConfig(
+        twoProviderConfig({
+          modelAvailabilitySchedule: [
+            {
+              id: 'night',
+              provider: 'google',
+              model: 'gemini-2.0-flash',
+              start: '00:00',
+              end: '00:00',
+              label: 'all day',
+            },
+          ],
+        } as Partial<Config>),
+      );
+
+      expect(report.effectiveOrder).toContain('google/gemini-2.0-flash');
+      const warning = report.warnings.find((w) => w.code === 'CALENDAR_BLOCKED');
+      expect(warning?.target).toBe('google/gemini-2.0-flash');
+      expect(warning?.message).toContain('all day');
+    });
+
+    it('is critical when every configured candidate is unavailable right now', () => {
+      const report = diagnoseFallbackConfig(
+        twoProviderConfig(),
+        quarantined(new Set(['openai/gpt-4o', 'google/gemini-2.0-flash'])),
+      );
+
+      expect(report.status).toBe('critical');
+      const empty = report.warnings.find((w) => w.code === 'EMPTY_CHAIN');
+      expect(empty?.message).toContain('unavailable right now');
+      expect(report.warnings.filter((w) => w.code === 'MODEL_QUARANTINED')).toHaveLength(2);
+    });
+
+    it('simulates the skip over a quarantined candidate', () => {
+      const result = simulateFallbackFailover(twoProviderConfig(), {
+        errorKind: 'rate_limit',
+        statusTracker: quarantined(new Set(['openai/gpt-4o'])),
+      });
+
+      const skipped = result.steps.find((step) => step.skipped);
+      expect(skipped?.model).toBe('gpt-4o');
+      expect(skipped?.reason).toContain('Quarantined');
+      expect(result.finalTarget).toEqual({ providerId: 'google', model: 'gemini-2.0-flash' });
+    });
   });
 });

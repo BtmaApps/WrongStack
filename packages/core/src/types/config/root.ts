@@ -30,6 +30,7 @@ import type {
 } from './runtime.js';
 import type { BrainConfig, FleetConfig, SkillsConfig } from './skills-fleet-brain.js';
 import type { ToolsConfig } from './tools.js';
+import type { TypeSafeConfig } from './typesafe.js';
 import type { ThemePresetId } from './ui.js';
 
 export interface GitBehaviorConfig {
@@ -221,6 +222,12 @@ export interface Config {
   Sage?: SageConfig | undefined;
   /** Skill subsystem options (readClaudeSkills / mode / extraDirs). */
   skills?: SkillsConfig | undefined;
+  /**
+   * Shared TypeSafe account (credential, endpoint, model). Consumed by
+   * `skills.suggest` and `fleet.dispatch`; neither is enabled by configuring
+   * an account.
+   */
+  typesafe?: TypeSafeConfig | undefined;
   yolo?: boolean | undefined;
   /** When true, show lightweight LLM-predicted next steps after each turn (/next). */
   nextPrediction?: boolean | undefined;

@@ -1,17 +1,74 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   addProvider,
   deleteKey,
   maskedKey,
   normalizeKeys,
+  type ProvidersRecord,
   removeProvider,
   setActiveKey,
   upsertKey,
   writeKeysBack,
-  type ProvidersRecord,
 } from '../src/server/provider-keys.js';
 
+// A failed prototype-boundary regression must not contaminate later cases.
+const intrinsicTargets = [Object.prototype, Object, Object.prototype.toString];
+const intrinsicFields = intrinsicTargets.map((target) => Object.getOwnPropertyDescriptors(target));
+afterEach(() => {
+  for (const [index, target] of intrinsicTargets.entries()) {
+    for (const field of ['apiKeys', 'apiKey', 'activeKey']) {
+      const original = intrinsicFields[index]?.[field];
+      if (original) Object.defineProperty(target, field, original);
+      else Reflect.deleteProperty(target, field);
+    }
+  }
+});
+
 describe('provider-keys', () => {
+  it('refuses reserved profile ids without modifying object prototypes', () => {
+    for (const id of ['__proto__', 'constructor', 'prototype']) {
+      const providers: ProvidersRecord = {};
+      expect(upsertKey(providers, id, 'default', 'fixture', '')).toMatchObject({ ok: false });
+      expect(Object.keys(providers)).toEqual([]);
+      expect(Object.hasOwn(Object.prototype, 'apiKeys')).toBe(false);
+      expect(Object.hasOwn(Object.prototype, 'activeKey')).toBe(false);
+    }
+  });
+  it('treats inherited map properties as missing accounts', () => {
+    const providers: ProvidersRecord = {};
+    expect(deleteKey(providers, 'toString', 'default').ok).toBe(false);
+    expect(setActiveKey(providers, 'toString', 'default').ok).toBe(false);
+    expect(upsertKey(providers, 'toString', 'default', 'fixture', '').ok).toBe(false);
+    expect(Object.hasOwn(providers, 'toString')).toBe(false);
+    expect(typeof Object.prototype.toString).toBe('function');
+  });
+  it('rejects missing key labels without changing the account', () => {
+    const providers: ProvidersRecord = { work: { type: 'openai', apiKey: 'fixture' } };
+    const before = structuredClone(providers);
+    expect(setActiveKey(providers, 'work', 'missing').ok).toBe(false);
+    expect(deleteKey(providers, 'work', 'missing').ok).toBe(false);
+    expect(providers).toEqual(before);
+  });
+  it('creates a separately keyed account alias with the canonical provider type', () => {
+    const providers: ProvidersRecord = {
+      personal: {
+        type: 'openai',
+        apiKeys: [{ label: 'default', apiKey: 'personal-key', createdAt: '' }],
+        activeKey: 'default',
+      },
+    };
+    const result = addProvider(
+      providers,
+      { id: 'work-account', type: 'openai', family: 'openai', apiKey: 'work-key' },
+      'today',
+    );
+    expect(result.ok).toBe(true);
+    expect(providers['work-account']?.type).toBe('openai');
+    expect(providers['work-account']?.apiKeys).toEqual([
+      { label: 'default', apiKey: 'work-key', createdAt: 'today' },
+    ]);
+    expect(providers['personal']?.apiKeys).toHaveLength(1);
+  });
   describe('normalizeKeys', () => {
     it('returns copies of existing apiKeys array', () => {
       const cfg = {

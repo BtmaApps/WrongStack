@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { clearComposerDraft } from '../lib/composer-draft.js';
 import { composePromptWithFileReferences } from '../lib/file-mention.js';
+import { dispatchSimplePanel } from '../lib/panel-events.js';
 import {
   enqueueFront,
   enqueueItem,
@@ -111,6 +112,13 @@ export function useComposerActions(options: UseComposerActionsOptions): UseCompo
       if (!sessionId) return;
 
       // Slash commands
+      if (/^\/auth(?:\s|$)/i.test(draft.trim())) {
+        dispatchSimplePanel('open-auth');
+        clearComposerDraft(sessionId);
+        draftRef.current = '';
+        setDraft('');
+        return;
+      }
       if (draft.trim() === '/clear') {
         if (sessionIdRef.current) {
           clearComposerDraft(sessionIdRef.current);

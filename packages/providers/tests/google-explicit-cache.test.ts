@@ -128,4 +128,39 @@ describe('GoogleProvider explicit cached-content', () => {
 
     expect(calls.filter((c) => c.url.endsWith('/cachedContents'))).toHaveLength(2);
   });
+
+  it('forgets a vanished cache resource and retries the request inline', async () => {
+    const calls: Call[] = [];
+    let generateCalls = 0;
+    const fetchImpl = (async (url: string, init: { body?: string }) => {
+      calls.push({ url, body: JSON.parse(init.body ?? '{}') });
+      if (url.endsWith('/cachedContents')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ name: 'cachedContents/gone' }),
+          text: async () => '',
+        };
+      }
+      generateCalls++;
+      if (generateCalls === 1) {
+        return new Response(
+          JSON.stringify({ error: { code: 403, message: 'CachedContent not found' } }),
+          { status: 403 },
+        );
+      }
+      return new Response(gemSSE(), { status: 200 });
+    }) as never as typeof fetch;
+    const provider = new GoogleProvider({ apiKey: 'k', fetchImpl });
+
+    const res = await provider.complete(req(), { signal: signal() });
+    expect(res.content).toEqual([{ type: 'text', text: 'ok' }]);
+    const inline = calls.at(-1)!;
+    expect(inline.body['cachedContent']).toBeUndefined();
+    expect(inline.body['systemInstruction']).toBeDefined();
+
+    // The dead name is not reused: the next turn creates a fresh resource.
+    await provider.complete(req(), { signal: signal() });
+    expect(calls.filter((c) => c.url.endsWith('/cachedContents'))).toHaveLength(2);
+  });
 });

@@ -204,6 +204,7 @@ export interface HelpEntry {
   category: string;
   aliases?: string[] | undefined;
   argsHint?: string | undefined;
+  help?: string | undefined;
 }
 
 export interface McpPickerItem {

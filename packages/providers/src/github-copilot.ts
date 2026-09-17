@@ -18,6 +18,7 @@
 import type { Capabilities, Request } from '@wrongstack/core/types';
 import { ProviderError } from '@wrongstack/core/types';
 import { capabilitiesForFamily } from './family-capabilities.js';
+import { reportCopilotQuota } from './github-copilot-quota.js';
 import {
   COPILOT_HEADERS,
   type CopilotTokenResult,
@@ -70,6 +71,8 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
   private copilotToken: string;
   private readonly githubToken: string | undefined;
   private apiBase: string;
+  /** Guards against two overlapping background quota reads after a retry. */
+  private quotaReportInFlight = false;
   private readonly refreshFn: (
     githubToken: string,
     signal?: AbortSignal,
@@ -123,6 +126,11 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
           // `proxy-ep=` field. Recompute on every refresh so a token
           // pointing at a different proxy endpoint lands on the right host.
           this.apiBase = copilotBaseUrlFromToken(derived.accessToken);
+          // Copilot reports its remaining entitlement nowhere on the chat
+          // response, so a mint is the natural moment to read it: it happens
+          // about twice an hour, it already proves the GitHub token works, and
+          // it is off the request path.
+          this.scheduleQuotaReport();
         },
       },
     });
@@ -165,6 +173,25 @@ export class GitHubCopilotProvider extends WireFormatProvider<OpenAIStreamState>
       }
       await this.refreshCoordinator.doRefresh(signal);
     }
+  }
+
+  /**
+   * Read the account's Copilot quota in the background.
+   *
+   * Deliberately not awaited by anything. The reading is a status-bar nicety;
+   * a turn must never wait on `api.github.com` to start, and a GitHub outage
+   * must not be able to fail a request that Copilot itself would have served.
+   * `quotaReportInFlight` collapses the refresh storm that a 401-retry can
+   * cause — two mints in a row would otherwise mean two identical reads.
+   */
+  private scheduleQuotaReport(): void {
+    if (!this.githubToken || this.quotaReportInFlight) return;
+    this.quotaReportInFlight = true;
+    void reportCopilotQuota(this.id, this.githubToken, { fetchImpl: this.fetchImpl }).finally(
+      () => {
+        this.quotaReportInFlight = false;
+      },
+    );
   }
 
   private async doRefresh(signal: AbortSignal): Promise<void> {

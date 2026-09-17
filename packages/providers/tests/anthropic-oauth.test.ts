@@ -1,5 +1,11 @@
 import type { Request } from '@wrongstack/core/types';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetSharedOAuthRefreshState } from '../src/oauth-refresh-coordinator.js';
+
+// Coordinators share refreshes process-wide by refresh key; every test here
+// reuses the same fake keys, so start each one from a clean slate.
+beforeEach(() => resetSharedOAuthRefreshState());
+
 import {
   AnthropicOAuthProvider,
   type AnthropicOAuthTokens,

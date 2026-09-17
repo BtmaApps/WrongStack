@@ -1,0 +1,107 @@
+// Labeled cases for `wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep`
+//
+// DRAFT. Every `gold` below is inferred from the skill's own frontmatter
+// trigger, not from knowing how you actually work. Correct them before you
+// trust any number this produces — a wrong label counts against the suggester
+// on every run.
+//
+// Shape: {"text": "...", "gold": "skill-name"}  — a skill covers this request
+//        {"text": "..."}                        — nothing in the roster covers it
+//
+// The uncovered half is not filler. A set made only of covered requests will
+// score ~90% and tell you nothing, because the failure this feature actually
+// has is suggesting something on turns where nothing fits.
+//
+// KNOWN LABEL PROBLEM: the mailbox trio below (wrongstack-mailbox /
+// wrongstack-mailbox-mcp / mailbox-bridge) accounts for most of the residual
+// "wrong suggestion" rate. Measured runs keep picking mailbox-bridge for all
+// three. That may be the labels rather than the suggester — decide what you
+// actually mean by each and either fix the labels or drop the pair.
+//
+// Deliberately ABSENT: the design-system / design-craft / design-critique
+// trio on "restyle"-style requests. `design-craft` says to use it "alongside
+// design-system", and all three list the same trigger words, so there is no
+// single right answer to score against. See docs/skills-suggestion.md.
+
+// ── covered: review family (four skills, genuinely close) ───────────────────
+{"text": "review the changes on this branch before I open a pull request", "gold": "code-review"}
+{"text": "go through the diff on this PR and tell me what would block it", "gold": "code-review"}
+{"text": "scan src/coordination for anti-patterns and code smells", "gold": "bug-hunter"}
+{"text": "look over everything we touched this session for quality problems", "gold": "chimera"}
+{"text": "how do I turn off the auto-review plugin and see what it flagged", "gold": "auto-review"}
+{"text": "check this config for security vulnerabilities", "gold": "security-scanner"}
+
+// ── covered: debugging vs bug-hunter (broken-now vs scan-for-latent) ────────
+{"text": "this test passes locally but fails in CI and I have no idea why", "gold": "debugging"}
+{"text": "the daemon crashes on startup with a null deref, find the cause", "gold": "debugging"}
+
+// ── covered: mailbox trio ──────────────────────────────────────────────────
+{"text": "I want Aider to join our project mailbox as an external agent", "gold": "mailbox-bridge"}
+{"text": "send a message to the other agents from the command line", "gold": "wrongstack-mailbox"}
+{"text": "coordinate with the other agents through the Mailbox MCP server", "gold": "wrongstack-mailbox-mcp"}
+
+// ── covered: testing vs verify-before-done ─────────────────────────────────
+{"text": "write unit tests for the retry policy module", "gold": "testing"}
+{"text": "I think the fix is done, prove it actually works before I say so", "gold": "verify-before-done"}
+
+// ── covered: language / framework ──────────────────────────────────────────
+{"text": "this file is full of any, tighten the types properly", "gold": "typescript-strict"}
+{"text": "this useEffect fires twice and I cannot work out the dependency array", "gold": "react-modern"}
+{"text": "refactor this async flow to use proper cancellation", "gold": "node-modern"}
+
+// ── covered: planning / process ────────────────────────────────────────────
+{"text": "write acceptance criteria and a task graph before we start building", "gold": "sdd"}
+{"text": "plan how to break up this 4000-line module across several files", "gold": "refactor-planner"}
+{"text": "move the card on the board to the next column", "gold": "wrongstack-kanban"}
+{"text": "split this work across several agents running in parallel", "gold": "multi-agent"}
+
+// ── covered: infra / operations ────────────────────────────────────────────
+{"text": "review our Dockerfile, the image is far too large", "gold": "docker-deploy"}
+{"text": "add structured logging and tracing to the request path", "gold": "observability"}
+{"text": "commit this and open a PR against main", "gold": "git-flow"}
+{"text": "are any of our dependencies outdated or unmaintained", "gold": "tech-stack"}
+
+// ── covered: WrongStack-specific ───────────────────────────────────────────
+{"text": "I want to write a new WrongStack skill for our deploy process", "gold": "skill-creator"}
+{"text": "create a plugin under packages/plugins that hooks PreToolUse", "gold": "plugin-author"}
+{"text": "this system prompt is too long and the model ignores half of it", "gold": "prompt-engineering"}
+{"text": "explain what happened in yesterday's session from the journal", "gold": "audit-log"}
+{"text": "clean up the SAGE memory corpus and verify the anchors", "gold": "mnemosyne"}
+{"text": "I am new to this repo, where does provider fallback actually happen", "gold": "codebase-navigation"}
+
+// ── covered: design (only the separable case) ──────────────────────────────
+{"text": "audit this dashboard and tell me precisely why it looks templated", "gold": "design-critique"}
+
+// ── covered: other ─────────────────────────────────────────────────────────
+{"text": "design the REST endpoints for the billing service", "gold": "api-design"}
+{"text": "who owns this table and how long do we retain the PII in it", "gold": "data-governance"}
+{"text": "find out what the current stable version of Bun is", "gold": "research-web"}
+
+// ── covered: the remaining roster entries ──────────────────────────────────
+{"text": "I want something watching the fleet in the background for stalls", "gold": "shadow-agent"}
+{"text": "our agent replies are inconsistent, pin down the output format rules", "gold": "output-standards"}
+{"text": "can I rely on :has() in CSS or do I need a fallback", "gold": "web-platform-baseline"}
+
+// ── uncovered: everyday, nothing technical ─────────────────────────────────
+{"text": "what is the weather going to be like tomorrow"}
+{"text": "order me a pizza from the place on the corner"}
+{"text": "remind me to call my mother this evening"}
+{"text": "what time is it in Tokyo right now"}
+
+// ── uncovered: technical questions no skill serves (explain, do not act) ───
+{"text": "explain what a monad is"}
+{"text": "what is the actual difference between TCP and UDP"}
+{"text": "why is quicksort O(n log n) on average but O(n squared) worst case"}
+{"text": "walk me through how DNS resolution works end to end"}
+{"text": "what does the CAP theorem actually rule out in practice"}
+
+// ── uncovered: specific asks this roster genuinely lacks ───────────────────
+// These are the ones that catch guessing: each is a real, actionable request
+// that a nearby skill will look like it covers.
+{"text": "write a Terraform module for our VPC and subnets"}
+{"text": "this Postgres query is doing a sequential scan, tune it"}
+{"text": "set up a Kubernetes horizontal pod autoscaler for the API"}
+{"text": "port this parser to Rust"}
+{"text": "build an iOS home screen widget for the app"}
+{"text": "configure Nginx as a reverse proxy with TLS termination"}
+{"text": "write a GitHub Actions matrix that runs on three Node versions"}

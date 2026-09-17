@@ -97,14 +97,14 @@ describe('projectSavedProviders', () => {
     expect(flags).toEqual([false, true, false]);
   });
 
-  it('returns no active key when activeKey does not match any entry', () => {
+  it('shows the first key as active when the stored activeKey is stale, matching runtime credential resolution', () => {
     const [view] = asView({
       ollama: cfg({
         apiKeys: [{ label: 'a', apiKey: 'ka', createdAt: NOW }],
         activeKey: 'nonexistent',
       }),
     });
-    expect(view?.apiKeys.every((k) => !k.isActive)).toBe(true);
+    expect(view?.apiKeys[0]?.isActive).toBe(true);
   });
 
   it('upgrades a legacy single apiKey through normalizeKeys', () => {

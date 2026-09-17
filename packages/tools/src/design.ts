@@ -347,6 +347,11 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       // rather than collapsing absoluteB onto the drive root. Treating
       // absolute result.path as absolute (not as a join-input) keeps the
       // behavior consistent across platforms and is what the test asserts.
+      //
+      // Match on `rel === '..'` / a '..<sep>' prefix (not a bare
+      // startsWith('..')): in-root names like `..hidden/theme.css` or
+      // `..tokens.css` produce rel values "..hidden\theme.css" / "..tokens.css"
+      // — legal project-relative paths a loose prefix misreads as escapes.
       const root = await resolveReal(ctx.projectRoot);
       const absResolved = path.isAbsolute(result.path)
         ? path.resolve(result.path)
@@ -354,7 +359,7 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
       const absParent = await resolveReal(path.dirname(absResolved));
       const abs = path.join(absParent, path.basename(absResolved));
       const rel = path.relative(root, abs);
-      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
         throw new ToolValidationError({
           message: `design: materialize path "${result.path}" would escape the project root`,
           field: 'out',
@@ -401,6 +406,31 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
             .map((f) => f.trim().replace(/\\/g, '/'))
             .filter(Boolean)
         : undefined;
+      // Containment: explicit files are documented as project-relative, but a
+      // ../ climb or an absolute outside path was resolved and read as-is —
+      // the violation report then echoes outside file paths and snippets into
+      // the tool output. Mirror the materialize guard: canonicalize through
+      // realpath (symlink/bind-mount safe) and refuse escapes before reading.
+      // In-root absolute paths stay allowed, as for materialize's out.
+      if (normalizedFiles) {
+        const root = await resolveReal(ctx.projectRoot);
+        for (const f of normalizedFiles) {
+          const absResolved = path.isAbsolute(f)
+            ? path.resolve(f)
+            : path.resolve(path.join(ctx.projectRoot, f));
+          const absParent = await resolveReal(path.dirname(absResolved));
+          const abs = path.join(absParent, path.basename(absResolved));
+          const rel = path.relative(root, abs);
+          // `rel === '..'` / '..<sep>' prefix: a sibling like `..hidden`
+          // inside the root is legal and must not trip this check.
+          if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+            throw new ToolValidationError({
+              message: `design: verify file "${f}" would escape the project root`,
+              field: 'files',
+            });
+          }
+        }
+      }
       const report = await runDesignVerify(ctx.projectRoot, tokens, normalizedFiles);
       const pct = Math.round(report.score * 100);
       const top = report.violations

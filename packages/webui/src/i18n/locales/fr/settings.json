@@ -125,6 +125,14 @@
     "serviceAutoRestarting": "Redémarrage automatique…"
   },
   "provider": {
+    "removeProfileConfirm": "Supprimer le profil « {{alias}} » et toutes ses clés ?",
+    "removeProfileBody": "Les identifiants enregistrés et les références à ce compte dans le routage des modèles seront supprimés.",
+    "deleteKeyConfirm": "Supprimer la clé « {{label}} » de « {{alias}} » ?",
+    "addProfile": "Ajouter un compte / profil d’authentification",
+    "profileAlias": "Alias du profil d’authentification",
+    "profileHint": "Chaque compte possède son alias et ses identifiants. Les cibles de secours sont alias/modèle.",
+    "profileExists": "Le profil « {{alias}} » existe déjà. Choisissez un autre alias.",
+    "operationTimeout": "Le serveur ne répond pas. Vérifiez la connexion et réessayez.",
     "savedProviderCount_one": "{{count}} fournisseur",
     "savedProviderCount_other": "{{count}} fournisseurs",
     "keyCount_one": "{{count}} clé configurée",

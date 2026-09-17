@@ -93,6 +93,7 @@ WrongStack routes slash commands through `SlashCommandRegistry`. The command set
 | `/intake` | — | Create and submit a requirement intake record from the current prompt |
 | `/provider-status` | — | Live provider/model health: healthy, degraded, blocked |
 | `/openai-quota` | — | [openai-quota](openai-quota.md) — ChatGPT (Codex) plan windows used and reset times |
+| `/provider-quota` | — | [provider-quota](provider-quota.md) — Plan windows used and reset times for every metered provider |
 
 `/f1` through `/f12` are twelve separately registered hidden commands, not entries in the `aliases` array.
 

@@ -23,11 +23,15 @@ export interface SSEMessage {
 
 /**
  * Cap on the unconsumed buffer (pending tail). A malicious or buggy upstream
- * that sends megabytes without a newline could otherwise pin a worker.
- * 256 KB comfortably accommodates any sane SSE event while ensuring we fail
- * fast on garbage.
+ * that sends megabytes without a newline could otherwise grow it unbounded.
+ *
+ * It must still fit one legitimate event: Gemini delivers a `functionCall`
+ * with its complete `args` in a single `data:` line, so a `write` of a few
+ * hundred KB of source is one line. The old 256 KB cap failed exactly those
+ * turns (and every retry of them). The tail is buffered as a chunk list and
+ * joined once, so a large line costs O(n), not O(n²) re-copying.
  */
-const MAX_BUFFER_BYTES = 256 * 1024;
+const MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 const TEXT_DECODER = new TextDecoder('utf-8');
 const TEXT_ENCODER = new TextEncoder();
 
@@ -42,10 +46,26 @@ function decodeLine(bytes: Uint8Array): string {
   return TEXT_DECODER.decode(bytes);
 }
 
-function findJsonSafeSplit(payload: Uint8Array, start: number, maxLineBytes: number): number {
+/** JSON lexer position carried between fold windows of one payload. */
+interface JsonScanState {
+  inString: boolean;
+  escaped: boolean;
+}
+
+function findJsonSafeSplit(
+  payload: Uint8Array,
+  start: number,
+  maxLineBytes: number,
+  scan: JsonScanState,
+): number {
   const hardEnd = Math.min(start + maxLineBytes, payload.length);
-  let inString = false;
-  let escaped = false;
+  // Resume the lexer where the previous window stopped. Restarting every
+  // window at "outside a string" misread any window that began inside a long
+  // string value: escaped quotes flipped the state and the "safe" split landed
+  // inside the string, so the rejoined JSON failed to parse and the event was
+  // silently dropped.
+  let inString = scan.inString;
+  let escaped = scan.escaped;
   let lastSafe = -1;
   // If the window ends inside a JSON string, extend the scan a little so the
   // split lands *after* the closing quote rather than slicing through an
@@ -79,14 +99,21 @@ function findJsonSafeSplit(payload: Uint8Array, start: number, maxLineBytes: num
   };
 
   for (let i = start; i < hardEnd; i++) step(i);
+  const atHardEnd: JsonScanState = { inString, escaped };
 
   if (lastSafe <= start && inString) {
     const cap = Math.min(payload.length, hardEnd + 4096);
     for (let i = hardEnd; i < cap && inString; i++) step(i);
   }
 
-  if (lastSafe > start) return lastSafe;
-  if (lastStringEnd > start) return lastStringEnd;
+  // Both safe split kinds sit outside any string.
+  if (lastSafe > start || lastStringEnd > start) {
+    scan.inString = false;
+    scan.escaped = false;
+    return lastSafe > start ? lastSafe : lastStringEnd;
+  }
+  scan.inString = atHardEnd.inString;
+  scan.escaped = atHardEnd.escaped;
   return hardEnd;
 }
 
@@ -95,7 +122,22 @@ export async function* parseSSE(
 ): AsyncIterable<SSEMessage> {
   if (!body) return;
 
-  let pending: Uint8Array = new Uint8Array(0);
+  // Unterminated line tail, kept as a chunk list and joined once at the newline.
+  const pendingParts: Uint8Array[] = [];
+  let pendingLength = 0;
+  const takePending = (tail: Uint8Array): Uint8Array => {
+    if (pendingParts.length === 0) return tail;
+    const out = new Uint8Array(new ArrayBuffer(pendingLength + tail.length));
+    let at = 0;
+    for (const part of pendingParts) {
+      out.set(part, at);
+      at += part.length;
+    }
+    out.set(tail, at);
+    pendingParts.length = 0;
+    pendingLength = 0;
+    return out;
+  };
   let skipLeadingLf = false;
   let event = 'message';
   const dataLines: string[] = [];
@@ -145,20 +187,22 @@ export async function* parseSSE(
       if (byte !== 0x0a && byte !== 0x0d) continue;
       const lineEnd = i;
       const lineBytes = chunk.subarray(lineStart, lineEnd);
-      let completeLine = pending.length === 0 ? lineBytes : concatBytes(pending, lineBytes);
+      let completeLine = takePending(lineBytes);
       if (completeLine.length > 0 && completeLine[completeLine.length - 1] === 0x0d) {
         completeLine = completeLine.subarray(0, completeLine.length - 1);
       }
-      pending = new Uint8Array(0);
       lineStart = i + 1;
       skipLeadingLf = byte === 0x0d;
       const msg = processLine(decodeLine(completeLine));
       if (msg) out.push(msg);
     }
 
-    const tail = chunk.subarray(lineStart);
-    pending = pending.length === 0 ? new Uint8Array(tail) : concatBytes(pending, tail);
-    if (pending.length > MAX_BUFFER_BYTES) {
+    if (lineStart < chunk.length) {
+      // Copy: the source chunk may be a reused/transferred buffer.
+      pendingParts.push(new Uint8Array(chunk.subarray(lineStart)));
+      pendingLength += chunk.length - lineStart;
+    }
+    if (pendingLength > MAX_BUFFER_BYTES) {
       throw new ParseError({
         message: `SSE: pending line exceeds ${MAX_BUFFER_BYTES} bytes — upstream is not framing events`,
         source: 'sse',
@@ -212,6 +256,9 @@ export async function* parseSSE(
 
         try {
           while (!ended || chunks.length > 0) {
+            // An 'error' emitted while the consumer was busy with a yielded
+            // message found `resume` null; awaiting now would never resolve.
+            if (error) throw error;
             if (chunks.length === 0) {
               await new Promise<void>((r) => {
                 resume = r;
@@ -254,7 +301,8 @@ export async function* parseSSE(
     }
   }
 
-  if (pending.length > 0) {
+  if (pendingLength > 0) {
+    const pending = takePending(new Uint8Array(0));
     const line =
       pending[pending.length - 1] === 0x0d
         ? decodeLine(pending.subarray(0, pending.length - 1))
@@ -290,9 +338,15 @@ export function createSseLineFoldingTransform(
     payload: Uint8Array,
   ): void => {
     let offset = 0;
+    const scan: JsonScanState = { inString: false, escaped: false };
     while (offset < payload.length) {
       controller.enqueue(encoder.encode('data:'));
-      const end = findJsonSafeSplit(payload, offset, maxLineBytes);
+      let end = findJsonSafeSplit(payload, offset, maxLineBytes, scan);
+      // No safe boundary: the window ends inside a string value longer than
+      // the window. A fold there would put a raw newline inside the string
+      // (invalid JSON — the event was dropped). Send the rest unfolded; the
+      // parser's line cap is sized for one large event.
+      if (scan.inString) end = payload.length;
       controller.enqueue(payload.subarray(offset, end));
       controller.enqueue(encoder.encode('\n'));
       offset = end;

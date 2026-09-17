@@ -225,16 +225,17 @@ describe('addFromCatalog — interactive picker path', () => {
     expect(logs.some((l) => l.includes('OAuth login options:'))).toBe(true);
   });
 
-  it.each(['chatgpt', 'claude', 'copilot'] as const)(
-    'completes via the OAuth offer for %s',
-    async (kind) => {
-      const { deps, answers } = await setup({ listProviders: async () => [CATALOG_ROW] });
-      pickerMock.runLiveProviderPicker.mockResolvedValue(null);
-      answers.push(kind);
-      expect(await addFromCatalog(deps)).toBe(true);
-      expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, kind);
-    },
-  );
+  it.each([
+    ['chatgpt', 'openai-codex'],
+    ['claude', 'anthropic-oauth'],
+    ['copilot', 'github-copilot'],
+  ] as const)('completes via the OAuth offer for %s', async (kind, providerId) => {
+    const { deps, answers } = await setup({ listProviders: async () => [CATALOG_ROW] });
+    pickerMock.runLiveProviderPicker.mockResolvedValue(null);
+    answers.push(kind);
+    expect(await addFromCatalog(deps)).toBe(true);
+    expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, kind, { providerId });
+  });
 
   it('rejects an unknown OAuth answer after a cancelled pick', async () => {
     const { deps, answers } = await setup({ listProviders: async () => [CATALOG_ROW] });

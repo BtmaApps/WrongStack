@@ -7,9 +7,11 @@
  * For exotic providers the same pattern still applies — only the
  * `parseStreamEvent` body changes.
  */
+import { createHash } from 'node:crypto';
 import type { Request, StopReason, StreamEvent } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
+import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
@@ -31,6 +33,12 @@ interface MistralStreamState {
       emittedArgLength: number;
     }
   >;
+  /** `[DONE]` or a `finish_reason` arrived — the stream ended on purpose. */
+  sawTerminal?: boolean | undefined;
+  /** A `message_stop` (with its tool closes) was already emitted. */
+  stopped?: boolean | undefined;
+  /** Live provider id (alias-aware) for errors raised mid-stream. */
+  providerId?: string | undefined;
 }
 
 export const mistralWireFormat = defineWireFormat<MistralStreamState>({
@@ -81,14 +89,19 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
     if (req.stopSequences) body['stop'] = req.stopSequences;
     return body;
   },
-  createStreamState: (fallbackModel) => ({
+  createStreamState: (fallbackModel, providerId) => ({
+    providerId,
     model: fallbackModel,
     started: false,
     inThinking: false,
     toolCalls: new Map(),
   }),
   parseStreamEvent: (msg, state): StreamEvent[] => {
-    if (!msg.data || msg.data === '[DONE]') return [];
+    if (msg.data === '[DONE]') {
+      state.sawTerminal = true;
+      return [];
+    }
+    if (!msg.data) return [];
     const parsed = safeParse<{
       model?: string | undefined;
       choices?: {
@@ -112,9 +125,16 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
         finish_reason?: string | undefined;
       }[];
       usage?: { prompt_tokens?: number | undefined; completion_tokens?: number | undefined };
+      error?: unknown;
     }>(msg.data);
     if (!parsed.ok || !parsed.value) return [];
     const ev = parsed.value;
+    if (ev.error !== undefined && ev.error !== null) {
+      throw providerErrorFromStreamPayload(
+        state.providerId ?? 'mistral',
+        ev as Record<string, unknown>,
+      );
+    }
     const out: StreamEvent[] = [];
     if (ev.model) state.model = ev.model;
     if (!state.started) {
@@ -175,36 +195,75 @@ export const mistralWireFormat = defineWireFormat<MistralStreamState>({
         out.push({ type: 'tool_use_input_delta', id: block.id, partial });
       }
     }
-    if (choice?.finish_reason) {
-      closeThinking(out, state);
-      // Close out tool calls with parsed JSON
-      for (const block of state.toolCalls.values()) {
-        if (block.id && block.name) {
-          if (!block.emittedStart) {
-            out.push({ type: 'tool_use_start', id: block.id, name: block.name });
-          }
-          out.push({
-            type: 'tool_use_stop',
-            id: block.id,
-            input: parseToolInput(block.partial),
-          });
-        }
-      }
-      out.push({
-        type: 'message_stop',
-        stopReason: mapStopReason(choice.finish_reason),
-        usage: {
+    if (choice?.finish_reason && !state.stopped) {
+      state.sawTerminal = true;
+      out.push(
+        ...closeMessage(state, mapStopReason(choice.finish_reason), {
           input: ev.usage?.prompt_tokens ?? 0,
           output: ev.usage?.completion_tokens ?? 0,
-        },
-      });
+        }),
+      );
     }
     return out;
   },
+  // Started, then closed with neither `finish_reason` nor `[DONE]`: the reply
+  // was cut mid-stream. Previously nothing was emitted at all, so the partial
+  // text was committed as a clean end_turn and pending tool calls vanished.
+  isTruncated: (state) => state.started && !state.sawTerminal,
+  // `[DONE]` without a `finish_reason` still ends the turn properly.
+  finalizeStream: (state): StreamEvent[] =>
+    state.started && !state.stopped ? closeMessage(state, 'end_turn', { input: 0, output: 0 }) : [],
 });
 
+function closeMessage(
+  state: MistralStreamState,
+  stopReason: StopReason,
+  usage: { input: number; output: number },
+): StreamEvent[] {
+  const out: StreamEvent[] = [];
+  state.stopped = true;
+  closeThinking(out, state);
+  // Close out tool calls with parsed JSON
+  for (const block of state.toolCalls.values()) {
+    if (block.id && block.name) {
+      if (!block.emittedStart) {
+        out.push({ type: 'tool_use_start', id: block.id, name: block.name });
+      }
+      out.push({
+        type: 'tool_use_stop',
+        id: block.id,
+        input: parseToolInput(block.partial),
+      });
+    }
+  }
+  out.push({ type: 'message_stop', stopReason, usage });
+  return out;
+}
+
+/**
+ * Mistral rejects any tool-call id that is not exactly 9 ASCII letters/digits
+ * ("Tool call id was call_… but must be a-z, A-Z, 0-9, with a length of 9").
+ * Its own ids already comply; ids minted by other wires (`toolu_…`, `call_…`)
+ * arrive with the history after a `/model` switch or fallback hop and 400'd
+ * the request. The mapping is a pure function of the id, so a call and its
+ * result always rewrite to the same value.
+ */
+export function mistralToolCallId(id: string): string {
+  if (/^[A-Za-z0-9]{9}$/.test(id)) return id;
+  return createHash('sha256').update(id).digest('hex').slice(0, 9);
+}
+
 function messagesToMistral(req: Request): unknown[] {
-  return messagesToOpenAI(stripCacheControl(req.system), req.messages).map((message) => {
+  return messagesToOpenAI(stripCacheControl(req.system), req.messages).map((raw) => {
+    const message = {
+      ...raw,
+      ...(raw.tool_call_id !== undefined
+        ? { tool_call_id: mistralToolCallId(raw.tool_call_id) }
+        : {}),
+      ...(raw.tool_calls
+        ? { tool_calls: raw.tool_calls.map((tc) => ({ ...tc, id: mistralToolCallId(tc.id) })) }
+        : {}),
+    };
     if (message.role !== 'assistant' || !message.reasoning_content) return message;
     const { reasoning_content: reasoning, ...rest } = message;
     const content: Array<Record<string, unknown>> = [

@@ -1,6 +1,10 @@
 import type { ProviderConfig, ResolvedProvider, WireFamily } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
-import { catalogProviderIdFor, PROVIDER_DEFINITIONS } from '@wrongstack/providers';
+import {
+  authProfileAliasError,
+  catalogProviderIdFor,
+  PROVIDER_DEFINITIONS,
+} from '@wrongstack/providers';
 import { runLiveProviderPicker } from '../picker.js';
 import {
   mutateConfigProviders,
@@ -73,9 +77,7 @@ export async function addFromCatalog(deps: AuthMenuDeps): Promise<boolean> {
       `\n  ${color.dim('OAuth login options: enter a registered strategy name, or q to quit.')}\n`,
     );
     const answer = (
-      await deps.reader.readLine(
-        `  ${color.amber('?')} OAuth strategy ${color.dim('(or q)')}: `,
-      )
+      await deps.reader.readLine(`  ${color.amber('?')} OAuth strategy ${color.dim('(or q)')}: `)
     ).trim();
     if (answer && (await runOAuthLoginChoice(deps, answer, { allowNumeric: false }))) {
       return true;
@@ -133,6 +135,7 @@ export async function addKeyForCatalogProvider(
   // Alias
   const providersNow = await loadProviders(deps);
   let suggestedAlias = chosen.id;
+  for (let n = 2; providersNow[suggestedAlias]; n++) suggestedAlias = `${chosen.id}-${n}`;
   if (family !== (chosen.family as WireFamily)) {
     let candidate = `${chosen.id}-${family}`;
     let n = 2;
@@ -148,6 +151,11 @@ export async function addKeyForCatalogProvider(
     )
   ).trim();
   const alias = aliasRaw || suggestedAlias;
+  const aliasError = authProfileAliasError(alias);
+  if (aliasError) {
+    deps.renderer.writeError(aliasError);
+    return false;
+  }
 
   // Check for conflicting existing entry
   const existing = providersNow[alias];
@@ -163,6 +171,10 @@ export async function addKeyForCatalogProvider(
       );
       return false;
     }
+    deps.renderer.writeError(
+      `Auth profile "${alias}" already exists. Choose another alias or manage its keys explicitly.`,
+    );
+    return false;
   }
 
   return addKeyForProvider(alias, deps, {

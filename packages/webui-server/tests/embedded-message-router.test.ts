@@ -7,7 +7,10 @@ vi.mock('ws', () => {
   return { WebSocket: MockWebSocket };
 });
 
-vi.mock('@wrongstack/providers', () => ({ makeProviderFromConfig: vi.fn() }));
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  makeProviderFromConfig: vi.fn(),
+}));
 
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import {

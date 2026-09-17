@@ -1,5 +1,11 @@
 import type { Request } from '@wrongstack/core/types';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetSharedOAuthRefreshState } from '../src/oauth-refresh-coordinator.js';
+
+// Coordinators share refreshes process-wide by refresh key; every test here
+// reuses the same fake keys, so start each one from a clean slate.
+beforeEach(() => resetSharedOAuthRefreshState());
+
 import {
   type CopilotTokenResult,
   copilotBaseUrlFromToken,
@@ -159,7 +165,13 @@ describe('GitHubCopilotProvider token refresh', () => {
       }),
     );
     let calls = 0;
-    const fetchImpl = (async () => {
+    const fetchImpl = (async (url: string) => {
+      // Count chat attempts only. Minting a token also kicks a detached read
+      // of `/copilot_internal/user` (the quota reporter) through this same
+      // fetch, and that call is not one of the retries under test.
+      if (String(url).includes('/copilot_internal/')) {
+        return new Response('{}', { status: 200 });
+      }
       calls++;
       if (calls === 1) return new Response('unauthorized', { status: 401 });
       return new Response(sseBody(OPENAI_SSE), { status: 200 });

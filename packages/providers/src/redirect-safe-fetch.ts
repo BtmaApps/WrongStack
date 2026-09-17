@@ -36,9 +36,29 @@ const MAX_REDIRECTS = 20;
  * that the original `redirect-safe-fetch` missed while still
  * advertising "Verified clean".
  */
-function assertNotPrivateRedirectHost(url: URL): void {
+/**
+ * Whether a URL's host is already local/private — a literal private IP or a
+ * `localhost` name. A redirect FROM such a host into private space is not an
+ * escalation (the user configured a local endpoint), so it must not be blocked.
+ */
+function isLocalOrPrivateHost(url: URL): boolean {
+  const raw = url.hostname.toLowerCase();
+  const host = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw;
+  if (host === 'localhost' || host.endsWith('.localhost')) return true;
+  const family = net.isIP(host);
+  if (family === 4) return isPrivateIPv4(host);
+  if (family === 6) return isPrivateIPv6(host);
+  return false;
+}
+
+function assertNotPrivateRedirectHost(url: URL, from: URL): void {
   const raw = url.hostname;
   if (!raw) throw new Error(`redirect to URL with no host: ${url}`);
+  // Ollama / vLLM / LM Studio live on loopback by design; a trailing-slash or
+  // `localhost` → `127.0.0.1` redirect from the configured local endpoint was
+  // being rejected as an SSRF escalation. Only a hop from a public host into
+  // private space is the hazard this guard exists for.
+  if (isLocalOrPrivateHost(from)) return;
 
   // `URL.hostname` KEEPS the brackets on an IPv6 literal — `[::1]`, not `::1`.
   // Strip them the way both sibling guards already do
@@ -195,13 +215,12 @@ export async function redirectSafeFetch(
 
     const nextUrl = nextUrlParsed.toString();
     if (!sameOrigin(currentUrl, nextUrl)) headers = stripCredentials(headers);
-    // J2: revalidate the redirect target's resolved IP against the
+    // J2: revalidate the redirect target's literal host against the
     // private/loopback classifier before letting `fetch` dial it.
-    // This runs *before* the protocol check's throw above for cross-
-    // origin hops, and on same-origin hops too — a compromised CDN
+    // This runs on same-origin hops too — a compromised CDN
     // that points a single-origin endpoint at a private address is
     // the same hazard at a smaller blast radius.
-    assertNotPrivateRedirectHost(nextUrlParsed);
+    assertNotPrivateRedirectHost(nextUrlParsed, new URL(currentUrl));
 
     // 301/302 after a POST, and 303 after any method except HEAD, become GET
     // without a body — the same normalisation fetch performs internally.

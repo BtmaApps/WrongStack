@@ -2,10 +2,30 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 import {
   runWithDispatchSession,
+  runWithOperationRequest,
   send,
   sendResult,
   stampDispatchSession,
 } from '../src/server/ws-utils.js';
+
+it('keeps concurrent operation request identities separate across async continuations', async () => {
+  const result = { type: 'key.operation_result', payload: { success: true, message: 'Saved' } };
+  const stamped = await Promise.all(
+    ['request-a', 'request-b'].map((requestId) =>
+      runWithOperationRequest(requestId, async () => {
+        await Promise.resolve();
+        return stampDispatchSession(result);
+      }),
+    ),
+  );
+  expect(stamped).toEqual(
+    ['request-a', 'request-b'].map((requestId) => ({
+      ...result,
+      payload: { ...result.payload, requestId },
+    })),
+  );
+  expect(stampDispatchSession(result)).toBe(result);
+});
 
 /**
  * B-05 (docs/audit/webui-full-review-2026-09-03.md).

@@ -41,6 +41,7 @@ export function projectSavedProviders(
 ): SavedProviderView[] {
   return Object.entries(providers).map(([id, cfg]) => {
     const keys = normalizeKeys(cfg);
+    const active = keys.find((key) => key.label === cfg.activeKey) ?? keys[0];
     const models = cfg.models;
     const view: SavedProviderView = {
       id,
@@ -52,7 +53,7 @@ export function projectSavedProviders(
       apiKeys: keys.map((k) => ({
         label: k.label,
         maskedKey: maskedKey(k.apiKey),
-        isActive: k.label === cfg.activeKey,
+        isActive: k.label === active?.label,
         createdAt: k.createdAt,
       })),
     };

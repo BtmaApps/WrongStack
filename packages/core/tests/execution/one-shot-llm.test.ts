@@ -971,3 +971,92 @@ describe('OneShotOrchestrator honours the host provider-call chain', () => {
     expect(provider.complete).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * A ProviderError built inside `@wrongstack/providers` carries the shape but
+ * not necessarily the class identity of the one this bundle imports (npm can
+ * hoist a duplicate `@wrongstack/core/types`). The orchestrator must branch on
+ * the duck-typed guard, exactly like the agent-loop funnel does — with
+ * `instanceof` these failures were invisible to the waiting room and their
+ * kind was ignored when deciding whether to rotate the chain.
+ */
+function crossBundleProviderError(kind: ProviderErrorKind, status: number): Error {
+  const err = new Error(`cross-bundle ${kind}`) as Error & Record<string, unknown>;
+  err.name = 'ProviderError';
+  err.status = status;
+  err.retryable = kind === 'overloaded';
+  err.kind = kind;
+  err.providerId = 'primary';
+  err.body = { message: `cross-bundle ${kind}` };
+  err.describe = () => `primary HTTP ${status}`;
+  return err;
+}
+
+function throwingProvider(id: string, err: Error): Provider {
+  return {
+    id,
+    capabilities: TEST_CAPABILITIES,
+    complete: vi.fn(async () => {
+      throw err;
+    }),
+    stream: vi.fn(),
+  };
+}
+
+describe('OneShotOrchestrator — provider errors from another bundle', () => {
+  it('records the failure and rotates for a fallback-worthy kind', async () => {
+    const failures: Array<{ providerId: string; kind: string }> = [];
+    const fallback = fakeProvider('fallback-provider', { model: 'fallback-model' });
+    const orch = new OneShotOrchestrator({
+      ...makeOneShotOpts(makeConfig(), async (pid) =>
+        pid === 'primary'
+          ? throwingProvider('primary', crossBundleProviderError('overloaded', 529))
+          : fallback,
+      ),
+      statusTracker: {
+        isAvailable: () => true,
+        recordSuccess: () => {},
+        recordFailure: (providerId: string, _model: string, kind: string) => {
+          failures.push({ providerId, kind });
+        },
+      } as unknown as NonNullable<
+        ConstructorParameters<typeof OneShotOrchestrator>[0]['statusTracker']
+      >,
+    });
+
+    const result = await orch.call({
+      system: 'test',
+      userPrompt: 'hello',
+      providerId: 'primary',
+      model: 'primary-model',
+      fallbackModels: ['fallback-provider/fallback-model'],
+    });
+
+    expect(result.fromFallback).toBe(true);
+    expect(failures).toEqual([{ providerId: 'primary', kind: 'overloaded' }]);
+  });
+
+  it('does not rotate the chain for a request-shaped kind', async () => {
+    const fallback = fakeProvider('fallback-provider', { model: 'fallback-model' });
+    const orch = new OneShotOrchestrator({
+      ...makeOneShotOpts(makeConfig(), async (pid) =>
+        pid === 'primary'
+          ? throwingProvider('primary', crossBundleProviderError('auth', 401))
+          : fallback,
+      ),
+    });
+
+    const result = await orch.call({
+      system: 'test',
+      userPrompt: 'hello',
+      providerId: 'primary',
+      model: 'primary-model',
+      fallbackModels: ['fallback-provider/fallback-model'],
+    });
+
+    // An auth failure fails the call; burning the chain on it helps nobody.
+    expect(result.error).toBeTruthy();
+    expect(result.fromFallback).toBe(false);
+    expect(fallback.complete).not.toHaveBeenCalled();
+  });
+});

@@ -135,11 +135,37 @@ export class FallbackProfileManager {
   private config: Config;
   /** Optional shared runtime status tracker. */
   private statusTracker: ProviderModelStatusTracker | undefined;
+  /**
+   * Resolve the CONFIGURED chain rather than the runnable one: keep entries the
+   * status tracker has quarantined and entries the availability calendar
+   * blacks out right now.
+   *
+   * Only the diagnostics (`/fallback doctor`, `/fallback simulate`) set this.
+   * They exist to explain why a chain is shorter than it looks, and they cannot
+   * do that if the reason was already filtered away upstream — every
+   * "quarantined" / "calendar blocked" warning they emit was unreachable while
+   * they resolved through the runtime filters.
+   */
+  private readonly ignoreAvailability: boolean;
 
-  constructor(config: Config, opts?: { statusTracker?: ProviderModelStatusTracker | undefined }) {
+  constructor(
+    config: Config,
+    opts?: {
+      statusTracker?: ProviderModelStatusTracker | undefined;
+      ignoreAvailability?: boolean | undefined;
+    },
+  ) {
     this.config = config;
     this.profiles = buildProfiles(config);
     this.statusTracker = opts?.statusTracker;
+    this.ignoreAvailability = opts?.ignoreAvailability ?? false;
+  }
+
+  /** Is this pair usable right now? Always true in `ignoreAvailability` mode. */
+  private isRuntimeAvailable(providerId: string, model: string): boolean {
+    if (this.ignoreAvailability) return true;
+    if (this.statusTracker && !this.statusTracker.isAvailable(providerId, model)) return false;
+    return evaluateModelCalendar(this.config.modelAvailabilitySchedule, providerId, model).allowed;
   }
 
   /**
@@ -237,13 +263,9 @@ export class FallbackProfileManager {
       // the chain runner already logs it and moves to the next candidate —
       // one local construction attempt, no network call.
 
-      // Skip entries that are blocked by the runtime status tracker
-      if (this.statusTracker && !this.statusTracker.isAvailable(providerId, parsed.model)) continue;
-      if (
-        !evaluateModelCalendar(this.config.modelAvailabilitySchedule, providerId, parsed.model)
-          .allowed
-      )
-        continue;
+      // Skip entries that are blocked by the runtime status tracker or the
+      // availability calendar (kept in `ignoreAvailability` diagnostics mode).
+      if (!this.isRuntimeAvailable(providerId, parsed.model)) continue;
 
       // NOTE: `config.providers[id].models` is deliberately NOT used to drop
       // entries here. It is an unrefreshed snapshot (re-auth and provider
@@ -548,13 +570,8 @@ export class FallbackProfileManager {
       if (excludeKey && key === excludeKey) continue;
       if (isDisabledModel(disabled, providerId, parsed.model)) continue;
 
-      // Skip entries blocked by the runtime status tracker
-      if (this.statusTracker && !this.statusTracker.isAvailable(providerId, parsed.model)) continue;
-      if (
-        !evaluateModelCalendar(this.config.modelAvailabilitySchedule, providerId, parsed.model)
-          .allowed
-      )
-        continue;
+      // Skip entries blocked by the runtime status tracker or the calendar.
+      if (!this.isRuntimeAvailable(providerId, parsed.model)) continue;
 
       resolved.push({
         providerId,
@@ -611,10 +628,8 @@ export class FallbackProfileManager {
         seen.add(ref);
         if (excludeKey && ref === excludeKey) continue;
         if (isDisabledModel(disabled, id, model)) continue;
-        // Skip models blocked by the runtime status tracker
-        if (this.statusTracker && !this.statusTracker.isAvailable(id, model)) continue;
-        if (!evaluateModelCalendar(this.config.modelAvailabilitySchedule, id, model).allowed)
-          continue;
+        // Skip models blocked by the runtime status tracker or the calendar.
+        if (!this.isRuntimeAvailable(id, model)) continue;
         if (favoriteSet.has(ref)) {
           favorites.push(ref);
           continue;

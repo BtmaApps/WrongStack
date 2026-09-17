@@ -14,7 +14,6 @@ import { createCompatibilityTrustBoundary } from '@wrongstack/core/security';
 import { expectDefined, startSharedHeapWatchdog } from '@wrongstack/core/utils';
 import { ensureSessionShell } from '@wrongstack/tools';
 import type { VectorMemoryStore } from '@wrongstack/vector-memory';
-
 import { createAgentServices } from './backend-services.js';
 import { bootConfig, patchConfig } from './boot.js';
 import { createConnectionHandler } from './connection-handler.js';
@@ -30,6 +29,8 @@ import {
   prefSnapshot as prefSnapshotImpl,
   updateGlobalConfig as updateGlobalConfigImpl,
 } from './pref-helpers.js';
+import { mutateSavedProviders } from './provider-config-io.js';
+import { installWebuiProviderPersisters } from './provider-token-persisters.js';
 import { bootstrapWrongProxyFromConfig } from './proxy-runtime.js';
 import {
   buildRoutes,
@@ -144,6 +145,12 @@ export async function startWebUI(
   ): Promise<void> => updateGlobalConfigImpl(prefHelperDeps, configWriteLock, mutate, errorLabel);
 
   console.log('[WebUI] Config loaded:', config.provider ?? '(none)', '/', config.model ?? '(none)');
+  if (!opts.services) {
+    installWebuiProviderPersisters({
+      mutate: (mutator) => mutateSavedProviders(profileConfigPath, vault, mutator),
+      warn: (message) => logger.warn(message),
+    });
+  }
 
   // If no active provider is set but there are saved providers, pick the first one.
   // This handles configs written in older formats or by external tools.

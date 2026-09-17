@@ -251,3 +251,101 @@ describe('Poller restart contract', () => {
     }
   });
 });
+
+/**
+ * Supersede contract — an in-flight poll that settles after its chain was
+ * superseded must not re-arm a second polling chain.
+ *
+ * Regression (bug-hunt round 2026-09-17-r15): poll()'s `.finally` re-armed
+ * schedulePoll() unconditionally. Two supersede events could land while a
+ * long poll was still in flight — handleLockLost() followed by a standby
+ * re-acquire, and stop() → start() — and the stale poll then re-armed its
+ * old chain on top of the successor. Two live getUpdates chains make
+ * Telegram 409 ping-pong between them, driving both into CONFLICT_POLL_MS
+ * (60s) conflict backoff: message latency collapses from the configured
+ * interval to ~60s until process restart. The chain-epoch fence in
+ * schedulePoll() now lets a superseded poll's .finally die silently.
+ */
+describe('Poller supersede contract', () => {
+  function makeSupersedeablePoller() {
+    const log = { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const releases: Array<(updates: TelegramApiUpdate[]) => void> = [];
+    const getUpdates = vi.fn(async () => {
+      // First call parks like a real long-poll until released; every later
+      // call resolves immediately with no updates.
+      if (releases.length === 0) {
+        return await new Promise<TelegramApiUpdate[]>((resolve) => releases.push(resolve));
+      }
+      return [];
+    });
+    const lock = {
+      held: false,
+      tryAcquire: () => {
+        lock.held = true;
+        return true;
+      },
+      onLost: undefined as (() => void) | undefined,
+    };
+    const poller = new Poller({
+      api: () => ({ safeBaseUrl: 'https://api.telegram.org/bot<redacted>', getUpdates }) as never,
+      pollIntervalMs: 1000,
+      log: log as never,
+      controller: new AbortController(),
+      standbyRetryMs: 500,
+      lock: lock as never,
+      onCallbackQuery: () => {},
+      onMessageUpdate: () => {},
+    });
+    return { poller, getUpdates, releases, lock };
+  }
+
+  it('lock lost + standby re-acquire mid-poll leaves ONE chain, not two', async () => {
+    vi.useFakeTimers();
+    const { poller, getUpdates, releases, lock } = makeSupersedeablePoller();
+    try {
+      poller.start();
+      await vi.advanceTimersByTimeAsync(1000); // first tick → poll parks in flight
+      expect(getUpdates).toHaveBeenCalledTimes(1);
+
+      lock.held = false;
+      lock.onLost!(); // another instance takes the lock
+      await vi.advanceTimersByTimeAsync(500); // standby retry re-acquires
+      await vi.advanceTimersByTimeAsync(1000); // successor chain polls (resolves [])
+      expect(getUpdates).toHaveBeenCalledTimes(2); // successor ran while poll 1 in flight
+
+      releases[0]!([]); // the orphaned long poll finally settles
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Pre-fix: the orphan's .finally re-armed a second chain (2 timers).
+      expect(vi.getTimerCount()).toBe(1);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(getUpdates).toHaveBeenCalledTimes(5); // 2 + one tick per second
+    } finally {
+      poller.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it('stop() → start() mid-poll leaves ONE chain, not two', async () => {
+    vi.useFakeTimers();
+    const { poller, getUpdates, releases } = makeSupersedeablePoller();
+    try {
+      poller.start();
+      await vi.advanceTimersByTimeAsync(1000); // poll parks in flight
+      expect(getUpdates).toHaveBeenCalledTimes(1);
+
+      poller.stop();
+      poller.start(); // restart arms the successor chain
+
+      releases[0]!([]); // the pre-restart poll settles after the restart
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(vi.getTimerCount()).toBe(1); // pre-fix: 2
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(getUpdates).toHaveBeenCalledTimes(4); // 1 + one tick per second
+    } finally {
+      poller.stop();
+      vi.useRealTimers();
+    }
+  });
+});

@@ -128,6 +128,67 @@ describe('designTool', () => {
     expect(wrote).toBe(false);
   });
 
+  // The materialize guard matches `rel === '..'` or a '..<sep>' prefix — not a
+  // bare startsWith('..'): in-root names like "..hidden/theme.css" produce rel
+  // values that merely begin with ".." yet are legal project-relative paths.
+  it('allows in-root out paths whose names start with ".."', async () => {
+    const ctx = makeCtx();
+    await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+
+    const nested = await designTool.execute(
+      { action: 'materialize', out: '..hidden/theme.css' },
+      ctx,
+      opts,
+    );
+    expect(nested.action).toBe('materialize');
+    // Landed inside the project root, not beside it.
+    const css = await fs.readFile(path.join(root, '..hidden', 'theme.css'), 'utf8');
+    expect(css.length).toBeGreaterThan(0);
+
+    const flat = await designTool.execute(
+      { action: 'materialize', out: '..tokens.css' },
+      ctx,
+      opts,
+    );
+    expect(flat.action).toBe('materialize');
+    await fs.access(path.join(root, '..tokens.css'));
+  });
+
+  // Symmetry with the materialize guard above: verify's explicit `files` are
+  // documented as project-relative, but a ../ climb or an absolute outside
+  // path was resolved and read as-is — and the report echoes file:line +
+  // snippet, so an escaped read leaks outside content into the tool output.
+  it('blocks ../ and absolute traversal escapes in verify files (CWE-22)', async () => {
+    const ctx = makeCtx();
+    await designTool.execute({ action: 'use', kit: 'minimal-clarity', stack: 'web' }, ctx, opts);
+
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-design-verify-out-'));
+    try {
+      const outsideFile = path.join(outside, 'secret.css');
+      await fs.writeFile(outsideFile, '.leak { color: #123123; }\n');
+      const relEscape = path.relative(root, outsideFile).split(path.sep).join('/');
+      expect(relEscape.startsWith('..')).toBe(true);
+      await expect(
+        designTool.execute({ action: 'verify', files: [relEscape] }, ctx, opts),
+      ).rejects.toThrow(/escape the project root/i);
+      await expect(
+        designTool.execute({ action: 'verify', files: [outsideFile] }, ctx, opts),
+      ).rejects.toThrow(/escape the project root/i);
+
+      // In-root files still scan and report normally.
+      await fs.mkdir(path.join(root, 'verify-inroot'), { recursive: true });
+      await fs.writeFile(path.join(root, 'verify-inroot', 'app.css'), '.btn { color: #123123; }\n');
+      const res = await designTool.execute(
+        { action: 'verify', files: ['verify-inroot/app.css'] },
+        ctx,
+        opts,
+      );
+      expect(res.violations ?? 0).toBeGreaterThan(0);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it('tune resolves high-level knobs and flows into materialize', async () => {
     const ctx = makeCtx();
     await designTool.execute({ action: 'use', kit: 'linear-dark', stack: 'web' }, ctx, opts);

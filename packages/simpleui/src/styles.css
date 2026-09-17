@@ -2512,6 +2512,62 @@ input:focus-visible,
   animation: settings-in 160ms ease;
 }
 
+.auth-panel {
+  width: min(560px, 100vw);
+}
+.auth-panel .settings-head strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-panel-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+.auth-panel-body section {
+  border-top: 1px solid var(--line-strong);
+  margin-top: 16px;
+  padding-top: 12px;
+}
+.auth-panel-body label {
+  display: grid;
+  gap: 5px;
+  margin: 10px 0;
+}
+.auth-panel-body input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+}
+.auth-panel-body button,
+.auth-panel-body a {
+  display: inline-block;
+  padding: 8px;
+  margin: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+}
+.auth-panel-body button:disabled {
+  opacity: 0.5;
+}
+.auth-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.auth-key-row span {
+  flex: 1 1 180px;
+}
+
 @keyframes settings-in {
   from {
     transform: translateX(-12px);

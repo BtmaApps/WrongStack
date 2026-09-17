@@ -72,6 +72,7 @@ import {
 import {
   buildProviderFactoriesFromRegistry,
   installCatalogModelOutputLimits,
+  setStreamTimeoutDefaults,
 } from '@wrongstack/providers';
 import { createDefaultContainer } from '@wrongstack/runtime';
 import { registerCanonicalHostTools } from '@wrongstack/runtime/tool-registration';
@@ -178,6 +179,12 @@ export async function createPreContextServices(
   } catch (err) {
     logger.debug(`provider auto-discovery skipped: ${toErrorMessage(err)}`);
   }
+
+  // Stream watchdog budgets. Every provider reads these at construction, so
+  // they must be installed before the first one is built — the composite
+  // providers never forwarded per-instance stream options to their delegates,
+  // which is why this is process state rather than a factory argument.
+  setStreamTimeoutDefaults(config.modelRuntime?.streaming);
 
   // Same per-request output-ceiling index the CLI installs. Without it every
   // wire body falls back to the adapters' 8192 literal whenever the provider

@@ -1,7 +1,7 @@
 import { watchProviderConfig } from '@wrongstack/core/storage';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { makeProviderFromConfig } from '@wrongstack/providers';
+import { makeProviderFromConfig, unavailableProviderCredentials } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import { patchConfig } from './boot.js';
 import { fanOutProviderRebuild } from './provider-fanout.js';
@@ -55,6 +55,12 @@ export function setupWebuiCredentialWatcher(options: {
     watchConfigPath,
     vault,
     (snapshot) => {
+      const previousProvider = deps.context.provider;
+      const beforeConfig = state.getConfig();
+      const removedAccount =
+        snapshot.snapshotHasProviders &&
+        Object.hasOwn(beforeConfig.providers ?? {}, previousProvider.id) &&
+        !Object.hasOwn(snapshot.providers, previousProvider.id);
       // Refresh in-memory config + store so panels and the next switch read fresh.
       state.setConfig(
         patchConfig(state.getConfig(), {
@@ -107,9 +113,10 @@ export function setupWebuiCredentialWatcher(options: {
 
       const activeId = deps.context.provider.id;
       const newCfgStr = activeProviderConfigKey(snapshot, activeId);
-      if (newCfgStr === lastActiveCfg) return; // active provider creds unchanged
+      if (newCfgStr === lastActiveCfg && !removedAccount) return;
       lastActiveCfg = newCfgStr;
       try {
+        if (removedAccount) throw new Error('Auth profile was removed');
         const providerCfg: ProviderConfig = snapshot.providers[activeId] ?? {
           type: activeId,
           ...(snapshot.apiKey !== undefined ? { apiKey: snapshot.apiKey } : {}),
@@ -123,7 +130,7 @@ export function setupWebuiCredentialWatcher(options: {
         // carries no explicit one (same rule as the other WebUI sites).
         const routedCfg = routeProviderCfgThroughProxy(
           providerCfg,
-          state.getConfig().baseUrl,
+          factoryType === activeId ? state.getConfig().baseUrl : undefined,
           activeId,
         );
         const newProv = deps.providerRegistry.has(factoryType)
@@ -148,6 +155,16 @@ export function setupWebuiCredentialWatcher(options: {
           }`,
         );
       } catch (err) {
+        const blocked = unavailableProviderCredentials(activeId, previousProvider.capabilities);
+        deps.context.provider = blocked;
+        fanOutProviderRebuild({
+          sessionAgentIds: deps.sessionAgentIds,
+          peekAgent: deps.peekAgent,
+          previous: previousProvider,
+          next: blocked,
+          applied: deps.context,
+        });
+        lastActiveCfg = '';
         console.warn(
           `[WebUI] Credential hot-reload failed for ${activeId}: ${toErrorMessage(err)}`,
         );

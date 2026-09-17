@@ -8,9 +8,52 @@
  * with no side-channel state.
  */
 import * as fs from 'node:fs/promises';
-import { ConfigError, type ProviderConfig, type SecretVault } from '@wrongstack/core/types';
-import { atomicWrite } from '@wrongstack/core/utils';
 import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import { ConfigError, type ProviderConfig, type SecretVault } from '@wrongstack/core/types';
+import { atomicWrite, withFileLock } from '@wrongstack/core/utils';
+import {
+  clearStaleProviderDefaults,
+  ProviderConfigSnapshots,
+  removeProviderFallbackReferences,
+  validateProviderConfigShape,
+} from '@wrongstack/providers';
+
+const snapshots = new ProviderConfigSnapshots();
+let writeChain: Promise<void> = Promise.resolve();
+
+/** Atomic credential/model updates share the provider CRUD writer queue and lock. */
+export async function mutateSavedProviders(
+  configPath: string,
+  vault: SecretVault,
+  mutate: (providers: Record<string, ProviderConfig>) => void,
+): Promise<void> {
+  const write = writeChain.then(() =>
+    withFileLock(configPath, async () => {
+      let raw: string;
+      try {
+        raw = await fs.readFile(configPath, 'utf8');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+        throw error;
+      }
+      const config = JSON.parse(raw) as Record<string, unknown>;
+      validateProviderConfigShape(config);
+      const decrypted = decryptConfigSecrets(config, vault);
+      const providers = (decrypted['providers'] ?? {}) as Record<string, ProviderConfig>;
+      const before = JSON.stringify(providers);
+      mutate(providers);
+      if (JSON.stringify(providers) === before) return;
+      decrypted['providers'] = providers;
+      await atomicWrite(
+        configPath,
+        JSON.stringify(encryptConfigSecrets(decrypted, vault), null, 2),
+        { mode: 0o600 },
+      );
+    }),
+  );
+  writeChain = write.catch(() => undefined);
+  await write;
+}
 
 /**
  * Read the `providers` section from a profile config, decrypting
@@ -24,17 +67,29 @@ export async function loadSavedProviders(
   let raw: string;
   try {
     raw = await fs.readFile(configPath, 'utf8');
-  } catch {
-    return {};
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return snapshots.track({});
+    throw new ConfigError({
+      message: `Could not read config at ${configPath}.`,
+      code: 'CONFIG_PARSE_FAILED',
+      context: { filePath: configPath },
+      cause: error,
+    });
   }
   let parsed: { providers?: Record<string, ProviderConfig> } = {};
   try {
     parsed = JSON.parse(raw) as { providers?: Record<string, ProviderConfig> };
-  } catch {
-    return {};
+    validateProviderConfigShape(parsed);
+  } catch (error) {
+    throw new ConfigError({
+      message: `Invalid config at ${configPath}. Fix the file before managing credentials.`,
+      code: 'CONFIG_PARSE_FAILED',
+      context: { filePath: configPath },
+      cause: error,
+    });
   }
-  if (!parsed.providers) return {};
-  return decryptConfigSecrets(parsed.providers, vault);
+  if (!parsed.providers) return snapshots.track({});
+  return snapshots.track(decryptConfigSecrets(parsed.providers, vault));
 }
 
 /**
@@ -49,42 +104,77 @@ export async function saveProviders(
   providers: Record<string, ProviderConfig>,
   profileConfigPath?: string | undefined,
 ): Promise<void> {
-  const targetPath = profileConfigPath ?? configPath;
-  let raw: string;
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new ConfigError({
-        message: `Refusing to mutate ${targetPath}: ${(err as Error).message}`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: targetPath },
-        cause: err,
-      });
-    }
-    fileExists = false;
-    raw = '{}';
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        message:
-          `Refusing to overwrite corrupt config at ${targetPath} ` +
-          `(${(err as Error).message}). Fix or move the file aside before retrying.`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: targetPath },
-        cause: err,
-      });
-    }
-    parsed = {};
-  }
-  parsed.providers = providers;
-  const encrypted = encryptConfigSecrets(parsed, vault);
-  await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  const write = writeChain.then(() =>
+    withFileLock(profileConfigPath ?? configPath, async () => {
+      const targetPath = profileConfigPath ?? configPath;
+      let raw: string;
+      let fileExists = true;
+      try {
+        raw = await fs.readFile(targetPath, 'utf8');
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw new ConfigError({
+            message: `Refusing to mutate ${targetPath}: ${(err as Error).message}`,
+            code: 'CONFIG_PARSE_FAILED',
+            context: { filePath: targetPath },
+            cause: err,
+          });
+        }
+        fileExists = false;
+        raw = '{}';
+      }
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(raw) as Record<string, unknown>;
+        validateProviderConfigShape(parsed);
+      } catch (err) {
+        if (fileExists) {
+          throw new ConfigError({
+            message:
+              `Refusing to overwrite corrupt config at ${targetPath} ` +
+              `(${(err as Error).message}). Fix or move the file aside before retrying.`,
+            code: 'CONFIG_PARSE_FAILED',
+            context: { filePath: targetPath },
+            cause: err,
+          });
+        }
+        parsed = {};
+      }
+      const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+      const previousProviders = (decrypted['providers'] as Record<string, ProviderConfig>) ?? {};
+      const primaryBefore = JSON.stringify([
+        decrypted['provider'],
+        decrypted['model'],
+        typeof decrypted['provider'] === 'string'
+          ? previousProviders[decrypted['provider']]
+          : undefined,
+      ]);
+      const previousIds = Object.keys(
+        (decrypted['providers'] as Record<string, ProviderConfig>) ?? {},
+      );
+      const merged = snapshots.merge(
+        (decrypted['providers'] as Record<string, ProviderConfig>) ?? {},
+        providers,
+      );
+      decrypted['providers'] = merged;
+      for (const id of previousIds) {
+        if (!Object.hasOwn(merged, id)) removeProviderFallbackReferences(decrypted, id);
+      }
+      const primaryAfter = JSON.stringify([
+        decrypted['provider'],
+        decrypted['model'],
+        typeof decrypted['provider'] === 'string' ? merged[decrypted['provider']] : undefined,
+      ]);
+      clearStaleProviderDefaults(decrypted, { preservePrimary: primaryBefore === primaryAfter });
+      const encrypted = encryptConfigSecrets(decrypted, vault);
+      await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+      for (const id of Object.keys(providers)) delete providers[id];
+      Object.assign(providers, merged);
+      snapshots.track(providers);
+    }),
+  );
+  writeChain = write.catch(() => undefined);
+  await write;
 }
 
 // createProviderConfigIO (the standalone boot-phase helper) lives in

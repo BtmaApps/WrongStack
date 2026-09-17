@@ -118,6 +118,7 @@ vi.mock('@wrongstack/mcp', () => ({
   MCPVaultTokenStore: class MCPVaultTokenStoreMock {},
 }));
 vi.mock('@wrongstack/providers', () => ({
+  setStreamTimeoutDefaults: vi.fn(),
   buildProviderFactoriesFromRegistry: mocks.buildProviderFactoriesFromRegistry,
   installCatalogModelOutputLimits: mocks.installCatalogModelOutputLimits,
 }));

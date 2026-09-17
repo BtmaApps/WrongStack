@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isModelDisabled, isModelInFavorites } from '@/components/QuickModelSwitcher.filter';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { getWSClient } from '@/lib/ws-client';
@@ -8,6 +8,8 @@ import type { WSServerMessage } from '@/types';
 
 export interface ModelCandidate {
   provider: string;
+  /** Catalog provider type; `provider` remains the auth profile alias. */
+  providerType?: string | undefined;
   model: string;
   label: string;
   description?: string | undefined;
@@ -27,7 +29,8 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
   const favoriteModels = useLocalPrefs((s) => s.favoriteModels);
   const disabledModels = useLocalPrefs((s) => s.disabledModels);
   const { listSavedProviders, listProviderModels } = useWebSocket();
-  const [saved, setSaved] = useState<string[]>([]);
+  const [saved, setSaved] = useState<Array<{ id: string; type?: string }>>([]);
+  const profileSnapshots = useRef(new Map<string, string>());
   const [byProvider, setByProvider] = useState<
     Record<
       string,
@@ -44,8 +47,21 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
   useEffect(() => {
     const client = getWSClient(wsUrl);
     const offSaved = client.on('providers.saved', (msg: WSServerMessage) => {
-      const p = msg.payload as { providers?: Array<{ id: string }> };
-      setSaved((p.providers ?? []).map((x) => x.id));
+      const p = msg.payload as { providers?: Array<{ id: string; type?: string }> };
+      const profiles = p.providers ?? [];
+      const nextSnapshots = new Map(
+        profiles.map((profile) => [profile.id, JSON.stringify(profile)]),
+      );
+      const previousSnapshots = profileSnapshots.current;
+      profileSnapshots.current = nextSnapshots;
+      setByProvider((previous) =>
+        Object.fromEntries(
+          Object.entries(previous).filter(
+            ([id]) => nextSnapshots.has(id) && nextSnapshots.get(id) === previousSnapshots.get(id),
+          ),
+        ),
+      );
+      setSaved(profiles.map(({ id, type }) => ({ id, type })));
     });
     const offModels = client.on('provider.models', (msg: WSServerMessage) => {
       const p = msg.payload as {
@@ -72,12 +88,13 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
 
   useEffect(() => {
     if (!active) return;
-    for (const id of saved) if (!byProvider[id]) listProviderModels(id);
+    for (const { id } of saved) if (!byProvider[id]) listProviderModels(id);
   }, [active, saved, byProvider, listProviderModels]);
 
   return useMemo(() => {
     const out: ModelCandidate[] = [];
-    for (const provider of saved) {
+    for (const profile of saved) {
+      const provider = profile.id;
       for (const m of byProvider[provider] ?? []) {
         if (isModelDisabled(provider, m.id, disabledModels)) continue;
         // Unknown modalities remain eligible for custom/local providers. A
@@ -86,6 +103,7 @@ export function useProviderModels(active: boolean): ModelCandidate[] {
         if (m.outputModalities?.length && !m.outputModalities.includes('text')) continue;
         out.push({
           provider,
+          providerType: profile.type,
           model: m.id,
           label: m.name ?? m.id,
           description: m.description,

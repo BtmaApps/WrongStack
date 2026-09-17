@@ -11,7 +11,7 @@ import type { MultiAgentHost } from '../multi-agent.js';
 import { runPluginManagementCommand } from '../plugin-management.js';
 import type { CommitLLMProvider } from '../services/commit-message.js';
 import { generateCommitMessageWithLLM } from '../services/commit-message.js';
-import { makeProviderClassifier } from '../services/dispatch-classifier.js';
+import { makeDispatchClassifier } from '../services/dispatch-classifier.js';
 import { parseMcpArgs, runMcpManagementCommand } from '../services/mcp-management.js';
 import { getSuggestions, setSuggestions } from '../services/suggestion-store.js';
 import type { SessionStats } from '../session-stats.js';
@@ -170,10 +170,11 @@ export function createSessionCommandHandlers(
         provider: input.context.provider as CommitLLMProvider,
         model: input.context.model,
       }),
-    onDispatchClassify: makeProviderClassifier(
-      input.context.provider as CommitLLMProvider,
-      input.context.model,
-    ),
+    onDispatchClassify: makeDispatchClassifier({
+      config: input.getConfig(),
+      provider: input.context.provider as CommitLLMProvider,
+      model: input.context.model,
+    }),
   };
 }
 

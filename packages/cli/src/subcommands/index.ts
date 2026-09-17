@@ -37,6 +37,7 @@ const loaders: Record<string, SubcommandLoader> = {
   audit: async () => (await import('./handlers/audit.js')).auditCmd,
   tools: async () => (await import('./handlers/tools-skills.js')).toolsCmd,
   skills: async () => (await import('./handlers/tools-skills.js')).skillsCmd,
+  'skill-suggest': async () => (await import('./handlers/skill-suggest.js')).skillSuggestCmd,
   providers: async () => (await import('./handlers/providers-models.js')).providersCmd,
   models: async () => (await import('./handlers/providers-models.js')).modelsCmd,
   mcp: async () => (await import('./handlers/mcp.js')).mcpCmd,

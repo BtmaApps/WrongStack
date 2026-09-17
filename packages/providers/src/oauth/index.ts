@@ -8,11 +8,14 @@
 
 export { extractAccountId } from '../openai-codex-account.js';
 export {
+  type AntigravityAuthClient,
+  createAntigravityAuthStrategy,
+  resolveAntigravityAuthClient,
+} from './antigravity.js';
+export {
   type ApplyProviderAuthOutcomeOptions,
   applyProviderAuthOutcome,
 } from './apply-outcome.js';
-export { createOpenRouterAuthStrategy } from './openrouter.js';
-export { beginOAuthLogin, OAUTH_PROVIDER_IDS } from './legacy.js';
 export {
   BUILTIN_PROVIDER_AUTH_STRATEGIES,
   createBuiltinProviderAuthRegistry,
@@ -58,6 +61,8 @@ export {
   refreshCodexTokens,
 } from './codex-protocol.js';
 export { COPILOT_PROVIDER_ID, isUsableCopilotChatModel } from './copilot.js';
+export { beginOAuthLogin, OAUTH_PROVIDER_IDS } from './legacy.js';
+export { createOpenRouterAuthStrategy } from './openrouter.js';
 export {
   base64url,
   callbackHtml,

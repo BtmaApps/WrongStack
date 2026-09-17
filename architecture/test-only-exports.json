@@ -214,11 +214,11 @@
       "effectiveVisibleHeight",
       "filterItems"
     ],
-    "packages/cli/src/provider-config-utils.ts": [
-      "clearStaleProviderDefaults"
-    ],
     "packages/cli/src/provider-helpers.ts": [
       "resolveProviderAlias"
+    ],
+    "packages/cli/src/services/dispatch-classifier.ts": [
+      "makeProviderClassifier"
     ],
     "packages/cli/src/simpleui-dist.ts": [
       "resolveSimpleUiDistDir"
@@ -912,14 +912,23 @@
     "packages/providers/src/error-parse.ts": [
       "retryAfterMsFromBody"
     ],
+    "packages/providers/src/oauth-refresh-coordinator.ts": [
+      "resetSharedOAuthRefreshState"
+    ],
     "packages/providers/src/openai-codex.ts": [
       "codexCacheSessionId"
     ],
     "packages/providers/src/openai-shared.ts": [
       "OPENAI_EFFORT_ACCEPT"
     ],
+    "packages/providers/src/presets/anthropic.ts": [
+      "ANTHROPIC_REDACTED_THINKING_META"
+    ],
     "packages/providers/src/presets/local-llm.ts": [
       "createLocalLlmPreset"
+    ],
+    "packages/providers/src/presets/mistral.ts": [
+      "mistralToolCallId"
     ],
     "packages/providers/src/tool-priority.ts": [
       "scoreTool"
@@ -1390,6 +1399,10 @@
     "packages/tui/src/components/worktree-monitor.tsx": [
       "isWorktreeMonitorCloseKey"
     ],
+    "packages/tui/src/connection-actions.ts": [
+      "RESTARTABLE_SERVICES",
+      "restartAllConnectionServices"
+    ],
     "packages/tui/src/context-slash.ts": [
       "formatContextPanelSummary"
     ],
@@ -1618,18 +1631,6 @@
       "AUTO_HEAL_DEFAULT_COOLDOWN_MS",
       "AUTO_HEAL_ENV_FLAG",
       "isAutoHealEnabled"
-    ],
-    "packages/webui-server/src/server/connections/collector.ts": [
-      "sessionCatalogHealth"
-    ],
-    "packages/webui-server/src/server/connections/service-actions.ts": [
-      "killChronicleServer",
-      "killCodebaseIndexServer",
-      "killKanbanServer",
-      "killMailboxServer",
-      "killSageServer",
-      "killSessionCatalogServer",
-      "restartKanbanServer"
     ],
     "packages/webui-server/src/server/embedded-host-adapters.ts": [
       "resolveSessionDefaultModel"

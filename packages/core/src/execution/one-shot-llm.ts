@@ -413,14 +413,23 @@ export class OneShotOrchestrator {
       // waiting room and marked the error. Counting it again would halve
       // every consecutive-failure threshold. Mirrors the contract the
       // agent-loop path honours in fallback-model.ts.
-      if (err instanceof ProviderError && providerId && model && !isProviderFailureTracked(err)) {
+      // `isProviderError`, not `instanceof`: the error is built against the
+      // `@wrongstack/core/types` bundle inside `@wrongstack/providers`, and a
+      // hoisted duplicate copy breaks class identity across that boundary —
+      // the same reason the agent-loop funnel uses the duck-typed guard. With
+      // `instanceof` every provider failure here looked like a plain Error:
+      // nothing reached the waiting room, and eligibility fell through to the
+      // "unknown error" branch, so `auth` / `context_overflow` rotated the
+      // whole chain while a real capacity failure could refuse to.
+      const providerErr = ProviderError.isProviderError(err) ? (err as ProviderError) : undefined;
+      if (providerErr && providerId && model && !isProviderFailureTracked(err)) {
         this.opts.statusTracker?.recordFailure(
           providerId,
           model,
-          err.kind,
-          err.status,
-          err.describe(),
-          { retryAfterMs: err.body?.retryAfterMs },
+          providerErr.kind,
+          providerErr.status,
+          providerErr.describe(),
+          { retryAfterMs: providerErr.body?.retryAfterMs },
         );
       }
       return {
@@ -431,8 +440,8 @@ export class OneShotOrchestrator {
         // a cancelled caller must not trigger rotation.
         fallbackEligible:
           !(externalSignal?.aborted ?? false) &&
-          (err instanceof ProviderError
-            ? isFallbackWorthy(err.kind)
+          (providerErr
+            ? isFallbackWorthy(providerErr.kind)
             : this.opts.wrapProviderCall === undefined),
       };
     }

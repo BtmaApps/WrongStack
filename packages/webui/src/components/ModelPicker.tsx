@@ -46,7 +46,9 @@ export function ModelPicker({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q
-      ? candidates.filter((c) => `${c.provider}/${c.model} ${c.label}`.toLowerCase().includes(q))
+      ? candidates.filter((c) =>
+          `${c.provider}/${c.model} ${c.label} ${c.providerType ?? ''}`.toLowerCase().includes(q),
+        )
       : candidates;
     return list.slice(0, 60);
   }, [candidates, query]);
@@ -141,6 +143,7 @@ export function ModelPicker({
                   </span>
                   <span className="mt-0.5 shrink-0 font-mono text-[9px] text-muted-foreground">
                     {c.provider}
+                    {c.providerType && c.providerType !== c.provider ? ` · ${c.providerType}` : ''}
                   </span>
                 </button>
               );

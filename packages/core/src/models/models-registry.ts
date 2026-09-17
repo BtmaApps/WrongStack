@@ -143,6 +143,7 @@ const FAMILY_BY_NPM: Record<string, WireFamily> = {
 const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
   'anthropic-oauth': 'anthropic-oauth',
   'github-copilot': 'github-copilot',
+  'google-antigravity': 'google-antigravity',
   'openai-codex': 'openai-codex',
 };
 

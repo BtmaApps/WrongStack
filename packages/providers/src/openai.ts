@@ -10,7 +10,12 @@ import type {
 import { ProviderError } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from './_tool-input.js';
-import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
+import { isEffortRejected, isEffortRejection, rememberEffortRejected } from './effort-support.js';
+import {
+  type HeadersLike,
+  parseProviderHttpError,
+  providerErrorFromStreamPayload,
+} from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from './model-output-limits.js';
 import { shouldEmitReasoningEffort } from './openai-shared.js';
@@ -47,6 +52,8 @@ export interface OpenAIProviderOptions {
         stripThinkTags?: boolean | undefined;
         maxTools?: number | undefined;
         tolerateMissingTerminalMarker?: boolean | undefined;
+        /** See CompatibilityQuirks.suppressEffortWithTools (compat adapter only). */
+        suppressEffortWithTools?: boolean | undefined;
       })
     | undefined;
   id?: string | undefined;
@@ -75,6 +82,43 @@ export class OpenAIProvider extends WireAdapter {
     if (opts.quirks?.maxTools && opts.quirks.maxTools > 0) {
       this.maxToolsCount = opts.quirks.maxTools;
     }
+  }
+
+  /**
+   * Send the user's `reasoning_effort`, and learn from a refusal.
+   *
+   * The level a model accepts is model-specific (`minimal` on gpt-5, `xhigh`
+   * on the gpt-5.2 tier, neither on o3) and a compatible gateway may reject
+   * the field entirely. Guessing conservatively dropped the setting silently;
+   * this sends it, and on a 400/422 that names the field retries once without
+   * it and remembers the pair for the session. Only before any output: a
+   * request-shaped rejection always arrives before the body.
+   */
+  override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
+    let emitted = false;
+    try {
+      for await (const ev of super.stream(req, opts)) {
+        emitted = true;
+        yield ev;
+      }
+      return;
+    } catch (err) {
+      if (
+        emitted ||
+        opts.signal.aborted ||
+        isEffortRejected(this.id, req.model) ||
+        !isEffortRejection(err)
+      ) {
+        throw err;
+      }
+      rememberEffortRejected(this.id, req.model);
+      process.emitWarning(
+        `"${this.id}/${req.model}" rejected reasoning_effort; retrying without it and ` +
+          'omitting it for this model for the rest of the session.',
+        'ReasoningEffortWarning',
+      );
+    }
+    yield* super.stream(req, opts);
   }
 
   protected override buildUrl(_req: Request): string {
@@ -144,7 +188,7 @@ export class OpenAIProvider extends WireAdapter {
       if (req.topLogprobs !== undefined) body['top_logprobs'] = req.topLogprobs;
     }
     if (req.stopSequences) body['stop'] = req.stopSequences;
-    if (shouldEmitReasoningEffort(req)) {
+    if (shouldEmitReasoningEffort(req) && !isEffortRejected(this.id, req.model)) {
       body['reasoning_effort'] = req.reasoning?.effort;
     }
     if (req.responseFormat) {
@@ -381,6 +425,14 @@ async function* parseOpenAIStream(
     const parsed = safeParse<Record<string, unknown>>(msg.data);
     if (!parsed.ok || !parsed.value) continue;
     const obj = parsed.value;
+    // An error envelope inside a 200 stream (OpenRouter and most
+    // OpenAI-compatible gateways send `{"error":{…}}`, often alongside
+    // `finish_reason: "error"`). Ignoring it committed an empty/partial turn
+    // as a clean end_turn — or, with no choices at all, misreported the
+    // provider's actual error as a generic "truncated" retry.
+    if (obj['error'] !== undefined && obj['error'] !== null) {
+      throw providerErrorFromStreamPayload(opts?.providerId ?? 'openai', obj);
+    }
 
     if (typeof obj['model'] === 'string') model = obj['model'];
     if (!started) {
@@ -557,6 +609,19 @@ async function* parseOpenAIStream(
     }
   }
 
+  // Truncation is decided BEFORE any tool call is closed: a `tool_use_stop`
+  // emitted from half-streamed arguments is a dispatchable call built from
+  // auto-repaired JSON, and throwing after it has already left the generator
+  // is too late for a consumer that acts on tool events as they arrive.
+  if (started && !sawTerminal && !opts?.tolerateMissingTerminalMarker) {
+    throw new ProviderError(
+      'Provider stream ended without a terminal marker ([DONE]/finish_reason) — response truncated mid-stream',
+      599,
+      true,
+      opts?.providerId ?? 'openai',
+      { body: { message: 'stream truncated before completion' } },
+    );
+  }
   if (thinkFilter) {
     yield* emitContentSegments(thinkFilter.flush());
   }
@@ -571,33 +636,16 @@ async function* parseOpenAIStream(
     // would silently swallow the model's action; synthesize a stable id so
     // it still dispatches and correlates with its tool_result. Mirrors the
     // Google adapter, which always assigns an id.
-    if (!entry.id) entry.id = `call_${randomUUID()}`;
+    if (!entry.id) entry.id = `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
     if (!entry.emittedStart) {
       yield { type: 'tool_use_start', id: entry.id, name: entry.name };
     }
     const input = parseToolInput(joinArgBuffer(entry.argBuf));
     yield { type: 'tool_use_stop', id: entry.id, input };
   }
-  if (started && !sawTerminal) {
-    // Content arrived, then the upstream closed with no `[DONE]` and no
-    // `finish_reason` — a clean proxy/LB idle-timeout FIN. Surface a retryable
-    // error rather than committing the truncated text as a finished turn.
-    if (opts?.tolerateMissingTerminalMarker) {
-      // Gateways such as OpenCode Go Zen close a *successful* chat-completions
-      // stream without a terminal marker. Synthesize the normal completion so
-      // the turn is committed instead of failing every response; tool calls
-      // were already emitted above.
-      yield { type: 'message_stop', stopReason, usage };
-      return;
-    }
-    throw new ProviderError(
-      'Provider stream ended without a terminal marker ([DONE]/finish_reason) — response truncated mid-stream',
-      599,
-      true,
-      opts?.providerId ?? 'openai',
-      { body: { message: 'stream truncated before completion' } },
-    );
-  }
+  // A missing terminal marker reaching here was tolerated above: gateways such
+  // as OpenCode Go Zen close a *successful* stream without one, so the normal
+  // completion is synthesized instead of failing every response.
   if (started) {
     yield { type: 'message_stop', stopReason, usage };
   }

@@ -418,6 +418,27 @@ describe('mutateConfigProviders (concurrent mutations — single-flight RMW)', (
     expect(providers['beta']!.models).toEqual(['m2']);
   });
 
+  it('adding a separate auth profile preserves an unchanged legacy primary selection', async () => {
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({
+        provider: 'openai',
+        model: 'primary-model',
+        apiKey: 'legacy-primary-fixture-key',
+      }),
+    );
+    await mutateConfigProviders(configPath, vault, (providers) => {
+      providers['work-account'] = {
+        type: 'openai',
+        apiKeys: [{ label: 'default', apiKey: 'work-key', createdAt: '' }],
+      };
+    });
+    const stored = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    expect(stored.provider).toBe('openai');
+    expect(stored.model).toBe('primary-model');
+    expect(stored.providers['work-account'].apiKeys).toHaveLength(1);
+  });
+
   it('sequential mutations still merge onto the stored document', async () => {
     await mutateConfigProviders(
       configPath,
@@ -439,4 +460,43 @@ describe('mutateConfigProviders (concurrent mutations — single-flight RMW)', (
     expect(providers['alpha']!.models).toEqual(['m1']);
     expect(providers['beta']!.models).toEqual(['m2']);
   });
+
+  it('cleans routing references when a whole-map WebUI save removes a provider', async () => {
+    await mutateConfigProviders(configPath, vault, (_providers, config) => {
+      config['provider'] = 'alpha';
+      config['model'] = 'a1';
+      config['favoriteModels'] = ['alpha/a1', 'beta/b1'];
+      config['fallbackProfiles'] = { removed: ['alpha/a1'], keep: ['alpha/a1', 'beta/b1'] };
+      config['fallbackProfile'] = 'removed';
+      config['modelMatrix'] = {
+        worker: { provider: 'alpha', model: 'a1', fallbackProfile: 'removed' },
+      };
+    });
+    await mutateConfigProviders(configPath, vault, (providers) => {
+      const beta = providers['beta']!;
+      for (const id of Object.keys(providers)) delete providers[id];
+      providers['beta'] = beta;
+    });
+    const saved = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    expect(saved.provider).toBeUndefined();
+    expect(saved.model).toBeUndefined();
+    expect(saved.favoriteModels).toEqual(['beta/b1']);
+    expect(saved.fallbackProfiles).toEqual({ keep: ['beta/b1'] });
+    expect(saved.fallbackProfile).toBeUndefined();
+    expect(saved.modelMatrix).toBeUndefined();
+    expect(Object.keys(await loadConfigProviders(configPath, vault))).toEqual(['beta']);
+  });
+
+  it.each(['[]', 'null', '"config"', '{"providers":[]}'])(
+    'refuses to overwrite invalid config shape %s',
+    async (raw) => {
+      await fs.writeFile(configPath, raw);
+      await expect(
+        mutateConfigProviders(configPath, vault, (providers) => {
+          providers['new'] = { type: 'openai' };
+        }),
+      ).rejects.toThrow('config');
+      expect(await fs.readFile(configPath, 'utf8')).toBe(raw);
+    },
+  );
 });

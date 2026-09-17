@@ -332,7 +332,21 @@ export function useProviderEventBridge({
       // row stays live even when no subagents exist.
       dispatch({ type: 'leaderToolEnd', name: e.name, ok: e.ok, durationMs: e.durationMs });
     });
+    // The failed attempt may already have streamed part of a reply (a cut
+    // connection, a mid-stream 5xx). A retry or fallback hop re-sends the
+    // whole request, so without a reset the live tail showed the abandoned
+    // partial glued to the fresh stream until the final response replaced it.
+    const discardAbandonedStream = () => {
+      if (activeRunGenerationRef.current !== sessionGenerationRef.current) return;
+      streamingTextRef.current = '';
+      streamSegmentsRef.current = [];
+      // A pending flush still runs (it may carry tool output); it simply
+      // finds no text left to append.
+      pendingDeltaRef.current = '';
+      dispatch({ type: 'streamReset' });
+    };
     const offRetry = events.on('provider.retry', (e) => {
+      discardAbandonedStream();
       const secs = (e.delayMs / 1000).toFixed(e.delayMs >= 1000 ? 1 : 2);
       dispatch({
         type: 'addEntry',
@@ -348,6 +362,7 @@ export function useProviderEventBridge({
     // Fallback hop — the chain rotated to a working model after the primary's
     // retries were exhausted. Surface which model is now answering.
     const offFallback = events.on('provider.fallback', (e) => {
+      discardAbandonedStream();
       const warning = e.contextWindowWarning;
       dispatch({
         type: 'addEntry',

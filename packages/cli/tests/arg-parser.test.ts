@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { BOOLEAN_FLAGS, parseArgs, parseAuthFlags, parseSpawnFlags } from '../src/arg-parser.js';
 import { resolveExecutionMode } from '../src/boot/execution-mode.js';
 
+it.each([['--alias', 'work-account'], ['--alias=work-account']])(
+  'parses auth account alias %j separately from key labels',
+  (...flags) => {
+    expect(parseAuthFlags(['openai', ...flags, '--label', 'main'])).toMatchObject({
+      positional: ['openai'],
+      alias: 'work-account',
+      label: 'main',
+    });
+  },
+);
+
 describe('parseArgs', () => {
   it('keeps --tunnel boolean without consuming a following password flag', () => {
     expect(parseArgs(['--hq', '--tunnel', '--password', 'secret'])).toEqual({

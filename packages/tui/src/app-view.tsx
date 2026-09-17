@@ -68,7 +68,8 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   } = resolveAppSidebarLayout(state, termCols, liveSettings, mailbox.mailboxPanelOpen);
   const routedToSidebar = (id: PanelId): boolean => panelPositions[id] === 'sidebar';
 
-  const pickerMaxRows = Math.max(8, runtime.termRows - runtime.statusBarRows - inputHeight - 1);
+  const effectiveInputHeight = state.helpPanel.open ? 0 : inputHeight;
+  const pickerMaxRows = Math.max(8, runtime.termRows - runtime.statusBarRows - effectiveInputHeight - 1);
 
   const sidebarPanelOpenFlags = buildSidebarOpenFlags(state, liveSettings);
   const openSidebarPanelIds = PANEL_IDS.filter(
@@ -213,7 +214,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                 status={composerStatus}
                 animationStyle={composerAnimationStyle}
                 hidden={hideInput}
-                placeholderHeight={inputHeight}
+                placeholderHeight={state.helpPanel.open ? 0 : inputHeight}
                 maxWidth={mainColumnWidth}
                 disabled={
                   (state.status === 'aborting' && !state.steeringPending) ||

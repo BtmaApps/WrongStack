@@ -1,4 +1,5 @@
 import type { ProviderAuthOutcome, ProviderConfig } from '@wrongstack/core/types';
+import { authProfileAliasError } from '../provider-config-state.js';
 
 export interface ApplyProviderAuthOutcomeOptions {
   targetProviderId?: string | undefined;
@@ -11,8 +12,20 @@ export function applyProviderAuthOutcome(
   opts: ApplyProviderAuthOutcomeOptions = {},
 ): { providerId: string; provider: ProviderConfig } {
   const providerId = opts.targetProviderId?.trim() || outcome.providerId;
+  const aliasError = authProfileAliasError(providerId);
+  if (aliasError) throw new Error(aliasError);
   const existing = providers[providerId];
-  const provider: ProviderConfig = existing ? { ...existing } : { type: providerId };
+  if (
+    existing &&
+    ((existing.type && existing.type !== providerId && existing.type !== outcome.providerId) ||
+      (existing.family && existing.family !== outcome.family))
+  ) {
+    throw new Error(
+      `Auth profile "${providerId}" belongs to another provider. Choose a different alias.`,
+    );
+  }
+  const provider: ProviderConfig = existing ? { ...existing } : { type: outcome.providerId };
+  if (!provider.type || provider.type === providerId) provider.type = outcome.providerId;
   provider.family = outcome.family;
   if (!provider.baseUrl && outcome.baseUrl) provider.baseUrl = outcome.baseUrl;
   if (outcome.models.length > 0) provider.models = [...outcome.models];

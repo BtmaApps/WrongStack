@@ -183,11 +183,13 @@ const domainMethods = {
     apiKey?: string,
     models?: string[] | undefined,
     customModels?: Record<string, ProviderCustomModelWire> | undefined,
+    providerType?: string | undefined,
   ) {
     this.send({
       type: 'provider.add',
       payload: {
         id,
+        ...(providerType ? { type: providerType } : {}),
         family,
         baseUrl,
         apiKey,

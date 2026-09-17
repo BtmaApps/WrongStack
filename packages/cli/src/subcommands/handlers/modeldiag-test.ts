@@ -20,11 +20,9 @@ import {
 } from '@wrongstack/providers';
 import { discoverAndMergeProviders } from '../../boot/auto-discover-providers.js';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
-import {
-  mutateConfigProviders,
-  normalizeKeys,
-  writeKeysBack,
-} from '../../provider-config-utils.js';
+import { mutateConfigProviders } from '../../provider-config-utils.js';
+import { applyProviderOAuthRefresh } from '../../wiring/provider-persisters.js';
+import { resolveRawProviderConnection } from '../../wiring/provider-runtime.js';
 import type { SubcommandDeps } from '../contracts.js';
 import {
   buildModelSmokeTargets,
@@ -42,6 +40,7 @@ export async function createModelDiagSmokeProvider(params: {
 }): Promise<Provider> {
   const { providerId, config, modelsRegistry, providerFactories } = params;
   const saved = config.providers?.[providerId];
+  const connection = resolveRawProviderConnection(config, providerId);
   const factoryType = saved?.type ?? providerId;
   const resolved =
     (await modelsRegistry.getProvider(providerId).catch(() => undefined)) ??
@@ -49,20 +48,15 @@ export async function createModelDiagSmokeProvider(params: {
       ? await modelsRegistry.getProvider(factoryType).catch(() => undefined)
       : undefined);
   const providerConfig: ProviderConfig = {
-    ...(providerId === config.provider
-      ? {
-          ...(config.apiKey ? { apiKey: config.apiKey } : {}),
-          ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
-        }
-      : {}),
     ...saved,
+    ...(connection.apiKey ? { apiKey: connection.apiKey } : {}),
     // Keep the user-visible alias on the factory input. The selected factory
     // already captures the canonical models.dev provider and its per-model
     // wire metadata.
     type: providerId,
     ...((saved?.family ?? resolved?.family) ? { family: saved?.family ?? resolved?.family } : {}),
-    ...((saved?.baseUrl ?? resolved?.apiBase)
-      ? { baseUrl: saved?.baseUrl ?? resolved?.apiBase }
+    ...((connection.baseUrl ?? resolved?.apiBase)
+      ? { baseUrl: connection.baseUrl ?? resolved?.apiBase }
       : {}),
     ...((saved?.envVars ?? resolved?.envVars)
       ? { envVars: saved?.envVars ?? resolved?.envVars }
@@ -71,7 +65,7 @@ export async function createModelDiagSmokeProvider(params: {
   const factory = providerFactories.get(factoryType);
   return factory
     ? factory.create(providerConfig)
-    : makeProviderFromConfig(providerId, providerConfig);
+    : makeProviderFromConfig(providerId, { ...providerConfig, type: factoryType });
 }
 
 export async function runModeldiagTest(
@@ -204,22 +198,13 @@ export async function runModeldiagTest(
   let oauthWriteChain = Promise.resolve();
   let oauthWriteScheduled = false;
   const profilePath = activeProfileConfigPath(deps.paths, config as unknown as Config);
-  setOAuthTokenPersister((providerId, credentials) => {
+  setOAuthTokenPersister((providerId, credentials, source) => {
     oauthWriteScheduled = true;
     oauthWriteChain = oauthWriteChain.then(() =>
       mutateConfigProviders(profilePath, deps.vault, (all) => {
         const providerConfig = all[providerId];
         if (!providerConfig) return;
-        const keys = normalizeKeys(providerConfig);
-        const active = providerConfig.activeKey
-          ? keys.find((key) => key.label === providerConfig.activeKey)
-          : keys[0];
-        if (!active) return;
-        active.apiKey = credentials.accessToken;
-        active.refreshToken = credentials.refreshToken;
-        active.expiresAt = new Date(credentials.expiresAt).toISOString();
-        if (credentials.accountId) active.accountId = credentials.accountId;
-        writeKeysBack(providerConfig, keys);
+        applyProviderOAuthRefresh(providerConfig, credentials, source);
       }),
     );
   });

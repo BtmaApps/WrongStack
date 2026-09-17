@@ -201,7 +201,7 @@ export interface AuthPanelHost {
   addLocal(
     presetId: string,
     io: AuthFlowIo,
-    opts?: { baseUrl?: string; apiKey?: string },
+    opts?: { baseUrl?: string; apiKey?: string; alias?: string },
   ): Promise<AuthFlowResult>;
   oauthLogin(kind: AuthOAuthKind, io: AuthFlowIo): Promise<AuthFlowResult>;
   /**
@@ -494,7 +494,7 @@ export function authPanelRows(state: AuthPanelState): AuthPanelRow[] {
 const FORM_FIELD_ORDER: Record<AuthFormState['kind'], readonly AuthFormFieldId[]> = {
   setup: ['type', 'name', 'family', 'baseUrl', 'alias', 'keyLabel', 'apiKey', 'models', 'envVars'],
   edit: ['family', 'baseUrl', 'models', 'envVars'],
-  local: ['baseUrl', 'apiKey'],
+  local: ['alias', 'baseUrl', 'apiKey'],
 };
 
 const FORM_FIELD_LABELS: Record<AuthFormFieldId, string> = {
@@ -502,7 +502,7 @@ const FORM_FIELD_LABELS: Record<AuthFormFieldId, string> = {
   name: 'Name',
   family: 'Family (← →)',
   baseUrl: 'Base URL',
-  alias: 'Alias (config key)',
+  alias: 'Auth profile alias',
   keyLabel: 'Key label',
   apiKey: 'API key',
   models: 'Models (comma-separated)',

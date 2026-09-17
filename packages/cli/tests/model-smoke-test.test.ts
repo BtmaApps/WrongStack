@@ -2,6 +2,7 @@ import type {
   Config,
   ModelsRegistry,
   Provider,
+  ProviderConfig,
   ResolvedProvider,
   Response,
 } from '@wrongstack/core/types';
@@ -149,6 +150,43 @@ describe('model smoke targets', () => {
 });
 
 describe('model smoke runner', () => {
+  it('does not borrow the previous primary credentials for a selected account alias', async () => {
+    const create = vi.fn((_config: ProviderConfig) => ({ id: 'work-account' }) as Provider);
+    await createModelDiagSmokeProvider({
+      providerId: 'work-account',
+      config: {
+        provider: 'work-account',
+        apiKey: 'previous-account-key',
+        baseUrl: 'https://previous-account.example/v1',
+        providers: { 'work-account': { type: 'openai', family: 'openai' } },
+      } as unknown as Config,
+      modelsRegistry: registry([]),
+      providerFactories: new Map([['openai', { type: 'openai', family: 'openai', create }]]),
+    });
+    expect(create.mock.calls[0]?.[0].apiKey).toBeUndefined();
+    expect(create.mock.calls[0]?.[0].baseUrl).toBeUndefined();
+  });
+
+  it('constructs a keyless local alias without a catalog factory', async () => {
+    const result = await createModelDiagSmokeProvider({
+      providerId: 'local-account',
+      config: {
+        provider: 'local-account',
+        providers: {
+          'local-account': {
+            type: 'ollama',
+            family: 'openai-compatible',
+            baseUrl: 'http://127.0.0.1:11434/v1',
+            envVars: [],
+          },
+        },
+      } as unknown as Config,
+      modelsRegistry: registry([]),
+      providerFactories: new Map(),
+    });
+    expect(result.id).toBe('local-account');
+  });
+
   it('uses the canonical catalog factory for a saved provider alias', async () => {
     const created = {
       id: 'opencode-go-ws',

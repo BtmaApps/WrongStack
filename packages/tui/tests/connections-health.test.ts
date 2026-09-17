@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  sessionCatalogCallExisting: vi.fn(),
+  sessionCatalogClose: vi.fn(),
+  readGovernanceDaemonOperatorStatus: vi.fn(),
   createChronicleProjectAccess: vi.fn(),
   checkCodebaseIndexServerHealth: vi.fn(),
   getIndexState: vi.fn(),
@@ -21,6 +24,17 @@ const mocks = vi.hoisted(() => ({
     projectDir: 'C:/state/project',
     projectCodebaseIndex: 'C:/state/index',
   })),
+}));
+
+vi.mock('@wrongstack/core/session-catalog', () => ({
+  SessionCatalogProjectClient: class {
+    callExisting = mocks.sessionCatalogCallExisting;
+    close = mocks.sessionCatalogClose;
+  },
+}));
+
+vi.mock('@wrongstack/runtime/governance-bootstrap', () => ({
+  readGovernanceDaemonOperatorStatus: mocks.readGovernanceDaemonOperatorStatus,
 }));
 
 vi.mock('@wrongstack/core/chronicle', () => ({
@@ -63,6 +77,34 @@ vi.mock('@wrongstack/core/utils', async (importOriginal) => {
 import { collectConnectionsHealth } from '../src/connections-health.js';
 
 function healthyDefaults() {
+  mocks.sessionCatalogCallExisting.mockResolvedValue({
+    damagedRows: 0,
+    catalogRows: 5,
+    liveLeases: 1,
+    reservations: 0,
+    pid: 10,
+    endpoint: 'session-endpoint',
+    databasePath: 'C:/sessions.db',
+    uptimeMs: 200,
+    clients: 1,
+    activeRequests: 0,
+    maintenanceLeases: 0,
+  });
+  mocks.sessionCatalogClose.mockResolvedValue(undefined);
+  mocks.readGovernanceDaemonOperatorStatus.mockResolvedValue({
+    available: true,
+    status: {
+      pid: 99,
+      startedAt: new Date(1000).toISOString(),
+      signal: {
+        level: 'healthy',
+        code: 'healthy',
+        message: 'Governance active',
+        operatorAction: '',
+        executionDisposition: '',
+      },
+    },
+  });
   mocks.createChronicleProjectAccess.mockReturnValue({
     mode: 'server',
     call: vi.fn().mockResolvedValue({
@@ -144,18 +186,28 @@ describe('collectConnectionsHealth', () => {
     expect(report.checkedAt).toBe(1_000);
     expect(report.overall).toBe('healthy');
     expect(report.services.map((service) => [service.id, service.status])).toEqual([
+      ['session-catalog', 'healthy'],
       ['chronicle', 'healthy'],
       ['codebase-index', 'healthy'],
       ['sage', 'healthy'],
       ['kanban', 'healthy'],
       ['mailbox', 'healthy'],
+      ['governance', 'healthy'],
     ]);
     expect(report.services[0]).toEqual(
+      expect.objectContaining({
+        id: 'session-catalog',
+        status: 'healthy',
+        ownerPid: 10,
+      }),
+    );
+    expect(report.services[1]).toEqual(
       expect.objectContaining({
         queuedWork: 3,
         watcher: { active: true, watchedFiles: 4 },
       }),
     );
+    expect(mocks.sessionCatalogClose).toHaveBeenCalledOnce();
     expect(mocks.sageClose).toHaveBeenCalledOnce();
     expect(mocks.mailboxClose).toHaveBeenCalledOnce();
   });
@@ -187,15 +239,15 @@ describe('collectConnectionsHealth', () => {
 
     const report = await collectConnectionsHealth('C:/repo');
     expect(report.overall).toBe('degraded');
-    expect(report.services[0]).toEqual(
+    expect(report.services[1]).toEqual(
       expect.objectContaining({
         status: 'degraded',
         lastError: 'broken chain',
         detail: expect.stringContaining('2026-07-29'),
       }),
     );
-    expect(report.services[1]?.detail).toBe('Indexing 2/10.');
-    expect(report.services[2]?.status).toBe('degraded');
+    expect(report.services[2]?.detail).toBe('Indexing 2/10.');
+    expect(report.services[3]?.status).toBe('degraded');
   });
 
   it('distinguishes unavailable and on-demand optional services', async () => {
@@ -207,17 +259,18 @@ describe('collectConnectionsHealth', () => {
     );
 
     const report = await collectConnectionsHealth('C:/repo');
-    expect(report.services[1]).toEqual(
+    expect(report.services[2]).toEqual(
       expect.objectContaining({ status: 'offline', mode: 'on-demand project-server' }),
     );
-    expect(report.services[2]?.status).toBe('unavailable');
-    expect(report.services[3]).toEqual(
+    expect(report.services[3]?.status).toBe('unavailable');
+    expect(report.services[4]).toEqual(
       expect.objectContaining({ status: 'unavailable', mode: 'disabled' }),
     );
-    expect(report.services[4]?.status).toBe('unavailable');
+    expect(report.services[5]?.status).toBe('unavailable');
   });
 
   it('reports required service failures and always closes connections', async () => {
+    mocks.sessionCatalogCallExisting.mockRejectedValue(new Error('session catalog broken'));
     mocks.createChronicleProjectAccess.mockReturnValue({
       mode: 'server',
       call: vi.fn().mockRejectedValue('chronicle failed'),
@@ -235,14 +288,20 @@ describe('collectConnectionsHealth', () => {
 
     const report = await collectConnectionsHealth('C:/repo');
     expect(report.overall).toBe('error');
-    expect(report.services.map((service) => service.status)).toEqual([
+    expect(report.services.slice(0, 6).map((service) => service.status)).toEqual([
+      'error',
       'error',
       'error',
       'error',
       'error',
       'error',
     ]);
-    expect(report.services[0]?.detail).toBe('chronicle failed');
+    expect(report.services[0]?.detail).toBe(
+      'Project-scoped session ownership and catalog are unavailable.',
+    );
+    expect(report.services[0]?.lastError).toBe('session catalog broken');
+    expect(report.services[1]?.detail).toBe('chronicle failed');
+    expect(mocks.sessionCatalogClose).toHaveBeenCalledOnce();
     expect(mocks.sageClose).toHaveBeenCalledOnce();
     expect(mocks.mailboxClose).toHaveBeenCalledOnce();
   });
@@ -253,20 +312,20 @@ describe('collectConnectionsHealth', () => {
     mocks.mailboxStatus.mockResolvedValue(null);
 
     const offline = await collectConnectionsHealth('C:/repo');
-    expect(offline.services[2]).toEqual(
+    expect(offline.services[3]).toEqual(
       expect.objectContaining({ status: 'offline', endpoint: 'sage-endpoint' }),
     );
-    expect(offline.services[3]).toEqual(
+    expect(offline.services[4]).toEqual(
       expect.objectContaining({ status: 'unavailable', mode: 'disabled' }),
     );
-    expect(offline.services[4]).toEqual(
+    expect(offline.services[5]).toEqual(
       expect.objectContaining({ status: 'offline', endpoint: 'mailbox-endpoint' }),
     );
 
     healthyDefaults();
     mocks.getKanbanServerConnection.mockRejectedValue(new Error('kanban startup failed'));
     const failed = await collectConnectionsHealth('C:/repo');
-    expect(failed.services[3]).toEqual(
+    expect(failed.services[4]).toEqual(
       expect.objectContaining({ status: 'error', detail: 'kanban startup failed' }),
     );
   });

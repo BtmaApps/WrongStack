@@ -60,7 +60,7 @@ import { buildModeCommand } from './mode.js';
 import { buildModelCapsCommand } from './modelcaps.js';
 import { buildModelsCommand } from './models.js';
 import { buildNextCommand } from './next.js';
-import { buildOpenAIQuotaCommand } from './openai-quota.js';
+import { buildOpenAIQuotaCommand, buildProviderQuotaCommand } from './openai-quota.js';
 import { buildPlanCommand } from './plan.js';
 import { buildPluginCommand } from './plugin.js';
 import { buildProfileCommand } from './profile.js';
@@ -182,6 +182,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildTierCommand(opts),
     ...(opts.statusTracker ? [buildProviderStatusCommand(opts.statusTracker)] : []),
     buildOpenAIQuotaCommand(),
+    buildProviderQuotaCommand(),
     buildGitCommand(opts),
     buildCommitCommand(opts),
     buildGitcheckCommand(opts),

@@ -2,7 +2,7 @@ import type { ProviderAuthRegistry } from '@wrongstack/core/registry';
 import type { ModelsRegistry, ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from '../types.js';
-import { send as sendToSocket } from '../ws-utils.js';
+import { send as sendToSocket, stampDispatchSession } from '../ws-utils.js';
 import { projectSavedProviders } from './projection.js';
 
 export interface ProviderPersistence {
@@ -46,7 +46,10 @@ export function createProviderServiceContext(deps: ProviderOperationsDeps): Prov
     deps,
     sendMessage,
     sendOperationResult: (ws, success, message) =>
-      sendMessage(ws, { type: 'key.operation_result', payload: { success, message } }),
+      sendMessage(
+        ws,
+        stampDispatchSession({ type: 'key.operation_result', payload: { success, message } }),
+      ),
     loadConfigProviders: () => deps.providerStore.load(),
     saveConfigProviders: (providers) => deps.providerStore.save(providers),
     broadcastSaved: (providers) => {

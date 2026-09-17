@@ -192,7 +192,12 @@ export function createRunBlocksController(
 
       if (result.status === 'done' && result.finalText && capabilities.onSDDOutput) {
         try {
-          for (const message of await capabilities.onSDDOutput(result.finalText)) {
+          const sddMessages = await capabilities.onSDDOutput(result.finalText);
+          // A /clear during this await invalidates the run: stale SDD output
+          // must not land in the fresh transcript (same session-generation
+          // contract as the post-run guard above).
+          if (runGeneration !== refs.sessionGeneration.current) return;
+          for (const message of sddMessages) {
             dispatch({ type: 'addEntry', entry: { kind: 'info', text: message } });
           }
         } catch {
@@ -240,6 +245,9 @@ export function createRunBlocksController(
             userRequest,
             assistantSummary: result.finalText ?? '',
           });
+          // Same stale-generation bail as above: a /clear during this LLM
+          // round-trip must not surface predictions for a wiped session.
+          if (runGeneration !== refs.sessionGeneration.current) return;
           if (predictions.length > 0) {
             const text = [
               '↳ likely next:',

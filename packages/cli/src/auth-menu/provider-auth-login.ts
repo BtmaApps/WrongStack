@@ -108,10 +108,12 @@ export async function runProviderAuthLogin(
       deps.renderer.write(color.dim('  Sign-in cancelled or timed out.\n'));
       return 1;
     }
+    controller.signal.throwIfAborted();
     await mutateConfigProviders(
       deps.profileConfigPath,
       deps.vault,
       (providers) => {
+        controller.signal.throwIfAborted();
         applyProviderAuthOutcome(providers, outcome, { targetProviderId: opts.providerId });
       },
       deps.profileConfigPath,

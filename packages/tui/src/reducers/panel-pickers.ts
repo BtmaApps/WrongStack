@@ -66,9 +66,11 @@ const panelPickerActionTypes = [
   'brainBusy',
   'helpOpen',
   'helpClose',
+  'helpScrollDetail',
   'helpMove',
   'helpFilter',
   'helpHint',
+  'helpScrollDetail',
   'shadowOpen',
   'shadowClose',
   'shadowUpdate',
@@ -531,26 +533,53 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
           selected: 0,
           filter: '',
           hint: undefined,
+          detailScroll: 0,
         },
       };
     case 'helpClose':
-      return { ...state, helpPanel: { ...state.helpPanel, open: false, filter: '' } };
+      return {
+        ...state,
+        helpPanel: { ...state.helpPanel, open: false, filter: '', detailScroll: 0 },
+      };
     case 'helpMove': {
-      const count = state.helpPanel.entries.length;
+      let count = state.helpPanel.entries.length;
       if (count === 0) return state;
+      if (state.helpPanel.filter) {
+        const q = state.helpPanel.filter.trim().toLowerCase();
+        const matches = state.helpPanel.entries.filter(
+          (e) =>
+            e.name.toLowerCase().includes(q) ||
+            e.description.toLowerCase().includes(q) ||
+            e.category.toLowerCase().includes(q) ||
+            (e.aliases ?? []).some((a) => a.toLowerCase().includes(q)),
+        ).length;
+        if (matches > 0) count = matches;
+      }
       return {
         ...state,
         helpPanel: {
           ...state.helpPanel,
           selected: (state.helpPanel.selected + action.delta + count) % count,
           hint: undefined,
+          detailScroll: 0,
         },
       };
     }
     case 'helpFilter':
-      return { ...state, helpPanel: { ...state.helpPanel, filter: action.filter, selected: 0 } };
+      return {
+        ...state,
+        helpPanel: { ...state.helpPanel, filter: action.filter, selected: 0, detailScroll: 0 },
+      };
     case 'helpHint':
       return { ...state, helpPanel: { ...state.helpPanel, hint: action.text } };
+    case 'helpScrollDetail':
+      return {
+        ...state,
+        helpPanel: {
+          ...state.helpPanel,
+          detailScroll: Math.max(0, (state.helpPanel.detailScroll ?? 0) + action.delta),
+        },
+      };
     case 'shadowOpen':
       return {
         ...state,

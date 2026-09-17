@@ -34,6 +34,7 @@ export const helpCmd: SubcommandHandler = async (_args, deps) => {
     '  wstack config [show|edit]    Show or edit effective config',
     '  wstack tools                 List registered tools',
     '  wstack skills                List discovered skills',
+    '  wstack skill-suggest         Preview/tune the TypeSafe skill suggester',
     '  wstack providers [--all]     List providers from models.dev',
     '  wstack models [<provider>]   List models',
     '  wstack models refresh        Force-refresh cache',

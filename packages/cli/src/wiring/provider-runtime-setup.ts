@@ -19,10 +19,11 @@ import type {
 } from '@wrongstack/core/types';
 import { readJsonObjectFile, type WstackPaths } from '@wrongstack/core/utils';
 import { createProxyInstantApply } from '@wrongstack/core/wiring/proxy-rewrite';
-import { withCatalogCapabilities } from '@wrongstack/providers';
+import { unavailableProviderCredentials, withCatalogCapabilities } from '@wrongstack/providers';
 import { getSageService } from '@wrongstack/sage';
 import { patchConfig } from '../utils.js';
 import { createFallbackGate } from './fallback-gate.js';
+import { resolveRawProviderConnection } from './provider-runtime.js';
 
 export function serializeProviderRuntimeSnapshot(snapshot: unknown): string {
   return JSON.stringify(snapshot);
@@ -294,8 +295,7 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
     // `cfg.provider` is only the boot-time fallback (context.provider is
     // not populated until the first provider lands).
     getActiveProviderId: () => context.provider?.id ?? cfg.provider ?? '',
-    // Mirrors `resolveProviderCfg`'s raw read: savedCfg.baseUrl ?? config.baseUrl.
-    getRawBaseUrl: (providerId) => cfg.providers?.[providerId]?.baseUrl ?? cfg.baseUrl,
+    getRawBaseUrl: (providerId) => resolveRawProviderConnection(cfg, providerId).baseUrl,
     rebuildProvider: async (providerId) => {
       // Serialize against /model + fallback swaps through the same
       // transition gate those paths use, and re-check the live provider
@@ -475,16 +475,17 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
     // Shared callback for all watchers: re-read all layers, compute the
     // merged snapshot, and apply it to cfg + ConfigStore.
     let previousSnapshotSerialized: string | undefined;
-    const onAnyConfigChange = async (): Promise<void> => {
+    let failedReloadId: string | undefined;
+    const reloadFromDisk = async (): Promise<void> => {
       const merged = await readMergedSnapshot();
       if (!merged) return;
       // An array replacer filters nested provider ids and credential fields,
       // making distinct configs serialize as the same `{ providers: {} }`.
       const serialized = serializeProviderRuntimeSnapshot(merged);
-      if (serialized === previousSnapshotSerialized) return; // No change
+      const observedProvider = context.provider;
+      const activeId = observedProvider?.id ?? cfg.provider;
+      if (serialized === previousSnapshotSerialized && failedReloadId !== activeId) return;
       previousSnapshotSerialized = serialized;
-
-      const activeId = cfg.provider;
 
       // Build the full patch from the merged snapshot.
       // CREDENTIALS: only propagate when present (they come from the vault).
@@ -515,6 +516,10 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
       // Snapshot credential state before applying, so we can detect
       // credential-only changes below (routing-only edits skip provider rebuild).
       const before = JSON.stringify(resolveProviderCfg(activeId).cfg);
+      const removedAccount =
+        merged.snapshotHasProviders &&
+        Object.hasOwn(cfg.providers ?? {}, activeId) &&
+        !Object.hasOwn(merged.providers, activeId);
 
       // Apply the merged patch to both cfg and ConfigStore.
       sync(patchConfig(cfg, mergedPatch));
@@ -524,17 +529,37 @@ export function setupProviderRuntime(deps: ProviderRuntimeDeps): ProviderRuntime
       // Routing-only edits (fallbackProfiles, modelMatrix, etc.) reach
       // ConfigStore above but never need a provider rebuild.
       const after = JSON.stringify(resolveProviderCfg(activeId).cfg);
-      if (after === before) return;
-      try {
-        // Rebuild for the model that is live right now — a credential reload
-        // must not silently drop the active model's capability overlay.
-        context.provider = await buildProviderForModel(activeId, String(context.model ?? ''));
-        logger.info(`Provider credentials reloaded from config (${activeId})`);
-      } catch (err) {
-        logger.warn(
-          `Credential hot-reload failed for ${activeId}: ${(err as Error).message ?? String(err)}`,
-        );
-      }
+      if (after === before && failedReloadId !== activeId && !removedAccount) return;
+      await context.runModelTransition(async () => {
+        // A queued model switch already owns the new live provider.
+        if (context.provider !== observedProvider && context.provider?.id !== activeId) return;
+        try {
+          if (removedAccount) throw new Error('Auth profile was removed');
+          context.provider = await buildProviderForModel(activeId, String(context.model ?? ''));
+          failedReloadId = undefined;
+          logger.info(`Provider credentials reloaded from config (${activeId})`);
+        } catch (err) {
+          failedReloadId = activeId;
+          if (observedProvider) {
+            context.provider = unavailableProviderCredentials(
+              activeId,
+              context.provider?.capabilities ?? observedProvider.capabilities,
+            );
+          }
+          logger.warn(
+            `Credential hot-reload failed for ${activeId}: ${(err as Error).message ?? String(err)}`,
+          );
+        }
+      });
+    };
+    // Serialize the whole read/apply/rebuild operation. Multiple file layers
+    // can notify together, and a later credential write must not be applied
+    // while an earlier provider build is still awaiting its catalog overlay.
+    let reloadChain = Promise.resolve();
+    const onAnyConfigChange = (): Promise<void> => {
+      const next = reloadChain.then(reloadFromDisk);
+      reloadChain = next.catch(() => {});
+      return next;
     };
     reloadProviderConfig = onAnyConfigChange;
 

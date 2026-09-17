@@ -3,6 +3,7 @@ import {
   Brain,
   FileDiff,
   FileText,
+  KeyRound,
   LibraryBig,
   ListChecks,
   Map as MapIcon,
@@ -36,6 +37,7 @@ const WORKSPACE_ACTIONS: ReadonlyArray<DockAction> = [
 ];
 
 const UTILITY_ACTIONS: ReadonlyArray<DockAction> = [
+  { kind: 'utility', event: 'open-auth', label: 'Provider credentials', icon: KeyRound },
   { kind: 'utility', event: 'open-memory-drawer', label: 'Project memory', icon: Brain },
   { kind: 'utility', event: 'open-file-explorer', label: 'Files', icon: FileText },
   { kind: 'utility', event: 'open-prompt-library', label: 'Prompt library', icon: LibraryBig },

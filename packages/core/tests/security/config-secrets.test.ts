@@ -137,3 +137,35 @@ describe('decryptConfigSecrets', () => {
     expect(decrypted).toEqual(original);
   });
 });
+
+describe('typesafe account credential', () => {
+  it('encrypts typesafe.apiKey at rest and leaves the rest of the block plain', () => {
+    // The encryption is driven ENTIRELY by the field NAME, and `typesafe` is a
+    // nested block the walker has to recurse into. Renaming this field to
+    // something `SECRET_KEY_PATTERN` does not match — `key`, `credential`,
+    // `token_id` — would silently start writing a live API key to disk in
+    // plaintext, with nothing else in the system objecting. This test is the
+    // only thing standing between that rename and a leaked key.
+    const vault = makeVault();
+    const config = {
+      typesafe: {
+        apiKey: 'sk-live-typesafe',
+        endpoint: 'https://api.typesafe.ai/v1/systemone',
+        model: 'jev-latest',
+        requestTimeoutMs: 4000,
+      },
+    };
+
+    const onDisk = encryptConfigSecrets(config, vault);
+
+    expect(onDisk.typesafe.apiKey).toBe('enc:sk-live-typesafe');
+    // Non-secret siblings must stay readable: an operator has to be able to see
+    // which host their prompts are going to.
+    expect(onDisk.typesafe.endpoint).toBe('https://api.typesafe.ai/v1/systemone');
+    expect(onDisk.typesafe.model).toBe('jev-latest');
+    expect(onDisk.typesafe.requestTimeoutMs).toBe(4000);
+
+    // And it round-trips, so the resolver sees a usable key.
+    expect(decryptConfigSecrets(onDisk, vault).typesafe.apiKey).toBe('sk-live-typesafe');
+  });
+});

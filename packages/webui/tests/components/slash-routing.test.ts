@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     setPromptLibraryOpen: vi.fn(),
     setChangesPanelTab: vi.fn(),
     setAgentRosterActiveTab: vi.fn(),
+    setSettingsActiveTab: vi.fn(),
   };
 
   // Shared factory used by both @/stores and @/stores/ui-store mocks so
@@ -45,6 +46,7 @@ const mocks = vi.hoisted(() => {
     setPromptLibraryOpen: fns.setPromptLibraryOpen,
     setChangesPanelTab: fns.setChangesPanelTab,
     setAgentRosterActiveTab: fns.setAgentRosterActiveTab,
+    setSettingsActiveTab: fns.setSettingsActiveTab,
   });
 
   return { ...fns, createMockUIStore };
@@ -128,6 +130,17 @@ describe('runChatSlashCommand', () => {
   it('returns false for unknown commands', () => {
     expect(runChatSlashCommand({ ...options, raw: '/unknown' })).toBe(false);
   });
+
+  it.each(['/auth', '/auth login', '/AUTH open', '/auth status openai'])(
+    'routes %s to provider settings without sending it to the model',
+    (raw) => {
+      expect(runChatSlashCommand({ ...options, raw })).toBe(true);
+      expect(mocks.setSettingsActiveTab).toHaveBeenCalledWith('provider');
+      expect(mocks.setCurrentViewUI).toHaveBeenCalledWith('settings');
+      expect(options.sendMsg).not.toHaveBeenCalled();
+      expect(options.client?.send).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns false for non-slash input', () => {
     expect(runChatSlashCommand({ ...options, raw: 'hello world' })).toBe(false);

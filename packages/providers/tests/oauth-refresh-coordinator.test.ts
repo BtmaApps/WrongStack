@@ -1,5 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { OAuthRefreshCoordinator } from '../src/oauth-refresh-coordinator.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  OAuthRefreshCoordinator,
+  resetSharedOAuthRefreshState,
+} from '../src/oauth-refresh-coordinator.js';
+
+// Coordinators share refreshes process-wide by refresh key; every test here
+// reuses the same fake keys, so start each one from a clean slate.
+beforeEach(() => resetSharedOAuthRefreshState());
 
 interface TestTokens {
   access: string;
@@ -275,5 +282,72 @@ describe('OAuthRefreshCoordinator', () => {
       await coordinator.runRefresh(new AbortController().signal);
       expect(applyExtraCallsRef.value).toBe(1);
     });
+  });
+});
+
+describe('OAuthRefreshCoordinator — sibling instances on one account', () => {
+  it('concurrent siblings exchange a shared refresh token once; only the exchanger persists', async () => {
+    const exchange = async (key: string) => {
+      await new Promise((r) => setTimeout(r, 5));
+      return { access: 'acc-new', refresh: `${key}-next`, expires: Date.now() + 3_600_000 };
+    };
+    const refreshFnA = vi.fn(exchange);
+    const refreshFnB = vi.fn(exchange);
+    const persistA = vi.fn();
+    const persistB = vi.fn();
+    const a = makeCoordinator({ initialRefresh: 'k1', refreshFn: refreshFnA, onRefresh: persistA });
+    const b = makeCoordinator({ initialRefresh: 'k1', refreshFn: refreshFnB, onRefresh: persistB });
+
+    await Promise.all([
+      a.coordinator.doRefresh(new AbortController().signal),
+      b.coordinator.doRefresh(new AbortController().signal),
+    ]);
+
+    expect(refreshFnA.mock.calls.length + refreshFnB.mock.calls.length).toBe(1);
+    expect(persistA.mock.calls.length + persistB.mock.calls.length).toBe(1);
+  });
+
+  it('a sibling still holding the rotated-away token adopts the new tokens instead of replaying it', async () => {
+    const serverRefresh = vi.fn(async (key: string) => {
+      if (key !== 'k1') throw new Error(`invalid_grant for ${key}`);
+      return { access: 'acc-2', refresh: 'k2', expires: Date.now() + 3_600_000 };
+    });
+    const a = makeCoordinator({ initialRefresh: 'k1', refreshFn: serverRefresh });
+    await a.coordinator.doRefresh(new AbortController().signal);
+
+    const replay = vi.fn(async (key: string) => {
+      throw new Error(`invalid_grant: ${key} was already used`);
+    });
+    const applied: string[] = [];
+    const b = makeCoordinator({
+      initialRefresh: 'k1',
+      refreshFn: replay,
+      applyExtra: (token) => applied.push(token),
+    });
+    await b.coordinator.doRefresh(new AbortController().signal);
+
+    expect(replay).not.toHaveBeenCalled();
+    expect(applied).toEqual(['acc-2']);
+    expect(b.coordinator.isStale()).toBe(false);
+  });
+
+  it('follows the rotation chain and exchanges the newest token when the adopted one is stale', async () => {
+    const a = makeCoordinator({
+      initialRefresh: 'k1',
+      refreshFn: async () => ({ access: 'acc-2', refresh: 'k2', expires: Date.now() + 30_000 }),
+      skew: 60_000,
+    });
+    await a.coordinator.doRefresh(new AbortController().signal);
+
+    const refreshFn = vi.fn(async (key: string) => ({
+      access: 'acc-3',
+      refresh: `${key}-next`,
+      expires: Date.now() + 3_600_000,
+    }));
+    const b = makeCoordinator({ initialRefresh: 'k1', refreshFn, skew: 60_000 });
+    await b.coordinator.doRefresh(new AbortController().signal);
+
+    expect(refreshFn).toHaveBeenCalledOnce();
+    expect(refreshFn.mock.calls[0]?.[0]).toBe('k2');
   });
 });

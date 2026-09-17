@@ -251,24 +251,26 @@ describe('authPanelRows — form view (local)', () => {
     },
   ];
 
-  it('optional-auth presets show Base URL + masked API key rows before Cancel/Save', () => {
+  it('optional-auth presets show auth profile alias, Base URL and masked API key before Cancel/Save', () => {
     const rows = authPanelRows(panel({ view: 'form', form: localForm('vllm'), presets }));
-    expect(rows).toHaveLength(4); // baseUrl + apiKey + cancel + save
-    expect(rows[0]).toMatchObject({
+    expect(rows).toHaveLength(5); // alias + baseUrl + apiKey + cancel + save
+    expect(rows[0]).toMatchObject({ kind: 'form-field', field: 'alias', secret: false });
+    expect(rows[1]).toMatchObject({
       kind: 'form-field',
       field: 'baseUrl',
       value: 'http://localhost:11434',
       secret: false,
     });
-    expect(rows[1]).toMatchObject({ kind: 'form-field', field: 'apiKey', secret: true });
+    expect(rows[2]).toMatchObject({ kind: 'form-field', field: 'apiKey', secret: true });
     expect(rows.at(-2)).toEqual({ kind: 'form-action', action: 'cancel' });
     expect(rows.at(-1)).toEqual({ kind: 'form-action', action: 'save' });
   });
 
   it('noAuth presets hide the dead API key row (Ollama rejects Authorization)', () => {
     const rows = authPanelRows(panel({ view: 'form', form: localForm('ollama'), presets }));
-    expect(rows).toHaveLength(3); // baseUrl + cancel + save
-    expect(rows[0]).toMatchObject({ kind: 'form-field', field: 'baseUrl' });
+    expect(rows).toHaveLength(4); // alias + baseUrl + cancel + save
+    expect(rows[0]).toMatchObject({ kind: 'form-field', field: 'alias', secret: false });
+    expect(rows[1]).toMatchObject({ kind: 'form-field', field: 'baseUrl' });
     expect(rows.some((r) => r.kind === 'form-field' && r.field === 'apiKey')).toBe(false);
     expect(rows.at(-2)).toEqual({ kind: 'form-action', action: 'cancel' });
     expect(rows.at(-1)).toEqual({ kind: 'form-action', action: 'save' });

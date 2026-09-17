@@ -14,8 +14,10 @@ import {
   isMailboxProjectServerAvailable,
   MailboxProjectServerConnection,
 } from '@wrongstack/core/coordination';
+import { SessionCatalogProjectClient } from '@wrongstack/core/session-catalog';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { getKanbanServerConnection } from '@wrongstack/kanban';
+import { readGovernanceDaemonOperatorStatus } from '@wrongstack/runtime/governance-bootstrap';
 import { isSageProjectServerAvailable, SageProjectServerConnection } from '@wrongstack/sage';
 import {
   checkCodebaseIndexServerHealth,
@@ -25,8 +27,17 @@ import {
 
 export type ConnectionHealthStatus = 'healthy' | 'degraded' | 'offline' | 'unavailable' | 'error';
 
+export type ConnectionHealthServiceId =
+  | 'session-catalog'
+  | 'chronicle'
+  | 'codebase-index'
+  | 'sage'
+  | 'kanban'
+  | 'mailbox'
+  | 'governance';
+
 export interface ConnectionHealthService {
-  id: 'chronicle' | 'codebase-index' | 'sage' | 'kanban' | 'mailbox';
+  id: ConnectionHealthServiceId;
   label: string;
   status: ConnectionHealthStatus;
   required: boolean;
@@ -42,6 +53,12 @@ export interface ConnectionHealthService {
   queuedWork?: number | undefined;
   watcher?: { active: boolean; watchedFiles?: number | undefined } | undefined;
   lastError?: string | undefined;
+  control?: 'restart' | 'none' | undefined;
+  advisory?: {
+    code: string;
+    operatorAction: string;
+    executionDisposition: string;
+  } | undefined;
 }
 
 export interface ConnectionsHealthReport {
@@ -54,11 +71,13 @@ export async function collectConnectionsHealth(
   projectRoot: string,
 ): Promise<ConnectionsHealthReport> {
   const services = await Promise.all([
+    sessionCatalogHealth(projectRoot),
     chronicleHealth(projectRoot),
     codebaseIndexHealth(projectRoot),
     sageHealth(projectRoot),
     kanbanHealth(projectRoot),
     mailboxHealth(projectRoot),
+    governanceHealth(projectRoot),
   ]);
   const required = services.filter((s) => s.required);
   const overall = required.some((s) => s.status === 'error')
@@ -70,6 +89,55 @@ export async function collectConnectionsHealth(
 }
 
 // ── Individual service checks ──────────────────────────────────────────────
+
+async function sessionCatalogHealth(projectRoot: string): Promise<ConnectionHealthService> {
+  const startedAt = Date.now();
+  try {
+    const paths = resolveWstackPaths({ projectRoot });
+    const client = new SessionCatalogProjectClient({
+      projectDir: paths.projectDir,
+      projectRoot,
+    });
+    try {
+      const health = await client.callExisting('ping', {}, { timeoutMs: 3_000 });
+      return {
+        id: 'session-catalog',
+        label: 'Session Catalog',
+        status: health.damagedRows > 0 ? 'degraded' : 'healthy',
+        required: true,
+        mode: 'project-daemon',
+        detail:
+          health.damagedRows > 0
+            ? `${health.damagedRows} damaged catalog row(s); rebuild is required.`
+            : `${health.catalogRows} catalog session(s), ${health.liveLeases} live lease(s), ${health.reservations} reservation(s).`,
+        ownerPid: health.pid,
+        endpoint: health.endpoint,
+        storage: health.databasePath,
+        uptimeMs: health.uptimeMs,
+        latencyMs: Date.now() - startedAt,
+        clients: health.clients,
+        activeRequests: health.activeRequests,
+        queuedWork: health.reservations + health.maintenanceLeases,
+      };
+    } finally {
+      await client.close().catch(() => undefined);
+    }
+  } catch (error) {
+    const offline = isOfflineConnectionError(error);
+    return {
+      id: 'session-catalog',
+      label: 'Session Catalog',
+      status: offline ? 'offline' : 'error',
+      required: !offline,
+      mode: offline ? 'on-demand project-daemon' : 'project-daemon',
+      detail: offline
+        ? 'Not running for this project; it starts on demand when a session is used.'
+        : 'Project-scoped session ownership and catalog are unavailable.',
+      latencyMs: Date.now() - startedAt,
+      lastError: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 async function chronicleHealth(projectRoot: string): Promise<ConnectionHealthService> {
   const startedAt = Date.now();
@@ -374,6 +442,45 @@ async function mailboxHealth(projectRoot: string): Promise<ConnectionHealthServi
   } finally {
     connection.close();
   }
+}
+
+async function governanceHealth(projectRoot: string): Promise<ConnectionHealthService> {
+  const startedAt = Date.now();
+  const result = await readGovernanceDaemonOperatorStatus(projectRoot);
+  if (!result.available) {
+    const missing = result.code === 'broker_missing';
+    return {
+      id: 'governance',
+      label: 'Governance control plane',
+      status: missing ? 'offline' : 'error',
+      required: false,
+      mode: missing ? 'compatibility-default-off' : 'project-daemon',
+      detail: missing
+        ? 'Not active for this project. Existing agent and model execution remains unchanged.'
+        : `Read-only governance status is unavailable: ${result.message}`,
+      latencyMs: Date.now() - startedAt,
+      control: 'none',
+      ...(missing ? {} : { lastError: result.message }),
+    };
+  }
+  const { status } = result;
+  return {
+    id: 'governance',
+    label: 'Governance control plane',
+    status: status.signal.level === 'healthy' ? 'healthy' : 'degraded',
+    required: false,
+    mode: 'project-daemon-advisory',
+    detail: `${status.signal.message} Execution continues; no automatic task or model stop.`,
+    ownerPid: status.pid,
+    uptimeMs: Math.max(0, Date.now() - Date.parse(status.startedAt)),
+    latencyMs: Date.now() - startedAt,
+    control: 'none',
+    advisory: {
+      code: status.signal.code,
+      operatorAction: status.signal.operatorAction,
+      executionDisposition: status.signal.executionDisposition,
+    },
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────

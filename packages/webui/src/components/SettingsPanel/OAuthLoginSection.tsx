@@ -10,7 +10,7 @@ import {
   User,
   XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/components/Toaster';
 import { i18n, useAppTranslation } from '@/i18n';
 import type { WrongStackWebSocketClient } from '@/lib/ws-client';
@@ -63,6 +63,8 @@ const ACTIVE_PHASES: OAuthPhase[] = [
 /** A saved subscription provider profile as seen by the OAuth section. */
 interface SavedProfileInfo {
   id: string;
+  type?: string | undefined;
+  family?: string | undefined;
   hasActiveKey: boolean;
 }
 
@@ -80,6 +82,7 @@ interface OAuthLoginSectionProps {
 export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSectionProps) {
   const { t } = useAppTranslation();
   const [states, setStates] = useState<Record<OAuthKind, OAuthState>>({});
+  const activeKinds = useRef(new Set<OAuthKind>());
   const [providers, setProviders] = useState<ProviderMeta[]>([]);
   const [pasteValue, setPasteValue] = useState('');
   const [showPaste, setShowPaste] = useState<OAuthKind | null>(null);
@@ -104,6 +107,7 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
     const off = ws.on('auth.oauth.status', (msg: WSServerMessage) => {
       if (msg.type !== 'auth.oauth.status') return;
       const p = msg.payload as { kind: OAuthKind; phase: OAuthPhase } & OAuthState;
+      if (p.phase === 'success' || p.phase === 'error') activeKinds.current.delete(p.kind);
       setStates((prev) => ({ ...prev, [p.kind]: { ...p } }));
       if (p.phase === 'success') {
         toast.success(
@@ -119,6 +123,8 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
     });
     ws.listOAuthProviders();
     return () => {
+      for (const kind of activeKinds.current) ws.cancelOAuth(kind);
+      activeKinds.current.clear();
       off?.();
       offProviders?.();
     };
@@ -127,6 +133,9 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
   /** Start a standard sign-in (creates/overwrites the default profile). */
   const start = useCallback(
     (kind: OAuthKind) => {
+      activeKinds.current.add(kind);
+      setPasteValue('');
+      setShowPaste(null);
       setStates((prev) => ({
         ...prev,
         [kind]: { phase: 'exchanging' },
@@ -139,6 +148,9 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
   /** Retry login for a specific existing profile alias. */
   const retryLogin = useCallback(
     (kind: OAuthKind, providerId: string) => {
+      activeKinds.current.add(kind);
+      setPasteValue('');
+      setShowPaste(null);
       setStates((prev) => ({
         ...prev,
         [kind]: { phase: 'exchanging' },
@@ -153,6 +165,13 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
     (kind: OAuthKind) => {
       const alias = newAccountAlias.trim();
       if (!alias) return;
+      if (savedProviders.some((profile) => profile.id === alias)) {
+        toast.error(t('settings:provider.profileExists', { alias }));
+        return;
+      }
+      activeKinds.current.add(kind);
+      setPasteValue('');
+      setShowPaste(null);
       setStates((prev) => ({
         ...prev,
         [kind]: { phase: 'exchanging' },
@@ -161,12 +180,14 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
       setNewAccountFor(null);
       setNewAccountAlias('');
     },
-    [ws, newAccountAlias],
+    [ws, newAccountAlias, savedProviders, t],
   );
 
   const cancel = useCallback(
     (kind: OAuthKind) => {
+      activeKinds.current.delete(kind);
       ws.cancelOAuth(kind);
+      setPasteValue('');
       setStates((prev) => ({ ...prev, [kind]: { phase: 'idle' } }));
       setShowPaste(null);
     },
@@ -195,7 +216,10 @@ export function OAuthLoginSection({ ws, savedProviders = [] }: OAuthLoginSection
           const busy = ACTIVE_PHASES.includes(st.phase);
           const kindProfiles = savedProviders.filter(
             (profile) =>
-              profile.id === meta.providerId || profile.id.startsWith(`${meta.providerId}-`),
+              profile.type === meta.providerId ||
+              profile.family === meta.providerId ||
+              profile.id === meta.providerId ||
+              profile.id.startsWith(`${meta.providerId}-`),
           );
           const accountCount = kindProfiles?.length ?? 0;
           const expanded = expandedKind === meta.id;

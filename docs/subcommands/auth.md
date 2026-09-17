@@ -49,6 +49,10 @@ Accepted login aliases are:
 ```
 wstack auth <provider-id>
 wstack auth <provider-id> --label <name> --family <family> --base-url <url>
+wstack auth openai --alias personal-account
+wstack auth openai --alias work-account
+wstack auth login chatgpt --alias work-chatgpt
+wstack auth local --name ollama --alias local-work --no-probe
 ```
 
 ### In-session slash command
@@ -60,10 +64,21 @@ wstack auth <provider-id> --label <name> --family <family> --base-url <url>
 ```
 Non-blocking — works under both the plain REPL and the Ink TUI.
 
-## Flags (direct mode only)
+An auth profile is a saved account alias. Its `type` is the canonical provider
+used for transport/catalog lookup; its key and model settings belong to that
+account. `--alias` creates a separate API-key profile and refuses an existing
+alias. OAuth uses the alias for sign-in or explicit re-authentication. Without
+`--alias`, direct key additions retain the existing multi-key behavior.
+
+Fallback entries select `<auth-profile-alias>/<model-id>`, so the same model on
+`personal-account` and `work-account` is two independent targets. A named
+`fallbackProfile` is an ordered chain of these targets, not an account.
+
+## Flags
 
 | Flag | Effect |
 |---|---|
+| `--alias` | Account/auth profile alias (API key, OAuth login, or local preset) |
 | `--label` | Human label for this credential set (default: "default") |
 | `--family` | Provider family: `anthropic`, `openai`, `openai-compatible`, `google` |
 | `--base-url` | Custom API base URL |

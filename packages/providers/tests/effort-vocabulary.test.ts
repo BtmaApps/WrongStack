@@ -40,13 +40,16 @@ describe('effort vocabulary tables (C1 drift guard)', () => {
   });
 
   it('documented accept/drop split holds (Chat Completions vocabulary)', () => {
+    // `minimal` and `xhigh` ARE Chat Completions values (gpt-5 / gpt-5.2
+    // tier); only WrongStack's own `max` has no wire spelling. A model that
+    // refuses the level it is sent teaches the adapter at runtime.
     expect({ ...OPENAI_EFFORT_ACCEPT }).toEqual({
       none: true,
-      minimal: false,
+      minimal: true,
       low: true,
       medium: true,
       high: true,
-      xhigh: false,
+      xhigh: true,
       max: false,
     });
   });
@@ -54,12 +57,12 @@ describe('effort vocabulary tables (C1 drift guard)', () => {
   it('documented fallback mapping holds', () => {
     expect({ ...GENERIC_EFFORT_FALLBACK }).toEqual({
       none: undefined,
-      minimal: 'low',
+      minimal: undefined,
       low: undefined,
       medium: undefined,
       high: undefined,
-      xhigh: 'high',
-      max: 'high',
+      xhigh: undefined,
+      max: 'xhigh',
     });
   });
 });

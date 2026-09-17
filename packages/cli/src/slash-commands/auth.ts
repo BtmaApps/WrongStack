@@ -1,7 +1,7 @@
-import type { SlashCommand } from '@wrongstack/core/types';
+import type { ProviderConfig, SlashCommand } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
 import { activeProfileConfigPath } from '../profile-config-path.js';
-import { loadConfigProviders } from '../provider-config-utils.js';
+import { activeLabel, loadConfigProviders, normalizeKeys } from '../provider-config-utils.js';
 import type { SlashCommandContext } from './command-context.js';
 
 /** Levenshtein distance, capped iteration for short provider ids. */
@@ -129,6 +129,7 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
 
       // Load providers — use a no-op vault fallback since config may not have secrets.
       let providers: Record<string, unknown>;
+      let loadWarning: string | undefined;
       try {
         providers = await loadConfigProviders(
           activeProfileConfigPath(opts.paths, opts.configStore.get()),
@@ -141,7 +142,13 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
             isEncrypted: () => false,
             keyVersion: 1,
           },
+          {
+            warn: (message) => {
+              loadWarning = message;
+            },
+          },
         );
+        if (loadWarning) return { message: `${color.red('Error')} ${loadWarning}` };
       } catch {
         return { message: `${color.red('Error')} could not read config file.` };
       }
@@ -172,9 +179,8 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
             message: `${color.yellow('Provider')} "${pid}" not found in saved config.${hint}`,
           };
         }
-        const keys = cfg.apiKeys ?? [];
-        const active =
-          keys.find((k) => cfg && (cfg as { activeKey?: string }).activeKey === k.label) ?? keys[0];
+        const keys = normalizeKeys(cfg as ProviderConfig);
+        const active = activeLabel(cfg as ProviderConfig, keys);
 
         const lines: string[] = [
           `${color.bold(pid)} ${cfg.family ? color.dim(`[${cfg.family}]`) : color.amber('[no family]')}`,
@@ -196,9 +202,9 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
         } else {
           lines.push(`  ${color.dim('Keys:')}`);
           for (const k of keys) {
-            const marker = k.label === active?.label ? color.green('●') : color.dim('○');
+            const marker = k.label === active ? color.green('●') : color.dim('○');
             const masked =
-              k.label === active?.label ? color.dim('(active — masked)') : color.dim('(masked)');
+              k.label === active ? color.dim('(active — masked)') : color.dim('(masked)');
             lines.push(
               `    ${marker} ${color.bold(k.label.padEnd(18))} ${masked}  ${color.dim(k.createdAt)}`,
             );
@@ -238,7 +244,7 @@ export function buildAuthCommand(opts: SlashCommandContext): SlashCommand {
           | { type?: string; family?: string; apiKeys?: { label: string; apiKey?: string }[] }
           | undefined;
         if (!cfg) continue;
-        const keys = cfg.apiKeys ?? [];
+        const keys = normalizeKeys(cfg as ProviderConfig);
         const famTag = cfg.family ? color.dim(`[${cfg.family}]`) : '';
         const aliasTag = cfg.type && cfg.type !== id ? color.dim(`→ ${cfg.type}`) : '';
 

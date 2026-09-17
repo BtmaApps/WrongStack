@@ -323,7 +323,10 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
 
       try {
         if (sub === 'doctor' || sub === 'check' || sub === 'diag') {
-          const report = diagnoseFallbackConfig(config);
+          // The waiting room is the whole point of the quarantine diagnosis: without
+          // the tracker the doctor cannot tell a model that is cooling down from a
+          // healthy one, and reported "healthy" while failover had nowhere to go.
+          const report = diagnoseFallbackConfig(config, opts.statusTracker);
           const badge =
             report.status === 'healthy'
               ? color.green('[HEALTHY]')
@@ -391,7 +394,10 @@ export function buildFallbackCommand(opts: SlashCommandContext): SlashCommand {
             };
           }
           const errorKind = requestedKind as ProviderErrorKind;
-          const result = simulateFallbackFailover(config, { errorKind });
+          const result = simulateFallbackFailover(config, {
+            errorKind,
+            ...(opts.statusTracker ? { statusTracker: opts.statusTracker } : {}),
+          });
 
           const lines = [
             `${color.bold('WrongStack')} ${color.dim('— Fallback Simulation')} [${color.cyan(result.triggeringError)}]`,

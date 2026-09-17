@@ -111,6 +111,7 @@ Control which foreign tools are scanned with `skills.foreignSources` (default: a
 | `mode` | `'progressive'` | `'progressive'` injects only a name+trigger manifest (the agent loads bodies via the `skill` tool); `'eager'` injects skill bodies into the prompt up to `eagerMaxChars`. |
 | `eagerMaxChars` | `24000` | In eager mode, the total chars of skill bodies injected (highest-priority first); the rest become a load-on-demand manifest. Bounds prompt cost when many skills are discovered. Ignored in progressive mode. |
 | `extraDirs` | `[]` | Extra directories to scan (lowest priority). **User config only** — stripped from a repo-committed `<project>/.wrongstack/config.json`. |
+| `suggest` | off | Per-turn skill suggestion via TypeSafe. **User config only** — the whole subtree is stripped from a repo-committed config. See [skills-suggestion.md](./skills-suggestion.md). |
 
 ## Progressive disclosure & the `skill` tool
 
@@ -130,6 +131,25 @@ Use the `skill` tool (not `read`) for skill resources: it works for foreign skil
 // ~/.wrongstack/profiles/<name>/config.json
 { "skills": { "mode": "eager" } }
 ```
+
+## Suggesting which skill to load
+
+At a few dozen skills, a name + trigger line is not always enough for the agent
+to tell close neighbours apart (`design-craft` vs `design-critique`), and the
+manifest's "load a skill when one is relevant" instruction invites a guess on
+turns where nothing is. `skills.suggest` puts two cheap typed judgments in front
+of that decision and appends at most one skill name to the prompt as a
+suggestion the model is told it may ignore.
+
+It is **off by default** because it sends the latest user message to a
+third-party API. See [skills-suggestion.md](./skills-suggestion.md) for the
+design, the settings, what leaves the machine, and how to evaluate the
+thresholds against your own roster.
+
+The same typed-judgment approach is available for **role dispatch** — picking
+which of the ~75 catalog agents takes an ambiguous task — in
+[fleet-dispatch-classifier.md](./fleet-dispatch-classifier.md). Both share one
+`typesafe` account block; neither is enabled by configuring it.
 
 ## Importing skills (`/skill-import`)
 

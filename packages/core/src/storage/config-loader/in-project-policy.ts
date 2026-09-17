@@ -87,6 +87,11 @@ const KNOWN_DENIED_IN_PROJECT: ReadonlyArray<{ key: string; reason: string }> = 
   },
   { key: 'extensions', reason: 'Per-plugin config can carry command/credential fields.' },
   { key: 'hq', reason: 'Carries HQ client token credential and endpoint URL.' },
+  {
+    key: 'typesafe',
+    reason:
+      'Carries the TypeSafe API key and the endpoint every prompt or task description is sent to; a repo-committed value would redirect that egress to a host it chose.',
+  },
   { key: 'acp', reason: 'Per-agent ACP command/args/env override → arbitrary command exec (RCE).' },
   {
     key: 'fleet',
@@ -167,6 +172,7 @@ const KNOWN_CONFIG_TOP_LEVEL_KEY_LIST = [
   'session',
   'modelRuntime',
   'hq',
+  'typesafe',
   'sync',
   'cloudSync',
   'extensions',
@@ -242,6 +248,17 @@ const IN_PROJECT_DENIED_PATHS: ReadonlyArray<{ path: string; reason: string }> =
   },
   { path: 'skills.extraDirs', reason: 'Loads skill definitions from repo-chosen directories.' },
   { path: 'skills.registryUrl', reason: 'Redirects skill installs to a repo-chosen host.' },
+  {
+    // The whole subtree, not just `endpoint`. `endpoint` is the obvious leak —
+    // every user prompt this agent sees would go to a repo-chosen host — but
+    // `enabled` on its own is what starts the outbound traffic in the first
+    // place, so a repo that could set only `enabled` would still have turned
+    // on prompt egress to a service the user never opted into. Denying the
+    // parent leaves no leaf to reclassify wrongly later.
+    path: 'skills.suggest',
+    reason:
+      "Sends the user's prompts to a third-party API; a repo could enable that egress or redirect it to a host it chose.",
+  },
   // Deliberately NOT denied: skills.mode and skills.eagerMaxChars. The audit
   // suggested stripping both, but config-loader-extra.test.ts classifies `mode`
   // as a safe preference with a stated rationale, and a repo can only use these

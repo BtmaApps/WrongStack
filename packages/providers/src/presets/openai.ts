@@ -3,6 +3,8 @@
  * as `OpenAIProvider`; the per-message body is the loop body of
  * `parseOpenAIStream` split into a stateful step.
  */
+
+import { randomUUID } from 'node:crypto';
 import type {
   Request,
   ResponseFormat,
@@ -12,6 +14,8 @@ import type {
 } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
+import { isEffortRejected } from '../effort-support.js';
+import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { stripCacheControl } from '../object-utils.js';
@@ -55,6 +59,8 @@ export interface OpenAIStreamState {
   finalEmitted: boolean;
   /** Set once `[DONE]` or a `finish_reason` is seen — a proper end-of-stream. */
   sawTerminal: boolean;
+  /** Live provider id (alias-aware) for errors raised mid-stream. */
+  providerId?: string | undefined;
 }
 
 export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
@@ -108,7 +114,11 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
       if (req.topLogprobs !== undefined) body['top_logprobs'] = req.topLogprobs;
     }
     if (req.stopSequences) body['stop'] = req.stopSequences;
-    if (req.reasoning?.effort !== undefined && isOpenAIEffort(req.reasoning.effort)) {
+    if (
+      req.reasoning?.effort !== undefined &&
+      isOpenAIEffort(req.reasoning.effort) &&
+      !isEffortRejected(ctx.providerId ?? 'openai', req.model)
+    ) {
       body['reasoning_effort'] = req.reasoning.effort;
     }
     if (req.responseFormat) {
@@ -116,7 +126,8 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
     }
     return body;
   },
-  createStreamState: (fallbackModel) => ({
+  createStreamState: (fallbackModel, providerId) => ({
+    providerId,
     model: fallbackModel,
     usage: { input: 0, output: 0 },
     stopReason: 'end_turn',
@@ -136,6 +147,11 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
     const parsed = safeParse<Record<string, unknown>>(msg.data);
     if (!parsed.ok || !parsed.value) return [];
     const obj = parsed.value;
+    // In-stream error envelope (`{"error":{…}}` inside a 200 stream) — raise
+    // it classified instead of committing an empty turn as a clean end_turn.
+    if (obj['error'] !== undefined && obj['error'] !== null) {
+      throw providerErrorFromStreamPayload(state.providerId ?? 'openai', obj);
+    }
     const out: StreamEvent[] = [];
 
     if (typeof obj['model'] === 'string') state.model = obj['model'] as string;
@@ -312,7 +328,11 @@ export const openaiWireFormat = defineWireFormat<OpenAIStreamState>({
       out.push({ type: 'thinking_stop' });
     }
     for (const entry of state.toolByIndex.values()) {
-      if (!entry.id || !entry.name) continue;
+      if (!entry.name) continue;
+      // Proxies and local runtimes may omit `id` on streamed tool calls;
+      // synthesize one (as openai.ts does) instead of silently dropping the
+      // model's action.
+      if (!entry.id) entry.id = `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
       if (!entry.emittedStart) {
         out.push({ type: 'tool_use_start', id: entry.id, name: entry.name });
       }

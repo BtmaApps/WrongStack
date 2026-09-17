@@ -373,7 +373,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
       row: 0,
       busy: false,
     },
-    helpPanel: { open: false, entries: [], selected: 0, filter: '', hint: undefined },
+    helpPanel: { open: false, entries: [], selected: 0, filter: '', hint: undefined, detailScroll: 0 },
     shadowPanel: {
       open: false,
       shadow: { activeId: null, running: false, model: '', intervalMs: 30000 },

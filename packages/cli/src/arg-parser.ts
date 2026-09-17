@@ -224,6 +224,7 @@ function normalizeSurfaceAliases(
 
 export interface AuthFlags {
   positional: string[];
+  alias?: string | undefined;
   label?: string | undefined;
   family?: import('@wrongstack/core/types').WireFamily | undefined;
   baseUrl?: string | undefined;
@@ -249,7 +250,16 @@ export function parseAuthFlags(args: string[]): AuthFlags {
       key = a.slice(0, eq);
       inlineVal = a.slice(eq + 1);
     }
-    if (key === '--label') {
+    if (key === '--alias') {
+      const next = args[i + 1];
+      const v =
+        inlineVal !== undefined
+          ? inlineVal
+          : next !== undefined && !next.startsWith('-')
+            ? args[++i]
+            : '';
+      out.alias = v ?? '';
+    } else if (key === '--label') {
       const v = inlineVal !== undefined ? inlineVal : args[++i];
       if (v) out.label = v;
     } else if (key === '--family') {

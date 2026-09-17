@@ -1,6 +1,6 @@
 import {
-  isUnresolvedPathScope,
   isDirectoryAmbiguousPath,
+  isUnresolvedPathScope,
   normalizePath,
   resolveTargetPath,
 } from './glob.js';
@@ -67,6 +67,18 @@ export function shellTokens(raw: string): string[] {
   return boundedShellTokens(raw).map((token) => token.value);
 }
 
+/**
+ * Optional binary-path prefix before a destructive tool name (`/bin/rm`,
+ * `/usr/bin/tee`, `C:\tools\dd`). The launcher stripper and the `sh -c`
+ * wrapper rule already recognize path-qualified invocations; without the
+ * same allowance in the writer/find/git rules, `/bin/rm -rf .env` anchored
+ * at a command boundary matched no rule and silently bypassed the guard
+ * while the bare `rm -rf .env` was blocked. Non-capturing so the rules'
+ * existing group numbers stay stable. No nested quantifiers: the fragment
+ * is a single bounded class, so it adds no ReDoS surface.
+ */
+const COMMAND_PATH_PREFIX = String.raw`(?:[^\s;&|(){}]+[\\/])?`;
+
 export function gitInvocationArguments(command: string): string[] {
   const argumentsList: string[] = [];
   const quotedIndexes = new Uint8Array(command.length);
@@ -81,7 +93,10 @@ export function gitInvocationArguments(command: string): string[] {
     }
   }
 
-  const gitStart = /(?:^|[;&|\r\n]\s*|\(\s*|`\s*)git\b/gi;
+  const gitStart = new RegExp(
+    String.raw`(?:^|[;&|\r\n]\s*|\(\s*|\u0060\s*)${COMMAND_PATH_PREFIX}git\b`,
+    'gi',
+  );
   let match: RegExpExecArray | null = gitStart.exec(command);
   while (match !== null) {
     const gitOffset = match[0].toLowerCase().lastIndexOf('git');
@@ -385,14 +400,15 @@ const COMMAND_BOUNDARY = String.raw`(?:^|[;&|\r\n]\s*|\{\s*|(?<![$(])\(\s*|\bxar
 export function commandRecursivelyDeletes(command: string): boolean {
   const stripped = stripTransparentLaunchers(maskNonExecutingHeredocBodies(command));
   if (
-    /(?:^|[;&|\r\n]\s*|\{\s*|\$\(\s*|\(\s*|`\s*)find\b[^;&|)`]*(?:-delete\b|-exec(?:dir)?\s+(?:[^\s;&|]+[\\/])?(?:rm|rmdir)\b)/i.test(
-      stripped,
-    )
+    new RegExp(
+      String.raw`(?:^|[;&|\r\n]\s*|\{\s*|\$\(\s*|\(\s*|\u0060\s*)${COMMAND_PATH_PREFIX}find\b[^;&|)\u0060]*(?:-delete\b|-exec(?:dir)?\s+(?:[^\s;&|]+[\\/])?(?:rm|rmdir)\b)`,
+      'i',
+    ).test(stripped)
   ) {
     return true;
   }
   const destructive = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(rm|rmdir|del|rd|Remove-Item)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
+    String.raw`${COMMAND_BOUNDARY}${COMMAND_PATH_PREFIX}(rm|rmdir|del|rd|Remove-Item)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
     'gi',
   );
   let match: RegExpExecArray | null = destructive.exec(stripped);
@@ -749,7 +765,7 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const destructive = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?(rm|rmdir|del|rd|Remove-Item|unlink|truncate|shred|mv)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(rm|rmdir|del|rd|Remove-Item|unlink|truncate|shred|mv)\s+((?:"[^"]*"|'[^']*'|\\.|\{[^}]*\}|\([^()]*\)|[^;&|\r\n}])+)`,
     'gi',
   );
   let m: RegExpExecArray | null = destructive.exec(normalizedCommand);
@@ -763,7 +779,7 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const copy = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?(cp|install)\s+([^;&|\r\n]+)`,
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(cp|install)\s+([^;&|\r\n]+)`,
     'gi',
   );
   let c: RegExpExecArray | null = copy.exec(normalizedCommand);
@@ -795,14 +811,20 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
     c = copy.exec(normalizedCommand);
   }
 
-  const tee = new RegExp(String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?(tee)\s+([^;&|\r\n]+)`, 'gi');
+  const tee = new RegExp(
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(tee)\s+([^;&|\r\n]+)`,
+    'gi',
+  );
   let t: RegExpExecArray | null = tee.exec(normalizedCommand);
   while (t !== null) {
     if (!tokenIsQuoted(t, t[1] ?? '')) targets.push(...shellArgs(t[2] ?? ''));
     t = tee.exec(normalizedCommand);
   }
 
-  const dd = new RegExp(String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?(dd)\s+([^;&|\r\n]+)`, 'gi');
+  const dd = new RegExp(
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(dd)\s+([^;&|\r\n]+)`,
+    'gi',
+  );
   let d: RegExpExecArray | null = dd.exec(normalizedCommand);
   while (d !== null) {
     if (!tokenIsQuoted(d, d[1] ?? '')) {
@@ -818,7 +840,7 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const overwrite = new RegExp(
-    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?(sed|ln)\s+([^;&|\r\n]+)`,
+    String.raw`${COMMAND_BOUNDARY}(?:sudo\s+)?${COMMAND_PATH_PREFIX}(sed|ln)\s+([^;&|\r\n]+)`,
     'gi',
   );
   let o: RegExpExecArray | null = overwrite.exec(normalizedCommand);
@@ -840,7 +862,7 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
   }
 
   const xargsPipeline = new RegExp(
-    String.raw`\b(?:echo|printf)\s+([^|]+)\|\s*xargs${XARGS_OPTIONS}\s+(?:sudo\s+)?(?:rm|rmdir|del|unlink|truncate|shred)\b`,
+    String.raw`\b(?:echo|printf)\s+([^|]+)\|\s*xargs${XARGS_OPTIONS}\s+(?:sudo\s+)?${COMMAND_PATH_PREFIX}(?:rm|rmdir|del|unlink|truncate|shred)\b`,
     'gi',
   );
   let x: RegExpExecArray | null = xargsPipeline.exec(normalizedCommand);
@@ -975,8 +997,10 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
     }
   }
 
-  const findDelete =
-    /(?:^|[;&|\r\n]\s*|\{\s*|\$\(\s*|\(\s*|`\s*)find\b([^;&|)`]*(?:\s-delete(?:[\s;})]|$)|\s-exec(?:dir)?\s+(?:[^\s;&|]+[\\/])?(?:rm|rmdir)\b)[^;&|)`]*)/gi;
+  const findDelete = new RegExp(
+    String.raw`(?:^|[;&|\r\n]\s*|\{\s*|\$\(\s*|\(\s*|\u0060\s*)${COMMAND_PATH_PREFIX}find\b([^;&|)\u0060]*(?:\s-delete(?:[\s;})]|$)|\s-exec(?:dir)?\s+(?:[^\s;&|]+[\\/])?(?:rm|rmdir)\b)[^;&|)\u0060]*)`,
+    'gi',
+  );
   let f: RegExpExecArray | null = findDelete.exec(normalizedCommand);
   while (f !== null) {
     const tokens = shellTokens(f[1] ?? '');

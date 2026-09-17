@@ -16,9 +16,9 @@ import type { SimpleSocket } from './ws.js';
  *  - `cancel()` unsubscribes and resolves with null (call it when a newer
  *    request supersedes this one, or on unmount).
  *
- * The wire protocol has no request ids; correlation is therefore frame-type +
- * predicate based, but the single-flight discipline (cancel before re-send)
- * that this helper enforces removes the cross-talk window in practice.
+ * Operations supporting request ids should send one in `payload` and match it
+ * through `accept`. Other replies require a field predicate and callers must
+ * serialize requests that otherwise cannot be distinguished.
  */
 
 export interface ServerFrame {

@@ -1,6 +1,18 @@
-import { Command, FolderCode, Mail, Moon, Settings, Sun, SunMoon, Wifi, WifiOff } from 'lucide-react';
+import {
+  Command,
+  FolderCode,
+  KeyRound,
+  Mail,
+  Moon,
+  Settings,
+  Sun,
+  SunMoon,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import type { PendingModelSwitch } from './hooks/use-model-catalog.js';
 import type { Theme } from './hooks/use-theme.js';
+import { dispatchSimplePanel } from './lib/panel-events.js';
 import { compactTokens } from './lib/session-helpers.js';
 import { ModelSwitcher } from './model-switcher.js';
 import { SessionSwitcher } from './session-switcher.js';
@@ -229,6 +241,15 @@ export function SessionTopbar(props: SessionTopbarProps) {
           title="Settings"
         >
           <Settings size={15} />
+        </button>
+        <button
+          type="button"
+          className="topbar-icon-btn"
+          onClick={() => dispatchSimplePanel('open-auth')}
+          aria-label="Manage provider credentials"
+          title="Provider credentials"
+        >
+          <KeyRound size={15} />
         </button>
         {/* Persistent version chip — mirrors the WebUI WorkbenchTopbar
             placement. The full-width update banner above already shows the

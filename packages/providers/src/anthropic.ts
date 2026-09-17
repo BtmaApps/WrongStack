@@ -1,4 +1,6 @@
+import { recordProviderQuota } from '@wrongstack/core/quota';
 import type { Capabilities, ProviderError, Request } from '@wrongstack/core/types';
+import { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import type { AnthropicStreamState } from './presets/anthropic.js';
 import { anthropicWireFormat } from './presets/anthropic.js';
@@ -97,5 +99,19 @@ export class AnthropicProvider extends WireFormatProvider<AnthropicStreamState> 
     headers?: HeadersLike,
   ): ProviderError {
     return parseProviderHttpError(this.id, status, text, headers);
+  }
+
+  /**
+   * Read the `anthropic-ratelimit-unified-*` family off a successful response.
+   *
+   * These headers are the only place a subscription login's remaining 5h/7d
+   * allowance is reported, and they ride along on requests we are already
+   * making. An API-key account — or a proxy that strips the family — reports
+   * nothing here and the parser returns no snapshot, so this costs one header
+   * lookup on those paths and never fabricates a reading.
+   */
+  protected override onResponseHeaders(headers: HeadersLike | undefined, _req: Request): void {
+    const snapshots = parseAnthropicRateLimitHeaders(this.id, headers);
+    if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
   }
 }

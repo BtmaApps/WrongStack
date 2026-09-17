@@ -83,6 +83,7 @@ export function createProviderCrudHandlers(ctx: ProviderServiceContext) {
     ws: WebSocket,
     payload: {
       id: string;
+      type?: string | undefined;
       family: string;
       baseUrl?: string | undefined;
       apiKey?: string | undefined;

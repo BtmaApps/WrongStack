@@ -1,13 +1,13 @@
 import type { Config, Provider, ProviderConfig } from '@wrongstack/core/types';
 import {
-  applyProxyConfig,
   __resetProxyConfigForTests,
+  applyProxyConfig,
 } from '@wrongstack/core/wiring/proxy-rewrite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveProviderCfg } from '../src/wiring/provider-runtime.js';
 import {
-  setupProviderRuntime,
   type ProviderRuntimeDeps,
+  setupProviderRuntime,
 } from '../src/wiring/provider-runtime-setup.js';
 
 // Keep the unit hermetic: the catalog overlay, storage watchers/snapshot
@@ -15,7 +15,8 @@ import {
 // The real resolver/builder runtimes are injected as deps (that is the seam
 // this module owns). Credential-shaped strings are deliberately low-entropy
 // fixture tokens, never real secret material.
-vi.mock('@wrongstack/providers', () => ({
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   withCatalogCapabilities: vi.fn(
     async (_models: unknown, providerId: string, provider: Provider) => ({
       ...provider,
@@ -94,7 +95,7 @@ function fakeProvider(id: string): Provider {
 
 function makeDeps(overrides: Partial<ProviderRuntimeDeps> = {}) {
   const context = {
-    provider: fakeProvider('old-provider'),
+    provider: fakeProvider('anthropic'),
     model: 'old-model',
     runModelTransition: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
   };
@@ -340,6 +341,138 @@ describe('setupProviderRuntime — extensions and consolidation', () => {
 });
 
 describe('setupProviderRuntime — config watchers', () => {
+  it('reloads the live fallback account rather than the configured primary', async () => {
+    const deps = makeDeps({
+      config: fakeConfig({
+        providers: {
+          anthropic: { type: 'anthropic', apiKey: TOKEN_PROFILE },
+          work: { type: 'anthropic', apiKey: TOKEN_WORK },
+        },
+      }),
+      resolveProviderCfgRuntime: resolveProviderCfg,
+    });
+    deps.context.provider = fakeProvider('work');
+    snapshotByPath['/home/profiles/default.json'] = {
+      providers: {
+        anthropic: { type: 'anthropic', apiKey: TOKEN_PROFILE },
+        work: { type: 'anthropic', apiKey: TOKEN_ROTATED },
+      },
+    };
+    const runtime = setupProviderRuntime(deps);
+    await runtime.reloadProviderConfig();
+    expect(deps.buildProviderForIdRuntime).toHaveBeenCalledWith(expect.anything(), 'work');
+    expect(deps.context.provider?.id).toBe('work');
+    expect(deps.context.runModelTransition).toHaveBeenCalled();
+  });
+
+  it('blocks the old credential after its account is deleted, and can recover on recreation', async () => {
+    const old = fakeProvider('work');
+    const build = vi.fn((): Provider => {
+      return fakeProvider('work');
+    });
+    const deps = makeDeps({
+      config: fakeConfig({ providers: { work: { type: 'anthropic', apiKey: TOKEN_WORK } } }),
+      resolveProviderCfgRuntime: resolveProviderCfg,
+      buildProviderForIdRuntime: build,
+    });
+    deps.context.provider = old;
+    snapshotByPath['/home/profiles/default.json'] = { providers: {}, snapshotHasProviders: true };
+    const runtime = setupProviderRuntime(deps);
+    await runtime.reloadProviderConfig();
+    const request = { model: 'test', messages: [], maxTokens: 10 } as Parameters<
+      Provider['complete']
+    >[0];
+    await expect(
+      deps.context.provider!.complete(request, { signal: new AbortController().signal }),
+    ).rejects.toThrow('auth profile');
+    expect(build).not.toHaveBeenCalled();
+    expect(old.complete).not.toHaveBeenCalled();
+    await expect(
+      deps.context
+        .provider!.stream(request, {
+          signal: new AbortController().signal,
+        })
+        [Symbol.asyncIterator]()
+        .next(),
+    ).rejects.toThrow('auth profile');
+    expect(old.stream).not.toHaveBeenCalled();
+    const replacement = fakeProvider('work');
+    build.mockImplementation(() => replacement);
+    snapshotByPath['/home/profiles/default.json'] = {
+      providers: { work: { type: 'anthropic', apiKey: TOKEN_ROTATED } },
+    };
+    await runtime.reloadProviderConfig();
+    expect(deps.context.provider).toBe(replacement);
+  });
+
+  it('retries an unchanged credential snapshot after a transient construction failure', async () => {
+    const build = vi.fn((): Provider => {
+      throw new Error('temporarily unavailable');
+    });
+    const deps = makeDeps({ buildProviderForIdRuntime: build });
+    snapshotByPath['/home/profiles/default.json'] = { providers: {}, apiKey: TOKEN_ROTATED };
+    const runtime = setupProviderRuntime(deps);
+    await runtime.reloadProviderConfig();
+    const recovered = fakeProvider('anthropic');
+    build.mockImplementation(() => recovered);
+    await runtime.reloadProviderConfig();
+    expect(build).toHaveBeenCalledTimes(2);
+    expect(deps.context.provider).toBe(recovered);
+  });
+
+  it('keeps a model switch that ran ahead of the queued credential rebuild', async () => {
+    const deps = makeDeps();
+    const switched = fakeProvider('work');
+    deps.context.runModelTransition.mockImplementation(async (fn: () => Promise<unknown>) => {
+      deps.context.provider = switched;
+      return fn();
+    });
+    snapshotByPath['/home/profiles/default.json'] = { providers: {}, apiKey: TOKEN_ROTATED };
+    const runtime = setupProviderRuntime(deps);
+    await runtime.reloadProviderConfig();
+    expect(deps.context.provider).toBe(switched);
+    expect(deps.buildProviderForIdRuntime).not.toHaveBeenCalled();
+  });
+
+  it('applies a later credential write after an earlier catalog rebuild finishes', async () => {
+    const providers = await import('@wrongstack/providers');
+    let release: (() => void) | undefined;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(providers.withCatalogCapabilities).mockImplementationOnce(
+      async (_models, _id, provider) => {
+        await waiting;
+        return provider;
+      },
+    );
+    const deps = makeDeps({
+      config: fakeConfig({
+        features: {
+          mcp: true,
+          plugins: true,
+          memory: false,
+          modelsRegistry: true,
+          skills: true,
+        },
+      }),
+    });
+    const runtime = setupProviderRuntime(deps);
+    snapshotByPath['/home/profiles/default.json'] = { providers: {}, apiKey: TOKEN_ROTATED };
+    const first = runtime.reloadProviderConfig();
+    await flushAsync();
+    snapshotByPath['/home/profiles/default.json'] = { providers: {}, apiKey: TOKEN_WORK };
+    const second = runtime.reloadProviderConfig();
+    await flushAsync();
+    expect(deps.buildProviderForIdRuntime).toHaveBeenCalledTimes(1);
+    release!();
+    await Promise.all([first, second]);
+    expect(deps.buildProviderForIdRuntime).toHaveBeenCalledTimes(2);
+    const builds = vi.mocked(deps.buildProviderForIdRuntime).mock.calls;
+    expect(builds[0]?.[0].config.apiKey).toBe(TOKEN_ROTATED);
+    expect(builds[1]?.[0].config.apiKey).toBe(TOKEN_WORK);
+  });
+
   it('watches the profile, project-local, in-project, and bootstrap layers', () => {
     const deps = makeDeps();
     setupProviderRuntime(deps);
@@ -446,7 +579,7 @@ describe('setupProviderRuntime — config watchers', () => {
     createdWatchers[0]?.trigger();
     await flushAsync();
     expect(deps.configStore.update).toHaveBeenCalled();
-    expect(deps.context.provider?.id).toBe('old-provider');
+    expect(deps.context.provider?.id).toBe('anthropic');
     expect(deps.logger.info).not.toHaveBeenCalledWith(
       expect.stringContaining('credentials reloaded'),
     );
@@ -603,6 +736,24 @@ describe('setupProviderRuntime — WrongProxy instant-apply', () => {
     applyProxyConfig({ active: true }); // identical tick
     await flushAsync();
     expect(build).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not use the configured primary endpoint to decide a live fallback account needs rebuilding', async () => {
+    const { deps, context } = proxyDeps();
+    context.provider = fakeProvider('work-account');
+    deps.config = fakeConfig({
+      baseUrl: 'https://old-primary.example/v1',
+      providers: { 'work-account': { type: 'openai', apiKey: 'work-key' } },
+    });
+    const build = vi.fn((_opts: unknown, providerId: string) => fakeProvider(providerId));
+    deps.buildProviderForIdRuntime = build as never;
+    setupProviderRuntime(deps);
+    const originalProvider = context.provider;
+    applyProxyConfig({ enabled: true, url: 'http://localhost:3444', active: true });
+    await flushAsync();
+    await flushAsync();
+    expect(build).not.toHaveBeenCalled();
+    expect(context.provider).toBe(originalProvider);
   });
 
   it('skips the swap when the live provider moved before the rebuild ran (superseded)', async () => {

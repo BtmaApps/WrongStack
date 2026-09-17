@@ -15,6 +15,7 @@ export function useHelpPanel(
       category: cmd.category ?? 'App',
       aliases: cmd.aliases,
       argsHint: cmd.argsHint,
+      help: cmd.help,
     }));
     dispatch({ type: 'helpOpen', entries });
   }, [dispatch, slashRegistry]);

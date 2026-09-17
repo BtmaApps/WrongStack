@@ -5,7 +5,40 @@ import {
   resolveProviderCatalogForModels,
   resolveProviderModelMetadata,
 } from '../src/server/model-catalog.js';
+import { createProviderServiceContext } from '../src/server/provider/mutations.js';
 import { handleProviderRoute, type ProviderRouteHandlers } from '../src/server/provider-routes.js';
+
+it('echoes the request identity on provider mutation and validation results', async () => {
+  const ws = mockWs();
+  const service = createProviderServiceContext({
+    providerStore: { load: async () => ({}), save: async () => {} },
+    broadcast: vi.fn(),
+  });
+  const handlers = routes();
+  handlers.providerHandlers.handleKeyDelete = async (socket) => {
+    await Promise.resolve();
+    service.sendOperationResult(socket, false, 'Disk full');
+  };
+  const message = {
+    type: 'key.delete' as const,
+    payload: { providerId: 'work', label: 'main', requestId: 'auth-request' },
+  };
+  await handleProviderRoute(ws, message, handlers);
+  expect(sentMessages(ws)).toContainEqual({
+    type: 'key.operation_result',
+    payload: { success: false, message: 'Disk full', requestId: 'auth-request' },
+  });
+  ws.send.mockClear();
+  await handleProviderRoute(
+    ws,
+    { ...message, payload: { ...message.payload, label: '' } },
+    handlers,
+  );
+  expect(sentMessages(ws)[0]).toMatchObject({
+    type: 'key.operation_result',
+    payload: { success: false, requestId: 'auth-request' },
+  });
+});
 
 function mockWs() {
   return {
@@ -129,6 +162,37 @@ describe('handleProviderRoute malformed payload characterization', () => {
 
     expect(deps.providerHandlers.handleProviderRemove).toHaveBeenCalledWith(ws, 'custom');
     expect(ws.send).not.toHaveBeenCalled();
+  });
+
+  it('keeps the auth profile alias and canonical provider type separate on provider.add', async () => {
+    const ws = mockWs();
+    const deps = routes();
+    await handleProviderRoute(
+      ws,
+      {
+        type: 'provider.add',
+        payload: { id: 'work-account', type: 'openai', family: 'openai', apiKey: 'work-key' },
+      },
+      deps,
+    );
+    expect(deps.providerHandlers.handleProviderAdd).toHaveBeenCalledWith(
+      ws,
+      expect.objectContaining({ id: 'work-account', type: 'openai', apiKey: 'work-key' }),
+    );
+  });
+
+  it('rejects invalid provider types before creating an auth profile', async () => {
+    const ws = mockWs();
+    const deps = routes();
+    await handleProviderRoute(
+      ws,
+      {
+        type: 'provider.add',
+        payload: { id: 'work-account', type: '__proto__', family: 'openai' },
+      },
+      deps,
+    );
+    expect(deps.providerHandlers.handleProviderAdd).not.toHaveBeenCalled();
   });
 
   it('copies validated custom model capabilities before dispatching provider.add', async () => {

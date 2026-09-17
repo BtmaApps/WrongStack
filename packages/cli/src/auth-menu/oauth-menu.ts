@@ -1,4 +1,5 @@
 import { color } from '@wrongstack/core/utils';
+import { loadProviders } from './helpers.js';
 import { providerAuthRegistryFor, runProviderAuthLogin } from './provider-auth-login.js';
 import type { AuthMenuDeps } from './types.js';
 
@@ -45,13 +46,27 @@ export async function runOAuthLoginChoice(
 ): Promise<boolean> {
   const kind = resolveOAuthKind(choice, { ...opts, deps });
   if (!kind) return false;
-  await runOAuthLoginKind(deps, kind);
+  const sourceId = providerAuthRegistryFor(deps).get(kind)?.providerId ?? kind;
+  const profiles = await loadProviders(deps);
+  let suggestedAlias = sourceId;
+  for (let n = 2; profiles[suggestedAlias]; n++) suggestedAlias = `${sourceId}-${n}`;
+  const alias = (
+    await deps.reader.readLine(
+      `  Auth profile alias [${suggestedAlias}] (existing alias re-authenticates; q cancels): `,
+    )
+  ).trim();
+  if (alias.toLowerCase() !== 'q')
+    await runOAuthLoginKind(deps, kind, { providerId: alias || suggestedAlias });
   return true;
 }
 
 /** Run the OAuth login flow for an already-resolved kind. */
-export async function runOAuthLoginKind(deps: AuthMenuDeps, kind: OAuthMenuKind): Promise<number> {
-  return runProviderAuthLogin(deps, kind);
+export async function runOAuthLoginKind(
+  deps: AuthMenuDeps,
+  kind: OAuthMenuKind,
+  opts?: { providerId?: string | undefined },
+): Promise<number> {
+  return opts ? runProviderAuthLogin(deps, kind, opts) : runProviderAuthLogin(deps, kind);
 }
 
 /** Sub-menu: pick a subscription to sign in with (OAuth). */

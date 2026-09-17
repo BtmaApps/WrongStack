@@ -30,6 +30,59 @@ import { createSingleFlightRefresh } from './oauth-refresh.js';
 export const DEFAULT_REFRESH_SKEW_MS = 60_000;
 
 /**
+ * Process-wide refresh sharing, keyed by `label + refresh key`.
+ *
+ * Every provider build (leader, each subagent, every fallback hop, `/model`
+ * switch, proxy or credential hot-reload) constructs its own coordinator from
+ * the same stored credentials, so several live instances hold the SAME refresh
+ * token. The per-instance single-flight below cannot see its siblings: at
+ * expiry each one exchanged that token on its own. Codex and Claude rotate the
+ * refresh token on use, so every exchange after the first failed with
+ * `invalid_grant` — and a sibling built later from the not-yet-reloaded config
+ * replayed the already-rotated token the same way. Those agents died on a
+ * non-retryable auth error until the user signed in again.
+ *
+ * - `inFlight`: concurrent exchanges of one token share a single request.
+ * - `rotations`: once a token has been exchanged, a later holder of the old
+ *   token follows the chain to the tokens it produced instead of replaying it.
+ *   Entries live until the access token they carry expires (bounded count).
+ */
+const MAX_SHARED_ROTATIONS = 64;
+const MAX_ROTATION_HOPS = 16;
+
+interface SharedRotation {
+  nextKey: string;
+  tokens: unknown;
+  expiresAt: number;
+}
+
+const sharedInFlight = new Map<string, Promise<unknown>>();
+const sharedRotations = new Map<string, SharedRotation>();
+
+function sharedKey(label: string, refreshKey: string): string {
+  return `${label}\u0000${refreshKey}`;
+}
+
+function recordRotation(key: string, rotation: SharedRotation): void {
+  const now = Date.now();
+  for (const [k, r] of sharedRotations) {
+    if (r.expiresAt <= now) sharedRotations.delete(k);
+  }
+  while (sharedRotations.size >= MAX_SHARED_ROTATIONS) {
+    const oldest = sharedRotations.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    sharedRotations.delete(oldest);
+  }
+  sharedRotations.set(key, rotation);
+}
+
+/** Test hook: forget every shared refresh and rotation. */
+export function resetSharedOAuthRefreshState(): void {
+  sharedInFlight.clear();
+  sharedRotations.clear();
+}
+
+/**
  * Derived token shape the coordinator tracks after projecting upstream
  * tokens. `refreshKey` is only returned if the host rotates it (Codex
  * does; Anthropic + Copilot return the same key).
@@ -196,16 +249,58 @@ export class OAuthRefreshCoordinator<TTokens, TPayload> {
    * error message (`${this.label}: refresh key missing`) reads `this`.
    */
   private async performRefresh(signal?: AbortSignal): Promise<TTokens> {
-    const refreshKey = this.refreshKey;
+    let refreshKey = this.refreshKey;
     if (!refreshKey) {
       throw new Error(`${this.label}: refresh key missing`);
     }
-    const tokens = await this.hooks.refreshFn(refreshKey, signal);
+
+    // A sibling instance may already have exchanged (and so invalidated) the
+    // token this instance holds. Follow its rotations; when they end in a
+    // still-fresh access token, adopt it without touching the network. The
+    // sibling already persisted it, so no second `onRefresh`.
+    let adopted: TTokens | undefined;
+    for (let hop = 0; hop < MAX_ROTATION_HOPS; hop++) {
+      const rotation = sharedRotations.get(sharedKey(this.label, refreshKey));
+      if (!rotation || rotation.expiresAt <= Date.now()) break;
+      adopted = rotation.tokens as TTokens;
+      refreshKey = rotation.nextKey;
+    }
+    if (adopted !== undefined) {
+      const derived = this.hooks.projectTokens(adopted);
+      this.refreshKey = refreshKey;
+      if (Date.now() < derived.expiresAt - this.refreshSkewMs) {
+        this.expiresAt = derived.expiresAt;
+        this.hooks.applyTokens(derived);
+        return adopted;
+      }
+    }
+
+    const key = sharedKey(this.label, refreshKey);
+    let flight = sharedInFlight.get(key) as Promise<TTokens> | undefined;
+    const leader = flight === undefined;
+    if (!flight) {
+      const exchangedKey = refreshKey;
+      flight = this.hooks.refreshFn(exchangedKey, signal).finally(() => {
+        if (sharedInFlight.get(key) === flight) sharedInFlight.delete(key);
+      });
+      void flight.catch(() => {});
+      sharedInFlight.set(key, flight);
+    }
+    const tokens = await flight;
     const derived = this.hooks.projectTokens(tokens);
+    if (leader && derived.refreshKey && derived.refreshKey !== refreshKey) {
+      recordRotation(key, {
+        nextKey: derived.refreshKey,
+        tokens,
+        expiresAt: derived.expiresAt,
+      });
+    }
     this.expiresAt = derived.expiresAt;
     if (derived.refreshKey) this.refreshKey = derived.refreshKey;
     this.hooks.applyTokens(derived);
-    this.hooks.onRefresh?.(this.hooks.formatPayload(tokens, derived));
+    // Only the instance that ran the exchange persists it; joiners received
+    // the very same tokens.
+    if (leader) this.hooks.onRefresh?.(this.hooks.formatPayload(tokens, derived));
     return tokens;
   }
 }

@@ -15,6 +15,7 @@ export const SIMPLE_PANEL_EVENTS = [
   'open-mailbox',
   'open-prompt-library',
   'open-settings',
+  'open-auth',
   'open-context-breakdown',
   'open-session-health',
   'open-vector-memory-panel',

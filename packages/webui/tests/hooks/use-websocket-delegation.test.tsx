@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * `useWebSocket` exposes ~70 one-line `useCallback` wrappers that forward
@@ -95,6 +95,7 @@ describe('provider and key management delegation', () => {
       'sk-1',
       ['m1'],
       customModels,
+      'openai',
     );
 
     expect(called('addProvider')?.args).toEqual([
@@ -104,6 +105,7 @@ describe('provider and key management delegation', () => {
       'sk-1',
       ['m1'],
       customModels,
+      'openai',
     ]);
   });
 

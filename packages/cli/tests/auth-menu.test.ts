@@ -116,6 +116,32 @@ beforeEach(() => {
 });
 
 describe('runAuthDirect', () => {
+  it('creates two auth profiles of the same provider without adding keys to the first account', async () => {
+    const { deps, configPath } = await setupDeps({
+      catalog: {
+        openai: {
+          id: 'openai',
+          family: 'openai',
+          apiBase: 'https://api.openai.com/v1',
+          envVars: ['OPENAI_API_KEY'],
+        },
+      },
+      scripted: { secrets: ['account-one-key', 'account-two-key'] },
+    });
+    expect(await runAuthDirect(deps, { providerId: 'openai', alias: 'personal-account' })).toBe(0);
+    expect(await runAuthDirect(deps, { providerId: 'openai', alias: 'work-account' })).toBe(0);
+    const stored = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    expect(Object.keys(stored.providers)).toEqual(['personal-account', 'work-account']);
+    for (const alias of ['personal-account', 'work-account']) {
+      expect(stored.providers[alias].type).toBe('openai');
+      expect(stored.providers[alias].apiKeys).toHaveLength(1);
+      expect(stored.providers[alias].activeKey).toBe('default');
+    }
+    expect(JSON.stringify(stored)).not.toContain('account-one-key');
+    const before = await fs.readFile(configPath, 'utf8');
+    expect(await runAuthDirect(deps, { providerId: 'openai', alias: 'work-account' })).toBe(1);
+    expect(await fs.readFile(configPath, 'utf8')).toBe(before);
+  });
   it('writes encrypted key for a known catalog provider', async () => {
     const { deps, configPath } = await setupDeps({
       catalog: {
@@ -229,12 +255,14 @@ describe('runAuthMenu', () => {
   });
 
   it('starts ChatGPT OAuth from the main menu login option', async () => {
-    const { deps } = await setupDeps({ scripted: { lines: ['s', 'chatgpt', 'q'] } });
+    const { deps } = await setupDeps({ scripted: { lines: ['s', 'chatgpt', '', 'q'] } });
 
     const code = await runAuthMenu(deps);
 
     expect(code).toBe(0);
-    expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, 'chatgpt');
+    expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, 'chatgpt', {
+      providerId: 'openai-codex',
+    });
   });
 
   it('shows OAuth login options in the add menu and starts provider-specific login', async () => {
@@ -249,7 +277,7 @@ describe('runAuthMenu', () => {
           envVars: ['ANTHROPIC_API_KEY'],
         },
       },
-      scripted: { lines: ['a', 'copilot', 'q'] },
+      scripted: { lines: ['a', 'copilot', '', 'q'] },
     });
 
     const code = await runAuthMenu(deps);
@@ -258,7 +286,9 @@ describe('runAuthMenu', () => {
     expect(deps.renderer.write).toHaveBeenCalledWith(
       expect.stringContaining('OAuth login options'),
     );
-    expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, 'copilot');
+    expect(oauthMocks.runProviderAuthLogin).toHaveBeenCalledWith(deps, 'copilot', {
+      providerId: 'github-copilot',
+    });
   });
 
   it('writes a key after picking a catalog entry by number', async () => {

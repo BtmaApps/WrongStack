@@ -19,9 +19,11 @@
  * `createLocalLlmPreset` is the single source of truth — the three named
  * exports below are thin wrappers that pick the right defaults.
  */
+import { randomUUID } from 'node:crypto';
 import type { Request, StopReason, StreamEvent } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
+import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { normalizeOpenAI } from '../stop-reason.js';
@@ -91,6 +93,8 @@ interface LocalLlmStreamState {
   /** Tracks whether the upstream emitted a terminal `data: [DONE]` or `finish_reason`. */
   endedNaturally: boolean;
   finalEmitted: boolean;
+  /** Live provider id (alias-aware) for errors raised mid-stream. */
+  providerId?: string | undefined;
 }
 
 /**
@@ -172,7 +176,8 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
       }
       return body;
     },
-    createStreamState: (fallbackModel) => ({
+    createStreamState: (fallbackModel, providerId) => ({
+      providerId,
       model: fallbackModel,
       started: false,
       textOpen: false,
@@ -191,6 +196,11 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
       const parsed = safeParse<Record<string, unknown>>(msg.data);
       if (!parsed.ok || !parsed.value) return [];
       const obj = parsed.value;
+      // In-stream error envelope (`{"error":{…}}` inside a 200 stream) — raise
+      // it classified instead of committing an empty turn as a clean end_turn.
+      if (obj['error'] !== undefined && obj['error'] !== null) {
+        throw providerErrorFromStreamPayload(state.providerId ?? opts.id, obj);
+      }
       const out: StreamEvent[] = [];
 
       if (typeof obj['model'] === 'string') state.model = obj['model'] as string;
@@ -203,6 +213,8 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
         | Array<{
             delta?: {
               content?: string | null | undefined;
+              reasoning_content?: string | undefined;
+              reasoning?: string | undefined;
               tool_calls?: Array<{
                 index?: number | undefined;
                 id?: string | undefined;
@@ -213,6 +225,24 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
           }>
         | undefined;
       const choice = choices?.[0];
+
+      // Thinking models on local runtimes stream chain-of-thought out of band:
+      // Ollama as `delta.reasoning`, LM Studio / vLLM reasoning parsers as
+      // `delta.reasoning_content`. Previously neither was read, so the thinking
+      // channel stayed empty (and `thinkingOpen` could never become true).
+      const reasoningDelta =
+        typeof choice?.delta?.reasoning_content === 'string'
+          ? choice.delta.reasoning_content
+          : typeof choice?.delta?.reasoning === 'string'
+            ? choice.delta.reasoning
+            : undefined;
+      if (reasoningDelta && reasoningDelta.length > 0) {
+        if (!state.thinkingOpen) {
+          state.thinkingOpen = true;
+          out.push({ type: 'thinking_start' });
+        }
+        out.push({ type: 'thinking_delta', text: reasoningDelta });
+      }
 
       if (choice?.delta?.content) {
         if (state.thinkingOpen) {
@@ -298,7 +328,10 @@ export function createLocalLlmPreset(opts: LocalLlmPresetOptions) {
         out.push({ type: 'thinking_stop' });
       }
       for (const entry of state.toolByIndex.values()) {
-        if (!entry.id || !entry.name) continue;
+        if (!entry.name) continue;
+        // llama.cpp / older Ollama builds omit `id` on streamed tool calls;
+        // synthesize one rather than silently dropping the model's action.
+        if (!entry.id) entry.id = `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
         if (!entry.emittedStart) {
           out.push({ type: 'tool_use_start', id: entry.id, name: entry.name });
         }

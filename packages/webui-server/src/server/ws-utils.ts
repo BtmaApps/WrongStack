@@ -147,6 +147,12 @@ export function sendResult(ws: WebSocket, success: boolean, message: string): vo
  * See docs/audit/webui-full-review-2026-09-03.md B-05.
  */
 const dispatchSession = new AsyncLocalStorage<string | undefined>();
+const operationRequest = new AsyncLocalStorage<string | undefined>();
+
+/** Correlate operation results without changing every domain handler signature. */
+export function runWithOperationRequest<T>(requestId: string | undefined, fn: () => T): T {
+  return operationRequest.run(requestId, fn);
+}
 
 /**
  * Run one message dispatch with `sessionId` bound as the current session.
@@ -177,11 +183,21 @@ export function runWithDispatchSession<T>(sessionId: string | undefined, fn: () 
 export function stampDispatchSession<T extends object>(msg: T): T {
   if ((msg as { type?: unknown }).type !== 'key.operation_result') return msg;
   const sessionId = dispatchSession.getStore();
-  if (!sessionId) return msg;
+  const requestId = operationRequest.getStore();
+  if (!sessionId && !requestId) return msg;
   const payload = (msg as { payload?: unknown }).payload;
   if (payload !== undefined && (typeof payload !== 'object' || payload === null)) return msg;
-  if (payload && 'sessionId' in payload) return msg;
-  return { ...msg, payload: { ...(payload ?? {}), sessionId } };
+  const addSession = sessionId && !(payload && 'sessionId' in payload);
+  const addRequest = requestId && !(payload && 'requestId' in payload);
+  if (!addSession && !addRequest) return msg;
+  return {
+    ...msg,
+    payload: {
+      ...(payload ?? {}),
+      ...(addSession ? { sessionId } : {}),
+      ...(addRequest ? { requestId } : {}),
+    },
+  };
 }
 
 /**
@@ -296,8 +312,8 @@ export function withRequestId<T extends Record<string, unknown>>(
 ): T & { requestId?: string } {
   if (!requestPayload || typeof requestPayload !== 'object') return responsePayload;
   const direct = (requestPayload as { requestId?: unknown }).requestId;
-  const nested =
-    (requestPayload as { payload?: { requestId?: unknown } | undefined }).payload?.requestId;
+  const nested = (requestPayload as { payload?: { requestId?: unknown } | undefined }).payload
+    ?.requestId;
   const requestId = typeof direct === 'string' ? direct : nested;
   if (typeof requestId === 'string' && requestId.length > 0) {
     return { ...responsePayload, requestId };

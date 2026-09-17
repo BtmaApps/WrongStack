@@ -19,13 +19,14 @@ function outcome(overrides: Partial<ProviderAuthOutcome> = {}): ProviderAuthOutc
 }
 
 describe('built-in provider auth strategies', () => {
-  it('publishes the existing three login flows through one registry', () => {
+  it('publishes every built-in login flow through one registry', () => {
     const registry = createBuiltinProviderAuthRegistry();
     expect(registry.list().map((entry) => entry.id)).toEqual([
       'chatgpt',
       'claude',
       'copilot',
       'openrouter',
+      'antigravity',
     ]);
     expect(registry.resolveId('openai-codex')).toBe('chatgpt');
     expect(registry.resolveId('anthropic-oauth')).toBe('claude');
@@ -33,10 +34,36 @@ describe('built-in provider auth strategies', () => {
     expect(registry.get('copilot')?.interactionTypes).toEqual(['device_code']);
     expect(registry.resolveId('openrouter-login')).toBe('openrouter');
     expect(registry.resolveId('openrouter-oauth')).toBe('openrouter');
+    expect(registry.resolveId('google-antigravity')).toBe('antigravity');
+    expect(registry.resolveId('agy')).toBe('antigravity');
   });
 });
 
 describe('applyProviderAuthOutcome', () => {
+  it('preserves an existing auth profile when a different provider tries to use its alias', () => {
+    const providers: Record<string, ProviderConfig> = {
+      work: { type: 'anthropic', family: 'anthropic', apiKey: 'keep-existing-key' },
+    };
+    expect(() =>
+      applyProviderAuthOutcome(providers, outcome(), { targetProviderId: 'work' }),
+    ).toThrow('another provider');
+    expect(providers['work']).toEqual({
+      type: 'anthropic',
+      family: 'anthropic',
+      apiKey: 'keep-existing-key',
+    });
+  });
+
+  it.each(['account/model', '__proto__', 'constructor'])(
+    'rejects an unroutable or reserved account alias %s',
+    (targetProviderId) => {
+      const providers: Record<string, ProviderConfig> = {};
+      expect(() => applyProviderAuthOutcome(providers, outcome(), { targetProviderId })).toThrow(
+        'alias',
+      );
+      expect(Object.keys(providers)).toEqual([]);
+    },
+  );
   it('upserts credentials, preserves aliases, and clears the legacy plaintext key', () => {
     const providers: Record<string, ProviderConfig> = {
       work: {
@@ -79,5 +106,15 @@ describe('applyProviderAuthOutcome', () => {
       models: ['model-a'],
       activeKey: 'oauth-default',
     });
+  });
+
+  it('retains the canonical provider type for an arbitrary account alias', () => {
+    const providers: Record<string, ProviderConfig> = {};
+    const applied = applyProviderAuthOutcome(providers, outcome(), {
+      targetProviderId: 'personal-account',
+    });
+    expect(applied.providerId).toBe('personal-account');
+    expect(applied.provider.type).toBe('openrouter');
+    expect(providers['openrouter']).toBeUndefined();
   });
 });

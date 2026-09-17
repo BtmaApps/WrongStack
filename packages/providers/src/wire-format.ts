@@ -7,6 +7,7 @@ import type {
   WireFamily,
 } from '@wrongstack/core/types';
 import { ConfigError, ProviderError } from '@wrongstack/core/types';
+import { isEffortRejected, isEffortRejection, rememberEffortRejected } from './effort-support.js';
 import {
   type HeadersLike,
   parseProviderHttpError,
@@ -55,8 +56,11 @@ export interface WireFormatConfig<S = Record<string, unknown>> {
    *  started on — the catalog lookup keyed on `req.model` is what stays
    *  correct across `/model` switches, fallback hops and subagents. */
   buildBody(req: Request, ctx: BuildBodyContext): Record<string, unknown>;
-  /** Construct fresh per-stream state. Called once per `stream()` call. */
-  createStreamState(fallbackModel: string): S;
+  /** Construct fresh per-stream state. Called once per `stream()` call.
+   *  `providerId` is the live provider's id (a user alias such as
+   *  `minimax-token-plan` on the Anthropic wire), so errors raised from inside
+   *  `parseStreamEvent` can name the provider the fallback chain knows. */
+  createStreamState(fallbackModel: string, providerId?: string): S;
   /**
    * Translate one SSE event into 0+ canonical events. Mutating `state` is
    * expected — providers carry per-stream accumulators (partial tool JSON,
@@ -97,13 +101,14 @@ export class WireFormatProvider<S = Record<string, unknown>> extends WireAdapter
     cfg: WireFormatConfig<S>,
     opts: {
       apiKey: string;
+      id?: string | undefined;
       baseUrl?: string | undefined;
       fetchImpl?: typeof fetch | undefined;
       streamOpts?: WireAdapterStreamOptions | undefined;
     },
   ) {
     super(opts.apiKey, opts.baseUrl ?? cfg.defaultBaseUrl, opts.fetchImpl, opts.streamOpts);
-    this.id = cfg.id;
+    this.id = opts.id ?? cfg.id;
     this.capabilities = cfg.capabilities;
     this.cfg = cfg;
   }
@@ -123,6 +128,35 @@ export class WireFormatProvider<S = Record<string, unknown>> extends WireAdapter
     // Forward the whole context (capabilities + provider id) so the preset can
     // resolve the model's real output ceiling for `req.model`.
     return this.cfg.buildBody(req, ctx);
+  }
+
+  /**
+   * Same learn-and-retry the class-based OpenAI adapter runs: a wire format
+   * that sends `reasoning_effort` (Copilot, Mistral) may meet a model whose
+   * enum lacks the level. Send it, and on a 400/422 naming the field retry
+   * once without it and remember the pair. Formats that never send the field
+   * are unaffected — nothing can raise that rejection for them.
+   */
+  override async *stream(req: Request, opts: { signal: AbortSignal }): AsyncIterable<StreamEvent> {
+    let emitted = false;
+    try {
+      for await (const ev of super.stream(req, opts)) {
+        emitted = true;
+        yield ev;
+      }
+      return;
+    } catch (err) {
+      if (
+        emitted ||
+        opts.signal.aborted ||
+        isEffortRejected(this.id, req.model) ||
+        !isEffortRejection(err)
+      ) {
+        throw err;
+      }
+      rememberEffortRejected(this.id, req.model);
+    }
+    yield* super.stream(req, opts);
   }
 
   protected override parseStream(
@@ -153,7 +187,7 @@ export class WireFormatProvider<S = Record<string, unknown>> extends WireAdapter
     body: Parameters<typeof parseSSE>[0],
     fallbackModel: string,
   ): AsyncIterable<StreamEvent> {
-    const state = this.cfg.createStreamState(fallbackModel);
+    const state = this.cfg.createStreamState(fallbackModel, this.id);
     for await (const msg of parseSSE(body)) {
       for (const ev of this.cfg.parseStreamEvent(msg, state)) {
         yield ev;
@@ -220,8 +254,17 @@ export function createWireFormatFactory<S>(
     type: cfg.id,
     family: cfg.family,
     create: (rawCfg: unknown): Provider => {
-      const c = rawCfg as { apiKey?: string | undefined; baseUrl?: string | undefined };
-      const apiKey = opts.apiKey ?? c.apiKey;
+      const c = rawCfg as {
+        type?: string;
+        apiKey?: string;
+        baseUrl?: string;
+        activeKey?: string;
+        apiKeys?: { label: string; apiKey: string }[];
+      };
+      const active = Array.isArray(c.apiKeys)
+        ? (c.apiKeys.find((key) => key.label === c.activeKey) ?? c.apiKeys[0])
+        : undefined;
+      const apiKey = opts.apiKey ?? active?.apiKey ?? c.apiKey;
       if (!apiKey) {
         throw new ConfigError({
           message: `Provider "${cfg.id}" requires an apiKey.`,
@@ -230,6 +273,7 @@ export function createWireFormatFactory<S>(
       }
       return new WireFormatProvider(cfg, {
         apiKey,
+        id: c.type ?? cfg.id,
         baseUrl: opts.baseUrl ?? c.baseUrl,
       });
     },

@@ -46,6 +46,62 @@ export function parseProviderHttpError(
   });
 }
 
+/** Vendor error types that name a client-side failure explicitly (Anthropic's set). */
+const STREAM_ERROR_TYPE_STATUS: Record<string, number> = {
+  invalid_request_error: 400,
+  authentication_error: 401,
+  permission_error: 403,
+  not_found_error: 404,
+  request_too_large: 413,
+};
+
+/**
+ * Build a ProviderError from an error envelope delivered INSIDE a 200 stream
+ * (Anthropic `event: error`, OpenRouter/OpenAI-compatible `{"error":{…}}`
+ * chunks). There is no HTTP status to classify on, so one is derived from the
+ * payload: a numeric `code` in 4xx/5xx wins, then the vendor `type`
+ * (`overloaded_error` → 529, `rate_limit_error` → 429). Anything else is first
+ * classified as a 400 — so context-overflow / content-filter / quota prose
+ * still lands on its non-retryable kind — and only falls back to a retryable
+ * 500 when that yields a bare `invalid_request`: a mid-stream failure after
+ * the request was already accepted is an upstream fault, not a bad request.
+ */
+export function providerErrorFromStreamPayload(
+  providerId: string,
+  payload: Record<string, unknown>,
+): ProviderError {
+  const raw = JSON.stringify(payload);
+  const body = parseProviderErrorBody(raw);
+  const err = isPlainObject(payload['error']) ? payload['error'] : payload;
+  const numericCode = Number(err['code'] ?? err['status']);
+  let status: number;
+  if (Number.isInteger(numericCode) && numericCode >= 400 && numericCode <= 599) {
+    status = numericCode;
+  } else if (body.type === 'overloaded_error') {
+    status = 529;
+  } else if (body.type === 'rate_limit_error') {
+    status = 429;
+  } else if (/^(api_error|server_error|internal_error)$/.test(body.type ?? '')) {
+    status = 500;
+  } else if (body.type !== undefined && STREAM_ERROR_TYPE_STATUS[body.type] !== undefined) {
+    status = STREAM_ERROR_TYPE_STATUS[body.type] as number;
+  } else {
+    status = classifyProviderError(400, body) === 'invalid_request' ? 500 : 400;
+  }
+  if (body.retryAfterMs === undefined) {
+    const hint = retryAfterMsFromBody(body);
+    if (hint !== undefined) body.retryAfterMs = hint;
+  }
+  const kind = classifyProviderError(status, body);
+  return new ProviderError(
+    `${providerId} stream error${body.message ? `: ${scrubErrorText(body.message)}` : ''}`,
+    status,
+    isRetryableKind(kind),
+    providerId,
+    { body: scrubProviderErrorBody(body), kind },
+  );
+}
+
 /**
  * Redact credentials from the free-text fields of a parsed provider error.
  * `retryAfterMs` and `rawLength` are numeric metadata and pass through; `type`
@@ -232,6 +288,30 @@ export function retryAfterMsFromBody(body: ProviderErrorBody): number | undefine
         return Math.round(num * 1_000);
       }
     }
+  }
+
+  // 4. Compound duration after a "reset" verb: "quota will reset after 2h7m23s",
+  //    "resets in 5m30s". Google's Cloud Code (Antigravity) phrases an
+  //    exhausted plan exactly this way and sends no Retry-After header, so
+  //    without this the waiting room has no reset time and falls back to a
+  //    generic backoff against a window that is hours wide.
+  //
+  //    Deliberately LAST: a message that also states an explicit "retry in Ns"
+  //    is honouring the provider's own instruction, and pattern 3 should keep
+  //    winning that case.
+  const compoundRe =
+    /(?:reset|resets|renew|renews|available)\s*(?:after|in)\s*(?=\d)(\d+h)?(\d+m)?(\d+s)?/i;
+  const compoundMatch = compoundRe.exec(text);
+  if (compoundMatch) {
+    const hours = Number.parseInt(compoundMatch[1] ?? '0', 10) || 0;
+    const minutes = Number.parseInt(compoundMatch[2] ?? '0', 10) || 0;
+    const seconds = Number.parseInt(compoundMatch[3] ?? '0', 10) || 0;
+    const total = hours * 3_600_000 + minutes * 60_000 + seconds * 1_000;
+    // A stated reset of zero is a burst/RPM throttle, not a plan window. It is
+    // real information — but the right response is the retry policy's own short
+    // backoff, so report "no hint" rather than a 0ms wait that would read as
+    // "retry immediately, forever".
+    if (total > 0 && total <= 24 * 3_600_000) return total;
   }
 
   return undefined;

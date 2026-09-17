@@ -148,6 +148,32 @@ export const CAPABILITIES_BY_FAMILY: Record<WireFamily, Capabilities> = {
     audio: false,
     multipleCompletions: false,
   },
+  // Antigravity rides the Gemini wire through Google's Cloud Code envelope, so
+  // the model capabilities are Gemini's. Two differences are the envelope's,
+  // not the model's: the endpoint is streaming-only (the non-streaming
+  // `generateContent` sibling is not used), and the envelope rejects unknown
+  // top-level fields, which is why nothing here promises a feature the
+  // envelope would 400 on.
+  'google-antigravity': {
+    tools: true,
+    parallelTools: true,
+    vision: true,
+    streaming: true,
+    promptCache: false,
+    systemPrompt: true,
+    jsonMode: true,
+    reasoning: false,
+    maxContext: 1_000_000,
+    cacheControl: 'none',
+    topK: true,
+    frequencyPenalty: true,
+    presencePenalty: true,
+    seed: true,
+    structuredOutput: true,
+    logprobs: true,
+    audio: false,
+    multipleCompletions: false,
+  },
   unsupported: {
     tools: false,
     parallelTools: false,

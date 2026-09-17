@@ -20,6 +20,7 @@ const VALID_QUIRK_KEYS = new Set<keyof CompatibilityQuirks>([
   'stripThinkTags',
   'maxTools',
   'tolerateMissingTerminalMarker',
+  'suppressEffortWithTools',
 ]);
 
 export function isCompatibilityQuirks(value: unknown): value is CompatibilityQuirks {
@@ -110,11 +111,18 @@ export class OpenAICompatibleProvider extends OpenAIProvider {
     // accept the `top_k` parameter even though real OpenAI rejects it.
     if (req.topK !== undefined) body['top_k'] = req.topK;
     applyOpenAICompatiblePolicy(body, req, this.id);
-    // Conservative gateway guard, applied AFTER the generic fill so it
-    // suppresses uniformly (see suppressEffortForGatewayTools). Providers with
-    // a requestPolicy own their effort contract, and the zai-glm quirk writes
-    // a deliberate mapping — both are exempt.
-    suppressEffortForGatewayTools(body, req, this.id, this.opts.quirks?.thinkingParam);
+    // Gateway guard, applied AFTER the generic fill so it suppresses
+    // uniformly when it applies at all: only for a gateway that has already
+    // rejected the field alongside tools (learned in `stream`) or one the user
+    // pinned with the quirk. Providers with a requestPolicy own their effort
+    // contract, and the zai-glm quirk writes a deliberate mapping — both exempt.
+    suppressEffortForGatewayTools(
+      body,
+      req,
+      this.id,
+      this.opts.quirks?.thinkingParam,
+      this.opts.quirks?.suppressEffortWithTools,
+    );
     return body;
   }
 
@@ -221,31 +229,28 @@ import { GENERIC_EFFORT_FALLBACK } from './openai-shared.js';
 export { GENERIC_EFFORT_FALLBACK } from './openai-shared.js';
 
 /**
- * Conservative gateway guard for GENERIC openai-compatible endpoints only.
+ * Drop `reasoning_effort` under tools for a gateway the user pinned.
  *
- * Observed behavior of a subset of Chat Completions gateways (some LiteLLM /
- * omniroute deployments): they reject `reasoning_effort` whenever function
- * tools are present, regardless of value — presence itself is validated
- * before the value. OpenAI's first-party endpoint has no such restriction
- * (effort works with tool use per its docs), which is why this guard lives
- * here and not in the shared base builder.
+ * A subset of Chat Completions gateways (some LiteLLM / omniroute
+ * deployments) reject the field whenever function tools are present,
+ * regardless of value — presence is validated before the value.
  *
- * Runs AFTER `applyGenericReasoningEffort` and AFTER the request policy so
- * suppression is uniform: with tools present, EVERY effort level is dropped —
- * not just the ones the base builder emits (the old behavior was inverted:
- * low/medium/high/none were dropped while minimal/xhigh/max survived as
- * mapped `low`/`high` extremes). Providers with a `requestPolicy` own their
- * effort contract and are exempt; the policy either deleted the field
- * already or wrote a value their public API accepts. The `zai-glm` quirk is
- * exempt too: `applyThinkingParams` wrote a deliberate Z.AI-contract mapping
- * that this guard must not undo.
+ * Opt-in only: the adapter otherwise SENDS the field and learns from a
+ * refusal (`effort-support.ts`), so a working gateway keeps the user's
+ * setting and a refusing one costs a single failed request. Set the quirk for
+ * a gateway you already know refuses the combination to skip even that.
+ * Providers with a `requestPolicy` own their effort contract and are exempt;
+ * the `zai-glm` quirk is exempt too, since `applyThinkingParams` wrote a
+ * deliberate Z.AI-contract mapping this guard must not undo.
  */
 function suppressEffortForGatewayTools(
   body: Record<string, unknown>,
   req: Request,
   providerId: string,
   thinkingParam: CompatibilityQuirks['thinkingParam'],
+  forced: boolean | undefined,
 ): void {
+  if (!forced) return;
   if (!req.tools || req.tools.length === 0) return;
   if (thinkingParam === 'zai-glm') return;
   if (resolveProviderDefinition(providerId)?.requestPolicy) return;

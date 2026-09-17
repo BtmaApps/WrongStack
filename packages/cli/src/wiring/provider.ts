@@ -8,6 +8,7 @@ import {
   installCatalogModelOutputLimits,
   isSetupProvider,
   makeProviderFromConfig,
+  setStreamTimeoutDefaults,
   setupProviderResolved,
   withCatalogCapabilities,
 } from '@wrongstack/providers';
@@ -122,6 +123,12 @@ export async function setupProvider(params: {
       context: { provider: config.provider, family: resolvedProvider.npm, kind: 'unsupported' },
     });
   }
+
+  // Stream watchdog budgets. Every provider reads these at construction, so
+  // they must be installed before the first one is built — the composite
+  // providers never forwarded per-instance stream options to their delegates,
+  // which is why this is process state rather than a factory argument.
+  setStreamTimeoutDefaults(config.modelRuntime?.streaming);
 
   // Per-request output ceilings. The capability overlay below is resolved
   // ONCE, for `config.model`; this index is keyed on the model of the request

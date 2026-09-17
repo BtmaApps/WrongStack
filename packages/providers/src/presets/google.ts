@@ -15,6 +15,7 @@ import type {
   Usage,
 } from '@wrongstack/core/types';
 import { compactToolDefinitionForWire, safeParse } from '@wrongstack/core/utils';
+import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveMaxOutputTokens } from '../model-output-limits.js';
 import { normalizeGemini } from '../stop-reason.js';
@@ -26,6 +27,8 @@ interface GeminiPart {
   functionResponse?: { name: string | undefined; response: { content?: unknown | undefined } };
   inlineData?: { mimeType: string | undefined; data: string };
   thoughtSignature?: string | undefined;
+  /** True on thought-summary parts (returned when `includeThoughts` is set). */
+  thought?: boolean | undefined;
 }
 
 interface GeminiContent {
@@ -47,6 +50,10 @@ export interface GoogleStreamState {
   finalEmitted: boolean;
   /** Set once a `finishReason` is seen — Gemini's end-of-stream marker. */
   sawTerminal: boolean;
+  /** Live provider id (alias-aware) for errors raised mid-stream. */
+  providerId?: string | undefined;
+  /** A thought-summary run is open on the thinking channel. */
+  thinkingOpen?: boolean | undefined;
 }
 
 export const googleWireFormat = defineWireFormat<GoogleStreamState>({
@@ -84,7 +91,8 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
     }
     return body;
   },
-  createStreamState: (fallbackModel) => ({
+  createStreamState: (fallbackModel, providerId) => ({
+    providerId,
     model: fallbackModel,
     usage: { input: 0, output: 0 },
     stopReason: 'end_turn',
@@ -103,9 +111,18 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
         candidatesTokenCount?: number | undefined;
         cachedContentTokenCount?: number | undefined;
       };
+      promptFeedback?: { blockReason?: string | undefined } | undefined;
+      error?: unknown;
     }>(msg.data);
     if (!parsed.ok || !parsed.value) return [];
     const obj = parsed.value;
+    // A failure delivered inside the 200 stream: `{"error":{code,message,status}}`.
+    if (obj.error !== undefined && obj.error !== null) {
+      throw providerErrorFromStreamPayload(
+        state.providerId ?? 'google',
+        obj as Record<string, unknown>,
+      );
+    }
     const out: StreamEvent[] = [];
 
     if (obj.modelVersion) state.model = obj.modelVersion;
@@ -116,13 +133,33 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
 
     const candidate = obj.candidates?.[0];
     for (const part of candidate?.content?.parts ?? []) {
+      if (part.thought === true) {
+        // Thought summaries belong on the thinking channel, never in the
+        // visible answer.
+        if (typeof part.text === 'string' && part.text.length > 0) {
+          if (!state.thinkingOpen) {
+            state.thinkingOpen = true;
+            out.push({ type: 'thinking_start' });
+          }
+          out.push({ type: 'thinking_delta', text: part.text });
+        }
+        continue;
+      }
+      if (state.thinkingOpen) {
+        state.thinkingOpen = false;
+        out.push({ type: 'thinking_stop' });
+      }
       if (typeof part.text === 'string' && part.text.length > 0) {
         out.push({ type: 'text_delta', text: part.text });
       } else if (part.functionCall) {
         const name = part.functionCall.name;
         if (typeof name !== 'string' || name.length === 0) continue;
         state.sawFunctionCall = true;
-        const id = `${name}_${randomUUID().slice(0, 8)}`;
+        // Gemini assigns no call id. Keep the synthesized one short and
+        // name-independent: OpenAI rejects tool_call ids over 40 chars, and a
+        // `<tool name>_<8 hex>` id overflowed that for long MCP tool names
+        // once the history reached an OpenAI wire (`/model` switch, fallback).
+        const id = `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
         out.push({ type: 'tool_use_start', id, name });
         const providerMeta =
           typeof part.thoughtSignature === 'string'
@@ -139,6 +176,13 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
 
     if (candidate?.finishReason) {
       state.stopReason = normalizeGemini(candidate.finishReason);
+      state.sawTerminal = true;
+    } else if (!candidate && obj.promptFeedback?.blockReason) {
+      // The PROMPT was blocked: Gemini answers with `promptFeedback.blockReason`
+      // and no candidates, so no finishReason ever arrives. Without this the
+      // stream looked truncated and was retried as a transient failure — the
+      // same blocked prompt, over and over.
+      state.stopReason = 'refusal';
       state.sawTerminal = true;
     }
 
@@ -159,7 +203,13 @@ export const googleWireFormat = defineWireFormat<GoogleStreamState>({
     if (state.finalEmitted || !state.started) return [];
     state.finalEmitted = true;
     const finalStop: StopReason = state.sawFunctionCall ? 'tool_use' : state.stopReason;
-    return [{ type: 'message_stop', stopReason: finalStop, usage: state.usage }];
+    const out: StreamEvent[] = [];
+    if (state.thinkingOpen) {
+      state.thinkingOpen = false;
+      out.push({ type: 'thinking_stop' });
+    }
+    out.push({ type: 'message_stop', stopReason: finalStop, usage: state.usage });
+    return out;
   },
   // Started receiving but no `finishReason` arrived → the Gemini stream was cut
   // mid-response. Surface a retryable error instead of a synthetic end_turn.

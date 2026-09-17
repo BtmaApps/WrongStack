@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useAppTranslation } from '../../src/i18n';
 
@@ -44,16 +44,26 @@ describe('provider.addApiKey label (redaction-marker regression)', () => {
     }
   });
 
-  it('resolves the label through the live i18n chain ProviderSection renders with', () => {
+  it('resolves the label through the live i18n chain ProviderSection renders with', async () => {
     const { result } = renderHook(() => useAppTranslation());
-    expect(result.current.t('settings:provider.addApiKey')).toBe('Add API key');
+    await waitFor(() =>
+      expect(result.current.t('settings:provider.addApiKey')).toBe('Add API key'),
+    );
   });
 
-  it('keeps ProviderSection wired to this key', () => {
+  it('keeps account creation and within-profile key controls wired to human labels', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/components/SettingsPanel/ProviderSection.tsx'),
       'utf8',
     );
-    expect(source).toContain("t('settings:provider.addApiKey')");
+    expect(source).toContain("t('settings:provider.addProfile')");
+    expect(source).toContain("t('settings:provider.addKey')");
+    for (const locale of LOCALES) {
+      const labels = JSON.parse(readFileSync(catalogPath(locale), 'utf8')).provider;
+      for (const key of ['addProfile', 'addKey']) {
+        expect(labels[key]).not.toContain('[REDACTED');
+        expect(labels[key].length).toBeGreaterThan(0);
+      }
+    }
   });
 });

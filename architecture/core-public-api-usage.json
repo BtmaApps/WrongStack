@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 321,
+      "files": 322,
       "typeOnly": 257,
-      "runtimeOrMixed": 81
+      "runtimeOrMixed": 82
     },
     "@wrongstack/core/agent-catalog": {
       "files": 17,
@@ -14,14 +14,14 @@
       "runtimeOrMixed": 18
     },
     "@wrongstack/core/chronicle": {
-      "files": 12,
+      "files": 13,
       "typeOnly": 3,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 11
     },
     "@wrongstack/core/coordination": {
-      "files": 223,
+      "files": 225,
       "typeOnly": 84,
-      "runtimeOrMixed": 196
+      "runtimeOrMixed": 198
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 46
     },
     "@wrongstack/core/kernel": {
-      "files": 273,
+      "files": 274,
       "typeOnly": 140,
-      "runtimeOrMixed": 145
+      "runtimeOrMixed": 146
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -119,14 +119,14 @@
       "runtimeOrMixed": 7
     },
     "@wrongstack/core/quota": {
-      "files": 10,
+      "files": 19,
       "typeOnly": 0,
-      "runtimeOrMixed": 10
+      "runtimeOrMixed": 19
     },
     "@wrongstack/core/registry": {
-      "files": 128,
+      "files": 130,
       "typeOnly": 62,
-      "runtimeOrMixed": 68
+      "runtimeOrMixed": 70
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -139,19 +139,19 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 155,
+      "files": 162,
       "typeOnly": 27,
-      "runtimeOrMixed": 132
+      "runtimeOrMixed": 139
     },
     "@wrongstack/core/session-catalog": {
-      "files": 10,
+      "files": 12,
       "typeOnly": 0,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 13
     },
     "@wrongstack/core/skills": {
-      "files": 8,
+      "files": 10,
       "typeOnly": 3,
-      "runtimeOrMixed": 5
+      "runtimeOrMixed": 8
     },
     "@wrongstack/core/statusline": {
       "files": 23,
@@ -174,9 +174,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1093,
-      "typeOnly": 982,
-      "runtimeOrMixed": 324
+      "files": 1112,
+      "typeOnly": 994,
+      "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -203,10 +203,15 @@
       "typeOnly": 18,
       "runtimeOrMixed": 1
     },
+    "@wrongstack/core/typesafe": {
+      "files": 1,
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
     "@wrongstack/core/utils": {
-      "files": 586,
-      "typeOnly": 55,
-      "runtimeOrMixed": 559
+      "files": 591,
+      "typeOnly": 57,
+      "runtimeOrMixed": 561
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -282,12 +287,6 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/acp-server-agent.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/agent",
-      "file": "packages/cli/src/auth-menu/panel-service.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -743,6 +742,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/tests/boot/vector-memory-boot-teardown.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1046,6 +1051,12 @@
       "file": "packages/plugins/src/todo-listener/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/providers/src/provider-config-state.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -2321,6 +2332,12 @@
     },
     {
       "specifier": "@wrongstack/core/chronicle",
+      "file": "packages/tui/src/connection-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/chronicle",
       "file": "packages/tui/src/connections-health.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -2933,6 +2950,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/tests/boot/director-tool-surface.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3344,6 +3367,12 @@
       "file": "packages/tui/src/components/agents-monitor.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/tui/src/connection-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -5987,6 +6016,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/boot/container-wiring.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7733,6 +7768,36 @@
     },
     {
       "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/anthropic-oauth.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/anthropic-rate-limits.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/anthropic.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/github-copilot-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/google-antigravity-quota.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/openai-codex-rate-limits.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -7740,6 +7805,30 @@
     {
       "specifier": "@wrongstack/core/quota",
       "file": "packages/providers/src/openai-codex.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/src/presets/google-antigravity.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/anthropic-rate-limits.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/github-copilot-quota.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/quota",
+      "file": "packages/providers/tests/google-antigravity.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7999,6 +8088,12 @@
       "specifier": "@wrongstack/core/registry",
       "file": "packages/cli/tests/acp-server-agent.test.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -8543,6 +8638,12 @@
     },
     {
       "specifier": "@wrongstack/core/registry",
+      "file": "packages/webui-server/tests/setup-screen-auth-profile.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
       "file": "packages/webui-server/tests/setup-screen.proxy.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -8927,6 +9028,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/auth-live-provider-check.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/auth-menu-adopt-default-race.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9011,6 +9118,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/hq-auth-live-browser-smoke.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/hq-totp-2fa.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9054,6 +9167,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/provider-config-utils.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/provider-persisters.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9449,6 +9568,18 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/auth-live-browser-smoke.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/auth-process-smoke.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/tests/auto-healer.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -9480,6 +9611,18 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/webui-server/tests/process-handlers.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/provider-config-io-integration.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/provider-token-persisters.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9539,6 +9682,18 @@
     },
     {
       "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/tui/src/connection-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
+      "file": "packages/tui/src/connections-health.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/session-catalog",
       "file": "packages/webui-server/src/server/connections/collector.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -9575,7 +9730,19 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/webui-server/route-contexts.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/src/wiring/runtime-dispatch-state.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9595,7 +9762,7 @@
       "specifier": "@wrongstack/core/skills",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/skills",
@@ -11363,6 +11530,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/services/dispatch-classifier.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/services/mcp-management.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -11987,6 +12160,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/tui-resource-menus.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -12209,6 +12388,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/wiring/provider-persisters.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/wiring/provider-runtime-setup.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -12392,6 +12577,12 @@
       "file": "packages/cli/tests/auth-panel-service.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/auth-profile-fallback.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -12774,6 +12965,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/provider-config-utils.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/provider-persisters.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -13895,9 +14092,15 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/google-antigravity.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/google.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -13922,6 +14125,12 @@
       "file": "packages/providers/src/native-catalog.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/oauth/antigravity.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14035,7 +14244,13 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/src/presets/anthropic.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/presets/google-antigravity.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14066,6 +14281,18 @@
       "file": "packages/providers/src/prompt-cache-key.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/provider-config-state.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/src/provider-credential-state.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14159,6 +14386,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/anthropic-rate-limits.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/anthropic.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14184,6 +14417,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/codex-websocket.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/cross-wire-history.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -14219,9 +14458,21 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/github-copilot-quota.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/github-copilot.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/google-antigravity.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -14352,6 +14603,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/providers/tests/sse.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/stream-failure-modes.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/providers/tests/stream-timeouts.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16757,6 +17020,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/provider-token-persisters.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/provider/catalog.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -16884,7 +17153,7 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/setup-screen.ts",
-      "typeOnly": 2,
+      "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
@@ -17147,6 +17416,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/setup-screen-auth-profile.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/setup-screen.proxy.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17168,6 +17443,12 @@
       "file": "packages/webui-server/tests/start-webui-bootstrap-units.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/start-webui-credential-watcher.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17486,6 +17767,12 @@
       "file": "packages/sdd/tests/verify-task.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/services/dispatch-classifier.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -18797,6 +19084,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/tools-skills.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18929,6 +19222,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/wiring/provider-persisters.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/wiring/provider-runtime-setup.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18998,6 +19297,12 @@
       "file": "packages/cli/tests/audit-subcommand.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/auth-live-provider-check.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -20303,6 +20608,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/connection-actions.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/connections-health.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20474,6 +20785,12 @@
       "file": "packages/tui/src/submit-controller.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/tests/connection-actions.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -20863,7 +21180,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/setup-screen.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

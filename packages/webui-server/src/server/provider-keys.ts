@@ -1,9 +1,3 @@
-import { expectDefined } from '@wrongstack/core/utils';
-import {
-  buildProviderConfigFromPreset,
-  rehydrateCanonicalProviderConfig,
-  resolvePresetForAlias,
-} from '@wrongstack/providers';
 /**
  * Pure provider/API-key record transforms for the WebUI server's `key.*` and
  * `provider.*` WebSocket handlers.
@@ -20,6 +14,13 @@ import {
  * same way the original handlers did before calling `saveProviders`.
  */
 import type { ProviderApiKey, ProviderConfig } from '@wrongstack/core/types';
+import { expectDefined } from '@wrongstack/core/utils';
+import {
+  authProfileAliasError,
+  buildProviderConfigFromPreset,
+  rehydrateCanonicalProviderConfig,
+  resolvePresetForAlias,
+} from '@wrongstack/providers';
 export type ProvidersRecord = Record<string, ProviderConfig>;
 
 export interface KeyOpResult {
@@ -112,7 +113,11 @@ export function upsertKey(
   apiKey: string,
   nowIso: string,
 ): KeyOpResult {
-  let existing: ProviderConfig | undefined = providers[providerId];
+  const aliasError = authProfileAliasError(providerId);
+  if (aliasError) return { ok: false, message: aliasError };
+  let existing: ProviderConfig | undefined = Object.hasOwn(providers, providerId)
+    ? providers[providerId]
+    : undefined;
   if (!existing) {
     // New entry: hydrate from a trusted preset when the id (or its
     // <id>-suffix alias) maps to a canonical vendor entry — this is how
@@ -147,11 +152,14 @@ export function deleteKey(
   providerId: string,
   label: string,
 ): KeyOpResult {
-  const existing = providers[providerId];
+  const existing = Object.hasOwn(providers, providerId) ? providers[providerId] : undefined;
   if (!existing) {
     return { ok: false, message: `Provider "${providerId}" not found` };
   }
-  const keys = normalizeKeys(existing).filter((k) => k.label !== label);
+  const currentKeys = normalizeKeys(existing);
+  if (!currentKeys.some((key) => key.label === label))
+    return { ok: false, message: `Key "${label}" not found in ${providerId}` };
+  const keys = currentKeys.filter((k) => k.label !== label);
   if (keys.length === 0) {
     delete providers[providerId];
   } else {
@@ -168,12 +176,15 @@ export function setActiveKey(
   providerId: string,
   label: string,
 ): KeyOpResult {
-  const existing = providers[providerId];
+  const existing = Object.hasOwn(providers, providerId) ? providers[providerId] : undefined;
   if (!existing) {
     return { ok: false, message: `Provider "${providerId}" not found` };
   }
+  const keys = normalizeKeys(existing);
+  if (!keys.some((key) => key.label === label))
+    return { ok: false, message: `Key "${label}" not found in ${providerId}` };
   existing.activeKey = label;
-  writeKeysBack(existing, normalizeKeys(existing));
+  writeKeysBack(existing, keys);
   providers[providerId] = existing;
   return { ok: true, message: `Active key for ${providerId} set to "${label}"` };
 }
@@ -183,6 +194,7 @@ export function addProvider(
   providers: ProvidersRecord,
   payload: {
     id: string;
+    type?: string | undefined;
     family: string;
     baseUrl?: string | undefined;
     apiKey?: string | undefined;
@@ -191,6 +203,8 @@ export function addProvider(
   },
   nowIso: string,
 ): KeyOpResult {
+  const aliasError = authProfileAliasError(payload.id);
+  if (aliasError) return { ok: false, message: aliasError };
   if (providers[payload.id]) {
     return {
       ok: false,
@@ -204,7 +218,7 @@ export function addProvider(
   // setup flow (the WebSocket payload) — preset only fills it in when
   // absent — so a user-supplied override survives.
   const newProv: ProviderConfig = {
-    type: payload.id,
+    type: payload.type ?? payload.id,
     family: payload.family as ProviderConfig['family'],
     baseUrl: payload.baseUrl,
     ...(payload.models !== undefined ? { models: [...payload.models] } : {}),
@@ -212,7 +226,7 @@ export function addProvider(
       ? { customModels: structuredClone(payload.customModels) }
       : {}),
   };
-  const presetId = hydratePresetConfig(payload.id, newProv);
+  const presetId = hydratePresetConfig(payload.type ?? payload.id, newProv);
   if (presetId) newProv.type = presetId;
   if (payload.apiKey) {
     newProv.apiKeys = [{ label: 'default', apiKey: payload.apiKey, createdAt: nowIso }];

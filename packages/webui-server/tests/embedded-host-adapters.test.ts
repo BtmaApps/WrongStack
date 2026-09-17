@@ -6,7 +6,8 @@ vi.mock('ws', () => {
   return { WebSocket: MockWebSocket };
 });
 
-vi.mock('@wrongstack/providers', () => ({
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   makeProviderFromConfig: vi.fn(() => ({ id: 'openai', capabilities: { maxContext: 128000 } })),
 }));
 

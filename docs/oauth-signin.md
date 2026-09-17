@@ -192,6 +192,29 @@ wstack auth login openrouter
 
 ---
 
+## Sign in with Google Antigravity
+
+```bash
+wstack auth login antigravity
+# aliases: agy · google-antigravity · gemini-subscription
+```
+
+- **Flow:** authorization-code + S256 PKCE on a `localhost:51121` callback,
+  then a Cloud Code project bootstrap. A sign-in that cannot resolve a project
+  fails instead of storing a credential that could not serve a request.
+- **Provider id:** `google-antigravity` · **Endpoint:**
+  `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent`.
+- **Needs an OAuth client you supply** — `WRONGSTACK_ANTIGRAVITY_CLIENT_ID`
+  and `_CLIENT_SECRET`. Nothing is bundled, because the client Antigravity's own
+  app uses is extracted from a proprietary binary rather than published.
+- **Quota:** per-model buckets, read after a completed turn. Credits arrive free
+  on the response stream.
+- **Read [the provider guide](antigravity-provider.md) first.** This one runs on
+  an undocumented internal Google surface and is materially more fragile than
+  the four above.
+
+---
+
 ## Context windows
 
 OAuth providers aren't published in the models.dev catalog under their own id, so

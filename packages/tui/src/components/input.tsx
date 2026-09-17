@@ -1,6 +1,7 @@
 import type React from 'react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { fnKey } from '../fn-keys.js';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, Text, useInput, useStdin } from '../ink.js';
 import { type InputCell, layoutInputRows } from '../input-tokens.js';
 import {
@@ -20,7 +21,6 @@ import {
   composerStatusReservedWidth,
 } from './composer-status-chip.js';
 import { fmtElapsed } from './status-bar.js';
-import { useTerminalSize } from '../hooks/use-terminal-size.js';
 
 export const DEFAULT_INPUT_PROMPT = `${glyphs.prompt} `;
 
@@ -328,7 +328,7 @@ export const Input = memo(function Input({
   placeholderHeight,
   onKey,
   maxWidth,
-}: InputProps): React.ReactElement {
+}: InputProps): React.ReactElement | null {
   // Suppress duplicate key events: when our raw-stdin handler catches a key
   // before Ink's useInput does, we set a suppression flag so Ink doesn't
   // fire a duplicate event. Without this, Backspace deletes two characters
@@ -632,6 +632,9 @@ export const Input = memo(function Input({
   // region stays a constant height (so Ink's log-update never bleeds the live
   // region into native scrollback) while keyboard handling stays alive.
   if (hidden) {
+    if (placeholderHeight === 0) {
+      return <Box height={0} />;
+    }
     return (
       <Box
         height={Math.max(

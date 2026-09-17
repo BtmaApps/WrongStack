@@ -110,6 +110,7 @@ const KNOWN_TOP_LEVEL_KEYS = [
   'modelRuntime',
   'systemPrompt',
   'hq',
+  'typesafe',
   'fleet',
   'brain',
   'sync',

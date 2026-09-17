@@ -5,7 +5,7 @@ import { getAllProviderQuota } from '@wrongstack/core/quota';
 import type { ProviderConfig } from '@wrongstack/core/types';
 import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';
-import { send, sendResult } from './ws-utils.js';
+import { runWithOperationRequest, send, sendResult } from './ws-utils.js';
 
 export interface ProviderMutationHandlers {
   handleKeyUpsert: (
@@ -20,6 +20,7 @@ export interface ProviderMutationHandlers {
     ws: WebSocket,
     payload: {
       id: string;
+      type?: string | undefined;
       family: string;
       baseUrl?: string | undefined;
       apiKey?: string | undefined;
@@ -265,6 +266,16 @@ export async function handleProviderRoute(
   msg: WSClientMessage,
   routes: ProviderRouteHandlers,
 ): Promise<boolean> {
+  const payload = asPayloadRecord(msg);
+  const requestId = typeof payload?.['requestId'] === 'string' ? payload['requestId'] : undefined;
+  return runWithOperationRequest(requestId, () => dispatchProviderRoute(ws, msg, routes));
+}
+
+async function dispatchProviderRoute(
+  ws: WebSocket,
+  msg: WSClientMessage,
+  routes: ProviderRouteHandlers,
+): Promise<boolean> {
   switch (msg.type) {
     case 'providers.list':
       await routes.listProviders(ws, msg);
@@ -337,14 +348,21 @@ export async function handleProviderRoute(
       const family = payload ? requiredString(payload, 'family') : null;
       const baseUrl = payload?.['baseUrl'];
       const apiKey = payload?.['apiKey'];
+      const providerType = payload?.['type'];
       const models = payload ? optionalStringArray(payload, 'models') : null;
       const customModels = payload ? optionalCustomModels(payload) : null;
       if (!id || !SAFE_CONFIG_KEY.test(id) || !family) return invalidPayload(ws, msg.type);
+      if (
+        providerType !== undefined &&
+        (typeof providerType !== 'string' || !SAFE_CONFIG_KEY.test(providerType))
+      )
+        return invalidPayload(ws, msg.type);
       if (baseUrl !== undefined && typeof baseUrl !== 'string') return invalidPayload(ws, msg.type);
       if (apiKey !== undefined && typeof apiKey !== 'string') return invalidPayload(ws, msg.type);
       if (models === null || customModels === null) return invalidPayload(ws, msg.type);
       const added = await routes.providerHandlers.handleProviderAdd(ws, {
         id,
+        ...(providerType !== undefined ? { type: providerType as string } : {}),
         family,
         baseUrl: baseUrl as string | undefined,
         apiKey: apiKey as string | undefined,

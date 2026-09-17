@@ -52,6 +52,7 @@ export const SETTINGS_HELP = [
   '  /settings reasoning-effort none|minimal|low|medium|high|xhigh|max   Reasoning effort',
   '  /settings reasoning-preserve on|off   Preserve thinking across turns',
   '  /settings cache-ttl 5m|1h   Prompt cache TTL (Anthropic)',
+  '  /settings stream-watchdog <gap-seconds|off> [headers-seconds|off]   Stream stall budgets',
   '  /settings index-on-start on|off   Rebuild codebase index at session start',
   '  /settings log-level error|warn|info|debug|trace   Logging verbosity',
   '  /settings audit-level minimal|standard|full   Session audit detail',
@@ -125,12 +126,20 @@ export function formatCurrentSettingsView(opts: SlashCommandContext): string {
     | {
         reasoning?: { mode?: string; effort?: string; preserve?: boolean };
         cache?: { ttl?: string };
+        streaming?: { hangTimeoutMs?: number; headersTimeoutMs?: number };
       }
     | undefined;
   const reasoningMode = modelRuntime?.reasoning?.mode ?? 'auto';
   const reasoningEffort = modelRuntime?.reasoning?.effort ?? '(unset)';
   const reasoningPreserve = modelRuntime?.reasoning?.preserve === true;
   const cacheTtl = modelRuntime?.cache?.ttl ?? 'default';
+  // Watchdogs, not response budgets: the first bounds the gap between stream
+  // chunks, the second the wait for response headers. `0` disables one.
+  const watchdog = (ms: number | undefined): string =>
+    ms === undefined ? '60s' : ms === 0 ? 'off' : `${Math.round(ms / 1000)}s`;
+  const streamWatchdogs = `${watchdog(modelRuntime?.streaming?.hangTimeoutMs)} / ${watchdog(
+    modelRuntime?.streaming?.headersTimeoutMs,
+  )}`;
   const hq = (opts.configStore.get() as { hq?: unknown }).hq as
     | {
         enabled?: boolean;
@@ -200,6 +209,7 @@ export function formatCurrentSettingsView(opts: SlashCommandContext): string {
     `  reasoning effort:           ${color.cyan(reasoningEffort)}   ${color.dim('change: /settings reasoning-effort <level>')}`,
     `  reasoning preserve:         ${reasoningPreserve ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings reasoning-preserve on|off')}`,
     `  cache TTL:                  ${color.cyan(cacheTtl)}   ${color.dim('change: /settings cache-ttl 5m|1h')}`,
+    `  stream watchdog (gap/hdr):  ${color.cyan(streamWatchdogs)}   ${color.dim('change: /settings stream-watchdog <gap-seconds|off> [headers-seconds]')}`,
     `  index on start:             ${idx?.onSessionStart !== false ? color.cyan('on') : color.dim('off')}   ${color.dim('change: /settings index-on-start on|off')}`,
     `  log level:                  ${color.cyan((log?.level as string) ?? 'info')}   ${color.dim('change: /settings log-level error|warn|info|debug|trace')}`,
     `  audit level:                ${color.cyan((sess?.auditLevel as string) ?? 'standard')}   ${color.dim('change: /settings audit-level minimal|standard|full')}`,

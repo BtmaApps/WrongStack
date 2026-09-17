@@ -29,7 +29,7 @@ interface AuthPanelProps {
 const CHROME_ROWS = 17;
 
 const LIST_ACTION_LABEL: Record<string, string> = {
-  catalog: '＋ Add provider (models.dev catalog)',
+  catalog: '＋ Add account / auth profile (catalog)',
   local: '＋ Add local server (OmniRoute / Ollama / vLLM / LM Studio)',
   custom: '＋ Add custom provider',
   oauth: '⚡ Sign in with provider OAuth',

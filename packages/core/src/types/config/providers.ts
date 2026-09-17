@@ -38,6 +38,17 @@ export interface ProviderApiKey {
    * token at request time so it can never go stale after a refresh.
    */
   accountId?: string | undefined;
+  /**
+   * Google Cloud Code project id, discovered at sign-in by the
+   * `google-antigravity` wire family and sent in every request envelope.
+   *
+   * Cached here for the same reason `accountId` is: deriving it costs a
+   * round-trip (two, on an account that has never been onboarded), it is
+   * stable for the account, and a session that has it can send its first
+   * request immediately. Unlike `accountId` it is NOT re-derivable from the
+   * token, so this is the only record of it.
+   */
+  project?: string | undefined;
 }
 
 export interface ProviderConfig {
@@ -56,6 +67,18 @@ export interface ProviderConfig {
   /** Label of the entry in `apiKeys` to use. Defaults to the first one. */
   activeKey?: string | undefined;
   baseUrl?: string | undefined;
+  /**
+   * OAuth client id used to refresh this provider's subscription token.
+   *
+   * Only the `google-antigravity` family reads it today, and it exists because
+   * that family's client is not ours to ship: Google checks which client
+   * minted a token, and the one its desktop app uses is extracted from a
+   * proprietary binary rather than published. Supplying it is the user's
+   * decision, so it lives in their config instead of in our source.
+   */
+  oauthClientId?: string | undefined;
+  /** Client secret paired with {@link ProviderConfig.oauthClientId}. */
+  oauthClientSecret?: string | undefined;
   headers?: Record<string, string>;
   model?: string | undefined;
   quirks?: Record<string, unknown>;

@@ -5,6 +5,7 @@ import type {
   ProviderAuthStrategy,
   WireFamily,
 } from '@wrongstack/core/types';
+import { createAntigravityAuthStrategy } from './antigravity.js';
 import { beginOAuthLogin } from './legacy.js';
 import { createOpenRouterAuthStrategy } from './openrouter.js';
 import type { BeginOAuthDeps, OAuthLoginOutcome, OAuthSession } from './types.js';
@@ -81,6 +82,7 @@ export const BUILTIN_PROVIDER_AUTH_STRATEGIES: readonly ProviderAuthStrategy[] =
     },
   },
   createOpenRouterAuthStrategy(),
+  createAntigravityAuthStrategy(),
 ];
 
 export function registerBuiltinProviderAuthStrategies(registry: ProviderAuthRegistry): void {

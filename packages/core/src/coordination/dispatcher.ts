@@ -83,7 +83,22 @@ export type DispatchClassifier = (
     summary: string;
     differentiatesFrom?: string | undefined;
   }[],
-) => Promise<{ role: string; reason?: string | undefined } | null>;
+) => Promise<{
+  role: string;
+  reason?: string | undefined;
+  /**
+   * How certain the classifier is, 0..1. Optional, and omitted by
+   * `makeLLMClassifier`: a parsed JSON blob carries no certainty, so the only
+   * honest answer there is "no number", which keeps the historical
+   * `confidence: 1`.
+   *
+   * A classifier that CAN measure its certainty — one answering with a
+   * probability distribution rather than prose — reports it here, so a near-tie
+   * between two siblings reaches `DispatchResult.confidence` as the near-tie it
+   * is instead of as certainty.
+   */
+  confidence?: number | undefined;
+} | null>;
 
 export interface DispatchOptions {
   /** Optional LLM fallback for ambiguous tasks. */
@@ -182,10 +197,23 @@ export async function dispatchAgent(
 
   // Ambiguous or no signal — ask the classifier if one is wired.
   if (opts.classifier) {
-    // Offer the classifier the top heuristic candidates; if there were none,
-    // offer the whole catalog so it can still choose.
+    // Offer the classifier the top heuristic candidates — but only when the
+    // heuristic actually produced a choice to make.
+    //
+    // We are here BECAUSE the heuristic was inconclusive, so a pool built from
+    // it is inconclusive too, and a pool of ONE is not a choice at all: the
+    // classifier can only rubber-stamp it. That is not hypothetical. On this
+    // catalog, "design how we should store and rotate the signing keys" scores
+    // exactly one keyword hit — `designer`, the UI role, on the word "design"
+    // — and "the CI job times out only on windows" scores exactly one, on
+    // "ci". Handing over a single name turned the classifier into a formality
+    // and sent key management to the UI designer.
+    //
+    // Below two candidates, offer the whole catalog instead. One Choice holds
+    // a roster this size comfortably, and it is the only way the classifier
+    // can see the role the keywords missed.
     const pool = (
-      candidates.length > 0
+      candidates.length > 1
         ? candidates.slice(0, maxCandidates).map((c) => catalog[c.role] ?? FALLBACK_DEFINITION)
         : Object.values(catalog)
     ).map((d) => ({
@@ -202,7 +230,9 @@ export async function dispatchAgent(
         return {
           role: choice.role,
           definition: catalog[choice.role] ?? FALLBACK_DEFINITION,
-          confidence: 1,
+          // A classifier that measured its certainty reports it; one that
+          // could not keeps the historical 1.
+          confidence: choice.confidence ?? 1,
           method: 'llm',
           reason: choice.reason ?? 'Selected by LLM classifier',
           matched: candidates.find((c) => c.role === choice.role)?.matched ?? [],

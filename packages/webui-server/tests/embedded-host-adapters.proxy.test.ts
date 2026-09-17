@@ -5,13 +5,13 @@
  * real singleton) and the provider factory.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeProviderFromConfig } from '@wrongstack/providers';
-import {
-  applyProxyConfig,
-  __resetProxyConfigForTests,
-} from '@wrongstack/core/wiring/proxy-rewrite';
 import type { ProviderConfig } from '@wrongstack/core/types';
+import {
+  __resetProxyConfigForTests,
+  applyProxyConfig,
+} from '@wrongstack/core/wiring/proxy-rewrite';
+import { makeProviderFromConfig } from '@wrongstack/providers';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@wrongstack/core/wiring/proxy-rewrite', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@wrongstack/core/wiring/proxy-rewrite')>();
@@ -29,7 +29,8 @@ vi.mock('ws', () => {
   return { WebSocket: MockWebSocket };
 });
 
-vi.mock('@wrongstack/providers', () => ({
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   makeProviderFromConfig: vi.fn((id: string, cfg: Record<string, unknown>) => ({
     id,
     ...cfg,

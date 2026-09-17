@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { Capabilities, ProviderError, Request, StreamEvent } from '@wrongstack/core/types';
+import type { Capabilities, Request, StreamEvent } from '@wrongstack/core/types';
+import { ProviderError } from '@wrongstack/core/types';
 import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import type { GoogleStreamState } from './presets/google.js';
 import { googleWireFormat, toolsToGemini } from './presets/google.js';
@@ -88,11 +89,32 @@ export class GoogleProvider extends WireFormatProvider<GoogleStreamState> {
         name = undefined;
       }
       if (name) {
-        yield* super.stream(
-          { ...effectiveReq, cache: { ...effectiveReq.cache, geminiCachedContentName: name } },
-          opts,
-        );
-        return;
+        let emitted = false;
+        try {
+          for await (const ev of super.stream(
+            { ...effectiveReq, cache: { ...effectiveReq.cache, geminiCachedContentName: name } },
+            opts,
+          )) {
+            emitted = true;
+            yield ev;
+          }
+          return;
+        } catch (err) {
+          // The resource can vanish before our client-side expiry (deleted,
+          // evicted, created under another key/project). Without this the
+          // remembered name stayed "live" for up to an hour and every request
+          // failed on it — the opposite of best-effort. Forget it and send
+          // the request inline, but only before any output reached the caller.
+          if (
+            emitted ||
+            opts.signal.aborted ||
+            !ProviderError.isProviderError(err) ||
+            ![400, 403, 404].includes(err.status)
+          ) {
+            throw err;
+          }
+          this.forgetCachedContent(name);
+        }
       }
     }
     yield* super.stream(effectiveReq, opts);
@@ -152,6 +174,12 @@ export class GoogleProvider extends WireFormatProvider<GoogleStreamState> {
     }
     this.setCacheEntry(hash, name, Date.now() + GEMINI_CACHE_TTL_SECONDS * 1000 - 60_000);
     return name;
+  }
+
+  private forgetCachedContent(name: string): void {
+    for (const [key, entry] of this.explicitCache) {
+      if (entry.name === name) this.explicitCache.delete(key);
+    }
   }
 
   private setCacheEntry(hash: string, name: string | null, expiresAt: number): void {

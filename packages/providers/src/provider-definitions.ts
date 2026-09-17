@@ -74,6 +74,15 @@ const CORE_PROVIDER_DEFINITIONS: readonly ProviderDefinition[] = [
     docsUrl: 'https://docs.anthropic.com/',
   },
   {
+    id: 'google-antigravity',
+    name: 'Google Antigravity',
+    family: 'google-antigravity',
+    envVars: [],
+    models: [],
+    usage: 'subscription-interactive',
+    docsUrl: 'https://antigravity.google/',
+  },
+  {
     id: 'github-copilot',
     name: 'GitHub Copilot',
     family: 'github-copilot',

@@ -24,6 +24,7 @@
 import {
   formatQuotaPercent,
   formatQuotaResetIn,
+  getAllProviderQuota,
   getProviderQuota,
   type ProviderQuotaSnapshot,
   type ProviderQuotaWindow,
@@ -116,6 +117,62 @@ export function buildOpenAIQuotaCommand(): SlashCommand {
           `  ${color.dim('The ChatGPT backend reports quota on the responses to your own')}`,
           `  ${color.dim('requests. Sign in with')} ${color.cyan('wstack auth login chatgpt')} ${color.dim('and send one message,')}`,
           `  ${color.dim('then run /openai-quota again.')}`,
+        );
+      }
+      return Promise.resolve({ message: lines.join('\n') });
+    },
+  };
+}
+
+/**
+ * `/provider-quota` — every metered subscription this session has heard from.
+ *
+ * The narrow `/openai-quota` above stays because it answers one question
+ * without making the user read past other providers; this one exists because
+ * the reporters are no longer Codex-only. Claude Pro/Max and GitHub Copilot
+ * report into the same store, and a session that is signed into two metered
+ * plans has no other way to see which one is about to run out.
+ *
+ * The name says `provider` on purpose. A bare `/quota` would read as "what
+ * this project costs" — an account-wide spend view that does not exist here —
+ * and would occupy the name if one is ever built. What this shows is exactly
+ * the provider plane's readings, so that is what it is called.
+ */
+export function buildProviderQuotaCommand(): SlashCommand {
+  return {
+    name: 'provider-quota',
+    category: 'Inspect',
+    description: 'Subscription quota across every metered provider — windows used and reset times',
+    help: [
+      'Usage:',
+      '  /provider-quota   Show the latest quota reading for every metered provider',
+      '',
+      'Readings are observational: each provider reports its own plan usage on',
+      'the responses to requests you were already making, so a provider appears',
+      'here after its first request of the session and costs nothing extra.',
+      'For one provider only, /openai-quota shows just ChatGPT/Codex.',
+    ].join('\n'),
+    run(): Promise<{ message: string }> {
+      // Sorted so the output does not reshuffle between runs as providers
+      // report in a different order than they did last time.
+      const snapshots = [...getAllProviderQuota()].sort(
+        (a, b) => a.providerId.localeCompare(b.providerId) || a.meterId.localeCompare(b.meterId),
+      );
+      const lines: string[] = [
+        `${color.bold('WrongStack')} ${color.dim('— provider subscription quota')}`,
+        '',
+      ];
+      for (const snapshot of snapshots) lines.push(...renderQuotaSnapshot(snapshot), '');
+      if (snapshots.length === 0) {
+        lines.push(
+          `  ${color.dim('No quota reading yet.')}`,
+          '',
+          `  ${color.dim('Metered plans (Claude Pro/Max, ChatGPT/Codex, Copilot, Antigravity) report')}`,
+          `  ${color.dim('usage on the responses to your own requests. Send one message on a')}`,
+          `  ${color.dim('subscription login, then run /provider-quota again.')}`,
+          '',
+          `  ${color.dim('An API-key provider is billed per token and reports no plan window,')}`,
+          `  ${color.dim('so it never appears here.')}`,
         );
       }
       return Promise.resolve({ message: lines.join('\n') });

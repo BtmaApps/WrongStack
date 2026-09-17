@@ -113,6 +113,7 @@ export type WireFamily =
   | 'openai-codex'
   | 'github-copilot'
   | 'google'
+  | 'google-antigravity'
   | 'unsupported';
 
 export interface ResolvedProvider {

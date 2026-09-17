@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDecrypt = vi.hoisted(() => vi.fn());
 const mockEncrypt = vi.hoisted(() => vi.fn());
@@ -19,7 +19,10 @@ vi.mock('@wrongstack/core/types', () => ({
   },
 }));
 
-vi.mock('@wrongstack/core/utils', () => ({ atomicWrite: mockAtomicWrite }));
+vi.mock('@wrongstack/core/utils', () => ({
+  atomicWrite: mockAtomicWrite,
+  withFileLock: (_path: string, run: () => Promise<unknown>) => run(),
+}));
 
 vi.mock('node:fs/promises', () => ({
   readFile: mockReadFile,
@@ -32,6 +35,7 @@ describe('provider-config-io', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDecrypt.mockImplementation((value) => value);
   });
 
   describe('loadSavedProviders', () => {
@@ -41,10 +45,11 @@ describe('provider-config-io', () => {
       expect(result).toEqual({});
     });
 
-    it('returns empty record when JSON is invalid', async () => {
+    it('reports invalid JSON instead of pretending no providers are saved', async () => {
       mockReadFile.mockResolvedValue('not json');
-      const result = await loadSavedProviders('/fake/config.json', vault);
-      expect(result).toEqual({});
+      await expect(loadSavedProviders('/fake/config.json', vault)).rejects.toThrow(
+        'Invalid config',
+      );
     });
 
     it('returns empty record when no providers field', async () => {
@@ -63,6 +68,14 @@ describe('provider-config-io', () => {
   });
 
   describe('saveProviders', () => {
+    it.each(['[]', 'null', '{"providers":[]}'])(
+      'preserves invalid config shape %s',
+      async (raw) => {
+        mockReadFile.mockResolvedValue(raw);
+        await expect(saveProviders('/fake/config.json', vault, {})).rejects.toThrow('config');
+        expect(mockAtomicWrite).not.toHaveBeenCalled();
+      },
+    );
     it('reads, encrypts, and writes providers to config', async () => {
       mockReadFile.mockResolvedValue(JSON.stringify({ someKey: 'value' }));
       mockEncrypt.mockReturnValue({ someKey: 'value', providers: { test: { type: 'test' } } });

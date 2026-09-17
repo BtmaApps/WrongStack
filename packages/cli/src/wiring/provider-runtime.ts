@@ -1,6 +1,5 @@
 import type { ProviderRegistry } from '@wrongstack/core/registry';
 import type { Config, Provider, ProviderConfig } from '@wrongstack/core/types';
-import { makeProviderFromConfig } from '@wrongstack/providers';
 import {
   getProxyConfig,
   isProxyEligible,
@@ -8,6 +7,7 @@ import {
   sanitizeUrlForLog,
   shouldRewriteFor,
 } from '@wrongstack/core/wiring/proxy-rewrite';
+import { makeProviderFromConfig } from '@wrongstack/providers';
 
 /**
  * Resolve the user-visible providerId into a runtime cfg + a factory type
@@ -51,8 +51,25 @@ interface ResolvedProviderCfg {
   factoryType: string;
 }
 
+type ProviderConnectionConfig = Pick<Config, 'providers' | 'apiKey' | 'baseUrl'> & {
+  provider?: string;
+};
+
+/** Resolve account-owned connection values before any proxy rewriting. */
+export function resolveRawProviderConnection(config: ProviderConnectionConfig, providerId: string) {
+  const savedCfg = config.providers?.[providerId];
+  // Selecting an alias as primary must not copy the old primary connection.
+  const isAccountAlias = savedCfg?.type !== undefined && savedCfg.type !== providerId;
+  const inheritsPrimary =
+    !isAccountAlias && (config.provider === undefined || config.provider === providerId);
+  return {
+    apiKey: savedCfg?.apiKey ?? (inheritsPrimary ? config.apiKey : undefined),
+    baseUrl: savedCfg?.baseUrl ?? (inheritsPrimary ? config.baseUrl : undefined),
+  };
+}
+
 export function resolveProviderCfg(
-  config: Pick<Config, 'providers' | 'apiKey' | 'baseUrl'>,
+  config: ProviderConnectionConfig,
   providerId: string,
   opts?: {
     /**
@@ -66,16 +83,17 @@ export function resolveProviderCfg(
   },
 ): ResolvedProviderCfg {
   const savedCfg = config.providers?.[providerId];
-  // Fall back to the top-level config's apiKey/baseUrl on a per-key basis
-  // so a saved cfg that omits one still inherits from the parent.
-  const rawBaseUrl = savedCfg?.baseUrl ?? config.baseUrl;
+  const proxyProviderType =
+    savedCfg?.family === 'openai-codex' ? 'openai-codex' : (savedCfg?.type ?? providerId);
+  const connection = resolveRawProviderConnection(config, providerId);
+  const rawBaseUrl = connection.baseUrl;
   // When the WrongProxy/WrongTrace toggle is on and the daemon is reachable,
   // rewrite `rawBaseUrl` through the proxy (`http://localhost:3444/proxy/<host><path>`).
   // Excluded providers (e.g. openai-codex) flow through unchanged — the
   // rewriter itself is a no-op for them.
   let rewriteReason = 'no-base-url';
   let baseUrl = rawBaseUrl;
-  if (rawBaseUrl && shouldRewriteFor(providerId)) {
+  if (rawBaseUrl && shouldRewriteFor(proxyProviderType)) {
     const rewritten = rewriteBaseUrl(rawBaseUrl, currentProxyBaseUrl());
     // rewriteBaseUrl is a permissive passthrough: it returns the input
     // unchanged for ineligible shapes. Distinguish "applied" from each
@@ -88,7 +106,7 @@ export function resolveProviderCfg(
     }
   } else if (rawBaseUrl) {
     // shouldRewriteFor() === false here — explain which gate blocked it.
-    rewriteReason = proxySkipReason(providerId);
+    rewriteReason = proxySkipReason(proxyProviderType);
   }
   // NOTE: sanitizeUrlForLog returns '' (never nullish) for missing input,
   // so the sentinel must be `||`, not `??`.
@@ -97,7 +115,7 @@ export function resolveProviderCfg(
   );
   const cfg: ProviderConfig = {
     ...savedCfg,
-    apiKey: savedCfg?.apiKey ?? config.apiKey,
+    apiKey: connection.apiKey,
     baseUrl,
     type: providerId,
   };
@@ -208,8 +226,5 @@ export function buildProviderForId(
     !!args.config.features.modelsRegistry && args.providerRegistry.has(factoryType);
   return useRegistry
     ? args.providerRegistry.create(cfg, factoryType)
-    : makeProviderFromConfig(
-        providerId,
-        factoryType === 'ai-gateway' ? { ...cfg, type: factoryType } : cfg,
-      );
+    : makeProviderFromConfig(providerId, { ...cfg, type: factoryType });
 }

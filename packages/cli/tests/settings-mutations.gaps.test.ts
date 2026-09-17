@@ -222,6 +222,13 @@ describe('executeSettingsSubcommand — toggles, enums, and numbers', () => {
       at: 'modelRuntime.cache.ttl',
       want: '1h',
     },
+    {
+      sub: 'stream-watchdog',
+      args: '300 30',
+      msg: 'stream watchdog → gap 300s / headers 30s',
+      at: 'modelRuntime.streaming.hangTimeoutMs',
+      want: 300_000,
+    },
     { sub: 'mcp', args: 'off', msg: 'MCP features → off', at: 'features.mcp', want: false },
     {
       sub: 'plugins',
@@ -488,5 +495,37 @@ describe('executeSettingsSubcommand — special paths', () => {
     } as never as SlashCommandContext;
     const out = await executeSettingsSubcommand('delay', ['30'], ctx);
     expect(stripAnsi(out.message)).toContain('Settings error');
+  });
+});
+
+describe('/settings stream-watchdog', () => {
+  it('writes seconds as milliseconds and accepts `off` for either watchdog', async () => {
+    const { ctx } = makeCtx();
+    const res = await run('stream-watchdog', '120 off', ctx);
+    expect(stripAnsi(res.message ?? '')).toContain('gap 120s / headers off');
+    const saved = JSON.parse(readFileSync(globalConfig, 'utf8')) as {
+      modelRuntime?: { streaming?: { hangTimeoutMs?: number; headersTimeoutMs?: number } };
+    };
+    expect(saved.modelRuntime?.streaming).toEqual({ hangTimeoutMs: 120_000, headersTimeoutMs: 0 });
+  });
+
+  it('leaves the headers budget alone when only the gap is given', async () => {
+    const { ctx } = makeCtx();
+    await run('stream-watchdog', '90 15', ctx);
+    await run('stream-watchdog', '45', ctx);
+    const saved = JSON.parse(readFileSync(globalConfig, 'utf8')) as {
+      modelRuntime?: { streaming?: { hangTimeoutMs?: number; headersTimeoutMs?: number } };
+    };
+    expect(saved.modelRuntime?.streaming).toEqual({
+      hangTimeoutMs: 45_000,
+      headersTimeoutMs: 15_000,
+    });
+  });
+
+  it('rejects a nonsense budget with usage instead of persisting it', async () => {
+    const { ctx } = makeCtx();
+    const res = await run('stream-watchdog', 'soon', ctx);
+    expect(stripAnsi(res.message ?? '')).toContain('Usage:');
+    expect(() => statSync(globalConfig)).toThrow();
   });
 });

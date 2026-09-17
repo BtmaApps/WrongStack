@@ -248,6 +248,9 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
       const family: WireFamily = (WIRE_FAMILIES as readonly string[]).includes(entry.family)
         ? (entry.family as WireFamily)
         : 'openai-compatible';
+      const savedIds = new Set(stateRef.current.authPanel.providers.map((profile) => profile.id));
+      let alias = entry.id;
+      for (let n = 2; savedIds.has(alias); n++) alias = `${entry.id}-${n}`;
       dispatch({
         type: 'authFormStart',
         form: {
@@ -257,7 +260,7 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
             name: entry.name,
             family,
             baseUrl: entry.apiBase ?? '',
-            alias: entry.id,
+            alias,
             keyLabel: 'default',
             apiKey: '',
             models: '',
@@ -266,7 +269,7 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
         },
       });
     },
-    [dispatch],
+    [dispatch, stateRef],
   );
 
   /** Open the edit-provider form pre-filled from the saved AuthProviderRow. */
@@ -358,6 +361,9 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
   /** Open the local-server form pre-filled from the preset defaults. */
   const openLocalForm = useCallback(
     (preset: AuthLocalPresetRow) => {
+      const savedIds = new Set(stateRef.current.authPanel.providers.map((profile) => profile.id));
+      let alias = preset.id;
+      for (let n = 2; savedIds.has(alias); n++) alias = `${preset.id}-${n}`;
       dispatch({
         type: 'authFormStart',
         form: {
@@ -368,7 +374,7 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
             name: '',
             family: '',
             baseUrl: preset.defaultBaseUrl,
-            alias: '',
+            alias,
             keyLabel: '',
             apiKey: '',
             models: '',
@@ -377,7 +383,7 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
         },
       });
     },
-    [dispatch],
+    [dispatch, stateRef],
   );
 
   /**
@@ -394,6 +400,7 @@ export function useAuthPanel(opts: UseAuthPanelOptions): AuthPanelController {
       runFlow(`Add ${preset?.label ?? presetId}`, (io) =>
         authHost.addLocal(presetId, io, {
           baseUrl: form.fields.baseUrl,
+          alias: form.fields.alias,
           apiKey: form.fields.apiKey,
         }),
       );

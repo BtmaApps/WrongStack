@@ -486,6 +486,7 @@ export type Action =
   | { type: 'helpMove'; delta: number }
   | { type: 'helpFilter'; filter: string }
   | { type: 'helpHint'; text?: string | undefined }
+  | { type: 'helpScrollDetail'; delta: number }
   | { type: 'shadowOpen'; shadow: ShadowState }
   | { type: 'shadowClose' }
   | { type: 'shadowUpdate'; shadow: ShadowState }

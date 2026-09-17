@@ -12,7 +12,8 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { confirmModal } from '@/components/ConfirmModal';
 import { toast } from '@/components/Toaster';
 import { useFieldKeyboardNav } from '@/hooks/useFieldKeyboardNav';
 import { useAppTranslation } from '@/i18n';
@@ -99,11 +100,11 @@ interface ProviderSectionProps {
   /** Called when a catalog provider is selected. */
   onSelectProvider: (id: string) => void;
   /** Called to add an API key. */
-  onAddKey: (providerId: string, label: string, value: string) => void;
+  onAddKey: (providerId: string, label: string, value: string) => Promise<boolean> | void;
   /** Called to delete an API key. */
-  onDeleteKey: (providerId: string, label: string) => void;
+  onDeleteKey: (providerId: string, label: string) => Promise<boolean> | void;
   /** Called to set a key as active. */
-  onSetActiveKey: (providerId: string, label: string) => void;
+  onSetActiveKey: (providerId: string, label: string) => Promise<boolean> | void;
   /** Called to add a custom provider. */
   onAddProvider: (
     id: string,
@@ -121,9 +122,10 @@ interface ProviderSectionProps {
           }
         >
       | undefined,
-  ) => void;
+    providerType?: string | undefined,
+  ) => Promise<boolean> | void;
   /** Called to remove a saved provider. */
-  onRemoveProvider: (providerId: string) => void;
+  onRemoveProvider: (providerId: string) => Promise<boolean> | void;
   /** Called when a saved provider model is picked. */
   onPickProviderModel: (providerId: string, modelId: string) => void;
   /** WebSocket client used for saved-provider model probing/clearing. */
@@ -155,6 +157,22 @@ export function ProviderSection({
   setCatalogQuery,
 }: ProviderSectionProps) {
   const { t } = useAppTranslation();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const save = useCallback(
+    async (action: () => Promise<boolean | void> | void, confirmed: () => void) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        if ((await action()) === true) confirmed();
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    },
+    [],
+  );
   // Key management form state
   const [showAddKeyForm, setShowAddKeyForm] = useState<string | null>(null);
   const [newKeyLabel, setNewKeyLabel] = useState('');
@@ -175,50 +193,59 @@ export function ProviderSection({
   const handleAddKey = useCallback(
     (providerId: string) => {
       if (!newKeyLabel.trim() || !newKeyValue.trim()) return;
-      onAddKey(providerId, newKeyLabel.trim(), newKeyValue.trim());
-      setNewKeyLabel('');
-      setNewKeyValue('');
-      setShowAddKeyForm(null);
+      void save(
+        () => onAddKey(providerId, newKeyLabel.trim(), newKeyValue.trim()),
+        () => {
+          setNewKeyLabel('');
+          setNewKeyValue('');
+          setShowAddKeyForm(null);
+        },
+      );
     },
-    [onAddKey, newKeyLabel, newKeyValue],
+    [onAddKey, newKeyLabel, newKeyValue, save],
   );
 
   const handleAddProvider = useCallback(() => {
     if (!newProviderId.trim()) return;
-    onAddProvider(
-      newProviderId.trim(),
-      newProviderFamily,
-      newProviderBaseUrl || undefined,
-      newProviderApiKey || undefined,
-      newProviderModels.length > 0 ? newProviderModels.map((m) => m.id) : undefined,
-      newProviderModels.length > 0
-        ? Object.fromEntries(
-            newProviderModels
-              .filter(
-                (m) =>
-                  m.name ||
-                  m.maxOutput ||
-                  (m.capabilities && Object.keys(m.capabilities).length > 0),
+    void save(
+      () =>
+        onAddProvider(
+          newProviderId.trim(),
+          newProviderFamily,
+          newProviderBaseUrl || undefined,
+          newProviderApiKey || undefined,
+          newProviderModels.length > 0 ? newProviderModels.map((m) => m.id) : undefined,
+          newProviderModels.length > 0
+            ? Object.fromEntries(
+                newProviderModels
+                  .filter(
+                    (m) =>
+                      m.name ||
+                      m.maxOutput ||
+                      (m.capabilities && Object.keys(m.capabilities).length > 0),
+                  )
+                  .map((m) => [
+                    m.id,
+                    {
+                      ...(m.name && m.name !== m.id ? { name: m.name } : {}),
+                      ...(m.maxOutput ? { maxOutput: m.maxOutput } : {}),
+                      ...(m.capabilities && Object.keys(m.capabilities).length > 0
+                        ? { capabilities: m.capabilities }
+                        : {}),
+                    },
+                  ]),
               )
-              .map((m) => [
-                m.id,
-                {
-                  ...(m.name && m.name !== m.id ? { name: m.name } : {}),
-                  ...(m.maxOutput ? { maxOutput: m.maxOutput } : {}),
-                  ...(m.capabilities && Object.keys(m.capabilities).length > 0
-                    ? { capabilities: m.capabilities }
-                    : {}),
-                },
-              ]),
-          )
-        : undefined,
+            : undefined,
+        ),
+      () => {
+        setNewProviderId('');
+        setNewProviderFamily('openai-compatible');
+        setNewProviderBaseUrl('');
+        setNewProviderApiKey('');
+        setNewProviderModels([]);
+        setShowAddProviderForm(false);
+      },
     );
-    setNewProviderId('');
-    setNewProviderFamily('openai-compatible');
-    setNewProviderBaseUrl('');
-    setNewProviderApiKey('');
-    setNewProviderModels([]);
-    setShowAddProviderForm(false);
   }, [
     onAddProvider,
     newProviderId,
@@ -226,6 +253,7 @@ export function ProviderSection({
     newProviderBaseUrl,
     newProviderApiKey,
     newProviderModels,
+    save,
   ]);
 
   /**
@@ -245,6 +273,7 @@ export function ProviderSection({
   // ── Inline catalog keying + save-time probe ──
   const [inlineKeyFor, setInlineKeyFor] = useState<string | null>(null);
   const [inlineKeyValue, setInlineKeyValue] = useState('');
+  const [inlineProfileAlias, setInlineProfileAlias] = useState('');
   const [inlineKeyReveal, setInlineKeyReveal] = useState(false);
   const [probeResults, setProbeResults] = useState<
     Record<string, { ok: boolean; status: string; detail?: string | undefined }>
@@ -281,21 +310,24 @@ export function ProviderSection({
   const handleInlineKeySave = useCallback(
     (p: CatalogProvider) => {
       const key = inlineKeyValue.trim();
-      if (!key) return;
-      if (savedIds.has(p.id)) {
-        onAddKey(p.id, 'default', key);
-      } else {
-        onAddProvider(p.id, p.family, p.apiBase ?? undefined, key);
+      const alias = inlineProfileAlias.trim();
+      if (!key || !alias) return;
+      if (savedIds.has(alias)) {
+        toast.error(t('settings:provider.profileExists', { alias }));
+        return;
       }
-      setInlineKeyValue('');
-      setInlineKeyFor(null);
-      setInlineKeyReveal(false);
-      toast.success(t('settings:provider.savedToast', { name: p.name }));
-      // Probe shortly after so the config write lands first. Only meaningful
-      // when the provider exposes a base URL to hit.
-      if (p.apiBase) setTimeout(() => ws.probeProvider(p.id, 6000), 700);
+      void save(
+        () =>
+          onAddProvider(alias, p.family, p.apiBase ?? undefined, key, undefined, undefined, p.id),
+        () => {
+          setInlineKeyValue('');
+          setInlineKeyFor(null);
+          setInlineKeyReveal(false);
+          if (p.apiBase) ws.probeProvider(alias, 6000);
+        },
+      );
     },
-    [inlineKeyValue, savedIds, onAddKey, onAddProvider, ws],
+    [inlineKeyValue, inlineProfileAlias, savedIds, onAddProvider, ws, t, save],
   );
 
   // ── Filter + group catalog ──
@@ -335,6 +367,8 @@ export function ProviderSection({
           ws={ws}
           savedProviders={savedProviders.map((sp) => ({
             id: sp.id,
+            type: sp.type,
+            family: sp.family,
             hasActiveKey: sp.apiKeys.some((key) => key.isActive),
           }))}
         />
@@ -466,10 +500,24 @@ export function ProviderSection({
                           </button>
 
                           {/* Inline key entry — only when selected and not yet keyed. */}
-                          {selected && !p.hasApiKey && (
+                          {selected && (
                             <div className="px-3 pb-3 -mt-1 space-y-2">
                               {inlineKeyFor === p.id ? (
                                 <>
+                                  <label
+                                    className="block text-xs"
+                                    htmlFor={`auth-profile-alias-${p.id}`}
+                                  >
+                                    {t('settings:provider.profileAlias')}
+                                    <Input
+                                      id={`auth-profile-alias-${p.id}`}
+                                      value={inlineProfileAlias}
+                                      onChange={(e) => setInlineProfileAlias(e.target.value)}
+                                    />
+                                  </label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {t('settings:provider.profileHint')}
+                                  </p>
                                   <div className="flex gap-2">
                                     <Input
                                       autoFocus
@@ -498,7 +546,11 @@ export function ProviderSection({
                                     <Button
                                       size="sm"
                                       onClick={() => handleInlineKeySave(p)}
-                                      disabled={!inlineKeyValue.trim()}
+                                      disabled={
+                                        saving ||
+                                        !inlineKeyValue.trim() ||
+                                        !inlineProfileAlias.trim()
+                                      }
                                     >
                                       {t('common:action.save')}
                                     </Button>
@@ -516,10 +568,14 @@ export function ProviderSection({
                                   onClick={() => {
                                     setInlineKeyFor(p.id);
                                     setInlineKeyValue('');
+                                    let alias = p.id;
+                                    for (let n = 2; savedIds.has(alias); n++)
+                                      alias = `${p.id}-${n}`;
+                                    setInlineProfileAlias(alias);
                                   }}
                                 >
                                   <Key className="h-3.5 w-3.5 mr-1" />
-                                  {t('settings:provider.addApiKey')}
+                                  {t('settings:provider.addProfile')}
                                 </Button>
                               )}
                             </div>
@@ -641,7 +697,7 @@ export function ProviderSection({
                 <Button
                   size="sm"
                   onClick={handleAddProvider}
-                  disabled={!newProviderId.trim()}
+                  disabled={saving || !newProviderId.trim()}
                   ref={addProviderNav.setFieldRef(4)}
                   onKeyDown={(e) => addProviderNav.handleKeyDown(e, 4, handleAddProvider)}
                 >
@@ -715,7 +771,27 @@ export function ProviderSection({
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => onRemoveProvider(sp.id)}
+                      disabled={saving}
+                      onClick={() =>
+                        void save(
+                          async () => {
+                            if (
+                              !(await confirmModal({
+                                title: t('settings:provider.removeProfileConfirm', {
+                                  alias: sp.id,
+                                }),
+                                message: t('settings:provider.removeProfileBody'),
+                                confirmLabel: t('common:action.delete'),
+                                danger: true,
+                                defaultAction: 'cancel',
+                              }))
+                            )
+                              return false;
+                            return onRemoveProvider(sp.id);
+                          },
+                          () => {},
+                        )
+                      }
                       aria-label={`Remove provider ${sp.id}`}
                       title={`Remove provider ${sp.id}`}
                       className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -793,7 +869,13 @@ export function ProviderSection({
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => onSetActiveKey(sp.id, key.label)}
+                                  disabled={saving}
+                                  onClick={() =>
+                                    void save(
+                                      () => onSetActiveKey(sp.id, key.label),
+                                      () => {},
+                                    )
+                                  }
                                   className="h-8 px-2 text-xs"
                                 >
                                   {t('settings:provider.setActive')}
@@ -802,7 +884,27 @@ export function ProviderSection({
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => onDeleteKey(sp.id, key.label)}
+                                disabled={saving}
+                                onClick={() =>
+                                  void save(
+                                    async () => {
+                                      if (
+                                        !(await confirmModal({
+                                          title: t('settings:provider.deleteKeyConfirm', {
+                                            alias: sp.id,
+                                            label: key.label,
+                                          }),
+                                          confirmLabel: t('common:action.delete'),
+                                          danger: true,
+                                          defaultAction: 'cancel',
+                                        }))
+                                      )
+                                        return false;
+                                      return onDeleteKey(sp.id, key.label);
+                                    },
+                                    () => {},
+                                  )
+                                }
                                 aria-label={`Delete key ${key.label}`}
                                 title={`Delete key ${key.label}`}
                                 className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -850,7 +952,7 @@ export function ProviderSection({
                           <Button
                             size="sm"
                             onClick={() => handleAddKey(sp.id)}
-                            disabled={!newKeyLabel.trim() || !newKeyValue.trim()}
+                            disabled={saving || !newKeyLabel.trim() || !newKeyValue.trim()}
                             ref={addKeyNav.setFieldRef(2)}
                             onKeyDown={(e) =>
                               addKeyNav.handleKeyDown(e, 2, () => handleAddKey(sp.id))

@@ -486,6 +486,24 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
       sendAbort();
       setLoading(false);
       return true;
+    case '/auth': {
+      const sub = args.split(/\s+/)[0]?.toLowerCase() ?? '';
+      if (sub === 'help' || sub === '--help') {
+        addMessage({
+          role: 'assistant',
+          content:
+            'Use `/auth` to manage provider API keys and OAuth accounts in Settings → Providers. `/auth login` opens the same sign-in section.',
+        });
+        return true;
+      }
+      if (!['', 'open', 'menu', 'login', 'oauth', 'signin', 'status'].includes(sub)) {
+        addMessage({ role: 'assistant', content: 'Usage: `/auth [login|status|open|help]`' });
+        return true;
+      }
+      useUIStore.getState().setSettingsActiveTab('provider');
+      openMainView('settings');
+      return true;
+    }
     case '/settings':
     case '/model':
       openMainView('settings');

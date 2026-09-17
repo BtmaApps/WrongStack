@@ -28,12 +28,14 @@
 import { DefaultSecretScrubber } from '@wrongstack/core/security';
 import type { SecretScrubber } from '@wrongstack/core/types';
 import { color } from '@wrongstack/core/utils';
+import { authProfileAliasError } from '@wrongstack/providers';
 import type { ProbeOptions, ProbeResult } from '@wrongstack/runtime/probe';
 import { probeLocalLlm } from '@wrongstack/runtime/probe';
 import {
   mutateConfigProviders,
   normalizeKeys,
   nowIso,
+  resolveActiveApiKey,
   writeKeysBack,
 } from '../provider-config-utils.js';
 import {
@@ -46,6 +48,7 @@ import { loadProviders } from './helpers.js';
 import { LOCAL_LLM_PRESETS, type LocalLlmPresetEntry } from './local-presets.js';
 
 export type { LocalLlmPresetEntry } from './local-presets.js';
+
 import { suggestLabel } from './shared.js';
 import type { AuthMenuDeps } from './types.js';
 
@@ -63,6 +66,8 @@ export { LOCAL_LLM_PRESETS, type ProbeOptions, type ProbeResult, probeLocalLlm }
 const PRESET_BY_ID = new Map(LOCAL_LLM_PRESETS.map((p) => [p.id, p]));
 
 export interface RunAuthLocalOptions {
+  /** Create a separately routed auth profile for this local provider preset. */
+  alias?: string | undefined;
   /**
    * Direct pick: skip the interactive menu and configure this preset.
    * `wstack auth local --name ollama` maps to `{ name: 'ollama' }`.
@@ -170,9 +175,28 @@ export async function runAuthLocal(
     // user via the renderer; there's no error state to surface.
     return 0;
   }
+  const profileId = opts.alias?.trim() || chosen.id;
+  const aliasError = authProfileAliasError(
+    opts.alias !== undefined ? opts.alias.trim() : profileId,
+  );
+  if (aliasError) {
+    deps.renderer.writeError(aliasError);
+    return 1;
+  }
+  const aliasedProfile =
+    opts.alias !== undefined ? (await loadProviders(deps))[profileId] : undefined;
+  if (aliasedProfile && !opts.probeOnly) {
+    deps.renderer.writeError(
+      `Auth profile "${profileId}" already exists. Choose another alias or manage its keys explicitly.`,
+    );
+    return 1;
+  }
 
   // Resolve the base URL — user override, then preset default.
-  const baseUrl = opts.baseUrl?.trim() || chosen.defaultBaseUrl;
+  const baseUrl =
+    opts.baseUrl?.trim() ||
+    (opts.probeOnly ? aliasedProfile?.baseUrl : undefined) ||
+    chosen.defaultBaseUrl;
 
   // Resolve the key — non-interactive path when caller provided it,
   // else prompt (unless the preset is noAuth and the user didn't opt
@@ -180,6 +204,8 @@ export async function runAuthLocal(
   let apiKey: string | undefined;
   if (opts.apiKey !== undefined) {
     apiKey = opts.apiKey.trim() || undefined;
+  } else if (opts.probeOnly && aliasedProfile) {
+    apiKey = resolveActiveApiKey(aliasedProfile);
   } else if (chosen.noAuth) {
     apiKey = undefined;
   } else if (opts.skipKey) {
@@ -252,7 +278,7 @@ export async function runAuthLocal(
   const label = opts.label?.trim() || 'default';
 
   const providers = await loadProviders(deps);
-  const existing = providers[chosen.id];
+  const existing = providers[profileId];
   // Capture the previous models list BEFORE the mutate, so the
   // audit-log decision (add vs clear vs undo) can compare
   // against the pre-save state. The list is defensive-copied
@@ -277,7 +303,9 @@ export async function runAuthLocal(
       deps.profileConfigPath,
       deps.vault,
       (all) => {
-        const p = all[chosen.id] ?? { type: chosen.id };
+        if (opts.alias !== undefined && all[profileId])
+          throw new Error(`Auth profile "${profileId}" already exists.`);
+        const p = all[profileId] ?? { type: chosen.id };
         if (!p.type) p.type = chosen.id;
         // Wire family is always openai-compatible for these three.
         if (!p.family) p.family = 'openai-compatible';
@@ -306,12 +334,12 @@ export async function runAuthLocal(
           writeKeysBack(p, list);
           if (!p.activeKey) p.activeKey = finalLabel;
         }
-        all[chosen.id] = p;
+        all[profileId] = p;
       },
       deps.profileConfigPath,
     );
   } catch (err) {
-    deps.renderer.writeError(`Failed to save ${chosen.id}: ${(err as Error).message}`);
+    deps.renderer.writeError(`Failed to save ${profileId}: ${(err as Error).message}`);
     return 1;
   }
 
@@ -322,7 +350,7 @@ export async function runAuthLocal(
   // `provider.clear_models` / `provider.undo_clear` message
   // types so the two surfaces share an audit-log vocabulary.
   const events: AuthAuditEvent[] = decideAuthLocalEvents({
-    providerId: chosen.id,
+    providerId: profileId,
     baseUrl,
     previousModels,
     newModels: resolvedModels,
@@ -341,12 +369,12 @@ export async function runAuthLocal(
 
   if (apiKey) {
     deps.renderer.write(
-      `  ${color.green('✓')} Saved ${color.bold(chosen.id)}/${color.bold(finalLabel)} ` +
+      `  ${color.green('✓')} Saved ${color.bold(profileId)}/${color.bold(finalLabel)} ` +
         `→ ${color.cyan(baseUrl)}\n`,
     );
   } else {
     deps.renderer.write(
-      `  ${color.green('✓')} Saved ${color.bold(chosen.id)} ` +
+      `  ${color.green('✓')} Saved ${color.bold(profileId)} ` +
         `(no key) → ${color.cyan(baseUrl)}\n`,
     );
   }
@@ -359,7 +387,7 @@ export async function runAuthLocal(
   const modelHint = firstModel ? color.cyan(firstModel) : color.dim('<model-id>');
 
   deps.renderer.write(
-    color.dim(`  Launch: wstack --provider ${chosen.id} --model ${modelHint} "<task>"\n`),
+    color.dim(`  Launch: wstack --provider ${profileId} --model ${modelHint} "<task>"\n`),
   );
   return 0;
 }

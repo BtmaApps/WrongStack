@@ -170,11 +170,10 @@ describe('createSseLineFoldingTransform', () => {
     const eventName = 'e'.repeat(300 * 1024);
     const src = bodyFrom([`event: ${eventName}\ndata: short\n\n`]);
     const folded = createSseLineFoldingTransform(src, 200 * 1024);
-    await expect(async () => {
-      for await (const _msg of parseSSE(folded)) {
-        // drain
-      }
-    }).rejects.toThrow(/pending line exceeds/);
+    const events: { event: string; data: string }[] = [];
+    for await (const msg of parseSSE(folded)) events.push(msg);
+    // Passed through as one line (not split into a second `event:` field).
+    expect(events).toEqual([{ event: eventName, data: 'short' }]);
   });
 
   it('folds JSON data: lines split across multiple chunks', async () => {

@@ -4,9 +4,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useComposerActions } from '../src/hooks/use-composer-actions.js';
+import type { QueuedItem } from '../src/lib/queue-model.js';
 import type { RefineState } from '../src/lib/refine-model.js';
 import type { ChatMessage, PendingConfirm } from '../src/types.js';
-import type { QueuedItem } from '../src/lib/queue-model.js';
 
 interface Captured {
   current: ReturnType<typeof useComposerActions>;
@@ -185,6 +185,26 @@ describe('useComposerActions — submitWith', () => {
     act(() => captured.current.submitWith('btw'));
     expect(socket.send).toHaveBeenCalledWith('session.new', expect.anything());
     expect(state.draft).toBe('');
+  });
+
+  it('opens auth locally even while running and never queues it as a model prompt', () => {
+    const captured: Captured = { current: undefined as never };
+    const open = vi.fn();
+    window.addEventListener('simpleui:open-auth', open);
+    try {
+      const { socket, state, startSendMock } = renderHookViaRoot(captured, {
+        draft: '/AUTH login',
+        running: true,
+      });
+      act(() => captured.current.submitWith('queue'));
+      expect(open).toHaveBeenCalledOnce();
+      expect(startSendMock).not.toHaveBeenCalled();
+      expect(socket.send).not.toHaveBeenCalled();
+      expect(state.queue).toEqual([]);
+      expect(state.draft).toBe('');
+    } finally {
+      window.removeEventListener('simpleui:open-auth', open);
+    }
   });
 });
 

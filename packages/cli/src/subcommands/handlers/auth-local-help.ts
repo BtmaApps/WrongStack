@@ -38,6 +38,11 @@ export const LOCAL_AUTH_FLAGS: ReadonlyArray<{
   description: string;
 }> = [
   {
+    flag: '--alias <account>',
+    description:
+      'Create a separate auth profile for this preset; the alias selects the endpoint, credential, and models in fallback references.',
+  },
+  {
     flag: '--name <ollama|vllm|lmstudio>',
     description:
       'Pick a preset (skip the interactive picker). Defaults to the first run; set this for scripting.',
@@ -87,7 +92,7 @@ export const LOCAL_FLAG_COLUMN_WIDTH = 38;
  * user types them.
  */
 export const LOCAL_AUTH_HELP_USAGE =
-  'wstack auth local [--name <id>] [--base-url <url>] [--no-key] ' +
+  'wstack auth local [--name <id>] [--alias <account>] [--base-url <url>] [--no-key] ' +
   '[--no-probe|--probe-only] [--model <spec>] [--audit [target]]';
 
 /**

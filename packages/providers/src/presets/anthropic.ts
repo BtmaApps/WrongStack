@@ -16,10 +16,10 @@ import type {
   StreamEvent,
   Usage,
 } from '@wrongstack/core/types';
-import { ProviderError } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
 import { parseToolInput } from '../_tool-input.js';
 import { capAnthropicCacheBreakpoints } from '../cache-breakpoint-cap.js';
+import { providerErrorFromStreamPayload } from '../error-parse.js';
 import { capabilitiesForFamily } from '../family-capabilities.js';
 import { type BuildBodyContext, resolveRequiredMaxOutputTokens } from '../model-output-limits.js';
 import { normalizeAnthropic } from '../stop-reason.js';
@@ -96,6 +96,14 @@ export interface AnthropicStreamState {
   stopReason: StopReason;
   started: boolean;
   stopped: boolean;
+  /** Live provider id (alias-aware) for errors raised mid-stream. */
+  providerId?: string | undefined;
+  /**
+   * Set once `message_delta` carries a `stop_reason` — the model finished and
+   * only the closing `message_stop` frame is outstanding. Distinguishes a
+   * gateway that merely omits `message_stop` from a connection cut mid-reply.
+   */
+  sawStopReason?: boolean | undefined;
   /**
    * Provenance: true once any event supplied an explicit
    * `cache_creation_input_tokens` aggregate. While true, the TTL-split
@@ -116,6 +124,14 @@ export interface AnthropicStreamState {
 }
 
 const DEFAULT_VERSION = '2023-06-01';
+
+/**
+ * `providerMeta` key carrying a `redacted_thinking` block's opaque `data`.
+ * The canonical ThinkingBlock has no field for it; without round-tripping it
+ * the block vanished from history, and Anthropic rejects a thinking-enabled
+ * tool-use continuation whose prior assistant turn lost its thinking blocks.
+ */
+export const ANTHROPIC_REDACTED_THINKING_META = 'anthropic.redactedThinking';
 
 export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
   id: 'anthropic',
@@ -205,16 +221,23 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
     capAnthropicCacheBreakpoints(body);
     return body;
   },
-  createStreamState: (fallbackModel) => ({
+  createStreamState: (fallbackModel, providerId) => ({
     model: fallbackModel,
     usage: { input: 0, output: 0 },
     stopReason: 'end_turn',
     started: false,
     stopped: false,
+    providerId,
     blocks: new Map(),
   }),
   parseStreamEvent: (msg, state): StreamEvent[] => {
-    if (!msg.data || msg.data === '[DONE]') return [];
+    if (msg.data === '[DONE]') {
+      // Not part of Anthropic's protocol, but OpenAI-style gateways fronting
+      // the Messages API append it — an explicit end-of-stream all the same.
+      state.sawStopReason = true;
+      return [];
+    }
+    if (!msg.data) return [];
     const parsed = safeParse<Record<string, unknown>>(msg.data);
     if (!parsed.ok || !parsed.value) return [];
     const ev = parsed.value;
@@ -250,7 +273,18 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
           }
         } else if (cb?.type === 'text') {
           state.blocks.set(index, { kind: 'text', chunks: [] });
-        } else if (cb?.type === 'thinking' || cb?.type === 'redacted_thinking') {
+        } else if (cb?.type === 'redacted_thinking') {
+          state.blocks.set(index, { kind: 'thinking', chunks: [] });
+          const data = (cb as { data?: unknown }).data;
+          out.push(
+            typeof data === 'string' && data.length > 0
+              ? {
+                  type: 'thinking_start',
+                  providerMeta: { [ANTHROPIC_REDACTED_THINKING_META]: data },
+                }
+              : { type: 'thinking_start' },
+          );
+        } else if (cb?.type === 'thinking') {
           state.blocks.set(index, { kind: 'thinking', chunks: [] });
           out.push({ type: 'thinking_start' });
         } else {
@@ -303,6 +337,7 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
         const u = ev['usage'] as AnthropicUsageWire | undefined;
         if (delta?.stop_reason !== undefined) {
           state.stopReason = normalizeAnthropic(delta.stop_reason);
+          if (delta.stop_reason !== null) state.sawStopReason = true;
         }
         // Canonical Anthropic sends only `output_tokens` here, but
         // Anthropic-compatible gateways may report the authoritative usage
@@ -315,20 +350,24 @@ export const anthropicWireFormat = defineWireFormat<AnthropicStreamState>({
         state.stopped = true;
         out.push({ type: 'message_stop', stopReason: state.stopReason, usage: state.usage });
         break;
-      case 'error': {
-        const err = ev['error'] as
-          | { message?: string | undefined; type?: string | undefined }
-          | undefined;
-        throw new ProviderError(err?.message ?? 'Anthropic stream error', 0, false, 'anthropic', {
-          body: { type: err?.type, message: err?.message },
-        });
-      }
+      case 'error':
+        // Mid-stream errors are mostly capacity signals (`overloaded_error`
+        // is Anthropic's documented in-stream 529). Classify them like the
+        // HTTP path does instead of hard-coding non-retryable, which turned a
+        // transient overload into a dead turn with no retry and no fallback.
+        throw providerErrorFromStreamPayload(state.providerId ?? 'anthropic', ev);
     }
     return out;
   },
+  // Started, but the connection closed before both `message_stop` and a
+  // `message_delta.stop_reason` → the reply was cut mid-stream. Surface a
+  // retryable error instead of committing the partial text as a clean end_turn.
+  // A stop_reason alone is enough to accept the turn: some Anthropic-compatible
+  // gateways never send the closing `message_stop` frame.
+  isTruncated: (state) => state.started && !state.stopped && !state.sawStopReason,
   finalizeStream: (state): StreamEvent[] => {
-    // If upstream closed without an explicit `message_stop` we synthesize
-    // one so the consumer's stream-end logic still fires.
+    // If upstream closed without an explicit `message_stop` (but after a
+    // stop_reason) we synthesize one so the consumer's stream-end logic fires.
     if (state.started && !state.stopped) {
       return [{ type: 'message_stop', stopReason: state.stopReason, usage: state.usage }];
     }
@@ -372,6 +411,12 @@ function deriveThinkingBudget(
  * `sanitizeAnthropicBlock` to strip extra fields other wire formats
  * inject (tool_result.name, tool_use.providerMeta, thinking.providerMeta).
  */
+function redactedThinkingData(b: ContentBlock): string | undefined {
+  if (b.type !== 'thinking') return undefined;
+  const data = b.providerMeta?.[ANTHROPIC_REDACTED_THINKING_META];
+  return typeof data === 'string' && data.length > 0 ? data : undefined;
+}
+
 function normalizeMessageContent(m: Message): unknown {
   if (typeof m.content === 'string') return m.content;
   return (
@@ -383,7 +428,10 @@ function normalizeMessageContent(m: Message): unknown {
       // empty — and a history built there can reach Anthropic through a `/model`
       // switch or a fallback hop. Dropping it is the correct translation: the
       // payload means nothing to this provider anyway.
-      .filter((b) => b.type !== 'thinking' || b.thinking.length > 0)
+      .filter(
+        (b) =>
+          b.type !== 'thinking' || b.thinking.length > 0 || redactedThinkingData(b) !== undefined,
+      )
       .map((b) => sanitizeAnthropicBlock(b))
   );
 }
@@ -459,10 +507,13 @@ function sanitizeAnthropicBlock(b: ContentBlock): Record<string, unknown> {
       if (b.cache_control) out['cache_control'] = b.cache_control;
       return out;
     }
-    case 'thinking':
+    case 'thinking': {
+      const redacted = redactedThinkingData(b);
+      if (redacted !== undefined) return { type: 'redacted_thinking', data: redacted };
       return b.signature
         ? { type: 'thinking', thinking: b.thinking, signature: b.signature }
         : { type: 'thinking', thinking: b.thinking };
+    }
     case 'image':
       return { type: 'image', source: b.source };
     default:

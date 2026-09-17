@@ -125,6 +125,14 @@
     "serviceAutoRestarting": "Otomatik yeniden başlatılıyor…"
   },
   "provider": {
+    "removeProfileConfirm": "“{{alias}}” auth profili ve tüm key'leri silinsin mi?",
+    "removeProfileBody": "Kayıtlı credential'lar ve model yönlendirmelerindeki bu hesaba ait referanslar kaldırılacak.",
+    "deleteKeyConfirm": "“{{alias}}” hesabındaki “{{label}}” key'i silinsin mi?",
+    "addProfile": "Hesap / auth profili ekle",
+    "profileAlias": "Auth profili aliası",
+    "profileHint": "Her hesap kendi aliası ve credential kaydıyla tutulur. Fallback hedefi alias/model biçimindedir.",
+    "profileExists": "“{{alias}}” auth profili zaten var. Başka bir alias seçin.",
+    "operationTimeout": "Sunucudan yanıt gelmedi. Bağlantıyı kontrol edip tekrar deneyin.",
     "subscriptionHeading": "Abonelik girişi",
     "apiKeysHeading": "API anahtarı sağlayıcıları",
     "apiKeysBody": "Katalogdan bir sağlayıcı seçip API anahtarı ekleyin veya kayıtlı sağlayıcıları yönetin.",

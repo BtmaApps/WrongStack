@@ -11,7 +11,7 @@
       "relativeImports": 19
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
-      "lines": 1043,
+      "lines": 915,
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
@@ -19,11 +19,11 @@
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
-      "lines": 917,
-      "relativeImports": 18
+      "lines": 922,
+      "relativeImports": 19
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 878,
+      "lines": 879,
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
@@ -39,7 +39,7 @@
       "relativeImports": 1
     },
     "packages/cli/src/picker.ts": {
-      "lines": 832,
+      "lines": 834,
       "relativeImports": 11
     },
     "packages/cli/src/plugin-management.ts": {
@@ -55,7 +55,7 @@
       "relativeImports": 14
     },
     "packages/cli/src/slash-commands/settings-mutations.ts": {
-      "lines": 1064,
+      "lines": 1101,
       "relativeImports": 5
     },
     "packages/cli/src/slash-commands/tool.ts": {
@@ -67,7 +67,7 @@
       "relativeImports": 10
     },
     "packages/cli/src/subcommands/handlers/providers-models.ts": {
-      "lines": 800,
+      "lines": 801,
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
@@ -107,8 +107,8 @@
       "relativeImports": 6
     },
     "packages/core/src/coordination/index.ts": {
-      "lines": 840,
-      "relativeImports": 99
+      "lines": 844,
+      "relativeImports": 100
     },
     "packages/core/src/coordination/sqlite-mailbox.ts": {
       "lines": 982,
@@ -235,7 +235,7 @@
       "relativeImports": 0
     },
     "packages/plugins/src/path-guard/shell-targets.ts": {
-      "lines": 1048,
+      "lines": 1072,
       "relativeImports": 1
     },
     "packages/plugins/src/prompt-firewall/index.ts": {
@@ -262,8 +262,12 @@
       "lines": 871,
       "relativeImports": 1
     },
+    "packages/providers/src/index.ts": {
+      "lines": 880,
+      "relativeImports": 66
+    },
     "packages/providers/src/openai-codex.ts": {
-      "lines": 1581,
+      "lines": 1605,
       "relativeImports": 17
     },
     "packages/sage/src/domain-term-extractor.ts": {
@@ -359,7 +363,7 @@
       "relativeImports": 4
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 861,
+      "lines": 862,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -367,7 +371,7 @@
       "relativeImports": 10
     },
     "packages/tui/src/app-state.ts": {
-      "lines": 1032,
+      "lines": 1033,
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
@@ -407,7 +411,7 @@
       "relativeImports": 11
     },
     "packages/tui/src/hooks/use-picker-keys-tools-settings.ts": {
-      "lines": 877,
+      "lines": 909,
       "relativeImports": 6
     },
     "packages/tui/src/input-validation.ts": {
@@ -483,7 +487,7 @@
       "relativeImports": 8
     },
     "packages/webui/src/components/SettingsPanel/ProviderSection.tsx": {
-      "lines": 887,
+      "lines": 989,
       "relativeImports": 7
     },
     "packages/webui/src/components/SidePanel/SessionList.tsx": {
@@ -531,11 +535,11 @@
       "relativeImports": 17
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 896,
+      "lines": 897,
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 953,
+      "lines": 963,
       "relativeImports": 14
     },
     "packages/webui-server/src/server/context-editor.ts": {
@@ -563,8 +567,8 @@
       "relativeImports": 47
     },
     "packages/webui-server/src/server/start-webui.ts": {
-      "lines": 804,
-      "relativeImports": 33
+      "lines": 811,
+      "relativeImports": 35
     },
     "packages/webui-server/src/server/ws-payload-validation.ts": {
       "lines": 1057,

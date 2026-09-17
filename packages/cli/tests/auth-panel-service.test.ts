@@ -508,7 +508,7 @@ describe('editField flow', () => {
 describe('flow delegation', () => {
   it('oauthLogin routes kinds to the right flow and forwards the abort signal', async () => {
     const { host } = await setup();
-    const { io } = makeIo();
+    const { io } = makeIo(['', '', '']);
     expect((await host.oauthLogin('chatgpt', io)).ok).toBe(true);
     expect(flowMocks.runProviderAuthLogin).toHaveBeenCalledTimes(1);
     const [, kind, opts] = flowMocks.runProviderAuthLogin.mock.calls[0] as unknown as [

@@ -113,7 +113,7 @@ function mockFetchSpy() {
         choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 1, completion_tokens: 1 },
       }),
-      text: async () => '',
+      text: async (): Promise<string> => '',
       body: null as ReadableStream<Uint8Array> | NodeJS.ReadableStream | null,
     };
   });
@@ -126,7 +126,7 @@ function sseFetch(frames: string[]): typeof fetch {
     ({
       ok: true,
       status: 200,
-      text: async () => '',
+      text: async (): Promise<string> => '',
       body: new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(new TextEncoder().encode(text));
@@ -273,7 +273,7 @@ describe('OpenAICompatibleProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -298,7 +298,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -339,7 +339,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -361,7 +361,7 @@ describe('OpenAICompatibleProvider', () => {
     expect(captured?.['thinking']).toBeUndefined();
   });
 
-  it('maps the effort levels the base builder drops onto reasoning_effort (#14)', async () => {
+  it('maps `max` onto the nearest wire level and sends the rest verbatim (#14)', async () => {
     let captured: Record<string, unknown> | undefined;
     const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
       captured = JSON.parse(init.body ?? '{}');
@@ -369,7 +369,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -378,8 +378,8 @@ describe('OpenAICompatibleProvider', () => {
       baseUrl: 'https://api.deepseek.com/v1',
       fetchImpl: spy,
     });
-    // `max` is outside OpenAI's accepted set, so the base builder dropped it
-    // entirely before this fix; it now collapses onto `high`.
+    // `max` is WrongStack's own top level with no Chat Completions spelling,
+    // so it collapses onto `xhigh`.
     await p.complete(
       {
         model: 'm',
@@ -389,9 +389,9 @@ describe('OpenAICompatibleProvider', () => {
       },
       { signal: new AbortController().signal },
     );
-    expect(captured?.['reasoning_effort']).toBe('high');
+    expect(captured?.['reasoning_effort']).toBe('xhigh');
 
-    // `minimal` collapses onto `low`.
+    // `minimal` is a real wire level — sent as itself, not collapsed.
     await p.complete(
       {
         model: 'm',
@@ -401,7 +401,7 @@ describe('OpenAICompatibleProvider', () => {
       },
       { signal: new AbortController().signal },
     );
-    expect(captured?.['reasoning_effort']).toBe('low');
+    expect(captured?.['reasoning_effort']).toBe('minimal');
   });
 
   it('leaves base-handled efforts untouched and skips when reasoning is disabled (#14)', async () => {
@@ -412,7 +412,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -446,11 +446,10 @@ describe('OpenAICompatibleProvider', () => {
     expect(captured?.['reasoning_effort']).toBeUndefined();
   });
 
-  it('suppresses reasoning_effort under tools uniformly on policy-less gateways', async () => {
-    // The old chain was inverted: with tools present the base builder dropped
-    // low/medium/high/none while the generic fill re-added minimal/xhigh/max
-    // as mapped extremes. Now EVERY effort level is dropped under tools for a
-    // generic (policy-less) endpoint, including the mapped ones.
+  it('sends reasoning_effort with tools on a policy-less gateway', async () => {
+    // The user's effort setting used to be dropped whenever tools were present
+    // — i.e. always, in the agent loop — making the setting a silent no-op on
+    // every generic OpenAI-compatible provider.
     let captured: Record<string, unknown> | undefined;
     const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
       captured = JSON.parse(init.body ?? '{}');
@@ -458,18 +457,17 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
-      id: 'some-generic-gateway', // no requestPolicy, no thinkingParam quirk
+      id: 'sends-effort-gateway', // no requestPolicy, no thinkingParam quirk
       apiKey: 'k',
       baseUrl: 'https://gateway.example.com/v1',
       fetchImpl: spy,
     });
     const tools = toolList(['read']);
 
-    // Verbatim-level effort: dropped under tools.
     await p.complete(
       {
         model: 'm',
@@ -480,9 +478,9 @@ describe('OpenAICompatibleProvider', () => {
       },
       { signal: new AbortController().signal },
     );
-    expect(captured).not.toHaveProperty('reasoning_effort');
+    expect(captured?.['reasoning_effort']).toBe('medium');
 
-    // Mapped-level effort (max → high via the generic fill): ALSO dropped.
+    // The one mapped level (max → xhigh via the generic fill) reaches the wire too.
     await p.complete(
       {
         model: 'm',
@@ -493,19 +491,91 @@ describe('OpenAICompatibleProvider', () => {
       },
       { signal: new AbortController().signal },
     );
-    expect(captured).not.toHaveProperty('reasoning_effort');
+    expect(captured?.['reasoning_effort']).toBe('xhigh');
+  });
 
-    // Without tools the mapped fill still reaches the wire.
+  it('learns from a gateway that rejects effort with tools: retries without it, then omits it', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
+      const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+      bodies.push(body);
+      if (body['reasoning_effort'] !== undefined) {
+        return {
+          ok: false,
+          status: 400,
+          text: async (): Promise<string> =>
+            JSON.stringify({
+              error: {
+                message: "'reasoning_effort' is not supported with tools",
+                type: 'invalid_request_error',
+              },
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ model: 'm', choices: [], usage: {} }),
+        text: async (): Promise<string> => '',
+      };
+    }) as never as typeof fetch;
+    const p = new OpenAICompatibleProvider({
+      id: 'rejects-effort-gateway',
+      apiKey: 'k',
+      baseUrl: 'https://gateway.example.com/v1',
+      fetchImpl: spy,
+    });
+    const req = {
+      model: 'm',
+      messages: [{ role: 'user' as const, content: 'hi' }],
+      maxTokens: 1,
+      reasoning: { effort: 'medium' as const },
+      tools: toolList(['read']),
+    };
+
+    // First turn: the rejected attempt is retried without the field.
+    await p.complete(req, { signal: new AbortController().signal });
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.['reasoning_effort']).toBe('medium');
+    expect(bodies[1]).not.toHaveProperty('reasoning_effort');
+
+    // Second turn: the lesson holds, so no failed request is paid again.
+    await p.complete(req, { signal: new AbortController().signal });
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('the suppressEffortWithTools quirk omits the field without probing', async () => {
+    let captured: Record<string, unknown> | undefined;
+    const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
+      captured = JSON.parse(init.body ?? '{}');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ model: 'm', choices: [], usage: {} }),
+        text: async (): Promise<string> => '',
+      };
+    }) as never as typeof fetch;
+    const p = new OpenAICompatibleProvider({
+      id: 'pinned-suppress-gateway',
+      apiKey: 'k',
+      baseUrl: 'https://gateway.example.com/v1',
+      fetchImpl: spy,
+      quirks: { suppressEffortWithTools: true },
+    });
+
     await p.complete(
       {
         model: 'm',
         messages: [{ role: 'user', content: 'hi' }],
         maxTokens: 1,
-        reasoning: { effort: 'max' },
+        reasoning: { effort: 'medium' },
+        tools: toolList(['read']),
       },
       { signal: new AbortController().signal },
     );
-    expect(captured?.['reasoning_effort']).toBe('high');
+    expect(captured).not.toHaveProperty('reasoning_effort');
+    expect(spy).toHaveBeenCalledOnce();
   });
 
   it('keeps reasoning_effort under tools for zai-glm quirk providers', async () => {
@@ -518,7 +588,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAICompatibleProvider({
@@ -566,7 +636,7 @@ describe('OpenAICompatibleProvider', () => {
         ok: true,
         status: 200,
         json: async () => ({ model: 'm', choices: [], usage: {} }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     return { spy, getBody: () => captured ?? {} };
@@ -680,5 +750,61 @@ describe('OpenAICompatibleProvider', () => {
     );
     const tc = getBody()['tool_choice'] as { function: { name: string } };
     expect(tc.function.name).toBe('write');
+  });
+});
+
+describe('reasoning-effort learning on the declarative wire formats', () => {
+  it('Copilot-style presets retry without the field and remember the model', async () => {
+    const { openaiWireFormat } = await import('../src/presets/openai.js');
+    const { WireFormatProvider } = await import('../src/wire-format.js');
+    const { resetEffortSupport } = await import('../src/effort-support.js');
+    resetEffortSupport();
+
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchImpl = (async (_url: unknown, init: { body?: string } = {}) => {
+      const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+      bodies.push(body);
+      if (body['reasoning_effort'] !== undefined) {
+        return {
+          ok: false,
+          status: 400,
+          text: async (): Promise<string> =>
+            JSON.stringify({ error: { message: "'reasoning_effort' is not supported" } }),
+        };
+      }
+      const sse = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(
+            new TextEncoder().encode(
+              'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+            ),
+          );
+          c.close();
+        },
+      });
+      return { ok: true, status: 200, body: sse, text: async (): Promise<string> => '' };
+    }) as never as typeof fetch;
+
+    const provider = new WireFormatProvider(openaiWireFormat, {
+      apiKey: 'k',
+      fetchImpl,
+    });
+    const req = {
+      model: 'gpt-5.2',
+      messages: [{ role: 'user' as const, content: 'hi' }],
+      maxTokens: 1,
+      reasoning: { effort: 'xhigh' as const },
+    };
+
+    const first = await provider.complete(req, { signal: new AbortController().signal });
+    expect(first.content).toEqual([{ type: 'text', text: 'ok' }]);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.['reasoning_effort']).toBe('xhigh');
+    expect(bodies[1]).not.toHaveProperty('reasoning_effort');
+
+    await provider.complete(req, { signal: new AbortController().signal });
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty('reasoning_effort');
+    resetEffortSupport();
   });
 });

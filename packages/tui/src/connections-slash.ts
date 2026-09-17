@@ -13,12 +13,12 @@ export function createConnectionsSlashCommand(deps: ConnectionsSlashDeps): Slash
     name: 'connections',
     aliases: ['conn', 'conns'],
     description:
-      'Show service connection health — Chronicle, Codebase Index, SAGE Memory, Kanban IPC, Mailbox IPC.',
+      'Show service connection health and restart daemons — Session Catalog, Chronicle, Codebase Index, SAGE, Kanban, Mailbox, Governance.',
     argsHint: '[open]',
     category: 'Inspect',
     help:
       'Usage:\n' +
-      '  /connections         — open the interactive service health panel\n' +
+      '  /connections         — open the interactive service health and restart panel\n' +
       '  /connections open    — same as above\n',
     async run(args: string) {
       const trimmed = args.trim().toLowerCase();

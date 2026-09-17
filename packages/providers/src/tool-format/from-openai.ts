@@ -41,7 +41,7 @@ export function contentFromOpenAI(
     // Some OpenAI-compatible servers omit `id` on tool calls. An empty id
     // breaks tool_result correlation downstream, so synthesize a stable one
     // — matching the streaming path and the Google adapter.
-    const id = tc.id || `call_${randomUUID()}`;
+    const id = tc.id || `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
     const input = parseToolArguments(raw, tc.function.name, id, opts);
     const block: ToolUseBlock = {
       type: 'tool_use',

@@ -293,7 +293,7 @@
       },
       "source": "packages/core/src/types/index.ts",
       "declarations": [
-        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillsConfig, SyncCategory, SyncConfig, ThemePresetId, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
+        "export type { AdaptiveConcurrencyConfig, AgentLearningConfig, AutonomyConfig, AutoThinConfig, BrainConfig, BrainCouncilConfig, BrainCouncilVoterConfig, BrainModelEntry, CircuitBreakerRuntimeConfig, ConcreteTokenSavingTier, Config, ConfigLoader, ConfigStore, ContextConfig, CouncilPersonaDefinition, CouncilToolConfig, CouncilToolProfileDefinition, CustomModelDefinition, DisabledToolMeta, ExecDangerConfig, ExecToolConfig, FeaturesConfig, FleetChatVerbosity, FleetConfig, FleetSupervisorConfig, GitBehaviorConfig, HqClientConfig, IndexingAtlasConfig, IndexingConceptsConfig, IndexingConfig, IndexingEmbeddingsConfig, InputHistoryConfig, LaunchConfig, LaunchMenuChoice, LogConfig, LoopDetectionConfig, MCPHealthConfig, MCPHealthThresholds, MCPServerConfig, ModelMatrixEntry, ModelRuntimeCacheConfig, ModelRuntimeConfig, ModelRuntimeParametersConfig, ModelRuntimeReasoningConfig, ModelRuntimeStreamingConfig, ModelTierId, ModelTierLeaderConfig, ModelTierLeaderMode, ModelTierLevel, ModelTierRouting, ModelTiersConfig, NextStepsToolConfig, PluginConfig, PluginManagerConfig, ProviderApiKey, ProviderConfig, SageConfig, SessionLoggingConfig, SkillSuggestConfig, SkillsConfig, SyncCategory, SyncConfig, ThemePresetId, TokenSavingTier, ToolDescriptionMode, ToolDescriptionModeConfig, ToolResultRenderMode, ToolResultRenderModeConfig, ToolsConfig, } from './config.js';",
         "export type { AddAttachmentInput, Attachment, AttachmentKind, AttachmentMeta, AttachmentRef, AttachmentStore, } from './attachment.js';",
         "export type { AggregateHealth, HealthCheck, HealthCheckResult, HealthRegistry, HealthStatus, MetricLabels, MetricSeries, MetricsRuntimeStatus, MetricsSink, MetricsSnapshot, Span, Tracer, } from './observability.js';",
         "export type { AnyHookOutcome, ConfiguredHook, HookEntry, HookEvent, HookFailurePolicy, HookInput, HookInvocationContext, HookMatcher, HookOutcome, HookRegistrationOptions, HttpHook, InProcessHook, PreToolUseOutcome, PreToolUseStage, ShellHook, } from './hooks.js';",
@@ -732,6 +732,7 @@
         "export { mailboxProjectServerEndpoint, mailboxProjectServerMetadataPath, } from './mailbox-project-server-endpoint.js';",
         "export { makeAskResultTool, makeAskTool, makeAssignTool, makeAwaitTasksTool, makeCollabDebugTool, makeFleetEmitTool, makeFleetTool, // NOTE: `makeFleetStatusTool` is no longer an alias of makeFleetTool — it // is the standalone read-only peer-snapshot tool from fleet-status-tool.ts // (exported below). The old leader-side fleet_status was consolidated into // `fleet` (action: status). makeKanbanQueueTool, makeMutationTestTool, makeQualityGateTool, makeRollUpTool, makeSpawnTool, makeTerminateAllTool, makeTerminateTool, makeWorkCompleteTool, } from './director-tools.js';",
         "export { makeSessionNoteTool } from './session-note-tool.js';",
+        "export { makeTypeSafeDispatchClassifier, type TypeSafeDispatchClassifierOptions, } from './typesafe-dispatch-classifier.js';",
         "export { parseMailboxAckInput, parseMailboxQueryInput, parseMailboxSendInput, } from './mailbox-codecs.js';",
         "export { postSessionNote, SessionNoteHub, type SessionNoteInbox, type SessionNotePost, type SessionNotePostResult, sessionNoteHub, } from './session-note-hub.js';",
         "export { redactMailboxCredential } from './mailbox-credential-store.js';",
@@ -1251,12 +1252,25 @@
         "export { FOREIGN_SKILL_TOOLS, type ForeignSkillTool, type ResolvedForeignTools, resolveForeignToolIds, resolveForeignToolIdsWithWarnings, type SkillSecurityTier, securityScoreToTier, } from './foreign-sources.js';",
         "export { SKILL_LIMITS } from './limits.js';",
         "export { bodyLineAdvisory, type ExtractedSkillDraft, extractSkillFromPrompt, generateSkillSkeleton, openInEditor, type SkillNameValidation, type SkillSkeletonOptions, validateSkillNameAvailable, writeSkeletonSkill, } from './skill-generator.js';",
+        "export { buildSuggesterFromConfig, type ChoiceAnswer, type ChoiceQuestion, classifyCase, createSkillSuggester, createSkillSuggestionMiddleware, createSkillSuggestionSetup, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type ExplainOptions, type LabeledRequest, type NoulAnswer, type NoulQuestion, parseEvalJsonl, parseSystemOneResult, redecide, renderSuggestionBlock, type ScoredCase, type SkillSuggester, type SkillSuggesterOptions, type SkillSuggestion, type SkillSuggestionMiddlewareOptions, type SkillSuggestionSetupDeps, type SkillSuggestionTrace, type SuggestionScore, type SuggestionStop, type SweepRow, type SystemOneRequest, type SystemOneResult, scoreSuggestions, sweepThresholds, TYPESAFE_API_KEY_ENV, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, unknownGoldLabels, } from './suggest/index.js';",
         "export { createSkillsShAdapter, DEFAULT_SKILLS_SH_URL } from './registry/skills-sh-adapter.js';",
         "export { githubDirectAdapter } from './registry/github-direct-adapter.js';",
         "export { isValidSkillNameFormat, type ParsedSkillFrontmatter, parseSkillFrontmatter, stripFrontmatter, validateSkillName, } from './frontmatter.js';",
         "export { type DownloadResult, downloadGitHubTarball, type ParsedRef, parseSkillRef, } from './github-fetcher.js';",
         "export { type InstallResult, SkillInstaller, type SkillInstallerOptions, type UpdateResult, } from './skill-installer.js';",
         "export { type InstalledSkillEntry, type ManifestData, SkillManifestStore, } from './manifest-store.js';"
+      ]
+    },
+    {
+      "subpath": "./typesafe",
+      "target": {
+        "types": "./dist/typesafe/index.d.ts",
+        "import": "./dist/typesafe/index.js"
+      },
+      "source": "packages/core/src/typesafe/index.ts",
+      "declarations": [
+        "export { type ChoiceAnswer, type ChoiceQuestion, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type NoulAnswer, type NoulQuestion, parseSystemOneResult, type SystemOneRequest, type SystemOneResult, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, } from './client.js';",
+        "export { type ResolveTypeSafeClientDeps, resolveTypeSafeClient, TYPESAFE_API_KEY_ENV, typeSafeModel, } from './resolve.js';"
       ]
     },
     {
@@ -1471,15 +1485,15 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 194,
-      "sourceLines": 56196
+      "sourceFiles": 195,
+      "sourceLines": 56390
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 58,
-      "sourceLines": 13316
+      "sourceLines": 13362
     },
     {
       "directory": "design",
@@ -1493,7 +1507,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 59,
-      "sourceLines": 19181
+      "sourceLines": 19190
     },
     {
       "directory": "extension",
@@ -1542,7 +1556,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 11,
-      "sourceLines": 2563
+      "sourceLines": 2564
     },
     {
       "directory": "notifications",
@@ -1625,8 +1639,8 @@
       "directory": "skills",
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
-      "sourceFiles": 11,
-      "sourceLines": 2383
+      "sourceFiles": 16,
+      "sourceLines": 3447
     },
     {
       "directory": "statusline",
@@ -1640,7 +1654,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23518
+      "sourceLines": 23535
     },
     {
       "directory": "tasking",
@@ -1660,8 +1674,15 @@
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
-      "sourceFiles": 73,
-      "sourceLines": 13826
+      "sourceFiles": 74,
+      "sourceLines": 13991
+    },
+    {
+      "directory": "typesafe",
+      "classification": "concrete runtime default",
+      "intendedOwner": "Runtime or focused TypeSafe integration",
+      "sourceFiles": 3,
+      "sourceLines": 349
     },
     {
       "directory": "utils",

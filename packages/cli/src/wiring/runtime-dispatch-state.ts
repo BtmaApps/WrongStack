@@ -2,7 +2,8 @@
 import type { Agent, Context } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
-import type { Config, ConfigStore, MemoryPort } from '@wrongstack/core/types';
+import { createSkillSuggestionSetup } from '@wrongstack/core/skills';
+import type { Config, ConfigStore, MemoryPort, SkillLoader } from '@wrongstack/core/types';
 import { getToolDescriptionMode } from '@wrongstack/core/utils';
 import type { PluginPickerItem, ToolPickerItem } from '../execute-deps.js';
 import { PLUGIN_AUDIT_ENTRIES, runPluginManagementCommand } from '../plugin-management.js';
@@ -17,6 +18,8 @@ interface RuntimeDispatchStateInput {
   profileConfigPath: string;
   pipelines: Parameters<typeof setupSage>[0]['pipelines'];
   memoryStore: MemoryPort;
+  /** Roster the skill suggester ranks. Undefined when skills are disabled. */
+  skillLoader: SkillLoader | undefined;
   logger: Parameters<typeof setupSage>[0]['logger'];
   events: EventBus;
   agent: Agent;
@@ -37,6 +40,17 @@ export async function prepareRuntimeDispatch(input: RuntimeDispatchStateInput) {
     getSessionId: () => input.agent.ctx.session.id,
     projectRoot: input.projectRoot,
   });
+  // Opt-in, and a no-op unless `skills.suggest.enabled` is on AND a TypeSafe
+  // key is present. Installed after SAGE so the suggestion block lands after
+  // the memory block, keeping both at the volatile tail of the prompt.
+  const skillSuggestion = createSkillSuggestionSetup({
+    config: input.getConfig(),
+    skillLoader: input.skillLoader,
+    logger: input.logger,
+    getSessionId: () => input.agent.ctx.session.id,
+  });
+  if (skillSuggestion) input.pipelines.request.use(skillSuggestion);
+
   const disposeIndexing = await setupCodebaseIndexing({
     config: input.getConfig(),
     context: input.context,

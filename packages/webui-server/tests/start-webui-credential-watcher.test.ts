@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@wrongstack/core/storage', () => ({
   watchProviderConfig: mocks.watchProviderConfig,
 }));
-vi.mock('@wrongstack/providers', () => ({
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   makeProviderFromConfig: mocks.makeProviderFromConfig,
 }));
 vi.mock('../src/server/boot.js', () => ({ patchConfig: mocks.patchConfig }));
@@ -100,5 +101,54 @@ describe('setupWebuiCredentialWatcher', () => {
     );
     expect(context.provider).toEqual({ id: 'replacement' });
     expect(updateAutoCompactionMaxContext).toHaveBeenCalledWith({ id: 'replacement' });
+  });
+  it('blocks removed accounts even with a legacy root key, then recovers on recreation', async () => {
+    let notify: ((snapshot: Record<string, unknown>) => void) | undefined;
+    mocks.watchProviderConfig.mockImplementation((_path, _vault, callback) => {
+      notify = callback;
+      return { close: vi.fn() };
+    });
+    let config = { providers: { openai: { type: 'openai', apiKey: 'old' } }, apiKey: 'legacy' };
+    const old = { id: 'openai', capabilities: {}, complete: vi.fn(), stream: vi.fn() };
+    const context = { provider: old, meta: {} };
+    const tab = { provider: old };
+    const replacement = { ...old, complete: vi.fn(), stream: vi.fn() };
+    const create = vi.fn(() => replacement);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    setupWebuiCredentialWatcher({
+      watchConfigPath: 'config.json',
+      vault: {} as never,
+      logger: { warn: vi.fn() } as never,
+      state: {
+        getConfig: () => config,
+        setConfig: (next: typeof config) => {
+          config = next;
+        },
+      } as never,
+      deps: {
+        context,
+        configStore: { update: vi.fn() },
+        providerRegistry: { has: () => true, create },
+        sessionAgentIds: () => ['tab'],
+        peekAgent: () => ({ ctx: tab }),
+      } as never,
+      clients: new Map(),
+      updateAutoCompactionMaxContext: vi.fn().mockResolvedValue(undefined),
+    });
+    notify?.({ providers: {}, apiKey: 'legacy', snapshotHasProviders: true });
+    expect(create).not.toHaveBeenCalled();
+    expect(tab.provider).toBe(context.provider);
+    const blocked = context.provider as unknown as import('@wrongstack/core/types').Provider;
+    await expect(
+      blocked.complete({} as never, { signal: new AbortController().signal }),
+    ).rejects.toThrow('auth profile');
+    expect(old.complete).not.toHaveBeenCalled();
+    notify?.({
+      providers: { openai: { type: 'openai', apiKey: 'new' } },
+      snapshotHasProviders: true,
+    });
+    expect(context.provider).toBe(replacement);
+    expect(tab.provider).toBe(replacement);
   });
 });

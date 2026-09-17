@@ -85,6 +85,30 @@ describe('createProviderHandlers saved-provider broadcasts', () => {
     mockSaveProviders.mockResolvedValue(undefined);
   });
 
+  it('reports a failed save without broadcasting success, then permits retry', async () => {
+    mockLoadSavedProviders.mockImplementation(async () => cloneProviders(providers));
+    mockSaveProviders.mockRejectedValueOnce(new Error('Disk full'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const ws = mockWs();
+      const { handlers, broadcast } = makeHandlers();
+      await handlers.handleKeySetActive(ws, 'local', 'backup');
+      expect(broadcast).not.toHaveBeenCalled();
+      expect(JSON.parse(ws.send.mock.calls[0]![0] as string)).toMatchObject({
+        type: 'key.operation_result',
+        payload: { success: false, message: 'Disk full' },
+      });
+      await handlers.handleKeySetActive(ws, 'local', 'backup');
+      expect(mockSaveProviders).toHaveBeenCalledTimes(2);
+      expect(broadcast).toHaveBeenCalledOnce();
+      expect(JSON.parse(ws.send.mock.calls[1]![0] as string)).toMatchObject({
+        payload: { success: true },
+      });
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it('broadcasts a fresh saved-provider projection after a successful key mutation', async () => {
     mockLoadSavedProviders.mockResolvedValueOnce(cloneProviders(providers));
     const ws = mockWs();
@@ -417,7 +441,11 @@ describe('createProviderHandlers saved-provider broadcasts', () => {
     await handlers.handleOAuthStart(ws, 'chatgpt', 'custom-codex');
     await handlers.handleOAuthCode(ws, 'chatgpt', 'callback-code');
 
-    expect(mockBeginProviderAuth).toHaveBeenCalledWith('chatgpt', { modelsRegistry });
+    expect(mockBeginProviderAuth).toHaveBeenCalledWith(
+      'chatgpt',
+      { modelsRegistry },
+      expect.any(AbortSignal),
+    );
     expect(getProvider).not.toHaveBeenCalled();
     expect(mockSaveProviders).toHaveBeenCalledOnce();
     const saved = mockSaveProviders.mock.calls[0]?.[2] as Record<string, ProviderConfig>;

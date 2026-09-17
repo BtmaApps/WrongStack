@@ -48,6 +48,7 @@ const ALL_SETTINGS_KEYS = [
   'reasoning-effort',
   'reasoning-preserve',
   'cache-ttl',
+  'stream-watchdog',
   'stream-fleet',
   'chime',
   'confirm-exit',
@@ -683,6 +684,42 @@ export async function executeSettingsSubcommand(
         (cfg as Record<string, unknown>).modelRuntime = { ...mr, cache: { ttl: raw } };
       });
       return { message: `${color.green('✓')} cache TTL → ${color.bold(raw)}` };
+    }
+
+    if (sub === 'stream-watchdog') {
+      // Two watchdogs, one setting: the gap between stream chunks and the wait
+      // for response headers. Seconds because that is the scale users reason
+      // in; `off` disables a watchdog, leaving only the caller's own abort.
+      const parse = (raw: string | undefined): number | 'invalid' | undefined => {
+        if (raw === undefined || raw === '') return undefined;
+        const lower = raw.toLowerCase();
+        if (lower === 'off' || lower === '0') return 0;
+        const secs = Number(lower.replace(/s$/, ''));
+        if (!Number.isFinite(secs) || secs < 1 || secs > 3_600) return 'invalid';
+        return Math.round(secs) * 1000;
+      };
+      const usage = {
+        message:
+          `${color.amber('Usage:')} /settings stream-watchdog <gap-seconds|off> [headers-seconds|off]` +
+          `   ${color.dim('e.g. 300 (5 min gap), or 300 30')}`,
+      };
+      const gap = parse(rest[0]);
+      const headers = parse(rest[1]);
+      if (gap === 'invalid' || headers === 'invalid' || gap === undefined) return usage;
+      await persistConfigSetting(persistDeps, (cfg) => {
+        const mr = ((cfg as Record<string, unknown>).modelRuntime ?? {}) as Record<string, unknown>;
+        const streaming = { ...((mr.streaming as Record<string, unknown>) ?? {}) };
+        streaming.hangTimeoutMs = gap;
+        if (headers !== undefined) streaming.headersTimeoutMs = headers;
+        (cfg as Record<string, unknown>).modelRuntime = { ...mr, streaming };
+      });
+      const show = (ms: number): string => (ms === 0 ? 'off' : `${Math.round(ms / 1000)}s`);
+      const tail = headers !== undefined ? ` / headers ${color.bold(show(headers))}` : '';
+      return {
+        message:
+          `${color.green('✓')} stream watchdog → gap ${color.bold(show(gap))}${tail}` +
+          `   ${color.dim('applies to providers built from here on (new session to be safe)')}`,
+      };
     }
 
     if (sub === 'mcp') {

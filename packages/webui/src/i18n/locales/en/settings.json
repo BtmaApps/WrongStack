@@ -179,6 +179,14 @@
     "serviceAutoRestarting": "Auto-restarting…"
   },
   "provider": {
+    "removeProfileConfirm": "Remove auth profile “{{alias}}” and all its keys?",
+    "removeProfileBody": "Saved credentials and references to this account in model routing will be removed.",
+    "deleteKeyConfirm": "Delete key “{{label}}” from “{{alias}}”?",
+    "addProfile": "Add account / auth profile",
+    "profileAlias": "Auth profile alias",
+    "profileHint": "Each account has its own alias and credential. Fallback targets are alias/model.",
+    "profileExists": "Auth profile “{{alias}}” already exists. Choose another alias.",
+    "operationTimeout": "No response from the server. Check the connection and try again.",
     "subscriptionHeading": "Subscription login",
     "apiKeysHeading": "API key providers",
     "apiKeysBody": "Pick a provider from the catalog and add an API key, or manage saved providers.",

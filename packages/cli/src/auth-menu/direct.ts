@@ -1,4 +1,5 @@
 import type { WireFamily } from '@wrongstack/core/types';
+import { authProfileAliasError } from '@wrongstack/providers';
 import {
   mutateConfigProviders,
   normalizeKeys,
@@ -18,15 +19,30 @@ export async function runAuthDirect(
   deps: AuthMenuDeps,
   opts: {
     providerId: string;
+    alias?: string | undefined;
     label?: string | undefined;
     family?: WireFamily | undefined;
     baseUrl?: string | undefined;
     envVars?: string[] | undefined;
   },
 ): Promise<number> {
-  const { providerId } = opts;
+  const sourceId = opts.providerId;
+  const providerId = opts.alias?.trim() || sourceId;
+  const aliasError = authProfileAliasError(
+    opts.alias !== undefined ? opts.alias.trim() : providerId,
+  );
+  if (aliasError) {
+    deps.renderer.writeError(aliasError);
+    return 1;
+  }
   const providers = await loadProviders(deps);
   const existing = providers[providerId];
+  if (opts.alias && existing) {
+    deps.renderer.writeError(
+      `Auth profile "${providerId}" already exists. Choose another alias or manage its keys explicitly.`,
+    );
+    return 1;
+  }
 
   if (!existing && !opts.family) {
     // Try the catalog before giving up
@@ -34,7 +50,7 @@ export async function runAuthDirect(
     let knownBase: string | undefined;
     let knownEnv: string[] | undefined;
     try {
-      const k = await deps.modelsRegistry.getProvider(providerId);
+      const k = await deps.modelsRegistry.getProvider(sourceId);
       if (k) {
         knownFamily = k.family as WireFamily;
         knownBase = k.apiBase;
@@ -70,8 +86,12 @@ export async function runAuthDirect(
     deps.profileConfigPath,
     deps.vault,
     (all) => {
-      const p = all[providerId] ?? { type: providerId };
-      if (!p.type) p.type = providerId;
+      if (opts.alias && all[providerId])
+        throw new Error(
+          `Auth profile "${providerId}" already exists. Choose another alias or manage its keys explicitly.`,
+        );
+      const p = all[providerId] ?? { type: sourceId };
+      if (!p.type) p.type = sourceId;
       if (!p.family && opts.family) p.family = opts.family;
       if (!p.baseUrl && opts.baseUrl) p.baseUrl = opts.baseUrl;
       if (!p.envVars && opts.envVars) p.envVars = opts.envVars;

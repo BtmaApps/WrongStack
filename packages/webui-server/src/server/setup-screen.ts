@@ -12,12 +12,10 @@
  * verbatim. The function throws on the same failures the inline code did.
  */
 import type { ProviderRegistry } from '@wrongstack/core/registry';
-import type { Provider, ProviderConfig } from '@wrongstack/core/types';
-import { expectDefined } from '@wrongstack/core/utils';
-import { toErrorMessage } from '@wrongstack/core/utils';
-import type { Config } from '@wrongstack/core/types';
+import type { Config, Provider, ProviderConfig } from '@wrongstack/core/types';
+import { expectDefined, toErrorMessage } from '@wrongstack/core/utils';
+import { createSetupProviderFactory, makeProviderFromConfig } from '@wrongstack/providers';
 import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
-import { makeProviderFromConfig } from '@wrongstack/providers';
 
 const UNCONFIGURED_CAPABILITIES: Provider['capabilities'] = {
   tools: false,
@@ -97,6 +95,12 @@ function logCreateFailure(event: string, err: unknown): void {
  */
 export function resolveSetupProvider(opts: ResolveSetupProviderOptions): ResolvedSetupProvider {
   const { config, needsProvider, providerRegistry } = opts;
+  if (!needsProvider && config.provider === 'wrongstack-setup') {
+    return {
+      provider: createSetupProviderFactory().create({ type: config.provider }),
+      needsSetup: false,
+    };
+  }
 
   // Branch 1 — configured provider.
   if (!needsProvider) {
@@ -107,6 +111,8 @@ export function resolveSetupProvider(opts: ResolveSetupProviderOptions): Resolve
       apiKey: config.apiKey,
       baseUrl: config.baseUrl,
     };
+    const factoryType =
+      typeof providerConfig.type === 'string' ? providerConfig.type : config.provider;
     try {
       // WrongProxy / WrongTrace: rewrite THIS provider's base URL through the
       // shared helper when the toggle is on and the daemon is reachable.
@@ -115,14 +121,14 @@ export function resolveSetupProvider(opts: ResolveSetupProviderOptions): Resolve
       // the separate WebUI process bypasses the proxy entirely.
       const routedConfig = routeProviderCfgThroughProxy(
         providerConfig,
-        config.baseUrl,
+        factoryType === config.provider ? config.baseUrl : undefined,
         config.provider,
       );
       const cfgWithType = { ...routedConfig, type: config.provider };
       const provider: Provider =
-        config.features.modelsRegistry && providerRegistry.has(config.provider)
-          ? providerRegistry.create(cfgWithType)
-          : makeProviderFromConfig(config.provider, cfgWithType);
+        config.features.modelsRegistry && providerRegistry.has(factoryType)
+          ? providerRegistry.create(cfgWithType, factoryType)
+          : makeProviderFromConfig(config.provider, { ...cfgWithType, type: factoryType });
       return { provider, needsSetup: false };
     } catch (err) {
       logCreateFailure('webui.provider_create_failed', err);
@@ -138,13 +144,18 @@ export function resolveSetupProvider(opts: ResolveSetupProviderOptions): Resolve
     try {
       // WrongProxy / WrongTrace: rewrite the fallback provider's base URL
       // through the shared helper, same as Branch 1.
-      const routedConfig = routeProviderCfgThroughProxy(firstProvider, config.baseUrl, firstKey);
-      const provider = makeProviderFromConfig(firstKey, {
+      const routedConfig = routeProviderCfgThroughProxy(firstProvider, undefined, firstKey);
+      const factoryType = firstProvider.type ?? firstKey;
+      const providerConfig = {
         ...routedConfig,
         type: firstKey,
         family: firstProvider.family,
         apiKey: firstProvider.apiKey,
-      });
+      };
+      const provider =
+        config.features.modelsRegistry && providerRegistry.has(factoryType)
+          ? providerRegistry.create(providerConfig, factoryType)
+          : makeProviderFromConfig(firstKey, { ...providerConfig, type: factoryType });
       console.log('[WebUI] Using saved provider:', firstKey);
       return { provider, needsSetup: false };
     } catch (err) {

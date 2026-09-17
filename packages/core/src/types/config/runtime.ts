@@ -40,11 +40,32 @@ export interface ModelRuntimeCacheConfig {
 export interface ModelRuntimeConfig {
   reasoning?: ModelRuntimeReasoningConfig | undefined;
   cache?: ModelRuntimeCacheConfig | undefined;
+  /** Stream watchdog budgets applied to every HTTP+SSE provider. */
+  streaming?: ModelRuntimeStreamingConfig | undefined;
   /**
    * Generic generation parameters mapped directly onto `Request` fields.
    * Only sent when the active model's `Capabilities` advertise support.
    */
   parameters?: ModelRuntimeParametersConfig | undefined;
+}
+
+/**
+ * How long a provider stream may stall before the turn is failed as retryable.
+ *
+ * Both are watchdogs, not budgets for the whole response: `hangTimeoutMs`
+ * bounds the gap BETWEEN body chunks (so a long answer never trips it, but a
+ * silent socket does), and `headersTimeoutMs` bounds the wait for the response
+ * headers (a proxy that accepts the connection and never replies). Raise
+ * `hangTimeoutMs` for a backend with long silent reasoning phases; `0`
+ * disables a watchdog entirely, which means a dead stream can only be ended by
+ * the caller (Esc / abort). Applied at boot, so a change takes effect on the
+ * next launch.
+ */
+export interface ModelRuntimeStreamingConfig {
+  /** Max gap between body chunks, ms. Default 60000; `0` disables. */
+  hangTimeoutMs?: number | undefined;
+  /** Max wait for response headers, ms. Default 60000; `0` disables. */
+  headersTimeoutMs?: number | undefined;
 }
 
 /**

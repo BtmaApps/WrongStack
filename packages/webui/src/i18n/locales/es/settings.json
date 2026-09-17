@@ -125,6 +125,14 @@
     "serviceAutoRestarting": "Reiniciando automáticamente…"
   },
   "provider": {
+    "removeProfileConfirm": "¿Eliminar el perfil «{{alias}}» y todas sus claves?",
+    "removeProfileBody": "Se eliminarán las credenciales guardadas y las referencias a esta cuenta en las rutas de modelos.",
+    "deleteKeyConfirm": "¿Eliminar la clave «{{label}}» de «{{alias}}»?",
+    "addProfile": "Añadir cuenta / perfil de autenticación",
+    "profileAlias": "Alias del perfil de autenticación",
+    "profileHint": "Cada cuenta tiene su propio alias y credenciales. Los destinos de respaldo son alias/modelo.",
+    "profileExists": "El perfil «{{alias}}» ya existe. Elige otro alias.",
+    "operationTimeout": "El servidor no responde. Comprueba la conexión e inténtalo de nuevo.",
     "savedProviderCount_one": "{{count}} proveedor",
     "savedProviderCount_other": "{{count}} proveedores",
     "keyCount_one": "{{count}} clave configurada",

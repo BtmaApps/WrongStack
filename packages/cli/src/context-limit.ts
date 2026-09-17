@@ -19,6 +19,7 @@ const SIBLING_CATALOG: Record<string, string> = {
   'anthropic-oauth': 'anthropic',
   'openai-codex': 'openai',
   'github-copilot': 'openai',
+  'google-antigravity': 'google',
 };
 
 interface ResolveMaxContextInput {

@@ -146,6 +146,24 @@ export function handleIterationLimitReached(msg: WSServerMessage) {
   );
 }
 
+/**
+ * A failed attempt may have streamed part of a reply before it was cut. The
+ * retry (or the fallback model) re-streams the WHOLE response into the same
+ * assistant message, and `handleProviderResponse` only replaces streamed text
+ * that is a PREFIX of the final response — "partial + full" is not, so the
+ * duplicated text was finalized as-is. Drop the abandoned partial first.
+ */
+function discardAbandonedStream(chat: ChatLaneActions): void {
+  const partialId = chat.currentAssistantMessageId;
+  if (partialId) {
+    streamCoalescer.drop(partialId);
+    chat.removeMessage(partialId);
+    chat.setCurrentAssistantMessage(null);
+  }
+  streamCoalescer.drop(`__thinking__:${chat.sessionId}`);
+  chat.clearThinking();
+}
+
 export function handleProviderRetry(msg: WSServerMessage) {
   const chat = chatFor(msg);
   if (!chat) return;
@@ -156,6 +174,7 @@ export function handleProviderRetry(msg: WSServerMessage) {
     status: number;
     description: string;
   };
+  discardAbandonedStream(chat);
   const seconds = Math.max(0, Math.round(payload.delayMs / 100) / 10);
   // A retry belongs to the run that hit it. Announced page-wide, a background
   // tab's backoff reads as a stall in the conversation the user is watching.
@@ -175,6 +194,14 @@ export function handleProviderError(msg: WSServerMessage) {
     description: string;
     retryable: boolean;
   };
+  // Close out whatever the failed attempt streamed: keep it visible, but stop
+  // it being the streaming target. A fallback hop that follows must open a
+  // fresh message rather than append the next model's full reply onto it.
+  const partialId = chat.currentAssistantMessageId;
+  if (partialId) {
+    streamCoalescer.flush(partialId);
+    chat.finalizeMessage(partialId, { final: false });
+  }
   chat.addMessage({
     role: 'assistant',
     content: [
@@ -186,6 +213,8 @@ export function handleProviderError(msg: WSServerMessage) {
       .join('\n\n'),
     isError: true,
   });
+  // An error notice is never a streaming target.
+  chat.setCurrentAssistantMessage(null);
   toastIfForeground(chat, () =>
     toast.error(`${payload.providerId} provider error (${payload.status})`),
   );
@@ -229,11 +258,15 @@ export function handleProviderFallback(msg: WSServerMessage) {
   };
   const from = `${payload.from.providerId}/${payload.from.model}`;
   const to = `${payload.to.providerId}/${payload.to.model}`;
+  discardAbandonedStream(chat);
   recordRouteChange(chat, msg, payload.to);
   chat.addMessage({
     role: 'assistant',
     content: `Provider fallback: \`${from}\` returned ${payload.status}; switching to \`${to}\`${payload.providerSwitched ? ' with provider change' : ''}.`,
   });
+  // `addMessage` makes an assistant notice the current streaming target; the
+  // next model's reply must open its own message, not append into this one.
+  chat.setCurrentAssistantMessage(null);
   toastIfForeground(chat, () => toast.warn(`Fallback to ${to}`));
   // The switch settled the question. Retire the copy parked on the tab that
   // asked it, wherever that tab is, so it cannot reopen as a dead dialog on

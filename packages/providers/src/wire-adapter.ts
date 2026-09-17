@@ -13,6 +13,7 @@ import type { BuildBodyContext } from './model-output-limits.js';
 import { isNodeReadable } from './object-utils.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
 import { isDebugStreamEnabled, pushDebugChunkStats } from './stream-debug-state.js';
+import { streamTimeoutDefaults } from './stream-timeouts.js';
 import { filterToolsByMaxCount } from './tool-priority.js';
 
 const STREAM_DEBUG_TEXT_ENCODER = new TextEncoder();
@@ -41,7 +42,8 @@ export interface WireAdapterStreamOptions {
   debugStream?: boolean | undefined;
   /**
    * Maximum time (ms) to wait for the next chunk of data before declaring
-   * a stream hang. Default: 60_000 (60 seconds). Set to 0 to disable.
+   * a stream hang. Defaults to the host's configured value
+   * (`stream-timeouts.ts`), itself 60_000. Set to 0 to disable.
    * When a hang is detected, a StreamHangError is thrown so the agent
    * loop can retry the iteration.
    */
@@ -52,8 +54,9 @@ export interface WireAdapterStreamOptions {
    * (a body-only, inter-chunk guard) does not cover: a proxy that accepts the
    * TCP connection but never sends a response line would otherwise hang until
    * the caller's own signal fires (forever, for long-lived signals). A header
-   * timeout surfaces as a retryable ProviderError. Default: 60_000. Set to 0
-   * to disable.
+   * timeout surfaces as a retryable ProviderError. Defaults to the host's
+   * configured value (`stream-timeouts.ts`), itself 60_000. Set to 0 to
+   * disable.
    */
   headersTimeoutMs?: number | undefined;
 }
@@ -100,9 +103,6 @@ function logRawChunk(
 ): void {
   pushDebugChunkStats(bytes.length, deltaMs);
 }
-
-const DEFAULT_STREAM_HANG_TIMEOUT_MS = 60_000;
-const DEFAULT_HEADERS_TIMEOUT_MS = 60_000;
 
 /**
  * Shared HTTP mechanics for streaming providers.
@@ -155,9 +155,12 @@ export abstract class WireAdapter implements Provider {
         code: 'CONFIG_INVALID',
       });
     }
+    // Per-instance options win; otherwise the host's configured defaults
+    // (stream-timeouts.ts), which fall back to 60s/60s.
+    const hostDefaults = streamTimeoutDefaults();
     this.debugStream = streamOpts.debugStream ?? false;
-    this.streamHangTimeoutMs = streamOpts.streamHangTimeoutMs ?? DEFAULT_STREAM_HANG_TIMEOUT_MS;
-    this.headersTimeoutMs = streamOpts.headersTimeoutMs ?? DEFAULT_HEADERS_TIMEOUT_MS;
+    this.streamHangTimeoutMs = streamOpts.streamHangTimeoutMs ?? hostDefaults.hangTimeoutMs;
+    this.headersTimeoutMs = streamOpts.headersTimeoutMs ?? hostDefaults.headersTimeoutMs;
   }
 
   // Module-scoped state keyed by provider id so warning suppression and

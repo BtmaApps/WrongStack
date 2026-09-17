@@ -25,6 +25,8 @@ export interface CodexWebSocketOptions {
   signal: AbortSignal;
   /** Never follow redirects on an authenticated WebSocket handshake. */
   followRedirects?: boolean | undefined;
+  /** Opening-handshake deadline (ms). The frame watchdog only starts after open. */
+  handshakeTimeoutMs?: number | undefined;
 }
 
 type CodexWebSocketListener = {
@@ -112,6 +114,12 @@ const WS_OPEN = 1;
 const MAX_SESSIONS = 64;
 /** Frame-to-frame silence budget before a turn is declared stalled. */
 const DEFAULT_STALL_TIMEOUT_MS = 30_000;
+/**
+ * Opening-handshake deadline. The SSE path bounds its header phase at 60s;
+ * without this an upgrade request that never gets a reply hung until the OS
+ * gave up on the socket, since the frame watchdog only arms after `open`.
+ */
+const DEFAULT_HANDSHAKE_TIMEOUT_MS = 30_000;
 
 function requestPropertiesMatch(
   previous: Record<string, unknown>,
@@ -228,6 +236,10 @@ class CodexWebSocketConnection {
   private turnState: string | undefined;
   private onTurnState: ((turnState: string) => void) | undefined;
   private prewarmed = false;
+  /** Close as soon as the in-flight request settles (token rotation, eviction). */
+  private retireWhenIdle = false;
+  /** A request owns this connection, from handshake through its last frame. */
+  private inFlight = false;
 
   constructor(
     private readonly factory: CodexWebSocketFactory,
@@ -256,11 +268,64 @@ class CodexWebSocketConnection {
       onMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
     ) => AsyncIterable<StreamEvent>,
   ): AsyncIterable<StreamEvent> {
+    this.inFlight = true;
+    try {
+      yield* this.streamInner(body, opts, parse);
+    } finally {
+      this.inFlight = false;
+      if (this.retireWhenIdle) this.close();
+    }
+  }
+
+  private async *streamInner(
+    body: Record<string, unknown>,
+    opts: Pick<
+      CodexWebSocketStreamOptions,
+      | 'fallbackModel'
+      | 'providerId'
+      | 'signal'
+      | 'prewarm'
+      | 'onMetadata'
+      | 'stallTimeoutMs'
+      | 'turnState'
+      | 'onTurnState'
+    >,
+    parse: (
+      body: ReadableStream<Uint8Array>,
+      fallbackModel: string,
+      providerId: string,
+      onMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
+    ) => AsyncIterable<StreamEvent>,
+  ): AsyncIterable<StreamEvent> {
     // Turn scoping is the caller's call: it knows whether this request
     // continues the turn in flight or opens a new one.
     this.turnState = opts.turnState;
     this.onTurnState = opts.onTurnState;
-    await this.open(opts.signal);
+    try {
+      await this.open(opts.signal);
+    } catch (error) {
+      if (opts.signal.aborted) throw opts.signal.reason ?? error;
+      // A handshake rejected with 401 means the bearer went stale: surface it
+      // as the ProviderError the caller refreshes on. Every other handshake
+      // failure (upgrade refused, DNS, reset, timeout) happened before any
+      // output, so it is exactly the case the SSE fallback exists for — as a
+      // plain Error it neither fell back nor refreshed, and failed every turn.
+      const status = (error as { status?: unknown }).status;
+      if (status === 401) {
+        throw new ProviderError(
+          'Codex WebSocket upgrade unauthorized',
+          401,
+          false,
+          opts.providerId,
+          {
+            cause: error,
+            body: { message: 'Codex WebSocket upgrade unauthorized' },
+          },
+        );
+      }
+      if (error instanceof CodexWebSocketFallbackError) throw error;
+      throw new CodexWebSocketFallbackError('Codex WebSocket handshake failed', error);
+    }
     const socket = this.socket;
     if (!socket) throw new CodexWebSocketFallbackError('Codex WebSocket did not open');
     const queue = new AsyncQueue<string>();
@@ -374,6 +439,18 @@ class CodexWebSocketConnection {
     }
   }
 
+  /**
+   * Stop reusing this connection without killing the request it is serving:
+   * close now when idle, otherwise once the in-flight stream settles. A token
+   * refresh triggered by one session used to end every other session's live
+   * response with "connection closed" (and, pre-output, permanently disable
+   * WebSocket for the process).
+   */
+  retire(): void {
+    if (this.inFlight) this.retireWhenIdle = true;
+    else this.close();
+  }
+
   close(): void {
     this.dead = true;
     this.activeQueue?.end(new Error('Codex WebSocket connection closed'));
@@ -419,7 +496,10 @@ class CodexWebSocketConnection {
       socket.once('error', fail);
       socket.once(
         'unexpected-response',
-        (_request: unknown, response: { headers?: Record<string, string | string[]> }) => {
+        (
+          _request: unknown,
+          response: { statusCode?: number; headers?: Record<string, string | string[]> },
+        ) => {
           if (response.headers) {
             const headers = new Headers();
             for (const [name, value] of Object.entries(response.headers)) {
@@ -428,7 +508,14 @@ class CodexWebSocketConnection {
             }
             this.onHeaders?.(headers);
           }
-          fail(new Error('Codex WebSocket upgrade was rejected'));
+          fail(
+            Object.assign(
+              new Error(
+                `Codex WebSocket upgrade was rejected${response.statusCode ? ` (HTTP ${response.statusCode})` : ''}`,
+              ),
+              { status: response.statusCode },
+            ),
+          );
         },
       );
     });
@@ -622,7 +709,8 @@ export class CodexWebSocketPool {
         while (this.connections.size > this.maxSessions) {
           const oldest = this.connections.keys().next().value;
           if (oldest === undefined || oldest === key) break;
-          this.connections.get(oldest)?.close();
+          // Eviction must not cut another session's live response.
+          this.connections.get(oldest)?.retire();
           this.connections.delete(oldest);
         }
       }
@@ -644,6 +732,17 @@ export class CodexWebSocketPool {
     this.connections.clear();
     this.locks.clear();
   }
+
+  /**
+   * Drop every pooled connection from reuse (e.g. after token rotation, whose
+   * old bearer they captured at handshake) while letting in-flight responses
+   * finish. Per-key locks are kept, so a queued request still waits its turn
+   * and then opens a fresh socket.
+   */
+  retireAll(): void {
+    for (const connection of this.connections.values()) connection.retire();
+    this.connections.clear();
+  }
 }
 
 export function defaultCodexWebSocketFactory(
@@ -653,6 +752,7 @@ export function defaultCodexWebSocketFactory(
   return new WebSocket(url, {
     headers: options.headers,
     followRedirects: options.followRedirects ?? false,
+    handshakeTimeout: options.handshakeTimeoutMs ?? DEFAULT_HANDSHAKE_TIMEOUT_MS,
     // `ws` accepts an AbortSignal: hand the caller's signal to the transport so
     // a handshake-time abort also tears down the underlying request.
     signal: options.signal,

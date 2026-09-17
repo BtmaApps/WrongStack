@@ -12,8 +12,14 @@ export { expectDefined };
 import * as fs from 'node:fs/promises';
 import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { ProviderApiKey, ProviderConfig, SecretVault } from '@wrongstack/core/types';
-import { atomicWrite, color } from '@wrongstack/core/utils';
-import { isSetupProvider as isSetupProviderId } from '@wrongstack/providers';
+import { atomicWrite, color, withFileLock } from '@wrongstack/core/utils';
+import {
+  clearStaleProviderDefaults,
+  removeProviderFallbackReferences,
+  validateProviderConfigShape,
+} from '@wrongstack/providers';
+
+export { clearStaleProviderDefaults } from '@wrongstack/providers';
 /**
  * Normalize a ProviderConfig to the canonical `apiKeys[]` form.
  * Migrates the legacy single-key `apiKey` field on the fly so every
@@ -72,63 +78,6 @@ export function resolveActiveApiKey(cfg: ProviderConfig): string | undefined {
   return cfg.apiKey && cfg.apiKey.length > 0 ? cfg.apiKey : undefined;
 }
 
-function isLoopbackBaseUrl(baseUrl: string | undefined): boolean {
-  if (!baseUrl) return false;
-  try {
-    let host = new URL(baseUrl).hostname.toLowerCase();
-    host = host.replace(/^\[|\]$/g, '');
-    return host === 'localhost' || host === '::1' || host === '0.0.0.0' || /^127\./.test(host);
-  } catch {
-    return false;
-  }
-}
-
-function providerCanRunWithoutSavedKey(cfg: ProviderConfig): boolean {
-  return isLoopbackBaseUrl(cfg.baseUrl) && (!cfg.envVars || cfg.envVars.length === 0);
-}
-
-function hasUsableSavedProvider(cfg: ProviderConfig): boolean {
-  return resolveActiveApiKey(cfg) !== undefined || providerCanRunWithoutSavedKey(cfg);
-}
-
-/**
- * Clear top-level provider/model defaults when provider mutations make them
- * stale. This prevents a removed provider, deleted final key, or edited model
- * allowlist from being accepted on the next boot and crashing provider setup.
- */
-export function clearStaleProviderDefaults(config: Record<string, unknown>): void {
-  const providerId = typeof config['provider'] === 'string' ? config['provider'] : undefined;
-  if (!providerId) return;
-  const providers = config['providers'] as Record<string, ProviderConfig> | undefined;
-  // Setup mode is a placeholder, not a provider: it exists only so a machine
-  // with no credential can still open the app. This function runs on every
-  // credential write, so reaching it means the user just configured something
-  // real — retire the placeholder and let the launch picker offer the real
-  // provider next time. The defensive delete covers a hand-edited config that
-  // wrote a `providers` entry the code never creates.
-  if (isSetupProviderId(providerId)) {
-    delete config['provider'];
-    delete config['model'];
-    if (providers) delete providers[providerId];
-    return;
-  }
-  const provider = providers?.[providerId];
-  if (!provider || !hasUsableSavedProvider(provider)) {
-    delete config['provider'];
-    delete config['model'];
-    return;
-  }
-  const modelId = typeof config['model'] === 'string' ? config['model'] : undefined;
-  if (
-    modelId &&
-    Array.isArray(provider.models) &&
-    provider.models.length > 0 &&
-    !provider.models.includes(modelId)
-  ) {
-    delete config['model'];
-  }
-}
-
 /**
  * Return the label of the active key, or the first key's label if no
  * active is pinned. Returns `undefined` when there are no keys at all.
@@ -177,6 +126,7 @@ export async function loadConfigProviders(
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(raw) as Record<string, unknown>;
+    validateProviderConfigShape(parsed);
   } catch (err) {
     warn?.(`Config at ${targetPath} is not valid JSON: ${(err as Error).message}`);
     return {};
@@ -220,48 +170,65 @@ export async function mutateConfigProviders(
   mutator: (providers: Record<string, ProviderConfig>, config: Record<string, unknown>) => void,
   profileConfigPath?: string,
 ): Promise<void> {
-  await queueConfigMutation(async () => {
-    const targetPath = profileConfigPath ?? configPath;
-    let raw: string;
-    let fileExists = true;
-    try {
-      raw = await fs.readFile(targetPath, 'utf8');
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw new FsError({
-          message: `Refusing to mutate ${configPath}: ${(err as Error).message}`,
-          code: 'FS_READ_FAILED',
-          path: targetPath,
-          context: { operation: 'mutateConfigProviders', phase: 'read' },
-          cause: err,
-        });
+  await queueConfigMutation(() =>
+    withFileLock(profileConfigPath ?? configPath, async () => {
+      const targetPath = profileConfigPath ?? configPath;
+      let raw: string;
+      let fileExists = true;
+      try {
+        raw = await fs.readFile(targetPath, 'utf8');
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw new FsError({
+            message: `Refusing to mutate ${configPath}: ${(err as Error).message}`,
+            code: 'FS_READ_FAILED',
+            path: targetPath,
+            context: { operation: 'mutateConfigProviders', phase: 'read' },
+            cause: err,
+          });
+        }
+        fileExists = false;
+        raw = '{}';
       }
-      fileExists = false;
-      raw = '{}';
-    }
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(raw) as Record<string, unknown>;
-    } catch (err) {
-      if (fileExists) {
-        throw new FsError({
-          message:
-            `Refusing to overwrite corrupt config at ${targetPath} ` +
-            `(${(err as Error).message}). Fix or move the file aside before retrying.`,
-          code: 'FS_READ_FAILED',
-          path: targetPath,
-          context: { operation: 'mutateConfigProviders', phase: 'parse' },
-          cause: err,
-        });
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(raw) as Record<string, unknown>;
+        validateProviderConfigShape(parsed);
+      } catch (err) {
+        if (fileExists) {
+          throw new FsError({
+            message:
+              `Refusing to overwrite corrupt config at ${targetPath} ` +
+              `(${(err as Error).message}). Fix or move the file aside before retrying.`,
+            code: 'FS_READ_FAILED',
+            path: targetPath,
+            context: { operation: 'mutateConfigProviders', phase: 'parse' },
+            cause: err,
+          });
+        }
+        parsed = {};
       }
-      parsed = {};
-    }
-    const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
-    const providers = (decrypted.providers as Record<string, ProviderConfig>) ?? {};
-    mutator(providers, decrypted);
-    decrypted.providers = providers;
-    clearStaleProviderDefaults(decrypted);
-    const encrypted = encryptConfigSecrets(decrypted, vault);
-    await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
-  });
+      const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+      const providers = (decrypted.providers as Record<string, ProviderConfig>) ?? {};
+      const previousProviderIds = Object.keys(providers);
+      const primaryBefore = JSON.stringify([
+        decrypted['provider'],
+        decrypted['model'],
+        typeof decrypted['provider'] === 'string' ? providers[decrypted['provider']] : undefined,
+      ]);
+      mutator(providers, decrypted);
+      for (const id of previousProviderIds) {
+        if (!Object.hasOwn(providers, id)) removeProviderFallbackReferences(decrypted, id);
+      }
+      decrypted.providers = providers;
+      const primaryAfter = JSON.stringify([
+        decrypted['provider'],
+        decrypted['model'],
+        typeof decrypted['provider'] === 'string' ? providers[decrypted['provider']] : undefined,
+      ]);
+      clearStaleProviderDefaults(decrypted, { preservePrimary: primaryBefore === primaryAfter });
+      const encrypted = encryptConfigSecrets(decrypted, vault);
+      await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+    }),
+  );
 }

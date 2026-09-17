@@ -1587,6 +1587,76 @@ describe('usePickerKeys — help panel', () => {
     );
     runPickerKey(hostFiltered, '', key({ backspace: true }), false);
     expect(hostFiltered.dispatch).toHaveBeenCalledWith({ type: 'helpFilter', filter: 'a' });
+
+    // Enter does NOT launch or submit command
+    host.dispatch.mockClear();
+    onHelpPanelEnter.mockClear();
+    runPickerKey(host, '\r', key({ return: true }), true);
+    expect(onHelpPanelEnter).not.toHaveBeenCalled();
+    expect(host.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'submit' }));
+
+    // Mouse click does NOT launch or submit command
+    host.dispatch.mockClear();
+    runPickerKey(
+      host,
+      '',
+      key({
+        mouse: {
+          kind: 'press',
+          button: 'left',
+          x: 10,
+          y: 5,
+          wheel: 0,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+      false,
+    );
+    expect(onHelpPanelEnter).not.toHaveBeenCalled();
+    expect(host.dispatch).not.toHaveBeenCalled();
+
+    // PageUp / PageDown scrolls detail
+    host.dispatch.mockClear();
+    runPickerKey(host, '', key({ pageUp: true }), false);
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'helpScrollDetail', delta: -5 });
+
+    host.dispatch.mockClear();
+    runPickerKey(host, '', key({ pageDown: true }), false);
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'helpScrollDetail', delta: 5 });
+
+    // Shift + Up/Down scrolls detail
+    host.dispatch.mockClear();
+    runPickerKey(host, '', key({ shift: true, upArrow: true }), false);
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'helpScrollDetail', delta: -1 });
+
+    host.dispatch.mockClear();
+    runPickerKey(host, '', key({ shift: true, downArrow: true }), false);
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'helpScrollDetail', delta: 1 });
+
+    // Mouse wheel on right side (x > 30) scrolls detail
+    host.dispatch.mockClear();
+    runPickerKey(
+      host,
+      '',
+      key({
+        mouse: {
+          kind: 'wheel',
+          button: 'none',
+          x: 45,
+          y: 5,
+          wheel: -1,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+      false,
+    );
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'helpScrollDetail', delta: 2 });
   });
 });
 

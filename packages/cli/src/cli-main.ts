@@ -745,6 +745,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     profileConfigPath,
     pipelines,
     memoryStore,
+    skillLoader: config.features.skills ? skillLoader : undefined,
     logger,
     events,
     agent,

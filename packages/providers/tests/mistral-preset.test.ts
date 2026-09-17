@@ -1,6 +1,6 @@
 import type { StreamEvent } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
-import { mistralWireFormat } from '../src/presets/mistral.js';
+import { mistralToolCallId, mistralWireFormat } from '../src/presets/mistral.js';
 import { WireFormatProvider } from '../src/wire-format.js';
 
 /**
@@ -303,5 +303,48 @@ describe('Mistral preset', () => {
     expect(mistralWireFormat.id).toBe('mistral');
     expect(mistralWireFormat.family).toBe('openai-compatible');
     expect(mistralWireFormat.capabilities.streaming).toBe(true);
+  });
+
+  it('reports a stream cut before finish_reason as a retryable truncation', async () => {
+    await expect(
+      collectEvents(sseBody([JSON.stringify({ choices: [{ delta: { content: 'partial' } }] })])),
+    ).rejects.toMatchObject({ status: 599, retryable: true });
+  });
+
+  it('closes the message when only [DONE] marks the end', async () => {
+    const events = await collectEvents(
+      sseBody([JSON.stringify({ choices: [{ delta: { content: 'hi' } }] }), '[DONE]']),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'message_stop', stopReason: 'end_turn' });
+  });
+
+  it('raises an in-stream error envelope', async () => {
+    await expect(
+      collectEvents(sseBody([JSON.stringify({ error: { code: 503, message: 'unavailable' } })])),
+    ).rejects.toMatchObject({ status: 503, retryable: true });
+  });
+
+  it('rewrites foreign tool-call ids to the 9-character form, call and result alike', () => {
+    const body = mistralWireFormat.buildBody(
+      {
+        model: 'mistral-large-latest',
+        messages: [
+          {
+            role: 'assistant',
+            content: [{ type: 'tool_use', id: 'toolu_01ABCdef', name: 'ls', input: {} }],
+          },
+          {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: 'toolu_01ABCdef', content: 'ok' }],
+          },
+        ],
+      },
+      { capabilities: mistralWireFormat.capabilities },
+    );
+    const [assistant, tool] = body['messages'] as Array<Record<string, unknown>>;
+    const id = (assistant?.['tool_calls'] as Array<{ id: string }>)[0]?.id;
+    expect(id).toMatch(/^[A-Za-z0-9]{9}$/);
+    expect(tool?.['tool_call_id']).toBe(id);
+    expect(mistralToolCallId('abcDEF123')).toBe('abcDEF123');
   });
 });

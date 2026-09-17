@@ -154,6 +154,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'helpHint',
   'helpMove',
   'helpOpen',
+  'helpScrollDetail',
   'hint',
   'historyDown',
   'historyPush',

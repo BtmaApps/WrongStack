@@ -35,7 +35,7 @@ describe('HelpPanel', () => {
       }),
     );
     const frame = view.lastFrame() ?? '';
-    expect(frame).toContain('↑/↓ navigate');
+    expect(frame).toContain('↑/↓ list');
     view.unmount();
   });
 
@@ -259,5 +259,125 @@ describe('HelpPanel', () => {
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('/unknown-cmd');
     view.unmount();
+  });
+
+  it('renders detailed help from help property in the right column', () => {
+    const view = render(
+      React.createElement(HelpPanel, {
+        entries: [
+          makeEntry({
+            name: 'exec',
+            description: 'Execute run',
+            help: 'Execute a command or run\nUsage: /exec <id>\nOptions: --json',
+          }),
+        ],
+        filter: '',
+        selected: 0,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    expect(frame).toContain('Execute a command or run');
+    expect(frame).toContain('Usage: /exec <id>');
+    expect(frame).toContain('│');
+    view.unmount();
+  });
+
+  it('updates detailed help when selected index changes', () => {
+    const entries = [
+      makeEntry({
+        name: 'first-cmd',
+        category: 'Run',
+        help: 'Help info for first command',
+      }),
+      makeEntry({
+        name: 'second-cmd',
+        category: 'Run',
+        help: 'Help info for second command',
+      }),
+    ];
+
+    const view1 = render(
+      React.createElement(HelpPanel, {
+        entries,
+        filter: '',
+        selected: 0,
+      }),
+    );
+    expect(view1.lastFrame() ?? '').toContain('Help info for first command');
+    expect(view1.lastFrame() ?? '').not.toContain('Help info for second command');
+    view1.unmount();
+
+    const view2 = render(
+      React.createElement(HelpPanel, {
+        entries,
+        filter: '',
+        selected: 1,
+      }),
+    );
+    expect(view2.lastFrame() ?? '').toContain('Help info for second command');
+    expect(view2.lastFrame() ?? '').not.toContain('Help info for first command');
+    view2.unmount();
+  });
+
+  it('strictly caps panel height to max 26 rows even with large maxRows', () => {
+    const entries = Array.from({ length: 40 }, (_, i) =>
+      makeEntry({
+        name: `long-list-cmd-${i}`,
+        category: 'Run',
+        help: `Detailed multi-line help line 1 for ${i}\nline 2\nline 3\nline 4\nline 5`,
+      }),
+    );
+
+    const view = render(
+      React.createElement(HelpPanel, {
+        entries,
+        filter: '',
+        selected: 5,
+        maxRows: 35,
+      }),
+    );
+    const frame = view.lastFrame() ?? '';
+    const lines = frame.split('\n');
+    // Ink box with height 26 should produce at most 26 lines (plus optional trailing empty line)
+    const nonEmptyLines = lines.filter((l) => l.length > 0);
+    expect(nonEmptyLines.length).toBeLessThanOrEqual(26);
+    view.unmount();
+  });
+
+  it('scrolls detailed help lines when detailScroll is provided', () => {
+    const longHelp = Array.from({ length: 25 }, (_, i) => `Detailed Help Line ${i + 1}`).join('\n');
+    const entries = [
+      makeEntry({
+        name: 'scroll-cmd',
+        category: 'Run',
+        help: longHelp,
+      }),
+    ];
+
+    const viewTop = render(
+      React.createElement(HelpPanel, {
+        entries,
+        filter: '',
+        selected: 0,
+        detailScroll: 0,
+      }),
+    );
+    const frameTop = viewTop.lastFrame() ?? '';
+    expect(frameTop).toContain('Detailed Help Line 1');
+    expect(frameTop).toContain('PgUp/PgDn');
+    viewTop.unmount();
+
+    const viewScrolled = render(
+      React.createElement(HelpPanel, {
+        entries,
+        filter: '',
+        selected: 0,
+        detailScroll: 10,
+      }),
+    );
+    const frameScrolled = viewScrolled.lastFrame() ?? '';
+    expect(frameScrolled).toContain('Detailed Help Line 11');
+    expect(frameScrolled).not.toContain('Detailed Help Line 1\n');
+    viewScrolled.unmount();
   });
 });

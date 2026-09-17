@@ -90,6 +90,7 @@ const PROVIDER_FAMILY_PREFERRED_ORDER = [
   'openai-codex',
   'github-copilot',
   'google',
+  'google-antigravity',
   'openai-compatible',
 ];
 
@@ -547,6 +548,7 @@ export async function runPicker(deps: {
     'openai-codex',
     'github-copilot',
     'google',
+    'google-antigravity',
     'openai-compatible',
   ];
   const familyOrder = [

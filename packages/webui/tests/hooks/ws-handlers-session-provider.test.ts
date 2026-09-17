@@ -88,6 +88,61 @@ describe('session ws-handlers — provider / delegate / context', () => {
   // ── provider.retry ────────────────────────────────────────────────────────
 
   describe('provider.retry', () => {
+    it('drops a partially streamed reply so the retry does not duplicate it', () => {
+      const store = useChatStore.getState();
+      const id = store.addMessage({ role: 'assistant', content: 'Hello wor', streaming: true });
+      store.setCurrentAssistantMessage(id);
+      handleProviderRetry(
+        msg('provider.retry', {
+          providerId: 'p',
+          attempt: 1,
+          delayMs: 1000,
+          status: 599,
+          description: 'truncated',
+        }),
+      );
+      expect(useChatStore.getState().messages.find((m) => m.id === id)).toBeUndefined();
+      expect(useChatStore.getState().currentAssistantMessageId).toBeNull();
+    });
+
+    it('error then fallback keeps the error notice and detaches the partial', () => {
+      const store = useChatStore.getState();
+      const id = store.addMessage({ role: 'assistant', content: 'partial', streaming: true });
+      store.setCurrentAssistantMessage(id);
+      handleProviderError(
+        msg('provider.error', { providerId: 'a', status: 529, description: 'x', retryable: false }),
+      );
+      handleProviderFallback(
+        msg('provider.fallback', {
+          from: { providerId: 'a', model: 'm1' },
+          to: { providerId: 'b', model: 'm2' },
+          status: 529,
+          providerSwitched: true,
+        }),
+      );
+      const state = useChatStore.getState();
+      expect(state.messages.some((m) => String(m.content).startsWith('Provider error'))).toBe(true);
+      expect(state.messages.find((m) => m.id === id)?.content).toBe('partial');
+      expect(state.currentAssistantMessageId).toBeNull();
+    });
+
+    it('a fallback hop leaves no streaming target inside its notice', () => {
+      const store = useChatStore.getState();
+      const id = store.addMessage({ role: 'assistant', content: 'partial', streaming: true });
+      store.setCurrentAssistantMessage(id);
+      handleProviderFallback(
+        msg('provider.fallback', {
+          from: { providerId: 'a', model: 'm1' },
+          to: { providerId: 'b', model: 'm2' },
+          status: 529,
+          providerSwitched: true,
+        }),
+      );
+      const state = useChatStore.getState();
+      expect(state.messages.find((m) => m.id === id)).toBeUndefined();
+      expect(state.currentAssistantMessageId).toBeNull();
+    });
+
     it('renders the delay in seconds to one decimal', () => {
       handleProviderRetry(
         msg('provider.retry', {

@@ -302,6 +302,8 @@ export interface WSKeyOperationResult {
   payload: {
     success: boolean;
     message: string;
+    /** Correlates an acknowledged operation with its submitting form. */
+    requestId?: string | undefined;
     /**
      * The tab whose request this answers.
      *

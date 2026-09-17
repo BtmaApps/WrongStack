@@ -61,6 +61,7 @@ export function deriveAppViewState(options: AppViewStateOptions) {
     state.escConfirm != null ||
     state.sendModePicker != null ||
     state.helpOpen ||
+    state.helpPanel.open ||
     (state.projectPicker.open && onBottom('projectPicker')) ||
     (state.monitorOpen && onBottom('fleet')) ||
     (state.agentsMonitorOpen && onBottom('agents')) ||

@@ -713,6 +713,10 @@ export {
   type TechStackConsumerOptions,
 } from './techstack-mailbox-consumer.js';
 export {
+  makeTypeSafeDispatchClassifier,
+  type TypeSafeDispatchClassifierOptions,
+} from './typesafe-dispatch-classifier.js';
+export {
   type FleetWorktreePolicy,
   resolveSubagentWorktreeDecision,
   subagentNeedsWorktree,

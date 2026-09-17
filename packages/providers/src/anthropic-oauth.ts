@@ -15,6 +15,7 @@
  * `setOAuthTokenPersister` hook the codex family uses.
  */
 
+import { recordProviderQuota } from '@wrongstack/core/quota';
 import {
   type Capabilities,
   FetchError,
@@ -23,6 +24,8 @@ import {
   type Request,
   type StreamEvent,
 } from '@wrongstack/core/types';
+import { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
+import type { HeadersLike } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
@@ -264,6 +267,21 @@ export class AnthropicOAuthProvider extends WireFormatProvider<AnthropicStreamSt
 
   private async doRefresh(signal: AbortSignal): Promise<void> {
     await this.refreshCoordinator.doRefresh(signal);
+  }
+
+  /**
+   * Read the subscription's remaining allowance off a successful response.
+   *
+   * This is the path where the reading actually matters: a Pro/Max login is
+   * metered on a 5-hour and a 7-day rolling window, and
+   * `anthropic-ratelimit-unified-*` is the only channel that reports the burn.
+   * Reading it here means the status chip can show the plan draining instead of
+   * the user discovering it as a 429 mid-turn — at no request cost, because
+   * these headers arrive on requests the session was making anyway.
+   */
+  protected override onResponseHeaders(headers: HeadersLike | undefined, _req: Request): void {
+    const snapshots = parseAnthropicRateLimitHeaders(this.id, headers);
+    if (snapshots.length > 0) recordProviderQuota(this.id, snapshots);
   }
 
   protected override buildHeaders(_req: Request): Record<string, string> {

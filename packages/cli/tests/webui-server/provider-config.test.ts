@@ -65,6 +65,29 @@ describe('provider-config', () => {
   });
 
   describe('saveProviders', () => {
+    it('preserves concurrent edits to different providers and rejects stale edits to the same provider', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      fsSync.writeFileSync(
+        configPath,
+        JSON.stringify({ providers: { alpha: { apiKey: 'a' }, beta: { apiKey: 'b' } } }),
+      );
+      const first = await loadSavedProviders(configPath);
+      const second = await loadSavedProviders(configPath);
+      first['alpha']!.models = ['a1'];
+      second['beta']!.models = ['b1'];
+      await Promise.all([saveProviders(configPath, first), saveProviders(configPath, second)]);
+      const saved = await loadSavedProviders(configPath);
+      expect(saved['alpha']!.models).toEqual(['a1']);
+      expect(saved['beta']!.models).toEqual(['b1']);
+      expect(second['alpha']!.models).toEqual(['a1']);
+      const stale = await loadSavedProviders(configPath);
+      const fresh = await loadSavedProviders(configPath);
+      fresh['alpha']!.models = ['a2'];
+      await saveProviders(configPath, fresh);
+      stale['alpha']!.models = ['a3'];
+      await expect(saveProviders(configPath, stale)).rejects.toThrow('Refresh and try again');
+      expect((await loadSavedProviders(configPath))['alpha']!.models).toEqual(['a2']);
+    });
     it('does nothing when path is undefined', async () => {
       await expect(saveProviders(undefined, { anthropic: {} as never })).resolves.not.toThrow();
     });
@@ -100,6 +123,86 @@ describe('provider-config', () => {
   });
 
   describe('createProviderConfigStore', () => {
+    it('merges concurrent owned-account edits while retaining inherited accounts', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      const owned = {
+        alpha: { type: 'openai', apiKey: 'a' },
+        beta: { type: 'openai', apiKey: 'b' },
+      };
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: owned }));
+      const store = createProviderConfigStore(configPath, () => ({
+        ...owned,
+        project: { type: 'openai', apiKey: 'project-key' },
+      }));
+      const first = await store.load();
+      const second = await store.load();
+      first['alpha']!.models = ['a1'];
+      second['beta']!.models = ['b1'];
+      await store.save(first);
+      await store.save(second);
+      expect(second['alpha']?.models).toEqual(['a1']);
+      expect(second['beta']?.models).toEqual(['b1']);
+      expect(second['project']?.apiKey).toBe('project-key');
+      const saved = await loadSavedProviders(configPath);
+      expect(saved['project']).toBeUndefined();
+      expect(saved['alpha']?.models).toEqual(['a1']);
+      expect(saved['beta']?.models).toEqual(['b1']);
+    });
+
+    it('keeps inherited accounts visible after adding an account without copying their credentials', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: {} }));
+      const inherited = { project: { type: 'openai', apiKey: 'project-only-key' } };
+      const store = createProviderConfigStore(configPath, () => inherited);
+      const providers = await store.load();
+      providers['work'] = { type: 'openai', apiKey: 'work-key' };
+      await store.save(providers);
+      expect(providers['project']).toEqual(inherited.project);
+      const saved = await loadSavedProviders(configPath);
+      expect(saved['project']).toBeUndefined();
+      expect(saved['work']?.apiKey).toBe('work-key');
+      providers['work']!.models = ['updated-model'];
+      await store.save(providers);
+      expect((await loadSavedProviders(configPath))['work']?.models).toEqual(['updated-model']);
+      delete providers['work'];
+      await store.save(providers);
+      expect(await loadSavedProviders(configPath)).toEqual({});
+      expect(providers['project']).toEqual(inherited.project);
+    });
+
+    it('explains why an inherited account cannot be edited through another config file', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      fsSync.writeFileSync(configPath, JSON.stringify({ providers: {} }));
+      const store = createProviderConfigStore(configPath, () => ({
+        project: { type: 'openai', apiKey: 'project-only-key' },
+      }));
+      const providers = await store.load();
+      providers['project']!.apiKey = 'changed-key';
+      await expect(store.save(providers)).rejects.toThrow('another config file');
+      expect(await loadSavedProviders(configPath)).toEqual({});
+    });
+
+    it('protects a project override sharing an alias with a disk account', async () => {
+      const configPath = path.join(tempDir, 'config.json');
+      fsSync.writeFileSync(
+        configPath,
+        JSON.stringify({
+          providers: { shared: { type: 'openai', apiKey: 'disk-key' } },
+        }),
+      );
+      const store = createProviderConfigStore(configPath, () => ({
+        shared: { type: 'openai', apiKey: 'project-key' },
+      }));
+      const providers = await store.load();
+      providers['work'] = { type: 'openai', apiKey: 'work-key' };
+      await store.save(providers);
+      expect(providers['shared']?.apiKey).toBe('project-key');
+      expect((await loadSavedProviders(configPath))['shared']?.apiKey).toBe('disk-key');
+      delete providers['shared'];
+      await expect(store.save(providers)).rejects.toThrow('another config file');
+      expect((await loadSavedProviders(configPath))['shared']?.apiKey).toBe('disk-key');
+    });
+
     it('returns a store with load and save methods', () => {
       const store = createProviderConfigStore(path.join(tempDir, 'config.json'));
       expect(typeof store.load).toBe('function');

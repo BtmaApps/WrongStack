@@ -31,6 +31,7 @@ export const providersCmd: SubcommandHandler = async (args, deps) => {
       'openai-codex': [],
       'github-copilot': [],
       google: [],
+      'google-antigravity': [],
       unsupported: [],
     };
     for (const p of all) byFamily[p.family].push(p);

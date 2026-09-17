@@ -563,10 +563,7 @@ export function useAppPickerKeys({
     onMcpPickerRestart: restartSelectedMcpServer,
     onToolsPickerToggle: toggleSelectedTool,
     onHelpPanelEnter: () => {
-      const entry = state.helpPanel.entries[state.helpPanel.selected];
-      if (!entry) return;
-      dispatch({ type: 'helpClose' });
-      submitRef.current(`/${entry.name}`);
+      // Intentionally a no-op: help panel is purely informational
     },
     onBrainRiskChange: changeBrainRisk,
     onBrainAdjust: brainCtl.handleBrainAdjust,

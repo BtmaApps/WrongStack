@@ -14,11 +14,18 @@ import type { ReasoningEffort, Request } from '@wrongstack/core/types';
  */
 export const OPENAI_EFFORT_ACCEPT: Readonly<Record<ReasoningEffort, boolean>> = {
   none: true,
-  minimal: false,
+  // `minimal` (gpt-5) and `xhigh` (the gpt-5.2 tier) ARE Chat Completions
+  // values. Dropping them made the user's pick a silent no-op — the same fault
+  // the Responses adapter fixed by passing every level verbatim. A model that
+  // does not take the level answers 400 naming the field; the adapter then
+  // retries without it and remembers (`effort-support.ts`), so a wrong guess
+  // costs one request instead of every request being wrong.
+  minimal: true,
   low: true,
   medium: true,
   high: true,
-  xhigh: false,
+  xhigh: true,
+  // `max` is WrongStack's own top level with no Chat Completions spelling.
   max: false,
 };
 
@@ -43,17 +50,17 @@ export function isOpenAIEffort(effort: ReasoningEffort): boolean {
  * without classifying it in BOTH tables fails the build.
  */
 export const GENERIC_EFFORT_FALLBACK: Readonly<
-  Record<ReasoningEffort, 'low' | 'high' | undefined>
+  Record<ReasoningEffort, 'low' | 'high' | 'xhigh' | undefined>
 > = {
   // Base builder emits these verbatim — no fallback, no double-write.
   none: undefined,
+  minimal: undefined,
   low: undefined,
   medium: undefined,
   high: undefined,
-  // Base builder drops these — collapse onto the nearest accepted extreme.
-  minimal: 'low',
-  xhigh: 'high',
-  max: 'high',
+  xhigh: undefined,
+  // The one level with no wire spelling — collapse onto the nearest real value.
+  max: 'xhigh',
 };
 
 /**

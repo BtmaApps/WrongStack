@@ -18,6 +18,7 @@ import { CATALOG_ALIAS_BY_PROVIDER_TYPE, capabilitiesFor } from './capabilities.
 import { createCatalogAwareProvider } from './catalog-provider-routing.js';
 import { GitHubCopilotProvider } from './github-copilot.js';
 import { GoogleProvider } from './google.js';
+import { AntigravityProvider } from './google-antigravity.js';
 import { MiniMaxProvider } from './minimax.js';
 import { OpenAIProvider } from './openai.js';
 import { OpenAICodexProvider } from './openai-codex.js';
@@ -30,7 +31,10 @@ import { OpenCodeZenProvider } from './opencode.js';
 import { OpenCodeGoProvider } from './opencode-go.js';
 import { lmstudioWireFormat, ollamaWireFormat, vllmWireFormat } from './presets/local-llm.js';
 import { mistralWireFormat } from './presets/mistral.js';
-import { projectCompatibleProviderPresets } from './provider-definitions.js';
+import {
+  projectCompatibleProviderPresets,
+  resolveProviderDefinition,
+} from './provider-definitions.js';
 import { createWireFormatFactory } from './wire-format.js';
 
 export {
@@ -53,6 +57,7 @@ export {
   CLAUDE_CODE_SYSTEM_PROMPT,
   refreshAnthropicOAuthToken,
 } from './anthropic-oauth.js';
+export { parseAnthropicRateLimitHeaders } from './anthropic-rate-limits.js';
 export {
   type DiscoverOptions,
   type DiscoveryTarget,
@@ -82,6 +87,12 @@ export {
   type CodexWebSocketStreamOptions,
   defaultCodexWebSocketFactory,
 } from './codex-websocket.js';
+export {
+  isEffortRejected,
+  isEffortRejection,
+  rememberEffortRejected,
+  resetEffortSupport,
+} from './effort-support.js';
 export { parseProviderHttpError } from './error-parse.js';
 export { CAPABILITIES_BY_FAMILY, capabilitiesForFamily } from './family-capabilities.js';
 export {
@@ -92,7 +103,27 @@ export {
   type GitHubCopilotProviderOptions,
   refreshCopilotToken,
 } from './github-copilot.js';
+export { parseCopilotQuotaJson, reportCopilotQuota } from './github-copilot-quota.js';
 export { GoogleProvider, type GoogleProviderOptions } from './google.js';
+export {
+  type AntigravityCredentials,
+  type AntigravityOAuthClient,
+  AntigravityProvider,
+  type AntigravityProviderOptions,
+  refreshAntigravityToken,
+} from './google-antigravity.js';
+export {
+  type AntigravityBootstrapResult,
+  bootstrapAntigravityProject,
+} from './google-antigravity-bootstrap.js';
+export {
+  fetchAntigravityModels,
+  parseAntigravityModels,
+} from './google-antigravity-models.js';
+export {
+  parseAntigravityQuota,
+  reportAntigravityQuota,
+} from './google-antigravity-quota.js';
 export { MiniMaxProvider, type MiniMaxProviderOptions } from './minimax.js';
 export {
   type BuildBodyContext,
@@ -160,6 +191,11 @@ export {
   resetCacheProbeState,
 } from './prompt-cache-probe.js';
 export {
+  applyProviderOAuthRefresh,
+  matchesActiveProviderCredential,
+  unavailableProviderCredentials,
+} from './provider-credential-state.js';
+export {
   type CompatibleProviderProjection,
   LOCAL_PROVIDER_DEFINITIONS,
   type LocalProviderPresetProjection,
@@ -193,6 +229,14 @@ export {
   setDebugStreamCallback,
   setDebugStreamEnabled,
 } from './stream-debug-state.js';
+export {
+  DEFAULT_HEADERS_TIMEOUT_MS,
+  DEFAULT_STREAM_HANG_TIMEOUT_MS,
+  resetStreamTimeoutDefaults,
+  type StreamTimeoutDefaults,
+  setStreamTimeoutDefaults,
+  streamTimeoutDefaults,
+} from './stream-timeouts.js';
 export { contentFromAnthropic } from './tool-format/from-anthropic.js';
 export { contentFromOpenAI, type OpenAIChoice } from './tool-format/from-openai.js';
 export { toolsToAnthropic } from './tool-format/to-anthropic.js';
@@ -267,10 +311,20 @@ export interface OAuthRefreshedTokens {
  * this once at boot. When unset (tests, headless tools), refresh still works
  * in-memory for the session — only cross-session persistence is skipped.
  */
-let _oauthPersist: ((providerId: string, creds: OAuthRefreshedTokens) => void) | undefined;
+export interface ProviderCredentialSource {
+  label?: string | undefined;
+  accessToken: string;
+  refreshToken?: string | undefined;
+}
+
+let _oauthPersist:
+  | ((providerId: string, creds: OAuthRefreshedTokens, source?: ProviderCredentialSource) => void)
+  | undefined;
 
 export function setOAuthTokenPersister(
-  fn: ((providerId: string, creds: OAuthRefreshedTokens) => void) | undefined,
+  fn:
+    | ((providerId: string, creds: OAuthRefreshedTokens, source?: ProviderCredentialSource) => void)
+    | undefined,
 ): void {
   _oauthPersist = fn;
 }
@@ -285,7 +339,9 @@ export function setOAuthTokenPersister(
  * stale silently. The host installs this at boot; unset (tests, headless
  * tools) simply means the refreshed list is used for the session only.
  */
-let _modelsPersist: ((providerId: string, models: ProviderLiveModel[]) => void) | undefined;
+let _modelsPersist:
+  | ((providerId: string, models: ProviderLiveModel[], source?: ProviderCredentialSource) => void)
+  | undefined;
 
 /** One picker-visible model as a provider's live catalog describes it. */
 export interface ProviderLiveModel {
@@ -296,9 +352,50 @@ export interface ProviderLiveModel {
 }
 
 export function setProviderModelPersister(
-  fn: ((providerId: string, models: ProviderLiveModel[]) => void) | undefined,
+  fn:
+    | ((providerId: string, models: ProviderLiveModel[], source?: ProviderCredentialSource) => void)
+    | undefined,
 ): void {
   _modelsPersist = fn;
+}
+
+/**
+ * The Google OAuth client an Antigravity provider should refresh with.
+ *
+ * Config first, environment second. Returns a spreadable fragment so the
+ * caller stays a single expression and the provider option is simply absent
+ * when neither source has one — at which point the provider runs on its live
+ * access token and fails with a setup message rather than an opaque 401.
+ */
+function resolveAntigravityClient(
+  cfg: ProviderConfig,
+): { oauthClient: { clientId: string; clientSecret?: string | undefined } } | undefined {
+  const clientId =
+    cfg.oauthClientId?.trim() || process.env['WRONGSTACK_ANTIGRAVITY_CLIENT_ID']?.trim();
+  if (!clientId) return undefined;
+  const clientSecret =
+    cfg.oauthClientSecret?.trim() || process.env['WRONGSTACK_ANTIGRAVITY_CLIENT_SECRET']?.trim();
+  return { oauthClient: { clientId, ...(clientSecret ? { clientSecret } : {}) } };
+}
+
+function oauthPersistenceCallbacks(providerId: string, cfg: ProviderConfig, accessToken: string) {
+  const entry = resolveActiveKeyEntry(cfg);
+  let source: ProviderCredentialSource = {
+    label: entry?.label ?? (cfg.apiKey ? 'default' : undefined),
+    accessToken,
+    refreshToken: entry?.refreshToken,
+  };
+  return {
+    onRefresh: (creds: OAuthRefreshedTokens) => {
+      _oauthPersist?.(providerId, creds, { ...source });
+      source = {
+        ...source,
+        accessToken: creds.accessToken,
+        refreshToken: creds.refreshToken ?? source.refreshToken,
+      };
+    },
+    onModels: (models: ProviderLiveModel[]) => _modelsPersist?.(providerId, models, { ...source }),
+  };
 }
 
 /**
@@ -487,7 +584,12 @@ function makeProvider(
     quirks: validateQuirks(factoryType, cfg.quirks),
   });
   if (catalogAware) return catalogAware;
-  const apiKey = explicitApiKey ?? readFromEnv(envVars);
+  // Local runtimes (Ollama, OmniRoute, vLLM, LM Studio) are saved WITHOUT a key
+  // by `wstack auth local` — keyless or optional-auth by definition — yet this
+  // guard rejected them, so a freshly configured local provider could never be
+  // built. They get the same placeholder the local presets already send.
+  const keyOptional = resolveProviderDefinition(factoryType)?.local !== undefined;
+  const apiKey = explicitApiKey ?? readFromEnv(envVars) ?? (keyOptional ? 'no-key' : undefined);
   if (!apiKey && family !== 'unsupported') {
     throw new ConfigError({
       message: `Provider "${p.id}" requires an API key. Set ${
@@ -575,25 +677,25 @@ function makeProvider(
         return createWireFormatFactory(mistralWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? mistralWireFormat.defaultBaseUrl,
-        }).create(cfg);
+        }).create({ ...cfg, type: p.id });
       }
       if (factoryType === 'ollama') {
         return createWireFormatFactory(ollamaWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? ollamaWireFormat.defaultBaseUrl,
-        }).create(cfg);
+        }).create({ ...cfg, type: p.id });
       }
       if (factoryType === 'vllm') {
         return createWireFormatFactory(vllmWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? vllmWireFormat.defaultBaseUrl,
-        }).create(cfg);
+        }).create({ ...cfg, type: p.id });
       }
       if (factoryType === 'lmstudio') {
         return createWireFormatFactory(lmstudioWireFormat, {
           apiKey: expectDefined(apiKey),
           baseUrl: baseUrl ?? lmstudioWireFormat.defaultBaseUrl,
-        }).create(cfg);
+        }).create({ ...cfg, type: p.id });
       }
       const preset = COMPATIBLE_PRESETS[factoryType];
       const resolvedBaseUrl = baseUrl ?? preset?.defaultBaseUrl;
@@ -626,10 +728,9 @@ function makeProvider(
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
           accountId: entry?.accountId,
         },
-        onRefresh: (creds) => _oauthPersist?.(p.id, creds),
+        ...oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)),
         // The list the ChatGPT backend reports for THIS account, refreshed on
         // the catalog probe the transport already makes.
-        onModels: (models) => _modelsPersist?.(p.id, models),
       });
     }
     case 'anthropic-oauth': {
@@ -643,7 +744,7 @@ function makeProvider(
           refreshToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
-        onRefresh: (creds) => _oauthPersist?.(p.id, creds),
+        onRefresh: oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)).onRefresh,
       });
     }
     case 'github-copilot': {
@@ -656,7 +757,31 @@ function makeProvider(
           githubToken: entry?.refreshToken,
           expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
         },
-        onRefresh: (creds) => _oauthPersist?.(p.id, creds),
+        onRefresh: oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey)).onRefresh,
+      });
+    }
+    case 'google-antigravity': {
+      const entry = resolveActiveKeyEntry(cfg);
+      const parsedExpiry = entry?.expiresAt ? Date.parse(entry.expiresAt) : Number.NaN;
+      const persistence = oauthPersistenceCallbacks(p.id, cfg, expectDefined(apiKey));
+      return new AntigravityProvider({
+        id: p.id,
+        ...(cfg.baseUrl !== undefined ? { baseUrl: cfg.baseUrl } : {}),
+        credentials: {
+          accessToken: expectDefined(apiKey),
+          refreshToken: entry?.refreshToken,
+          expiresAt: Number.isFinite(parsedExpiry) ? parsedExpiry : undefined,
+          project: entry?.project,
+        },
+        // The OAuth client is caller-supplied, never embedded — see the
+        // provider module's note. Config wins over the environment so a
+        // committed setup is not silently overridden by a stray export, but
+        // the env fallback matters: sign-in reads the client from there, and
+        // without it a user who signed in successfully would hit a refresh
+        // failure an hour later for want of a config edit nothing told them
+        // to make.
+        ...(resolveAntigravityClient(cfg) ?? {}),
+        onRefresh: persistence.onRefresh,
       });
     }
     case 'google':
@@ -744,3 +869,11 @@ function validateQuirks(providerId: string, quirks: unknown): CompatibilityQuirk
     subsystem: 'provider',
   });
 }
+
+export {
+  authProfileAliasError,
+  clearStaleProviderDefaults,
+  ProviderConfigSnapshots,
+  removeProviderFallbackReferences,
+  validateProviderConfigShape,
+} from './provider-config-state.js';

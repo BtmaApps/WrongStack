@@ -87,10 +87,15 @@ function makeIo(answers: Array<string | Error | Promise<string>> = []) {
   const log: string[] = [];
   const prompts: Array<{ question: string; secret: boolean }> = [];
   let i = 0;
+  let promptStarted!: () => void;
+  const prompted = new Promise<void>((resolve) => {
+    promptStarted = resolve;
+  });
   const io: AuthFlowIo = {
     onLog: (line) => log.push(line),
     prompt: async (question, { secret }) => {
       prompts.push({ question, secret });
+      promptStarted();
       const answer = answers[i++];
       if (answer === undefined) throw new Error(`unexpected prompt: ${question}`);
       if (answer instanceof Error) throw answer;
@@ -98,7 +103,7 @@ function makeIo(answers: Array<string | Error | Promise<string>> = []) {
     },
     signal: new AbortController().signal,
   };
-  return { io, log, prompts };
+  return { io, log, prompts, prompted };
 }
 
 async function readProviders(configPath: string): Promise<Record<string, unknown>> {
@@ -351,7 +356,7 @@ describe('panel host — addCatalogProvider flow', () => {
     expect(providers['anthropic-google']).toBeDefined();
   });
 
-  it('proceeds when an existing alias matches family and baseUrl', async () => {
+  it('does not put a new account key in an existing alias even when family and endpoint match', async () => {
     const { host, configPath } = await setup({
       catalog: ANTHROPIC_CATALOG,
       preExisting: {
@@ -364,13 +369,12 @@ describe('panel host — addCatalogProvider flow', () => {
         },
       },
     });
-    // Same family + baseUrl → no conflict → adds the key to the existing entry.
     const { io } = makeIo(['', '', 'anthropic', 'work', 'sk-w-1234567890']);
     const result = await host.addCatalogProvider('anthropic', io);
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
     const providers = await readProviders(configPath);
-    expect((providers['anthropic'] as { apiKeys?: unknown[] }).apiKeys).toHaveLength(1);
-    expect((providers['anthropic'] as { activeKey?: string }).activeKey).toBe('work');
+    expect((providers['anthropic'] as { apiKeys?: unknown[] }).apiKeys).toBeUndefined();
+    expect((providers['anthropic'] as { activeKey?: string }).activeKey).toBeUndefined();
   });
 });
 
@@ -774,9 +778,10 @@ describe('panel-service.ts — defensive + error branches', () => {
     const deferred = new Promise<string>((r) => {
       resolveAnswer = r;
     });
-    const { io, log } = makeIo([deferred]);
+    const { io, log, prompted } = makeIo([deferred]);
     const flow = host.editField('anthropic', 'family', io);
     // Remove the provider from disk while the prompt is pending.
+    await prompted;
     const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
     delete (raw.providers as Record<string, unknown>).anthropic;
     await fs.writeFile(configPath, JSON.stringify(raw), { mode: 0o600 });
@@ -792,8 +797,9 @@ describe('panel-service.ts — defensive + error branches', () => {
     const deferred = new Promise<string>((r) => {
       resolveAnswer = r;
     });
-    const { io, log } = makeIo([deferred]);
+    const { io, log, prompted } = makeIo([deferred]);
     const flow = host.editField('anthropic', 'baseUrl', io);
+    await prompted;
     const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
     delete (raw.providers as Record<string, unknown>).anthropic;
     await fs.writeFile(configPath, JSON.stringify(raw), { mode: 0o600 });
@@ -809,8 +815,9 @@ describe('panel-service.ts — defensive + error branches', () => {
     const deferred = new Promise<string>((r) => {
       resolveAnswer = r;
     });
-    const { io, log } = makeIo([deferred]);
+    const { io, log, prompted } = makeIo([deferred]);
     const flow = host.editField('anthropic', 'models', io);
+    await prompted;
     const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
     delete (raw.providers as Record<string, unknown>).anthropic;
     await fs.writeFile(configPath, JSON.stringify(raw), { mode: 0o600 });
@@ -826,8 +833,9 @@ describe('panel-service.ts — defensive + error branches', () => {
     const deferred = new Promise<string>((r) => {
       resolveAnswer = r;
     });
-    const { io, log } = makeIo([deferred, '', '', '', '']);
+    const { io, log, prompted } = makeIo([deferred, '', '', '', '']);
     const flow = host.editModelDetails('anthropic', 'claude-sonnet-4-6', io);
+    await prompted;
     const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
     delete (raw.providers as Record<string, unknown>).anthropic;
     await fs.writeFile(configPath, JSON.stringify(raw), { mode: 0o600 });
@@ -843,8 +851,9 @@ describe('panel-service.ts — defensive + error branches', () => {
     const deferred = new Promise<string>((r) => {
       resolveAnswer = r;
     });
-    const { io, log } = makeIo([deferred]);
+    const { io, log, prompted } = makeIo([deferred]);
     const flow = host.addModel('anthropic', io);
+    await prompted;
     const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
     delete (raw.providers as Record<string, unknown>).anthropic;
     await fs.writeFile(configPath, JSON.stringify(raw), { mode: 0o600 });

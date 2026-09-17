@@ -373,6 +373,7 @@ export type WSClientMessageCore =
       type: 'provider.add';
       payload: {
         id: string;
+        type?: string | undefined;
         family: string;
         baseUrl?: string | undefined;
         apiKey?: string | undefined;

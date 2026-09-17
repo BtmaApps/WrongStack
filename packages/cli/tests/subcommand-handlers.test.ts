@@ -4,10 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const runAuthMenu = vi.fn().mockResolvedValue(0);
 const runAuthDirect = vi.fn().mockResolvedValue(0);
 const runAuthLocal = vi.fn().mockResolvedValue(0);
+const runOAuthLoginKind = vi.fn().mockResolvedValue(0);
 vi.mock('../src/auth-menu/index.js', () => ({
   runAuthMenu: (...a: unknown[]) => runAuthMenu(...a),
   runAuthDirect: (...a: unknown[]) => runAuthDirect(...a),
   runAuthLocal: (...a: unknown[]) => runAuthLocal(...a),
+  runOAuthLoginKind: (...a: unknown[]) => runOAuthLoginKind(...a),
+  resolveOAuthKind: (id: string) => (id === 'chatgpt' ? id : undefined),
 }));
 
 // ── history handler — mock the underlying store calls ──────────────────────
@@ -46,10 +49,68 @@ beforeEach(() => {
   runAuthMenu.mockClear();
   runAuthDirect.mockClear();
   runAuthLocal.mockClear();
+  runOAuthLoginKind.mockClear();
   listHistory.mockReset();
   getHistoryEntry.mockReset();
   restoreFromHistory.mockReset();
   restoreLast.mockReset();
+});
+
+it.each(['openai', 'login'])(
+  'forwards an auth profile alias through real top-level flag parsing for %s',
+  async (kind) => {
+    const argv =
+      kind === 'login'
+        ? ['auth', 'login', 'chatgpt', '--alias', 'work-account']
+        : ['auth', 'openai', '--alias', 'work-account'];
+    const parsed = parseArgs(argv);
+    const deps = fakeDeps();
+    deps.flags = parsed.flags;
+    expect(await authCmd(parsed.positional.slice(1), deps)).toBe(0);
+    if (kind === 'login')
+      expect(runOAuthLoginKind).toHaveBeenCalledWith(expect.anything(), 'chatgpt', {
+        providerId: 'work-account',
+      });
+    else
+      expect(runAuthDirect).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ providerId: 'openai', alias: 'work-account' }),
+      );
+  },
+);
+
+it('makes account/profile help available without starting an interactive auth flow', async () => {
+  const deps = fakeDeps();
+  deps.flags = { help: true };
+  expect(await authCmd([], deps)).toBe(0);
+  expect(deps.renderer.write).toHaveBeenCalledWith(expect.stringContaining('--alias'));
+  expect(runAuthMenu).not.toHaveBeenCalled();
+});
+
+it('forwards a local auth profile alias through dispatcher-stripped flags', async () => {
+  const parsed = parseArgs([
+    'auth',
+    'local',
+    '--name',
+    'ollama',
+    '--alias',
+    'local-work',
+    '--no-probe',
+  ]);
+  const deps = fakeDeps();
+  deps.flags = parsed.flags;
+  expect(await authCmd(parsed.positional.slice(1), deps)).toBe(0);
+  expect(runAuthLocal).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ name: 'ollama', alias: 'local-work', noProbe: true }),
+  );
+});
+
+it('rejects a missing alias value instead of silently adding a key to the default account', async () => {
+  const deps = fakeDeps();
+  expect(await authCmd(['openai', '--alias'], deps)).toBe(1);
+  expect(runAuthDirect).not.toHaveBeenCalled();
+  expect(runAuthMenu).not.toHaveBeenCalled();
 });
 
 describe('helpCmd', () => {

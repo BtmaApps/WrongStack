@@ -18,14 +18,15 @@
  * Secrets never cross into the TUI: key values are masked here, and the
  * modal prompt sends the plaintext only INTO the flow (never back out).
  */
-import { parseModelRef } from '@wrongstack/core/agent';
-import { toErrorMessage } from '@wrongstack/core/utils';
+
 import type {
   ModelsRegistry,
   ProviderConfig,
   SecretScrubber,
   SecretVault,
 } from '@wrongstack/core/types';
+import { toErrorMessage } from '@wrongstack/core/utils';
+import { authProfileAliasError } from '@wrongstack/providers';
 import type {
   AuthCatalogRow,
   AuthFlowIo,
@@ -150,182 +151,15 @@ export function plainMaskedKey(key: string): string {
   return `${key.slice(0, 4)}…${key.slice(-4)}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isProviderModelRef(value: unknown, providerId: string): boolean {
-  return typeof value === 'string' && parseModelRef(value).provider === providerId;
-}
-
-/**
- * Remove references to a deleted provider from fallback routing. Empty named
- * profiles are removed, then every selector pointing at one of those removed
- * profiles is cleared so a live reload never inherits a dangling chain.
- */
-function removeProviderFallbackReferences(config: Record<string, unknown>, providerId: string): void {
-  const removeModelRefs = (value: unknown): unknown[] | undefined =>
-    Array.isArray(value) ? value.filter((ref) => !isProviderModelRef(ref, providerId)) : undefined;
-
-  if (Array.isArray(config['fallbackModels'])) {
-    config['fallbackModels'] = removeModelRefs(config['fallbackModels'])!;
-  }
-  if (typeof config['fallbackBridge'] === 'string' && isProviderModelRef(config['fallbackBridge'], providerId)) {
-    delete config['fallbackBridge'];
-  }
-  if (Array.isArray(config['favoriteModels'])) {
-    config['favoriteModels'] = removeModelRefs(config['favoriteModels'])!;
-  }
-  if (Array.isArray(config['disabledModels'])) {
-    config['disabledModels'] = removeModelRefs(config['disabledModels'])!;
-  }
-  if (isRecord(config['models'])) {
-    for (const [modelId, definition] of Object.entries(config['models'])) {
-      if (isRecord(definition) && definition['provider'] === providerId) {
-        delete config['models'][modelId];
-      }
-    }
-    if (Object.keys(config['models']).length === 0) delete config['models'];
-  }
-
-  const removedProfiles = new Set<string>();
-  if (isRecord(config['fallbackProfiles'])) {
-    const profiles = config['fallbackProfiles'];
-    for (const [name, chain] of Object.entries(profiles)) {
-      if (!Array.isArray(chain)) continue;
-      const next = chain.filter((ref) => !isProviderModelRef(ref, providerId));
-      if (next.length === 0) {
-        delete profiles[name];
-        removedProfiles.add(name);
-      } else {
-        profiles[name] = next;
-      }
-    }
-    if (Object.keys(profiles).length === 0) delete config['fallbackProfiles'];
-  }
-
-  const clearRemovedProfile = (entry: Record<string, unknown>): void => {
-    if (
-      typeof entry['fallbackProfile'] === 'string' &&
-      removedProfiles.has(entry['fallbackProfile'])
-    ) {
-      delete entry['fallbackProfile'];
-    }
-  };
-
-  if (typeof config['fallbackProfile'] === 'string' && removedProfiles.has(config['fallbackProfile'])) {
-    delete config['fallbackProfile'];
-  }
-
-  if (isRecord(config['modelMatrix'])) {
-    for (const [role, value] of Object.entries(config['modelMatrix'])) {
-      if (!isRecord(value)) continue;
-      if (value['provider'] === providerId) {
-        delete value['provider'];
-        delete value['model'];
-      }
-      clearRemovedProfile(value);
-      if (Object.keys(value).length === 0) delete config['modelMatrix'][role];
-    }
-    if (Object.keys(config['modelMatrix']).length === 0) delete config['modelMatrix'];
-  }
-
-  if (isRecord(config['modelTiers']) && isRecord(config['modelTiers']['levels'])) {
-    const levels = config['modelTiers']['levels'];
-    for (const level of Object.values(levels)) {
-      if (!isRecord(level)) continue;
-      if (level['provider'] === providerId) {
-        delete level['provider'];
-        delete level['model'];
-      }
-      clearRemovedProfile(level);
-    }
-  }
-
-  if (isRecord(config['autonomy'])) {
-    const autonomy = config['autonomy'];
-    if (autonomy['refinerProvider'] === providerId) {
-      delete autonomy['refinerProvider'];
-      delete autonomy['refinerModel'];
-    }
-    if (isProviderModelRef(autonomy['enhanceFallbackModel'], providerId)) {
-      delete autonomy['enhanceFallbackModel'];
-    }
-    if (
-      typeof autonomy['refinerFallbackProfile'] === 'string' &&
-      removedProfiles.has(autonomy['refinerFallbackProfile'])
-    ) {
-      delete autonomy['refinerFallbackProfile'];
-    }
-  }
-
-  if (isRecord(config['brain'])) {
-    const brain = config['brain'];
-    if (Array.isArray(brain['models'])) {
-      brain['models'] = brain['models'].filter(
-        (entry) =>
-          !isProviderModelRef(entry, providerId) &&
-          !(isRecord(entry) && entry['provider'] === providerId),
-      );
-    }
-    if (isRecord(brain['council'])) {
-      const council = brain['council'];
-      if (Array.isArray(council['voters'])) {
-        council['voters'] = council['voters'].filter(
-          (entry) =>
-            !isProviderModelRef(entry, providerId) &&
-            !(isRecord(entry) && entry['provider'] === providerId),
-        );
-      }
-      if (
-        isProviderModelRef(council['judge'], providerId) ||
-        (isRecord(council['judge']) && council['judge']['provider'] === providerId)
-      ) {
-        delete council['judge'];
-      }
-    }
-  }
-
-  const councilProfiles = isRecord(config['tools']) && isRecord(config['tools']['council'])
-    ? config['tools']['council']['profiles']
-    : undefined;
-  if (Array.isArray(councilProfiles)) {
-    for (const profile of councilProfiles) {
-      if (!isRecord(profile)) continue;
-      for (const seat of Array.isArray(profile['seats']) ? profile['seats'] : []) {
-        if (!isRecord(seat) || !isRecord(seat['target'])) continue;
-        const target = seat['target'];
-        if (target['providerId'] === providerId) {
-          delete target['providerId'];
-          delete target['model'];
-        }
-        if (Array.isArray(target['fallbackModels'])) {
-          target['fallbackModels'] = removeModelRefs(target['fallbackModels'])!;
-        }
-        clearRemovedProfile(target);
-        if (Object.keys(target).length === 0) delete seat['target'];
-      }
-      if (isRecord(profile['judge'])) {
-        const judge = profile['judge'];
-        if (judge['providerId'] === providerId) {
-          delete judge['providerId'];
-          delete judge['model'];
-        }
-        if (Array.isArray(judge['fallbackModels'])) {
-          judge['fallbackModels'] = removeModelRefs(judge['fallbackModels'])!;
-        }
-        clearRemovedProfile(judge);
-        if (Object.keys(judge).length === 0) delete profile['judge'];
-      }
-    }
-  }
-}
-
 // ── Service factory ────────────────────────────────────────────────────────
 
 export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
   const loadProviders = (): Promise<Record<string, ProviderConfig>> =>
-    loadConfigProviders(deps.profileConfigPath, deps.vault);
+    loadConfigProviders(deps.profileConfigPath, deps.vault, {
+      warn: (message) => {
+        throw new Error(message);
+      },
+    });
 
   const mutate = async (
     mutator: (
@@ -439,10 +273,9 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
     },
 
     removeProvider(providerId: string): Promise<string | null> {
-      return mutate((all, config) => {
+      return mutate((all) => {
         if (!all[providerId]) return `Provider "${providerId}" no longer in config.`;
         delete all[providerId];
-        removeProviderFallbackReferences(config, providerId);
         return null;
       });
     },
@@ -463,6 +296,8 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
       const family = validateFamily(setup.family);
       if (!type) return 'Provider id is required.';
       if (!alias) return 'Alias is required.';
+      const aliasError = authProfileAliasError(alias);
+      if (aliasError) return aliasError;
       if (!family) return 'Choose a supported protocol family.';
       if (!keyLabel) return 'Key alias is required.';
       if (!apiKey) return 'API key is required.';
@@ -496,6 +331,7 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
           if (existing.type && existing.type !== type) {
             return `Alias "${alias}" already belongs to provider type "${existing.type}".`;
           }
+          return `Auth profile "${alias}" already exists. Choose another alias or manage its keys explicitly.`;
         }
 
         const provider: ProviderConfig = existing ?? { type, family };
@@ -564,7 +400,12 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         modelId,
         name: typeof modelsDev['name'] === 'string' ? modelsDev['name'] : '',
         contextWindow: limit?.['context'] === undefined ? '' : String(limit['context']),
-        maxOutput: details?.maxOutput === undefined ? (limit?.['output'] === undefined ? '' : String(limit['output'])) : String(details.maxOutput),
+        maxOutput:
+          details?.maxOutput === undefined
+            ? limit?.['output'] === undefined
+              ? ''
+              : String(limit['output'])
+            : String(details.maxOutput),
         costInput: cost?.['input'] === undefined ? '' : String(cost['input']),
         costOutput: cost?.['output'] === undefined ? '' : String(cost['output']),
       };
@@ -574,29 +415,43 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
       const parse = (value: string, label: string): number | string | undefined => {
         if (!value.trim()) return undefined;
         const number = Number(value);
-        return Number.isFinite(number) && number >= 0 ? number : `${label} must be a non-negative number.`;
+        return Number.isFinite(number) && number >= 0
+          ? number
+          : `${label} must be a non-negative number.`;
       };
       const context = parse(edit.contextWindow, 'Context window');
       const output = parse(edit.maxOutput, 'Max output');
       const inputCost = parse(edit.costInput, 'Input cost');
       const outputCost = parse(edit.costOutput, 'Output cost');
-      for (const value of [context, output, inputCost, outputCost]) if (typeof value === 'string') return value;
+      for (const value of [context, output, inputCost, outputCost])
+        if (typeof value === 'string') return value;
       return mutate((all) => {
         const provider = all[edit.providerId];
-        if (!provider?.models?.includes(edit.modelId)) return `Model "${edit.modelId}" no longer exists.`;
+        if (!provider?.models?.includes(edit.modelId))
+          return `Model "${edit.modelId}" no longer exists.`;
         const existing = provider.customModels?.[edit.modelId] ?? {};
         const modelsDev = { ...(existing.modelsDev ?? {}) } as Record<string, unknown>;
-        if (edit.name.trim()) modelsDev['name'] = edit.name.trim(); else delete modelsDev['name'];
-        const limit = { ...(modelsDev['limit'] as Record<string, unknown> ?? {}) };
-        if (context === undefined) delete limit['context']; else limit['context'] = context;
-        if (output === undefined) delete limit['output']; else limit['output'] = output;
-        if (Object.keys(limit).length) modelsDev['limit'] = limit; else delete modelsDev['limit'];
-        const cost = { ...(modelsDev['cost'] as Record<string, unknown> ?? {}) };
-        if (inputCost === undefined) delete cost['input']; else cost['input'] = inputCost;
-        if (outputCost === undefined) delete cost['output']; else cost['output'] = outputCost;
-        if (Object.keys(cost).length) modelsDev['cost'] = cost; else delete modelsDev['cost'];
+        if (edit.name.trim()) modelsDev['name'] = edit.name.trim();
+        else delete modelsDev['name'];
+        const limit = { ...((modelsDev['limit'] as Record<string, unknown>) ?? {}) };
+        if (context === undefined) delete limit['context'];
+        else limit['context'] = context;
+        if (output === undefined) delete limit['output'];
+        else limit['output'] = output;
+        if (Object.keys(limit).length) modelsDev['limit'] = limit;
+        else delete modelsDev['limit'];
+        const cost = { ...((modelsDev['cost'] as Record<string, unknown>) ?? {}) };
+        if (inputCost === undefined) delete cost['input'];
+        else cost['input'] = inputCost;
+        if (outputCost === undefined) delete cost['output'];
+        else cost['output'] = outputCost;
+        if (Object.keys(cost).length) modelsDev['cost'] = cost;
+        else delete modelsDev['cost'];
         if (!provider.customModels) provider.customModels = {};
-        provider.customModels[edit.modelId] = { ...existing, ...(Object.keys(modelsDev).length ? { modelsDev } : {}) };
+        provider.customModels[edit.modelId] = {
+          ...existing,
+          ...(Object.keys(modelsDev).length ? { modelsDev } : {}),
+        };
         return null;
       });
     },
@@ -611,10 +466,14 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         if (!provider) return `Provider "${edit.providerId}" no longer in config.`;
         const keys = normalizeKeys(provider);
         const original = edit.originalLabel;
-        if (original && !keys.some((key) => key.label === original)) return `Key "${original}" not found.`;
-        if (keys.some((key) => key.label === label && key.label !== original)) return `Key alias "${label}" already exists.`;
+        if (original && !keys.some((key) => key.label === original))
+          return `Key "${original}" not found.`;
+        if (keys.some((key) => key.label === label && key.label !== original))
+          return `Key alias "${label}" already exists.`;
         const next = original
-          ? keys.map((key) => key.label === original ? { ...key, label, apiKey, createdAt: nowIso() } : key)
+          ? keys.map((key) =>
+              key.label === original ? { ...key, label, apiKey, createdAt: nowIso() } : key,
+            )
           : [...keys, { label, apiKey, createdAt: nowIso() }];
         writeKeysBack(provider, next);
         if (!provider.activeKey || provider.activeKey === original) provider.activeKey = label;
@@ -997,7 +856,7 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
     addLocal(
       presetId: string,
       io: AuthFlowIo,
-      opts?: { baseUrl?: string; apiKey?: string },
+      opts?: { baseUrl?: string; apiKey?: string; alias?: string },
     ): Promise<AuthFlowResult> {
       return runFlow(async () => {
         const preset = LOCAL_LLM_PRESETS.find((p) => p.id === presetId);
@@ -1023,6 +882,7 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
         // picker is immediately useful after the add.
         const code = await runAuthLocal(flowDeps(deps, io), {
           name: preset.id,
+          ...(opts?.alias !== undefined ? { alias: opts.alias } : {}),
           baseUrl: url || undefined,
           apiKey: opts !== undefined ? (opts.apiKey ?? '').trim() : undefined,
           models: '999',
@@ -1034,7 +894,19 @@ export function createAuthPanelHost(deps: AuthPanelServiceDeps): AuthPanelHost {
     oauthLogin(kind: AuthOAuthKind, io: AuthFlowIo): Promise<AuthFlowResult> {
       return runFlow(async () => {
         const d = flowDeps(deps, io);
-        const code = await runProviderAuthLogin(d, kind, { signal: io.signal });
+        const strategy = providerAuthStrategiesFor(deps).find((entry) => entry.id === kind);
+        const profiles = await loadProviders();
+        const baseAlias = strategy?.providerId ?? kind;
+        let alias = baseAlias;
+        for (let n = 2; profiles[alias]; n++) alias = `${baseAlias}-${n}`;
+        const input = (
+          await d.reader.readLine(`Auth profile alias [${alias}] (q to cancel): `)
+        ).trim();
+        if (input.toLowerCase() === 'q') return false;
+        const code = await runProviderAuthLogin(d, kind, {
+          signal: io.signal,
+          providerId: input || alias,
+        });
         return code === 0;
       }, deps.onProvidersChanged);
     },

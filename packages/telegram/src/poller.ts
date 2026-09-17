@@ -19,6 +19,12 @@ export class Poller {
   private _startedAt: number | null = null;
   private offset = 0;
   private _conflictStreak = 0;
+  // Supersede fence: bumped by handleLockLost()/stop() so an in-flight poll's
+  // .finally re-arm cannot revive a chain that was replaced while it ran.
+  // Without it, a lock re-acquire (or stop→start) landing mid-long-poll leaves
+  // two live getUpdates chains — Telegram 409s then ping-pong between them and
+  // both degrade to CONFLICT_POLL_MS backoff until restart.
+  private chainEpoch = 0;
   private static readonly CONFLICT_BACKOFF_AFTER = 3;
   private static readonly CONFLICT_POLL_MS = 60_000;
   private readonly onCallbackQuery: (
@@ -76,6 +82,7 @@ export class Poller {
   }
   stop(): void {
     this.pollActive = false;
+    this.chainEpoch += 1;
     this.controller.abort();
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
@@ -107,6 +114,7 @@ export class Poller {
   }
   handleLockLost(): void {
     if (!this.pollActive) return;
+    this.chainEpoch += 1;
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
@@ -125,8 +133,15 @@ export class Poller {
       this._conflictStreak >= Poller.CONFLICT_BACKOFF_AFTER
         ? Poller.CONFLICT_POLL_MS
         : this.pollIntervalMs;
+    const epoch = this.chainEpoch;
     this.pollTimer = setTimeout(() => {
-      void this.poll().finally(() => this.schedulePoll());
+      void this.poll().finally(() => {
+        // A poll that was still in flight across a supersede event (lock
+        // lost + re-acquired, or stop→start) must not re-arm its old chain
+        // on top of the successor — two live getUpdates chains make Telegram
+        // 409 ping-pong between them and both decay to conflict backoff.
+        if (epoch === this.chainEpoch) this.schedulePoll();
+      });
     }, delay);
   }
   async poll(): Promise<void> {

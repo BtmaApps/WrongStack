@@ -208,7 +208,8 @@ export function useWebSocket() {
       apiKey?: string,
       models?: string[] | undefined,
       customModels?: Record<string, ProviderCustomModelWire> | undefined,
-    ) => client.addProvider(id, family, baseUrl, apiKey, models, customModels),
+      providerType?: string | undefined,
+    ) => client.addProvider(id, family, baseUrl, apiKey, models, customModels, providerType),
     [client],
   );
   const removeProvider = useCallback(

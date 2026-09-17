@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type {
   ContentBlock,
   Message,
@@ -28,6 +29,22 @@ export interface OpenAIToolSchema {
  */
 const _cache = new WeakMap<Tool[], OpenAIToolSchema[]>();
 const _stringifiedToolInputs = new WeakMap<Record<string, unknown>, string>();
+
+/** OpenAI rejects `tool_calls[].id` / `tool_call_id` longer than this. */
+const MAX_TOOL_CALL_ID_LENGTH = 40;
+
+/**
+ * Keep a tool-call id within the Chat Completions limit. Ids minted by other
+ * wires can be longer (older Gemini sessions used `<tool name>_<hex>`), which
+ * 400'd the whole request after a `/model` switch. The mapping is a pure
+ * function of the id, so an assistant `tool_calls[].id` and its matching
+ * `tool_call_id` always rewrite identically; ids already within the limit
+ * pass through untouched.
+ */
+function wireToolCallId(id: string): string {
+  if (id.length <= MAX_TOOL_CALL_ID_LENGTH) return id;
+  return `call_${createHash('sha256').update(id).digest('hex').slice(0, 32)}`;
+}
 
 function stringifyToolInputOnce(input: Record<string, unknown>): string {
   const hit = _stringifiedToolInputs.get(input);
@@ -151,7 +168,7 @@ export function messagesToOpenAI(
         const content = typeof r.content === 'string' ? r.content : JSON.stringify(r.content);
         out.push({
           role: 'tool',
-          tool_call_id: r.tool_use_id,
+          tool_call_id: wireToolCallId(r.tool_use_id),
           content,
         });
       }
@@ -174,7 +191,7 @@ export function messagesToOpenAI(
         .filter((t) => t && t.length > 0)
         .join('');
       const toolCalls: OpenAIToolCall[] = toolUses.map((u) => ({
-        id: u.id,
+        id: wireToolCallId(u.id),
         type: 'function',
         function: { name: u.name, arguments: stringifyToolInputOnce(u.input) },
       }));

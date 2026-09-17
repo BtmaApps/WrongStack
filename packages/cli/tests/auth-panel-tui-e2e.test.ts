@@ -178,7 +178,7 @@ describe.skipIf(!runnable)('interactive /auth panel — PTY end-to-end', () => {
       }
     };
 
-    await expectSoon('● idle', 90_000, 'TUI status bar');
+    await expectSoon('Enter send', 90_000, 'TUI input ready');
     await sleep(3_000);
 
     // /auth → list view.
@@ -187,7 +187,7 @@ describe.skipIf(!runnable)('interactive /auth panel — PTY end-to-end', () => {
     child.write('\r');
     await expectSoon('API keys & sign-in', 20_000, 'panel title');
     await expectSoon('omniroute', 10_000, 'provider row');
-    await expectSoon('Sign in with OAuth', 5_000, 'oauth action row');
+    await expectSoon('Sign in with provider OAuth', 5_000, 'oauth action row');
 
     // Enter → provider detail with the masked key; the plaintext must
     // never appear anywhere in the terminal stream.
@@ -217,15 +217,14 @@ describe.skipIf(!runnable)('interactive /auth panel — PTY end-to-end', () => {
     }
     child.write('\r');
     await expectSoon('Sign in with OAuth', 10_000, 'oauth view', mark);
-    await expectSoon('ChatGPT Plus/Pro', 5_000, 'chatgpt option', mark);
+    await expectSoon('ChatGPT', 5_000, 'chatgpt option', mark);
 
     // Ctrl+C with the panel open — cancels the panel, the TUI stays alive.
     mark = buf.length;
     child.write(CTRL_C);
     await expectSoon('Auth panel cancelled.', 10_000, 'ctrl+c cancel', mark);
     await sleep(1_000);
-    mark = buf.length;
-    await expectSoon('● idle', 10_000, 'alive after ctrl+c', mark);
+    await expectSoon('Enter send', 10_000, 'alive after ctrl+c', mark);
 
     // /auth login → straight to the OAuth view.
     mark = buf.length;

@@ -7,6 +7,9 @@ const pathGuardPlugin = (await import('../src/path-guard/index.js')).default;
 const { compilePathGlob, destructiveTargets, isSymlinkEscape } = await import(
   '../src/path-guard/index.js'
 );
+const { commandDeletesImplicitScope, commandRecursivelyDeletes } = await import(
+  '../src/path-guard/shell-targets.js'
+);
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -538,6 +541,42 @@ EOF`,
     expect(
       destructiveTargets("cat <<-'EOF'\nliteral > .env\n\tEOF\necho safe > notes.txt"),
     ).toEqual(['notes.txt']);
+  });
+});
+
+describe('path-qualified destructive writers', () => {
+  it('extracts targets from path-qualified writers exactly like bare forms', () => {
+    expect(destructiveTargets('/bin/rm -rf .env')).toContain('.env');
+    expect(destructiveTargets('sudo /bin/rm -rf .env')).toContain('.env');
+    expect(destructiveTargets('/usr/bin/tee .env')).toContain('.env');
+    expect(destructiveTargets('/usr/bin/cp leak.txt .env')).toContain('.env');
+    expect(destructiveTargets('/bin/dd if=/dev/zero of=.env')).toContain('.env');
+    expect(destructiveTargets("/usr/bin/sed -i 's/a/b/' .env")).toContain('.env');
+    expect(destructiveTargets('/usr/bin/ln -sf source .env')).toContain('.env');
+    expect(destructiveTargets('printf .env | xargs /bin/rm')).toContain('.env');
+  });
+
+  it('treats path-qualified recursive find and git clean as scope deletion', () => {
+    expect(destructiveTargets('/usr/bin/find . -delete')).toContain('.');
+    expect(commandRecursivelyDeletes('/usr/bin/find . -delete')).toBe(true);
+    expect(commandRecursivelyDeletes('sudo /bin/rm -rf .env')).toBe(true);
+    expect(commandDeletesImplicitScope('/usr/bin/git clean -fdx')).toBe(true);
+  });
+
+  it('keeps quoted and suffix look-alikes inert', () => {
+    expect(destructiveTargets('echo "/bin/rm -rf .env"')).toHaveLength(0);
+    expect(destructiveTargets('cat /bin/rm.txt notes')).toHaveLength(0);
+  });
+
+  it('blocks a path-qualified writer through the hook', async () => {
+    const api = makeApi();
+    pathGuardPlugin.setup(api as never);
+    const hook = getHook(api);
+    const result = await hook({
+      toolName: 'bash',
+      toolInput: { command: '/bin/rm -rf .env' },
+    });
+    expect(result?.decision).toBe('block');
   });
 });
 

@@ -25,6 +25,7 @@ import { useProviderModels } from '@/hooks/useProviderModels';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
+import { requestAuthOperation } from '@/lib/auth-operation';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useConfigStore, useUIStore } from '@/stores';
 import { type LocalPrefs, useLocalPrefs } from '@/stores/local-prefs';
@@ -177,6 +178,11 @@ interface CatalogModel {
 }
 
 export function SettingsPanel() {
+  const authOperations = useRef(new AbortController());
+  useEffect(() => {
+    authOperations.current = new AbortController();
+    return () => authOperations.current.abort();
+  }, []);
   const { settingsActiveTab, setSettingsActiveTab } = useUIStore(
     useShallow((s) => ({
       settingsActiveTab: s.settingsActiveTab,
@@ -336,23 +342,47 @@ export function SettingsPanel() {
 
   const handleAddKey = useCallback(
     (providerId: string, label: string, value: string) => {
-      ws.addKey?.(providerId, label, value);
+      return requestAuthOperation(
+        ws.client,
+        {
+          type: 'key.add',
+          payload: { providerId, label, apiKey: value },
+        },
+        authOperations.current.signal,
+        () => toast.error(t('settings:provider.operationTimeout')),
+      );
     },
-    [ws],
+    [ws, t],
   );
 
   const handleDeleteKey = useCallback(
     (providerId: string, label: string) => {
-      ws.deleteKey?.(providerId, label);
+      return requestAuthOperation(
+        ws.client,
+        {
+          type: 'key.delete',
+          payload: { providerId, label },
+        },
+        authOperations.current.signal,
+        () => toast.error(t('settings:provider.operationTimeout')),
+      );
     },
-    [ws],
+    [ws, t],
   );
 
   const handleSetActiveKey = useCallback(
     (providerId: string, label: string) => {
-      ws.setActiveKey?.(providerId, label);
+      return requestAuthOperation(
+        ws.client,
+        {
+          type: 'key.set_active',
+          payload: { providerId, label },
+        },
+        authOperations.current.signal,
+        () => toast.error(t('settings:provider.operationTimeout')),
+      );
     },
-    [ws],
+    [ws, t],
   );
 
   const handleAddProvider = useCallback(
@@ -363,17 +393,42 @@ export function SettingsPanel() {
       apiKey?: string,
       models?: string[] | undefined,
       customModels?: Record<string, ProviderCustomModelWire> | undefined,
+      providerType?: string | undefined,
     ) => {
-      ws.addProvider?.(id, family, baseUrl, apiKey, models, customModels);
+      return requestAuthOperation(
+        ws.client,
+        {
+          type: 'provider.add',
+          payload: {
+            id,
+            family,
+            baseUrl,
+            apiKey,
+            models,
+            customModels,
+            ...(providerType ? { type: providerType } : {}),
+          },
+        },
+        authOperations.current.signal,
+        () => toast.error(t('settings:provider.operationTimeout')),
+      );
     },
-    [ws],
+    [ws, t],
   );
 
   const handleRemoveProvider = useCallback(
     (providerId: string) => {
-      ws.removeProvider?.(providerId);
+      return requestAuthOperation(
+        ws.client,
+        {
+          type: 'provider.remove',
+          payload: { providerId },
+        },
+        authOperations.current.signal,
+        () => toast.error(t('settings:provider.operationTimeout')),
+      );
     },
-    [ws],
+    [ws, t],
   );
 
   const handlePickProviderModel = useCallback(

@@ -17,6 +17,7 @@ let nextCustomModelId = 1;
 export const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
   'anthropic-oauth': 'anthropic-oauth',
   'github-copilot': 'github-copilot',
+  'google-antigravity': 'google-antigravity',
   'openai-codex': 'openai-codex',
 };
 
@@ -29,6 +30,11 @@ export const FAMILY_BY_PROVIDER_ID: Partial<Record<string, WireFamily>> = {
 export const SIBLING_CATALOG_BY_FAMILY: Partial<Record<WireFamily, string>> = {
   'anthropic-oauth': 'anthropic',
   'github-copilot': 'openai',
+  // Antigravity serves Gemini, so Gemini's catalog entry carries its per-model
+  // facts. It can also serve Claude-branded models through the same envelope;
+  // those ids simply are not in the `google` catalog, so the lookup misses and
+  // falls back rather than returning another model's numbers.
+  'google-antigravity': 'google',
   'openai-codex': 'openai',
 };
 

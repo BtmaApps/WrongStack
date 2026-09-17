@@ -531,8 +531,9 @@ export class OpenAICodexProvider extends WireAdapter {
           // back to the cached value if the new JWT lacks the claim.
           this.accountId = extractAccountId(derived.accessToken) ?? this.accountId;
           // A pooled WebSocket captured the old bearer/account headers at
-          // handshake time. Never reuse it after token rotation.
-          this.webSocketPool?.close();
+          // handshake time. Never reuse it after token rotation — but let a
+          // response already streaming on it finish (retire, not close).
+          this.webSocketPool?.retireAll();
         },
       },
     });
@@ -779,6 +780,9 @@ export class OpenAICodexProvider extends WireAdapter {
         fallbackModel: effectiveReq.model,
         providerId: this.id,
         signal: opts.signal,
+        // Same budget as the SSE hang guard (configurable; 0 disables) instead
+        // of the transport's fixed 30s, which killed long silent reasoning.
+        stallTimeoutMs: this.streamHangTimeoutMs,
         prewarm: this.webSocketPrewarm,
         ...(turnState ? { turnState } : {}),
         onTurnState: (value) => this.rememberTurnState(effectiveReq, value),
@@ -1470,8 +1474,28 @@ export async function* parseOpenAIResponsesStream(
       }
 
       case 'response.completed':
-      case 'response.incomplete': {
+      case 'response.incomplete':
+      // The WebSocket transport treats `response.done` as terminal and ends the
+      // frame queue on it; without a case here the parser then reported the
+      // finished response as truncated (retryable 599) and dropped its usage.
+      case 'response.done': {
         const resp = evt['response'] as { status?: string; usage?: ResponsesUsage } | undefined;
+        if (evt['type'] === 'response.done' && resp?.status === 'failed') {
+          const errorBody = parseProviderErrorBody(JSON.stringify(evt));
+          const status = responseFailureStatus(errorBody.type, errorBody.message);
+          const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
+          const kind = classifyProviderError(status, errorBody, rawMessage);
+          throw new ProviderError(
+            scrubErrorText(rawMessage),
+            status,
+            isRetryableKind(kind),
+            providerId,
+            {
+              body: scrubProviderErrorBody(errorBody),
+              kind,
+            },
+          );
+        }
         if (resp?.usage) {
           usage = normalizeUsage(resp.usage);
           // A usage-bearing terminal envelope must never silently drop its

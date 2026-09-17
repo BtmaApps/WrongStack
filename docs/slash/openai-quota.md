@@ -60,6 +60,13 @@ a conversation, so all four tabs see it — and a tab that connects mid-session
 asks once with `provider.quota.get` to replay what the server already holds.
 Nothing is ever re-fetched from the provider.
 
+## Every metered provider at once
+
+[`/provider-quota`](provider-quota.md) renders the same report for Claude
+Pro/Max and GitHub Copilot alongside ChatGPT/Codex. This command stays
+provider-scoped so the one question it answers needs no scrolling past the
+others.
+
 ## Adding another provider
 
 A provider becomes metered by reporting, not by being special-cased:
@@ -71,9 +78,22 @@ A provider becomes metered by reporting, not by being special-cased:
    `WireAdapter.onResponseHeaders` is the hook for the header case.
 
 Both chips, the WebSocket push, the store's merge rules, and this report all
-work from there. See
-`packages/providers/src/openai-codex-rate-limits.ts` for the reference
-implementation.
+work from there — adding Claude Pro/Max and GitHub Copilot needed no change to
+any surface.
+
+Three implementations to copy from, in increasing order of awkwardness:
+
+- `packages/providers/src/openai-codex-rate-limits.ts` — headers, with limit
+  families discovered rather than hard-coded, and a positional window whose
+  length must be read from `window-minutes` rather than assumed.
+- `packages/providers/src/anthropic-rate-limits.ts` — headers, where the window
+  length is in the header name; shows how to tell a plan budget apart from a
+  per-minute throughput bucket, and why a "which window binds" hint needs a
+  status to agree before it counts as "cut off".
+- `packages/providers/src/github-copilot-quota.ts` — the case where the provider
+  publishes nothing on the response: how to bind the read to the token
+  lifecycle instead of the request path, and why that is not the same thing as
+  polling a metered endpoint.
 
 See [OAuth sign-in](../oauth-signin.md) for the login flow and for how the same
 headers feed prompt-cache affinity.

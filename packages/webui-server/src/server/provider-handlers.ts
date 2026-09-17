@@ -94,6 +94,7 @@ export function createProviderHandlers(deps: ProviderHandlerDeps) {
     load: () => loadSavedProviders(deps.profileConfigPath, deps.vault),
     save: async (providers) => {
       const next = configWriteLock
+        .catch(() => undefined)
         .then(() => saveProviders(deps.profileConfigPath, deps.vault, providers))
         .catch((error) => {
           console.error(
@@ -104,9 +105,10 @@ export function createProviderHandlers(deps: ProviderHandlerDeps) {
               timestamp: new Date().toISOString(),
             }),
           );
+          throw error;
         });
-      configWriteLock = next;
-      deps.setConfigWriteLock(next);
+      configWriteLock = next.catch(() => undefined);
+      deps.setConfigWriteLock(configWriteLock);
       await next;
     },
   };

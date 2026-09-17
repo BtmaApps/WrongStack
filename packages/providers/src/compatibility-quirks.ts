@@ -27,4 +27,15 @@ export interface CompatibilityQuirks {
    * endpoints still surface genuine mid-stream cuts.
    */
   tolerateMissingTerminalMarker?: boolean | undefined;
+  /**
+   * Force `reasoning_effort` off whenever tools are present.
+   *
+   * A subset of Chat Completions gateways (some LiteLLM / omniroute
+   * deployments) validate the field's PRESENCE against tool use and 400 the
+   * request regardless of value. The adapter learns that from the rejection
+   * itself and retries without the field, so this quirk only exists to skip
+   * the one failed request — set it for a gateway you already know rejects
+   * the combination.
+   */
+  suppressEffortWithTools?: boolean | undefined;
 }

@@ -433,8 +433,41 @@ export function tryToolsSettingsPickerKeys(
       dispatch({ type: 'helpClose' });
       return true;
     }
+    // Mouse clicks do not execute or run anything: help panel is purely informational
+    if (key.mouse?.kind === 'press' || key.mouse?.kind === 'release') {
+      return true;
+    }
     if (key.mouse?.kind === 'wheel') {
-      dispatch({ type: 'helpMove', delta: key.mouse.wheel > 0 ? -1 : 1 });
+      // If mouse wheel is positioned on the right half (detailed help column), scroll detail
+      if (key.mouse.x > 30) {
+        dispatch({ type: 'helpScrollDetail', delta: key.mouse.wheel > 0 ? -2 : 2 });
+      } else {
+        dispatch({ type: 'helpMove', delta: key.mouse.wheel > 0 ? -1 : 1 });
+      }
+      return true;
+    }
+    if (key.pageUp) {
+      dispatch({ type: 'helpScrollDetail', delta: -5 });
+      return true;
+    }
+    if (key.pageDown) {
+      dispatch({ type: 'helpScrollDetail', delta: 5 });
+      return true;
+    }
+    if (key.shift && key.upArrow) {
+      dispatch({ type: 'helpScrollDetail', delta: -1 });
+      return true;
+    }
+    if (key.shift && key.downArrow) {
+      dispatch({ type: 'helpScrollDetail', delta: 1 });
+      return true;
+    }
+    if (key.ctrl && (input === 'u' || input === 'U')) {
+      dispatch({ type: 'helpScrollDetail', delta: -5 });
+      return true;
+    }
+    if (key.ctrl && (input === 'd' || input === 'D')) {
+      dispatch({ type: 'helpScrollDetail', delta: 5 });
       return true;
     }
     if (key.upArrow) {
@@ -454,8 +487,7 @@ export function tryToolsSettingsPickerKeys(
       return true;
     }
     if (isEnter) {
-      if (debouncedEnter(host)) return true;
-      host.onHelpPanelEnter?.();
+      // Enter is intentionally disabled: help is purely informational, not a launcher
       return true;
     }
     return true;

@@ -125,6 +125,14 @@
     "serviceAutoRestarting": "Automatischer Neustart…"
   },
   "provider": {
+    "removeProfileConfirm": "Auth-Profil „{{alias}}“ und alle Schlüssel entfernen?",
+    "removeProfileBody": "Gespeicherte Zugangsdaten und Verweise auf dieses Konto im Modell-Routing werden entfernt.",
+    "deleteKeyConfirm": "Schlüssel „{{label}}“ aus „{{alias}}“ löschen?",
+    "addProfile": "Konto / Auth-Profil hinzufügen",
+    "profileAlias": "Alias des Auth-Profils",
+    "profileHint": "Jedes Konto hat einen eigenen Alias und eigene Zugangsdaten. Fallback-Ziele sind alias/modell.",
+    "profileExists": "Das Auth-Profil „{{alias}}“ existiert bereits. Wählen Sie einen anderen Alias.",
+    "operationTimeout": "Keine Antwort vom Server. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "savedProviderCount_one": "{{count}} Anbieter",
     "savedProviderCount_other": "{{count}} Anbieter",
     "keyCount_one": "{{count}} Schlüssel konfiguriert",

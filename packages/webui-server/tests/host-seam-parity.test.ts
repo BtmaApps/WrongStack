@@ -63,7 +63,10 @@ vi.mock('../src/server/conversation-operations.js', async (importOriginal) => {
   };
 });
 
-vi.mock('@wrongstack/providers', () => ({ makeProviderFromConfig: vi.fn() }));
+vi.mock('@wrongstack/providers', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  makeProviderFromConfig: vi.fn(),
+}));
 
 import { createEmbeddedMessageRouter } from '../src/server/embedded-message-router.js';
 import { createMessageDispatcher } from '../src/server/message-dispatcher.js';

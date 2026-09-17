@@ -329,6 +329,8 @@ export function AppViewPickers({
           filter={state.helpPanel.filter}
           selected={state.helpPanel.selected}
           hint={state.helpPanel.hint}
+          maxRows={pickerMaxRows}
+          detailScroll={state.helpPanel.detailScroll}
         />
       ) : null}
       {state.subagentModels.open && !state.modelPicker.open ? (
@@ -373,6 +375,7 @@ export function AppViewPickers({
       {state.connectionsPanelOpen && panelPositions.connections === 'bottom' ? (
         <ConnectionsPanel
           projectRoot={agent.ctx.projectRoot}
+          maxRows={pickerMaxRows}
           onClose={() => dispatch({ type: 'toggleConnectionsPanel' })}
         />
       ) : null}

@@ -46,6 +46,44 @@ export interface SkillsConfig {
    * prompt). Set to a self-hosted skills-api instance to use a private catalog.
    */
   registryUrl?: string | undefined;
+  /**
+   * Per-turn skill suggestion via TypeSafe's System One API. OFF by default.
+   *
+   * When on, the latest user message and the roster's skill names + trigger
+   * lines are sent to TypeSafe before each new turn, and at most one skill
+   * name is appended to the system prompt as a suggestion the model is told it
+   * may ignore. See `skills/suggest/skill-suggester.ts` for the two passes and
+   * `docs/skills-suggestion.md` for how to evaluate the thresholds.
+   *
+   * Credentials and endpoint live in top-level `typesafe`, shared with the
+   * dispatch classifier. This subtree is stripped from in-project config:
+   * `enabled` alone turns on outbound transmission of the user's prompts.
+   */
+  suggest?: SkillSuggestConfig | undefined;
+}
+
+/** Settings for the TypeSafe-backed skill suggester. Account: `config.typesafe`. */
+export interface SkillSuggestConfig {
+  /** Master switch. Default `false`. */
+  enabled?: boolean | undefined;
+  /** Candidates carried from the wide ranking into the detailed pass. Default 3. */
+  shortlistSize?: number | undefined;
+  /** Body characters each shortlisted skill contributes as evidence. Default 700. */
+  excerptChars?: number | undefined;
+  /**
+   * Mean of the three "does this turn need a skill at all" probabilities below
+   * which nothing is suggested. Default 0.3. Raise it to suggest less often.
+   */
+  gateThreshold?: number | undefined;
+  /**
+   * Best per-candidate "does this skill do the thing asked for" probability
+   * below which the whole shortlist is dropped. Default 0.3.
+   */
+  fitsThreshold?: number | undefined;
+  /** Hard deadline for both passes combined, in ms. Default 3000. */
+  deadlineMs?: number | undefined;
+  /** Skip turns whose latest user message is shorter than this. Default 12. */
+  minRequestChars?: number | undefined;
 }
 
 /**
@@ -68,6 +106,37 @@ export interface FleetConfig {
          * no queued task reused it in the same dispatch cycle. Default true.
          */
         retireOnTaskComplete?: boolean | undefined;
+      }
+    | undefined;
+  /**
+   * Agent dispatcher: how an ambiguous free-form task picks a specialist role.
+   *
+   * Lives under `fleet` for the same reason `delegate` does — it inherits the
+   * whole-subtree in-project denial, so a repo-committed config cannot start
+   * sending task descriptions to a third party.
+   */
+  dispatch?:
+    | {
+        /**
+         * Resolve ambiguous dispatches with a TypeSafe `Choice` instead of a
+         * prose-and-parse LLM call. Default false.
+         *
+         * Only fires when the keyword heuristic is already ambiguous, so it
+         * costs one request on the minority of dispatches the heuristic cannot
+         * settle. Needs a `typesafe` account.
+         */
+        typesafeClassifier?: boolean | undefined;
+        /**
+         * Decline (fall back to the heuristic / the generalist) when "does any
+         * candidate genuinely fit" lands below this. Default 0.35.
+         */
+        fitThreshold?: number | undefined;
+        /**
+         * Decline when the Choice's own confidence is below this. Default 0.2 —
+         * deliberately low, because several equally acceptable roles spread
+         * probability the same way genuine confusion does.
+         */
+        minConfidence?: number | undefined;
       }
     | undefined;
   /**

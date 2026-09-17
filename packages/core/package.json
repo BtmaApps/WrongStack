@@ -181,6 +181,10 @@
       "types": "./dist/skills/index.d.ts",
       "import": "./dist/skills/index.js"
     },
+    "./typesafe": {
+      "types": "./dist/typesafe/index.d.ts",
+      "import": "./dist/typesafe/index.js"
+    },
     "./package.json": "./package.json",
     "./skills/*": "./skills/*",
     "./design-kits/*": "./design-kits/*",

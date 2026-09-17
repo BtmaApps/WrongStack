@@ -555,6 +555,7 @@ export type State = {
     selected: number;
     filter: string;
     hint?: string | undefined;
+    detailScroll?: number | undefined;
   };
   /** Shadow Agent panel — opened by `/shadow`. */
   shadowPanel: {

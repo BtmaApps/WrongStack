@@ -18,6 +18,71 @@ vi.mock('@wrongstack/providers/oauth', async (importOriginal) => ({
 describe('canonical provider operations', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('does not save a manual login that completes after cancellation', async () => {
+    let complete!: (value: unknown) => void;
+    const session = {
+      providerId: 'openai-codex',
+      interaction: { type: 'browser', authorizeUrl: 'https://example.test', bound: false },
+      close: vi.fn(),
+      completeWithCode: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            complete = resolve;
+          }),
+      ),
+    };
+    beginProviderAuth.mockResolvedValue(session);
+    const save = vi.fn();
+    const messages: WSServerMessage[] = [];
+    const operations = createProviderOperations({
+      providerStore: { load: async () => ({}), save },
+      send: (_ws, message) => messages.push(message),
+      broadcast: vi.fn(),
+    });
+    const socket = {} as WebSocket;
+    await operations.handleOAuthStart(socket, 'chatgpt');
+    const completion = operations.handleOAuthCode(socket, 'chatgpt', 'old-code');
+    operations.handleOAuthCancel(socket, 'chatgpt');
+    complete({
+      providerId: 'openai-codex',
+      models: [],
+      credential: { label: 'oauth', apiKey: 'old-token', createdAt: '' },
+    });
+    await completion;
+    expect(save).not.toHaveBeenCalled();
+    expect(
+      messages.filter(
+        (m) =>
+          m.type === 'auth.oauth.status' && (m.payload as { phase?: string }).phase === 'success',
+      ),
+    ).toEqual([]);
+  });
+
+  it('closes a session whose begin resolves after cancellation', async () => {
+    let begun!: (value: unknown) => void;
+    beginProviderAuth.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          begun = resolve;
+        }),
+    );
+    const send = vi.fn();
+    const operations = createProviderOperations({
+      providerStore: { load: async () => ({}), save: vi.fn() },
+      send,
+      broadcast: vi.fn(),
+    });
+    const socket = {} as WebSocket;
+    const start = operations.handleOAuthStart(socket, 'chatgpt');
+    operations.handleOAuthCancel(socket, 'chatgpt');
+    const close = vi.fn();
+    begun({ providerId: 'openai-codex', interaction: { type: 'browser', bound: false }, close });
+    await start;
+    expect(close).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledOnce();
+    expect(beginProviderAuth.mock.calls[0]![2].aborted).toBe(true);
+  });
+
   it('returns catalog model search results to the requesting socket', async () => {
     const messages: WSServerMessage[] = [];
     const operations = createProviderOperations({
@@ -100,7 +165,7 @@ describe('canonical provider operations', () => {
     await operations.handleOAuthCode(socket, 'chatgpt', 'callback-code');
 
     expect(providers['team-openai']).toMatchObject({
-      type: 'team-openai',
+      type: 'openai-codex',
       models: ['gpt-5'],
       activeKey: 'oauth',
     });

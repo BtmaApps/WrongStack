@@ -94,7 +94,7 @@ describe('resolveProviderCfg', () => {
     expect(out.cfg.family).toBe('openai-compatible');
   });
 
-  it('top-level apiKey/baseUrl are the fallback when the saved cfg omits them', () => {
+  it('does not give a secondary auth profile the primary account key or endpoint', () => {
     const cfg = fakeConfig({
       apiKey: 'sk-top',
       baseUrl: 'https://top.example.com',
@@ -103,8 +103,35 @@ describe('resolveProviderCfg', () => {
       },
     });
     const out = resolveProviderCfg(cfg, 'minimax-coding-plan');
-    expect(out.cfg.apiKey).toBe('sk-top');
-    expect(out.cfg.baseUrl).toBe('https://top.example.com');
+    expect(out.cfg.apiKey).toBeUndefined();
+    expect(out.cfg.baseUrl).toBeUndefined();
+  });
+
+  it.each(['work-account', undefined])(
+    'keeps an explicit account alias isolated when selected provider is %s',
+    (provider) => {
+      const config = {
+        ...(provider ? { provider } : {}),
+        apiKey: 'old-primary-key',
+        baseUrl: 'https://old-primary.example/v1',
+        providers: { 'work-account': { type: 'openai', family: 'openai' as const } },
+      };
+      const out = resolveProviderCfg(config, 'work-account');
+      expect(out.cfg.apiKey).toBeUndefined();
+      expect(out.cfg.baseUrl).toBeUndefined();
+      expect(out.cfg.type).toBe('work-account');
+      expect(out.factoryType).toBe('openai');
+    },
+  );
+
+  it('retains legacy top-level connection values for the primary canonical provider', () => {
+    const config = fakeConfig({
+      baseUrl: 'https://legacy.example/v1',
+      providers: { anthropic: { type: 'anthropic', models: ['claude'] } },
+    });
+    const out = resolveProviderCfg(config, 'anthropic');
+    expect(out.cfg.apiKey).toBe('sk-test');
+    expect(out.cfg.baseUrl).toBe('https://legacy.example/v1');
   });
 });
 
@@ -142,7 +169,7 @@ describe('buildProviderForId', () => {
     // the saved type.
     expect(makeProviderFromConfig).toHaveBeenCalledWith(
       'minimax-coding-plan',
-      expect.objectContaining({ type: 'minimax-coding-plan', family: 'anthropic' }),
+      expect.objectContaining({ type: 'anthropic', family: 'anthropic' }),
     );
   });
 

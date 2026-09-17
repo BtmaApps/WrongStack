@@ -72,6 +72,7 @@ const ownership = {
   tasking: ['agent-domain contract', 'Core tasking subpath'],
   tools: ['host/application concern', '@wrongstack/tools or product plugin'],
   types: ['agent-domain contract', 'Core type-only subpaths'],
+  typesafe: ['concrete runtime default', 'Runtime or focused TypeSafe integration'],
   utils: ['kernel primitive', 'split dependency-free primitives from concrete helpers'],
   // wiring: pure-logic shared infrastructure (e.g. the WrongProxy URL
   // rewriter consumed by both cli and runtime; side-effectful companions

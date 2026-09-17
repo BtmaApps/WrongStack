@@ -38,8 +38,8 @@ import { DefaultModelsRegistry } from '@wrongstack/core/models';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import type { Config, ModelsRegistry, SecretVault } from '@wrongstack/core/types';
 import { normalizeTokenSavingTier } from '@wrongstack/core/types';
-import { isSetupProvider, SETUP_MODEL_ID, SETUP_PROVIDER_ID } from '@wrongstack/providers';
 import { color, isStdinTTY, type WstackPaths, writeErr } from '@wrongstack/core/utils';
+import { isSetupProvider, SETUP_MODEL_ID, SETUP_PROVIDER_ID } from '@wrongstack/providers';
 import { createDefaultContainer } from '@wrongstack/runtime';
 import { registerBuiltinToolTier } from '@wrongstack/tools/tool-tier';
 import { parseArgs } from './arg-parser.js';
@@ -67,6 +67,7 @@ import { runUpdateCommand } from './subcommands/handlers/update.js';
 import { subcommands } from './subcommands/index.js';
 import type { UpdateInfo } from './update-check.js';
 import { patchConfig } from './utils.js';
+import { installProviderPersisters } from './wiring/provider-persisters.js';
 
 interface SavedDefaultStatus {
   ok: boolean;
@@ -358,6 +359,11 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   // intercept above clears it).
   const subcommandHandler = first ? subcommands[first] : undefined;
   if (first && subcommandHandler) {
+    // Subcommands run and exit before the interactive path installs these.
+    // `wstack acp` is a long-lived server (an editor spawns it), so its OAuth
+    // refreshes must reach the config too — otherwise a rotated refresh token
+    // lives only in that process and the next launch has to sign in again.
+    installProviderPersisters({ config, paths: wpaths, vault, logger });
     if (flags['help'] === true || flags['h'] === true) {
       const deepSub = positional[1];
       if (deepSub && renderDeepHelp(`${first}:${deepSub}`, renderer)) {
@@ -795,7 +801,6 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
         // Best-effort — never blocks launch.
       }
     }
-
   } else {
     // When skipping interactive prompts (--webui or --no-interactive), use saved
     // preferences or sensible defaults. Director stays OFF in non-interactive mode.

@@ -12,7 +12,7 @@ import {
 } from '@wrongstack/core/agent-catalog';
 import { resolveSubagentModelTarget } from '@wrongstack/core/coordination';
 import type { Config } from '@wrongstack/core/types';
-import { makeProviderClassifier } from '../services/dispatch-classifier.js';
+import { makeDispatchClassifier } from '../services/dispatch-classifier.js';
 import { buildHostSubagentProvider } from './host-provider.js';
 import type { MultiAgentDeps } from './host-types.js';
 
@@ -72,7 +72,10 @@ export class HostLearningScheduler {
       const model = target?.model ?? config.model;
       if (!providerId || !model) return null;
       const provider = await buildHostSubagentProvider(this.deps, config, providerId, model);
-      return await makeProviderClassifier(provider as never, model)(task, candidates);
+      return await makeDispatchClassifier({ config, provider: provider as never, model })(
+        task,
+        candidates,
+      );
     } catch {
       return null;
     }

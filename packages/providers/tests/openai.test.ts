@@ -6,7 +6,7 @@ function mockFetch(json: unknown, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     json: async () => json,
-    text: async () => JSON.stringify(json),
+    text: async (): Promise<string> => JSON.stringify(json),
   } as never as Response);
 }
 
@@ -79,7 +79,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -122,7 +122,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -146,7 +146,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({
@@ -173,7 +173,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({
@@ -199,7 +199,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     });
     const p = new OpenAIProvider({
@@ -228,7 +228,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -260,7 +260,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -283,7 +283,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -313,7 +313,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: '{}' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -354,7 +354,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -382,7 +382,7 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
@@ -412,7 +412,7 @@ describe('OpenAIProvider', () => {
     expect(Array.isArray(captured?.['tools'])).toBe(true);
   });
 
-  it('does not send reasoning_effort for non-OpenAI effort values (minimal, xhigh, max)', async () => {
+  it('sends the real wire levels (minimal, xhigh) and learns from a refusal', async () => {
     let captured: Record<string, unknown> | undefined;
     const fetchImpl = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
       captured = JSON.parse(init.body ?? '{}');
@@ -424,19 +424,71 @@ describe('OpenAIProvider', () => {
           choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1 },
         }),
-        text: async () => '',
+        text: async (): Promise<string> => '',
       };
     }) as never as typeof fetch;
     const p = new OpenAIProvider({ apiKey: 'k', fetchImpl });
-    await p.complete(
-      {
-        model: 'o4',
-        messages: [{ role: 'user', content: 'hi' }],
-        maxTokens: 100,
-        reasoning: { effort: 'xhigh' },
-      },
-      { signal: new AbortController().signal },
-    );
-    expect(captured).not.toHaveProperty('reasoning_effort');
+    for (const effort of ['minimal', 'xhigh'] as const) {
+      await p.complete(
+        {
+          model: 'gpt-5.2',
+          messages: [{ role: 'user', content: 'hi' }],
+          maxTokens: 100,
+          reasoning: { effort },
+        },
+        { signal: new AbortController().signal },
+      );
+      // Both are Chat Completions values; dropping them made the user's pick
+      // a silent no-op on every first-party request.
+      expect(captured?.['reasoning_effort']).toBe(effort);
+    }
+  });
+
+  it('retries without reasoning_effort when the model refuses the level, then stops sending it', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetchImpl = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
+      const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+      bodies.push(body);
+      if (body['reasoning_effort'] !== undefined) {
+        return {
+          ok: false,
+          status: 400,
+          text: async (): Promise<string> =>
+            JSON.stringify({
+              error: {
+                message: "Unsupported value: 'reasoning_effort' does not support 'minimal'",
+                type: 'invalid_request_error',
+              },
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          model: 'o3',
+          choices: [{ message: { role: 'assistant', content: 'k' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+        text: async (): Promise<string> => '',
+      };
+    }) as never as typeof fetch;
+    const p = new OpenAIProvider({ apiKey: 'k', id: 'openai-probe', fetchImpl });
+    const req = {
+      model: 'o3',
+      messages: [{ role: 'user' as const, content: 'hi' }],
+      maxTokens: 100,
+      reasoning: { effort: 'minimal' as const },
+    };
+
+    await p.complete(req, { signal: new AbortController().signal });
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.['reasoning_effort']).toBe('minimal');
+    expect(bodies[1]).not.toHaveProperty('reasoning_effort');
+
+    // The lesson is per (provider, model) and holds for the session.
+    await p.complete(req, { signal: new AbortController().signal });
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty('reasoning_effort');
   });
 });

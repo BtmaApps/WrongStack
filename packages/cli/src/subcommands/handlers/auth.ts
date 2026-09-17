@@ -1,4 +1,5 @@
 import { color } from '@wrongstack/core/utils';
+import { authProfileAliasError } from '@wrongstack/providers';
 import { parseAuthFlags } from '../../arg-parser.js';
 import { createAuthAuditLogger, resolveAuditSink } from '../../auth-menu/auth-menu-audit.js';
 import {
@@ -27,6 +28,7 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
   // exited 1 with "Pass --family ..." — naming the flag just passed.
   args = restoreFlags(args, deps, [
     'label',
+    'alias',
     'family',
     'base-url',
     'env',
@@ -53,7 +55,31 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
     profileConfigPath,
   };
 
+  if (flags.positional[0] !== 'local' && (args.includes('--help') || args.includes('-h'))) {
+    deps.renderer.write(
+      [
+        'Usage: wstack auth',
+        '  wstack auth <provider-type> --alias <account>  Create a separately keyed auth profile',
+        '  wstack auth login <strategy> --alias <account>  Sign in to an auth profile',
+        '  wstack auth <saved-alias> --label <key-label>  Add a key inside an existing profile',
+        '  wstack auth list | status <alias> | remove <alias>',
+        '',
+        'Fallback targets are <auth-profile-alias>/<model-id>; provider type chooses the transport.',
+        'Direct flags: --alias, --label, --family, --base-url, --env',
+        '',
+      ].join('\n'),
+    );
+    return 0;
+  }
+
   // No args → interactive menu
+  if (flags.alias !== undefined) {
+    const invalid = authProfileAliasError(flags.alias.trim());
+    if (invalid) {
+      deps.renderer.writeError(invalid);
+      return 1;
+    }
+  }
   if (flags.positional.length === 0) {
     return runAuthMenu(menuDeps);
   }
@@ -87,6 +113,7 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
     const modelIdx = args.indexOf('--model') >= 0 ? args.indexOf('--model') : args.indexOf('-m');
     return runAuthLocal(menuDeps, {
       name: flags.positional[1] ?? value('name'),
+      alias: flags.alias,
       baseUrl: flags.baseUrl ?? value('base-url'),
       label: flags.label,
       skipKey: has('no-key', 'skip-key'),
@@ -127,11 +154,11 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
   if (first === 'login') {
     const pid = (flags.positional[1] ?? '').toLowerCase();
     // Bare `wstack auth login` keeps its historical default: ChatGPT.
-    if (!pid) return runOAuthLoginKind(menuDeps, 'chatgpt');
+    if (!pid) return runOAuthLoginKind(menuDeps, 'chatgpt', { providerId: flags.alias });
     // Numeric picks are a menu affordance, not a CLI one — `auth login 2`
     // is a typo, not a request to sign into Claude.
     const kind = resolveOAuthKind(pid, { allowNumeric: false, deps: menuDeps });
-    if (kind) return runOAuthLoginKind(menuDeps, kind);
+    if (kind) return runOAuthLoginKind(menuDeps, kind, { providerId: flags.alias });
     const available = providerAuthStrategiesFor(menuDeps);
     deps.renderer.writeError(`Unknown OAuth login strategy "${pid}".`);
     for (const strategy of available) {
@@ -150,6 +177,7 @@ export const authCmd: SubcommandHandler = async (args, deps) => {
   // `wstack auth <provider>` — direct add
   return runAuthDirect(menuDeps, {
     providerId: first,
+    alias: flags.alias,
     label: flags.label,
     family: flags.family,
     baseUrl: flags.baseUrl,

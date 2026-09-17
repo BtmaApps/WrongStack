@@ -163,6 +163,7 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
   },
 
   // Config
+  { name: '/auth', category: 'Config', description: 'Manage provider API keys and OAuth accounts' },
   {
     name: '/settings',
     category: 'Config',

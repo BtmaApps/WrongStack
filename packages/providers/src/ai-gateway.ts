@@ -574,6 +574,28 @@ export function convertProviderOptions(req: Request): Record<string, Record<stri
   return options;
 }
 
+/**
+ * Project canonical `providerMeta` onto AI SDK `providerOptions`, which the SDK
+ * validates as `Record<namespace, Record<string, JSON>>`. Metadata this wire
+ * produced is already namespaced, but a history built on another wire carries
+ * FLAT keys (`google.thoughtSignature`, the Codex reasoning ids, Anthropic
+ * redacted-thinking data) whose string values fail that schema — the whole
+ * request was rejected as an invalid prompt after a `/model` switch or
+ * fallback hop onto the gateway. Keep only namespaced entries.
+ */
+function toProviderOptions(
+  meta: Record<string, unknown> | undefined,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!meta) return undefined;
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      out[key] = value as Record<string, unknown>;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function convertReasoning(reasoning: Request['reasoning']): AiSdkStreamTextInput['reasoning'] {
   if (!reasoning) return undefined;
   if (reasoning.enabled === false || reasoning.effort === 'none') return 'none';
@@ -590,7 +612,7 @@ function convertAssistantBlock(block: Exclude<ContentBlock, { type: 'tool_result
       // blocks.ts). AI SDK carries it back under the anthropic namespace;
       // an explicit providerMeta from the wire always wins.
       const providerOptions =
-        block.providerMeta ??
+        toProviderOptions(block.providerMeta) ??
         (block.signature ? { anthropic: { signature: block.signature } } : undefined);
       return {
         type: 'reasoning' as const,
@@ -604,7 +626,9 @@ function convertAssistantBlock(block: Exclude<ContentBlock, { type: 'tool_result
         toolCallId: block.id,
         toolName: block.name,
         input: block.input,
-        ...(block.providerMeta ? { providerOptions: block.providerMeta as never } : {}),
+        ...(toProviderOptions(block.providerMeta)
+          ? { providerOptions: toProviderOptions(block.providerMeta) as never }
+          : {}),
       };
     case 'image':
       return {
