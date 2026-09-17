@@ -109,8 +109,10 @@ describe('sleep', () => {
 
 describe('tool-subject utilities', () => {
   it('escapeGlobSubject escapes metacharacters', () => {
-    expect(escapeGlobSubject('file[0].ts')).toBe('file\\[0\\].ts');
-    expect(escapeGlobSubject('a*b?c[d]')).toBe('a\\*b\\?c\\[d\\]');
+    // Round 2026-09-17-r7: class-form literals — compileGlob does not honor
+    // backslash escapes, so `\*` stayed a LIVE wildcard in stored patterns.
+    expect(escapeGlobSubject('file[0].ts')).toBe('file[[]0[]].ts');
+    expect(escapeGlobSubject('a*b?c[d]')).toBe('a[*]b[?]c[[]d[]]');
   });
   it('normalizePathSubject replaces backslashes and escapes', () => {
     expect(normalizePathSubject('src\\components\\App.tsx')).toBe('src/components/App.tsx');
@@ -151,7 +153,7 @@ describe('tool-subject utilities', () => {
     // escapeGlobSubject then escapes the glob metacharacters ([ and ]).
     expect(
       subjectForToolInput('exec', { command: 'run', args: [{ nested: true }] }, 'command'),
-    ).toBe('run "\\[object Object\\]"');
+    ).toBe('run "[[]object Object[]]"');
   });
   it('subjectForToolInput gives dry-run patches a distinct subject (regression: dry-run/real over-grant)', () => {
     // A dry-run patch and a real patch on the same directory must NOT share a
@@ -165,7 +167,7 @@ describe('tool-subject utilities', () => {
     expect(subjectForToolInput('patch', { directory: 'src' }, 'directory')).toBe('src');
     // Glob metacharacters in the directory are still escaped before the suffix.
     expect(subjectForToolInput('patch', { directory: 'a[b]', dry_run: true }, 'directory')).toBe(
-      'a\\[b\\]:dry-run',
+      'a[[]b[]]:dry-run',
     );
   });
   it('subjectForToolInput gives dry-run install / check-only format / dry-run replace distinct subjects (over-grant sweep)', () => {

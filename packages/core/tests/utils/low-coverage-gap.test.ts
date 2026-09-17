@@ -37,8 +37,9 @@ describe('sleep', () => {
 
 describe('escapeGlobSubject', () => {
   it('should escape glob metacharacters', () => {
-    expect(escapeGlobSubject('test[*].js')).toBe('test\\[\\*\\].js');
-    expect(escapeGlobSubject('path?/file')).toBe('path\\?/file');
+    // Round 2026-09-17-r7: class-form literals (see tool-subject.ts).
+    expect(escapeGlobSubject('test[*].js')).toBe('test[[][*][]].js');
+    expect(escapeGlobSubject('path?/file')).toBe('path[?]/file');
   });
 
   it('should return unchanged for plain text', () => {
@@ -56,7 +57,7 @@ describe('normalizePathSubject', () => {
   });
 
   it('should escape glob in normalized path', () => {
-    expect(normalizePathSubject('src/[test].ts')).toBe('src/\\[test\\].ts');
+    expect(normalizePathSubject('src/[test].ts')).toBe('src/[[]test[]].ts');
   });
 });
 
@@ -92,8 +93,8 @@ describe('subjectForToolInput', () => {
 
   it('should escape glob when subjectKey is not a path key', () => {
     // Non-path subjectKey should use escapeGlobSubject, not normalizePathSubject
-    expect(subjectForToolInput('write', { name: '[test]' }, 'name')).toBe('\\[test\\]');
-    expect(subjectForToolInput('write', { url: 'path?query' }, 'url')).toBe('path\\?query');
+    expect(subjectForToolInput('write', { name: '[test]' }, 'name')).toBe('[[]test[]]');
+    expect(subjectForToolInput('write', { url: 'path?query' }, 'url')).toBe('path[?]query');
   });
 
   it('should extract command for bash tool', () => {

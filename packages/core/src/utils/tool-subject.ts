@@ -1,7 +1,16 @@
 const GLOB_METACHARACTERS = /[*?[\]]/g;
 
 export function escapeGlobSubject(value: string): string {
-  return value.replace(GLOB_METACHARACTERS, (char) => `\\${char}`);
+  // compileGlob's grammar does NOT honor backslash escapes outside character
+  // classes: `\*` parsed as a literal backslash followed by a LIVE wildcard,
+  // so a backslash-escaped subject stored as an always-trust pattern also
+  // matched later, different `\`-bearing subjects without prompting
+  // (over-grant). Class-form literals ([*], [?], [[] and []] — the `]` form
+  // relies on the first-member rule) are the only spelling this grammar
+  // renders literally. Identical invocations keep matching byte-for-byte via
+  // the exact-equality check that precedes glob compilation; user-authored
+  // wildcard patterns (`git *`) never pass through here and keep working.
+  return value.replace(GLOB_METACHARACTERS, (char) => `[${char}]`);
 }
 
 export function normalizePathSubject(value: string): string {
@@ -31,9 +40,13 @@ function renderCommandLine(command: string, args: unknown): string {
   // nested objects — are included rather than silently dropped (regression
   // from the WS-046 string-only filter). Whitespace-bearing args are quoted
   // so distinct argument lists never render to the same subject string.
+  // Escape double quotes in EVERY argument before the whitespace test: a raw
+  // quote in an unquoted arg splices with adjacent rendering (argv ['"a',
+  // 'b"'] renders identically to argv ['a b']), collapsing two different
+  // invocations into one permission-trust subject.
   const rendered = args.map((arg) => {
-    const str = String(arg);
-    return /\s/.test(str) ? `"${str.replace(/"/g, '\\"')}"` : str;
+    const str = String(arg).replace(/"/g, '\\"');
+    return /\s/.test(str) ? `"${str}"` : str;
   });
   return [command, ...rendered].join(' ');
 }
@@ -49,8 +62,10 @@ function renderSubjectFields(obj: Record<string, unknown>, fields: readonly stri
   for (const field of fields) {
     const value = obj[field];
     if (value === undefined || value === null || value === '' || value === false) continue;
-    const str = String(value);
-    parts.push(`${field}=${/\s/.test(str) ? `"${str.replace(/"/g, '\\"')}"` : str}`);
+    // Same quote-escaping discipline as renderCommandLine: a raw quote in an
+    // unquoted field value must not splice with adjacent subject tokens.
+    const str = String(value).replace(/"/g, '\\"');
+    parts.push(`${field}=${/\s/.test(str) ? `"${str}"` : str}`);
   }
   return parts.join(' ');
 }
