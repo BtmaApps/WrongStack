@@ -284,13 +284,13 @@ export const securityLayers = [
   {
     number: '03',
     title: 'Permission policy',
-    body: 'Each tool is auto, confirm or deny. Trust rules, sensitive paths and destructive patterns refine the decision. Explicit deny survives YOLO.',
+    body: 'Each tool is auto, confirm or deny. Remember exact input, an exec executable, or the whole tool. Broad grants still prompt for destructive calls; explicit denies and hard command guards still apply.',
     icon: Fingerprint,
   },
   {
     number: '04',
     title: 'Runtime boundaries',
-    body: 'Cancellation, timeouts, network checks, path containment and output limits constrain work while it runs.',
+    body: 'Cancellation, timeouts, network checks, symlink-aware project containment and output limits constrain work while it runs. Collaborative debug targets honor the enabled project-root restriction.',
     icon: LockKeyhole,
   },
   {

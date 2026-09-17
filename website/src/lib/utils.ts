@@ -355,11 +355,25 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.20',
+    date: '2026-09-17',
+    latest: true,
+    tagline: 'Scoped approvals, context reliability, and deliberate plugin defaults',
+    highlights: [
+      'Remember approvals for exact input, an exec executable, or a whole tool across terminal and browser surfaces',
+      'Context budgeting reserves output and safety space, refreshes usage anchors, and isolates concurrent compaction',
+      'Suite defaults narrow to five safety and diagnostic plugins; nine redundant or noisy plugins are removed',
+      'Background hook findings reach the next session boundary; tool errors respect the output budget',
+      'Project services shut down after idle windows and process-registry locks verify ownership',
+      'Trust subjects distinguish argv and literal wildcards; symlink-aware containment covers collaborative debugging',
+      'Structured exec supports more toolchains; MCP presets require confirmation and browser package versions are pinned',
+    ],
+  },
+  {
     version: '1.0.19',
     date: '2026-09-16',
     tagline: 'Code Atlas, evidence-led Bug Hunt, design skills and reliable work tracking',
     consolidated: true,
-    latest: true,
     highlights: [
       'Consolidates changes since 1.0.9, including intermediate 1.0.10–1.0.18 versions',
       'Code Atlas adds package-to-file-to-symbol navigation and visible Open, Relations, and Activity actions',

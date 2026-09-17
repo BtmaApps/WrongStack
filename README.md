@@ -45,9 +45,28 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.19
+### What's new in 1.0.20
 
-Highlights accumulated since 1.0.9:
+Highlights since 1.0.19:
+
+- **Choose what an approval remembers.** Allow once, or remember the exact input,
+  the executable with any arguments (`exec` only), or the whole tool. Explicit
+  denies and command guards still apply; destructive calls still prompt under
+  executable-wide and tool-wide grants.
+- **Keep long sessions within the context budget.** Requests reserve room for
+  output and safety, refresh accounting after history or model changes, and
+  isolate compaction state across sessions. Tool errors share the output budget.
+- **Load plugins deliberately.** Suite defaults are limited to `secret-scanner`,
+  `injection-shield`, `dep-guard`, `error-lens`, and `context-pins`; other Suite
+  plugins are opt-in. Nine redundant or noisy plugins have been removed.
+- **Recover and shut down cleanly.** Background hook findings reach the next
+  session boundary, process-registry locks verify ownership, and project services
+  shut down after their idle windows.
+- **Strengthen filesystem and command boundaries.** Scoped trust handles literal
+  wildcards and distinct argument arrays correctly, project containment resolves
+  symlinks, and structured `exec` supports more development toolchains.
+
+Recent additions retained from 1.0.19:
 
 - **Explore code directly.** WebUI Code Atlas drills from packages to files to
   symbols with one click, a workspace breadcrumb, and visible Open, Relations,

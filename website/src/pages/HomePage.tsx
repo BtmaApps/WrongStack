@@ -245,11 +245,11 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Explore the code. Prove the fix. Shape the interface.
+                Choose the scope. Keep the context. Run deliberately.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                Since 1.0.9: direct Code Atlas navigation, evidence-led Bug Hunt rounds, new design
-                skills, and clearer work tracking across the terminal and browser.
+                In 1.0.20: scoped remembered approvals, more reliable context budgeting,
+                deliberate plugin defaults, and stronger filesystem boundaries.
               </p>
             </div>
             <a
@@ -263,16 +263,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Code Atlas navigation',
-                'Drill from packages to files to symbols, with visible Open, Relations, and Activity actions.',
+                'Scoped approvals',
+                'Remember exact input, an exec executable, or a whole tool. Denies and hard command guards still apply.',
               ],
               [
-                'Proof-Driven Bug Hunter',
-                'Investigate a scoped round with a reproduction, control case, and regression; report when no bug is proven.',
+                'Reliable context',
+                'Reserve output space, refresh token accounting after changes, and isolate compaction across sessions.',
               ],
               [
-                'Design with direction',
-                'Use design-craft, design-critique, and new kits to choose a direction, build it, and review the result.',
+                'Deliberate plugin defaults',
+                'Five Suite safety and diagnostic plugins load automatically. Enable other capabilities when you need them.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">

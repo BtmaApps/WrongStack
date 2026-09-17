@@ -83,6 +83,12 @@ export function SecurityPage() {
                 YOLO auto-approves calls that the active policy permits. A hook denial, explicit
                 deny rule or unavailable capability still blocks the call.
               </p>
+              <p className="mt-4 text-sm leading-7 text-muted">
+                Remembered approvals can cover exact input, one executable with any arguments
+                (structured exec only), or a whole tool. Exact approvals include the working
+                directory and treat wildcard characters literally. Broader grants still prompt
+                for destructive calls and remain subject to command allowlists and hard guards.
+              </p>
               <code className="mt-6 block rounded-lg border border-brand/15 bg-card px-4 py-3 font-mono text-xs text-brand">
                 --yolo ≠ bypass security policy
               </code>

@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.20] — 2026-09-17
+
+### Added
+
+- **Scoped remembered approvals.** CLI/TUI, WebUI, SimpleUI and HQ distinguish
+  exact-input, executable-wide (`exec` only), and whole-tool approvals. Denies,
+  allowlists and hard command guards still apply; broad grants do not suppress
+  confirmation for destructive calls.
+- **Broader structured execution.** The default `exec` allowlist adds Python
+  environment and verification tools, build runners, and additional language
+  toolchains. Windows aliases normalize casing and executable suffixes; explicit
+  paths require their own trusted allowlist entry.
+
+### Changed
+
+- **Context budgeting and compaction.** Requests reserve output and safety space,
+  refresh token accounting after history, prompt, tool or provider changes, and
+  invalidate stale provider-usage anchors. Compaction state is isolated by session
+  and concurrent history changes are preserved.
+- **Plugin defaults.** Only `secret-scanner`, `injection-shield`, `dep-guard`,
+  `error-lens`, and `context-pins` load automatically from the Suite. Other Suite
+  plugins are opt-in, including mutation, background scans and provider wrappers.
+- **Project-service lifecycle.** Governance and shared project services close
+  after their idle windows; silent clients cannot keep services alive indefinitely.
+- **MCP presets.** Memory, sequential-thinking and fetch presets default to
+  `confirm`. Playwright and Z.AI Vision package versions are pinned.
+
+### Removed
+
+- **Nine Suite plugins:** `todo-tracker`, `knowledge-graph`,
+  `semantic-search-indexer`, `dead-code-detector`, `code-metrics`,
+  `refactor-suggester`, `smart-rename`, `feature-flag-tracker`, and
+  `interface-contract-guard`. Existing configurations warn and skip these names;
+  use built-in todo/Kanban, memory, search, replacement and linter workflows.
+
+### Fixed
+
+- **Background hook feedback** is buffered per session and delivered at the next
+  tool or user-prompt boundary instead of being discarded.
+- **Tool-error output** respects the iteration output budget. Shell-hook stdin
+  errors are contained instead of escaping as unhandled stream errors.
+- **Process-registry locking** verifies ownership before release or stale-lock
+  removal, preventing a previous holder from deleting a replacement lock.
+
+### Security
+
+- **Remembered trust subjects** distinguish argument arrays containing quotes and
+  treat literal glob characters as literals. Commands with metacharacters trusted
+  under the previous encoding may prompt once again.
+- **Project containment** canonicalizes existing paths to handle symlinks and
+  aliased roots. Collaborative debug targets honor the enabled project-root
+  restriction before file contents enter subagent prompts.
+
 ## [1.0.19] — 2026-09-16
 
 This entry consolidates changes since 1.0.9, including the intermediate

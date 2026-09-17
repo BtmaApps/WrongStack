@@ -605,7 +605,7 @@ export const pluginCatalog = [
     name: 'cost-tracker',
     risk: 'low',
     summary: 'Tracks token usage and estimated session cost.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
@@ -647,7 +647,7 @@ export const pluginCatalog = [
     name: 'token-budget',
     risk: 'medium',
     summary: 'Warns or stops when token budgets are exceeded.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
@@ -668,7 +668,7 @@ export const pluginCatalog = [
     name: 'diff-summary',
     risk: 'low',
     summary: 'Injects compact git diff context after edits.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
@@ -732,14 +732,14 @@ export const pluginCatalog = [
     name: 'loop-breaker',
     risk: 'low',
     summary: 'Detects runaway tool-call loops; warns, then blocks repeats.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
     name: 'gitignore-guard',
     risk: 'medium',
     summary: 'Suggests or appends ignore rules for generated artifacts after writes and edits.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
@@ -824,7 +824,7 @@ export const pluginCatalog = [
     name: 'config-validator',
     risk: 'low',
     summary: 'Validates JSON/YAML/TOML files right after write/edit.',
-    defaultState: 'active',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
@@ -943,8 +943,8 @@ export const pluginCatalog = [
   {
     name: 'process-guard',
     risk: 'high',
-    summary: 'Blocks kill commands targeting active WrongStack processes or their host terminals.',
-    defaultState: 'active',
+    summary: 'Reports kill commands; built-in bash and exec guards enforce protection for WrongStack processes and host terminals.',
+    defaultState: 'inactive',
     source: 'Suite',
   },
   {
