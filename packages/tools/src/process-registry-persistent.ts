@@ -12,6 +12,7 @@
  */
 
 // Note: spawn imported for potential future use with child process tracking
+import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 // Note: fsSync imported for potential future use with synchronous file operations
 import * as os from 'node:os';
@@ -132,7 +133,11 @@ export async function acquireLock(
       // unlinking on release would delete the NEW holder's lock and admit a
       // third writer into the section (same RACE-002/S7 contract as
       // withFileLock in @wrongstack/persistence).
-      const token = `${pidStr}:${hostStr}:${Date.now()}`;
+      // A nonce keeps two acquisitions in one process within the same
+      // millisecond from minting identical tokens — otherwise a stalled
+      // holder's release would still recognise a stealer's lock as its own.
+      // The timestamp stays LAST: the stale check reads the final field.
+      const token = `${pidStr}:${hostStr}:${randomBytes(4).toString('hex')}:${Date.now()}`;
       await fs.writeFile(lockfilePath, token, { flag: 'wx' });
       return async () => {
         try {
