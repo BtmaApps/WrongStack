@@ -56,18 +56,35 @@ try {
   Move-Item -Force $Exe $Target
   Set-Content -Path (Join-Path $InstallDir 'wrongstack.cmd') -Value "@`"%~dp0wstack.exe`" %*" -Encoding Ascii
 
+  # Put the install dir FIRST on the user PATH (moving it there if an earlier
+  # run appended it): an older npm/pnpm/bun global `wstack` earlier on PATH
+  # would otherwise keep winning and the new binary would never run.
   $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-  $Entries = if ($UserPath) { $UserPath -split ';' } else { @() }
-  if (-not $env:WSTACK_NO_MODIFY_PATH -and $Entries -notcontains $InstallDir) {
-    $NewPath = (@($Entries | Where-Object { $_ }) + $InstallDir) -join ';'
-    [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
-    $env:Path = "$env:Path;$InstallDir"
-    Write-Host "Added $InstallDir to your user PATH (open a new terminal to pick it up)."
+  $Entries = @(if ($UserPath) { $UserPath -split ';' | Where-Object { $_ } })
+  $Others = @($Entries | Where-Object { $_.TrimEnd('\') -ne $InstallDir.TrimEnd('\') })
+  if (-not $env:WSTACK_NO_MODIFY_PATH -and ($Entries.Count -eq 0 -or $Entries[0].TrimEnd('\') -ne $InstallDir.TrimEnd('\'))) {
+    [Environment]::SetEnvironmentVariable('Path', ((@($InstallDir) + $Others) -join ';'), 'User')
+    $SessionOthers = @($env:Path -split ';' | Where-Object { $_ -and $_.TrimEnd('\') -ne $InstallDir.TrimEnd('\') })
+    $env:Path = (@($InstallDir) + $SessionOthers) -join ';'
+    Write-Host "Put $InstallDir first on your user PATH (open a new terminal to pick it up)."
   }
 
   $Version = & $Target version 2>$null | Select-Object -First 1
   Write-Host ""
   Write-Host "Installed $Version -> $Target"
+
+  # Any other wstack/wrongstack still reachable is an older install that can
+  # shadow this one (the machine PATH is searched before the user PATH).
+  $Shadows = @(Get-Command wstack, wrongstack -All -ErrorAction SilentlyContinue |
+    Where-Object { $_.Source -and -not $_.Source.StartsWith($InstallDir, [StringComparison]::OrdinalIgnoreCase) } |
+    ForEach-Object { $_.Source } | Sort-Object -Unique)
+  if ($Shadows.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Other WrongStack installs were found and may run instead of this one:" -ForegroundColor Yellow
+    $Shadows | ForEach-Object { Write-Host "  $_" }
+    Write-Host "Remove them with whichever applies:"
+    Write-Host "  npm uninstall -g wrongstack; pnpm remove -g wrongstack; bun remove -g wrongstack"
+  }
   Write-Host "Update later with: wstack update"
 } finally {
   Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue

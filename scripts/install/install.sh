@@ -128,4 +128,12 @@ case ":$PATH:" in
     fi
     ;;
 esac
+
+# Another wstack earlier on PATH (an old npm/pnpm/bun global) would keep
+# running instead of this one.
+found=$(command -v wstack 2>/dev/null || true)
+if [ -n "$found" ] && [ "$found" != "$INSTALL_DIR/wstack" ]; then
+  printf '\nAnother wstack is earlier on your PATH and will run instead: %s\n' "$found" >&2
+  printf 'Remove it with whichever applies: npm uninstall -g wrongstack; pnpm remove -g wrongstack; bun remove -g wrongstack\n' >&2
+fi
 printf '\nUpdate later with: wstack update\n'
