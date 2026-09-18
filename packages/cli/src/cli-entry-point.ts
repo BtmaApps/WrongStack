@@ -71,6 +71,7 @@ import { scrubErrorText } from '@wrongstack/core/security';
 import {
   hardenWin32ExecutableSearch,
   installCrashShield,
+  isStandaloneBinary,
   runFatalSalvageSync,
   writeErr,
 } from '@wrongstack/core/utils';
@@ -85,7 +86,9 @@ function isCliMain(moduleUrl: string, argvEntry = process.argv[1]): boolean {
   return argvEntry.endsWith('/cli/dist/index.js') || argvEntry.endsWith('\\cli\\dist\\index.js');
 }
 
-const isMain = isCliMain(import.meta.url);
+// The standalone binary imports this module only on its CLI branch (daemon
+// dispatch never reaches it), and there every module shares one URL anyway.
+const isMain = isStandaloneBinary() || isCliMain(import.meta.url);
 
 interface ErrorEventStream {
   on(event: 'error', listener: (error: unknown) => void): unknown;

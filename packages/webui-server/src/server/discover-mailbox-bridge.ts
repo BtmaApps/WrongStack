@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { isStandaloneBinary } from '@wrongstack/core/utils';
 import {
   type MailboxBridgeLock,
   readLiveLock,
@@ -155,6 +156,8 @@ function mailboxServeInvocation(projectRoot: string): {
   windowsVerbatimArguments?: boolean | undefined;
   useShell?: boolean | undefined;
 } {
+  // The standalone binary is the CLI: re-launch it, never a script.
+  if (isStandaloneBinary()) return { command: process.execPath, args: ['mailbox', 'serve'] };
   const explicitCliEntry = process.env['WRONGSTACK_CLI_ENTRY'];
   if (explicitCliEntry) {
     return { command: process.execPath, args: [explicitCliEntry, 'mailbox', 'serve'] };

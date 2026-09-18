@@ -26,6 +26,7 @@
 import { spawn } from 'node:child_process';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { type MailboxBridgeLock, readLiveLock } from '@wrongstack/core/coordination';
 import { buildWin32CmdShimInvocation } from './utils/win32-cmd.js';
 
@@ -227,7 +228,7 @@ function defaultSpawn(args: string[], cwd: string): SpawnedChild {
   let shim: ReturnType<typeof buildWin32CmdShimInvocation> | null = null;
   if (cliEntry && /wstack|wrongstack|index\.(js|ts|mjs|cjs)$/.test(cliEntry)) {
     cmd = process.execPath;
-    spawnArgs = [cliEntry, ...args];
+    spawnArgs = cliSpawnArgs(cliEntry, args);
   } else {
     cmd = 'wstack';
     spawnArgs = args;

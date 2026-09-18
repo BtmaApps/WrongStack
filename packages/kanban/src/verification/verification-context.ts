@@ -25,6 +25,7 @@ import * as fsp from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { scriptSpawnArgs } from '@wrongstack/persistence';
 import type { KanbanBoard, KanbanTask } from '../types.js';
 import {
   BoundedProcessOutput,
@@ -744,7 +745,7 @@ export class VerificationContext {
           await fsp.access(entry);
           const isJsEntry = /\.(?:c|m)?js$/.test(entry);
           return isJsEntry
-            ? { command: process.execPath, args: [entry] }
+            ? { command: process.execPath, args: scriptSpawnArgs(entry, []) }
             : { command: entry, args: [] };
         }
       }
@@ -812,7 +813,7 @@ export class VerificationContext {
         const entry = path.resolve(packageDir, relativeBin);
         if (path.relative(packageDir, entry).startsWith('..')) continue;
         await fsp.access(entry);
-        return { command: process.execPath, args: [entry], kind: runner };
+        return { command: process.execPath, args: scriptSpawnArgs(entry, []), kind: runner };
       } catch {
         // Try the next locally installed runner. Never download one during verification.
       }

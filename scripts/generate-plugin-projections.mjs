@@ -81,11 +81,17 @@ function renderFactories() {
     ...OFFICIAL_PLUGIN_MANIFEST.map((entry) => `  '${entry.importSpecifier}',`),
     '] as const;',
     '',
-    'export const OFFICIAL_PLUGIN_FACTORIES: readonly (() => Promise<Plugin>)[] =',
-    '  OFFICIAL_PLUGIN_SPECIFIERS.map(',
-    '    (specifier) => async () =>',
-    '      ((await import(specifier)) as { default: Plugin }).default,',
-    '  );',
+    // One literal import() per plugin, never `import(specifier)`: bundlers
+    // (the standalone `bun build --compile` binary) only follow literal
+    // specifiers, and a computed one silently drops every official plugin.
+    'const loadDefault = async (module: Promise<{ default: Plugin }>): Promise<Plugin> =>',
+    '  (await module).default;',
+    '',
+    'export const OFFICIAL_PLUGIN_FACTORIES: readonly (() => Promise<Plugin>)[] = [',
+    ...OFFICIAL_PLUGIN_MANIFEST.map(
+      (entry) => `  () => loadDefault(import('${entry.importSpecifier}')),`,
+    ),
+    '];',
     '',
   ].join('\n');
 }

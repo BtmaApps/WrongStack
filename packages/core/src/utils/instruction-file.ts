@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 
 /**
  * Cache of resolved instruction text, keyed by the relative path. Bundled
@@ -60,7 +60,7 @@ export function renderInstructionTemplate(
 
 function instructionRootCandidates(): string[] {
   if (rootCandidates !== undefined) return rootCandidates;
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const candidates = [
     path.resolve(here, '../../instructions'),
     path.resolve(here, '../instructions'),

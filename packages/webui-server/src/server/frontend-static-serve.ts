@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { standalonePackageDir } from '@wrongstack/core/utils';
 import { type CreateHttpServerOptions, createHttpServer } from './http-server.js';
 import { createProjectIntakeService } from './intake-service.js';
 import { listenWithRetry } from './port-utils.js';
@@ -45,6 +46,8 @@ export function findInstalledPackageJson(
   const parts = withoutManifest.split('/');
   const packageName = withoutManifest.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
   if (!packageName) return undefined;
+  const standaloneDir = standalonePackageDir(packageName);
+  if (standaloneDir !== null) return path.join(standaloneDir, 'package.json');
 
   let current: string;
   try {

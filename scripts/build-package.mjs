@@ -311,7 +311,11 @@ const profiles = {
   },
   '@wrongstack/plugins': {
     entries: pluginEntries,
-    external: ['@wrongstack/core', '@wrongstack/plugin-sdk'],
+    // Self-reference: the generated factories import each plugin through its
+    // own `@wrongstack/plugins/<name>` subpath export (literal specifiers, so
+    // the standalone binary's bundler follows them). Keep those as imports of
+    // the package's own entries rather than inlining every plugin twice.
+    external: ['@wrongstack/core', '@wrongstack/plugin-sdk', '@wrongstack/plugins'],
     sourcemap: false,
   },
   '@wrongstack/providers': {

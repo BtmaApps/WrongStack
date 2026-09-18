@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { resolveProjectDir } from '@wrongstack/core/coordination';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { wstackGlobalRoot } from '@wrongstack/core/utils';
@@ -92,7 +93,7 @@ export function buildMailboxServeCommand(opts: SlashCommandContext): SlashComman
       let shim: ReturnType<typeof buildWin32CmdShimInvocation> | null = null;
       if (cliEntry && /wstack|wrongstack|index\.(js|ts|mjs|cjs)$/.test(cliEntry)) {
         wstackCmd = process.execPath;
-        spawnArgs = [cliEntry, 'mailbox', 'serve', ...flags];
+        spawnArgs = cliSpawnArgs(cliEntry, ['mailbox', 'serve', ...flags]);
       } else {
         wstackCmd = 'wstack';
         spawnArgs = ['mailbox', 'serve', ...flags];

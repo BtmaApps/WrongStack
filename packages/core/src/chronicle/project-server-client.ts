@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import type { ChronicleJournalStats } from './journal.js';
 import {
   chronicleProjectServerEndpoint,
@@ -134,6 +135,7 @@ export function resolveChronicleDaemonAvailability(
   ) {
     return { kind: 'inline-requested' };
   }
+  if (isStandaloneBinary()) return { kind: 'available', url: standaloneDaemonUrl('chronicle') };
   const url = locateChronicleProjectServer(moduleUrl, exists);
   return url ? { kind: 'available', url } : { kind: 'missing-build' };
 }
@@ -476,7 +478,6 @@ export class ChronicleProjectServerClient {
     const url = resolveChronicleProjectServerUrl();
     if (!url) throw new Error('Built Chronicle project server is unavailable');
     const args = [
-      fileURLToPath(url),
       '--project-root',
       this.options.projectRoot,
       '--global-root',
@@ -496,7 +497,7 @@ export class ChronicleProjectServerClient {
     ] as const) {
       if (value !== undefined) args.push(flag, String(value));
     }
-    const child = spawn(process.execPath, args, {
+    const child = spawn(process.execPath, daemonSpawnArgs(url, args), {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,

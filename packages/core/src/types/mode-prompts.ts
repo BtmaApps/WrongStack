@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 
 export function modePrompt(id: string): string {
   for (const dir of modePromptDirCandidates()) {
@@ -22,7 +22,7 @@ let cachedDirCandidates: string[] | undefined;
 
 function modePromptDirCandidates(): string[] {
   if (cachedDirCandidates) return cachedDirCandidates;
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const candidates = [
     path.resolve(here, '../../instructions/modes'),
     path.resolve(here, '../instructions/modes'),

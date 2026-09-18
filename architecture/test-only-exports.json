@@ -252,6 +252,11 @@
     "packages/cli/src/slash-commands/theme.ts": [
       "truncateDesc"
     ],
+    "packages/cli/src/standalone-update.ts": [
+      "parseSha256Sums",
+      "replaceExecutable",
+      "standaloneAssetName"
+    ],
     "packages/cli/src/subcommands/handlers/auth-local-help.ts": [
       "LOCAL_AUTH_FLAGS",
       "LOCAL_AUTH_HELP_USAGE",
@@ -755,6 +760,11 @@
     ],
     "packages/persistence/src/sqlite-runtime.ts": [
       "isRuntimeSqliteAvailable"
+    ],
+    "packages/persistence/src/standalone-binary.ts": [
+      "STANDALONE_DAEMON_ARG",
+      "STANDALONE_SCRIPT_ARG",
+      "standaloneAssetRoot"
     ],
     "packages/plug-lsp/src/config.ts": [
       "mergeConfig",

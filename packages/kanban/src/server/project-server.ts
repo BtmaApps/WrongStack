@@ -16,7 +16,12 @@ import * as fsPromises from 'node:fs/promises';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { atomicWrite, bindProjectEndpoint, restrictFilePermissions } from '@wrongstack/persistence';
+import {
+  atomicWrite,
+  bindProjectEndpoint,
+  isStandaloneBinary,
+  restrictFilePermissions,
+} from '@wrongstack/persistence';
 import { timingSafeTokenEqual } from '@wrongstack/primitives';
 import { KANBAN_DOMAIN_OPERATIONS } from '../domain-operations.js';
 import { StaleWriteError } from '../manager/lifecycle-error.js';
@@ -859,9 +864,13 @@ function acceptClient(socket: net.Socket): void {
  * argv[1] is a backslash path (`D:\...\project-server.js`) while import.meta.url
  * is a percent-encoded forward-slash URL (`file:///D:/.../project-server.js`).
  * The daemon therefore silently did nothing and exited 0 when spawned there.
- * `pathToFileURL` is the portable comparison.
+ * `pathToFileURL` is the portable comparison. The standalone binary shares one
+ * URL across every module and calls `main()` through its daemon dispatch.
  */
-const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+const isMain =
+  process.argv[1] && !isStandaloneBinary()
+    ? import.meta.url === pathToFileURL(process.argv[1]).href
+    : false;
 if (isMain) {
   main().catch((err) => {
     process.stderr.write(`kanban project server fatal: ${err?.message ?? err}\n`);

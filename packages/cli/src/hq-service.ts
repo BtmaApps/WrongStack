@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { constants as fsConstants } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { buildChildEnv } from '@wrongstack/core/utils';
+import { buildChildEnv, isStandaloneBinary } from '@wrongstack/core/utils';
 import { resolveHqPasswordInput } from './hq-server/secret-input.js';
 import type { SubcommandDeps, SubcommandHandler } from './subcommands/contracts.js';
 import {
@@ -364,6 +364,15 @@ async function installService(deps: SubcommandDeps): Promise<number> {
   const port = typeof portValue === 'string' ? Number(portValue) : 3499;
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
     deps.renderer.writeError('--port must be an integer between 1 and 65535.\n');
+    return 1;
+  }
+  // The unattended updater and its rollback drive npm/pnpm; the standalone
+  // executable updates itself with `wstack update` instead.
+  if (isStandaloneBinary()) {
+    deps.renderer.writeError(
+      'The HQ system service installer manages an npm install. With the standalone binary, ' +
+        'run `wstack hq` under your own service manager and update it with `wstack update`.\n',
+    );
     return 1;
   }
   const requestedManager = deps.flags?.['pm'] ?? deps.flags?.['package-manager'];

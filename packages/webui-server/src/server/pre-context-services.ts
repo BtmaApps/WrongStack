@@ -22,6 +22,7 @@
 
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 import { Context, DefaultSystemPromptBuilder } from '@wrongstack/core/agent';
 import type { AgentStatusTracker } from '@wrongstack/core/coordination';
 import {
@@ -429,7 +430,7 @@ export async function createPreContextServices(
         try {
           const req = createRequire(import.meta.url);
           return path.join(
-            path.dirname(req.resolve('@wrongstack/core/package.json')),
+            path.dirname(wrongstackPackageJsonPath('@wrongstack/core', (id) => req.resolve(id))),
             'data',
             'prompts',
           );

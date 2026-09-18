@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 import { expandSharedSystemInstructions } from '../../utils/instruction-file.js';
 
 export const PROMPT = expandSharedSystemInstructions(readBundledInstructionFile('system.md'));
@@ -25,7 +25,7 @@ function readBundledInstructionFile(name: string): string {
 }
 
 function bundledInstructionDirCandidates(): string[] {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const candidates = [
     path.resolve(here, '../../../instructions'),
     path.resolve(here, '../../instructions'),

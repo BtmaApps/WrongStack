@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { moduleUrlFor } from '@wrongstack/persistence';
 import type { FileSymbols, SymbolLang } from './schema.js';
 import { getQueries } from './tree-sitter/queries.js';
 import { visitTree } from './tree-sitter/visitor.js';
@@ -39,7 +40,9 @@ import { visitTree } from './tree-sitter/visitor.js';
  * remains correct whether the code runs from `dist/` (built) or
  * `src/` (vitest under tsx). No reliance on process.cwd().
  */
-const WASM_DIR = fileURLToPath(new URL('./wasm/', import.meta.url));
+const WASM_DIR = fileURLToPath(
+  new URL('./wasm/', moduleUrlFor(import.meta.url, '@wrongstack/tools')),
+);
 
 /** Runtime tree-sitter engine WASM (the `web-tree-sitter` package's binary). */
 const RUNTIME_WASM = path.join(WASM_DIR, 'tree-sitter-runtime.wasm');

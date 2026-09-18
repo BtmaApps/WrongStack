@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isStandaloneBinary } from '@wrongstack/persistence';
 import { GovernanceAttachmentBrokerController } from './attachment-broker-controller.js';
 import {
   acquireGovernanceDaemonStartupLease,
@@ -52,6 +53,9 @@ export function isGovernanceProjectDaemonEntrypoint(
   entrypoint = process.argv[1],
   moduleUrl = import.meta.url,
 ): boolean {
+  // In the standalone binary every module shares the executable's URL, so
+  // this comparison is true everywhere; the binary dispatches explicitly.
+  if (isStandaloneBinary(entrypoint)) return false;
   return Boolean(entrypoint && path.resolve(entrypoint) === path.resolve(fileURLToPath(moduleUrl)));
 }
 
@@ -327,9 +331,12 @@ async function run(): Promise<void> {
   });
 }
 
-if (isGovernanceProjectDaemonEntrypoint()) {
+/** Daemon main; the standalone binary's `__wstack_daemon governance` dispatch. */
+export function runGovernanceProjectDaemon(): void {
   void run().catch(() => {
     process.exitCode = 1;
     if (process.connected) process.disconnect?.();
   });
 }
+
+if (isGovernanceProjectDaemonEntrypoint()) runGovernanceProjectDaemon();

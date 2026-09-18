@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import { closeDaemonLogFd, openDaemonLogFd } from './daemon-log.js';
 import {
   sageProjectServerEndpoint,
@@ -86,6 +87,7 @@ interface PendingRequest {
 
 function resolveProjectServerUrl(): URL | null {
   if (process.env['WRONGSTACK_SAGE_SERVER'] === '0') return null;
+  if (isStandaloneBinary()) return standaloneDaemonUrl('sage');
   try {
     const url = new URL('./project-server.js', import.meta.url);
     if (url.protocol !== 'file:') return null;
@@ -705,7 +707,7 @@ export class SageProjectServerConnection {
   private spawnDetachedServer(): void {
     const url = resolveProjectServerUrl();
     if (!url) throw new Error('Built SAGE project server is unavailable');
-    const args = [fileURLToPath(url), '--project-root', this.projectRoot];
+    const args = ['--project-root', this.projectRoot];
     if (this.directory) args.push('--directory', this.directory);
     // Persist the daemon's stderr instead of discarding it. A crash AFTER the
     // bind — e.g. SQLITE_IOERR_SHMOPEN when the store is the Windows side's
@@ -717,7 +719,7 @@ export class SageProjectServerConnection {
       sageProjectServerLogPath(this.projectRoot, this.directory),
       `${new Date().toISOString()} spawn endpoint=${this.state.endpoint} project=${this.projectRoot} pid=${process.pid}\n`,
     );
-    const child = spawn(process.execPath, args, {
+    const child = spawn(process.execPath, daemonSpawnArgs(url, args), {
       detached: true,
       stdio: logFd === null ? 'ignore' : ['ignore', logFd, logFd],
       windowsHide: true,

@@ -24,6 +24,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 import { withinProject } from '../runtime/index.js';
 
@@ -257,14 +258,14 @@ function resolveTestCommand(
   } catch {
     return null;
   }
-  const args = [resolvedEntry, ...runnerArgs];
+  const args = [...runnerArgs];
   if (testPattern) {
     if (!withinProject(testPattern)) return null;
     args.push(testPattern);
   }
   return {
     cmd: process.execPath,
-    args,
+    args: scriptSpawnArgs(resolvedEntry, args),
     display: [...tokens, ...(testPattern ? [testPattern] : [])].join(' '),
   };
 }

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import { isPidAlive } from '../utils/pid.js';
 import {
   sessionCatalogProjectServerEndpoint,
@@ -67,6 +68,8 @@ export function resolveSessionCatalogDaemonAvailability(
     process.env['WRONGSTACK_SESSION_CATALOG_SERVER'] === '0'
   )
     return { kind: 'inline-requested' };
+  if (isStandaloneBinary())
+    return { kind: 'available', url: standaloneDaemonUrl('session-catalog') };
   const url = locateServer(moduleUrl, exists);
   return url ? { kind: 'available', url } : { kind: 'missing-build' };
 }
@@ -459,13 +462,12 @@ export class SessionCatalogProjectClient {
     if (!url) throw new Error('Built Session Catalog project server is unavailable');
     const child = spawn(
       process.execPath,
-      [
-        fileURLToPath(url),
+      daemonSpawnArgs(url, [
         '--project-dir',
         this.options.projectDir,
         '--project-root',
         this.options.projectRoot,
-      ],
+      ]),
       { detached: true, stdio: 'ignore', windowsHide: true, env: process.env },
     );
     child.unref();

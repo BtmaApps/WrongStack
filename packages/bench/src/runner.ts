@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { cliSpawnArgs } from '@wrongstack/core/utils';
 import type { ModelCell, RawRun } from './types.js';
 
 /** Everything needed to run one (task × cell) subprocess. */
@@ -30,8 +31,7 @@ export interface RunWstackOptions {
  * explanatory status so the grader still produces a row.
  */
 export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
-  const args = [
-    opts.wstackEntry,
+  const args = cliSpawnArgs(opts.wstackEntry, [
     '--prompt',
     opts.prompt,
     '--provider',
@@ -46,7 +46,7 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     '--no-models-refresh',
     '--skip-index',
     ...(opts.extraArgs ?? []),
-  ];
+  ]);
 
   const startedAt = Date.now();
   return new Promise<RawRun>((resolve) => {

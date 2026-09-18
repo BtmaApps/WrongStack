@@ -32,6 +32,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import type { Plugin } from '@wrongstack/core/types';
 import { releaseHandle, BoundedMap } from '../runtime/index.js';
 
@@ -188,7 +189,10 @@ export function resolveLocalLinter(name: 'biome' | 'eslint', cwd: string): Resol
 
     return {
       cmd: process.execPath,
-      args: name === 'biome' ? [entry, 'check', '--reporter=json'] : [entry, '--format=json'],
+      args:
+        name === 'biome'
+          ? scriptSpawnArgs(entry, ['check', '--reporter=json'])
+          : scriptSpawnArgs(entry, ['--format=json']),
       name,
     };
   } catch {

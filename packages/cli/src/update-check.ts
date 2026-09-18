@@ -3,7 +3,13 @@ import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { FetchError } from '@wrongstack/core/types';
-import { atomicWrite, ensureDir, resolveWstackPaths } from '@wrongstack/core/utils';
+import {
+  atomicWrite,
+  ensureDir,
+  isStandaloneBinary,
+  resolveWstackPaths,
+} from '@wrongstack/core/utils';
+import { CLI_VERSION } from './version.js';
 
 export interface UpdateInfo {
   current: string;
@@ -16,6 +22,13 @@ type HomeDirFn = () => string;
 const defaultHomeDir: HomeDirFn = () => os.homedir();
 
 export type UpdatePackageName = 'wrongstack' | '@wrongstack/cli';
+
+/**
+ * What a cached "latest version" was read from: an npm package, or the GitHub
+ * releases the standalone executable updates from. Kept apart so switching
+ * between an npm install and the binary never reuses the other's answer.
+ */
+type UpdateSource = UpdatePackageName | 'standalone-binary';
 
 /** npm registry endpoint used for self-update version checks. */
 function npmRegistryUrl(packageName: UpdatePackageName): string {
@@ -37,11 +50,12 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 interface CacheEntry {
   timestamp: number;
   latestVersion: string;
-  packageName: UpdatePackageName;
+  packageName: UpdateSource;
 }
 
-/** Read the current CLI version from package.json */
+/** Read the current CLI version from package.json (or the binary's build stamp). */
 export function currentVersion(): string {
+  if (isStandaloneBinary()) return CLI_VERSION;
   const req = createRequire(import.meta.url);
   const candidates = ['../package.json', '../../package.json'];
   for (const rel of candidates) {
@@ -115,7 +129,7 @@ interface CacheState {
 /** Read and validate cache. Expired entries remain available as a network-failure fallback. */
 async function readCache(
   homeFn: HomeDirFn = defaultHomeDir,
-  packageName: UpdatePackageName = 'wrongstack',
+  packageName: UpdateSource = 'wrongstack',
 ): Promise<CacheState | null> {
   try {
     const raw = await fs.readFile(cachePath(homeFn), 'utf8');
@@ -209,7 +223,11 @@ export async function checkForUpdate(
       : (signalOrOptions ?? { homeFn: legacyHomeFn });
   const current = currentVersion();
   const signal = options.signal;
-  const packageName = options.packageName ?? 'wrongstack';
+  // The standalone executable updates from GitHub releases, not npm.
+  const standalone = isStandaloneBinary();
+  const packageName: UpdateSource = standalone
+    ? 'standalone-binary'
+    : (options.packageName ?? 'wrongstack');
   const aborted = () => signal?.aborted ?? false;
   const hf = options.homeFn ?? defaultHomeDir;
 
@@ -228,7 +246,10 @@ export async function checkForUpdate(
   }
 
   try {
-    const latest = await fetchLatestFromNpm(packageName, 3000, signal);
+    const latest =
+      packageName === 'standalone-binary'
+        ? await (await import('./standalone-update.js')).fetchLatestStandaloneVersion(3000, signal)
+        : await fetchLatestFromNpm(packageName, 3000, signal);
     await writeCache({ timestamp: Date.now(), latestVersion: latest, packageName }, hf);
     return {
       current,

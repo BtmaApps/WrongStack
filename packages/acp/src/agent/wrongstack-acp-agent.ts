@@ -28,7 +28,7 @@
 import { createServer, type Server } from 'node:http';
 import { isIP, type Socket } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { expandIPv6, writeErr } from '@wrongstack/core/utils';
+import { expandIPv6, isStandaloneBinary, writeErr } from '@wrongstack/core/utils';
 import { timingSafeTokenEqual } from '@wrongstack/primitives';
 import type { ACPMessage } from '../types/acp-messages.js';
 import {
@@ -470,8 +470,12 @@ async function main(): Promise<void> {
   await server.start();
 }
 
+// The standalone binary shares one URL across every module (on POSIX this
+// comparison is true for all of them), so it never auto-starts there.
 const isEntrypoint =
-  process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];
+  process.argv[1] !== undefined &&
+  !isStandaloneBinary() &&
+  fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntrypoint) {
   main().catch((err) => {
     writeErr(`[wstack-acp fatal] ${err}\n`);

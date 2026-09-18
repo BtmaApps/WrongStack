@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs } from '@wrongstack/persistence';
 import {
   decodeBinaryFrame,
   encodeBinaryFrame,
@@ -715,7 +715,7 @@ class ProjectServerConnection {
         /* bind/connect race will elect the winner */
       }
     }
-    const args = [fileURLToPath(url), '--project-root', this.projectRoot];
+    const args = ['--project-root', this.projectRoot];
     if (this.indexDir) args.push('--index-dir', this.indexDir);
     // Keep stderr. With `stdio: 'ignore'` a daemon that died took its reason
     // with it, and the only thing left was the client's
@@ -742,7 +742,7 @@ class ProjectServerConnection {
       // losing the log is worse than today, not fatal.
       stderrTarget = 'ignore';
     }
-    const child = spawn(process.execPath, args, {
+    const child = spawn(process.execPath, daemonSpawnArgs(url, args), {
       detached: true,
       stdio: ['ignore', 'ignore', stderrTarget],
       windowsHide: true,

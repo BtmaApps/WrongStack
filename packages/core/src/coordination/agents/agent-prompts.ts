@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 import { resolveWstackPaths } from '../../utils/wstack-paths.js';
 import { buildProjectContextualizedPrompt } from './project-agent-identity.js';
 import { assertProjectAgentRole } from './project-agent-paths.js';
@@ -141,7 +141,7 @@ function loadTechVersionPolicy(): string {
 }
 
 function policyCandidateDirs(envDir: string): string[] {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const profileInstructions = resolveWstackPaths({ projectRoot: process.cwd() }).globalInstructions;
   return [
     ...(envDir ? [path.resolve(envDir)] : []),
@@ -156,7 +156,7 @@ function policyCandidateDirs(envDir: string): string[] {
 }
 
 function policyBody(envDir: string): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   // Two layouts must resolve:
   //  * source: `packages/core/src/coordination/agents` → `../../instructions/agents/_policy/tech-version.md`
   //  * build:  `packages/core/dist/coordination/agents` → `../../../instructions/agents/_policy/tech-version.md`
@@ -376,7 +376,7 @@ function agentPromptDirCandidates(envDir: string, projectRoot: string): string[]
   const cached = candidateCache.get(candKey);
   if (cached !== undefined) return cached;
 
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   const explicitDir = envDir || undefined;
   const candidates = [
     ...(explicitDir ? [path.resolve(explicitDir)] : []),

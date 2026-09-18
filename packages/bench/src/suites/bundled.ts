@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/core/utils';
 import type { BenchSuite, BenchTask, SuiteId } from '../types.js';
 import { createLocalManifestSuite } from './local-manifest.js';
 
@@ -10,7 +10,7 @@ import { createLocalManifestSuite } from './local-manifest.js';
  * `dist/index.js` bundle.
  */
 export function resolveBundledSuiteDir(name: string): string {
-  let dir = path.dirname(fileURLToPath(import.meta.url));
+  let dir = moduleDirFor(import.meta.url, '@wrongstack/bench');
   for (let i = 0; i < 6; i++) {
     const candidate = path.join(dir, 'fixtures', name);
     if (existsSync(path.join(candidate, 'bench.local.json'))) return candidate;

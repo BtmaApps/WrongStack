@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 import { DefaultPromptLoader } from '@wrongstack/core/execution';
 import { PromptUsageStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
@@ -67,7 +68,7 @@ export function usePromptPicker({ projectRoot, dispatch }: UsePromptPickerOption
       try {
         const req = createRequire(import.meta.url);
         bundledDir = path.join(
-          path.dirname(req.resolve('@wrongstack/core/package.json')),
+          path.dirname(wrongstackPackageJsonPath('@wrongstack/core', (id) => req.resolve(id))),
           'data',
           'prompts',
         );

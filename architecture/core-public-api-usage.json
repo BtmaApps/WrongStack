@@ -179,9 +179,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1116,
+      "files": 1117,
       "typeOnly": 998,
-      "runtimeOrMixed": 330
+      "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 595,
+      "files": 608,
       "typeOnly": 57,
-      "runtimeOrMixed": 565
+      "runtimeOrMixed": 583
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -12225,6 +12225,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/standalone-update.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/contracts.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17991,7 +17997,19 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/src/runner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/bench/src/session-metrics.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/bench/src/suites/bundled.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18209,7 +18227,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/boot/tui-project-spawn.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -18244,6 +18262,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/boot/webui-session-child.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/cli-bundled-prompts.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/cli-bundled-skills.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18369,7 +18399,19 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/hq-static-serve.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/input-reader.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/mailbox-bridge-bootstrap.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18556,6 +18598,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/settings-menu.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/simpleui-dist.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -18785,7 +18833,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/mailbox-serve.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -18875,7 +18923,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/project.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -19251,6 +19299,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/update.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/version-help.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19294,6 +19348,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/webui-server/kanban-host-adapter.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/webui-server/node-pty-loader.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -19899,6 +19959,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugin-sdk/src/runtime/local-bin.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/context-pins/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19911,9 +19977,21 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/lint-gate/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/semver-bump/index.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/test-flake-detector/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -20849,7 +20927,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-prompt-picker.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -21107,7 +21185,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/discover-mailbox-bridge.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -21124,6 +21202,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/file-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/webui-server/src/server/frontend-static-serve.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -21221,7 +21305,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/pre-context-services.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/utils",

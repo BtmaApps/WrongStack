@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { cliSpawnArgs } from '@wrongstack/core/utils';
 import type { Context } from '@wrongstack/core/agent';
 import type { SlashCommand } from '@wrongstack/core/types';
 import {
@@ -430,7 +431,7 @@ async function switchProjectCommand(
   if (!canSwitch) return { message: '' };
 
   const nodeExe = process.execPath;
-  const child = spawn(nodeExe, [cliPath, '--no-interactive'], {
+  const child = spawn(nodeExe, cliSpawnArgs(cliPath, ['--no-interactive']), {
     cwd: resolved,
     stdio: 'inherit',
     detached: false,
@@ -627,7 +628,7 @@ async function spawnInProject(
   await saveManifest(manifest, opts.paths?.globalConfig);
 
   const nodeExe = process.execPath;
-  const child = spawn(nodeExe, [cliPath, '--no-interactive'], {
+  const child = spawn(nodeExe, cliSpawnArgs(cliPath, ['--no-interactive']), {
     cwd: root,
     stdio: 'inherit',
     detached: false,
@@ -681,7 +682,7 @@ async function handleNewSession(
   }
 
   const nodeExe = process.execPath;
-  const child = spawn(nodeExe, [cliPath, '--no-interactive'], {
+  const child = spawn(nodeExe, cliSpawnArgs(cliPath, ['--no-interactive']), {
     cwd: process.cwd(),
     stdio: 'inherit',
     detached: false,

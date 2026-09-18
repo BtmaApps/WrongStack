@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 import { expandSharedSystemInstructions } from '../utils/instruction-file.js';
 
 export interface SystemInstructionBundle {
@@ -273,7 +273,7 @@ async function readOptionalText(file: string): Promise<string | undefined> {
 }
 
 function defaultBundledInstructionDir(): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = moduleDirFor(import.meta.url, '@wrongstack/core');
   return firstExistingDirSync([
     path.resolve(here, '../../instructions'),
     path.resolve(here, '../instructions'),

@@ -277,3 +277,6 @@ docs/reports/*
 !docs/reports/vibe-protocol-architecture-2026-08-15.md
 !docs/reports/vibe-protocol-code-proof.json
 $null
+
+# Standalone binaries (scripts/build-binaries.mjs)
+dist-bin/

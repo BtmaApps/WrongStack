@@ -3,7 +3,12 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildChildEnv, buildWin32CmdShimInvocation, expectDefined } from '@wrongstack/core/utils';
+import {
+  buildChildEnv,
+  buildWin32CmdShimInvocation,
+  expectDefined,
+  isStandaloneBinary,
+} from '@wrongstack/core/utils';
 import { languageServerForWorkspace } from './slash-commands/install.js';
 import { commandExistsOnPath, resolveServerCommand } from './utils/command-resolver.js';
 
@@ -324,9 +329,11 @@ Options:
 }
 
 /* v8 ignore start -- CLI process-exit wrapper is exercised by invoking the built bin, not unit imports. */
-const isCliEntrypoint = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false;
+// The standalone binary shares one URL across every module; never auto-run there.
+const isCliEntrypoint =
+  process.argv[1] && !isStandaloneBinary()
+    ? import.meta.url === pathToFileURL(process.argv[1]).href
+    : false;
 
 if (isCliEntrypoint) {
   runSetup(process.argv.slice(2)).catch((err) => {

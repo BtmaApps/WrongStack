@@ -1,5 +1,4 @@
-import { expectDefined } from '@wrongstack/core/utils';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import { expectDefined, scriptSpawnArgs, toErrorMessage } from '@wrongstack/core/utils';
 /**
  * semver-bump plugin — Conventional-commit-driven semver version bumps.
  *
@@ -444,7 +443,11 @@ const plugin: Plugin = {
       }
       if (hasBumpScript) {
         try {
-          await runCommand(process.execPath, [bumpScript, 'set', newVersion], root);
+          await runCommand(
+            process.execPath,
+            scriptSpawnArgs(bumpScript, ['set', newVersion]),
+            root,
+          );
         } catch (err: unknown) {
           throw new Error(`bump script failed: ${toErrorMessage(err)}`, { cause: err });
         }

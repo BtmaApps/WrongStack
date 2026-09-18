@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import type { TerminalRenderer } from '../../renderer.js';
+import { isStandaloneBinary } from '@wrongstack/core/utils';
 import { checkForUpdate, type UpdatePackageName } from '../../update-check.js';
 import { buildWin32CmdShimInvocation } from '../../utils/win32-cmd.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
@@ -90,7 +91,7 @@ export async function runUpdateCommand(args: string[], deps: UpdateCommandDeps):
 
   if (info.checkFailed) {
     deps.renderer.write(
-      `Update check failed for ${packageName}. Check your internet connection and try again.\n`,
+      `Update check failed for ${isStandaloneBinary() ? 'the GitHub releases' : packageName}. Check your internet connection and try again.\n`,
     );
     return 1;
   }
@@ -107,6 +108,14 @@ export async function runUpdateCommand(args: string[], deps: UpdateCommandDeps):
   if (!info.outdated) {
     deps.renderer.write(`You are already on the latest version: v${info.current}\n`);
     return 0;
+  }
+
+  if (isStandaloneBinary()) {
+    const { updateStandaloneBinary } = await import('../../standalone-update.js');
+    return updateStandaloneBinary({
+      current: info.current,
+      renderer: deps.renderer,
+    });
   }
 
   const packageManager = parsed.packageManager ?? detectUpdatePackageManager();

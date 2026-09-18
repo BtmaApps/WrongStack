@@ -11,6 +11,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:bun": "bun scripts/build.mjs",
+    "build:binaries": "node scripts/build-binaries.mjs",
+    "build:binary": "node scripts/build-binaries.mjs --current",
     "desktop": "pnpm --filter @wrongstack/desktop dev",
     "desktop:start": "pnpm --filter @wrongstack/desktop start",
     "test": "vitest run && pnpm --filter webui test",

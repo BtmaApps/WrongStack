@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isStandaloneBinary, standaloneBinaryBuildId } from '@wrongstack/persistence';
 import { resolveIndexDir } from './writer.js';
 
 export const PROJECT_INDEX_SERVER_PROTOCOL_VERSION = 1;
@@ -46,6 +47,9 @@ export function projectIndexServerBuildId(entrypoint: string | URL): string {
   // Vite query-suffixed imports (`project-server.ts?case=…`) surface in
   // import.meta.url; fileURLToPath rejects the query, so strip it. The
   // artifact identity is the file content, which the query does not change.
+  // The standalone binary is client and daemon at once, and its embedded
+  // modules have no file of their own: the executable is the artifact.
+  if (isStandaloneBinary()) return standaloneBinaryBuildId();
   const href = entrypoint instanceof URL ? entrypoint.href : entrypoint;
   const cleanHref = href.split(/[?#]/, 1)[0] ?? href;
   const file = cleanHref.startsWith('file:') ? fileURLToPath(cleanHref) : path.resolve(cleanHref);

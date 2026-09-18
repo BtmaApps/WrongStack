@@ -2,7 +2,7 @@ import { spawn as spawnChild } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createCompatibilityTrustBoundary, type TrustBoundary } from '@wrongstack/core/security';
 import type { Logger } from '@wrongstack/core/types';
-import { buildChildEnv, toErrorMessage } from '@wrongstack/core/utils';
+import { buildChildEnv, isStandaloneBinary, toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import { repairNodePtySpawnHelper, spawnHelperFailureHint } from './node-pty-spawn-helper.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
@@ -292,6 +292,11 @@ export class TerminalWebSocketHandler {
 
 function defaultLoadNodePty(): NodePtyApi | null {
   if (cachedNodePty !== undefined) return cachedNodePty;
+  // No native node-pty in the standalone binary: terminal is unavailable there.
+  if (isStandaloneBinary()) {
+    cachedNodePty = null;
+    return null;
+  }
   try {
     cachedNodePty = requireFromHere('node-pty') as NodePtyApi;
     repairNodePtySpawnHelper(requireFromHere);

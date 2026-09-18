@@ -33,6 +33,7 @@
 import { createRequire } from 'node:module';
 import { delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { accessSync, constants, readFileSync } from 'node:fs';
+import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { buildWin32CmdShimInvocation, resolveWin32Command } from '@wrongstack/tools/win32';
 
 export { resolveWin32Command };
@@ -211,7 +212,7 @@ export function resolveNodeBin(
     if (cached.value !== null || Date.now() - cached.cachedAt < NEGATIVE_BIN_CACHE_TTL_MS) {
       return cached.value === null
         ? null
-        : { ...cached.value, args: [cached.value.entry, ...extraArgs] };
+        : { ...cached.value, args: scriptSpawnArgs(cached.value.entry, extraArgs) };
     }
     binCache.delete(key);
   }
@@ -232,7 +233,7 @@ export function resolveNodeBin(
       const entry = resolve(packageDir, relativeBin);
       // Sandbox: the bin entry must live inside its own package.
       if (isInside(packageDir, entry)) {
-        resolved = { cmd: process.execPath, args: [entry], entry };
+        resolved = { cmd: process.execPath, args: scriptSpawnArgs(entry, []), entry };
       }
     }
   } catch {
@@ -240,7 +241,9 @@ export function resolveNodeBin(
   }
 
   cachePut(key, resolved);
-  return resolved === null ? null : { ...resolved, args: [resolved.entry, ...extraArgs] };
+  return resolved === null
+    ? null
+    : { ...resolved, args: scriptSpawnArgs(resolved.entry, extraArgs) };
 }
 
 /**

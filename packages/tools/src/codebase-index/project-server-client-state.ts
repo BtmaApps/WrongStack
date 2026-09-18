@@ -1,6 +1,10 @@
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { checkUnixSocketPath } from '@wrongstack/persistence';
+import {
+  checkUnixSocketPath,
+  isStandaloneBinary,
+  standaloneDaemonUrl,
+} from '@wrongstack/persistence';
 import { IndexTimeoutError, LockError } from './circuit-breaker.js';
 import {
   projectIndexServerBuildId,
@@ -111,8 +115,8 @@ export function resolveProjectIndexDaemonAvailability(
   if (process.env['WRONGSTACK_INDEX_INLINE'] || process.env['WRONGSTACK_INDEX_SERVER'] === '0') {
     return { kind: 'inline-requested' };
   }
-  let builtUrl: URL | null = null;
-  for (const rel of ['./project-server.js', './codebase-index/project-server.js']) {
+  let builtUrl: URL | null = isStandaloneBinary() ? standaloneDaemonUrl('codebase-index') : null;
+  for (const rel of builtUrl ? [] : ['./project-server.js', './codebase-index/project-server.js']) {
     try {
       const url = new URL(rel, import.meta.url);
       if (url.protocol !== 'file:') continue;

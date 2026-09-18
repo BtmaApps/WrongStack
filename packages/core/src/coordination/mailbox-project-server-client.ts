@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import type { MailboxEvent } from './mailbox-events.js';
 import {
   mailboxProjectServerEndpoint,
@@ -93,6 +94,7 @@ function normalizePath(value: string): string {
  * project" becomes "one mailbox per process" with no visible symptom.
  */
 function resolveProjectServerUrl(): URL | null {
+  if (isStandaloneBinary()) return standaloneDaemonUrl('mailbox');
   for (const relative of [
     // Unbundled / per-subpath output: dist/coordination/index.js.
     './mailbox-project-server.js',
@@ -603,13 +605,17 @@ export class MailboxProjectServerConnection {
     // lightweight TUI/WebUI launch. Ensure the spawn cwd exists before the
     // detached owner is created; the owner remains the only SQLite opener.
     fs.mkdirSync(this.projectDir, { recursive: true });
-    const child = spawn(process.execPath, [fileURLToPath(url), '--project-dir', this.projectDir], {
-      cwd: this.projectDir,
-      detached: process.platform !== 'win32',
-      stdio: 'ignore',
-      windowsHide: true,
-      env: process.env,
-    });
+    const child = spawn(
+      process.execPath,
+      daemonSpawnArgs(url, ['--project-dir', this.projectDir]),
+      {
+        cwd: this.projectDir,
+        detached: process.platform !== 'win32',
+        stdio: 'ignore',
+        windowsHide: true,
+        env: process.env,
+      },
+    );
     // stdio is ignored and nothing else consumes lifecycle events; without a
     // listener a spawn-level 'error' (e.g. a transient EMFILE under load)
     // would crash this process instead of failing the connect. The

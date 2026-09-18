@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { cliSpawnArgs } from '@wrongstack/core/utils';
 import { color } from '@wrongstack/core/utils';
 
 export const PROJECT_SWITCH_EXIT_CODE = 42;
@@ -65,7 +66,7 @@ export async function handleProjectSwitchSpawn(
   }
 
   const nodeExe = process.execPath;
-  const spawnArgs = [cliPath, '--no-interactive'];
+  const spawnArgs = cliSpawnArgs(cliPath, ['--no-interactive']);
   if (resumeSessionId) spawnArgs.push('--resume', resumeSessionId);
   // No abort signal here: the spawned wstack OUTLIVES this process
   // (we exit right after). A previous AbortSignal.timeout(30_000)

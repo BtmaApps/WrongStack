@@ -11,6 +11,7 @@ import * as fs from 'node:fs';
 import type * as http from 'node:http';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 
 const requireFromHere = createRequire(import.meta.url);
 
@@ -46,7 +47,9 @@ export function resolveHqDistDir(): string | null {
   // MODULE_NOT_FOUND and, before this fix, HQ silently ALWAYS fell back to
   // the legacy inline HTML.
   try {
-    const pkgJson = requireFromHere.resolve('@wrongstack/webui-hq/package.json');
+    const pkgJson = wrongstackPackageJsonPath('@wrongstack/webui-hq', (id) =>
+      requireFromHere.resolve(id),
+    );
     const dist = path.join(path.dirname(pkgJson), 'dist');
     if (fs.existsSync(path.join(dist, 'index.html'))) {
       cachedDistDir = dist;

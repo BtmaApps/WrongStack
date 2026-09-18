@@ -2,6 +2,12 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
+
+/** `@wrongstack/simpleui/package.json`, honouring the standalone binary's extracted assets. */
+function resolveSimpleUiPackageJson(id: string, req: NodeRequire): string {
+  return wrongstackPackageJsonPath(id.replace(/\/package\.json$/u, ''), (x) => req.resolve(x));
+}
 
 interface SimpleUiDistDeps {
   resolvePackageJson?: (id: string) => string;
@@ -12,7 +18,7 @@ interface SimpleUiDistDeps {
 export function resolveSimpleUiDistDir(deps: SimpleUiDistDeps = {}): string {
   const requireFromHere = createRequire(import.meta.url);
   const resolvePackageJson =
-    deps.resolvePackageJson ?? ((id: string) => requireFromHere.resolve(id));
+    deps.resolvePackageJson ?? ((id: string) => resolveSimpleUiPackageJson(id, requireFromHere));
   const exists = deps.exists ?? existsSync;
 
   let packageJson: string;
@@ -58,7 +64,7 @@ export async function ensureSimpleUiDistDir(deps: EnsureSimpleUiDistDeps = {}): 
 
   const requireFromHere = createRequire(import.meta.url);
   const resolvePackageJson =
-    deps.resolvePackageJson ?? ((id: string) => requireFromHere.resolve(id));
+    deps.resolvePackageJson ?? ((id: string) => resolveSimpleUiPackageJson(id, requireFromHere));
 
   let packageDir: string;
   try {

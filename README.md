@@ -15,7 +15,13 @@
 [![open source](https://img.shields.io/badge/open%20source-yes-ff3154?style=flat-square)](https://github.com/WrongStack/WrongStack)
 
 ```bash
-npm i -g wrongstack && wrongstack
+# macOS / Linux — one self-contained binary, no Node.js needed
+curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+```
+
+```powershell
+# Windows
+irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
 ```
 
 </div>
@@ -196,12 +202,50 @@ memory, tools, providers, permissions, and the multi-agent runtime actually work
 
 ## Requirements
 
+- **Standalone binary:** nothing — the executable carries its own runtime
+  (Windows x64, macOS x64/arm64, Linux x64/arm64 incl. musl)
 - **npm/pnpm install:** Node.js ≥ 22.19.0 and pnpm ≥ 12.3.4 (recommended) or npm
 - **Bun runtime:** Bun ≥ 1.3.10
 
 ---
 
 ## Install
+
+### Standalone binary (recommended)
+
+One executable per platform with the runtime, every surface and all bundled
+assets inside — no Node.js, npm or `node_modules`:
+
+```bash
+# macOS / Linux
+curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
+```
+
+```powershell
+# Windows
+irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+```
+
+The installers download the build for your OS/CPU (musl is detected on
+Linux), verify it against the release `SHA256SUMS`, and install `wstack` plus a
+`wrongstack` alias into `~/.wrongstack/bin`. The musl builds need the C++
+runtime (`apk add libstdc++ libgcc` on Alpine). Set `WSTACK_VERSION=1.2.3` to pin a
+release or `WSTACK_INSTALL_DIR` to install elsewhere. You can also download a
+`wstack-<os>-<arch>` file from the
+[releases page](https://github.com/WrongStack/WrongStack/releases) and put it on
+your `PATH` yourself.
+
+On first run the binary unpacks its assets (prompts, skills, design kits,
+grammars, the WebUI/HQ/SimpleUI frontends) once into
+`~/.wrongstack/runtime/<version>/`.
+
+Not available in the binary: the WebUI terminal panel (needs the native
+`node-pty` addon), the Electron desktop shell, and the browser tool unless
+Playwright is installed separately. The HQ systemd installer (`wstack hq
+service install`) manages an npm install; run `wstack hq` under your own
+service manager instead.
+
+### npm / pnpm
 
 ```bash
 npm i -g wrongstack
@@ -241,10 +285,13 @@ authentication and an optional IP/CIDR admission list, see
 Update the CLI in place from inside the tool:
 
 ```bash
-wstack update                 # update via your detected package manager
+wstack update                 # binary: download + verify the latest release; npm: your package manager
 wstack update --check-only    # is a newer release available?
-wstack update --pm pnpm       # force a specific package manager
+wstack update --pm pnpm       # npm installs only: force a specific package manager
 ```
+
+The standalone binary updates from GitHub releases and checks the download
+against the release `SHA256SUMS` before swapping the executable in place.
 
 Or update manually:
 

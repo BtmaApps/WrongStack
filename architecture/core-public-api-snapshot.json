@@ -460,6 +460,7 @@
         "export { buildWin32CmdShimInvocation, type Win32CmdShimInvocation } from './win32-cmd.js';",
         "export { capSageLines, SAGE_INJECTOR_HEADINGS, type SageOutputSplit, splitSageOutputBlock, } from './sage-output-block.js';",
         "export { checkConnectivity, resetConnectivityCache } from './connectivity.js';",
+        "export { cliSpawnArgs, isStandaloneBinary, moduleDirFor, moduleUrlFor, scriptSpawnArgs, standalonePackageDir, wrongstackPackageJsonPath, } from '@wrongstack/persistence';",
         "export { completePartialObject } from './json-repair.js';",
         "export { computeMessageTokens, estimateMessageTokens, estimateRequestTokens, estimateRequestTokensCalibrated, estimateTextTokens, estimateToolDefTokens, estimateToolInputTokens, estimateToolResultTokens, getCalibrationState, type RequestTokenBreakdown, recordActualUsage, resetCalibration, } from './token-estimate.js';",
         "export { createToolOutputSerializer, type ToolOutputSerializerOptions, } from './tool-output-serializer.js';",
@@ -1501,14 +1502,14 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
       "sourceFiles": 41,
-      "sourceLines": 11862
+      "sourceLines": 11863
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 195,
-      "sourceLines": 56392
+      "sourceLines": 56398
     },
     {
       "directory": "core",
@@ -1655,7 +1656,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5088
+      "sourceLines": 5090
     },
     {
       "directory": "skills",
@@ -1711,7 +1712,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 72,
-      "sourceLines": 12826
+      "sourceLines": 12835
     },
     {
       "directory": "wiring",

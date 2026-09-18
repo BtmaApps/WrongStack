@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 import {
   decodeLifecycleIssues,
   KanbanLifecycleError,
@@ -157,11 +158,12 @@ class KanbanServerConnection {
 
   private async spawnServer(): Promise<void> {
     try {
-      const url = new URL('./project-server.js', import.meta.url);
-      if (url.protocol !== 'file:') return;
-      const scriptPath = fileURLToPath(url);
-      if (!fs.existsSync(scriptPath)) return;
-      const args = [scriptPath, '--project-root', this.projectRoot];
+      const url = isStandaloneBinary()
+        ? standaloneDaemonUrl('kanban')
+        : new URL('./project-server.js', import.meta.url);
+      if (url.protocol === 'file:' && !fs.existsSync(fileURLToPath(url))) return;
+      if (url.protocol !== 'file:' && !isStandaloneBinary()) return;
+      const args = daemonSpawnArgs(url, ['--project-root', this.projectRoot]);
       this.serverProcess = spawn(process.execPath, args, {
         detached: true,
         // 'ignore' rather than 'pipe': piping kept two handles open in THIS

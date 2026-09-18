@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T16:42:27.545Z",
+  "generatedAt": "2026-09-18T19:32:23.066Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3846,
-    "testFiles": 3508,
-    "sourceLines": 941402,
+    "sourceFiles": 3848,
+    "testFiles": 3510,
+    "sourceLines": 941989,
     "workspaceEdges": 128,
-    "moduleEdges": 12403,
+    "moduleEdges": 12409,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 958
+    "testOnlyExports": 964
   },
   "errors": [],
   "packageCycles": [],
@@ -147,8 +147,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 497,
-      "testFiles": 512,
+      "sourceFiles": 498,
+      "testFiles": 513,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 512
+          "testFiles": 513
         }
       ]
     },
@@ -375,8 +375,8 @@
     {
       "name": "@wrongstack/persistence",
       "dir": "packages/persistence",
-      "sourceFiles": 6,
-      "testFiles": 9,
+      "sourceFiles": 7,
+      "testFiles": 10,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -387,7 +387,7 @@
         {
           "path": "packages/persistence/tsconfig.test.json",
           "error": null,
-          "testFiles": 9
+          "testFiles": 10
         }
       ]
     },
@@ -4299,6 +4299,12 @@
       },
       {
         "file": "packages/cli/tests/sprint2-reliable-queue.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/standalone-update.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10635,6 +10641,12 @@
       },
       {
         "file": "packages/persistence/tests/sqlite-runtime.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/persistence/tests/standalone-binary.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22266,7 +22278,7 @@
     },
     {
       "file": "packages/cli/src/boot.ts",
-      "lines": 922,
+      "lines": 924,
       "relativeImports": 19
     },
     {
@@ -22491,7 +22503,7 @@
     },
     {
       "file": "packages/kanban/src/server/project-server.ts",
-      "lines": 874,
+      "lines": 883,
       "relativeImports": 10
     },
     {
@@ -22501,7 +22513,7 @@
     },
     {
       "file": "packages/kanban/src/verification/verification-context.ts",
-      "lines": 823,
+      "lines": 824,
       "relativeImports": 3
     },
     {
@@ -22556,7 +22568,7 @@
     },
     {
       "file": "packages/plugins/src/semver-bump/index.ts",
-      "lines": 829,
+      "lines": 832,
       "relativeImports": 0
     },
     {
@@ -23708,6 +23720,18 @@
       "name": "truncateDesc"
     },
     {
+      "file": "packages/cli/src/standalone-update.ts",
+      "name": "parseSha256Sums"
+    },
+    {
+      "file": "packages/cli/src/standalone-update.ts",
+      "name": "replaceExecutable"
+    },
+    {
+      "file": "packages/cli/src/standalone-update.ts",
+      "name": "standaloneAssetName"
+    },
+    {
       "file": "packages/cli/src/subcommands/handlers/auth-local-help.ts",
       "name": "LOCAL_AUTH_FLAGS"
     },
@@ -24722,6 +24746,18 @@
     {
       "file": "packages/persistence/src/sqlite-runtime.ts",
       "name": "isRuntimeSqliteAvailable"
+    },
+    {
+      "file": "packages/persistence/src/standalone-binary.ts",
+      "name": "STANDALONE_DAEMON_ARG"
+    },
+    {
+      "file": "packages/persistence/src/standalone-binary.ts",
+      "name": "STANDALONE_SCRIPT_ARG"
+    },
+    {
+      "file": "packages/persistence/src/standalone-binary.ts",
+      "name": "standaloneAssetRoot"
     },
     {
       "file": "packages/plug-lsp/src/config.ts",

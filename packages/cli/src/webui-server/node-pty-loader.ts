@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isStandaloneBinary } from '@wrongstack/core/utils';
 import { repairNodePtySpawnHelper } from '@wrongstack/webui-server';
 
 interface NodePtyLoaderLogger {
@@ -27,6 +28,12 @@ export function createNodePtyLoader(
 
   return () => {
     if (cachedNodePty !== undefined) return cachedNodePty;
+    // The standalone binary ships without node-pty (a native addon cannot be
+    // embedded); the terminal panel reports itself unavailable there.
+    if (isStandaloneBinary()) {
+      cachedNodePty = null;
+      return null;
+    }
     // Strategy 1: resolve webui via its main export, then walk to package.json.
     try {
       const webuiEntry = requireFromCli.resolve('@wrongstack/webui');

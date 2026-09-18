@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node"]
+    "types": ["node"],
+    // src/factories imports each plugin through the package's own subpath
+    // (`@wrongstack/plugins/<name>`). Resolve that self-reference to source:
+    // the dist shims it would otherwise hit are written after this emit.
+    "paths": {
+      "@wrongstack/plugins/*": ["./src/*/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]

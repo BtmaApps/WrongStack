@@ -11,11 +11,12 @@
 
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 
 export function resolveBundledPromptsDir(): string | undefined {
   try {
     const req = createRequire(import.meta.url);
-    const corePkg = req.resolve('@wrongstack/core/package.json');
+    const corePkg = wrongstackPackageJsonPath('@wrongstack/core', (id) => req.resolve(id));
     return path.join(path.dirname(corePkg), 'data', 'prompts');
   } catch {
     return undefined;

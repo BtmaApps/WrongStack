@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { moduleDirFor } from '@wrongstack/persistence';
 import {
   DESIGN_STACKS,
   type DesignKitEntry,
@@ -339,7 +339,7 @@ function mergeKitTokens(
  */
 export function resolveBundledDesignKitsDir(): string | undefined {
   try {
-    const here = path.dirname(fileURLToPath(import.meta.url));
+    const here = moduleDirFor(import.meta.url, '@wrongstack/core');
     const candidates = [
       path.join(here, 'design-kits'),
       path.join(here, '..', 'design-kits'),

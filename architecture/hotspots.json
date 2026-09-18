@@ -19,7 +19,7 @@
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
-      "lines": 922,
+      "lines": 924,
       "relativeImports": 19
     },
     "packages/cli/src/cli-main.ts": {
@@ -199,7 +199,7 @@
       "relativeImports": 13
     },
     "packages/kanban/src/server/project-server.ts": {
-      "lines": 874,
+      "lines": 883,
       "relativeImports": 10
     },
     "packages/kanban/src/types.ts": {
@@ -207,7 +207,7 @@
       "relativeImports": 1
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 823,
+      "lines": 824,
       "relativeImports": 3
     },
     "packages/mcp/src/authorization.ts": {
@@ -251,7 +251,7 @@
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {
-      "lines": 829,
+      "lines": 832,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {

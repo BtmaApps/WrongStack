@@ -88,6 +88,44 @@ that option writes an `.npmrc` containing `_authToken=${NODE_AUTH_TOKEN}`
 unconditionally, and with no token in the environment pnpm sends the literal
 unexpanded placeholder as a bearer token, so the OIDC exchange never happens.
 
+## Standalone binaries (the primary distribution)
+
+The same tag also builds one self-contained executable per platform — Bun
+runtime, CLI, every project daemon, all surfaces and the package assets in a
+single file — and publishes them as GitHub release assets. This path does not
+touch npm: the `github-release` job depends on the binary jobs, not on the npm
+`publish` job, so a registry problem cannot hold a release back.
+
+| Job | What it does |
+| --- | --- |
+| `binaries` | `node scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `scripts/smoke-binary.mjs` runs the Linux x64 build |
+| `binaries-smoke` | runs the same smoke on real Windows and macOS (arm64) runners |
+| `github-release` | uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
+
+Targets: `windows-x64`, `linux-x64`, `linux-arm64`, `linux-x64-musl`,
+`linux-arm64-musl`, `darwin-x64`, `darwin-arm64`.
+
+Build and smoke locally (Bun required):
+
+```bash
+pnpm build:binary                       # this machine's target only
+node scripts/smoke-binary.mjs           # smoke it
+pnpm build:binaries                     # every target → dist-bin/
+```
+
+How the binary differs from an npm install at runtime — daemon dispatch,
+project-script dispatch, the extracted asset tree, "am I main" guards — is
+documented once in `packages/persistence/src/standalone-binary.ts`; the entry
+that implements it is `scripts/binary/entry.mjs`. Two rules for new code:
+
+- **Dynamic imports must use literal specifiers.** `import(variable)` is
+  invisible to the bundler and silently missing from the binary.
+- **Locate package files through the helpers** (`moduleDirFor`,
+  `wrongstackPackageJsonPath`, `daemonSpawnArgs`, `cliSpawnArgs`,
+  `scriptSpawnArgs`), never through `import.meta.url` or `process.argv[1]`
+  directly. A new runtime asset directory also goes into `ASSETS` in
+  `scripts/build-binaries.mjs`.
+
 ## Full gate — `release:check`
 
 A broad correctness sweep run before anything goes to npm:

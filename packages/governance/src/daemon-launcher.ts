@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { daemonSpawnArgs, isStandaloneBinary, standaloneDaemonUrl } from '@wrongstack/persistence';
 
 import type { GovernanceServiceCredential } from './capability-grant.js';
 import { readGovernanceDaemonMetadata } from './daemon-metadata.js';
@@ -95,6 +96,8 @@ export function resolveGovernanceDaemonAvailability(
   moduleUrl = import.meta.url,
   exists: (filePath: string) => boolean = fs.existsSync,
 ): GovernanceDaemonAvailability {
+  if (isStandaloneBinary())
+    return { kind: 'available', entrypoint: standaloneDaemonUrl('governance') };
   try {
     const entrypoint = new URL('./project-daemon.js', moduleUrl);
     if (entrypoint.protocol === 'file:' && exists(fileURLToPath(entrypoint))) {
@@ -184,11 +187,12 @@ export function launchGovernanceProjectDaemonWithRuntime(
       process.execPath,
       [
         ...(runtime.execArgv ?? []),
-        fileURLToPath(runtime.entrypoint),
-        '--project-root',
-        projectRoot,
-        '--project-id',
-        options.projectId,
+        ...daemonSpawnArgs(runtime.entrypoint, [
+          '--project-root',
+          projectRoot,
+          '--project-id',
+          options.projectId,
+        ]),
       ],
       {
         cwd: runtime.cwd ?? projectRoot,
