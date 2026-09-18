@@ -182,7 +182,17 @@ export type Action =
   | { type: 'themePickerClose' }
   | { type: 'themePickerMove'; delta: number }
   | { type: 'themePickerHint'; text?: string | undefined }
-  | { type: 'skillPickerOpen'; entries: SkillEntry[] }
+  | {
+      type: 'skillPickerOpen';
+      entries: SkillEntry[];
+      mention?: import('@wrongstack/core/skill-mentions').SkillMention | undefined;
+    }
+  | {
+      type: 'skillMentionResults';
+      entries: SkillEntry[];
+      hint?: string | undefined;
+      mention: import('@wrongstack/core/skill-mentions').SkillMention;
+    }
   | { type: 'skillPickerClose' }
   | { type: 'skillPickerMove'; delta: number }
   | { type: 'skillPickerHint'; text?: string | undefined }

@@ -49,6 +49,7 @@ export interface PickerKeysHost {
   onResumePickerEnter: (() => Promise<void>) | undefined;
   onSessionsPanelEnter: (() => Promise<void>) | undefined;
   onProjectPickerEnter: (() => Promise<void>) | undefined;
+  onSkillMentionPick?: ((name: string) => void) | undefined;
   onSlashPickerEnter: (() => void) | undefined;
   onSettingsPickerEnter: (() => void) | undefined;
   onPluginPickerToggle: (() => Promise<void> | void) | undefined;

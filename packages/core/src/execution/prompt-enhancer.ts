@@ -1,7 +1,8 @@
+import { preserveSkillMentions } from '../skills/mentions.js';
 import type { ContentBlock } from '../types/blocks.js';
 import { isTextBlock } from '../types/blocks.js';
-import type { Message } from '../types/messages.js';
 import type { MemoryEntry, MemoryScope, MemoryStore } from '../types/memory.js';
+import type { Message } from '../types/messages.js';
 import type {
   Provider,
   ReasoningConfig,
@@ -10,8 +11,8 @@ import type {
   Request,
 } from '../types/provider.js';
 import { toErrorMessage } from '../utils/error.js';
-import type { OneShotOrchestrator } from './one-shot-llm.js';
 import { readBundledInstructionText } from '../utils/instruction-file.js';
+import type { OneShotOrchestrator } from './one-shot-llm.js';
 
 /**
  * Prompt refinement ("did you mean this?").
@@ -320,7 +321,10 @@ export function parseBilingualEnhancement(raw: string, original: string): Enhanc
   const refinedLanguage = latestMessageLanguage(refined);
   if (inputLanguage === 'non_english' && refinedLanguage === 'english') return null;
   if (inputLanguage === 'unknown' && refinedLanguage === 'unknown') return null;
-  return { refined, english };
+  return {
+    refined: preserveSkillMentions(original, refined),
+    english: preserveSkillMentions(original, english),
+  };
 }
 
 /** A single text-only conversation turn used as refiner context. */

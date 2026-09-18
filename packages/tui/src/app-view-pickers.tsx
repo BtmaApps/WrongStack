@@ -164,6 +164,7 @@ export function AppViewPickers({
         ) : null}
         {state.skillPicker.open ? (
           <SkillPicker
+            mention={Boolean(state.skillPicker.mention)}
             entries={state.skillPicker.entries}
             selected={state.skillPicker.selected}
             hint={state.skillPicker.hint}

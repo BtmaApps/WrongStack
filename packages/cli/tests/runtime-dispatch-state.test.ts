@@ -226,3 +226,15 @@ describe('prepareRuntimeDispatch', () => {
     expect(state.configStore.update).not.toHaveBeenCalled();
   });
 });
+
+it('registers explicit skill mentions independently of automatic suggestions', async () => {
+  const state = harness();
+  const use = vi.fn();
+  const input = {
+    ...state.input,
+    skillLoader: { list: vi.fn(async () => []), invalidateCache: vi.fn() },
+    pipelines: { request: { use } },
+  };
+  await prepareRuntimeDispatch(input as never);
+  expect(use).toHaveBeenCalledWith(expect.objectContaining({ name: 'skills.mentions' }));
+});

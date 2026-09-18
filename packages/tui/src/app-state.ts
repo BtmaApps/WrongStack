@@ -280,6 +280,7 @@ export type State = {
   };
   /** Skill picker — lists discoverable skills and details the focused row. */
   skillPicker: {
+    mention?: import('@wrongstack/core/skill-mentions').SkillMention | undefined;
     open: boolean;
     entries: SkillEntry[];
     selected: number;

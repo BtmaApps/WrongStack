@@ -70,6 +70,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'sidebarScrollSet',
   'sidebarScrollReset',
   'toggleSidebarFocus',
+  'skillMentionResults',
   'skillPickerClose',
   'skillPickerHint',
   'skillPickerMove',

@@ -324,7 +324,7 @@ export const Input = memo(function Input({
   status,
   animationStyle = 'rainbow',
   workingTime,
-  footerHint = 'Enter send · @ file · / commands',
+  footerHint = 'Enter send · @ file · / commands · $ skill',
   hidden,
   placeholderHeight,
   onKey,

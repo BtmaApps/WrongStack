@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createRef } from 'react';
+import { act, createRef, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BrainPanel } from '../src/brain-panel.js';
@@ -317,5 +317,71 @@ describe('SimpleUI interaction components', () => {
       (container.querySelector('[aria-label="Refresh mailbox"]') as HTMLButtonElement).click(),
     );
     expect(onRefresh).toHaveBeenCalledOnce();
+  });
+});
+
+describe('SimpleUI inline skill mentions', () => {
+  it('queries the catalog and inserts with Tab without submitting', async () => {
+    const { socket, handlers } = socketHarness();
+    const submit = vi.fn();
+    function Harness() {
+      const [draft, setDraft] = useState('');
+      const ref = useRef<HTMLTextAreaElement>(null);
+      return (
+        <Composer
+          {...({
+            draft,
+            setDraft,
+            textareaRef: ref,
+            skillSocket: socket,
+            session: { id: 'mention-session' },
+            connection: 'open',
+            fileRefs: [],
+            setFileRefs: vi.fn(),
+            fileMention: null,
+            setFileMention: vi.fn(),
+            fileMatches: [],
+            filePickerIndex: 0,
+            setFilePickerIndex: vi.fn(),
+            fileSearching: false,
+            running: false,
+            pendingConfirm: null,
+            notice: null,
+            queue: [],
+            refineState: null,
+            attachedImages: [],
+            visionSupported: false,
+            submitWith: submit,
+          } as unknown as React.ComponentProps<typeof Composer>)}
+        />
+      );
+    }
+    const container = mount(<Harness />);
+    const textarea = container.querySelector('textarea')!;
+    act(() => {
+      textarea.focus();
+      setValue(textarea, 'Review $tes');
+    });
+    const call = socket.send.mock.calls.find((call) => call[0] === 'skills.list');
+    expect(call).toBeDefined();
+    await act(async () => {
+      for (const handler of handlers)
+        handler({
+          type: 'skills.list',
+          payload: {
+            requestId: call?.[1]?.requestId,
+            skills: [{ name: 'testing', description: 'Test software' }],
+          },
+        });
+    });
+    expect(container.querySelector('[role="option"]')?.textContent).toContain('$testing');
+    act(() => {
+      textarea.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+      );
+    });
+    expect(textarea.value).toBe('Review $testing ');
+    expect(submit).not.toHaveBeenCalled();
+    expect(container.querySelector('[aria-label="Skills"]')).toBeNull();
   });
 });

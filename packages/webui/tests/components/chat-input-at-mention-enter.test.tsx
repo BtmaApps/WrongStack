@@ -28,13 +28,14 @@ function flushRaf() {
   for (const cb of cbs) if (cb) cb(performance.now());
 }
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── WS hook mock ──────────────────────────────────────────────────────
 // We only care that handleSubmit is or isn't invoked. `sendMessage` is
 // the cheapest visible side-effect: it's called from handleSubmit on a
 // plain send (and not at all when the picker swallows the Enter key).
+const skillListeners = new Set<(message: unknown) => void>();
 const wsMock = {
   sendMessage: vi.fn((_content: string, _imageBase64?: string) => 'msg_id'),
   sendAbort: vi.fn(),
@@ -59,6 +60,12 @@ const wsMock = {
     isConnected: true,
     supportsCapability: vi.fn(() => true),
     send: vi.fn(),
+    on: vi.fn((_type: string, callback: (message: unknown) => void) => {
+      if (_type === 'skills.list') skillListeners.add(callback);
+      return () => {
+        skillListeners.delete(callback);
+      };
+    }),
     onStatus: () => () => {},
     // FilePicker (and therefore FileMentionPicker) calls
     // ws.client.listFiles() to fetch file matches. We pre-stub the WS
@@ -164,6 +171,8 @@ vi.mock('@/components/FilePicker', () => ({
 }));
 
 beforeEach(() => {
+  skillListeners.clear();
+  wsMock.client.send.mockClear();
   wsMock.sendMessage.mockClear();
   wsMock.sendAbort.mockClear();
   wsMock.refineModel.mockClear();
@@ -243,4 +252,60 @@ describe('ChatInput — @-mention Enter does not submit', () => {
     expect(wsMock.sendMessage).toHaveBeenCalledTimes(1);
     expect(wsMock.sendMessage).toHaveBeenCalledWith('look at @index', undefined);
   });
+});
+
+describe('ChatInput skill mentions', () => {
+  it('inserts a selected skill with Enter without submitting the draft', () => {
+    render(<ChatInput />);
+    const textarea = screen.getByPlaceholderText(/Message the agent/) as HTMLTextAreaElement;
+    typeInto(textarea, 'Review $tes');
+    const requestId = wsMock.client.send.mock.calls.find(
+      (call) => call[0]?.type === 'skills.list',
+    )?.[1]?.requestId;
+    expect(requestId).toBeTruthy();
+    act(() => {
+      for (const handler of skillListeners)
+        handler({
+          type: 'skills.list',
+          payload: { requestId, skills: [{ name: 'testing', description: 'Test software' }] },
+        });
+    });
+    expect(screen.getByRole('option', { name: /testing/ })).toBeTruthy();
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(textarea.value).toBe('Review $testing ');
+    expect(wsMock.sendMessage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('listbox', { name: 'Skills' })).toBeNull();
+  });
+  it('dismisses the menu with Escape while preserving the typed mention', () => {
+    render(<ChatInput />);
+    const textarea = screen.getByPlaceholderText(/Message the agent/) as HTMLTextAreaElement;
+    typeInto(textarea, '$missing');
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(wsMock.sendMessage).not.toHaveBeenCalled();
+    fireEvent.keyDown(textarea, { key: 'Escape' });
+    expect(textarea.value).toBe('$missing');
+    expect(screen.queryByRole('listbox', { name: 'Skills' })).toBeNull();
+  });
+});
+
+it('restores the insertion caret synchronously in the middle of a draft', () => {
+  render(<ChatInput />);
+  const textarea = screen.getByPlaceholderText(/Message the agent/) as HTMLTextAreaElement;
+  typeInto(textarea, 'Use $tes for this');
+  textarea.setSelectionRange(8, 8);
+  fireEvent.select(textarea);
+  const requestId = wsMock.client.send.mock.calls.find(
+    (call) => call[0]?.type === 'skills.list',
+  )?.[1]?.requestId;
+  act(() => {
+    for (const handler of skillListeners)
+      handler({
+        type: 'skills.list',
+        payload: { requestId, skills: [{ name: 'testing', description: 'Test software' }] },
+      });
+  });
+  fireEvent.keyDown(textarea, { key: 'Tab' });
+  expect(textarea.value).toBe('Use $testing for this');
+  expect(textarea.selectionStart).toBe(13);
+  expect(wsMock.sendMessage).not.toHaveBeenCalled();
 });

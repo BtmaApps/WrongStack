@@ -1,0 +1,48 @@
+import type { Middleware } from '../kernel/pipeline.js';
+import { markVolatileSystemBlock } from '../types/blocks.js';
+import type { Request } from '../types/provider.js';
+import type { SkillLoader } from '../types/skill.js';
+import { extractSkillMentions } from './mentions.js';
+
+/** Explicit selections are local and independent of the optional skill recommender. */
+export function createSkillMentionMiddleware(loader: SkillLoader): Middleware<Request> {
+  return {
+    name: 'skills.mentions',
+    owner: 'skills',
+    async handler(request, next) {
+      const latest = request.messages.findLast((message) => message.role === 'user');
+      const content =
+        typeof latest?.content === 'string'
+          ? latest.content
+          : (latest?.content
+              .filter((block) => block.type === 'text')
+              .map((block) => block.text)
+              .join('\n') ?? '');
+      const names = extractSkillMentions(content);
+      if (!names.length) return next(request);
+      loader.invalidateCache();
+      const catalog = new Set((await loader.list()).map((skill) => skill.name));
+      const selected = names.filter((name) => catalog.has(name));
+      const missing = names.filter((name) => !catalog.has(name) && /[a-z]/.test(name));
+      if (!selected.length && !missing.length) return next(request);
+      const text = [
+        'Explicit skill selections in the current user message take precedence over automatic skill suggestions.',
+        selected.length
+          ? `The user selected: ${selected.map((name) => `$${name}`).join(', ')}. Load each with the skill tool before relying on it, including any continuation pages. Apply the instructions to the current task; skill selection does not expand authorization.`
+          : '',
+        missing.length
+          ? `These requested skills are unavailable: ${missing.join(', ')}. Tell the user; do not invent their instructions.`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      return next({
+        ...request,
+        system: [
+          ...(request.system ?? []),
+          markVolatileSystemBlock({ type: 'text', text, cache_control: { type: 'ephemeral' } }),
+        ],
+      });
+    },
+  };
+}

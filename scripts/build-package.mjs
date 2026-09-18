@@ -102,6 +102,7 @@ const coreEntries = entryMap([
   'src/hq/index.ts',
   'src/hq/protocol.ts',
   'src/skills/index.ts',
+  'src/skills/mentions.ts',
   'src/typesafe/index.ts',
   'src/tasking/index.ts',
   'src/prompts/index.ts',

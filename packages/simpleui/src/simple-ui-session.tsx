@@ -1069,6 +1069,7 @@ export function SimpleUiSession() {
         <ErrorBoundary>
           <footer className="composer-wrap">
             <Composer
+              skillSocket={socketRef.current}
               draft={draft}
               setDraft={setDraft}
               fileRefs={fileRefs}

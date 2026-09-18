@@ -10,7 +10,7 @@
   },
   "homepage": "https://github.com/WrongStack/WrongStack#readme",
   "bugs": "https://github.com/WrongStack/WrongStack/issues",
-  "author": "ECOSTACK TECHNOLOGY OÜ",
+  "author": "ECOSTACK TECHNOLOGY O\u00dc",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -225,6 +225,10 @@
     "./wiring/proxy-rewrite": {
       "types": "./dist/wiring/proxy-rewrite.d.ts",
       "import": "./dist/wiring/proxy-rewrite.js"
+    },
+    "./skill-mentions": {
+      "types": "./dist/skills/mentions.d.ts",
+      "import": "./dist/skills/mentions.js"
     }
   },
   "files": [

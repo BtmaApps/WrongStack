@@ -20,3 +20,30 @@ Run `/help <command>` for the full registered help of authoring and import flags
 
 - `packages/core/src/plugins/skills-plugin.ts` — all seven registrations
 - `packages/core/src/skills/skill-installer.ts` — install, import, update, and uninstall operations
+
+
+## Inline skill mentions
+
+Type `$` in the TUI, WebUI, or SimpleUI composer to search installed skills by
+name or description. Use Up/Down and Enter/Tab to insert a selection; the browser
+menus also support clicking. Selecting a skill does not send the draft. Escape
+dismisses the menu and leaves the text intact.
+
+Examples:
+
+```text
+$code-review Review the current changes.
+$code-review $testing Review this module and add regression coverage.
+```
+
+The shared runtime recognizes the names against the installed catalog and tells
+the agent to load the selected instructions before using them. This works
+without enabling the automatic skill recommender. Unknown skill names are
+reported as unavailable; mentions do not grant additional tool permissions.
+Prompt refinement preserves the selected tokens.
+
+Inline/fenced code and escaped dollar signs are literal: `\$testing` and code
+examples do not select a skill. Uppercase shell variables such as `$HOME` and
+scoped variables such as `$env:PATH` are not skill mentions. For ordinary shell
+snippets containing lowercase dollar variables, use backticks or a code block.
+The long form `/skill use <name> <task>` remains available in CLI/TUI.

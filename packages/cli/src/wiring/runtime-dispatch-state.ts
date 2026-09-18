@@ -2,7 +2,7 @@
 import type { Agent, Context } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
-import { createSkillSuggestionSetup } from '@wrongstack/core/skills';
+import { createSkillMentionMiddleware, createSkillSuggestionSetup } from '@wrongstack/core/skills';
 import type { Config, ConfigStore, MemoryPort, SkillLoader } from '@wrongstack/core/types';
 import { getToolDescriptionMode } from '@wrongstack/core/utils';
 import type { PluginPickerItem, ToolPickerItem } from '../execute-deps.js';
@@ -50,6 +50,8 @@ export async function prepareRuntimeDispatch(input: RuntimeDispatchStateInput) {
     getSessionId: () => input.agent.ctx.session.id,
   });
   if (skillSuggestion) input.pipelines.request.use(skillSuggestion);
+  if (input.skillLoader && input.getConfig().features?.skills !== false)
+    input.pipelines.request.use(createSkillMentionMiddleware(input.skillLoader));
 
   const disposeIndexing = await setupCodebaseIndexing({
     config: input.getConfig(),

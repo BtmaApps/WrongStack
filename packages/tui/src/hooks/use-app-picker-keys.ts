@@ -1,3 +1,4 @@
+import { insertSkillMention } from '@wrongstack/core/skill-mentions';
 import type { PromptUsageStore } from '@wrongstack/core/storage';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { Dispatch, MutableRefObject } from 'react';
@@ -345,6 +346,12 @@ export function useAppPickerKeys({
   };
 
   return usePickerKeys({
+    onSkillMentionPick: (name) => {
+      const mention = state.skillPicker.mention;
+      if (!mention) return;
+      const next = insertSkillMention(state.buffer, mention, name);
+      setDraft(next.text, next.cursor);
+    },
     state,
     dispatch,
     lastEnterAtRef,

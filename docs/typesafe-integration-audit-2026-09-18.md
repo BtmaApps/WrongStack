@@ -96,7 +96,15 @@ existing two consumers are the concrete useful deployment scope today.
 - Core and CLI `tsc --noEmit --incremental false`: passed.
 - `node scripts/check-test-typecheck.mjs`: passed, zero new diagnostics against
   the repository baseline (pre-existing fixture diagnostics remain).
-- Full `pnpm test`: result recorded below when complete.
+- Full `pnpm test`: 3,095 files and 44,605 tests passed; 8 files/34 tests skipped.
+  Four WebUI protocol suites failed to load the `@wrongstack/core/skill-mentions`
+  export introduced by concurrent workspace work during the run. Fresh isolated
+  execution of those four suites passed all 86 tests without a TypeSafe patch.
+  The alias map reads core exports at test startup, which is consistent with a
+  stale alias map in the long-running suite. The original full run remains
+  partial; it was not rerun in full after those concurrent edits.
+- Separate WebUI test stage: 395 files and 5,499 tests passed (the root script's
+  `&&` did not reach it after the import failures).
 - Live API calls, live UI interaction, packaging/release checks and installed
   service rebuild/restart were not performed.
 

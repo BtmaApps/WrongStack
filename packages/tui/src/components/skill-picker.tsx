@@ -5,6 +5,7 @@ import { Box, Text } from '../ink.js';
 import { wrapRefinementPreview } from './enhance-panel.js';
 
 interface SkillPickerProps {
+  mention?: boolean | undefined;
   entries: readonly SkillEntry[];
   selected: number;
   hint?: string | undefined;
@@ -14,6 +15,7 @@ interface SkillPickerProps {
 
 /** Interactive two-pane skill browser, matching the `/theme` picker layout. */
 export function SkillPicker({
+  mention = false,
   entries,
   selected,
   hint,
@@ -56,7 +58,9 @@ export function SkillPicker({
         ━━ Skills ━━
       </Text>
       <Text dimColor wrap="truncate-end">
-        ↑↓ · Enter open · Esc cancel
+        {mention
+          ? '↑↓ · Enter/Tab insert · Esc dismiss · keep typing to filter'
+          : '↑↓ · Enter open · Esc cancel'}
       </Text>
       {hasAbove ? <Text dimColor> … {start} more above</Text> : null}
       {visible.map((entry, offset) => {

@@ -423,7 +423,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Skill picker ──────────────────────────────────────────
   if (state.skillPicker.open) {
-    if (key.ctrl || key.meta) return true;
+    if (key.ctrl || key.meta) return !state.skillPicker.mention;
     if (key.escape) {
       dispatch({ type: 'skillPickerClose' });
       return true;
@@ -440,15 +440,20 @@ export function tryAuthModelPickerKeys(
       dispatch({ type: 'skillPickerMove', delta: 1 });
       return true;
     }
-    if (isEnter) {
+    if (state.skillPicker.mention && isEnter && key.shift) return false;
+    if (isEnter || (key.tab && state.skillPicker.mention)) {
       if (debouncedEnter(host)) return true;
       const entry = state.skillPicker.entries[state.skillPicker.selected];
-      if (!entry) return true;
+      if (!entry) {
+        dispatch({ type: 'skillPickerClose' });
+        return true;
+      }
       dispatch({ type: 'skillPickerClose' });
-      host.submit?.(`/skill ${entry.name}`);
+      if (state.skillPicker.mention) host.onSkillMentionPick?.(entry.name);
+      else host.submit?.(`/skill ${entry.name}`);
       return true;
     }
-    return true;
+    return !state.skillPicker.mention;
   }
 
   return false;

@@ -43,6 +43,7 @@ import { useQueueManager } from './hooks/use-queue-manager.js';
 import { useSessionInterruptController } from './hooks/use-session-interrupt-controller.js';
 import { useSessionRewind } from './hooks/use-session-rewind.js';
 import { useShadowPanel } from './hooks/use-shadow-panel.js';
+import { useSkillMentionPicker } from './hooks/use-skill-mention-picker.js';
 import { useSlashPicker } from './hooks/use-slash-picker.js';
 import { useStatusbarViewModel } from './hooks/use-statusbar-view-model.js';
 import { useSubagentModelsPanel } from './hooks/use-subagent-models-panel.js';
@@ -516,6 +517,8 @@ export function App(props: AppProps): React.ReactElement {
     ...(tokenRefresh ? { tokenRefresh } : {}),
   });
   const { fleetCounts } = statusbar;
+
+  useSkillMentionPicker(state, props.skillLoader, dispatch);
 
   const acceptSlashPickerSelection = useSlashPicker({
     state,

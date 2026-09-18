@@ -10,16 +10,19 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useSkillMentionPicker } from './hooks/use-skill-mention-picker.js';
 import type { FileMention } from './lib/file-mention.js';
 import { detectFileMention, fileBasename } from './lib/file-mention.js';
 import type { QueuedItem, QueueMode } from './lib/queue-model.js';
 import type { RefineDecision, RefineState } from './lib/refine-model.js';
 import type { StatusNoticeProjection } from './lib/status-notice.js';
+import type { SimpleSocket } from './lib/ws.js';
 import { QueuedMessages } from './queued-messages.js';
 import { RefinePanel } from './refine-panel.js';
 import type { PendingConfirm, SessionInfo } from './types.js';
 
 interface ComposerProps {
+  skillSocket?: SimpleSocket | null | undefined;
   draft: string;
   setDraft: (value: string) => void;
   fileRefs: string[];
@@ -72,6 +75,7 @@ function safeLine(value: unknown): string {
 }
 
 export function Composer({
+  skillSocket,
   draft,
   setDraft,
   fileRefs,
@@ -108,6 +112,14 @@ export function Composer({
   onRemoveImage,
   visionSupported,
 }: ComposerProps) {
+  const skillMentions = useSkillMentionPicker(
+    draft,
+    setDraft,
+    textareaRef,
+    skillSocket,
+    session?.id,
+    connection,
+  );
   const empty = !draft.trim() && fileRefs.length === 0 && attachedImages.length === 0;
   const offline = connection !== 'open';
   // While the refine panel owns the text, the composer must not accept a
@@ -218,7 +230,8 @@ export function Composer({
           submitWith('btw');
         }}
       >
-        {fileMention && (
+        {skillMentions.popup}
+        {fileMention && !skillMentions.open && (
           <div className="file-picker" role="listbox" aria-label="Project files">
             <div className="file-picker-heading">
               <span>PROJECT FILES{fileMention.query && ` · ${fileMention.query}`}</span>
@@ -294,25 +307,31 @@ export function Composer({
         <textarea
           ref={textareaRef}
           aria-label="Message"
+          aria-controls={skillMentions.open ? skillMentions.listId : undefined}
+          aria-activedescendant={skillMentions.open ? skillMentions.activeId : undefined}
+          aria-autocomplete="list"
           value={draft}
           placeholder={
             offline
               ? 'Waiting for connection…'
               : running
-                ? 'Add to the run…  ENTER rides alongside · @ file'
-                : 'Tell WrongStack what to do…  @ file'
+                ? 'Add to the run…  ENTER rides alongside · @ file · $ skill'
+                : 'Tell WrongStack what to do…  @ file · $ skill'
           }
           disabled={locked}
           onChange={(event) => {
             const value = event.target.value;
             setDraft(value);
+            skillMentions.setCursor(event.target.selectionStart ?? value.length);
             setFileMention(detectFileMention(value, event.target.selectionStart ?? value.length));
           }}
           onSelect={(event) => {
             const textarea = event.currentTarget;
+            skillMentions.setCursor(textarea.selectionStart);
             setFileMention(detectFileMention(textarea.value, textarea.selectionStart));
           }}
           onKeyDown={(event) => {
+            if (skillMentions.onKeyDown(event)) return;
             if (fileMention) {
               if (event.key === 'ArrowDown') {
                 event.preventDefault();

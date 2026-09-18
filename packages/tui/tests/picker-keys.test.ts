@@ -7,6 +7,7 @@ import type { ModeOption } from '../src/components/mode-picker.js';
 import type { ProviderOption } from '../src/components/model-picker.js';
 import { useAppPickerKeys } from '../src/hooks/use-app-picker-keys.js';
 import { type PickerKeysHost, usePickerKeys } from '../src/hooks/use-picker-keys.js';
+import { tryAuthModelPickerKeys } from '../src/hooks/use-picker-keys-auth-model.js';
 
 function key(overrides: Partial<KeyEvent> = {}): KeyEvent {
   return {
@@ -3273,5 +3274,33 @@ describe('usePickerKeys — /model effort strip', () => {
         },
       }),
     );
+  });
+});
+
+describe('inline skill mention selection', () => {
+  it('inserts on Tab and keeps typing routed to the composer', () => {
+    const host = makeHost(
+      baseState({
+        skillPicker: {
+          open: true,
+          entries: [
+            {
+              name: 'testing',
+              source: 'bundled',
+              trigger: 'Tests',
+              scope: [],
+              path: '/testing/SKILL.md',
+            },
+          ],
+          selected: 0,
+          mention: { start: 0, end: 4, query: 'tes' },
+        },
+      }),
+    );
+    host.onSkillMentionPick = vi.fn();
+    expect(tryAuthModelPickerKeys(host, 't', key(), false, () => false)).toBe(false);
+    expect(tryAuthModelPickerKeys(host, '', key({ tab: true }), false, () => false)).toBe(true);
+    expect(host.onSkillMentionPick).toHaveBeenCalledWith('testing');
+    expect(host.submit).not.toHaveBeenCalled();
   });
 });

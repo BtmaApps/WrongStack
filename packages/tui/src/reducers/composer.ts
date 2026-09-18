@@ -60,6 +60,7 @@ const composerActionTypes = [
   'modePickerMove',
   'modePickerHint',
   'skillPickerOpen',
+  'skillMentionResults',
   'skillPickerClose',
   'skillPickerMove',
   'skillPickerHint',
@@ -549,11 +550,32 @@ export function reduceComposer(state: State, action: ComposerAction): State {
         ...h.closePanels(state),
         skillPicker: {
           open: true,
+          mention: action.mention,
           entries: action.entries,
           selected: 0,
           hint: undefined,
         },
       };
+    case 'skillMentionResults': {
+      const current = state.skillPicker.mention;
+      if (
+        !state.skillPicker.open ||
+        !current ||
+        current.start !== action.mention.start ||
+        current.end !== action.mention.end ||
+        current.query !== action.mention.query
+      )
+        return state;
+      return {
+        ...state,
+        skillPicker: {
+          ...state.skillPicker,
+          entries: action.entries,
+          selected: 0,
+          hint: action.hint,
+        },
+      };
+    }
     case 'skillPickerClose':
       return {
         ...state,

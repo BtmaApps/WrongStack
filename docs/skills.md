@@ -434,3 +434,10 @@ brain — it holds the authoring rules and workflow. Always run
 The tool reports `nextOffset` when a body or resource needs another page. Continue with `skill({ name, offset: nextOffset })`, or include the same `resource` when reading a resource. Read all instruction pages before relying on the skill.
 
 Export all creates complete ZIP packages including scripts, references, and binary assets. The detail view's single-file export downloads only Markdown. Registry references may select one skill using `owner/repo#skill-name`; updates by skill name preserve that selection.
+
+
+You can also select skills inline: `$code-review Review these changes.` Type `$`
+in the TUI, WebUI, or SimpleUI composer for autocomplete. Multiple mentions are
+supported; Enter/Tab inserts a selection without submitting. See
+[inline skill mentions](slash/skills.md#inline-skill-mentions) for literal syntax
+and refinement behavior.

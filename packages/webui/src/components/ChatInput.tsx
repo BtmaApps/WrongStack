@@ -29,6 +29,7 @@ import {
   resolveCancelInput,
   useSessionDraft,
 } from './ChatInput/session-draft.js';
+import { useSkillMentionPicker } from './ChatInput/skill-mention-picker.js';
 import { detectAtMention } from './ChatInput/slash-commands.js';
 import { SlashCommandPopup } from './ChatInput/slash-popup.js';
 import { runChatSlashCommand } from './ChatInput/slash-routing.js';
@@ -111,6 +112,14 @@ export function ChatInput({
   const topicCheckBusyRef = useRef(false);
   const topicCheckAbortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const skillMentionSessionId = useActiveSessionId();
+  const skillMentions = useSkillMentionPicker(
+    input,
+    setInput,
+    textareaRef,
+    client,
+    skillMentionSessionId,
+  );
   const fileRefs = useFileReferenceStore((s) => s.refs);
   const { removeRef, clearRefs } = useFileReferenceStore.getState();
 
@@ -380,6 +389,7 @@ export function ChatInput({
           </div>
         )}
         <div className="relative w-full flex-1">
+          {skillMentions.popup}
           <FileMentionPicker
             atMention={atMention}
             input={input}
@@ -388,7 +398,7 @@ export function ChatInput({
             setAtMention={setAtMention}
           />
 
-          {!atMention && (
+          {!atMention && !skillMentions.open && (
             <SlashCommandPopup
               suggestions={slashSuggestions}
               selectedIndex={slashIndex}
@@ -401,6 +411,9 @@ export function ChatInput({
           )}
           <textarea
             ref={textareaRef}
+            aria-controls={skillMentions.open ? skillMentions.listId : undefined}
+            aria-activedescendant={skillMentions.open ? skillMentions.activeId : undefined}
+            aria-autocomplete="list"
             data-chat-textarea
             value={input}
             onChange={(e) => {
@@ -413,12 +426,16 @@ export function ChatInput({
               }
               const cur = e.target.selectionStart ?? v.length;
               setAtMention(detectAtMention(v, cur));
+              skillMentions.setCursor(cur);
             }}
             onSelect={(e) => {
               const ta = e.currentTarget;
               setAtMention(detectAtMention(ta.value, ta.selectionStart));
+              skillMentions.setCursor(ta.selectionStart);
             }}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(event) => {
+              if (!skillMentions.onKeyDown(event)) handleKeyDown(event);
+            }}
             onPaste={onTextPaste}
             placeholder={
               !client?.isConnected
@@ -438,6 +455,7 @@ export function ChatInput({
             disabled={!client?.isConnected || topicCheckBusy}
           />
 
+          <div className="px-1 pt-1 text-xs text-muted-foreground">$ skill · @ file</div>
           <DraftTokenCounter
             input={input}
             lastInputTokens={lastInputTokens}

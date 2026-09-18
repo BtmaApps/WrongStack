@@ -1,6 +1,15 @@
 // The two core types the projector's input names. Re-exported for the same
 // reason as the projector itself: SimpleUI reaches core only through this
 // package.
+
+export {
+  detectSkillMention,
+  extractSkillMentions,
+  insertSkillMention,
+  matchSkillMentions,
+  type SkillMention,
+  type SkillMentionCandidate,
+} from '@wrongstack/core/skill-mentions';
 export type {
   Message,
   SessionEvent,

@@ -75,7 +75,7 @@ import {
 } from '@wrongstack/core/execution';
 import { HookRegistry, HookRunner } from '@wrongstack/core/hooks';
 import { TOKENS } from '@wrongstack/core/kernel';
-import { createSkillSuggestionSetup } from '@wrongstack/core/skills';
+import { createSkillMentionMiddleware, createSkillSuggestionSetup } from '@wrongstack/core/skills';
 import { type AnnotationsStore, SessionMemoryConsolidator } from '@wrongstack/core/storage';
 import {
   CONTEXT_WINDOW_MODE_PINNED_META_KEY,
@@ -302,6 +302,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     getSessionId: () => input.sessionGetter().id,
   });
   if (skillSuggestion) pipelines.request.use(skillSuggestion);
+  if (config.features.skills && input.skillLoader)
+    pipelines.request.use(createSkillMentionMiddleware(input.skillLoader));
   const codebaseIndexing = setupWebUICodebaseIndexing({
     config,
     context,

@@ -28,6 +28,7 @@ export {
   type ManifestData,
   SkillManifestStore,
 } from './manifest-store.js';
+export { createSkillMentionMiddleware } from './mention-middleware.js';
 export { githubDirectAdapter } from './registry/github-direct-adapter.js';
 export type {
   RegistrySearchOptions,

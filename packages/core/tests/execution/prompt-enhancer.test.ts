@@ -703,3 +703,14 @@ describe('recentTextTurns', () => {
     expect(out[0]!.text.endsWith('…')).toBe(true);
   });
 });
+
+it('keeps selected skills when the refiner drops their mention tokens', () => {
+  const candidate =
+    'Review the current changes and report any defects with clear reproduction steps.';
+  const result = parseBilingualEnhancement(
+    `${candidate}\n---\n${candidate}`,
+    '$code-review Review the current changes and report defects.',
+  );
+  expect(result?.refined).toContain('$code-review');
+  expect(result?.english).toContain('$code-review');
+});
