@@ -79,9 +79,9 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 275,
+      "files": 277,
       "typeOnly": 140,
-      "runtimeOrMixed": 147
+      "runtimeOrMixed": 149
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -159,9 +159,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/storage": {
-      "files": 124,
+      "files": 125,
       "typeOnly": 33,
-      "runtimeOrMixed": 121
+      "runtimeOrMixed": 122
     },
     "@wrongstack/core/tasking": {
       "files": 32,
@@ -209,9 +209,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 594,
+      "files": 595,
       "typeOnly": 57,
-      "runtimeOrMixed": 564
+      "runtimeOrMixed": 565
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -6256,6 +6256,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/tui-project-switch-identity.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/vibe-agent-e2e.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6865,6 +6871,12 @@
       "file": "packages/tui/tests/helpers/app-journey-harness.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/tests/project-switch-banner.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -10265,6 +10277,12 @@
     {
       "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/subagent-models-panel-service.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/subagent-models-tui-e2e.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -19613,6 +19631,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/tests/slash-tuneup.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/tests/subagent-models-tui-e2e.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

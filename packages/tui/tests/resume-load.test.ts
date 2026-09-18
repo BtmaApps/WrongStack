@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { reducer } from '../src/app-reducer.js';
 import type { HistoryEntry } from '../src/components/history/types.js';
 import { TUI_RESUME_HISTORY_BUDGET } from '../src/history-retention.js';
+import { routeModalOverlayKey } from '../src/overlay-key-router.js';
 import {
   appendResumeLog,
   RESUME_SPINNER_FRAMES,
@@ -31,6 +32,24 @@ function load(overrides: Partial<ResumeLoadState> = {}): ResumeLoadState {
 }
 
 describe('resume loading block', () => {
+  it('owns composer keys during replay while leaving exit confirmation usable', () => {
+    const resolve = vi.fn();
+    const host = {
+      state: createTestState({ resumeLoad: load() }),
+      dispatch: vi.fn(),
+      enhanceCancelled: { current: false },
+      enhanceController: { current: null },
+    };
+    const key = { return: true } as Parameters<typeof routeModalOverlayKey>[2];
+    expect(routeModalOverlayKey(host, '', key)).toBe(true);
+    expect(host.dispatch).not.toHaveBeenCalled();
+    host.state = createTestState({
+      resumeLoad: load(),
+      exitConfirm: { resolve, leaderActive: false, subagentCount: 0 },
+    });
+    expect(routeModalOverlayKey(host, 'y', key)).toBe(true);
+    expect(resolve).toHaveBeenCalled();
+  });
   it('never exceeds five rows however long the stage log gets', () => {
     // The block sits in the transcript. A progress indicator that grows without
     // bound would push the conversation it is about to render off the screen.
@@ -106,6 +125,38 @@ describe('resume loading reducer flow', () => {
       sessionId: 'sess_x',
       label: 'my session',
     });
+
+  it('keeps input locked until replay settles and refreshes the attached session banner', () => {
+    const replayed = reducer(started(), {
+      type: 'resumeStreamChunk',
+      sessionId: 'sess_x',
+      entries: [entry(10)],
+      total: 1,
+      done: true,
+      holdUntilSettled: true,
+      banner: {
+        sessionId: 'sess_x',
+        cwd: '/selected',
+        model: 'restored-model',
+        provider: 'restored-provider',
+      },
+    });
+    expect(replayed.resumeLoad?.sessionId).toBe('sess_x');
+    expect(replayed.entries[0]).toMatchObject({
+      kind: 'banner',
+      sessionId: 'sess_x',
+      cwd: '/selected',
+      model: 'restored-model',
+      provider: 'restored-provider',
+    });
+    const foreign = reducer(replayed, { type: 'resumeLoadAbort', sessionId: 'other' });
+    expect(foreign.resumeLoad).toBe(replayed.resumeLoad);
+    const settled = reducer(replayed, { type: 'resumeLoadAbort', sessionId: 'sess_x' });
+    expect(settled.resumeLoad).toBeNull();
+    expect(settled.entries.some((item) => item.kind === 'info' && item.text === 'old-10')).toBe(
+      true,
+    );
+  });
 
   it('wipes the screen to the banner and the block, like /clear', () => {
     const next = started();

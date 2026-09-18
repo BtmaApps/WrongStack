@@ -10,7 +10,7 @@ exports[`<Banner /> snapshot — full rendered output > matches the snapshot at 
 │                                          │
 │                WrongStack                │
 │            TERMINAL AI ENGINE            │
-│                                          │
+│ ──────────────────────────────────────── │
 │ ◆ route  openai › gpt-4o                 │
 │ ⌁ cwd    /workspace/my-project           │
 │                                          │
@@ -34,7 +34,7 @@ exports[`<Banner /> snapshot — full rendered output > matches the snapshot at 
 │           ▀ ▀  ▀   ▀  ▀▀▀  ▀   ▀  ▀▀▀  ▀▀▀▀    ▀   ▀   ▀  ▀▀▀▀ ▀   ▀         │
 │                                                                              │
 │                  BUILT ON THE WRONG STACK. SHIPPED ANYWAY.                   │
-│                                                                              │
+│  ──────────────────────────────────────────────────────────────────────────  │
 │  ◆ route     anthropic › claude-opus-4                                       │
 │  ◇ family    claude                                                          │
 │  ◈ key       •••• ABC                                                        │

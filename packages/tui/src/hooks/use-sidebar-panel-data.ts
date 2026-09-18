@@ -9,10 +9,10 @@
  * Each hook is self-contained: it manages its own refresh interval and
  * cleanup. The hooks must be called unconditionally (rules of hooks), but
  * polling is gated by the `enabled` flag — app-view passes whether the
- * twin currently occupies a visible sidebar slot. While a panel is closed
- * or routed to the bottom region no polling runs (the bottom panels run
- * their own polling when open), so the session pays no IPC probes or disk
- * reads for panels nobody is looking at. Each hook performs an immediate
+ * twin currently occupies a visible sidebar slot. Connections also supplies
+ * the persistent icon strip, so it polls whenever the sidebar is visible.
+ * Hidden surfaces do not poll (bottom panels run their own polling when open).
+ * Each hook performs an immediate
  * first read when enabled, so data is fresh the moment the twin mounts.
  */
 
@@ -105,7 +105,9 @@ export function useSidebarProcessList(enabled = true): {
 // Connections health data
 // ─────────────────────────────────────────────────────────────────────────
 
-interface SidebarConnection {
+export interface SidebarConnection {
+  id?: import('../connections-health.js').ConnectionHealthServiceId | undefined;
+  healthStatus?: import('../connections-health.js').ConnectionHealthStatus | undefined;
   name: string;
   status: 'ok' | 'warn' | 'down' | 'unknown';
   latencyMs?: number | undefined;
@@ -121,17 +123,23 @@ export function useSidebarConnections(
   projectRoot: string,
   enabled = true,
 ): readonly SidebarConnection[] {
-  const [connections, setConnections] = useState<readonly SidebarConnection[]>([]);
+  const [snapshot, setSnapshot] = useState<{
+    root: string;
+    connections: readonly SidebarConnection[];
+  }>({ root: projectRoot, connections: [] });
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       try {
         const { collectConnectionsHealth } = await import('../connections-health.js');
         const report = await collectConnectionsHealth(projectRoot);
         if (cancelled) return;
         const mapped: SidebarConnection[] = report.services.map((s) => ({
+          id: s.id,
+          healthStatus: s.status,
           name: s.label,
           status:
             s.status === 'healthy'
@@ -143,28 +151,36 @@ export function useSidebarConnections(
                   : 'unknown',
           latencyMs: s.latencyMs,
         }));
-        setConnections((previous) =>
+        setSnapshot((previous) =>
+          previous.root === projectRoot &&
           sameList(
-            previous,
+            previous.connections,
             mapped,
-            (x, y) => x.name === y.name && x.status === y.status && x.latencyMs === y.latencyMs,
+            (x, y) =>
+              x.id === y.id &&
+              x.healthStatus === y.healthStatus &&
+              x.name === y.name &&
+              x.status === y.status &&
+              x.latencyMs === y.latencyMs,
           )
             ? previous
-            : mapped,
+            : { root: projectRoot, connections: mapped },
         );
       } catch {
-        if (!cancelled) setConnections((previous) => (previous.length === 0 ? previous : []));
+        if (!cancelled) setSnapshot({ root: projectRoot, connections: [] });
+      } finally {
+        // Never overlap a slow health probe with the next refresh.
+        if (!cancelled) timer = setTimeout(poll, 8000);
       }
     };
-    poll();
-    const id = setInterval(poll, 8000);
+    void poll();
     return () => {
       cancelled = true;
-      clearInterval(id);
+      clearTimeout(timer);
     };
   }, [projectRoot, enabled]);
 
-  return connections;
+  return enabled && snapshot.root === projectRoot ? snapshot.connections : [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────

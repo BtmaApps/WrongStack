@@ -154,6 +154,21 @@ function makeHandler(
   };
 }
 
+it('navigates wrapped input at the main-column width when the sidebar is open', async () => {
+  const buffer = 'a'.repeat(100);
+  const h = makeHandler(
+    createTestState(),
+    { buffer, cursor: 5 },
+    {
+      terminalColumns: 120,
+      mainColumnWidth: 60,
+    },
+  );
+  await h.handler('', key({ downArrow: true }));
+  expect(h.setDraft).toHaveBeenCalledWith(buffer, 61);
+  expect(h.dispatch).not.toHaveBeenCalledWith({ type: 'historyDown' });
+});
+
 const CASES: CorpusCase[] = [
   {
     name: 'ctrl+c escalates the interrupt ladder before any other route',

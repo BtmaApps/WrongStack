@@ -167,6 +167,15 @@ function harness() {
   };
 }
 
+it('reports a provider restore rejection returned as text', async () => {
+  const h = harness();
+  h.ctx.switchProviderAndModel = vi.fn(async () => 'Provider is unavailable') as never;
+  const result = await resumeSession(h.ctx as never, h.resumedWriter.id);
+  expect(result?.attached).toBe(true);
+  expect(result?.warnings.join(' ')).toContain('Provider is unavailable');
+  expect(h.context.model).toBe('old-model');
+});
+
 beforeEach(() => {
   mocks.registryList.mockReset().mockResolvedValue([]);
   mocks.loadTodosCheckpoint.mockReset().mockResolvedValue([]);

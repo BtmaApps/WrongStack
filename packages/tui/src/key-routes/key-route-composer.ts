@@ -162,9 +162,13 @@ export async function routeComposerTail(
       {
         state,
         draft: draftRef.current,
+        navigationOwner: draftRef,
         overlayOpen,
-        prompt: INPUT_PROMPT,
-        terminalColumns: stdout?.columns ?? 80,
+        prompt: state.bashMode ? '$ ' : INPUT_PROMPT,
+        terminalColumns:
+          ctx.mainColumnWidth > 0
+            ? Math.min(ctx.mainColumnWidth, stdout?.columns ?? 80)
+            : (stdout?.columns ?? 80),
         terminalRows: stdout?.rows ?? 24,
         nextSteps: {
           timer: nextStepsAutoSubmitTimerRef,

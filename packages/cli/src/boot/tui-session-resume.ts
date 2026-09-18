@@ -520,7 +520,9 @@ export async function resumeSession(
       (targetProviderId !== currentProviderId || targetModel !== agent.ctx.model)
     ) {
       try {
-        await Promise.resolve(switchProviderAndModel(targetProviderId, targetModel));
+        const error = await Promise.resolve(switchProviderAndModel(targetProviderId, targetModel));
+        if (typeof error === 'string' && error)
+          warn(`could not restore ${targetProviderId}/${targetModel}`, error);
       } catch (err) {
         console.error(
           JSON.stringify({

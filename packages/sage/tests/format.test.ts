@@ -171,4 +171,26 @@ describe('formatMemoryHintsDetailed', () => {
     // The actual newline char must NOT appear inside the fence body.
     expect(result.text).not.toMatch(/<memory[^>]*>\n/);
   });
+
+  // ─── Fallback truncation budget ─────────────────────────────────────
+  // The single-item fallback (first memory alone does not fit) budgets the
+  // FULL rendered line: prefix + <memory id> fence + ellipsis + close tag.
+  // r33: the wrapper was not subtracted, so the fallback overflowed maxChars
+  // by the wrapper length (~48 chars for a ULID id).
+  it('keeps the single-item fallback inside maxChars (fence wrapper budgeted)', () => {
+    const memory = makeMemory('oversized', { text: 'A'.repeat(500) });
+    const result = formatMemoryHintsDetailed([memory], { maxChars: 150 });
+    expect(result.text).toContain('…');
+    expect(result.text).toContain('</memory>');
+    expect(result.memoryIds).toEqual(['mem_oversized']);
+    expect(result.text.length).toBeLessThanOrEqual(150);
+  });
+
+  it('returns empty when even a minimal fenced item cannot fit maxChars', () => {
+    // Default heading (57 chars) + prefix + fence wrapper + ellipsis already
+    // exceed 100 — emitting anything would violate the budget.
+    const memory = makeMemory('oversized', { text: 'A'.repeat(500) });
+    const result = formatMemoryHintsDetailed([memory], { maxChars: 100 });
+    expect(result).toEqual({ text: '', memoryIds: [] });
+  });
 });

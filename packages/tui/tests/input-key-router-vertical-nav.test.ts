@@ -127,6 +127,55 @@ describe('input vertical navigation with the production prompt', () => {
 });
 
 describe('display column navigation', () => {
+  it.each(['horizontal', 'edit', 'pointer', 'resize'] as const)(
+    'resets the remembered column after %s movement',
+    async (change) => {
+      const buffer = 'abcdefghij\nx\nabcdefghij';
+      const { host } = makeHost(buffer, 8, '');
+      const draft = { buffer, cursor: 8 };
+      const live = {
+        ...host,
+        draft,
+        setDraft: (buffer: string, cursor: number) => Object.assign(draft, { buffer, cursor }),
+      };
+      await routeInputKey(live, '', arrowKey('downArrow'));
+      expect(draft.cursor).toBe(12);
+      if (change === 'horizontal') {
+        await routeInputKey(live, '', { ...arrowKey('upArrow'), upArrow: false, leftArrow: true });
+      } else if (change === 'edit') {
+        await routeInputKey(live, 'z', { ...arrowKey('upArrow'), upArrow: false });
+      } else if (change === 'pointer') {
+        draft.cursor = 11;
+      } else {
+        live.terminalColumns = 70;
+      }
+      await routeInputKey(live, '', arrowKey('downArrow'));
+      const expectedColumn = change === 'edit' ? 2 : change === 'resize' ? 1 : 0;
+      expect(draft.cursor).toBe(draft.buffer.lastIndexOf('abcdefghij') + expectedColumn);
+    },
+  );
+
+  it('remembers the preferred column across short and empty lines', async () => {
+    const buffer = 'abcdefghij\nx\n\nabcdefghij';
+    const { host, drafts } = makeHost(buffer, 8, '');
+    const draft = { buffer, cursor: 8 };
+    const live = {
+      ...host,
+      draft,
+      setDraft: (buffer: string, cursor: number) => {
+        Object.assign(draft, { buffer, cursor });
+        drafts.push({ buffer, cursor });
+      },
+    };
+    await routeInputKey(live, '', arrowKey('downArrow'));
+    await routeInputKey(live, '', arrowKey('downArrow'));
+    await routeInputKey(live, '', arrowKey('downArrow'));
+    expect(draft.cursor).toBe(buffer.lastIndexOf('abcdefghij') + 8);
+    await routeInputKey(live, '', arrowKey('upArrow'));
+    await routeInputKey(live, '', arrowKey('upArrow'));
+    await routeInputKey(live, '', arrowKey('upArrow'));
+    expect(draft.cursor).toBe(8);
+  });
   it('uses terminal columns after a wide character', async () => {
     const { host, drafts } = makeHost('界a\n12345', 2, '');
     await routeInputKey(host, '', arrowKey('downArrow'));

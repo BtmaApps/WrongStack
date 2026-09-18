@@ -52,7 +52,7 @@ describe('TUI project picker callbacks', () => {
     const ctx = context({
       switchProjectInPlace: vi.fn().mockResolvedValue('locked'),
     });
-    await onProjectSelect(ctx as never, 'new-session', 'action');
+    await expect(onProjectSelect(ctx as never, 'new-session', 'action')).resolves.toBe('locked');
     expect(ctx.switchProjectInPlace).toHaveBeenCalledWith('D:/current', 'current');
     expect(ctx.renderer.write).toHaveBeenCalledWith(
       expect.stringContaining('Project switch failed: locked'),
@@ -110,11 +110,13 @@ describe('TUI project picker callbacks', () => {
     mocks.loadManifest.mockResolvedValueOnce({
       projects: [{ slug: 'next', root: 'D:/next', name: 'Next' }],
     });
-    await onProjectSelect(ctx as never, 'next', 'project');
+    await expect(onProjectSelect(ctx as never, 'next', 'project')).resolves.toBe('cannot switch');
     expect(ctx.renderer.write).toHaveBeenCalledWith(expect.stringContaining('cannot switch'));
 
     mocks.loadManifest.mockRejectedValueOnce('manifest corrupt');
-    await onProjectSelect(ctx as never, 'next', 'project');
+    await expect(onProjectSelect(ctx as never, 'next', 'project')).resolves.toBe(
+      'manifest corrupt',
+    );
     expect(ctx.renderer.write).toHaveBeenCalledWith(expect.stringContaining('manifest corrupt'));
   });
 });

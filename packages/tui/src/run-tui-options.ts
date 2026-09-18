@@ -647,7 +647,12 @@ export interface RunTuiOptions {
   getProjectPickerItems?:
     | (() => Promise<import('./components/project-picker.js').ProjectPickerItem[]>)
     | undefined;
-  onProjectSelect?: ((key: string, kind: 'project' | 'action') => void) | undefined;
+  onProjectSelect?:
+    | ((
+        key: string,
+        kind: 'project' | 'action',
+      ) => void | string | null | Promise<void | string | null>)
+    | undefined;
   /**
    * Request the TUI to exit with a specific code. Used by the project picker
    * to trigger a clean exit before spawning a new wstack process in a different

@@ -571,7 +571,14 @@ function aggregateStatus(results: AnchorVerificationResult[]): VerificationStatu
 
 function isInside(root: string, target: string): boolean {
   const relative = path.relative(path.resolve(root), target);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  if (relative === '') return true;
+  if (path.isAbsolute(relative)) return false;
+  // Strict escape predicate: only `..` itself or a `..<sep>`-prefixed path
+  // leaves the root. A bare startsWith('..') also matches legal in-root names
+  // that merely BEGIN with '..' (e.g. `..hidden/notes.md`, whose rel is
+  // "..hidden\notes.md"), wrongly demoting their anchors to stale on every
+  // verification run. Same loose prefix fixed in design.ts materialize.
+  return relative !== '..' && !relative.startsWith(`..${path.sep}`);
 }
 
 async function resolveRealRoot(projectRoot: string): Promise<string> {

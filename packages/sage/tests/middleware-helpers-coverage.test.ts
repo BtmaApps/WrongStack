@@ -68,7 +68,12 @@ describe('turn middleware helper coverage', () => {
         recordInjection: async () => {},
       },
       tracker,
-      maxChars: 100,
+      // r33: the format fallback no longer overflows maxChars (the fence
+      // wrapper is budgeted), so at 100 chars the default 57-char heading
+      // leaves room for nothing and zero memories would render — the exact
+      // case this append-path test needs is "one of two eligible memories
+      // fits". 200 renders the first memory honestly and gates the second.
+      maxChars: 200,
       minScore: 0,
     });
     const request = {

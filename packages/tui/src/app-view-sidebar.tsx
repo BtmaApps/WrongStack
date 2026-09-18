@@ -4,6 +4,7 @@ import type { AppViewProps } from './app-view-contract.js';
 import type { usePlanPanelData } from './components/plan-panel.js';
 import { RightSidebar } from './components/sidebar.js';
 import { SidebarContent } from './components/sidebar-content.js';
+import { SidebarIpcIcons } from './components/sidebar-ipc-icons.js';
 import {
   AgentsPanelSidebar,
   ConnectionsPanelSidebar,
@@ -117,6 +118,7 @@ export function AppViewSidebar({
       focused={state.sidebarFocused}
       scrollOffset={sidebarScrollOffset}
       maxScroll={sidebarMaxScroll}
+      statusIcons={<SidebarIpcIcons connections={sidebarConnectionsData} width={sidebarWidth} />}
     >
       {/* Per-panel sidebar variants: render only when the panel is
       open AND routed to 'sidebar' AND wins a slot under

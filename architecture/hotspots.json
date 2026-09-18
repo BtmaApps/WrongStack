@@ -15,7 +15,7 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 837,
+      "lines": 839,
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
@@ -27,7 +27,7 @@
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 947,
+      "lines": 948,
       "relativeImports": 43
     },
     "packages/cli/src/fleet/host.ts": {
@@ -363,11 +363,11 @@
       "relativeImports": 4
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 862,
+      "lines": 879,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
-      "lines": 816,
+      "lines": 821,
       "relativeImports": 10
     },
     "packages/tui/src/app-state.ts": {
@@ -375,7 +375,7 @@
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
-      "lines": 1000,
+      "lines": 1001,
       "relativeImports": 59
     },
     "packages/tui/src/components/agents-monitor.tsx": {
@@ -423,7 +423,7 @@
       "relativeImports": 1
     },
     "packages/tui/src/reducers/composer.ts": {
-      "lines": 942,
+      "lines": 955,
       "relativeImports": 9
     },
     "packages/tui/src/reducers/settings-values.ts": {
@@ -431,7 +431,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/submit-controller.ts": {
-      "lines": 914,
+      "lines": 918,
       "relativeImports": 13
     },
     "packages/webui/src/components/activity-bar/index.tsx": {

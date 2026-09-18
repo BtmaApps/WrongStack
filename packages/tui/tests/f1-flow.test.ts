@@ -4,12 +4,10 @@
  * Verifies the full flow: open → filter → navigate → select → close.
  * Pure reducer tests, no DOM/Ink rendering.
  */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { reducer } from '../src/app-reducer.js';
-import type { ProjectPickerItem } from '../src/components/project-picker.js';
 import type { State } from '../src/app-state.js';
+import type { ProjectPickerItem } from '../src/components/project-picker.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -282,21 +280,5 @@ describe('F1 scroll with 50 projects', () => {
     const filtered = state.projectPicker.items.filter((i) => i.kind === 'project');
     expect(filtered).toHaveLength(1);
     expect(filtered[0]!.label).toContain('25');
-  });
-});
-
-describe('F1 project switch behavior', () => {
-  it('does not use requestExit(42) for project selections', () => {
-    const pickerControllerPath = fileURLToPath(
-      new URL('../src/hooks/use-app-picker-keys.ts', import.meta.url),
-    );
-    const source = readFileSync(pickerControllerPath, 'utf8');
-    const projectSelectionBlock = source.slice(
-      source.indexOf("if (item.kind === 'project')"),
-      source.indexOf("if (item.key === 'new-session')"),
-    );
-
-    expect(projectSelectionBlock).toContain('onProjectSelect?.(item.key, item.kind)');
-    expect(projectSelectionBlock).not.toContain('requestExit?.(42)');
   });
 });

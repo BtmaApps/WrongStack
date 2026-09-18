@@ -207,6 +207,7 @@ export function routeModalOverlayKey(
     }
     return true;
   }
+  if (state.resumeLoad) return true;
   if (state.slashConfirm) {
     const info = state.slashConfirm;
     const decision = slashConfirmationDecision(input, key, info.defaultYes);

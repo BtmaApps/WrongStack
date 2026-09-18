@@ -147,6 +147,13 @@ describe('anchor verification completion coverage', () => {
     expect(coverage.containsSymbol('const other = 1', 'missing')).toBe(false);
     expect(coverage.isInside(directory, directory)).toBe(true);
     expect(coverage.isInside(directory, path.join(directory, 'child'))).toBe(true);
+    // r34: in-root names that merely BEGIN with '..' are INSIDE — the loose
+    // startsWith('..') prefix misread "..hidden\notes.md" as an escape and
+    // demoted such anchors to stale on every verification run (same loose
+    // prefix fixed in design.ts materialize).
+    expect(coverage.isInside(directory, path.join(directory, '..hidden', 'notes.md'))).toBe(true);
+    expect(coverage.isInside(directory, path.join(directory, '..'))).toBe(false);
+    expect(coverage.isInside(directory, path.join(directory, '..', 'escaped.md'))).toBe(false);
     expect(coverage.isInside(directory, path.dirname(directory))).toBe(false);
 
     const anchor: MemoryAnchor = { type: 'file', path: 'a.ts' };

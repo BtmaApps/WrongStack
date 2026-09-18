@@ -178,8 +178,8 @@ function InfoRow({
   return (
     <Text>
       <Text color={color}>{icon}</Text>
-      <Text color={color} bold>{` ${trunc(label, labelWidth).padEnd(labelWidth)} `}</Text>
-      <Text color={accent ? TEXT() : MUTED()}>{trunc(value, valueWidth)}</Text>
+      <Text color={MUTED()}>{` ${trunc(label, labelWidth).padEnd(labelWidth)} `}</Text>
+      <Text color={TEXT()}>{trunc(value, valueWidth)}</Text>
     </Text>
   );
 }
@@ -267,12 +267,12 @@ function Footer({
     <Box flexDirection="column" alignItems="center" marginTop={1} marginBottom={1}>
       <Text>
         <Text color={SIGNAL_PINK()}>◆ </Text>
-        <Text dimColor>{OSC8_WRONGSTACK}</Text>
+        <Text color={MUTED()}>{OSC8_WRONGSTACK}</Text>
         {!compact || contentWidth >= 35 ? (
           <>
-            <Text dimColor> · </Text>
+            <Text color={MUTED()}> · </Text>
             <Text color={STACK_ORANGE()}>★ </Text>
-            <Text dimColor>{OSC8_GITHUB}</Text>
+            <Text color={MUTED()}>{OSC8_GITHUB}</Text>
           </>
         ) : null}
       </Text>
@@ -448,7 +448,8 @@ export function Banner({
         </>
       )}
 
-      <Box flexDirection="column" marginTop={1}>
+      <Box flexDirection="column">
+        <Text color={BORDER()}>{'─'.repeat(contentWidth)}</Text>
         <InfoRow
           icon="◆"
           label="route"

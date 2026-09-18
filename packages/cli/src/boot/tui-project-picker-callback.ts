@@ -47,7 +47,7 @@ export async function onProjectSelect(
   ctx: ProjectPickerContext,
   slug: string,
   kind: 'project' | 'action',
-): Promise<void> {
+): Promise<string | null> {
   const { state, renderer, director, getEternalEngine, getParallelEngine, switchProjectInPlace } =
     ctx;
 
@@ -57,18 +57,19 @@ export async function onProjectSelect(
         const name = path.basename(state.projectRoot) || state.projectRoot;
         const err = await switchProjectInPlace(state.projectRoot, name);
         if (err) renderer.write(color.red(`Project switch failed: ${err}\n`));
+        return err;
       }
       // prev-sessions is handled inside the TUI (/resume picker).
-      return;
+      return null;
     }
 
     const { loadManifest, saveManifest } = await import('../services/project-manifest.js');
     const manifest = await loadManifest(state.wpaths.globalConfig);
     const project = manifest.projects.find((p) => p.slug === slug);
-    if (!project) return;
+    if (!project) return `Project not found: ${slug}`;
 
     const targetRoot = path.resolve(project.root);
-    if (path.resolve(state.projectRoot) === targetRoot) return;
+    if (path.resolve(state.projectRoot) === targetRoot) return null;
 
     const fleetStatus = director?.status();
     const fleetRunning = fleetStatus?.subagents.filter((a) => a.status === 'running').length ?? 0;
@@ -96,9 +97,11 @@ export async function onProjectSelect(
 
     const err = await switchProjectInPlace(targetRoot, project.name);
     if (err) renderer.write(color.red(`Project switch failed: ${err}\n`));
+    return err;
   } catch (err) {
     renderer.write(
       color.red(`Project switch failed: ${err instanceof Error ? err.message : String(err)}\n`),
     );
+    return err instanceof Error ? err.message : String(err);
   }
 }

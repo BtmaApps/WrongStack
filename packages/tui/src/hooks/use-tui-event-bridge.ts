@@ -51,7 +51,7 @@ export function useTuiEventBridge({
     getChatMode,
     sessionGenerationRef,
   );
-  useSessionEvents(events, dispatch, onClearHistory, getSessionId);
+  useSessionEvents(events, dispatch, onClearHistory, getSessionId, sessionGenerationRef);
   useBrainEvents(events, dispatch, getSessionId);
   useGoalEvents(subscribeGoal, dispatch, stateRef, getSessionId);
 }
@@ -61,6 +61,7 @@ function useSessionEvents(
   dispatch: React.Dispatch<Action>,
   onClearHistory?: ((dispatch: ClearHistoryDispatch) => void) | undefined,
   getSessionId?: (() => string | undefined) | undefined,
+  sessionGenerationRef?: { current: number } | undefined,
 ): void {
   useEffect(() => {
     // Permissive predicate: events without a sessionId OR with no
@@ -95,11 +96,32 @@ function useSessionEvents(
       dispatch({ type: 'resetContextChip' });
       onClearHistory?.(dispatch);
     });
+    // The CLI commits all context/session paths before publishing this event.
+    // The opening banner is a history snapshot, so it must be replaced too.
+    const offProject = events.onPattern(
+      'project.switched',
+      (_event, payload) => {
+        if (!payload || typeof payload !== 'object') return;
+        const switched = payload as { to?: unknown; sessionId?: string };
+        if (
+          typeof switched.to !== 'string' ||
+          !switched.to ||
+          !isCurrentSession(switched.sessionId)
+        )
+          return;
+        if (sessionGenerationRef) sessionGenerationRef.current += 1;
+        dispatch({ type: 'clearHistory', cwd: switched.to, sessionId: switched.sessionId });
+        dispatch({ type: 'resetContextChip' });
+        onClearHistory?.(dispatch);
+      },
+      'tui-project-switch',
+    );
     return () => {
       offCheckpoint();
       offRewound();
+      offProject();
     };
-  }, [events, dispatch, onClearHistory, getSessionId]);
+  }, [events, dispatch, onClearHistory, getSessionId, sessionGenerationRef]);
 }
 
 function useGoalEvents(

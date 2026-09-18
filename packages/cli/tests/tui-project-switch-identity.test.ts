@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { EventBus } from '@wrongstack/core/kernel';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -74,6 +75,8 @@ describe('TUI project switch identity', () => {
   });
 
   function makeHarness() {
+    const events = new EventBus();
+    vi.spyOn(events, 'emitCustom');
     const oldWriter = writer('2026-07-27/sess_old');
     const nextWriter = writer('2026-07-27/sess_new');
     mocks.create.mockResolvedValue(nextWriter);
@@ -116,7 +119,7 @@ describe('TUI project switch identity', () => {
     const switchContext = {
       state,
       context,
-      events: { emit: vi.fn() },
+      events,
       agent: { tools: { list: vi.fn(() => []) } },
       config: { provider: 'test-provider', systemPrompt: {} },
       tokenCounter,
@@ -152,6 +155,17 @@ describe('TUI project switch identity', () => {
       }),
     );
     expect(h.state.projectRoot).toBe(targetRoot);
+    expect(process.cwd()).toBe(targetRoot);
+    expect(h.context.cwd).toBe(targetRoot);
+    expect(h.context.projectRoot).toBe(targetRoot);
+    expect(h.context.workingDir).toBe(targetRoot);
+    expect(mocks.buildPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: targetRoot, projectRoot: targetRoot }),
+    );
+    expect(h.switchContext.events.emitCustom).toHaveBeenCalledWith(
+      'project.switched',
+      expect.objectContaining({ to: targetRoot, sessionId: h.nextWriter.id }),
+    );
     expect(h.context.session).toBe(h.nextWriter);
     expect(h.oldWriter.close).toHaveBeenCalledOnce();
   });

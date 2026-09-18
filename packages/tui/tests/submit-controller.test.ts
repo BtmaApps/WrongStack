@@ -246,6 +246,19 @@ describe('createSubmitController — empty and special inputs', () => {
 });
 
 describe('createSubmitController — !<shell> bang commands', () => {
+  it.each(['continue the work', '/clear', '!echo test'])(
+    'blocks submission during replay: %s',
+    async (text) => {
+      const h = makeHost({
+        state: { resumeLoad: { sessionId: 'loading' } as State['resumeLoad'] },
+      });
+      await h.submit(text);
+      expect(h.actionFns['runBlocks']).not.toHaveBeenCalled();
+      expect(h.slashRegistry.dispatch).not.toHaveBeenCalled();
+      expect(h.actionFns['clearDraft']).not.toHaveBeenCalled();
+      expect(findAction(h, 'hint')?.text).toContain('resume');
+    },
+  );
   it('re-dispatches through /dev when the warning is suppressed', async () => {
     const h = makeHost({ settings: { shellBangWarningDontShowAgain: true } });
     await h.submit('! pnpm test ');

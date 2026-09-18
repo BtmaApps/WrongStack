@@ -131,11 +131,17 @@ export function reduceConversation(state: State, action: ConversationAction): St
       // the TUI starts fresh after /clear.
       const banner = state.entries.find((e) => e.kind === 'banner');
       const refreshedBanner =
-        banner && (action.model !== undefined || action.provider !== undefined)
+        banner &&
+        (action.model !== undefined ||
+          action.provider !== undefined ||
+          action.cwd !== undefined ||
+          action.sessionId !== undefined)
           ? {
               ...banner,
               ...(action.model !== undefined ? { model: action.model } : {}),
               ...(action.provider !== undefined ? { provider: action.provider } : {}),
+              ...(action.cwd !== undefined ? { cwd: action.cwd } : {}),
+              ...(action.sessionId !== undefined ? { sessionId: action.sessionId } : {}),
             }
           : banner;
       return {

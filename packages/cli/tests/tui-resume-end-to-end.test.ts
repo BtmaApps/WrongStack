@@ -168,6 +168,42 @@ describe('TUI /resume end to end', () => {
     expect(h.liveWriter.append).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'session_end' }),
     );
+
+    // Persist a new turn through the writer actually installed on the agent,
+    // then reopen from disk. A pointer assertion alone misses a stale writer.
+    const writer = h.context.session as unknown as Awaited<
+      ReturnType<DefaultSessionStore['create']>
+    >;
+    await writer.append({
+      type: 'user_input',
+      ts: new Date().toISOString(),
+      content: 'continue after resume',
+    });
+    await writer.append({
+      type: 'llm_response',
+      ts: new Date().toISOString(),
+      content: [{ type: 'text', text: 'new reply after resume' }],
+      stopReason: 'end_turn',
+      usage: { input: 20, output: 10 },
+      model: 'live-model',
+      provider: 'live-provider',
+    });
+    await writer.close();
+    const loaded = await h.ctx.state.activeSessionStore.load('picked-session');
+    expect(loaded.messages.map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'assistant',
+      'user',
+      'assistant',
+    ]);
+    expect(JSON.stringify(loaded.messages.slice(-2))).toContain('continue after resume');
+    expect(JSON.stringify(loaded.messages.slice(-2))).toContain('new reply after resume');
+    expect(h.liveWriter.append).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'user_input' }),
+    );
+    await h.ctx.state.activeSessionStore.dispose?.();
   }, 30_000);
 
   it('reports failure instead of half-resuming when the id does not exist', async () => {

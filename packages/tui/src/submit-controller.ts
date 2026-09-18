@@ -219,6 +219,10 @@ export function createSubmitController(host: SubmitControllerHost) {
     },
   } = host;
   const submit = async (overrideRaw?: string) => {
+    if (stateRef.current.resumeLoad) {
+      dispatch({ type: 'hint', text: 'Please wait for session resume and replay to finish.' });
+      return;
+    }
     const raw = overrideRaw ?? stateRef.current.buffer;
     const trimmed = raw.trim();
     // Attachment chips live inline in the buffer now, so a paste/file-only

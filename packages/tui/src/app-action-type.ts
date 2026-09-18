@@ -81,7 +81,13 @@ export type Action =
   | { type: 'bashModeEnter' }
   /** Leave bash mode and restore the normal chat composer. */
   | { type: 'bashModeExit' }
-  | { type: 'clearHistory'; model?: string | undefined; provider?: string | undefined }
+  | {
+      type: 'clearHistory';
+      model?: string | undefined;
+      provider?: string | undefined;
+      cwd?: string | undefined;
+      sessionId?: string | undefined;
+    }
   | { type: 'streamDelta'; delta: string }
   | { type: 'streamReset' }
   | { type: 'status'; status: State['status'] }
@@ -267,6 +273,17 @@ export type Action =
       /** Total entries in the replay, for the batch counter. */
       total: number;
       done?: boolean | undefined;
+      /** Keep input gated until replay effects and suggestion restoration settle. */
+      holdUntilSettled?: boolean | undefined;
+      /** Actual attached session metadata; absent for read-only replay. */
+      banner?:
+        | {
+            sessionId: string;
+            cwd?: string | undefined;
+            model?: string | undefined;
+            provider?: string | undefined;
+          }
+        | undefined;
       contextSnapshot?: ContextSnapshot | undefined;
     }
   /**

@@ -2853,6 +2853,36 @@ describe('useAppPickerKeys — resume in-flight guards (/resume picker + F10 ses
     unmount();
   });
 
+  it('keeps current identity and queue when the host can only replay read-only', async () => {
+    const resume = vi.fn(async () => ({ entries: [], sessionId: 'sess_target', attached: false }));
+    const mounted = mountRealPickerKeys(resumePickerState(), resume);
+    try {
+      mounted.fire();
+      await sleep(150);
+      expect(mounted.dispatch).not.toHaveBeenCalledWith({ type: 'queueClear' });
+      const chunk = mounted.dispatch.mock.calls.find(
+        ([action]) => action.type === 'resumeStreamChunk',
+      )?.[0];
+      expect(chunk).toBeDefined();
+      expect(chunk.banner).toBeUndefined();
+      expect(mounted.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'addEntry',
+          entry: expect.objectContaining({
+            kind: 'warn',
+            text: expect.stringContaining('NOT attached'),
+          }),
+        }),
+      );
+      expect(mounted.dispatch).toHaveBeenCalledWith({
+        type: 'resumeLoadAbort',
+        sessionId: 'sess_target',
+      });
+    } finally {
+      mounted.unmount();
+    }
+  });
+
   it('releases the in-flight lock once the resume settles, so a later Enter resumes again', async () => {
     const onResumeSession = vi.fn(
       () =>
@@ -2921,6 +2951,66 @@ describe('useAppPickerKeys — resume in-flight guards (/resume picker + F10 ses
     });
     expect(onResumeSession).not.toHaveBeenCalled();
     unmount();
+  });
+
+  it('shares the pending resume lock between the picker and F10', async () => {
+    let finish!: (value: unknown) => void;
+    const resume = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const state = resumePickerState();
+    const mounted = mountRealPickerKeys(state, resume);
+    try {
+      mounted.fire();
+      await sleep(70);
+      expect(resume).toHaveBeenCalledTimes(1);
+      Object.assign(state, sessionsPanelState({ sessionId: 'another', sessionName: 'another' }));
+      state.resumePicker.open = false;
+      mounted.fire();
+      await sleep(70);
+      expect(resume).toHaveBeenCalledTimes(1);
+      finish({ entries: [], sessionId: 'sess_target', attached: true });
+      await sleep(70);
+      expect(mounted.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'resumeStreamChunk',
+          holdUntilSettled: true,
+          banner: expect.objectContaining({ sessionId: 'sess_target', cwd: '/proj' }),
+        }),
+      );
+      expect(mounted.dispatch).toHaveBeenCalledWith({
+        type: 'resumeLoadAbort',
+        sessionId: 'sess_target',
+      });
+    } finally {
+      mounted.unmount();
+    }
+  });
+
+  it('does not replace the agent session during an active run', async () => {
+    const state = resumePickerState();
+    state.status = 'running';
+    const resume = vi.fn();
+    const mounted = mountRealPickerKeys(state, resume);
+    try {
+      mounted.fire();
+      await sleep(70);
+      expect(resume).not.toHaveBeenCalled();
+      expect(mounted.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'addEntry',
+          entry: expect.objectContaining({
+            kind: 'warn',
+            text: expect.stringContaining('active run'),
+          }),
+        }),
+      );
+    } finally {
+      mounted.unmount();
+    }
   });
 
   it('double-Enter fires onResumeSession exactly once while the first F10 resume is in flight', async () => {

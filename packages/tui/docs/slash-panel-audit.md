@@ -171,3 +171,40 @@ Each row below was rendered with selection and Esc visible at both 100×18 and
 | 60 | WrongProxy URL |
 | 61 | Right sidebar |
 | 62 | Tool result view |
+
+## F1 project-switch follow-up
+
+Successful switching changes the process cwd, Context cwd/projectRoot/workingDir,
+session writer and prompt root. The startup banner previously retained its old
+path/session snapshot. The completion event also called an unbound EventBus
+method, so a committed switch could be reported as failed while the picker
+still announced success.
+
+The host now emits a session-scoped custom event. The TUI refreshes the banner's
+workspace/session, clears the previous transcript and advances the generation
+that rejects stale stream events. Failed switches keep the picker open with
+an error; repeated Enter cannot start concurrent project switches. Existing
+background work remains tied to its original project, as the host warning states.
+
+## Sessions replay/resume follow-up
+
+The slash picker and F10 confirmation share one in-flight resume lock, also
+excluding F1 project switches. An active leader run must stop before resume.
+While the journal loads and history replays, composer commands and submissions
+are held until the final next-step restoration settles; exit confirmation
+remains available. Successful attachment refreshes the banner session, workspace,
+provider and model, and clears the previous session's queued inputs. Read-only
+replay retains the current banner and its explicit non-attachment warning.
+
+Provider/model restoration errors returned as strings now appear in resume
+warnings. Regression coverage includes overlapping menu/F10 activation, active-run
+rejection, input gating, final replay settlement, banner identity, and appending
+a new turn through the resumed writer then reopening the real journal from disk.
+
+The real PTY regression also caught `/sessions` reading the startup session store
+after F1 changed projects. Listing now resolves the store and journal directory
+from the current boot state, so the picker shows the selected project's history.
+The passing PTY flow switches projects, selects a seeded saved session from
+`/sessions`, checks both replayed messages and the successful attachment notice,
+then reopens the menu. This uses no external provider request; new-turn journal
+persistence is verified separately by the real-store integration test.

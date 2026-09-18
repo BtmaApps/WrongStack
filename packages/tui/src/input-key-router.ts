@@ -18,6 +18,20 @@ import { displayWidth } from './terminal-width.js';
 
 const PASTE_THRESHOLD_CHARS = 200;
 
+// Per-composer, weakly held so navigation survives renders without retaining
+// closed TUIs. Buffer/caret/geometry checks invalidate it after external edits,
+// pointer moves, history recall or a resize.
+const verticalColumns = new WeakMap<
+  object,
+  {
+    buffer: string;
+    cursor: number;
+    width: number;
+    prompt: string;
+    column: number;
+  }
+>();
+
 export interface InputKeyRouterHost {
   readonly state: Pick<State, 'status' | 'inputHistory' | 'historyIndex' | 'bashMode'>;
   readonly draft: { readonly buffer: string; readonly cursor: number };
@@ -25,6 +39,8 @@ export interface InputKeyRouterHost {
   readonly prompt: string;
   readonly terminalColumns: number;
   readonly terminalRows: number;
+  /** Stable across renders; scopes the preferred vertical column to one input. */
+  readonly navigationOwner?: object | undefined;
   readonly nextSteps: {
     readonly timer: MutableCell<ReturnType<typeof setInterval> | undefined>;
     readonly suggestion: MutableCell<string | null>;
@@ -52,6 +68,9 @@ export async function routeInputKey(
   key: KeyEvent,
 ): Promise<boolean> {
   const { buffer, cursor } = host.draft;
+  const navigationOwner = host.navigationOwner ?? host.setDraft;
+  const vertical = key.upArrow || key.downArrow || key.pageUp || key.pageDown;
+  if (!vertical || host.overlayOpen) verticalColumns.delete(navigationOwner);
 
   // Tab accepts the pending next-steps suggestion — but NEVER in bash mode,
   // where it would silently rewrite a shell command into a chat suggestion
@@ -186,6 +205,14 @@ export async function routeInputKey(
         }
       }
 
+      const previous = verticalColumns.get(navigationOwner);
+      const column =
+        previous?.buffer === buffer &&
+        previous.cursor === cursor &&
+        previous.width === width &&
+        previous.prompt === host.prompt
+          ? previous.column
+          : col;
       const targetRow = key.upArrow
         ? Math.max(0, row - 1)
         : key.downArrow
@@ -198,12 +225,20 @@ export async function routeInputKey(
               ),
             );
       if (targetRow !== row) {
-        const target = inputIndexAtRowCol(host.prompt, buffer, width, targetRow, col);
+        const target = inputIndexAtRowCol(host.prompt, buffer, width, targetRow, column);
+        verticalColumns.set(navigationOwner, {
+          buffer,
+          cursor: target,
+          width,
+          prompt: host.prompt,
+          column,
+        });
         host.setDraft(buffer, target);
       }
       return true; // Always consume when multi-line: prevents Up/Down at the
       // first/last row from falling through to historyUp/historyDown.
     }
+    verticalColumns.delete(navigationOwner);
   }
 
   if (key.upArrow) {

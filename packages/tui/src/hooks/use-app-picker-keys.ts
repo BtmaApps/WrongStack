@@ -27,6 +27,7 @@ import type { useStatusbarViewModel } from './use-statusbar-view-model.js';
 import type { useTuiEnvironmentState } from './use-tui-environment-state.js';
 
 interface UseAppPickerKeysOptions {
+  sessionGenerationRef?: MutableRefObject<number> | undefined;
   host: AppProps;
   state: State;
   dispatch: Dispatch<Action>;
@@ -56,6 +57,7 @@ interface UseAppPickerKeysOptions {
 }
 
 export function useAppPickerKeys({
+  sessionGenerationRef,
   host,
   state,
   dispatch,
@@ -112,11 +114,12 @@ export function useAppPickerKeys({
   // `busy` state, because the 50ms paint yield re-opens a window where a
   // second Enter still holds the pre-busy state snapshot.
   const resumeInFlightRef = useRef(false);
+  const projectSwitchInFlightRef = useRef(false);
   // Same lock for the F10 sessions-panel confirm flow (see
   // onSessionsPanelEnter): that branch has no busy-state guard at all — a
   // stale `sessionResumeConfirm` snapshot re-runs onResumeSession on every
   // Enter until React re-renders, so the ref is the only double-fire guard.
-  const sessionsResumeInFlightRef = useRef(false);
+  const sessionsResumeInFlightRef = resumeInFlightRef;
   // Flips false at unmount: both resume chains (paint yield + host promise)
   // can settle long after this component is gone, and dispatching into an
   // unmounted reducer only risks stale-panel state. The chain bodies check
@@ -152,6 +155,15 @@ export function useAppPickerKeys({
     label: string,
     hooks: { onSettled?: (() => void) | undefined } = {},
   ): Promise<void> => {
+    if (state.status && state.status !== 'idle') {
+      dispatch({
+        type: 'addEntry',
+        entry: { kind: 'warn', text: 'Stop the active run before resuming another session.' },
+      });
+      hooks.onSettled?.();
+      return;
+    }
+    if (sessionGenerationRef) sessionGenerationRef.current += 1;
     resumeRunRef.current += 1;
     const run = resumeRunRef.current;
     const alive = () => mountedRef.current && resumeRunRef.current === run;
@@ -214,6 +226,7 @@ export function useAppPickerKeys({
       }
 
       const entries = result.entries;
+      if (result.attached !== false) dispatch({ type: 'queueClear' });
       const total = entries.length;
       const size = resumeChunkSize(total);
       // An empty transcript still needs the terminating chunk: it is what
@@ -227,6 +240,17 @@ export function useAppPickerKeys({
           sessionId,
           entries: slice,
           total,
+          ...(result.attached !== false && index === 0
+            ? {
+                banner: {
+                  sessionId: result.sessionId,
+                  cwd: agent.ctx.workingDir ?? agent.ctx.projectRoot,
+                  model: agent.ctx.model,
+                  provider: agent.ctx.provider?.id,
+                },
+              }
+            : {}),
+          holdUntilSettled: true,
           ...(done ? { done: true, contextSnapshot: result.contextSnapshot } : {}),
         });
         if (done) break;
@@ -300,7 +324,7 @@ export function useAppPickerKeys({
     } catch (err) {
       stop();
       if (!alive()) return;
-      dispatch({ type: 'resumeLoadAbort' });
+      dispatch({ type: 'resumeLoadAbort', sessionId });
       // The reason, in the chat, on a screen the user can scroll. This is the
       // whole point of closing the picker first.
       dispatch({
@@ -313,7 +337,10 @@ export function useAppPickerKeys({
     } finally {
       stop();
       hooks.onSettled?.();
-      if (mountedRef.current) dispatch({ type: 'hint', text: '' });
+      if (alive()) {
+        dispatch({ type: 'resumeLoadAbort', sessionId });
+        dispatch({ type: 'hint', text: '' });
+      }
     }
   };
 
@@ -411,7 +438,7 @@ export function useAppPickerKeys({
         });
         return;
       }
-      if (resumeInFlightRef.current) return;
+      if (resumeInFlightRef.current || projectSwitchInFlightRef.current) return;
       resumeInFlightRef.current = true;
       const label = session.name?.trim() || session.title || session.id;
       // Enter is a COMMIT, so the panel goes away immediately and the work
@@ -442,7 +469,7 @@ export function useAppPickerKeys({
         // Sync in-flight lock: this branch reads the render-time confirm
         // snapshot, which stays stale until React re-renders — every Enter in
         // that window would re-run the resume. The ref rejects them all.
-        if (sessionsResumeInFlightRef.current) return;
+        if (sessionsResumeInFlightRef.current || projectSwitchInFlightRef.current) return;
         sessionsResumeInFlightRef.current = true;
         // Close the panel before the wipe, for the same reason the picker does:
         // the loading block belongs on the chat screen, not underneath a panel
@@ -494,6 +521,7 @@ export function useAppPickerKeys({
       }
     },
     onProjectPickerEnter: async () => {
+      if (projectSwitchInFlightRef.current || resumeInFlightRef.current) return;
       const items = state.projectPicker.items;
       const selected = state.projectPicker.selected;
       if (selected < 0 || selected >= items.length) return;
@@ -502,23 +530,47 @@ export function useAppPickerKeys({
         dispatch({ type: 'projectPickerClose' });
         return;
       }
-      if (item.kind === 'project') {
-        await onProjectSelect?.(item.key, item.kind);
-        dispatch({ type: 'projectPickerClose' });
-        dispatch({
-          type: 'addEntry',
-          entry: { kind: 'info', text: `Switched project: ${item.label.trim()}.` },
-        });
+      if (item.kind === 'project' || item.key === 'new-session') {
+        if (!onProjectSelect) {
+          dispatch({
+            type: 'projectPickerHint',
+            text: 'Project switching is unavailable in this host.',
+          });
+          return;
+        }
+        projectSwitchInFlightRef.current = true;
+        dispatch({ type: 'projectPickerHint', text: 'Switching project…' });
+        try {
+          const error = await onProjectSelect(item.key, item.kind);
+          if (!mountedRef.current) return;
+          if (error) {
+            dispatch({ type: 'projectPickerHint', text: `Project switch failed: ${error}` });
+            return;
+          }
+          dispatch({ type: 'projectPickerClose' });
+          dispatch({
+            type: 'addEntry',
+            entry: {
+              kind: 'info',
+              text:
+                item.kind === 'project'
+                  ? `Switched project: ${item.label.trim()}.`
+                  : 'Started a fresh session in this project.',
+            },
+          });
+        } catch (error) {
+          if (mountedRef.current)
+            dispatch({
+              type: 'projectPickerHint',
+              text: `Project switch failed: ${toErrorMessage(error)}`,
+            });
+        } finally {
+          projectSwitchInFlightRef.current = false;
+        }
         return;
       }
       dispatch({ type: 'projectPickerClose' });
-      if (item.key === 'new-session') {
-        await onProjectSelect?.(item.key, item.kind);
-        dispatch({
-          type: 'addEntry',
-          entry: { kind: 'info', text: 'Started a fresh session in this project.' },
-        });
-      } else if (item.key === 'prev-sessions') {
+      if (item.key === 'prev-sessions') {
         submitRef.current('/resume');
       }
     },

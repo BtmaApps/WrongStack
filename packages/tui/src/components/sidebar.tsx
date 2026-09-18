@@ -101,6 +101,8 @@ interface RightSidebarProps {
    * label is shown so the reserved region is visually self-documenting.
    */
   children?: React.ReactNode | undefined;
+  /** Icon-only live connection strip, sharing the existing one-row footer. */
+  statusIcons?: React.ReactNode | undefined;
 }
 
 /**
@@ -152,6 +154,7 @@ export function RightSidebar({
   scrollOffset = 0,
   maxScroll = 0,
   children,
+  statusIcons,
 }: RightSidebarProps): React.ReactElement | null {
   const { columns: termCols } = useTerminalSize({ fallbackColumns: 80 });
   const resolvedWidth = width ?? computeSidebarWidth(termCols);
@@ -208,7 +211,11 @@ export function RightSidebar({
           focused={focused}
         />
       </Box>
-      <SidebarFooter width={resolvedWidth} focused={focused} />
+      {!focused && statusIcons ? (
+        statusIcons
+      ) : (
+        <SidebarFooter width={resolvedWidth} focused={focused} />
+      )}
     </Box>
   );
 }

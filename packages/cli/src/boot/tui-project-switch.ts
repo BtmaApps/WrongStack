@@ -262,7 +262,11 @@ export async function switchProjectInPlace(
     );
   }
   await oldSessionStore?.dispose?.().catch(() => undefined);
-  const emitUntyped = events.emit as never as (event: string, payload: unknown) => void;
-  emitUntyped('project.switched', { from: oldProjectRoot, to: resolved, name: displayName });
+  events.emitCustom('project.switched', {
+    from: oldProjectRoot,
+    to: resolved,
+    name: displayName,
+    sessionId: nextWriter.id,
+  });
   return null;
 }

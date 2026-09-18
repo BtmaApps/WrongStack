@@ -839,7 +839,19 @@ export function reduceComposer(state: State, action: ComposerAction): State {
       // The first batch drops the progress block: from here the transcript
       // itself is the progress indicator, scrolling into place the way it did
       // when it was live.
-      const base = first ? state.entries.filter((e) => e.kind === 'banner') : state.entries;
+      const base = (first ? state.entries.filter((e) => e.kind === 'banner') : state.entries).map(
+        (entry) => {
+          if (entry.kind !== 'banner' || !action.banner) return entry;
+          const { sessionId, cwd, model, provider } = action.banner;
+          return {
+            ...entry,
+            sessionId,
+            ...(cwd !== undefined ? { cwd } : {}),
+            ...(model !== undefined ? { model } : {}),
+            ...(provider !== undefined ? { provider } : {}),
+          };
+        },
+      );
       let nextId = first ? (base.at(-1)?.id ?? 0) + 1 : state.nextId;
       const appended = [...base];
       for (const entry of action.entries) appended.push({ ...entry, id: nextId++ });
@@ -851,11 +863,12 @@ export function reduceComposer(state: State, action: ComposerAction): State {
         nextId,
         historyScrolled: false,
         historyGen: first ? state.historyGen + 1 : state.historyGen,
-        resumeLoad: action.done
-          ? null
-          : state.resumeLoad
-            ? { ...state.resumeLoad, phase: 'replaying', replayed, total: action.total }
-            : null,
+        resumeLoad:
+          action.done && !action.holdUntilSettled
+            ? null
+            : state.resumeLoad
+              ? { ...state.resumeLoad, phase: 'replaying', replayed, total: action.total }
+              : null,
         ...(action.done && snap && snap.tokens > 0
           ? {
               leader: {

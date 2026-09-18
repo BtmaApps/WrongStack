@@ -10,7 +10,11 @@ import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
+import { DefaultSessionStore } from '@wrongstack/core/storage';
+import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { afterEach, describe, expect, it } from 'vitest';
+import { touchProjectInManifest } from '../src/services/project-manifest.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CLI_ENTRY = path.join(REPO_ROOT, 'packages', 'cli', 'dist', 'index.js');
@@ -111,6 +115,44 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
         },
       }),
     );
+
+    const targetRoot = path.join(home, 'switched-project');
+    fs.mkdirSync(targetRoot);
+    execFileSync('git', ['init'], { cwd: targetRoot, stdio: 'ignore' });
+    // Seed before boot so the production catalog indexes the fixture on startup.
+    const sessionPaths = resolveWstackPaths({
+      projectRoot: targetRoot,
+      globalRoot: path.join(home, '.wrongstack'),
+    });
+    const store = new DefaultSessionStore({
+      dir: sessionPaths.projectSessions,
+    });
+    const saved = await store.create({
+      id: 'pty-resume-proof',
+      model: 'test-model',
+      provider: 'omniroute',
+    });
+    await saved.append({
+      type: 'user_input',
+      ts: new Date().toISOString(),
+      content: 'PTY saved question marker',
+    });
+    await saved.append({
+      type: 'llm_response',
+      ts: new Date().toISOString(),
+      content: [{ type: 'text', text: 'PTY saved answer marker' }],
+      stopReason: 'end_turn',
+      usage: { input: 10, output: 10 },
+      model: 'test-model',
+      provider: 'omniroute',
+    });
+    await saved.append({
+      type: 'session_end',
+      ts: new Date().toISOString(),
+      usage: { input: 10, output: 10 },
+    });
+    await saved.close();
+    await store.dispose?.();
 
     child = (pty as PtyModule).spawn(
       process.execPath,
@@ -288,5 +330,43 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     await type('/shadow');
     child.write('\r');
     await expectSoon('Stop with reason', 10_000, shadowStart);
-  }, 120_000);
+
+    await touchProjectInManifest({
+      projectRoot: targetRoot,
+      globalConfigPath: path.join(home, '.wrongstack', 'config.json'),
+      name: 'F1 switched target',
+    });
+    child.resize(110, 40);
+    await sleep(300);
+    child.write(`${ESC}OP`);
+    await sleep(200);
+    await type('F1 switched target');
+    await sleep(200);
+    const switchStart = output.length;
+    child.write('\r');
+    await expectSoon('Switched project: F1 switched target', 15000, switchStart);
+    await sleep(300);
+    const switchedFrame = stripVTControlCharacters(output.slice(switchStart));
+    expect(switchedFrame).toMatch(/(?:workspace|cwd)[^\r\n]*switched-project/);
+    expect(switchedFrame).not.toContain('Project switch failed');
+
+    const menuStart = output.length;
+    await type('/sessions');
+    child.write('\r');
+    await expectSoon('Resume Session', 10_000, menuStart);
+    await expectSoon('PTY saved question marker', 10_000, menuStart);
+    child.write(`${ESC}[B`);
+    await sleep(100);
+    const replayStart = output.length;
+    child.write('\r');
+    await expectSoon('Resumed session pty-resume-proof', 20_000, replayStart);
+    const replay = stripVTControlCharacters(output.slice(replayStart));
+    expect(replay).toContain('PTY saved question marker');
+    expect(replay).toContain('PTY saved answer marker');
+    expect(replay).not.toContain('Failed to resume');
+    const reopenStart = output.length;
+    await type('/sessions');
+    child.write('\r');
+    await expectSoon('Resume Session', 10_000, reopenStart);
+  }, 150_000);
 });

@@ -1368,6 +1368,9 @@
     "packages/tui/src/components/sidebar-content.tsx": [
       "contextSpectrum"
     ],
+    "packages/tui/src/components/sidebar-ipc-icons.tsx": [
+      "ipcStatusColor"
+    ],
     "packages/tui/src/components/sidebar-panel-frame.tsx": [
       "SidebarPanelCard"
     ],

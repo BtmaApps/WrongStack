@@ -619,13 +619,14 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           restoredToolCalls,
           restoredEvents,
           listSessions: async (limit = 20) => {
-            if (!activeSessionStore) return [];
+            const currentStore = state.activeSessionStore;
+            if (!currentStore) return [];
             // Enrichment can raise a stub's lastActivityAt, so selection must
             // happen after enrichment: fetch an over-fetched pool from the
             // store, enrich stubs from their JSONL transcripts, re-sort, slice.
             const summaries = await selectPickerSessions(
-              (poolLimit) => activeSessionStore.list(poolLimit),
-              wpaths.projectSessions,
+              (poolLimit) => currentStore.list(poolLimit),
+              state.wpaths.projectSessions,
               limit,
             );
             // Which of these is another process writing right now? Session

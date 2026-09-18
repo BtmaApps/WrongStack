@@ -764,6 +764,7 @@ export function App(props: AppProps): React.ReactElement {
   });
 
   const tryPickerKey = useAppPickerKeys({
+    sessionGenerationRef,
     host: props,
     state,
     dispatch,

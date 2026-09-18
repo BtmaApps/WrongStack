@@ -122,10 +122,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   );
 
   const sidebarProcessData = useSidebarProcessList(sidebarSlotVisible('processList'));
-  const sidebarConnectionsData = useSidebarConnections(
-    agent.ctx.projectRoot,
-    sidebarSlotVisible('connections'),
-  );
+  const sidebarConnectionsData = useSidebarConnections(agent.ctx.projectRoot, sidebarWidth > 0);
   const sidebarKanbanData = useSidebarKanban(agent.ctx.projectRoot, sidebarSlotVisible('kanban'));
 
   // WrongProxy status panel — gated on the master switch via the

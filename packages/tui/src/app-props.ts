@@ -599,7 +599,12 @@ export interface AppProps {
    * Called when the user selects a project or action in the project picker.
    * The host CLI handles project switching (stopping agents, spawning new session).
    */
-  onProjectSelect?: ((key: string, kind: 'project' | 'action') => void) | undefined;
+  onProjectSelect?:
+    | ((
+        key: string,
+        kind: 'project' | 'action',
+      ) => void | string | null | Promise<void | string | null>)
+    | undefined;
 
   /**
    * Request the TUI to exit with a specific code. When a project is selected in
