@@ -3,11 +3,11 @@
   "thresholdLines": 800,
   "files": {
     "packages/acp/src/agent/server-agent-turn.ts": {
-      "lines": 804,
+      "lines": 812,
       "relativeImports": 2
     },
     "packages/acp/src/client/acp-session.ts": {
-      "lines": 1013,
+      "lines": 1043,
       "relativeImports": 19
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
@@ -15,7 +15,7 @@
       "relativeImports": 7
     },
     "packages/cli/src/boot/tui-session-resume.ts": {
-      "lines": 839,
+      "lines": 846,
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
@@ -139,8 +139,8 @@
       "relativeImports": 8
     },
     "packages/core/src/execution/prompt-enhancer.ts": {
-      "lines": 814,
-      "relativeImports": 8
+      "lines": 818,
+      "relativeImports": 9
     },
     "packages/core/src/hq/auth-store.ts": {
       "lines": 1039,
@@ -157,6 +157,10 @@
     "packages/core/src/plugin/api.ts": {
       "lines": 924,
       "relativeImports": 22
+    },
+    "packages/core/src/plugins/skills-plugin.ts": {
+      "lines": 827,
+      "relativeImports": 14
     },
     "packages/core/src/security/secret-vault.ts": {
       "lines": 865,
@@ -311,7 +315,7 @@
       "relativeImports": 18
     },
     "packages/simpleui/src/simple-ui-session.tsx": {
-      "lines": 1121,
+      "lines": 1122,
       "relativeImports": 52
     },
     "packages/tools/src/bash.ts": {
@@ -363,7 +367,7 @@
       "relativeImports": 4
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 879,
+      "lines": 889,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -371,12 +375,12 @@
       "relativeImports": 10
     },
     "packages/tui/src/app-state.ts": {
-      "lines": 1033,
+      "lines": 1034,
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
-      "lines": 1001,
-      "relativeImports": 59
+      "lines": 1004,
+      "relativeImports": 60
     },
     "packages/tui/src/components/agents-monitor.tsx": {
       "lines": 1013,
@@ -423,7 +427,7 @@
       "relativeImports": 1
     },
     "packages/tui/src/reducers/composer.ts": {
-      "lines": 955,
+      "lines": 977,
       "relativeImports": 9
     },
     "packages/tui/src/reducers/settings-values.ts": {
@@ -539,7 +543,7 @@
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 963,
+      "lines": 965,
       "relativeImports": 14
     },
     "packages/webui-server/src/server/context-editor.ts": {
@@ -571,7 +575,7 @@
       "relativeImports": 35
     },
     "packages/webui-server/src/server/ws-payload-validation.ts": {
-      "lines": 1057,
+      "lines": 1059,
       "relativeImports": 1
     },
     "apps/desktop/src/main/runtime-manager.ts": {

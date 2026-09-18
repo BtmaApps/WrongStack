@@ -1253,9 +1253,11 @@
         "export { SKILL_LIMITS } from './limits.js';",
         "export { bodyLineAdvisory, type ExtractedSkillDraft, extractSkillFromPrompt, generateSkillSkeleton, openInEditor, type SkillNameValidation, type SkillSkeletonOptions, validateSkillNameAvailable, writeSkeletonSkill, } from './skill-generator.js';",
         "export { buildSuggesterFromConfig, type ChoiceAnswer, type ChoiceQuestion, classifyCase, createSkillSuggester, createSkillSuggestionMiddleware, createSkillSuggestionSetup, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type ExplainOptions, type LabeledRequest, type NoulAnswer, type NoulQuestion, parseEvalJsonl, parseSystemOneResult, redecide, renderSuggestionBlock, type ScoredCase, type SkillSuggester, type SkillSuggesterOptions, type SkillSuggestion, type SkillSuggestionMiddlewareOptions, type SkillSuggestionSetupDeps, type SkillSuggestionTrace, type SuggestionScore, type SuggestionStop, type SweepRow, type SystemOneRequest, type SystemOneResult, scoreSuggestions, sweepThresholds, TYPESAFE_API_KEY_ENV, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, unknownGoldLabels, } from './suggest/index.js';",
+        "export { collectSkillFiles } from './skill-files.js';",
+        "export { createSkillMentionMiddleware } from './mention-middleware.js';",
         "export { createSkillsShAdapter, DEFAULT_SKILLS_SH_URL } from './registry/skills-sh-adapter.js';",
         "export { githubDirectAdapter } from './registry/github-direct-adapter.js';",
-        "export { isValidSkillNameFormat, type ParsedSkillFrontmatter, parseSkillFrontmatter, stripFrontmatter, validateSkillName, } from './frontmatter.js';",
+        "export { isValidSkillNameFormat, type ParsedSkillFrontmatter, parseSkillFrontmatter, serializeSkillDocument, stripFrontmatter, validateSkillDocument, validateSkillName, } from './frontmatter.js';",
         "export { type DownloadResult, downloadGitHubTarball, type ParsedRef, parseSkillRef, } from './github-fetcher.js';",
         "export { type InstallResult, SkillInstaller, type SkillInstallerOptions, type UpdateResult, } from './skill-installer.js';",
         "export { type InstalledSkillEntry, type ManifestData, SkillManifestStore, } from './manifest-store.js';"
@@ -1474,6 +1476,23 @@
         "export interface ProxyTransitionLogger",
         "export type ProxyConfigListener"
       ]
+    },
+    {
+      "subpath": "./skill-mentions",
+      "target": {
+        "types": "./dist/skills/mentions.d.ts",
+        "import": "./dist/skills/mentions.js"
+      },
+      "source": "packages/core/src/skills/mentions.ts",
+      "declarations": [
+        "export function detectSkillMention",
+        "export function extractSkillMentions",
+        "export function insertSkillMention",
+        "export function matchSkillMentions",
+        "export function preserveSkillMentions",
+        "export interface SkillMention",
+        "export interface SkillMentionCandidate"
+      ]
     }
   ],
   "inventory": [
@@ -1489,14 +1508,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 195,
-      "sourceLines": 56390
+      "sourceLines": 56392
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 58,
-      "sourceLines": 13370
+      "sourceLines": 13377
     },
     {
       "directory": "design",
@@ -1510,7 +1529,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 59,
-      "sourceLines": 19198
+      "sourceLines": 19241
     },
     {
       "directory": "extension",
@@ -1594,7 +1613,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9236
+      "sourceLines": 9285
     },
     {
       "directory": "prompts",
@@ -1642,8 +1661,8 @@
       "directory": "skills",
       "classification": "product feature",
       "intendedOwner": "skills implementation package or Runtime",
-      "sourceFiles": 16,
-      "sourceLines": 3501
+      "sourceFiles": 19,
+      "sourceLines": 3657
     },
     {
       "directory": "statusline",
@@ -1678,14 +1697,14 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 74,
-      "sourceLines": 14016
+      "sourceLines": 14015
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 6,
-      "sourceLines": 882
+      "sourceLines": 899
     },
     {
       "directory": "utils",

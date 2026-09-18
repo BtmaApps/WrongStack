@@ -148,10 +148,15 @@
       "typeOnly": 0,
       "runtimeOrMixed": 13
     },
+    "@wrongstack/core/skill-mentions": {
+      "files": 5,
+      "typeOnly": 0,
+      "runtimeOrMixed": 6
+    },
     "@wrongstack/core/skills": {
-      "files": 11,
-      "typeOnly": 3,
-      "runtimeOrMixed": 9
+      "files": 14,
+      "typeOnly": 2,
+      "runtimeOrMixed": 13
     },
     "@wrongstack/core/statusline": {
       "files": 24,
@@ -174,8 +179,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1114,
-      "typeOnly": 996,
+      "files": 1116,
+      "typeOnly": 998,
       "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -9759,6 +9764,36 @@
       "runtimeOrMixed": 1
     },
     {
+      "specifier": "@wrongstack/core/skill-mentions",
+      "file": "packages/tui/src/app-action-type.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
+    },
+    {
+      "specifier": "@wrongstack/core/skill-mentions",
+      "file": "packages/tui/src/app-state.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skill-mentions",
+      "file": "packages/tui/src/hooks/use-app-picker-keys.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skill-mentions",
+      "file": "packages/tui/src/hooks/use-skill-mention-picker.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skill-mentions",
+      "file": "packages/webui-protocol/src/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/src/execution-kanban-dispatch.ts",
       "typeOnly": 0,
@@ -9785,6 +9820,18 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/tests/skill-suggest-eval-fixtures.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/security-scanner/src/skill-generator.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/security-scanner/tests/orchestrator-coverage-completion.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9821,8 +9868,14 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/webui-server/src/server/skills-handlers.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/webui-server/src/server/ws-payload-validation.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/statusline",
@@ -12215,6 +12268,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16241,6 +16300,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/hooks/use-session-slash-commands.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/hooks/use-skill-mention-picker.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

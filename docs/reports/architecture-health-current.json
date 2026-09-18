@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T13:19:31.897Z",
+  "generatedAt": "2026-09-18T15:46:44.824Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3840,
-    "testFiles": 3498,
-    "sourceLines": 940391,
+    "sourceFiles": 3846,
+    "testFiles": 3507,
+    "sourceLines": 941402,
     "workspaceEdges": 128,
-    "moduleEdges": 12384,
+    "moduleEdges": 12403,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
@@ -105,7 +105,7 @@
       "name": "@wrongstack/acp",
       "dir": "packages/acp",
       "sourceFiles": 42,
-      "testFiles": 39,
+      "testFiles": 41,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/primitives"
@@ -119,7 +119,7 @@
         {
           "path": "packages/acp/tsconfig.test.json",
           "error": null,
-          "testFiles": 39
+          "testFiles": 41
         }
       ]
     },
@@ -148,7 +148,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 497,
-      "testFiles": 511,
+      "testFiles": 512,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 511
+          "testFiles": 512
         }
       ]
     },
@@ -217,8 +217,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 884,
-      "testFiles": 793,
+      "sourceFiles": 887,
+      "testFiles": 797,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +233,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 793
+          "testFiles": 797
         }
       ]
     },
@@ -663,7 +663,7 @@
     {
       "name": "@wrongstack/simpleui",
       "dir": "packages/simpleui",
-      "sourceFiles": 100,
+      "sourceFiles": 101,
       "testFiles": 75,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -760,8 +760,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 399,
-      "testFiles": 372,
+      "sourceFiles": 400,
+      "testFiles": 373,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -784,7 +784,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 372
+          "testFiles": 373
         }
       ]
     },
@@ -814,7 +814,7 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 554,
+      "sourceFiles": 555,
       "testFiles": 395,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -891,7 +891,7 @@
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
       "sourceFiles": 230,
-      "testFiles": 222,
+      "testFiles": 223,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -917,7 +917,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 222
+          "testFiles": 223
         }
       ]
     },
@@ -1388,6 +1388,12 @@
         ]
       },
       {
+        "file": "packages/acp/tests/sdk-stdio.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/acp/tests/security-hardening.test.ts",
         "projects": [
           "root-node"
@@ -1455,6 +1461,12 @@
       },
       {
         "file": "packages/acp/tests/trust-boundary-permission.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/acp/tests/v1-interop-regressions.test.ts",
         "projects": [
           "root-node"
         ]
@@ -3681,6 +3693,12 @@
       },
       {
         "file": "packages/cli/tests/session-stats.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/settings-cursor-restore-tui-e2e.test.ts",
         "projects": [
           "root-node"
         ]
@@ -8384,6 +8402,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/skills/skill-files.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/skills/skill-generator.test.ts",
         "projects": [
           "root-node"
@@ -8397,6 +8421,24 @@
       },
       {
         "file": "packages/core/tests/skills/skill-installer.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/skill-lifecycle-regressions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/skill-mention-middleware.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/skills/skill-mentions.test.ts",
         "projects": [
           "root-node"
         ]
@@ -17252,6 +17294,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/skill-mention-state.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/skill-picker.test.tsx",
         "projects": [
           "root-node"
@@ -19455,6 +19503,12 @@
       },
       {
         "file": "packages/webui-server/tests/skills-handlers.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/webui-server/tests/skills-lifecycle.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22186,12 +22240,12 @@
   "hotspotCandidates": [
     {
       "file": "packages/acp/src/agent/server-agent-turn.ts",
-      "lines": 804,
+      "lines": 812,
       "relativeImports": 2
     },
     {
       "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 1013,
+      "lines": 1043,
       "relativeImports": 19
     },
     {
@@ -22201,7 +22255,7 @@
     },
     {
       "file": "packages/cli/src/boot/tui-session-resume.ts",
-      "lines": 839,
+      "lines": 846,
       "relativeImports": 1
     },
     {
@@ -22356,8 +22410,8 @@
     },
     {
       "file": "packages/core/src/execution/prompt-enhancer.ts",
-      "lines": 814,
-      "relativeImports": 8
+      "lines": 818,
+      "relativeImports": 9
     },
     {
       "file": "packages/core/src/hq/auth-store.ts",
@@ -22378,6 +22432,11 @@
       "file": "packages/core/src/plugin/api.ts",
       "lines": 924,
       "relativeImports": 22
+    },
+    {
+      "file": "packages/core/src/plugins/skills-plugin.ts",
+      "lines": 827,
+      "relativeImports": 14
     },
     {
       "file": "packages/core/src/security/secret-vault.ts",
@@ -22571,7 +22630,7 @@
     },
     {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
-      "lines": 1121,
+      "lines": 1122,
       "relativeImports": 52
     },
     {
@@ -22636,7 +22695,7 @@
     },
     {
       "file": "packages/tui/src/app-action-type.ts",
-      "lines": 879,
+      "lines": 889,
       "relativeImports": 13
     },
     {
@@ -22646,13 +22705,13 @@
     },
     {
       "file": "packages/tui/src/app-state.ts",
-      "lines": 1033,
+      "lines": 1034,
       "relativeImports": 14
     },
     {
       "file": "packages/tui/src/app.tsx",
-      "lines": 1001,
-      "relativeImports": 59
+      "lines": 1004,
+      "relativeImports": 60
     },
     {
       "file": "packages/tui/src/components/agents-monitor.tsx",
@@ -22711,7 +22770,7 @@
     },
     {
       "file": "packages/tui/src/reducers/composer.ts",
-      "lines": 955,
+      "lines": 977,
       "relativeImports": 9
     },
     {
@@ -22856,7 +22915,7 @@
     },
     {
       "file": "packages/webui-server/src/server/backend-services.ts",
-      "lines": 963,
+      "lines": 965,
       "relativeImports": 14
     },
     {
@@ -22896,7 +22955,7 @@
     },
     {
       "file": "packages/webui-server/src/server/ws-payload-validation.ts",
-      "lines": 1057,
+      "lines": 1059,
       "relativeImports": 1
     },
     {
@@ -22918,7 +22977,7 @@
     },
     {
       "file": "packages/simpleui/src/simple-ui-session.tsx",
-      "lines": 1121,
+      "lines": 1122,
       "relativeImports": 52
     },
     {
@@ -22978,7 +23037,7 @@
     },
     {
       "file": "packages/webui-server/src/server/ws-payload-validation.ts",
-      "lines": 1057,
+      "lines": 1059,
       "relativeImports": 1
     },
     {
@@ -23027,6 +23086,11 @@
       "relativeImports": 2
     },
     {
+      "file": "packages/acp/src/client/acp-session.ts",
+      "lines": 1043,
+      "relativeImports": 19
+    },
+    {
       "file": "packages/core/src/hq/protocol/core.ts",
       "lines": 1043,
       "relativeImports": 13
@@ -23057,14 +23121,14 @@
       "relativeImports": 4
     },
     {
+      "file": "packages/tui/src/app-state.ts",
+      "lines": 1034,
+      "relativeImports": 14
+    },
+    {
       "file": "packages/cli/src/plugin-management.ts",
       "lines": 1033,
       "relativeImports": 1
-    },
-    {
-      "file": "packages/tui/src/app-state.ts",
-      "lines": 1033,
-      "relativeImports": 14
     },
     {
       "file": "packages/tools/src/codebase-index/writer-graph-reader.ts",
@@ -23112,11 +23176,6 @@
       "relativeImports": 1
     },
     {
-      "file": "packages/acp/src/client/acp-session.ts",
-      "lines": 1013,
-      "relativeImports": 19
-    },
-    {
       "file": "packages/tui/src/components/agents-monitor.tsx",
       "lines": 1013,
       "relativeImports": 13
@@ -23142,6 +23201,11 @@
       "relativeImports": 14
     },
     {
+      "file": "packages/tui/src/app.tsx",
+      "lines": 1004,
+      "relativeImports": 60
+    },
+    {
       "file": "packages/kanban/src/types.ts",
       "lines": 1003,
       "relativeImports": 1
@@ -23150,11 +23214,6 @@
       "file": "packages/webui/src/components/ChronicleDashboard.tsx",
       "lines": 1002,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/tui/src/app.tsx",
-      "lines": 1001,
-      "relativeImports": 59
     }
   ],
   "testOnlyExports": [
