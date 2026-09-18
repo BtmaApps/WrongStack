@@ -3,6 +3,7 @@ import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import type { ResourceMenuItem, ResourceMenuSnapshot } from '../ui-contracts.js';
+import { MonitorShell, MonitorViewportProvider } from './monitor-shell.js';
 
 interface ResourceMenuProps {
   snapshot: ResourceMenuSnapshot;
@@ -33,7 +34,7 @@ export function ResourceMenu({
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: items.length,
     selected,
-    chromeRows: 4,
+    chromeRows: 5,
     markerRows: 3,
     maxRows,
   });
@@ -50,13 +51,11 @@ export function ResourceMenu({
       paddingX={1}
       {...(split ? { width: listWidth, flexShrink: 0 } : {})}
     >
-      <Text color={theme.accent} bold>
+      <Text color={theme.accent} bold wrap="truncate-end">
         ━━ {snapshot.title} {filter ? `· ${items.length}/${snapshot.items.length}` : ''} ━━
       </Text>
-      <Text color={theme.textMuted}>
-        {filtering
-          ? `filter: ${filter || 'type to search'} · Enter done · Esc clear`
-          : '↑/↓ inspect · / filter · action key/Enter · Esc close'}
+      <Text color={theme.textMuted} wrap="truncate-end">
+        {filtering ? `Esc clear · Enter done · filter: ${filter}` : 'Esc · ↑↓ · / · Enter action'}
       </Text>
       {hasAbove ? <Text color={theme.textMuted}> … {start} more above</Text> : null}
       {visible.map((item, offset) => {
@@ -64,7 +63,12 @@ export function ResourceMenu({
         const active = index === safeSelected;
         const color = statusColor(item.status);
         return (
-          <Text key={item.id} inverse={active} {...(active ? { color: theme.accent } : {})}>
+          <Text
+            key={item.id}
+            wrap="truncate-end"
+            inverse={active}
+            {...(active ? { color: theme.accent } : {})}
+          >
             {active ? '› ' : '  '}
             <Text color={active ? undefined : color}>{statusGlyph(item.status)} </Text>
             <Text bold>{truncate(item.label, nameWidth).padEnd(nameWidth)}</Text>
@@ -78,8 +82,21 @@ export function ResourceMenu({
           {filter ? `No matches for “${filter}”.` : (snapshot.emptyText ?? 'Nothing to show.')}
         </Text>
       ) : null}
-      {confirming ? <Text color={theme.warn}>Run {confirming}? y confirm · n cancel</Text> : null}
-      {!confirming && hint ? <Text color={theme.warn}>{hint}</Text> : null}
+      {focused?.actions?.length ? (
+        <Text color={theme.textSecondary} wrap="truncate-end">
+          {focused.actions.map((action) => `${action.key} ${action.label}`).join(' · ')}
+        </Text>
+      ) : null}
+      {confirming ? (
+        <Text color={theme.warn} wrap="truncate-end">
+          y confirm · n cancel: {confirming}
+        </Text>
+      ) : null}
+      {!confirming && hint ? (
+        <Text color={theme.warn} wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 
@@ -87,7 +104,16 @@ export function ResourceMenu({
   return (
     <Box flexDirection="row">
       {list}
-      <ResourceDetail item={focused} subtitle={snapshot.subtitle} maxRows={maxRows} />
+      <Box flexGrow={1} flexDirection="column">
+        <MonitorViewportProvider value={{ columns: columns - listWidth, rows: maxRows ?? 16 }}>
+          <ResourceDetail
+            key={focused.id}
+            item={focused}
+            subtitle={snapshot.subtitle}
+            maxRows={maxRows}
+          />
+        </MonitorViewportProvider>
+      </Box>
     </Box>
   );
 }
@@ -117,18 +143,19 @@ function ResourceDetail({
   subtitle?: string | undefined;
   maxRows?: number | undefined;
 }): React.ReactElement {
-  const bodyLimit = Math.max(120, ((maxRows ?? 16) - item.details.length - 7) * 72);
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor={theme.accent}
-      paddingX={1}
-      flexGrow={1}
+    <MonitorShell
+      accent={theme.accent}
+      icon=""
+      title={item.label}
+      maxHeight={maxRows ?? 16}
+      wheelScroll={false}
+      footer={
+        <Text color={theme.textMuted} wrap="truncate-end">
+          Alt+PgUp/PgDn scroll
+        </Text>
+      }
     >
-      <Text color={theme.accent} bold wrap="truncate-end">
-        {item.label}
-      </Text>
       {subtitle ? <Text color={theme.textMuted}>{subtitle}</Text> : null}
       {item.summary ? <Text wrap="wrap">{item.summary}</Text> : null}
       {item.details.map((detail) => (
@@ -140,7 +167,7 @@ function ResourceDetail({
       {item.body ? (
         <>
           <Text> </Text>
-          <Text wrap="wrap">{truncate(item.body, bodyLimit)}</Text>
+          <Text wrap="wrap">{item.body}</Text>
         </>
       ) : null}
       {item.actions && item.actions.length > 0 ? (
@@ -151,7 +178,7 @@ function ResourceDetail({
           </Text>
         </>
       ) : null}
-    </Box>
+    </MonitorShell>
   );
 }
 

@@ -1,6 +1,8 @@
-import { Box, Text } from '../ink.js';
-import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import type React from 'react';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { Box, Text } from '../ink.js';
+import { theme } from '../theme.js';
+import { MonitorShell } from './monitor-shell.js';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ interface MailboxPanelProps {
   unreadCount: number;
   /** Whether the panel is visible. When false, returns null. */
   open: boolean;
+  maxRows?: number | undefined;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -80,6 +83,7 @@ export function MailboxPanel({
   agents,
   unreadCount,
   open,
+  maxRows,
 }: MailboxPanelProps): React.ReactElement | null {
   const { columns: termWidth } = useTerminalSize({ fallbackColumns: 90 });
 
@@ -90,7 +94,17 @@ export function MailboxPanel({
   const maxSubjectLen = Math.max(15, Math.min(30, termWidth - 55));
 
   return (
-    <Box flexDirection="column" marginY={1} flexShrink={0}>
+    <MonitorShell
+      icon="📬"
+      title="Mailbox"
+      accent={theme.accent}
+      maxHeight={maxRows}
+      footer={
+        <Text dimColor wrap="truncate-end">
+          /mailbox · Esc to close
+        </Text>
+      }
+    >
       {/* Header */}
       <Box flexDirection="row" gap={2}>
         <Text bold color="cyan">
@@ -170,11 +184,6 @@ export function MailboxPanel({
           ))}
         </Box>
       ) : null}
-
-      {/* Footer */}
-      <Box marginTop={1}>
-        <Text dimColor>/mailbox — Esc to close</Text>
-      </Box>
-    </Box>
+    </MonitorShell>
   );
 }

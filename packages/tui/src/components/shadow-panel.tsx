@@ -1,5 +1,5 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
+import { Box, Text } from '../ink.js';
 
 export interface ShadowState {
   activeId: string | null;
@@ -9,19 +9,23 @@ export interface ShadowState {
 }
 
 interface ShadowPanelProps {
+  maxRows?: number | undefined;
   shadow: ShadowState;
   hint?: string | undefined;
 }
 
-export function ShadowPanel({ shadow, hint }: ShadowPanelProps): React.ReactElement {
+export function ShadowPanel({ shadow, hint, maxRows }: ShadowPanelProps): React.ReactElement {
+  const compact = maxRows !== undefined && maxRows < 14;
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="blue" paddingX={1}>
       <Text bold color="blue">
         ━━ Shadow Agent ━━
       </Text>
-      <Text dimColor>s start · t stop · i cycle interval · m cycle model · Esc close</Text>
+      <Text dimColor wrap="truncate-end">
+        s start · t stop · Esc close
+      </Text>
 
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {/* Status */}
         <Box>
           <Text bold>Status: </Text>
@@ -34,13 +38,15 @@ export function ShadowPanel({ shadow, hint }: ShadowPanelProps): React.ReactElem
         </Box>
 
         {/* Model */}
-        <Box marginTop={1}>
+        <Box marginTop={compact ? 0 : 1}>
           <Text bold>Model: </Text>
-          <Text color="cyan">{shadow.model}</Text>
+          <Text color="cyan" wrap="truncate-end">
+            {shadow.model}
+          </Text>
         </Box>
 
         {/* Interval */}
-        <Box marginTop={1}>
+        <Box marginTop={compact ? 0 : 1}>
           <Text bold>Interval: </Text>
           <Text color="yellow">
             {shadow.intervalMs >= 1000 ? `${shadow.intervalMs / 1000}s` : `${shadow.intervalMs}ms`}
@@ -49,18 +55,22 @@ export function ShadowPanel({ shadow, hint }: ShadowPanelProps): React.ReactElem
         </Box>
 
         {/* Actions legend */}
-        <Box marginTop={1}>
-          <Text dimColor>
-            {shadow.running
-              ? 'Press t to stop the Shadow Agent'
-              : 'Press s to start the Shadow Agent'}
-          </Text>
-        </Box>
+        {!compact ? (
+          <Box marginTop={1}>
+            <Text dimColor>
+              {shadow.running
+                ? 'Press t to stop the Shadow Agent'
+                : 'Press s to start the Shadow Agent'}
+            </Text>
+          </Box>
+        ) : null}
       </Box>
 
       {hint ? (
-        <Box marginTop={1}>
-          <Text dimColor>{hint}</Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text dimColor wrap="truncate-end">
+            {hint}
+          </Text>
         </Box>
       ) : null}
     </Box>

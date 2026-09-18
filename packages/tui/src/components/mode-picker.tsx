@@ -1,5 +1,6 @@
 import type { Mode } from '@wrongstack/core/types';
 import type React from 'react';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
 
 export interface ModeOption {
@@ -11,6 +12,8 @@ export interface ModeOption {
 }
 
 interface ModePickerProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   modes: ModeOption[];
   selected: number;
   hint?: string | undefined;
@@ -60,36 +63,60 @@ function familyColor(family: ModeOption['family']): 'green' | 'magenta' | 'blue'
   }
 }
 
-export function ModePicker({ modes, selected, hint }: ModePickerProps): React.ReactElement {
+export function ModePicker({
+  modes,
+  selected,
+  hint,
+  maxRows,
+  columns = 100,
+}: ModePickerProps): React.ReactElement {
+  const { start, end, hasAbove, hasBelow } = useWindowedPicker({
+    total: modes.length,
+    selected,
+    maxRows,
+    chromeRows: 4,
+    markerRows: 2 + (hint ? 1 : 0),
+  });
   const activeMode = modes.find((mode) => mode.isActive);
   const modeMeta = `${modes.length} mode${modes.length === 1 ? '' : 's'}`;
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="blue" paddingX={1}>
-      <Text color="cyan" bold>
+      <Text color="cyan" bold wrap="truncate-end">
         ━━ Mode Selection ━━ <Text dimColor>{modeMeta}</Text>
       </Text>
-      <Text dimColor>
-        Current: {activeMode ? activeMode.name : 'none'} · ↑/↓ navigate · Enter select · Esc cancel
+      <Text dimColor wrap="truncate-end">
+        {columns < 100
+          ? '↑↓ navigate · Enter select · Esc cancel'
+          : `Current: ${activeMode ? activeMode.name : 'none'} · ↑/↓ navigate · Enter select · Esc cancel`}
       </Text>
       {modes.length === 0 ? (
         <Text dimColor>No modes available.</Text>
       ) : (
-        modes.map((opt, i) => (
-          <Text
-            key={opt.id}
-            inverse={i === selected}
-            {...(i === selected ? { color: 'cyan' } : {})}
-          >
-            {i === selected ? '› ' : '  '}
-            <Text bold>{opt.name.padEnd(18)}</Text>
-            <Text color={familyColor(opt.family)}>[{familyLabel(opt.family)}]</Text>
-            <Text dimColor> {opt.description}</Text>
-            {opt.isActive ? <Text color="green"> ● active</Text> : null}
-          </Text>
-        ))
+        modes.slice(start, end).map((opt, offset) => {
+          const i = start + offset;
+          return (
+            <Text
+              key={opt.id}
+              inverse={i === selected}
+              wrap="truncate-end"
+              {...(i === selected ? { color: 'cyan' } : {})}
+            >
+              {i === selected ? '› ' : '  '}
+              <Text bold>{opt.name.padEnd(18)}</Text>
+              <Text color={familyColor(opt.family)}>[{familyLabel(opt.family)}]</Text>
+              <Text dimColor> {opt.description}</Text>
+              {opt.isActive ? <Text color="green"> ● active</Text> : null}
+            </Text>
+          );
+        })
       )}
-      {hint ? <Text color="yellow">{hint}</Text> : null}
+      {hasAbove || hasBelow ? <Text dimColor>{`${start + 1}–${end}/${modes.length}`}</Text> : null}
+      {hint ? (
+        <Text color="yellow" wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 }

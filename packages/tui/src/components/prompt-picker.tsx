@@ -1,4 +1,5 @@
 import type React from 'react';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
 import { wrapRefinementPreview } from './enhance-panel.js';
 
@@ -57,21 +58,6 @@ function detailBudgets(maxRows: number | undefined): {
   return { descLines, previewLines };
 }
 
-function getVisibleWindow(selected: number, total: number): { start: number; end: number } {
-  const half = Math.floor(MAX_VISIBLE / 2);
-  let start = selected - half;
-  let end = start + MAX_VISIBLE;
-  if (start < 0) {
-    start = 0;
-    end = Math.min(total, MAX_VISIBLE);
-  }
-  if (end > total) {
-    end = total;
-    start = Math.max(0, end - MAX_VISIBLE);
-  }
-  return { start, end };
-}
-
 /**
  * Apply the picker's category filter. catIndex 0 (= "all") returns everything;
  * "★ favorites" filters by the favorite flag; "🕘 recent" orders by the
@@ -121,7 +107,12 @@ export function PromptPicker({
   columns = 0,
   maxRows,
 }: PromptPickerProps): React.ReactElement {
-  const { start, end } = getVisibleWindow(selected, entries.length);
+  const { start, end } = useWindowedPicker({
+    total: entries.length,
+    selected,
+    maxRows: maxRows === undefined ? MAX_VISIBLE + 4 : Math.min(maxRows, MAX_VISIBLE + 4),
+    chromeRows: 4,
+  });
   const focused = entries[Math.max(0, Math.min(selected, entries.length - 1))];
   const longest = entries.reduce((value, entry) => Math.max(value, entry.title.length), 0);
   const listWidth = Math.max(36, Math.min(56, longest + 10));
@@ -138,11 +129,13 @@ export function PromptPicker({
       paddingX={1}
       {...(split ? { width: listWidth, flexShrink: 0 } : {})}
     >
-      <Text color="cyan" bold>
+      <Text color="cyan" bold wrap="truncate-end">
         ━━ Prompt library · {category} ({entries.length}/{total}) ━━
       </Text>
-      <Text dimColor>
-        ↑/↓ navigate · ←/→ category · Enter insert · f favorite · e edit · Esc cancel
+      <Text dimColor wrap="truncate-end">
+        {(columns > 0 && columns < 100) || split
+          ? 'Esc · ↑↓ · ←→ · Enter · f ★ · e'
+          : '↑/↓ navigate · ←/→ category · Enter insert · f favorite · e edit · Esc cancel'}
       </Text>
       {entries.length === 0 ? (
         <Text dimColor>No prompts in this category.</Text>
@@ -151,7 +144,12 @@ export function PromptPicker({
           const idx = start + i;
           const isSel = idx === selected;
           return (
-            <Text key={e.slug} inverse={isSel} {...(isSel ? { color: 'cyan' } : {})}>
+            <Text
+              key={e.slug}
+              wrap="truncate-end"
+              inverse={isSel}
+              {...(isSel ? { color: 'cyan' } : {})}
+            >
               {isSel ? '› ' : '  '}
               {glyph(e.source)} {e.favorite ? '★ ' : ''}
               <Text bold>{e.title}</Text>{' '}

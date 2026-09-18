@@ -8,6 +8,60 @@ const providers = Array.from({ length: 35 }, (_, i) => ({
   family: 'openai-compatible',
   models: Array.from({ length: 30 }, (_, j) => `model-${j}`),
 }));
+
+it('keeps the provider preview compact when the terminal has spare height', async () => {
+  const picker = (maxRows: number, selected = 22) => (
+    <ModelPicker
+      step="provider"
+      providerOptions={providers}
+      modelOptions={[]}
+      filteredOptions={[]}
+      selected={selected}
+      columns={120}
+      maxRows={maxRows}
+    />
+  );
+  const view = renderRealTty(picker(54), { columns: 120, rows: 60 });
+  try {
+    await settle();
+    const height = view.lastFrame().trimEnd().split('\n').length;
+    expect(view.lastFrame()).toContain('provider-22');
+    expect(height).toBeLessThanOrEqual(18);
+    view.rerender(picker(22));
+    await settle();
+    expect(view.lastFrame().trimEnd().split('\n').length).toBe(height);
+    view.rerender(picker(54, 34));
+    await settle();
+    expect(view.lastFrame()).toContain('provider-34');
+    expect(view.lastFrame().trimEnd().split('\n').length).toBeLessThanOrEqual(18);
+  } finally {
+    view.unmount();
+  }
+});
+
+it('does not fill unused provider preview rows for a small catalog', async () => {
+  const small = providers.slice(0, 2).map((provider) => ({ ...provider, models: ['only-model'] }));
+  const view = renderRealTty(
+    <ModelPicker
+      step="provider"
+      providerOptions={small}
+      modelOptions={[]}
+      filteredOptions={[]}
+      selected={0}
+      columns={120}
+      maxRows={54}
+    />,
+    { columns: 120, rows: 60 },
+  );
+  try {
+    await settle();
+    expect(view.lastFrame()).toContain('only-model');
+    expect(view.lastFrame()).toContain('Esc');
+    expect(view.lastFrame().trimEnd().split('\n').length).toBeLessThanOrEqual(10);
+  } finally {
+    view.unmount();
+  }
+});
 describe.each([
   [120, 22],
   [80, 16],

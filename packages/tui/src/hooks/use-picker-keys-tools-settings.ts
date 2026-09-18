@@ -4,6 +4,7 @@ import type { KeyEvent } from '../components/input.js';
 import { filterResourceMenuItems } from '../components/resource-menu.js';
 import { settingsPickerJumpField } from '../components/settings-picker.js';
 import { STATUSLINE_ITEMS } from '../components/statusline-picker.js';
+import { pickerBackspace, pickerInputText } from '../picker-text-input.js';
 import type { PickerKeysHost } from './use-picker-keys-types.js';
 
 export function tryToolsSettingsPickerKeys(
@@ -17,6 +18,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Shared operational resource menu ──────────────────────
   if (state.resourceMenu.open) {
+    if (key.ctrl || key.meta) return true;
     const pending = state.resourceMenu.pendingAction;
     if (pending) {
       if (input.toLowerCase() === 'y') {
@@ -88,6 +90,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Design picker ─────────────────────────────────────────
   if (state.designPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'designPickerClose' });
       return true;
@@ -125,6 +128,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Prompt picker ──────────────────────────────────────────
   if (state.promptPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'promptPickerClose' });
       return true;
@@ -167,6 +171,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Resume picker ─────────────────────────────────────────
   if (state.resumePicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'resumePickerClose' });
       return true;
@@ -202,6 +207,7 @@ export function tryToolsSettingsPickerKeys(
   if (state.settingsPicker.open) {
     const sp = state.settingsPicker;
     if (sp.thinkingWordEditing) {
+      if (key.ctrl || key.meta) return true;
       if (key.escape) {
         dispatch({ type: 'settingsThinkingEditCancel' });
         return true;
@@ -214,17 +220,15 @@ export function tryToolsSettingsPickerKeys(
       if (key.backspace) {
         dispatch({
           type: 'settingsThinkingEditChange',
-          draft: sp.thinkingWordDraft.slice(0, -1),
+          draft: pickerBackspace(sp.thinkingWordDraft),
         });
         return true;
       }
-      if (
-        input &&
-        input.length === 1 &&
-        input.charCodeAt(0) >= 0x20 &&
-        input.charCodeAt(0) < 0x7f
-      ) {
-        dispatch({ type: 'settingsThinkingEditChange', draft: sp.thinkingWordDraft + input });
+      if (pickerInputText(input)) {
+        dispatch({
+          type: 'settingsThinkingEditChange',
+          draft: sp.thinkingWordDraft + pickerInputText(input),
+        });
         return true;
       }
       return true;
@@ -236,6 +240,7 @@ export function tryToolsSettingsPickerKeys(
     // was already wired by `use-app-picker-keys.ts:337` on Enter at
     // the row; this branch handles the keystrokes while editing.
     if (sp.wrongProxyUrlEditing) {
+      if (key.ctrl || key.meta) return true;
       if (key.escape) {
         dispatch({ type: 'settingsWrongProxyUrlEditCancel' });
         return true;
@@ -248,22 +253,21 @@ export function tryToolsSettingsPickerKeys(
       if (key.backspace) {
         dispatch({
           type: 'settingsWrongProxyUrlEditChange',
-          draft: sp.wrongProxyUrlDraft.slice(0, -1),
+          draft: pickerBackspace(sp.wrongProxyUrlDraft),
         });
         return true;
       }
-      if (
-        input &&
-        input.length === 1 &&
-        input.charCodeAt(0) >= 0x20 &&
-        input.charCodeAt(0) < 0x7f
-      ) {
+      if (pickerInputText(input)) {
         dispatch({
           type: 'settingsWrongProxyUrlEditChange',
-          draft: sp.wrongProxyUrlDraft + input,
+          draft: sp.wrongProxyUrlDraft + pickerInputText(input),
         });
         return true;
       }
+      return true;
+    }
+    if (key.escape && sp.filter) {
+      dispatch({ type: 'settingsFilterSet', filter: '' });
       return true;
     }
     if (key.escape || (key.ctrl && input === 's')) {
@@ -282,6 +286,7 @@ export function tryToolsSettingsPickerKeys(
         return true;
       }
     }
+    if (key.ctrl || key.meta) return true;
     if (input === '/' && sp.filter === '') {
       dispatch({ type: 'settingsFilterSet', filter: '/' });
       return true;
@@ -334,6 +339,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Plugin picker ─────────────────────────────────────────
   if (state.pluginPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'pluginPickerClose' });
       return true;
@@ -360,6 +366,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── MCP server picker ──────────────────────────────────────
   if (state.mcpPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'mcpPickerClose' });
       return true;
@@ -390,6 +397,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Tools picker (filter, toggle enable/disable) ──────────
   if (state.toolsPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       if (state.toolsPicker.filter) {
         dispatch({ type: 'toolsPickerFilter', filter: '' });
@@ -495,6 +503,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Brain panel (settings editor + decision log) ──────────
   if (state.brainPanel.open) {
+    if (key.ctrl || key.meta) return true;
     const panel = state.brainPanel;
 
     if (panel.view === 'settings' && panel.settings) {
@@ -585,6 +594,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Shadow Agent panel ────────────────────────────────────
   if (state.shadowPanel.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'shadowClose' });
       return true;
@@ -602,6 +612,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Subagent model lanes panel ────────────────────────────
   if (state.subagentModels?.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'subagentModelsClose' });
       return true;
@@ -644,6 +655,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Statusline picker ─────────────────────────────────────
   if (state.statuslinePicker.open) {
+    if (key.ctrl || key.meta) return true;
     const focused = STATUSLINE_ITEMS[state.statuslinePicker.field];
     const filtering = state.statuslinePicker.filtering;
 
@@ -736,6 +748,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── Project picker ────────────────────────────────────────
   if (state.projectPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       if (state.projectPicker.filter) {
         dispatch({ type: 'projectPickerFilter', filter: '' });
@@ -849,6 +862,7 @@ export function tryToolsSettingsPickerKeys(
 
   // ── F-key panel picker ─────────────────────────────────────
   if (state.fKeyPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'fKeyPickerClose' });
       return true;

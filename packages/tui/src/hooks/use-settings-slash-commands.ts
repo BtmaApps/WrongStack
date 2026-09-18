@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { useEffect } from 'react';
 import type { Settings } from '../app-state.js';
 import {
@@ -9,13 +10,30 @@ import {
   settingsPickerJumpNames,
 } from '../components/settings-picker.js';
 import { STATUSLINE_ITEMS, type StatuslineItem } from '../components/statusline-picker.js';
+import type { SettingsPickerPatch } from '../settings-contracts.js';
 import { registerSlashCommandLifecycle } from '../slash-command-lifecycle.js';
 import { THEME_OPTIONS } from '../theme.js';
-import { hasPanelRoutedToSidebar } from '../ui-contracts.js';
+import { coercePanelPositionMap, hasPanelRoutedToSidebar } from '../ui-contracts.js';
 import type { TuiSlashCommandOptions } from './tui-slash-command-options.js';
 
 /** Which slice of the settings-domain commands this call registers. */
 export type SettingsSlashPart = 'core' | 'appearance';
+
+function settingsWithPatch(current: Settings, patch: SettingsPickerPatch): Settings {
+  const { tokenSavingTier, fleetChat, panelPositions, ...rest } = patch;
+  const positions = { ...coercePanelPositionMap(current.panelPositions), ...panelPositions };
+  if (rest.showAgentSwarmPanel !== undefined) {
+    positions.fleet = rest.showAgentSwarmPanel === 'sidebar' ? 'sidebar' : 'bottom';
+  }
+  return {
+    ...current,
+    ...rest,
+    panelPositions: positions,
+    ...(tokenSavingTier !== undefined ? { featureTokenSaving: tokenSavingTier } : {}),
+    ...(fleetChat !== undefined ? { fleetChatVerbosity: fleetChat } : {}),
+    ...(hasPanelRoutedToSidebar(positions) ? { showSidebar: true } : {}),
+  };
+}
 
 /**
  * Settings-domain slash commands (/settings, /settings-get, /statusline,
@@ -59,6 +77,13 @@ export function useSettingsSlashCommands(
   useEffect(() => {
     if (part !== 'core') return;
     if (!getSettings || !saveSettings) return;
+    const persist = async (patch: SettingsPickerPatch): Promise<string | null> => {
+      try {
+        return await saveSettings(settingsWithPatch(getSettings(), patch));
+      } catch (error) {
+        return `Could not save settings: ${toErrorMessage(error)}`;
+      }
+    };
     const cmd = {
       name: 'settings',
       aliases: ['config', 'prefs'],
@@ -107,28 +132,8 @@ export function useSettingsSlashCommands(
             return { message: result.error };
           }
           dispatch({ type: 'settingsValueSet', patch: result.patch });
-          const cur = getSettings ? getSettings() : undefined;
-          if (cur && saveSettings) {
-            const { tokenSavingTier, ...rest } = result.patch;
-            Promise.resolve(
-              saveSettings({
-                ...cur,
-                ...rest,
-                ...(tokenSavingTier !== undefined ? { featureTokenSaving: tokenSavingTier } : {}),
-              }),
-            )
-              .then((err: string | null) => {
-                if (err) dispatch({ type: 'settingsHint', text: err });
-              })
-              // The `.then` arm only handles the resolved-with-error-string
-              // contract; a REJECTION (Windows EBUSY when a second wstack in
-              // the same project holds the config, or the credential
-              // hot-reload watcher mid-write) escaped and killed the TUI.
-              // Siblings guard: submit-controller.ts:317, use-queue-manager.ts:130.
-              .catch(() => {
-                dispatch({ type: 'settingsHint', text: 'Could not save settings.' });
-              });
-          }
+          const error = await persist(result.patch);
+          if (error) return { message: `Applied for this session, but not saved: ${error}` };
           return { message: `↺ ${result.label} reset to ${result.displayValue}` };
         }
 
@@ -149,8 +154,8 @@ export function useSettingsSlashCommands(
           }
           if (valueStr === '') {
             // Trailing space but no value — fall back to navigation.
-            dispatch({ type: 'settingsFieldSet', field });
             openSettings();
+            dispatch({ type: 'settingsFieldSet', field });
             return { message: undefined };
           }
 
@@ -186,24 +191,9 @@ export function useSettingsSlashCommands(
 
           // 2. Persist to the canonical Settings shape. The auto-save
           //    effect only fires while the picker is open, so we do it
-          //    manually here. The only key mapping is tokenSavingTier →
-          //    featureTokenSaving; all others are identical.
-          const cur = getSettings ? getSettings() : undefined;
-          if (cur && saveSettings) {
-            const { tokenSavingTier, ...rest } = result.patch;
-            const updated: Settings = {
-              ...cur,
-              ...rest,
-              ...(tokenSavingTier !== undefined ? { featureTokenSaving: tokenSavingTier } : {}),
-            };
-            Promise.resolve(saveSettings(updated))
-              .then((err: string | null) => {
-                if (err) dispatch({ type: 'settingsHint', text: err });
-              })
-              .catch(() => {
-                dispatch({ type: 'settingsHint', text: 'Could not save settings.' });
-              });
-          }
+          //    manually here, mapping picker aliases and merging panel positions.
+          const error = await persist(result.patch);
+          if (error) return { message: `Applied for this session, but not saved: ${error}` };
 
           return { message: `✓ ${result.label} → ${result.displayValue}` };
         }
@@ -217,8 +207,8 @@ export function useSettingsSlashCommands(
               `Available chords:\n  ${settingsPickerJumpNames().join('\n  ')}`,
           };
         }
-        dispatch({ type: 'settingsFieldSet', field });
         openSettings();
+        dispatch({ type: 'settingsFieldSet', field });
         return { message: undefined };
       },
     };

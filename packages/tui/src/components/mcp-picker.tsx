@@ -1,5 +1,7 @@
-import { Box, Text, useStdout } from '../ink.js';
 import type React from 'react';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 export interface McpPickerItem {
   name: string;
@@ -12,19 +14,13 @@ export interface McpPickerItem {
 }
 
 interface McpPickerProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   items: McpPickerItem[];
   selected: number;
   busy?: boolean | undefined;
   hint?: string | undefined;
 }
-
-/**
- * Rows of terminal chrome around the visible item window: the picker's own
- * border/title/legend/scroll indicators (~9) plus the input box and statusline
- * rendered below the picker (~7). Subtracted from
- * `stdout.rows` so the picker list never pushes the input area off-screen.
- */
-const CHROME_ROWS = 16;
 
 /** Colourise an MCP connection status string. */
 function statusBadge(status: string, enabled: boolean): React.ReactElement {
@@ -50,18 +46,22 @@ export function McpPicker({
   selected,
   busy = false,
   hint,
+  maxRows,
+  columns,
 }: McpPickerProps): React.ReactElement {
-  const { stdout } = useStdout();
-  const rows = stdout?.rows ?? 24;
+  const size = useTerminalSize();
+  const budget = maxRows ?? Math.max(8, size.rows - 6);
+  const compact = budget < 12;
 
   // Height-aware scrolling window centred on the selection.
-  const maxVisible = Math.max(4, rows - CHROME_ROWS);
   const total = items.length;
-  const windowStart =
-    total <= maxVisible
-      ? 0
-      : Math.max(0, Math.min(selected - Math.floor(maxVisible / 2), total - maxVisible));
-  const windowEnd = Math.min(windowStart + maxVisible, total);
+  const { start: windowStart, end: windowEnd } = useWindowedPicker({
+    total,
+    selected,
+    maxRows: budget,
+    chromeRows: 4 + (compact ? 0 : 1) + (hint ? (compact ? 1 : 2) : 0),
+    markerRows: 2,
+  });
   const above = windowStart;
   const below = total - windowEnd;
 
@@ -70,8 +70,12 @@ export function McpPicker({
       <Text bold color="cyan">
         MCP Servers
       </Text>
-      <Text dimColor>↑/↓ select · Enter/←/→ toggle enable · r restart · Esc close</Text>
-      <Box marginTop={1} flexDirection="column">
+      <Text dimColor wrap="truncate-end">
+        {(columns ?? size.columns) < 70
+          ? '↑↓ · Enter toggle · r restart · Esc'
+          : '↑/↓ select · Enter/←/→ toggle enable · r restart · Esc close'}
+      </Text>
+      <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {items.length === 0 ? (
           <Text dimColor>{busy ? 'Loading servers…' : 'No MCP servers configured.'}</Text>
         ) : (
@@ -98,8 +102,10 @@ export function McpPicker({
         )}
       </Box>
       {hint ? (
-        <Box marginTop={1}>
-          <Text dimColor>{hint}</Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text dimColor wrap="truncate-end">
+            {hint}
+          </Text>
         </Box>
       ) : null}
     </Box>

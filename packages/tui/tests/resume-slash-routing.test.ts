@@ -56,6 +56,38 @@ function renderTail(registry: SlashCommandRegistry, dispatch = vi.fn()) {
 }
 
 describe('/resume routing against the real registry', () => {
+  it('keeps typed autonomy commands on the host while bare /autonomy opens the picker', async () => {
+    const registry = new SlashCommandRegistry();
+    const run = vi.fn(async () => ({ message: 'Autonomy disabled' }));
+    registry.register(
+      { name: 'autonomy', aliases: ['auto'], description: 'Autonomy', run },
+      'core',
+    );
+    const dispatch = vi.fn();
+    const view = renderHook(() =>
+      useSessionSlashCommands(
+        {
+          slashRegistry: registry,
+          dispatch,
+          switchAutonomy: vi.fn(),
+          setMailboxPanelOpen: vi.fn(),
+        } as never,
+        'mid',
+      ),
+    );
+    try {
+      const ctx = {} as never;
+      await registry.get('autonomy')!.run('off', ctx);
+      expect(run).toHaveBeenCalledWith('off', ctx);
+      expect(dispatch).not.toHaveBeenCalled();
+      await registry.get('autonomy')!.run('', ctx);
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'autonomyPickerOpen' }),
+      );
+    } finally {
+      view.unmount();
+    }
+  });
   it('claims every key the host command answered to', async () => {
     const registry = new SlashCommandRegistry();
     const host = makeHostSessionsCommand();

@@ -82,7 +82,7 @@ export interface PanelOpenDeps {
    * Async opener for the Shadow Agent panel (`/shadow`). Fetches shadow state
    * from the host, then dispatches shadowOpen.
    */
-  openShadowPanel?: (() => void | Promise<unknown>) | undefined;
+  openShadowPanel?: (() => void | boolean) | undefined;
   /**
    * Opener for the Help panel (`/help`). Builds entries from the slash
    * command registry and dispatches helpOpen with the populated list.
@@ -145,8 +145,7 @@ export function createPanelOpenDispatcher(deps: PanelOpenDeps): (action: string)
         return false;
       case 'shadowOpen':
         if (deps.openShadowPanel) {
-          void deps.openShadowPanel();
-          return true;
+          return deps.openShadowPanel() !== false;
         }
         return false;
       case 'subagentModelsOpen':

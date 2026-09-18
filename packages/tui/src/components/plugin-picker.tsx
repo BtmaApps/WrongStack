@@ -1,5 +1,7 @@
-import { Box, Text, useStdout } from '../ink.js';
 import type React from 'react';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 export interface PluginPickerItem {
   name: string;
@@ -16,6 +18,8 @@ export interface PluginPickerItem {
 }
 
 interface PluginPickerProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   items: PluginPickerItem[];
   selected: number;
   busy?: boolean | undefined;
@@ -23,16 +27,8 @@ interface PluginPickerProps {
 }
 
 /**
- * Rows of terminal chrome around the visible item window: the picker's own
- * border/title/legend/scroll indicators (~9) plus the input box and statusline
- * rendered below the picker (~7). Subtracted from
- * `stdout.rows` so the plugin list never pushes the input area off-screen.
- */
-const CHROME_ROWS = 16;
-
-/**
  * Hard ceiling on how many plugin rows are rendered at once. Smaller terminals
- * already see fewer rows via `max(4, rows - CHROME_ROWS)`; on tall terminals
+ * use the measured picker allocation; on tall terminals
  * this cap prevents the picker from monopolising the viewport. Overflowing
  * rows remain reachable via ↑/↓ (the window re-centres on the selection) with
  * `↑ N more` / `↓ N more` indicators.
@@ -44,20 +40,24 @@ export function PluginPicker({
   selected,
   busy = false,
   hint,
+  maxRows,
+  columns,
 }: PluginPickerProps): React.ReactElement {
-  const { stdout } = useStdout();
-  const rows = stdout?.rows ?? 24;
+  const size = useTerminalSize();
+  const budget = maxRows ?? Math.max(8, size.rows - 6);
+  const compact = budget < 12;
 
   // Height-aware scrolling window centred on the selection — small terminals
   // get a short window with ↑/↓ overflow indicators instead of an overflowing
   // (and Ink-clipped) full list.
-  const maxVisible = Math.min(MAX_PICKER_ITEMS, Math.max(4, rows - CHROME_ROWS));
   const total = items.length;
-  const windowStart =
-    total <= maxVisible
-      ? 0
-      : Math.max(0, Math.min(selected - Math.floor(maxVisible / 2), total - maxVisible));
-  const windowEnd = Math.min(windowStart + maxVisible, total);
+  const { start: windowStart, end: windowEnd } = useWindowedPicker({
+    total,
+    selected,
+    maxRows: Math.min(budget, MAX_PICKER_ITEMS + 9),
+    chromeRows: 4 + (compact ? 0 : 1) + (hint ? (compact ? 1 : 2) : 0),
+    markerRows: 2,
+  });
   const above = windowStart;
   const below = total - windowEnd;
   const hasLockedRows = items.some((item) => item.lockable === false);
@@ -67,10 +67,12 @@ export function PluginPicker({
       <Text bold color="cyan">
         Plugin menu
       </Text>
-      <Text dimColor>
-        ↑/↓ select · Enter/←/→ toggle{hasLockedRows ? ' · 🔒 = locked' : ''} · Esc close
+      <Text dimColor wrap="truncate-end">
+        {(columns ?? size.columns) < 70
+          ? '↑↓ select · Enter toggle · Esc close'
+          : `↑/↓ select · Enter/←/→ toggle${hasLockedRows ? ' · 🔒 = locked' : ''} · Esc close`}
       </Text>
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {items.length === 0 ? (
           <Text dimColor>{busy ? 'Loading plugins…' : 'No plugins available.'}</Text>
         ) : (
@@ -100,8 +102,10 @@ export function PluginPicker({
         )}
       </Box>
       {hint ? (
-        <Box marginTop={1}>
-          <Text dimColor>{hint}</Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text dimColor wrap="truncate-end">
+            {hint}
+          </Text>
         </Box>
       ) : null}
     </Box>

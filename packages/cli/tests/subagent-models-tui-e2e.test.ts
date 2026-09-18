@@ -252,6 +252,26 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
       ['/theme', 'TUI Theme'],
       ['/settings', 'Settings'],
       ['/resume', 'Resume Session'],
+      ['/plugin', 'Plugin menu'],
+      ['/mcp', 'MCP Servers'],
+      ['/tools', 'Tools'],
+      ['/mode', 'Mode Selection'],
+      ['/brain', 'Brain'],
+      ['/auth', 'API keys & sign-in'],
+      ['/subagent-models', 'Subagent models'],
+      ['/help', 'Help'],
+      ['/prompts', 'Prompt library'],
+      ['/skill', 'Skills'],
+      ['/design', 'Design Studio'],
+      ['/fallback', 'Fallback routing'],
+      ['/tier', 'Model cost tiers'],
+      ['/profile', 'Profiles'],
+      ['/provider-status', 'Provider health'],
+      ['/memory', 'Memory'],
+      ['/worktree', 'Worktrees'],
+      ['/git', 'Git'],
+      ['/audit', 'Side Effects Audit'],
+      ['/f12', 'KANBAN'],
     ] as const) {
       const pickerStart = output.length;
       await type(command);
@@ -262,5 +282,11 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
       child.write(ESC);
       await expectSoon('Enter send', 10_000, closeStart);
     }
+    // This isolated host has no Shadow controller. The command must show its
+    // text fallback instead of claiming a panel opened and returning nothing.
+    const shadowStart = output.length;
+    await type('/shadow');
+    child.write('\r');
+    await expectSoon('Stop with reason', 10_000, shadowStart);
   }, 120_000);
 });

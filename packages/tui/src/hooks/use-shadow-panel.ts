@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { useCallback } from 'react';
 import type { Action } from '../app-reducer.js';
 
 interface ShadowPanelHost {
@@ -14,15 +14,16 @@ export function useShadowPanel(
   dispatch: React.Dispatch<Action>,
   host: ShadowPanelHost,
 ): {
-  openShadowPanel: () => void;
+  openShadowPanel: () => boolean;
   handleShadowStart: () => Promise<void>;
   handleShadowStop: () => Promise<void>;
 } {
   const { getShadowData, onShadowStart, onShadowStop } = host;
 
   const openShadowPanel = useCallback(() => {
-    if (!getShadowData) return;
+    if (!getShadowData) return false;
     dispatch({ type: 'shadowOpen', shadow: getShadowData() });
+    return true;
   }, [dispatch, getShadowData]);
 
   const handleShadowStart = useCallback(async () => {

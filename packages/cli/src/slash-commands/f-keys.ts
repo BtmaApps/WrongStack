@@ -11,14 +11,14 @@ const F_PANELS: Record<string, { action: string; label: string }> = {
   '2': { action: 'toggleMonitor', label: 'fleet orchestration monitor' },
   '3': { action: 'toggleAgentsMonitor', label: 'agents live monitor' },
   '4': { action: 'toggleWorktreeMonitor', label: 'worktree monitor' },
-  '5': { action: 'togglePlanPanel', label: 'autonomy settings' },
+  '5': { action: 'togglePlanPanel', label: 'plan panel' },
   '6': { action: 'toggleTodosMonitor', label: 'todos monitor overlay' },
   '7': { action: 'toggleQueuePanel', label: 'queue panel' },
   '8': { action: 'toggleProcessList', label: 'process list overlay' },
   '9': { action: 'toggleGoalPanel', label: 'goal panel' },
   '10': { action: 'toggleSessionsPanel', label: 'live sessions panel' },
   '11': { action: 'toggleCoordinatorMonitor', label: 'coordinator monitor' },
-  '12': { action: 'statuslineOpen', label: 'status line picker' },
+  '12': { action: 'toggleKanbanPanel', label: 'kanban panel' },
 };
 
 /**

@@ -20,7 +20,7 @@ interface PanelControllersOptions {
   openAuthPanel: (view?: 'list' | 'oauth') => boolean;
   openModePicker: () => void | Promise<void>;
   openBrainPanel: () => void | Promise<void>;
-  openShadowPanel: () => void | Promise<void>;
+  openShadowPanel: () => void | boolean;
   /** Opens the `/subagent-models` lane panel; omitted when the host wires no plan. */
   openSubagentModelsPanel?: (() => void) | undefined;
   openHelpPanel: () => void | Promise<void>;

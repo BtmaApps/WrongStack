@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
+import { SlashModalFrame } from './slash-modal-frame.js';
 
 interface ClearConfirmPanelProps {
   leaderActive: boolean;
@@ -36,6 +37,7 @@ export function clearConfirmationKeyResult(
   key: ClearConfirmationKey,
 ): ClearConfirmationKeyResult {
   if (key.escape) return { decision: false, value };
+  if (key.ctrl || key.meta) return { decision: null, value };
   if (key.return) {
     return { decision: isClearConfirmation(value) ? true : null, value };
   }
@@ -63,10 +65,22 @@ export function ClearConfirmPanel({
   ].filter((part): part is string => part !== null);
 
   return (
-    <Box flexDirection="column" borderStyle="double" borderColor="red" paddingX={1} marginY={1}>
-      <Text bold color="red">
-        ⚠ CLEAR BLOCKED — ACTIVE WORK
-      </Text>
+    <SlashModalFrame
+      title="⚠ CLEAR BLOCKED — ACTIVE WORK"
+      accent="red"
+      footer={
+        <Box flexDirection="column">
+          <Text wrap="truncate-end">Esc cancel · Type YES · Enter clear</Text>
+          <Text>
+            Confirmation:{' '}
+            <Text bold color={isClearConfirmation(value) ? 'green' : 'yellow'}>
+              {value}
+            </Text>
+            <Text color="cyan">█</Text>
+          </Text>
+        </Box>
+      }
+    >
       <Box flexDirection="column" marginTop={1}>
         <Text>
           Still running:{' '}
@@ -78,22 +92,6 @@ export function ClearConfirmPanel({
           Clearing will stop this work and permanently reset the current session.
         </Text>
       </Box>
-      <Box marginTop={1}>
-        <Text>
-          Type{' '}
-          <Text bold color="green">
-            YES
-          </Text>{' '}
-          and press Enter to clear, or press <Text bold>Esc</Text> to cancel.
-        </Text>
-      </Box>
-      <Text>
-        Confirmation:{' '}
-        <Text bold color={isClearConfirmation(value) ? 'green' : 'yellow'}>
-          {value}
-        </Text>
-        <Text color="cyan">█</Text>
-      </Text>
-    </Box>
+    </SlashModalFrame>
   );
 }

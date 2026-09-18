@@ -1343,9 +1343,9 @@ describe('usePickerKeys — settings picker', () => {
       }),
     );
 
-    // Escape in filter mode is caught by the outer escape handler → settingsClose
+    // Escape clears the filter before the next Escape closes the panel.
     runPickerKey(host, '', key({ escape: true }), false);
-    expect(host.dispatch).toHaveBeenCalledWith({ type: 'settingsClose' });
+    expect(host.dispatch).toHaveBeenCalledWith({ type: 'settingsFilterSet', filter: '' });
 
     host.dispatch.mockClear();
     // Backspace on filter with 'test' → 'tes'

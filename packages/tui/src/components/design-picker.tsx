@@ -1,5 +1,6 @@
 import type { DesignKitEntry } from '@wrongstack/core/types';
 import type React from 'react';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
 
@@ -32,6 +33,7 @@ export function DesignPicker({
   stack,
   maxRows,
 }: DesignPickerProps): React.ReactElement {
+  const { columns } = useTerminalSize();
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: kits.length,
     selected,
@@ -45,10 +47,14 @@ export function DesignPicker({
   const visibleKits = kits.slice(start, end);
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="magenta" paddingX={1}>
-      <Text color="magenta" bold>
+      <Text color="magenta" bold wrap="truncate-end">
         ━━ Design Studio · pick a kit ━━
       </Text>
-      <Text dimColor>↑/↓ navigate · ←/→ stack:{stack} · Enter apply · Esc cancel</Text>
+      <Text dimColor wrap="truncate-end">
+        {columns < 80
+          ? '↑↓ · ←→ stack · Enter apply · Esc'
+          : `↑/↓ navigate · ←/→ stack:${stack} · Enter apply · Esc cancel`}
+      </Text>
       {kits.length === 0 ? (
         <Text dimColor>No design kits installed.</Text>
       ) : (
@@ -58,7 +64,11 @@ export function DesignPicker({
             const i = start + j;
             return (
               <Box key={kit.id} flexDirection="column">
-                <Text inverse={i === selected} {...(i === selected ? { color: 'cyan' } : {})}>
+                <Text
+                  wrap="truncate-end"
+                  inverse={i === selected}
+                  {...(i === selected ? { color: 'cyan' } : {})}
+                >
                   {i === selected ? '› ' : '  '}
                   <Text bold>{kit.id.padEnd(20)}</Text>
                   <Text dimColor>{kit.aesthetic}</Text>

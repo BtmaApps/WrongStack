@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T10:59:05.606Z",
+  "generatedAt": "2026-09-18T11:53:55.060Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3837,
-    "testFiles": 3488,
-    "sourceLines": 939839,
+    "sourceFiles": 3839,
+    "testFiles": 3495,
+    "sourceLines": 940132,
     "workspaceEdges": 128,
-    "moduleEdges": 12348,
+    "moduleEdges": 12375,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
@@ -760,8 +760,8 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 396,
-      "testFiles": 362,
+      "sourceFiles": 398,
+      "testFiles": 369,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -784,7 +784,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 362
+          "testFiles": 369
         }
       ]
     },
@@ -17084,6 +17084,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/settings-autosave-order.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/settings-filter.test.ts",
         "projects": [
           "root-node"
@@ -17091,6 +17097,12 @@
       },
       {
         "file": "packages/tui/tests/settings-overflow-24x80.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/settings-slash-persistence.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -17258,13 +17270,43 @@
         ]
       },
       {
+        "file": "packages/tui/tests/slash-confirmation-viewport.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/slash-menu-render.test.tsx",
         "projects": [
           "root-node"
         ]
       },
       {
+        "file": "packages/tui/tests/slash-panel-key-safety.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/slash-panel-viewport.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/slash-registration-enumeration.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/slash-scroll-panels.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tui/tests/slash-secondary-viewport.test.tsx",
         "projects": [
           "root-node"
         ]
@@ -22621,7 +22663,7 @@
     },
     {
       "file": "packages/tui/src/components/settings-picker.tsx",
-      "lines": 851,
+      "lines": 856,
       "relativeImports": 12
     },
     {
@@ -22636,8 +22678,8 @@
     },
     {
       "file": "packages/tui/src/hooks/use-picker-keys-tools-settings.ts",
-      "lines": 909,
-      "relativeImports": 6
+      "lines": 923,
+      "relativeImports": 7
     },
     {
       "file": "packages/tui/src/input-validation.ts",

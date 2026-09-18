@@ -1,5 +1,8 @@
-import { Box, Text, useInput } from '../ink.js';
 import type React from 'react';
+import { useRef } from 'react';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text, useInput } from '../ink.js';
+import { useMonitorSize } from './monitor-shell.js';
 
 export interface CheckpointTimelineProps {
   checkpoints: Array<{
@@ -10,7 +13,7 @@ export interface CheckpointTimelineProps {
   }>;
   selected: number;
   onSelect: (index: number) => void;
-  onConfirm: (index: number) => void;
+  onConfirm: (index: number) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -25,34 +28,53 @@ export function CheckpointTimeline({
   onConfirm,
   onClose,
 }: CheckpointTimelineProps): React.ReactElement {
+  const size = useMonitorSize();
+  const pending = useRef(false);
+  const { start, end } = useWindowedPicker({
+    total: checkpoints.length,
+    selected,
+    maxRows: size.rows,
+    chromeRows: 4,
+    markerRows: 1,
+  });
   useInput((_, key) => {
+    if (key.ctrl || key.meta) return;
     if (key.escape) {
       onClose();
     } else if (key.upArrow) {
       onSelect(Math.max(0, selected - 1));
-    } else if (key.downArrow) {
+    } else if (key.downArrow && checkpoints.length > 0) {
       onSelect(Math.min(checkpoints.length - 1, selected + 1));
-    } else if (key.return) {
-      onConfirm(selected);
+    } else if (key.return && checkpoints[selected] && !pending.current) {
+      pending.current = true;
+      void Promise.resolve()
+        .then(() => onConfirm(selected))
+        .finally(() => {
+          pending.current = false;
+        })
+        .catch(() => {});
     }
   });
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="cyan" padding={1}>
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          ⟲ Session Rewind
-        </Text>
-        <Text dimColor> — ↑/↓ navigate · Enter rewind · Esc cancel</Text>
-      </Box>
+    <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+      <Text bold color="cyan">
+        ⟲ Session Rewind
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {size.columns < 60
+          ? 'Esc cancel · ↑↓ · Enter rewind'
+          : 'Esc cancel · ↑/↓ navigate · Enter rewind'}
+      </Text>
       {checkpoints.length === 0 ? (
         <Text dimColor>No checkpoints in this session.</Text>
       ) : (
-        checkpoints.map((cp, i) => {
+        checkpoints.slice(start, end).map((cp, offset) => {
+          const i = start + offset;
           const isSelected = i === selected;
           const label = `[${cp.promptIndex}] ${cp.promptPreview}`;
           return (
-            <Box key={cp.promptIndex}>
+            <Text key={cp.promptIndex} wrap="truncate-end">
               <Text bold={isSelected} {...(isSelected ? { color: 'cyan' } : {})}>
                 {isSelected ? '▸ ' : '  '}
               </Text>
@@ -66,10 +88,15 @@ export function CheckpointTimeline({
                   · {cp.fileCount} file{cp.fileCount !== 1 ? 's' : ''}
                 </Text>
               )}
-            </Box>
+            </Text>
           );
         })
       )}
+      {checkpoints.length > end || start > 0 ? (
+        <Text dimColor>
+          {start + 1}–{end}/{checkpoints.length}
+        </Text>
+      ) : null}
     </Box>
   );
 }

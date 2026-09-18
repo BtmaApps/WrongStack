@@ -15,6 +15,8 @@ export interface ToolPickerItem {
 }
 
 interface ToolsPickerProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   items: ToolPickerItem[];
   selected: number;
   busy?: boolean | undefined;
@@ -23,13 +25,8 @@ interface ToolsPickerProps {
 }
 
 /**
- * Rows of terminal chrome around the visible item window.
- */
-const CHROME_ROWS = 15;
-
-/**
  * Hard ceiling on how many tool rows are rendered at once. Smaller terminals
- * already see fewer rows via `max(6, termRows - CHROME_ROWS)`; on tall
+ * use the measured picker allocation; on tall
  * terminals this cap prevents the picker from monopolising the viewport.
  * Overflowing rows remain reachable via ↑/↓ (the window re-centres on the
  * selection) with `↑ N more` / `↓ N more` indicators.
@@ -150,14 +147,21 @@ export function ToolsPicker({
   busy = false,
   hint,
   filter,
+  maxRows,
+  columns,
 }: ToolsPickerProps): React.ReactElement {
   const { columns: termColumns, rows: termRows } = useTerminalSize({
     fallbackColumns: 100,
     fallbackRows: 24,
   });
-  const columnWidths = columnWidthsFor(termColumns);
+  const columnWidths = columnWidthsFor(columns ?? termColumns);
+  const budget = maxRows ?? Math.max(8, termRows - 6);
+  const compact = budget < 12;
 
-  const maxVisible = Math.min(MAX_PICKER_ITEMS, Math.max(6, termRows - CHROME_ROWS));
+  const maxVisible = Math.min(
+    MAX_PICKER_ITEMS,
+    Math.max(1, budget - (compact ? 6 + (hint ? 1 : 0) : 11 + (hint ? 2 : 0))),
+  );
   const total = items.length;
 
   let visibleItems: ToolPickerItem[];
@@ -204,16 +208,22 @@ export function ToolsPicker({
       <Text bold color="green">
         ━━ Tools ━━
       </Text>
-      <Text dimColor>
-        {hasFilter
-          ? `Filter: ${filter} (${visibleItems.length} match${visibleItems.length === 1 ? '' : 'es'}) · Backspace edit · Esc clear`
-          : `↑/↓ select · type to filter · Enter toggles · Esc close · ${directCount} direct / ${lazyCount} lazy / ${disabledCount} disabled`}
+      <Text dimColor wrap="truncate-end">
+        {(columns ?? termColumns) < 100
+          ? hasFilter
+            ? `Esc clear · Filter: ${filter}`
+            : '↑↓ · type filter · Enter · Esc'
+          : hasFilter
+            ? `Filter: ${filter} (${visibleItems.length} match${visibleItems.length === 1 ? '' : 'es'}) · Backspace edit · Esc clear`
+            : `↑/↓ select · type to filter · Enter toggles · Esc close · ${directCount} direct / ${lazyCount} lazy / ${disabledCount} disabled`}
       </Text>
-      <Text dimColor>
-        Lazy tools stay executable through discovery gateways without sending every schema to the
-        provider.
-      </Text>
-      <Box marginTop={1} flexDirection="column">
+      {!compact ? (
+        <Text dimColor wrap="truncate-end">
+          Lazy tools stay executable through discovery gateways without sending every schema to the
+          provider.
+        </Text>
+      ) : null}
+      <Box marginTop={compact ? 0 : 1} flexDirection="column">
         {total === 0 ? (
           <Text dimColor>{busy ? 'Loading tools…' : 'No tools registered.'}</Text>
         ) : visibleItems.length === 0 ? (
@@ -248,9 +258,9 @@ export function ToolsPicker({
           </>
         )}
       </Box>
-      {selectedItem ? (
+      {selectedItem && !compact ? (
         <Box marginTop={1} flexDirection="column">
-          <Text>
+          <Text wrap="truncate-end">
             <Text color={selectedItem.enabled ? 'green' : 'red'}>
               {toolActionLabel(selectedItem.enabled)}
             </Text>
@@ -264,8 +274,10 @@ export function ToolsPicker({
         </Box>
       ) : null}
       {hint ? (
-        <Box marginTop={1}>
-          <Text dimColor>{hint}</Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text dimColor wrap="truncate-end">
+            {hint}
+          </Text>
         </Box>
       ) : null}
     </Box>

@@ -399,7 +399,7 @@
       "relativeImports": 4
     },
     "packages/tui/src/components/settings-picker.tsx": {
-      "lines": 851,
+      "lines": 856,
       "relativeImports": 12
     },
     "packages/tui/src/components/sidebar-content.tsx": {
@@ -411,8 +411,8 @@
       "relativeImports": 11
     },
     "packages/tui/src/hooks/use-picker-keys-tools-settings.ts": {
-      "lines": 909,
-      "relativeImports": 6
+      "lines": 923,
+      "relativeImports": 7
     },
     "packages/tui/src/input-validation.ts": {
       "lines": 1013,

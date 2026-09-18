@@ -55,7 +55,9 @@ export function SkillPicker({
       <Text color="cyan" bold>
         ━━ Skills ━━
       </Text>
-      <Text dimColor>↑/↓ navigate · Enter open · Esc cancel</Text>
+      <Text dimColor wrap="truncate-end">
+        ↑↓ · Enter open · Esc cancel
+      </Text>
       {hasAbove ? <Text dimColor> … {start} more above</Text> : null}
       {visible.map((entry, offset) => {
         const index = start + offset;
@@ -64,6 +66,7 @@ export function SkillPicker({
           <Text
             key={`${entry.source}:${entry.name}`}
             inverse={isSelected}
+            wrap="truncate-end"
             {...(isSelected ? { color: 'cyan' } : {})}
           >
             {isSelected ? '› ' : '  '}
@@ -74,7 +77,11 @@ export function SkillPicker({
       })}
       {hasBelow ? <Text dimColor> … {entries.length - end} more below</Text> : null}
       {entries.length === 0 ? <Text dimColor>No skills found.</Text> : null}
-      {hint ? <Text color="yellow">{hint}</Text> : null}
+      {hint ? (
+        <Text color="yellow" wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 

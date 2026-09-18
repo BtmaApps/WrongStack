@@ -57,14 +57,19 @@ export function formatMemoryHintsDetailed(
       // entire rendered block mid-label or mid-anchor. Otherwise stop at the
       // previous complete memory line.
       if (memoryIds.length > 0) break;
-      const available = maxChars - currentLength - 1 - prefix.length - 1;
+      // Budget the FULL rendered line: joining newline + prefix + open tag +
+      // body + ellipsis + close tag. The fence wrapper is part of the output,
+      // so it must come out of the same maxChars budget — otherwise the
+      // single-item fallback overflows maxChars by the wrapper length.
+      const openTag = `<memory id="${memory.id}">`;
+      const closeTag = '</memory>';
+      const available =
+        maxChars - currentLength - 1 - prefix.length - openTag.length - closeTag.length - 1;
       if (available <= 0) break;
       // Truncate inside the fence body, not the wrapper, so the closing tag
       // is never sliced mid-character.
-      const safeBody = escapeFenceText(memory.text)
-        .slice(0, Math.max(0, available - '…'.length))
-        .trimEnd();
-      line = `${prefix}<memory id="${memory.id}">${safeBody}…</memory>`;
+      const safeBody = escapeFenceText(memory.text).slice(0, available).trimEnd();
+      line = `${prefix}${openTag}${safeBody}…${closeTag}`;
     }
     lines.push(line);
     memoryIds.push(memory.id);

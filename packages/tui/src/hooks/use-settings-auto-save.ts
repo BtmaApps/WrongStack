@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { type Dispatch, useEffect, useRef } from 'react';
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
@@ -13,6 +14,7 @@ export function useSettingsAutoSave(
   // Gate ref: skip the first effect fire when settings just opened (all fields
   // were populated from getSettings(), so saving would be a no-op double-write).
   const settingsAutoSaveGateRef = useRef(true);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Reset the gate when settings opens.
   useEffect(() => {
@@ -33,67 +35,73 @@ export function useSettingsAutoSave(
       return;
     }
 
-    Promise.resolve(
-      save({
-        mode: sp.mode,
-        delayMs: sp.delayMs,
-        titleAnimation: sp.titleAnimation,
-        yolo: sp.yolo,
-        fleetChatVerbosity: sp.fleetChat,
-        chime: sp.chime,
-        confirmExit: sp.confirmExit,
-        nextPrediction: sp.nextPrediction,
-        featureMcp: sp.featureMcp,
-        featurePlugins: sp.featurePlugins,
-        featureMemory: sp.featureMemory,
-        featureSkills: sp.featureSkills,
-        featureModelsRegistry: sp.featureModelsRegistry,
-        featureTokenSaving: sp.tokenSavingTier,
-        allowOutsideProjectRoot: sp.allowOutsideProjectRoot,
-        contextAutoCompact: sp.contextAutoCompact,
-        contextStrategy: sp.contextStrategy,
-        contextMode: sp.contextMode,
-        maxConcurrent: sp.maxConcurrent,
-        logLevel: sp.logLevel,
-        auditLevel: sp.auditLevel,
-        indexOnStart: sp.indexOnStart,
-        multiDiffSummaryThreshold: sp.multiDiffSummaryThreshold,
-        lastSettingsField: sp.lastSettingsField,
-        maxIterations: sp.maxIterations,
-        autoProceedMaxIterations: sp.autoProceedMaxIterations,
-        enhanceDelayMs: sp.enhanceDelayMs,
-        preRefineSeconds: sp.preRefineSeconds,
-        enhanceEnabled: sp.enhanceEnabled,
-        enhanceLanguage: sp.enhanceLanguage,
-        debugStream: sp.debugStream,
-        statuslineMode: sp.statuslineMode,
-        reasoningMode: sp.reasoningMode,
-        reasoningEffort: sp.reasoningEffort,
-        reasoningPreserve: sp.reasoningPreserve,
-        thinkingWord: sp.thinkingWord,
-        cacheTtl: sp.cacheTtl,
-        configScope: sp.configScope,
-        animationStyle: sp.animationStyle,
-        breakerEnabled: sp.breakerEnabled,
-        breakerAutoKillResetMs: sp.breakerAutoKillResetMs,
-        showModelReasoning: sp.showModelReasoning,
-        toolResultViewMode: sp.toolResultViewMode,
-        showAgentSwarmPanel: sp.showAgentSwarmPanel,
-        showSidebar: sp.showSidebar,
-        panelPositions: sp.panelPositions,
-        showSageMemoryInject: sp.showSageMemoryInject,
-        sageMemoryInjectThreshold: sp.sageMemoryInjectThreshold,
-        nextStepsTool: sp.nextStepsTool,
-        readSymbols: sp.readSymbols,
-        // WrongProxy / WrongTrace: persist the picker-state values to
-        // the same Config keys the adapter exposes (see LiveSettingsInput
-        // and the tui-settings-adapter.ts branch tree). Optional with
-        // `??` fallback — older persisted configs may not have the keys.
-        wrongProxyEnabled: sp.wrongProxyEnabled ?? false,
-        wrongProxyUrl: sp.wrongProxyUrl ?? 'http://localhost:3444',
-      }),
-    ).then((err: string | null) => {
-      if (err) dispatch({ type: 'settingsHint', text: err });
+    const snapshot = {
+      mode: sp.mode,
+      delayMs: sp.delayMs,
+      titleAnimation: sp.titleAnimation,
+      yolo: sp.yolo,
+      fleetChatVerbosity: sp.fleetChat,
+      chime: sp.chime,
+      confirmExit: sp.confirmExit,
+      nextPrediction: sp.nextPrediction,
+      featureMcp: sp.featureMcp,
+      featurePlugins: sp.featurePlugins,
+      featureMemory: sp.featureMemory,
+      featureSkills: sp.featureSkills,
+      featureModelsRegistry: sp.featureModelsRegistry,
+      featureTokenSaving: sp.tokenSavingTier,
+      allowOutsideProjectRoot: sp.allowOutsideProjectRoot,
+      contextAutoCompact: sp.contextAutoCompact,
+      contextStrategy: sp.contextStrategy,
+      contextMode: sp.contextMode,
+      maxConcurrent: sp.maxConcurrent,
+      logLevel: sp.logLevel,
+      auditLevel: sp.auditLevel,
+      indexOnStart: sp.indexOnStart,
+      multiDiffSummaryThreshold: sp.multiDiffSummaryThreshold,
+      lastSettingsField: sp.lastSettingsField,
+      maxIterations: sp.maxIterations,
+      autoProceedMaxIterations: sp.autoProceedMaxIterations,
+      enhanceDelayMs: sp.enhanceDelayMs,
+      preRefineSeconds: sp.preRefineSeconds,
+      enhanceEnabled: sp.enhanceEnabled,
+      enhanceLanguage: sp.enhanceLanguage,
+      debugStream: sp.debugStream,
+      statuslineMode: sp.statuslineMode,
+      reasoningMode: sp.reasoningMode,
+      reasoningEffort: sp.reasoningEffort,
+      reasoningPreserve: sp.reasoningPreserve,
+      thinkingWord: sp.thinkingWord,
+      cacheTtl: sp.cacheTtl,
+      configScope: sp.configScope,
+      animationStyle: sp.animationStyle,
+      breakerEnabled: sp.breakerEnabled,
+      breakerAutoKillResetMs: sp.breakerAutoKillResetMs,
+      showModelReasoning: sp.showModelReasoning,
+      toolResultViewMode: sp.toolResultViewMode,
+      showAgentSwarmPanel: sp.showAgentSwarmPanel,
+      showSidebar: sp.showSidebar,
+      panelPositions: sp.panelPositions,
+      showSageMemoryInject: sp.showSageMemoryInject,
+      sageMemoryInjectThreshold: sp.sageMemoryInjectThreshold,
+      nextStepsTool: sp.nextStepsTool,
+      readSymbols: sp.readSymbols,
+      // WrongProxy / WrongTrace: persist the picker-state values to
+      // the same Config keys the adapter exposes (see LiveSettingsInput
+      // and the tui-settings-adapter.ts branch tree). Optional with
+      // `??` fallback — older persisted configs may not have the keys.
+      wrongProxyEnabled: sp.wrongProxyEnabled ?? false,
+      wrongProxyUrl: sp.wrongProxyUrl ?? 'http://localhost:3444',
+    };
+    // Serialize snapshots so a slow older write cannot overwrite a newer value.
+    // Start in a promise callback to catch synchronous adapter throws as well.
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      try {
+        const err = await save(snapshot);
+        if (err) dispatch({ type: 'settingsHint', text: err });
+      } catch (err) {
+        dispatch({ type: 'settingsHint', text: `Could not save settings: ${toErrorMessage(err)}` });
+      }
     });
   }, [
     state.settingsPicker.open,

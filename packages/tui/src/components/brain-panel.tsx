@@ -1,6 +1,8 @@
 import type React from 'react';
 import type { BrainLogEntry, BrainRiskLevel } from '../brain-contracts.js';
-import { Box, Text, useStdout } from '../ink.js';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 export type { BrainLogEntry, BrainRiskLevel } from '../brain-contracts.js';
 
@@ -17,6 +19,8 @@ import {
 } from './brain-panel-model.js';
 
 export interface BrainPanelProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   riskLevel: BrainRiskLevel;
   log: BrainLogEntry[];
   selected: number;
@@ -27,8 +31,6 @@ export interface BrainPanelProps {
   row?: number | undefined;
   busy?: boolean | undefined;
 }
-
-const CHROME_ROWS = 14;
 
 const RISK_DESCS: Record<BrainRiskLevel, string> = {
   off: 'Human decides everything',
@@ -368,21 +370,26 @@ export function BrainPanel({
   settings,
   row,
   busy,
+  maxRows,
+  columns,
 }: BrainPanelProps): React.ReactElement {
-  const { stdout } = useStdout();
-  const termRows = stdout?.rows ?? 24;
+  const size = useTerminalSize();
+  const budget = maxRows ?? Math.max(8, size.rows - 6);
+  const compact = budget < 14;
 
   const editable = settings !== undefined;
   const activeView = editable ? (view ?? 'settings') : 'log';
 
   // Window the log entries: reserve ~7 rows for the risk header + chrome.
-  const maxVisible = Math.max(4, termRows - CHROME_ROWS);
   const total = log.length;
-  const windowStart =
-    total <= maxVisible
-      ? 0
-      : Math.max(0, Math.min(selected - Math.floor(maxVisible / 2), total - maxVisible));
-  const windowEnd = Math.min(windowStart + maxVisible, total);
+  const settingsRows = settings ? brainPanelRows(settings) : [];
+  const { start: windowStart, end: windowEnd } = useWindowedPicker({
+    total: activeView === 'settings' ? settingsRows.length : total,
+    selected: activeView === 'settings' ? (row ?? 0) : selected,
+    maxRows: budget,
+    chromeRows: activeView === 'settings' ? (compact ? 4 : 7) : compact ? 5 : 8,
+    markerRows: (compact ? 0 : 2) + (hint ? (compact ? 1 : 2) : 0),
+  });
   const above = windowStart;
   const below = total - windowEnd;
 
@@ -398,11 +405,15 @@ export function BrainPanel({
       <Text bold color="magenta">
         {`━━ Brain ━━${busy ? '  …' : ''}`}
       </Text>
-      <Text dimColor>{headerHint}</Text>
+      <Text dimColor wrap="truncate-end">
+        {(columns ?? size.columns) < 80 ? 'Esc · ↑↓ · ←→ · Enter · Tab log' : headerHint}
+      </Text>
 
       {activeView === 'settings' && settings ? (
-        <Box marginTop={1} flexDirection="column">
-          {brainPanelRows(settings).map((r, i) => {
+        <Box marginTop={compact ? 0 : 1} flexDirection="column">
+          {!compact && windowStart > 0 ? <Text dimColor>↑ {windowStart} more</Text> : null}
+          {settingsRows.slice(windowStart, windowEnd).map((r, offset) => {
+            const i = windowStart + offset;
             const focused = i === (row ?? 0);
             const readOnly = BRAIN_READONLY_ROW_KINDS.has(r.kind);
             const { label, value, dim } = rowText(r, settings);
@@ -431,31 +442,40 @@ export function BrainPanel({
               </Text>
             );
           })}
-          <Box marginTop={1}>
-            <Text dimColor>changes apply live and persist to the active profile config</Text>
-          </Box>
+          {!compact && windowEnd < settingsRows.length ? (
+            <Text dimColor>↓ {settingsRows.length - windowEnd} more</Text>
+          ) : null}
+          {!compact ? (
+            <Box marginTop={1}>
+              <Text dimColor wrap="truncate-end">
+                changes apply live and persist to the active profile config
+              </Text>
+            </Box>
+          ) : null}
         </Box>
       ) : (
-        <Box marginTop={1} flexDirection="column">
+        <Box marginTop={compact ? 0 : 1} flexDirection="column">
           {/* ── Risk ceiling section (legacy/log view) ── */}
-          <Box>
+          <Text wrap="truncate-end">
             <Text bold>Risk ceiling: </Text>
             <Text color={RISK_COLORS[riskLevel]} bold>
               {riskLevel.toUpperCase()}
             </Text>
             <Text dimColor>{`  ${RISK_DESCS[riskLevel]}`}</Text>
-          </Box>
+          </Text>
 
           {/* ── Recent decisions section ── */}
-          <Box marginTop={1} flexDirection="column">
-            <Text bold color="blue">
-              Recent decisions
-            </Text>
+          <Box marginTop={compact ? 0 : 1} flexDirection="column">
+            {!compact ? (
+              <Text bold color="blue">
+                Recent decisions
+              </Text>
+            ) : null}
             {total === 0 ? (
               <Text dimColor> No decisions recorded yet this session.</Text>
             ) : (
               <>
-                {above > 0 ? <Text dimColor>{`  ↑ ${above} more`}</Text> : null}
+                {!compact && above > 0 ? <Text dimColor>{`  ↑ ${above} more`}</Text> : null}
                 {log.slice(windowStart, windowEnd).map((entry, i) => {
                   const index = windowStart + i;
                   const focused = index === selected;
@@ -482,7 +502,7 @@ export function BrainPanel({
                     </Text>
                   );
                 })}
-                {below > 0 ? <Text dimColor>{`  ↓ ${below} more`}</Text> : null}
+                {!compact && below > 0 ? <Text dimColor>{`  ↓ ${below} more`}</Text> : null}
               </>
             )}
           </Box>
@@ -490,8 +510,10 @@ export function BrainPanel({
       )}
 
       {hint ? (
-        <Box marginTop={1}>
-          <Text dimColor>{hint}</Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text dimColor wrap="truncate-end">
+            {hint}
+          </Text>
         </Box>
       ) : null}
     </Box>

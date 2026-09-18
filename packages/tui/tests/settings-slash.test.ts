@@ -91,13 +91,17 @@ describe('settingsPickerJumpByName', () => {
 });
 
 describe('settingsPickerJumpNames', () => {
-  it('returns one slug per registered chord (matches the help-overlay surface)', () => {
+  it('exposes every setting by name, including rows without a keyboard chord', () => {
     const names = settingsPickerJumpNames();
     // Number of slugs must match the number of registered chords.
-    expect(names).toHaveLength(SETTINGS_PICKER_JUMP_CHORDS.length);
+    expect(names).toHaveLength(SETTINGS_FIELD_LABELS.length);
     // First and last entries match the order in SETTINGS_PICKER_JUMP_CHORDS.
     expect(names[0]).toBe('index-on-session-start');
-    expect(names.at(-1)).toBe('tool-result-view');
+    for (const [field, label] of SETTINGS_FIELD_LABELS.entries()) {
+      const slug = label.toLowerCase().replace(/\s+/g, '-');
+      expect(names).toContain(slug);
+      expect(settingsPickerJumpByName(slug)).toBe(field);
+    }
   });
 
   it('every jump label stays aligned with the canonical setting at its field index', () => {

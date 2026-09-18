@@ -124,9 +124,9 @@
       "runtimeOrMixed": 19
     },
     "@wrongstack/core/registry": {
-      "files": 130,
+      "files": 131,
       "typeOnly": 62,
-      "runtimeOrMixed": 70
+      "runtimeOrMixed": 71
     },
     "@wrongstack/core/replay": {
       "files": 3,
@@ -209,9 +209,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 592,
+      "files": 594,
       "typeOnly": 57,
-      "runtimeOrMixed": 562
+      "runtimeOrMixed": 564
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -8549,6 +8549,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/tui/tests/resume-slash-routing.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/tui/tests/settings-slash-persistence.test.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -20771,6 +20777,18 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-session-slash-commands.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/hooks/use-settings-auto-save.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/hooks/use-settings-slash-commands.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

@@ -1,6 +1,7 @@
 import { authPanelRows, WIRE_FAMILIES } from '../auth-panel-model.js';
 import type { KeyEvent } from '../components/input.js';
 import { EFFORT_KEEP, effortOptionsForFocused } from '../components/model-picker-effort.js';
+import { pickerBackspace } from '../picker-text-input.js';
 import type { ReasoningEffort } from '../settings-contracts.js';
 import type { PickerKeysHost } from './use-picker-keys-types.js';
 
@@ -24,6 +25,7 @@ export function tryAuthModelPickerKeys(
     }
 
     // Modal prompt raised by a running flow (label / key / paste-URL).
+    if (key.ctrl || key.meta) return true;
     if (ap.input) {
       if (key.escape) {
         host.onAuthPromptCancel?.();
@@ -35,7 +37,7 @@ export function tryAuthModelPickerKeys(
         return true;
       }
       if (key.backspace) {
-        dispatch({ type: 'authPromptChange', draft: ap.input.draft.slice(0, -1) });
+        dispatch({ type: 'authPromptChange', draft: pickerBackspace(ap.input.draft) });
         return true;
       }
       // Accept full printable strings — bracketed paste delivers the
@@ -157,7 +159,7 @@ export function tryAuthModelPickerKeys(
           dispatch({
             type: 'authFormChange',
             field: row.field,
-            value: row.value.slice(0, -1),
+            value: pickerBackspace(row.value),
           });
           return true;
         }
@@ -181,6 +183,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Model picker (two-step: provider → model) ──────────────
   if (state.modelPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       if (state.modelPicker.step === 'model') {
         dispatch({ type: 'modelPickerBack' });
@@ -324,6 +327,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Mode picker (agent modes: teach/brief/code-reviewer/etc.) ───────
   if (state.modePicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'modePickerClose' });
       return true;
@@ -353,6 +357,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Autonomy picker ───────────────────────────────────────
   if (state.autonomyPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'autonomyPickerClose' });
       return true;
@@ -386,6 +391,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Theme picker ──────────────────────────────────────────
   if (state.themePicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'themePickerClose' });
       return true;
@@ -417,6 +423,7 @@ export function tryAuthModelPickerKeys(
 
   // ── Skill picker ──────────────────────────────────────────
   if (state.skillPicker.open) {
+    if (key.ctrl || key.meta) return true;
     if (key.escape) {
       dispatch({ type: 'skillPickerClose' });
       return true;

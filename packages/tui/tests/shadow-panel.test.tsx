@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { ShadowPanel, type ShadowState } from '../src/components/shadow-panel.js';
 
 describe('ShadowPanel', () => {
@@ -162,8 +162,8 @@ describe('ShadowPanel', () => {
     const frame = lastFrame() ?? '';
     expect(frame).toContain('s start');
     expect(frame).toContain('t stop');
-    expect(frame).toContain('i cycle interval');
-    expect(frame).toContain('m cycle model');
+    expect(frame).not.toContain('i cycle interval');
+    expect(frame).not.toContain('m cycle model');
     expect(frame).toContain('Esc close');
     unmount();
   });

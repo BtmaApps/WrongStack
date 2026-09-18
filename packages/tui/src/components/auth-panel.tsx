@@ -1,5 +1,6 @@
 import type React from 'react';
-import { Box, Text, useStdout } from '../ink.js';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { Box, Text } from '../ink.js';
 import { catppuccin } from '../theme.js';
 import {
   type AuthKeyRow,
@@ -17,16 +18,10 @@ import {
 } from './provider-colors.js';
 
 interface AuthPanelProps {
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   panel: AuthPanelState;
 }
-
-/**
- * Rows of chrome around the visible row window: the panel's own border /
- * title / legend / footer (~10) plus the collapsed input placeholder,
- * statusline below (~7). Subtracted from `stdout.rows`
- * so the list never pushes the status area off-screen.
- */
-const CHROME_ROWS = 17;
 
 const LIST_ACTION_LABEL: Record<string, string> = {
   catalog: '＋ Add account / auth profile (catalog)',
@@ -319,10 +314,23 @@ function viewLegend(panel: AuthPanelState): string {
   }
 }
 
-export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
-  const { stdout } = useStdout();
-  const rows = stdout?.rows ?? 24;
-  const maxVisible = Math.max(4, rows - CHROME_ROWS);
+export function AuthPanel({ panel, maxRows, columns }: AuthPanelProps): React.ReactElement {
+  const size = useTerminalSize();
+  const budget = maxRows ?? Math.max(8, size.rows - 7);
+  const compact = budget < 14;
+  const extraRows =
+    (panel.hint ? 1 : 0) +
+    (panel.confirm ? (compact ? 1 : 2) : 0) +
+    (panel.input ? (compact ? 1 : 2) : 0) +
+    (panel.view === 'catalog' ? (compact ? 1 : 2) : 0) +
+    (!compact && panel.view === 'provider' ? 2 : 0) +
+    (!compact && panel.view === 'oauth' ? 3 : 0) +
+    (!compact && panel.view === 'list' && panel.providers.length === 0 ? 2 : 0) +
+    (!compact && panel.view === 'catalog' && panel.busy ? 2 : 0);
+  const maxVisible = Math.max(
+    1,
+    budget - 4 - extraRows - (panel.view === 'flow' ? (compact ? 0 : 1) : 2),
+  );
 
   const allRows = authPanelRows(panel);
   const total = allRows.length;
@@ -344,10 +352,14 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={UI_COLORS.border} paddingX={1}>
-      <Text bold color={UI_COLORS.title}>
+      <Text bold color={UI_COLORS.title} wrap="truncate-end">
         {viewTitle(panel)}
       </Text>
-      <Text dimColor>{viewLegend(panel)}</Text>
+      <Text dimColor wrap="truncate-end">
+        {(columns ?? size.columns) < 80 && !panel.input && !panel.confirm && panel.view !== 'flow'
+          ? 'Esc back · ↑↓ select · Enter'
+          : viewLegend(panel)}
+      </Text>
 
       {panel.hint ? (
         <Text
@@ -366,14 +378,14 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
 
       {/* The legend above already carries the y/n keys — this states the target. */}
       {panel.confirm ? (
-        <Box marginTop={1}>
+        <Box marginTop={compact ? 0 : 1}>
           <Text color={UI_COLORS.warning} wrap="truncate-end">
             ⚠ {panel.confirm.question}
           </Text>
         </Box>
       ) : null}
 
-      {panel.view === 'list' && panel.providers.length === 0 ? (
+      {!compact && panel.view === 'list' && panel.providers.length === 0 ? (
         <Box marginTop={1}>
           <Text dimColor wrap="truncate-end">
             {panel.busy
@@ -383,13 +395,13 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
         </Box>
       ) : null}
 
-      {panel.view === 'catalog' && panel.busy ? (
+      {!compact && panel.view === 'catalog' && panel.busy ? (
         <Box marginTop={1}>
           <Text dimColor>Loading models.dev catalog…</Text>
         </Box>
       ) : null}
 
-      {panel.view === 'provider' && provider ? (
+      {!compact && panel.view === 'provider' && provider ? (
         <Box flexDirection="column" marginTop={1}>
           <Text dimColor wrap="truncate-end">
             type: {provider.type ?? provider.id} · family: {provider.family ?? 'unset'} · baseUrl:{' '}
@@ -403,7 +415,7 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
         </Box>
       ) : null}
 
-      {panel.view === 'oauth' ? (
+      {!compact && panel.view === 'oauth' ? (
         <Box flexDirection="column" marginTop={1}>
           <Text color={UI_COLORS.warning} wrap="truncate-end">
             ⚠ Subscription tokens used outside official clients may violate provider Terms —
@@ -415,8 +427,8 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
       ) : null}
 
       {panel.view === 'catalog' ? (
-        <Box marginTop={1}>
-          <Text>
+        <Box marginTop={compact ? 0 : 1}>
+          <Text wrap="truncate-end">
             <Text dimColor>filter: </Text>
             {panel.filter.length > 0 ? panel.filter : <Text dimColor>(type to search)</Text>}
             <Text color={UI_COLORS.focused}>▏</Text>
@@ -425,7 +437,7 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
       ) : null}
 
       {panel.view === 'flow' ? (
-        <Box flexDirection="column" marginTop={1}>
+        <Box flexDirection="column" marginTop={compact ? 0 : 1}>
           {logWindow.length === 0 && !panel.flowDone && !flowUrl ? (
             <Text dimColor>Starting…</Text>
           ) : null}
@@ -451,7 +463,7 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
             </Text>
           ) : null}
           {panel.flowDone ? (
-            <Text color={panel.flowOk ? UI_COLORS.active : UI_COLORS.error}>
+            <Text wrap="truncate-end" color={panel.flowOk ? UI_COLORS.active : UI_COLORS.error}>
               {panel.flowOk ? '✓ Done.' : '✗ Not completed.'}{' '}
               <Text dimColor>Press Enter or Esc to go back.</Text>
             </Text>
@@ -464,7 +476,7 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
         secret prompts) raises this modal in `list` view, where there is no flow.
       */}
       {panel.input ? (
-        <Box marginTop={1}>
+        <Box marginTop={compact ? 0 : 1}>
           <Text wrap="truncate-end">
             <Text color={UI_COLORS.warning}>? </Text>
             {panel.input.label}{' '}
@@ -476,7 +488,7 @@ export function AuthPanel({ panel }: AuthPanelProps): React.ReactElement {
         </Box>
       ) : null}
 
-      {panel.view !== 'flow' ? (
+      {panel.view !== 'flow' && !panel.input && !panel.confirm ? (
         <Box flexDirection="column" minHeight={maxVisible}>
           {above > 0 ? (
             <Text dimColor>

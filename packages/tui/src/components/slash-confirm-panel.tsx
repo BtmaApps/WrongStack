@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
+import { SlashModalFrame } from './slash-modal-frame.js';
 
 interface SlashConfirmPanelProps {
   question: string;
@@ -7,6 +8,8 @@ interface SlashConfirmPanelProps {
 }
 
 interface SlashConfirmationKey {
+  ctrl?: boolean | undefined;
+  meta?: boolean | undefined;
   escape?: boolean | undefined;
   return?: boolean | undefined;
 }
@@ -18,6 +21,7 @@ export function slashConfirmationDecision(
   defaultYes: boolean,
 ): boolean | null | 'cancel' {
   if (key.escape) return 'cancel';
+  if (key.ctrl || key.meta) return null;
   if (key.return) return defaultYes;
   const normalized = input.toLowerCase();
   if (normalized === 'y') return true;
@@ -32,28 +36,16 @@ export function SlashConfirmPanel({
   defaultYes,
 }: SlashConfirmPanelProps): React.ReactElement {
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1} marginY={1}>
-      <Text bold color="yellow">
-        ? CONFIRM ACTION
-      </Text>
+    <SlashModalFrame
+      title="? CONFIRM ACTION"
+      accent="yellow"
+      footer={
+        <Text wrap="truncate-end">Esc/q = cancel · y/n · Enter = {defaultYes ? 'yes' : 'no'}</Text>
+      }
+    >
       <Box marginTop={1}>
         <Text>{question}</Text>
       </Box>
-      <Box marginTop={1}>
-        <Text>
-          <Text bold color="green">
-            [y]
-          </Text>
-          es{'  '}
-          <Text bold color="red">
-            [n]
-          </Text>
-          o{'  '}
-          <Text bold>Enter</Text> = {defaultYes ? 'yes' : 'no'}
-          {'  '}
-          <Text bold>Esc/q</Text> = cancel
-        </Text>
-      </Box>
-    </Box>
+    </SlashModalFrame>
   );
 }

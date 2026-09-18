@@ -39,7 +39,7 @@ describe('buildFKeysCommand', () => {
   it('falls back to REPL message when onPanelOpen is null', async () => {
     const cmd = buildFKeysCommand(makeOpts());
     const res = await cmd.run('5');
-    expect(res?.message).toMatch(/Opening autonomy settings/);
+    expect(res?.message).toMatch(/Opening plan panel/);
   });
 
   it('returns error for unknown F-key number', async () => {
@@ -60,14 +60,14 @@ describe('buildFKeysCommand', () => {
       'fleet orchestration monitor',
       'agents live monitor',
       'worktree monitor',
-      'autonomy settings',
+      'plan panel',
       'todos monitor overlay',
       'queue panel',
       'process list overlay',
       'goal panel',
       'live sessions panel',
       'coordinator monitor',
-      'status line picker',
+      'kanban panel',
     ];
     for (let i = 1; i <= 12; i++) {
       const cmd = buildFKeysCommand(makeOpts());
@@ -78,6 +78,14 @@ describe('buildFKeysCommand', () => {
 });
 
 describe('buildFKeyAliasCommands', () => {
+  it('opens Kanban through /f12 and /f 12, matching the physical F12 key', async () => {
+    const open = vi.fn().mockReturnValue(true);
+    const aliases = buildFKeyAliasCommands(makeOpts({ onPanelOpen: { current: open } }));
+    await aliases.find((alias) => alias.name === 'f12')!.run('');
+    expect(open).toHaveBeenLastCalledWith('toggleKanbanPanel');
+    await buildFKeysCommand(makeOpts({ onPanelOpen: { current: open } })).run('12');
+    expect(open).toHaveBeenLastCalledWith('toggleKanbanPanel');
+  });
   it('creates 12 hidden alias commands', () => {
     const aliases = buildFKeyAliasCommands(makeOpts());
     expect(aliases).toHaveLength(12);

@@ -145,6 +145,8 @@ export function AppViewPickers({
         ) : null}
         {state.modePicker.open ? (
           <ModePicker
+            maxRows={pickerMaxRows}
+            columns={mainColumnWidth}
             modes={state.modePicker.modes}
             selected={state.modePicker.selected}
             hint={state.modePicker.hint}
@@ -170,16 +172,18 @@ export function AppViewPickers({
           />
         ) : null}
         {state.resourceMenu.open && state.resourceMenu.snapshot ? (
-          <ResourceMenu
-            snapshot={state.resourceMenu.snapshot}
-            selected={state.resourceMenu.selected}
-            hint={state.resourceMenu.hint}
-            confirming={state.resourceMenu.pendingAction?.label}
-            filter={state.resourceMenu.filter}
-            filtering={state.resourceMenu.filtering}
-            columns={mainColumnWidth}
-            maxRows={pickerMaxRows}
-          />
+          <PanelInputProvider value={pickerInputEnabled}>
+            <ResourceMenu
+              snapshot={state.resourceMenu.snapshot}
+              selected={state.resourceMenu.selected}
+              hint={state.resourceMenu.hint}
+              confirming={state.resourceMenu.pendingAction?.label}
+              filter={state.resourceMenu.filter}
+              filtering={state.resourceMenu.filtering}
+              columns={mainColumnWidth}
+              maxRows={pickerMaxRows}
+            />
+          </PanelInputProvider>
         ) : null}
         {state.designPicker.open ? (
           <DesignPicker
@@ -307,6 +311,8 @@ export function AppViewPickers({
         ) : null}
         {state.pluginPicker.open ? (
           <PluginPicker
+            maxRows={pickerMaxRows}
+            columns={mainColumnWidth}
             items={state.pluginPicker.items}
             selected={state.pluginPicker.selected}
             busy={state.pluginPicker.busy}
@@ -315,6 +321,8 @@ export function AppViewPickers({
         ) : null}
         {state.mcpPicker.open ? (
           <McpPicker
+            maxRows={pickerMaxRows}
+            columns={mainColumnWidth}
             items={state.mcpPicker.items}
             selected={state.mcpPicker.selected}
             busy={state.mcpPicker.busy}
@@ -323,6 +331,8 @@ export function AppViewPickers({
         ) : null}
         {state.toolsPicker.open ? (
           <ToolsPicker
+            maxRows={pickerMaxRows}
+            columns={mainColumnWidth}
             items={state.toolsPicker.items}
             selected={state.toolsPicker.selected}
             busy={state.toolsPicker.busy}
@@ -331,7 +341,7 @@ export function AppViewPickers({
           />
         ) : null}
         {state.brainPanel.open && !state.modelPicker.open ? (
-          <BrainPanel {...state.brainPanel} />
+          <BrainPanel {...state.brainPanel} maxRows={pickerMaxRows} columns={mainColumnWidth} />
         ) : null}
         {state.helpPanel.open ? (
           <HelpPanel
@@ -357,9 +367,15 @@ export function AppViewPickers({
           />
         ) : null}
         {state.shadowPanel.open ? (
-          <ShadowPanel shadow={state.shadowPanel.shadow} hint={state.shadowPanel.hint} />
+          <ShadowPanel
+            maxRows={pickerMaxRows}
+            shadow={state.shadowPanel.shadow}
+            hint={state.shadowPanel.hint}
+          />
         ) : null}
-        {state.authPanel.open ? <AuthPanel panel={state.authPanel} /> : null}
+        {state.authPanel.open ? (
+          <AuthPanel panel={state.authPanel} maxRows={pickerMaxRows} columns={mainColumnWidth} />
+        ) : null}
         {state.projectPicker.open && !routedToSidebar('projectPicker') ? (
           <PanelInputProvider value={pickerInputEnabled}>
             <ProjectPicker
@@ -383,10 +399,13 @@ export function AppViewPickers({
           />
         ) : null}
         {state.auditPanelOpen ? (
-          <AuditPanel
-            sideEffects={agent.ctx.sideEffects ?? []}
-            onClose={() => dispatch({ type: 'toggleAuditPanel' })}
-          />
+          <PanelInputProvider value={pickerInputEnabled}>
+            <AuditPanel
+              maxRows={pickerMaxRows}
+              sideEffects={agent.ctx.sideEffects ?? []}
+              onClose={() => dispatch({ type: 'toggleAuditPanel' })}
+            />
+          </PanelInputProvider>
         ) : null}
         {state.connectionsPanelOpen && panelPositions.connections === 'bottom' ? (
           <ConnectionsPanel
@@ -409,7 +428,7 @@ export function AppViewPickers({
                 onConfirm={(i) => {
                   const checkpoint = overlay.checkpoints[i];
                   if (checkpoint) {
-                    void handleRewindTo(checkpoint.promptIndex).catch((err: unknown) => {
+                    return handleRewindTo(checkpoint.promptIndex).catch((err: unknown) => {
                       dispatch({
                         type: 'addEntry',
                         entry: {
@@ -419,6 +438,7 @@ export function AppViewPickers({
                       });
                     });
                   }
+                  return undefined;
                 }}
                 onClose={() => dispatch({ type: 'rewindOverlayClose' })}
               />

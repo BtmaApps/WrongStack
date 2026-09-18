@@ -37,6 +37,11 @@ function makeDeps(over: Partial<PanelOpenDeps> = {}): MockedPanelOpenDeps {
 }
 
 describe('createPanelOpenDispatcher — picker openers', () => {
+  it('returns false when the Shadow opener reports an unavailable host', () => {
+    const deps = makeDeps({ openShadowPanel: () => false });
+    expect(createPanelOpenDispatcher(deps)('shadowOpen')).toBe(false);
+    expect(deps.dispatch).not.toHaveBeenCalled();
+  });
   it('pluginPickerOpen dispatches { type: "pluginPickerOpen" } and returns true', () => {
     const deps = makeDeps();
     const dispatcher = createPanelOpenDispatcher(deps);

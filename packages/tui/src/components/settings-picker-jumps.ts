@@ -1,3 +1,5 @@
+import { SETTINGS_FIELD_LABELS } from './settings-picker-constants.js';
+
 export type SettingsPickerJumpMod = 'ctrl' | 'alt' | 'alt-shift';
 
 export interface SettingsPickerJumpChord {
@@ -73,6 +75,8 @@ export function settingsPickerJumpByName(name: string): number | undefined {
 
   const exact = SETTINGS_PICKER_JUMP_CHORDS.find((c) => settingsPickerSlug(c.label) === query);
   if (exact) return exact.field;
+  const canonical = SETTINGS_FIELD_LABELS.findIndex((label) => settingsPickerSlug(label) === query);
+  if (canonical >= 0) return canonical;
 
   const queryTokens = query.split('-');
   for (const c of SETTINGS_PICKER_JUMP_CHORDS) {
@@ -89,9 +93,18 @@ export function settingsPickerJumpByName(name: string): number | undefined {
     }
   }
 
-  return undefined;
+  const fallback = SETTINGS_FIELD_LABELS.findIndex((label) => {
+    const tokens = settingsPickerSlug(label).split('-');
+    return queryTokens.every((token, index) => tokens[index] === token) || tokens.includes(query);
+  });
+  return fallback >= 0 ? fallback : undefined;
 }
 
 export function settingsPickerJumpNames(): string[] {
-  return SETTINGS_PICKER_JUMP_CHORDS.map((c) => settingsPickerSlug(c.label));
+  return [
+    ...new Set([
+      ...SETTINGS_PICKER_JUMP_CHORDS.map((c) => settingsPickerSlug(c.label)),
+      ...SETTINGS_FIELD_LABELS.map(settingsPickerSlug),
+    ]),
+  ];
 }

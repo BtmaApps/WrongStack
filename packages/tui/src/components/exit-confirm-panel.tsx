@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
+import { SlashModalFrame } from './slash-modal-frame.js';
 
 interface ExitConfirmPanelProps {
   leaderActive: boolean;
@@ -8,6 +9,8 @@ interface ExitConfirmPanelProps {
 }
 
 export interface ExitConfirmationKey {
+  ctrl?: boolean | undefined;
+  meta?: boolean | undefined;
   escape?: boolean | undefined;
   return?: boolean | undefined;
 }
@@ -29,6 +32,7 @@ export function exitConfirmationDecision(
   key: ExitConfirmationKey,
 ): ExitConfirmationDecision {
   if (key.escape) return false;
+  if (key.ctrl || key.meta) return null;
   if (key.return) return true;
   // Swallow printable input so a stray key can't be interpreted as a yes/no.
   void input;
@@ -51,10 +55,11 @@ export function ExitConfirmPanel({
   ].filter((part): part is string => part !== null);
 
   return (
-    <Box flexDirection="column" borderStyle="double" borderColor="red" paddingX={1} marginY={1}>
-      <Text bold color="red">
-        ⚠ EXIT BLOCKED — ACTIVE WORK
-      </Text>
+    <SlashModalFrame
+      title="⚠ EXIT BLOCKED — ACTIVE WORK"
+      accent="red"
+      footer={<Text wrap="truncate-end">Esc cancel · Enter confirm exit</Text>}
+    >
       <Box flexDirection="column" marginTop={1}>
         <Text>
           Still running:{' '}
@@ -76,6 +81,6 @@ export function ExitConfirmPanel({
           </Text>
         ) : null}
       </Box>
-    </Box>
+    </SlashModalFrame>
   );
 }

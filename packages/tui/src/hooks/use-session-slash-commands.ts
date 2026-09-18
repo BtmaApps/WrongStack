@@ -108,11 +108,19 @@ export function useSessionSlashCommands(
     // When the user types `/autonomy` with no arg, the picker appears.
     // If they type `/autonomy off` etc. with an arg, the CLI builtin handles it.
     if (!switchAutonomy) return;
-    const cmd = {
+    const hostAutonomy = slashRegistry.get('autonomy');
+    const cmd: SlashCommand = {
       name: 'autonomy',
       aliases: ['auto'],
       description: 'Pick an autonomy mode interactively (picker).',
-      async run() {
+      async run(args, ctx) {
+        if (args.trim()) {
+          return (
+            hostAutonomy?.run(args, ctx) ?? {
+              message: 'Use /autonomy without arguments to open the picker.',
+            }
+          );
+        }
         dispatch({ type: 'autonomyPickerOpen', options: AUTONOMY_OPTIONS });
         return { message: undefined };
       },
