@@ -842,9 +842,15 @@ jobs:
 
       - name: Install Playwright browser
         # Chromium only — playwright.config.ts defines a single chromium project.
+        # The smoke below runs with an isolated HOME, so the browser must NOT
+        # live in the default $HOME/.cache: pin one path for install and run.
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
         run: npx playwright install --with-deps chromium
 
       - name: Run WebUI smoke
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
         run: |
           E2E_HOME=$(mktemp -d)
           mkdir -p "$E2E_HOME/.wrongstack"
