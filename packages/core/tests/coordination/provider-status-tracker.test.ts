@@ -11,7 +11,7 @@
  */
 
 import { deepStrictEqual, ok, strictEqual } from 'node:assert';
-import { beforeEach, describe, it } from 'vitest';
+import { beforeEach, describe, it, vi } from 'vitest';
 import { ProviderModelStatusTracker } from '../../src/coordination/provider-status-tracker.js';
 import { ProviderError } from '../../src/types/provider.js';
 
@@ -828,36 +828,37 @@ describe('ProviderModelStatusTracker', () => {
   // ── Auto-recovery on cooldown expiry ────────────────────────────────
 
   it('auto-recovers from blocked when cooldown expires', () => {
-    // Use a tracker with a very short block duration
-    const fastTracker = new ProviderModelStatusTracker({
-      config: {
-        blockDurationMs: 1, // 1ms — immediately expires
-        quotaBlockDurationMs: 50_000,
-        blockAfterRateLimitHits: 3,
-        degradedAfterFailures: 2,
-        blockAfterFailures: 5,
-        degradedDurationMs: 50_000,
-        recoverAfterSuccesses: 3,
-        maxErrorHistory: 10,
-      },
-    });
+    // Pin the clock: getStatus() lazily recovers expired entries on read, so a
+    // real 1 ms cooldown can already be past expiry on a busy test worker.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const fastTracker = new ProviderModelStatusTracker({
+        config: {
+          blockDurationMs: 1_000,
+          quotaBlockDurationMs: 50_000,
+          blockAfterRateLimitHits: 3,
+          degradedAfterFailures: 2,
+          blockAfterFailures: 5,
+          degradedDurationMs: 50_000,
+          recoverAfterSuccesses: 3,
+          maxErrorHistory: 10,
+        },
+      });
 
-    fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
-    fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
-    fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
+      fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
+      fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
+      fastTracker.recordFailure('test', 'model-a', 'rate_limit', 429, 'rl');
 
-    // Assert the recorded transition without consulting the wall clock: with
-    // a 1 ms cooldown, a busy parallel test worker may already be past expiry.
-    strictEqual(fastTracker.getStatus('test', 'model-a')?.state, 'blocked');
+      strictEqual(fastTracker.getStatus('test', 'model-a')?.state, 'blocked');
+      strictEqual(fastTracker.isBlocked('test', 'model-a'), true);
 
-    // Wait for cooldown to expire
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        strictEqual(fastTracker.isAvailable('test', 'model-a'), true);
-        strictEqual(fastTracker.isBlocked('test', 'model-a'), false);
-        resolve();
-      }, 10);
-    });
+      // Advance past the cooldown
+      vi.setSystemTime(Date.now() + 1_001);
+      strictEqual(fastTracker.isAvailable('test', 'model-a'), true);
+      strictEqual(fastTracker.isBlocked('test', 'model-a'), false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('sweepExpired releases waiting-room entries while idle', async () => {
