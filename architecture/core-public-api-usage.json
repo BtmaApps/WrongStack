@@ -79,8 +79,8 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 277,
-      "typeOnly": 140,
+      "files": 278,
+      "typeOnly": 141,
       "runtimeOrMixed": 149
     },
     "@wrongstack/core/kernel/events.js": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1117,
-      "typeOnly": 998,
+      "files": 1118,
+      "typeOnly": 999,
       "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -6402,6 +6402,12 @@
       "file": "packages/mcp/tests/registry-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-idle.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/kernel",
@@ -13522,6 +13528,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-coverage.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-idle.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

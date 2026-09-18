@@ -22,8 +22,16 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
     clearTimeout(slot.reconnectTimer);
     slot.reconnectTimer = undefined;
   }
-  if (slot.client) {
-    const client = slot.client;
+  // Detach BEFORE awaiting close, matching stop() and markLazySlotDormant:
+  // while the close is pending the slot must not advertise
+  // `state === 'connected'` with a live client, or ensureConnected's fast
+  // path resolves a demand-wake with the closing client (failing that tool
+  // call), and an overlapping sweep re-enters this function (double close,
+  // double sleepCount, duplicate idle-sleep event).
+  slot.state = 'dormant';
+  const client = slot.client;
+  slot.client = undefined;
+  if (client) {
     client.removeExitListener?.(ctx.onChildExit);
     if (slot.onDisconnect) client.removeDisconnectListener?.(slot.onDisconnect);
     client.removeToolsChangedListener?.(ctx.onToolsChanged);
@@ -33,10 +41,8 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
     } catch (err) {
       ctx.log.warn(`MCP server "${slot.cfg.name}" error during idle sleep close`, err);
     }
-    slot.client = undefined;
   }
   slot.onDisconnect = undefined;
-  slot.state = 'dormant';
   slot.operations.sleepCount++;
   ctx.recordOperation(slot, 'sleep', 'idle-timeout');
   ctx.log.info(`MCP server "${slot.cfg.name}" idle — sleeping (tools stay registered)`);
