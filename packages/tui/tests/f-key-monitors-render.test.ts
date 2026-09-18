@@ -1,18 +1,18 @@
+import type { TodoItem } from '@wrongstack/core/agent';
 import { render } from 'ink-testing-library';
 import React, { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { TodoItem } from '@wrongstack/core/agent';
 import type { FleetEntry } from '../src/app.js';
-import { ProjectPicker } from '../src/components/project-picker.js';
-import { FleetMonitor } from '../src/components/fleet-monitor.js';
 import { AgentsMonitor } from '../src/components/agents-monitor.js';
-import { WorktreeMonitor } from '../src/components/worktree-monitor.js';
-import { PlanPanel } from '../src/components/plan-panel.js';
-import { TodosMonitor } from '../src/components/todos-monitor.js';
-import { QueuePanel } from '../src/components/queue-panel.js';
-import { ProcessListMonitor } from '../src/components/process-list.js';
+import { FleetMonitor } from '../src/components/fleet-monitor.js';
 import { GoalPanel } from '../src/components/goal-panel.js';
+import { PlanPanel } from '../src/components/plan-panel.js';
+import { ProcessListMonitor } from '../src/components/process-list.js';
+import { ProjectPicker } from '../src/components/project-picker.js';
+import { QueuePanel } from '../src/components/queue-panel.js';
 import { SessionsPanel } from '../src/components/sessions-panel.js';
+import { TodosMonitor } from '../src/components/todos-monitor.js';
+import { WorktreeMonitor } from '../src/components/worktree-monitor.js';
 
 function fleetEntry(overrides: Partial<FleetEntry> = {}): FleetEntry {
   return {
@@ -104,7 +104,7 @@ describe('F1–F10 monitor presentation', () => {
     view.unmount();
   });
 
-  it('shows all agents in the left sidebar and navigates the detail panel via arrows', async () => {
+  it('windows the agent roster and keeps the selected detail reachable via arrows', async () => {
     const entries = Object.fromEntries(
       Array.from({ length: 18 }, (_, index) => {
         const id = `worker-${index + 1}`;
@@ -123,7 +123,7 @@ describe('F1–F10 monitor presentation', () => {
     // Left sidebar shows all agents; right panel shows the first agent's detail
     expect(view.lastFrame() ?? '').toContain('worker-1');
     expect(view.lastFrame() ?? '').toContain('worker-12');
-    expect(view.lastFrame() ?? '').toContain('worker-18');
+    expect(view.lastFrame() ?? '').not.toContain('worker-18');
     // Navigate down 17 times to reach the last agent
     for (let index = 0; index < 17; index++) {
       view.stdin.write('\u001B[B');

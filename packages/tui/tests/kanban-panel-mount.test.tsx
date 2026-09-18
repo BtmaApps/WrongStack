@@ -18,6 +18,7 @@ import { render } from 'ink-testing-library';
 import React, { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { KanbanPanel } from '../src/components/kanban-panel.js';
+import { MonitorViewportProvider } from '../src/components/monitor-shell.js';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -134,7 +135,11 @@ function populatedBoard(): KanbanBoard {
 function renderWithAct(element: React.ReactElement): ReturnType<typeof render> {
   let result: ReturnType<typeof render>;
   act(() => {
-    result = render(element);
+    result = render(
+      <MonitorViewportProvider value={{ columns: 400, rows: 60 }}>
+        {element}
+      </MonitorViewportProvider>,
+    );
   });
   return result!;
 }
@@ -288,7 +293,7 @@ describe('KanbanPanel — Ink-mount regressions', () => {
     act(() => unmount());
   });
 
-  it('drops columns and shows the overflow indicator at narrow width', async () => {
+  it('uses a compact task list at narrow width', async () => {
     const wideBoard: KanbanBoard = {
       ...populatedBoard(),
       columns: Array.from({ length: 7 }, (_, i) => ({
@@ -303,14 +308,9 @@ describe('KanbanPanel — Ink-mount regressions', () => {
     });
     await settle();
     const frame = lastFrame() ?? '';
-    // The narrow terminal forces fewer columns than 7 — the helper says at
-    // most 2 fit, so the rest show up as overflow.
-    expect(frame).toMatch(/\+\s*\d+\s+more column/);
-    // First column title should still render even when narrowed.
-    expect(frame).toContain('Column 0');
-    // And the last column should NOT render — that's the visual
-    // difference from "render everything, truncate, hide count".
-    expect(frame).not.toContain('Column 6');
+    expect(frame).toContain('Wire kanban-slash');
+    expect(frame).toContain('Tab');
+    expect(frame).not.toContain('more column');
     act(() => unmount());
   });
 
@@ -416,5 +416,27 @@ describe('KanbanPanel — Ink-mount regressions', () => {
     });
     expect(onClose).toHaveBeenCalledTimes(1);
     act(() => unmount());
+  });
+});
+
+describe('Kanban selection windows', () => {
+  it('keeps later tasks visible in a wide board column', async () => {
+    const board = populatedBoard();
+    board.tasks = Array.from({ length: 12 }, (_, index) =>
+      task(`task-${index}`, board.columns[0]!.id, `visible-task-${index}`, { order: index }),
+    );
+    const view = renderPanel({ board, terminalWidth: 400 });
+    try {
+      await settle();
+      for (let i = 0; i < 11; i++) {
+        await act(async () => {
+          view.stdin.write('\t');
+        });
+      }
+      await settle();
+      expect(view.lastFrame()).toMatch(/>\s*-\s*visible-task-11/);
+    } finally {
+      act(() => view.unmount());
+    }
   });
 });

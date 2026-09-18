@@ -1,6 +1,6 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
 import type { FleetEntry } from '../app-state.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -225,8 +225,8 @@ export function FleetMonitor({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="F2" label="close" color={theme.monitor.fleet} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="F2/Esc" label="close" color={theme.monitor.fleet} />
           <Text color={theme.textMuted}>/fleet dispatch · /fleet status</Text>
           {staleTerminal > 0 ? <Text color={theme.textMuted}>{staleTerminal} archived</Text> : null}
         </Box>

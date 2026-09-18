@@ -1,24 +1,15 @@
-import { useTerminalSize } from '../hooks/use-terminal-size.js';
-import { Box, Text, useInput } from '../ink.js';
-import { useEffect, useMemo, useState } from 'react';
-import type React from 'react';
 import type { AgentTimelineEntry } from '@wrongstack/core/coordination';
+import type React from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Box, Text } from '../ink.js';
 import type { AgentTranscriptReader } from '../ui-contracts.js';
+
 export type { AgentTranscriptReader } from '../ui-contracts.js';
+
 import type { FleetEntry } from '../app-state.js';
 import { theme } from '../theme.js';
-import { fmtModelLabel } from './fleet-monitor.js';
-import type { HistoryEntry } from './history.js';
-import { fmtElapsed, fmtRatioPct } from './status-bar-format.js';
 import { getToolVisual } from '../tool-glyph.js';
 import { glyphs } from '../ui-glyphs.js';
-import {
-  EmptyPanelState,
-  KeyCap,
-  MonitorShell,
-  panelWindow,
-  truncatePanelText,
-} from './monitor-shell.js';
 import {
   EMPTY_AGENTS_CLOSE_DELAY_MS,
   IDLE_HIDE_MS,
@@ -27,6 +18,18 @@ import {
   TRANSCRIPT_GLYPHS,
   TRANSCRIPT_ROWS,
 } from './agents-monitor-constants.js';
+import { fmtModelLabel } from './fleet-monitor.js';
+import type { HistoryEntry } from './history.js';
+import {
+  EmptyPanelState,
+  KeyCap,
+  MonitorShell,
+  panelWindow,
+  truncatePanelText,
+  usePanelInput as useInput,
+  useMonitorSize,
+} from './monitor-shell.js';
+import { fmtElapsed, fmtRatioPct } from './status-bar-format.js';
 
 /**
  * Narrow read-only view of per-subagent transcripts. AgentMonitorService
@@ -785,10 +788,8 @@ export function AgentsMonitor({
   // ── Terminal dimensions ─────────────────────────────────────────────
   // Use old ??30 default to match test expectations (ink test env may not
   // set stdout.rows). The height is bounded below by maxPanelRows.
-  const { columns: terminalColumns, rows: terminalRows } = useTerminalSize({
-    fallbackColumns: 90,
-    fallbackRows: 30,
-  });
+  const { columns: terminalColumns, rows: terminalRows } = useMonitorSize();
+  const compact = terminalColumns < 80 || terminalRows < 20;
   const contentWidth = Math.max(24, terminalColumns - 4);
 
   // ── Panel height budget ────────────────────────────────────────────
@@ -801,7 +802,7 @@ export function AgentsMonitor({
   // Inline mode (default): cap at 28 rows so the history + status bar +
   // input still have room above the panel. For small terminals (<32 rows)
   // the cap relaxes to terminalRows - 4 so we don't waste space.
-  const maxPanelRows = fullscreen ? terminalRows : Math.max(14, Math.min(terminalRows - 6, 28));
+  const maxPanelRows = fullscreen ? terminalRows - 2 : Math.max(4, Math.min(terminalRows - 2, 28));
 
   // ── Column widths (left-right split) ────────────────────────────────
   // Left sidebar gets ~32% of width (min 26, max 42 chars for readability).
@@ -832,6 +833,7 @@ export function AgentsMonitor({
 
   // Keyboard navigation
   useInput((_input, key) => {
+    if (key.meta) return;
     if (live.length === 0) return;
     if (key.upArrow) {
       const next = Math.max(0, selectedIndex - 1);
@@ -882,28 +884,35 @@ export function AgentsMonitor({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="agent" color={theme.monitor.agents} />
-          {selected && transcripts ? (
-            <KeyCap keyName="PgUp/Dn" label="transcript" color={theme.monitor.agents} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="agent" color={theme.monitor.agents} />
+          {!compact && selected && transcripts ? (
+            <KeyCap
+              keepTogether
+              keyName="PgUp/Dn"
+              label="transcript"
+              color={theme.monitor.agents}
+            />
           ) : null}
-          <KeyCap keyName="F3" label="close" color={theme.monitor.agents} />
+          <KeyCap keepTogether keyName="F3/Esc" label="close" color={theme.monitor.agents} />
         </Box>
       }
     >
       {/* ── Dashboard header ───────────────────────────────────────────── */}
-      <DashboardHeader
-        running={running}
-        totalDone={totalDone}
-        totalFailed={totalFailed}
-        pressure={pressure}
-        grandCost={grandCost}
-        leaderCost={leaderCost}
-        totalCost={totalCost}
-        totalTokens={totalTokens}
-        hotAgent={hotAgent}
-        hotRisk={hotRisk}
-      />
+      {!compact ? (
+        <DashboardHeader
+          running={running}
+          totalDone={totalDone}
+          totalFailed={totalFailed}
+          pressure={pressure}
+          grandCost={grandCost}
+          leaderCost={leaderCost}
+          totalCost={totalCost}
+          totalTokens={totalTokens}
+          hotAgent={hotAgent}
+          hotRisk={hotRisk}
+        />
+      ) : null}
 
       {/* ── Left-right split layout ────────────────────────────────────── */}
       {live.length === 0 ? (
@@ -913,6 +922,26 @@ export function AgentsMonitor({
           detail="Start one with /spawn or hand off work with /fleet dispatch."
           accent={theme.monitor.agents}
         />
+      ) : compact ? (
+        <Box flexDirection="column">
+          {visibleLive.map((entry) => (
+            <Text
+              key={entry.id}
+              color={entry.id === selected?.id ? theme.monitor.agents : theme.textSecondary}
+              wrap="truncate-end"
+            >
+              {truncatePanelText(
+                `${entry.id === selected?.id ? '›' : ' '} ${entry.name || entry.id} · ${entry.status}`,
+                contentWidth,
+              )}
+            </Text>
+          ))}
+          {selected ? (
+            <Text dimColor wrap="truncate-end">
+              {selected.provider} / {selected.model}
+            </Text>
+          ) : null}
+        </Box>
       ) : (
         <Box flexDirection="row" gap={1} flexGrow={1} marginTop={1}>
           {/* ═══ Left sidebar: agent list ═══ */}

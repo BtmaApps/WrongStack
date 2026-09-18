@@ -179,7 +179,9 @@ Owns its own `useInput`. Rendered as a full-screen overlay.
 
 ## 3. Monitor overlays
 
-Each overlay can be open simultaneously with the chat input. The Input stays mounted alongside them, so they don't own the keyboard — the central `handleKey` routes keys first.
+Bottom F1–F12 panels own the keyboard while open. The composer is hidden and its draft is preserved: panel keys cannot edit or submit it. Press the same F-key to close, another F-key to switch panels, or Esc to return to chat (an inline confirmation/editor may consume Esc first). Sidebar-routed panels leave the composer available.
+
+Panel titles and close controls remain visible in short terminals. When content exceeds the available height, use Alt+PgUp/PgDn to scroll; the mouse wheel also scrolls the panel body. F1/F10 keep wheel-based selection instead. Queue **e** opens the selected message in the composer and closes the queue panel.
 
 ### Overlay toggle keys
 
@@ -200,7 +202,7 @@ All toggles close any other overlay before opening. Prefer slash commands or F-k
 | F9 | Goal panel | `/goal` | Usually low risk |
 | F10 | Sessions panel | `/resume` | F10 may activate terminal/app menus |
 | F11 | Coordinator monitor | `/coordinator` | F11 is commonly reserved for fullscreen |
-| F12 | Statusline picker | `/statusline` or `/sl` | F12 may be reserved by host tools/devtools |
+| F12, Ctrl+Y | Kanban board | `/kanban` | F12 may be reserved by host tools/devtools; `?` shows board keys |
 | Ctrl+B | SDD board overlay | — | Multi-agent SDD board (chord-only, no F-key alias) |
 | Ctrl+S | Settings picker | `/settings` | Ctrl+S may trigger terminal flow-control or host Save |
 | Ctrl+P | PhaseMonitor | `/goal status` | Ctrl+P may be used for history/command-palette navigation |

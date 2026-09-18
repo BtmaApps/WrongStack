@@ -379,8 +379,8 @@
       "relativeImports": 59
     },
     "packages/tui/src/components/agents-monitor.tsx": {
-      "lines": 984,
-      "relativeImports": 14
+      "lines": 1013,
+      "relativeImports": 13
     },
     "packages/tui/src/components/context-panel.tsx": {
       "lines": 1014,
@@ -395,7 +395,7 @@
       "relativeImports": 17
     },
     "packages/tui/src/components/kanban-panel.tsx": {
-      "lines": 1036,
+      "lines": 1119,
       "relativeImports": 4
     },
     "packages/tui/src/components/settings-picker.tsx": {

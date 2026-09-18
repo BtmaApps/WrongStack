@@ -66,10 +66,13 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
   },
   {
     name: 'aws',
-    description: 'AWS — EC2, S3, Lambda, IAM, CloudFormation, and cost management.',
+    description: 'AWS — EC2, S3, Lambda, IAM, CloudFormation, CloudWatch (yawlabs/aws-mcp).',
     transport: 'stdio',
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-aws'],
+    // Same package as the core `aws` preset. `@modelcontextprotocol/server-aws`
+    // does not exist on npm; tests/components/official-servers-sync.test.ts
+    // keeps every entry here identical to what core would launch.
+    args: ['-y', '@yawlabs/aws-mcp'],
     requiresEnvVars: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
   },
   {
@@ -101,7 +104,9 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
       'Browser automation — navigate, click, type, screenshot, evaluate JS (headless Chromium).',
     transport: 'stdio',
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-playwright'],
+    // Pinned like the core preset (security-check 2026-09-17, DEP-NOTE-001).
+    // `@modelcontextprotocol/server-playwright` does not exist on npm.
+    args: ['-y', '@playwright/mcp@0.0.81'],
     badge: 'Browser',
   },
   {
@@ -144,10 +149,12 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
   },
   {
     name: 'block',
-    description: 'Postgres database access via SQL (Block MCP server).',
+    description: 'Postgres database access via SQL (@modelcontextprotocol/server-postgres).',
     transport: 'stdio',
     command: 'npx',
-    args: ['-y', '@modelcontextprotocol/server-block'],
+    // The core `block` preset is an alias of `postgres`;
+    // `@modelcontextprotocol/server-block` does not exist on npm.
+    args: ['-y', '@modelcontextprotocol/server-postgres'],
     requiresEnvVars: ['DATABASE_URL'],
   },
 ];

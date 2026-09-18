@@ -10,8 +10,8 @@
  * frame is exactly what a terminal of that size would show.
  */
 import { EventEmitter } from 'node:events';
-import type { ReactElement } from 'react';
 import { render } from 'ink';
+import type { ReactElement } from 'react';
 
 class FakeStdout extends EventEmitter {
   isTTY = true;
@@ -29,18 +29,21 @@ class FakeStdout extends EventEmitter {
 }
 
 class FakeStdin extends EventEmitter {
+  private chunks: string[] = [];
   isTTY = true;
   setEncoding(): void {}
   setRawMode(): void {}
   resume(): void {}
   pause(): void {}
-  read(): null {
-    return null;
+  read(): string | null {
+    return this.chunks.shift() ?? null;
   }
   ref(): void {}
   unref(): void {}
   write(input: string): void {
+    this.chunks.push(input);
     this.emit('data', Buffer.from(input));
+    this.emit('readable');
   }
 }
 

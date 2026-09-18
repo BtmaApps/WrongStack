@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import type { State } from '../app-state.js';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -12,6 +12,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -70,6 +71,7 @@ export function CoordinatorPanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.ctrl || key.meta) return;
     // Esc is owned by the central ESC_CLOSE_PANELS table (esc-close-panels.ts);
     // handling it here too would double-fire the toggle and re-open the panel.
     if (shortcutsEnabled && (input === 'q' || input === 'Q')) onClose();
@@ -114,9 +116,9 @@ export function CoordinatorPanel({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="inspect goal" color={theme.accent} />
-          <KeyCap keyName="F11/Q" label="close" color={theme.error} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="inspect goal" color={theme.accent} />
+          <KeyCap keepTogether keyName="F11/Esc" label="close" color={theme.error} />
           <Text color={theme.textMuted}>{knowledgeCount} shared facts</Text>
         </Box>
       }

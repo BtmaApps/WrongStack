@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { resolveWstackPaths, sessionScopedPath } from '@wrongstack/core/utils';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -12,6 +12,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -180,6 +181,7 @@ export function PlanPanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.ctrl || key.meta) return;
     if (shortcutsEnabled && (input === 's' || input === 'S')) {
       void handleScopeSwitch(scope === 'session' ? 'project' : 'session');
     } else if (key.upArrow) {
@@ -214,14 +216,15 @@ export function PlanPanel({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="inspect" color={theme.accent} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="inspect" color={theme.accent} />
           <KeyCap
+            keepTogether
             keyName="S"
             label={`switch to ${scope === 'session' ? 'project' : 'session'}`}
             color={theme.accent}
           />
-          <KeyCap keyName="F5" label="close" color={theme.accent} />
+          <KeyCap keepTogether keyName="F5/Esc" label="close" color={theme.accent} />
         </Box>
       }
     >

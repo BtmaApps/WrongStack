@@ -48,13 +48,15 @@ export function ProjectPicker({
   const size = useMonitorSize();
   const projectCount = items.filter((item) => item.kind === 'project').length;
   const selectableCount = items.filter((item) => item.key !== '__divider__').length;
-  const limit = Math.max(4, Math.min(12, Math.floor(size.contentRows / 1.5)));
+  const compact = size.rows < 16;
+  const limit = compact ? 1 : Math.max(1, Math.min(12, Math.floor(size.contentRows / 1.5)));
   const window = panelWindow(items.length, selected, limit);
   const visible = items.slice(window.start, window.end);
   const labelWidth = Math.max(12, size.contentWidth - 16);
 
   return (
     <MonitorShell
+      wheelScroll={false}
       accent={theme.accent}
       icon={glyphs.folder}
       title="PROJECTS"
@@ -65,21 +67,22 @@ export function ProjectPicker({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="navigate" />
-          <KeyCap keyName="Enter" label="open" color={theme.success} />
-          {size.columns >= 64 ? <KeyCap keyName="Esc" label="close" color={theme.error} /> : null}
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="navigate" />
+          <KeyCap keepTogether keyName="Enter" label="open" color={theme.success} />
+          <KeyCap keepTogether keyName="F1/Esc" label="close" color={theme.error} />
         </Box>
       }
     >
-      <Box height={1} marginTop={1}>
+      <Box height={1} marginTop={compact ? 0 : 1}>
         <Text color={filter ? theme.warn : theme.textMuted}>{glyphs.prompt} </Text>
         <Text color={filter ? theme.textPrimary : theme.textMuted}>
-          {filter || 'Type to filter projects and actions'}
+          {filter ||
+            (size.columns < 64 ? 'Filter projects…' : 'Type to filter projects and actions')}
         </Text>
         {filter ? <Text color={theme.accent}>█</Text> : null}
         <Box flexGrow={1} />
-        <Text color={theme.textMuted}>{selectableCount} choices</Text>
+        {size.columns >= 64 ? <Text color={theme.textMuted}>{selectableCount} choices</Text> : null}
       </Box>
 
       {window.above > 0 ? <Text color={theme.textMuted}> ↑ {window.above} hidden</Text> : null}
@@ -91,7 +94,7 @@ export function ProjectPicker({
           detail="Clear the filter or add a project with /project add."
         />
       ) : (
-        <Box flexDirection="column" marginTop={1}>
+        <Box flexDirection="column" marginTop={compact ? 0 : 1}>
           {visible.map((item, offset) => {
             const index = window.start + offset;
             const isSelected = index === selected;
@@ -130,7 +133,7 @@ export function ProjectPicker({
                     </Text>
                   ) : null}
                 </Box>
-                {item.subtitle ? (
+                {item.subtitle && size.rows >= 16 ? (
                   <Box height={1}>
                     <Text color={isSelected ? accent : theme.textMuted}> └─ </Text>
                     <Text color={theme.textMuted}>

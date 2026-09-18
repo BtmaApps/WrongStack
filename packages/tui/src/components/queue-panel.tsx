@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { QueueItem } from '../app-state.js';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -10,6 +10,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -49,7 +50,17 @@ export function QueuePanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   const handler = useCallback(
-    (_input: string, key: { upArrow: boolean; downArrow: boolean; return: boolean }) => {
+    (
+      _input: string,
+      key: {
+        upArrow: boolean;
+        downArrow: boolean;
+        return: boolean;
+        ctrl?: boolean;
+        meta?: boolean;
+      },
+    ) => {
+      if (key.ctrl || key.meta) return;
       if (key.upArrow) setSelected((value) => Math.max(0, value - 1));
       else if (key.downArrow) {
         setSelected((value) => Math.min(Math.max(0, items.length - 1), value + 1));
@@ -103,13 +114,14 @@ export function QueuePanel({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="sel" color={theme.accent} />
-          <KeyCap keyName="d" label="del" color={theme.textMuted} />
-          <KeyCap keyName="e" label="edit" color={theme.textMuted} />
-          <KeyCap keyName="r" label="refine" color={theme.textMuted} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="sel" color={theme.accent} />
+          <KeyCap keepTogether keyName="d" label="del" color={theme.textMuted} />
+          <KeyCap keepTogether keyName="e" label="edit" color={theme.textMuted} />
+          <KeyCap keepTogether keyName="r" label="refine" color={theme.textMuted} />
           {items.length > 0 ? (
             <KeyCap
+              keepTogether
               keyName="c"
               label={confirmClear ? 'confirm' : 'clear'}
               color={confirmClear ? theme.warn : theme.textMuted}
@@ -117,7 +129,7 @@ export function QueuePanel({
           ) : null}
           {confirmClear ? <Text color={theme.warn}> Clear all? (c=yes, x=cancel)</Text> : null}
           <Box flexGrow={1} />
-          <KeyCap keyName="F7" label="close" color={theme.accent} />
+          <KeyCap keepTogether keyName="F7/Esc" label="close" color={theme.accent} />
         </Box>
       }
     >

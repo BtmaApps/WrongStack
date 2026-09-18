@@ -1,7 +1,7 @@
 import type { TodoItem } from '@wrongstack/core/agent';
-import { Box, Text, useInput } from '../ink.js';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -10,6 +10,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
 } from './monitor-shell.js';
 import { renderProgress } from './status-bar.js';
@@ -106,9 +107,9 @@ export function TodosMonitor({ todos }: { todos: TodoItem[] }): React.ReactEleme
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="inspect" color={theme.warn} />
-          <KeyCap keyName="F6" label="close" color={theme.warn} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="inspect" color={theme.warn} />
+          <KeyCap keepTogether keyName="F6/Esc" label="close" color={theme.warn} />
           {overflow > 0 ? (
             <Text color={theme.textMuted}>
               {window.above > 0 ? `↑${window.above} ` : ''}

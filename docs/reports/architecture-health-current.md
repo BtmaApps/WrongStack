@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-18T09:14:28.514Z
+**Generated:** 2026-09-18T09:41:29.068Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3836 |
-| Production source lines | 939090 |
-| Test files | 3480 |
+| Production source lines | 939394 |
+| Test files | 3482 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12315 |
+| Relative module edges | 12321 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 9 |
@@ -55,9 +55,9 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/techstack | 50 | 37 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 36 | @wrongstack/core |
 | @wrongstack/tools | 216 | 259 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 395 | 355 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 395 | 356 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 19 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 554 | 394 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 554 | 395 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 45 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 17 | 8 | @wrongstack/core |
 | @wrongstack/webui-server | 230 | 222 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -90,6 +90,7 @@ None.
 | 1134 | `packages/core/src/coordination/delegation/run-delegation.ts` |
 | 1121 | `packages/simpleui/src/simple-ui-session.tsx` |
 | 1119 | `apps/desktop/src/main/runtime-manager.ts` |
+| 1119 | `packages/tui/src/components/kanban-panel.tsx` |
 | 1113 | `packages/core/src/coordination/director.ts` |
 | 1109 | `packages/tools/src/codebase-index/indexer.ts` |
 | 1103 | `packages/cli/src/subcommands/handlers/hq.ts` |
@@ -114,7 +115,6 @@ None.
 | 1039 | `packages/core/src/hq/auth-store.ts` |
 | 1039 | `packages/webui-server/src/server/context-editor.ts` |
 | 1038 | `packages/tui/src/components/history/utils.tsx` |
-| 1036 | `packages/tui/src/components/kanban-panel.tsx` |
 | 1034 | `packages/core/src/types/session.ts` |
 | 1033 | `packages/cli/src/plugin-management.ts` |
 | 1033 | `packages/tui/src/app-state.ts` |
@@ -128,6 +128,7 @@ None.
 | 1014 | `packages/tui/src/components/context-panel.tsx` |
 | 1014 | `packages/tui/src/kanban-slash.ts` |
 | 1013 | `packages/acp/src/client/acp-session.ts` |
+| 1013 | `packages/tui/src/components/agents-monitor.tsx` |
 | 1013 | `packages/tui/src/input-validation.ts` |
 | 1012 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 1008 | `packages/kanban/src/manager/assignment.ts` |
@@ -135,11 +136,10 @@ None.
 | 1003 | `packages/kanban/src/types.ts` |
 | 1002 | `packages/webui/src/components/ChronicleDashboard.tsx` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
-| 999 | `packages/tui/src/app.tsx` |
 
 ## Exports only tests reference
 
-- 960 runtime exports are referenced by tests and by no other production file.
+- 959 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

@@ -1,5 +1,27 @@
 import type { Action } from './app-action-type.js';
+import type { State } from './app-state.js';
 import type { StatuslineItem } from './components/statusline-picker.js';
+import type { PanelId, PanelPositionMap } from './ui-contracts.js';
+
+/** The bottom panel owns input; sidebar twins leave the composer available. */
+export function activeBottomFKeyPanel(state: State, positions: PanelPositionMap): number | null {
+  const panels: [PanelId, boolean][] = [
+    ['projectPicker', state.projectPicker.open],
+    ['fleet', state.monitorOpen],
+    ['agents', state.agentsMonitorOpen],
+    ['worktree', state.worktreeMonitorOpen],
+    ['plan', state.planPanelOpen],
+    ['todos', state.todosMonitorOpen],
+    ['queue', state.queuePanelOpen],
+    ['processList', state.processListOpen],
+    ['goal', state.goalPanelOpen],
+    ['sessions', state.sessionsPanelOpen],
+    ['coordinator', state.coordinator.monitorOpen],
+    ['kanban', state.kanbanPanelOpen],
+  ];
+  const index = panels.findIndex(([id, open]) => open && positions[id] !== 'sidebar');
+  return index < 0 ? null : index + 1;
+}
 
 export type FKeyPanelAction =
   | 'projectPickerOpen'

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import type { GoalSummary } from '../app-state.js';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -10,6 +10,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -36,6 +37,7 @@ export function GoalPanel({
   coordinatorRunning,
 }: GoalPanelProps): React.ReactElement {
   const size = useMonitorSize();
+  const compact = size.rows < 20;
   const [selectedDeliverable, setSelectedDeliverable] = useState(0);
   const deliverableCount = goal?.deliverables?.length ?? 0;
   useEffect(() => {
@@ -44,14 +46,15 @@ export function GoalPanel({
   // Keyboard shortcuts for coordinator control (called before early returns so hooks always fire)
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.ctrl || key.meta) return;
     if (shortcutsEnabled && (input === 'c' || input === 'C')) {
-      if (onCoordinatorStart && goal) {
+      if (onCoordinatorStart && goal && !coordinatorRunning) {
         const goalText = goal.refinedGoal || goal.goal;
         onCoordinatorStart(goalText);
       }
     }
     if (shortcutsEnabled && input === 'S') {
-      if (onCoordinatorStop) {
+      if (onCoordinatorStop && coordinatorRunning) {
         onCoordinatorStop();
       }
     }
@@ -74,7 +77,7 @@ export function GoalPanel({
             ● coordinator {coordinatorRunning ? 'running' : 'idle'}
           </Text>
         }
-        footer={<KeyCap keyName="F9" label="close" color={theme.brand} />}
+        footer={<KeyCap keepTogether keyName="F9/Esc" label="close" color={theme.brand} />}
       >
         <EmptyPanelState
           icon="◇"
@@ -130,21 +133,21 @@ export function GoalPanel({
         </Text>
       }
       footer={
-        <Box gap={2}>
+        <Box gap={1} flexWrap="wrap">
           {deliverables.length > 0 ? (
-            <KeyCap keyName="↑↓" label="deliverable" color={theme.brand} />
+            <KeyCap keepTogether keyName="↑↓" label="deliverable" color={theme.brand} />
           ) : null}
-          {coordinatorRunning ? (
-            <KeyCap keyName="S" label="stop coordinator" color={theme.error} />
-          ) : (
-            <KeyCap keyName="C" label="start coordinator" color={theme.success} />
-          )}
-          <KeyCap keyName="F9" label="close" color={theme.brand} />
+          {coordinatorRunning && onCoordinatorStop ? (
+            <KeyCap keepTogether keyName="S" label="stop coordinator" color={theme.error} />
+          ) : !coordinatorRunning && onCoordinatorStart ? (
+            <KeyCap keepTogether keyName="C" label="start coordinator" color={theme.success} />
+          ) : null}
+          <KeyCap keepTogether keyName="F9/Esc" label="close" color={theme.brand} />
         </Box>
       }
     >
-      <Box flexDirection="column" marginTop={1} paddingX={1}>
-        <Text color={theme.textMuted}>MISSION</Text>
+      <Box flexDirection="column" marginTop={compact ? 0 : 1} paddingX={1}>
+        {!compact ? <Text color={theme.textMuted}>MISSION</Text> : null}
         <Text color={theme.textPrimary} bold>
           {truncatePanelText(displayGoal, size.contentWidth - 2)}
         </Text>
@@ -158,8 +161,8 @@ export function GoalPanel({
         </Box>
       ) : null}
 
-      {typeof goal.progress === 'number' && (
-        <Box flexDirection="column" marginTop={1}>
+      {!compact && typeof goal.progress === 'number' && (
+        <Box flexDirection="column" marginTop={compact ? 0 : 1}>
           {renderProgressBar(goal.progress, goal.progressTrend, size.columns >= 90 ? 20 : 12)}
           {goal.progressNote && (
             <Text color={theme.textMuted}>
@@ -171,7 +174,7 @@ export function GoalPanel({
       )}
 
       {deliverables.length > 0 && (
-        <Box flexDirection="column" marginTop={1}>
+        <Box flexDirection="column" marginTop={compact ? 0 : 1}>
           <Text color={theme.textMuted} bold>
             DELIVERABLES {doneDeliverables}/{deliverables.length}
           </Text>
@@ -201,20 +204,22 @@ export function GoalPanel({
         </Box>
       )}
 
-      <Box marginTop={1} gap={1}>
-        <Text color={theme.textMuted}>
-          ITERATIONS <Text color={theme.textSecondary}>{goal.iterations}</Text>
-        </Text>
-        {goal.lastTask ? (
+      {!compact ? (
+        <Box marginTop={1} gap={1}>
           <Text color={theme.textMuted}>
-            {' '}
-            LAST{' '}
-            <Text color={theme.textSecondary}>
-              {truncatePanelText(goal.lastTask, Math.max(12, size.contentWidth - 32))}
-            </Text>
+            ITERATIONS <Text color={theme.textSecondary}>{goal.iterations}</Text>
           </Text>
-        ) : null}
-      </Box>
+          {goal.lastTask ? (
+            <Text color={theme.textMuted}>
+              {' '}
+              LAST{' '}
+              <Text color={theme.textSecondary}>
+                {truncatePanelText(goal.lastTask, Math.max(12, size.contentWidth - 32))}
+              </Text>
+            </Text>
+          ) : null}
+        </Box>
+      ) : null}
     </MonitorShell>
   );
 }

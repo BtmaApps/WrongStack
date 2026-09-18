@@ -149,10 +149,7 @@ export function AppStatusRegion({
   // double-rendering the routed panel.
   const panelPositions: PanelPositionMap = effectivePanelPositions(state, liveSettings);
   const routedToBottom = (id: PanelId): boolean => panelPositions[id] === 'bottom';
-  const effectiveHiddenItems = useMemo(
-    () => mergeComposerOwnedChips(hiddenItems),
-    [hiddenItems],
-  );
+  const effectiveHiddenItems = useMemo(() => mergeComposerOwnedChips(hiddenItems), [hiddenItems]);
 
   return (
     <>
@@ -316,7 +313,10 @@ export function AppStatusRegion({
             onClear={() => dispatch({ type: 'queueClear' })}
             onEdit={(pos) => {
               const item = state.queue[pos];
-              if (item) setDraft(item.displayText, item.displayText.length);
+              if (item) {
+                setDraft(item.displayText, item.displayText.length);
+                dispatch({ type: 'toggleQueuePanel' });
+              }
             }}
             onToggleRefine={(pos) => dispatch({ type: 'queueToggleRefine', position: pos })}
           />

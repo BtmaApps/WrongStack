@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import {
   EmptyPanelState,
@@ -8,6 +8,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -127,9 +128,9 @@ export function WorktreeMonitor({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="inspect" color={theme.monitor.worktree} />
-          <KeyCap keyName="F4" label="close" color={theme.monitor.worktree} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="inspect" color={theme.monitor.worktree} />
+          <KeyCap keepTogether keyName="F4/Esc" label="close" color={theme.monitor.worktree} />
           <Text color={theme.textMuted}>/worktree merge &lt;branch&gt;</Text>
           {staleTerminal > 0 ? <Text color={theme.textMuted}>{staleTerminal} archived</Text> : null}
         </Box>

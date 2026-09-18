@@ -21,7 +21,7 @@ import {
 import { applySessionKanbanTaskToSource } from '@wrongstack/tools/session-kanban';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import {
   auditKanbanBoard,
   type KanbanAuditSeverity,
@@ -30,7 +30,15 @@ import {
   topAuditIssues,
 } from '../kanban-audit.js';
 import { theme } from '../theme.js';
-import { usePanelShortcutsEnabled } from './monitor-shell.js';
+import {
+  KeyCap,
+  MonitorShell,
+  panelWindow,
+  truncatePanelText,
+  usePanelInput as useInput,
+  useMonitorSize,
+  usePanelShortcutsEnabled,
+} from './monitor-shell.js';
 
 interface KanbanPanelProps {
   projectRoot: string;
@@ -66,9 +74,12 @@ export function KanbanPanel({
   sessionId,
   sessionContext,
   onClose,
-  terminalWidth = 100,
+  terminalWidth: widthOverride,
   initialBoardId,
 }: KanbanPanelProps): React.ReactElement {
+  const size = useMonitorSize();
+  const terminalWidth = widthOverride ?? size.columns;
+  const [showKeys, setShowKeys] = useState(false);
   // Every mutation below stamps its event with the session driving the panel.
   const eventContext = { sessionId, actor: 'tui-operator' };
   const [boards, setBoards] = useState<KanbanBoardSummary[]>([]);
@@ -258,6 +269,7 @@ export function KanbanPanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.ctrl || key.meta) return;
     if (prompt) {
       if (key.escape) {
         setPrompt(null);
@@ -285,6 +297,10 @@ export function KanbanPanel({
     // Letter/space shortcuts stay inert while the composer holds a draft
     // (broadcast useInput — the user is typing a message, not driving the
     // board). Esc, arrows, and Tab keep working either way.
+    if (shortcutsEnabled && input === '?') {
+      setShowKeys((value) => !value);
+      return;
+    }
     if (key.escape || (shortcutsEnabled && input === 'q')) {
       onClose();
       return;
@@ -460,26 +476,21 @@ export function KanbanPanel({
   });
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Box flexDirection="row" gap={1} marginBottom={1}>
-        <Text bold color="cyan">
-          KANBAN
-        </Text>
-        <Text dimColor>|</Text>
-        <Text dimColor>
-          {boards.length} board{boards.length === 1 ? '' : 's'}
-        </Text>
-        {board ? (
-          <>
-            <Text dimColor>|</Text>
-            <Text>{board.title}</Text>
-          </>
-        ) : null}
-        <Text dimColor>
-          | n/p board | Tab task | ←→ move | c/a/d create/add/dup | C/T copy/transfer | Ctrl+Y
-          toggle | Esc close
-        </Text>
-      </Box>
+    <MonitorShell
+      accent={theme.accent}
+      icon="▦"
+      title="KANBAN"
+      right={<Text dimColor>{boards.length} boards</Text>}
+      footer={
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="n/p" label="board" />
+          <KeyCap keepTogether keyName="Tab" label="task" />
+          <KeyCap keepTogether keyName="?" label="keys" />
+          <KeyCap keepTogether keyName="F12/Esc" label="close" />
+        </Box>
+      }
+    >
+      {board ? <Text wrap="truncate-end">{board.title}</Text> : null}
 
       {prompt ? <PromptLine prompt={prompt} /> : null}
       {notice && !prompt ? (
@@ -487,7 +498,16 @@ export function KanbanPanel({
           {notice}
         </Text>
       ) : null}
-      {loading ? (
+      {showKeys ? (
+        <Box flexDirection="column">
+          <Text>n/p board · Tab/Shift+Tab task</Text>
+          <Text>←→ move · Space/D complete</Text>
+          <Text>c create board · a add task</Text>
+          <Text>d duplicate board · x delete task</Text>
+          <Text>C copy · T transfer · r refresh</Text>
+          <Text>? back · Ctrl+Y toggle · F12/Esc close</Text>
+        </Box>
+      ) : loading ? (
         <Text dimColor>Loading kanban...</Text>
       ) : error ? (
         <Text color="red">Error: {error}</Text>
@@ -499,6 +519,13 @@ export function KanbanPanel({
             <Text color={theme.accent}>/kanban create &lt;title&gt;</Text> in the composer.
           </Text>
         </Box>
+      ) : terminalWidth < 110 ? (
+        <CompactBoard
+          board={board}
+          activeTaskId={activeTask?.id}
+          rows={Math.max(1, size.rows - 8)}
+          width={size.contentWidth}
+        />
       ) : (
         <Box flexDirection="column">
           <BoardSummary board={board} target={transferTarget} />
@@ -514,6 +541,42 @@ export function KanbanPanel({
           </Box>
         </Box>
       )}
+    </MonitorShell>
+  );
+}
+
+function CompactBoard({
+  board,
+  activeTaskId,
+  rows,
+  width,
+}: {
+  board: KanbanBoard;
+  activeTaskId: string | undefined;
+  rows: number;
+  width: number;
+}): React.ReactElement {
+  const tasks = [...board.tasks].sort((a, b) => a.order - b.order);
+  const selected = Math.max(
+    0,
+    tasks.findIndex((task) => task.id === activeTaskId),
+  );
+  const window = panelWindow(tasks.length, selected, rows);
+  return (
+    <Box flexDirection="column">
+      {tasks.length === 0 ? <Text dimColor>No tasks. Press a to add.</Text> : null}
+      {tasks.slice(window.start, window.end).map((task) => (
+        <Text
+          key={task.id}
+          color={task.id === activeTaskId ? theme.accent : theme.textSecondary}
+          wrap="truncate-end"
+        >
+          {truncatePanelText(
+            `${task.id === activeTaskId ? '›' : ' '} ${board.columns.find((column) => column.id === task.columnId)?.title ?? ''}: ${task.title}`,
+            width,
+          )}
+        </Text>
+      ))}
     </Box>
   );
 }
@@ -552,14 +615,19 @@ function BoardList({
   boards: KanbanBoardSummary[];
   selected: number;
 }): React.ReactElement {
+  const window = panelWindow(boards.length, selected, 12);
   return (
     <Box flexDirection="column" width={24} borderStyle="single" borderColor="gray" paddingX={1}>
       <Text bold color="cyan">
         Boards
       </Text>
-      {boards.slice(0, 12).map((item, index) => (
-        <Text key={item.id} color={index === selected ? 'cyan' : undefined} wrap="truncate">
-          {index === selected ? '>' : ' '} {item.title} ({item.taskCount})
+      {boards.slice(window.start, window.end).map((item, index) => (
+        <Text
+          key={item.id}
+          color={window.start + index === selected ? 'cyan' : undefined}
+          wrap="truncate"
+        >
+          {window.start + index === selected ? '>' : ' '} {item.title} ({item.taskCount})
         </Text>
       ))}
       {boards.length > 12 ? <Text dimColor>... {boards.length - 12} more</Text> : null}
@@ -616,54 +684,69 @@ function BoardColumns({
     terminalWidth,
   );
   const isManaged = board.lifecycle?.mode === 'managed';
+  const columns = [...board.columns].sort((a, b) => a.order - b.order);
+  const activeColumn = board.tasks.find((task) => task.id === activeTaskId)?.columnId;
+  const columnWindow = panelWindow(
+    columns.length,
+    Math.max(
+      0,
+      columns.findIndex((column) => column.id === activeColumn),
+    ),
+    visibleColumnCount,
+  );
 
   return (
     <Box flexDirection="row" gap={1} flexWrap="wrap">
-      {[...board.columns]
-        .sort((a, b) => a.order - b.order)
-        .slice(0, visibleColumnCount)
-        .map((column) => {
-          const allTasks = board.tasks
-            .filter((task) => task.columnId === column.id)
-            .sort((a, b) => a.order - b.order);
-          const stage = isManaged ? stageForColumn(board, column.id) : null;
-          const indicator = stage ? stageToIndicator(stage) : null;
-          return (
-            <Box key={column.id} flexDirection="column" width={columnWidth}>
-              <Box flexDirection="row" gap={1}>
-                <Text bold color="cyan" wrap="truncate">
-                  {column.title} ({allTasks.length})
+      {columns.slice(columnWindow.start, columnWindow.end).map((column) => {
+        const allTasks = board.tasks
+          .filter((task) => task.columnId === column.id)
+          .sort((a, b) => a.order - b.order);
+        const stage = isManaged ? stageForColumn(board, column.id) : null;
+        const taskWindow = panelWindow(
+          allTasks.length,
+          Math.max(
+            0,
+            allTasks.findIndex((task) => task.id === activeTaskId),
+          ),
+          8,
+        );
+        const indicator = stage ? stageToIndicator(stage) : null;
+        return (
+          <Box key={column.id} flexDirection="column" width={columnWidth}>
+            <Box flexDirection="row" gap={1}>
+              <Text bold color="cyan" wrap="truncate">
+                {column.title} ({allTasks.length})
+              </Text>
+              {indicator ? (
+                <Text color={indicator.color} wrap="truncate">
+                  {indicator.glyph} {stage}
                 </Text>
-                {indicator ? (
-                  <Text color={indicator.color} wrap="truncate">
-                    {indicator.glyph} {stage}
-                  </Text>
-                ) : null}
-              </Box>
-              {allTasks.length === 0 ? (
-                <Text dimColor> empty</Text>
-              ) : (
-                allTasks.slice(0, 8).map((task) => (
-                  <Text
-                    key={task.id}
-                    color={task.id === activeTaskId ? 'cyan' : undefined}
-                    wrap="truncate"
-                  >
-                    {task.id === activeTaskId ? '>' : ' '} {statusIcon(task.status)} {task.title}
-                    {task.assignedAgent ? <Text dimColor> @{task.assignedAgent}</Text> : null}
-                  </Text>
-                ))
-              )}
-              {allTasks.length > 8 ? <Text dimColor> ... {allTasks.length - 8} more</Text> : null}
+              ) : null}
             </Box>
-          );
-        })}
+            {allTasks.length === 0 ? (
+              <Text dimColor> empty</Text>
+            ) : (
+              allTasks.slice(taskWindow.start, taskWindow.end).map((task) => (
+                <Text
+                  key={task.id}
+                  color={task.id === activeTaskId ? 'cyan' : undefined}
+                  wrap="truncate"
+                >
+                  {task.id === activeTaskId ? '>' : ' '} {statusIcon(task.status)} {task.title}
+                  {task.assignedAgent ? <Text dimColor> @{task.assignedAgent}</Text> : null}
+                </Text>
+              ))
+            )}
+            {allTasks.length > 8 ? <Text dimColor> ... {allTasks.length - 8} more</Text> : null}
+          </Box>
+        );
+      })}
       {overflow > 0 ? (
         <Box flexDirection="column" width={columnWidth}>
           <Text dimColor wrap="truncate">
             + {overflow} more column{overflow === 1 ? '' : 's'}
           </Text>
-          <Text dimColor>(resize terminal or use n/p)</Text>
+          <Text dimColor>(Tab follows tasks across columns)</Text>
         </Box>
       ) : null}
     </Box>

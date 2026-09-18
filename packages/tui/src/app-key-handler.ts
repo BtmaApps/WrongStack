@@ -1,5 +1,7 @@
 import { toErrorMessage } from '@wrongstack/core/utils';
+import { effectivePanelPositions } from './app-ui-state.js';
 import type { KeyEvent } from './components/input.js';
+import { activeBottomFKeyPanel } from './f-key-panels.js';
 import type { AppKeyHandlerOptions, KeyRouteContext } from './key-handler-context.js';
 import { routeBusyInterrupt, routeCtrlCEscalation } from './key-routes/key-route-busy.js';
 import { routeComposer, routeComposerTail } from './key-routes/key-route-composer.js';
@@ -71,6 +73,10 @@ export function createAppKeyHandler(
 
   // Shared view for the ordered route modules (decomposition Phase 3).
   const ctx: KeyRouteContext = { ...options, stdout, historyWidth, detach };
+  const functionPanel = activeBottomFKeyPanel(
+    state,
+    effectivePanelPositions(state, options.getSettings?.()),
+  );
 
   const handleKey = async (input: string, key: KeyEvent) => {
     // Only consecutive composer Esc presses may clear a draft. Keys owned by
@@ -93,21 +99,15 @@ export function createAppKeyHandler(
       return;
     }
 
-    // ── Monitor overlays are NON-modal ───────────────────────────────
-    // F2 fleet, F3 agents, F4 worktree, F6 todos, F7 queue, and the
-    // goalRun monitor render in the lower region of the layout, but the
-    // chat input above them stays LIVE — typing, backspace, paste, cursor
-    // movement, and Enter (submit) all flow through to the input buffer.
-    // Only the F-key toggles below and Esc are reserved for the panel:
-    //   • F2/F3/F4/F6/F7 toggle their respective overlay
-    //   • Esc closes whichever overlay is open
-    // (Overlays with their own dedicated UI — `confirmQueue`, `enhance`,
-    // `modelPicker`, `autonomyPicker`, `settingsPicker`, `rewindOverlay`,
-    // `helpOpen` — are still modal and keep their own guards above.)
-    // Ctrl+C still aborts via the SIGINT handler, which bypasses handleKey.
+    // Bottom F-key panels own the keyboard while their composer is hidden.
+    // Sidebar twins keep chat input available; critical modals still win above.
 
     // Re-entrancy guard: block stale-second events from \r\n terminals.
     if (inputGateRef.current) return;
+
+    // Function keys switch/close panels even when a picker owns all other keys.
+    if (functionPanel !== null && key.fn !== undefined && routeFKeyPanels(ctx, input, key)) return;
+    if (functionPanel !== null && key.meta && (key.pageUp || key.pageDown)) return;
 
     // ── Bracketed-paste accumulation ──────────────────────────────────
     // Moved verbatim to routePastePipeline (key-routes/key-route-paste.ts,
@@ -115,7 +115,7 @@ export function createAppKeyHandler(
     // fragments accumulate until the end marker (\x1b[201~), then the whole
     // payload finalizes at once — before Enter handling, so a "\n" fragment
     // inside a paste never submits mid-paste.
-    if (await routePastePipeline(ctx, input)) return;
+    if (functionPanel === null && (await routePastePipeline(ctx, input))) return;
 
     // Some terminals emit \r\n for Enter as two separate stdin events.
     // \r arrives with key.return=true (handled below); \n may arrive as
@@ -179,6 +179,10 @@ export function createAppKeyHandler(
     if (routeSddBoard(ctx, input, key)) return;
     if (routeSettingsOverlay(ctx, input, key, isEnter)) return;
     if (routePanelEscapeRouter(ctx, key)) return;
+
+    // Local panel handlers receive the same Ink event. Never also edit or
+    // submit the hidden composer, including when it holds a saved draft.
+    if (functionPanel !== null) return;
 
     // overlayOpen tracks whether the renderer hides the right sidebar for a
     // bottom-routed panel/overlay. Sidebar-routed panels must not suppress

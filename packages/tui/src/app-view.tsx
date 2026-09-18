@@ -1,13 +1,21 @@
 import type React from 'react';
 import { useCallback } from 'react';
 import { AppStatusRegion } from './app-status-region.js';
-import { buildSidebarOpenFlags, resolveAppSidebarLayout } from './app-ui-state.js';
+import {
+  buildSidebarOpenFlags,
+  isPickerOverlayOpen,
+  resolveAppSidebarLayout,
+} from './app-ui-state.js';
 import type { AppViewProps } from './app-view-contract.js';
 import { AppViewPickers } from './app-view-pickers.js';
 import { AppViewSidebar } from './app-view-sidebar.js';
 import { DEFAULT_INPUT_PROMPT, Input } from './components/input.js';
 import { InspectOverlay, resolveInspectOverlayContent } from './components/inspect-overlay.js';
-import { PanelShortcutsProvider } from './components/monitor-shell.js';
+import {
+  MonitorViewportProvider,
+  PanelInputProvider,
+  PanelShortcutsProvider,
+} from './components/monitor-shell.js';
 import { usePlanPanelData } from './components/plan-panel.js';
 import { ScrollableHistory } from './components/scrollable-history.js';
 import {
@@ -49,6 +57,27 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   const { workingTimeMs } = activity;
   const { autonomyLive } = environment;
   const { inputHint, composerStatus, composerAnimationStyle, inputHeight, hideInput } = viewState;
+  const foregroundPrompt =
+    isPickerOverlayOpen(state) ||
+    state.confirmQueue.length > 0 ||
+    state.shellCommandWarning != null ||
+    state.brainPrompt != null ||
+    state.clearConfirm != null ||
+    state.exitConfirm != null ||
+    state.slashConfirm != null ||
+    state.escConfirm != null ||
+    state.enhance != null ||
+    state.enhanceBusy ||
+    state.topicCheckBusy ||
+    state.refineFailure != null ||
+    state.continueConfirm != null ||
+    state.bugHuntContinue != null ||
+    state.sendModePicker != null ||
+    state.rewindOverlay != null ||
+    state.fallbackOverlay != null ||
+    state.inspectOverlay != null ||
+    state.helpOpen ||
+    (state.status === 'aborting' && !state.steeringPending);
   // Bash mode relabels the whole composer (`$` prompt, warn-colored rail,
   // BASH MODE title) so the shell-command state is unmistakable at a glance.
   const bashMode = state.bashMode;
@@ -68,8 +97,12 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   } = resolveAppSidebarLayout(state, termCols, liveSettings, mailbox.mailboxPanelOpen);
   const routedToSidebar = (id: PanelId): boolean => panelPositions[id] === 'sidebar';
 
-  const effectiveInputHeight = state.helpPanel.open ? 0 : inputHeight;
-  const pickerMaxRows = Math.max(8, runtime.termRows - runtime.statusBarRows - effectiveInputHeight - 1);
+  const effectiveInputHeight =
+    state.helpPanel.open || viewState.functionPanel != null ? 0 : inputHeight;
+  const pickerMaxRows = Math.max(
+    8,
+    runtime.termRows - runtime.statusBarRows - effectiveInputHeight - 1,
+  );
 
   const sidebarPanelOpenFlags = buildSidebarOpenFlags(state, liveSettings);
   const openSidebarPanelIds = PANEL_IDS.filter(
@@ -143,116 +176,124 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   }, [runtime.dispatch]);
 
   return (
-    <PanelShortcutsProvider value={state.buffer.length === 0}>
-      <Box
-        flexDirection="column"
-        height={runtime.termRows}
-        overflowY="hidden"
-        justifyContent="flex-end"
-      >
-        <Box flexDirection="row" width={termCols} flexShrink={0} overflowX="hidden">
-          <Box flexDirection="column" flexShrink={0} width={mainColumnWidth} overflowX="hidden">
-            {inspectContent && state.inspectOverlay ? (
-              <InspectOverlay
-                title={inspectContent.title}
-                body={inspectContent.body}
-                scroll={state.inspectOverlay.scroll}
-                termCols={mainColumnWidth}
-                viewportRows={state.viewportRows}
-                onScroll={onInspectScroll}
-                onClose={onInspectClose}
-                copied={state.copiedEntryId === state.inspectOverlay.entryId}
-                headerRef={runtime.inspectOverlayHeaderRef}
-              />
-            ) : (
-              <ScrollableHistory
-                key={`history-gen-${state.historyGen}`}
-                entries={state.entries}
-                toolStream={state.toolStream}
-                streamingText={state.streamingText}
-                viewportRows={state.viewportRows}
-                maxWidth={mainColumnWidth}
-                controllerRef={historyScrollRef}
-                onScrollInfo={onScrollInfo}
-                setSuggestions={setSuggestions}
-                autonomyMode={autonomyLive}
-                nextStepsAutoSubmitLabel={runtime.nextStepsAutoSubmitLabel}
-                nextStepsAutoSubmitDeadlineMs={runtime.nextStepsAutoSubmitDeadlineMs}
-                multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
-                todos={liveTodos}
-                showModelReasoning={
-                  state.settingsPicker.open
-                    ? state.settingsPicker.showModelReasoning
-                    : (liveSettings?.showModelReasoning ?? true)
-                }
-                showSageMemoryInject={
-                  state.settingsPicker.open
-                    ? state.settingsPicker.showSageMemoryInject
-                    : (liveSettings?.showSageMemoryInject ?? false)
-                }
-                toolResultViewMode={toolResultViewMode}
-                toolResultViewOverrides={state.toolResultViewOverrides}
-                onToolResultViewChange={onToolResultViewChange}
-                layoutStore={layoutStore}
-                copiedEntryId={state.copiedEntryId}
-                onRequestOlderEntries={runtime.onRequestOlderEntries}
-              />
-            )}
-            <Box
-              flexDirection="column"
-              flexShrink={0}
-              ref={bottomRegionRef}
-              width={mainColumnWidth}
-            >
-              <Input
-                prompt={bashMode ? BASH_PROMPT : INPUT_PROMPT}
-                value={state.buffer}
-                cursor={state.cursor}
-                title={bashMode ? BASH_TITLE : `WRONGSTACK${appVersion ? ` v${appVersion}` : ''}`}
-                railIcon={bashMode ? glyphs.terminal : undefined}
-                accent={bashMode ? theme.warn : undefined}
-                status={composerStatus}
-                animationStyle={composerAnimationStyle}
-                hidden={hideInput}
-                placeholderHeight={state.helpPanel.open ? 0 : inputHeight}
-                maxWidth={mainColumnWidth}
-                disabled={
-                  (state.status === 'aborting' && !state.steeringPending) ||
-                  state.confirmQueue.length > 0
-                }
-                hint={bashMode ? BASH_HINT : inputHint}
-                onKey={stableOnKey}
-                workingTime={workingTimeMs}
-              />
-              <AppViewPickers
-                host={host}
-                runtime={runtime}
-                mainColumnWidth={mainColumnWidth}
-                pickerMaxRows={pickerMaxRows}
-                routedToSidebar={routedToSidebar}
-                panelPositions={panelPositions}
-              />
-              <AppStatusRegion host={host} runtime={runtime} mainColumnWidth={mainColumnWidth} />
+    <PanelInputProvider value={!foregroundPrompt}>
+      <PanelShortcutsProvider value={viewState.functionPanel != null || state.buffer.length === 0}>
+        <Box
+          flexDirection="column"
+          height={runtime.termRows}
+          overflowY="hidden"
+          justifyContent="flex-end"
+        >
+          <Box flexDirection="row" width={termCols} flexShrink={0} overflowX="hidden">
+            <Box flexDirection="column" flexShrink={0} width={mainColumnWidth} overflowX="hidden">
+              {inspectContent && state.inspectOverlay ? (
+                <InspectOverlay
+                  title={inspectContent.title}
+                  body={inspectContent.body}
+                  scroll={state.inspectOverlay.scroll}
+                  termCols={mainColumnWidth}
+                  viewportRows={state.viewportRows}
+                  onScroll={onInspectScroll}
+                  onClose={onInspectClose}
+                  copied={state.copiedEntryId === state.inspectOverlay.entryId}
+                  headerRef={runtime.inspectOverlayHeaderRef}
+                />
+              ) : (
+                <ScrollableHistory
+                  key={`history-gen-${state.historyGen}`}
+                  entries={state.entries}
+                  toolStream={state.toolStream}
+                  streamingText={state.streamingText}
+                  viewportRows={state.viewportRows}
+                  maxWidth={mainColumnWidth}
+                  controllerRef={historyScrollRef}
+                  onScrollInfo={onScrollInfo}
+                  setSuggestions={setSuggestions}
+                  autonomyMode={autonomyLive}
+                  nextStepsAutoSubmitLabel={runtime.nextStepsAutoSubmitLabel}
+                  nextStepsAutoSubmitDeadlineMs={runtime.nextStepsAutoSubmitDeadlineMs}
+                  multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
+                  todos={liveTodos}
+                  showModelReasoning={
+                    state.settingsPicker.open
+                      ? state.settingsPicker.showModelReasoning
+                      : (liveSettings?.showModelReasoning ?? true)
+                  }
+                  showSageMemoryInject={
+                    state.settingsPicker.open
+                      ? state.settingsPicker.showSageMemoryInject
+                      : (liveSettings?.showSageMemoryInject ?? false)
+                  }
+                  toolResultViewMode={toolResultViewMode}
+                  toolResultViewOverrides={state.toolResultViewOverrides}
+                  onToolResultViewChange={onToolResultViewChange}
+                  layoutStore={layoutStore}
+                  copiedEntryId={state.copiedEntryId}
+                  onRequestOlderEntries={runtime.onRequestOlderEntries}
+                />
+              )}
+              <Box
+                flexDirection="column"
+                flexShrink={0}
+                ref={bottomRegionRef}
+                width={mainColumnWidth}
+              >
+                <Input
+                  prompt={bashMode ? BASH_PROMPT : INPUT_PROMPT}
+                  value={state.buffer}
+                  cursor={state.cursor}
+                  title={bashMode ? BASH_TITLE : `WRONGSTACK${appVersion ? ` v${appVersion}` : ''}`}
+                  railIcon={bashMode ? glyphs.terminal : undefined}
+                  accent={bashMode ? theme.warn : undefined}
+                  status={composerStatus}
+                  animationStyle={composerAnimationStyle}
+                  hidden={hideInput}
+                  placeholderHeight={effectiveInputHeight}
+                  maxWidth={mainColumnWidth}
+                  disabled={
+                    (state.status === 'aborting' && !state.steeringPending) ||
+                    state.confirmQueue.length > 0
+                  }
+                  hint={bashMode ? BASH_HINT : inputHint}
+                  onKey={stableOnKey}
+                  workingTime={workingTimeMs}
+                />
+                <MonitorViewportProvider value={{ columns: mainColumnWidth, rows: pickerMaxRows }}>
+                  <AppViewPickers
+                    host={host}
+                    runtime={runtime}
+                    mainColumnWidth={mainColumnWidth}
+                    pickerMaxRows={pickerMaxRows}
+                    routedToSidebar={routedToSidebar}
+                    panelPositions={panelPositions}
+                  />
+                  <AppStatusRegion
+                    host={host}
+                    runtime={runtime}
+                    mainColumnWidth={mainColumnWidth}
+                  />
+                </MonitorViewportProvider>
+              </Box>
             </Box>
+            <AppViewSidebar
+              host={host}
+              runtime={runtime}
+              sidebarWidth={sidebarWidth}
+              sidebarContentWidth={sidebarContentWidth}
+              sidebarScrollOffset={state.sidebarScrollOffset}
+              sidebarMaxScroll={sidebarMaxScroll}
+              sidebarSlotVisible={sidebarSlotVisible}
+              hiddenSidebarPanelCount={hiddenSidebarPanelCount}
+              sidebarProcessData={sidebarProcessData}
+              sidebarConnectionsData={sidebarConnectionsData}
+              sidebarKanbanData={sidebarKanbanData}
+              sidebarPlanData={sidebarPlanData}
+              sidebarWrongProxyEnabled={wrongProxyEnabled}
+              sidebarWrongProxyData={sidebarWrongProxyData}
+            />
           </Box>
-          <AppViewSidebar
-            host={host}
-            runtime={runtime}
-            sidebarWidth={sidebarWidth}
-            sidebarContentWidth={sidebarContentWidth}
-            sidebarScrollOffset={state.sidebarScrollOffset}
-            sidebarMaxScroll={sidebarMaxScroll}
-            sidebarSlotVisible={sidebarSlotVisible}
-            hiddenSidebarPanelCount={hiddenSidebarPanelCount}
-            sidebarProcessData={sidebarProcessData}
-            sidebarConnectionsData={sidebarConnectionsData}
-            sidebarKanbanData={sidebarKanbanData}
-            sidebarPlanData={sidebarPlanData}
-            sidebarWrongProxyEnabled={wrongProxyEnabled}
-            sidebarWrongProxyData={sidebarWrongProxyData}
-          />
         </Box>
-      </Box>
-    </PanelShortcutsProvider>
+      </PanelShortcutsProvider>
+    </PanelInputProvider>
   );
 }

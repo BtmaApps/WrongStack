@@ -36,6 +36,7 @@ interface PtyModule {
     },
   ): {
     write(data: string): void;
+    resize(columns: number, rows: number): void;
     onData(callback: (data: string) => void): void;
     kill(): void;
   };
@@ -189,7 +190,10 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     await expectSoon('project → position 2 on line 3', 15_000, orderMoveStart);
     await sleep(500);
     const statuslineConfig = JSON.parse(
-      fs.readFileSync(path.join(home, '.wrongstack', 'profiles', 'default', 'statusline.json'), 'utf8'),
+      fs.readFileSync(
+        path.join(home, '.wrongstack', 'profiles', 'default', 'statusline.json'),
+        'utf8',
+      ),
     ) as { lines?: Record<string, number>; order?: string[] };
     expect(statuslineConfig.lines?.['project']).toBe(3);
     expect(statuslineConfig.order?.indexOf('project')).toBeGreaterThan(
@@ -206,5 +210,40 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
     expect(output.slice(commandStart)).not.toContain('WrongStack — Subagent models');
 
     child.write(ESC);
+    await sleep(500);
+    await type('preserved-draft');
+    const functionPanels = [
+      ['OP', 'PROJECTS'],
+      ['OQ', 'FLEET CONTROL'],
+      ['OR', 'AGENTS'],
+      ['OS', 'WORKTREES'],
+      ['[15~', 'PLAN'],
+      ['[17~', 'TODOS'],
+      ['[18~', 'MESSAGE QUEUE'],
+      ['[19~', 'PROCESSES'],
+      ['[20~', 'GOAL'],
+      ['[21~', 'SESSIONS'],
+      ['[23~', 'COORDINATOR'],
+      ['[24~', 'KANBAN'],
+    ];
+    for (const [columns, rows] of [
+      [110, 40],
+      [52, 16],
+    ] as const) {
+      child.resize(columns, rows);
+      await sleep(300);
+      for (const [sequence, title] of functionPanels) {
+        const panelStart = output.length;
+        child.write(`${ESC}${sequence}`);
+        await expectSoon(title!, 10_000, panelStart);
+        await sleep(150);
+        child.write('z');
+        await sleep(100);
+        const closeStart = output.length;
+        child.write(`${ESC}${sequence}`);
+        await expectSoon('preserved-draft', 10_000, closeStart);
+        expect(output.slice(closeStart)).not.toContain('preserved-draftz');
+      }
+    }
   }, 120_000);
 });

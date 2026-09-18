@@ -1,7 +1,7 @@
-import { Box, Text, useInput } from '../ink.js';
-import { useEffect, useState } from 'react';
-import type React from 'react';
 import { getProcessRegistry } from '@wrongstack/tools';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -10,6 +10,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
 } from './monitor-shell.js';
 
@@ -81,6 +82,7 @@ export function ProcessListMonitor(): React.ReactElement {
   };
 
   useInput((input, key) => {
+    if (key.meta || (key.ctrl && input !== 'a' && input !== 'e')) return;
     if (pendingAction) {
       if (key.return || input.toLowerCase() === 'y') runPendingAction();
       else if (input.toLowerCase() === 'n' || key.escape) setPendingAction(null);
@@ -117,7 +119,7 @@ export function ProcessListMonitor(): React.ReactElement {
       setPendingAction({ kind: 'all', label: `stop all ${running} running processes` });
     } else if (input === 'A') {
       setPendingAction({ kind: 'all-force', label: `force-stop all ${running} running processes` });
-    } else if (input === 'r') {
+    } else if (input === 'r' || input === 'R') {
       getProcessRegistry().forceBreakerReset();
     }
     // Every other key is deliberately ignored — it will fall through
@@ -140,14 +142,14 @@ export function ProcessListMonitor(): React.ReactElement {
         </Text>
       }
       footer={
-        <Box gap={2}>
+        <Box gap={1} flexWrap="wrap">
           <Text color={theme.warn} bold>
             {'⏸ INPUT PAUSED'}
           </Text>
-          <KeyCap keyName="↑↓" label="select" color={theme.error} />
-          <KeyCap keyName="Enter" label="stop" color={theme.warn} />
-          <KeyCap keyName="Del" label="force" color={theme.error} />
-          <KeyCap keyName="F8/Esc" label="close" color={theme.error} />
+          <KeyCap keepTogether keyName="↑↓" label="select" color={theme.error} />
+          <KeyCap keepTogether keyName="Enter" label="stop" color={theme.warn} />
+          <KeyCap keepTogether keyName="Del" label="force" color={theme.error} />
+          <KeyCap keepTogether keyName="F8/Esc" label="close" color={theme.error} />
         </Box>
       }
     >
@@ -163,7 +165,7 @@ export function ProcessListMonitor(): React.ReactElement {
           </Text>
         ) : null}
         <Box flexGrow={1} />
-        <KeyCap keyName="R" label="reset" color={breakerColor} />
+        <KeyCap keepTogether keyName="R" label="reset" color={breakerColor} />
       </Box>
 
       {pendingAction ? (
@@ -172,9 +174,9 @@ export function ProcessListMonitor(): React.ReactElement {
             ⚠ {pendingAction.label}?
           </Text>
           <Box flexGrow={1} />
-          <KeyCap keyName="Y/Enter" label="confirm" color={theme.error} />
+          <KeyCap keepTogether keyName="Y/Enter" label="confirm" color={theme.error} />
           <Text> </Text>
-          <KeyCap keyName="N" label="cancel" color={theme.success} />
+          <KeyCap keepTogether keyName="N" label="cancel" color={theme.success} />
         </Box>
       ) : null}
 

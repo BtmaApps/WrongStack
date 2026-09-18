@@ -65,6 +65,7 @@ interface CorpusCase {
 function makeHandler(
   state: State,
   draft: { buffer: string; cursor: number } = { buffer: '', cursor: 0 },
+  overrides: Partial<Parameters<typeof createAppKeyHandler>[0]> = {},
 ) {
   const dispatch = vi.fn();
   const runInterruptLadder = vi.fn();
@@ -136,9 +137,9 @@ function makeHandler(
   };
 
   // One deliberate cast: the corpus pins routing, not option plumbing.
-  const handler = createAppKeyHandler(
-    options as never as Parameters<typeof createAppKeyHandler>[0],
-  );
+  const handler = createAppKeyHandler({ ...options, ...overrides } as never as Parameters<
+    typeof createAppKeyHandler
+  >[0]);
   return {
     handler,
     dispatch,
@@ -333,5 +334,43 @@ describe('Escape ownership', () => {
     await fixture.handler('x', key());
     await fixture.handler('', key({ escape: true }));
     expect(fixture.dispatch).not.toHaveBeenCalledWith({ type: 'clearInput' });
+  });
+});
+
+describe('function panel keyboard ownership', () => {
+  const panels: [number, Partial<State>][] = [
+    [1, { projectPicker: { ...createTestState().projectPicker, open: true } }],
+    [2, { monitorOpen: true }],
+    [3, { agentsMonitorOpen: true }],
+    [4, { worktreeMonitorOpen: true }],
+    [5, { planPanelOpen: true }],
+    [6, { todosMonitorOpen: true }],
+    [7, { queuePanelOpen: true }],
+    [8, { processListOpen: true }],
+    [9, { goalPanelOpen: true }],
+    [10, { sessionsPanelOpen: true }],
+    [11, { coordinator: { ...createTestState().coordinator, monitorOpen: true } }],
+    [12, { kanbanPanelOpen: true }],
+  ];
+  it.each(panels)('F%i preserves a hidden draft and does not submit it', async (_fn, flags) => {
+    const fixture = makeHandler(createTestState({ ...flags, buffer: 'keep me', cursor: 7 }), {
+      buffer: 'keep me',
+      cursor: 7,
+    });
+    for (const [input, event] of [
+      ['d', key()],
+      ['', key({ backspace: true })],
+      ['', key({ return: true })],
+    ] as const) {
+      await fixture.handler(input, event);
+    }
+    expect(fixture.setDraft).not.toHaveBeenCalled();
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+  it.each([1, 10])('F%i does not swallow the next F-key through picker routing', async (fn) => {
+    const flags = panels.find(([candidate]) => candidate === fn)![1];
+    const fixture = makeHandler(createTestState(flags), undefined, { tryPickerKey: () => true });
+    await fixture.handler('', key({ fn: 6 }));
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: 'toggleTodosMonitor' });
   });
 });

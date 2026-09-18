@@ -1,5 +1,5 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -128,6 +128,7 @@ export function SessionsPanel({
 
   return (
     <MonitorShell
+      wheelScroll={false}
       accent={theme.accent}
       icon={glyphs.sessions}
       title="SESSIONS"
@@ -143,10 +144,10 @@ export function SessionsPanel({
         </Text>
       }
       footer={
-        <Box gap={2}>
-          <KeyCap keyName="↑↓" label="select" color={theme.accent} />
-          <KeyCap keyName="Enter" label="resume" color={theme.warn} />
-          <KeyCap keyName="F10" label="close" color={theme.accent} />
+        <Box gap={1} flexWrap="wrap">
+          <KeyCap keepTogether keyName="↑↓" label="select" color={theme.accent} />
+          <KeyCap keepTogether keyName="Enter" label="resume" color={theme.warn} />
+          <KeyCap keepTogether keyName="F10/Esc" label="close" color={theme.accent} />
           <Text color={theme.textMuted}>/sessions kill &lt;id&gt;</Text>
         </Box>
       }
