@@ -337,7 +337,7 @@ describe('WorktreeManager (stubbed git)', () => {
     const wm = new WorktreeManager({ projectRoot: PROJ, run });
     const res = await wm.mergeBranch('wstack/ap/s1', 'main');
     expect(res.ok).toBe(true);
-    expect(calls.some((c) => c.args[0] === 'merge' && c.args.includes('--squash'))).toBe(true);
+    expect(calls.some((c) => c.args.includes('merge') && c.args.includes('--squash'))).toBe(true);
     expect(calls.some((c) => c.args.includes('commit'))).toBe(true);
   });
 
@@ -351,7 +351,7 @@ describe('WorktreeManager (stubbed git)', () => {
     const res = await wm.mergeBranch('wstack/ap/s1', 'main');
     expect(res.ok).toBe(false);
     expect(res.reason).toMatch(/uncommitted/i);
-    expect(calls.some((c) => c.args[0] === 'merge')).toBe(false);
+    expect(calls.some((c) => c.args.includes('merge'))).toBe(false);
   });
 
   it('merge() refuses on a dirty base tree before checkout or squash merge', async () => {
@@ -371,7 +371,7 @@ describe('WorktreeManager (stubbed git)', () => {
     expect(h.status).toBe('failed');
     expect(events).toContain('worktree.failed');
     expect(calls.some((c) => c.args[0] === 'checkout')).toBe(false);
-    expect(calls.some((c) => c.args[0] === 'merge')).toBe(false);
+    expect(calls.some((c) => c.args.includes('merge'))).toBe(false);
   });
 
   it('merge() names conflicted files by their markers when git reports none', async () => {
@@ -383,7 +383,7 @@ describe('WorktreeManager (stubbed git)', () => {
     try {
       const { run } = stubRunner((args) => {
         if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
-        if (args[0] === 'merge') return { code: 1, stdout: '', stderr: 'merge failed' };
+        if (args.includes('merge')) return { code: 1, stdout: '', stderr: 'merge failed' };
         if (args[0] === 'diff' && args.includes('HEAD')) {
           return { code: 0, stdout: 'seed.txt\0clean.txt\0', stderr: '' };
         }
@@ -403,9 +403,36 @@ describe('WorktreeManager (stubbed git)', () => {
     }
   });
 
+  it('merge() fails without calling the resolver when git failed but nothing conflicts', async () => {
+    const { calls, run } = stubRunner((args) => {
+      if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+      if (args.includes('merge')) {
+        return { code: 128, stdout: '', stderr: 'Committer identity unknown' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const h = await wm.allocate('p', { slugHint: 'no-conflict-fail' });
+    let resolverCalled = false;
+    const res = await wm.merge(h, {
+      squash: true,
+      resolve: async () => {
+        resolverCalled = true;
+        return true;
+      },
+    });
+
+    expect(resolverCalled).toBe(false);
+    expect(res.ok).toBe(false);
+    expect(res.conflict).toBeUndefined();
+    expect(h.status).toBe('failed');
+    expect(calls.some((c) => c.args[0] === 'add')).toBe(false);
+    expect(calls.some((c) => c.args[0] === 'reset' && c.args.includes('--hard'))).toBe(true);
+  });
+
   it('mergeBranch() aborts cleanly on conflict and reports paths', async () => {
     const { calls, run } = stubRunner((args) => {
-      if (args[0] === 'merge') {
+      if (args.includes('merge')) {
         return { code: 1, stdout: 'CONFLICT (content): Merge conflict in db.sql\n', stderr: '' };
       }
       return { code: 0, stdout: '', stderr: '' };

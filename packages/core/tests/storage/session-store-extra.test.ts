@@ -736,6 +736,27 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
     expect(raw).toContain('session_start');
   });
 
+  it('clearHistory succeeds while another handle holds the transcript open', async () => {
+    // Windows refuses to rename a new file over one that is still open
+    // anywhere (the session's own writer, a tailing reader) — the lease-less
+    // path used to fail /clear with EPERM. Moving the live file aside first
+    // is allowed, so clear must always do that.
+    await writeRawSession(tmp, 'held', [
+      { type: 'session_start', ts: now(), id: 'held', model: 'm', provider: 'p' },
+      { type: 'user_input', ts: now(), content: 'old' },
+    ]);
+    const holder = await fs.open(path.join(tmp, 'held.jsonl'), 'a');
+    try {
+      await expect(store.clearHistory('held')).resolves.toBeUndefined();
+    } finally {
+      await holder.close();
+    }
+    const raw = await fs.readFile(path.join(tmp, 'held.jsonl'), 'utf8');
+    expect(raw).toContain('session_start');
+    expect(raw).not.toContain('user_input');
+    expect((await fs.readdir(tmp)).filter((f) => f.includes('clear-backup'))).toEqual([]);
+  });
+
   it('clearHistory refreshes the local index row', async () => {
     const writer = await store.create({ id: 'clear-index', model: 'm', provider: 'p' });
     await writer.append({ type: 'user_input', ts: now(), content: 'old title text' });
@@ -806,7 +827,10 @@ describe('DefaultSessionStore — best-effort cleanup paths', () => {
     await store.prune(30);
 
     for (const file of sidecars) {
-      await expect(fs.stat(file), `${path.basename(file)} outlived its session`).rejects.toBeDefined();
+      await expect(
+        fs.stat(file),
+        `${path.basename(file)} outlived its session`,
+      ).rejects.toBeDefined();
     }
     await expect(fs.stat(shard)).rejects.toBeDefined();
   });

@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ToolGroup } from '../../src/components/ToolGroup.js';
 import type { ChatMessage } from '../../src/stores/types.js';
-import { loadDeferredI18nNamespaces } from '../helpers/i18n-deferred';
 
 function tool(id: string, toolName: string, toolInput: unknown): ChatMessage {
   return {
@@ -15,8 +14,6 @@ function tool(id: string, toolName: string, toolInput: unknown): ChatMessage {
     toolResult: 'ok',
   };
 }
-
-beforeAll(loadDeferredI18nNamespaces);
 
 describe('<ToolGroup /> special tool views', () => {
   it('summarizes succeeded, failed, running, duration, and output size before expansion', () => {

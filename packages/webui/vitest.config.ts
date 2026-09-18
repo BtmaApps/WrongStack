@@ -85,6 +85,9 @@ export default defineConfig({
         test: {
           name: 'browser-jsdom',
           environment: 'jsdom',
+          // Await the lazily loaded activity/settings i18n namespaces for every
+          // suite that loaded the real i18n (see the file for why).
+          setupFiles: ['tests/setup/i18n-deferred.ts'],
           include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
           // Keep the two projects disjoint: server suites belong to node.
           exclude: ['tests/server/**', '**/node_modules/**', '**/dist/**'],

@@ -170,6 +170,10 @@
       "lines": 952,
       "relativeImports": 1
     },
+    "packages/core/src/storage/session-store.ts": {
+      "lines": 801,
+      "relativeImports": 40
+    },
     "packages/core/src/types/provider.ts": {
       "lines": 906,
       "relativeImports": 7

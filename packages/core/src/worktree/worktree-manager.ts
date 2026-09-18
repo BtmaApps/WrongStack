@@ -186,13 +186,14 @@ export class WorktreeManager {
       return { ok: false, stderr: checkout.stderr };
     }
 
-    // A --no-ff merge creates its merge commit directly — thread the identity
-    // fallback so it succeeds on identity-less machines exactly like every
-    // explicit `git commit` path (a -c override is a no-op for --squash,
-    // which commits nothing itself).
-    const idArgs = squash ? [] : await this.identityArgs(this.projectRoot);
+    // Thread the identity fallback into BOTH merge forms. --no-ff creates its
+    // merge commit directly; --squash commits nothing, yet a real three-way
+    // merge still refuses to start on an identity-less machine ("Committer
+    // identity unknown", exit 128, tree untouched) — which is exactly the
+    // "conflict with empty probes" shape Linux CI kept producing.
+    const idArgs = await this.identityArgs(this.projectRoot);
     const mergeArgs = squash
-      ? ['merge', '--squash', handle.branch]
+      ? [...idArgs, 'merge', '--squash', handle.branch]
       : [...idArgs, 'merge', '--no-ff', handle.branch];
     const merged = await this.runGit(mergeArgs, this.projectRoot);
 
@@ -205,27 +206,27 @@ export class WorktreeManager {
     const fromIndex = await this.unmergedFiles();
     let conflictFiles = [...new Set([...fromOutput, ...fromIndex])];
     if (merged.code !== 0 && conflictFiles.length === 0) {
-      // Both probes can come back empty on a real content conflict (see the
-      // NOTE below). Name the files by their markers instead, so a resolver —
-      // and the needs-review handle — is told WHICH files to fix rather than
-      // being handed an empty list.
+      // Last resort for a git that reports neither: name the files that carry
+      // markers, so a resolver is told WHICH files to fix.
       const changed = await this.runGit(['diff', '--name-only', '-z', 'HEAD'], this.projectRoot);
       conflictFiles = await this.conflictMarkedFiles(changed.stdout.split('\0').filter(Boolean));
     }
 
-    if (merged.code !== 0 || conflictFiles.length > 0) {
+    if (merged.code !== 0 && conflictFiles.length === 0) {
+      // Failed without conflicting (identity, refs, a locked index…). There is
+      // nothing for a resolver to resolve: handing it an empty list let it
+      // "resolve" an untouched tree, and the stage-everything that followed
+      // committed unrelated files. Undo any partial state and report failure.
+      await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot);
+      this.fail(handle, merged.stderr || merged.stdout || 'merge failed');
+      return { ok: false, stderr: merged.stderr };
+    }
+
+    if (conflictFiles.length > 0) {
       // Caller-driven resolution: leave the conflicted tree in place, hand the
       // marked files to the resolver, and finalize the merge commit only if it
       // cleared every marker. Any failure falls through to the safe reset below,
       // so the base tree is never left dirty.
-      //
-      // NOTE: do NOT gate this on conflictFiles.length — Linux CI evidence
-      // (run 31825862195) shows REAL content conflicts can present with a
-      // nonzero exit AND both probes empty (no CONFLICT lines, no unmerged
-      // index entries) while markers sit in the working tree. The
-      // staged-listing fallback inside hasConflictMarkers is what lets
-      // legitimate resolvers handle that shape; gating on the probes broke
-      // four real-repo resolve tests.
       if (opts.resolve) {
         const finalized = await this.tryResolveConflict(handle, conflictFiles, opts);
         if (finalized) return finalized;
@@ -385,7 +386,9 @@ export class WorktreeManager {
     if (co.code !== 0) {
       return { ok: false, reason: co.stderr || `checkout ${base} failed` };
     }
-    const merged = await this.runGit(['merge', '--squash', branch], this.projectRoot);
+    // Identity fallback on the merge too: see merge() — a squash still needs it.
+    const idArgs = await this.identityArgs(this.projectRoot);
+    const merged = await this.runGit([...idArgs, 'merge', '--squash', branch], this.projectRoot);
     if (merged.code !== 0) {
       const fromOutput = parseConflictPaths(`${merged.stdout}\n${merged.stderr}`);
       const fromIndex = await this.unmergedFiles();
@@ -394,12 +397,11 @@ export class WorktreeManager {
       await this.runGit(['reset', '--hard', 'HEAD'], this.projectRoot).catch(() => undefined);
       return {
         ok: false,
-        conflict: true,
+        conflict: conflictFiles.length > 0,
         conflictFiles,
-        reason: merged.stderr || 'merge conflict',
+        reason: merged.stderr || (conflictFiles.length > 0 ? 'merge conflict' : 'merge failed'),
       };
     }
-    const idArgs = await this.identityArgs(this.projectRoot);
     const commit = await this.runGit(
       [...idArgs, 'commit', '-m', `merge ${branch} (squash)`],
       this.projectRoot,
@@ -540,9 +542,12 @@ export class WorktreeManager {
     }
     if (!resolved) return null;
 
-    // Stage the resolver's edits, then refuse to commit if any conflict marker
-    // survived (a half-resolved file is worse than a clean abort).
-    await this.runGit(['add', '-A'], this.projectRoot);
+    // Stage the resolver's edits to the conflicted files — only those: the
+    // squash already staged everything else, and `add -A` swept up whatever
+    // else sat in the tree (the managed worktrees under .wrongstack/ went in
+    // as embedded-repo gitlinks). Then refuse to commit if any conflict
+    // marker survived (a half-resolved file is worse than a clean abort).
+    await this.runGit(['add', '--', ...conflictFiles], this.projectRoot);
     if (await this.hasConflictMarkers(conflictFiles)) return null;
 
     const idArgs = await this.identityArgs(this.projectRoot);

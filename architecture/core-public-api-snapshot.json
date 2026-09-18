@@ -1677,7 +1677,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23535
+      "sourceLines": 23541
     },
     {
       "directory": "tasking",
@@ -1726,7 +1726,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 5,
-      "sourceLines": 1253
+      "sourceLines": 1258
     }
   ]
 }

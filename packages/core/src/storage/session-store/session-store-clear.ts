@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import type { SessionCatalogProjectClient } from '../../session-catalog/client.js';
 import { atomicWrite } from '../../utils/atomic-write.js';
@@ -34,9 +35,13 @@ export async function executeClearSessionHistory(params: ClearSessionHistoryPara
   await ensureShardDir(canonical);
   const file = sessionPath(canonical, '.jsonl');
   const meta = sessionPath(canonical, '.summary.json');
-  const backupSuffix = maintenance ? `.${maintenance.leaseId}.clear-backup` : undefined;
-  const fileBackup = backupSuffix ? `${file}${backupSuffix}` : undefined;
-  const metaBackup = backupSuffix ? `${meta}${backupSuffix}` : undefined;
+  // Always move the live files aside before rewriting, lease or not. On
+  // Windows a file another handle still has open (the session's own writer, a
+  // tailing reader) can be renamed AWAY but never replaced in place, so the
+  // lease-less path used to fail /clear with EPERM from atomicWrite's rename.
+  const backupSuffix = `.${maintenance?.leaseId ?? randomUUID()}.clear-backup`;
+  const fileBackup = `${file}${backupSuffix}`;
+  const metaBackup = `${meta}${backupSuffix}`;
   let fileStaged = false;
   let metaStaged = false;
   const record = `${JSON.stringify({
@@ -48,24 +53,9 @@ export async function executeClearSessionHistory(params: ClearSessionHistoryPara
   })}\n`;
 
   try {
-    if (fileBackup) {
-      try {
-        await fsp.rename(file, fileBackup);
-        fileStaged = true;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      }
-    }
-    if (metaBackup) {
-      try {
-        await fsp.rename(meta, metaBackup);
-        metaStaged = true;
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      }
-    }
+    fileStaged = await moveAside(file, fileBackup);
+    metaStaged = await moveAside(meta, metaBackup);
     await atomicWrite(file, record);
-    if (!metaBackup) await fsp.unlink(meta).catch(() => undefined);
     if (catalogClient) {
       const now = new Date().toISOString();
       await catalogClient.call('upsert_summary', {
@@ -82,14 +72,14 @@ export async function executeClearSessionHistory(params: ClearSessionHistoryPara
         summaryRelativePath: `${canonical}.summary.json`,
       });
     }
-    if (fileStaged && fileBackup) await fsp.unlink(fileBackup).catch(() => undefined);
-    if (metaStaged && metaBackup) await fsp.unlink(metaBackup).catch(() => undefined);
+    if (fileStaged) await fsp.unlink(fileBackup).catch(() => undefined);
+    if (metaStaged) await fsp.unlink(metaBackup).catch(() => undefined);
   } catch (error) {
-    if (fileStaged && fileBackup) {
+    if (fileStaged) {
       await fsp.unlink(file).catch(() => undefined);
       await fsp.rename(fileBackup, file).catch(() => undefined);
     }
-    if (metaStaged && metaBackup) {
+    if (metaStaged) {
       await fsp.unlink(meta).catch(() => undefined);
       await fsp.rename(metaBackup, meta).catch(() => undefined);
     }
@@ -110,5 +100,16 @@ export async function executeClearSessionHistory(params: ClearSessionHistoryPara
       // Swallow — cache eviction is best-effort; the mtime guard in loadCache
       // will revalidate on next access and heal the stale entry automatically.
     }
+  }
+}
+
+/** Rename `from` to `to`; false when there was nothing to move. */
+async function moveAside(from: string, to: string): Promise<boolean> {
+  try {
+    await fsp.rename(from, to);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
   }
 }

@@ -139,7 +139,7 @@ describe('worktree task runner', () => {
     });
 
     expect(calls.some((c) => c.args[0] === 'worktree' && c.args[1] === 'add')).toBe(true);
-    expect(calls.some((c) => c.args[0] === 'merge' && c.args.includes('--squash'))).toBe(true);
+    expect(calls.some((c) => c.args.includes('merge') && c.args.includes('--squash'))).toBe(true);
     expect(calls.some((c) => c.args[0] === 'worktree' && c.args[1] === 'remove')).toBe(true);
     expect(updates).toEqual(['allocated', 'committed', 'merged']);
   });
@@ -272,7 +272,7 @@ describe('worktree task runner', () => {
       }
       if (args[0] === 'show') return { code: 0, stdout: '2\t0\tfile.ts\n', stderr: '' };
       if (args[0] === 'config') return { code: 0, stdout: 'User\n', stderr: '' };
-      if (args[0] === 'merge') {
+      if (args.includes('merge')) {
         return {
           code: 1,
           stdout: '',

@@ -1,15 +1,12 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { ChroniclePipelineStrip } from '@/components/ChroniclePipelineStrip';
 import type { ChronicleStatus } from '@/types/chronicle';
-import { loadDeferredI18nNamespaces } from '../helpers/i18n-deferred';
 
 afterEach(() => {
   cleanup();
 });
-
-beforeAll(loadDeferredI18nNamespaces);
 
 describe('ChronicleDashboard ownership visibility', () => {
   it('renders the authoritative collect-process-serve pipeline', () => {

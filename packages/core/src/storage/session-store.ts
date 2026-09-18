@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
+import { isStandaloneBinary } from '@wrongstack/persistence';
 import { DefaultSecretScrubber } from '../security/secret-scrubber.js';
 import {
   resolveSessionCatalogProjectServerUrl,
@@ -171,7 +172,11 @@ export class DefaultSessionStore implements SessionStore {
       includeSubagents: opts.storage?.includeSubagents !== false,
     };
     this.autoArchive = opts.storage?.autoArchive === true;
-    const builtRuntime = import.meta.url.includes('/dist/');
+    // The standalone binary is a built runtime too, but its modules live at the
+    // executable's virtual URL (no `/dist/`). Missing it here silently ran the
+    // binary without the catalog daemon — and `/clear` then rewrote a session
+    // file still open elsewhere, which Windows refuses (EPERM).
+    const builtRuntime = isStandaloneBinary() || import.meta.url.includes('/dist/');
     this.catalogClient =
       this.projectRoot &&
       (builtRuntime || process.env['WRONGSTACK_SESSION_CATALOG_FORCE'] === '1') &&
