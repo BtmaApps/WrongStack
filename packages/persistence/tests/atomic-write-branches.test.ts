@@ -34,6 +34,9 @@ vi.mock('node:fs', () => ({ watch: doubles.watch }));
 vi.mock('node:fs/promises', () => doubles.fs);
 
 import { createPersistencePrimitives, PersistenceFsError } from '../src/atomic-write.js';
+import { _filePermOps } from '../src/file-permissions.js';
+
+const originalFilePermOps = { ..._filePermOps };
 
 function errorWithCode(code?: string): NodeJS.ErrnoException {
   const error = new Error(code ?? 'without-code') as NodeJS.ErrnoException;
@@ -43,7 +46,21 @@ function errorWithCode(code?: string): NodeJS.ErrnoException {
 
 function usePlatform(platform: NodeJS.Platform): void {
   vi.spyOn(process, 'platform', 'get').mockReturnValue(platform);
+  // restrictFilePermissions (reached for owner-only modes) captures the
+  // platform at module load, not per call. Pin it to the simulated platform
+  // too — otherwise a Linux runner takes its POSIX `chmod` branch inside a
+  // "win32" test and adds a chmod the assertions do not expect — and stub the
+  // icacls call so nothing is spawned.
+  _filePermOps.platform = platform;
+  _filePermOps.userInfo = (() => ({
+    username: 'tester',
+  })) as unknown as typeof _filePermOps.userInfo;
+  _filePermOps.execFileAsync = async () => ({ stdout: '', stderr: '' });
 }
+
+afterEach(() => {
+  Object.assign(_filePermOps, originalFilePermOps);
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -519,7 +536,6 @@ describe('persistence primitive edge branches', () => {
     expect(doubles.fs.chmod).toHaveBeenNthCalledWith(2, 'C:\\tmp\\readonly.txt', 0o666);
     expect(doubles.fs.chmod).toHaveBeenNthCalledWith(3, 'C:\\tmp\\readonly.txt', 0o444);
   });
-
 
   it('writes buffer content with custom mode', async () => {
     usePlatform('linux');

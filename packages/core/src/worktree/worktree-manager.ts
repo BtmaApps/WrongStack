@@ -203,7 +203,15 @@ export class WorktreeManager {
     // carries conflict markers — always check the index and parse the output.
     const fromOutput = parseConflictPaths(`${merged.stdout}\n${merged.stderr}`);
     const fromIndex = await this.unmergedFiles();
-    const conflictFiles = [...new Set([...fromOutput, ...fromIndex])];
+    let conflictFiles = [...new Set([...fromOutput, ...fromIndex])];
+    if (merged.code !== 0 && conflictFiles.length === 0) {
+      // Both probes can come back empty on a real content conflict (see the
+      // NOTE below). Name the files by their markers instead, so a resolver —
+      // and the needs-review handle — is told WHICH files to fix rather than
+      // being handed an empty list.
+      const changed = await this.runGit(['diff', '--name-only', '-z', 'HEAD'], this.projectRoot);
+      conflictFiles = await this.conflictMarkedFiles(changed.stdout.split('\0').filter(Boolean));
+    }
 
     if (merged.code !== 0 || conflictFiles.length > 0) {
       // Caller-driven resolution: leave the conflicted tree in place, hand the
@@ -578,6 +586,15 @@ export class WorktreeManager {
    * stripped before matching so `\r` never defeats the end-of-line anchor.
    */
   private async hasConflictMarkers(files?: string[]): Promise<boolean> {
+    return (await this.conflictMarkedFiles(files, true)).length > 0;
+  }
+
+  /**
+   * The subset of `files` (default: the staged listing, as above) whose
+   * working-tree content carries a conflict marker. `firstOnly` stops at the
+   * first hit for the boolean check.
+   */
+  private async conflictMarkedFiles(files?: string[], firstOnly = false): Promise<string[]> {
     // When the caller knows which files conflicted, scan only those — the
     // union with all staged files would false-positive on legitimate
     // `=======` underlines in staged documents (e.g. markdown setext
@@ -599,6 +616,7 @@ export class WorktreeManager {
     // `|||||||` start-marker within the same file.
     const marker = /^(?:<{7,}(?: |$)|={7,}$|>{7,}(?: |$)|\|{7,}(?: |$))/m;
     const startMarker = /^(?:<{7,}(?: |$)|\|{7,}(?: |$))/m;
+    const marked: string[] = [];
     for (const rel of paths) {
       try {
         const content = (await readFile(join(this.projectRoot, rel), 'utf8')).replace(/\r/g, '');
@@ -616,13 +634,15 @@ export class WorktreeManager {
           } else if (startMarker.test(line)) {
             seenStart = true;
           }
-          return true;
+          marked.push(rel);
+          break;
         }
       } catch {
         // Deleted or unreadable — nothing to scan.
       }
+      if (firstOnly && marked.length > 0) break;
     }
-    return false;
+    return marked;
   }
 
   /**

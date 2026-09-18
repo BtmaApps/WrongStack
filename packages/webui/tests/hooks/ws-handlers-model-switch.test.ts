@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/ws-client', () => ({
   getWSClient: () => ({ send: vi.fn(), listSavedProviders: vi.fn() }),
@@ -16,6 +16,9 @@ vi.mock('@/components/Toaster', () => ({
 import { WS_HANDLERS } from '../../src/hooks/ws-handlers';
 import { useChatStore } from '../../src/stores/chat-store';
 import { useConfigStore } from '../../src/stores/config-store';
+import { loadDeferredI18nNamespaces } from '../helpers/i18n-deferred';
+
+beforeAll(loadDeferredI18nNamespaces);
 
 describe('model switch ws handler', () => {
   beforeEach(() => {

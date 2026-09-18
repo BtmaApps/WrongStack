@@ -29,6 +29,9 @@ describe('uriKey', () => {
     expect(uriKey('untitled:Untitled-1')).toBe('untitled:Untitled-1');
     expect(uriKey('file://')).toBe('file://');
     expect(uriKey('file:///')).toBe('file:///');
+    // fileURLToPath rejects an encoded `/` on every platform, so this is the
+    // one input that reaches the catch on Linux as well as on Windows.
+    expect(uriKey('file:///dir%2Fescape.ts')).toBe('file:///dir%2Fescape.ts');
   });
 
   it('uses the running platform by default', () => {

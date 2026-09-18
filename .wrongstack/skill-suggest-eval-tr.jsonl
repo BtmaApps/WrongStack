@@ -1,0 +1,83 @@
+// Turkish counterpart of skill-suggest-eval.jsonl — the SAME 53 cases in the
+// same order with the same labels, written the way they would actually be
+// typed here.
+//
+// Why a parallel file rather than Turkish cases mixed into the English one:
+// mixing them makes the language effect unmeasurable. A single blended set
+// gives one number that moved for two reasons at once — different phrasing AND
+// a different case mix — and nothing can separate them afterwards. Kept 1:1,
+// the DELTA between the two runs is the language effect, and nothing else.
+//
+//   wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep
+//   wstack skill-suggest --eval .wrongstack/skill-suggest-eval-tr.jsonl --sweep
+//
+// Why this matters here: TypeSafe documents English as the accuracy optimum and
+// other languages as "work, with reduced reliability". Every gate question and
+// every Choice rubric this feature sends is in English — the roster's triggers
+// and descriptions are English too — while the request in `state` will usually
+// be Turkish. Thresholds calibrated only on the English set are calibrated on
+// the case that does not happen.
+//
+// If the Turkish run's `missed` rate is materially higher at the same
+// thresholds, the honest fixes are, in order: lower `gateThreshold` for this
+// deployment; or translate the three gate questions; or accept the loss and
+// write it down. Do NOT split the difference by averaging the two runs — that
+// produces a threshold that is wrong for both.
+//
+// DRAFT, same as the English file: every `gold` is inherited from it, which
+// inherited them from skill frontmatter rather than from how you actually work.
+// Fix a label in BOTH files or the pair stops being comparable.
+
+{"text": "PR açmadan önce bu branch'teki değişiklikleri incele", "gold": "code-review"}
+{"text": "şu PR'ın diff'ini gözden geçir, neyi bloklar söyle", "gold": "code-review"}
+{"text": "src/coordination'ı anti-pattern ve kod kokusu için tara", "gold": "bug-hunter"}
+{"text": "bu oturumda dokunduğumuz her şeye kalite açısından bir bak", "gold": "chimera"}
+{"text": "auto-review eklentisini nasıl kapatırım, ne işaretlediğini nasıl görürüm", "gold": "auto-review"}
+{"text": "bu config'i güvenlik açıkları için kontrol et", "gold": "security-scanner"}
+{"text": "bu test lokalde geçiyor ama CI'da patlıyor, hiçbir fikrim yok", "gold": "debugging"}
+{"text": "daemon açılışta null deref ile çöküyor, sebebini bul", "gold": "debugging"}
+{"text": "Aider'ı dış ajan olarak proje mailbox'ımıza katmak istiyorum", "gold": "mailbox-bridge"}
+{"text": "komut satırından diğer ajanlara mesaj gönder", "gold": "wrongstack-mailbox"}
+{"text": "Mailbox MCP sunucusu üzerinden diğer ajanlarla koordine ol", "gold": "wrongstack-mailbox-mcp"}
+{"text": "retry policy modülü için birim testleri yaz", "gold": "testing"}
+{"text": "sanırım düzeltme tamam, ben öyle demeden önce gerçekten çalıştığını kanıtla", "gold": "verify-before-done"}
+{"text": "bu dosya any dolu, tipleri düzgünce sıkılaştır", "gold": "typescript-strict"}
+{"text": "bu useEffect iki kere tetikleniyor, dependency array'i çözemedim", "gold": "react-modern"}
+{"text": "bu async akışı düzgün iptal edilebilir hale getir", "gold": "node-modern"}
+{"text": "kodlamaya başlamadan önce kabul kriterlerini ve görev grafiğini yaz", "gold": "sdd"}
+{"text": "bu 4000 satırlık modülü birkaç dosyaya nasıl böleriz planla", "gold": "refactor-planner"}
+{"text": "board'daki kartı bir sonraki kolona taşı", "gold": "wrongstack-kanban"}
+{"text": "bu işi paralel çalışan birkaç ajana böl", "gold": "multi-agent"}
+{"text": "Dockerfile'ımıza bak, imaj fazlasıyla büyük", "gold": "docker-deploy"}
+{"text": "istek yoluna yapılandırılmış loglama ve tracing ekle", "gold": "observability"}
+{"text": "bunu commit'le ve main'e karşı PR aç", "gold": "git-flow"}
+{"text": "bağımlılıklarımızdan eskimiş ya da bakımsız olan var mı", "gold": "tech-stack"}
+{"text": "deploy sürecimiz için yeni bir WrongStack skill'i yazmak istiyorum", "gold": "skill-creator"}
+{"text": "packages/plugins altında PreToolUse'a takılan bir eklenti oluştur", "gold": "plugin-author"}
+{"text": "bu system prompt çok uzun, model yarısını görmezden geliyor", "gold": "prompt-engineering"}
+{"text": "dünkü oturumda ne olduğunu journal'dan çıkarıp anlat", "gold": "audit-log"}
+{"text": "SAGE hafıza korpusunu temizle ve anchor'ları doğrula", "gold": "mnemosyne"}
+{"text": "bu repoda yeniyim, provider fallback tam olarak nerede oluyor", "gold": "codebase-navigation"}
+{"text": "bu dashboard'u denetle ve neden şablon gibi durduğunu net söyle", "gold": "design-critique"}
+{"text": "faturalandırma servisi için REST uçlarını tasarla", "gold": "api-design"}
+{"text": "bu tablonun sahibi kim ve içindeki PII'yi ne kadar saklıyoruz", "gold": "data-governance"}
+{"text": "Bun'ın güncel kararlı sürümü nedir öğren", "gold": "research-web"}
+{"text": "filoyu arka planda takılma var mı diye izleyen bir şey istiyorum", "gold": "shadow-agent"}
+{"text": "ajan cevaplarımız tutarsız, çıktı format kurallarını netleştir", "gold": "output-standards"}
+{"text": "CSS'te :has() kullanabilir miyim yoksa fallback gerekir mi", "gold": "web-platform-baseline"}
+{"text": "yarın hava nasıl olacak"}
+{"text": "köşedeki yerden bana pizza söyle"}
+{"text": "akşam annemi aramamı hatırlat"}
+{"text": "Tokyo'da şu an saat kaç"}
+{"text": "monad ne demek anlat"}
+{"text": "TCP ile UDP arasındaki gerçek fark ne"}
+{"text": "quicksort neden ortalamada O(n log n) ama en kötü durumda O(n kare)"}
+{"text": "DNS çözümlemesi baştan sona nasıl işliyor anlat"}
+{"text": "CAP teoremi pratikte neyi imkânsız kılıyor"}
+{"text": "VPC ve subnetlerimiz için bir Terraform modülü yaz"}
+{"text": "bu Postgres sorgusu sequential scan yapıyor, optimize et"}
+{"text": "API için Kubernetes horizontal pod autoscaler kur"}
+{"text": "bu parser'ı Rust'a taşı"}
+{"text": "uygulama için iOS ana ekran widget'ı yap"}
+{"text": "Nginx'i TLS sonlandırmalı reverse proxy olarak yapılandır"}
+{"text": "üç Node sürümünde koşan bir GitHub Actions matrisi yaz"}

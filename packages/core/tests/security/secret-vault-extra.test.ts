@@ -2,6 +2,7 @@ import * as fsSync from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { _filePermOps } from '@wrongstack/persistence';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as filePermissions from '../../src/security/file-permissions.js';
 import {
@@ -47,12 +48,18 @@ const vault = () => {
 
 function withPlatform(value: string, fn: () => Promise<void> | void) {
   const orig = Object.getOwnPropertyDescriptor(process, 'platform');
+  const origPermPlatform = _filePermOps.platform;
   Object.defineProperty(process, 'platform', { value, configurable: true });
+  // The owner-only hardening in @wrongstack/persistence captures the platform
+  // at module load; without pinning it too, a Linux runner never reaches the
+  // Windows branches these tests exercise.
+  _filePermOps.platform = value as NodeJS.Platform;
   return (async () => {
     try {
       await fn();
     } finally {
       if (orig) Object.defineProperty(process, 'platform', orig);
+      _filePermOps.platform = origPermPlatform;
     }
   })();
 }

@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
 import type { KanbanBoard, KanbanTask } from '@wrongstack/kanban';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { KanbanDecompositionApprovalCard } from '../../src/components/KanbanDecompositionPanel.js';
 import { KanbanTaskTree } from '../../src/components/KanbanTaskTree.js';
 import { KanbanVerificationDashboard } from '../../src/components/KanbanVerificationDashboard.js';
-import { KanbanDecompositionApprovalCard } from '../../src/components/KanbanDecompositionPanel.js';
+import { loadDeferredI18nNamespaces } from '../helpers/i18n-deferred';
 
 const now = '2026-07-24T00:00:00.000Z';
 
@@ -46,6 +47,8 @@ function passedReport(taskId: string) {
     attachments: [],
   };
 }
+
+beforeAll(loadDeferredI18nNamespaces);
 
 describe('KanbanTaskTree', () => {
   it('renders the hierarchy with verification chips and selects on click', () => {

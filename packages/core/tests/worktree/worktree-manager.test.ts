@@ -374,6 +374,35 @@ describe('WorktreeManager (stubbed git)', () => {
     expect(calls.some((c) => c.args[0] === 'merge')).toBe(false);
   });
 
+  it('merge() names conflicted files by their markers when git reports none', async () => {
+    // The shape Linux CI produces: a failed squash merge whose output carries
+    // no CONFLICT line and whose index lists nothing unmerged.
+    await fs.mkdir(PROJ, { recursive: true });
+    await fs.writeFile(path.join(PROJ, 'seed.txt'), 'a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> x\n');
+    await fs.writeFile(path.join(PROJ, 'clean.txt'), 'Title\n=======\n');
+    try {
+      const { run } = stubRunner((args) => {
+        if (args[0] === 'rev-parse') return { code: 0, stdout: 'main\n', stderr: '' };
+        if (args[0] === 'merge') return { code: 1, stdout: '', stderr: 'merge failed' };
+        if (args[0] === 'diff' && args.includes('HEAD')) {
+          return { code: 0, stdout: 'seed.txt\0clean.txt\0', stderr: '' };
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      });
+      const wm = new WorktreeManager({ projectRoot: PROJ, run });
+      const h = await wm.allocate('p', { slugHint: 'marker-fallback' });
+      const res = await wm.merge(h, { squash: true });
+
+      expect(res.ok).toBe(false);
+      expect(res.conflict).toBe(true);
+      expect(res.conflictFiles).toEqual(['seed.txt']);
+      expect(h.status).toBe('needs-review');
+    } finally {
+      await fs.rm(path.join(PROJ, 'seed.txt'), { force: true });
+      await fs.rm(path.join(PROJ, 'clean.txt'), { force: true });
+    }
+  });
+
   it('mergeBranch() aborts cleanly on conflict and reports paths', async () => {
     const { calls, run } = stubRunner((args) => {
       if (args[0] === 'merge') {
@@ -559,7 +588,9 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
     const base = await makeRepo();
     try {
       const events: Array<{ name: string; payload: any }> = [];
-      const fakeBus = { emit: (name: string, payload: any) => events.push({ name, payload }) } as any;
+      const fakeBus = {
+        emit: (name: string, payload: any) => events.push({ name, payload }),
+      } as any;
       const wm = new WorktreeManager({ projectRoot: base, events: fakeBus });
       const h = await wm.allocate('p', { slugHint: 'locked-release' });
       await fs.writeFile(path.join(h.dir, 'work.txt'), 'precious\n', 'utf8');
@@ -576,7 +607,12 @@ describe.skipIf(!gitAvailable)('WorktreeManager (real repo)', () => {
       expect(wm.get('p')).toBeDefined();
       const rel = events.find((e) => e.name === 'worktree.released');
       expect(rel?.payload['kept']).toBe(true);
-      expect(await fs.stat(h.dir).then(() => true).catch(() => false)).toBe(true);
+      expect(
+        await fs
+          .stat(h.dir)
+          .then(() => true)
+          .catch(() => false),
+      ).toBe(true);
       // git refuses to delete a branch checked out in a registered worktree,
       // so the branch must survive a failed removal too.
       const ref = spawnSync(

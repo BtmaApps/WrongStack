@@ -93,6 +93,9 @@ security-report/*
 # roster and meant to be reviewed in a pull request: a threshold chosen from an
 # unversioned eval set is a number nobody can reproduce.
 !/.wrongstack/skill-suggest-eval.jsonl
+# Its Turkish 1:1 counterpart — the pair is compared case by case
+# (packages/cli/tests/skill-suggest-eval-fixtures.test.ts), so both must ship.
+!/.wrongstack/skill-suggest-eval-tr.jsonl
 # Design Studio project-local decisions/rules (also self-ignored via .design/.gitignore)
 .design/
 CLAUDE.md

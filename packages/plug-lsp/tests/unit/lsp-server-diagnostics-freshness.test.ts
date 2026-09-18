@@ -2,6 +2,7 @@ import { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { LSPServer } from '../../src/server/lsp-server.js';
+import { uriKey } from '../../src/utils/uri.js';
 
 const log: Logger = {
   level: 'error',
@@ -25,6 +26,7 @@ function makeServer() {
 
 type Internals = {
   state: string;
+  /** Keyed by `uriKey(uri)`, not the raw URI — the two differ on POSIX. */
   diagnosticsFresh: Set<string>;
   setDiagnostics(uri: string, diagnostics: unknown[]): void;
 };
@@ -47,7 +49,7 @@ describe('LSPServer diagnostics freshness retention', () => {
     expect(internal.diagnosticsFresh.size).toBeLessThanOrEqual(LSPServer.MAX_DIAGNOSTICS_ENTRIES);
 
     const evictedUri = 'file:///doc-0.ts';
-    expect(internal.diagnosticsFresh.has(evictedUri)).toBe(false);
+    expect(internal.diagnosticsFresh.has(uriKey(evictedUri))).toBe(false);
 
     // The evicted URI must wait for a republish rather than return stale [].
     const republish = setTimeout(() => {
@@ -56,7 +58,7 @@ describe('LSPServer diagnostics freshness retention', () => {
     const diagnostics = await server.waitForDiagnostics(evictedUri, 1000);
     clearTimeout(republish);
     expect(diagnostics).toHaveLength(1);
-    expect(internal.diagnosticsFresh.has(evictedUri)).toBe(true);
+    expect(internal.diagnosticsFresh.has(uriKey(evictedUri))).toBe(true);
 
     // The newest URI is still buffered and must remain immediately available.
     const newestUri = `file:///doc-${total - 1}.ts`;
@@ -65,6 +67,6 @@ describe('LSPServer diagnostics freshness retention', () => {
     // Closing a document still clears both maps.
     server.notifyDidClose(newestUri);
     expect(server.getDiagnostics(newestUri)).toEqual([]);
-    expect(internal.diagnosticsFresh.has(newestUri)).toBe(false);
+    expect(internal.diagnosticsFresh.has(uriKey(newestUri))).toBe(false);
   });
 });
