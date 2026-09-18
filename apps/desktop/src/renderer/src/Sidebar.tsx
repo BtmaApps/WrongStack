@@ -18,7 +18,7 @@ import {
   type ProjectRowProps,
   projectRowProps,
 } from './project-tree.js';
-import { actions, type ShellState, setFilter, toggleExpanded } from './store.js';
+import { actions, clearError, type ShellState, setFilter, toggleExpanded } from './store.js';
 import { Icon, useT } from './ui.js';
 
 interface SidebarProps {
@@ -27,6 +27,9 @@ interface SidebarProps {
 
 export function Sidebar({ state }: SidebarProps) {
   const t = useT();
+  const webuiError =
+    state.webuiStatus.runtimeId === state.desktop.activeRuntimeId &&
+    state.webuiStatus.status === 'error';
   const tree = useMemo(() => buildProjectTree(state.desktop), [state.desktop]);
   const visible = useMemo(() => filterProjectTree(tree, state.filter), [tree, state.filter]);
   const filterRef = useRef<HTMLInputElement>(null);
@@ -83,25 +86,89 @@ export function Sidebar({ state }: SidebarProps) {
         )}
       </nav>
 
-      <footer className="sidebar-foot">
-        <button
-          type="button"
-          className="foot-button primary"
-          onClick={() => void actions.openProject()}
-          disabled={state.busy}
-        >
-          <Icon name="folder-plus" />
-          <span>{t('openProject')}</span>
-        </button>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => void actions.openSettings()}
-          title={t('settings')}
-        >
-          <Icon name="settings" />
-        </button>
-      </footer>
+      <div className="sidebar-bottom">
+        {state.error ? (
+          <div className="shell-error" role="alert">
+            <span>{state.error}</span>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={clearError}
+              title={t('dismiss')}
+              aria-label={t('dismiss')}
+            >
+              <Icon name="x" />
+            </button>
+          </div>
+        ) : null}
+        {webuiError && !state.error ? (
+          <div className="shell-error" role="alert">
+            <span>{state.webuiStatus.error || t('webuiError')}</span>
+            <button
+              type="button"
+              className="icon-button"
+              disabled={state.busy}
+              onClick={() => void actions.reloadWebui()}
+              title={t('reload')}
+              aria-label={t('reload')}
+            >
+              <Icon name="refresh" />
+            </button>
+          </div>
+        ) : null}
+        {state.desktop.activeRuntimeId ? (
+          <fieldset className="project-tools" aria-label={t('quickActions')}>
+            <button
+              type="button"
+              disabled={state.busy}
+              onClick={() => void actions.activateAndReload(state.desktop.activeRuntimeId!)}
+              title={t('reload')}
+              aria-label={t('reload')}
+            >
+              <Icon name="refresh" />
+            </button>
+            <button
+              type="button"
+              disabled={state.busy}
+              onClick={() => void actions.revealRoot(state.desktop.activeRuntimeId!)}
+              title={t('revealProjectFolder')}
+              aria-label={t('revealProjectFolder')}
+            >
+              <Icon name="folder" />
+            </button>
+            <button
+              type="button"
+              disabled={state.busy}
+              onClick={() => void actions.openInBrowser(state.desktop.activeRuntimeId!)}
+              title={t('openInBrowser')}
+              aria-label={t('openInBrowser')}
+            >
+              <Icon name="external" />
+            </button>
+          </fieldset>
+        ) : null}
+        <footer className="sidebar-foot">
+          <button
+            type="button"
+            className="foot-button primary"
+            onClick={() => void actions.openProject()}
+            disabled={state.busy}
+          >
+            <Icon name="folder-plus" />
+            <span>{t('openProject')}</span>
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => void actions.openSettings()}
+            title={t('settings')}
+            aria-label={t('settings')}
+            disabled={state.busy}
+          >
+            <Icon name="settings" />
+          </button>
+        </footer>
+      </div>
     </aside>
   );
 }
@@ -112,6 +179,7 @@ const ProjectRow = memo(function ProjectRow({
   status,
   active,
   primaryRuntimeId: runtimeId,
+  primaryRuntimeStatus,
   expanded,
   sessions,
   busy,
@@ -122,9 +190,11 @@ const ProjectRow = memo(function ProjectRow({
   // running, otherwise start it. One gesture, not a start button plus a
   // separate select.
   const open = useCallback(() => {
-    if (runtimeId) void actions.activate(runtimeId);
+    if (runtimeId && (primaryRuntimeStatus === 'stopped' || primaryRuntimeStatus === 'error'))
+      void actions.resume(runtimeId, root);
+    else if (runtimeId) void actions.activate(runtimeId);
     else void actions.openProject(root);
-  }, [runtimeId, root]);
+  }, [runtimeId, root, primaryRuntimeStatus]);
 
   return (
     <div className={`project${active ? ' is-active' : ''}`}>
@@ -135,13 +205,20 @@ const ProjectRow = memo(function ProjectRow({
           onClick={() => toggleExpanded(root)}
           aria-expanded={expanded}
           title={expanded ? t('collapse') : t('expand')}
+          aria-label={`${expanded ? t('collapse') : t('expand')} ${name}`}
         >
           <Icon name="chevron" className={expanded ? 'rotated' : undefined} />
         </button>
 
         <button type="button" className="project-main" onClick={open} disabled={busy} title={root}>
           <span className={`dot ${status}`} aria-hidden="true" />
-          <span className="project-name">{name}</span>
+          <span className="project-label">
+            <span className="project-name">{name}</span>
+            <span className="project-status">
+              {t(status)}
+              {sessions.length ? ` · ${t('sessions')}: ${sessions.length}` : ''}
+            </span>
+          </span>
         </button>
 
         <div className="row-actions">
@@ -151,6 +228,8 @@ const ProjectRow = memo(function ProjectRow({
               className="icon-button subtle"
               onClick={() => void actions.newSession(runtimeId)}
               title={t('newSession')}
+              aria-label={`${t('newSession')} — ${name}`}
+              disabled={busy || primaryRuntimeStatus !== 'running'}
             >
               <Icon name="plus" />
             </button>
@@ -161,6 +240,8 @@ const ProjectRow = memo(function ProjectRow({
               className="icon-button subtle"
               onClick={() => void actions.close(runtimeId)}
               title={t('close')}
+              aria-label={`${t('close')} — ${name}`}
+              disabled={busy}
             >
               <Icon name="x" />
             </button>

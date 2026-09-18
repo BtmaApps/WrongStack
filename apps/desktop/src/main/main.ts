@@ -343,6 +343,8 @@ function createMenuContext(): MenuBuilderContext {
  */
 function configureApplicationMenu(): void {
   buildMenu(createMenuContext());
+  // Windows menus change the client height without necessarily emitting resize.
+  layoutViews();
 }
 
 // ============================================================================
@@ -403,7 +405,11 @@ function buildIpcHandlerContext(): IpcHandlerContext {
 // Boot Sequence
 // ============================================================================
 
+const desktopSmokeTest = process.argv.includes('--desktop-smoke-test');
+let bootPhase = 'app ready';
+
 async function boot(): Promise<void> {
+  bootPhase = 'read locale';
   const locale = await readUiLocale();
   if (locale) setMainLocale(locale);
 
@@ -439,12 +445,14 @@ async function boot(): Promise<void> {
   // The shell preload can invoke desktop:* channels during renderer startup.
   registerExtractedIpcHandlers(buildIpcHandlerContext());
 
+  bootPhase = 'load shell renderer';
   await shellView.webContents.loadURL(shellUrl);
 
   const prevState = windowStateController.validated(manager.getWindowState());
   const defaultWidth = 1180;
   const defaultHeight = 720;
 
+  bootPhase = 'load app icon';
   const appIcon = await loadDesktopAppIcon();
 
   const winOptions: BaseWindowConstructorOptions = {
@@ -498,6 +506,7 @@ async function boot(): Promise<void> {
   });
 
   let lastWatchedLocale: string | undefined;
+  bootPhase = 'watch profile';
   const activeProfileConfigPath = await resolveActiveProfileConfigPath();
   watchProviderConfig(activeProfileConfigPath, desktopConfigPaths.vault, (snapshot) => {
     const updated = snapshot.uiLocale;
@@ -524,6 +533,7 @@ async function boot(): Promise<void> {
     void windowStateController.save().finally(() => app.exit(0));
   });
 
+  bootPhase = 'restore workspace';
   await restoreLastWorkspace();
 
   // Reclaim project servers nobody is using. Every open project holds an
@@ -542,7 +552,9 @@ async function boot(): Promise<void> {
   }
 
   mainWindow.show();
+  layoutViews();
   shellView.webContents.focus();
+  bootPhase = 'ready';
 }
 
 // ============================================================================
@@ -558,13 +570,62 @@ hardenWin32ExecutableSearch();
 
 // `boot` is async — an unhandled rejection here would leave the app running with
 // no window and no error shown, which reads to the user as a silent hang.
-app.whenReady().then(boot, (error: unknown) => {
-  const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
-  // Not localised on purpose: boot failed before the renderer could push a
-  // locale over IPC, so tMain would resolve to the 'en' catalog regardless.
-  dialog.showErrorBox('WrongStack failed to start', detail);
-  app.exit(1);
-});
+const smokeTimer = desktopSmokeTest
+  ? setTimeout(() => {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'desktop.smoke_timeout',
+          bootPhase,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+      app.exit(1);
+    }, 30_000)
+  : undefined;
+
+app
+  .whenReady()
+  .then(boot)
+  .then(async () => {
+    if (desktopSmokeTest) {
+      let rendered = false;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        rendered = await shellView!.webContents.executeJavaScript(
+          'Boolean(document.getElementById("app")?.children.length && window.wrongstackDesktop)',
+        );
+        if (rendered) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!rendered) throw new Error('Desktop renderer or preload did not initialize');
+      const footerBottom = await shellView!.webContents.executeJavaScript(
+        'document.querySelector(".sidebar-foot")?.getBoundingClientRect().bottom ?? 0',
+      );
+      if (footerBottom > mainWindow!.contentView.getBounds().height) {
+        throw new Error('Desktop footer extends beyond the native client area');
+      }
+      clearTimeout(smokeTimer);
+      console.log('Desktop window ready');
+      app.exit(0);
+    }
+  })
+  .catch((error: unknown) => {
+    clearTimeout(smokeTimer);
+    const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+    // Not localised on purpose: boot failed before the renderer could push a
+    // locale over IPC, so tMain would resolve to the 'en' catalog regardless.
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'desktop.boot_failed',
+        bootPhase,
+        message: detail,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+    if (!desktopSmokeTest) dialog.showErrorBox('WrongStack failed to start', detail);
+    app.exit(1);
+  });
 
 app.on('window-all-closed', () => {
   // Standard macOS behavior: the app stays running when all windows

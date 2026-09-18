@@ -57,8 +57,8 @@ function runNode(args, cwd) {
 
 const forwarded = process.argv.slice(2);
 
-// 1. Build the app itself (vite + esbuild) so `dist/` is current.
-run('pnpm', ['--filter', '@wrongstack/desktop', 'build'], repoRoot);
+// 1. Build the app and its workspace dependencies so `dist/` is current.
+runNode([join(repoRoot, 'scripts', 'build.mjs'), '--target', '@wrongstack/desktop'], repoRoot);
 
 // 2. Materialise the workspace closure. `deploy` refuses to overwrite, so the
 //    stage is removed first; it is disposable by construction.
@@ -66,7 +66,12 @@ if (existsSync(stageDir)) rmSync(stageDir, { recursive: true, force: true });
 mkdirSync(dirname(stageDir), { recursive: true });
 run(
   'pnpm',
-  ['--filter', '@wrongstack/desktop', 'deploy', '--prod', stageDir],
+  // Ink's workspace patch is unused in Desktop's production dependency closure.
+  // Keep this exception local to deploy, not the workspace install policy.
+  [
+    '--filter', '@wrongstack/desktop', 'deploy', '--legacy', '--prod',
+    '--config.allow-unused-patches=true', '--ignore-scripts', stageDir,
+  ],
   repoRoot,
 );
 

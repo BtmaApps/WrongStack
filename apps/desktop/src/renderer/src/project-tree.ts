@@ -182,6 +182,7 @@ export interface ProjectRowProps {
   status: ProjectStatus;
   active: boolean;
   primaryRuntimeId: string | null;
+  primaryRuntimeStatus: ProjectStatus;
   expanded: boolean;
   sessions: DesktopShellSession[];
   busy: boolean;
@@ -197,6 +198,8 @@ export function projectRowProps(node: ProjectNode, state: ShellState): ProjectRo
     status: node.status,
     active: node.active,
     primaryRuntimeId: node.primaryRuntimeId,
+    primaryRuntimeStatus:
+      node.runtimes.find((runtime) => runtime.id === node.primaryRuntimeId)?.status ?? 'stopped',
     expanded: state.expanded.has(node.root),
     sessions: sessionsForRuntimes(node.runtimes, state.openSessions),
     busy: state.busy,

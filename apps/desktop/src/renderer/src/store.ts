@@ -22,6 +22,7 @@ import type {
   DesktopWebuiCommand,
   DesktopWebuiStatusSnapshot,
 } from '../../shared/types.js';
+import { t } from './i18n.js';
 
 export interface LauncherFeedback {
   state: 'pending' | 'success' | 'error';
@@ -158,6 +159,7 @@ function applyOpenSessions(snapshot: DesktopOpenSessionsSnapshot): void {
  * shell's error strip instead of being swallowed.
  */
 async function withBusy(run: () => Promise<DesktopStateSnapshot | void>): Promise<void> {
+  if (state.busy) return;
   set({ busy: true, error: null });
   try {
     const next = await run();
@@ -180,20 +182,28 @@ export const actions = {
     actions.webuiCommand({ sessionId }, title, runtimeId),
   openSettings: () => withBusy(() => api().openSettings()),
   activate: (runtimeId: string) => withBusy(() => api().activateRuntime(runtimeId)),
+  resume: (runtimeId: string, root: string) =>
+    withBusy(async () => {
+      const isSettings =
+        state.desktop.runtimes.find((runtime) => runtime.id === runtimeId)?.kind ===
+        'global-settings';
+      await api().closeRuntime(runtimeId);
+      return isSettings ? api().openSettings() : api().openProject(root);
+    }),
   close: (runtimeId: string) => withBusy(() => api().closeRuntime(runtimeId)),
   openInBrowser: (runtimeId: string) => withBusy(() => api().openRuntimeInBrowser(runtimeId)),
   revealRoot: (runtimeId: string) => withBusy(() => api().revealRuntimeRoot(runtimeId)),
   reloadWebui: () =>
     withBusy(async () => {
       // Returns a boolean, not a snapshot; nothing about the runtime list changes.
-      await api().reloadWebui();
+      if (!(await api().reloadWebui())) throw new Error(t('webuiError'));
     }),
 
   /** Activate a runtime and then reload its WebUI, in that order. */
   activateAndReload: (runtimeId: string) =>
     withBusy(async () => {
       const next = await api().activateRuntime(runtimeId);
-      await api().reloadWebui();
+      if (!(await api().reloadWebui())) throw new Error(t('webuiError'));
       return next;
     }),
 
@@ -250,13 +260,20 @@ export const actions = {
  */
 export function connect(): () => void {
   const bridge = window.wrongstackDesktop;
+  let connected = true;
+  let desktopChanged = false;
+  let webuiChanged = false;
   const initialOpenSessionsRevision = openSessionsRevision;
   const offState = bridge.onStateChanged((next) => {
+    desktopChanged = true;
     // Open-session lifecycle arrives on its own narrow event; keep the runtime
     // snapshot independent so a status tick cannot overwrite the four slots.
     set({ desktop: next });
   });
-  const offWebui = bridge.onWebuiStatusChanged((next) => set({ webuiStatus: next }));
+  const offWebui = bridge.onWebuiStatusChanged((next) => {
+    webuiChanged = true;
+    set({ webuiStatus: next });
+  });
   const offOpenSessions = bridge.onOpenSessionsChanged(applyOpenSessions);
   const offSidebar = bridge.onShellSidebarCollapsedChanged((collapsed) =>
     set({ sidebarCollapsed: collapsed }),
@@ -269,9 +286,10 @@ export function connect(): () => void {
         bridge.getWebuiStatus(),
         bridge.getOpenSessions(),
       ]);
+      if (!connected) return;
       set({
-        desktop,
-        webuiStatus,
+        ...(!desktopChanged ? { desktop } : {}),
+        ...(!webuiChanged ? { webuiStatus } : {}),
         ...(openSessionsRevision === initialOpenSessionsRevision
           ? {
               openSessions: new Map(
@@ -287,11 +305,12 @@ export function connect(): () => void {
           : {}),
       });
     } catch (err) {
-      set({ error: err instanceof Error ? err.message : String(err) });
+      if (connected) set({ error: err instanceof Error ? err.message : String(err) });
     }
   })();
 
   return () => {
+    connected = false;
     offState();
     offWebui();
     offOpenSessions();

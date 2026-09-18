@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T21:45:46.724Z",
+  "generatedAt": "2026-09-18T21:46:59.893Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3848,
+    "sourceFiles": 3849,
     "testFiles": 3511,
-    "sourceLines": 942044,
+    "sourceLines": 942395,
     "workspaceEdges": 128,
-    "moduleEdges": 12409,
+    "moduleEdges": 12412,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 964
+    "testOnlyExports": 965
   },
   "errors": [],
   "packageCycles": [],
@@ -240,7 +240,7 @@
     {
       "name": "@wrongstack/desktop",
       "dir": "apps/desktop",
-      "sourceFiles": 40,
+      "sourceFiles": 41,
       "testFiles": 26,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -23465,6 +23465,10 @@
     {
       "file": "packages/cli/src/boot/launch-menu.ts",
       "name": "shouldSkipMenu"
+    },
+    {
+      "file": "packages/cli/src/boot/short-circuit-desktop.ts",
+      "name": "desktopExecutableCandidates"
     },
     {
       "file": "packages/cli/src/boot/short-circuit-desktop.ts",

@@ -76,6 +76,14 @@ function rows(state: ShellState): Map<string, Record<string, unknown>> {
 }
 
 describe('project row memo', () => {
+  it('keeps active runtime recovery separate from another runtime error on the same project', () => {
+    const desktop = snapshot(['running']);
+    desktop.runtimes.push(runtime('failed', '/w/p0', 'error'));
+    const props = rows(shell(desktop)).get('/w/p0');
+    expect(props?.status).toBe('error');
+    expect(props?.primaryRuntimeId).toBe('rt-0');
+    expect(props?.primaryRuntimeStatus).toBe('running');
+  });
   it('re-renders only the project whose status changed', () => {
     const before = shell(snapshot(['running', 'running', 'running', 'running', 'running']));
     // One project stops. Everything else is untouched.

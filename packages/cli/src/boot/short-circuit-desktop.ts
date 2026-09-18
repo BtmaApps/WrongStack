@@ -6,9 +6,46 @@
  * `--hq`.
  */
 import { spawn } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import * as path from 'node:path';
 import { color } from '@wrongstack/core/utils';
+
+export function desktopExecutableCandidates(
+  platform: string,
+  home: string,
+  env: NodeJS.ProcessEnv,
+): string[] {
+  const join = platform === 'win32' ? path.win32.join : path.posix.join;
+  const managed = join(home, '.wrongstack', 'desktop');
+  if (platform === 'win32') {
+    const local = env['LOCALAPPDATA'] || join(home, 'AppData', 'Local');
+    return [
+      join(managed, 'WrongStack.exe'),
+      join(local, 'Programs', 'WrongStack', 'WrongStack.exe'),
+    ];
+  }
+  if (platform === 'darwin') {
+    return [
+      join(managed, 'WrongStack.app', 'Contents', 'MacOS', 'WrongStack'),
+      join(home, 'Applications', 'WrongStack.app', 'Contents', 'MacOS', 'WrongStack'),
+      '/Applications/WrongStack.app/Contents/MacOS/WrongStack',
+    ];
+  }
+  if (platform === 'linux') {
+    return [join(managed, 'WrongStack.AppImage'), '/opt/WrongStack/wrongstack-desktop'];
+  }
+  return [];
+}
+
+function isFile(candidate: string): boolean {
+  try {
+    return statSync(candidate).isFile();
+  } catch {
+    return false;
+  }
+}
 
 export function stripDesktopLauncherArgs(argv: string[]): string[] {
   const out: string[] = [];
@@ -40,39 +77,54 @@ export async function handleDesktopShortCircuit(
 }
 
 async function launchDesktop(args: string[]): Promise<number> {
-  const req = createRequire(import.meta.url);
-  let launcherPath: string;
-  try {
-    const desktopPkgPath = req.resolve('@wrongstack/desktop/package.json');
-    launcherPath = path.join(path.dirname(desktopPkgPath), 'bin', 'wrongstack-desktop.js');
-  } catch {
+  const override = process.env['WRONGSTACK_DESKTOP_EXECUTABLE']?.trim();
+  if (override && (!path.isAbsolute(override) || !isFile(override))) {
     process.stderr.write(
-      [
-        color.red('✗ WrongStack Desktop is not installed.'),
-        '',
-        'Install the desktop package:',
-        '  npm install -g @wrongstack/desktop',
-        '',
-        'The umbrella package also supports desktop when installed with optional dependencies:',
-        '  npm install -g wrongstack',
-        '',
-      ].join('\n'),
+      'WRONGSTACK_DESKTOP_EXECUTABLE must point to an existing absolute executable path.\n',
     );
     return 1;
   }
+  const native =
+    override || desktopExecutableCandidates(process.platform, homedir(), process.env).find(isFile);
+  let executable = native;
+  let launchArgs = args;
+  if (!executable)
+    try {
+      // Retain workspace/npm installs as a compatibility fallback. A compiled
+      // Bun executable can reject import.meta.url, so createRequire belongs here.
+      const req = createRequire(import.meta.url);
+      const desktopPkgPath = req.resolve('@wrongstack/desktop/package.json');
+      launchArgs = [
+        path.join(path.dirname(desktopPkgPath), 'bin', 'wrongstack-desktop.js'),
+        ...args,
+      ];
+      executable = selectDesktopLauncherExecutable(
+        process.execPath,
+        typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined',
+        process.env['NODE'],
+      );
+    } catch {
+      process.stderr.write(
+        [
+          color.red('✗ WrongStack Desktop is not installed.'),
+          '',
+          'Download WrongStack Desktop from GitHub Releases:',
+          '  https://github.com/WrongStack/WrongStack/releases/latest',
+          '',
+          'For a portable or custom installation, set WRONGSTACK_DESKTOP_EXECUTABLE',
+          'to the absolute path of the Desktop executable (on macOS: WrongStack.app/Contents/MacOS/WrongStack).',
+          '',
+        ].join('\n'),
+      );
+      return 1;
+    }
 
   return await new Promise<number>((resolve) => {
-    // Electron 43 lazily installs its binary with `process.execPath`. Running
-    // the JS launcher under Bun therefore asks Bun to execute Electron's
-    // Node-only installer and leaves the package without path.txt.
-    const executable = selectDesktopLauncherExecutable(
-      process.execPath,
-      typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined',
-      process.env['NODE'],
-    );
-    const child = spawn(executable, [launcherPath, ...args], {
+    const env = { ...process.env };
+    if (native) delete env['ELECTRON_RUN_AS_NODE'];
+    const child = spawn(executable, launchArgs, {
       stdio: 'inherit',
-      env: process.env,
+      env,
       windowsHide: false,
     });
     child.once('error', (err) => {

@@ -83,6 +83,110 @@ describe('shell store', () => {
     store = await loadStore();
   });
 
+  it('does not start duplicate operations while the first project is opening', async () => {
+    let finish!: (value: DesktopStateSnapshot) => void;
+    const open = vi.fn(
+      () =>
+        new Promise<DesktopStateSnapshot>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    installBridge({ openProject: open });
+    const first = store.actions.openProject('/repo');
+    await store.actions.openProject('/repo');
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().busy).toBe(true);
+    finish(snapshot());
+    await first;
+    expect(store.getSnapshot().busy).toBe(false);
+  });
+
+  it('reopens a stopped project only after its previous runtime is closed', async () => {
+    const order: string[] = [];
+    installBridge({
+      closeRuntime: vi.fn(async () => {
+        order.push('close');
+        return snapshot();
+      }),
+      openProject: vi.fn(async () => {
+        order.push('open');
+        return snapshot({ activeRuntimeId: 'new' });
+      }),
+    });
+    await store.actions.resume('old', '/repo');
+    expect(order).toEqual(['close', 'open']);
+    expect(store.getSnapshot().desktop.activeRuntimeId).toBe('new');
+  });
+
+  it('reports a rejected reload instead of silently clearing the error', async () => {
+    installBridge({ reloadWebui: vi.fn(async () => false) });
+    await store.actions.reloadWebui();
+    expect(store.getSnapshot().error).toBe('WebUI error');
+    expect(store.getSnapshot().busy).toBe(false);
+  });
+
+  it('reopens failed settings as settings rather than a project', async () => {
+    const openSettings = vi.fn(async () => snapshot());
+    const openProject = vi.fn(async () => snapshot());
+    const bridge = installBridge({
+      openSettings,
+      openProject,
+      closeRuntime: vi.fn(async () => snapshot()),
+    });
+    store.connect();
+    bridge.emitState(
+      snapshot({
+        runtimes: [
+          {
+            id: 'settings',
+            name: 'Settings',
+            root: '/profile/settings',
+            kind: 'global-settings',
+            status: 'error',
+            slug: 'settings',
+            httpPort: 34560,
+            wsPort: 34660,
+            url: 'http://127.0.0.1:34560',
+            startedAt: '2026-09-19T00:00:00Z',
+          },
+        ],
+      }),
+    );
+    await store.actions.resume('settings', '/profile/settings');
+    expect(openSettings).toHaveBeenCalledOnce();
+    expect(openProject).not.toHaveBeenCalled();
+  });
+
+  it('does not replace a newer live runtime snapshot with slow initialization', async () => {
+    let finish!: (value: DesktopStateSnapshot) => void;
+    const initial = new Promise<DesktopStateSnapshot>((resolve) => {
+      finish = resolve;
+    });
+    const bridge = installBridge({ getState: () => initial });
+    store.connect();
+    bridge.emitState(snapshot({ activeRuntimeId: 'current' }));
+    finish(snapshot({ activeRuntimeId: 'old' }));
+    await initial;
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getSnapshot().desktop.activeRuntimeId).toBe('current');
+  });
+
+  it('ignores initialization that completes after the shell disconnects', async () => {
+    let finish!: (value: DesktopStateSnapshot) => void;
+    const initial = new Promise<DesktopStateSnapshot>((resolve) => {
+      finish = resolve;
+    });
+    installBridge({ getState: () => initial });
+    const disconnect = store.connect();
+    disconnect();
+    finish(snapshot({ activeRuntimeId: 'old' }));
+    await initial;
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(store.getSnapshot().desktop.activeRuntimeId).toBeNull();
+  });
+
   it('replaces the snapshot object on every change', async () => {
     // useSyncExternalStore compares by identity. Mutating in place would make
     // React skip the render entirely — the failure mode is a frozen sidebar.

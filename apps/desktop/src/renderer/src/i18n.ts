@@ -76,6 +76,8 @@ export const SUPPORTED_LOCALES: DesktopLocale[] = ['en', 'tr', 'de', 'fr', 'it',
 type Catalog = Record<string, string>;
 
 const en: Catalog = {
+  retry: 'Try again',
+  reload: 'Reload view',
   collapse: 'Collapse',
   expand: 'Expand',
   searchProjects: 'Search projects',
@@ -162,6 +164,8 @@ const en: Catalog = {
 };
 
 const tr: Catalog = {
+  retry: 'Yeniden dene',
+  reload: 'Görünümü yenile',
   collapse: 'Daralt',
   expand: 'Genişlet',
   searchProjects: 'Proje ara',
@@ -241,6 +245,8 @@ const tr: Catalog = {
 };
 
 const de: Catalog = {
+  retry: 'Erneut versuchen',
+  reload: 'Ansicht neu laden',
   collapse: 'Einklappen',
   expand: 'Ausklappen',
   searchProjects: 'Projekte suchen',
@@ -320,6 +326,8 @@ const de: Catalog = {
 };
 
 const fr: Catalog = {
+  retry: 'Réessayer',
+  reload: 'Recharger la vue',
   collapse: 'Réduire',
   expand: 'Développer',
   searchProjects: 'Rechercher des projets',
@@ -399,6 +407,8 @@ const fr: Catalog = {
 };
 
 const it: Catalog = {
+  retry: 'Riprova',
+  reload: 'Ricarica vista',
   collapse: 'Comprimi',
   expand: 'Espandi',
   searchProjects: 'Cerca progetti',
@@ -478,6 +488,8 @@ const it: Catalog = {
 };
 
 const es: Catalog = {
+  retry: 'Reintentar',
+  reload: 'Recargar vista',
   collapse: 'Contraer',
   expand: 'Expandir',
   searchProjects: 'Buscar proyectos',
@@ -557,6 +569,8 @@ const es: Catalog = {
 };
 
 const ptBR: Catalog = {
+  retry: 'Tentar novamente',
+  reload: 'Recarregar visualização',
   collapse: 'Recolher',
   expand: 'Expandir',
   searchProjects: 'Buscar projetos',

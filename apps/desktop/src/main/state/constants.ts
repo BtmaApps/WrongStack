@@ -5,10 +5,12 @@
 
 export const OPEN_EXTERNAL_ALLOWED_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 
-export const SIDEBAR_WIDTH_WIDE = 292;
-export const SIDEBAR_WIDTH_MEDIUM = 276;
-export const SIDEBAR_WIDTH_NARROW = 252;
-export const SIDEBAR_WIDTH_COLLAPSED = 56;
+export {
+  SIDEBAR_WIDTH_COLLAPSED,
+  SIDEBAR_WIDTH_MEDIUM,
+  SIDEBAR_WIDTH_NARROW,
+  SIDEBAR_WIDTH_WIDE,
+} from '../../shared/layout.js';
 
 export const MIN_WINDOW_WIDTH = 760;
 export const MIN_WINDOW_HEIGHT = 520;

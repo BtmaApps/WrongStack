@@ -1,25 +1,18 @@
 /**
  * Unit tests for layout module - sidebar and view layout logic.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  SIDEBAR_WIDTH_WIDE,
+  MIN_WINDOW_HEIGHT,
+  MIN_WINDOW_WIDTH,
+  SIDEBAR_WIDTH_COLLAPSED,
   SIDEBAR_WIDTH_MEDIUM,
   SIDEBAR_WIDTH_NARROW,
-  SIDEBAR_WIDTH_COLLAPSED,
-  MIN_WINDOW_WIDTH,
-  MIN_WINDOW_HEIGHT,
+  SIDEBAR_WIDTH_WIDE,
   WINDOW_STATE_SAVE_DEBOUNCE_MS,
 } from '../src/main/state/constants.js';
 
-// We test the pure functions directly - getSidebarWidth is exported from layout
-// Re-implement the logic for testing since we can't import Electron types
-function getSidebarWidth(windowWidth: number, collapsed: boolean): number {
-  if (collapsed) return SIDEBAR_WIDTH_COLLAPSED;
-  if (windowWidth < 900) return SIDEBAR_WIDTH_NARROW;
-  if (windowWidth < 1180) return SIDEBAR_WIDTH_MEDIUM;
-  return SIDEBAR_WIDTH_WIDE;
-}
+import { getSidebarWidth } from '../src/shared/layout.js';
 
 // ============================================================================
 // Sidebar Width Tests

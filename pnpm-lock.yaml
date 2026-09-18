@@ -116,10 +116,6 @@ patchedDependencies:
 importers:
 
   .:
-    dependencies:
-      wrongstack:
-        specifier: link:apps/wrongstack
-        version: link:apps/wrongstack
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.13

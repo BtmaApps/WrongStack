@@ -257,6 +257,11 @@ This pulls the full stack. The TUI ships but is lazy-loaded behind `--tui`, so
 plain-REPL users pay no React/Ink cost at startup. The browser UI, HQ, and
 Desktop shell are available through their launch flags (see [Surfaces](#surfaces)).
 
+For standalone CLI users, Desktop is a separate Electron application distributed
+through GitHub Releases. `wstack --desktop` opens an installed application;
+portable/custom locations use `WRONGSTACK_DESKTOP_EXECUTABLE`.
+See [Desktop distribution](docs/desktop-distribution.md) for installation and release details.
+
 Then just run:
 
 ```bash
