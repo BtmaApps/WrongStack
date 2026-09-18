@@ -127,6 +127,21 @@ function makeApi(): PluginAPI {
 // Mock fetch globally so TelegramBot constructor + start don't hit the network
 const _originalFetch = globalThis.fetch;
 
+/**
+ * `ToolDefinition.execute` is `(input, ctx, opts)`. This suite drives the tools
+ * directly and only cares about `input`, but all three parameters are required
+ * by the type, so the trailing pair is supplied explicitly rather than relying
+ * on JavaScript arity leniency.
+ *
+ * `ctx` is `null` for the same reason `slashSend.run(..., null as never)` is:
+ * every consumer here reads it as `ctx?.session?.id`. `opts` carries a real,
+ * un-aborted signal — `telegram-send` forwards it to the same
+ * `bot.sendMessage` call it makes without one, so the observable behaviour is
+ * unchanged and the call now matches how the agent invokes it in production.
+ */
+const TOOL_CTX = null as never;
+const toolOpts = () => ({ signal: new AbortController().signal });
+
 describe('plugin entry', () => {
   it('publishes a fail-closed outbound target default', () => {
     expect(plugin.defaultConfig).toMatchObject({ allowedOutboundChats: [] });
@@ -210,16 +225,16 @@ describe('plugin entry', () => {
     const fetchMock = vi.mocked(globalThis.fetch);
     const callsBefore = fetchMock.mock.calls.length;
     await expect(
-      sendTool.execute({ chat_id: '222', message: 'blocked tool target' }),
+      sendTool.execute({ chat_id: '222', message: 'blocked tool target' }, TOOL_CTX, toolOpts()),
     ).rejects.toThrow('not paired or included in allowedOutboundChats');
     await expect(
-      approveTool.execute({ chat_id: '222', prompt: 'blocked approval target' }),
+      approveTool.execute({ chat_id: '222', prompt: 'blocked approval target' }, TOOL_CTX, toolOpts()),
     ).rejects.toThrow('not paired or included in allowedOutboundChats');
     const blockedSlash = await slashSend.run('222 blocked slash target', null as never);
     expect(blockedSlash?.message).toContain('not paired or included in allowedOutboundChats');
     expect(fetchMock.mock.calls).toHaveLength(callsBefore);
 
-    await sendTool.execute({ chat_id: '111', message: 'allowed tool target' });
+    await sendTool.execute({ chat_id: '111', message: 'allowed tool target' }, TOOL_CTX, toolOpts());
     const allowedSlash = await slashSend.run('111 allowed slash target', null as never);
     expect(allowedSlash?.message).toContain('✅');
     expect(fetchMock.mock.calls.length).toBe(callsBefore + 2);
@@ -425,7 +440,7 @@ describe('plugin entry', () => {
         .map(([, init]) => (JSON.parse(String(init?.body)) as { text: string }).text);
 
     // Control: at the setup-time cap the message passes through untouched.
-    await sendTool.execute({ chat_id: '111', message: 'x'.repeat(600) });
+    await sendTool.execute({ chat_id: '111', message: 'x'.repeat(600) }, TOOL_CTX, toolOpts());
     expect(sentTexts().at(-1)?.length).toBe(600);
 
     const previous = structuredClone(api.config);
@@ -437,7 +452,7 @@ describe('plugin entry', () => {
 
     // Hot-reloadable means the NEXT tool send truncates at the new cap — the
     // tool must resolve the cap live, not hold the setup-time snapshot.
-    await sendTool.execute({ chat_id: '111', message: 'y'.repeat(600) });
+    await sendTool.execute({ chat_id: '111', message: 'y'.repeat(600) }, TOOL_CTX, toolOpts());
     expect(sentTexts().at(-1)?.length).toBeLessThanOrEqual(500);
 
     await plugin.teardown?.(api);

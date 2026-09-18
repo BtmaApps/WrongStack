@@ -56,6 +56,7 @@ function composerProps(pendingConfirm: PendingConfirm | null) {
     onRefineRetryFallback: vi.fn(),
     onRefineStartNow: vi.fn(),
     onRefineSendEdited: vi.fn(),
+    onRefineEditInComposer: vi.fn(),
     attachedImages: [] as { id: string; data: string; mime: string; name: string }[],
     onAttachImages: vi.fn(),
     onRemoveImage: vi.fn(),

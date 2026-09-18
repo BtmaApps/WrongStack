@@ -20,6 +20,10 @@ function trace(partial: Partial<SkillSuggestionTrace>): SkillSuggestionTrace {
     suggestion: undefined,
     stop: 'gate',
     requests: 2,
+    // `models` and `inputTokens` are required on the trace; a synthetic fixture
+    // reports no model and no billed tokens.
+    models: [],
+    inputTokens: 0,
     ...partial,
   };
 }
