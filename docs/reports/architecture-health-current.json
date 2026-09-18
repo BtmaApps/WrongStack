@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T15:46:44.824Z",
+  "generatedAt": "2026-09-18T16:42:27.545Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3846,
-    "testFiles": 3507,
+    "testFiles": 3508,
     "sourceLines": 941402,
     "workspaceEdges": 128,
     "moduleEdges": 12403,
@@ -815,7 +815,7 @@
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
       "sourceFiles": 555,
-      "testFiles": 395,
+      "testFiles": 396,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -838,7 +838,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 395
+          "testFiles": 396
         }
       ]
     },
@@ -21447,6 +21447,12 @@
       },
       {
         "file": "packages/webui/tests/lib/lib-tails.test.ts",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/lib/locale-redaction-guard.test.ts",
         "projects": [
           "webui-jsdom"
         ]

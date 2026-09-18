@@ -42,6 +42,11 @@
       "fingerprint": "cdceee059ef2523c"
     },
     {
+      "file": "packages/cli/tests/settings-cursor-restore-tui-e2e.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "397436c28fb32ffa"
+    },
+    {
       "file": "packages/cli/tests/subagent-models-tui-e2e.test.ts",
       "kind": "skipIf",
       "fingerprint": "07183e30819b9cfe"
