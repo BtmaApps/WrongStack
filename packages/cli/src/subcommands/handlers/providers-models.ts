@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import type { DefaultModelsRegistry } from '@wrongstack/core/models';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import { decryptConfigSecretsForRewrite, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { Capabilities } from '@wrongstack/core/types';
 import {
   ConfigError,
@@ -633,7 +633,7 @@ async function mutateModelsConfig(
     }
     parsed = {};
   }
-  const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+  const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
   const models = (decrypted.models as Record<string, CustomModelDefinition>) ?? {};
   mutator(models);
   decrypted.models = models;

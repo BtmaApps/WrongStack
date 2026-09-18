@@ -148,7 +148,11 @@ export interface PermissionPolicy {
    * writing to trust files, or mutating session state.
    */
   explain?(tool: Tool, input: unknown, ctx: AgentContext): Promise<PermissionTrace>;
-  trust(rule: { tool: string; pattern: string }): Promise<void>;
+  /**
+   * Persist an allow rule. `ttlMs` bounds how long a prompt-driven "always"
+   * stays valid; omitted (a hand-authored rule) means permanent.
+   */
+  trust(rule: { tool: string; pattern: string; ttlMs?: number | undefined }): Promise<void>;
   /**
    * Persist a permanent deny rule (mirrors trust). Written to trust.json.
    */

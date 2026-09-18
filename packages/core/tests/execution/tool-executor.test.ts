@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { EventBus } from '../../src/kernel/events.js';
 import { ToolCapabilities } from '../../src/security/capabilities.js';
+import { DEFAULT_ALWAYS_TRUST_TTL_MS } from '../../src/security/scoped-approval.js';
 import type { Tool, ToolUseBlock } from '../../src/types/tool.js';
 import { createMockTool } from '../helpers/test-harness.js';
 
@@ -218,6 +219,9 @@ describe('ToolExecutor scoped inline approval', () => {
           pattern: expect.stringContaining(
             `wrongstack-approval:v1:${decision.slice('always-'.length)}`,
           ),
+          // A prompt-driven "always" expires (W6 #9) on this path too; only a
+          // hand-authored trust.json rule may be permanent.
+          ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
         });
     },
   );

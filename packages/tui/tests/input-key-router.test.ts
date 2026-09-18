@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { KeyEvent } from '../src/components/input.js';
-import { routeInputKey, type InputKeyRouterHost } from '../src/input-key-router.js';
+import { type InputKeyRouterHost, routeInputKey } from '../src/input-key-router.js';
 
 function key(overrides: Partial<KeyEvent> = {}): KeyEvent {
   return {
@@ -50,6 +50,29 @@ function host(overrides: Partial<InputKeyRouterHost> = {}): InputKeyRouterHost {
 }
 
 describe('routeInputKey', () => {
+  it.each(['😀', '👩‍💻', 'e\u0301', '🇹🇷'])(
+    'edits %s as one visible character',
+    async (grapheme) => {
+      const buffer = `a${grapheme}b`;
+      const after = 1 + grapheme.length;
+      for (const pressed of [
+        key({ backspace: true }),
+        key({ delete: true }),
+        key({ ctrl: true }),
+      ]) {
+        const fixture = host({ draft: { buffer, cursor: pressed.backspace ? after : 1 } });
+        await routeInputKey(fixture, pressed.ctrl ? 'd' : '', pressed);
+        expect(fixture.setDraft).toHaveBeenCalledWith('ab', 1);
+      }
+      const left = host({ draft: { buffer, cursor: after } });
+      await routeInputKey(left, '', key({ leftArrow: true }));
+      expect(left.setDraft).toHaveBeenCalledWith(buffer, 1);
+      const right = host({ draft: { buffer, cursor: 1 } });
+      await routeInputKey(right, '', key({ rightArrow: true }));
+      expect(right.setDraft).toHaveBeenCalledWith(buffer, after);
+    },
+  );
+
   it('inserts text at the current cursor and cancels auto-submit', async () => {
     const fixture = host({ draft: { buffer: 'ac', cursor: 1 } });
 

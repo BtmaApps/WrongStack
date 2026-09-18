@@ -2,7 +2,11 @@ import * as path from 'node:path';
 // Types come from their source modules, not '../index.js' — the barrel would put this
 // file into the ARCH-CYCLE-TYPE-14 module cycle.
 import type { Context } from '../core/context.js';
-import { decryptConfigSecrets, encryptConfigSecrets } from '../security/config-secrets.js';
+import {
+  decryptConfigSecrets,
+  decryptConfigSecretsForRewrite,
+  encryptConfigSecrets,
+} from '../security/config-secrets.js';
 import { CloudConfigSync } from '../storage/cloud-config-sync.js';
 import type { CloudSyncConfig, ConfigStore } from '../types/config.js';
 import type { Plugin } from '../types/plugin.js';
@@ -71,7 +75,12 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
       const writeLocalConfig = async (
         mutator: (config: Record<string, unknown>) => Record<string, unknown>,
       ): Promise<void> => {
-        const current = await readLocalConfig();
+        // Rewrite variant: a field this vault cannot decrypt keeps its
+        // ciphertext instead of being written back as ''.
+        const raw = await readJsonObjectFile(profileConfigPath).catch(() => ({}));
+        const current = decryptConfigSecretsForRewrite(raw as Record<string, unknown>, vault, {
+          warn,
+        });
         const next = mutator(current);
         const encrypted = encryptConfigSecrets(next, vault);
         await atomicWrite(profileConfigPath, `${JSON.stringify(encrypted, null, 2)}\n`, {

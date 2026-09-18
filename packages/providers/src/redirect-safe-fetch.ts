@@ -69,6 +69,16 @@ function assertNotPrivateRedirectHost(url: URL, from: URL): void {
   // `[::ffff:7f00:1]`, so it evaded on the bracket alone too.
   const host = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw;
 
+  // `localhost` is loopback by name, not by resolution — RFC 6761 reserves it
+  // and every `*.localhost` label — so it belongs to this literal check, not to
+  // the rebinding concern below. A public host answering `302 → http://localhost:…`
+  // walked straight past the IP-only test. A trailing root dot (`localhost.`)
+  // names the same host.
+  const name = host.toLowerCase().replace(/\.$/, '');
+  if (name === 'localhost' || name.endsWith('.localhost')) {
+    throw new Error(`redirect to private/loopback host blocked: ${url}`);
+  }
+
   // Only literal IP addresses are checked here — a hostname's resolved-IP
   // rebinding case is the separate `guardedFetch` / pinned-dispatcher concern.
   // `isPrivateIPv4` returns true for any string that is not a dotted-quad, and

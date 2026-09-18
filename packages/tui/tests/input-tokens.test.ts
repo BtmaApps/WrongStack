@@ -257,3 +257,25 @@ describe('layoutInputRows — caret resting on a newline', () => {
     expect(caretCount(layoutInputRows(PROMPT, 'a\nb', 3, 10))).toBe(1);
   });
 });
+
+describe('grapheme layout and pointer parity', () => {
+  it('preserves Windows line breaks as row boundaries', () => {
+    const value = 'a\r\nb';
+    expect(layoutInputRows('', value, value.length, 80).map(rowText)).toEqual(['a', 'b ']);
+    expect(inputIndexAtRowCol('', value, 80, 1, 0)).toBe(3);
+  });
+  it.each(['😀', '👩‍💻', 'e\u0301', '🇹🇷'])(
+    'never splits %s across cells or pointer targets',
+    (grapheme) => {
+      const value = `a${grapheme}b`;
+      const rows = layoutInputRows('', value, 1, 2);
+      expect(rows.flat().find((cell) => cell.cursor)?.ch).toBe(grapheme);
+      const wideRows = layoutInputRows('', value, value.length, 80);
+      expect(wideRows[0]?.map((cell) => cell.ch)).toEqual(['a', grapheme, 'b', ' ']);
+      expect(inputIndexAtRowCol('', value, 80, 0, 1)).toBe(1);
+      expect(inputIndexAtRowCol('', value, 80, 0, 1 + displayWidth(grapheme))).toBe(
+        1 + grapheme.length,
+      );
+    },
+  );
+});

@@ -6,6 +6,7 @@ const { toLanguagePackageInput } = vi.hoisted(() => ({
 
 vi.mock('@wrongstack/techstack', () => ({ toLanguagePackageInput }));
 
+import { DEFAULT_ALWAYS_TRUST_TTL_MS } from '@wrongstack/core/security';
 import { createPackageOperationExecutor } from '../src/server/start-webui-remediation.js';
 
 describe('createPackageOperationExecutor', () => {
@@ -78,6 +79,8 @@ describe('createPackageOperationExecutor', () => {
     expect(trust).toHaveBeenCalledWith({
       tool: 'language_package',
       pattern: 'install vitest',
+      // A prompt-driven "always" expires like every other surface's (W6 #9).
+      ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
     });
     expect(executeBatch).toHaveBeenCalledTimes(2);
   });

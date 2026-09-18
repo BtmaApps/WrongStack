@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { decryptConfigSecretsForRewrite } from '../../src/security/config-secrets.js';
 import {
   decryptConfigSecrets,
   encryptConfigSecrets,
@@ -167,5 +168,32 @@ describe('typesafe account credential', () => {
 
     // And it round-trips, so the resolver sees a usable key.
     expect(decryptConfigSecrets(onDisk, vault).typesafe.apiKey).toBe('sk-live-typesafe');
+  });
+});
+
+describe('decryptConfigSecretsForRewrite', () => {
+  // A field sealed under another / rotated key: decrypt throws, and
+  // encrypt passes an already-encrypted value through unchanged.
+  const failing: SecretVault = {
+    encrypt: (s) => (s.startsWith('enc:') ? s : `enc:${s}`),
+    decrypt: (s) => {
+      if (s === 'enc:foreign') throw new Error('bad auth tag');
+      return s.startsWith('enc:') ? s.slice(4) : s;
+    },
+    isEncrypted: (s) => s.startsWith('enc:'),
+    keyVersion: 1,
+  };
+  const warn = vi.fn();
+
+  it('runtime decrypt still blanks what it cannot read', () => {
+    expect(decryptConfigSecrets({ apiKey: 'enc:foreign' }, failing, { warn }).apiKey).toBe('');
+  });
+
+  it('keeps the ciphertext so a read-modify-write round-trips it byte-for-byte', () => {
+    const cfg = { apiKey: 'enc:foreign', providers: { a: { apiKey: 'enc:ok' } } };
+    const decrypted = decryptConfigSecretsForRewrite(cfg, failing, { warn });
+    expect(decrypted.apiKey).toBe('enc:foreign');
+    expect(decrypted.providers.a.apiKey).toBe('ok');
+    expect(encryptConfigSecrets(decrypted, failing)).toEqual(cfg);
   });
 });

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import { decryptConfigSecretsForRewrite, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { ConfigStore } from '@wrongstack/core/types';
 import { ConfigError, ERROR_CODES, FsError, type SecretVault } from '@wrongstack/core/types';
 import { atomicWrite, deepMerge } from '@wrongstack/core/utils';
@@ -125,7 +125,10 @@ async function mergeWithDestinationIfExists(
     void err;
     return source;
   }
-  const destDecrypted = decryptConfigSecrets(destParsed, vault) as Record<string, unknown>;
+  const destDecrypted = decryptConfigSecretsForRewrite(destParsed, vault) as Record<
+    string,
+    unknown
+  >;
   return deepMerge(destDecrypted, source) as Record<string, unknown>;
 }
 
@@ -241,7 +244,7 @@ export async function persistAutonomySetting(
     parsed = {};
   }
 
-  const decrypted = decryptConfigSecrets(parsed, deps.vault) as Record<string, unknown>;
+  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
   const autonomy = (decrypted.autonomy as Record<string, unknown>) ?? {};
   mutator(
     autonomy as { autoProceedDelayMs?: number | undefined; defaultMode?: string | undefined },
@@ -320,7 +323,7 @@ export async function persistConfigSetting(
     parsed = {};
   }
 
-  const decrypted = decryptConfigSecrets(parsed, deps.vault) as Record<string, unknown>;
+  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
   mutator(decrypted);
 
   // If the mutator changed configScope, re-resolve the target path.
@@ -394,7 +397,7 @@ export async function persistTelegramConfig(
     parsed = {};
   }
 
-  const decrypted = decryptConfigSecrets(parsed, deps.vault) as Record<string, unknown>;
+  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
   const extensions = (decrypted.extensions as Record<string, Record<string, unknown>>) ?? {};
   const telegram = extensions.telegram ?? {};
   mutator(telegram);

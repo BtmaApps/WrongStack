@@ -73,6 +73,9 @@ export function createAppKeyHandler(
   const ctx: KeyRouteContext = { ...options, stdout, historyWidth, detach };
 
   const handleKey = async (input: string, key: KeyEvent) => {
+    // Only consecutive composer Esc presses may clear a draft. Keys owned by
+    // another surface must neither trigger nor arm that shortcut.
+    if (!key.escape) ctx.lastEscAtRef.current = 0;
     // Any key is an explicit user takeover. Stop both the final-ten-second
     // sweep and its armed submit before routing the key, including keys owned
     // by overlays/navigation and Ctrl+C. The cancel callback is a no-op when
@@ -85,7 +88,10 @@ export function createAppKeyHandler(
     // no SIGINT is ever generated — so this runs BEFORE every modal/status
     // guard: Ctrl+C has to work precisely when everything else is wedged.
     if (routeCtrlCEscalation(ctx, input, key)) return;
-    if (routeModalOverlay(ctx, input, key)) return;
+    if (routeModalOverlay(ctx, input, key)) {
+      ctx.lastEscAtRef.current = 0;
+      return;
+    }
 
     // ── Monitor overlays are NON-modal ───────────────────────────────
     // F2 fleet, F3 agents, F4 worktree, F6 todos, F7 queue, and the
@@ -102,13 +108,6 @@ export function createAppKeyHandler(
 
     // Re-entrancy guard: block stale-second events from \r\n terminals.
     if (inputGateRef.current) return;
-
-    // ── Double-Esc clears input buffer ────────────────────────────────
-    // Moved verbatim to routeDoubleEsc (key-routes/key-route-overlay.ts,
-    // decomposition Phase 3): Esc twice within ESC_DOUBLE_PRESS_MS while the
-    // buffer is non-empty clears it — bash's Ctrl+C double-press, adapted
-    // for Esc.
-    if (routeDoubleEsc(ctx, key)) return;
 
     // ── Bracketed-paste accumulation ──────────────────────────────────
     // Moved verbatim to routePastePipeline (key-routes/key-route-paste.ts,
@@ -157,9 +156,15 @@ export function createAppKeyHandler(
     // The hook handles Esc (close), ↑/↓ (navigate), wheel (scroll),
     // Enter (confirm), and picker-specific keys (search, filter, Tab).
     // If no picker is open the hook returns false immediately.
-    if (tryPickerKey(input, key, isEnter)) return;
+    if (tryPickerKey(input, key, isEnter)) {
+      ctx.lastEscAtRef.current = 0;
+      return;
+    }
 
     if (routeEscClosePanels(ctx, key)) return;
+
+    // Panel-owned Esc must be resolved before the draft-clearing shortcut.
+    if (routeDoubleEsc(ctx, key)) return;
 
     if (routeBusyInterrupt(ctx, key)) return;
 

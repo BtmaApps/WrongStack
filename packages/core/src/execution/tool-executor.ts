@@ -10,7 +10,11 @@ import {
   ToolCapabilities,
 } from '../security/capabilities.js';
 import { describeWriteTargets } from '../security/permission-helpers.js';
-import { approvalRecord, isPersistentApproval } from '../security/scoped-approval.js';
+import {
+  approvalRecord,
+  DEFAULT_ALWAYS_TRUST_TTL_MS,
+  isPersistentApproval,
+} from '../security/scoped-approval.js';
 import type { ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { ToolResultRenderMode, ToolResultRenderModeConfig } from '../types/config.js';
 import { isWrongStackError } from '../types/errors.js';
@@ -265,7 +269,11 @@ export class ToolExecutor {
           });
           if (isPersistentApproval(choice)) {
             const approval = approvalRecord(choice, tool, use.input, ctx, suggestedPattern);
-            await this.opts.permissionPolicy.trust({ tool: tool.name, pattern: approval.pattern });
+            await this.opts.permissionPolicy.trust({
+              tool: tool.name,
+              pattern: approval.pattern,
+              ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
+            });
             this.opts.events?.emit('trust.persisted', {
               sessionId: resolveEventSessionId(ctx),
               tool: tool.name,

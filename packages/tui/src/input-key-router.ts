@@ -1,18 +1,20 @@
 import type { Action, State } from './app-reducer.js';
 import { inputContentWidth, type KeyEvent } from './components/input.js';
 import {
-  deleteTokenBackward,
-  inputIndexAtRowCol,
-  layoutInputRows,
-  tokenLengthForward,
-} from './input-tokens.js';
-import {
   deleteWordBackward,
   deleteWordForward,
   nextInputWordStart,
   previousInputWordStart,
 } from './input-editing.js';
+import { nextGraphemeIndex, previousGraphemeIndex } from './input-graphemes.js';
+import {
+  deleteTokenBackward,
+  inputIndexAtRowCol,
+  layoutInputRows,
+  tokenLengthForward,
+} from './input-tokens.js';
 import type { MutableCell } from './shared-types.js';
+import { displayWidth } from './terminal-width.js';
 
 const PASTE_THRESHOLD_CHARS = 200;
 
@@ -85,12 +87,14 @@ export async function routeInputKey(
     }
     const token = deleteTokenBackward(buffer, cursor);
     if (token) {
+      host.nextSteps.cancel();
       host.setDraft(token.buffer, token.cursor);
       return true;
     }
     if (cursor > 0) {
       host.nextSteps.cancel();
-      host.setDraft(buffer.slice(0, cursor - 1) + buffer.slice(cursor), cursor - 1);
+      const previous = previousGraphemeIndex(buffer, cursor);
+      host.setDraft(buffer.slice(0, previous) + buffer.slice(cursor), previous);
     }
     return true;
   }
@@ -114,7 +118,7 @@ export async function routeInputKey(
       return true;
     }
     if (cursor < buffer.length) {
-      const span = tokenLengthForward(buffer, cursor) || 1;
+      const span = tokenLengthForward(buffer, cursor) || nextGraphemeIndex(buffer, cursor) - cursor;
       host.nextSteps.cancel();
       host.setDraft(buffer.slice(0, cursor) + buffer.slice(cursor + span), cursor);
     }
@@ -122,14 +126,16 @@ export async function routeInputKey(
   }
 
   if (key.leftArrow) {
-    const nextCursor = key.ctrl ? previousInputWordStart(buffer, cursor) : Math.max(0, cursor - 1);
+    const nextCursor = key.ctrl
+      ? previousInputWordStart(buffer, cursor)
+      : previousGraphemeIndex(buffer, cursor);
     if (nextCursor !== cursor) host.setDraft(buffer, nextCursor);
     return true;
   }
   if (key.rightArrow) {
     const nextCursor = key.ctrl
       ? nextInputWordStart(buffer, cursor)
-      : Math.min(buffer.length, cursor + 1);
+      : nextGraphemeIndex(buffer, cursor);
     if (nextCursor !== cursor) host.setDraft(buffer, nextCursor);
     return true;
   }
@@ -155,7 +161,16 @@ export async function routeInputKey(
       const caretRow = rows.findIndex((cells) => cells.some((cell) => cell.cursor));
       if (caretRow >= 0) {
         row = caretRow;
-        col = rows[caretRow]!.findIndex((cell) => cell.cursor);
+        const cells = rows[caretRow]!;
+        col = displayWidth(
+          cells
+            .slice(
+              0,
+              cells.findIndex((cell) => cell.cursor),
+            )
+            .map((cell) => cell.ch)
+            .join(''),
+        );
       } else {
         // The caret sits on a '\n' cell, which wrapping consumes: treat it
         // as the end of the row that newline terminates.
@@ -183,14 +198,7 @@ export async function routeInputKey(
               ),
             );
       if (targetRow !== row) {
-        const targetLength = rows[targetRow]!.filter((cell) => !cell.prompt && !cell.chip).length;
-        const target = inputIndexAtRowCol(
-          host.prompt,
-          buffer,
-          width,
-          targetRow,
-          Math.min(col, targetLength),
-        );
+        const target = inputIndexAtRowCol(host.prompt, buffer, width, targetRow, col);
         host.setDraft(buffer, target);
       }
       return true; // Always consume when multi-line: prevents Up/Down at the
@@ -232,7 +240,10 @@ export async function routeInputKey(
   if (key.ctrl && (input === 'd' || input === 'k')) {
     if (cursor < buffer.length) {
       const end =
-        input === 'd' ? cursor + (tokenLengthForward(buffer, cursor) || 1) : buffer.length;
+        input === 'd'
+          ? cursor +
+            (tokenLengthForward(buffer, cursor) || nextGraphemeIndex(buffer, cursor) - cursor)
+          : buffer.length;
       host.nextSteps.cancel();
       host.setDraft(buffer.slice(0, cursor) + buffer.slice(end), cursor);
     }

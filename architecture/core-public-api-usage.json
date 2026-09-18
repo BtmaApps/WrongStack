@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 162,
+      "files": 163,
       "typeOnly": 27,
-      "runtimeOrMixed": 139
+      "runtimeOrMixed": 140
     },
     "@wrongstack/core/session-catalog": {
       "files": 12,
@@ -9631,6 +9631,12 @@
       "file": "packages/webui-server/tests/sdd-board-ws-handler.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/webui-server/tests/start-webui-remediation.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",

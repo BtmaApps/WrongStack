@@ -303,12 +303,35 @@ describe('createAppKeyHandler replay corpus (decomposition Phase 0.3)', () => {
       trace.loadLiveSessions = harness.loadLiveSessions.mock.calls.length;
       trace.openStatuslinePicker = harness.openStatuslinePicker.mock.calls.length;
       trace.setDraft = harness.setDraft.mock.calls.length;
-      const lastDraftCall = harness.setDraft.mock.calls.at(-1) as
-        | [string, number]
-        | undefined;
+      const lastDraftCall = harness.setDraft.mock.calls.at(-1) as [string, number] | undefined;
       trace.setDraftBuffer = lastDraftCall ? lastDraftCall[0] : null;
 
       expect(trace).toMatchSnapshot();
     });
   }
+});
+
+describe('Escape ownership', () => {
+  it('closes a panel before an already armed double-Escape can erase the draft', async () => {
+    const fixture = makeHandler(
+      createTestState({ sessionsPanelOpen: true, buffer: 'keep', cursor: 4 }),
+      { buffer: 'keep', cursor: 4 },
+    );
+    fixture.refs.lastEscAtRef.current = Date.now();
+    await fixture.handler('', key({ escape: true }));
+    expect(fixture.dispatch).toHaveBeenCalledWith({ type: 'toggleSessionsPanel' });
+    expect(fixture.dispatch).not.toHaveBeenCalledWith({ type: 'clearInput' });
+    expect(fixture.refs.lastEscAtRef.current).toBe(0);
+  });
+
+  it('does not interpret Esc, typing, Esc as a double press', async () => {
+    const fixture = makeHandler(createTestState({ buffer: 'keep', cursor: 4 }), {
+      buffer: 'keep',
+      cursor: 4,
+    });
+    await fixture.handler('', key({ escape: true }));
+    await fixture.handler('x', key());
+    await fixture.handler('', key({ escape: true }));
+    expect(fixture.dispatch).not.toHaveBeenCalledWith({ type: 'clearInput' });
+  });
 });

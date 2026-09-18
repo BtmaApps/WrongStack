@@ -28,8 +28,13 @@ describe('resolveTypeSafeRoute', () => {
     expect(resolveTypeSafeRoute({ typesafe: { apiKey: 'k' } }, noEnv)).toBe('typesafe');
   });
 
-  it('infers openrouter when only its environment variable is present', () => {
-    expect(resolveTypeSafeRoute({}, { OPENROUTER_API_KEY: 'sk-or-x' })).toBe('openrouter');
+  it('never infers openrouter from a chat OPENROUTER_API_KEY alone', () => {
+    // That key is almost always there for chat. Inferring the route from it
+    // moved prompt egress and billing to OpenRouter without the user choosing
+    // it for this feature; the route must be named explicitly.
+    expect(resolveTypeSafeRoute({}, { OPENROUTER_API_KEY: 'sk-or-x' })).toBe('typesafe');
+    const account = resolveTypeSafeAccount({ config: {}, env: { OPENROUTER_API_KEY: 'sk-or-x' } });
+    expect(account.status).toBe('unconfigured');
   });
 
   it('prefers TypeSafe when both credentials are in the environment', () => {

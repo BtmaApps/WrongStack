@@ -183,6 +183,21 @@ describe('redirectSafeFetch', () => {
     ).rejects.toThrow(/private\/loopback/);
   });
 
+  it.each([
+    'http://localhost:8080/internal',
+    'http://LOCALHOST./internal',
+    'http://admin.localhost/',
+  ])('rejects a public host redirecting to the loopback name %s', async (target) => {
+    // `localhost` is loopback by name (RFC 6761), so the IP-literal check alone
+    // let `302 → http://localhost:…` from a public endpoint walk straight in.
+    const impl = vi.fn(async () => response(302, target));
+    await expect(
+      redirectSafeFetch(impl as unknown as typeof fetch, 'https://api.example/v1', {
+        headers: { 'x-api-key': 'secret' },
+      }),
+    ).rejects.toThrow(/private\/loopback/);
+  });
+
   it('rejects a redirect to a literal link-local metadata IP (169.254.169.254)', async () => {
     const impl = vi.fn(async () => response(302, 'http://169.254.169.254/latest/meta-data/'));
     await expect(

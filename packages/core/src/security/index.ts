@@ -1,4 +1,8 @@
-export { isPersistentApproval, scopedApprovalPattern } from './scoped-approval.js';
+export {
+  DEFAULT_ALWAYS_TRUST_TTL_MS,
+  isPersistentApproval,
+  scopedApprovalPattern,
+} from './scoped-approval.js';
 // Security domain: secret scrubbing, vault encryption, permission policies
 
 export { noOpVault } from '../types/secret-vault.js';
@@ -12,7 +16,12 @@ export {
   type ToolCapability,
   WIDE_SUBAGENT_CAPABILITIES,
 } from './capabilities.js';
-export { decryptConfigSecrets, encryptConfigSecrets, isSecretField } from './config-secrets.js';
+export {
+  decryptConfigSecrets,
+  decryptConfigSecretsForRewrite,
+  encryptConfigSecrets,
+  isSecretField,
+} from './config-secrets.js';
 export {
   DirectoryPermissionPolicy,
   type DirectoryPermissionPolicyOptions,

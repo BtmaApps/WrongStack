@@ -31,7 +31,7 @@
 import type { Config } from '../types/config/root.js';
 import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
-import { BUILT_IN_ROUTES, TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
+import { TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
 
 /**
  * Environment variable read when `typesafe.apiKey` is unset.
@@ -97,7 +97,7 @@ export type TypeSafeAccount =
  */
 export function resolveTypeSafeRoute(
   config: Pick<Config, 'typesafe'>,
-  env: NodeJS.ProcessEnv,
+  _env: NodeJS.ProcessEnv,
 ): TypeSafeRoute {
   const account = config.typesafe ?? {};
   if (account.route) return account.route;
@@ -106,9 +106,11 @@ export function resolveTypeSafeRoute(
   // that has never heard of OpenRouter's naming.
   if (account.endpoint?.trim()) return 'custom';
   if (account.apiKey?.trim()) return 'typesafe';
-  for (const route of BUILT_IN_ROUTES) {
-    if (env[TYPESAFE_ROUTES[route].env]?.trim()) return route;
-  }
+  // Only TypeSafe's OWN variable is ever inferred from the environment.
+  // `OPENROUTER_API_KEY` is overwhelmingly there for chat; inferring the
+  // OpenRouter route from it sent the user's prompts to a host they never
+  // chose for this feature and billed a key they set up for something else.
+  // OpenRouter is one explicit line away: `typesafe.route: "openrouter"`.
   return 'typesafe';
 }
 

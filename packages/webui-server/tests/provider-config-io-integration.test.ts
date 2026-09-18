@@ -3,7 +3,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { DefaultSecretVault } from '@wrongstack/core/security';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadSavedProviders, saveProviders } from '../src/server/provider-config-io.js';
+import {
+  loadSavedProviders,
+  mutateSavedProviders,
+  saveProviders,
+} from '../src/server/provider-config-io.js';
 
 describe('standalone provider config persistence', () => {
   let dir: string;
@@ -63,5 +67,52 @@ describe('standalone provider config persistence', () => {
     expect(saved.favoriteModels).toEqual([]);
     expect(saved.unrelated).toEqual({ enabled: true });
     expect((await loadSavedProviders(configPath, vault))['beta']!.apiKey).toBe('secret-beta');
+  });
+  describe('secrets this vault cannot decrypt (other or rotated key)', () => {
+    let foreignTypesafe: string;
+    let foreignGamma: string;
+    beforeEach(async () => {
+      // Ciphertext produced under a DIFFERENT key file: this vault's decrypt
+      // fails on it, exactly like a value written before a key rotation.
+      const other = new DefaultSecretVault({ keyFile: path.join(dir, '.other-key') });
+      foreignTypesafe = other.encrypt('typesafe-secret');
+      foreignGamma = other.encrypt('gamma-secret');
+      const raw = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      raw.typesafe = { apiKey: foreignTypesafe };
+      raw.providers.gamma = { type: 'openai', apiKey: foreignGamma };
+      await fs.writeFile(configPath, JSON.stringify(raw));
+    });
+
+    it('a provider edit keeps them byte-for-byte, including on the edited provider', async () => {
+      const providers = await loadSavedProviders(configPath, vault);
+      // The UI still sees the undecryptable key as blank, never as ciphertext.
+      expect(providers['gamma']!.apiKey).toBe('');
+      providers['gamma']!.models = ['g1'];
+      providers['beta']!.models = ['b1'];
+      await saveProviders(configPath, vault, providers);
+      expect(providers['gamma']!.apiKey).toBe('');
+      const saved = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      expect(saved.typesafe.apiKey).toBe(foreignTypesafe);
+      expect(saved.providers.gamma.apiKey).toBe(foreignGamma);
+      expect(saved.providers.gamma.models).toEqual(['g1']);
+      expect((await loadSavedProviders(configPath, vault))['beta']!.apiKey).toBe('secret-beta');
+    });
+
+    it('a key the user actually replaces still wins', async () => {
+      const providers = await loadSavedProviders(configPath, vault);
+      providers['gamma']!.apiKey = 'new-gamma';
+      await saveProviders(configPath, vault, providers);
+      expect((await loadSavedProviders(configPath, vault))['gamma']!.apiKey).toBe('new-gamma');
+    });
+
+    it('a background token-refresh write keeps them', async () => {
+      await mutateSavedProviders(configPath, vault, (providers) => {
+        providers['alpha']!.apiKey = 'rotated-alpha';
+      });
+      const saved = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      expect(saved.typesafe.apiKey).toBe(foreignTypesafe);
+      expect(saved.providers.gamma.apiKey).toBe(foreignGamma);
+      expect((await loadSavedProviders(configPath, vault))['alpha']!.apiKey).toBe('rotated-alpha');
+    });
   });
 });

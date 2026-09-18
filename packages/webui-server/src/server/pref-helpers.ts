@@ -19,7 +19,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { pluginEntryMatchesName } from '@wrongstack/core/plugin';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import { decryptConfigSecretsForRewrite, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { SecretVault } from '@wrongstack/core/types';
 import {
   atomicWrite,
@@ -215,7 +215,7 @@ async function writeGlobalConfigFile(
       logger.warn(`${errorLabel}: refusing to overwrite corrupt config at ${filePath}`);
       return;
     }
-    const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+    const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
     mutate(decrypted);
     const encrypted = encryptConfigSecrets(decrypted, vault);
     await atomicWrite(filePath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });

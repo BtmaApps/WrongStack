@@ -18,6 +18,7 @@ import { hasCapability, ToolCapabilities } from './capabilities.js';
 import { explainPermissionTrace } from './permission-explain.js';
 import { type TrustPolicyDiagnostic, validateTrustPolicy } from './permission-policy-schema.js';
 import {
+  DEFAULT_ALWAYS_TRUST_TTL_MS,
   exactApprovalKey,
   isPersistentApproval,
   isScopedApprovalPattern,
@@ -79,7 +80,7 @@ export interface PermissionPolicyOptions {
   inputReader?: InputReader | undefined;
 }
 
-export const DEFAULT_ALWAYS_TRUST_TTL_MS = 24 * 60 * 60 * 1000;
+export { DEFAULT_ALWAYS_TRUST_TTL_MS };
 
 export class DefaultPermissionPolicy implements PermissionPolicy {
   private policy: TrustPolicy = {};
@@ -403,10 +404,21 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // rather than blocks. Absent `allowUntil` (a hand-authored entry) never
     // expires.
     const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
-    const scope =
+    const matchedScope =
       allowUnexpired && !denyUnevaluated
         ? matchingApprovalScope(entry?.allow ?? [], tool, input, ctx)
         : undefined;
+    // A broad grant ("Tool, any input") was given for the call the user saw,
+    // not for credential / agent-state reads the sensitive-read gate below
+    // exists to surface. Those still prompt unless the grant was for this
+    // exact input — the same carve-out destructive calls get.
+    const scope =
+      matchedScope !== undefined &&
+      matchedScope !== 'exact' &&
+      !this.effectiveYolo(ctx) &&
+      this.isSensitiveReadCall(tool, input)
+        ? undefined
+        : matchedScope;
     if (scope) {
       const destructive =
         tool.riskTier === 'destructive' || this.destructiveKindOf(tool, input, ctx) !== undefined;

@@ -35,10 +35,12 @@ Two hosts accept the identical `{state, questions, model}` body:
 | `custom` | `typesafe.endpoint` | `jev-latest` | `TYPESAFE_API_KEY` |
 
 Leave `typesafe.route` unset and it is inferred: an explicit `endpoint` means
-`custom`, a configured `apiKey` means `typesafe`, otherwise the first route
-whose environment variable is present wins — **TypeSafe first**. A stray
-`OPENROUTER_API_KEY` meant for chat must not silently reroute an account that
-was set up deliberately, or move its billing.
+`custom`, a configured `apiKey` means `typesafe`, and otherwise the route is
+`typesafe` — **only `TYPESAFE_API_KEY` is ever picked up from the environment
+without being asked for**. An `OPENROUTER_API_KEY` is nearly always there for
+chat; inferring the OpenRouter route from it would send prompts to a host, and
+bill a key, the user never chose for this feature. To use OpenRouter, set
+`typesafe.route: "openrouter"` explicitly.
 
 OpenRouter's Decisions endpoint is still on its `/api/alpha/` path and
 OpenRouter warns it may move; that is why it is a table entry with a config

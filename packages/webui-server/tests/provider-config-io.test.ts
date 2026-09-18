@@ -7,6 +7,7 @@ const mockReadFile = vi.hoisted(() => vi.fn());
 
 vi.mock('@wrongstack/core/security', () => ({
   decryptConfigSecrets: mockDecrypt,
+  decryptConfigSecretsForRewrite: (...args: unknown[]) => mockDecrypt(...args),
   encryptConfigSecrets: mockEncrypt,
 }));
 

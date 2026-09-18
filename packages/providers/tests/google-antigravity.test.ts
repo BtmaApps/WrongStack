@@ -211,6 +211,26 @@ describe('OAuth surface', () => {
     );
   });
 
+  it('refuses a pasted code that carries no state, before any token exchange', async () => {
+    // Google only hands the code back on the redirect URL, which always has
+    // `state`. A bare code is therefore not a legitimate paste here, and
+    // accepting it left PKCE as the only binding to this login.
+    const fetchImpl = vi.fn();
+    const strategy = createAntigravityAuthStrategy(fetchImpl as unknown as typeof fetch, () => ({
+      clientId: 'id-1',
+    }));
+    const session = await strategy.begin({}, new AbortController().signal);
+    try {
+      await expect(session.completeWithCode('4/bare-code')).rejects.toThrow(/full redirect URL/);
+      await expect(
+        session.completeWithCode('http://127.0.0.1/oauth-callback?code=4/x&state=forged'),
+      ).rejects.toThrow(/State mismatch/);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      session.close();
+    }
+  });
+
   it('reads the client from the environment', () => {
     expect(
       resolveAntigravityAuthClient({

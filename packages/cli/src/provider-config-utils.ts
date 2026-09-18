@@ -10,7 +10,11 @@ export { expectDefined };
  * touches the config `providers` map.
  */
 import * as fs from 'node:fs/promises';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import {
+  decryptConfigSecrets,
+  decryptConfigSecretsForRewrite,
+  encryptConfigSecrets,
+} from '@wrongstack/core/security';
 import type { ProviderApiKey, ProviderConfig, SecretVault } from '@wrongstack/core/types';
 import { atomicWrite, color, withFileLock } from '@wrongstack/core/utils';
 import {
@@ -208,7 +212,7 @@ export async function mutateConfigProviders(
         }
         parsed = {};
       }
-      const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+      const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
       const providers = (decrypted.providers as Record<string, ProviderConfig>) ?? {};
       const previousProviderIds = Object.keys(providers);
       const primaryBefore = JSON.stringify([

@@ -90,6 +90,36 @@ describe('explicit approval scopes', () => {
     expect((await policy.explain(exec, dangerous, ctx)).decision.permission).toBe('confirm');
   });
 
+  it('tool approval does not cover sensitive reads outside YOLO; exact approval does', async () => {
+    const read: Tool = {
+      name: 'read',
+      description: '',
+      inputSchema: { type: 'object' },
+      permission: 'auto',
+      capabilities: ['fs.read'],
+      mutating: false,
+      async execute() {
+        return '';
+      },
+    };
+    const sensitive = { path: '.env' };
+    await policy.trust({
+      tool: 'read',
+      pattern: scopedApprovalPattern('always-tool', read, { path: 'README.md' }, ctx, ''),
+    });
+    expect((await policy.evaluate(read, { path: 'src/a.ts' }, ctx)).permission).toBe('auto');
+    expect(await policy.evaluate(read, sensitive, ctx)).toMatchObject({
+      permission: 'confirm',
+      reason: expect.stringContaining('sensitive file read'),
+    });
+    expect((await policy.explain(read, sensitive, ctx)).decision.permission).toBe('confirm');
+    await policy.trust({
+      tool: 'read',
+      pattern: scopedApprovalPattern('always-exact', read, sensitive, ctx, '.env'),
+    });
+    expect((await policy.evaluate(read, sensitive, ctx)).permission).toBe('auto');
+  });
+
   it('command approval cannot silently authorize a destructive subcommand', async () => {
     const git = { command: 'git', args: ['status'] };
     await policy.trust({

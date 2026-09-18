@@ -20,9 +20,23 @@ import type { SecretVault } from '../types/secret-vault.js';
 export function decryptConfigSecrets<T>(
   cfg: T,
   vault: SecretVault,
-  opts?: { warn?: (msg: string) => void },
+  opts?: {
+    warn?: (msg: string) => void;
+    /**
+     * Keep a field's ciphertext when it cannot be decrypted, instead of
+     * blanking it. Required on every read-modify-write path: those decrypt
+     * the whole file, change one section and re-encrypt, and a blanked field
+     * would be written back as `''` — permanently erasing a secret that only
+     * failed because it was stored under another or rotated vault key.
+     * `encrypt` passes an already-encrypted value through unchanged, so the
+     * kept field round-trips byte-for-byte. Runtime consumers must NOT set
+     * this: they would otherwise hold ciphertext as if it were a key.
+     */
+    keepUndecryptable?: boolean;
+  },
 ): T {
   const warn = opts?.warn ?? ((msg: string) => console.warn(msg));
+  const keep = opts?.keepUndecryptable === true;
   // A single corrupted/malformed encrypted field should not kill the entire
   // config load. Swallow per-field decrypt errors (zero the field so callers
   // see "missing key" instead of holding ciphertext) and surface a warning.
@@ -33,9 +47,22 @@ export function decryptConfigSecrets<T>(
       warn(
         `[secret-vault] Failed to decrypt "${key}": ${err instanceof Error ? err.message : err}`,
       );
-      return '';
+      return keep ? v : '';
     }
   });
+}
+
+/**
+ * Decrypt a config that is about to be modified and written back. Fields
+ * that cannot be decrypted keep their ciphertext (see `keepUndecryptable`),
+ * so the rewrite never destroys a secret it could not read.
+ */
+export function decryptConfigSecretsForRewrite<T>(
+  cfg: T,
+  vault: SecretVault,
+  opts?: { warn?: (msg: string) => void },
+): T {
+  return decryptConfigSecrets(cfg, vault, { ...opts, keepUndecryptable: true });
 }
 
 export function encryptConfigSecrets<T>(

@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ALT_SCREEN_OFF,
   ALT_SCREEN_ON,
+  isLeakedMouseInput,
   MOUSE_CLICK_ON,
   MOUSE_DRAG_ON,
   MOUSE_HOVER_ON,
   MOUSE_OFF,
-  isLeakedMouseInput,
   parseMouseEvent,
   parseMouseEvents,
   shouldEnableMouseTracking,
@@ -265,4 +265,24 @@ describe('isLeakedMouseInput', () => {
     expect(isLeakedMouseInput('a < b ; c')).toBe(false);
     expect(isLeakedMouseInput('')).toBe(false);
   });
+});
+
+describe('mouse protocol boundaries', () => {
+  it.each([
+    sgr(128, 1, 1),
+    sgr(0, 0, 1),
+    sgr(0, 1, 0),
+    sgr(0, 1e20, 1),
+    `${ESC}[<0;999999999999999999999;1M`,
+  ])('ignores unsupported reports instead of treating them as a left click: %s', (report) => {
+    expect(parseMouseEvent(report)).toBeNull();
+    expect(parseMouseEvents(report)).toEqual([]);
+  });
+
+  it.each([`${ESC}[<0;x`, `${ESC}[<0;;`, `${ESC}[<0;1;2;`, `${ESC}[<0;1${ESC}`])(
+    'does not hold ordinary keys after an invalid partial report: %s',
+    (input) => {
+      expect(splitTrailingMousePartial(input)).toEqual({ consumed: input, pending: '' });
+    },
+  );
 });

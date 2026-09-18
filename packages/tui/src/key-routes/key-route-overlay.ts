@@ -24,8 +24,8 @@ const ESC_DOUBLE_PRESS_MS = 1000;
  * ride with this route as the panel family (no dedicated slice among the
  * approved route names).
  *
- * Orchestrator call order (pinned): routeModalOverlay → routeDoubleEsc →
- * routeEscClosePanels → routeChordPanels → routeFKeyPanels → routeSddBoard →
+ * Orchestrator call order (pinned): routeModalOverlay → picker routing →
+ * routeEscClosePanels → routeDoubleEsc → routeChordPanels → routeFKeyPanels → routeSddBoard →
  * routeSettingsOverlay → routePanelEscapeRouter.
  */
 

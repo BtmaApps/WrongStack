@@ -127,7 +127,19 @@ const LEAKED_MOUSE_RE = /\[<\d+;\d+;\d+[Mm]/;
  *   bit  5   — motion         (+32)
  *   bit  6   — wheel          (+64; then bits 0-1: 0 up, 1 down, 2/3 horizontal)
  */
-function decodeMouse(cb: number, x: number, y: number, released: boolean): MouseEventInfo {
+function decodeMouse(cb: number, x: number, y: number, released: boolean): MouseEventInfo | null {
+  // Extended buttons (128+) are not primary-button presses. Invalid reports
+  // must never activate the focused picker item or move the composer caret.
+  if (
+    !Number.isSafeInteger(cb) ||
+    cb < 0 ||
+    cb > 127 ||
+    !Number.isSafeInteger(x) ||
+    x < 1 ||
+    !Number.isSafeInteger(y) ||
+    y < 1
+  )
+    return null;
   const shift = (cb & 4) !== 0;
   const meta = (cb & 8) !== 0;
   const ctrl = (cb & 16) !== 0;
@@ -170,14 +182,13 @@ export function parseMouseEvent(data: string): MouseEventInfo | null {
 export function parseMouseEvents(data: string): MouseEventInfo[] {
   const events: MouseEventInfo[] = [];
   for (const m of data.matchAll(SGR_MOUSE_GLOBAL)) {
-    events.push(
-      decodeMouse(
-        Number.parseInt(m[1] as string, 10),
-        Number.parseInt(m[2] as string, 10),
-        Number.parseInt(m[3] as string, 10),
-        m[4] === 'm',
-      ),
+    const event = decodeMouse(
+      Number.parseInt(m[1] as string, 10),
+      Number.parseInt(m[2] as string, 10),
+      Number.parseInt(m[3] as string, 10),
+      m[4] === 'm',
     );
+    if (event) events.push(event);
   }
   return events;
 }
@@ -208,8 +219,11 @@ export function splitTrailingMousePartial(data: string): {
   const idx = data.lastIndexOf(`${ESC}[<`);
   if (idx === -1) return { consumed: data, pending: '' };
   const tail = data.slice(idx);
-  // A terminator anywhere in the tail means the last report is whole.
-  if (/[Mm]/.test(tail)) return { consumed: data, pending: '' };
+  // Only prefixes of the actual grammar can be continued. In particular an
+  // interrupted report must not retain the next Esc or ordinary typed text.
+  if (!/^\u001b\[<(?:\d*|\d+;\d*|\d+;\d+;\d*)$/.test(tail)) {
+    return { consumed: data, pending: '' };
+  }
   if (tail.length > MAX_PARTIAL_MOUSE) return { consumed: data, pending: '' };
   return { consumed: data.slice(0, idx), pending: tail };
 }

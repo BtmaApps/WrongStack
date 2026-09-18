@@ -250,7 +250,17 @@ export function createAntigravityAuthStrategy(
         },
         async completeWithCode(input, codeSignal) {
           const parsed = parseAuthorizationInput(input);
-          if (parsed.state && parsed.state !== state) {
+          // Google only ever returns the code on the redirect URL, which always
+          // carries `state` — there is no console page that shows a bare code.
+          // So a paste without state is not a legitimate shape here; accepting
+          // it would leave PKCE as the only thing binding the code to this
+          // login. Unlike the Claude/ChatGPT strategies, require it.
+          if (!parsed.state) {
+            throw new Error(
+              'Paste the full redirect URL (it includes the state parameter), not just the code.',
+            );
+          }
+          if (parsed.state !== state) {
             throw new Error('State mismatch — please restart the login flow.');
           }
           if (!parsed.code) throw new Error('No authorization code found in the pasted value.');

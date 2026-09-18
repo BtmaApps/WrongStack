@@ -8,6 +8,8 @@
  * `[VIBE]` is a protocol chip: it renders and deletes as a token, but it is
  * not an attachment and must stay in the prompt sent to the refiner/agent.
  */
+
+import { inputGraphemes } from './input-graphemes.js';
 import { displayWidth } from './terminal-width.js';
 
 /** Attachment placeholders only. Protocol tags must not be stripped as chips. */
@@ -115,18 +117,21 @@ export function layoutInputRows(
     if (span.chip) for (let i = 0; i < span.text.length; i++) chipAt[off + i] = true;
     off += span.text.length;
   }
-  const cursorIdx = prompt.length + Math.max(0, Math.min(cursor, value.length));
+  const cursorIdx = Math.max(0, Math.min(cursor, value.length));
   const cells: InputCell[] = [];
-  for (let i = 0; i < prompt.length; i++) {
-    cells.push({ ch: prompt[i] as string, chip: false, prompt: true, cursor: false });
+  for (const { segment } of inputGraphemes(prompt)) {
+    cells.push({ ch: segment, chip: false, prompt: true, cursor: false });
   }
-  for (let i = 0; i < value.length; i++) {
-    cells.push({ ch: value[i] as string, chip: chipAt[i] === true, prompt: false, cursor: false });
+  for (const { segment, index } of inputGraphemes(value)) {
+    cells.push({
+      ch: segment,
+      chip: chipAt[index] === true,
+      prompt: false,
+      cursor: cursorIdx >= index && cursorIdx < index + segment.length,
+    });
   }
-  if (cursorIdx >= cells.length) {
+  if (cursorIdx >= value.length) {
     cells.push({ ch: ' ', chip: false, prompt: false, cursor: true });
-  } else {
-    (cells[cursorIdx] as InputCell).cursor = true;
   }
   // Wrap into rows: break on explicit '\n' (consumed) or when a row would
   // exceed `w` terminal columns (CJK/emoji are 2 cells, not 1).
@@ -134,7 +139,7 @@ export function layoutInputRows(
   let row: InputCell[] = [];
   let rowChars = '';
   for (const cell of cells) {
-    if (cell.ch === '\n') {
+    if (cell.ch === '\n' || cell.ch === '\r\n') {
       if (cell.cursor) {
         // A caret resting on a newline would be consumed with the row break
         // and vanish from the rendered input. Render it the way a terminal
@@ -185,8 +190,8 @@ export function inputIndexAtRowCol(
   // Flat cells: prompt (buf = -1) then value (buf = its index). Newlines are
   // consumed as row breaks, exactly like layoutInputRows.
   const flat: Array<{ ch: string; buf: number }> = [];
-  for (let i = 0; i < prompt.length; i++) flat.push({ ch: prompt[i] as string, buf: -1 });
-  for (let i = 0; i < value.length; i++) flat.push({ ch: value[i] as string, buf: i });
+  for (const { segment } of inputGraphemes(prompt)) flat.push({ ch: segment, buf: -1 });
+  for (const { segment, index } of inputGraphemes(value)) flat.push({ ch: segment, buf: index });
 
   const rows: Array<{ buf: number; ch: string }[]> = [];
   const starts: number[] = []; // value index where each row's content begins
@@ -194,12 +199,12 @@ export function inputIndexAtRowCol(
   let curChars = '';
   let curStart = 0;
   for (const cell of flat) {
-    if (cell.ch === '\n') {
+    if (cell.ch === '\n' || cell.ch === '\r\n') {
       rows.push(cur);
       starts.push(curStart);
       cur = [];
       curChars = '';
-      curStart = cell.buf + 1; // content after the newline
+      curStart = cell.buf + cell.ch.length; // content after the newline
       continue;
     }
     if (rowWouldOverflow(curChars, cell.ch, w)) {
@@ -235,7 +240,7 @@ export function inputIndexAtRowCol(
   // Past the last visible cell: place after the row's last value char…
   for (let k = r.length - 1; k >= 0; k--) {
     const b = (r[k] as { buf: number; ch: string }).buf;
-    if (b >= 0) return clamp(b + 1);
+    if (b >= 0) return clamp(b + r[k]!.ch.length);
   }
   // …or, for an empty / prompt-only row, at the row's start offset.
   const start = starts[row];

@@ -6,7 +6,11 @@
 import type { BrainRisk } from '../coordination/brain.js';
 import { TOKENS } from '../kernel/tokens.js';
 import { describeWriteTargets } from '../security/permission-helpers.js';
-import { approvalRecord, isPersistentApproval } from '../security/scoped-approval.js';
+import {
+  approvalRecord,
+  DEFAULT_ALWAYS_TRUST_TTL_MS,
+  isPersistentApproval,
+} from '../security/scoped-approval.js';
 import type { ContentBlock, ToolResultBlock, ToolUseBlock } from '../types/blocks.js';
 import type { SessionEvent } from '../types/session.js';
 import type { Tool } from '../types/tool.js';
@@ -383,7 +387,11 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
               a.ctx,
               result.suggestedPattern,
             );
-            await a.permission.trust({ tool: tool.name, pattern: approval.pattern });
+            await a.permission.trust({
+              tool: tool.name,
+              pattern: approval.pattern,
+              ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
+            });
             a.events.emit('trust.persisted', {
               sessionId: resolveEventSessionId(a.ctx),
               tool: tool.name,

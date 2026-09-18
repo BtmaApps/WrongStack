@@ -3,7 +3,11 @@ import type { Context } from '@wrongstack/core/agent';
 import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { ToolExecutor } from '@wrongstack/core/execution';
 import type { EventBus } from '@wrongstack/core/kernel';
-import { isPersistentApproval, scopedApprovalPattern } from '@wrongstack/core/security';
+import {
+  DEFAULT_ALWAYS_TRUST_TTL_MS,
+  isPersistentApproval,
+  scopedApprovalPattern,
+} from '@wrongstack/core/security';
 import type { PermissionPolicy, ToolConfirmPendingResult } from '@wrongstack/core/types';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { type PackageOperation, toLanguagePackageInput } from '@wrongstack/techstack';
@@ -138,6 +142,7 @@ export function createPackageOperationExecutor(options: {
             context,
             pending.suggestedPattern,
           ),
+          ttlMs: DEFAULT_ALWAYS_TRUST_TTL_MS,
         });
         if (decision !== 'always') permissionPolicy.allowOnce(rule);
       } else if (decision === 'yes') permissionPolicy.allowOnce(rule);

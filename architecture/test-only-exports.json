@@ -569,9 +569,6 @@
       "reachedQuotaWindow",
       "resetProviderQuota"
     ],
-    "packages/core/src/security/permission-policy.ts": [
-      "DEFAULT_ALWAYS_TRUST_TTL_MS"
-    ],
     "packages/core/src/security/secret-vault.ts": [
       "keyFileNeedsHardening"
     ],

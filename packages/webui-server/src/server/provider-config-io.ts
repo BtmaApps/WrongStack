@@ -8,7 +8,11 @@
  * with no side-channel state.
  */
 import * as fs from 'node:fs/promises';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
+import {
+  decryptConfigSecrets,
+  decryptConfigSecretsForRewrite,
+  encryptConfigSecrets,
+} from '@wrongstack/core/security';
 import { ConfigError, type ProviderConfig, type SecretVault } from '@wrongstack/core/types';
 import { atomicWrite, withFileLock } from '@wrongstack/core/utils';
 import {
@@ -38,7 +42,7 @@ export async function mutateSavedProviders(
       }
       const config = JSON.parse(raw) as Record<string, unknown>;
       validateProviderConfigShape(config);
-      const decrypted = decryptConfigSecrets(config, vault);
+      const decrypted = decryptConfigSecretsForRewrite(config, vault);
       const providers = (decrypted['providers'] ?? {}) as Record<string, ProviderConfig>;
       const before = JSON.stringify(providers);
       mutate(providers);
@@ -140,7 +144,7 @@ export async function saveProviders(
         }
         parsed = {};
       }
-      const decrypted = decryptConfigSecrets(parsed, vault) as Record<string, unknown>;
+      const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
       const previousProviders = (decrypted['providers'] as Record<string, ProviderConfig>) ?? {};
       const primaryBefore = JSON.stringify([
         decrypted['provider'],
@@ -152,18 +156,30 @@ export async function saveProviders(
       const previousIds = Object.keys(
         (decrypted['providers'] as Record<string, ProviderConfig>) ?? {},
       );
-      const merged = snapshots.merge(
-        (decrypted['providers'] as Record<string, ProviderConfig>) ?? {},
-        providers,
+      // Merge against the SAME view the UI was handed: `loadSavedProviders`
+      // blanks a secret it cannot decrypt, so comparing the caller's snapshot
+      // against the ciphertext-preserving view would report every such
+      // provider as "changed in another interface". Merge on the blank view,
+      // then put back every ciphertext the caller left untouched.
+      const blankProviders = decryptConfigSecrets(
+        (parsed['providers'] as Record<string, ProviderConfig>) ?? {},
+        vault,
+        { warn: () => undefined },
       );
-      decrypted['providers'] = merged;
+      const merged = snapshots.merge(blankProviders, providers);
+      const persisted = restoreUndecryptableSecrets(
+        merged,
+        blankProviders,
+        previousProviders,
+      ) as Record<string, ProviderConfig>;
+      decrypted['providers'] = persisted;
       for (const id of previousIds) {
         if (!Object.hasOwn(merged, id)) removeProviderFallbackReferences(decrypted, id);
       }
       const primaryAfter = JSON.stringify([
         decrypted['provider'],
         decrypted['model'],
-        typeof decrypted['provider'] === 'string' ? merged[decrypted['provider']] : undefined,
+        typeof decrypted['provider'] === 'string' ? persisted[decrypted['provider']] : undefined,
       ]);
       clearStaleProviderDefaults(decrypted, { preservePrimary: primaryBefore === primaryAfter });
       const encrypted = encryptConfigSecrets(decrypted, vault);
@@ -175,6 +191,31 @@ export async function saveProviders(
   );
   writeChain = write.catch(() => undefined);
   await write;
+}
+
+/**
+ * Put back ciphertext for secrets the caller never saw.
+ *
+ * `blank` is what the caller was handed (undecryptable secrets as `''`),
+ * `kept` is the same file with those secrets still as ciphertext. Wherever
+ * `next` still holds the blank `''` the caller received, the ciphertext is
+ * restored — an edit to a provider's model must not erase a key stored under
+ * another or rotated vault key. A value the caller actually changed wins.
+ */
+function restoreUndecryptableSecrets(next: unknown, blank: unknown, kept: unknown): unknown {
+  if (next === '' && blank === '' && typeof kept === 'string' && kept !== '') return kept;
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return next;
+  if (!blank || typeof blank !== 'object' || !kept || typeof kept !== 'object') return next;
+  const out: Record<string, unknown> = { ...(next as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(out)) {
+    if (!Object.hasOwn(blank, key) || !Object.hasOwn(kept, key)) continue;
+    out[key] = restoreUndecryptableSecrets(
+      value,
+      (blank as Record<string, unknown>)[key],
+      (kept as Record<string, unknown>)[key],
+    );
+  }
+  return out;
 }
 
 // createProviderConfigIO (the standalone boot-phase helper) lives in

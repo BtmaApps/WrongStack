@@ -188,10 +188,18 @@ export function explainPermissionTrace(
 
   const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
   const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
-  const scope =
+  const matchedScope =
     entry?.allow && !denyUnevaluated && allowUnexpired
       ? matchingApprovalScope(entry.allow, tool, input, ctx)
       : undefined;
+  // Mirror of evaluate(): a broad scope does not cover a sensitive read.
+  const scope =
+    matchedScope !== undefined &&
+    matchedScope !== 'exact' &&
+    !state.yolo &&
+    state.isSensitiveReadCall(tool, input)
+      ? undefined
+      : matchedScope;
   if (scope) {
     const destructive =
       scope !== 'exact' &&

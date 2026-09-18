@@ -3,6 +3,14 @@ import type { AgentContext } from '../types/context.js';
 import type { Tool } from '../types/tool.js';
 
 const PREFIX = 'wrongstack-approval:v1:';
+
+/**
+ * How long a prompt-driven "always" answer stays valid (W6 #9). Every surface
+ * that persists such an answer — the policy's own prompt, the executor's
+ * confirm awaiter and the pending-confirm resolver — must pass it; without it
+ * the rule is permanent, which only a hand-authored trust.json entry may be.
+ */
+export const DEFAULT_ALWAYS_TRUST_TTL_MS = 24 * 60 * 60 * 1000;
 export const isPersistentApproval = (decision: string): boolean =>
   ['always', 'always-exact', 'always-command', 'always-tool'].includes(decision);
 export const isScopedApprovalPattern = (pattern: string): boolean => pattern.startsWith(PREFIX);

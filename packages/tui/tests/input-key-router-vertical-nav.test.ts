@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_INPUT_PROMPT, inputContentWidth, type KeyEvent } from '../src/components/input.js';
-import { routeInputKey, type InputKeyRouterHost } from '../src/input-key-router.js';
+import { type InputKeyRouterHost, routeInputKey } from '../src/input-key-router.js';
 import { layoutInputRows } from '../src/input-tokens.js';
 
 /**
@@ -105,7 +105,9 @@ describe('input vertical navigation with the production prompt', () => {
   });
 
   it('Down on the last row consumes the key without moving', async () => {
-    expect(await press(BUFFER, 226, 'downArrow')).toEqual(caretPos(BUFFER, 226, DEFAULT_INPUT_PROMPT));
+    expect(await press(BUFFER, 226, 'downArrow')).toEqual(
+      caretPos(BUFFER, 226, DEFAULT_INPUT_PROMPT),
+    );
     const { host, drafts } = makeHost(BUFFER, 226, DEFAULT_INPUT_PROMPT);
     expect(await routeInputKey(host, '', arrowKey('downArrow'))).toBe(true);
     expect(drafts).toHaveLength(0);
@@ -121,5 +123,19 @@ describe('input vertical navigation with the production prompt', () => {
 
   it('stays correct for an empty prompt (legacy walk boundary)', async () => {
     expect(await press(BUFFER, 76, 'downArrow', '')).toEqual({ row: 2, col: 0 });
+  });
+});
+
+describe('display column navigation', () => {
+  it('uses terminal columns after a wide character', async () => {
+    const { host, drafts } = makeHost('界a\n12345', 2, '');
+    await routeInputKey(host, '', arrowKey('downArrow'));
+    expect(drafts).toEqual([{ buffer: '界a\n12345', cursor: 6 }]);
+  });
+
+  it('can reach the end of a shorter first row including its prompt', async () => {
+    const { host, drafts } = makeHost('abc\n123456', 9, '❯ ');
+    await routeInputKey(host, '', arrowKey('upArrow'));
+    expect(drafts).toEqual([{ buffer: 'abc\n123456', cursor: 3 }]);
   });
 });
