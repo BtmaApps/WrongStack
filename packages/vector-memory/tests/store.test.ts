@@ -132,6 +132,50 @@ describe('VectorMemoryStore', () => {
     expect(report2.skipped).toBe(2);
   });
 
+  it('serializes concurrent syncFromSage calls — no spurious UNIQUE failures', async () => {
+    // Regression: syncFromSage used to run its dedup-check → INSERT pair
+    // outside the host-OS file lock. Two concurrent syncs (e.g. two surfaces
+    // force-syncing) both passed the pre-check across the `await embed()`
+    // gap and the loser died on the UNIQUE content_hash index — a spurious
+    // partial-failure that kept the first-boot sync marker from completing.
+    class LatentFakeProvider extends FakeEmbeddingProvider {
+      override async embed(texts: string[]): Promise<Float32Array[]> {
+        // Widen the async gap between the dedup check and the INSERT so the
+        // interleaving two concurrent syncs race through is deterministic.
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        return super.embed(texts);
+      }
+    }
+    const projectRoot = path.join(
+      os.tmpdir(),
+      `wrongstack-vm-${testRunId}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    const concurrentStore = new VectorMemoryStore({
+      provider: new LatentFakeProvider({ dimensions: 64 }),
+      projectRoot,
+    });
+    try {
+      const sage: SageSyncSource = {
+        listActiveMemories: async () => [
+          { id: 'sage-1', text: 'shared fact', tags: ['sage'] },
+          { id: 'sage-2', text: 'another fact' },
+        ],
+      };
+      const [r1, r2] = await Promise.all([
+        concurrentStore.syncFromSage(sage),
+        concurrentStore.syncFromSage(sage),
+      ]);
+      expect(r1.failed).toBe(0);
+      expect(r2.failed).toBe(0);
+      expect([...r1.errors, ...r2.errors]).toEqual([]);
+      const stats = concurrentStore.stats();
+      expect(stats.entries).toBe(2);
+      expect(stats.vectors).toBe(2);
+    } finally {
+      concurrentStore.close();
+    }
+  });
+
   it('records the active provider id in schema_meta', () => {
     expect(store.activeProviderId).toMatch(/^fake-v1-/);
   });

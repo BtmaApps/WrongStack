@@ -733,14 +733,27 @@ export class VectorMemoryStore {
           skipped++;
           continue;
         }
-        await this.rememberUnlocked({
-          text: memory.text,
-          summary: memory.summary ?? undefined,
-          metadata: { source: 'sage', sageId: memory.id, ...(memory.metadata ?? {}) },
-          tags: memory.tags ?? [],
-          scope: 'project',
-          kind: 'note',
-        });
+        // The dedup-check → INSERT pair is a read-modify-write, so it runs
+        // under the same host-OS file lock as `remember()` (see the class
+        // header). Unlocked, two concurrent syncs (e.g. two surfaces
+        // force-syncing) both pass the pre-check across the `await embed()`
+        // gap and the loser dies on the UNIQUE content_hash index — a
+        // spurious partial-failure that keeps the first-boot sync marker
+        // from ever completing. Per-entry (not whole-walk) locking keeps
+        // live mirror writes responsive during a long corpus walk.
+        await withFileLock(
+          this.lockPath,
+          () =>
+            this.rememberUnlocked({
+              text: memory.text,
+              summary: memory.summary ?? undefined,
+              metadata: { source: 'sage', sageId: memory.id, ...(memory.metadata ?? {}) },
+              tags: memory.tags ?? [],
+              scope: 'project',
+              kind: 'note',
+            }),
+          { timeoutMs: DEFAULT_LOCK_TIMEOUT_MS },
+        );
         indexed++;
       } catch (err) {
         failed++;
