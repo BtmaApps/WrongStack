@@ -78,6 +78,12 @@ async function main() {
     const dependencyTarget = path.join(installRoot, 'node_modules', 'web-tree-sitter');
     mkdirSync(path.dirname(dependencyTarget), { recursive: true });
     symlinkSync(treeSitterPackage, dependencyTarget, 'junction');
+    // The parser locates its grammars through @wrongstack/persistence's
+    // standalone-binary-aware `moduleUrlFor`, so link that declared workspace
+    // dependency (built by `pnpm build` earlier in release:check) as well.
+    const persistenceTarget = path.join(installRoot, 'node_modules', '@wrongstack', 'persistence');
+    mkdirSync(path.dirname(persistenceTarget), { recursive: true });
+    symlinkSync(path.join(repoRoot, 'packages', 'persistence'), persistenceTarget, 'junction');
 
     const wasmDir = path.join(installedTools, 'dist', 'wasm');
     if (!existsSync(wasmDir)) throw new Error(`Packed tools artifact is missing ${wasmDir}.`);

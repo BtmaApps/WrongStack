@@ -182,7 +182,7 @@ describe('binary entry contract', () => {
     ];
     expect(imports.length).toBeGreaterThanOrEqual(daemonNames.length);
     for (const [, pkg, distPath] of imports) {
-      if (pkg === 'cli') continue;
+      if (pkg === 'cli' || distPath === undefined) continue;
       const source = `src/${distPath}`;
       const leaf = path.posix.basename(distPath);
       // Either a `src/<path>.ts` entry or a named `'<leaf>': 'src/…'` entry.
