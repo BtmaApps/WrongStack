@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.22] — 2026-09-19
+
+### Fixed
+
+- **`/clear` failed with `EPERM` in the standalone binary on Windows.** The
+  binary ran without the session-catalog daemon, and clearing rewrote a
+  transcript that was still open elsewhere. The binary now uses the daemon, and
+  clearing moves the live files aside first, so it works even without one.
+- **Worktree squash merges on machines with no git identity** failed before
+  touching the tree and were then treated as a resolved conflict — committing
+  the managed worktrees under `.wrongstack/` as gitlinks. Merges now carry the
+  identity fallback, a failed merge with no conflicted files is reported as a
+  failure, and only the conflicted files are staged after resolution.
+- **Installers put the binary first on `PATH`** and list any older npm/pnpm/bun
+  `wstack` that could still shadow it.
+
 ## [1.0.21] — 2026-09-18
 
 ### Added
