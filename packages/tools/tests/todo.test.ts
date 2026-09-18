@@ -320,6 +320,88 @@ describe('todo tool', () => {
     expect(board?.tasks.find((task) => task.origin?.taskId === 'todo-1')?.columnId).toBe('done');
   });
 
+  it('does not duplicate a foreign-bound todo row onto the active managed board', async () => {
+    sb.ctx.agentId = 'test-agent';
+    sb.ctx.setCurrentKanbanTask = (taskId, boardId) => {
+      sb.ctx.currentKanbanTaskId = taskId;
+      sb.ctx.currentKanbanBoardId = boardId;
+      sb.ctx.meta['kanban'] = { taskId, boardId };
+    };
+    const managedColumns = [
+      { id: 'backlog', title: 'Backlog', order: 0 },
+      { id: 'todo', title: 'Todo', order: 1 },
+      { id: 'running', title: 'Running', order: 2 },
+      { id: 'review', title: 'Review', order: 3 },
+      { id: 'done', title: 'Done', order: 4 },
+    ];
+    const managedLifecycle = {
+      mode: 'managed' as const,
+      columns: {
+        backlog: 'backlog',
+        todo: 'todo',
+        running: 'in-progress',
+        review: 'review',
+        done: 'done',
+      },
+    };
+    // The work already has a real card on another managed board.
+    const foreign = await createBoard(sb.dir, {
+      title: 'Foreign source board',
+      columns: managedColumns,
+      lifecycle: managedLifecycle,
+    });
+    const tracked = await addTask(sb.dir, foreign.id, {
+      title: 'Auth flow',
+      description: 'Tracked on the foreign board.',
+    });
+    const active = await createBoard(sb.dir, {
+      title: 'Active board',
+      columns: managedColumns,
+      lifecycle: managedLifecycle,
+    });
+    sb.ctx.currentKanbanBoardId = active.id;
+    sb.ctx.todos.length = 0;
+    sb.ctx.todos.push({
+      id: 't1',
+      content: 'Auth flow',
+      status: 'pending',
+      kanbanBoardId: foreign.id,
+      kanbanTaskId: tracked!.task.id,
+    });
+
+    const before = await getBoard(sb.dir, active.id);
+    const beforeIds = new Set(before!.tasks.map((task) => task.id));
+    const out = await todoTool.execute(
+      {
+        todos: [
+          {
+            id: 't1',
+            content: 'Auth flow',
+            status: 'pending',
+            kanbanBoardId: foreign.id,
+            kanbanTaskId: tracked!.task.id,
+          },
+        ],
+      },
+      sb.ctx,
+      { signal: newSignal() },
+    );
+
+    // bindTodosToBoard preserves foreign-board bindings; card creation must
+    // respect them too — no phantom duplicate card on the active board, and
+    // the output must not claim the row for it.
+    const after = await getBoard(sb.dir, active.id);
+    expect(after!.tasks.filter((task) => !beforeIds.has(task.id))).toEqual([]);
+    expect(
+      out.kanban_bindings?.some(
+        (binding) => binding.todoId === 't1' && binding.boardId === active.id,
+      ) ?? false,
+    ).toBe(false);
+    expect(
+      (await getBoard(sb.dir, foreign.id))?.tasks.some((task) => task.id === tracked!.task.id),
+    ).toBe(true);
+  });
+
   it('advances the real managed cards and rebinds runtime context when todo progress moves', async () => {
     sb.ctx.agentId = 'test-agent';
     sb.ctx.agentName = 'Test Agent';

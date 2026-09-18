@@ -177,7 +177,12 @@ async function createMissingManagedCards(
 ): Promise<Map<string, string>> {
   const created = new Map<string, string>();
   for (const item of items) {
-    if (item.kanbanBoardId === board.id && item.kanbanTaskId) continue;
+    // Any row that already carries a card binding is tracked work — including
+    // rows bound to a DIFFERENT managed board. bindTodosToBoard above
+    // deliberately preserves foreign-board bindings; re-opening a card here
+    // would orphan the real card on its own board and double-track the todo
+    // (the same phantom-second-card harm the dedup guard upstream prevents).
+    if (item.kanbanBoardId && item.kanbanTaskId) continue;
     try {
       // A managed board rejects a card without a description, so derive one
       // rather than letting creation fail and silently drop the row.
