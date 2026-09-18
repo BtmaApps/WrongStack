@@ -137,6 +137,23 @@ jobs:
           fi
           echo "pnpm $pinned clears the $floor OIDC floor."
 
+  # The full release gate (release:check). Only the npm path waits on it: the
+  # standalone binaries are validated by their own cross-platform smoke in
+  # binaries.yml, so an unrelated red suite does not hold back a GitHub release.
+  gate:
+    name: Release gate
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
+        with:
+          # The SHA `verify` validated — same anti-movable-tag rule as publish.
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
@@ -159,7 +176,7 @@ jobs:
 
   pack:
     name: Pack npm tarballs
-    needs: verify
+    needs: [verify, gate]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -93,8 +93,11 @@ unexpanded placeholder as a bearer token, so the OIDC exchange never happens.
 The same tag also builds one self-contained executable per platform — Bun
 runtime, CLI, every project daemon, all surfaces and the package assets in a
 single file — and publishes them as GitHub release assets. This path does not
-touch npm: the `github-release` job depends on the binary jobs, not on the npm
-`publish` job, so a registry problem cannot hold a release back.
+touch npm: the `github-release` job depends on the tag checks (`verify`) and the
+binary jobs only. The full `release:check` runs as the separate `gate` job,
+which only the npm `pack`/`publish` path waits on — a registry problem or an
+unrelated red suite cannot hold a binary release back, while every shipped
+binary still has to pass the cross-platform smoke.
 
 | Job | What it does |
 | --- | --- |
