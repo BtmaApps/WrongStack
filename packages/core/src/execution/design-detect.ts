@@ -236,8 +236,8 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
             out.result.content +=
               '\n\n⚠️ Design Studio: no kit is pinned, so frontend writes are NOT being ' +
               'design-checked — this is "unverified", not "clean". Pin one with the `design` ' +
-              'tool (`list` to see the roster, `use` to pin) before judging the result, or ' +
-              'state explicitly that the screen is going out unchecked.';
+              "tool for a new design system, or review against the project's existing tokens. " +
+              'Do not replace an established system merely to obtain a scanner score.';
           }
           return out;
         }
@@ -268,8 +268,9 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
         const axes = [...new Set(report.violations.map((v) => v.axis ?? 'color'))].join(', ');
         out.result.content +=
           `\n\n⚠️ Design Studio (kit "${state.activeKit}"): ${report.violations.length} ` +
-          `design-token issue(s) [${axes}] in ${rel}. Use the kit's scale tokens (or the ` +
-          `materialized CSS vars / utilities) instead:\n${top}${more}`;
+          `source finding(s) [${axes}] in ${rel}. Check token drift against the active theme; ` +
+          `composition findings are review prompts, not proof of poor design. Keep intentional ` +
+          `patterns justified by the brief and inspect the rendered result:\n${top}${more}`;
       } catch {
         // best-effort — never break a tool result
       }
@@ -281,11 +282,50 @@ export function makeDesignVerifyToolCallMiddleware(): Middleware<ToolCallPipelin
 const BASELINE = [
   '**Non-negotiable baseline (every UI you write):**',
   '- Mobile-first & fully responsive; respect safe-area insets on native.',
-  '- Ship BOTH light and dark themes from one token set (no hard-coded colors).',
-  '- WCAG 2.2 AA: semantic markup, focus-visible, 4.5:1 contrast, labelled controls, hit targets ≥44px.',
+  "- Preserve the project's stack, components, tokens and supported themes; do not introduce a redesign for a local UI change.",
+  '- Meet applicable WCAG 2.2 AA: semantic markup, keyboard operation, visible focus, contrast and labelled controls.',
   '- Tasteful motion with `prefers-reduced-motion` honored.',
-  '- Use current stack defaults (e.g. web: React 19 + Tailwind v4 `@theme`/OKLCH + shadcn/ui + Motion).',
+  "- Choose dependencies only when needed by the task, using the project's installed versions.",
 ].join('\n');
+
+const CRAFT_GUIDANCE = [
+  '## Design quality beyond tokens',
+  'Use `design-craft` for substantial UI work and `design-critique` to review the result. ' +
+    'For a small edit, match the established system without a new design ceremony.',
+  'Before a new screen or redesign, record the audience, primary task, real content, ' +
+    'layout hierarchy, product-specific visual idea and acceptance checks in `.design/brief.md`. ' +
+    'Inspect supplied references; label assumptions and never invent testimonials, metrics or research.',
+  "Originality should come from the product's content and workflow. Repeated rows, symmetry, " +
+    'gradients and restrained styling can be correct; do not add novelty merely to evade a heuristic.',
+  'Before delivery, inspect the rendered UI at relevant desktop, narrow and short viewports; ' +
+    'exercise keyboard and loading/empty/error/overflow states. Fix the highest-impact problems ' +
+    'and recheck. Report observed evidence and unverified states; a source scan cannot certify visual quality.',
+].join('\n');
+
+/** Fresh on every turn so revised decisions survive kit switches and compaction. */
+async function readDesignBrief(projectRoot: string): Promise<string> {
+  try {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const file = await fs.open(path.join(projectRoot, '.design', 'brief.md'), 'r');
+    try {
+      // Bound both IO and prompt size; a full brief remains available via read.
+      const buffer = Buffer.alloc(6001);
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+      const excerpt = buffer.subarray(0, Math.min(bytesRead, 6000)).toString('utf8').trim();
+      return excerpt
+        ? `\n\n## Project design brief (.design/brief.md)\n${excerpt}` +
+            (bytesRead > 6000
+              ? '\n[Brief truncated; read `.design/brief.md` before changing its decisions.]'
+              : '')
+        : '';
+    } finally {
+      await file.close();
+    }
+  } catch {
+    return '';
+  }
+}
 
 /**
  * request middleware: per-turn, inject the kit menu (until a kit is chosen) or a
@@ -334,11 +374,14 @@ export function makeDesignStudioRequestMiddleware(deps: {
           '',
           BASELINE,
           '',
-          'Next: call `design list` to review, then `design use <kit-id> --stack <stack>` to load the ' +
-            'full spec, then implement it faithfully. A user can also pin one with `/design <kit-id>`.',
+          'First inspect the existing design system and reuse it. For greenfield work or an ' +
+            'authorized system replacement, call `design list`, then `design use <kit-id> --stack <stack>` ' +
+            'and materialize its tokens. A user can also pin one with `/design <kit-id>`.',
         ];
         text = parts.join('\n');
       }
+
+      text += `\n\n${CRAFT_GUIDANCE}${await readDesignBrief(ctx.projectRoot)}`;
 
       // Project-local design rules (.design/rules.md) override kit defaults.
       const rules = await loadProjectDesignRules(ctx.projectRoot).catch(() => undefined);

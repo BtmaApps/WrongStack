@@ -22,6 +22,10 @@ const ensembleList = vi.fn();
 const runAcpBench = vi.fn();
 const renderAcpBenchText = vi.fn(() => 'BENCH_TEXT');
 const probeAcpAgents = vi.fn();
+const authCmd = vi.fn(async () => 0);
+vi.mock('../src/subcommands/handlers/auth.js', () => ({
+  authCmd: (...args: unknown[]) => (authCmd as (...args: unknown[]) => unknown)(...args),
+}));
 vi.mock('@wrongstack/acp', () => ({
   runEnsemble: (...a: unknown[]) => runEnsemble(...a),
   runOneAcpTask: (...a: unknown[]) => runOneAcpTask(...a),
@@ -175,6 +179,20 @@ beforeEach(() => {
 });
 
 describe('acpCmd — dispatch', () => {
+  it('does not silently start an echo server when provider configuration is missing', async () => {
+    const deps = fakeDeps();
+    expect(await acpCmd([], deps)).toBe(1);
+    expect(flattenWriteErrorCalls(deps)).toContain('wstack auth');
+  });
+
+  it.each([['auth'], ['server', 'auth'], ['serve', 'auth']])(
+    'routes appended terminal login args %j to auth',
+    async (...args) => {
+      const deps = fakeDeps();
+      expect(await acpCmd(args, deps)).toBe(0);
+      expect(authCmd).toHaveBeenCalledWith([], deps);
+    },
+  );
   it('shows help for `acp help`', async () => {
     const deps = fakeDeps();
     const code = await acpCmd(['help'], deps);

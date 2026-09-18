@@ -57,6 +57,15 @@ describe('resolveTypeSafeRoute', () => {
 });
 
 describe('resolveTypeSafeAccount', () => {
+  it.each(['not a URL', 'file:///tmp/jev', 'https://user:secret@proxy.test/decisions'])(
+    'reports an unusable endpoint: %s',
+    (endpoint) => {
+      expect(
+        resolveTypeSafeAccount({ config: { typesafe: { endpoint, apiKey: 'k' } }, env: noEnv })
+          .status,
+      ).toBe('unusable');
+    },
+  );
   it('reports unconfigured when nothing is set, naming the variable to set', () => {
     const account = resolveTypeSafeAccount({ config: {}, env: noEnv });
     expect(account.status).toBe('unconfigured');

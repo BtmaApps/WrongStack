@@ -6,7 +6,7 @@
 # The skill is bundled with @wrongstack/core at:
 #   packages/core/skills/wrongstack-mailbox/SKILL.md
 #
-# This script copies that file into the target directory under
+# This script copies the skill and its bundled references under
 #   <target>/wrongstack-mailbox/SKILL.md
 #
 # Usage:
@@ -46,6 +46,10 @@ DEST_FILE="${DEST_DIR}/SKILL.md"
 
 mkdir -p "${DEST_DIR}"
 cp -f "${SOURCE}" "${DEST_FILE}"
+if [[ -d "$(dirname "${SOURCE}")/references" ]]; then
+  mkdir -p "${DEST_DIR}/references"
+  cp -R "$(dirname "${SOURCE}")/references/." "${DEST_DIR}/references/"
+fi
 
 echo "Installed wrongstack-mailbox skill → ${DEST_FILE}"
 echo

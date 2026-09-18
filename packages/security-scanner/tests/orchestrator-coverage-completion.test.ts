@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { validateSkillDocument } from '@wrongstack/core/skills';
 import type { Provider, Request, Response } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BatchScanner } from '../src/batch-scanner.js';
@@ -91,10 +92,12 @@ describe('orchestrator branch completion', () => {
     );
     expect(generated).toMatchObject({
       name: 'security-scanner-python',
-      description: 'Security scanner for python',
+      description: 'Use when scanning python projects for security issues.',
       patterns: [],
       metadata: { targetFiles: [] },
     });
+
+    expect(validateSkillDocument(generated.content.content, generated.name)).toEqual([]);
 
     const fallback = await defaultSkillGenerator.generateSkillLLM(
       provider('{invalid}'),

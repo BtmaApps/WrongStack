@@ -46,12 +46,12 @@ Copy the `→ /skill-install ...` line. The install ref is a plain `user/repo`
 
 ## Registries
 
-The default registry is **skills.sh** (the open agent-skills marketplace backed
-by [mastra-ai/skills-api](https://github.com/mastra-ai/skills-api), indexing
-34k+ skills from 2.8k+ repos). The GitHub-direct adapter is always present as
-the fallback install path but does not contribute search results.
+The default registry is [skills.sh](https://www.skills.sh/docs). WrongStack
+uses its search API and returns skill-specific installation references such as
+`owner/repo#skill-name`. The GitHub-direct adapter is always present as the
+fallback install path but does not contribute search results.
 
-Point at a self-hosted skills-api instance via `config.skills.registryUrl`
+Point at a compatible custom registry via `config.skills.registryUrl`
 (in the active profile config — **not** the repo-committed `.wrongstack/config.json`,
 which is stripped because the parsed response flows into the prompt):
 

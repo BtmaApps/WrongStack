@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SKILL_LIMITS } from '../../src/skills/limits.js';
 
 const fetcherMocks = vi.hoisted(() => ({
   downloadGitHubTarball: vi.fn(),
@@ -77,6 +78,87 @@ async function seedMultiSkillRepo(dir: string, names: string[]): Promise<void> {
 // ── install ─────────────────────────────────────────────────────────────────
 
 describe('SkillInstaller.install', () => {
+  it('preserves all resources from a single-skill repository', async () => {
+    await seedSingleSkillRepo(mockRepoDir, 'portable');
+    await fs.mkdir(path.join(mockRepoDir, 'scripts'));
+    await fs.writeFile(path.join(mockRepoDir, 'scripts', 'check.py'), 'print("ok")');
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
+    await mkInstaller().install('user/portable');
+    expect(
+      await fs.readFile(path.join(projectSkillsDir, 'portable/scripts/check.py'), 'utf8'),
+    ).toBe('print("ok")');
+  });
+
+  it('keeps the existing installation when replacement validation fails', async () => {
+    await seedSingleSkillRepo(mockRepoDir, 'stable');
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
+    const installer = mkInstaller();
+    await installer.install('user/stable');
+    const replacement = await fs.mkdtemp(path.join(tmpRoot, 'replacement-'));
+    await seedSingleSkillRepo(replacement, 'stable');
+    await fs.writeFile(
+      path.join(replacement, 'too-large.bin'),
+      Buffer.alloc(SKILL_LIMITS.MAX_SKILL_FILE_SIZE + 1),
+    );
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: replacement });
+    await expect(installer.install('user/stable@v2')).rejects.toThrow(/too large/);
+    expect(await fs.readFile(path.join(projectSkillsDir, 'stable/SKILL.md'), 'utf8')).toContain(
+      'name: stable',
+    );
+    expect((await installer.listInstalled())[0]?.ref).toBe('main');
+  });
+
+  it('installs only the selected skill from a registry repository', async () => {
+    await seedMultiSkillRepo(mockRepoDir, ['first', 'second']);
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
+    await fs.writeFile(
+      path.join(mockRepoDir, 'skills/first/oversized.bin'),
+      Buffer.alloc(SKILL_LIMITS.MAX_SKILL_FILE_SIZE + 1),
+    );
+    const result = await mkInstaller().install('user/repo#second');
+    expect(result.map((skill) => skill.name)).toEqual(['second']);
+    await expect(fs.access(path.join(projectSkillsDir, 'first'))).rejects.toThrow();
+  });
+
+  it('keeps identical project skill names isolated in a shared profile manifest', async () => {
+    const first = mkInstaller();
+    await seedSingleSkillRepo(mockRepoDir, 'shared');
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
+    await first.install('user/first');
+    const otherRoot = path.join(tmpRoot, 'other-skills');
+    const second = new SkillInstaller({
+      manifestPath,
+      projectSkillsDir: otherRoot,
+      globalSkillsDir,
+      projectHash: 'hash-2',
+    });
+    const otherRepo = await fs.mkdtemp(path.join(tmpRoot, 'other-repo-'));
+    await seedSingleSkillRepo(otherRepo, 'shared');
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: otherRepo });
+    await second.install('user/second');
+    expect((await first.listInstalled())[0]?.source).toBe('github:user/first');
+    expect((await second.listInstalled())[0]?.source).toBe('github:user/second');
+    await second.uninstall('shared');
+    expect(await first.listInstalled()).toHaveLength(1);
+    expect(await fs.readFile(path.join(projectSkillsDir, 'shared/SKILL.md'), 'utf8')).toContain(
+      'name: shared',
+    );
+  });
+
+  it('updates a selected skill without reinstalling its siblings', async () => {
+    await seedMultiSkillRepo(mockRepoDir, ['first', 'second']);
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
+    const installer = mkInstaller();
+    await installer.install('user/repo');
+    const replacement = await fs.mkdtemp(path.join(tmpRoot, 'update-'));
+    await seedMultiSkillRepo(replacement, ['first', 'second']);
+    await fs.writeFile(path.join(replacement, 'skills/second/extra.md'), 'changed sibling');
+    fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: replacement });
+    expect((await installer.update('first')).updated.map((skill) => skill.name)).toEqual(['first']);
+    expect(await fs.readFile(path.join(projectSkillsDir, 'second/extra.md'), 'utf8')).toBe(
+      'extra content',
+    );
+  });
   it('installs a single-skill repo (SKILL.md at root) into project scope', async () => {
     await seedSingleSkillRepo(mockRepoDir, 'alpha');
     fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
@@ -153,7 +235,7 @@ describe('SkillInstaller.install', () => {
     await expect(fs.access(mockRepoDir)).rejects.toThrow();
   });
 
-  it('rejects skill files larger than the 100KB limit', async () => {
+  it('rejects skill files larger than the package file limit', async () => {
     // Build a multi-skill layout where one file is too large
     const sdir = path.join(mockRepoDir, 'skills', 'big');
     await fs.mkdir(sdir, { recursive: true });
@@ -161,7 +243,10 @@ describe('SkillInstaller.install', () => {
       path.join(sdir, 'SKILL.md'),
       `---\nname: big\ndescription: too-big\n---\n# big`,
     );
-    await fs.writeFile(path.join(sdir, 'huge.bin'), 'x'.repeat(150 * 1024));
+    await fs.writeFile(
+      path.join(sdir, 'huge.bin'),
+      'x'.repeat(SKILL_LIMITS.MAX_SKILL_FILE_SIZE + 1),
+    );
     fetcherMocks.downloadGitHubTarball.mockResolvedValue({ tempDir: mockRepoDir });
     const inst = mkInstaller();
     await expect(inst.install('user/big')).rejects.toThrow(/too large/);

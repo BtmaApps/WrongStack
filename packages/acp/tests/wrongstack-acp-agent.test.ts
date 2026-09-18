@@ -122,4 +122,32 @@ describe('WrongStackACPServer', () => {
     await server.stop();
     expect(t.close).toHaveBeenCalled();
   });
+
+  it('dispatches cancellation while a stdio prompt is still running', async () => {
+    const server = new WrongStackACPServer();
+    const t = lastTransport();
+    const handler = lastHandler();
+    let finish!: (value: boolean) => void;
+    const prompt = new Promise<boolean>((resolve) => {
+      finish = resolve;
+    });
+    handler.handleMessage.mockImplementation(async (message: ACPMessage) => {
+      if (message.method === 'session/prompt') return prompt;
+      if (message.method === 'session/cancel') finish(false);
+      return false;
+    });
+    t.read
+      .mockResolvedValueOnce({ id: 1, method: 'session/prompt' })
+      .mockResolvedValueOnce({ method: 'session/cancel' })
+      .mockResolvedValueOnce(null);
+    const running = server.start();
+    try {
+      await vi.waitFor(() => expect(handler.handleMessage).toHaveBeenCalledTimes(2), {
+        timeout: 500,
+      });
+    } finally {
+      finish(false);
+      await running;
+    }
+  });
 });

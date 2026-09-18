@@ -306,7 +306,7 @@ export class ACPSession {
       agentInfo?: { name: string; title?: string | undefined; version: string };
       authMethods?: AuthMethod[];
     };
-    if (r.protocolVersion > ACP_PROTOCOL_VERSION) {
+    if (r.protocolVersion !== ACP_PROTOCOL_VERSION) {
       throw new ACPSessionError(
         'unsupported_capability',
         `agent requires protocolVersion=${r.protocolVersion}, client supports up to ${ACP_PROTOCOL_VERSION}`,
@@ -342,6 +342,12 @@ export class ACPSession {
       throw new ACPSessionError(
         'auth_failed',
         `auth method "${methodId}" not in advertised methods: ${this.authMethods.map((m) => m.id).join(', ')}`,
+      );
+    }
+    if (this.authMethods.find((m) => m.id === methodId)?.type === 'terminal') {
+      throw new ACPSessionError(
+        'auth_failed',
+        'Terminal authentication requires interactive login followed by reconnect; it cannot use authenticate',
       );
     }
 
@@ -469,6 +475,24 @@ export class ACPSession {
 
     if (signal.aborted) {
       return emptyRunResult('cancelled');
+    }
+
+    const caps = this.agentCapabilities.promptCapabilities;
+    for (const block of blocks) {
+      const supported =
+        block.type === 'image'
+          ? caps?.image
+          : block.type === 'audio'
+            ? caps?.audio
+            : block.type === 'resource'
+              ? caps?.embeddedContext
+              : true;
+      if (supported !== true) {
+        throw new ACPSessionError(
+          'unsupported_capability',
+          `agent does not support ${block.type} prompt content`,
+        );
+      }
     }
 
     // Declared early so the onAbort closure captures it (must be before
@@ -875,7 +899,7 @@ export class ACPSession {
     const setupArgs = terminal?.args?.length ? terminal.args.join(' ') : undefined;
     const setup =
       setupArgs !== undefined
-        ? `${this.opts.command} ${setupArgs}`
+        ? `${this.opts.command}${this.opts.args?.length ? ` ${this.opts.args.join(' ')}` : ''} ${setupArgs}`
         : `${this.opts.command}${this.opts.args?.length ? ` ${this.opts.args.join(' ')}` : ''}`;
     throw new ACPSessionError(
       'auth_failed',
@@ -972,7 +996,7 @@ export class ACPSession {
 
     if (isBestEffortAckMethod(msg.method)) {
       if (msg.id !== undefined) {
-        this.sendResult(msg.id, {}).catch(() => {});
+        this.sendErrorResponse(msg.id, -32601, `Unsupported method: ${msg.method}`).catch(() => {});
       }
       return;
     }
@@ -982,6 +1006,12 @@ export class ACPSession {
     }
 
     if (msg.method) {
+      if (msg.id !== undefined) {
+        void this.sendErrorResponse(msg.id, -32601, `Unsupported method: ${msg.method}`).catch(
+          () => {},
+        );
+        return;
+      }
       // eslint-disable-next-line no-console
       console.warn(
         JSON.stringify({

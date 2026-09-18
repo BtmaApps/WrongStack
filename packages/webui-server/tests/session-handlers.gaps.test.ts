@@ -535,6 +535,47 @@ describe('createSessionHandlers — resume, save, inspect', () => {
     expect(res?.payload['message']).toBe('Resumed session sess_resumed');
   });
 
+  it.each([
+    { provider: 'unknown', model: 'unknown' },
+    { provider: 'unknown', model: 'saved-model' },
+    { provider: 'saved-provider', model: 'unknown' },
+  ])('resumes incomplete route metadata for both web clients: %j', async (metadata) => {
+    const messages = [
+      { role: 'user', content: 'saved question' },
+      { role: 'assistant', content: 'saved answer' },
+    ];
+    const h = makeHarness({
+      store: {
+        resume: async () => ({
+          writer: writer('sess_resumed'),
+          data: { metadata, messages, events: [] },
+        }),
+        list: async () => [],
+      },
+    });
+    const provider = h.context.provider;
+    await h.routes.resumeSession(
+      h.ws as never,
+      {
+        type: 'session.resume',
+        payload: { id: 'sess_resumed' },
+      } as never,
+    );
+    expect(h.current().id).toBe('sess_resumed');
+    expect(h.context.provider).toBe(provider);
+    expect(h.context.state.replaceMessages).toHaveBeenCalledWith(messages);
+    const start = h.broadcasts.find((message) => message.type === 'session.start');
+    expect(start?.payload).toMatchObject({
+      sessionId: 'sess_resumed',
+      provider: 'test-provider',
+      model: 'test-model',
+    });
+    expect(JSON.stringify(start?.payload)).toContain('saved answer');
+    expect(
+      h.sent.find((message) => message.type === 'key.operation_result')?.payload,
+    ).toMatchObject({ success: true });
+  });
+
   it('rolls back the claim when resuming fails', async () => {
     const release = vi.fn(async () => undefined);
     const h = makeHarness({

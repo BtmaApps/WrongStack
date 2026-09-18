@@ -45,6 +45,7 @@ export function handleAcpSessionUpdate(
       }
       return;
     }
+    case 'agent_thought_chunk':
     case 'thought_chunk': {
       const text = extractText(u.content);
       if (text) {

@@ -508,12 +508,19 @@ export async function resumeSession(
     // gracefully fall back to the active working provider/model.
     setStage('restore_model');
     const currentProviderId = (agent.ctx.provider as { id?: string }).id;
-    const targetProviderId =
-      typeof meta.provider === 'string' && meta.provider.length > 0
-        ? meta.provider
-        : currentProviderId;
-    const targetModel =
-      typeof meta.model === 'string' && meta.model.length > 0 ? meta.model : agent.ctx.model;
+    // Storage summaries use "unknown" when a journal has no route metadata.
+    // Treat that sentinel as missing, never as a provider to instantiate.
+    // Restore only a complete pair: mixing a saved model with the current
+    // provider (or vice versa) can produce an incompatible route.
+    const savedProvider = typeof meta.provider === 'string' ? meta.provider.trim() : '';
+    const savedModel = typeof meta.model === 'string' ? meta.model.trim() : '';
+    const hasSavedRoute =
+      savedProvider.length > 0 &&
+      savedProvider.toLowerCase() !== 'unknown' &&
+      savedModel.length > 0 &&
+      savedModel.toLowerCase() !== 'unknown';
+    const targetProviderId = hasSavedRoute ? savedProvider : currentProviderId;
+    const targetModel = hasSavedRoute ? savedModel : agent.ctx.model;
     if (
       switchProviderAndModel &&
       targetProviderId &&

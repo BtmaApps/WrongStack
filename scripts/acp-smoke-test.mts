@@ -1,7 +1,8 @@
 // End-to-end ACP v1 smoke test: a Node harness that speaks JSON-RPC 2.0
 // to the WrongStackACPServer over stdio and walks a full session. This
-// proves the server's wire format is compatible with a real v1 client
-// (Zed, JetBrains Junie, etc. follow the same JSON-RPC envelope).
+// checks the built server's lifecycle. Independent official-SDK interop
+// is covered by packages/acp/tests/sdk-stdio.test.ts; editor UI behavior
+// requires a separate live-editor check.
 //
 // What this test does:
 //  1. spawn the server as a child process
@@ -133,13 +134,12 @@ async function main(): Promise<void> {
   );
   console.log('PASS: initialize', JSON.stringify(init));
 
-  // Step 2: authenticate (no-op, returns unauthenticated)
-  const auth = (await send('authenticate', {})) as { outcome: string };
-  assert(auth.outcome === 'unauthenticated', `auth.outcome should be 'unauthenticated'`);
-  console.log('PASS: authenticate');
-
   // Step 3: session/new
-  const newResp = (await send('session/new', { cwd: process.cwd() })) as { sessionId: string };
+  const newResp = (await send('session/new', { cwd: process.cwd(), mcpServers: [] })) as {
+    sessionId: string;
+    modes?: { currentModeId: string; availableModes: Array<{ id: string }> };
+  };
+  assert(newResp.modes?.currentModeId === 'code', 'session mode must use the v1 modes object');
   const sessionId = newResp.sessionId;
   assert(
     typeof sessionId === 'string' && sessionId.startsWith('sess_'),

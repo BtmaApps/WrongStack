@@ -362,6 +362,17 @@ and rise into the role's bounded eager-load set — so your bug-hunter, reviewer
 and executor improve where it matters without turning every prompt into a dump of
 old notes.
 
+### TypeSafe / Jev decisions
+
+Optional Jev integration suggests a relevant skill before a turn and classifies
+ambiguous fleet dispatches. Each feature is separately opt-in. It supports a
+native TypeSafe API key or OpenRouter's Decisions endpoint through
+`wstack typesafe login --route typesafe` or `--route openrouter`; `wstack typesafe test`
+checks the selected account. Jev is a typed decision service, not a chat model.
+See [account setup and coverage](docs/typesafe-account.md),
+[skill suggestion](docs/skills-suggestion.md), and
+[fleet classification](docs/fleet-dispatch-classifier.md).
+
 ### Inter-agent mailbox
 
 One project-wide coordination plane connects **every agent, across every client,

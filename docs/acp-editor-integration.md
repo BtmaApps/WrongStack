@@ -8,8 +8,9 @@ direction — WrongStack **as a client** driving other agents — see
 
 > Scope: this is the field-verification companion to
 > [`packages/acp/COMPLIANCE.md`](../packages/acp/COMPLIANCE.md). The protocol
-> work is fully unit-tested, interop-tested (in-process loopback), and
-> runtime-tested (real WebSocket). What it has **not** had is a round-trip
+> work has package tests, independent official-SDK peers in both directions,
+> a real stdio subprocess cancellation test, and WebSocket runtime tests.
+> What it has **not** had is a round-trip
 > against a shipping third-party editor — that's what this checklist is for.
 
 ---
@@ -31,7 +32,7 @@ confirm an editor can *connect and handshake* before involving a model.
 | Mode | Command | When to use |
 |------|---------|-------------|
 | **stdio** (default) | `wstack acp` | The normal path — the editor spawns it as a subprocess and talks JSON-RPC over stdin/stdout. |
-| **HTTP** | (programmatic: `new WrongStackACPServer({ transport: 7788 })`) | One JSON-RPC request/response per POST; notifications buffered into the response. No live mid-turn streaming. |
+| **HTTP** | (programmatic: `new WrongStackACPServer({ transport: 7788 })`) | Custom buffered POST transport, not standard Streamable HTTP. No live callbacks or mid-turn streaming. |
 | **WebSocket** | `wstack acp --ws[=port]` (default `127.0.0.1:8889`) | Remote / manual testing. Full-duplex: `session/update` and permission prompts stream live during a turn. Origin-guarded for loopback safety. |
 
 ---
@@ -73,8 +74,7 @@ The agent advertises this in its `initialize` response:
   "agentCapabilities": {
     "loadSession": true,
     "promptCapabilities": { "image": true, "audio": false, "embeddedContext": true },
-    "sessionCapabilities": { "close": {}, "list": {}, "delete": {}, "resume": {} },
-    "auth": { "logout": {} }
+    "sessionCapabilities": { "close": {}, "list": {}, "delete": {}, "resume": {}, "fork": {} }
   },
   "agentInfo": { "name": "wrongstack", "title": "WrongStack", "version": "…" }
 }
@@ -90,18 +90,18 @@ and terminal (see §5).
 
 ### stdio (no provider needed)
 
-Pipe JSON-RPC lines into the echo agent and watch the responses:
+From a WrongStack checkout, run the built-server smoke test:
 
 ```bash
-printf '%s\n' \
-  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{"fs":{"readTextFile":true,"writeTextFile":true},"terminal":true}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"'"$PWD"'"}}' \
-  '{"jsonrpc":"2.0","id":3,"method":"session/prompt","params":{"sessionId":"REPLACE_FROM_id2","prompt":[{"type":"text","text":"hi"}]}}' \
-  | wstack acp --echo
+pnpm --filter @wrongstack/acp smoke
 ```
 
 Expect: an `initialize` result, a `session/new` result with a `sessionId`,
 then a `session/prompt` result with `stopReason: "end_turn"`.
+The harness reads the returned session ID before sending the prompt. For a
+manual connection to `wstack acp --echo`, do the same; a hardcoded placeholder
+session ID will be rejected. Normal editor use should launch `wstack acp` after
+`wstack auth`, without `--echo`.
 
 ### WebSocket
 

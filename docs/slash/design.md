@@ -69,7 +69,10 @@ color pickers + a **Materialize** button).
 **Automatic check:** once a kit is pinned, every write/edit to a frontend file
 is scanned in the background — if it introduces off-palette colors, a short
 warning is appended to that tool's result so the model self-corrects on the next
-turn (no manual `verify` needed). It's silent when the file is on-palette.
+  turn. The check also reports spacing, radius, type and composition signals;
+  these are source heuristics, not a visual quality or accessibility verdict.
+  Composition matches need review against the product brief: consistent rows,
+  symmetry and equal cards may be exactly right for the task.
 
 ## Bundled kits
 
@@ -121,9 +124,41 @@ so it stays out of the repo in any project.
 
 | File | Purpose |
 |---|---|
-| `.design/rules.md` | Project design rules. Injected into every UI turn and **override kit defaults on conflict** (e.g. brand colors, spacing system, banned patterns). Create it yourself. |
+| `.design/rules.md` | Project design rules. Refreshed from disk on every UI turn and **override kit defaults on conflict** (e.g. brand colors, spacing system, banned patterns). Additions, edits and deletions take effect in the same session. |
 | `.design/active.json` | The pinned kit (`{ kit, stack }`). Written when you pick a kit; **restored on the next session** so a design direction persists. |
 | `.design/decisions.md` | Append-only log of kit choices: `- <iso> · kit=… stack=… via=tool\|webui\|slash`. |
+| `.design/brief.md` | Product task, content hierarchy, visual direction, references and acceptance checks. Written by the design workflow; the first 6,000 bytes are refreshed in each active UI request, including after a kit change. Longer briefs include an explicit truncation notice. |
+| `.design/review.md` | Workflow-authored evidence of rendered review: route/artifact, viewport, theme, state, corrections and unverified checks. Not automatically generated or treated as proof by the scanner. |
 
 Picking a kit (via the `design` tool, `/design <kit>`, or the WebUI panel)
 records the choice; `/design off` clears the pin (the decision log is kept).
+
+## From a kit to a considered design
+
+See the [implementation audit](../design-quality-workflow.md) for the inspected
+flow, corrected failure modes and remaining evaluation limits.
+
+For substantial UI work, Design Studio now reminds the agent to use
+`design-craft` and `design-critique` even after a kit has been selected. The
+workflow starts from the audience, primary task and real content, records a
+brief, implements the design, inspects rendered behavior and corrects visible
+problems. Originality comes from the product's content and interaction, not a
+prescribed number of cards, accents or asymmetric sections.
+
+Existing applications keep their own component and token systems by default.
+A kit is useful for a new system or an explicitly requested migration; it is
+not required just to obtain a scanner score. Small changes reuse established
+patterns without a new design ceremony.
+
+`verify` percentages describe detected color signals only. No signals can also
+produce 100%; comments do not count as coverage. The automatic walk is bounded
+to 200 files and depth 8, so this is not exhaustive project certification.
+Use explicit files for targeted review. Native themes, dynamic classes,
+keyboard behavior, responsive layout and visual identity need separate review.
+Do not claim rendered checks unless they were actually performed.
+
+Web materialization gives canonical scale tokens precedence over legacy
+aliases such as `fontSans`, so a tuned font is not shadowed by the old font in
+`:root` or `.dark`. React Native themes preserve canonical font tokens under
+camelCase keys such as `fontSans` and `fontDisplay`. Font assets must still be
+loaded and mapped to the platform's registered families by the application.

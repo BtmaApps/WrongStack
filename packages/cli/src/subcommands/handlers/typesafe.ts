@@ -9,7 +9,7 @@
  * and a bill, and until this command existed the only way to configure any of
  * that was to hand-edit a config file. Nothing in any UI mentioned it.
  *
- *   wstack typesafe                  what is configured and whether it works
+ *   wstack typesafe                  what is configured (no network request)
  *   wstack typesafe login            store a key (and pick a route)
  *   wstack typesafe test             spend one cheap question proving it works
  *
@@ -19,6 +19,7 @@
  * place that asks the host directly and reports what it said.
  */
 
+import type { Config } from '@wrongstack/core/types';
 import {
   BUILT_IN_ROUTES,
   estimateTypeSafeCostUsd,
@@ -33,10 +34,13 @@ import { activeProfileConfigPath } from '../../profile-config-path.js';
 import { maskedKey, mutateConfigProviders } from '../../provider-config-utils.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 
+type TypeSafeConfig = NonNullable<Config['typesafe']>;
+
 const USAGE = [
   'Usage:',
-  '  wstack typesafe [status]                 show the account and whether it works',
+  '  wstack typesafe [status]                 show account and feature configuration',
   '  wstack typesafe login [--route <id>]     store an API key in the active profile',
+  '      [--endpoint <url>] [--model <id>]    configure a proxy or pin a model',
   '  wstack typesafe test                     send one question and report the answer',
   '',
   `Routes: ${BUILT_IN_ROUTES.map((r) => `${r} (${TYPESAFE_ROUTES[r].env})`).join(', ')}, custom (typesafe.endpoint)`,
@@ -95,6 +99,7 @@ function showStatus(deps: SubcommandDeps, write: (line: string) => void): number
           : color.dim(`from $${account.keyEnv}`)
       }`,
     );
+    write('  connection not tested — run `wstack typesafe test` to verify');
   } else {
     write(`  key        ${color.dim('—')}`);
     write(`  ${color.amber('!')} ${account.reason}`);
@@ -127,6 +132,15 @@ function showStatus(deps: SubcommandDeps, write: (line: string) => void): number
 
 async function login(deps: SubcommandDeps, write: (line: string) => void): Promise<number> {
   const flags = deps.flags ?? {};
+  for (const name of ['route', 'endpoint', 'model', 'key']) {
+    if (
+      flags[name] !== undefined &&
+      (typeof flags[name] !== 'string' || !String(flags[name]).trim())
+    ) {
+      write(`--${name} requires a value.`);
+      return 1;
+    }
+  }
   const requested = flags['route'];
   let route: TypeSafeRoute | undefined;
   if (typeof requested === 'string') {
@@ -138,7 +152,31 @@ async function login(deps: SubcommandDeps, write: (line: string) => void): Promi
     route = requested;
   }
 
-  const label = route && route !== 'custom' ? TYPESAFE_ROUTES[route].label : 'TypeSafe';
+  const endpoint = typeof flags['endpoint'] === 'string' ? flags['endpoint'].trim() : undefined;
+  const model = typeof flags['model'] === 'string' ? flags['model'].trim() : undefined;
+  if (endpoint && !route) route = 'custom';
+  const update = (existing: TypeSafeConfig): TypeSafeConfig => {
+    const next = { ...existing };
+    if (route && route !== resolveTypeSafeRoute({ typesafe: existing }, {})) {
+      // A route switch must not send its new credential to the previous host,
+      // or keep a model id in the previous host's namespace.
+      delete next.endpoint;
+      delete next.model;
+    }
+    if (route) next.route = route;
+    if (endpoint) next.endpoint = endpoint;
+    if (model) next.model = model;
+    return next;
+  };
+  const settings = update(deps.config.typesafe ?? {});
+  const preview = resolveTypeSafeAccount({ config: { typesafe: settings }, env: {} });
+  if (preview.status === 'unusable') {
+    write(`${preview.reason}. For a custom route, pass --endpoint <url>.`);
+    return 1;
+  }
+  const effectiveRoute = resolveTypeSafeRoute({ typesafe: settings }, {});
+  const label =
+    effectiveRoute !== 'custom' ? TYPESAFE_ROUTES[effectiveRoute].label : 'TypeSafe (custom)';
   const fromFlag = typeof flags['key'] === 'string' ? flags['key'].trim() : '';
   // `readSecret` keeps the key off the screen and out of shell history. The
   // `--key` flag exists for provisioning scripts and is the caller's choice to
@@ -163,9 +201,7 @@ async function login(deps: SubcommandDeps, write: (line: string) => void): Promi
       typeof config['typesafe'] === 'object' && config['typesafe'] !== null
         ? (config['typesafe'] as Record<string, unknown>)
         : {};
-    existing['apiKey'] = key.trim();
-    if (route) existing['route'] = route;
-    config['typesafe'] = existing;
+    config['typesafe'] = { ...update(existing as TypeSafeConfig), apiKey: key.trim() };
   });
 
   write(`${color.green('✓')} Key stored in ${configPath}`);

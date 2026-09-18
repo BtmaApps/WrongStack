@@ -9,9 +9,9 @@ wrong even when every value is a token.
 - **30%** secondary — structure: borders, muted text, subtle fills.
 - **10%** accent — the kit's `primary`, and it must stay scarce.
 
-Practical rule: **count accent uses per screen. Three or fewer.** Primary
-action, active nav state, one emphasis. An accent applied to every heading,
-icon, badge and link is no longer an accent; it is a background.
+Treat this allocation as a starting point, not a quota. Protect primary action
+salience while keeping links, selected states and data categories consistent.
+Judge their visible competition; counting accent uses cannot establish quality.
 
 ## 2. Neutrals do the work
 
@@ -94,7 +94,7 @@ for things that genuinely float above the page.
 
 ## Checks
 
-- Count accent uses on the busiest screen — ≤3?
+- Is the primary action distinguishable on the busiest screen?
 - Remove all color: does hierarchy survive?
 - Dark mode: re-tuned, or inverted?
 - Any color-only meaning left?

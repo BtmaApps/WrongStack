@@ -116,7 +116,14 @@ export async function buildProgressiveSkillManifestText(
       ) {
         continue;
       }
-      const trigger = (e.trigger ?? '').replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim();
+      const trigger = (
+        [manifest?.description, manifest?.trigger].filter(Boolean).join(' ') ||
+        e.trigger ||
+        ''
+      )
+        .replace(/\|/g, '\\|')
+        .replace(/\n+/g, ' ')
+        .trim();
       lines.push(`| \`${e.name}\`${foreignProvenanceTag(e.source, e.originTool)} | ${trigger} |`);
     }
     return lines.join('\n');

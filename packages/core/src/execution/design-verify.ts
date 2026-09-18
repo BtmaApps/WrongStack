@@ -73,8 +73,8 @@ const TW_GENERIC_RE =
   /\b(?:bg|text|border|ring|from|to|via|fill|stroke|decoration|outline|shadow|accent|caret|divide)-(?:slate|gray|grey|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/g;
 
 // ── Composition ("slop") signals ─────────────────────────────────────────────
-// Every rule below is kit-independent: it is drift under EVERY kit, so it can
-// fire without knowing which kit is pinned. Kit-sanctioned looks (glass panels
+// These source signals can run without knowing which kit is pinned. They are
+// prompts for contextual review, not proof of visual failure. Kit-sanctioned looks (glass panels
 // under `soft-glass`, aurora washes under `aurora-gradient`) are deliberately
 // NOT encoded here — judging those needs the kit body, which is the
 // `design-critique` skill's job, not a regex's.
@@ -290,9 +290,11 @@ export function verifyFiles(
 
   let filesWithNoSignal = 0;
   for (const { path, text } of files) {
-    if (!SCANNABLE_SIGNAL_RE.test(text)) filesWithNoSignal++;
     const lines = text.split('\n');
     const commentLine = markCommentLines(lines);
+    if (!lines.some((line, i) => !commentLine[i] && SCANNABLE_SIGNAL_RE.test(line))) {
+      filesWithNoSignal++;
+    }
     const flagAt = (
       lineNo: number,
       snippet: string,
@@ -346,6 +348,7 @@ export function verifyFiles(
       // a pure palette-adherence ratio); consumers break down by `axis`.
       ARBITRARY_RADIUS_RE.lastIndex = 0;
       for (const m of lineText.matchAll(ARBITRARY_RADIUS_RE)) {
+        if (/\[var\(--[\w-]+\)\]$/.test(m[0])) continue;
         flag(
           m[0],
           'arbitrary radius — use a kit radius scale token (rounded-sm…rounded-full)',
@@ -354,6 +357,7 @@ export function verifyFiles(
       }
       ARBITRARY_SPACING_RE.lastIndex = 0;
       for (const m of lineText.matchAll(ARBITRARY_SPACING_RE)) {
+        if (/\[var\(--[\w-]+\)\]$/.test(m[0])) continue;
         flag(m[0], 'arbitrary spacing — use a kit spacing scale token (p-1…p-12)', 'spacing');
       }
       RAW_RADIUS_RE.lastIndex = 0;
@@ -372,8 +376,8 @@ export function verifyFiles(
       if (GRADIENT_TEXT_CLIP_RE.test(lineText) && GRADIENT_TEXT_FILL_RE.test(lineText)) {
         flag(
           lineText.trim(),
-          'gradient-filled text — the single most recognizable generated-UI tell; ' +
-            'carry the emphasis with size/weight/measure instead',
+          'gradient-filled text — review readability and hierarchy against the brief; ' +
+            'use size/weight/measure when the gradient has no product purpose',
           'composition',
         );
       }
@@ -496,8 +500,8 @@ export function verifyFiles(
       flagAt(
         at + 1,
         `text-center ×${centered}`,
-        `${centered} centered blocks across ${sections} sections — vary the layout rhythm; ` +
-          'a page where every section is a centered stack reads as a template',
+        `${centered} centered blocks across ${sections} sections — review content priorities; ` +
+          'vary layout when roles differ, and retain consistent alignment when it helps scanning',
         'composition',
       );
     }
@@ -533,8 +537,8 @@ export function verifyFiles(
       flagAt(
         firstLine,
         `${cls.slice(0, 60)} ×${count}`,
-        `identical block repeated ${count}× — map over data with one component, and let the ` +
-          'items differ (size, span, emphasis) instead of shipping a uniform grid',
+        `identical block repeated ${count}× — review whether these items have equal roles. ` +
+          'Keep consistent rows/cards for comparable content; vary emphasis only when content priority differs',
         'composition',
       );
     }

@@ -22,22 +22,25 @@ Valid pairings:
 
 Rules:
 
-- **Two families is the ceiling** unless mono counts as a third.
-- The two faces must *contrast* (different classification), not merely differ.
-  Two similar sans faces read as a mistake.
-- The kit picks the faces. Override via the kit's `font` knob, not per-component.
+- Start with few families and clear roles; add another only for a content or
+  brand need. One well-used family can provide all the hierarchy a tool needs.
+- When pairing, choose a purposeful relationship and check actual glyphs and
+  weights rather than choosing famous font names from memory.
+- The system owns the faces. The kit's `font` knob changes both sans and display;
+  use `set` with `font-sans` and `font-display` for a deliberate pairing.
 
 ## 2. The scale
 
 - Use the kit's ramp (`text-xs` … `text-3xl`). Do not invent sizes.
-- There must be a **jump**: display ≥1.4× the next step down. Adjacent steps
-  that differ by 10% produce mush.
+- Make hierarchy visible at the actual viewport. Expressive display type may
+  need a large jump; compact tools can use weight, position and spacing instead.
 - Most screens need 4–5 sizes, not 9. If you're using every step, the hierarchy
   is not decided.
 
 ## 3. Measure and leading
 
-- Body measure 60–75 characters. Wider is unreadable; narrower fragments.
+- Start long-form prose around 60–75 characters and test the actual language
+  and font. This is not a width rule for labels, tables or numeric cells.
 - Display measure 20–35 characters — headlines wrap on purpose.
 - Leading is inverse to size: display tight (1.05–1.2), body relaxed
   (1.5–1.65), UI labels between.

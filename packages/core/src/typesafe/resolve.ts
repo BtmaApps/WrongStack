@@ -31,7 +31,7 @@
 import type { Config } from '../types/config/root.js';
 import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
-import { TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
+import { isTypeSafeRoute, TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
 
 /**
  * Environment variable read when `typesafe.apiKey` is unset.
@@ -128,6 +128,9 @@ export function resolveTypeSafeRoute(
 export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSafeAccount {
   const account = deps.config.typesafe ?? {};
   const env = deps.env ?? process.env;
+  if (account.route !== undefined && !isTypeSafeRoute(account.route)) {
+    return { status: 'unusable', reason: 'typesafe.route must be typesafe, openrouter or custom' };
+  }
   const route = resolveTypeSafeRoute(deps.config, env);
 
   const spec = route === 'custom' ? undefined : TYPESAFE_ROUTES[route];
@@ -136,6 +139,17 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
     return {
       status: 'unusable',
       reason: 'typesafe.route is "custom" but typesafe.endpoint is not set',
+    };
+  }
+  try {
+    const url = new URL(endpoint);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.hash) {
+      throw new Error('invalid endpoint');
+    }
+  } catch {
+    return {
+      status: 'unusable',
+      reason: 'typesafe.endpoint must be an HTTP(S) URL without embedded credentials or a fragment',
     };
   }
 

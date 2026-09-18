@@ -20,12 +20,17 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { WebSocket } from 'ws';
+import {
+  collectSkillFiles,
+  generateSkillSkeleton,
+  type SkillInstaller,
+  writeSkeletonSkill,
+} from '@wrongstack/core/skills';
 import type { SkillLoader } from '@wrongstack/core/types';
 import { atomicWrite, resolveWstackPaths } from '@wrongstack/core/utils';
-import type { SkillInstaller } from '@wrongstack/core/skills';
-import { send, errMessage, withRequestId } from './ws-utils.js';
+import type { WebSocket } from 'ws';
 import { validateSkillsCreatePayload, validateSkillsEditPayload } from './ws-payload-validation.js';
+import { errMessage, send, withRequestId } from './ws-utils.js';
 import { createZipBuffer, type ZipEntryInput } from './zip.js';
 
 export interface SkillsContext {
@@ -382,63 +387,11 @@ export async function handleSkillsCreate(
 
     await fs.mkdir(targetDir, { recursive: true });
 
-    // Parse description lines to build the skill content
-    const lines = createPayload.description.trim().split('\n');
-    const firstLine = (lines[0] ?? '').trim();
-    const bodyLines = lines
-      .slice(1)
-      .map((l) => l.trim())
-      .filter(Boolean);
-    const descriptionText = firstLine + (bodyLines.length > 0 ? `\n${bodyLines.join('\n')}` : '');
-    const trigger = bodyLines.find((l) => l.toLowerCase().startsWith('triggers:')) ?? '';
-
-    const skillContent = [
-      '---',
-      `name: ${createPayload.name.trim()}`,
-      'description: |',
-      `  ${descriptionText.replace(/\n/g, '\n  ')}`,
-      `version: 1.0.0`,
-      '---',
-      '',
-      `# ${createPayload.name
-        .trim()
-        .split('-')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')}`,
-      '',
-      '## Overview',
-      '',
-      firstLine,
-      '',
-      ...(bodyLines.length > 0
-        ? bodyLines.filter((l) => !l.toLowerCase().startsWith('triggers:'))
-        : []),
-      '',
-      '## Rules',
-      '- TODO: add your first rule',
-      '',
-      '## Patterns',
-      '### Do',
-      '```ts',
-      '// TODO: add a good example',
-      '```',
-      '',
-      "### Don't",
-      '```ts',
-      '// TODO: add a bad example',
-      '```',
-      '',
-      '## Workflow',
-      '1. TODO: describe step one',
-      '2. TODO: describe step two',
-      '',
-      trigger ? `\n${trigger}\n` : '',
-      '## Skills in scope',
-      '- `bug-hunter` — for systematic bug detection patterns',
-      '- `output-standards` — for standardized `<nextsteps>` formatting',
-    ].join('\n');
-
-    await atomicWrite(path.join(targetDir, 'SKILL.md'), skillContent);
+    const skillContent = generateSkillSkeleton({
+      name: createPayload.name.trim(),
+      description: createPayload.description,
+    });
+    await writeSkeletonSkill(path.dirname(targetDir), skillContent);
 
     // Invalidate the SkillLoader cache so the new skill appears immediately
     // in skills.list and the system prompt builder. Without this, the
@@ -528,20 +481,35 @@ export async function handleSkillsExport(ws: WebSocket, ctx: SkillsContext): Pro
   try {
     const entries = await ctx.skillLoader.listEntries();
     const zipEntries: ZipEntryInput[] = [];
+    let skillCount = 0;
     for (const entry of entries) {
       try {
         const body = await ctx.skillLoader!.readBody(entry.name);
         const safeName = entry.name.replace(/[\\/]/g, '_');
-        zipEntries.push({ name: `${safeName}/SKILL.md`, data: body });
-      } catch {
-        // Skip skills we can't read
+        const packageEntries: ZipEntryInput[] = [{ name: `${safeName}/SKILL.md`, data: body }];
+        if (entry.path) {
+          const root = path.dirname(entry.path);
+          for (const file of await collectSkillFiles(root)) {
+            if (file === 'SKILL.md') continue;
+            packageEntries.push({
+              name: `${safeName}/${file.split(path.sep).join('/')}`,
+              data: await fs.readFile(path.join(root, file)),
+            });
+          }
+        }
+        zipEntries.push(...packageEntries);
+        skillCount++;
+      } catch (error) {
+        if (entry.path)
+          throw new Error(`Cannot export complete skill "${entry.name}": ${errMessage(error)}`);
+        // Virtual loaders may expose an unreadable entry without a filesystem path.
       }
     }
     const zipBuffer = createZipBuffer(zipEntries);
     const zipBase64 = zipBuffer.toString('base64');
     send(ws, {
       type: 'skills.exported',
-      payload: { zipBase64, skillCount: zipEntries.length, error: undefined },
+      payload: { zipBase64, skillCount, error: undefined },
     });
   } catch (err) {
     send(ws, {

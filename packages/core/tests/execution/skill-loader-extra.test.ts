@@ -74,7 +74,7 @@ describe('skill description parsing', () => {
   });
 
   it('uses first line as trigger when description has no period', async () => {
-    const desc = 'Quick math helper\nfor basic arithmetic';
+    const desc = 'Quick math helper\n  for basic arithmetic';
     const dir = path.join(profileSkills(globalRoot), 'math');
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(

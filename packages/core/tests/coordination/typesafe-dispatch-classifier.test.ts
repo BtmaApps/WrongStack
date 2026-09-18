@@ -84,6 +84,8 @@ describe('makeTypeSafeDispatchClassifier', () => {
     // The contrast line is the useful evidence here: the classifier only runs
     // when summaries alone did not separate siblings.
     expect(criteria['security-auditor']).toContain('audits code that exists');
+    // Questions are isolated: the fit Noul cannot see the Choice criteria.
+    expect(request.state).toEqual({ task: 'audit this', candidates: criteria });
   });
 
   it('declines when no candidate genuinely fits', async () => {

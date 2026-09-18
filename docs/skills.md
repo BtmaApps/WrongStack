@@ -1,6 +1,6 @@
 # Skill Writing Guide
 
-Skills are Markdown files that inject domain-specific knowledge into the agent's system prompt. They activate automatically when the agent detects a matching context — no code required.
+Skills are Markdown files that inject domain-specific knowledge into the agent's system prompt. The model selects relevant skills from their descriptions and loads instructions with the skill tool. Use `/skill use <name> <task>` for explicit selection.
 
 ---
 
@@ -38,7 +38,7 @@ Keep it concise, actionable, and focused on one domain.
 | Field | Required | Description |
 |---|---|---|
 | `name` | ✅ | Unique identifier. Lowercase letters, digits, hyphens; must match the parent directory (agentskills.io). First-seen wins on collisions across layers. |
-| `description` | ✅ | One-sentence trigger summary. The agent uses this to decide relevance. |
+| `description` | ✅ | A 1–1024 character description of what the skill does and when to use it. The progressive catalog includes the complete description. |
 | `trigger` | ❌ | Explicit "Use when…" trigger shown in the available-skills list. Optional — defaults to the first sentence of `description`. |
 | `audience` | ❌ | `roster` — attached to roster roles by name and kept out of the main agent's prompt; `external` — shipped for other coding agents and kept out of WrongStack prompts. Both stay loadable with the `skill` tool. Omit for skills every agent should see. |
 | `version` | ❌ | SemVer string. Informational only — not used for comparison. |
@@ -49,7 +49,7 @@ Keep it concise, actionable, and focused on one domain.
 
 ### Body (required)
 
-Everything after the frontmatter delimiter (`---`) is the skill content. This is injected verbatim into the system prompt when the skill is active. Keep it under 2000 tokens — the system prompt has a budget.
+Everything after the frontmatter delimiter (`---`) is the skill content. Progressive mode delivers it as a skill-tool result; eager mode injects it into the system prompt within its budget. Keep it under 2000 tokens — the system prompt has a budget.
 
 ---
 
@@ -115,7 +115,7 @@ Control which foreign tools are scanned with `skills.foreignSources` (default: a
 
 ## Progressive disclosure & the `skill` tool
 
-By default (`mode: 'progressive'`) WrongStack follows the agentskills.io three-tier model: the prompt carries only each skill's name + trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand. Set `skills.mode: 'eager'` to inject discovered skill bodies into the system prompt up to the configured budget instead.
+By default (`mode: 'progressive'`) WrongStack follows the agentskills.io three-tier model: the prompt carries each skill's name, full description, and optional trigger, and the agent calls the **`skill`** tool to load a skill's full body on demand. Set `skills.mode: 'eager'` to inject discovered skill bodies into the system prompt up to the configured budget instead.
 
 Discovery and context ordering are deterministic: layers are traversed by priority and entries inside each layer are sorted by skill name. The environment block always receives every discovered name and trigger, except skills whose `audience` is `roster` or `external`. In eager mode, bodies are added in that same stable order until `eagerMaxChars`; overflow remains in the manifest. In progressive mode, the manifest is the context contract and the `skill` tool is the deterministic body/resource loading path.
 
@@ -374,10 +374,10 @@ plugin) for discovering, installing, and creating skills:
 
 ### Searching the registry
 
-`/skill-search` queries **skills.sh** (the open agent-skills marketplace backed
-by [mastra-ai/skills-api](https://github.com/mastra-ai/skills-api), 34k+ skills
-across 2.8k+ repos). Each hit shows a security score (0–100): hits below 30 are
-flagged with ⚠ and warrant a review before installing.
+`/skill-search` queries [skills.sh](https://www.skills.sh/docs). Results include
+an installation reference selecting the matching skill. Security scores are
+shown only when supplied by a registry; the default search response does not
+provide them.
 
 ```
 /skill-search react
@@ -416,7 +416,7 @@ parts:
 | `/skill-gen` (bare) | AI-guided wizard — you answer questions, the agent writes the file. |
 | `/skill-gen skeleton <name> --desc "..." --trigger a,b` | Generate a valid SKILL.md skeleton to edit. |
 | `/skill-gen from-prompt "<text>"` | Turn a prompt into a skill draft. |
-| `/skill-gen validate <name>` | Validate a name (kebab-case format + collisions) before writing. |
+| `/skill-gen validate <name>` | Validate an existing document, or check a proposed name before writing. |
 | `/skill-gen view <name>` | Show a skill's body (read-only). |
 | `/skill-gen edit <name>` | Open a skill in `$EDITOR` / `$VISUAL`. |
 | `/skill-gen list` | List skills with their source layer. |
@@ -424,3 +424,13 @@ parts:
 The bundled `skill-creator` skill (loaded into the prompt) is the wizard's
 brain — it holds the authoring rules and workflow. Always run
 `/skill-gen validate <name>` after writing a new skill to confirm it loads.
+
+## Authoring validation and refresh
+
+`/skill-gen validate <name>` validates an existing skill document (YAML, name, directory agreement, field limits, metadata, and body). If the file does not exist, it checks the proposed name. Skeleton/from-prompt and WebUI changes refresh the loader automatically. Use `/skill reload` after editing files outside those flows.
+
+`/skill use <name> <task>` explicitly asks the agent to load and follow the skill for the supplied task. `/skill <name>` previews it.
+
+The tool reports `nextOffset` when a body or resource needs another page. Continue with `skill({ name, offset: nextOffset })`, or include the same `resource` when reading a resource. Read all instruction pages before relying on the skill.
+
+Export all creates complete ZIP packages including scripts, references, and binary assets. The detail view's single-file export downloads only Markdown. Registry references may select one skill using `owner/repo#skill-name`; updates by skill name preserve that selection.

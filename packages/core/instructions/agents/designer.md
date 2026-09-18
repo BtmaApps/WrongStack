@@ -22,3 +22,6 @@ Working rules:
 - Reuse existing patterns/tokens before inventing new ones
 - Keep accessibility and responsiveness in the design, not bolted on later
 - Justify each decision in terms of the user goal
+- For substantial work, use the `design-craft` skill and preserve decisions in `.design/brief.md`; use the `design-critique` skill to evaluate rendered evidence
+- Ground originality in product content, workflow and inspected references; do not invent metrics, testimonials or reference observations
+- Distinguish source observations from rendered checks; report unverified states and let user intent outrank stylistic heuristics

@@ -12,10 +12,10 @@ description: |
   React Native, Flutter, SwiftUI, or Jetpack Compose styling, theming, colors,
   palette, dark mode, border-radius, spacing, elevation, shadows, typography,
   or fonts come up. Also trigger on softer phrasings that imply visual work:
-  "make it look better", "clean up the layout", "it looks generic", "match our
+  "clean up the layout", "it looks generic", "match our
   brand", "add dark mode". Trigger even when the user never says the word
   "design" — if the output has pixels, this skill runs first.
-version: 2.1.0
+version: 2.2.0
 required-capabilities: [filesystem.read, filesystem.write, documentation.author]
 required-tools: [design]
 optional-capabilities: [browser.interact]
@@ -24,6 +24,12 @@ optional-capabilities: [browser.interact]
 # Design System Engine — WrongStack
 
 ## The contract
+
+Inspect the existing system first. Reuse its components, semantic tokens,
+framework and supported themes unless the user requests a replacement. The kit
+loop below applies to greenfield UI or an authorized system migration; an
+established project does not need a kit pin just to satisfy the scanner.
+Use the `design-craft` skill for substantial visual decisions and rendered review.
 
 Default-framework UI is a failure, not a neutral starting point. Unstyled
 shadcn, `bg-blue-500`, stock Bootstrap gray, or "I'll pick colors as I go" all
@@ -48,8 +54,9 @@ list → use → tune → materialize → BUILD → verify → fix drift
 
 Steps 1–3 are cheap and happen before the first line of JSX/Dart/Swift. `tune`
 is optional when the chosen kit already fits; otherwise keep the order intact.
-If a UI file has already been written without a committed kit, stop, run the
-loop, and restyle against the tokens rather than patching colors by hand.
+If new UI lacks a token source, establish one before adding more styling.
+Existing project tokens are a valid source; do not restyle established UI merely
+because it has no kit pin.
 
 ---
 
@@ -84,8 +91,9 @@ and move on. Otherwise:
    information density (marketing page vs. data table), emotional register
    (playful, editorial, clinical, brutalist, corporate-trustworthy), and any
    brand assets the user already has.
-3. If two or three kits genuinely fit, name them with a one-line rationale each
-   and ask. A ten-second question beats a full rebuild.
+3. If several kits fit, compare their layout, density and type implications;
+   choose the best fit with a short rationale unless the user wants to choose
+   or an unresolved requirement materially changes the outcome.
 4. If the user gives zero signal and does not want to choose, pick the kit that
    best fits the product archetype, **say which one and why in one sentence**,
    and continue. Silence is not permission to fall back to defaults.
@@ -199,14 +207,15 @@ sneak back in — use tokens there too.
 design {action:"verify"}
 ```
 
-Scans for color / radius / spacing drift. Run it **before declaring the work
-done**, and treat the output as a task list, not a report:
+Scans for color / radius / spacing drift and composition review signals. With
+a pinned kit, run it before declaring the work done:
 
-- Fix every flagged violation by swapping in the token — never by silencing.
+- Confirm each finding against the token source and brief. Fix actual drift;
+  composition heuristics require context and rendered evidence, not automatic restyling.
 - If the same violation keeps recurring, the system is missing a token: `tune`
   or `set` it, `materialize` again, then re-verify.
-- Re-run until clean. A UI that ships with known drift teaches the rest of the
-  codebase that drift is acceptable.
+- Re-run after corrections. Explain intentional design choices that remain
+  flagged; do not alter equal rows or useful symmetry to game the scanner.
 
 Auto-verify middleware also appends non-blocking warnings to write results
 during editing — self-correct on the very next edit rather than batching them
@@ -278,9 +287,9 @@ made and re-litigating them wastes everyone's time.
 
 ## Edge cases
 
-- **Codebase already has a design system.** Don't bulldoze it. Ask whether to
-  adopt it as the kit's override layer or migrate to a kit, and get an answer
-  before writing.
+- **Codebase already has a design system.** Extend it by default. Inspect its
+  source tokens and shared primitives; migrate only when requested. Review
+  against those tokens without reporting a score from an unrelated kit.
 - **User hands over brand colors or a Figma palette.** Still commit to a kit —
   the kit supplies radius, spacing, type, motion and elevation, which a palette
   does not. Layer the brand colors in with `set`.
@@ -293,8 +302,8 @@ made and re-litigating them wastes everyone's time.
 
 ## Out of scope
 
-- **Don't ship unstyled framework defaults.** Default Tailwind, default shadcn, stock Bootstrap, or "I'll pick colors as I go" all produce forgettable UI with no source of truth. The Design Studio engine is the path; skipping it is a fail.
-- **Don't write UI before committing a kit.** Picking a kit is the first step. Code that exists before a kit has been committed is exactly the code that needs restyling, not patching.
+- **Don't let framework defaults make the design decisions.** Establish hierarchy, content and semantic tokens using the existing system or a selected kit.
+- **Don't confuse a kit pin with a design decision.** Existing systems are valid; new systems need a coherent token source before implementation.
 - **Don't hand-tune individual tokens to fix one-off screens.** Knobs (`radius`, `density`, `font`, `motion`) rescale the whole system coherently. A hand-edited radius leaves five scale steps untouched; the result reads as sloppy.
 - **Don't use framework palette colors directly.** `bg-blue-500`, `text-gray-700`, `dark:bg-slate-900` are not part of the kit and break dark mode. Use the semantic tokens the materialized file exposes.
 - **Don't override foundations.** Accessibility, responsiveness, reduced motion, and WCAG 2.2 AA are the floor. No kit or user override lowers them.
@@ -303,13 +312,15 @@ made and re-litigating them wastes everyone's time.
 
 ## Before saying you're done
 
-- Kit committed with the correct `stack`, and named to the user.
-- `materialize` run *after* the final `tune`/`set`, and the file imported.
+- Token source identified: existing project system, or kit with the correct `stack`.
+- When using a kit, `materialize` run *after* the final `tune`/`set`, and the file imported.
 - Zero hardcoded colors, radii, or spacing anywhere in the diff.
 - Light and dark both checked.
 - Interactive states and empty/loading/error states present.
 - Keyboard path works; focus rings visible.
-- `design {action:"verify"}` clean.
+- With a pinned kit, `design {action:"verify"}` findings reviewed and actual drift fixed.
+- Rendered review completed for the affected surface, or missing evidence stated.
+  A heuristic palette percentage is not a visual quality or accessibility score.
 
 ## Skills in scope
 

@@ -206,6 +206,7 @@ export function buildInitializeResult(
   agentName: string,
   modes: readonly SessionMode[],
   configOptions: readonly SessionConfigOption[],
+  clientCapabilities: ClientCapabilities = {},
 ) {
   return {
     protocolVersion: ACP_PROTOCOL_VERSION,
@@ -234,16 +235,13 @@ export function buildInitializeResult(
         resume: {},
         fork: {},
       },
-      auth: {
-        logout: {},
-      },
     },
     agentInfo: {
       name: agentName,
       title: 'WrongStack',
       version: WRONGSTACK_VERSION,
     },
-    authMethods: WRONGSTACK_AUTH_METHODS,
+    authMethods: clientCapabilities.auth?.terminal === true ? WRONGSTACK_AUTH_METHODS : [],
     modes,
     configOptions,
   };

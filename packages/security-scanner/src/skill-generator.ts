@@ -1,3 +1,8 @@
+import {
+  parseSkillFrontmatter,
+  serializeSkillDocument,
+  validateSkillDocument,
+} from '@wrongstack/core/skills';
 /**
  * Card 7B-2: Skill generation extracted from orchestrator.ts.
  *
@@ -606,12 +611,14 @@ export async function generateSkillLLM(
     if (jsonBlock) {
       const sanitized = sanitizeJsonString(jsonBlock) || jsonBlock;
       const skillData = JSON.parse(sanitized);
+      const content = renderGeneratedSkill(skillData, techStack.stack);
+      const frontmatter = parseSkillFrontmatter(content);
       return {
-        name: skillData.name || `security-scanner-${techStack.stack}`,
-        description: skillData.description || `Security scanner for ${techStack.stack}`,
+        name: frontmatter.name ?? `security-scanner-${techStack.stack}`,
+        description: frontmatter.description ?? `Security scanner for ${techStack.stack}`,
         version: '1.0.0',
         techStack: techStack.stack,
-        content: { type: 'skill', content: JSON.stringify(skillData, null, 2) },
+        content: { type: 'skill', content },
         patterns: skillData.patterns || [],
         metadata: {
           generatedAt: new Date().toISOString(),
@@ -744,3 +751,30 @@ export const defaultSkillGenerator = new SkillGenerator({
 
 // `retryProviderComplete` re-export kept for callers that prefer the lower-level API.
 export { retryProviderComplete };
+
+/** Convert the scanner payload into a portable Agent Skills document. */
+function renderGeneratedSkill(
+  data: { name?: string; description?: string },
+  stack: string,
+): string {
+  const name =
+    typeof data.name === 'string' &&
+    /^[a-z0-9]+(-[a-z0-9]+)*$/.test(data.name) &&
+    data.name.length <= 64
+      ? data.name
+      : `security-scanner-${stack}`;
+  const description =
+    (typeof data.description === 'string'
+      ? data.description
+      : `Use when scanning ${stack} projects for security issues.`
+    )
+      .trim()
+      .slice(0, 1024) || `Scan ${stack} projects.`;
+  const raw = serializeSkillDocument(
+    { name, description, metadata: { version: '1.0.0' } },
+    `# ${name}\n\nUse the following scanning instructions and patterns:\n\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``,
+  );
+  const errors = validateSkillDocument(raw, name);
+  if (errors.length) throw new Error(errors.join('; '));
+  return raw;
+}

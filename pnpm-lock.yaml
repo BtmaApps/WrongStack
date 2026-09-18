@@ -171,7 +171,7 @@ importers:
         version: 8.10.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   apps/desktop:
     dependencies:
@@ -214,7 +214,7 @@ importers:
         version: 8.18.1
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       electron:
         specifier: ^44.3.0
         version: 44.3.0(supports-color@7.2.0)
@@ -226,7 +226,7 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+        version: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
   apps/wrongstack:
     dependencies:
@@ -239,7 +239,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/acp:
     dependencies:
@@ -261,7 +261,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/bench:
     dependencies:
@@ -397,7 +397,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/core:
     dependencies:
@@ -410,6 +410,9 @@ importers:
       '@wrongstack/primitives':
         specifier: workspace:*
         version: link:../primitives
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
       zod:
         specifier: 4.6.2
         version: 4.6.2
@@ -439,7 +442,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/kanban:
     dependencies:
@@ -483,7 +486,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/mailbox-mcp:
     dependencies:
@@ -502,7 +505,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/mcp:
     dependencies:
@@ -524,7 +527,7 @@ importers:
         version: 8.10.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/persistence:
     devDependencies:
@@ -571,7 +574,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/plugins:
     dependencies:
@@ -596,7 +599,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/primitives:
     devDependencies:
@@ -695,7 +698,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/runtime:
     dependencies:
@@ -748,7 +751,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/sage-mcp:
     dependencies:
@@ -770,7 +773,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/sdd:
     dependencies:
@@ -860,16 +863,16 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/techstack:
     dependencies:
@@ -1029,7 +1032,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/webui:
     dependencies:
@@ -1240,7 +1243,7 @@ importers:
         version: 1.63.0
       '@tailwindcss/vite':
         specifier: ^4.3.3
-        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -1264,7 +1267,7 @@ importers:
         version: 8.18.1
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       '@vitest/coverage-v8':
         specifier: ^5.0.0
         version: 5.0.0(vitest@5.0.0)
@@ -1285,10 +1288,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
     optionalDependencies:
       node-pty:
         specifier: 1.2.0-beta.15
@@ -1410,7 +1413,7 @@ importers:
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
-        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.10.0(@testing-library/dom@10.4.1)
@@ -1431,7 +1434,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1(supports-color@7.2.0)
@@ -1446,10 +1449,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@25.0.1(supports-color@7.2.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@25.0.1(supports-color@7.2.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   packages/webui-protocol:
     dependencies:
@@ -1536,7 +1539,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.0
-        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   website:
     dependencies:
@@ -1570,7 +1573,7 @@ importers:
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
-        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       '@types/node':
         specifier: ^26.5.1
         version: 26.5.1
@@ -1582,7 +1585,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -1591,7 +1594,7 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.0
-        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
 packages:
 
@@ -5904,6 +5907,11 @@ packages:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
 
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yargs-parser@18.1.3:
     resolution: {integrity: sha512-o50j0JeToy/4K6OZcaQmW6lyXXKhq7csREXcDwk2omFPJEwUNOVtJKvmDr9EI1fAJZUyZcRF7kxGBWmRXudrCQ==}
     engines: {node: '>=6'}
@@ -7285,12 +7293,12 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
-  '@tailwindcss/vite@4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))':
+  '@tailwindcss/vite@4.3.3(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
       '@tailwindcss/node': 4.3.3
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
   '@tanstack/react-virtual@3.14.12(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
@@ -7527,15 +7535,15 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
   '@vitest/coverage-istanbul@5.0.0(vitest@5.0.0)':
     dependencies:
@@ -7548,7 +7556,7 @@ snapshots:
       magicast: 0.5.5
       obug: 2.2.1
       tinyrainbow: 3.1.1
-      vitest: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+      vitest: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   '@vitest/coverage-v8@5.0.0(vitest@5.0.0)':
     dependencies:
@@ -7560,7 +7568,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+      vitest: 5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   '@vitest/istanbul-lib-coverage@1.0.1': {}
 
@@ -7582,23 +7590,23 @@ snapshots:
       '@vitest/istanbul-lib-coverage': 1.0.1
       obug: 2.2.1
 
-  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))':
+  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
-  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))':
+  '@vitest/mocker@5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/spy': 5.0.0
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
 
   '@vitest/spy@5.0.0': {}
 
@@ -10268,7 +10276,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
-  vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13):
+  vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -10281,8 +10289,9 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.13
+      yaml: 2.9.1
 
-  vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13):
+  vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -10295,11 +10304,12 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       tsx: 4.23.13
+      yaml: 2.9.1
 
-  vitest@5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)):
+  vitest@5.0.0(@types/node@22.20.2)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -10310,7 +10320,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@22.20.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.2
@@ -10320,10 +10330,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@25.0.1(supports-color@7.2.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)):
+  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@25.0.1(supports-color@7.2.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -10334,7 +10344,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.5.1
@@ -10344,10 +10354,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)):
+  vitest@5.0.0(@types/node@26.5.1)(@vitest/coverage-istanbul@5.0.0)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13))
+      '@vitest/mocker': 5.0.0(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
       chai: 6.2.2
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -10358,7 +10368,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 26.5.1
@@ -10489,6 +10499,8 @@ snapshots:
   yallist@4.0.0: {}
 
   yallist@5.0.0: {}
+
+  yaml@2.9.1: {}
 
   yargs-parser@18.1.3:
     dependencies:

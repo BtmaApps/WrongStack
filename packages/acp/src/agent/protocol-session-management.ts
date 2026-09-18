@@ -29,6 +29,7 @@ export interface ProtocolSessionContext {
   seedFor:
     | ((sessionId: string, history: Array<{ sessionUpdate: string; content: unknown }>) => void)
     | undefined;
+  disposeFor?: ((sessionId: string) => void) | undefined;
   onSessionNew: (state: SessionState) => void;
   allocId: () => string;
   persist: (
@@ -70,7 +71,8 @@ export async function handleSessionNewOp(
     id: sessionId,
     cwd,
     abort: new AbortController(),
-    modeId: DEFAULT_MODE_ID,
+    modeId: ctx.modes[0]?.id ?? DEFAULT_MODE_ID,
+    configOptions: structuredClone([...ctx.configOptions]),
     createdAt: now,
     updatedAt: now,
     ...(mcpServers.length > 0 ? { mcpServers } : {}),
@@ -99,8 +101,8 @@ export async function handleSessionNewOp(
 
   await ctx.sendResult(id, {
     sessionId,
-    modes: ctx.modes,
-    configOptions: ctx.configOptions,
+    modes: { currentModeId: state.modeId, availableModes: ctx.modes },
+    configOptions: state.configOptions,
   });
   return false;
 }
@@ -109,6 +111,7 @@ export async function handleSessionLoadOp(
   ctx: ProtocolSessionContext,
   id: string | number,
   params: unknown,
+  replayHistory = true,
 ): Promise<boolean> {
   const p = (params ?? {}) as { sessionId?: unknown; cwd?: unknown; mcpServers?: unknown };
   const sessionId = typeof p.sessionId === 'string' ? p.sessionId : null;
@@ -135,6 +138,7 @@ export async function handleSessionLoadOp(
         cwd: restoredCwd,
         abort: new AbortController(),
         modeId: persisted.modeId ?? DEFAULT_MODE_ID,
+        configOptions: structuredClone(persisted.configOptions ?? [...ctx.configOptions]),
         createdAt: persisted.createdAt ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...(persisted.title !== undefined ? { title: persisted.title } : {}),
@@ -142,57 +146,68 @@ export async function handleSessionLoadOp(
       };
       ctx.sessions.set(sessionId, restored);
       ctx.seedFor?.(sessionId, persisted.history ?? []);
-      for (const update of persisted.history ?? []) {
+      for (const update of replayHistory ? (persisted.history ?? []) : []) {
         await ctx.sendNotification({ sessionId, update });
       }
-      await ctx.sendNotification({
-        sessionId,
-        update: { sessionUpdate: 'current_mode_update', modeId: restored.modeId },
-      });
+      if (replayHistory)
+        await ctx.sendNotification({
+          sessionId,
+          update: { sessionUpdate: 'current_mode_update', modeId: restored.modeId },
+        });
       await reportSkippedMcpServers(ctx, sessionId, loadSkipped);
       await ctx.sendResult(id, {
-        initialMode: { currentModeId: restored.modeId, availableModes: ctx.modes },
+        modes: { currentModeId: restored.modeId, availableModes: ctx.modes },
+        configOptions: restored.configOptions,
       });
       return false;
     }
   }
 
   if (existing) {
+    if (existing.prompting) {
+      await ctx.sendError(id, -32000, 'cannot reload a session while a prompt is running');
+      return false;
+    }
     existing.updatedAt = new Date().toISOString();
+    const replay = ctx.replayFor?.(sessionId!);
     // A warm `session/load` carries the client's current server set; honour it
     // so a client that added a server since `session/new` is not stuck with
-    // the old list. An empty array means "nothing to add", not "drop mine" —
-    // the spec has no removal verb, and tearing down live connections on a
-    // reconnect would be worse than keeping them.
-    if (loadMcpServers.length > 0) {
+    // the old list. An explicit empty array clears the client's server set.
+    if (Array.isArray(p.mcpServers)) {
+      if (JSON.stringify(existing.mcpServers ?? []) !== JSON.stringify(loadMcpServers)) {
+        ctx.disposeFor?.(sessionId!);
+        ctx.seedFor?.(sessionId!, replay ?? []);
+      }
       existing.mcpServers = loadMcpServers;
     }
-    const replay = ctx.replayFor?.(sessionId!);
-    if (replay) {
+    if (replayHistory && replay) {
       for (const update of replay) {
         await ctx.sendNotification({ sessionId, update });
       }
     }
-    await ctx.sendNotification({
-      sessionId,
-      update: {
-        sessionUpdate: 'session_info_update',
-        updatedAt: existing.updatedAt,
-      },
-    });
-    await ctx.sendNotification({
-      sessionId,
-      update: {
-        sessionUpdate: 'current_mode_update',
-        modeId: existing.modeId,
-      },
-    });
+    if (replayHistory)
+      await ctx.sendNotification({
+        sessionId,
+        update: {
+          sessionUpdate: 'session_info_update',
+          updatedAt: existing.updatedAt,
+        },
+      });
+    if (replayHistory)
+      await ctx.sendNotification({
+        sessionId,
+        update: {
+          sessionUpdate: 'current_mode_update',
+          modeId: existing.modeId,
+        },
+      });
     await reportSkippedMcpServers(ctx, sessionId!, loadSkipped);
     await ctx.sendResult(id, {
-      initialMode: {
+      modes: {
         currentModeId: existing.modeId,
         availableModes: ctx.modes,
       },
+      configOptions: existing.configOptions ?? [...ctx.configOptions],
     });
     return false;
   }
@@ -241,6 +256,7 @@ export async function handleSessionForkOp(
     cwd: forkCwd,
     abort: new AbortController(),
     modeId: source.modeId,
+    configOptions: structuredClone(source.configOptions ?? [...ctx.configOptions]),
     createdAt: now,
     updatedAt: now,
     ...(source.title !== undefined ? { title: source.title } : {}),
@@ -262,8 +278,8 @@ export async function handleSessionForkOp(
   await reportSkippedMcpServers(ctx, sessionId, forkSkipped);
   await ctx.sendResult(id, {
     sessionId,
-    modes: ctx.modes,
-    configOptions: ctx.configOptions,
+    modes: { currentModeId: forked.modeId, availableModes: ctx.modes },
+    configOptions: forked.configOptions,
   });
   return false;
 }
@@ -284,6 +300,11 @@ export async function handleSessionPromptOp(
     return false;
   }
   const session = ctx.sessions.get(sessionId)!;
+  if (session.prompting) {
+    await ctx.sendError(id, -32000, 'a prompt is already running for this session');
+    return false;
+  }
+  session.prompting = true;
 
   if (session.abort.signal.aborted) {
     session.abort = new AbortController();
@@ -318,6 +339,8 @@ export async function handleSessionPromptOp(
       {
         sessionId,
         prompt: p.prompt as ContentBlock[],
+        modeId: session.modeId,
+        configOptions: session.configOptions,
         signal: turnSignal.signal,
         cwd: session.cwd,
         ...(session.mcpServers ? { mcpServers: session.mcpServers } : {}),
@@ -326,18 +349,27 @@ export async function handleSessionPromptOp(
       api,
     );
   } catch (err) {
+    session.prompting = false;
     session.abort.signal.removeEventListener('abort', onCancel);
+    await Promise.all(pendingNotifications);
+    if (turnSignal.signal.aborted) {
+      await ctx.sendResult(id, { stopReason: 'cancelled' });
+      return false;
+    }
     const { code, message, data } = errorToJsonRpc(err);
     await ctx.sendError(id, code, message, data);
     return false;
   }
 
   await Promise.all(pendingNotifications);
+  session.prompting = false;
   session.abort.signal.removeEventListener('abort', onCancel);
   session.updatedAt = new Date().toISOString();
-  await ctx.persist(session);
+  if (ctx.sessions.get(sessionId) === session) await ctx.persist(session);
 
-  await ctx.sendResult(id, { stopReason: result.stopReason });
+  await ctx.sendResult(id, {
+    stopReason: turnSignal.signal.aborted ? 'cancelled' : result.stopReason,
+  });
   return false;
 }
 
@@ -374,21 +406,24 @@ export async function handleSetConfigOptionOp(
   const optionId = typeof p.configId === 'string' ? p.configId : null;
   const value = typeof p.value === 'string' ? p.value : null;
   const session = sessionId ? ctx.sessions.get(sessionId) : undefined;
-  const option = optionId ? ctx.configOptions.find((o) => o.id === optionId) : undefined;
+  const options = session?.configOptions ?? structuredClone([...ctx.configOptions]);
+  const option = optionId ? options.find((o) => o.id === optionId) : undefined;
   if (!session || !option || value === null || !option.options.some((o) => o.value === value)) {
     await ctx.sendError(id, -32602, 'invalid sessionId, configId, or value');
     return false;
   }
   option.currentValue = value;
+  session.configOptions = options;
   session.updatedAt = new Date().toISOString();
   await ctx.sendNotification({
     sessionId,
     update: {
       sessionUpdate: 'config_option_update',
-      configOptions: [...ctx.configOptions],
+      configOptions: options,
     },
   });
-  await ctx.sendResult(id, { configOptions: [...ctx.configOptions] });
+  await ctx.persist(session);
+  await ctx.sendResult(id, { configOptions: options });
   return false;
 }
 

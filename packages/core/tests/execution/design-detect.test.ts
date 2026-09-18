@@ -1,7 +1,8 @@
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Context } from '../../src/core/context.js';
-import type { Request } from '../../src/types/provider.js';
-import type { DesignKitLoader } from '../../src/types/design-kit.js';
 import {
   activateDesign,
   clearActiveKit,
@@ -13,6 +14,8 @@ import {
   makeDesignStudioRequestMiddleware,
   setActiveKit,
 } from '../../src/execution/design-detect.js';
+import type { DesignKitLoader } from '../../src/types/design-kit.js';
+import type { Request } from '../../src/types/provider.js';
 
 function fakeCtx(): { meta: Record<string, unknown> } {
   return { meta: {} };
@@ -148,5 +151,54 @@ describe('request inject middleware', () => {
     const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader, enabled: () => false });
     const out = await mw.handler(baseReq(), async (r) => r);
     expect(out.system).toHaveLength(1);
+  });
+
+  it('carries the current project brief across requests and kit changes without mutating history', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-brief-'));
+    try {
+      await fs.mkdir(path.join(root, '.design'));
+      const brief = path.join(root, '.design', 'brief.md');
+      await fs.writeFile(brief, 'Task: reconcile warehouse shortages.');
+      const ctx = { projectRoot: root, meta: {} } as unknown as Context;
+      activateDesign(ctx, ['intent:ui'], 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+      const req = baseReq();
+      const first = await mw.handler(req, async (r) => r);
+      expect(first.system?.[1]?.text).toContain('reconcile warehouse shortages');
+      await fs.writeFile(brief, 'Task: compare shipment exceptions.');
+      setActiveKit(ctx, 'neo-brutalist', 'web');
+      const second = await mw.handler(req, async (r) => r);
+      expect(second.system?.[1]?.text).toContain('compare shipment exceptions');
+      expect(second.system?.[1]?.text).not.toContain('reconcile warehouse shortages');
+      expect(first.system?.[1]?.text).toContain('reconcile warehouse shortages');
+      expect(req.system).toHaveLength(1);
+      await fs.rm(brief);
+      const third = await mw.handler(req, async (r) => r);
+      expect(third.system?.[1]?.text).not.toContain('compare shipment exceptions');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('bounds a large brief and directs the model to read the remainder', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'design-brief-'));
+    try {
+      await fs.mkdir(path.join(root, '.design'));
+      await fs.writeFile(
+        path.join(root, '.design', 'brief.md'),
+        `Audience: operators\n${'x'.repeat(20000)}END`,
+      );
+      const ctx = { projectRoot: root, meta: {} } as unknown as Context;
+      setActiveKit(ctx, 'minimal-clarity', 'web');
+      const mw = makeDesignStudioRequestMiddleware({ ctx, loader: fakeLoader });
+      const out = await mw.handler(baseReq(), async (r) => r);
+      const injected = out.system?.[1]?.text ?? '';
+      expect(injected).toContain('Audience: operators');
+      expect(injected).toContain('truncated');
+      expect(injected).not.toContain('END');
+      expect(injected.length).toBeLessThan(10000);
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });

@@ -38,8 +38,8 @@ describe('SKILL_LIMITS', () => {
     expect(SKILL_LIMITS.COMPACT_TOTAL_MAX).toBe(450);
   });
 
-  it('skill file size limit is 100KB', () => {
-    expect(SKILL_LIMITS.MAX_SKILL_FILE_SIZE).toBe(100 * 1024);
+  it('skill file size limit allows 1 MiB reference guides', () => {
+    expect(SKILL_LIMITS.MAX_SKILL_FILE_SIZE).toBe(1024 * 1024);
   });
 
   it('tarball size limit is 50MB', () => {

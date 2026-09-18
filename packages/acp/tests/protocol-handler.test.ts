@@ -109,12 +109,12 @@ describe('ACPProtocolHandler', () => {
     expect(WRONGSTACK_VERSION).toBe(packageJson.version);
   });
   describe('initialization', () => {
-    it('returns v1 capabilities with full session and auth support', async () => {
+    it('returns v1 capabilities and terminal auth only for capable clients', async () => {
       const { handler, transport } = makeHandler();
       const terminal = await handler.handleMessage({
         id: 1,
         method: 'initialize',
-        params: { protocolVersion: 1 },
+        params: { protocolVersion: 1, clientCapabilities: { auth: { terminal: true } } },
       });
       expect(terminal).toBe(false);
       expect(transport.sent).toHaveLength(1);
@@ -127,7 +127,6 @@ describe('ACPProtocolHandler', () => {
           promptCapabilities: { image: true, audio: false, embeddedContext: true },
           mcpCapabilities: { http: true, sse: true },
           sessionCapabilities: { close: {}, list: {}, delete: {}, resume: {} },
-          auth: { logout: {} },
         },
         authMethods: [
           {
@@ -274,9 +273,9 @@ describe('ACPProtocolHandler', () => {
       });
       expect(transport.sent.length).toBeGreaterThanOrEqual(1);
       const resp = transport.sent[transport.sent.length - 1] as {
-        result?: { initialMode?: { currentModeId?: string } };
+        result?: { modes?: { currentModeId?: string } };
       };
-      expect(resp.result?.initialMode?.currentModeId).toBe('code');
+      expect(resp.result?.modes?.currentModeId).toBe('code');
     });
 
     it('returns error for a non-existent session', async () => {
@@ -309,9 +308,9 @@ describe('ACPProtocolHandler', () => {
         params: { sessionId, cwd: CWD_X },
       });
       const resp = transport.sent[transport.sent.length - 1] as {
-        result?: { initialMode?: { currentModeId?: string } };
+        result?: { modes?: { currentModeId?: string } };
       };
-      expect(resp.result?.initialMode?.currentModeId).toBe('code');
+      expect(resp.result?.modes?.currentModeId).toBe('code');
     });
 
     it('returns error for a non-existent session', async () => {
@@ -385,13 +384,12 @@ describe('ACPProtocolHandler', () => {
   });
 
   describe('logout', () => {
-    it('returns empty result', async () => {
+    it('rejects unsupported logout instead of reporting false success', async () => {
       const { handler, transport } = makeHandler();
       await handler.handleMessage({ id: 1, method: 'initialize', params: { protocolVersion: 1 } });
       transport.sent.length = 0;
       await handler.handleMessage({ id: 2, method: 'logout', params: {} });
-      const resp = transport.sent[0] as { result?: {} };
-      expect(resp.result).toEqual({});
+      expect(transport.sent[0]).toMatchObject({ error: { code: -32601 } });
     });
   });
 
@@ -1292,7 +1290,7 @@ describe('ACPProtocolHandler', () => {
         method: 'session/delete',
         params: { sessionId: 'absent' },
       });
-      expect(transport.sent.at(-1)).toMatchObject({ result: { configOptions: [] } });
+      expect(transport.sent.at(-1)).toMatchObject({ result: {} });
       expect(await handler.handleMessage({})).toBe(false);
     });
 

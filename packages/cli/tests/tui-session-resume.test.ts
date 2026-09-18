@@ -176,6 +176,35 @@ it('reports a provider restore rejection returned as text', async () => {
   expect(h.context.model).toBe('old-model');
 });
 
+it.each([
+  ['unknown', 'unknown'],
+  [' UNKNOWN ', 'saved-model'],
+  ['saved-provider', 'unknown'],
+  ['', 'saved-model'],
+  ['saved-provider', '   '],
+])('keeps the working route for incomplete saved metadata %s/%s', async (provider, model) => {
+  const h = harness();
+  const saved = await h.resumeStore();
+  saved.data.metadata.provider = provider;
+  saved.data.metadata.model = model;
+  h.resumeStore.mockResolvedValue(saved);
+  const result = await resumeSession(h.ctx as never, h.resumedWriter.id);
+  expect(result?.attached).toBe(true);
+  expect(h.ctx.switchProviderAndModel).not.toHaveBeenCalled();
+  expect(h.context.provider.id).toBe('old-provider');
+  expect(h.context.model).toBe('old-model');
+  expect(result?.warnings.join(' ')).not.toContain('could not restore');
+  expect(h.context.session).toBe(h.resumedWriter);
+  expect(h.context.messages).toBe(h.resumedMessages);
+});
+
+it('still restores a complete saved provider/model pair', async () => {
+  const h = harness();
+  const result = await resumeSession(h.ctx as never, h.resumedWriter.id);
+  expect(result?.attached).toBe(true);
+  expect(h.ctx.switchProviderAndModel).toHaveBeenCalledWith('resumed-provider', 'resumed-model');
+});
+
 beforeEach(() => {
   mocks.registryList.mockReset().mockResolvedValue([]);
   mocks.loadTodosCheckpoint.mockReset().mockResolvedValue([]);

@@ -6,8 +6,8 @@ import { toErrorMessage } from '../utils/error.js';
 import { expectDefined } from '../utils/expect-defined.js';
 import { isValidSkillNameFormat, parseSkillFrontmatter } from './frontmatter.js';
 import { downloadGitHubTarball, parseSkillRef } from './github-fetcher.js';
-import { SKILL_LIMITS } from './limits.js';
 import { type InstalledSkillEntry, SkillManifestStore } from './manifest-store.js';
+import { collectSkillFiles, replaceSkillDirectory } from './skill-files.js';
 
 /**
  * Containment check for an extracted archive entry.
@@ -21,6 +21,7 @@ function isInside(resolved: string, destDir: string): boolean {
   const root = path.resolve(destDir);
   return resolved === root || resolved.startsWith(root + path.sep);
 }
+
 import { githubDirectAdapter } from './registry/github-direct-adapter.js';
 import type {
   RegistrySearchOptions,
@@ -64,8 +65,6 @@ export interface UpdateResult {
   unchanged: string[];
   errors: Array<{ name: string; error: string }>;
 }
-
-const MAX_SKILL_FILE_SIZE = SKILL_LIMITS.MAX_SKILL_FILE_SIZE;
 
 export class SkillInstaller {
   private readonly opts: SkillInstallerOptions;
@@ -113,7 +112,10 @@ export class SkillInstaller {
 
     try {
       // Detect skill structure
-      const skills = await this.detectSkills(tempDir);
+      const detected = await this.detectSkills(tempDir, parsed.skillName);
+      const skills = parsed.skillName
+        ? detected.filter((skill) => skill.name === parsed.skillName)
+        : detected;
 
       if (skills.length === 0) {
         throw new WrongStackError({
@@ -128,51 +130,13 @@ export class SkillInstaller {
       const results: InstallResult[] = [];
 
       for (const skill of skills) {
-        // Check for overwrite
-        const existing = await this.manifest.findByName(skill.name);
-        const existingInScope = existing.find((e) => e.scope === scope);
-        if (existingInScope) {
-          this.opts.log?.(`Overwriting existing skill "${skill.name}" (${scope})...`);
-          await this.removeSkillFiles(skill.name, scope);
-        }
-
-        // Copy skill files
+        const current = (await this.listInstalled()).find(
+          (entry) => entry.name === skill.name && entry.scope === scope,
+        );
+        if (current) this.opts.log?.(`Overwriting existing skill "${skill.name}" (${scope})...`);
         const destDir = path.join(targetDir, skill.name);
-        await fs.mkdir(destDir, { recursive: true });
-        const copiedFiles: string[] = [];
-
-        for (const file of skill.files) {
-          const srcPath = path.join(skill.baseDir, file);
-          const destPath = path.join(destDir, file);
-
-          // Path traversal check
-          const resolved = path.resolve(destPath);
-          if (!isInside(resolved, destDir)) {
-            throw new FsError({
-              message: `Path traversal detected in skill file: ${file}`,
-              code: ERROR_CODES.FS_DELETE_FAILED,
-              path: destPath,
-              context: { reason: 'path_traversal', skillName: skill.name },
-            });
-          }
-
-          // Size check
-          const stat = await fs.stat(srcPath);
-          if (stat.size > MAX_SKILL_FILE_SIZE) {
-            throw new FsError({
-              message:
-                `Skill file "${file}" is too large (${(stat.size / 1024).toFixed(1)}KB). ` +
-                `Max: ${MAX_SKILL_FILE_SIZE / 1024}KB`,
-              code: ERROR_CODES.FS_WRITE_FAILED,
-              path: srcPath,
-              context: { skillName: skill.name, fileSize: stat.size, maxSize: MAX_SKILL_FILE_SIZE },
-            });
-          }
-
-          await fs.mkdir(path.dirname(destPath), { recursive: true });
-          await fs.copyFile(srcPath, destPath);
-          copiedFiles.push(file);
-        }
+        await replaceSkillDirectory(skill.baseDir, destDir, skill.files);
+        const copiedFiles = skill.files;
 
         // Write manifest entry
         const entry: InstalledSkillEntry = {
@@ -192,6 +156,7 @@ export class SkillInstaller {
             : {}),
         };
         await this.manifest.addEntry(entry);
+        this.invalidateLoaderCache();
 
         results.push({
           name: skill.name,
@@ -248,42 +213,13 @@ export class SkillInstaller {
       const fm = parseSkillFrontmatter(content);
       if (!fm.name || !fm.description || !isValidSkillNameFormat(fm.name)) continue;
 
-      const existing = await this.manifest.findByName(fm.name);
-      if (existing.find((x) => x.scope === scope)) {
-        await this.removeSkillFiles(fm.name, scope);
-      }
-
-      const destDir = path.join(targetDir, fm.name);
-      await fs.mkdir(destDir, { recursive: true });
       const srcSkillDir = path.join(srcDir, e.name);
       const files = await collectFiles(srcSkillDir, srcSkillDir);
-      const copiedFiles: string[] = [];
-      for (const file of files) {
-        const srcPath = path.join(srcSkillDir, file);
-        const destPath = path.join(destDir, file);
-        const resolved = path.resolve(destPath);
-        if (!isInside(resolved, destDir)) {
-          throw new FsError({
-            message: `Path traversal detected in skill file: ${file}`,
-            code: ERROR_CODES.FS_DELETE_FAILED,
-            path: destPath,
-            context: { reason: 'path_traversal', skillName: fm.name },
-          });
-        }
-        await fs.mkdir(path.dirname(destPath), { recursive: true });
-        if (opts?.link) {
-          try {
-            await fs.symlink(srcPath, destPath);
-          } catch (err) {
-            // Symlink unavailable (e.g. Windows without Developer Mode) — copy.
-            await fs.copyFile(srcPath, destPath);
-            this.opts.log?.(`symlink failed for ${file} (${toErrorMessage(err)}); copied instead`);
-          }
-        } else {
-          await fs.copyFile(srcPath, destPath);
-        }
-        copiedFiles.push(file);
-      }
+      const destDir = path.join(targetDir, fm.name);
+      if (path.resolve(destDir) === path.resolve(srcSkillDir))
+        throw new Error('Cannot import a skill onto itself');
+      await replaceSkillDirectory(srcSkillDir, destDir, files, opts?.link);
+      const copiedFiles = files;
 
       await this.manifest.addEntry({
         name: fm.name,
@@ -319,7 +255,7 @@ export class SkillInstaller {
     opts?: { global?: boolean | undefined } | undefined,
   ): Promise<UpdateResult> {
     const result: UpdateResult = { updated: [], unchanged: [], errors: [] };
-    const allEntries = await this.manifest.listAll();
+    const allEntries = await this.listInstalled();
     const targetScope = opts?.global !== undefined ? (opts.global ? 'user' : 'project') : undefined;
     const scopedEntries = targetScope
       ? allEntries.filter((e) => e.scope === targetScope)
@@ -368,6 +304,10 @@ export class SkillInstaller {
       const first = expectDefined(entries[0]);
       const scope = first.scope;
       const isGlobal = scope === 'user';
+      if (!first.source.startsWith('github:')) {
+        result.unchanged.push(...entries.map((entry) => entry.name));
+        continue;
+      }
 
       try {
         // Parse the original source to get the ref
@@ -385,7 +325,12 @@ export class SkillInstaller {
         }
 
         this.opts.log?.(`Updating ${first.source}@${refToInstall}...`);
-        const results = await this.install(`${sourceRepo}@${refToInstall}`, { global: isGlobal });
+        const selectedName =
+          nameOrRef && entries.some((entry) => entry.name === nameOrRef) ? nameOrRef : undefined;
+        const results = await this.install(
+          `${sourceRepo}@${refToInstall}${selectedName ? `#${selectedName}` : ''}`,
+          { global: isGlobal },
+        );
 
         for (const r of results) {
           result.updated.push({
@@ -410,8 +355,9 @@ export class SkillInstaller {
    */
   async uninstall(name: string, opts?: { global?: boolean | undefined }): Promise<void> {
     const scope: 'project' | 'user' = opts?.global ? 'user' : 'project';
+    this.manifest.invalidateCache();
     const entries = await this.manifest.findByName(name);
-    const entry = entries.find((e) => e.scope === scope);
+    const entry = entries.find((e) => e.scope === scope && this.belongsToCurrentProject(e));
 
     if (!entry) {
       throw new WrongStackError({
@@ -426,7 +372,11 @@ export class SkillInstaller {
     await this.removeSkillFiles(name, scope);
 
     // Remove from manifest
-    await this.manifest.removeEntry(name, scope);
+    await this.manifest.removeEntry(
+      name,
+      scope,
+      scope === 'project' ? this.opts.projectHash : undefined,
+    );
     this.invalidateLoaderCache();
   }
 
@@ -434,7 +384,8 @@ export class SkillInstaller {
    * List all installed skills from the manifest.
    */
   async listInstalled(): Promise<InstalledSkillEntry[]> {
-    return this.manifest.listAll();
+    this.manifest.invalidateCache();
+    return (await this.manifest.listAll()).filter((entry) => this.belongsToCurrentProject(entry));
   }
 
   /**
@@ -459,8 +410,14 @@ export class SkillInstaller {
     // returned useful results.
     if (errors.length > 0) {
       this.opts.log?.(`Some registries failed during search: ${errors.join('; ')}`);
+      if (!perAdapter.some((block) => block.results.length > 0))
+        throw new Error(`Skill registry search failed: ${errors.join('; ')}`);
     }
     return dedupeSearchResults(perAdapter);
+  }
+
+  private belongsToCurrentProject(entry: InstalledSkillEntry): boolean {
+    return entry.scope === 'user' || entry.projectHash === this.opts.projectHash;
   }
 
   // ── Private helpers ──────────────────────────────────────────────
@@ -471,54 +428,30 @@ export class SkillInstaller {
    */
   private async detectSkills(
     baseDir: string,
+    selectedName?: string,
   ): Promise<Array<{ name: string; baseDir: string; files: string[] }>> {
     const results: Array<{ name: string; baseDir: string; files: string[] }> = [];
 
-    // Check for SKILL.md at root (single-skill repo)
-    const rootSkillMd = path.join(baseDir, 'SKILL.md');
-    try {
-      await fs.access(rootSkillMd);
-      const content = await fs.readFile(rootSkillMd, 'utf8');
+    const readSkill = async (dir: string): Promise<void> => {
+      const content = await fs.readFile(path.join(dir, 'SKILL.md'), 'utf8').catch((error) => {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+        throw error;
+      });
+      if (content === undefined) return;
       const fm = parseSkillFrontmatter(content);
-      if (fm.name && fm.description && isValidSkillNameFormat(fm.name)) {
-        results.push({
-          name: fm.name,
-          baseDir,
-          files: ['SKILL.md'],
-        });
-        return results; // Single-skill repo — don't look for skills/
-      }
-    } catch {
-      // No root SKILL.md
-    }
-
-    // Check for skills/ subdirectory (multi-skill repo)
+      if (!fm.name || !fm.description || !isValidSkillNameFormat(fm.name)) return;
+      if (selectedName && fm.name !== selectedName) return;
+      results.push({ name: fm.name, baseDir: dir, files: await collectFiles(dir, dir) });
+    };
+    await readSkill(baseDir);
+    if (results.length) return results;
     const skillsDir = path.join(baseDir, 'skills');
-    try {
-      const entries = await fs.readdir(skillsDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const skillFile = path.join(skillsDir, entry.name, 'SKILL.md');
-        try {
-          const content = await fs.readFile(skillFile, 'utf8');
-          const fm = parseSkillFrontmatter(content);
-          if (fm.name && fm.description && isValidSkillNameFormat(fm.name)) {
-            // Collect all files in the skill directory
-            const skillDir = path.join(skillsDir, entry.name);
-            const files = await collectFiles(skillDir, skillDir);
-            results.push({
-              name: fm.name,
-              baseDir: skillDir,
-              files,
-            });
-          }
-        } catch {
-          // Skip malformed skills
-        }
-      }
-    } catch {
-      // No skills/ directory
-    }
+    const entries = await fs.readdir(skillsDir, { withFileTypes: true }).catch((error) => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw error;
+    });
+    for (const entry of entries)
+      if (entry.isDirectory()) await readSkill(path.join(skillsDir, entry.name));
 
     return results;
   }
@@ -617,21 +550,8 @@ async function entryIsDirectory(dir: string, entry: import('node:fs').Dirent): P
 /**
  * Recursively collect all files in a directory (relative paths).
  */
-async function collectFiles(dir: string, baseDir: string): Promise<string[]> {
-  const results: string[] = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const relPath = path.relative(baseDir, fullPath);
-    if (entry.isDirectory()) {
-      // Skip hidden dirs and node_modules
-      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      results.push(...(await collectFiles(fullPath, baseDir)));
-    } else {
-      results.push(relPath);
-    }
-  }
-  return results;
+async function collectFiles(_dir: string, baseDir: string): Promise<string[]> {
+  return collectSkillFiles(baseDir);
 }
 
 /**

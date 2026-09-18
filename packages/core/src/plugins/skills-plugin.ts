@@ -1,7 +1,10 @@
+import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { capSkillBody, stripFrontmatter } from '../core/system-prompt-skill-text.js';
 import type { Context, SlashCommand } from '../index.js';
 import { FOREIGN_SKILL_TOOLS, securityScoreToTier } from '../skills/foreign-sources.js';
+import { validateSkillDocument, validateSkillName } from '../skills/frontmatter.js';
 import { githubDirectAdapter } from '../skills/registry/github-direct-adapter.js';
 import type { SkillRegistryAdapter } from '../skills/registry/registry-adapter.js';
 import {
@@ -19,7 +22,6 @@ import {
 import { SkillInstaller } from '../skills/skill-installer.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SkillLoader } from '../types/skill.js';
-import { capSkillBody, stripFrontmatter } from '../core/system-prompt-skill-text.js';
 import { color } from '../utils/color.js';
 import { toErrorMessage } from '../utils/error.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
@@ -121,6 +123,19 @@ export function buildSkillCommand(skillLoader?: SkillLoader): SlashCommand {
       'Show skill details or list available skills. Use /skill-gen to create new skills.',
     async run(args: string) {
       if (!skillLoader) return { message: 'No skill loader configured.' };
+      if (args.trim() === 'reload') {
+        skillLoader.invalidateCache();
+        return { message: `Reloaded ${(await skillLoader.list()).length} skills.` };
+      }
+      const explicitUse = /^use\s+(\S+)(?:\s+([\s\S]*))?$/.exec(args.trim());
+      if (explicitUse) {
+        const selected = await skillLoader.find(explicitUse[1] ?? '');
+        if (!selected) return { message: `Skill "${explicitUse[1]}" not found.` };
+        return {
+          message: `Using skill "${selected.name}".`,
+          runText: `Load the ${selected.name} skill with the skill tool, including any continuation pages, and apply its instructions to this task: ${explicitUse[2] || 'Continue the current user task.'}`,
+        };
+      }
       if (!args.trim()) {
         const entries = await skillLoader.listEntries();
         if (entries.length === 0) return { message: 'No skills found.' };
@@ -155,7 +170,7 @@ export function buildSkillGeneratorCommand(skillLoader?: SkillLoader): SlashComm
       'Usage:',
       '  /skill-gen                        Start the interactive AI-guided wizard',
       '  /skill-gen list                   List existing skills (with source)',
-      '  /skill-gen validate <name>        Validate a skill name (format + collisions)',
+      '  /skill-gen validate <name>        Validate an existing skill file, or check a proposed name',
       '  /skill-gen skeleton <name>        Generate a SKILL.md skeleton to draft',
       '         [--desc "..."] [--trigger a,b,c] [--global] [--force]',
       '  /skill-gen from-prompt <text>     Turn a prompt into a skill draft',
@@ -168,7 +183,7 @@ export function buildSkillGeneratorCommand(skillLoader?: SkillLoader): SlashComm
     ].join('\n'),
     async run(args: string, ctx: Context) {
       const trimmed = args.trim();
-      const [sub, ...rest] = trimmed.split(/\s+/);
+      const [sub, ...rest] = tokenizeSkillArgs(trimmed);
 
       // ── list ────────────────────────────────────────────────────────────
       if (sub === 'list' || sub === 'ls') {
@@ -218,6 +233,27 @@ export function buildSkillGeneratorCommand(skillLoader?: SkillLoader): SlashComm
       if (sub === 'validate') {
         const name = rest[0];
         if (!name) return { message: 'Usage: /skill-gen validate <name>' };
+        skillLoader?.invalidateCache();
+        const manifest = await skillLoader?.find(name);
+        const nativePath = path.join(
+          ctx?.projectRoot ?? process.cwd(),
+          '.wrongstack',
+          'skills',
+          name,
+          'SKILL.md',
+        );
+        if (validateSkillName(name).length === 0) {
+          const file = manifest?.path ?? nativePath;
+          const raw = await fs.readFile(file, 'utf8').catch(() => undefined);
+          if (raw !== undefined) {
+            const violations = validateSkillDocument(raw, path.basename(path.dirname(file)));
+            return {
+              message: violations.length
+                ? `Invalid skill "${name}":\n${violations.map((v) => `  - ${v}`).join('\n')}`
+                : `✓ Skill "${name}" is valid.`,
+            };
+          }
+        }
         const result = await validateSkillNameAvailable(name, skillLoader);
         const lines: string[] = [`Validating "${name}":`];
         if (result.formatViolations.length > 0) {
@@ -255,7 +291,7 @@ export function buildSkillGeneratorCommand(skillLoader?: SkillLoader): SlashComm
 
       // ── from-prompt <text> [--global] [--force] ─────────────────────────
       if (sub === 'from-prompt') {
-        return runFromPrompt(rest, ctx, skillLoader);
+        return runFromPrompt(trimmed.slice('from-prompt'.length).trim(), ctx, skillLoader);
       }
 
       // ── view <name> ─────────────────────────────────────────────────────
@@ -335,7 +371,7 @@ async function runSkeleton(
 
   // Validate before writing.
   const validation = await validateSkillNameAvailable(name, skillLoader);
-  if (!validation.ok) {
+  if (validation.formatViolations.length > 0) {
     const issues = [...validation.formatViolations];
     for (const c of validation.conflicts) {
       if (c.source === 'project' || c.source === 'user') {
@@ -352,6 +388,7 @@ async function runSkeleton(
   const skillsDir = isGlobal ? paths.globalSkills : paths.inProjectSkills;
   try {
     const written = await writeSkeletonSkill(skillsDir, body, { overwrite: force });
+    skillLoader?.invalidateCache();
     const advisory = bodyLineAdvisory(body);
     return {
       message: [
@@ -369,28 +406,26 @@ async function runSkeleton(
 
 /** Parse and run the `from-prompt` sub-command. */
 async function runFromPrompt(
-  rest: string[],
+  rawPrompt: string,
   ctx: Context,
   skillLoader?: SkillLoader,
 ): Promise<{ message: string }> {
-  // Everything that isn't a flag is the prompt text.
-  const promptText = rest
-    .filter((p) => !p.startsWith('--'))
-    .join(' ')
-    .trim();
-  if (!promptText) {
-    return { message: 'Usage: /skill-gen from-prompt <text> [--global] [--force]' };
-  }
-  const isGlobal = rest.includes('--global');
-  const force = rest.includes('--force');
-
+  const isGlobal = /(?:^|\s)--global(?=\s|$)/.test(rawPrompt);
+  const force = /(?:^|\s)--force(?=\s|$)/.test(rawPrompt);
+  let promptText = rawPrompt.replace(/(?:^|[ \t])--(?:global|force)(?=\s|$)/g, '').trim();
+  if (
+    (promptText.startsWith('"') && promptText.endsWith('"')) ||
+    (promptText.startsWith("'") && promptText.endsWith("'"))
+  )
+    promptText = promptText.slice(1, -1);
+  if (!promptText) return { message: 'Usage: /skill-gen from-prompt <text> [--global] [--force]' };
   const draft = extractSkillFromPrompt(promptText);
   if (!draft.suggestedName) {
     return { message: '✗ Could not derive a skill name from the prompt. Provide a # heading.' };
   }
   // Validate the derived name (don't block on shadowing).
   const validation = await validateSkillNameAvailable(draft.suggestedName, skillLoader);
-  if (!validation.ok) {
+  if (validation.formatViolations.length > 0) {
     return {
       message:
         `✗ Derived name "${draft.suggestedName}" has issues:\n  - ` +
@@ -414,6 +449,7 @@ async function runFromPrompt(
   const skillsDir = isGlobal ? paths.globalSkills : paths.inProjectSkills;
   try {
     const written = await writeSkeletonSkill(skillsDir, withBody, { overwrite: force });
+    skillLoader?.invalidateCache();
     return {
       message:
         `✓ Drafted ${draft.suggestedName} from prompt → ${written}\n` +
@@ -426,6 +462,15 @@ async function runFromPrompt(
 }
 
 /** Extract the value following a `--flag` from a token list. */
+function tokenizeSkillArgs(input: string): string[] {
+  return (input.match(/"(?:\\.|[^"\\])*"|'[^']*'|\S+/g) ?? []).map((token) => {
+    if (token.startsWith('"') && token.endsWith('"')) {
+      return token.slice(1, -1).replace(/\\(["\\])/g, '$1');
+    }
+    return token.startsWith("'") && token.endsWith("'") ? token.slice(1, -1) : token;
+  });
+}
+
 function parseFlagValue(tokens: string[], flag: string): string | undefined {
   const idx = tokens.indexOf(flag);
   if (idx === -1) return undefined;
@@ -456,10 +501,14 @@ export function buildSkillSearchCommand(
     ].join('\n'),
     async run(args: string) {
       const parts = args.trim().split(/\s+/).filter(Boolean);
-      const query = parts
-        .filter((p) => !p.startsWith('--'))
+      const queryParts = parts.filter(
+        (part, index) =>
+          !part.startsWith('--') && !['--page', '--pageSize'].includes(parts[index - 1] ?? ''),
+      );
+      const query = queryParts
         .join(' ')
-        .trim();
+        .trim()
+        .replace(/^(["'])([\s\S]*)\1$/, '$2');
       if (!query) return { message: 'Usage: /skill-search <query> [--page N]' };
       const page = parseFlagValue(parts, '--page');
       const pageSize = parseFlagValue(parts, '--pageSize');

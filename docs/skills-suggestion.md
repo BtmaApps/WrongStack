@@ -61,6 +61,11 @@ still sends a sentence saying so, rather than sending no block — otherwise the
 manifest's "load a skill when one is relevant" instruction stands unopposed on
 exactly the turns where the gate decided nothing applies.
 
+This negative sentence is emitted only for a completed gate/fit decision.
+Transport errors, malformed or incomplete answers, empty rosters and deadline
+expiry leave the original system prompt unchanged. Failures are also cached
+within the turn so tool iterations do not repeatedly call a failing service.
+
 ## Enabling it
 
 ```jsonc
@@ -93,7 +98,8 @@ secret walker matches the field name and the profile's `SecretVault` stores it
 as `enc:v1:…`, decrypting transparently on load. It is the normal place to put
 the key.
 
-`TYPESAFE_API_KEY` overrides it, for CI or any environment with no profile:
+`TYPESAFE_API_KEY` is used when `typesafe.apiKey` is absent, for CI or an
+environment with no configured profile key:
 
 ```sh
 export TYPESAFE_API_KEY=...
@@ -399,7 +405,7 @@ for the same shape applied to handlers rather than skills.
 
 | File | Role |
 |---|---|
-| `packages/core/src/skills/suggest/typesafe-client.ts` | ~150-line `fetch` client for the System One endpoint; no SDK dependency, so core's cold start is unaffected when the feature is off. |
+| `packages/core/src/typesafe/client.ts` | Shared `fetch` client for the native and OpenRouter evaluation endpoints; no SDK dependency. |
 | `packages/core/src/skills/suggest/skill-suggester.ts` | The two passes, the questions, and the thresholds. |
 | `packages/core/src/skills/suggest/middleware.ts` | Request middleware: per-user-message caching and the volatile system block. |
 | `packages/core/src/skills/suggest/setup.ts` | Shared host wiring; CLI and WebUI server both call it. |

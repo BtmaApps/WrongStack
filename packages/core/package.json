@@ -248,6 +248,7 @@
     "@wrongstack/kanban": "workspace:*",
     "@wrongstack/persistence": "workspace:*",
     "@wrongstack/primitives": "workspace:*",
+    "yaml": "^2.9.1",
     "zod": "4.6.2"
   },
   "devDependencies": {

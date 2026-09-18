@@ -123,7 +123,7 @@ export interface AuthMethod {
    * used by some agents but is not a registry-supported setup path.
    */
   type?: 'agent' | 'oauth' | 'http' | 'terminal' | 'env_var' | undefined;
-  /** Extra argv for `type: 'terminal'` setup (replaces the ACP entry args). */
+  /** Extra argv for `type: 'terminal'` setup (appended to the configured invocation). */
   args?: string[] | undefined;
   env?: Record<string, string> | undefined;
 }
@@ -544,7 +544,7 @@ export interface AgentMessageChunkUpdate {
 }
 
 export interface ThoughtChunkUpdate {
-  sessionUpdate: 'thought_chunk';
+  sessionUpdate: 'agent_thought_chunk' | 'thought_chunk';
   messageId?: MessageId | undefined;
   content: ContentBlock;
 }

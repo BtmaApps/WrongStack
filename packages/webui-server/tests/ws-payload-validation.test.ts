@@ -82,12 +82,16 @@ describe('WebUI payload validation', () => {
       {
         name: 'skills.edit',
         validator: validateSkillsEditPayload,
-        valid: { name: 'review', body: '# Review' },
+        valid: {
+          name: 'review',
+          body: '---\nname: review\ndescription: Review code.\n---\n# Review',
+        },
         invalid: [
           null,
           { name: '', body: 'x' },
           { name: 'review', body: '' },
           { name: 'review', body: 1 },
+          { name: 'review', body: '# Review' },
         ],
       },
       {
@@ -701,20 +705,16 @@ describe('WebUI payload validation', () => {
       expect(validatePrefsUpdatePayload({ fallbackModels: [] })).toMatchObject({ ok: true });
     });
 
-    it.each([
-      undefined,
-      null,
-      [],
-      'prefs',
-      123,
-      true,
-    ])('rejects non-object prefs.update payload %#', (payload) => {
-      // Server covers `[null, [], { notASetting: true }]`. The webui side
-      // additionally sends literal strings / numbers / booleans when an
-      // upstream serializer corrupts the envelope — those must reject too.
-      const result = validatePrefsUpdatePayload(payload);
-      expect(result.ok).toBe(false);
-    });
+    it.each([undefined, null, [], 'prefs', 123, true])(
+      'rejects non-object prefs.update payload %#',
+      (payload) => {
+        // Server covers `[null, [], { notASetting: true }]`. The webui side
+        // additionally sends literal strings / numbers / booleans when an
+        // upstream serializer corrupts the envelope — those must reject too.
+        const result = validatePrefsUpdatePayload(payload);
+        expect(result.ok).toBe(false);
+      },
+    );
 
     it.each([
       { typoPreference: true },

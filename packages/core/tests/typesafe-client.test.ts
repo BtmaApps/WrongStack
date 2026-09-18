@@ -51,13 +51,25 @@ describe('parseSystemOneResult', () => {
     expect(Object.keys(result.answers)).toEqual(['good']);
   });
 
-  it('clamps out-of-range probabilities and tolerates a missing usage block', () => {
+  it('rejects out-of-range probabilities and tolerates a missing usage block', () => {
     const result = parseSystemOneResult({
       answers: { n: { type: 'noul', noul: 1.4 }, m: { type: 'noul', noul: -0.2 } },
     });
-    expect(result.answers['n']).toEqual({ type: 'noul', noul: 1 });
-    expect(result.answers['m']).toEqual({ type: 'noul', noul: 0 });
+    expect(result.answers).toEqual({});
     expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it.each([
+    { choice: 'a', probabilities: {}, confidence: 1 },
+    { choice: 'a', probabilities: { b: 1 }, confidence: 1 },
+    { choice: 'a', probabilities: { a: 2, b: -1 }, confidence: 1 },
+    { choice: 'a', probabilities: { a: 0.1, b: 0.9 }, confidence: 1 },
+    { choice: 'a', probabilities: { a: 0.8, b: 0.8 }, confidence: 1 },
+    { choice: 'a', probabilities: { a: 1 }, confidence: 3 },
+  ])('drops an invalid choice distribution: %j', (answer) => {
+    expect(parseSystemOneResult({ answers: { q: { type: 'choice', ...answer } } }).answers).toEqual(
+      {},
+    );
   });
 
   it('returns an empty result for a body that is not an object', () => {
@@ -67,6 +79,23 @@ describe('parseSystemOneResult', () => {
 });
 
 describe('createTypeSafeClient', () => {
+  it('does not contact the host after cancellation during retry backoff', async () => {
+    vi.useFakeTimers();
+    try {
+      const ctrl = new AbortController();
+      const fetchImpl = vi.fn(async () => jsonResponse({}, 503));
+      const client = createTypeSafeClient({ apiKey: 'k', fetchImpl });
+      const pending = client.systemOne({ state: 's', questions: {} }, ctrl.signal);
+      const rejected = expect(pending).rejects.toBeDefined();
+      await vi.advanceTimersByTimeAsync(1);
+      ctrl.abort();
+      await vi.runAllTimersAsync();
+      await rejected;
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('posts state, model and questions to the documented endpoint with bearer auth', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ answers: {}, usage: {} }));
     const client = createTypeSafeClient({ apiKey: 'sk-test', fetchImpl: fetchImpl as never });

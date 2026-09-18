@@ -3,8 +3,10 @@
 Six axes, 0–5 each. **The overall score is the lowest axis**, not the average —
 one broken axis is what people see.
 
-Every score cites at least one concrete observation (file:line, or a named
-screen region). A score without a citation is a feeling.
+Every score cites an observed artifact, viewport and state. Source-only evidence
+can establish implementation facts but cannot support a visual score. Use
+`unverified` for missing evidence and `n/a` only for an inapplicable axis. Do not
+compute an overall score while an applicable axis is unverified.
 
 ---
 
@@ -56,11 +58,13 @@ per screenful; justified grid breaks; grouping encoded in spacing.
 
 | Score | Evidence |
 |---|---|
-| 1 | Every section a centered stack; uniform padding; hero + three cards |
-| 3 | A real grid, consistently applied; sections still similar to each other |
-| 5 | Archetype clearly chosen; rhythm varies with intent; 1–2 deliberate breaks that recur in a role |
+| 1 | Template hierarchy obscures the primary task or makes different priorities look equal |
+| 3 | Coherent grid and reading order; task and grouping are clear |
+| 5 | Structure uses the product's actual content and workflow with effective density and adaptation |
 
-**Tests:** squint test (one focal point?); do any two adjacent sections share a skeleton?
+**Tests:** can the primary task be identified? Does repetition support comparison
+and scanning, or flatten content with different priorities? Symmetry and repeated
+sections are valid when their roles are equal; novelty is not a scoring criterion.
 
 ---
 
@@ -83,10 +87,11 @@ size; tabular figures in tables; kit font tokens rather than literals.
 
 ## Axis 3 — Color
 
-**Question:** 60/30/10, or accent-everywhere? Is dark mode re-tuned or inverted?
+**Question:** do color roles make the task clearer? Are supported themes readable?
 
-Look for: accent count per screen (≤3); neutrals carrying the page; dark mode
-lightness/chroma re-tuned; contrast floors met; no color-only meaning.
+Look for: primary action salience, consistent links and status colors, dark mode
+lightness/chroma re-tuned, measured contrast, and no color-only meaning. Accent
+counts and 60/30/10 are not pass/fail rules, especially for charts and dense tools.
 
 | Score | Evidence |
 |---|---|
@@ -94,7 +99,7 @@ lightness/chroma re-tuned; contrast floors met; no color-only meaning.
 | 3 | Token-clean, contrast passes, allocation roughly right |
 | 5 | Allocation deliberate; derived variants (`color-mix`) keep the family coherent; both themes independently tuned |
 
-**Test:** count accent uses on the busiest screen.
+**Test:** inspect the busiest state: can action, status and data roles be distinguished?
 
 ---
 

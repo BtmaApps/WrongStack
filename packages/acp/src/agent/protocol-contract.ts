@@ -52,6 +52,9 @@ export interface AgentCapabilities {
 
 export interface RunTurnInput {
   sessionId: string;
+  /** Current session configuration, isolated from other sessions. */
+  modeId?: string | undefined;
+  configOptions?: readonly SessionConfigOption[] | undefined;
   /** Content blocks the client sent. */
   prompt: readonly ContentBlock[];
   /** Cancelled when the client sends `session/cancel` for this session. */
@@ -89,6 +92,7 @@ export interface RunTurnPermissionRequest {
 
 /** Client filesystem/terminal capabilities advertised at initialize. */
 export interface ClientCapabilities {
+  auth?: { terminal?: boolean | undefined } | undefined;
   fs?: { readTextFile?: boolean | undefined; writeTextFile?: boolean | undefined } | undefined;
   terminal?: boolean | undefined;
 }
@@ -155,6 +159,8 @@ export interface SessionState {
   abort: AbortController;
   /** Active mode, advertised to the client in current_mode_update. */
   modeId: string;
+  configOptions?: SessionConfigOption[] | undefined;
+  prompting?: boolean | undefined;
   /** Created at, for session/list ordering. */
   createdAt: string;
   /** Last activity timestamp, for session/info_update. */
@@ -235,6 +241,8 @@ export interface ProtocolHandlerOptions {
 
 /** Minimal durable-store contract the handler uses (ACPSessionStore satisfies it). */
 export interface SessionPersistence {
+  list?(): Promise<Array<{ id: string; updatedAt: string }>>;
+  delete?(sessionId: string): Promise<void>;
   save(
     state: SessionState,
     history?: Array<{ sessionUpdate: string; content: unknown }>,

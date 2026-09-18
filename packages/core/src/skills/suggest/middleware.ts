@@ -62,6 +62,8 @@ interface CachedSuggestion {
   /** The user text this answer was computed for. */
   query: string;
   suggestion: SkillSuggestion | undefined;
+  /** An unavailable evaluation must not become a negative relevance claim. */
+  evaluated: boolean;
 }
 
 export function createSkillSuggestionMiddleware(
@@ -92,38 +94,54 @@ export function createSkillSuggestionMiddleware(
           const sessionKey = sessionId ?? '<no-session>';
           const cached = bySession.get(sessionKey);
           let suggestion: SkillSuggestion | undefined;
+          let evaluated = false;
           if (cached && cached.query === query) {
             suggestion = cached.suggestion;
+            evaluated = cached.evaluated;
           } else {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), deadlineMs);
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const deadline = new Promise<undefined>((resolve) => {
+              timer = setTimeout(() => {
+                controller.abort();
+                resolve(undefined);
+              }, deadlineMs);
+            });
             (timer as unknown as { unref?: () => void }).unref?.();
             try {
-              suggestion = await opts.suggester.suggest(query, controller.signal);
+              const trace = await Promise.race([
+                opts.suggester.explain(query, controller.signal),
+                deadline,
+              ]);
+              evaluated =
+                !controller.signal.aborted &&
+                (trace?.stop === 'suggested' || trace?.stop === 'gate' || trace?.stop === 'fits');
+              suggestion = evaluated ? trace?.suggestion : undefined;
             } finally {
               clearTimeout(timer);
             }
             // A miss is cached too: "nothing fits" is an answer, and re-asking
             // it on every tool-loop iteration is the same waste as re-asking a
             // hit.
-            remember(sessionKey, { query, suggestion });
+            remember(sessionKey, { query, suggestion, evaluated });
             try {
-              opts.onSuggestion?.({ suggestion, sessionId });
+              if (evaluated) opts.onSuggestion?.({ suggestion, sessionId });
             } catch {
               // An observer must not fail the turn it is observing.
             }
           }
-          nextRequest = {
-            ...request,
-            system: [
-              ...(request.system ?? []),
-              markVolatileSystemBlock({
-                type: 'text',
-                text: renderSuggestionBlock(suggestion?.name),
-                cache_control: { type: 'ephemeral' },
-              }),
-            ],
-          };
+          if (evaluated)
+            nextRequest = {
+              ...request,
+              system: [
+                ...(request.system ?? []),
+                markVolatileSystemBlock({
+                  type: 'text',
+                  text: renderSuggestionBlock(suggestion?.name),
+                  cache_control: { type: 'ephemeral' },
+                }),
+              ],
+            };
         }
       } catch {
         nextRequest = request;

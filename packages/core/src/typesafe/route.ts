@@ -8,8 +8,7 @@
  *   typesafe   POST https://api.typesafe.ai/v1/systemone      model `jev-latest`
  *   openrouter POST https://openrouter.ai/api/alpha/decisions model `~typesafe/jev-latest`
  *
- * OpenRouter does not expose Jev as a chat model — it is absent from
- * `GET /api/v1/models` and lives behind a separate "Decisions" endpoint,
+ * OpenRouter exposes Jev behind a separate "Decisions" endpoint,
  * because a model that returns a typed judgment rather than tokens does not
  * fit `/v1/chat/completions` any better there than it fits our `Provider`
  * interface here. That is the whole reason this subsystem is not a provider.
@@ -34,13 +33,8 @@ export interface TypeSafeRouteSpec {
 }
 
 /**
- * Known routes, in precedence order.
- *
- * `typesafe` is listed first and wins when both credentials are present, for
- * the same reason the upstream `jev` MCP server made that choice: an
- * `OPENROUTER_API_KEY` that happens to be in the environment for chat must not
- * silently reroute a TypeSafe account the operator deliberately configured,
- * nor move its billing.
+ * Known routes. Native is the default; OpenRouter requires an explicit route,
+ * regardless of which environment variables are present.
  */
 export const TYPESAFE_ROUTES = {
   typesafe: {

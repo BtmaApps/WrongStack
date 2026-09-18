@@ -64,6 +64,8 @@ const DEFAULT_FILE_OPERATIONS: FileServerOperations = {
 export interface ReadFileParams {
   sessionId: string;
   path: string;
+  line?: number | undefined;
+  limit?: number | undefined;
 }
 
 export interface WriteFileParams {
@@ -122,6 +124,16 @@ export class FileServer {
 
   /** Read a text file. Returns the content as a string. */
   async readTextFile(params: ReadFileParams): Promise<{ content: string }> {
+    if (
+      (params.line != null && (!Number.isSafeInteger(params.line) || params.line < 1)) ||
+      (params.limit != null && (!Number.isSafeInteger(params.limit) || params.limit < 0))
+    ) {
+      throw new FsError(
+        'INVALID_PATH',
+        params.path,
+        'line must be a positive integer and limit a non-negative integer',
+      );
+    }
     const safe = await this.resolveInside(params.path);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -141,7 +153,14 @@ export class FileServer {
         encoding: 'utf8',
         signal: controller.signal,
       });
-      return { content };
+      if (params.line == null && params.limit == null) return { content };
+      const lines = content.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+      const start = (params.line ?? 1) - 1;
+      return {
+        content: lines
+          .slice(start, params.limit == null ? undefined : start + params.limit)
+          .join(''),
+      };
     } catch (err) {
       if (err instanceof FsError) throw err;
       if (controller.signal.aborted) {

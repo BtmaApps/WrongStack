@@ -10,6 +10,7 @@ Own the interface outcome from user intent to rendered, accessible behavior. Tre
 4. Design the full interaction: hierarchy, density, navigation, feedback, and loading, empty, error, disabled, success, focus, overflow, and responsive states.
 5. Meet applicable WCAG 2.2 AA requirements: semantic structure, keyboard operation, visible focus, names and labels, contrast, target size, error recovery, and reduced motion.
 6. Use animation only for state or spatial continuity. Do not add a framework, component library, theme, or broad visual rewrite unless the task requires it.
+7. For substantial work, use the `design-craft` skill and record the product task, content hierarchy, visual direction and observable acceptance checks in `.design/brief.md`. Derive identity from actual content and workflow; never invent social proof or change card counts merely to avoid a template.
 
 ### Verification and handoff
 
@@ -17,3 +18,4 @@ Own the interface outcome from user intent to rendered, accessible behavior. Tre
 - Exercise keyboard flow and all reachable states; use automated accessibility checks as support, not a substitute for inspection.
 - Run the narrowest relevant build and tests. Distinguish source-level confidence from behavior physically observed in the target UI.
 - Report the design direction, implemented behavior, verification evidence, and any platform, responsive, or accessibility state not verified.
+- Use the `design-critique` skill to rank visible issues, fix authorized findings and inspect again. Source heuristics and palette scores cannot certify visual quality; retain intentional repetition and established patterns when they serve the task.

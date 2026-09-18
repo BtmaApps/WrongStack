@@ -9,7 +9,7 @@
  * silently.
  *
  * This wraps a client and counts CONSECUTIVE authentication rejections. After
- * `threshold` of them it opens for the rest of the process and every later
+ * `threshold` of them it opens for the lifetime of this client and every later
  * call fails immediately without touching the network, having told the host
  * once why.
  *
@@ -23,8 +23,8 @@
  *               deserves to keep failing loudly rather than silently disable
  *               an unrelated feature.
  *
- * One success resets the count, so a key rotated mid-session recovers without
- * a restart.
+ * One success resets the count before it opens. After opening, recreate the
+ * client after fixing the credential; other clients keep their own counters.
  */
 
 import { FetchError } from '../types/errors.js';
@@ -95,7 +95,7 @@ export function createTypeSafeBreaker(opts: TypeSafeBreakerOptions): TypeSafeBre
           open = true;
           reason =
             `${label} rejected the credential ${consecutive} times (HTTP ${status}); ` +
-            'disabled for this process. Check it with `wstack typesafe test`.';
+            'disabled for this client. Check it with `wstack typesafe test` and restart the session.';
           try {
             opts.onOpen?.(reason);
           } catch {

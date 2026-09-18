@@ -10,6 +10,7 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/arg-parser.js';
+import * as configUtils from '../src/provider-config-utils.js';
 import { typesafeCmd } from '../src/subcommands/handlers/typesafe.js';
 
 async function invoke(
@@ -147,5 +148,95 @@ describe('wstack typesafe test', () => {
     expect(code).toBe(1);
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(output()).toContain('TYPESAFE_API_KEY');
+  });
+});
+
+describe('wstack typesafe login', () => {
+  it('drops the previous host and model when explicitly switching routes', async () => {
+    const saved = {
+      typesafe: {
+        route: 'custom',
+        endpoint: 'https://old-proxy.test/decisions',
+        model: 'jev-1.13.0',
+        apiKey: 'old',
+        requestTimeoutMs: 900,
+      },
+    };
+    vi.spyOn(configUtils, 'mutateConfigProviders').mockImplementation(
+      async (_path, _vault, mutate) => {
+        mutate({}, saved);
+      },
+    );
+    const { deps } = fakeDeps(saved);
+    const { code } = await invoke(['login', '--route', 'openrouter', '--key', 'new'], deps);
+    expect(code).toBe(0);
+    expect(saved.typesafe).toEqual({ route: 'openrouter', apiKey: 'new', requestTimeoutMs: 900 });
+  });
+
+  it('keeps endpoint and model when rotating the key without changing route', async () => {
+    const saved = {
+      typesafe: {
+        route: 'custom',
+        endpoint: 'https://proxy.test/decisions',
+        model: 'jev-1.13.0',
+        apiKey: 'old',
+      },
+    };
+    vi.spyOn(configUtils, 'mutateConfigProviders').mockImplementation(
+      async (_path, _vault, mutate) => {
+        mutate({}, saved);
+      },
+    );
+    const { deps } = fakeDeps(saved);
+    expect((await invoke(['login', '--key', 'new'], deps)).code).toBe(0);
+    expect(saved.typesafe).toEqual({
+      route: 'custom',
+      endpoint: 'https://proxy.test/decisions',
+      model: 'jev-1.13.0',
+      apiKey: 'new',
+    });
+  });
+
+  it('refuses a custom route without an endpoint before asking for a key', async () => {
+    const mutate = vi.spyOn(configUtils, 'mutateConfigProviders').mockResolvedValue();
+    const { deps, output } = fakeDeps();
+    expect((await invoke(['login', '--route', 'custom'], deps)).code).toBe(1);
+    expect(deps.reader.readSecret).not.toHaveBeenCalled();
+    expect(mutate).not.toHaveBeenCalled();
+    expect(output()).toContain('--endpoint');
+  });
+
+  it('accepts an explicit endpoint and model for a custom route', async () => {
+    const saved: Record<string, unknown> = {};
+    vi.spyOn(configUtils, 'mutateConfigProviders').mockImplementation(
+      async (_path, _vault, mutate) => {
+        mutate({}, saved);
+      },
+    );
+    const { deps } = fakeDeps();
+    expect(
+      (
+        await invoke(
+          [
+            'login',
+            '--route',
+            'custom',
+            '--endpoint',
+            'https://proxy.test/decisions',
+            '--model',
+            'jev-1.13.0',
+            '--key',
+            'new',
+          ],
+          deps,
+        )
+      ).code,
+    ).toBe(0);
+    expect(saved['typesafe']).toEqual({
+      route: 'custom',
+      endpoint: 'https://proxy.test/decisions',
+      model: 'jev-1.13.0',
+      apiKey: 'new',
+    });
   });
 });

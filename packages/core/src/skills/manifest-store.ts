@@ -60,17 +60,37 @@ export class SkillManifestStore {
   }
 
   async addEntry(entry: InstalledSkillEntry): Promise<void> {
+    this.invalidateCache();
     const data = await this.read();
     // Remove existing entry with the same name + scope
-    data.skills = data.skills.filter((s) => !(s.name === entry.name && s.scope === entry.scope));
+    data.skills = data.skills.filter(
+      (s) =>
+        !(
+          s.name === entry.name &&
+          s.scope === entry.scope &&
+          (s.scope === 'user' || s.projectHash === entry.projectHash)
+        ),
+    );
     data.skills.push(entry);
     await this.write(data);
   }
 
-  async removeEntry(name: string, scope: 'project' | 'user'): Promise<boolean> {
+  async removeEntry(
+    name: string,
+    scope: 'project' | 'user',
+    projectHash?: string,
+  ): Promise<boolean> {
+    this.invalidateCache();
     const data = await this.read();
     const before = data.skills.length;
-    data.skills = data.skills.filter((s) => !(s.name === name && s.scope === scope));
+    data.skills = data.skills.filter(
+      (s) =>
+        !(
+          s.name === name &&
+          s.scope === scope &&
+          (scope === 'user' || projectHash === undefined || s.projectHash === projectHash)
+        ),
+    );
     if (data.skills.length === before) return false;
     await this.write(data);
     return true;

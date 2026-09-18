@@ -108,6 +108,28 @@ function rerank(winner: string, fits: Record<string, number>): SystemOneResult {
 }
 
 describe('createSkillSuggester', () => {
+  it('does not pass a partial gate as if all three judgments had answered', async () => {
+    const partial = wide(0.9, { 'design-craft': 0.6, 'design-critique': 0.4 });
+    delete partial.answers['gate::prose_suffices'];
+    const client = clientOf(partial, rerank('design-craft', { 'design-craft': 0.9 }));
+    const trace = await createSkillSuggester({ client, loader: loaderOf(ROSTER) }).explain(
+      'Build this UI',
+    );
+    expect(trace.stop).toBe('wide-failed');
+    expect(client.calls).toHaveLength(1);
+  });
+
+  it('does not borrow another skill fit when the winner fit is missing', async () => {
+    const client = clientOf(
+      wide(0.9, { 'design-craft': 0.6, 'design-critique': 0.4 }),
+      rerank('design-craft', { 'design-critique': 0.9 }),
+    );
+    const trace = await createSkillSuggester({ client, loader: loaderOf(ROSTER) }).explain(
+      'Build this UI',
+    );
+    expect(trace.stop).toBe('rerank-failed');
+    expect(trace.suggestion).toBeUndefined();
+  });
   it('suggests the pass-2 winner, which may differ from the pass-1 leader', async () => {
     // The whole point of the second pass: with only a 60-char trigger the wide
     // ranking puts the critique skill first, and reading the real bodies flips

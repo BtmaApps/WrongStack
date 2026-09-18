@@ -6,7 +6,7 @@ today: [skill suggestion](./skills-suggestion.md) and the
 and both keep working — differently — when there is no account.
 
 ```
-wstack typesafe            what is configured, and whether anything works
+wstack typesafe            inspect configuration (no network test)
 wstack typesafe login      store a key in the active profile
 wstack typesafe test       spend one question proving the key really works
 ```
@@ -14,14 +14,12 @@ wstack typesafe test       spend one question proving the key really works
 ## Why this is not a provider
 
 TypeSafe's Jev returns a typed judgment, not tokens. It has no messages, no
-streaming, no tools, no output tokens and no reasoning effort — none of the
+streaming chat, no tool execution and no reasoning effort — none of the
 `Provider` interface applies. Putting it in the provider catalog would leak
 `jev-latest` into the model picker, the subagent lanes, the council voters and
 the fallback chain, where selecting it would simply break a turn.
 
-This is not a WrongStack-specific judgment call. OpenRouter — the universal
-chat aggregator — does not list Jev in `GET /api/v1/models` either; it exposes
-it behind a separate *Decisions* endpoint, because a typed-judgment model does
+OpenRouter exposes Jev through a separate *Decisions* endpoint, because a typed-judgment model does
 not fit `/v1/chat/completions` there any better than it fits `Provider` here.
 
 ## Routes
@@ -46,6 +44,57 @@ OpenRouter's Decisions endpoint is still on its `/api/alpha/` path and
 OpenRouter warns it may move; that is why it is a table entry with a config
 override rather than a constant in the client.
 
+```sh
+wstack typesafe login --route typesafe
+# Or use an OpenRouter key, billed to OpenRouter:
+wstack typesafe login --route openrouter
+# Optional fixed OpenRouter version:
+wstack typesafe login --route openrouter --model typesafe/jev-1.13
+# A proxy needs its complete evaluation URL:
+wstack typesafe login --route custom --endpoint https://proxy.example/v1/systemone
+wstack typesafe test
+```
+
+The key is entered through a hidden prompt. Switching routes clears the old
+endpoint and model; explicit `--endpoint` and `--model` replace them. Rotating
+a key without changing routes preserves those settings. Custom endpoints must
+be HTTP(S) URLs without embedded credentials or fragments.
+
+Native authentication is a Bearer API key from the
+[TypeSafe console](https://console.typesafe.ai/keys), not a chat-provider OAuth
+login. OpenRouter uses its own Bearer API key. The configured `typesafe.apiKey`
+takes precedence over the selected route's environment variable. Existing
+OpenRouter chat auth-profile keys are not automatically borrowed: store the
+chosen key here or use `OPENROUTER_API_KEY` with the explicit OpenRouter route.
+
+Both features remain off after login. Enable the desired switches in the active
+user profile, then restart the session/server that loaded that configuration:
+
+```json
+{
+  "skills": { "suggest": { "enabled": true } },
+  "fleet": { "dispatch": { "typesafeClassifier": true } }
+}
+```
+
+## Where it runs
+
+| Consumer | Surfaces | Calls and limits | Effect |
+|---|---|---|---|
+| Skill suggestion | Shared CLI/TUI request pipeline and WebUI server pipeline | 0–2 evaluations per distinct latest user text, cached per session across tool iterations; 3s combined deadline | Optional skill relevance hint; does not load/install a skill or force its use |
+| Fleet dispatch | CLI/TUI `/delegate`, `/fleet dispatch`, and the fleet host's classifier callback | One evaluation containing Choice + Noul when the keyword heuristic is ambiguous; 4s total timeout | Selects an eligible role or declines to heuristic/generalist routing |
+
+Each HTTP evaluation permits two attempts by default for transient errors.
+Short requests (under 12 characters), small skill rosters, and confident
+heuristic dispatches avoid calls. This is not wired into Brain policy, council
+voting, approvals, every tool call, or normal chat generation. There is no
+dedicated TypeSafe auth panel in the WebUI; use the CLI account commands.
+
+Malformed or incomplete answers do not supply a decision. A failed or timed-out
+skill evaluation adds no relevance block; a valid negative evaluation can still
+say no skill fits. Status only checks configuration; `test` proves the selected
+host accepted the credential and answered a typed question.
+
 ## The credential
 
 `typesafe.apiKey` is the normal place. The **field name is load-bearing**:
@@ -66,7 +115,7 @@ call for opposite behaviour:
 | State | Meaning | What a host does |
 |---|---|---|
 | `unconfigured` | no credential anywhere | **Nothing.** The user did not ask for this |
-| `ready` | usable account | the feature runs, if its own switch is on |
+| `ready` | locally resolvable account; key not yet tested | the feature attempts calls if its own switch is on |
 | `unusable` | e.g. `route: custom` with no `endpoint` | warn once |
 
 A feature that is switched **on** and cannot run warns once per process, at
@@ -87,11 +136,12 @@ that is per request, and these features run per turn: a revoked key would buy a
 rejected request, and its latency, on every turn forever, invisibly.
 
 A breaker counts **consecutive** auth rejections (`typesafe.authFailureLimit`,
-default 3) and then disables TypeSafe for the process, saying so once. It never
+default 3) and then disables that client instance, saying so once. It never
 trips on `429`/`529` (transient by the service's own documentation), on network
 errors, or on `422` (a bad question is our bug, not a credential problem). One
-success resets the count, so a key rotated mid-session recovers without a
-restart.
+success resets the count before the breaker opens. After it opens, recreate the
+client/session after fixing the credential. Other sessions and consumers have
+their own clients; this is not a process-global credential circuit breaker.
 
 ## Cost
 
@@ -111,6 +161,11 @@ Each consumer keeps **its own `enabled` switch** and **its own degraded path**.
 Sharing a credential is not the same as wanting a behaviour, and what "running
 without TypeSafe" means differs: the dispatch classifier falls back to the prose
 classifier, the skill suggester emits no block at all.
+
+Upstream references, checked 2026-09-18: [HTTP API](https://docs.typesafe.ai/api),
+[independent typed questions](https://docs.typesafe.ai/introduction),
+[OpenRouter Jev alias](https://openrouter.ai/~typesafe/jev-latest), and
+[pinned Jev 1.13](https://openrouter.ai/typesafe/jev-1.13).
 
 There is deliberately no shared `isTypeSafeAvailable()` helper. It would be a
 single `if` standing in for two different questions, and the second caller to

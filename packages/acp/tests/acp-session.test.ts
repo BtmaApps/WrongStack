@@ -239,13 +239,13 @@ describe('ACPSession', () => {
       await new Promise((resolve) => setImmediate(resolve));
       await new Promise((resolve) => setImmediate(resolve));
 
-      // The abort-driven cancellation must have attempted a -32800 reply.
+      // Permission cancellation has a standard successful cancelled outcome.
       const response = t.sent.find(
         (message) =>
           (message as { id?: unknown }).id === 'perm-close' &&
-          (message as { error?: unknown }).error !== undefined,
-      ) as { error?: { code?: number; message?: string } } | undefined;
-      expect(response?.error?.code).toBe(-32800);
+          (message as { result?: unknown }).result !== undefined,
+      ) as { result?: unknown } | undefined;
+      expect(response?.result).toEqual({ outcome: { outcome: 'cancelled' } });
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
       process.off('unhandledRejection', unhandled);

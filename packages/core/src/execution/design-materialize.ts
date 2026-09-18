@@ -160,7 +160,10 @@ function genWebCss(tokens: DesignKitTokens, kitId: string): string {
   // `text-base` / `shadow-2` resolve to the kit.
   const rawVars = (set: Record<string, string>) =>
     Object.entries(set)
-      .filter(([k]) => !isScaleToken(k))
+      // Legacy fontSans/fontDisplay aliases normalize to the SAME CSS variable
+      // as canonical scale tokens. Emitting both leaves unlayered :root/.dark
+      // values overriding a tuned @theme font. Canonical scale values win.
+      .filter(([k]) => !isScaleToken(k) && !(isScaleToken(kebab(k)) && set[kebab(k)] !== undefined))
       .map(([k, v]) => `  --${kebab(k)}: ${v};`)
       .join('\n');
 
@@ -197,11 +200,17 @@ function genTsTheme(tokens: DesignKitTokens, kitId: string): string {
   // Colors + legacy/misc tokens stay in the per-theme objects (colors → hex);
   // kebab-scale tokens move to a theme-agnostic numeric `scale` export (rem→px
   // at 16px, s→ms) so React Native can consume radius/spacing/type directly.
-  const conv = (set: Record<string, string>) =>
-    Object.entries(set)
-      .filter(([k]) => !isScaleToken(k))
+  const conv = (set: Record<string, string>) => {
+    const theme = Object.fromEntries(Object.entries(set).filter(([k]) => !isScaleToken(k)));
+    // Fonts are strings, so the numeric scale cannot carry them. Preserve the
+    // existing camelCase theme API while honoring tune's canonical font keys.
+    for (const [k, v] of Object.entries(set)) {
+      if (k.startsWith('font-')) theme[camel(k)] = v;
+    }
+    return Object.entries(theme)
       .map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(colorToHex(v) ?? v)},`)
       .join('\n');
+  };
   const scaleBlock = scaleNumbers(tokens.light ?? {})
     .map(([k, n]) => `  ${JSON.stringify(camel(k))}: ${n},`)
     .join('\n');

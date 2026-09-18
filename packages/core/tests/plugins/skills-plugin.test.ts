@@ -45,11 +45,12 @@ import {
   createSkillsPlugin,
   resolveImportSourceDir,
 } from '../../src/plugins/skills-plugin.js';
-import { githubDirectAdapter } from '../../src/skills/registry/github-direct-adapter.js';
 import { SKILL_LIMITS } from '../../src/skills/limits.js';
+import { githubDirectAdapter } from '../../src/skills/registry/github-direct-adapter.js';
 
 function fakeLoader(overrides: Record<string, unknown> = {}) {
   return {
+    invalidateCache: vi.fn(),
     listEntries: vi.fn().mockResolvedValue([]),
     find: vi.fn(),
     readBody: vi.fn(),

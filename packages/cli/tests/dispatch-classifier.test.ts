@@ -4,9 +4,86 @@
  * array-content path, the empty-content fallback, and the provider-throw
  * catch.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CommitLLMProvider } from '../src/services/commit-message.js';
-import { makeProviderClassifier } from '../src/services/dispatch-classifier.js';
+import {
+  makeDispatchClassifier,
+  makeProviderClassifier,
+} from '../src/services/dispatch-classifier.js';
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('TypeSafe route wiring', () => {
+  it.each([
+    ['typesafe', 'TYPESAFE_API_KEY', 'https://api.typesafe.ai/v1/systemone', 'jev-latest'],
+    [
+      'openrouter',
+      'OPENROUTER_API_KEY',
+      'https://openrouter.ai/api/alpha/decisions',
+      '~typesafe/jev-latest',
+    ],
+  ] as const)(
+    'uses the selected %s account for typed dispatch',
+    async (route, keyEnv, endpoint, model) => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              answers: {
+                which: {
+                  type: 'choice',
+                  choice: 'code',
+                  probabilities: { code: 0.8, review: 0.2 },
+                  confidence: 0.5,
+                },
+                any_fits: { type: 'noul', noul: 0.9 },
+              },
+              usage: { input_tokens: 42, output_tokens: 0 },
+            }),
+          ),
+      );
+      vi.stubGlobal('fetch', fetchImpl);
+      const provider = providerWith([]);
+      const classifier = makeDispatchClassifier({
+        config: { typesafe: { route }, fleet: { dispatch: { typesafeClassifier: true } } } as never,
+        provider,
+        model: 'chat-model',
+        env: { [keyEnv]: 'route-test-key' },
+      });
+      expect(
+        await classifier('fix this', [
+          { role: 'code', name: 'Code', summary: 'Writes code' },
+          { role: 'review', name: 'Review', summary: 'Reviews code' },
+        ]),
+      ).toMatchObject({ role: 'code', confidence: 0.5 });
+      const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe(endpoint);
+      expect(init.headers).toMatchObject({ Authorization: 'Bearer route-test-key' });
+      expect(JSON.parse(init.body as string)).toMatchObject({
+        model,
+        state: { task: 'fix this', candidates: { code: 'Writes code', review: 'Reviews code' } },
+      });
+      expect(provider.complete).not.toHaveBeenCalled();
+    },
+  );
+
+  it('falls back to the chat classifier when explicitly enabled without an account', async () => {
+    const provider = providerWith([{ type: 'text', text: '{"role":"code"}' }]);
+    const classifier = makeDispatchClassifier({
+      config: { fleet: { dispatch: { typesafeClassifier: true } } } as never,
+      provider,
+      model: 'chat-model',
+      env: {},
+    });
+    expect(
+      await classifier('fix this', [
+        { role: 'code', name: 'Code', summary: 'Writes code' },
+        { role: 'review', name: 'Review', summary: 'Reviews code' },
+      ]),
+    ).toMatchObject({ role: 'code' });
+    expect(provider.complete).toHaveBeenCalledOnce();
+  });
+});
 
 function providerWith(content: unknown): CommitLLMProvider {
   return {

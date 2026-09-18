@@ -36,6 +36,11 @@ criteria are each role's `summary`, plus its `capability.rationale
 role that was not offered, so all five failure points collapse into one typed
 answer.
 
+The shared state includes the task and candidate descriptions. Jev evaluates
+each question independently, so the fit Noul cannot rely on seeing the other
+question's Choice criteria. Confidence describes distribution concentration,
+not a calibrated probability that the chosen role is correct.
+
 Two things the prose path could not do at all:
 
 **Decline honestly.** The `DispatchClassifier` contract has always allowed
@@ -110,7 +115,8 @@ nothing:
 ## What leaves the machine
 
 Per ambiguous dispatch: the task description, and the role/summary/contrast
-lines of up to `maxCandidates` (default 6) catalog roles. Confident heuristic
+lines of up to `maxCandidates` (default 6) ranked roles, or the whole catalog
+when fewer than two roles match keywords. Confident heuristic
 dispatches send nothing.
 
 The task description is usually a subagent task the agent composed, which may

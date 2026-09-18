@@ -4,7 +4,9 @@ The default-active `wstack-skills` plugin registers seven commands when plugins 
 
 | Command | Purpose |
 |---|---|
-| `/skill [name]` | List discovered skills or show one skill body. |
+| `/skill [name]` | List discovered skills or preview one skill body. |
+| `/skill use <name> <task>` | Ask the agent to load and apply a skill to the task. |
+| `/skill reload` | Refresh discovery after external edits. |
 | `/skill-gen` | Create, inspect, edit, or validate skills. |
 | `/skill-search <query> [--page N] [--pageSize N]` | Search configured skill registries; see [skill-search](skill-search.md). |
 | `/skill-install <ref> [--global]` | Install from GitHub or a registry ref. |

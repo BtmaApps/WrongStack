@@ -25,36 +25,19 @@ export function designProjectDir(projectRoot: string): string {
 
 const RULE_FILES = ['rules.md', 'RULES.md', 'design.md'];
 
-const rulesCache = new Map<string, string | undefined>();
-const RULES_CACHE_MAX_PROJECTS = 32;
-
-/** Read `.design/rules.md` (or RULES.md / design.md). Cached per project root. */
+/** Read current rules, including files created or revised during this session. */
 export async function loadProjectDesignRules(projectRoot: string): Promise<string | undefined> {
-  if (rulesCache.has(projectRoot)) {
-    const cached = rulesCache.get(projectRoot);
-    rulesCache.delete(projectRoot);
-    rulesCache.set(projectRoot, cached);
-    return cached;
-  }
-  let rules: string | undefined;
   for (const name of RULE_FILES) {
     try {
       const txt = await fs.readFile(path.join(designProjectDir(projectRoot), name), 'utf8');
       if (txt.trim()) {
-        rules = txt.trim();
-        break;
+        return txt.trim();
       }
     } catch {
       // file absent — try next
     }
   }
-  while (rulesCache.size >= RULES_CACHE_MAX_PROJECTS) {
-    const oldest = rulesCache.keys().next().value;
-    if (oldest === undefined) break;
-    rulesCache.delete(oldest);
-  }
-  rulesCache.set(projectRoot, rules);
-  return rules;
+  return undefined;
 }
 
 /**
@@ -215,7 +198,7 @@ export async function clearPersistedActiveKit(projectRoot: string): Promise<void
   }
 }
 
-/** Test helper — clears the rules cache. */
+/** @deprecated Rules are read fresh; retained for existing test-helper callers. */
 export function _resetDesignRulesCache(): void {
-  rulesCache.clear();
+  // No process-lifetime cache: it hid rules written after the first UI request.
 }

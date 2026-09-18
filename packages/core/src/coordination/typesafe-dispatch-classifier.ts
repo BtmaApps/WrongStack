@@ -125,7 +125,9 @@ export function makeTypeSafeDispatchClassifier(
     let result: Awaited<ReturnType<TypeSafeClient['systemOne']>>;
     try {
       result = await opts.client.systemOne(
-        { state: { task }, questions, model: opts.model },
+        // Each question sees only its own rubric and the shared state. The
+        // fit Noul needs the candidates here, not only in the Choice rubric.
+        { state: { task, candidates: criteria }, questions, model: opts.model },
         AbortSignal.timeout(timeoutMs),
       );
     } catch {

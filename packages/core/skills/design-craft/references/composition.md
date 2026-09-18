@@ -25,8 +25,8 @@ copies of "centered heading + subtitle + cards".
 - Choose columns (12 is conventional; 8 is better for editorial; 6 for dense
   tools) and a gutter from the kit's spacing scale.
 - Define the text measure (60–75ch) independently of the container width.
-- Decide the **asymmetry budget**: how many elements may break the grid. One or
-  two per page. Zero = flat and templated; many = noise.
+- Break the grid only when content priority or a chosen visual idea earns it.
+  Symmetry is useful for comparable content; a grid break is not mandatory.
 - Full-bleed is a deliberate act. Pick what earns it (a screenshot, a table, a
   quote) and let everything else respect the container.
 
@@ -89,7 +89,7 @@ When the reflex says "three cards", the alternatives:
 
 ## 8. Mobile is not a narrower desktop
 
-- Decide what is *removed*, not just restacked.
+- Adapt ordering, disclosure and layout without removing essential tasks or information.
 - The order changes: on mobile, the primary action usually rises.
 - Touch targets ≥44px, and spacing between them grows, not shrinks.
 - Test 320px with the longest real string in the product.
@@ -98,6 +98,6 @@ When the reflex says "three cards", the alternatives:
 
 - Can you name the archetype and the grid in one sentence each?
 - Does the squint test find one focal point per screenful?
-- Do any two adjacent sections share a skeleton? (They must not.)
-- How many grid breaks? (1–2, both justified.)
+- Does repetition help comparison, or hide differences in content priority?
+- Are any grid breaks justified by the content and stable on small screens?
 - Do the gaps encode grouping, or are they all equal?

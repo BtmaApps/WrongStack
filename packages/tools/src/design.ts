@@ -472,11 +472,14 @@ export const designTool: Tool<DesignInput, DesignOutput> = {
               ? `\n\nReplace off-palette colors with kit tokens (or the materialized CSS vars / token utilities).`
               : '') +
             (composition
-              ? `\n${composition} composition finding(s): this code is token-clean but reads as default-generated UI. ` +
-                'Load the `design-craft` skill and fix the pattern, not the token.'
+              ? `\n${composition} composition finding(s) need contextual review against the brief. ` +
+                'Load `design-craft`; preserve intentional repetition and inspect the rendered UI.'
               : '')
-          : '\nNo off-palette colors found — UI adheres to the kit palette.') +
-        unchecked;
+          : '\nNo source findings in the scanned files; this does not prove complete token adherence.') +
+        unchecked +
+        '\n\nSource heuristic only: the percentage describes detected color signals, not visual quality. ' +
+        'No signals can also yield 100%. Layout, accessibility, interaction states and originality ' +
+        'require rendered review with `design-critique`.';
       return {
         action,
         kit: active.kit,

@@ -14,6 +14,7 @@ real editor (Zed, JetBrains, …) and verify each capability, see the
 | `wstack acp --echo` | Start the ACP server in no-op echo mode (connectivity test, no provider needed) |
 | `wstack acp server` | Same as `wstack acp` |
 | `wstack acp serve` | Same as `wstack acp` |
+| `wstack acp auth` | Interactive provider setup; also accepts `wstack acp server auth` for appended ACP terminal-login arguments |
 | `wstack acp list` | List ACP-supporting agents detected from the cached/synced registry and local probes |
 | `wstack acp sync` | Refresh the official `agentclientprotocol/registry` cache |
 | `wstack acp spawn <agent-id> <task>` | Run a task on a single ACP agent and stream the result |
@@ -26,12 +27,12 @@ ACP clients such as Zed, JetBrains, and VS Code ACP integrations spawn
 `wstack acp server` as a subprocess and communicate via stdio JSON-RPC 2.0.
 The server speaks the v1 spec — see [the v1 protocol reference](https://agentclientprotocol.com/get-started/introduction).
 
-`wstack acp list` is a live probe of the 12-entry catalog in
-`packages/acp/src/registry/agents.catalog.ts`. Each entry is checked via
+`wstack acp list` probes the synced registry, with
+`packages/acp/src/registry/agents.catalog.ts` as its offline fallback. Each entry is checked via
 `spawn()` with the platform-appropriate shell flag, and the result is
 cached for 5 seconds. Run `wstack acp sync` to pull the latest
 [agentclientprotocol/registry](https://github.com/agentclientprotocol/registry)
-(37+ agents). Example output (your host will differ):
+(the available agents change over time). Example output (your host will differ):
 
 ```
 Detected ACP agents:

@@ -35,16 +35,16 @@ import {
 } from '@wrongstack/acp/agent';
 import { leaderDeliveryHub } from '@wrongstack/core/coordination';
 import { WebSocketServer } from 'ws';
-import { type AcpHqTelemetry, startAcpHqTelemetry } from '../../acp-hq-telemetry.js';
 import { formatAcpAgentList } from '../../acp-agent-list.js';
+import { type AcpHqTelemetry, startAcpHqTelemetry } from '../../acp-hq-telemetry.js';
 import {
   type LoadedAcpRegistry,
   loadCachedAcpRegistry,
   refreshAcpRegistry,
 } from '../../acp-registry-cache.js';
 import {
-  AcpServerConfigError,
   type AcpServerAgentFactory,
+  AcpServerConfigError,
   buildAcpServerAgentFactory,
 } from '../../acp-server-agent.js';
 import { createGracefulShutdown } from '../../shutdown-cleanup.js';
@@ -72,6 +72,14 @@ async function loadLive(deps: SubcommandDeps): Promise<LoadedAcpRegistry | null>
 
 export const acpCmd: SubcommandHandler = async (args, deps) => {
   const sub = args[0];
+  // ACP terminal auth appends args to the configured launch command.
+  // Support both `wstack acp auth` and `wstack acp server auth`.
+  const loginIndex =
+    sub === 'auth' ? 0 : (sub === 'server' || sub === 'serve') && args[1] === 'auth' ? 1 : -1;
+  if (loginIndex >= 0) {
+    const { authCmd } = await import('./auth.js');
+    return authCmd(args.slice(loginIndex + 1), deps);
+  }
 
   if (!sub || sub === 'server' || sub === 'serve') {
     return runACPServer(deps);
@@ -387,6 +395,12 @@ async function runACPServer(deps: SubcommandDeps): Promise<number> {
   const echo = deps.flags?.echo === true || deps.flags?.echo === 'true';
 
   // Declared outside the IIFE so the shutdown path below can stop it.
+  if (!echo && (!deps.config.provider || !deps.config.model)) {
+    deps.renderer.writeError(
+      'No model provider configured. Run `wstack auth` before starting ACP, or use `--echo` for a connectivity test.\n',
+    );
+    return 1;
+  }
   let stdioHqTelemetry: AcpHqTelemetry | undefined;
   const server = new WrongStackACPServer(
     echo
@@ -398,7 +412,6 @@ async function runACPServer(deps: SubcommandDeps): Promise<number> {
           } catch (err) {
             if (err instanceof AcpServerConfigError) {
               deps.renderer.writeError(`${err.message}\n`);
-              return {};
             }
             throw err;
           }

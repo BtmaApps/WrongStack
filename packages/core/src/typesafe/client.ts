@@ -173,10 +173,12 @@ export function createTypeSafeClient(opts: TypeSafeClientOptions): TypeSafeClien
       });
       let lastError: unknown;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        signal?.throwIfAborted();
         if (attempt > 0) {
           // Exponential backoff, as the API reference asks for on 429/529.
           await delay(150 * 2 ** (attempt - 1), signal);
         }
+        signal?.throwIfAborted();
         try {
           const result = await postOnce(doFetch, endpoint, opts.apiKey, body, timeoutMs, signal);
           try {
@@ -220,7 +222,7 @@ async function postOnce(
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'User-Agent': 'wrongstack-skill-suggest',
+        'User-Agent': 'wrongstack-typesafe',
       },
       body,
     });
@@ -288,36 +290,34 @@ function parseAnswer(raw: unknown): TypeSafeAnswer | undefined {
   if (!isRecord(raw)) return undefined;
   if (raw['type'] === 'noul') {
     const noul = raw['noul'];
-    if (typeof noul !== 'number' || !Number.isFinite(noul)) return undefined;
-    return { type: 'noul', noul: clamp01(noul) };
+    if (!isProbability(noul)) return undefined;
+    return { type: 'noul', noul };
   }
   if (raw['type'] === 'choice') {
     const choice = raw['choice'];
     if (typeof choice !== 'string' || !choice) return undefined;
-    const probabilities: Record<string, number> = {};
-    const rawProbabilities = isRecord(raw['probabilities']) ? raw['probabilities'] : {};
-    for (const [option, value] of Object.entries(rawProbabilities)) {
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        probabilities[option] = clamp01(value);
-      }
-    }
+    const probabilities = parseProbabilities(raw['probabilities']);
+    const confidence = raw['confidence'];
+    if (!probabilities || !isProbability(confidence)) return undefined;
+    if (!Object.hasOwn(probabilities, choice)) return undefined;
+    const selected = probabilities[choice]!;
+    if (Object.values(probabilities).some((value) => value > selected)) return undefined;
     return {
       type: 'choice',
       choice,
       probabilities,
-      confidence: clamp01(finiteOr(raw['confidence'], 0)),
+      confidence,
     };
   }
   if (raw['type'] === 'score') {
     const score = raw['score'];
     if (typeof score !== 'number' || !Number.isFinite(score)) return undefined;
-    const probabilities: Record<string, number> = {};
-    const rawProbabilities = isRecord(raw['probabilities']) ? raw['probabilities'] : {};
-    for (const [level, value] of Object.entries(rawProbabilities)) {
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        probabilities[level] = clamp01(value);
-      }
-    }
+    // Older API examples omit score probabilities. Keep supporting that
+    // shape, but never repair a malformed distribution into a valid one.
+    const probabilities =
+      raw['probabilities'] === undefined ? {} : parseProbabilities(raw['probabilities']);
+    const confidence = raw['confidence'];
+    if (!probabilities || !isProbability(confidence) || score < 0) return undefined;
     const legend: Record<string, string> = {};
     const rawLegend = isRecord(raw['legend']) ? raw['legend'] : {};
     for (const [level, text] of Object.entries(rawLegend)) {
@@ -330,7 +330,7 @@ function parseAnswer(raw: unknown): TypeSafeAnswer | undefined {
       type: 'score',
       score,
       probabilities,
-      confidence: clamp01(finiteOr(raw['confidence'], 0)),
+      confidence,
       legend,
     };
   }
@@ -341,8 +341,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function clamp01(value: number): number {
-  return value < 0 ? 0 : value > 1 ? 1 : value;
+function isProbability(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+function parseProbabilities(raw: unknown): Record<string, number> | undefined {
+  if (!isRecord(raw)) return undefined;
+  const entries = Object.entries(raw);
+  if (entries.length === 0 || entries.some(([, value]) => !isProbability(value))) return undefined;
+  const probabilities = Object.fromEntries(entries) as Record<string, number>;
+  // Allow normal floating-point/serialized rounding, never normalize bad data.
+  const total = Object.values(probabilities).reduce((sum, value) => sum + value, 0);
+  return Math.abs(total - 1) <= 0.01 ? probabilities : undefined;
 }
 
 function finiteOr(value: unknown, fallback: number): number {
@@ -351,16 +361,15 @@ function finiteOr(value: unknown, fallback: number): number {
 
 function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
   return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
+    const finish = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, ms);
     // `unref` keeps a backoff sleep from holding the process open at exit.
     (timer as unknown as { unref?: () => void }).unref?.();
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
+    signal?.addEventListener('abort', finish, { once: true });
+    if (signal?.aborted) finish();
   });
 }

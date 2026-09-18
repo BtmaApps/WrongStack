@@ -1,11 +1,11 @@
+import { parseDocument, stringify } from 'yaml';
+
 /**
  * Shared SKILL.md frontmatter parser + agentskills.io name validation.
  *
  * The SKILL.md format (https://agentskills.io/specification) is YAML
- * frontmatter between `---` markers followed by a Markdown body. This parser is
- * intentionally minimal — it handles the fields skills actually use, with YAML
- * block scalars (`|` / `>`) for multi-line values and an indented map for
- * `metadata`. It is NOT a general YAML parser; skill files are trusted markdown.
+ * frontmatter between `---` markers followed by a Markdown body. Uses the YAML
+ * failsafe schema, with bounded aliases and rejection of unsupported tags.
  */
 export interface ParsedSkillFrontmatter {
   name?: string | undefined;
@@ -53,150 +53,114 @@ const SCALAR_KEYS = new Set([
   'compatibility',
 ]);
 
-/**
- * Parse the YAML frontmatter block from a raw SKILL.md file. Returns `{}` when
- * there is no (or unclosed) frontmatter — callers treat that as "skip".
- *
- * Line endings are normalized first: CRLF (and lone CR) would otherwise leave a
- * trailing `\r` on each line, and since `.` / `$` don't match `\r`, the
- * `key: value` regex would fail on every line and silently drop the whole
- * frontmatter. Real skill files are frequently CRLF (Windows / some editors).
- */
+/** Parse and validate YAML without executing tags or expanding unbounded aliases. */
+function readFrontmatter(raw: string): { data: Record<string, unknown>; errors: string[] } {
+  const match = frontmatterMatch(raw);
+  if (!match) return { data: {}, errors: ['Missing or unclosed YAML frontmatter'] };
+  try {
+    const doc = parseDocument(match[1] ?? '', { schema: 'failsafe', uniqueKeys: true });
+    const errors = [...doc.errors, ...doc.warnings].map((error) => error.message);
+    if (errors.length) return { data: {}, errors };
+    const data: unknown = doc.toJS({ maxAliasCount: 50 });
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { data: {}, errors: ['Frontmatter must be a mapping'] };
+    }
+    return { data: data as Record<string, unknown>, errors: [] };
+  } catch (error) {
+    return { data: {}, errors: [String(error)] };
+  }
+}
+
+function frontmatterMatch(raw: string): RegExpMatchArray | null {
+  return raw
+    .replace(/\r\n?/g, '\n')
+    .replace(/^\uFEFF/, '')
+    .match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/);
+}
+
+const LIST_KEYS = {
+  'allowed-tools': 'allowedTools',
+  allowedTools: 'allowedTools',
+  'required-capabilities': 'requiredCapabilities',
+  requiredCapabilities: 'requiredCapabilities',
+  'required-tools': 'requiredTools',
+  requiredTools: 'requiredTools',
+  'optional-capabilities': 'optionalCapabilities',
+  optionalCapabilities: 'optionalCapabilities',
+} as const;
+
 export function parseSkillFrontmatter(raw: string): ParsedSkillFrontmatter {
-  const text = normalizeLineEndings(raw);
-  if (!text.startsWith('---')) return {};
-  const end = text.indexOf('\n---', 4);
-  if (end === -1) return {};
-  return parseFrontmatterBlock(text.slice(4, end));
+  const { data, errors } = readFrontmatter(raw);
+  if (errors.length) return {};
+  const out: Record<string, unknown> = {};
+  for (const key of SCALAR_KEYS) {
+    if (typeof data[key] === 'string') out[key] = data[key].trim();
+  }
+  for (const [key, target] of Object.entries(LIST_KEYS)) {
+    const value = data[key];
+    if (typeof value === 'string') out[target] = value.split(/[\s,]+/).filter(Boolean);
+    else if (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+      out[target] = value;
+  }
+  if (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata)) {
+    const entries = Object.entries(data.metadata);
+    if (entries.every(([, value]) => typeof value === 'string'))
+      out.metadata = Object.fromEntries(entries);
+  }
+  return out as ParsedSkillFrontmatter;
 }
 
-/** Strip leading YAML frontmatter (`---\n…\n---`) from a SKILL.md file. */
 export function stripFrontmatter(raw: string): string {
-  const text = normalizeLineEndings(raw);
-  if (!text.startsWith('---')) return text;
-  const end = text.indexOf('\n---', 4);
-  if (end === -1) return text;
-  let body = text.slice(end + 4);
-  if (body.startsWith('\n')) body = body.slice(1);
-  return body;
+  const text = raw.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '');
+  const match = frontmatterMatch(text);
+  return match ? text.slice(match[0].length) : text;
 }
 
-/** Normalize CRLF and lone CR to LF. */
-function normalizeLineEndings(s: string): string {
-  return s.replace(/\r\n?/g, '\n');
-}
-
-function parseFrontmatterBlock(block: string): ParsedSkillFrontmatter {
-  const out: ParsedSkillFrontmatter = {};
-  const lines = block.split('\n');
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i] ?? '';
-    const m = /^([a-zA-Z][a-zA-Z0-9_-]*):\s*(.*)$/.exec(line);
-    if (!m) {
-      i++;
-      continue;
+/** Strict authoring checks; runtime discovery may remain tolerant of cosmetic issues. */
+export function validateSkillDocument(raw: string, parentDirName?: string): string[] {
+  const { data, errors } = readFrontmatter(raw);
+  if (errors.length) return errors;
+  const fm = parseSkillFrontmatter(raw);
+  errors.push(...validateSkillName(fm.name ?? '', parentDirName));
+  for (const [key, max] of [
+    ['description', 1024],
+    ['compatibility', 500],
+  ] as const) {
+    if (key === 'compatibility' && data[key] === undefined) continue;
+    const value = data[key];
+    if (typeof value !== 'string' || !value.trim() || value.trim().length > max) {
+      errors.push(`${key} must be a non-empty string of at most ${max} characters`);
     }
-    const key = m[1] ?? '';
-    const rest = (m[2] ?? '').trim();
-
-    if (key === 'metadata') {
-      const map: Record<string, string> = {};
-      i++;
-      while (i < lines.length) {
-        const sub = lines[i] ?? '';
-        const sm = /^\s+([a-zA-Z0-9_.-]+):\s*(.*)$/.exec(sub);
-        if (!sm) break;
-        map[sm[1] ?? ''] = unquote((sm[2] ?? '').trim());
-        i++;
-      }
-      if (Object.keys(map).length > 0) out.metadata = map;
-      continue;
-    }
-
-    if (rest === '|' || rest === '>') {
-      // Block scalar — collect following indented (or blank) lines.
-      const collected: string[] = [];
-      i++;
-      while (i < lines.length) {
-        const sub = lines[i] ?? '';
-        if (sub === '' || sub.startsWith(' ') || sub.startsWith('\t')) {
-          collected.push(sub.replace(/^\s+/, ''));
-          i++;
-        } else break;
-      }
-      (out as Record<string, unknown>)[normalizeKey(key)] = collected.join('\n').trim();
-      continue;
-    }
-
-    if (
-      key === 'allowed-tools' ||
-      key === 'allowedTools' ||
-      key === 'required-capabilities' ||
-      key === 'requiredCapabilities' ||
-      key === 'required-tools' ||
-      key === 'requiredTools' ||
-      key === 'optional-capabilities' ||
-      key === 'optionalCapabilities'
-    ) {
-      if (rest !== '') {
-        const values = rest
-          .replace(/^\[/, '')
-          .replace(/\]$/, '')
-          .split(/[\s,]+/)
-          .map(unquote)
-          .filter(Boolean);
-        (out as Record<string, unknown>)[normalizeKey(key)] = values;
-        i++;
-      } else {
-        const values: string[] = [];
-        i++;
-        while (i < lines.length) {
-          const sub = lines[i] ?? '';
-          const bm = /^\s*-\s+(.*)$/.exec(sub);
-          if (bm) {
-            const val = unquote((bm[1] ?? '').trim());
-            if (val) values.push(val);
-            i++;
-          } else {
-            break;
-          }
-        }
-        (out as Record<string, unknown>)[normalizeKey(key)] = values;
-      }
-      continue;
-    }
-
-    if (SCALAR_KEYS.has(key)) {
-      (out as Record<string, unknown>)[key] = unquote(rest);
-      i++;
-      continue;
-    }
-
-    // Unknown key — ignore.
-    i++;
   }
-  return out;
-}
-
-/** `allowed-tools` (hyphen) → `allowedTools` (camel); other keys pass through. */
-function normalizeKey(key: string): string {
-  if (key === 'allowed-tools') return 'allowedTools';
-  if (key === 'required-capabilities') return 'requiredCapabilities';
-  if (key === 'required-tools') return 'requiredTools';
-  if (key === 'optional-capabilities') return 'optionalCapabilities';
-  return key;
-}
-
-/** Strip surrounding single/double YAML quotes from a scalar value. */
-function unquote(s: string): string {
+  for (const key of SCALAR_KEYS) {
+    if (data[key] !== undefined && typeof data[key] !== 'string')
+      errors.push(`${key} must be a string`);
+  }
   if (
-    s.length >= 2 &&
-    ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))
+    data.metadata !== undefined &&
+    (!data.metadata ||
+      typeof data.metadata !== 'object' ||
+      Array.isArray(data.metadata) ||
+      Object.values(data.metadata).some((value) => typeof value !== 'string'))
   ) {
-    return s.slice(1, -1);
+    errors.push('metadata must map string keys to string values');
   }
-  return s;
+  for (const key of Object.keys(LIST_KEYS)) {
+    const value = data[key];
+    if (
+      value !== undefined &&
+      typeof value !== 'string' &&
+      !(Array.isArray(value) && value.every((item) => typeof item === 'string'))
+    )
+      errors.push(`${key} must be a string or a list of strings`);
+  }
+  if (!stripFrontmatter(raw).trim()) errors.push('Skill body must not be empty');
+  return errors;
+}
+
+/** Serialize standard metadata and WrongStack extensions using the same YAML contract. */
+export function serializeSkillDocument(metadata: Record<string, unknown>, body: string): string {
+  return `---\n${stringify(metadata, { lineWidth: 0 })}---\n\n${body.trim()}\n`;
 }
 
 /** True when `name` matches the agentskills.io name format (chars + length only). */

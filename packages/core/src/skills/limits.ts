@@ -8,14 +8,14 @@
  * keeps the budget model coherent — change one, change everywhere — and makes
  * the trade-offs visible in one place.
  *
- * Values are frozen at their pre-centralization defaults so this is a pure
- * refactor (no behavior change).
+ * Keep installer, export, prompt, and tool consumers on the same limits.
+ * Tool continuations preserve content beyond individual response budgets.
  */
 export const SKILL_LIMITS = {
   /**
    * Per-skill body cap when injecting a full skill body into the system prompt
    * (eager mode), and when returning a skill body from the `skill` tool.
-   * ~4k tokens. Oversized bodies are truncated at a paragraph boundary.
+   * ~4k tokens. Eager prompts truncate; the tool provides continuation pages.
    *
    * Consumers: `system-prompt-builder.capSkillBody`, `skill` tool body return.
    */
@@ -41,11 +41,13 @@ export const SKILL_LIMITS = {
   /**
    * Max size of a single installed skill file (SKILL.md or a bundled resource).
    * Guards against a malicious registry skill shipping a multi-MB blob that
-   * then flows into the prompt. 100KB.
+   * then flows into the prompt. 1 MiB permits published reference guides (for
+   * example, the React best-practices AGENTS.md exceeds 100 KiB). Tool output
+   * remains paged, and the independent total package bound still applies.
    *
    * Consumer: `SkillInstaller.install` / `importFromDir`.
    */
-  MAX_SKILL_FILE_SIZE: 100 * 1024,
+  MAX_SKILL_FILE_SIZE: 1024 * 1024,
 
   /**
    * Max size of a GitHub tarball downloaded by the skill installer. Guards

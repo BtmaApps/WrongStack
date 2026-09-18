@@ -271,7 +271,7 @@ export function createSkillSuggester(opts: SkillSuggesterOptions): SkillSuggeste
         suggestion: {
           name: reranked.winner,
           gate: wide.gate,
-          fits: reranked.fits[reranked.winner] ?? best,
+          fits: reranked.fits[reranked.winner]!,
         },
       };
     } catch {
@@ -305,7 +305,7 @@ export function redecide(
   fitsThreshold: number,
 ): string | undefined {
   if (trace.gate < gateThreshold) return undefined;
-  if (!trace.winner || Object.keys(trace.fits).length === 0) return undefined;
+  if (!trace.winner || !Object.hasOwn(trace.fits, trace.winner)) return undefined;
   const best = Math.max(...Object.values(trace.fits), 0);
   if (best < fitsThreshold) return undefined;
   return trace.winner;
@@ -377,14 +377,12 @@ async function rankWide(
   const values: Record<string, number> = {};
   for (const key of Object.keys(GATE_QUESTIONS)) {
     const answer = noulAnswer(result.answers[`${GATE_PREFIX}${key}`]);
-    if (answer === undefined) continue;
+    if (answer === undefined) return undefined;
     values[key] = answer;
     oriented.push(INVERTED.has(key) ? 1 - answer : answer);
   }
-  // No gate answer survived validation, so there is nothing to threshold. Fail
-  // closed: the gate is the only thing standing between "nothing fits" turns
-  // and a suggestion.
-  if (oriented.length === 0) return undefined;
+  // All three calibrated judgments must survive. Averaging only the returned
+  // subset changes the gate when an answer is missing or malformed.
 
   const known = new Set(roster.map((entry) => entry.name));
   const ranked = Object.entries(which.probabilities)
@@ -459,7 +457,7 @@ async function rerank(
     const answer = noulAnswer(result.answers[`${FITS_PREFIX}${name}`]);
     if (answer !== undefined) fits[name] = answer;
   }
-  if (Object.keys(fits).length === 0) return undefined;
+  if (!Object.hasOwn(fits, which.choice)) return undefined;
 
   return {
     winner: which.choice,

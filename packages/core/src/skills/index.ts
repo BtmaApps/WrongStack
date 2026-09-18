@@ -11,7 +11,9 @@ export {
   isValidSkillNameFormat,
   type ParsedSkillFrontmatter,
   parseSkillFrontmatter,
+  serializeSkillDocument,
   stripFrontmatter,
+  validateSkillDocument,
   validateSkillName,
 } from './frontmatter.js';
 export {
@@ -34,6 +36,7 @@ export type {
   SkillRegistryAdapter,
 } from './registry/registry-adapter.js';
 export { createSkillsShAdapter, DEFAULT_SKILLS_SH_URL } from './registry/skills-sh-adapter.js';
+export { collectSkillFiles } from './skill-files.js';
 export {
   bodyLineAdvisory,
   type ExtractedSkillDraft,

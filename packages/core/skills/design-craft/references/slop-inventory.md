@@ -13,9 +13,9 @@ these is legitimate when the brief chose it on purpose and says why.
 
 | # | Tell | Why it happens | Replace with |
 |---|---|---|---|
-| L1 | Hero + exactly three equal feature cards | The shape of every template in the training set | 2, 4, or 5 items; unequal spans; or a different section type (comparison, walkthrough, real screenshot) |
+| L1 | Hero + feature cards chosen before the content | A familiar template substitutes for information architecture | Choose the structure from the content; changing three cards to four does not solve it |
 | L2 | Every section a centered stack **[verify]** | Centering is the safe choice at every step | A grid spine; alternate alignment; anchor content to columns |
-| L3 | Identical card repeated N× **[verify]** | Content shaped to fit the component | One component mapped over data, with size/span/emphasis varying by importance |
+| L3 | Identical card repeated N× **[verify]** | May hide content priorities | Keep equal rows/cards for comparable items; vary emphasis only when their roles differ |
 | L4 | Uniform section padding top to bottom | No density decision was made | Vary rhythm: tight after generous; group related sections by proximity |
 | L5 | Everything inside `max-w-7xl mx-auto` | The default container | Let some elements break the container (full-bleed media, edge-to-edge tables) |
 | L6 | Centered 3-stat band ("10k+ users") | Filler where evidence belongs | Real numbers with a source, or delete the band |
@@ -43,7 +43,7 @@ these is legitimate when the brief chose it on purpose and says why.
 |---|---|---|---|
 | C1 | Gradient-filled headline **[verify]** | Hierarchy outsourced to a filter | Size/weight/measure contrast |
 | C2 | Purple→blue gradient anything | The single most-generated palette move | The kit's accent, used sparingly and flatly |
-| C3 | Accent color on every element | No 60/30/10 decision | Accent ≤3 uses per screen; neutrals do the rest |
+| C3 | Decorative accents competing with the primary task | No semantic color roles | Protect action salience; keep necessary link, status and data colors consistent without an arbitrary count limit |
 | C4 | Stock `shadow-lg` everywhere **[verify]** | Tailwind's default ramp, not the kit's | `shadow-1…shadow-4`, mostly `shadow-1` |
 | C5 | Border **and** heavy shadow stacked | Two elevation strategies at once | Pick one; if both, the shadow must be near-invisible |
 | C6 | Dark mode = inverted light mode | One token set flipped, not re-tuned | Re-tune lightness and chroma; dark surfaces lift, dark text softens |

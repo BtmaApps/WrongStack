@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { materializeTokens } from '../../src/execution/design-materialize.js';
+import { applyTokenOverrides } from '../../src/execution/design-project-store.js';
+import { resolveSemanticTune } from '../../src/execution/design-tune.js';
 import type { DesignKitTokens } from '../../src/types/design-kit.js';
 
 const tokens: DesignKitTokens = {
@@ -92,6 +94,41 @@ const scaleTokens: DesignKitTokens = {
 };
 
 describe('materializeTokens — scale axes', () => {
+  it('font tuning wins over legacy aliases in both web themes and React Native', () => {
+    const legacy = {
+      fontSans: 'Old Sans',
+      fontDisplay: 'Old Display',
+      'font-sans': 'Old Sans',
+      'font-display': 'Old Display',
+    };
+    const tuned = applyTokenOverrides(
+      { light: legacy, dark: legacy },
+      resolveSemanticTune({ font: 'New Face' }),
+    );
+    const web = materializeTokens({ tokens: tuned, stack: 'web', kitId: 'tuned' }).content;
+    expect(web).not.toContain('Old Sans');
+    expect(web).not.toContain('Old Display');
+    expect(web).toContain('--font-sans: New Face;');
+    const native = materializeTokens({
+      tokens: tuned,
+      stack: 'react-native',
+      kitId: 'tuned',
+    }).content;
+    expect(native).not.toContain('Old Sans');
+    expect(native).not.toContain('Old Display');
+    expect(native.match(/"fontSans": "New Face"/g)).toHaveLength(2);
+    expect(native.match(/"fontDisplay": "New Face"/g)).toHaveLength(2);
+  });
+
+  it('preserves canonical-only fonts in React Native themes', () => {
+    const native = materializeTokens({
+      tokens: scaleTokens,
+      stack: 'react-native',
+      kitId: 'scale',
+    }).content;
+    expect(native.match(/"fontSans": "Inter, sans-serif"/g)).toHaveLength(2);
+  });
+
   it('web → maps scales onto Tailwind v4 @theme namespaces + flips shadows', () => {
     const r = materializeTokens({ tokens: scaleTokens, stack: 'web', kitId: 'scale' });
     // Scale tokens are NOT in the raw :root loop (they drive @theme utilities).

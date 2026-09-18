@@ -45,7 +45,7 @@ export async function executeLoadSession(
       'agent does not support session/load (loadSession capability not advertised)',
     );
   }
-  if (ctx.sessionId) {
+  if (ctx.sessionId && ctx.sessionId !== sessionId) {
     await ctx.closeSession();
   }
 
@@ -76,7 +76,7 @@ export async function executeResumeSession(
       'agent does not support session/resume (sessionCapabilities.resume not advertised)',
     );
   }
-  if (ctx.sessionId) {
+  if (ctx.sessionId && ctx.sessionId !== sessionId) {
     await ctx.closeSession();
   }
 

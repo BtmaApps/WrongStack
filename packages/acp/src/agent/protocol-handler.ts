@@ -6,6 +6,7 @@
  * v1 spec. See https://agentclientprotocol.com/protocol/v1/overview.
  */
 import { randomUUID } from 'node:crypto';
+import { isAbsolute, resolve } from 'node:path';
 import {
   type ACPMessage,
   type ClientCapabilities,
@@ -32,7 +33,6 @@ import {
   DEFAULT_MAX_SESSIONS,
   DEFAULT_MODES,
   errorToJsonRpc,
-  parseMcpServers,
 } from './protocol-session-ops.js';
 
 export type {
@@ -87,6 +87,8 @@ export class ACPProtocolHandler {
     }
   >();
   private nextOutId = 1;
+  private readonly promptRequests = new Map<string | number, string>();
+  private readonly persistenceWrites = new Map<string, Promise<void>>();
 
   constructor(opts: ProtocolHandlerOptions) {
     this.transport = opts.transport;
@@ -116,21 +118,48 @@ export class ACPProtocolHandler {
    */
   private request(method: string, params: unknown, timeoutMs = 60_000): Promise<unknown> {
     const id = `srv_${this.nextOutId++}`;
+    const sessionId = (params as { sessionId?: string } | null)?.sessionId;
+    const signal = sessionId ? this.sessions.get(sessionId)?.abort.signal : undefined;
     return new Promise<unknown>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingOut.delete(id);
-        reject(new Error(`${method} timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-      this.pendingOut.set(id, { resolve, reject, timer });
-      this.transport.send(toWire({ jsonrpc: '2.0', id, method, params })).catch((e: unknown) => {
+      const cleanup = (): void => {
         clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
         this.pendingOut.delete(id);
-        reject(e instanceof Error ? e : new Error(String(e)));
+      };
+      const fail = (error: Error): void => {
+        cleanup();
+        reject(error);
+      };
+      const abort = (): void => {
+        fail(new Error('client request cancelled'));
+        void this.transport
+          .send(toWire({ jsonrpc: '2.0', method: '$/cancel_request', params: { requestId: id } }))
+          .catch(() => {});
+      };
+      const timer = setTimeout(() => {
+        fail(new Error(`${method} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      if (signal?.aborted) {
+        fail(new Error('client request cancelled'));
+        return;
+      }
+      signal?.addEventListener('abort', abort, { once: true });
+      this.pendingOut.set(id, {
+        resolve: (value) => {
+          cleanup();
+          resolve(value);
+        },
+        reject: fail,
+        timer,
+      });
+      this.transport.send(toWire({ jsonrpc: '2.0', id, method, params })).catch((e: unknown) => {
+        fail(e instanceof Error ? e : new Error(String(e)));
       });
     });
   }
 
   private maybeResolvePending(m: ACPMessage): void {
+    if (m.result === undefined && m.error === undefined) return;
     const id = (m as { id?: unknown }).id;
     if (typeof id !== 'string') return;
     const pending = this.pendingOut.get(id);
@@ -159,6 +188,7 @@ export class ACPProtocolHandler {
 
     // Response (we never initiate requests, but be defensive).
     if (m.id !== undefined && (m.result !== undefined || m.error !== undefined)) {
+      this.maybeResolvePending(msg as ACPMessage);
       return false;
     }
 
@@ -207,6 +237,7 @@ export class ACPProtocolHandler {
       store: this.store,
       replayFor: this.replayFor,
       seedFor: this.seedFor,
+      disposeFor: this.disposeFor,
       onSessionNew: this.onSessionNew,
       allocId: () => this.allocId(),
       persist: (state, history) => this.persist(state, history),
@@ -251,14 +282,23 @@ export class ACPProtocolHandler {
           return await this.handleSessionClose(id, params);
         case 'session/delete':
           return await this.handleSessionDelete(id, params);
-        case 'session/prompt':
-          return await handleSessionPromptOp(this.sessionContext(), id, params);
+        case 'session/prompt': {
+          const sessionId = (params as { sessionId?: unknown } | null)?.sessionId;
+          if (typeof sessionId === 'string' && !this.sessions.get(sessionId)?.prompting) {
+            this.promptRequests.set(id, sessionId);
+          }
+          try {
+            return await handleSessionPromptOp(this.sessionContext(), id, params);
+          } finally {
+            this.promptRequests.delete(id);
+          }
+        }
         case 'session/set_mode':
           return await handleSetModeOp(this.sessionContext(), id, params);
         case 'session/set_config_option':
           return await handleSetConfigOptionOp(this.sessionContext(), id, params);
         case 'session/list':
-          return await this.handleSessionList(id);
+          return await this.handleSessionList(id, params);
         case 'session/fork':
           return await handleSessionForkOp(this.sessionContext(), id, params);
         case 'providers/list':
@@ -291,7 +331,12 @@ export class ACPProtocolHandler {
     this.initialized = true;
     await this.sendResult(
       id,
-      buildInitializeResult(this.agentName, this.modes, this.configOptions),
+      buildInitializeResult(
+        this.agentName,
+        this.modes,
+        this.configOptions,
+        this.clientCapabilities,
+      ),
     );
     return false;
   }
@@ -305,35 +350,16 @@ export class ACPProtocolHandler {
   }
 
   private async handleLogout(id: string | number, _params: unknown): Promise<boolean> {
-    await this.sendResult(id, {});
+    await this.sendError(
+      id,
+      -32601,
+      'logout is not supported; manage provider credentials with wstack auth',
+    );
     return false;
   }
 
   private async handleSessionResume(id: string | number, params: unknown): Promise<boolean> {
-    const p = (params ?? {}) as { sessionId?: unknown; cwd?: unknown; mcpServers?: unknown };
-    const sessionId = typeof p.sessionId === 'string' ? p.sessionId : null;
-    const existing = sessionId ? this.sessions.get(sessionId) : undefined;
-
-    if (existing) {
-      existing.updatedAt = new Date().toISOString();
-      // Same rule as a warm `session/load`: a resumed session adopts the
-      // client's current server list when it sends one, and keeps its own
-      // when the array is empty.
-      const resumeServers = parseMcpServers(p.mcpServers);
-      if (resumeServers.length > 0) {
-        existing.mcpServers = resumeServers;
-      }
-      await this.sendResult(id, {
-        initialMode: {
-          currentModeId: existing.modeId,
-          availableModes: this.modes,
-        },
-      });
-      return false;
-    }
-
-    await this.sendError(id, -32000, `session not found: ${sessionId}`);
-    return false;
+    return handleSessionLoadOp(this.sessionContext(), id, params, false);
   }
 
   private async handleSessionClose(id: string | number, params: unknown): Promise<boolean> {
@@ -363,14 +389,12 @@ export class ACPProtocolHandler {
       return false;
     }
 
-    if (!this.sessions.has(sessionId)) {
-      await this.sendResult(id, { configOptions: [...this.configOptions] });
-      return false;
-    }
-    const session = this.sessions.get(sessionId)!;
-    session.abort.abort();
+    const session = this.sessions.get(sessionId);
+    session?.abort.abort();
     this.sessions.delete(sessionId);
     this.disposeSession(sessionId);
+    await this.persistenceWrites.get(sessionId);
+    await this.store?.delete?.(sessionId);
 
     await this.sendResult(id, {});
     return false;
@@ -403,16 +427,29 @@ export class ACPProtocolHandler {
     return false;
   }
 
-  private async handleSessionList(id: string | number): Promise<boolean> {
-    const sessions = Array.from(this.sessions.values()).map((s) => {
-      const out: { sessionId: string; cwd: string; updatedAt: string; title?: string } = {
-        sessionId: s.id,
-        cwd: s.cwd,
-        updatedAt: s.updatedAt,
-      };
-      if (s.title !== undefined) out.title = s.title;
-      return out;
-    });
+  private async handleSessionList(id: string | number, params: unknown): Promise<boolean> {
+    const p = (params ?? {}) as { cwd?: unknown; cursor?: unknown };
+    if ((p.cwd != null && (typeof p.cwd !== 'string' || !isAbsolute(p.cwd))) || p.cursor != null) {
+      await this.sendError(id, -32602, 'invalid cwd or cursor');
+      return false;
+    }
+    const known = new Map<string, Partial<SessionState>>(this.sessions);
+    for (const entry of (await this.store?.list?.()) ?? []) {
+      if (known.has(entry.id)) continue;
+      const saved = await this.store?.load(entry.id);
+      if (saved?.cwd) known.set(entry.id, { ...saved, id: entry.id });
+    }
+    const sessions = Array.from(known.values())
+      .filter((s) => typeof p.cwd !== 'string' || (s.cwd && resolve(s.cwd) === resolve(p.cwd)))
+      .map((s) => {
+        const out: { sessionId: string; cwd: string; updatedAt: string; title?: string } = {
+          sessionId: s.id!,
+          cwd: s.cwd!,
+          updatedAt: s.updatedAt ?? '',
+        };
+        if (s.title !== undefined) out.title = s.title;
+        return out;
+      });
     await this.sendResult(id, { sessions });
     return false;
   }
@@ -433,6 +470,11 @@ export class ACPProtocolHandler {
         return false;
       }
       case '$/cancel_request': {
+        const requestId = (params as { requestId?: unknown } | null)?.requestId;
+        if (typeof requestId === 'string' || typeof requestId === 'number') {
+          const sessionId = this.promptRequests.get(requestId);
+          if (sessionId) this.sessions.get(sessionId)?.abort.abort();
+        }
         return false;
       }
       case 'exit':
@@ -460,11 +502,18 @@ export class ACPProtocolHandler {
     history: Array<{ sessionUpdate: string; content: unknown }> | undefined = undefined,
   ): Promise<void> {
     if (!this.store) return;
-    try {
-      await this.store.save(state, history ?? this.replayFor?.(state.id));
-    } catch {
-      // persistence is best-effort
-    }
+    const store = this.store;
+    const replay = history ?? this.replayFor?.(state.id);
+    const previous = this.persistenceWrites.get(state.id) ?? Promise.resolve();
+    const write = previous
+      .then(() => store.save(state, replay))
+      .then(
+        () => {},
+        () => {},
+      );
+    this.persistenceWrites.set(state.id, write);
+    await write;
+    if (this.persistenceWrites.get(state.id) === write) this.persistenceWrites.delete(state.id);
   }
 
   private async sendError(

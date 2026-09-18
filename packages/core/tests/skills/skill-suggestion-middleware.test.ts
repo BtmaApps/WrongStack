@@ -4,7 +4,12 @@ import {
   renderSuggestionBlock,
 } from '../../src/skills/suggest/middleware.js';
 import { createSkillSuggestionSetup } from '../../src/skills/suggest/setup.js';
-import type { SkillSuggester, SkillSuggestion } from '../../src/skills/suggest/skill-suggester.js';
+import {
+  createSkillSuggester,
+  type SkillSuggester,
+  type SkillSuggestion,
+  type SkillSuggestionTrace,
+} from '../../src/skills/suggest/skill-suggester.js';
 import { isVolatileSystemBlock } from '../../src/types/blocks.js';
 import type { Config } from '../../src/types/config/root.js';
 import type { Message } from '../../src/types/messages.js';
@@ -20,11 +25,30 @@ function userRequest(text: string, extra: Message[] = []): Request {
 }
 
 function suggesterOf(suggestion: SkillSuggestion | undefined): SkillSuggester {
-  return { suggest: vi.fn(async () => suggestion), explain: unusedExplain };
+  return {
+    suggest: vi.fn(async () => suggestion),
+    explain: vi.fn(async () => traceOf(suggestion)),
+  };
+}
+
+function traceOf(suggestion: SkillSuggestion | undefined): SkillSuggestionTrace {
+  return {
+    gate: 0,
+    gateValues: {},
+    ranked: [],
+    shortlist: [],
+    fits: {},
+    winner: suggestion?.name,
+    suggestion,
+    stop: suggestion ? 'suggested' : 'gate',
+    requests: 1,
+    models: [],
+    inputTokens: 0,
+  };
 }
 
 async function unusedExplain(): Promise<never> {
-  throw new Error('Explain is not used by the suggestion middleware');
+  throw new Error('boom');
 }
 
 const HIT: SkillSuggestion = { name: 'git-flow', gate: 0.8, fits: 0.7 };
@@ -39,6 +63,27 @@ async function run(mw: ReturnType<typeof createSkillSuggestionMiddleware>, reque
 }
 
 describe('createSkillSuggestionMiddleware', () => {
+  it('does not tell the model no skill fits when the real client fails', async () => {
+    const loader = {
+      listEntries: async () => [
+        { name: 'a', trigger: 'coding' },
+        { name: 'b', trigger: 'design' },
+      ],
+      list: async () => [],
+    } as unknown as SkillLoader;
+    const client = {
+      systemOne: vi.fn(async () => {
+        throw new Error('HTTP 401');
+      }),
+    };
+    const mw = createSkillSuggestionMiddleware({
+      suggester: createSkillSuggester({ loader, client }),
+    });
+    const original = userRequest('Review and improve this module');
+    expect(await run(mw, original)).toBe(original);
+    expect(await run(mw, original)).toBe(original);
+    expect(client.systemOne).toHaveBeenCalledTimes(1);
+  });
   it('appends the suggestion as a volatile block without touching the roster text', async () => {
     const mw = createSkillSuggestionMiddleware({ suggester: suggesterOf(HIT) });
     const original = userRequest('Cut a release branch for 1.2.0');
@@ -81,7 +126,7 @@ describe('createSkillSuggestionMiddleware', () => {
     const a = await run(mw, first);
     const b = await run(mw, afterTool);
 
-    expect(suggester.suggest).toHaveBeenCalledTimes(1);
+    expect(suggester.explain).toHaveBeenCalledTimes(1);
     expect(b.system![1]!.text).toBe(a.system![1]!.text);
   });
 
@@ -90,7 +135,7 @@ describe('createSkillSuggestionMiddleware', () => {
     const mw = createSkillSuggestionMiddleware({ suggester, getSessionId: () => 's' });
     await run(mw, userRequest('Cut a release branch for 1.2.0'));
     await run(mw, userRequest('Now restyle the settings page header'));
-    expect(suggester.suggest).toHaveBeenCalledTimes(2);
+    expect(suggester.explain).toHaveBeenCalledTimes(2);
   });
 
   it('caches a miss too', async () => {
@@ -98,7 +143,7 @@ describe('createSkillSuggestionMiddleware', () => {
     const mw = createSkillSuggestionMiddleware({ suggester, getSessionId: () => 's' });
     await run(mw, userRequest('Explain what a monad is, in general'));
     await run(mw, userRequest('Explain what a monad is, in general'));
-    expect(suggester.suggest).toHaveBeenCalledTimes(1);
+    expect(suggester.explain).toHaveBeenCalledTimes(1);
   });
 
   it('keeps sessions apart', async () => {
@@ -108,14 +153,14 @@ describe('createSkillSuggestionMiddleware', () => {
     await run(mw, userRequest('Cut a release branch for 1.2.0'));
     session = 'b';
     await run(mw, userRequest('Cut a release branch for 1.2.0'));
-    expect(suggester.suggest).toHaveBeenCalledTimes(2);
+    expect(suggester.explain).toHaveBeenCalledTimes(2);
   });
 
   it('skips turns too short to carry a request', async () => {
     const suggester = suggesterOf(HIT);
     const mw = createSkillSuggestionMiddleware({ suggester });
     const seen = await run(mw, userRequest('go on'));
-    expect(suggester.suggest).not.toHaveBeenCalled();
+    expect(suggester.explain).not.toHaveBeenCalled();
     expect(seen.system).toHaveLength(1);
   });
 
@@ -138,19 +183,19 @@ describe('createSkillSuggestionMiddleware', () => {
     const mw = createSkillSuggestionMiddleware({
       deadlineMs: 10,
       suggester: {
-        explain: unusedExplain,
-        suggest: (_request, signal) =>
+        suggest: async () => undefined,
+        explain: (_request, signal) =>
           new Promise((resolve) => {
             signal?.addEventListener('abort', () => {
               aborted = true;
-              resolve(undefined);
+              resolve({ ...traceOf(undefined), stop: 'error' });
             });
           }),
       },
     });
     const seen = await run(mw, userRequest('Cut a release branch for 1.2.0'));
     expect(aborted).toBe(true);
-    expect(seen.system![1]!.text).toContain('No skill in the roster appears relevant');
+    expect(seen.system).toHaveLength(1);
   });
 
   it('does not let an observer failure break the turn', async () => {
@@ -162,6 +207,20 @@ describe('createSkillSuggestionMiddleware', () => {
     });
     const seen = await run(mw, userRequest('Cut a release branch for 1.2.0'));
     expect(seen.system![1]!.text).toContain('git-flow');
+  });
+
+  it('enforces the deadline even when a loader ignores cancellation', async () => {
+    vi.useFakeTimers();
+    try {
+      const suggester = { suggest: vi.fn(), explain: vi.fn(() => new Promise<never>(() => {})) };
+      const mw = createSkillSuggestionMiddleware({ suggester, deadlineMs: 10 });
+      const original = userRequest('Review and improve this module');
+      const pending = run(mw, original);
+      await vi.advanceTimersByTimeAsync(11);
+      expect(await pending).toBe(original);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

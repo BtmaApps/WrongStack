@@ -1,26 +1,4 @@
-/**
- * skills.sh registry adapter.
- *
- * skills.sh is the open agent-skills marketplace (backed by mastra-ai/skills-api)
- * indexing 34k+ skills from 2.8k+ GitHub repos. Every entry is an
- * agentskills.io `SKILL.md` skill whose source repo is known, so resolving a
- * registry hit to a `user/repo@ref` install ref is just a lookup.
- *
- * API shape (https://skills.sh/api/skills):
- *   GET /api/skills?query=<q>&page=<p>&pageSize=<ps>&sortBy=installs
- *   → { results: Array<{ name, description, owner, repo, ref?, installs?, score?, updatedAt? }> }
- *
- * The base URL is configurable (`config.skills.registryUrl`, user-config only —
- * stripped from in-project config because the parsed response flows into the
- * prompt and a repo-controlled URL would be an SSRF / prompt-injection vector).
- *
- * This adapter is defensive about the response schema: skills.sh is a
- * third-party service and its exact JSON shape has changed before. We parse
- * loosely (missing fields become `undefined`) and throw `ParseError` only when
- * the response isn't the expected shape at all (no `results` array), so a
- * minor additive schema change degrades gracefully instead of crashing the
- * command.
- */
+/** skills.sh search adapter. Uses /api/search and accepts legacy custom registry responses. */
 import { FetchError, ParseError } from '../../types/errors.js';
 import type {
   RegistrySearchOptions,
@@ -98,22 +76,23 @@ export function createSkillsShAdapter(opts: SkillsShAdapterOptions = {}): SkillR
     displayName: 'skills.sh',
 
     async search(query: string, sopts: RegistrySearchOptions = {}): Promise<RegistrySearchResult> {
-      const page = Math.max(1, sopts.page ?? 1);
-      const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, sopts.pageSize ?? 20));
+      const page = Number.isFinite(sopts.page) ? Math.max(1, Math.floor(sopts.page ?? 1)) : 1;
+      const pageSize = Number.isFinite(sopts.pageSize)
+        ? Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(sopts.pageSize ?? 20)))
+        : 20;
       const q = query.trim();
       if (!q) return { adapterId: id, results: [], hasMore: false };
 
-      const url =
-        `${baseUrl}/api/skills?query=${encodeURIComponent(q)}` +
-        `&page=${page}&pageSize=${pageSize}&sortBy=installs`;
+      const url = `${baseUrl}/api/search?q=${encodeURIComponent(q)}&limit=${Math.min(page * pageSize, MAX_PAGE_SIZE)}`;
 
       const raw = await fetcher(url);
-      const results = parseResults(raw, url);
+      const allResults = parseResults(raw, url);
+      const results = allResults.slice((page - 1) * pageSize, page * pageSize);
 
       return {
         adapterId: id,
         results,
-        hasMore: results.length === pageSize,
+        hasMore: results.length === pageSize && page * pageSize < MAX_PAGE_SIZE,
       };
     },
 
@@ -130,8 +109,11 @@ export function createSkillsShAdapter(opts: SkillsShAdapterOptions = {}): SkillR
       }
       // Validate it looks like owner/repo (with optional @ref).
       const atIdx = trimmed.indexOf('@');
-      const repoPart = atIdx > 0 ? trimmed.slice(0, atIdx) : trimmed;
+      const withoutSkill = trimmed.split('#')[0] ?? '';
+      const repoPart = atIdx > 0 ? withoutSkill.slice(0, atIdx) : withoutSkill;
       const segs = repoPart.split('/').filter(Boolean);
+      if (segs.length === 3 && !trimmed.includes('@') && !trimmed.includes('#'))
+        return `${segs[0]}/${segs[1]}#${segs[2]}`;
       if (segs.length !== 2) {
         throw new ParseError({
           message:
@@ -162,12 +144,13 @@ function parseResults(raw: unknown, url: string): RegistrySkillSummary[] {
       context: { url },
     });
   }
-  const results = (raw as { results?: unknown }).results;
+  const results = (raw as { skills?: unknown }).skills ?? (raw as { results?: unknown }).results;
   if (!Array.isArray(results)) {
-    // Some deployments wrap results differently. Treat a missing/Non-array
-    // `results` field as an empty result set rather than crashing — the user
-    // just sees "no matches", which is correct if the schema shifted.
-    return [];
+    throw new ParseError({
+      message: 'Skill registry response is missing a skills/results array.',
+      source: 'skills.sh.search',
+      context: { url },
+    });
   }
 
   const out: RegistrySkillSummary[] = [];
@@ -177,12 +160,15 @@ function parseResults(raw: unknown, url: string): RegistrySkillSummary[] {
 
     const name = strField(entry, 'name') ?? strField(entry, 'slug');
     const description = strField(entry, 'description') ?? '';
-    const owner = strField(entry, 'owner') ?? strField(entry, 'author');
-    const repo = strField(entry, 'repo') ?? strField(entry, 'repository');
+    const source = strField(entry, 'source')?.split('/');
+    const owner = strField(entry, 'owner') ?? strField(entry, 'author') ?? source?.[0];
+    const repo = strField(entry, 'repo') ?? strField(entry, 'repository') ?? source?.[1];
     if (!name || !owner || !repo) continue; // can't build an install ref
 
     const ref = strField(entry, 'ref') ?? strField(entry, 'branch') ?? strField(entry, 'tag');
-    const installRef = ref ? `${owner}/${repo}@${ref}` : `${owner}/${repo}`;
+    const skillId = strField(entry, 'skillId');
+    const installRef =
+      (ref ? `${owner}/${repo}@${ref}` : `${owner}/${repo}`) + (skillId ? `#${skillId}` : '');
 
     out.push({
       id: strField(entry, 'id') ?? `${owner}/${repo}`,

@@ -99,7 +99,7 @@ describe('generateSkillSkeleton', () => {
 
   it('honors a custom version', () => {
     const body = generateSkillSkeleton({ name: 'demo', description: 'd', version: '2.3.1' });
-    expect(body).toContain('version: 2.3.1');
+    expect(parseSkillFrontmatter(body).version).toBe('2.3.1');
   });
 
   it('title-cases the name for the H1', () => {

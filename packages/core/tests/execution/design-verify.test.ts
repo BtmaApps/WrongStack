@@ -9,6 +9,21 @@ const tokens: DesignKitTokens = {
 };
 
 describe('verifyFiles', () => {
+  it('does not call token references arbitrary spacing or radius literals', () => {
+    const r = verifyFiles(tokens, [
+      {
+        path: 'a.tsx',
+        text: '<div className="p-[var(--space-4)] rounded-[var(--radius-md)] gap-[13px]" />',
+      },
+    ]);
+    expect(r.violations.map((v) => v.snippet)).toEqual(['gap-[13px]']);
+  });
+
+  it('does not count commented-out markup as scan coverage', () => {
+    const r = verifyFiles(tokens, [{ path: 'a.tsx', text: '// <div className="bg-primary" />' }]);
+    expect(r.filesWithNoSignal).toBe(1);
+  });
+
   it('passes when colors are on-palette or use token names', () => {
     const r = verifyFiles(tokens, [
       { path: 'a.css', text: '.btn { background: #ff0000; color: var(--primary); }' },

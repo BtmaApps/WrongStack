@@ -133,15 +133,30 @@ export class WrongStackACPServer {
       this.transport.sendStartupMarker();
     }
     this.running = true;
+    const prompts = new Set<Promise<void>>();
     try {
       while (this.running) {
         const msg = await this.transport.read();
         if (!msg) break;
+        // A prompt can request client callbacks or await cancellation. Keep
+        // reading the duplex channel until it completes; setup stays ordered.
+        if (msg.method === 'session/prompt') {
+          const task = this.handler.handleMessage(msg).then(
+            () => {},
+            (err: unknown) => {
+              writeErr(`[wstack-acp] prompt dispatch failed: ${String(err)}\n`);
+            },
+          );
+          prompts.add(task);
+          void task.finally(() => prompts.delete(task));
+          continue;
+        }
         const terminal = await this.handler.handleMessage(msg);
         if (terminal) break;
       }
     } finally {
       this.handler.close();
+      await Promise.allSettled(prompts);
       this.transport.close();
     }
   }

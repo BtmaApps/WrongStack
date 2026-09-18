@@ -59,7 +59,7 @@ describe('design-project-store', () => {
     expect(existsSync(path.join(designProjectDir(root), 'decisions.md'))).toBe(true);
   });
 
-  it('loadProjectDesignRules reads .design/rules.md (cached per root)', async () => {
+  it('loadProjectDesignRules reads .design/rules.md', async () => {
     const dir = designProjectDir(root);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, 'rules.md'), '# Brand\n- Always use 8px grid.\n');
@@ -68,6 +68,19 @@ describe('design-project-store', () => {
   });
 
   it('loadProjectDesignRules returns undefined when no rules file exists', async () => {
+    expect(await loadProjectDesignRules(root)).toBeUndefined();
+  });
+
+  it('sees rules added, revised and removed during the same session', async () => {
+    expect(await loadProjectDesignRules(root)).toBeUndefined();
+    const dir = designProjectDir(root);
+    await fs.mkdir(dir, { recursive: true });
+    const rules = path.join(dir, 'rules.md');
+    await fs.writeFile(rules, 'Use the established compact table.');
+    expect(await loadProjectDesignRules(root)).toBe('Use the established compact table.');
+    await fs.writeFile(rules, 'Use the established spacious form.');
+    expect(await loadProjectDesignRules(root)).toBe('Use the established spacious form.');
+    await fs.rm(rules);
     expect(await loadProjectDesignRules(root)).toBeUndefined();
   });
 });

@@ -11,12 +11,9 @@
  * skillInstaller + a capturing `send`) — no real I/O, no socket.
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import * as nodeFs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { WebSocket } from 'ws';
-import type { WSServerMessage } from '../../src/types.js';
 import {
   handleSkillsContent,
   handleSkillsCreate,
@@ -28,6 +25,9 @@ import {
   handleSkillsUpdate,
   type SkillsContext,
 } from '@wrongstack/webui-server';
+import { describe, expect, it, vi } from 'vitest';
+import type { WebSocket } from 'ws';
+import type { WSServerMessage } from '../../src/types.js';
 
 /** Build a SkillsContext with stubbed loader/installer (undefined by default). */
 function makeCtx(over: Partial<SkillsContext> = {}): SkillsContext {
@@ -321,7 +321,9 @@ describe('handleSkillsEdit', () => {
     };
     const ctx = makeCtx({ skillLoader: loader as never });
     const { ws, messages } = openWs();
-    await handleSkillsEdit(ws, ctx, { payload: { name: 'bundled', body: 'new body' } });
+    await handleSkillsEdit(ws, ctx, {
+      payload: { name: 'bundled', body: '---\nname: bundled\ndescription: test\n---\nnew body' },
+    });
     expect(payloadOf(messages, 'skills.edited')?.error).toBe('Bundled skills cannot be edited');
   });
 });
@@ -340,8 +342,8 @@ describe('handleSkillsExport', () => {
     const loader = {
       list: async () => [],
       listEntries: async () => [
-        { name: 'a', path: '/a/SKILL.md', scope: ['project'] },
-        { name: 'b/c', path: '/b/SKILL.md', scope: ['project'] },
+        { name: 'a', scope: ['project'] },
+        { name: 'b/c', scope: ['project'] },
       ],
       readBody: async () => '# body',
     };
@@ -358,7 +360,9 @@ describe('handleSkillsExport', () => {
 // ── skills.edit ───────────────────────────────────────────────────────
 
 describe('handleSkillsEdit', () => {
-  const editMsg = (name: string) => ({ payload: { name, body: 'new body' } });
+  const editMsg = (name: string) => ({
+    payload: { name, body: `---\nname: ${name}\ndescription: test\n---\nnew body` },
+  });
 
   it('refuses to edit a foreign (read-only) skill — never writes into .claude', async () => {
     const loader = {

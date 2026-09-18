@@ -1,3 +1,5 @@
+import { validateSkillDocument, validateSkillName } from '@wrongstack/core/skills';
+
 export { validatePrefsUpdatePayload } from './ws-payload-preferences.js';
 
 type PayloadValidationResult<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -15,11 +17,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * symmetry-enforcement point: a future route that forgets the clamp
  * fails the architecture test instead of degrading silently.
  */
-export function clampLimit(
-  value: unknown,
-  def: number,
-  max: number,
-): number {
+export function clampLimit(value: unknown, def: number, max: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : def;
   if (n < 1) return 1;
   return n > max ? max : n;
@@ -526,12 +524,14 @@ export function validateSkillsCreatePayload(
   if (typeof name !== 'string' || name.trim().length === 0) {
     return { ok: false, message: 'Skill name is required' };
   }
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name.trim())) {
+  if (validateSkillName(name.trim()).length > 0) {
     return { ok: false, message: 'Skill name must be kebab-case (e.g. my-new-skill)' };
   }
   if (typeof description !== 'string' || description.trim().length === 0) {
     return { ok: false, message: 'Description/trigger is required' };
   }
+  if (description.trim().length > 1024)
+    return { ok: false, message: 'Description must be at most 1024 characters' };
   if (scope !== 'project' && scope !== 'global') {
     return { ok: false, message: 'skills.create payload.scope must be project or global' };
   }
@@ -557,6 +557,8 @@ export function validateSkillsEditPayload(
   if (typeof body !== 'string' || body.length === 0) {
     return { ok: false, message: 'Skill body is required' };
   }
+  const violations = validateSkillDocument(body, name.trim());
+  if (violations.length) return { ok: false, message: violations.join('; ') };
   return { ok: true, value: { name, body } };
 }
 

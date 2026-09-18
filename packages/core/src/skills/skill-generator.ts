@@ -19,8 +19,14 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { ERROR_CODES, WrongStackError } from '../types/errors.js';
 import type { SkillEntry, SkillLoader } from '../types/skill.js';
+import { atomicWrite } from '../utils/atomic-write.js';
 import { buildWin32CmdShimInvocation } from '../utils/win32-cmd.js';
-import { isValidSkillNameFormat, parseSkillFrontmatter, validateSkillName } from './frontmatter.js';
+import {
+  isValidSkillNameFormat,
+  parseSkillFrontmatter,
+  validateSkillDocument,
+  validateSkillName,
+} from './frontmatter.js';
 import { SKILL_LIMITS } from './limits.js';
 
 /** Result of validating a proposed skill name. */
@@ -93,7 +99,7 @@ export function generateSkillSkeleton(opts: SkillSkeletonOptions): string {
   const triggers = (opts.triggerKeywords ?? [])
     .map((k) => k.trim())
     .filter(Boolean)
-    .map((k) => `"${k}"`)
+    .map((k) => JSON.stringify(k))
     .join(', ');
   const triggerLine = triggers ? `\n  Triggers: user says ${triggers}.` : '';
   const version = opts.version?.trim() || '1.0.0';
@@ -105,8 +111,8 @@ export function generateSkillSkeleton(opts: SkillSkeletonOptions): string {
   return `---
 name: ${name}
 description: |
-  ${description || `Use this skill when <trigger situation>.`}${triggerLine}
-version: ${version}
+  ${(description || `Use this skill when <trigger situation>.`).replace(/\r\n?/g, '\n').replace(/\n/g, '\n  ')}${triggerLine}
+version: ${JSON.stringify(version)}
 ---
 
 # ${title}
@@ -288,6 +294,13 @@ export async function writeSkeletonSkill(
       subsystem: 'general',
     });
   }
+  const violations = validateSkillDocument(body, name);
+  if (violations.length)
+    throw new WrongStackError({
+      message: violations.join('; '),
+      code: ERROR_CODES.VALIDATION_ERROR,
+      subsystem: 'general',
+    });
   const skillDir = path.join(skillsDir, name);
   // Reject a name that escapes skillsDir — prevents arbitrary directory creation
   // outside the skills root (e.g. name: "../../../etc" on a malicious skill body).
@@ -315,7 +328,8 @@ export async function writeSkeletonSkill(
     }
   }
   await fs.mkdir(skillDir, { recursive: true });
-  await fs.writeFile(skillFile, body, 'utf8');
+  if (opts.overwrite) await atomicWrite(skillFile, body);
+  else await fs.writeFile(skillFile, body, { encoding: 'utf8', flag: 'wx' });
   return skillFile;
 }
 
@@ -355,7 +369,8 @@ function toKebab(s: string): string {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
-      .slice(0, SKILL_LIMITS.SKILL_NAME_MAX_LEN) || 'skill'
+      .slice(0, SKILL_LIMITS.SKILL_NAME_MAX_LEN)
+      .replace(/-+$/, '') || 'skill'
   );
 }
 

@@ -50,7 +50,8 @@ const USAGE = [
   '  {"text": "cut a release branch for 1.2.0", "gold": "git-flow"}',
   '  {"text": "explain what a monad is"}            // nothing covers it',
   '',
-  'Both modes send request text to TypeSafe and need TYPESAFE_API_KEY.',
+  'Both modes send request text to the configured TypeSafe/OpenRouter route.',
+  'Configure its key with `wstack typesafe login` and verify with `wstack typesafe test`.',
 ].join('\n');
 
 export const skillSuggestCmd: SubcommandHandler = async (args, deps) => {

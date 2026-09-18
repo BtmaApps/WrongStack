@@ -23,8 +23,8 @@ export interface TypeSafeConfig {
    * something the pattern does not match would silently store it in plaintext.
    * `config-secrets.test.ts` pins that.
    *
-   * `TYPESAFE_API_KEY` overrides it and is the right choice for CI or any
-   * ephemeral environment where no profile exists.
+   * The selected route's environment variable is used only when this field
+   * is absent. A configured profile key takes precedence.
    */
   apiKey?: string | undefined;
   /**
@@ -36,10 +36,9 @@ export interface TypeSafeConfig {
    * - `custom`     — whatever `endpoint` names. Implied when `endpoint` is set.
    *
    * Left unset, the route is inferred: an explicit `endpoint` means `custom`,
-   * a configured `apiKey` means `typesafe`, otherwise the first route whose
-   * environment variable is present wins — TypeSafe first, so a stray
-   * `OPENROUTER_API_KEY` meant for chat cannot silently reroute (and re-bill)
-   * an account that was set up deliberately.
+   * otherwise the native route is used. OpenRouter always requires an
+   * explicit route; its chat credential alone cannot reroute or re-bill
+   * this account.
    */
   route?: 'typesafe' | 'openrouter' | 'custom' | undefined;
   /**
@@ -53,7 +52,7 @@ export interface TypeSafeConfig {
   /** Per-HTTP-attempt timeout, in ms. Default 4000. */
   requestTimeoutMs?: number | undefined;
   /**
-   * Consecutive 401/403 responses that disable TypeSafe for the process.
+   * Consecutive 401/403 responses that disable this TypeSafe client instance.
    * Default 3. Rate limits and network errors never count toward this — only
    * a credential the host has actually rejected.
    */

@@ -1,237 +1,138 @@
 ---
 name: design-craft
 description: |
-  Use this skill BEFORE writing any user-facing UI, alongside `design-system`, to make the result look designed rather than generated — it forces the composition, typography, color and copy decisions that token adherence alone never settles.
-  Triggers: user says "design", "UI", "landing page", "make it look better", "looks generic", "looks AI-generated", "AI slop", "too templated", "hero section", "layout", "typography", "font pairing", "spacing rhythm", "visual hierarchy", "redesign", "restyle", "marketing page", "dashboard layout".
-version: 1.0.0
+  Design or substantially improve user-facing interfaces with a product-specific visual direction, content hierarchy, and rendered critique. Use for new screens, landing pages, redesigns, typography/layout work, or UI that feels generic or AI-generated. For small fixes, preserve the existing design without starting a new brief.
+version: 2.0.0
 required-capabilities: [filesystem.read, filesystem.write]
 required-tools: [design, skill]
-optional-capabilities: [web.research]
+optional-capabilities: [web.research, browser.interact, verification.run]
 ---
 
 # Design Craft — WrongStack
 
-## Why this exists
+The outcome is an interface suited to this product, its content and its users.
+Token consistency helps, but cannot establish visual quality. A kit supplies
+reusable decisions, not a finished composition. Removing gradients or changing
+three cards to four does not make a design original.
 
-`design-system` guarantees the UI is **consistent**: one kit, real tokens, no
-literals, and a clean `design` verify pass. That is necessary and not
-sufficient. A screen can score 100% on-palette and still be instantly
-recognizable as machine-generated, because the tells live in decisions tokens
-never encode:
+## Establish the design boundary
 
-- every section a centered stack, three equal cards, same padding everywhere
-- one type size doing all the work, no measure control, no optical alignment
-- a gradient standing in for hierarchy
-- emoji standing in for icons
-- copy that could belong to any product ("Unlock the power of…")
+Inspect the relevant screens, components, theme, assets and framework before
+choosing a direction. Reuse an established system by default. Follow the user's
+supplied reference or explicit direction. For a small change, match the surrounding
+interface and check affected states without inventing a new product identity.
 
-Tokens are the grammar. This skill is the writing. Run both.
+For a new screen or substantial redesign, use the `design-system` skill to resolve the
+token source: the existing system, or one kit for a new system. Read a supplied
+reference before claiming to follow it. If it cannot be accessed, state that
+limitation and distinguish assumptions from observations.
 
-## The contract
+## Write a useful brief
 
-1. **No pixels before the brief.** `.design/brief.md` exists and answers the
-   seven decisions below before the first component is written.
-2. **Every decision is written down and justified in one line.** A decision you
-   cannot justify is a default in disguise.
-3. **One signature move per product.** Exactly one — not zero (forgettable),
-   not five (noisy).
-4. **Sections differ.** No two adjacent sections share the same skeleton.
-5. **Copy is real.** No filler, no placeholder marketing voice, ever — not even
-   in a draft.
-6. **The floor is mechanical.** The `design` tool's verify action now reports a
-   `composition` axis. Zero composition findings is the floor, not the goal.
+Record decisions in `.design/brief.md`. Design Studio includes a bounded excerpt
+in subsequent UI requests; keep critical decisions at the top. This directory is
+local and self-ignored once Design Studio persists a kit. Put decisions the team
+must share in its normal tracked design docs too.
 
----
-
-## Step 0 — Write the brief
-
-Write `.design/brief.md` (create `.design/` if absent). It is short, and every
-line is a commitment:
+Use only the fields that affect this task:
 
 ```markdown
-# Design brief — <product>
-
-Archetype:    <operator tool | editorial | commerce | consumer app | docs | marketing>
-Audience:     <who, and what they are doing when they arrive>
-Register:     <clinical | editorial | playful | brutalist | corporate-trust | warm>
-Kit:          <kit-id> (stack: <web|react-native|flutter|swiftui|compose>)
-References:   <3 named real products/artifacts, and the ONE thing taken from each>
-Signature:    <the single move this UI is remembered by>
-Anti-goals:   <3 looks this must NOT resemble>
-Density:      <compact | cozy | comfortable> — and why
-Type pairing: <display face> / <text face> / <mono>, contrast ratio <ratio>
-Color roles:  dominant <token> ~60% · secondary <token> ~30% · accent <token> ~10%
-Layout spine: <grid: columns, gutter, max measure, asymmetry budget>
+# Design brief — <product / surface>
+Audience and primary task: <who needs to do what, under which constraints>
+System and scope: <existing tokens/components or selected kit; what is changing>
+Content priority: <primary action, essential information, supporting evidence>
+Direction: <visual idea tied to this product, and why it supports the task>
+References: <inspected artifact / URL / local file and the specific lesson>
+Layout and type: <reading order, density, grid, type roles and prose measure>
+Color and assets: <semantic roles, actual imagery/data, asset sources>
+States and adaptation: <mobile/short viewports, themes, key edge cases>
+Avoid: <specific failure modes for this product>
+Acceptance: <observable checks, not adjectives such as premium or clean>
+Assumptions: <unknown content, data or constraints; clearly labelled>
 ```
 
-Rules for the brief:
+Do not fabricate three famous references to fill a template. When the prompt is
+sufficient, state the direction briefly and continue. Ask only when a missing fact
+changes the product outcome; otherwise use a reversible assumption.
 
-- **References must be named and specific.** "Modern and clean" is not a
-  reference. "Linear's command palette density, Stripe's doc typography,
-  Things' empty states" is.
-- **Anti-goals do real work.** They are what you check the result against when
-  it starts drifting back to the mean.
-- If the user gave no signal, propose the brief in ≤8 lines, say which choices
-  are reversible, and continue — do not stall, and do not silently default.
-- The brief outranks your taste later in the build. If it needs to change,
-  change the file, don't quietly deviate.
+For an open-ended new identity, compare a few directions briefly before choosing
+one. Distinguish them by layout, content emphasis, typography or interaction,
+not just palette. Explain why the selected direction fits. When the user asks
+to choose, present real alternatives; otherwise continue with the best fit.
+Style vocabulary and kit mappings: load `references/directions.md` with `skill`.
 
----
+## Make originality come from the product
 
-## Step 0.5 — Resolve the direction (and offer real alternatives)
+Start with its distinctive content or workflow. A dispatch screen can prioritize
+exceptions and arrival windows; an archive can use dates, captions and source
+material; a field tool can make offline state and recovery unmistakable. These
+decisions create identity without decorative tricks.
 
-People name a design in style words: "brutalist", "glassmorphism", "swiss",
-"make it look premium". A style word carries a look but no system — no radius
-scale, no spacing rhythm, no type ramp, no motion curve, no elevation steps. Your
-job is to resolve it to a kit, which carries all five, and then keep going.
+- **Content first:** use representative real text, realistic lengths and useful
+  data. Label demo data. Never invent customer logos, testimonials, usage counts,
+  awards or conversion claims as evidence.
+- **Composition:** choose hierarchy from reading order and action. Tables,
+  repeated rows and equal product cards often need consistency. Vary layout
+  when content roles differ, not to satisfy an asymmetry quota.
+- **Typography:** decide display, text, label and numeric roles. A single family
+  can be excellent. Use loaded/licensed fonts available to the project, test
+  fallback and wrapping, and control prose measure without applying it to tables.
+- **Color:** assign semantic roles and protect the primary action's salience.
+  60/30/10 is a possible starting point, not an acceptance rule. Links, data
+  categories and status indicators may need many accent uses.
+- **Surfaces:** grouping must mean something. Use spacing, borders, radii and
+  elevation by role; a border plus shadow can improve separation. Do not wrap
+  every paragraph in a card.
+- **Assets:** choose imagery that explains the product or establishes its tone.
+  Use available assets or appropriate generation/search tooling when needed;
+  inspect the actual asset, crop, resolution, rights and contrast. Do not fill
+  space with unrelated stock illustrations or present a mockup as a real screenshot.
+- **Distinctiveness:** express a coherent idea where it helps. A quiet form does
+  not need a signature gimmick; a brand surface may carry a stronger motif.
+- **Motion:** explain a state change or spatial relationship; respect reduced
+  motion and keep controls usable without animation.
 
-```
-skill({ name: "design-craft", resource: "references/directions.md" })
-```
+Use `skill({ name: "design-craft", resource: "references/<file>.md" })` as needed:
+`composition`, `typography`, `color`, `copy`, `slop-inventory`. These references
+are diagnostic aids; user intent, accessibility and product context outrank
+stylistic recipes. A pattern alone is not proof of low quality.
 
-That file maps the style vocabulary to kits, lists the style words that have **no**
-kit (say so, then pin the closest and add the motif deliberately), and names the
-two words that are not directions at all: "dark mode" and "light mode" select
-nothing, because every kit already ships both from one token set.
+## Build, inspect, correct
 
-**When the ask is "show me options", three neighbours are not options.** Force
-contrast on named axes — chroma, era, decoration, density, register — and require
-any two proposals to differ on at least two of them. Offer each as one line of
-brief with the condition that makes it the right pick, not as a mood board. The
-user picks one; it goes in the brief; the loop continues. Never build three real
-screens to choose a direction.
+1. Establish structure with representative content, then type and spacing,
+   then color, assets and motion. Preserve semantic markup and working controls.
+2. Exercise the main task, keyboard flow and reachable loading, empty, error,
+   success, disabled and overflow states. Avoid decorative controls that do nothing.
+3. Inspect the actual rendered surface. Test the relevant desktop size, a narrow
+   viewport and a short viewport where dialogs/toolbars may hide actions. Include
+   supported themes, long labels and realistic content volume. For mobile changes,
+   check touch affordances and scrolling; for native stacks use device evidence.
+4. Run the `design` tool with `{action:"verify"}` when a kit is pinned. Review findings against
+   the brief and token source. Fix drift; retain justified design choices. Zero
+   findings and a 100% palette score do not establish quality or accessibility.
+5. Use the `design-critique` skill to identify the highest-impact visible problems. Fix
+   them within the authorized scope, then inspect the affected screens again.
+   Stop when acceptance checks are met, not after arbitrary cosmetic churn.
 
-**A direction is where the design starts, never where it ends.** "It's brutalist"
-is not an answer to "what is the focal point". Everything below still applies.
+Make rendered checks concrete:
 
-## The seven forced decisions
+- **Hierarchy:** can the main task and content priority be identified quickly?
+- **Product swap:** would changing only the logo leave an equally plausible
+  unrelated product? If so, improve domain content or workflow, not decoration.
+- **Constraint stress:** does the primary action remain reachable with a short
+  viewport, long text, keyboard focus and supported content extremes?
+- **Reference fidelity:** compare geometry, type, spacing, imagery and colors
+  literally when matching a reference; explain deliberate deviations.
 
-Every one of these has a wrong default the model reaches for automatically.
-Decide deliberately, write it in the brief.
+If rendering tools are unavailable, inspect source and state precisely what
+remains unverified. Do not claim screenshot, contrast, responsive or interaction
+checks that were not performed. Native theme constants and dynamically generated
+classes are outside much of the source scanner's coverage.
 
-| # | Decision | The default to refuse | What to do instead |
-|---|---|---|---|
-| 1 | **Layout spine** | Centered 1-column stack, `max-w-7xl`, everything symmetric | Pick a real grid (12-col, 2-col asymmetric, sidebar+canvas, editorial 8-col). Give one element permission to break it. |
-| 2 | **Rhythm** | Same section padding top-to-bottom | Vary vertical rhythm: a tight section after a generous one. Dense ≠ cramped. |
-| 3 | **Type** | One family, 2 sizes, `font-bold` for emphasis | Real ramp with a jump (≥1.4× between display and body). Control measure (60–75ch). Emphasis by weight+size+color, not bold alone. |
-| 4 | **Color** | Accent on everything | 60/30/10. The accent appears 2–3 times per screen, at the moments that matter. Neutrals carry the rest. |
-| 5 | **Surface** | Card everywhere, shadow on everything | Decide what a card *means* here. Prefer one elevation strategy: borders OR shadow, not both stacked. |
-| 6 | **Signature** | None | One memorable move: a distinctive empty state, a real data-dense table, an editorial pull quote, a custom focus treatment, an unexpected grid break. |
-| 7 | **Copy** | "Seamlessly integrate…", lorem ipsum, emoji bullets | Concrete nouns and verbs from the actual domain. If you don't know the domain, ask — don't fill. |
+## Handoff
 
----
-
-## The slop inventory (top offenders)
-
-The full annotated list is in
-the slop inventory, loaded with the `skill` tool:
-
-```
-skill({ name: "design-craft", resource: "references/slop-inventory.md" })
-```
-
-The ones that account for most of the damage:
-
-| Pattern | Why it reads as generated | Replace with |
-|---|---|---|
-| Gradient-filled headline (`bg-clip-text` + `text-transparent`) | The #1 tell. Hierarchy outsourced to a filter. | Size/weight/measure contrast |
-| Hero + exactly three equal feature cards | The template shape | 2 or 4 items, unequal spans, or a different section type entirely |
-| Every section centered | No rhythm, no spine | Alternate alignment; anchor to the grid |
-| Emoji as icons | Platform-dependent, no accessible name, toy register | A real icon set, consistent stroke width |
-| Stock `shadow-lg` on every card | Bypasses the kit's elevation ramp | `shadow-1…shadow-4`, and mostly `shadow-1` |
-| Glass panel + blurred blobs, unprompted | Decoration doing the work of structure | Only if the kit sanctions it (`soft-glass`, `holographic`, `aurora-gradient`) |
-| Uniform 24px padding everywhere | No density decision was made | The kit's density scale, varied by surface role |
-| "Powerful. Simple. Fast." triads | Copy that survives find-and-replace of the product name | One concrete sentence about what it does |
-| Icon + bold title + 2 grey lines, ×N | Content shaped by the component, not vice versa | Let content vary the component |
-| Centered 3-stat band with big numbers | Filler where evidence belongs | Real numbers, or cut the band |
-
----
-
-## Building
-
-Order: **brief → kit (`design-system`) → materialize → structure → type → color → states → motion.**
-Structure before decoration. If you are choosing a shadow before the grid is
-settled, stop.
-
-**Structure.** Block the page out in grey boxes first (mentally or in code with
-borders only). If it doesn't work with zero color and one type size, color will
-not save it.
-
-**Type.** Set the display/body pairing and measure before any component
-styling. Check: does the hierarchy survive in greyscale? If not, it is carried
-by color and will die in dark mode and for low-vision users.
-
-**Color.** Apply the 60/30/10 split from the brief. Count your accent uses per
-screen — if it is more than 3, it is not an accent.
-
-**States.** Every interactive element: default · hover · `:focus-visible` ·
-active · disabled · loading. Every data surface: empty · loading · error ·
-populated · *too much data*. The empty state is where a product's voice shows
-— it is the cheapest place to earn the signature move.
-
-**Motion.** Motion clarifies causality (where did this come from, what changed).
-If you cannot name what a transition explains, delete it.
-
-Depth references, loaded on demand:
-
-Load any of these with the `skill` tool:
-
-```
-skill({ name: "design-craft", resource: "references/composition.md" })
-skill({ name: "design-craft", resource: "references/typography.md" })
-skill({ name: "design-craft", resource: "references/color.md" })
-skill({ name: "design-craft", resource: "references/copy.md" })
-```
-
-- `composition.md` — layout archetypes beyond hero+cards, asymmetry, rhythm, grid breaks
-- `typography.md` — pairing, scale ratios, measure, optical corrections
-- `color.md` — OKLCH craft, 60/30/10, dark-mode re-tuning, accessible accents
-- `copy.md` — UI voice, empty states, error text, the banned register
-
----
-
-## The machine floor is web-only — know when it is silent
-
-The `composition` axis reads utility classes and CSS. A **react-native, flutter,
-swiftui or compose** screen has none of those: its kit materializes theme
-constants and a numeric `scale`, so the scanner finds nothing to read and reports
-zero violations on a file it never actually checked.
-
-**On a native stack, "0 findings" means "not checkable", not "clean."** Measured:
-a React Native screen scored 100% with 0 violations while carrying 0 class
-attributes — the result was structurally guaranteed regardless of what the screen
-looked like. Verify reports this explicitly, and when it does, the floor for that
-screen is the checklist below plus a `design-critique` pass, not the tool result.
-
-Everything else in this skill applies unchanged on every stack — the brief, the
-seven decisions, the slop inventory and the rhythm rules are about composition,
-not about CSS.
-
-## Currency
-
-Platform facts rot. Before asserting that a CSS/HTML capability is or isn't
-available, load `web-platform-baseline` — it carries dated, refreshable facts
-and a staleness rule. Never assert browser support from memory.
-
----
-
-## Before saying you're done
-
-- `.design/brief.md` exists, and the built UI matches it (including anti-goals).
-- `design {action:"verify"}` clean — **including zero `composition` findings**.
-- Greyscale test: hierarchy survives with color removed.
-- Squint test: the page has a focal point per screenful, not an even mat.
-- No two adjacent sections share a skeleton.
-- Accent used ≤3 times per screen.
-- Every state shipped, empty state has real voice.
-- Signature move present, and you can name it in one sentence.
-- Real copy everywhere — no filler, no placeholder voice.
-
-## Skills in scope
-
-- `design-system` — kit commitment, tokens, materialize, token-drift verify. Always run it; this skill sits on top.
-- `design-critique` — post-build audit and scored rubric when the UI already exists
-- `web-platform-baseline` — dated modern CSS/HTML facts and the staleness rule
-- `react-modern` — component patterns that consume the tokens
-- `research-web` — refreshing a stale platform or ecosystem claim
-- `output-standards` — `<nextsteps>` shape when reporting design work
+Give the direction and its product rationale, implementation outcome, observed
+checks with viewport/state or artifact evidence, and material unknowns. For
+substantial work, keep this concise record in `.design/review.md` so a later
+turn can distinguish inspected behavior from pending checks. Keep speculative
+improvements separate from defects; a prompt or scanner cannot guarantee originality.

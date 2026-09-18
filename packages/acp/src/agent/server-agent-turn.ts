@@ -476,7 +476,11 @@ export function makeACPServerAgentTurn(opts: ACPServerAgentTurnOptions): ACPServ
         }
       }
     }
+    const agent = agents.get(sessionId);
     agents.delete(sessionId);
+    void Promise.resolve()
+      .then(() => agent?.teardown?.())
+      .catch(() => {});
     history.delete(sessionId);
     historyBytes.delete(sessionId);
     pendingSeed.delete(sessionId);
@@ -681,7 +685,11 @@ function promptToText(blocks: readonly ContentBlock[]): string {
     } else if (b.type === 'audio') {
       parts.push(`[audio: ${b.mimeType}]`);
     } else if (b.type === 'resource') {
-      parts.push(`[embedded resource: ${b.resource.uri}]`);
+      parts.push(
+        'text' in b.resource && typeof b.resource.text === 'string'
+          ? `[embedded resource: ${b.resource.uri}]\n${b.resource.text}`
+          : `[embedded resource: ${b.resource.uri}]`,
+      );
     } else if (b.type === 'resource_link') {
       parts.push(`[resource link: ${b.uri}]`);
     }

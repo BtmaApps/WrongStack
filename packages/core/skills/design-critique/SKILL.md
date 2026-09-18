@@ -3,7 +3,7 @@ name: design-critique
 description: |
   Use this skill to audit an interface that already exists and say precisely why it looks generated, templated, or unfinished — a scored rubric across composition, typography, color, states, accessibility and copy, ending in a ranked fix list.
   Triggers: user says "review the design", "critique this UI", "why does this look bad", "looks generic", "looks AI-generated", "design review", "audit the UI", "make this look professional", "what's wrong with this page", "design feedback".
-version: 1.0.0
+version: 2.0.0
 required-capabilities: [filesystem.read]
 required-tools: [design, skill, read, grep]
 optional-capabilities: [browser.interact, verification.run]
@@ -81,6 +81,18 @@ not token drift — they are patterns that are token-clean and still generic.
 
 ### 3 — Craft pass
 
+Inspect a rendered screen or supplied image before making visual claims. Record
+the route/artifact, viewport, theme and state. Source alone supports implementation
+findings, not claims that a screen looks balanced, passes contrast or behaves
+correctly. Mark missing evidence `unverified`, not `n/a`; omit the overall score
+when an applicable axis lacks evidence. Do not invent screenshot observations.
+
+Judge against the primary task and brief. Repeated rows, equal cards, symmetry,
+a single font or a gradient can be appropriate. A scanner match is a question
+to investigate, not a verdict; confirm the visible problem before requesting a
+change. Check whether a logo swap leaves an unrelated but equally plausible
+product, and whether the interface uses the actual domain's content and workflow.
+
 **Classify the surface first.** Two axes are scored differently depending on it,
 and some are not scorable at all:
 
@@ -127,7 +139,7 @@ Never score from feel — each score cites at least one concrete observation.
 |---|---|
 | **Structure** | Is there a grid and a focal point, or an even mat of equal blocks? |
 | **Typography** | Does hierarchy survive in greyscale? Is the measure controlled? |
-| **Color** | 60/30/10 or accent-everywhere? Does dark mode look re-tuned or inverted? |
+| **Color** | Do semantic roles and visual emphasis support the task? Are supported themes deliberate and readable? |
 | **Surface & depth** | One coherent elevation strategy, or borders+shadows stacked at random? |
 | **States & edges** | Empty, loading, error, overflow, long strings — present or happy-path only? |
 | **Copy & voice** | Domain-specific, or interchangeable marketing filler? |
@@ -159,7 +171,8 @@ Mark each finding:
 
 Surface: <page | app screen | component>
 Tokens: <kit id · adherence pct> | <project's own system — no kit pinned> | <none>
-Craft: structure 2/5 · type n/a (app screen) · color 4/5 · surface 3/5 · states 1/5 · copy 2/5
+Evidence: <route/artifact, viewport, theme, state; source-only gaps>
+Craft: structure 2/5 · type 3/5 · color unverified · surface 3/5 · states 1/5 · copy 2/5
 Verdict: <one sentence naming the single biggest reason it reads as generated>
 
 ### Blocking
@@ -180,8 +193,9 @@ Verdict: <one sentence naming the single biggest reason it reads as generated>
    design is good, and never report a craft opinion as a token violation.
 4. **Verdict first, in one sentence.** The single biggest reason. If you cannot
    name one, you have not finished looking.
-5. **Do not rewrite while auditing.** Report, then fix on request — mixing them
-   hides what was wrong.
+5. **Respect the requested outcome.** For an audit-only request, report findings.
+   When improvements are already authorized, record the evidence, implement the
+   ranked fixes and inspect again without asking for the same authorization.
 6. **Respect the brief.** Decisions already made are not findings unless they
    are the problem; say that once, don't re-litigate.
 7. **No praise padding.** One line of what genuinely works, then the findings.
@@ -199,9 +213,9 @@ Verdict: <one sentence naming the single biggest reason it reads as generated>
 |---|---|
 | "Feels a bit generic" | "Three identical centered sections; no spine — evidence: lines 20, 48, 76" |
 | "Add more whitespace" | "Section padding is uniform `p-6`; the kit's density scale gives 12/8/6 by role" |
-| "Improve the colors" | "Accent used 11× on this screen; 60/30/10 wants ≤3 — list of uses attached" |
+| "Improve the colors" | "Secondary badges compete with the primary action in the inspected viewport; reduce their emphasis while preserving status meaning" |
 | Scoring every axis 3/5 | Scores that differ, each with a citation |
-| Rewriting the file mid-audit | Report, rank, then fix on request |
+| Mixing observations and intended fixes | Record the observed issue, implement authorized fixes, then report rechecked behavior |
 
 ## Skills in scope
 

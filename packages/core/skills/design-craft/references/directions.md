@@ -32,11 +32,12 @@ Work from the live roster, not from memory:
 1. `design {action:"list"}` — every entry carries a **Best for:** line written in
    product terms (audience, surface, domain), not aesthetic terms. That line is
    what you match against, not the aesthetic.
-2. Shortlist by the brief's **archetype**. Three candidates, no more.
-3. Apply the contrast rule below — any two of the three must differ on at least
-   two axes. If they do not, replace one.
-4. Offer each as a single line of brief plus the condition that makes it the right
-   pick.
+2. Shortlist by the brief's **archetype** when a new direction is needed. An
+   established system or explicit user choice does not need alternatives.
+3. When comparing options, use the contrast rule below to avoid three palette
+   variants of one layout. Consider density, typography and content priority.
+4. If the user wants to choose, offer each with the condition that makes it fit.
+   Otherwise select the best-supported direction, state the rationale and continue.
 
 **Do not keep a private category map of the roster.** The kit list changes — it
 went from 50 to 53 in one working session — and a frozen taxonomy is wrong the

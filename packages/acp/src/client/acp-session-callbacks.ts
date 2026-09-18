@@ -60,9 +60,12 @@ export async function handleAcpPermissionRequest(
     );
     await sender.sendResult(id, { outcome });
   } catch (err) {
+    if (isAbortLikeError(err)) {
+      await sender.sendResult(id, { outcome: { outcome: 'cancelled' } });
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
-    const code = isAbortLikeError(err) ? -32800 : -32603;
-    await sender.sendErrorResponse(id, code, `permission policy failed: ${message}`);
+    await sender.sendErrorResponse(id, -32603, `permission policy failed: ${message}`);
   }
 }
 
@@ -75,8 +78,17 @@ export async function handleAcpFsRequest(
 ): Promise<void> {
   const id = msg.id;
   if (id === undefined) return;
-  const params = (msg as { params?: { sessionId?: string; path?: string; content?: string } })
-    .params;
+  const params = (
+    msg as {
+      params?: {
+        sessionId?: string;
+        path?: string;
+        content?: string;
+        line?: number;
+        limit?: number;
+      };
+    }
+  ).params;
   if (!params?.path) {
     await sender.sendErrorResponse(id, -32602, 'path is required');
     return;
@@ -109,6 +121,8 @@ export async function handleAcpFsRequest(
       const result = await fileServer.readTextFile({
         sessionId: params.sessionId ?? '',
         path: params.path,
+        line: params.line,
+        limit: params.limit,
       });
       await sender.sendResult(id, result);
     } else {

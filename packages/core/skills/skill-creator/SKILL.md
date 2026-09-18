@@ -12,11 +12,11 @@ required-tools: [bash, skill]
 
 ## Overview
 
-Guides the creation of new WrongStack skills. A skill is a Markdown file with YAML frontmatter — the first sentence of the description is the trigger. You are the wizard: ask questions, validate answers, write the file. Use the `/skill-gen` sub-commands to do the mechanical parts (validation, scaffolding) deterministically.
+Guides the creation of new WrongStack skills. A skill is a Markdown file with YAML frontmatter — the full description tells the model when to use it. You are the wizard: ask questions, validate answers, write the file. Use the `/skill-gen` sub-commands to do the mechanical parts (validation, scaffolding) deterministically.
 
 ## Rules
 
-1. First sentence of `description` = trigger — this is the only thing the skill loader matches on.
+1. Write a complete `description` (1–1024 characters) explaining what the skill does and when to use it. The full description is disclosed to the model.
 2. Name must be kebab-case: `my-skill`, `docker-deploy` — lowercase, hyphens only.
 3. Skills live in `.wrongstack/skills/<name>/SKILL.md` (project level).
 4. After the trigger sentence, add `Triggers: user says "X", "Y", "Z".`.
@@ -33,12 +33,12 @@ The `/skill-gen` command is a toolkit — pick the right sub-command for the job
 | `/skill-gen` (bare) | Open-ended creation: you (the agent) ask questions one at a time, then write the file. Best for nuanced skills. |
 | `/skill-gen skeleton <name> --desc "..." --trigger a,b` | Quick scaffold: generates a valid SKILL.md skeleton the user edits. Use when the name + trigger are already known. |
 | `/skill-gen from-prompt "<text>"` | Turn an existing prompt/instruction into a skill draft. Use when the user hands you a prompt and says "make this a skill". |
-| `/skill-gen validate <name>` | Validate a name (format + collisions) before writing. **Always run this before creating a file.** |
+| `/skill-gen validate <name>` | Validate an existing skill file, or check a proposed name before writing. |
 | `/skill-gen view <name>` | Read-only: show a skill's body. |
 | `/skill-gen edit <name>` | Open the skill in `$EDITOR`/`$VISUAL`. |
 | `/skill-gen list` | List skills with their source layer. |
 
-After writing a skill with the wizard flow, run `/skill-gen validate <name>` to confirm it loads cleanly.
+After writing a skill with the wizard flow, run `/skill reload`, then `/skill-gen validate <name>` to check its YAML, name, field limits, and body. Use `/skill use <name> <task>` to explicitly apply it. Skeletons and prompt drafts refresh the loader automatically.
 
 ## Patterns
 

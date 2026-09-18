@@ -13,6 +13,7 @@ export interface ParsedRef {
   owner: string;
   repo: string;
   ref: string;
+  skillName?: string | undefined;
 }
 
 /**
@@ -20,7 +21,10 @@ export interface ParsedRef {
  * Formats: `user/repo` (default ref: main), `user/repo@ref`
  */
 export function parseSkillRef(input: string): ParsedRef {
-  const trimmed = input
+  const [repositoryInput = '', skillName] = input.split('#');
+  if (skillName !== undefined && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(skillName))
+    throw new Error('Invalid skill selector');
+  const trimmed = repositoryInput
     .trim()
     .replace(/^https?:\/\/github\.com\//, '')
     .replace(/\.git$/, '');
@@ -43,7 +47,12 @@ export function parseSkillRef(input: string): ParsedRef {
       context: { input },
     });
   }
-  return { owner: expectDefined(parts[0]), repo: expectDefined(parts[1]), ref };
+  return {
+    owner: expectDefined(parts[0]),
+    repo: expectDefined(parts[1]),
+    ref,
+    ...(skillName ? { skillName } : {}),
+  };
 }
 
 export interface DownloadResult {

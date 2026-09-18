@@ -136,6 +136,7 @@ export class ACPSessionStore {
           id: state.id,
           cwd: state.cwd,
           modeId: state.modeId,
+          configOptions: state.configOptions,
           createdAt: state.createdAt,
           updatedAt: state.updatedAt,
           title: state.title,
@@ -338,8 +339,8 @@ export class ACPSessionStore {
     if (target === null) return;
     try {
       await fsp.unlink(target);
-    } catch {
-      // File may not exist — ignore
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
     }
     // Best-effort: drop the entry from the sidecar index so future
     // `list()` calls don't return a stale row. Routed through the

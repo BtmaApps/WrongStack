@@ -12,6 +12,8 @@ import { ToolValidationError } from '@wrongstack/core/types';
 
 export interface SkillToolInput {
   name: string;
+  /** Character offset for continuing a long body or resource. */
+  offset?: number | undefined;
   /** Optional relative path of a bundled resource to load (e.g. `references/REF.md`, `scripts/extract.py`, `assets/template.html`). Omit to list resources. */
   resource?: string | undefined;
 }
@@ -28,6 +30,7 @@ export interface LoadedResource {
   content: string;
   bytes: number;
   truncated: boolean;
+  nextOffset?: number | undefined;
 }
 
 export interface SkillToolOutput {
@@ -35,6 +38,9 @@ export interface SkillToolOutput {
   description: string;
   /** Frontmatter-stripped SKILL.md body (capped). */
   body: string;
+  /** Present when more instructions remain. */
+  nextOffset?: number | undefined;
+  totalChars?: number | undefined;
   /** All bundled resource files (recursive), when no specific resource was requested. */
   resources: SkillResource[];
   /** Absolute directory of the skill — run scripts via bash using paths under here. */
@@ -93,6 +99,12 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
           type: 'string',
           description: 'Exact skill name (as shown in the available-skills list).',
         },
+        offset: {
+          type: 'integer',
+          minimum: 0,
+          description:
+            'Character offset returned as nextOffset to continue reading a long body or resource.',
+        },
         resource: {
           type: 'string',
           description:
@@ -106,6 +118,14 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       if (!name) {
         throw new ToolValidationError({ message: 'skill: name is required', field: 'name' });
       }
+      const offset = input.offset ?? 0;
+      if (!Number.isSafeInteger(offset) || offset < 0)
+        throw new ToolValidationError({
+          message: 'skill: offset must be a non-negative integer',
+          field: 'offset',
+        });
+      // Activation must observe wizard/file-tool/editor changes made since discovery.
+      skillLoader.invalidateCache?.();
       const manifest = await skillLoader.find(name);
       if (!manifest) {
         throw new ToolValidationError({
@@ -140,7 +160,7 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       // full listing in that case to keep the response focused.
       let loadedResource: LoadedResource | undefined;
       if (input.resource?.trim()) {
-        loadedResource = await loadResource(dir, input.resource.trim());
+        loadedResource = await loadResource(dir, input.resource.trim(), offset);
       }
 
       const raw = await skillLoader.readBody(name);
@@ -156,7 +176,9 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
         missingBodyTools.length > 0
           ? `Warning: skill "${name}" references tools not registered in this runtime: ${missingBodyTools.join(', ')}. Steps that call them may be unavailable.`
           : undefined;
-      const body = stripFrontmatter(raw).trim().slice(0, MAX_BODY_CHARS);
+      const fullBody = stripFrontmatter(raw).trim();
+      const body = fullBody.slice(offset, offset + MAX_BODY_CHARS);
+      const nextOffset = offset + body.length < fullBody.length ? offset + body.length : undefined;
       const resources = loadedResource ? [] : await listResources(dir);
 
       try {
@@ -173,6 +195,8 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
         name: manifest.name,
         description: manifest.description,
         body,
+        nextOffset,
+        totalChars: fullBody.length,
         resources,
         dir,
         loadedResource,
@@ -184,11 +208,15 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
       if (output.loadedResource) {
         const lr = output.loadedResource;
         const note = lr.truncated
-          ? ` (truncated to ${lr.content.length} chars of ${lr.bytes} B)`
+          ? ` (more content remains; continue with skill({ name: "${output.name}", resource: "${lr.rel}", offset: ${lr.nextOffset} }))`
           : '';
         return `# Resource: ${output.name}/${lr.rel}\n(abs path: ${lr.absPath})${note}\n\n${lr.content}${warningLine}`;
       }
-      const head = `# Skill: ${output.name}\n${output.description}\n\n${output.body}`;
+      const continuation =
+        output.nextOffset !== undefined
+          ? `\n\nMore instructions remain. Read them before following this skill: skill({ name: "${output.name}", offset: ${output.nextOffset} }).`
+          : '';
+      const head = `# Skill: ${output.name}\n${output.description}\nSkill directory: ${output.dir} (resolve relative paths here).\n\n${output.body}${continuation}`;
       if (output.resources.length === 0) return `${head}${warningLine}`;
       const listing = output.resources.map((r) => `- ${r.path} (${r.bytes} B)`).join('\n');
       return (
@@ -201,7 +229,7 @@ export function makeSkillTool(skillLoader: SkillLoader): Tool<SkillToolInput, Sk
 }
 
 /** Load a single bundled resource by relative path, with a path-traversal guard. */
-async function loadResource(skillDir: string, rel: string): Promise<LoadedResource> {
+async function loadResource(skillDir: string, rel: string, offset = 0): Promise<LoadedResource> {
   const norm = rel.replace(/\\/g, '/');
   if (path.isAbsolute(rel) || norm.split('/').some((seg) => seg === '..')) {
     throw new ToolValidationError({
@@ -254,13 +282,14 @@ async function loadResource(skillDir: string, rel: string): Promise<LoadedResour
     });
   }
   const raw = buf.toString('utf8');
-  const truncated = raw.length > MAX_RESOURCE_CHARS;
+  const truncated = raw.length > offset + MAX_RESOURCE_CHARS;
   return {
     rel: norm,
     // The canonical path — the one actually opened, and the one a follow-up
     // `bash` invocation should use.
     absPath: realPath,
-    content: truncated ? raw.slice(0, MAX_RESOURCE_CHARS) : raw,
+    content: raw.slice(offset, offset + MAX_RESOURCE_CHARS),
+    nextOffset: truncated ? offset + MAX_RESOURCE_CHARS : undefined,
     bytes: buf.length,
     truncated,
   };

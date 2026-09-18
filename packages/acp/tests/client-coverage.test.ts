@@ -636,7 +636,7 @@ describe('acp-session-callbacks', () => {
       });
     });
 
-    it('fails closed with -32800 when the policy exceeds permissionTimeoutMs', async () => {
+    it('returns the ACP cancelled outcome when the policy exceeds permissionTimeoutMs', async () => {
       const { handleAcpPermissionRequest } = await import('../src/client/acp-session-callbacks.js');
       // Policy never settles — only the deadline can end the race.
       const policy = vi
@@ -660,12 +660,8 @@ describe('acp-session-callbacks', () => {
         sender,
         { permissionTimeoutMs: 1 },
       );
-      expect(sender.sendErrorResponse).toHaveBeenCalledWith(
-        6,
-        -32800,
-        'permission policy failed: permission request cancelled or timed out',
-      );
-      expect(sender.sendResult).not.toHaveBeenCalled();
+      expect(sender.sendResult).toHaveBeenCalledWith(6, { outcome: { outcome: 'cancelled' } });
+      expect(sender.sendErrorResponse).not.toHaveBeenCalled();
     });
 
     it('rejects immediately when the outer signal is already aborted', async () => {
@@ -693,12 +689,8 @@ describe('acp-session-callbacks', () => {
         sender,
         { signal: controller.signal },
       );
-      expect(sender.sendErrorResponse).toHaveBeenCalledWith(
-        7,
-        -32800,
-        'permission policy failed: permission request cancelled or timed out',
-      );
-      expect(sender.sendResult).not.toHaveBeenCalled();
+      expect(sender.sendResult).toHaveBeenCalledWith(7, { outcome: { outcome: 'cancelled' } });
+      expect(sender.sendErrorResponse).not.toHaveBeenCalled();
     });
 
     it('clears the deadline timer when the policy settles first (no late abort)', async () => {
@@ -1440,9 +1432,10 @@ describe('ACPSession message routing (handleMessage)', () => {
       method: 'mcp/connect',
       params: {},
     });
-    // An unsupported-but-known request gets an empty success so the agent
-    // does not block waiting on it.
-    expect(replies).toEqual([expect.objectContaining({ id: 100, result: {} })]);
+    // Unsupported requests must fail explicitly, never claim work was done.
+    expect(replies).toEqual([
+      expect.objectContaining({ id: 100, error: expect.objectContaining({ code: -32601 }) }),
+    ]);
     expect(warned).toEqual([]);
   });
 

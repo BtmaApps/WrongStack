@@ -42,7 +42,7 @@ describe('createSkillsShAdapter', () => {
     };
     const a = createSkillsShAdapter({ baseUrl: 'https://hub.local////', fetcher });
     await a.search('x');
-    expect(seen[0]).toMatch(/^https:\/\/hub\.local\/api\/skills/);
+    expect(seen[0]).toMatch(/^https:\/\/hub\.local\/api\/search/);
   });
 });
 
@@ -138,13 +138,12 @@ describe('skills.sh adapter — search', () => {
     await expect(a.search('x')).rejects.toBeInstanceOf(FetchError);
   });
 
-  it('returns empty results when the response is missing the results array (schema drift)', async () => {
+  it('reports schema drift instead of pretending that no skills matched)', async () => {
     // Defensive: if skills.sh changes its response shape, we degrade to "no
     // matches" rather than crashing the whole command.
     const fetcher: SkillsShFetcher = async () => jsonResponse({ data: [] });
     const a = createSkillsShAdapter({ fetcher });
-    const block = await a.search('x');
-    expect(block.results).toEqual([]);
+    await expect(a.search('x')).rejects.toBeInstanceOf(ParseError);
   });
 
   it('throws ParseError when the response is not an object at all', async () => {
@@ -171,7 +170,8 @@ describe('skills.sh adapter — resolveInstallRef', () => {
 
   it('throws ParseError on an id without owner/repo', () => {
     expect(() => a.resolveInstallRef('justoneword')).toThrow(ParseError);
-    expect(() => a.resolveInstallRef('a/b/c')).toThrow(ParseError);
+    expect(a.resolveInstallRef('a/b/c')).toBe('a/b#c');
+    expect(() => a.resolveInstallRef('a/b/c/d')).toThrow(ParseError);
   });
 });
 
