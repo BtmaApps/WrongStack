@@ -15,6 +15,26 @@ export default defineConfig({
       'packages/core/tests/architecture/check-audit-suppressions.test.ts',
     ],
     maxWorkers: getVitestMaxWorkers(),
+    // Every file in the include list above drives a repo script through real
+    // child processes — the freshness gate alone spawns ~6 `git` invocations
+    // per case (init/config×3/add/commit) in a fresh temp repo. Vitest's
+    // built-in default is 5s, and this config never overrode it, so these
+    // scripts ran under the TIGHTEST timeout in the repo while the root config
+    // (vitest.config.ts) sets 60s with a comment explaining that 5s flakes
+    // under load for exactly this class of test. It showed: the 2026-09-18
+    // release:check lost 8 freshness-gate cases to `Test timed out in 5000ms`,
+    // all green in isolation.
+    //
+    // The collateral damage is worth knowing, because it reads like a
+    // different bug: a Vitest timeout does NOT stop the test body, so the
+    // orphaned body kept spawning git while `afterEach` deleted its temp dir —
+    // producing `fatal: not a git repository` and `ENOTEMPTY ... rmdir` on top
+    // of the timeout. Those were symptoms of the tight budget, not of the gate.
+    //
+    // Match the root config rather than inventing a second number: the
+    // ceiling only matters for a genuinely hung script.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'json-summary'],

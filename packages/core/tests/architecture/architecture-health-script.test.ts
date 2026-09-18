@@ -31,10 +31,36 @@ import {
 
 const temporaryRoots: string[] = [];
 
+/**
+ * Remove a scratch repo, tolerating Windows' lingering handles.
+ *
+ * `rm -rf` is not atomic against a live process: these fixtures spawn `git`,
+ * and on Windows a just-exited git leaves its pack/index handles open long
+ * enough for `rmdir` to fail with EBUSY/ENOTEMPTY/EPERM on `docs/reports`.
+ * Retrying costs nothing on a healthy box and keeps a teardown detail from
+ * being reported as a test failure — the 2026-09-18 release:check surfaced
+ * `ENOTEMPTY ... rmdir` as a SECOND red on cases that had already timed out.
+ */
+const TEARDOWN_RETRYABLE = new Set(['ENOTEMPTY', 'EBUSY', 'EPERM', 'EACCES']);
+
+async function removeScratchRepo(root: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rm(root, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? '';
+      // Give up loudly on a code that is not a handle race, or once the
+      // handles have clearly not been released — a scratch dir that cannot be
+      // removed at all is worth seeing.
+      if (!TEARDOWN_RETRYABLE.has(code) || attempt === 19) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+}
+
 afterEach(async () => {
-  await Promise.all(
-    temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
-  );
+  await Promise.all(temporaryRoots.splice(0).map(removeScratchRepo));
 });
 
 describe('architecture health scanner', () => {

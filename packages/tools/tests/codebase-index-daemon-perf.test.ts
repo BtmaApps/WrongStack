@@ -31,9 +31,26 @@ import { assertPairingValid, captureLoad, isStrictPairing } from './bench-pairin
  * skip on a developer box and still throw under WRONGSTACK_BENCH_STRICT_PAIRING,
  * so a perf leg that cannot produce a sample still fails loudly. Assertion
  * failures are never swallowed — only the daemon dying is.
+ *
+ * Two shapes of "the daemon could not keep up" escaped that contract in the
+ * 2026-09-18 full-suite run and both are covered now:
+ *
+ *  1. The daemon is SLOW rather than dead, so nothing is ever thrown into the
+ *     body and Vitest's own `testTimeout` fires instead. A Vitest timeout is
+ *     not a rejection of `body()` — the try/catch below can never see it, so
+ *     widening the regex alone cannot help. `benchIt` therefore races the body
+ *     against its OWN deadline, set below the Vitest one, and converts losing
+ *     that race into the same skip. The margin must stay large enough for the
+ *     `afterEach` daemon teardown to still run inside Vitest's budget.
+ *  2. The failure arrives with a timeout WORDING the regex did not list
+ *     (`handshake timed out` from project-server-client's connect path, and the
+ *     per-op `exceeded its <n>ms watchdog timeout`). Same class, different
+ *     text; both are in INFRASTRUCTURE_FAILURE now. Keep this regex in step
+ *     with the client's timeout messages — a wording it does not match turns a
+ *     loaded box back into a red full-suite run.
  */
 const INFRASTRUCTURE_FAILURE =
-  /connection closed|socket hang up|EPIPE|ECONNRESET|ECONNREFUSED|daemon (?:exited|unavailable)/i;
+  /connection closed|socket hang up|EPIPE|ECONNRESET|ECONNREFUSED|daemon (?:exited|unavailable)|handshake timed out|exceeded its \d+ms watchdog timeout/i;
 
 function isInfrastructureFailure(error: unknown): boolean {
   if (error instanceof CircuitOpenError) return true;
@@ -41,6 +58,16 @@ function isInfrastructureFailure(error: unknown): boolean {
 }
 
 type BenchContext = { skip: (note?: string) => never };
+
+/**
+ * Head room left to Vitest so the `afterEach` daemon teardown still runs when
+ * `benchIt` gives up: the body loses its race, the case skips, and the daemon
+ * is reaped inside Vitest's own budget instead of being killed mid-shutdown.
+ */
+const BENCH_DEADLINE_MARGIN_MS = 30_000;
+
+/** Marks the internal deadline so only IT is treated as a slow-box skip. */
+const BENCH_DEADLINE = Symbol('bench-deadline');
 
 function benchIt(
   name: string,
@@ -50,14 +77,39 @@ function benchIt(
   it(
     name,
     async (ctx) => {
+      // Never let the deadline exceed the Vitest budget it is meant to precede.
+      const deadlineMs = Math.max(1_000, timeoutMs - BENCH_DEADLINE_MARGIN_MS);
+      let deadline: NodeJS.Timeout | undefined;
       try {
-        await body(ctx as unknown as BenchContext);
+        await Promise.race([
+          body(ctx as unknown as BenchContext),
+          new Promise((_resolve, reject) => {
+            deadline = setTimeout(() => reject(BENCH_DEADLINE), deadlineMs);
+            // An unref'd timer cannot hold the worker open on the happy path.
+            deadline.unref?.();
+          }),
+        ]);
       } catch (error) {
+        if (error === BENCH_DEADLINE) {
+          if (isStrictPairing()) {
+            throw new Error(
+              `${name}: benchmark did not finish within ${deadlineMs}ms on this box.`,
+            );
+          }
+          // `skip()` is typed `never` and throws, but returning keeps the bare
+          // symbol from escaping as an error if that ever stops being true.
+          return (ctx as unknown as BenchContext).skip(
+            `${name}: the shared box did not finish the benchmark within ` +
+              `${deadlineMs}ms. Benchmark sample unusable; not a product defect.`,
+          );
+        }
         if (!isInfrastructureFailure(error) || isStrictPairing()) throw error;
         (ctx as unknown as BenchContext).skip(
           `${name}: the detached daemon did not survive the shared box — ` +
             `${(error as Error).message}. Benchmark sample unusable; not a product defect.`,
         );
+      } finally {
+        if (deadline) clearTimeout(deadline);
       }
     },
     timeoutMs,

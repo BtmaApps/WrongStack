@@ -140,7 +140,6 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'plugins/src/import-organizer/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/lint-gate/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/loop-breaker/index.ts': REASON_PLUGIN_RUNNER,
-  'plugins/src/path-guard/shell-targets.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/pr-drafter/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/release-notes-generator/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/semver-bump/index.ts': REASON_PLUGIN_RUNNER,
