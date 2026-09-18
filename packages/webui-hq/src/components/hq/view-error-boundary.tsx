@@ -20,19 +20,19 @@ interface State {
 }
 
 export class ViewErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  override state: State = { error: null };
 
   static getDerivedStateFromError(error: unknown): State {
     return { error: error instanceof Error ? error.message : String(error) };
   }
 
-  componentDidUpdate(previous: Props): void {
+  override componentDidUpdate(previous: Props): void {
     if (previous.view !== this.props.view && this.state.error !== null) {
       this.setState({ error: null });
     }
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.error === null) return this.props.children;
     return (
       <div

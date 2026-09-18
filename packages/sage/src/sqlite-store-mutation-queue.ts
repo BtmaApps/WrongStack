@@ -46,6 +46,34 @@ function runImmediateTransaction<T>(
 export class SqliteMutationQueue {
   private mutationChain: Promise<unknown> = Promise.resolve();
   private counterChain: Promise<unknown> = Promise.resolve();
+  /**
+   * Composite operations (session consolidation, hygiene, candidate accept,
+   * legacy import) issue several chained mutations separated by off-chain
+   * awaits. Between two of its mutations the chains look settled even though
+   * the operation will enqueue more work, so a drain() that only awaited the
+   * chain heads could resolve mid-operation — and the close() that
+   * dispose() performs afterwards would land under the operation's next
+   * BEGIN IMMEDIATE, silently failing every remaining step. Holding this
+   * lease for the whole operation makes its in-flight span visible to
+   * drain().
+   */
+  private activeOperations = 0;
+  private idleWaiters: Array<() => void> = [];
+
+  /** Open a composite-operation lease; always pair with endOperation() (finally). */
+  beginOperation(): void {
+    this.activeOperations += 1;
+  }
+
+  /** Close a composite-operation lease; wakes drain() on the idle transition. */
+  endOperation(): void {
+    this.activeOperations -= 1;
+    if (this.activeOperations === 0) {
+      const waiters = this.idleWaiters;
+      this.idleWaiters = [];
+      for (const wake of waiters) wake();
+    }
+  }
 
   runLocked<T>(opts: {
     db: DatabaseSync;
@@ -85,7 +113,21 @@ export class SqliteMutationQueue {
   }
 
   async drain(): Promise<void> {
-    await Promise.all([this.mutationChain, this.counterChain].map((p) => p.catch(() => undefined)));
+    for (;;) {
+      await Promise.all(
+        [this.mutationChain, this.counterChain].map((p) => p.catch(() => undefined)),
+      );
+      // Settled chains alone do not prove quiescence: a composite operation
+      // parks off the chains between its mutations, and its next enqueue
+      // only lands after several async-adoption hops. With a lease held,
+      // more mutations are still coming — wait for the operation to end,
+      // then re-drain whatever it enqueued in its final burst. The waiter
+      // is registered synchronously with the idle check and endOperation()
+      // wakes it on the zero transition, so the idle transition cannot be
+      // missed.
+      if (this.activeOperations === 0) return;
+      await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
+    }
   }
 }
 

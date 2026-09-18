@@ -404,6 +404,45 @@ describe('plugin entry', () => {
     await plugin.teardown?.(api);
   });
 
+  it('applies a hot-reloaded maxMessageLength to telegram_send sends', async () => {
+    const api = makeApi();
+    const telegram = api.config.extensions![PLUGIN_NAME] as Record<string, unknown>;
+    Object.assign(telegram, {
+      inboundMode: 'paired',
+      maxMessageLength: 4000,
+      singleInstanceLock: false,
+      offsetStoragePath: '',
+    });
+    await plugin.setup(api);
+
+    const sendTool = api.tools.get('telegram_send');
+    if (!sendTool) throw new Error('telegram_send was not registered');
+
+    const sentTexts = (): string[] =>
+      vi
+        .mocked(globalThis.fetch)
+        .mock.calls.filter(([url]) => String(url).includes('/sendMessage'))
+        .map(([, init]) => (JSON.parse(String(init?.body)) as { text: string }).text);
+
+    // Control: at the setup-time cap the message passes through untouched.
+    await sendTool.execute({ chat_id: '111', message: 'x'.repeat(600) });
+    expect(sentTexts().at(-1)?.length).toBe(600);
+
+    const previous = structuredClone(api.config);
+    const next = structuredClone(api.config);
+    (next.extensions![PLUGIN_NAME] as Record<string, unknown>).maxMessageLength = 500;
+    const reload = vi.mocked(api.onConfigChange).mock.calls[0]?.[0];
+    expect(reload).toBeTypeOf('function');
+    reload?.(next, previous);
+
+    // Hot-reloadable means the NEXT tool send truncates at the new cap — the
+    // tool must resolve the cap live, not hold the setup-time snapshot.
+    await sendTool.execute({ chat_id: '111', message: 'y'.repeat(600) });
+    expect(sentTexts().at(-1)?.length).toBeLessThanOrEqual(500);
+
+    await plugin.teardown?.(api);
+  });
+
   it('leaves no registrations or listeners when preflight fails', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

@@ -1,6 +1,7 @@
 import { type RefObject, useEffect } from 'react';
 import type { QueueMode } from '../lib/queue-model.js';
-import { type RefineState, resolveEscapeRestore } from '../lib/refine-model.js';
+import type { RefineState } from '../lib/refine-model.js';
+import { restoreRefineToComposer } from '../lib/refine-restore.js';
 import type { SimpleSocket } from '../lib/ws.js';
 import type { ChatMessage, FileEditMeta, PendingConfirm } from '../types.js';
 
@@ -108,41 +109,18 @@ export function useGlobalShortcuts(options: UseGlobalShortcutsOptions): void {
           event.preventDefault();
           // Don't drop the user's text or images — the composer was cleared
           // when the send started (submitWith flushes draft+fileRefs+images),
-          // so hand the original back for another edit pass.
-          // Guard: never clobber text the user typed after the panel opened
-          // (resolveEscapeRestore returns null in that case).
-          const images = refineStateRef.current.images;
-          // Bump the epoch so any in-flight model.refine result that
-          // arrives after Escape (e.g., a slow 180s refineRetryFallback
-          // window) is recognised as stale and dropped by the handler
-          // — the wire protocol carries no request id, so a slow orphan
-          // could otherwise match by epoch coincidence and corrupt a
-          // later send.
-          refineEpochRef.current++;
-          refineStartFiredRef.current = false;
-          const restore = resolveEscapeRestore(refineStateRef.current, draftRef.current);
-          // Null the ref synchronously so a same-tick startSend flush or
-          // panel decision cannot observe the dismissed state and dispatch.
-          refineStateRef.current = null;
-          setRefineState(null);
-          if (restore !== null) {
-            setDraft(restore);
-            draftRef.current = restore;
-          }
-          // Restore attached images that were part of the original send.
-          // Without this, a re-submit silently drops the images because
-          // submitWith clears them before startSend.
-          if (images && images.length > 0) {
-            setAttachedImages(
-              images.map((img, i) => ({
-                id: `restored-${Date.now()}-${i}`,
-                name: `restored-${i}`,
-                data: img.data,
-                mime: img.mime,
-              })),
-            );
-          }
-          requestAnimationFrame(() => textareaRef.current?.focus());
+          // so hand the original back for another edit pass. Shared with the
+          // countdown face's Edit button so the two cannot drift.
+          restoreRefineToComposer({
+            refineStateRef,
+            setRefineState,
+            refineEpochRef,
+            refineStartFiredRef,
+            draftRef,
+            setDraft,
+            setAttachedImages,
+            textareaRef,
+          });
           return;
         }
         return;

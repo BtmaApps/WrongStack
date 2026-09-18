@@ -127,7 +127,14 @@ export function isPaletteId(value: unknown): value is PaletteId {
 }
 
 export function getPalette(value: unknown): PaletteDefinition {
-  return PALETTES.find((palette) => palette.id === value) ?? PALETTES[0];
+  const match = PALETTES.find((palette) => palette.id === value);
+  if (match) return match;
+  // `PALETTES` is a non-empty literal, but its element type is only known to
+  // the checker as `PaletteDefinition | undefined` at a computed index. Fall
+  // back through the declared default id rather than asserting.
+  const fallback = PALETTES.find((palette) => palette.id === DEFAULT_PALETTE);
+  if (fallback) return fallback;
+  throw new Error(`palette catalog is empty or missing its default "${DEFAULT_PALETTE}"`);
 }
 
 /** Guarded read of a persisted palette id; invalid/missing/blocked storage

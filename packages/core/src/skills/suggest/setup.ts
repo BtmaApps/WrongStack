@@ -15,7 +15,8 @@ import type { Config } from '../../types/config/root.js';
 import type { Logger } from '../../types/logger.js';
 import type { Request } from '../../types/provider.js';
 import type { SkillLoader } from '../../types/skill.js';
-import { resolveTypeSafeClient, TYPESAFE_API_KEY_ENV } from '../../typesafe/index.js';
+import { resolveTypeSafeAccount, TYPESAFE_API_KEY_ENV } from '../../typesafe/index.js';
+import { warnFeatureUnusable, warnOnce } from '../../typesafe/notify.js';
 import {
   createSkillSuggestionMiddleware,
   type SkillSuggestionMiddlewareOptions,
@@ -49,16 +50,27 @@ export function buildSuggesterFromConfig(deps: {
   config: Config;
   skillLoader: SkillLoader | undefined;
   env?: NodeJS.ProcessEnv | undefined;
+  logger?: Logger | undefined;
 }): { suggester: SkillSuggester } | { error: string } {
   const suggest = deps.config.skills?.suggest ?? {};
   if (!deps.skillLoader) {
     return { error: 'no skill loader in this process (is `features.skills` off?)' };
   }
-  const resolved = resolveTypeSafeClient({ config: deps.config, env: deps.env });
-  if ('error' in resolved) return resolved;
+  const account = resolveTypeSafeAccount({
+    config: deps.config,
+    env: deps.env,
+    onUsage: (usage) =>
+      deps.logger?.debug(
+        `skill suggestion: ${usage.inputTokens} input tokens (${usage.model ?? 'unknown model'})`,
+      ),
+    // The breaker speaks for itself: it opens once and its reason already says
+    // what to run next, so this is a warning rather than a debug line.
+    onDisabled: (reason) => warnOnce(deps.logger, reason),
+  });
+  if (account.status !== 'ready') return { error: account.reason };
   return {
     suggester: createSkillSuggester({
-      client: resolved.client,
+      client: account.client,
       loader: deps.skillLoader,
       shortlistSize: suggest.shortlistSize,
       excerptChars: suggest.excerptChars,
@@ -90,7 +102,11 @@ export function createSkillSuggestionSetup(
 
   const built = buildSuggesterFromConfig(deps);
   if ('error' in built) {
-    deps.logger?.debug(`skill suggestion enabled but unusable: ${built.error}`);
+    // Reaching here means `skills.suggest.enabled` is TRUE — the operator
+    // asked for this and it is not happening. Silence would leave a flipped
+    // switch doing nothing with no way to find out; a per-construction
+    // warning would flood a daemon that builds a pipeline per session. Once.
+    warnFeatureUnusable(deps.logger, 'skills.suggest', built.error);
     return undefined;
   }
 

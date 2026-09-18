@@ -271,6 +271,7 @@ export function MailboxPanel({ className }: { className?: string }) {
       const t = setTimeout(() => setDeleting(false), 3000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [deleting]);
 
   async function handlePurge() {
@@ -291,6 +292,7 @@ export function MailboxPanel({ className }: { className?: string }) {
       const t = setTimeout(() => setPurging(false), 3000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [purging]);
 
   async function handleCompact() {
@@ -304,6 +306,7 @@ export function MailboxPanel({ className }: { className?: string }) {
       const t = setTimeout(() => setCompacting(false), 3000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [compacting]);
 
   function handleSendMail() {

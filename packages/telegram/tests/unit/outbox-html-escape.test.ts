@@ -46,7 +46,6 @@ describe('TelegramOutbox HTML-mode escaping', () => {
   it('escapes < > & on the wire when getParseMode resolves to HTML', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'HTML',
@@ -65,7 +64,6 @@ describe('TelegramOutbox HTML-mode escaping', () => {
   it('leaves text untouched in plain mode (empty string)', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => '',
@@ -80,7 +78,6 @@ describe('TelegramOutbox HTML-mode escaping', () => {
   it('leaves text untouched when no getParseMode is provided', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
     });
@@ -93,7 +90,6 @@ describe('TelegramOutbox HTML-mode escaping', () => {
   it('does not apply HTML escaping in MarkdownV2 mode (separate contract)', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'MarkdownV2',
@@ -108,7 +104,6 @@ describe('TelegramOutbox HTML-mode escaping', () => {
   it('escapes keyboard-message text under HTML mode too', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'HTML',
@@ -142,7 +137,6 @@ describe('TelegramOutbox HTML-mode wire limit', () => {
   it('clamps entity-dense wire text to the 4096-char hard limit', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'HTML',
@@ -157,7 +151,6 @@ describe('TelegramOutbox HTML-mode wire limit', () => {
   it('cuts at an entity boundary (no trailing partial entity)', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'HTML',
@@ -177,7 +170,6 @@ describe('TelegramOutbox HTML-mode wire limit', () => {
   it('clamps keyboard-message text under the same wire limit', async () => {
     const { api, calls } = makeCapturingApi();
     const outbox = new TelegramOutbox({
-      // biome-ignore lint/suspicious/noExplicitAny: stub stands in for the client
       api: () => api as any,
       log: silentLog as any,
       getParseMode: () => 'HTML',

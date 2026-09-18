@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
@@ -159,5 +159,51 @@ describe('ChimeraReviewsView', () => {
         reason: 'Manual action status',
       },
     });
+  });
+
+  // The store has always published `error` and `detailLoading`, and this view
+  // destructured both and rendered neither: a failed `chimera.reports` fetch
+  // left the operator looking at "No review reports match your filter." with
+  // no hint that anything had gone wrong.
+  it('surfaces a fetch error instead of an empty-filter message', () => {
+    // The mount effect kicks off `fetchReports`, which clears `error` — so the
+    // failure has to land after render, exactly as it does at runtime.
+    render(<ChimeraReviewsView />);
+    act(() => {
+      useChimeraHubStore.setState({
+        reports: [],
+        error: 'chimera hub unreachable: ECONNREFUSED',
+        loading: false,
+      });
+    });
+
+    expect(screen.getByText('chimera hub unreachable: ECONNREFUSED')).not.toBeNull();
+  });
+
+  it('does not show the error banner while a fetch is still in flight', () => {
+    render(<ChimeraReviewsView />);
+    act(() => {
+      useChimeraHubStore.setState({
+        reports: [],
+        error: 'stale error from the previous fetch',
+        loading: true,
+      });
+    });
+
+    expect(screen.queryByText('stale error from the previous fetch')).toBeNull();
+  });
+
+  it('shows a detail spinner rather than the "select a report" empty state', () => {
+    useChimeraHubStore.setState({
+      selectedReportId: 'rep-uuid-1',
+      detail: null,
+      detailLoading: true,
+      error: null,
+    });
+
+    render(<ChimeraReviewsView />);
+
+    expect(screen.getByText('Loading report details…')).not.toBeNull();
+    expect(screen.queryByText('Select a Chimera Review Report')).toBeNull();
   });
 });

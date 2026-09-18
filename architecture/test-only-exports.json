@@ -1900,7 +1900,8 @@
     ],
     "packages/webui/src/lib/reasoning-effort.ts": [
       "ALL_EFFORTS",
-      "AUTO_EFFORT_LABEL_KEY"
+      "AUTO_EFFORT_LABEL_KEY",
+      "EFFORT_LABEL_KEYS"
     ],
     "packages/webui/src/lib/sdd-theme.ts": [
       "SDD_PRIORITY",
@@ -1953,6 +1954,7 @@
       "writeStoredTabs"
     ],
     "packages/webui/src/stores/viz-graph-helpers.ts": [
+      "inferKind",
       "shallowEqual"
     ],
     "packages/wrongtrace/src/adapters/ipc.ts": [

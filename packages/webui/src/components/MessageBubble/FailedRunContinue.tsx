@@ -25,7 +25,6 @@ export function autoTriggerMsFor(text: string): number {
  */
 export function FailedRunContinue({ text, timestamp }: { text: string; timestamp?: number }) {
   const { t } = useAppTranslation();
-  const isLoading = useChatStore((s) => s.isLoading);
   const addMessage = useChatStore((s) => s.addMessage);
   const setLoading = useChatStore((s) => s.setLoading);
   const wsUrl = useConfigStore((s) => s.wsUrl);

@@ -1,7 +1,4 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { ImageAttachment } from '../components/ChatInput/image-attachments.js';
-import { MAX_ATTACHED_IMAGES } from '../components/ChatInput/image-attachments.js';
 import type { QueuedItem, QueueMode } from './chat-store';
 import type { MailboxMessage } from './mailbox-store';
 

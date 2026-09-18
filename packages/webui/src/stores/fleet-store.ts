@@ -150,7 +150,11 @@ function appendTranscriptEntry(
  *  The bins array has index 0 as the most recent bucket.
  *  Each event bumps bin 0, then the array is truncated to SPARKLINE_BINS. */
 function bumpSparkline(bins: number[]): number[] {
-  return [bins[0] + 1, ...bins.slice(0, SPARKLINE_BINS - 1)];
+  // `?? 0`: an agent whose bins never got seeded (rehydrated state, or a
+  // tool/iteration event arriving before 'spawned') made this `undefined + 1`
+  // = NaN — and the shift below then carries that NaN through every later
+  // bump, so the sparkline stays broken for the life of the agent.
+  return [(bins[0] ?? 0) + 1, ...bins.slice(0, SPARKLINE_BINS - 1)];
 }
 
 function clampContextPct(pct: number): number {

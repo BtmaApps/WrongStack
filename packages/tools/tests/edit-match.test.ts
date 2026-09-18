@@ -66,6 +66,26 @@ describe('_edit-match', () => {
       expect(res?.tier).toBe('trailing-whitespace');
       expect(res?.matches).toHaveLength(1);
     });
+
+    it('exact tier never counts overlapping occurrences', () => {
+      // The caller replaces non-overlapping (split/join or first-match), so
+      // the exact scan must resume AFTER each occurrence — an overlap-
+      // permitting scan would overcount self-overlapping needles and inflate
+      // `replacements` / false-positive the uniqueness guard in edit.ts.
+      const divider = findLadderMatches('==========', '========');
+      expect(divider?.tier).toBe('exact');
+      expect(divider?.matches.map((m) => m.start)).toEqual([0]);
+
+      // A 2-char needle in a 3-char run has exactly one non-overlapping
+      // occurrence — a unique-match edit must not be rejected as ambiguous.
+      const run = findLadderMatches('aaa', 'aa');
+      expect(run?.matches.map((m) => m.start)).toEqual([0]);
+
+      // replace_all performs split/join: 4 replacements, reported as 4.
+      expect(findLadderMatches('aaaaaaaa', 'aa')?.matches.map((m) => m.start)).toEqual([
+        0, 2, 4, 6,
+      ]);
+    });
   });
 
   describe('adjustIndent', () => {

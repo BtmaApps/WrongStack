@@ -299,6 +299,26 @@ export class SqliteSageStore implements MemoryStore {
     return this.mutationQueue.runCounter(this.db, work);
   }
 
+  /**
+   * Lease bracket for composite operations — several chained mutations
+   * separated by off-chain awaits (consolidation between facts, hygiene
+   * between batches, an accept between claim and insert). While parked
+   * between mutations the chains look settled, so drain() must be told the
+   * operation is still in flight; this lease is that declaration, and
+   * dispose() waits for it before close().
+   */
+  protected runCompositeOperation<T>(work: () => Promise<T>): Promise<T> {
+    this.mutationQueue.beginOperation();
+    let running: Promise<T>;
+    try {
+      running = work();
+    } catch (error) {
+      this.mutationQueue.endOperation();
+      throw error;
+    }
+    return running.finally(() => this.mutationQueue.endOperation());
+  }
+
   // ─── Public API ─────────────────────────────────────────────────────
 
   /**
@@ -799,17 +819,19 @@ export class SqliteSageStore implements MemoryStore {
    */
   async verify(memoryId?: string, signal?: AbortSignal): Promise<MemoryVerificationResult[]> {
     await this.initialize();
-    return verifySqliteSage(
-      {
-        projectRoot: this.projectRoot,
-        stmt: (sql) => this.stmt(sql),
-        nowIso: () => this.nowIso(),
-        runMutation: (work) => this.runMutation(work),
-        upsertMemory: (memory) => this.upsertMemory(memory),
-        syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-      },
-      memoryId,
-      signal,
+    return this.runCompositeOperation(() =>
+      verifySqliteSage(
+        {
+          projectRoot: this.projectRoot,
+          stmt: (sql) => this.stmt(sql),
+          nowIso: () => this.nowIso(),
+          runMutation: (work) => this.runMutation(work),
+          upsertMemory: (memory) => this.upsertMemory(memory),
+          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
+        },
+        memoryId,
+        signal,
+      ),
     );
   }
 
@@ -876,23 +898,25 @@ export class SqliteSageStore implements MemoryStore {
 
   async hygiene(opts?: SageHygieneOptions): Promise<SageHygieneReport> {
     await this.initialize();
-    return runSqliteSageHygiene(
-      {
-        projectRoot: this.projectRoot,
-        stmt: (sql) => this.stmt(sql),
-        now: () => this.now(),
-        nowIso: () => this.nowIso(),
-        listMemories: (listOpts) => this.listMemories(listOpts),
-        listCandidates: (includeResolved) => this.listCandidates(includeResolved),
-        addCandidate: (candidate) => this.addCandidate(candidate),
-        runMutation: (work) => this.runMutation(work),
-        upsertMemory: (memory) => this.upsertMemory(memory),
-        syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
-        cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
-        audit: (event, data) => this.audit(event, data),
-        pruneAuditLog: () => this.pruneAuditLog(),
-      },
-      opts,
+    return this.runCompositeOperation(() =>
+      runSqliteSageHygiene(
+        {
+          projectRoot: this.projectRoot,
+          stmt: (sql) => this.stmt(sql),
+          now: () => this.now(),
+          nowIso: () => this.nowIso(),
+          listMemories: (listOpts) => this.listMemories(listOpts),
+          listCandidates: (includeResolved) => this.listCandidates(includeResolved),
+          addCandidate: (candidate) => this.addCandidate(candidate),
+          runMutation: (work) => this.runMutation(work),
+          upsertMemory: (memory) => this.upsertMemory(memory),
+          syncAnchorEdges: (memory) => this.syncAnchorEdges(memory),
+          cascadeDeleteEdges: (nodeId) => this.cascadeDeleteEdges(nodeId),
+          audit: (event, data) => this.audit(event, data),
+          pruneAuditLog: () => this.pruneAuditLog(),
+        },
+        opts,
+      ),
     );
   }
 
@@ -915,7 +939,7 @@ export class SqliteSageStore implements MemoryStore {
 
   async acceptCandidate(candidateId: string): Promise<Sage | undefined> {
     await this.initialize();
-    return acceptCandidateOp(this.candidateHost(), candidateId);
+    return this.runCompositeOperation(() => acceptCandidateOp(this.candidateHost(), candidateId));
   }
 
   async rejectCandidate(candidateId: string, reason: string): Promise<boolean> {
@@ -929,25 +953,31 @@ export class SqliteSageStore implements MemoryStore {
     reason?: string,
   ): Promise<MemoryCandidateResolution | undefined> {
     await this.initialize();
-    return resolveCandidateOp(this.candidateHost(), candidateId, decision, reason);
+    return this.runCompositeOperation(() =>
+      resolveCandidateOp(this.candidateHost(), candidateId, decision, reason),
+    );
   }
 
   // ─── Legacy compat ──────────────────────────────────────────────────
 
   async importLegacy(raw: string): Promise<LegacyImportResult> {
-    return importLegacySqliteMemory({ rememberSage: (input) => this.rememberSage(input) }, raw);
+    return this.runCompositeOperation(() =>
+      importLegacySqliteMemory({ rememberSage: (input) => this.rememberSage(input) }, raw),
+    );
   }
 
   async consolidateSession(input: SessionConsolidationInput): Promise<SessionConsolidationResult> {
     await this.initialize();
-    return consolidateSqliteSession(
-      {
-        stmt: (sql) => this.stmt(sql),
-        listCandidates: () => this.listCandidates(),
-        createCandidate: (candidate) => this.createCandidate(candidate),
-        acceptCandidate: (candidateId) => this.acceptCandidate(candidateId),
-      },
-      input,
+    return this.runCompositeOperation(() =>
+      consolidateSqliteSession(
+        {
+          stmt: (sql) => this.stmt(sql),
+          listCandidates: () => this.listCandidates(),
+          createCandidate: (candidate) => this.createCandidate(candidate),
+          acceptCandidate: (candidateId) => this.acceptCandidate(candidateId),
+        },
+        input,
+      ),
     );
   }
 
@@ -981,11 +1011,11 @@ export class SqliteSageStore implements MemoryStore {
 
   async recoverSage(id: string, reason?: string): Promise<Sage> {
     await this.initialize();
-    return recoverAdminSage(this.adminHost(), id, reason);
+    return this.runCompositeOperation(() => recoverAdminSage(this.adminHost(), id, reason));
   }
   async backfillRecoverable(options?: SageBackfillOptions): Promise<SageBackfillReport> {
     await this.initialize();
-    return backfillAdminSage(this.adminHost(), options);
+    return this.runCompositeOperation(() => backfillAdminSage(this.adminHost(), options));
   }
   async findMemoriesForFile(
     filePath: string,

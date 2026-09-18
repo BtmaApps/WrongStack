@@ -40,7 +40,7 @@ vi.mock('../../src/lib/view-navigation', () => ({
 vi.mock('../../src/lib/desktop-shell', () => ({ isDesktopShell: () => false }));
 
 const { useFleetStore, useSessionTabStore } = await import('../../src/stores');
-const { readLane, useChatLanes } = await import('../../src/stores/chat-lanes');
+const { readLane } = await import('../../src/stores/chat-lanes');
 const { readSessionLane, sessionLane, useSessionLanes } = await import(
   '../../src/stores/session-lanes'
 );

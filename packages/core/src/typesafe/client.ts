@@ -4,8 +4,9 @@
  * `POST https://api.typesafe.ai/v1/systemone` takes a `state` (our JSON) plus a
  * map of typed `questions` and returns one typed `answer` per question id. The
  * questions are declarative — Choice picks one option from a set we define,
- * Noul returns the probability a yes/no condition holds — so the answers are
- * data our own code branches on rather than text to parse.
+ * Noul returns the probability a yes/no condition holds, Score returns a
+ * position across ordered levels we describe — so the answers are data our own
+ * code branches on rather than text to parse.
  *
  * This module is subsystem-agnostic: the skill suggester and the agent
  * dispatcher both talk to the same endpoint with different questions, so the
@@ -24,12 +25,19 @@
  */
 
 import { FetchError } from '../types/errors.js';
+import { TYPESAFE_ROUTES } from './route.js';
 
-/** Default TypeSafe evaluation endpoint. */
-export const DEFAULT_TYPESAFE_ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
+/**
+ * Default evaluation endpoint — the native TypeSafe route.
+ *
+ * Sourced from the route table rather than repeated, so the two places that
+ * know this URL cannot disagree. `resolve.ts` picks a route; a client built
+ * without one falls back to the native host.
+ */
+export const DEFAULT_TYPESAFE_ENDPOINT = TYPESAFE_ROUTES.typesafe.url;
 
 /** Default model alias. `jev-latest` tracks TypeSafe's flagship System One model. */
-export const DEFAULT_TYPESAFE_MODEL = 'jev-latest';
+export const DEFAULT_TYPESAFE_MODEL = TYPESAFE_ROUTES.typesafe.model;
 
 /** Statuses the API documents as transient and worth retrying. */
 const RETRYABLE_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504, 529]);
@@ -47,7 +55,18 @@ export interface ChoiceQuestion {
   criteria: Record<string, string | null>;
 }
 
-export type TypeSafeQuestion = NoulQuestion | ChoiceQuestion;
+export interface ScoreQuestion {
+  type: 'score';
+  instructions: string;
+  /**
+   * Ordered level descriptions, lowest first. The API requires at least two,
+   * and each level has to describe a concrete situation that stands on its
+   * own — a bare "medium" cannot be judged against anything.
+   */
+  criteria: string[];
+}
+
+export type TypeSafeQuestion = NoulQuestion | ChoiceQuestion | ScoreQuestion;
 
 export interface NoulAnswer {
   type: 'noul';
@@ -65,11 +84,36 @@ export interface ChoiceAnswer {
   confidence: number;
 }
 
-export type TypeSafeAnswer = NoulAnswer | ChoiceAnswer;
+export interface ScoreAnswer {
+  type: 'score';
+  /** Probability-weighted position across the levels we sent. */
+  score: number;
+  /** Level label -> probability. */
+  probabilities: Record<string, number>;
+  /** Distribution concentration, 0..1 — NOT a correctness estimate. */
+  confidence: number;
+  /** Level index -> the criteria text it came from, as the API echoes it. */
+  legend: Record<string, string>;
+}
+
+export type TypeSafeAnswer = NoulAnswer | ChoiceAnswer | ScoreAnswer;
 
 export interface SystemOneResult {
   answers: Record<string, TypeSafeAnswer>;
   usage: { inputTokens: number; outputTokens: number };
+  /**
+   * The model id the service says answered.
+   *
+   * Worth keeping even though we sent it: `jev-latest` is an ALIAS, and the
+   * version behind it moves. A threshold calibrated against one version and a
+   * trace that cannot name the version it was collected under is a silent
+   * drift waiting to happen — every eval row records this.
+   *
+   * Optional rather than required: a response is not obliged to echo it, and
+   * forcing every caller that constructs a result — chiefly test stubs — to
+   * carry a field they do not exercise buys nothing.
+   */
+  model?: string | undefined;
 }
 
 export interface SystemOneRequest {
@@ -93,6 +137,24 @@ export interface TypeSafeClientOptions {
   maxAttempts?: number | undefined;
   /** Injectable transport; defaults to global `fetch`. Tests pass a stub. */
   fetchImpl?: typeof fetch | undefined;
+  /**
+   * Called once per SUCCESSFUL response with what it cost.
+   *
+   * Every feature here bills per turn, and until this existed the numbers left
+   * the process unread: the result carried `usage` and both consumers dropped
+   * it. Never throws into a caller — an accounting sink must not be able to
+   * fail the judgment it is accounting for.
+   */
+  onUsage?: ((usage: TypeSafeUsage) => void) | undefined;
+}
+
+export interface TypeSafeUsage {
+  inputTokens: number;
+  outputTokens: number;
+  /** The model the service reported, when it reported one. */
+  model: string | undefined;
+  /** The endpoint the request went to, for per-route accounting. */
+  endpoint: string;
 }
 
 export function createTypeSafeClient(opts: TypeSafeClientOptions): TypeSafeClient {
@@ -116,7 +178,13 @@ export function createTypeSafeClient(opts: TypeSafeClientOptions): TypeSafeClien
           await delay(150 * 2 ** (attempt - 1), signal);
         }
         try {
-          return await postOnce(doFetch, endpoint, opts.apiKey, body, timeoutMs, signal);
+          const result = await postOnce(doFetch, endpoint, opts.apiKey, body, timeoutMs, signal);
+          try {
+            opts.onUsage?.({ ...result.usage, model: result.model, endpoint });
+          } catch {
+            // An accounting sink must not fail the judgment it accounts for.
+          }
+          return result;
         } catch (err) {
           lastError = err;
           const status = err instanceof FetchError ? err.status : 0;
@@ -205,12 +273,14 @@ export function parseSystemOneResult(payload: unknown): SystemOneResult {
     if (answer) answers[id] = answer;
   }
   const usage = isRecord(root['usage']) ? root['usage'] : {};
+  const model = root['model'];
   return {
     answers,
     usage: {
       inputTokens: finiteOr(usage['input_tokens'], 0),
       outputTokens: finiteOr(usage['output_tokens'], 0),
     },
+    model: typeof model === 'string' && model ? model : undefined,
   };
 }
 
@@ -238,8 +308,32 @@ function parseAnswer(raw: unknown): TypeSafeAnswer | undefined {
       confidence: clamp01(finiteOr(raw['confidence'], 0)),
     };
   }
-  // `score` answers are documented but unused here; dropping them keeps the
-  // union closed to what this module actually asks for.
+  if (raw['type'] === 'score') {
+    const score = raw['score'];
+    if (typeof score !== 'number' || !Number.isFinite(score)) return undefined;
+    const probabilities: Record<string, number> = {};
+    const rawProbabilities = isRecord(raw['probabilities']) ? raw['probabilities'] : {};
+    for (const [level, value] of Object.entries(rawProbabilities)) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        probabilities[level] = clamp01(value);
+      }
+    }
+    const legend: Record<string, string> = {};
+    const rawLegend = isRecord(raw['legend']) ? raw['legend'] : {};
+    for (const [level, text] of Object.entries(rawLegend)) {
+      if (typeof text === 'string') legend[level] = text;
+    }
+    // `score` is NOT a probability: it is a position across the levels we
+    // sent, so it is left unclamped rather than squeezed into 0..1. Callers
+    // normalize against their own level count.
+    return {
+      type: 'score',
+      score,
+      probabilities,
+      confidence: clamp01(finiteOr(raw['confidence'], 0)),
+      legend,
+    };
+  }
   return undefined;
 }
 

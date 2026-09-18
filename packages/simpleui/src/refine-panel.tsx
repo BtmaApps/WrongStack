@@ -11,6 +11,10 @@ interface RefinePanelProps {
   onStartRefine: () => void;
   /** Send a user-edited version of the refined text. */
   onSendEdited: (text: string) => void;
+  /** Hand the message back to the composer for another edit pass. Same path
+   *  as the global Escape restore — text and images return to the composer
+   *  and nothing is sent. Omitted callers simply don't get the button. */
+  onEditInComposer?: (() => void) | undefined;
   /** Grace period in seconds before the refiner call starts. 0 = skip. Default 3. */
   preRefineSeconds?: number;
 }
@@ -22,7 +26,8 @@ const DEFAULT_PRE_REFINE_SECONDS = 3;
  *
  * Four faces, one per status — mirroring the WebUI RefinePanel:
  *  - 'countdown': a 3-2-1 grace period before the refine round-trip starts,
- *    with "start now" and "send as-is" escape hatches;
+ *    with "start now", "send as-is" and "edit" (hand the message back to
+ *    the composer — the Escape shortcut's button twin) escape hatches;
  *  - 'refining': an in-flight spinner that keeps the original visible;
  *  - 'ready': refined/original comparison with keyboard shortcuts
  *    (Enter=refined, E=English, O=original, T=edit, R=retry)
@@ -36,6 +41,7 @@ export function RefinePanel({
   onRetryFallback,
   onStartRefine,
   onSendEdited,
+  onEditInComposer,
   preRefineSeconds = DEFAULT_PRE_REFINE_SECONDS,
 }: RefinePanelProps) {
   const [editing, setEditing] = useState(false);
@@ -196,6 +202,11 @@ export function RefinePanel({
           </div>
           <p className="refine-preview">{state.original}</p>
           <div className="refine-actions">
+            {onEditInComposer ? (
+              <button type="button" onClick={onEditInComposer}>
+                <Pencil size={11} aria-hidden="true" /> Edit
+              </button>
+            ) : null}
             <button type="button" onClick={() => onDecision('original')}>
               <Send size={11} aria-hidden="true" /> Send as-is
             </button>

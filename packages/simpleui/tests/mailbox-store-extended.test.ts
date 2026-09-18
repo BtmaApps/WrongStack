@@ -94,8 +94,8 @@ describe('SimpleUI mailbox store — extended coverage', () => {
       });
       const agents = store.getSnapshot().agents;
       expect(agents).toHaveLength(2);
-      expect(agents[0].name).toBe('Leader');
-      expect(agents[1].role).toBe('executor');
+      expect(agents[0]?.name).toBe('Leader');
+      expect(agents[1]?.role).toBe('executor');
     });
 
     it('sets error from payload', () => {
@@ -258,7 +258,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         },
       });
       expect(store.getSnapshot().messages).toHaveLength(1);
-      expect(store.getSnapshot().messages[0].id).toBe('good');
+      expect(store.getSnapshot().messages[0]?.id).toBe('good');
     });
 
     it('defaults priority to normal when missing', () => {
@@ -267,7 +267,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         type: 'mailbox.messages',
         payload: { messages: [{ id: 'm1', from: 'x' }] },
       });
-      expect(store.getSnapshot().messages[0].priority).toBe('normal');
+      expect(store.getSnapshot().messages[0]?.priority).toBe('normal');
     });
 
     it('computes readByCount from readBy object when readByCount is absent', () => {
@@ -278,7 +278,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
           messages: [{ id: 'm1', from: 'x', readBy: { a: true, b: true } }],
         },
       });
-      expect(store.getSnapshot().messages[0].readByCount).toBe(2);
+      expect(store.getSnapshot().messages[0]?.readByCount).toBe(2);
     });
   });
 
@@ -292,7 +292,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         },
       });
       expect(store.getSnapshot().agents).toHaveLength(1);
-      expect(store.getSnapshot().agents[0].agentId).toBe('good');
+      expect(store.getSnapshot().agents[0]?.agentId).toBe('good');
     });
 
     it('defaults status to idle when missing', () => {
@@ -301,7 +301,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         type: 'mailbox.agents',
         payload: { agents: [{ agentId: 'a1', name: 'A' }] },
       });
-      expect(store.getSnapshot().agents[0].status).toBe('idle');
+      expect(store.getSnapshot().agents[0]?.status).toBe('idle');
     });
 
     it('defaults name to agentId when missing', () => {
@@ -310,7 +310,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         type: 'mailbox.agents',
         payload: { agents: [{ agentId: 'a1' }] },
       });
-      expect(store.getSnapshot().agents[0].name).toBe('a1');
+      expect(store.getSnapshot().agents[0]?.name).toBe('a1');
     });
 
     it('defaults online to false when not explicitly true', () => {
@@ -319,7 +319,7 @@ describe('SimpleUI mailbox store — extended coverage', () => {
         type: 'mailbox.agents',
         payload: { agents: [{ agentId: 'a1', online: 'yes' }] },
       });
-      expect(store.getSnapshot().agents[0].online).toBe(false);
+      expect(store.getSnapshot().agents[0]?.online).toBe(false);
     });
   });
 });

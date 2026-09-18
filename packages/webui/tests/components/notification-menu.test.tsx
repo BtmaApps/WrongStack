@@ -206,7 +206,7 @@ describe('NotificationMenu Component', () => {
   });
 
   it('filters notifications when switching between All and Unread tabs', () => {
-    const id1 = toast.info('Unread message');
+    toast.info('Unread message');
     const id2 = toast.success('Read message');
     useNotificationStore.getState().markAsRead(id2);
 

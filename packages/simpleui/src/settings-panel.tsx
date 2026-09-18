@@ -189,12 +189,13 @@ export function SettingsPanel({
     const groups = new Set<string>();
     const counts: Record<string, { visible: number; total: number }> = {};
     for (const { group, entries: groupEntries } of groupCatalog()) {
-      counts[group.id] = { visible: 0, total: groupEntries.length };
+      const count = { visible: 0, total: groupEntries.length };
+      counts[group.id] = count;
       for (const entry of groupEntries) {
         if (matchesQuery(entry, group.title, debouncedQuery)) {
           entries.add(entry.id);
           groups.add(group.id);
-          counts[group.id].visible += 1;
+          count.visible += 1;
         }
       }
     }

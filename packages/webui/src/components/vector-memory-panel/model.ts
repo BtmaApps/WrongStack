@@ -7,7 +7,6 @@
  * webui-server host doesn't wire a vector store), the panel renders a
  * disabled placeholder.
  */
-import { useEffect, useMemo, useState } from 'react';
 
 interface VectorMemoryCacheStats {
   entries: number;
@@ -108,37 +107,3 @@ export async function forgetVectorMemory(
   return (await response.json()) as { removed: boolean };
 }
 
-/** Hook: track the live status, re-fetching on focus. */
-function useVectorMemoryStatus(baseUrl = ''): {
-  status: VectorMemoryStatus | undefined;
-  error: string | undefined;
-  reload: () => void;
-} {
-  const [status, setStatus] = useState<VectorMemoryStatus | undefined>();
-  const [error, setError] = useState<string | undefined>();
-  const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    fetchVectorMemoryStatus(baseUrl)
-      .then((s) => {
-        if (!cancelled) {
-          setStatus(s);
-          setError(undefined);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setStatus(undefined);
-          setError(err instanceof Error ? err.message : String(err));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, reloadKey]);
-  return {
-    status,
-    error,
-    reload: useMemo(() => () => setReloadKey((k) => k + 1), []),
-  };
-}

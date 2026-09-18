@@ -23,7 +23,12 @@ export function makeTelegramSendTool(opts: {
   getDefaultChatId(): TelegramChatId | undefined;
   /** Additional trusted targets, resolved on every call for live config updates. */
   getAllowedOutboundChatIds?(): readonly TelegramChatId[];
-  maxMessageLength: number;
+  /**
+   * Message-length cap, resolved on every call for live config updates —
+   * `maxMessageLength` is a hot-reloadable key, so a snapshot here would
+   * keep the tool truncating at the setup-time value after a config change.
+   */
+  maxMessageLength: number | (() => number);
   log: Logger;
 }): Tool<TelegramSendInput> {
   return {
@@ -58,7 +63,11 @@ export function makeTelegramSendTool(opts: {
       // Scrub before truncation so a credential is never split into fragments
       // that no longer match the shared detector.
       const scrubbed = scrubTelegramOutboundText(input.message);
-      const truncated = truncateForTelegram(scrubbed, opts.maxMessageLength);
+      const maxMessageLength =
+        typeof opts.maxMessageLength === 'function'
+          ? opts.maxMessageLength()
+          : opts.maxMessageLength;
+      const truncated = truncateForTelegram(scrubbed, maxMessageLength);
 
       opts.log.info(`telegram_send → chat_id=${chatId} (${truncated.length} chars)`);
 

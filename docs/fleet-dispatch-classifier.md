@@ -67,7 +67,13 @@ near-tie it is. `makeLLMClassifier` omits it and keeps the historical `1` —
 ```
 
 `typesafe` is the same shared account the [skill suggester](./skills-suggestion.md)
-uses, and `apiKey` is vault-encrypted on disk like any other credential.
+uses, and `apiKey` is vault-encrypted on disk like any other credential. Set it
+up with `wstack typesafe login` and prove it with `wstack typesafe test`; routes
+(including OpenRouter's Decisions endpoint), the revoked-key breaker and the
+doctor rule are documented in [the account doc](./typesafe-account.md).
+
+Switching this on without a usable account still falls back to the prose
+classifier — but says so once, rather than silently routing worse.
 Configuring the account turns nothing on by itself.
 
 ### Settings

@@ -30,11 +30,6 @@ export interface CouncilSeatVote {
   at: number;
 }
 
-interface MessageContent {
-  role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string | ContentBlock[];
-}
-
 export interface ToolExecution {
   id: string;
   name: string;

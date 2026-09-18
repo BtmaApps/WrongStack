@@ -368,7 +368,10 @@ export function SkillsList({ className }: { className?: string }) {
   }, [skills, scopeFilter, searchQuery]);
 
   const groupedSkills = useMemo(() => {
-    const groups: Record<string, SkillInfo[]> = {
+    // Keyed by ScopeBucket, not `string`: `bucketForSource` is total over the
+    // four buckets, and saying so keeps the push below from reading as an
+    // unchecked index into a possibly-absent array.
+    const groups: Record<ScopeBucket, SkillInfo[]> = {
       project: [],
       user: [],
       foreign: [],

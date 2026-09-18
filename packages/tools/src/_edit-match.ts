@@ -101,7 +101,12 @@ export function findLadderMatches(fileLf: string, oldLf: string): LadderResult |
       lastPos = nextNewline + 1;
     }
     exact.push({ start: idx, end: idx + oldLf.length, startLine: currentLine });
-    idx = fileLf.indexOf(oldLf, idx + 1);
+    // Resume AFTER this occurrence: the caller replaces non-overlapping
+    // (split/join or first-match), so an overlap-permitting scan would
+    // overcount self-overlapping needles ("========" inside "==========" is
+    // one match, not three) and inflate `replacements` / false-positive the
+    // uniqueness guard — the same no-overlap invariant windowScan documents.
+    idx = fileLf.indexOf(oldLf, idx + oldLf.length);
   }
   if (exact.length > 0) return { tier: 'exact', matches: exact };
 

@@ -44,7 +44,6 @@ vi.mock('@/stores/auto-submit-streak.js', () => ({
 const { FailedRunContinue, autoTriggerMsFor } = await import(
   '../../src/components/MessageBubble/FailedRunContinue'
 );
-const { useChatStore } = await import('../../src/stores');
 const { useChatLanes } = await import('../../src/stores/chat-lanes');
 
 function renderWith(opts: { text?: string; timestamp?: number } = {}) {

@@ -28,7 +28,7 @@ import { i18n, useAppTranslation } from '@/i18n';
 import { requestAuthOperation } from '@/lib/auth-operation';
 import { openMainView, showPanel } from '@/lib/view-navigation';
 import { useConfigStore, useUIStore } from '@/stores';
-import { type LocalPrefs, useLocalPrefs } from '@/stores/local-prefs';
+import { useLocalPrefs } from '@/stores/local-prefs';
 import type { ProviderCustomModelWire, WSServerMessage } from '@/types';
 import { Button } from '../ui/button';
 import {

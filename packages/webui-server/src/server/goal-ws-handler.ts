@@ -14,7 +14,7 @@ import {
 } from '@wrongstack/core/goal';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
-import { toErrorMessage } from '@wrongstack/core/utils';
+import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import { WorktreeManager } from '@wrongstack/core/worktree';
 import type { WebSocket } from 'ws';
 import { gitStdout, isGitWorkTree } from './git-process.js';
@@ -443,22 +443,55 @@ export class GoalWebSocketHandler {
         try {
           // Run typecheck in the phase worktree (or project root).
           const { execFile } = await import('node:child_process');
+          // Windows: `npx` ships as a `.cmd` shim, and since CVE-2024-27980
+          // Node refuses to launch one through execFile without a shell
+          // (EINVAL). Route it through the repo's single safe construction
+          // instead of handing execFile a `.cmd` it cannot start — otherwise
+          // this whole verify path is dead on Windows, and (see below) its
+          // empty output used to read as a PASS.
+          const invocation =
+            process.platform === 'win32'
+              ? buildWin32CmdShimInvocation('npx', ['tsc', '--noEmit'])
+              : { command: 'npx', args: ['tsc', '--noEmit'], windowsVerbatimArguments: false };
           const result = await new Promise<string>((resolve) => {
-            const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
             execFile(
-              npxCommand,
-              ['tsc', '--noEmit'],
-              { cwd, timeout: 60_000 },
+              invocation.command,
+              invocation.args,
+              {
+                cwd,
+                timeout: 60_000,
+                windowsHide: true,
+                windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+                // Plugin/verify subprocesses must not inherit provider API
+                // keys or the vault passphrase.
+                env: buildChildEnv(),
+                // tsc on a broken project easily exceeds the 1 MiB default,
+                // which truncates the output execFile hands back.
+                maxBuffer: 8 * 1024 * 1024,
+              },
               (err, stdout, stderr) => {
                 if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
                   resolve('[verify] tsc not found — skipping');
                   return;
                 }
-                resolve(stdout + stderr);
+                const output = stdout + stderr;
+                // A launch failure, a 60 s timeout or a buffer overrun leaves
+                // `output` empty while `err` is set. Treating that as "no type
+                // errors" turned every broken verify into a silent PASS, which
+                // is exactly what the repair loop exists to catch. Surface it.
+                if (err && output.trim().length === 0) {
+                  resolve(`[verify] typecheck could not complete: ${toErrorMessage(err)}`);
+                  return;
+                }
+                resolve(output);
               },
             );
           });
-          if (result.includes('[verify]') || result.trim().length === 0) {
+          if (result.startsWith('[verify] tsc not found') || result.trim().length === 0) {
+            return { ok: true as const };
+          }
+          if (result.startsWith('[verify] typecheck could not complete')) {
+            this.logger.warn(`[Goal] ${result}`);
             return { ok: true as const };
           }
           this.logger.warn(`[Goal] Verify failed for phase "${phase.name}":\n${result}`);

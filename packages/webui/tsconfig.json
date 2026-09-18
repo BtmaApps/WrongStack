@@ -9,6 +9,16 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
+    // Repo-wide safety flags from tsconfig.base.json. This package cannot
+    // extend that file (bundler/JSX resolution differs), so the flags are
+    // mirrored here deliberately — without them the UI packages were the only
+    // ones in the workspace where an out-of-range index silently typed as the
+    // element type.
+    // `noUncheckedIndexedAccess` is NOT on here yet: it reports 64 sites in
+    // this package, which is a scoped burn-down, not a drive-by fix.
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

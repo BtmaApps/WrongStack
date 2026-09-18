@@ -16,6 +16,11 @@
 
 import { isSecretField } from '@wrongstack/core/security';
 import type { Config, JSONSchema } from '@wrongstack/core/types';
+import {
+  isTypeSafeRoute,
+  resolveTypeSafeAccount,
+  TYPESAFE_ROUTE_IDS,
+} from '@wrongstack/core/typesafe';
 import { validateAgainstSchema } from '@wrongstack/core/utils';
 import { nextCustomProviderId } from './provider-id.js';
 import { MAX_TUI_THINKING_WORD_LENGTH, normalizeTuiThinkingWord } from './tui-thinking-word.js';
@@ -180,6 +185,14 @@ function coerceNumber(v: unknown): number | undefined {
 export function diagnoseConfig(
   cfg: Record<string, unknown>,
   plugins: PluginSchemaInfo[] = [],
+  /**
+   * Environment consulted by rules whose verdict depends on it — currently
+   * only the TypeSafe account, whose key legitimately lives in `TYPESAFE_API_KEY`
+   * or `OPENROUTER_API_KEY` rather than the file. Passed in rather than read,
+   * so the module stays pure and the rule stays testable; defaults to the real
+   * environment because every production caller means that one.
+   */
+  env: NodeJS.ProcessEnv = process.env,
 ): DoctorReport {
   const fixed = structuredClone(cfg);
   const findings: DoctorFinding[] = [];
@@ -644,6 +657,9 @@ export function diagnoseConfig(
   // ── 11. Plaintext secret scan (warning only — never rewrites values) ──
   scanPlaintextSecrets(fixed, '', findings);
 
+  // ── 12. TypeSafe features switched on without a usable account ────────
+  checkTypeSafeAccount(fixed, findings, env);
+
   const changed = JSON.stringify(fixed) !== JSON.stringify(cfg);
   return { findings, fixed, changed };
 }
@@ -664,5 +680,65 @@ function scanPlaintextSecrets(node: unknown, prefix: string, findings: DoctorFin
     } else if (isPlainObject(value)) {
       scanPlaintextSecrets(value, path, findings);
     }
+  }
+}
+
+/**
+ * A TypeSafe-backed feature switched on with no account behind it.
+ *
+ * This is the one class of misconfiguration the runtime cannot shout about
+ * usefully: both consumers fail closed and degrade to their old behaviour, so
+ * the symptom is "the thing I turned on does nothing" with no error anywhere.
+ * The hosts now warn once per process, but a warning in a daemon's log is not
+ * where someone looks when they wonder why a switch did nothing — the doctor
+ * is.
+ *
+ * Reported as a WARNING and never auto-fixed. Both repairs are wrong to guess
+ * at: turning the feature off discards a deliberate decision, and nothing here
+ * can invent a credential. The finding names the switch, because that is what
+ * the reader has to reconsider.
+ */
+function checkTypeSafeAccount(
+  fixed: Record<string, unknown>,
+  findings: DoctorFinding[],
+  env: NodeJS.ProcessEnv,
+): void {
+  const typesafe = isPlainObject(fixed['typesafe']) ? fixed['typesafe'] : undefined;
+
+  // The route enum first: an unknown value would otherwise be reported below
+  // as "no account", which points at the wrong line entirely.
+  if (typesafe && 'route' in typesafe && !isTypeSafeRoute(typesafe['route'])) {
+    findings.push({
+      path: 'typesafe.route',
+      problem: `expected one of ${TYPESAFE_ROUTE_IDS.join(', ')}, got ${JSON.stringify(typesafe['route'])}`,
+      severity: 'error',
+      fix: 'removed (route is inferred from endpoint and credentials)',
+    });
+    delete typesafe['route'];
+  }
+
+  const skills = isPlainObject(fixed['skills']) ? fixed['skills'] : undefined;
+  const suggest = skills && isPlainObject(skills['suggest']) ? skills['suggest'] : undefined;
+  const fleet = isPlainObject(fixed['fleet']) ? fixed['fleet'] : undefined;
+  const dispatch = fleet && isPlainObject(fleet['dispatch']) ? fleet['dispatch'] : undefined;
+
+  const requested: string[] = [];
+  if (suggest?.['enabled'] === true) requested.push('skills.suggest.enabled');
+  if (dispatch?.['typesafeClassifier'] === true)
+    requested.push('fleet.dispatch.typesafeClassifier');
+  if (requested.length === 0) return;
+
+  const account = resolveTypeSafeAccount({
+    config: { typesafe: typesafe as Config['typesafe'] },
+    env,
+  });
+  if (account.status === 'ready') return;
+
+  for (const path of requested) {
+    findings.push({
+      path,
+      problem: `set to true, but TypeSafe is unusable: ${account.reason}`,
+      severity: 'warning',
+    });
   }
 }

@@ -101,11 +101,14 @@ function nextPoolName(): string {
   for (let attempt = 0; attempt < NAME_POOL.length; attempt++) {
     const name = NAME_POOL[nameCursor % NAME_POOL.length];
     nameCursor++;
-    if (!nameCache.has(name)) return name;
+    if (name !== undefined && !nameCache.has(name)) return name;
   }
-  // Pool exhausted — fall back to a numbered variant.
+  // Pool exhausted — fall back to a numbered variant. `NAME_POOL` is a
+  // non-empty literal above, but its declared type is `readonly string[]`,
+  // so the first element is only statically known to be `string | undefined`.
+  const base = NAME_POOL[0] ?? 'Agent';
   for (let suffix = 2; ; suffix++) {
-    const name = `${NAME_POOL[0]} ${suffix}`;
+    const name = `${base} ${suffix}`;
     if (!nameCache.has(name)) return name;
   }
 }

@@ -57,6 +57,7 @@ describe('RefineCountdownPanel', () => {
     );
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('Enter refines now');
+    expect(frame).toContain('Backspace edits');
     expect(frame).toContain('any key sends as-is');
     expect(frame).toContain('Esc cancels');
     view.unmount();
@@ -173,6 +174,53 @@ describe('RefineCountdownPanel', () => {
     );
     stdin.write('\r');
     expect(onDecision).toHaveBeenCalledWith('proceed');
+    unmount();
+  });
+
+  // ── Backspace/Delete → cancel (text goes back to the composer) ──
+  // Backspace means "let me edit that", so it must NOT fall into the
+  // any-key branch and send the message as-is; cancel is the decision
+  // that restores the submitted text as the composer draft.
+
+  it('Backspace calls onDecision("cancel") so the text returns to the input', () => {
+    const onDecision = vi.fn();
+    const { stdin, unmount } = render(
+      React.createElement(RefineCountdownPanel, {
+        original: 'test',
+        seconds: 3,
+        onDecision,
+      }),
+    );
+    stdin.write('\x7f');
+    expect(onDecision).toHaveBeenCalledExactlyOnceWith('cancel');
+    unmount();
+  });
+
+  it('Ctrl-H backspace also calls onDecision("cancel")', () => {
+    const onDecision = vi.fn();
+    const { stdin, unmount } = render(
+      React.createElement(RefineCountdownPanel, {
+        original: 'test',
+        seconds: 3,
+        onDecision,
+      }),
+    );
+    stdin.write('\b');
+    expect(onDecision).toHaveBeenCalledExactlyOnceWith('cancel');
+    unmount();
+  });
+
+  it('Delete calls onDecision("cancel")', () => {
+    const onDecision = vi.fn();
+    const { stdin, unmount } = render(
+      React.createElement(RefineCountdownPanel, {
+        original: 'test',
+        seconds: 3,
+        onDecision,
+      }),
+    );
+    stdin.write('\x1b[3~');
+    expect(onDecision).toHaveBeenCalledExactlyOnceWith('cancel');
     unmount();
   });
 

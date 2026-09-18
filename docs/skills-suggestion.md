@@ -99,6 +99,17 @@ the key.
 export TYPESAFE_API_KEY=...
 ```
 
+Or skip the file entirely:
+
+```sh
+wstack typesafe login      # stores the key, vault-encrypted
+wstack typesafe test       # proves the key, route and model actually work
+```
+
+Jev is also reachable through OpenRouter's Decisions endpoint — same request
+body, different host and bill. See [the account doc](./typesafe-account.md) for
+routes, the revoked-key breaker and what `wstack doctor` reports.
+
 ### Settings
 
 `skills.suggest`:
@@ -161,6 +172,12 @@ Every failure mode is "no suggestion", never a failed turn: no API key, an
 unreachable endpoint, a 401, a timeout, an empty roster, a malformed answer. The
 middleware also passes the request through untouched if anything in it throws.
 
+Silently, with one exception. Turning `enabled` on with no usable account warns
+**once per process**, naming the switch — otherwise a flipped switch does
+nothing and nothing says why. Repeated 401s disable the feature for the process
+rather than paying for a rejected request every turn; see
+[the account doc](./typesafe-account.md).
+
 A name that comes back is re-validated against the roster before it is printed
 into the prompt — the distribution is echoed from criteria we sent, but it
 arrives over the network from a third party.
@@ -210,7 +227,8 @@ outcome.
 
 **In a running session**, an enabled suggester writes one debug line per new
 user message (`skill suggestion: design-craft (gate 0.78, fits 0.68)` or
-`skill suggestion: nothing fits this turn`). Raise the log level to see them.
+`skill suggestion: nothing fits this turn`), plus one per request with the token
+count it cost. Raise the log level to see them.
 
 ## Evaluating the thresholds
 
@@ -241,6 +259,37 @@ for something specific your roster has no skill for.
 ```sh
 wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep
 ```
+
+Each run prints what it spent and **which model version answered**. `jev-latest`
+is an alias; a sweep table that cannot name its version is a calibration with no
+date on it. If two versions answer within one run, the alias moved mid-run and
+the table is not trustworthy — re-run it.
+
+### The language the requests are actually in
+
+TypeSafe documents English as its accuracy optimum and other languages as
+working with reduced reliability. Every gate question, every Choice rubric and
+every roster trigger this feature sends is in English; the request in `state`
+often is not.
+
+So there is a second, parallel set at
+**`.wrongstack/skill-suggest-eval-tr.jsonl`** — the same 53 cases, same order,
+same labels, written in Turkish. Run both and compare:
+
+```sh
+wstack skill-suggest --eval .wrongstack/skill-suggest-eval.jsonl --sweep
+wstack skill-suggest --eval .wrongstack/skill-suggest-eval-tr.jsonl --sweep
+```
+
+Kept 1:1, the **delta** between the two runs is the language effect and nothing
+else — which is why they are two files rather than one blended set, and why
+`skill-suggest-eval-fixtures.test.ts` fails if they drift apart. A label
+corrected in one file has to be corrected in the other.
+
+If the Turkish run misses materially more at the same thresholds, the honest
+responses are: lower `gateThreshold` for this deployment, translate the three
+gate questions, or accept the loss and write it down. Averaging the two runs
+produces a threshold that is wrong for both.
 
 Measured on this repo's 46-skill roster, 2026-09-17, `jev-1.13.0`:
 

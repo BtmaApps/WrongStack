@@ -102,7 +102,6 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'cli/src/slash-commands/mailbox-serve.ts': REASON_SELF_RELAUNCH,
   'cli/src/slash-commands/project.ts': REASON_SELF_RELAUNCH,
   'webui-server/src/server/discover-mailbox-bridge.ts': REASON_SELF_RELAUNCH,
-  'webui-server/src/server/goal-ws-handler.ts': REASON_SELF_RELAUNCH,
   // ── Operator-facing helpers ──
   'cli/src/auth-menu/loopback-server.ts': REASON_OPERATOR_TOOL,
   'cli/src/pre-launch/project-check.ts': REASON_OPERATOR_TOOL,

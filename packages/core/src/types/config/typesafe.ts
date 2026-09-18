@@ -28,13 +28,34 @@ export interface TypeSafeConfig {
    */
   apiKey?: string | undefined;
   /**
-   * Evaluation endpoint. Default `https://api.typesafe.ai/v1/systemone`.
-   * Point this at a self-hosted or proxied deployment to keep prompts inside
-   * your own network.
+   * Which host answers System One requests.
+   *
+   * - `typesafe`   — `api.typesafe.ai`, model `jev-latest`, key `TYPESAFE_API_KEY`
+   * - `openrouter` — OpenRouter's Decisions endpoint, model `~typesafe/jev-latest`,
+   *   key `OPENROUTER_API_KEY`. Same request body; billed to OpenRouter.
+   * - `custom`     — whatever `endpoint` names. Implied when `endpoint` is set.
+   *
+   * Left unset, the route is inferred: an explicit `endpoint` means `custom`,
+   * a configured `apiKey` means `typesafe`, otherwise the first route whose
+   * environment variable is present wins — TypeSafe first, so a stray
+   * `OPENROUTER_API_KEY` meant for chat cannot silently reroute (and re-bill)
+   * an account that was set up deliberately.
+   */
+  route?: 'typesafe' | 'openrouter' | 'custom' | undefined;
+  /**
+   * Evaluation endpoint. Overrides the route's built-in URL, and selects the
+   * `custom` route when `route` is unset. Point this at a self-hosted or
+   * proxied deployment to keep prompts inside your own network.
    */
   endpoint?: string | undefined;
-  /** Model id. Default `jev-latest`. */
+  /** Model id. Defaults to the route's own name for Jev. */
   model?: string | undefined;
   /** Per-HTTP-attempt timeout, in ms. Default 4000. */
   requestTimeoutMs?: number | undefined;
+  /**
+   * Consecutive 401/403 responses that disable TypeSafe for the process.
+   * Default 3. Rate limits and network errors never count toward this — only
+   * a credential the host has actually rejected.
+   */
+  authFailureLimit?: number | undefined;
 }

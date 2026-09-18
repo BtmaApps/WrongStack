@@ -43,7 +43,8 @@ describe('parseSystemOneResult', () => {
         missing_value: { type: 'noul' },
         not_a_number: { type: 'noul', noul: 'high' },
         no_choice: { type: 'choice', probabilities: { a: 1 }, confidence: 1 },
-        unsupported: { type: 'score', score: 1.6 },
+        no_score: { type: 'score', probabilities: { '0': 1 }, confidence: 1 },
+        unknown_type: { type: 'rank', value: 1 },
         good: { type: 'noul', noul: 0.4 },
       },
     });
@@ -137,5 +138,58 @@ describe('createTypeSafeClient', () => {
     await expect(client.systemOne({ state: 's', questions: {} })).rejects.toBeInstanceOf(
       FetchError,
     );
+  });
+});
+
+describe('score answers and usage accounting', () => {
+  it('parses a score answer without clamping the score to a probability', () => {
+    // `score` is a position across the levels we sent, not a 0..1 chance. An
+    // earlier version dropped score answers entirely; clamping them would be
+    // the same mistake with a number attached.
+    const result = parseSystemOneResult({
+      model: 'jev-1.13.0',
+      answers: {
+        severity: {
+          type: 'score',
+          score: 3.4,
+          probabilities: { '0': 0.05, '1': 0.1, '2': 0.2, '3': 0.4, '4': 0.25 },
+          confidence: 0.61,
+          legend: { '0': 'no impact', '4': 'outage' },
+        },
+      },
+      usage: { input_tokens: 10, output_tokens: 0 },
+    });
+    expect(result.answers['severity']).toMatchObject({ type: 'score', score: 3.4 });
+    expect(result.model).toBe('jev-1.13.0');
+  });
+
+  it('drops a score answer with no numeric score', () => {
+    const result = parseSystemOneResult({
+      answers: { bad: { type: 'score', probabilities: {}, confidence: 1 } },
+    });
+    expect(result.answers['bad']).toBeUndefined();
+  });
+
+  it('reports usage once per successful response and never fails the call', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        model: 'jev-1.13.0',
+        answers: { q: { type: 'noul', noul: 0.5 } },
+        usage: { input_tokens: 99, output_tokens: 0 },
+      }),
+    );
+    const onUsage = vi.fn((_usage: { inputTokens: number; model?: string | undefined }) => {
+      throw new Error('sink exploded');
+    });
+    const client = createTypeSafeClient({
+      apiKey: 'k',
+      fetchImpl: fetchImpl as never,
+      onUsage,
+    });
+    const result = await client.systemOne({ state: 's', questions: {} });
+    expect(onUsage).toHaveBeenCalledTimes(1);
+    expect(onUsage.mock.calls[0]?.[0]).toMatchObject({ inputTokens: 99, model: 'jev-1.13.0' });
+    // An accounting sink must not be able to fail the judgment it accounts for.
+    expect(result.answers['q']).toEqual({ type: 'noul', noul: 0.5 });
   });
 });

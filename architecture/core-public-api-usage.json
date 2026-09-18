@@ -149,9 +149,9 @@
       "runtimeOrMixed": 13
     },
     "@wrongstack/core/skills": {
-      "files": 10,
+      "files": 11,
       "typeOnly": 3,
-      "runtimeOrMixed": 8
+      "runtimeOrMixed": 9
     },
     "@wrongstack/core/statusline": {
       "files": 23,
@@ -204,14 +204,14 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 1,
+      "files": 4,
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 591,
+      "files": 592,
       "typeOnly": 57,
-      "runtimeOrMixed": 561
+      "runtimeOrMixed": 562
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -9748,6 +9748,12 @@
     },
     {
       "specifier": "@wrongstack/core/skills",
+      "file": "packages/cli/tests/skill-suggest-eval-fixtures.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
       "file": "packages/tools/src/skill.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -17770,7 +17776,25 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/config-doctor.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/services/dispatch-classifier.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -19091,6 +19115,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/tools-skills.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

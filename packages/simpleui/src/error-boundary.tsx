@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { error, attempt: 0 };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.warn(
       JSON.stringify({
         level: 'warn',
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   static displayName = 'ErrorBoundary';
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (!this.state.error) return this.props.children;
     return (
       this.props.fallback ?? (

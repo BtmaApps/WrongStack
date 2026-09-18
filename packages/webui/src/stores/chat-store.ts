@@ -24,7 +24,6 @@ import {
   type ChatLaneData,
   chatLane,
   DEFAULT_LANE_ID,
-  disposeLane,
   EMPTY_LANE,
   overrideLaneActions,
   setActiveLane,
@@ -220,10 +219,3 @@ export const useChatStore: ChatStoreFacade = Object.assign(
   { getState, getInitialState: getState, setState, subscribe, persist: useChatLanes.persist },
 );
 
-/**
- * Retire a lane whose tab was closed. Frees its transcript, queue and timers —
- * a closed tab must not keep accruing memory or fire deferred bubbles.
- */
-function closeChatLane(sessionId: string): void {
-  disposeLane(sessionId);
-}

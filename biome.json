@@ -119,6 +119,20 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "packages/webui/src/index.css",
+        "packages/webui-hq/src/index.css",
+        "packages/simpleui/src/styles.css"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
     }
   ]
 }

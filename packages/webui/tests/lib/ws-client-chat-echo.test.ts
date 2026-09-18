@@ -211,11 +211,14 @@ describe('WrongStackWebSocketClient echo-suppression sweep (RAM-leak audit 2026-
     vi.setSystemTime(new Date('2026-08-16T12:00:00Z'));
     const client = new WrongStackWebSocketClient('ws://127.0.0.1:3457');
     // The sweep state is private; the regression test needs to observe the
-    // timer lifecycle directly (arming, sharing, self-stop, re-arm).
-    const internals = client as unknown as {
+    // timer lifecycle directly (arming, sharing, self-stop, re-arm). It reads
+    // the state on its OWNER, `WsClientEchoSuppression`, rather than through
+    // forwarding accessors on the client: those accessors exist for nothing
+    // else, so they read as dead code to every unused-symbol check.
+    const internals = (client as unknown as { echoSuppression: {
       suppressedChatEchoes: Map<string, number>;
       echoSweepTimer: ReturnType<typeof setInterval> | null;
-    };
+    } }).echoSuppression;
 
     client.listTools({ echoToChat: false, requestId: 'rid-1' });
     client.listTools({ echoToChat: false, requestId: 'rid-2' });

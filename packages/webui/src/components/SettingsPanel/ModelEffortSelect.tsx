@@ -1,6 +1,5 @@
 import { useAppTranslation } from '@/i18n';
 import {
-  EFFORT_LABEL_KEYS,
   effortLabelKey,
   effortNotAdvertised,
   resolveEffortOptions,

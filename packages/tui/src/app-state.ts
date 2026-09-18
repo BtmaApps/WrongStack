@@ -653,8 +653,8 @@ export type State = {
    * Active pre-refine grace countdown. Set after the user submits a prompt
    * that passes the refiner gate but BEFORE the refiner LLM call starts.
    * The user sees a "refining in Ns…" panel and can send as-is (any key),
-   * cancel back to the composer (Esc), or let the timer expire to proceed
-   * into normal refinement. Resolves to proceed / skip / cancel. Null when
+   * cancel back to the composer with the draft restored (Esc or Backspace),
+   * or let the timer expire to proceed into normal refinement. Resolves to proceed / skip / cancel. Null when
    * no countdown is active.
    */
   refineCountdown: {

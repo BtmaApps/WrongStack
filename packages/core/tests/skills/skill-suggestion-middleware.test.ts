@@ -193,16 +193,19 @@ describe('createSkillSuggestionSetup', () => {
     ).toBeUndefined();
   });
 
-  it('stays off when enabled without a key, and says so at debug level only', () => {
-    const debug = vi.fn();
+  it('stays off when enabled without a key, and says so at warn level', () => {
+    // This used to be a debug line, which in practice was silence: a switch
+    // the operator turned on did nothing and nothing said why. Suppression
+    // after the first message is covered in skill-suggest-setup-warning.test.ts.
+    const warn = vi.fn();
     const mw = createSkillSuggestionSetup({
       config: configWith({ enabled: true }),
       skillLoader: stubLoader,
-      logger: { debug, info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never,
+      logger: { debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() } as never,
       env: {},
     });
     expect(mw).toBeUndefined();
-    expect(debug).toHaveBeenCalledWith(expect.stringContaining('TYPESAFE_API_KEY'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('TYPESAFE_API_KEY'));
   });
 
   it('installs when enabled with a key from the environment', () => {

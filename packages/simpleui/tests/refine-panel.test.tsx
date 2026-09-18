@@ -14,6 +14,7 @@ interface Handlers {
   onRetryFallback: (ref: string) => void;
   onStartRefine: () => void;
   onSendEdited: (text: string) => void;
+  onEditInComposer: () => void;
 }
 
 function makeState(overrides: Partial<RefineState> = {}): RefineState {
@@ -36,6 +37,7 @@ function renderPanel(
     onRetryFallback: vi.fn(),
     onStartRefine: vi.fn(),
     onSendEdited: vi.fn(),
+    onEditInComposer: vi.fn(),
     ...overrides,
   };
   const host = document.createElement('div');
@@ -52,6 +54,7 @@ function renderPanel(
           onRetryFallback={handlers.onRetryFallback}
           onStartRefine={handlers.onStartRefine}
           onSendEdited={handlers.onSendEdited}
+          onEditInComposer={handlers.onEditInComposer}
         />,
       ),
     );
@@ -110,6 +113,17 @@ describe('RefinePanel — countdown face', () => {
     const { host, handlers } = renderPanel(makeState({ status: 'countdown' }));
     click(findButton(host, 'Send as-is'));
     expect(handlers.onDecision).toHaveBeenCalledWith('original');
+    expect(handlers.onStartRefine).not.toHaveBeenCalled();
+  });
+
+  // The countdown is the only face whose text lives nowhere else — the
+  // composer was flushed on submit — so "Edit" must hand it back instead of
+  // sending it. It is the button twin of the global Escape restore.
+  it('"Edit" hands the message back to the composer without sending', () => {
+    const { host, handlers } = renderPanel(makeState({ status: 'countdown' }));
+    click(findButton(host, 'Edit'));
+    expect(handlers.onEditInComposer).toHaveBeenCalledTimes(1);
+    expect(handlers.onDecision).not.toHaveBeenCalled();
     expect(handlers.onStartRefine).not.toHaveBeenCalled();
   });
 

@@ -14,7 +14,6 @@ import {
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import type { SessionHistoryEntry } from '@/stores';
-import { useUIStore } from '@/stores';
 import { AutonomyPicker } from '../AutonomyPicker';
 import { ContextFillBar } from '../ContextBar';
 import { ContextModePicker } from '../ContextModePicker';

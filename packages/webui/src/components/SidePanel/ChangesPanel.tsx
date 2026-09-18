@@ -1,5 +1,4 @@
 import {
-  Check,
   GitCommitHorizontal,
   GitCompare,
   Loader2,

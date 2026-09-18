@@ -160,6 +160,10 @@ export interface VizState {
 export const NODE_COLORS: Record<string, string> = {
   provider: 'hsl(var(--info))',
   agent: 'hsl(var(--primary))',
+  // `VizNode['kind']` has always included 'coordinator' and `inferKind` returns
+  // it for a leader/coordinator source, but this table had no entry for it — so
+  // every coordinator node came out with `color: undefined`.
+  coordinator: 'hsl(var(--accent-foreground))',
   tool: 'hsl(var(--warning))',
   mailbox: 'hsl(var(--success))',
   session: 'hsl(var(--primary))',

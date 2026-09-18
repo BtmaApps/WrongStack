@@ -51,6 +51,9 @@ interface ComposerProps {
   onRefineRetryFallback: (ref: string) => void;
   onRefineStartNow: () => void;
   onRefineSendEdited: (text: string) => void;
+  /** Countdown "Edit": hand the message back to the composer instead of
+   *  sending it — the button twin of the global Escape restore. */
+  onRefineEditInComposer: () => void;
   preRefineSeconds?: number;
   // Image attachment
   attachedImages: { id: string; data: string; mime: string; name: string }[];
@@ -98,6 +101,7 @@ export function Composer({
   onRefineRetryFallback,
   onRefineStartNow,
   onRefineSendEdited,
+  onRefineEditInComposer,
   preRefineSeconds,
   attachedImages,
   onAttachImages,
@@ -200,6 +204,7 @@ export function Composer({
           onRetryFallback={onRefineRetryFallback}
           onStartRefine={onRefineStartNow}
           onSendEdited={onRefineSendEdited}
+          onEditInComposer={onRefineEditInComposer}
           preRefineSeconds={preRefineSeconds}
         />
       )}

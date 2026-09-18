@@ -42,6 +42,7 @@ import { dispatchSimplePanel, onPanelActivation } from './lib/panel-events.js';
 import { onPersistedWriteFailure } from './lib/persisted.js';
 import { type QueuedItem, removeQueuedAt } from './lib/queue-model.js';
 import type { RefineState } from './lib/refine-model.js';
+import { restoreRefineToComposer } from './lib/refine-restore.js';
 import {
   compactTokens,
   isIncomingMailboxPayload,
@@ -484,6 +485,24 @@ export function SimpleUiSession() {
     | undefined
   >(undefined);
   decideConfirmRef.current = decideConfirm;
+
+  /** Countdown "Edit": hand the message back to the composer instead of
+   *  sending it. The panel is the only place the text lives at that point
+   *  (submitWith flushed draft + images before the round-trip), so this runs
+   *  the same restore the global Escape shortcut does — one path, two
+   *  triggers, no drift. */
+  const refineEditInComposer = useCallback(() => {
+    restoreRefineToComposer({
+      refineStateRef,
+      setRefineState,
+      refineEpochRef,
+      refineStartFiredRef,
+      draftRef,
+      setDraft,
+      setAttachedImages,
+      textareaRef,
+    });
+  }, [setRefineState, setDraft, setAttachedImages]);
 
   useGlobalShortcuts({
     socketRef,
@@ -1086,6 +1105,7 @@ export function SimpleUiSession() {
               onRefineRetryFallback={refineRetryFallback}
               onRefineStartNow={refineStartNow}
               onRefineSendEdited={refineSendEdited}
+              onRefineEditInComposer={refineEditInComposer}
               preRefineSeconds={prefsRef.current.preRefineSeconds}
               attachedImages={attachedImages}
               onAttachImages={attachImages}

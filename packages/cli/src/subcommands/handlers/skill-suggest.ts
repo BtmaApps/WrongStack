@@ -30,6 +30,7 @@ import {
   unknownGoldLabels,
 } from '@wrongstack/core/skills';
 import type { Config } from '@wrongstack/core/types';
+import { estimateTypeSafeCostUsd } from '@wrongstack/core/typesafe';
 import { color } from '@wrongstack/core/utils';
 import type { SubcommandHandler } from '../contracts.js';
 
@@ -172,7 +173,13 @@ async function runPreview(input: PreviewInput): Promise<number> {
       `  ${color.yellow('suggests nothing')} ${color.dim(`(${stopReason(trace, gateThreshold, fitsThreshold)})`)}`,
     );
   }
-  write(color.dim(`  ${trace.requests} request(s), ${elapsed}ms`));
+  write(
+    color.dim(
+      `  ${trace.requests} request(s), ${elapsed}ms, ${trace.inputTokens} input tokens ` +
+        `(~$${estimateTypeSafeCostUsd(trace.inputTokens).toFixed(6)})` +
+        (trace.models.length > 0 ? ` · answered by ${trace.models.join(', ')}` : ''),
+    ),
+  );
   write('');
   return 0;
 }
@@ -251,6 +258,26 @@ async function runEval(input: EvalInput): Promise<number> {
     // gate, and a trace that stopped at the gate cannot answer that.
     trace: await input.suggester.explain(request.text, undefined, { alwaysRerank: input.sweep }),
   }));
+
+  // What this run actually cost, and which model version produced the numbers
+  // a threshold is about to be chosen from. `jev-latest` is an alias: a sweep
+  // table that cannot name its version is a calibration with no date on it.
+  const inputTokens = traces.reduce((sum, row) => sum + row.trace.inputTokens, 0);
+  const models = [...new Set(traces.flatMap((row) => row.trace.models))];
+  write(
+    color.dim(
+      `  spent ${inputTokens} input tokens (~$${estimateTypeSafeCostUsd(inputTokens).toFixed(4)})` +
+        (models.length > 0 ? ` · answered by ${models.join(', ')}` : ''),
+    ),
+  );
+  if (models.length > 1) {
+    write(
+      color.yellow(
+        '  Two model versions answered this run — the alias moved mid-run; re-run before trusting the sweep.',
+      ),
+    );
+  }
+  write('');
 
   const failed = traces.filter((row) => row.trace.stop === 'error').length;
   if (failed > 0) {

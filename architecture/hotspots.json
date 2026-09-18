@@ -283,7 +283,7 @@
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
-      "lines": 1058,
+      "lines": 1088,
       "relativeImports": 45
     },
     "packages/sage/src/store-helpers.ts": {
@@ -311,8 +311,8 @@
       "relativeImports": 18
     },
     "packages/simpleui/src/simple-ui-session.tsx": {
-      "lines": 1101,
-      "relativeImports": 51
+      "lines": 1121,
+      "relativeImports": 52
     },
     "packages/tools/src/bash.ts": {
       "lines": 849,
@@ -495,7 +495,7 @@
       "relativeImports": 0
     },
     "packages/webui/src/components/SidePanel/SkillsList.tsx": {
-      "lines": 800,
+      "lines": 803,
       "relativeImports": 0
     },
     "packages/webui/src/components/SkillDetailView.tsx": {
@@ -523,7 +523,7 @@
       "relativeImports": 4
     },
     "packages/webui/src/stores/fleet-store.ts": {
-      "lines": 996,
+      "lines": 1000,
       "relativeImports": 2
     },
     "packages/webui/src/stores/local-prefs.ts": {
@@ -555,7 +555,7 @@
       "relativeImports": 2
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
-      "lines": 1015,
+      "lines": 1048,
       "relativeImports": 2
     },
     "packages/webui-server/src/server/memory-handlers.ts": {

@@ -17,7 +17,12 @@
 import type { DispatchClassifier } from '@wrongstack/core/coordination';
 import { makeLLMClassifier, makeTypeSafeDispatchClassifier } from '@wrongstack/core/coordination';
 import type { Config } from '@wrongstack/core/types';
-import { resolveTypeSafeClient } from '@wrongstack/core/typesafe';
+import {
+  resolveTypeSafeAccount,
+  type WarnSink,
+  warnFeatureUnusable,
+  warnOnce,
+} from '@wrongstack/core/typesafe';
 import type { CommitLLMProvider } from './commit-message.js';
 
 /**
@@ -71,18 +76,36 @@ export function makeDispatchClassifier(deps: {
   provider: CommitLLMProvider;
   model: string;
   env?: NodeJS.ProcessEnv | undefined;
+  /**
+   * Where the one-time "you asked for this and it is not running" line goes.
+   * Only `warn` is required; `debug` carries per-request token accounting when
+   * the host has somewhere to put it.
+   */
+  logger?: (WarnSink & { debug?(message: string): void }) | undefined;
 }): DispatchClassifier {
   const dispatch = deps.config.fleet?.dispatch;
   if (dispatch?.typesafeClassifier === true) {
-    const resolved = resolveTypeSafeClient({ config: deps.config, env: deps.env });
-    if ('client' in resolved) {
+    const account = resolveTypeSafeAccount({
+      config: deps.config,
+      env: deps.env,
+      onUsage: (usage) =>
+        deps.logger?.debug?.(
+          `dispatch classifier: ${usage.inputTokens} input tokens (${usage.model ?? 'unknown model'})`,
+        ),
+      onDisabled: (reason) => warnOnce(deps.logger, reason),
+    });
+    if (account.status === 'ready') {
       return makeTypeSafeDispatchClassifier({
-        client: resolved.client,
+        client: account.client,
         model: deps.config.typesafe?.model,
         fitThreshold: dispatch.fitThreshold,
         minConfidence: dispatch.minConfidence,
       });
     }
+    // Falling back to the prose classifier keeps the routing the user already
+    // had — but they asked for the typed one, so say so once. Without this the
+    // only difference a missing key makes is worse routing, silently.
+    warnFeatureUnusable(deps.logger, 'fleet.dispatch.typesafeClassifier', account.reason);
   }
   return makeProviderClassifier(deps.provider, deps.model);
 }

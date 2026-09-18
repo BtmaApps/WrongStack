@@ -210,6 +210,56 @@ describe('RefinePanel — countdown phase', () => {
   });
 });
 
+describe('RefinePanel — countdown Escape', () => {
+  // The countdown is the one face whose text lives ONLY in the panel (the
+  // composer was cleared on submit), and it binds no keys of its own. Escape
+  // must therefore reach the same cancel path as the header's X so the
+  // message goes back into the input instead of being sent or lost.
+
+  it('Escape fires onDecision("cancel") during the countdown', () => {
+    const onDecision = vi.fn();
+    renderCountdown({ status: 'countdown', onDecision });
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onDecision).toHaveBeenCalledWith('cancel');
+    expect(onDecision).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape stops the countdown so onStartRefine never fires', () => {
+    vi.useFakeTimers();
+    const onStartRefine = vi.fn();
+    renderCountdown({ status: 'countdown', onStartRefine });
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    act(() => vi.advanceTimersByTime(5_000));
+
+    expect(onStartRefine).not.toHaveBeenCalled();
+  });
+
+  it('ignores an Escape another handler already consumed', () => {
+    const onDecision = vi.fn();
+    renderCountdown({ status: 'countdown', onDecision });
+
+    const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+
+    expect(onDecision).not.toHaveBeenCalled();
+  });
+
+  it('does not bind Escape once the refine request is in flight', () => {
+    // A late refine_result would re-open a panel dismissed here, so the
+    // in-flight face keeps its own "cancel & send original" affordance.
+    const onDecision = vi.fn();
+    renderCountdown({ status: 'refining', onDecision });
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onDecision).not.toHaveBeenCalled();
+  });
+});
+
 describe('RefinePanel — refining state cancel button', () => {
   it('shows "Cancel & send original" and fires onDecision("original")', () => {
     const onDecision = vi.fn();

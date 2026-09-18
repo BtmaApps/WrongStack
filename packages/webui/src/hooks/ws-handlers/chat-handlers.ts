@@ -33,19 +33,6 @@ function wireAgentName(msg: WSServerMessage): string | undefined {
   return typeof p?.agentName === 'string' && p.agentName.length > 0 ? p.agentName : undefined;
 }
 
-const chatHandlers = {
-  handleIterationStarted,
-  handleTextDelta,
-  handleThinkingDelta,
-  handleToolStarted,
-  handleToolProgress,
-  handleToolExecuted,
-  handleToolConfirmNeeded,
-  handleToolConfirmResolved,
-  handleRunResult,
-  handleSessionRunState,
-};
-
 export const chatHandlerMap: Partial<Record<string, (msg: WSServerMessage) => void>> = {
   'iteration.started': handleIterationStarted,
   'provider.text_delta': handleTextDelta,
@@ -530,7 +517,7 @@ export function handleRunResult(msg: WSServerMessage) {
     }
     if (lastAssistantIdx !== -1) {
       const sessionCost = meta?.data.cost ?? 0;
-      chat.updateMessage(all[lastAssistantIdx]?.id, {
+      chat.updateMessage(expectDefined(all[lastAssistantIdx]).id, {
         runSummary: {
           iterations,
           tools: toolCount,

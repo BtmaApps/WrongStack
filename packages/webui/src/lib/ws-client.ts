@@ -164,18 +164,6 @@ class WrongStackWebSocketClientBase {
    */
   private echoSuppression = new WsClientEchoSuppression();
 
-  private get suppressedChatEchoes(): Map<string, number> {
-    return this.echoSuppression.suppressedChatEchoes;
-  }
-
-  private get echoSweepTimer(): ReturnType<typeof setInterval> | null {
-    return this.echoSuppression.echoSweepTimer;
-  }
-
-  private set echoSweepTimer(timer: ReturnType<typeof setInterval> | null) {
-    this.echoSuppression.echoSweepTimer = timer;
-  }
-
   private protocolCapabilities = new Set<string>();
   private protocolVersion: number | null = null;
 

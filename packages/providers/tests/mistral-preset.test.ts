@@ -341,8 +341,10 @@ describe('Mistral preset', () => {
       },
       { capabilities: mistralWireFormat.capabilities },
     );
-    const [assistant, tool] = body['messages'] as Array<Record<string, unknown>>;
-    const id = (assistant?.['tool_calls'] as Array<{ id: string }>)[0]?.id;
+    const messages = body['messages'] as Array<Record<string, unknown>>;
+    const assistant = messages[0] as Record<string, unknown>;
+    const tool = messages[1] as Record<string, unknown>;
+    const id = (assistant['tool_calls'] as Array<{ id: string }>)[0]?.id;
     expect(id).toMatch(/^[A-Za-z0-9]{9}$/);
     expect(tool?.['tool_call_id']).toBe(id);
     expect(mistralToolCallId('abcDEF123')).toBe('abcDEF123');

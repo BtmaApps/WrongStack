@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WSSystemPromptInfo, WSSystemPromptVariantInfo } from '../types/server-message';
+import type { WSSystemPromptInfo } from '../types/server-message';
 
 /**
  * Identity-prompt size for this session: which variants exist, what each costs
@@ -74,11 +74,6 @@ export const useSystemPromptStore = create<SystemPromptState>()((set) => ({
   closePicker: () => set({ pickerOpen: false, pickerStartsSession: false }),
   markPrompted: () => set({ promptedThisSession: true }),
 }));
-
-/** Variant list with a stable fallback so the picker can render before the first reply. */
-function systemPromptVariants(info: WSSystemPromptInfo | null): WSSystemPromptVariantInfo[] {
-  return info?.variants ?? [];
-}
 
 /**
  * The variant live in a given tab, falling back to the last catalogue reply for

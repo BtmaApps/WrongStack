@@ -74,8 +74,9 @@ export async function refineSubmittedPrompt(
 
   // ── Pre-refine grace countdown ───────────────────────────────────
   // Give the user a few seconds to bail before the refiner LLM call
-  // starts. Any key sends as-is (skip); Esc cancels back to the
-  // composer; countdown expiry proceeds into normal refinement.
+  // starts. Any key sends as-is (skip); Esc or Backspace cancels back to
+  // the composer (draft restored); countdown expiry proceeds into normal
+  // refinement.
   // 0 = skip the countdown entirely (go straight to refinement).
   if (host.preRefineSeconds > 0) {
     let countdownInfo: NonNullable<State['refineCountdown']> | undefined;

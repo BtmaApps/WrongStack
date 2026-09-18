@@ -131,7 +131,7 @@ describe('the gate is wired at the handshake, not after it (WS-001)', () => {
   it('does not call gate.check from the connection handler', () => {
     // The check moved; a copy left behind on `connection` would restore the
     // per-attempt allocation while looking harmless next to the new one.
-    const connectionHandler = /wss\.on\('connection',([\s\S]*?)\n  \}\);/.exec(SOURCE);
+    const connectionHandler = /wss\.on\('connection',([\s\S]*?)\n {2}\}\);/.exec(SOURCE);
     expect(connectionHandler, 'expected a wss.on(connection, …) handler to inspect').not.toBeNull();
     expect(connectionHandler![1]).not.toContain('gate.check');
   });

@@ -324,7 +324,9 @@ const plugin: Plugin = {
         outbound,
         getDefaultChatId: () => runtimeCfg.notifyChatId,
         getAllowedOutboundChatIds: () => runtimeCfg.allowedOutboundChats,
-        maxMessageLength: runtimeCfg.maxMessageLength,
+        // Live getter: maxMessageLength is a hot-reloadable key, and a
+        // setup-time snapshot would keep the tool truncating at the stale cap.
+        maxMessageLength: () => runtimeCfg.maxMessageLength,
         log,
       });
       const readTool = makeTelegramReadTool({ bot });

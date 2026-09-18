@@ -408,11 +408,3 @@ export function NextStepsBar({
     </div>
   );
 }
-
-/**
- * Hook-friendly version: takes raw markdown content and returns the parse
- * result, including the steps array and the content with the block stripped.
- */
-function useNextSteps(content: string): ParseNextStepsResult {
-  return useMemo(() => parseNextSteps(content), [content]);
-}

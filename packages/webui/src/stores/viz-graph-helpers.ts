@@ -147,7 +147,7 @@ export function applyEventToGraph(
     label: event.label,
     status: inferStatus(event.kind),
     activity: 1.0,
-    color: event.color ?? NODE_COLORS[inferKind(event)],
+    color: event.color ?? NODE_COLORS[inferKind(event)] ?? NODE_COLORS.agent,
     lastSeenAt: now,
   };
   const existingSource = state.nodes.get(sourceId);
@@ -184,7 +184,7 @@ export function applyEventToGraph(
       label: targetId,
       status: inferStatus(event.kind),
       activity: 0.8,
-      color: event.color ?? NODE_COLORS[inferKind(event, true)],
+      color: event.color ?? NODE_COLORS[inferKind(event, true)] ?? NODE_COLORS.agent,
       lastSeenAt: now,
     };
     const existingTarget = state.nodes.get(targetId);

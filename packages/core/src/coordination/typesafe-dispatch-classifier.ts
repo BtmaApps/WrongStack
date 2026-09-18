@@ -137,10 +137,10 @@ export function makeTypeSafeDispatchClassifier(
 
     const which = result.answers[WHICH];
     const anyFits = result.answers[ANY_FITS];
-    if (!which || which.type !== 'choice') return null;
+    if (which?.type !== 'choice') return null;
     // A missing fit answer is not permission to proceed: without it there is
     // nothing standing between a task no agent covers and the nearest one.
-    if (!anyFits || anyFits.type !== 'noul') return null;
+    if (anyFits?.type !== 'noul') return null;
 
     if (anyFits.noul < fitThreshold) return null;
     if (which.confidence < minConfidence) return null;

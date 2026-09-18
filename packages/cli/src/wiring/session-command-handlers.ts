@@ -174,6 +174,10 @@ export function createSessionCommandHandlers(
       config: input.getConfig(),
       provider: input.context.provider as CommitLLMProvider,
       model: input.context.model,
+      // Carries the one-time "typesafeClassifier is on but has no account"
+      // line. Without a sink here that warning has nowhere to go and the
+      // switch stays silently inert, which is the bug this replaced.
+      logger: input.logger,
     }),
   };
 }

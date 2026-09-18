@@ -173,15 +173,17 @@ export class SqliteMemoryPort extends SqliteSageStore implements MemoryPort {
     listSagePage: (options) => super.listSagePage(options),
   };
 
-  private async importLegacyFiles(files: string[]) {
-    const result = { imported: 0, skipped: 0, files: 0 };
-    for (const file of files) {
-      const imported = await super.importLegacy(await fs.readFile(file, 'utf8'));
-      result.imported += imported.imported;
-      result.skipped += imported.skipped;
-      result.files++;
-    }
-    return result;
+  private importLegacyFiles(files: string[]) {
+    return this.runCompositeOperation(async () => {
+      const result = { imported: 0, skipped: 0, files: 0 };
+      for (const file of files) {
+        const imported = await super.importLegacy(await fs.readFile(file, 'utf8'));
+        result.imported += imported.imported;
+        result.skipped += imported.skipped;
+        result.files++;
+      }
+      return result;
+    });
   }
 
   override withTraceId(traceId: string): this {

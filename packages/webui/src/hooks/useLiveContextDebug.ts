@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWSClient } from '@/lib/ws-client';
 import { isActiveSessionMessage } from '@/lib/ws-client-utils';
 import { useActiveSessionId } from '@/stores';
-import type { WSServerMessage } from '@/types';
 import { useServerMessage } from './useServerMessage';
 
 const FIRST_SNAPSHOT_TIMEOUT_MS = 5_000;

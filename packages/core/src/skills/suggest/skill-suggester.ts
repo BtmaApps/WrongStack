@@ -108,6 +108,18 @@ export interface SkillSuggestionTrace {
   stop: SuggestionStop;
   /** TypeSafe requests actually issued (0, 1 or 2). */
   requests: number;
+  /**
+   * Distinct model ids the service reported across this request's passes.
+   *
+   * `jev-latest` is an ALIAS and the version behind it moves. A threshold
+   * chosen on a trace that cannot name the version it was measured against is
+   * silent drift: the sweep table stays green while the thing it described
+   * changes underneath it. Usually one entry; two would mean the alias moved
+   * mid-run, which is itself worth seeing.
+   */
+  models: string[];
+  /** Input tokens billed across this request's passes. Output is free. */
+  inputTokens: number;
 }
 
 export interface ExplainOptions {
@@ -152,6 +164,8 @@ function emptyTrace(stop: SuggestionStop): SkillSuggestionTrace {
     suggestion: undefined,
     stop,
     requests: 0,
+    models: [],
+    inputTokens: 0,
   };
 }
 
@@ -221,6 +235,8 @@ export function createSkillSuggester(opts: SkillSuggesterOptions): SkillSuggeste
         gateValues: wide.values,
         ranked: wide.ranked.slice(0, MAX_RANKED_KEPT),
         requests: 1,
+        models: wide.model ? [wide.model] : [],
+        inputTokens: wide.inputTokens,
       };
       const gatePassed = wide.gate >= gateThreshold;
       if (!gatePassed && !options?.alwaysRerank) return trace;
@@ -232,6 +248,12 @@ export function createSkillSuggester(opts: SkillSuggesterOptions): SkillSuggeste
       const reranked = await rerank(opts, roster, shortlist, trimmed, excerptChars, signal);
       trace.requests = 2;
       if (!reranked) return { ...trace, stop: 'rerank-failed' };
+      // Pass 2 is billed whether or not it changes the verdict, and the alias
+      // can in principle resolve differently between the two calls.
+      if (reranked.model && !trace.models.includes(reranked.model)) {
+        trace.models.push(reranked.model);
+      }
+      trace.inputTokens += reranked.inputTokens;
       trace.fits = reranked.fits;
       trace.winner = reranked.winner;
 
@@ -318,6 +340,9 @@ interface WideResult {
   gate: number;
   /** Raw per-question gate answers, before orientation. */
   values: Record<string, number>;
+  /** What the service said answered, and what it charged for.  */
+  model: string | undefined;
+  inputTokens: number;
 }
 
 /** Pass 1: one Choice over the whole roster plus the three gate Nouls. */
@@ -371,13 +396,21 @@ async function rankWide(
     .map(([name, probability]) => ({ name, probability }));
   if (ranked.length === 0) return undefined;
 
-  return { ranked, values, gate: oriented.reduce((sum, v) => sum + v, 0) / oriented.length };
+  return {
+    ranked,
+    values,
+    gate: oriented.reduce((sum, v) => sum + v, 0) / oriented.length,
+    model: result.model,
+    inputTokens: result.usage.inputTokens,
+  };
 }
 
 interface RerankResult {
   winner: string;
   /** Per-candidate "does this skill do the thing asked for" probability. */
   fits: Record<string, number>;
+  model: string | undefined;
+  inputTokens: number;
 }
 
 /** Pass 2: the same question over the shortlist, with real evidence this time. */
@@ -428,7 +461,12 @@ async function rerank(
   }
   if (Object.keys(fits).length === 0) return undefined;
 
-  return { winner: which.choice, fits };
+  return {
+    winner: which.choice,
+    fits,
+    model: result.model,
+    inputTokens: result.usage.inputTokens,
+  };
 }
 
 async function readExcerpt(loader: SkillLoader, name: string, chars: number): Promise<string> {

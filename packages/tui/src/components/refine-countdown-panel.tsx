@@ -24,9 +24,10 @@ interface RefineCountdownPanelProps {
  * Pre-refine grace countdown ("about to refine — last chance to bail").
  *
  * Shown for the window between submit and the refiner's first LLM call:
- * Enter starts refining immediately, any other key sends the message
- * unchanged (skip), Esc cancels back to the composer, and expiry
- * proceeds into the normal refine flow. Mirrors the
+ * Enter starts refining immediately, Backspace/Delete or Esc cancels back
+ * to the composer (the submitted text is restored as the draft), any other
+ * key sends the message unchanged (skip), and expiry proceeds into the
+ * normal refine flow. Mirrors the
  * WebUI/SimpleUI RefinePanel's 'countdown' face.
  */
 export function RefineCountdownPanel({
@@ -72,10 +73,16 @@ export function RefineCountdownPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    if (key.escape) onDecision('cancel');
+    // Backspace/Delete is the "oops, let me edit that" key: like Esc it
+    // cancels the turn, which puts the submitted text back in the composer.
+    // Without this it fell into the any-key branch and SENT the message
+    // as-is — the opposite of what the keystroke means. Some terminals
+    // deliver DEL/BS as raw bytes without the key flag, so check both.
+    const isBackspace = key.backspace || key.delete || input === '\x7f' || input === '\b';
+    if (key.escape || isBackspace) onDecision('cancel');
     else if (key.return) onDecision('proceed');
     else onDecision('skip');
   });
@@ -115,7 +122,9 @@ export function RefineCountdownPanel({
       </Box>
 
       <Box height={1} marginTop={1}>
-        <Text color={theme.textMuted}>Enter refines now · any key sends as-is · Esc cancels</Text>
+        <Text color={theme.textMuted}>
+          Enter refines now · Backspace edits · any key sends as-is · Esc cancels
+        </Text>
       </Box>
     </Box>
   );

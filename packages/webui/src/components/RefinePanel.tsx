@@ -263,6 +263,27 @@ export function RefinePanel({
     onDecision('cancel');
   };
 
+  // ── Escape on the countdown face → back to the composer ──────────────
+  // The countdown binds no other keys (its affordances are buttons), but the
+  // user's text lives ONLY in the panel at that point — the composer was
+  // cleared on submit — so Escape has to be able to hand it back the way the
+  // header's X does. Scoped to 'countdown': once the request is in flight a
+  // late refine_result would re-open the panel we just dismissed. There is
+  // deliberately no Backspace binding (the TUI has one): here focus stays in
+  // the real textarea, where Backspace is an editing key.
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
+  useEffect(() => {
+    if (status !== 'countdown') return;
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      handleCloseRef.current();
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [status]);
+
   /**
    * Copy the given text version into the chat input without submitting, then
    * close the panel. The parent keeps the copied text in the input so the

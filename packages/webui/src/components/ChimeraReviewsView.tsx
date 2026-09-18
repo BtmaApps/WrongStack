@@ -1,42 +1,29 @@
 import {
   AlertCircle,
   AlertTriangle,
-  Bug,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Clock,
-  ExternalLink,
   FileCode2,
-  FileText,
-  Filter,
   History,
-  Info,
   Loader2,
-  MessageSquare,
   Plus,
   RefreshCw,
   RotateCw,
   Search,
   Send,
   ShieldAlert,
-  Sparkles,
-  Tag,
-  User,
   XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
 import {
   useChimeraHubStore,
-  type ChimeraReportSummaryItem,
-  type FindingDetailItem,
 } from '@/stores/chimera-hub-store';
-import { useUIStore } from '@/stores/ui-store';
 import { EmptyState } from './ui/empty-state';
 
 function fmtTime(iso: string): string {
@@ -250,6 +237,13 @@ export function ChimeraReviewsView() {
             <span>Reports ({filteredReports.length})</span>
             {loading && <Loader2 className="h-3 w-3 animate-spin" />}
           </div>
+
+          {error && !loading && (
+            <div className="m-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="font-mono text-xs break-words text-destructive">{error}</p>
+            </div>
+          )}
 
           {filteredReports.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted-foreground">
@@ -725,6 +719,11 @@ export function ChimeraReviewsView() {
                 </button>
               </form>
             </div>
+          </div>
+        ) : detailLoading ? (
+          <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading report details…
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center p-8">
