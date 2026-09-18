@@ -58,6 +58,10 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (Node 24 runtime, pinned 2026-09-06)
         with:
           node-version: 22
+          # No install here, so there is no pnpm store to save. v5 enables the
+          # package-manager cache by default and its post step then fails the
+          # job on the missing path whenever the restore misses.
+          package-manager-cache: false
 
       # A pull request must not be able to waive its own gate. `pnpm audit`
       # reads `auditConfig.ignoreGhsas` from the branch under test, and
