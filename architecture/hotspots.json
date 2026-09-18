@@ -375,7 +375,7 @@
       "relativeImports": 14
     },
     "packages/tui/src/app.tsx": {
-      "lines": 999,
+      "lines": 1000,
       "relativeImports": 59
     },
     "packages/tui/src/components/agents-monitor.tsx": {
@@ -383,7 +383,7 @@
       "relativeImports": 13
     },
     "packages/tui/src/components/context-panel.tsx": {
-      "lines": 1014,
+      "lines": 1016,
       "relativeImports": 6
     },
     "packages/tui/src/components/history/code-block.tsx": {
@@ -399,7 +399,7 @@
       "relativeImports": 4
     },
     "packages/tui/src/components/settings-picker.tsx": {
-      "lines": 832,
+      "lines": 851,
       "relativeImports": 12
     },
     "packages/tui/src/components/sidebar-content.tsx": {

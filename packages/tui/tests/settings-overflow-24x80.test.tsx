@@ -13,17 +13,18 @@
  * a 24×80 fake terminal — the captured frame is exactly what a user
  * would see.
  */
-import { describe, expect, it } from 'vitest';
+
 import React from 'react';
-import { renderRealTty, settle } from './helpers/real-tty.js';
-import { DEFAULT_PANEL_POSITIONS, SETTINGS_PICKER_MAX_HEIGHT } from '../src/ui-contracts.js';
-import { SettingsPicker, settingsPickerJumpByName } from '../src/components/settings-picker.js';
+import { describe, expect, it } from 'vitest';
 import type { SettingsPickerProps } from '../src/components/settings-picker.js';
+import { SettingsPicker, settingsPickerJumpByName } from '../src/components/settings-picker.js';
 import {
   buildVisibleSectionHeaders,
   deriveSettingsSectionFieldStarts,
   type SettingsPickerRowData,
 } from '../src/components/settings-picker-row-list.js';
+import { DEFAULT_PANEL_POSITIONS, SETTINGS_PICKER_MAX_HEIGHT } from '../src/ui-contracts.js';
+import { renderRealTty, settle } from './helpers/real-tty.js';
 
 const ROWS = 24;
 const COLS = 80;
@@ -411,4 +412,25 @@ describe('settings picker section-header accounting contract', () => {
       expect(buildVisibleSectionHeaders(rows, fieldRowIndex, start, end)).toEqual(expectedHeaders);
     }
   });
+});
+
+describe('settings picker measured short viewport', () => {
+  it.each([0, 20, 60])(
+    'keeps field %i, title and close hint within an eight-row allocation',
+    async (field) => {
+      const view = renderRealTty(
+        <SettingsPicker {...baseProps({ field })} {...{ maxRows: 8, columns: 52 }} />,
+        { columns: 52, rows: 16 },
+      );
+      try {
+        await settle();
+        expect(view.lastFrame()).toContain('Settings');
+        expect(view.lastFrame()).toContain('Esc');
+        expect(view.lastFrame()).toContain('›');
+        expect(view.lines().length).toBeLessThanOrEqual(8);
+      } finally {
+        view.unmount();
+      }
+    },
+  );
 });

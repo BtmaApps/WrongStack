@@ -1,13 +1,28 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
+import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
+import { Box, Text } from '../ink.js';
 
 export interface FilePickerProps {
   query: string;
   matches: string[];
   selected: number;
+  maxRows?: number | undefined;
 }
 
-export function FilePicker({ query, matches, selected }: FilePickerProps): React.ReactElement {
+export function FilePicker({
+  query,
+  matches,
+  selected,
+  maxRows,
+}: FilePickerProps): React.ReactElement {
+  const { start, end, hasAbove, hasBelow } = useWindowedPicker({
+    total: matches.length,
+    selected,
+    maxRows,
+    chromeRows: 4,
+    markerRows: 2,
+    minVisible: 1,
+  });
   if (matches.length === 0) {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
@@ -17,13 +32,25 @@ export function FilePicker({ query, matches, selected }: FilePickerProps): React
   }
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text dimColor>@{query || '…'} — ↑/↓ select, Enter attach, Esc cancel</Text>
-      {matches.map((m, i) => (
-        <Text key={m} inverse={i === selected} {...(i === selected ? { color: 'cyan' } : {})}>
-          {i === selected ? '› ' : '  '}
+      <Text dimColor wrap="truncate-end">
+        @{query || '…'}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        ↑↓ · Enter attach · Esc cancel
+      </Text>
+      {hasAbove ? <Text dimColor>↑ {start} more</Text> : null}
+      {matches.slice(start, end).map((m, i) => (
+        <Text
+          key={m}
+          wrap="truncate-end"
+          inverse={start + i === selected}
+          {...(start + i === selected ? { color: 'cyan' } : {})}
+        >
+          {start + i === selected ? '› ' : '  '}
           {highlight(m, query)}
         </Text>
       ))}
+      {hasBelow ? <Text dimColor>↓ {matches.length - end} more</Text> : null}
     </Box>
   );
 }

@@ -291,7 +291,8 @@ describe('TUI structured user input prompt', () => {
     expect(view.lines().length).toBeLessThanOrEqual(14);
     expect(view.lastFrame()).toContain('QUESTION 1/8');
     expect(view.lastFrame()).toContain('SUBMIT LOCKED');
-    expect(view.lastFrame()).toContain('Tab category');
+    expect(view.lastFrame()).toContain('Tab');
+    expect(view.lastFrame()).toContain('Ctrl+C cancel');
     expect(view.lastFrame()).toContain('s submit');
     expect(view.lastFrame()).toContain('required answer(s) missing');
     const lockedRow = view.lines().findIndex((line) => line.includes('SUBMIT LOCKED'));

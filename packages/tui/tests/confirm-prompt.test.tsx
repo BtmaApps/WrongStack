@@ -333,3 +333,29 @@ describe('ConfirmPrompt', () => {
     view.unmount();
   });
 });
+
+describe('approval modifier isolation', () => {
+  it.each(['\x03', '\x19', '\x01', '\x14', '\x04', '\x1by'])(
+    'does not grant or deny permission for modified input %j',
+    (input) => {
+      const onDecision = vi.fn();
+      const onEnableYolo = vi.fn();
+      const view = render(
+        React.createElement(ConfirmPrompt, {
+          toolName: 'exec',
+          input: { command: 'echo test' },
+          suggestedPattern: 'exec',
+          onDecision,
+          onEnableYolo,
+        }),
+      );
+      try {
+        view.stdin.write(input);
+        expect(onDecision).not.toHaveBeenCalled();
+        expect(onEnableYolo).not.toHaveBeenCalled();
+      } finally {
+        view.unmount();
+      }
+    },
+  );
+});

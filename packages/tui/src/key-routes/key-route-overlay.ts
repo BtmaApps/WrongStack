@@ -113,6 +113,13 @@ export function routeEscClosePanels(ctx: KeyRouteContext, key: KeyEvent): boolea
       return true;
     }
     if (escSelfOwnedPanelOpen(ctx.state)) {
+      // Sidebar twins do not mount the bottom component's useInput handler.
+      const positions = effectivePanelPositions(ctx.state, ctx.getSettings?.());
+      if (ctx.state.worktreeMonitorOpen && positions.worktree === 'sidebar') {
+        ctx.dispatch({ type: 'toggleWorktreeMonitor' });
+      } else if (ctx.state.kanbanPanelOpen && positions.kanban === 'sidebar') {
+        ctx.dispatch({ type: 'toggleKanbanPanel' });
+      }
       ctx.lastEscAtRef.current = 0;
       return true;
     }

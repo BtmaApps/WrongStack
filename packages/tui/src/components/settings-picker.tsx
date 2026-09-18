@@ -191,6 +191,8 @@ export interface SettingsPickerProps {
    * for multi-line input buffers instead of assuming a constant.
    */
   inputHeight?: number | undefined;
+  maxRows?: number | undefined;
+  columns?: number | undefined;
   hint?: string | undefined;
   /** @internal Test seam for asserting the production row/header layout contract. */
   onLayoutComputed?:
@@ -267,6 +269,8 @@ export function SettingsPicker({
   wrongProxyEnabled,
   wrongProxyUrl,
   inputHeight,
+  maxRows,
+  columns,
   hint,
   onLayoutComputed,
 }: SettingsPickerProps): React.ReactElement {
@@ -633,11 +637,13 @@ export function SettingsPicker({
   // Content width inside the bordered, padded picker Box.
   // borderStyle="round" consumes 2 cols (left + right borders);
   // paddingX={1} consumes 2 more (1 col each side).
-  const contentWidth = Math.max(10, termCols - 4);
+  const contentWidth = Math.max(10, (columns ?? termCols) - 4);
+  const compact = maxRows !== undefined && maxRows < 12;
   // Match renderPickerRow's exact printable width: selection prefix + padded
   // label + padded value + detail. A fixed "2 lines at 80 cols" estimate
   // over-counted short rows and still left a large blank area in the box.
   const fieldLineCount = (fieldIdx: number): number => {
+    if (compact) return 1;
     const rowIdx = fieldRowIndex[fieldIdx];
     const row = rowIdx === undefined ? undefined : rows[rowIdx];
     const printableWidth =
@@ -660,7 +666,7 @@ export function SettingsPicker({
   const BORDER_ROWS = 2; // picker top + bottom borders
   // Title + legend/filter summary + footer. The keyboard legend wraps to a
   // second line below 64 content columns, so reserve that real extra row.
-  const BASE_CHROME_ROWS = contentWidth < 64 ? 4 : 3;
+  const BASE_CHROME_ROWS = 3;
 
   // Picker Box height (borders included). Leaves INPUT_ROWS for the
   // Input box and bottomChromeRows for StatusBar below.
@@ -669,7 +675,7 @@ export function SettingsPicker({
   // terminals from expanding the menu to the full available screen height.
   const pickerHeight = Math.min(
     SETTINGS_PICKER_MAX_HEIGHT,
-    Math.max(BORDER_ROWS, termRows - INPUT_ROWS - bottomChromeRows),
+    Math.max(BORDER_ROWS, maxRows ?? termRows - INPUT_ROWS - bottomChromeRows),
   );
   const innerHeight = pickerHeight - BORDER_ROWS;
 
@@ -696,6 +702,7 @@ export function SettingsPicker({
     for (let fieldIdx = start; fieldIdx < end; fieldIdx++) {
       lines += fieldLineCount(fieldIdx);
     }
+    if (compact) return lines;
     for (const secStart of sectionFieldStarts) {
       if (secStart >= start && secStart < end) lines++;
     }
@@ -713,13 +720,13 @@ export function SettingsPicker({
     const start = windowStartFor(fieldCount);
     const end = Math.min(start + fieldCount, totalFields);
     const scrollIndicatorRows = (start > 0 ? 1 : 0) + (end < totalFields ? 1 : 0);
-    const chromeRows = BASE_CHROME_ROWS + scrollIndicatorRows + (hint ? 1 : 0);
+    const chromeRows = BASE_CHROME_ROWS + scrollIndicatorRows + (hint && !compact ? 1 : 0);
     return countWindowLines(start, end) + chromeRows <= innerHeight;
   };
 
-  let lo = 3;
+  let lo = 1;
   let hi = totalFields;
-  let VISIBLE_FIELDS = Math.min(3, totalFields);
+  let VISIBLE_FIELDS = Math.min(1, totalFields);
   while (lo <= hi) {
     const mid = Math.floor((lo + hi) / 2);
     if (windowFits(mid)) {
@@ -744,8 +751,10 @@ export function SettingsPicker({
   );
   const FILTER_CHROME_ROWS = BASE_CHROME_ROWS + 2; // worst-case above + below indicators
   const FILTER_VISIBLE_FIELDS = Math.max(
-    3,
-    Math.floor((innerHeight - FILTER_CHROME_ROWS - (hint ? 1 : 0)) / maxFilteredFieldLines),
+    1,
+    Math.floor(
+      (innerHeight - FILTER_CHROME_ROWS - (hint && !compact ? 1 : 0)) / maxFilteredFieldLines,
+    ),
   );
   const filterMatchCount = rankedResults.length;
   const filterSelectedIdx = filterActive
@@ -774,16 +783,19 @@ export function SettingsPicker({
       height={pickerHeight}
       overflowY="hidden"
     >
-      <Text color="cyan" bold>
+      <Text color="cyan" bold wrap="truncate-end">
         ━━ Settings ━━
       </Text>
       {filterActive ? (
         <Text
+          wrap="truncate-end"
           color="yellow"
           bold
         >{`Filter: ${filter} (${filteredFieldIndices.length} match${filteredFieldIndices.length === 1 ? '' : 'es'})`}</Text>
       ) : (
-        <Text dimColor>↑/↓ field · ←/→ change + autosave · `/` to search · F5 to close</Text>
+        <Text dimColor wrap="truncate-end">
+          ↑↓ field · ←→ change · / find · Esc close
+        </Text>
       )}
       {filterActive && filterHasAbove ? (
         <Text
@@ -809,6 +821,7 @@ export function SettingsPicker({
         windowEnd={windowEnd}
         filterWindowStart={filterWindowStart}
         filterWindowEnd={filterWindowEnd}
+        compactWidth={compact ? contentWidth : undefined}
       />
       {filterActive && filterHasBelow ? (
         <Text
@@ -820,12 +833,18 @@ export function SettingsPicker({
           dimColor
         >{`  ↓ ${totalFields - windowEnd} field${totalFields - windowEnd === 1 ? '' : 's'} below`}</Text>
       ) : null}
-      <Text dimColor>
-        {configScope === 'project'
-          ? 'Persisted to <project>/.wrongstack/config.json'
-          : `Persisted to ${profileConfigPath}`}
+      <Text dimColor wrap="truncate-end">
+        {compact && hint
+          ? hint
+          : configScope === 'project'
+            ? 'Persisted to <project>/.wrongstack/config.json'
+            : `Persisted to ${profileConfigPath}`}
       </Text>
-      {hint ? <Text color="yellow">{hint}</Text> : null}
+      {hint && !compact ? (
+        <Text color="yellow" wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 }

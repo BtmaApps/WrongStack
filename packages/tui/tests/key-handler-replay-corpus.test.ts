@@ -374,3 +374,71 @@ describe('function panel keyboard ownership', () => {
     expect(fixture.dispatch).toHaveBeenCalledWith({ type: 'toggleTodosMonitor' });
   });
 });
+
+describe('sidebar panel and pointer cancellation ownership', () => {
+  it.each([
+    ['worktreeMonitorOpen', 'worktree', 'toggleWorktreeMonitor'],
+    ['kanbanPanelOpen', 'kanban', 'toggleKanbanPanel'],
+  ] as const)(
+    'Esc closes %s when its keyboard-owning bottom component is unmounted',
+    async (flag, panelId, action) => {
+      const settings = createTestState().settingsPicker;
+      const fixture = makeHandler(createTestState({ [flag]: true }), undefined, {
+        getSettings: () => ({
+          ...settings,
+          fleetChatVerbosity: 'full',
+          featureTokenSaving: 'off',
+          panelPositions: { ...settings.panelPositions, [panelId]: 'sidebar' },
+        }),
+      });
+      await fixture.handler('', key({ escape: true }));
+      expect(fixture.dispatch).toHaveBeenCalledWith({ type: action });
+      expect(fixture.runInterruptLadder).not.toHaveBeenCalled();
+    },
+  );
+
+  it('right-click goes through the picker Escape lifecycle before a fallback close', async () => {
+    const tryPickerKey = vi.fn(() => true);
+    const fixture = makeHandler(
+      createTestState({ authPanel: { ...createTestState().authPanel, open: true } }),
+      undefined,
+      { tryPickerKey },
+    );
+    await fixture.handler(
+      '',
+      key({
+        mouse: {
+          kind: 'press',
+          button: 'right',
+          x: 5,
+          y: 30,
+          wheel: 0,
+          shift: false,
+          meta: false,
+          ctrl: false,
+          motion: false,
+        },
+      }),
+    );
+    expect(tryPickerKey).toHaveBeenCalledWith('', expect.objectContaining({ escape: true }), false);
+    expect(fixture.dispatch).not.toHaveBeenCalledWith({ type: 'authClose' });
+  });
+});
+
+describe('operational panel composer ownership', () => {
+  it.each([
+    'cronMonitorOpen',
+    'connectionsPanelOpen',
+    'contextPanelOpen',
+    'goalKanbanPanelOpen',
+  ] as const)('%s cannot also edit or submit the composer', async (flag) => {
+    const fixture = makeHandler(createTestState({ [flag]: true, buffer: 'preserve', cursor: 8 }), {
+      buffer: 'preserve',
+      cursor: 8,
+    });
+    await fixture.handler('x', key());
+    await fixture.handler('', key({ return: true }));
+    expect(fixture.setDraft).not.toHaveBeenCalled();
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+});

@@ -87,23 +87,34 @@ export function ThemePicker({
       <Text color="cyan" bold>
         ━━ TUI Theme ━━
       </Text>
-      <Text dimColor>↑/↓ navigate · Enter apply · Esc cancel</Text>
+      <Text dimColor wrap="truncate-end">
+        ↑↓ · Enter apply · Esc cancel
+      </Text>
       {hasAbove ? <Text dimColor> … {start} more above</Text> : null}
       {visibleOptions.map((opt, j) => {
         const i = start + j;
         const isActive = opt.id === activeId;
         const isSelected = i === selected;
         return (
-          <Text key={opt.id} inverse={isSelected} {...(isSelected ? { color: 'cyan' } : {})}>
+          <Text
+            key={opt.id}
+            wrap="truncate-end"
+            inverse={isSelected}
+            {...(isSelected ? { color: 'cyan' } : {})}
+          >
             {isSelected ? '› ' : '  '}
             <Text bold>{opt.name.padEnd(21)}</Text>
-            {split ? null : <Text dimColor>{opt.description}</Text>}
             {isActive ? <Text color="green"> [active]</Text> : null}
+            {split ? null : <Text dimColor> {opt.description}</Text>}
           </Text>
         );
       })}
       {hasBelow ? <Text dimColor> … {options.length - end} more below</Text> : null}
-      {hint ? <Text color="yellow">{hint}</Text> : null}
+      {hint ? (
+        <Text color="yellow" wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 

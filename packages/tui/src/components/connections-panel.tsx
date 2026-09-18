@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  executeConnectionAction,
-  isRestartableService,
-} from '../connection-actions.js';
+import { executeConnectionAction, isRestartableService } from '../connection-actions.js';
 import {
   type ConnectionHealthService,
   type ConnectionHealthServiceId,
   type ConnectionsHealthReport,
   collectConnectionsHealth,
 } from '../connections-health.js';
-import { Box, Text, useInput } from '../ink.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
-import { usePanelShortcutsEnabled } from './monitor-shell.js';
+import { Box, Text } from '../ink.js';
+import { usePanelInput as useInput, usePanelShortcutsEnabled } from './monitor-shell.js';
 
 /** Refresh interval for auto-updating service status. */
 const REFRESH_MS = 8_000;
@@ -215,6 +212,7 @@ export function ConnectionsPanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.ctrl || key.meta) return;
     if (!shortcutsEnabled) return;
     if (actionInProgress) return;
 
@@ -282,7 +280,9 @@ export function ConnectionsPanel({
     >
       <Box justifyContent="space-between">
         <Box gap={1} flexShrink={0}>
-          <Text bold wrap="truncate-end">Service Connections</Text>
+          <Text bold wrap="truncate-end">
+            Service Connections
+          </Text>
           {report ? <Text color={OVERALL_COLOR[report.overall]}>● {overallLabel}</Text> : null}
         </Box>
         <Text dimColor>
@@ -344,22 +344,12 @@ export function ConnectionsPanel({
 
       {report ? (
         <Box flexDirection="column" marginTop={0}>
-          {hasAbove ? (
-            <Text dimColor>{`  ↑ … ${start} more above`}</Text>
-          ) : null}
+          {hasAbove ? <Text dimColor>{`  ↑ … ${start} more above`}</Text> : null}
           {visibleServices.map((s, idx) => {
             const actualIndex = start + idx;
-            return (
-              <ServiceRow
-                key={s.id}
-                service={s}
-                isSelected={actualIndex === safeIndex}
-              />
-            );
+            return <ServiceRow key={s.id} service={s} isSelected={actualIndex === safeIndex} />;
           })}
-          {hasBelow ? (
-            <Text dimColor>{`  ↓ … ${services.length - end} more below`}</Text>
-          ) : null}
+          {hasBelow ? <Text dimColor>{`  ↓ … ${services.length - end} more below`}</Text> : null}
         </Box>
       ) : null}
 

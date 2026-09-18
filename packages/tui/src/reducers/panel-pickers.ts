@@ -118,9 +118,13 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       };
     case 'statuslineFieldMove': {
       // Navigation walks the FILTERED fields so `/cost` + ↓ doesn't stall on
-      // rows the picker isn't drawing. With no filter this is the plain
-      // wrap-around over STATUSLINE_ITEMS the mouse hit-test assumes.
-      const fields = navigableFields(state.statuslinePicker.filter, state.statuslinePicker.order);
+      // rows the picker isn't drawing. Re-group after a line change while
+      // keeping field identity anchored to STATUSLINE_ITEMS.
+      const fields = navigableFields(
+        state.statuslinePicker.filter,
+        state.statuslinePicker.order,
+        state.statuslinePicker.lines,
+      );
       const at = fields.indexOf(state.statuslinePicker.field);
       const from = at >= 0 ? at : 0;
       const next = fields[(from + action.delta + fields.length) % fields.length]!;
@@ -256,7 +260,7 @@ export function reducePanelPickers(state: State, action: PanelPickerAction): Sta
       const filtering = action.filtering ?? cur.filtering;
       // Keep the selection on a row that survives the new filter, so the
       // list never shows a highlight the user cannot see.
-      const fields = navigableFields(filter);
+      const fields = navigableFields(filter, cur.order, cur.lines);
       const field = fields.includes(cur.field) ? cur.field : (fields[0] ?? 0);
       return {
         ...state,

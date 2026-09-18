@@ -1331,9 +1331,6 @@
     "packages/tui/src/components/history/sage-output-format.ts": [
       "SAGE_MEMORY_DETAIL"
     ],
-    "packages/tui/src/components/input.tsx": [
-      "EMPTY_KEY"
-    ],
     "packages/tui/src/components/inspect-overlay.tsx": [
       "INSPECT_OVERLAY_MIN_ROWS",
       "inspectOverlaySize",
@@ -1527,8 +1524,7 @@
     ],
     "packages/tui/src/terminal-width.ts": [
       "frameRule",
-      "frameRuleParts",
-      "padDisplayEnd"
+      "frameRuleParts"
     ],
     "packages/tui/src/thinking-word.ts": [
       "TUI_THINKING_WORD_POOL"

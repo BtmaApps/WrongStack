@@ -26,6 +26,7 @@ import { McpPicker } from './components/mcp-picker.js';
 import { ModePicker } from './components/mode-picker.js';
 import { ModelPicker } from './components/model-picker.js';
 import { effortOptionsForFocused } from './components/model-picker-effort.js';
+import { PanelInputProvider } from './components/monitor-shell.js';
 import { PluginPicker } from './components/plugin-picker.js';
 import { ProjectPicker } from './components/project-picker.js';
 import { filterPromptPicker, PromptPicker } from './components/prompt-picker.js';
@@ -59,6 +60,7 @@ interface AppViewPickersProps {
   runtime: AppViewProps['runtime'];
   mainColumnWidth: number;
   pickerMaxRows: number;
+  pickerInputEnabled?: boolean | undefined;
   routedToSidebar: (id: PanelId) => boolean;
   panelPositions: Record<PanelId, 'bottom' | 'sidebar'>;
 }
@@ -68,6 +70,7 @@ export function AppViewPickers({
   runtime,
   mainColumnWidth,
   pickerMaxRows,
+  pickerInputEnabled = true,
   routedToSidebar,
   panelPositions,
 }: AppViewPickersProps): React.ReactElement {
@@ -98,287 +101,301 @@ export function AppViewPickers({
 
   return (
     <>
-      {state.picker.open ? (
-        <FilePicker
-          query={state.picker.query}
-          matches={state.picker.matches}
-          selected={state.picker.selected}
-        />
-      ) : null}
-      {state.slashPicker.open ? (
-        <SlashMenu
-          query={state.slashPicker.query}
-          matches={state.slashPicker.matches}
-          selected={state.slashPicker.selected}
-        />
-      ) : null}
-      {state.modelPicker.open ? (
-        <ModelPicker
-          step={state.modelPicker.step}
-          providerOptions={state.modelPicker.providerOptions}
-          modelOptions={state.modelPicker.modelOptions}
-          filteredOptions={state.modelPicker.filteredOptions}
-          selected={state.modelPicker.selected}
-          pickedProviderId={state.modelPicker.pickedProviderId}
-          searchQuery={state.modelPicker.searchQuery}
-          hint={state.modelPicker.hint}
-          titleLabel={state.modelPicker.title}
-          columns={mainColumnWidth}
-          maxRows={pickerMaxRows}
-          effortOptions={effortOptionsForFocused(state.modelPicker)}
-          effortChoice={state.modelPicker.effort}
-        />
-      ) : null}
-      {state.autonomyPicker.open ? (
-        <AutonomyPicker
-          options={state.autonomyPicker.options}
-          selected={state.autonomyPicker.selected}
-          hint={state.autonomyPicker.hint}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.modePicker.open ? (
-        <ModePicker
-          modes={state.modePicker.modes}
-          selected={state.modePicker.selected}
-          hint={state.modePicker.hint}
-        />
-      ) : null}
-      {state.themePicker.open ? (
-        <ThemePicker
-          options={THEME_OPTIONS}
-          selected={state.themePicker.selected}
-          activeId={getActiveThemeName()}
-          hint={state.themePicker.hint}
-          columns={mainColumnWidth}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.skillPicker.open ? (
-        <SkillPicker
-          entries={state.skillPicker.entries}
-          selected={state.skillPicker.selected}
-          hint={state.skillPicker.hint}
-          columns={mainColumnWidth}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.resourceMenu.open && state.resourceMenu.snapshot ? (
-        <ResourceMenu
-          snapshot={state.resourceMenu.snapshot}
-          selected={state.resourceMenu.selected}
-          hint={state.resourceMenu.hint}
-          confirming={state.resourceMenu.pendingAction?.label}
-          filter={state.resourceMenu.filter}
-          filtering={state.resourceMenu.filtering}
-          columns={mainColumnWidth}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.designPicker.open ? (
-        <DesignPicker
-          kits={state.designPicker.kits}
-          selected={state.designPicker.selected}
-          stack={state.designPicker.stack}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.promptPicker.open ? (
-        <PromptPicker
-          entries={filterPromptPicker(
-            state.promptPicker.all,
-            state.promptPicker.categories,
-            state.promptPicker.catIndex,
-            state.promptPicker.recentSlugs,
-          )}
-          selected={state.promptPicker.selected}
-          category={state.promptPicker.categories[state.promptPicker.catIndex] ?? 'all'}
-          total={state.promptPicker.all.length}
-          columns={mainColumnWidth}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.resumePicker.open ? (
-        <ResumePicker
-          sessions={state.resumePicker.sessions}
-          selected={state.resumePicker.selected}
-          busy={state.resumePicker.busy}
-          error={state.resumePicker.error}
-          hint={state.resumePicker.hint}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.settingsPicker.open ? (
-        <SettingsPicker
-          field={state.settingsPicker.field}
-          mode={state.settingsPicker.mode}
-          delayMs={state.settingsPicker.delayMs}
-          titleAnimation={state.settingsPicker.titleAnimation}
-          yolo={state.settingsPicker.yolo}
-          fleetChat={state.settingsPicker.fleetChat}
-          chime={state.settingsPicker.chime}
-          confirmExit={state.settingsPicker.confirmExit}
-          nextPrediction={state.settingsPicker.nextPrediction}
-          featureMcp={state.settingsPicker.featureMcp}
-          featurePlugins={state.settingsPicker.featurePlugins}
-          featureMemory={state.settingsPicker.featureMemory}
-          featureSkills={state.settingsPicker.featureSkills}
-          featureModelsRegistry={state.settingsPicker.featureModelsRegistry}
-          tokenSavingTier={state.settingsPicker.tokenSavingTier}
-          allowOutsideProjectRoot={state.settingsPicker.allowOutsideProjectRoot}
-          contextAutoCompact={state.settingsPicker.contextAutoCompact}
-          contextStrategy={state.settingsPicker.contextStrategy}
-          contextMode={state.settingsPicker.contextMode}
-          maxConcurrent={state.settingsPicker.maxConcurrent}
-          logLevel={state.settingsPicker.logLevel}
-          auditLevel={state.settingsPicker.auditLevel}
-          indexOnStart={state.settingsPicker.indexOnStart}
-          multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
-          thinkingWord={state.settingsPicker.thinkingWord}
-          thinkingWordEditing={state.settingsPicker.thinkingWordEditing}
-          thinkingWordDraft={state.settingsPicker.thinkingWordDraft}
-          maxIterations={state.settingsPicker.maxIterations}
-          autoProceedMaxIterations={state.settingsPicker.autoProceedMaxIterations}
-          enhanceDelayMs={state.settingsPicker.enhanceDelayMs}
-          preRefineSeconds={state.settingsPicker.preRefineSeconds}
-          enhanceEnabled={state.settingsPicker.enhanceEnabled}
-          enhanceLanguage={state.settingsPicker.enhanceLanguage}
-          debugStream={state.settingsPicker.debugStream}
-          statuslineMode={state.settingsPicker.statuslineMode}
-          reasoningMode={state.settingsPicker.reasoningMode}
-          reasoningEffort={state.settingsPicker.reasoningEffort}
-          reasoningEffortLevels={state.settingsPicker.reasoningEffortLevels}
-          reasoningPreserve={state.settingsPicker.reasoningPreserve}
-          cacheTtl={state.settingsPicker.cacheTtl}
-          configScope={state.settingsPicker.configScope}
-          profileConfigPath={profileConfigPath}
-          animationStyle={state.settingsPicker.animationStyle}
-          breakerEnabled={state.settingsPicker.breakerEnabled}
-          breakerAutoKillResetMs={state.settingsPicker.breakerAutoKillResetMs}
-          showModelReasoning={state.settingsPicker.showModelReasoning}
-          toolResultViewMode={state.settingsPicker.toolResultViewMode}
-          showAgentSwarmPanel={state.settingsPicker.showAgentSwarmPanel}
-          showSidebar={state.settingsPicker.showSidebar}
-          showSageMemoryInject={state.settingsPicker.showSageMemoryInject}
-          sageMemoryInjectThreshold={state.settingsPicker.sageMemoryInjectThreshold}
-          nextStepsTool={state.settingsPicker.nextStepsTool}
-          readSymbols={state.settingsPicker.readSymbols}
-          panelPositions={state.settingsPicker.panelPositions}
-          // WrongProxy / WrongTrace (fields 59–60): the runtime probe
-          // reads both keys from the same SettingsPicker slice (see
-          // `runtime-controller-deps.ts:applyLiveSettings`). Wiring them
-          // here closes the round-trip from the picker to the live Config
-          // + ctx.meta. Without these props, `pnpm typecheck` fails and
-          // the runtime probe never sees the picker's mid-session toggle.
-          wrongProxyEnabled={state.settingsPicker.wrongProxyEnabled}
-          wrongProxyUrl={state.settingsPicker.wrongProxyUrl}
-          wrongProxyUrlEditing={state.settingsPicker.wrongProxyUrlEditing}
-          wrongProxyUrlDraft={state.settingsPicker.wrongProxyUrlDraft}
-          inputHeight={inputHeight}
-          filter={state.settingsPicker.filter}
-          hint={state.settingsPicker.hint}
-        />
-      ) : null}
-      {state.statuslinePicker.open ? (
-        <StatuslinePicker
-          field={state.statuslinePicker.field}
-          hiddenItems={state.statuslinePicker.hiddenItems}
-          lines={state.statuslinePicker.lines}
-          densities={state.statuslinePicker.densities}
-          order={state.statuslinePicker.order}
-          visibleChips={state.statuslinePicker.visibleChips}
-          filter={state.statuslinePicker.filter}
-          filtering={state.statuslinePicker.filtering}
-          hint={state.statuslinePicker.hint}
-          // Real geometry from the bar's last render — the fill gauges are
-          // measured, not estimated.
-          clickMap={statusBarClickMapRef.current}
-        />
-      ) : null}
-      {state.pluginPicker.open ? (
-        <PluginPicker
-          items={state.pluginPicker.items}
-          selected={state.pluginPicker.selected}
-          busy={state.pluginPicker.busy}
-          hint={state.pluginPicker.hint}
-        />
-      ) : null}
-      {state.mcpPicker.open ? (
-        <McpPicker
-          items={state.mcpPicker.items}
-          selected={state.mcpPicker.selected}
-          busy={state.mcpPicker.busy}
-          hint={state.mcpPicker.hint}
-        />
-      ) : null}
-      {state.toolsPicker.open ? (
-        <ToolsPicker
-          items={state.toolsPicker.items}
-          selected={state.toolsPicker.selected}
-          busy={state.toolsPicker.busy}
-          hint={state.toolsPicker.hint}
-          filter={state.toolsPicker.filter}
-        />
-      ) : null}
-      {state.brainPanel.open && !state.modelPicker.open ? (
-        <BrainPanel {...state.brainPanel} />
-      ) : null}
-      {state.helpPanel.open ? (
-        <HelpPanel
-          entries={state.helpPanel.entries}
-          filter={state.helpPanel.filter}
-          selected={state.helpPanel.selected}
-          hint={state.helpPanel.hint}
-          maxRows={pickerMaxRows}
-          detailScroll={state.helpPanel.detailScroll}
-        />
-      ) : null}
-      {state.subagentModels.open && !state.modelPicker.open ? (
-        <SubagentModelsPanel
-          lanes={state.subagentModels.lanes}
-          roles={state.subagentModels.roles}
-          selected={state.subagentModels.selected}
-          enabled={state.subagentModels.enabled}
-          lock={state.subagentModels.lock}
-          followSessionModel={state.subagentModels.followSessionModel}
-          sessionTarget={state.subagentModels.sessionTarget}
-          hint={state.subagentModels.hint}
-          maxRows={pickerMaxRows}
-        />
-      ) : null}
-      {state.shadowPanel.open ? (
-        <ShadowPanel shadow={state.shadowPanel.shadow} hint={state.shadowPanel.hint} />
-      ) : null}
-      {state.authPanel.open ? <AuthPanel panel={state.authPanel} /> : null}
-      {state.projectPicker.open && !routedToSidebar('projectPicker') ? (
-        <ProjectPicker
-          items={state.projectPicker.items}
-          selected={state.projectPicker.selected}
-          filter={state.projectPicker.filter}
-          hint={state.projectPicker.hint}
-        />
-      ) : null}
-      {state.fKeyPicker.open ? <FKeyPicker selected={state.fKeyPicker.selected} /> : null}
-      {state.coordinator.monitorOpen && !routedToSidebar('coordinator') ? (
-        <CoordinatorPanel
-          coordinator={state.coordinator}
-          nowTick={nowTick}
-          onClose={() => dispatch({ type: 'toggleCoordinatorMonitor' })}
-        />
-      ) : null}
-      {state.auditPanelOpen ? (
-        <AuditPanel
-          sideEffects={agent.ctx.sideEffects ?? []}
-          onClose={() => dispatch({ type: 'toggleAuditPanel' })}
-        />
-      ) : null}
-      {state.connectionsPanelOpen && panelPositions.connections === 'bottom' ? (
-        <ConnectionsPanel
-          projectRoot={agent.ctx.projectRoot}
-          maxRows={pickerMaxRows}
-          onClose={() => dispatch({ type: 'toggleConnectionsPanel' })}
-        />
-      ) : null}
+      <Box flexDirection="column" display={pickerInputEnabled ? 'flex' : 'none'}>
+        {state.picker.open ? (
+          <FilePicker
+            query={state.picker.query}
+            matches={state.picker.matches}
+            selected={state.picker.selected}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.slashPicker.open ? (
+          <SlashMenu
+            query={state.slashPicker.query}
+            matches={state.slashPicker.matches}
+            selected={state.slashPicker.selected}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.modelPicker.open ? (
+          <ModelPicker
+            step={state.modelPicker.step}
+            providerOptions={state.modelPicker.providerOptions}
+            modelOptions={state.modelPicker.modelOptions}
+            filteredOptions={state.modelPicker.filteredOptions}
+            selected={state.modelPicker.selected}
+            pickedProviderId={state.modelPicker.pickedProviderId}
+            searchQuery={state.modelPicker.searchQuery}
+            hint={state.modelPicker.hint}
+            titleLabel={state.modelPicker.title}
+            columns={mainColumnWidth}
+            maxRows={pickerMaxRows}
+            effortOptions={effortOptionsForFocused(state.modelPicker)}
+            effortChoice={state.modelPicker.effort}
+          />
+        ) : null}
+        {state.autonomyPicker.open ? (
+          <AutonomyPicker
+            options={state.autonomyPicker.options}
+            selected={state.autonomyPicker.selected}
+            hint={state.autonomyPicker.hint}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.modePicker.open ? (
+          <ModePicker
+            modes={state.modePicker.modes}
+            selected={state.modePicker.selected}
+            hint={state.modePicker.hint}
+          />
+        ) : null}
+        {state.themePicker.open ? (
+          <ThemePicker
+            options={THEME_OPTIONS}
+            selected={state.themePicker.selected}
+            activeId={getActiveThemeName()}
+            hint={state.themePicker.hint}
+            columns={mainColumnWidth}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.skillPicker.open ? (
+          <SkillPicker
+            entries={state.skillPicker.entries}
+            selected={state.skillPicker.selected}
+            hint={state.skillPicker.hint}
+            columns={mainColumnWidth}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.resourceMenu.open && state.resourceMenu.snapshot ? (
+          <ResourceMenu
+            snapshot={state.resourceMenu.snapshot}
+            selected={state.resourceMenu.selected}
+            hint={state.resourceMenu.hint}
+            confirming={state.resourceMenu.pendingAction?.label}
+            filter={state.resourceMenu.filter}
+            filtering={state.resourceMenu.filtering}
+            columns={mainColumnWidth}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.designPicker.open ? (
+          <DesignPicker
+            kits={state.designPicker.kits}
+            selected={state.designPicker.selected}
+            stack={state.designPicker.stack}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.promptPicker.open ? (
+          <PromptPicker
+            entries={filterPromptPicker(
+              state.promptPicker.all,
+              state.promptPicker.categories,
+              state.promptPicker.catIndex,
+              state.promptPicker.recentSlugs,
+            )}
+            selected={state.promptPicker.selected}
+            category={state.promptPicker.categories[state.promptPicker.catIndex] ?? 'all'}
+            total={state.promptPicker.all.length}
+            columns={mainColumnWidth}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.resumePicker.open ? (
+          <ResumePicker
+            sessions={state.resumePicker.sessions}
+            selected={state.resumePicker.selected}
+            busy={state.resumePicker.busy}
+            error={state.resumePicker.error}
+            hint={state.resumePicker.hint}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.settingsPicker.open ? (
+          <SettingsPicker
+            maxRows={pickerMaxRows}
+            columns={mainColumnWidth}
+            field={state.settingsPicker.field}
+            mode={state.settingsPicker.mode}
+            delayMs={state.settingsPicker.delayMs}
+            titleAnimation={state.settingsPicker.titleAnimation}
+            yolo={state.settingsPicker.yolo}
+            fleetChat={state.settingsPicker.fleetChat}
+            chime={state.settingsPicker.chime}
+            confirmExit={state.settingsPicker.confirmExit}
+            nextPrediction={state.settingsPicker.nextPrediction}
+            featureMcp={state.settingsPicker.featureMcp}
+            featurePlugins={state.settingsPicker.featurePlugins}
+            featureMemory={state.settingsPicker.featureMemory}
+            featureSkills={state.settingsPicker.featureSkills}
+            featureModelsRegistry={state.settingsPicker.featureModelsRegistry}
+            tokenSavingTier={state.settingsPicker.tokenSavingTier}
+            allowOutsideProjectRoot={state.settingsPicker.allowOutsideProjectRoot}
+            contextAutoCompact={state.settingsPicker.contextAutoCompact}
+            contextStrategy={state.settingsPicker.contextStrategy}
+            contextMode={state.settingsPicker.contextMode}
+            maxConcurrent={state.settingsPicker.maxConcurrent}
+            logLevel={state.settingsPicker.logLevel}
+            auditLevel={state.settingsPicker.auditLevel}
+            indexOnStart={state.settingsPicker.indexOnStart}
+            multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
+            thinkingWord={state.settingsPicker.thinkingWord}
+            thinkingWordEditing={state.settingsPicker.thinkingWordEditing}
+            thinkingWordDraft={state.settingsPicker.thinkingWordDraft}
+            maxIterations={state.settingsPicker.maxIterations}
+            autoProceedMaxIterations={state.settingsPicker.autoProceedMaxIterations}
+            enhanceDelayMs={state.settingsPicker.enhanceDelayMs}
+            preRefineSeconds={state.settingsPicker.preRefineSeconds}
+            enhanceEnabled={state.settingsPicker.enhanceEnabled}
+            enhanceLanguage={state.settingsPicker.enhanceLanguage}
+            debugStream={state.settingsPicker.debugStream}
+            statuslineMode={state.settingsPicker.statuslineMode}
+            reasoningMode={state.settingsPicker.reasoningMode}
+            reasoningEffort={state.settingsPicker.reasoningEffort}
+            reasoningEffortLevels={state.settingsPicker.reasoningEffortLevels}
+            reasoningPreserve={state.settingsPicker.reasoningPreserve}
+            cacheTtl={state.settingsPicker.cacheTtl}
+            configScope={state.settingsPicker.configScope}
+            profileConfigPath={profileConfigPath}
+            animationStyle={state.settingsPicker.animationStyle}
+            breakerEnabled={state.settingsPicker.breakerEnabled}
+            breakerAutoKillResetMs={state.settingsPicker.breakerAutoKillResetMs}
+            showModelReasoning={state.settingsPicker.showModelReasoning}
+            toolResultViewMode={state.settingsPicker.toolResultViewMode}
+            showAgentSwarmPanel={state.settingsPicker.showAgentSwarmPanel}
+            showSidebar={state.settingsPicker.showSidebar}
+            showSageMemoryInject={state.settingsPicker.showSageMemoryInject}
+            sageMemoryInjectThreshold={state.settingsPicker.sageMemoryInjectThreshold}
+            nextStepsTool={state.settingsPicker.nextStepsTool}
+            readSymbols={state.settingsPicker.readSymbols}
+            panelPositions={state.settingsPicker.panelPositions}
+            // WrongProxy / WrongTrace (fields 59–60): the runtime probe
+            // reads both keys from the same SettingsPicker slice (see
+            // `runtime-controller-deps.ts:applyLiveSettings`). Wiring them
+            // here closes the round-trip from the picker to the live Config
+            // + ctx.meta. Without these props, `pnpm typecheck` fails and
+            // the runtime probe never sees the picker's mid-session toggle.
+            wrongProxyEnabled={state.settingsPicker.wrongProxyEnabled}
+            wrongProxyUrl={state.settingsPicker.wrongProxyUrl}
+            wrongProxyUrlEditing={state.settingsPicker.wrongProxyUrlEditing}
+            wrongProxyUrlDraft={state.settingsPicker.wrongProxyUrlDraft}
+            inputHeight={inputHeight}
+            filter={state.settingsPicker.filter}
+            hint={state.settingsPicker.hint}
+          />
+        ) : null}
+        {state.statuslinePicker.open ? (
+          <PanelInputProvider value={pickerInputEnabled}>
+            <StatuslinePicker
+              field={state.statuslinePicker.field}
+              hiddenItems={state.statuslinePicker.hiddenItems}
+              lines={state.statuslinePicker.lines}
+              densities={state.statuslinePicker.densities}
+              order={state.statuslinePicker.order}
+              visibleChips={state.statuslinePicker.visibleChips}
+              filter={state.statuslinePicker.filter}
+              filtering={state.statuslinePicker.filtering}
+              hint={state.statuslinePicker.hint}
+              // Real geometry from the bar's last render — the fill gauges are
+              // measured, not estimated.
+              clickMap={statusBarClickMapRef.current}
+            />
+          </PanelInputProvider>
+        ) : null}
+        {state.pluginPicker.open ? (
+          <PluginPicker
+            items={state.pluginPicker.items}
+            selected={state.pluginPicker.selected}
+            busy={state.pluginPicker.busy}
+            hint={state.pluginPicker.hint}
+          />
+        ) : null}
+        {state.mcpPicker.open ? (
+          <McpPicker
+            items={state.mcpPicker.items}
+            selected={state.mcpPicker.selected}
+            busy={state.mcpPicker.busy}
+            hint={state.mcpPicker.hint}
+          />
+        ) : null}
+        {state.toolsPicker.open ? (
+          <ToolsPicker
+            items={state.toolsPicker.items}
+            selected={state.toolsPicker.selected}
+            busy={state.toolsPicker.busy}
+            hint={state.toolsPicker.hint}
+            filter={state.toolsPicker.filter}
+          />
+        ) : null}
+        {state.brainPanel.open && !state.modelPicker.open ? (
+          <BrainPanel {...state.brainPanel} />
+        ) : null}
+        {state.helpPanel.open ? (
+          <HelpPanel
+            entries={state.helpPanel.entries}
+            filter={state.helpPanel.filter}
+            selected={state.helpPanel.selected}
+            hint={state.helpPanel.hint}
+            maxRows={pickerMaxRows}
+            detailScroll={state.helpPanel.detailScroll}
+          />
+        ) : null}
+        {state.subagentModels.open && !state.modelPicker.open ? (
+          <SubagentModelsPanel
+            lanes={state.subagentModels.lanes}
+            roles={state.subagentModels.roles}
+            selected={state.subagentModels.selected}
+            enabled={state.subagentModels.enabled}
+            lock={state.subagentModels.lock}
+            followSessionModel={state.subagentModels.followSessionModel}
+            sessionTarget={state.subagentModels.sessionTarget}
+            hint={state.subagentModels.hint}
+            maxRows={pickerMaxRows}
+          />
+        ) : null}
+        {state.shadowPanel.open ? (
+          <ShadowPanel shadow={state.shadowPanel.shadow} hint={state.shadowPanel.hint} />
+        ) : null}
+        {state.authPanel.open ? <AuthPanel panel={state.authPanel} /> : null}
+        {state.projectPicker.open && !routedToSidebar('projectPicker') ? (
+          <PanelInputProvider value={pickerInputEnabled}>
+            <ProjectPicker
+              items={state.projectPicker.items}
+              selected={state.projectPicker.selected}
+              filter={state.projectPicker.filter}
+              hint={state.projectPicker.hint}
+            />
+          </PanelInputProvider>
+        ) : null}
+        {state.fKeyPicker.open ? (
+          <PanelInputProvider value={pickerInputEnabled}>
+            <FKeyPicker selected={state.fKeyPicker.selected} />
+          </PanelInputProvider>
+        ) : null}
+        {state.coordinator.monitorOpen && !routedToSidebar('coordinator') ? (
+          <CoordinatorPanel
+            coordinator={state.coordinator}
+            nowTick={nowTick}
+            onClose={() => dispatch({ type: 'toggleCoordinatorMonitor' })}
+          />
+        ) : null}
+        {state.auditPanelOpen ? (
+          <AuditPanel
+            sideEffects={agent.ctx.sideEffects ?? []}
+            onClose={() => dispatch({ type: 'toggleAuditPanel' })}
+          />
+        ) : null}
+        {state.connectionsPanelOpen && panelPositions.connections === 'bottom' ? (
+          <ConnectionsPanel
+            projectRoot={agent.ctx.projectRoot}
+            maxRows={pickerMaxRows}
+            onClose={() => dispatch({ type: 'toggleConnectionsPanel' })}
+          />
+        ) : null}
+      </Box>
       {state.rewindOverlay
         ? (() => {
             const overlay = state.rewindOverlay;
@@ -459,6 +476,8 @@ export function AppViewPickers({
           };
           return (
             <ConfirmPrompt
+              key={head.toolUseId}
+              maxRows={pickerMaxRows}
               toolName={head.toolName}
               input={head.input}
               suggestedPattern={head.suggestedPattern}

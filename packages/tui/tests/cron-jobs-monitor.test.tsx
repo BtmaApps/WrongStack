@@ -2,6 +2,7 @@ import { render } from 'ink-testing-library';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CronJobsMonitor, type CronListResult } from '../src/components/cron-jobs.js';
+import { PanelInputProvider } from '../src/components/monitor-shell.js';
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const NOW = new Date('2026-07-30T12:00:00.000Z').getTime();
@@ -164,5 +165,35 @@ describe('CronJobsMonitor', () => {
     await flush();
     expect(onCancel).toHaveBeenCalledWith('fast-job');
     view.unmount();
+  });
+});
+
+describe('cron foreground ownership', () => {
+  it('does not consume a foreground approval response while a cancellation is pending underneath', async () => {
+    const onCancel = vi.fn(async () => null);
+    const getCronJobs = async () => snapshot();
+    const element = (active: boolean) => (
+      <PanelInputProvider value={active}>
+        <CronJobsMonitor getCronJobs={getCronJobs} onCancel={onCancel} />
+      </PanelInputProvider>
+    );
+    const view = render(element(true));
+    try {
+      await waitForFrame(view, (frame) => frame.includes('fast-job'));
+      view.stdin.write('x');
+      await waitForFrame(view, (frame) => frame.includes('y confirm'));
+      view.rerender(element(false));
+      await flush();
+      view.stdin.write('y');
+      await flush();
+      expect(onCancel).not.toHaveBeenCalled();
+      view.rerender(element(true));
+      await flush();
+      view.stdin.write('y');
+      await flush();
+      expect(onCancel).toHaveBeenCalledOnce();
+    } finally {
+      view.unmount();
+    }
   });
 });

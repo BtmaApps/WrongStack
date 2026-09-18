@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-18T09:41:29.068Z
+**Generated:** 2026-09-18T10:34:12.033Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3836 |
-| Production source lines | 939394 |
-| Test files | 3482 |
+| Production source lines | 939723 |
+| Test files | 3488 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12321 |
+| Relative module edges | 12332 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 9 |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/techstack | 50 | 37 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 36 | @wrongstack/core |
 | @wrongstack/tools | 216 | 259 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 395 | 356 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 395 | 362 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 19 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 554 | 395 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 45 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -122,10 +122,10 @@ None.
 | 1026 | `packages/sage/src/types.ts` |
 | 1023 | `packages/tools/src/codebase-index/background-indexer.ts` |
 | 1021 | `packages/webui/src/hooks/ws-handlers/misc-handlers.ts` |
+| 1016 | `packages/tui/src/components/context-panel.tsx` |
 | 1015 | `packages/webui-server/src/server/git-handlers.ts` |
 | 1015 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
 | 1014 | `packages/cli/src/slash-commands/sdd.ts` |
-| 1014 | `packages/tui/src/components/context-panel.tsx` |
 | 1014 | `packages/tui/src/kanban-slash.ts` |
 | 1013 | `packages/acp/src/client/acp-session.ts` |
 | 1013 | `packages/tui/src/components/agents-monitor.tsx` |
@@ -135,11 +135,11 @@ None.
 | 1007 | `packages/core/src/execution/brain-runtime.ts` |
 | 1003 | `packages/kanban/src/types.ts` |
 | 1002 | `packages/webui/src/components/ChronicleDashboard.tsx` |
-| 1000 | `packages/webui/src/stores/fleet-store.ts` |
+| 1000 | `packages/tui/src/app.tsx` |
 
 ## Exports only tests reference
 
-- 959 runtime exports are referenced by tests and by no other production file.
+- 957 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

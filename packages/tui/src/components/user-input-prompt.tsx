@@ -7,15 +7,9 @@ import type {
 } from '@wrongstack/core/types';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Box,
-  type DOMElement,
-  measureElement,
-  Text,
-  useInput,
-  useStdin,
-  useStdout,
-} from '../ink.js';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { Box, type DOMElement, measureElement, Text, useInput, useStdin } from '../ink.js';
+import { previousGraphemeIndex } from '../input-graphemes.js';
 import { isLeakedMouseInput, parseMouseEvents, splitTrailingMousePartial } from '../mouse.js';
 
 export type PendingUserInput = {
@@ -31,26 +25,39 @@ type AnswerDraft = {
 type Draft = Record<string, AnswerDraft>;
 
 export function usePendingUserInput(events: EventBus): PendingUserInput | null {
-  const [pending, setPending] = useState<PendingUserInput | null>(null);
+  const [pending, setPending] = useState<PendingUserInput[]>([]);
   useEffect(() => {
     const offRequest = events.on('user.input_requested', (event) =>
-      setPending({ request: event.request, resolve: event.resolve }),
+      setPending((current) => {
+        const next = { request: event.request, resolve: event.resolve };
+        return current.some((item) => item.request.id === event.request.id)
+          ? current.map((item) => (item.request.id === event.request.id ? next : item))
+          : [...current, next];
+      }),
     );
     const offResolved = events.on('user.input_resolved', (event) =>
-      setPending((current) => (current?.request.id === event.requestId ? null : current)),
+      setPending((current) => current.filter((item) => item.request.id !== event.requestId)),
     );
     return () => {
       offRequest();
       offResolved();
     };
   }, [events]);
-  return pending;
+  return pending[0] ?? null;
 }
 
-export function UserInputPrompt({ pending }: { pending: PendingUserInput }): React.ReactElement {
-  const { stdout } = useStdout();
-  const terminalRows = stdout?.rows ?? 24;
-  const terminalColumns = stdout?.columns ?? 80;
+interface UserInputPromptProps {
+  pending: PendingUserInput;
+  onInterrupt?: (() => void) | undefined;
+}
+
+export function UserInputPrompt(props: UserInputPromptProps): React.ReactElement {
+  return <UserInputForm key={props.pending.request.id} {...props} />;
+}
+
+function UserInputForm({ pending, onInterrupt }: UserInputPromptProps): React.ReactElement {
+  const { rows: terminalRows, columns: terminalColumns } = useTerminalSize();
+  const settledRef = useRef(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [optionIndex, setOptionIndex] = useState(0);
@@ -104,6 +111,7 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
     setNotice('Recommended answer applied.');
   };
   const submit = () => {
+    if (settledRef.current) return;
     const currentValidation = validateDraft(allQuestions, draft);
     if (!currentValidation.valid) {
       const missing = currentValidation.firstMissing!;
@@ -121,6 +129,7 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
       setNotice(`Required answer missing: ${missing.prompt}`);
       return;
     }
+    settledRef.current = true;
     pending.resolve({
       requestId: pending.request.id,
       status: 'submitted',
@@ -154,6 +163,15 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
   }, [stdin, validation.valid, submit]);
 
   useInput((input, key) => {
+    if (key.ctrl && input.toLowerCase() === 'c') {
+      if (!settledRef.current) {
+        settledRef.current = true;
+        pending.resolve({ requestId: pending.request.id, status: 'cancelled', answers: [] });
+      }
+      onInterrupt?.();
+      return;
+    }
+    if (settledRef.current) return;
     if (input && isLeakedMouseInput(input)) return;
     if (editing) {
       if (key.escape || key.return) {
@@ -166,7 +184,10 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
         return;
       }
       if (key.backspace || key.delete) {
-        updateAnswer((current) => ({ ...current, text: current.text.slice(0, -1) }));
+        updateAnswer((current) => ({
+          ...current,
+          text: current.text.slice(0, previousGraphemeIndex(current.text, current.text.length)),
+        }));
         return;
       }
       if (input && !key.ctrl && !key.meta) {
@@ -182,10 +203,11 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
       return;
     }
 
-    if ((key.ctrl && input.toLowerCase() === 's') || input === 's') {
+    if (!key.meta && ((key.ctrl && input.toLowerCase() === 's') || (!key.ctrl && input === 's'))) {
       submit();
       return;
     }
+    if (key.ctrl || key.meta) return;
     if (key.tab) {
       changeTab(activeTabIndex + (key.shift ? -1 : 1));
       return;
@@ -491,23 +513,27 @@ export function UserInputPrompt({ pending }: { pending: PendingUserInput }): Rea
           <Text color={validation.valid ? 'green' : 'yellow'}>{notice}</Text>
         ) : null}
         <Text dimColor>
-          {compact
-            ? `Tab category · ←→ q · d decide · s submit`
-            : `Tab/1-${pending.request.tabs.length} category · ←→ question · ↑↓ option · Space/Enter select`}
+          {editing
+            ? 'Enter/Esc save · Ctrl+U clear · Ctrl+C cancel'
+            : compact
+              ? `Tab · ←→ · s submit · Ctrl+C cancel`
+              : `Tab/1-${pending.request.tabs.length} category · ←→ question · ↑↓ option · Space/Enter select`}
         </Text>
-        {!compact ? (
+        {!compact && !editing ? (
           <Box justifyContent="space-between">
-            <Text dimColor>e manual · r recommended · d you decide</Text>
+            <Text dimColor>e manual · r recommended · d decide · Ctrl+C cancel</Text>
             <Text dimColor>R recommend all · D delegate blanks · s submit</Text>
           </Box>
         ) : null}
         <Box justifyContent="space-between">
           <Text color={validation.valid ? 'green' : 'yellow'}>
-            {compact && notice
-              ? notice
-              : validation.valid
-                ? 'Ready · s or click to submit'
-                : `${validation.missingCount} required answer(s) missing`}
+            {editing
+              ? 'Editing manual answer'
+              : compact && notice
+                ? notice
+                : validation.valid
+                  ? 'Ready · s or click to submit'
+                  : `${validation.missingCount} required answer(s) missing`}
           </Text>
           <Box
             ref={submitButtonRef}

@@ -64,7 +64,7 @@ export interface UseWindowedPickerOptions {
    * 24-row terminal even when the input bar or status bar grows.
    */
   readonly maxRows?: number | undefined;
-  /** Minimum visible options even on a tiny terminal. Defaults to 3. */
+  /** Legacy minimum without a measured maxRows budget. Defaults to 3. */
   readonly minVisible?: number | undefined;
 }
 
@@ -87,9 +87,8 @@ export interface WindowedPickerSlice {
  * Behavior contract:
  *   - Visible count is `floor((available - chrome - markers) / rowSpan)`
  *     where `available` is either `maxRows` (measured) or
- *     `rows - shellReservedRows` (guessed), clamped to `[minVisible, total]`.
- *     A 1-row terminal always shows at least `minVisible` options even if
- *     that overflows — better to bleed than to hide the focused row.
+ *     `rows - shellReservedRows` (guessed). Measured budgets show at least
+ *     one focused option; only the legacy guessed budget uses minVisible.
  *   - The window stays centered on `selected` once the picker is past the
  *     first page; on the first page it stays top-aligned so the user sees
  *     the list start. `selected < 0 || selected >= total` is treated as no
@@ -128,10 +127,10 @@ export function useWindowedPicker({
     maxRows !== undefined
       ? Math.max(1, maxRows - reserved)
       : Math.max(1, rows - reserved - shellReservedRows);
-  const visible = Math.max(
-    minVisible,
-    Math.min(total, Math.floor(available / Math.max(1, rowSpan))),
-  );
+  const capacity = Math.max(1, Math.floor(available / Math.max(1, rowSpan)));
+  // A measured viewport is authoritative. The legacy minimum must not push
+  // selected rows and controls beyond it on a short terminal.
+  const visible = Math.min(total, Math.max(maxRows === undefined ? minVisible : 1, capacity));
 
   const safeSelected = selected >= 0 && selected < total ? selected : 0;
 

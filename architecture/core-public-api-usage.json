@@ -79,9 +79,9 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 274,
+      "files": 275,
       "typeOnly": 140,
-      "runtimeOrMixed": 146
+      "runtimeOrMixed": 147
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/statusline": {
-      "files": 23,
+      "files": 24,
       "typeOnly": 12,
-      "runtimeOrMixed": 11
+      "runtimeOrMixed": 12
     },
     "@wrongstack/core/storage": {
       "files": 124,
@@ -174,8 +174,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1113,
-      "typeOnly": 995,
+      "files": 1114,
+      "typeOnly": 996,
       "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -6910,6 +6910,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/tui/tests/user-input-lifecycle.test.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/vector-memory/src/sage-event-mirror.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -9935,6 +9941,12 @@
     {
       "specifier": "@wrongstack/core/statusline",
       "file": "packages/tui/tests/statusline-layout-reducer.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/statusline",
+      "file": "packages/tui/tests/statusline-regrouping.test.tsx",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -16625,6 +16637,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/tui/tests/use-token-counter-refresh.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/tests/user-input-lifecycle.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

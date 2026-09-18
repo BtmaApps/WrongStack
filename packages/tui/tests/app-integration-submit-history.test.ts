@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import { render } from 'ink-testing-library';
 import React from 'react';
+import { describe, expect, it } from 'vitest';
+import type { SlashCommandMatch } from '../src/app-state.js';
 import { Input, type KeyEvent } from '../src/components/input.js';
 import { SlashMenu } from '../src/components/slash-menu.js';
-import type { SlashCommandMatch } from '../src/app-state.js';
 
 function makeKey(overrides: Partial<KeyEvent> = {}): KeyEvent {
   return {
@@ -61,7 +61,7 @@ describe('Issue 005 — stable interaction coverage additions', () => {
     expect(frame).toContain('Config');
     expect(frame).toContain('setmodel');
     expect(frame).toContain('<provider/model>');
-    expect(frame).toContain('↑↓ nav · Enter run · Tab fill · Esc close');
+    expect(frame).toContain('↑↓ · Enter run · Tab fill · Esc close');
 
     unmount();
   });
@@ -108,7 +108,7 @@ describe('Issue 005 — stable interaction coverage additions', () => {
     const frame = lastFrame() ?? '';
     expect(frame).toContain('/zzz');
     expect(frame).toContain('No matching commands');
-    expect(frame).toContain('↑↓ nav · Enter run · Tab fill · Esc close');
+    expect(frame).toContain('↑↓ · Enter run · Tab fill · Esc close');
     unmount();
   });
 

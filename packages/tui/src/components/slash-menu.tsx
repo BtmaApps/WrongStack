@@ -1,11 +1,12 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
 import type { SlashCommandMatch } from '../app-state.js';
+import { Box, Text } from '../ink.js';
 
 interface SlashMenuProps {
   query: string;
   matches: SlashCommandMatch[];
   selected: number;
+  maxRows?: number | undefined;
 }
 
 type Row =
@@ -15,7 +16,13 @@ type Row =
 /** Hard cap on visible items so the menu never outgrows a single screen pane. */
 const MAX_VISIBLE_ITEMS = 8;
 
-export function SlashMenu({ query, matches, selected }: SlashMenuProps): React.ReactElement {
+export function SlashMenu({
+  query,
+  matches,
+  selected,
+  maxRows,
+}: SlashMenuProps): React.ReactElement {
+  const compact = maxRows !== undefined && maxRows < 12;
   const placeholder = query ? `/${query}` : '/';
   const resultMeta = matches.length > 0 ? `${selected + 1}/${matches.length}` : 'no matches';
 
@@ -37,20 +44,28 @@ export function SlashMenu({ query, matches, selected }: SlashMenuProps): React.R
   // headers) and re-attach the header for the first visible item so a
   // scrolled view never loses its category context.
   const selectedRowIdx = rows.findIndex((r) => r.type === 'item' && r.index === selected);
-  const visible = windowRows(rows, selectedRowIdx < 0 ? 0 : selectedRowIdx, MAX_VISIBLE_ITEMS);
+  const limit =
+    maxRows === undefined
+      ? MAX_VISIBLE_ITEMS
+      : Math.max(1, Math.min(MAX_VISIBLE_ITEMS, maxRows - (compact ? 6 : 8)));
+  const visible = windowRows(rows, selectedRowIdx < 0 ? 0 : selectedRowIdx, limit);
 
   const hiddenAbove = visible.start;
   const hiddenBelow = rows.length - visible.end;
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text bold color="cyan">
+      <Text bold color="cyan" wrap="truncate-end">
         ━━ Command palette ━━ <Text dimColor>{placeholder}</Text>{' '}
         <Text dimColor>({resultMeta})</Text>
       </Text>
-      <Text dimColor>Type to filter commands by name, alias, or description.</Text>
+      {!compact ? (
+        <Text dimColor wrap="truncate-end">
+          Type to filter commands by name, alias, or description.
+        </Text>
+      ) : null}
       {hiddenAbove > 0 && <Text dimColor> ↑ {hiddenAbove} more</Text>}
-      {visible.contextHeader && (
+      {!compact && visible.contextHeader && (
         <Text bold color="yellow" dimColor>
           {'  '}
           {visible.contextHeader}
@@ -69,6 +84,7 @@ export function SlashMenu({ query, matches, selected }: SlashMenuProps): React.R
         return (
           <Text
             key={m.name}
+            wrap="truncate-end"
             inverse={i === selected}
             {...(i === selected ? { color: 'cyan' } : {})}
           >
@@ -82,7 +98,9 @@ export function SlashMenu({ query, matches, selected }: SlashMenuProps): React.R
       })}
       {hiddenBelow > 0 && <Text dimColor> ↓ {hiddenBelow} more</Text>}
       {matches.length === 0 && <Text dimColor>No matching commands</Text>}
-      <Text dimColor>─── ↑↓ nav · Enter run · Tab fill · Esc close</Text>
+      <Text dimColor wrap="truncate-end">
+        ↑↓ · Enter run · Tab fill · Esc close
+      </Text>
     </Box>
   );
 }

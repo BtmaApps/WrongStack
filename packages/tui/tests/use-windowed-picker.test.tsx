@@ -1,12 +1,12 @@
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { Text } from '../src/ink.js';
 import {
   type UseWindowedPickerOptions,
   useWindowedPicker,
   type WindowedPickerSlice,
 } from '../src/hooks/use-windowed-picker.js';
+import { Text } from '../src/ink.js';
 
 // Probe: render the hook's result as JSON so tests assert on the exact window
 // math. The test renderer's stdout reports no rows, so `useTerminalSize`
@@ -54,9 +54,7 @@ describe('useWindowedPicker marker/maxRows math', () => {
     expect(measured.hasBelow).toBe(false);
   });
 
-  it('clamps a too-small maxRows to minVisible instead of hiding the focus', () => {
-    // maxRows 5 < chrome 4 + markers 3: available clamps to 1, then
-    // minVisible (3) wins — the focused row is never hidden.
+  it('preserves the focus without forcing three rows past a measured viewport', () => {
     const tight = windowOf({
       total: 40,
       selected: 39,
@@ -65,7 +63,7 @@ describe('useWindowedPicker marker/maxRows math', () => {
       maxRows: 5,
       minVisible: 3,
     });
-    expect(tight.end - tight.start).toBe(3);
+    expect(tight.end - tight.start).toBe(1);
     expect(tight.end).toBe(40);
     expect(tight.hasAbove).toBe(true);
   });

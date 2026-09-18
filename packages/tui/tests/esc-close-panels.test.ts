@@ -127,7 +127,7 @@ describe('escSelfOwnedPanelOpen', () => {
     expect(escSelfOwnedPanelOpen(patch(baseState, partial))).toBe(true);
   });
 
-  it('is true while the goalRun phase monitor is open', () => {
+  it('centrally closes the phase monitor, which has no local input handler', () => {
     const goalRun: NonNullable<State['goalRun']> = {
       title: 'g',
       phases: {},
@@ -135,7 +135,8 @@ describe('escSelfOwnedPanelOpen', () => {
       elapsedMs: 0,
       monitorOpen: true,
     };
-    expect(escSelfOwnedPanelOpen(patch(baseState, { goalRun }))).toBe(true);
+    expect(escCloseAction(patch(baseState, { goalRun }))).toEqual({ type: 'goalRunMonitorToggle' });
+    expect(escSelfOwnedPanelOpen(patch(baseState, { goalRun }))).toBe(false);
   });
 
   it('never overlaps the central ESC_CLOSE_PANELS table', () => {

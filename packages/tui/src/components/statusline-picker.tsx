@@ -104,12 +104,20 @@ export function matchesFilter(item: StatuslineItem, filter: string): boolean {
   return item.includes(needle) || CHIP_DESCRIPTIONS[item].toLowerCase().includes(needle);
 }
 
-/** Field indices the arrow keys may land on under the current filter. */
-export function navigableFields(filter: string, order: StatuslineOrder = []): number[] {
-  const fields = resolveStatuslineOrder(order)
+/** Shared visual/keyboard order: effective line groups, then saved order within each line. */
+export function navigableFields(
+  filter: string,
+  order: StatuslineOrder = [],
+  lines: StatuslineLines = {},
+): number[] {
+  // Stable sorting preserves the rail's saved order among same-line siblings.
+  const grouped = resolveStatuslineOrder(order).sort(
+    (a, b) => effectiveLine(a, lines) - effectiveLine(b, lines),
+  );
+  const fields = grouped
     .map((item) => (matchesFilter(item, filter) ? STATUSLINE_ITEMS.indexOf(item) : -1))
     .filter((index) => index >= 0);
-  return fields.length > 0 ? fields : STATUSLINE_ITEMS.map((_, index) => index);
+  return fields.length > 0 ? fields : grouped.map((item) => STATUSLINE_ITEMS.indexOf(item));
 }
 
 /** Live per-line fill measured by the StatusBar's last render. */
@@ -195,6 +203,8 @@ export function StatuslinePicker({
   clickMap,
 }: StatuslinePickerProps): React.ReactElement {
   const size = useMonitorSize();
+  const compact = size.rows < 22;
+  const tight = size.rows < 12;
   const hiddenSet = new Set(hiddenItems);
   const visibleChipsMap = new Map(visibleChips.map((chip) => [chip.key, chip]));
   const composerOwned = new Set(COMPOSER_OWNED_CHIPS);
@@ -206,7 +216,7 @@ export function StatuslinePicker({
   const enabledOn = (line: StatuslineLine): StatuslineItem[] =>
     resolvedOrder.filter((item) => effectiveLine(item, lines) === line && !hiddenSet.has(item));
 
-  const visibleFields = navigableFields(filter, order);
+  const visibleFields = navigableFields(filter, order, lines);
   const fieldRank = Math.max(0, visibleFields.indexOf(field));
 
   // ── Layout strip: four rails, real fill, focused chip highlighted ──
@@ -236,7 +246,9 @@ export function StatuslinePicker({
     item?: StatuslineItem | undefined;
     fieldIdx?: number | undefined;
   }
-  const listRows = Math.max(3, size.contentRows - 8);
+  const listRows = compact
+    ? Math.max(1, Math.min(3, size.rows - (size.columns < 80 ? 15 : 13)))
+    : Math.max(3, size.contentRows - 8);
   const windowStart = Math.max(
     0,
     Math.min(fieldRank - Math.floor(listRows / 2), visibleFields.length - listRows),
@@ -296,101 +308,110 @@ export function StatuslinePicker({
         </Text>
       }
       footer={
-        <Box flexDirection="column">
-          {/* Two fixed rows rather than one wrapping row: Ink's flexWrap
+        tight ? (
+          <Text dimColor wrap="truncate-end">
+            ↑↓ · 1–4 line · o/O · Esc close
+          </Text>
+        ) : (
+          <Box flexDirection="column">
+            {/* Two fixed rows rather than one wrapping row: Ink's flexWrap
               reserves the full line height for every wrapped run, which left
               blank rows between the key caps. */}
-          <Box gap={2}>
-            <KeyCap keyName="↑↓" label="select" color={theme.warn} />
-            <KeyCap keyName="←→" label="on/off" color={theme.accent} />
-            <KeyCap keyName="1-4" label="line" color={theme.accent} />
-            <KeyCap keyName="o/O" label="order" color={theme.accent} />
-            <KeyCap keyName="d" label="density" color={theme.accent} />
+            <Box gap={2}>
+              <KeyCap keyName="↑↓" label="select" color={theme.warn} />
+              <KeyCap keyName="←→" label="on/off" color={theme.accent} />
+              <KeyCap keyName="1-4" label="line" color={theme.accent} />
+              <KeyCap keyName="o/O" label="order" color={theme.accent} />
+              <KeyCap keyName="d" label="density" color={theme.accent} />
+            </Box>
+            <Box gap={2}>
+              <KeyCap keyName="/" label="filter" color={theme.accent} />
+              <KeyCap keyName="a" label="line on/off" color={theme.accent} />
+              <KeyCap keyName="r" label="reset layout" color={theme.error} />
+              <KeyCap keyName="Esc" label="close" color={theme.error} />
+            </Box>
+            {size.columns >= 140 ? (
+              <Text color={theme.textMuted}>
+                {'  '}
+                {'‹ shortened  « micro  · dropped — saved to the active profile/statusline.json'}
+              </Text>
+            ) : null}
           </Box>
-          <Box gap={2}>
-            <KeyCap keyName="/" label="filter" color={theme.accent} />
-            <KeyCap keyName="a" label="line on/off" color={theme.accent} />
-            <KeyCap keyName="r" label="reset layout" color={theme.error} />
-            <KeyCap keyName="Esc" label="close" color={theme.error} />
-          </Box>
-          {size.columns >= 140 ? (
-            <Text color={theme.textMuted}>
-              {'  '}
-              {'‹ shortened  « micro  · dropped — saved to the active profile/statusline.json'}
-            </Text>
-          ) : null}
-        </Box>
+        )
       }
     >
       {/* Live layout strip — the real rails, not a mock-up. */}
-      <Box flexDirection="column" marginTop={1}>
-        {strip.map((rail) => {
-          const budgetText = rail.fill
-            ? `${renderMeter(rail.ratio, 8)} ${String(rail.fill.used).padStart(3)}/${rail.fill.budget}`
-            : ' '.repeat(10);
-          // Label (18) + `[meter] used/budget` (18) + the two-space gutter,
-          // plus room for the `+N` elision marker. Overshooting here makes
-          // Ink squeeze the row and silently eat the inter-chip spaces.
-          const chipBudget = Math.max(10, size.contentWidth - 38 - 4);
-          let used = 0;
-          const shown: Array<{ item: StatuslineItem; tone: string; mark: string }> = [];
-          for (const item of rail.items) {
-            const [tone, mark] = chipTone(rail.fill, item);
-            const density = effectiveDensity(item, densities);
-            const width = item.length + mark.length + (density === 'auto' ? 0 : 2) + 1;
-            if (used + width > chipBudget) break;
-            used += width;
-            shown.push({ item, tone, mark });
-          }
-          const elided = rail.items.length - shown.length;
-          return (
-            <Box key={`strip-${rail.line}`}>
-              <Text
-                color={
-                  focused && rail.line === effectiveLine(focused, lines)
-                    ? theme.warn
-                    : theme.textSecondary
-                }
-                bold
-              >
-                {`L${rail.line} ${LINE_TITLES[rail.line]}`.padEnd(18)}
-              </Text>
-              <Text color={rail.fill && rail.fill.dropped.size > 0 ? theme.error : theme.textMuted}>
-                {`${budgetText}  `}
-              </Text>
-              {rail.items.length === 0 ? <Text color={theme.textMuted}>—</Text> : null}
-              {/* One template string per chip: Ink collapses a standalone
+      {!compact ? (
+        <Box flexDirection="column" marginTop={1}>
+          {strip.map((rail) => {
+            const budgetText = rail.fill
+              ? `${renderMeter(rail.ratio, 8)} ${String(rail.fill.used).padStart(3)}/${rail.fill.budget}`
+              : ' '.repeat(10);
+            // Label (18) + `[meter] used/budget` (18) + the two-space gutter,
+            // plus room for the `+N` elision marker. Overshooting here makes
+            // Ink squeeze the row and silently eat the inter-chip spaces.
+            const chipBudget = Math.max(10, size.contentWidth - 38 - 4);
+            let used = 0;
+            const shown: Array<{ item: StatuslineItem; tone: string; mark: string }> = [];
+            for (const item of rail.items) {
+              const [tone, mark] = chipTone(rail.fill, item);
+              const density = effectiveDensity(item, densities);
+              const width = item.length + mark.length + (density === 'auto' ? 0 : 2) + 1;
+              if (used + width > chipBudget) break;
+              used += width;
+              shown.push({ item, tone, mark });
+            }
+            const elided = rail.items.length - shown.length;
+            return (
+              <Box key={`strip-${rail.line}`}>
+                <Text
+                  color={
+                    focused && rail.line === effectiveLine(focused, lines)
+                      ? theme.warn
+                      : theme.textSecondary
+                  }
+                  bold
+                >
+                  {`L${rail.line} ${LINE_TITLES[rail.line]}`.padEnd(18)}
+                </Text>
+                <Text
+                  color={rail.fill && rail.fill.dropped.size > 0 ? theme.error : theme.textMuted}
+                >
+                  {`${budgetText}  `}
+                </Text>
+                {rail.items.length === 0 ? <Text color={theme.textMuted}>—</Text> : null}
+                {/* One template string per chip: Ink collapses a standalone
                   `{' '}` between sibling Text nodes, which silently ran chip
                   names together (`mailboxbrain`). */}
-              {shown.map(({ item, tone, mark }) => {
-                const density = effectiveDensity(item, densities);
-                const pin = density === 'auto' ? '' : `=${density.slice(0, 1)}`;
-                return (
-                  <Text key={`strip-${rail.line}-${item}`} color={tone}>
-                    {`${item}${mark}${pin} `}
-                  </Text>
-                );
-              })}
-              {elided > 0 ? <Text color={theme.textMuted}>{`+${elided}`}</Text> : null}
-            </Box>
-          );
-        })}
-      </Box>
-
+                {shown.map(({ item, tone, mark }) => {
+                  const density = effectiveDensity(item, densities);
+                  const pin = density === 'auto' ? '' : `=${density.slice(0, 1)}`;
+                  return (
+                    <Text key={`strip-${rail.line}-${item}`} color={tone}>
+                      {`${item}${mark}${pin} `}
+                    </Text>
+                  );
+                })}
+                {elided > 0 ? <Text color={theme.textMuted}>{`+${elided}`}</Text> : null}
+              </Box>
+            );
+          })}
+        </Box>
+      ) : null}
       {filtering || filter ? (
         <Text color={theme.accent}>
           {`  ${glyphs.search} ${filter}${filtering ? '▏' : ''} — ${visibleFields.length} match${visibleFields.length === 1 ? '' : 'es'}`}
         </Text>
       ) : null}
-      {above > 0 ? <Text color={theme.textMuted}>{`  ↑ ${above} more`}</Text> : null}
+      {above > 0 && !tight ? <Text color={theme.textMuted}>{`  ↑ ${above} more`}</Text> : null}
 
-      <Box flexDirection="column" marginTop={1}>
+      <Box flexDirection="column" marginTop={tight ? 0 : 1}>
         {rows.map((row) => {
           if (row.section != null) {
             const line = row.section;
             return (
-              <Text key={`section-${line}`} bold color={theme.textMuted}>
-                {`LINE ${line} · ${LINE_TITLES[line]} — ${LINE_SUBTITLES[line]}`}
+              <Text key={`section-${line}`} bold color={theme.textMuted} wrap="truncate-end">
+                {`LINE ${line} · ${LINE_TITLES[line]}${compact ? '' : ` — ${LINE_SUBTITLES[line]}`}`}
               </Text>
             );
           }
@@ -438,8 +459,8 @@ export function StatuslinePicker({
         })}
       </Box>
 
-      {below > 0 ? <Text color={theme.textMuted}>{`  ↓ ${below} more`}</Text> : null}
-      {hint ? (
+      {below > 0 && !tight ? <Text color={theme.textMuted}>{`  ↓ ${below} more`}</Text> : null}
+      {hint && !(tight && (filtering || filter)) ? (
         <Text color={theme.warn}> {truncatePanelText(hint, size.contentWidth - 4)}</Text>
       ) : null}
     </MonitorShell>

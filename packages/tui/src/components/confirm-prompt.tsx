@@ -1,9 +1,12 @@
 import { unifiedDiff, writeOut } from '@wrongstack/core/utils';
 import React from 'react';
 import { langFromPath } from '../highlight.js';
-import { Box, Text, useInput } from '../ink.js';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
+import { Box, type DOMElement, measureElement, Text, useInput, useStdin } from '../ink.js';
+import { parseMouseEvents, splitTrailingMousePartial } from '../mouse.js';
 import { theme } from '../theme.js';
 import { DiffBlock, parseUnifiedDiff } from './history/code-block.js';
+import { MonitorShell, MonitorViewportProvider, PanelInputProvider } from './monitor-shell.js';
 
 export type ConfirmDecision =
   | 'yes'
@@ -21,6 +24,7 @@ interface ConfirmPromptProps {
   onDecision: (decision: ConfirmDecision) => void;
   /** Enable YOLO mode (capital Y). Destructive current calls remain pending. */
   onEnableYolo: () => void;
+  maxRows?: number | undefined;
   /** Whether this call was classified destructive. */
   destructive?: boolean;
   boundaryReason?: string | undefined;
@@ -45,9 +49,9 @@ const BUTTON_COLOR: Record<ConfirmDecision, string> = {
 
 /**
  * The button row as a list of {bracket, rest} segments. Single source of
- * truth for BOTH the rendered row and the mouse hit-test geometry
- * (`confirmButtonSegments`), so they can never drift. `rest` carries the
- * trailing space that separates one button from the next.
+ * truth for rendered labels and the legacy flattened `confirmButtonSegments`
+ * view. Actual pointer routing measures each button so wrapped rows remain
+ * accurate. `rest` carries the trailing space between buttons.
  */
 function buttonLabels(
   _suggestedPattern: string,
@@ -71,10 +75,8 @@ function buttonLabels(
 
 /**
  * 0-based column spans of each button WITHIN the dialog's content area (i.e.
- * relative to the first printable column inside the border + paddingX). Used
- * by the TUI mouse handler to map a click on the button row to a decision.
- * Derived from the same `buttonLabels` the component renders, so the offsets
- * always match what's on screen.
+ * relative to the first printable column inside the border + paddingX).
+ * These describe an unwrapped row; the live handler uses measured DOM boxes.
  */
 export function confirmButtonSegments(
   suggestedPattern: string,
@@ -210,7 +212,45 @@ export function ConfirmPrompt({
   destructive,
   boundaryReason,
   writeTargets,
+  maxRows,
 }: ConfirmPromptProps): React.ReactElement {
+  const size = useTerminalSize();
+  const rowBudget = maxRows ?? size.rows;
+  const buttons = React.useRef(new Map<ConfirmDecision, DOMElement>());
+  const partialMouse = React.useRef('');
+  const decided = React.useRef(false);
+  const decide = (decision: ConfirmDecision) => {
+    if (decided.current) return;
+    decided.current = true;
+    onDecision(decision);
+  };
+  const { stdin } = useStdin();
+  React.useEffect(() => {
+    if (!stdin) return;
+    const onData = (data: Buffer | string) => {
+      const chunk = splitTrailingMousePartial(partialMouse.current + data.toString());
+      partialMouse.current = chunk.pending;
+      for (const event of parseMouseEvents(chunk.consumed)) {
+        if (event.kind !== 'press' || event.button !== 'left') continue;
+        for (const [decision, node] of buttons.current) {
+          const rect = measureElement(node);
+          if (
+            event.x > rect.x &&
+            event.x <= rect.x + rect.width &&
+            event.y > rect.y &&
+            event.y <= rect.y + rect.height
+          ) {
+            decide(decision);
+            break;
+          }
+        }
+      }
+    };
+    stdin.on('data', onData);
+    return () => {
+      stdin.off('data', onData);
+    };
+  }, [stdin, decide]);
   // Terminal bell on mount — alerts the user that action is required,
   // especially important when the agent has been running autonomously
   // and the user may not be staring at the terminal.
@@ -218,7 +258,9 @@ export function ConfirmPrompt({
     writeOut('\x07');
   }, []);
 
-  useInput((input, _key) => {
+  useInput((input, key) => {
+    // Ctrl+C belongs to interruption, never to the plain `c` trust shortcut.
+    if (key.ctrl || key.meta || decided.current) return;
     // Ignore empty input and CRLF/LF artifacts (Enter produces \r on Windows, \n on Unix)
     if (!input || input === '\r' || input === '\n') return;
     // Capital 'Y' (Shift+y) enables YOLO mode — distinct from lowercase '[y]es'.
@@ -229,17 +271,17 @@ export function ConfirmPrompt({
     }
     const ch = input.toLowerCase();
     if (ch === 'y') {
-      onDecision('yes');
+      decide('yes');
     } else if (ch === 'n') {
-      onDecision('no');
+      decide('no');
     } else if (ch === 'a') {
-      onDecision('always-exact');
+      decide('always-exact');
     } else if (ch === 'c' && toolName === 'exec') {
-      onDecision('always-command');
+      decide('always-command');
     } else if (ch === 't') {
-      onDecision('always-tool');
+      decide('always-tool');
     } else if (ch === 'd') {
-      onDecision('deny');
+      decide('deny');
     }
   });
 
@@ -253,62 +295,69 @@ export function ConfirmPrompt({
   // exact box height (top border + content + bottom border) the mouse
   // hit-test relies on to locate the button row.
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
-      <Box flexDirection="row">
-        <Text bold color="yellow">
-          ⚠ APPROVAL REQUIRED
-        </Text>
-        <Text> </Text>
-        <Text bold color="white">
-          {toolName}
-        </Text>
-      </Box>
-      {inputSummary ? <Text dimColor>{inputSummary}</Text> : null}
-      {boundaryReason ? <Text color="yellow">KANBAN BOUNDARY: {boundaryReason}</Text> : null}
-      {writeTargets && writeTargets.length > 0 ? (
-        <Text color="yellow">
-          WRITES: {writeTargets.slice(0, 5).join(', ')}
-          {writeTargets.length > 5 ? ` (+${writeTargets.length - 5} more)` : ''}
-        </Text>
-      ) : null}
-      {diff ? (
-        <Box flexDirection="column" marginY={1}>
-          {renderDiff(diff, diffPath)}
-        </Box>
-      ) : null}
-      <Text dimColor>
-        Remember: [a] this input; {toolName === 'exec' ? '[c] executable, any args; ' : ''}[t] tool,
-        any input. Destructive calls still prompt.
-      </Text>
-      <Text dimColor>─────────────────</Text>
-      <Box flexDirection="row">
-        <Text>
-          {buttonLabels(suggestedPattern, toolName).map((l) => (
-            <React.Fragment key={l.decision}>
-              <Text bold color={BUTTON_COLOR[l.decision]}>
-                {l.bracket}
-              </Text>
-              <Text dimColor>{l.rest}</Text>
-            </React.Fragment>
-          ))}
-        </Text>
-      </Box>
-      {!boundaryReason ? (
-        <Box marginTop={1}>
+    <PanelInputProvider value={true}>
+      <MonitorViewportProvider value={{ columns: size.columns, rows: rowBudget }}>
+        <MonitorShell
+          accent="yellow"
+          icon="⚠"
+          title={`APPROVAL REQUIRED · ${toolName}`}
+          footer={
+            <Box flexDirection="row" flexWrap="wrap">
+              {buttonLabels(suggestedPattern, toolName).map((label) => (
+                <Box
+                  key={label.decision}
+                  flexShrink={0}
+                  ref={(node) => {
+                    if (node) buttons.current.set(label.decision, node);
+                    else buttons.current.delete(label.decision);
+                  }}
+                >
+                  <Text>
+                    <Text bold color={BUTTON_COLOR[label.decision]}>
+                      {label.bracket}
+                    </Text>
+                    <Text dimColor>{label.rest}</Text>
+                  </Text>
+                </Box>
+              ))}
+            </Box>
+          }
+        >
+          {inputSummary ? <Text dimColor>{inputSummary}</Text> : null}
+          {boundaryReason ? <Text color="yellow">KANBAN BOUNDARY: {boundaryReason}</Text> : null}
+          {writeTargets && writeTargets.length > 0 ? (
+            <Text color="yellow">
+              WRITES: {writeTargets.slice(0, 5).join(', ')}
+              {writeTargets.length > 5 ? ` (+${writeTargets.length - 5} more)` : ''}
+            </Text>
+          ) : null}
+          {diff ? (
+            <Box flexDirection="column" marginY={1}>
+              {renderDiff(diff, diffPath)}
+            </Box>
+          ) : null}
           <Text dimColor>
-            {' '}
-            Tip: press{' '}
-            <Text bold color="yellow">
-              Y
-            </Text>{' '}
-            to enable YOLO mode
-            {destructive
-              ? ' (this destructive approval remains)'
-              : ' (skips future routine approvals)'}
-            .
+            Remember: [a] this input; {toolName === 'exec' ? '[c] executable, any args; ' : ''}[t]
+            tool, any input. Destructive calls still prompt.
           </Text>
-        </Box>
-      ) : null}
-    </Box>
+          {!boundaryReason ? (
+            <Box marginTop={1}>
+              <Text dimColor>
+                {' '}
+                Tip: press{' '}
+                <Text bold color="yellow">
+                  Y
+                </Text>{' '}
+                to enable YOLO mode
+                {destructive
+                  ? ' (this destructive approval remains)'
+                  : ' (skips future routine approvals)'}
+                .
+              </Text>
+            </Box>
+          ) : null}
+        </MonitorShell>
+      </MonitorViewportProvider>
+    </PanelInputProvider>
   );
 }

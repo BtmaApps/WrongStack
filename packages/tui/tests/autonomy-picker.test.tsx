@@ -19,7 +19,7 @@ describe('AutonomyPicker', () => {
     );
     const frame = view.lastFrame() ?? '';
     expect(frame).toContain('Autonomy Mode');
-    expect(frame).toContain('↑/↓ navigate');
+    expect(frame).toContain('↑↓');
     expect(frame).toContain('Enter select');
     expect(frame).toContain('Esc cancel');
     view.unmount();

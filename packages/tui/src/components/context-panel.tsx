@@ -1,7 +1,7 @@
 import type { ContextBreakdown } from '@wrongstack/core/utils';
 import type React from 'react';
 import { useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import type { MemoryContextMonitorState } from '../memory-context-monitor.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
@@ -10,6 +10,7 @@ import {
   KeyCap,
   MonitorShell,
   SectionLabel,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -872,6 +873,7 @@ export function ContextPanel({ data, onClose }: ContextPanelProps): React.ReactE
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.meta || (key.ctrl && !/^[1-5]$/.test(input))) return;
     // Esc is owned by the central ESC_CLOSE_PANELS table (esc-close-panels.ts);
     // handling it here too would double-fire the toggle and re-open the panel.
     // With a draft in the composer, every key here (letters, digits, Tab,

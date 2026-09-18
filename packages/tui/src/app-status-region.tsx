@@ -37,6 +37,7 @@ import type { PanelId, PanelPositionMap } from './ui-contracts.js';
 export { resolveAgentSwarmPanelVisibility } from './app-ui-state.js';
 
 interface AppStatusRegionProps extends AppViewProps {
+  panelsSuppressed?: boolean | undefined;
   /** Optional column width cap for the status bar (when beside a sidebar). */
   mainColumnWidth?: number | undefined;
 }
@@ -57,6 +58,7 @@ export function AppStatusRegion({
   host,
   runtime,
   mainColumnWidth,
+  panelsSuppressed = false,
 }: AppStatusRegionProps): React.ReactElement {
   const {
     agent,
@@ -237,192 +239,200 @@ export function AppStatusRegion({
               measurement and every status-bar hit-test row was off by the
               panel's height whenever /mailbox was open. */}
       <Box ref={belowStatusBarRef} flexDirection="column" flexShrink={0}>
-        {/* Mailbox panel — toggled via /mailbox slash command */}
-        <MailboxPanel
-          messages={mailboxMessages}
-          agents={mailboxAgents}
-          unreadCount={mailboxStatus.unread}
-          open={mailboxPanelOpen}
-        />
-        {/* Keys-&-commands help overlay (`?` on an empty prompt). Modal: while
+        {state.helpOpen ? <HelpOverlay /> : null}
+        <Box flexDirection="column" display={panelsSuppressed ? 'none' : 'flex'}>
+          {/* Mailbox panel — toggled via /mailbox slash command */}
+          <MailboxPanel
+            messages={mailboxMessages}
+            agents={mailboxAgents}
+            unreadCount={mailboxStatus.unread}
+            open={mailboxPanelOpen}
+          />
+          {/* Keys-&-commands help overlay (`?` on an empty prompt). Modal: while
           open, handleKey swallows everything but Esc/?/q, so it never coexists
           with a monitor; the overlay scrolls its own height-limited window
           with ↑/↓/PgUp/PgDn via its own useInput. */}
-        {state.helpOpen ? <HelpOverlay /> : null}
-        {/* Agents monitor overlay (Ctrl+G) and fleet monitor overlay (Ctrl+F)
+          {/* Agents monitor overlay (Ctrl+G) and fleet monitor overlay (Ctrl+F)
           take up the lower region — hide FleetPanel while any overlay is open. */}
-        {state.agentsMonitorOpen && routedToBottom('agents') ? (
-          <AgentsMonitor
-            entries={entriesWithLeader}
-            totalCost={state.fleetCost}
-            leaderCost={tokenCounter?.estimateCost().total ?? 0}
-            totalTokens={state.fleetTokens}
-            nowTick={nowTick}
-            onClose={() => dispatch({ type: 'toggleAgentsMonitor' })}
-            transcripts={agentTranscripts}
-            leaderTranscript={getLeaderTranscript}
-          />
-        ) : state.goalRun?.monitorOpen && routedToBottom('coordinator') ? (
-          <PhaseMonitor
-            phases={state.goalRun.phases}
-            runningPhaseIds={state.goalRun.runningPhaseIds}
-            elapsedMs={state.goalRun.elapsedMs}
-            nowTick={nowTick}
-          />
-        ) : state.sddBoard?.monitorOpen ? (
-          <SddBoardOverlay
-            snapshot={state.sddBoard.snapshot}
-            focusColumn={state.sddBoard.focusColumn ?? null}
-          />
-        ) : state.worktreeMonitorOpen && routedToBottom('worktree') ? (
-          <WorktreeMonitor
-            worktrees={state.worktrees}
-            baseBranch={state.worktreeBase}
-            nowTick={nowTick}
-            onClose={() => dispatch({ type: 'toggleWorktreeMonitor' })}
-          />
-        ) : state.todosMonitorOpen && routedToBottom('todos') ? (
-          <TodosMonitor todos={liveTodos} />
-        ) : state.monitorOpen && routedToBottom('fleet') ? (
-          <FleetMonitor
-            entries={state.fleet}
-            totalCost={state.fleetCost}
-            totalTokens={state.fleetTokens}
-            maxConcurrent={state.fleetConcurrency}
-            nowTick={nowTick}
-            collabSession={state.collabSession}
-          />
-        ) : state.planPanelOpen && routedToBottom('plan') ? (
-          <PlanPanel
-            projectRoot={agent.ctx.projectRoot}
-            sessionId={agent.ctx.session?.id ?? null}
-            onClose={() => dispatch({ type: 'togglePlanPanel' })}
-          />
-        ) : state.kanbanPanelOpen && routedToBottom('kanban') ? (
-          <KanbanPanel
-            projectRoot={agent.ctx.projectRoot}
-            sessionId={agent.ctx.eventSessionId()}
-            sessionContext={agent.ctx}
-            onClose={() => dispatch({ type: 'toggleKanbanPanel' })}
-            initialBoardId={focusedBoardId ?? undefined}
-          />
-        ) : state.queuePanelOpen && routedToBottom('queue') ? (
-          <QueuePanel
-            items={state.queue}
-            onDelete={(pos) => dispatch({ type: 'queueDelete', positions: [pos + 1] })}
-            onClear={() => dispatch({ type: 'queueClear' })}
-            onEdit={(pos) => {
-              const item = state.queue[pos];
-              if (item) {
-                setDraft(item.displayText, item.displayText.length);
-                dispatch({ type: 'toggleQueuePanel' });
+          {state.agentsMonitorOpen && routedToBottom('agents') ? (
+            <AgentsMonitor
+              entries={entriesWithLeader}
+              totalCost={state.fleetCost}
+              leaderCost={tokenCounter?.estimateCost().total ?? 0}
+              totalTokens={state.fleetTokens}
+              nowTick={nowTick}
+              onClose={() => dispatch({ type: 'toggleAgentsMonitor' })}
+              transcripts={agentTranscripts}
+              leaderTranscript={getLeaderTranscript}
+            />
+          ) : state.goalRun?.monitorOpen && routedToBottom('coordinator') ? (
+            <PhaseMonitor
+              phases={state.goalRun.phases}
+              runningPhaseIds={state.goalRun.runningPhaseIds}
+              elapsedMs={state.goalRun.elapsedMs}
+              nowTick={nowTick}
+            />
+          ) : state.sddBoard?.monitorOpen ? (
+            <SddBoardOverlay
+              snapshot={state.sddBoard.snapshot}
+              focusColumn={state.sddBoard.focusColumn ?? null}
+            />
+          ) : state.worktreeMonitorOpen && routedToBottom('worktree') ? (
+            <WorktreeMonitor
+              worktrees={state.worktrees}
+              baseBranch={state.worktreeBase}
+              nowTick={nowTick}
+              onClose={() => dispatch({ type: 'toggleWorktreeMonitor' })}
+            />
+          ) : state.todosMonitorOpen && routedToBottom('todos') ? (
+            <TodosMonitor todos={liveTodos} />
+          ) : state.monitorOpen && routedToBottom('fleet') ? (
+            <FleetMonitor
+              entries={state.fleet}
+              totalCost={state.fleetCost}
+              totalTokens={state.fleetTokens}
+              maxConcurrent={state.fleetConcurrency}
+              nowTick={nowTick}
+              collabSession={state.collabSession}
+            />
+          ) : state.planPanelOpen && routedToBottom('plan') ? (
+            <PlanPanel
+              projectRoot={agent.ctx.projectRoot}
+              sessionId={agent.ctx.session?.id ?? null}
+              onClose={() => dispatch({ type: 'togglePlanPanel' })}
+            />
+          ) : state.kanbanPanelOpen && routedToBottom('kanban') ? (
+            <KanbanPanel
+              projectRoot={agent.ctx.projectRoot}
+              sessionId={agent.ctx.eventSessionId()}
+              sessionContext={agent.ctx}
+              onClose={() => dispatch({ type: 'toggleKanbanPanel' })}
+              initialBoardId={focusedBoardId ?? undefined}
+            />
+          ) : state.queuePanelOpen && routedToBottom('queue') ? (
+            <QueuePanel
+              items={state.queue}
+              onDelete={(pos) => dispatch({ type: 'queueDelete', positions: [pos + 1] })}
+              onClear={() => dispatch({ type: 'queueClear' })}
+              onEdit={(pos) => {
+                const item = state.queue[pos];
+                if (item) {
+                  setDraft(item.displayText, item.displayText.length);
+                  dispatch({ type: 'toggleQueuePanel' });
+                }
+              }}
+              onToggleRefine={(pos) => dispatch({ type: 'queueToggleRefine', position: pos })}
+            />
+          ) : state.processListOpen && routedToBottom('processList') ? (
+            <ProcessListMonitor />
+          ) : state.cronMonitorOpen ? (
+            <CronJobsMonitor
+              getCronJobs={getCronJobs}
+              onCancel={async (name) => {
+                const tool = agent.tools.get('cron_cancel');
+                if (!tool) return 'Cron plugin not loaded (cron_cancel tool not found).';
+                try {
+                  const result = (await tool.execute({ name }, agent.ctx, {
+                    signal: AbortSignal.timeout(5000),
+                  })) as { ok?: boolean | undefined; error?: string | undefined };
+                  return result.ok === false ? (result.error ?? `Could not cancel ${name}.`) : null;
+                } catch (error) {
+                  return error instanceof Error ? error.message : String(error);
+                }
+              }}
+            />
+          ) : state.goalPanelOpen && routedToBottom('goal') ? (
+            <GoalPanel
+              goal={state.goalSummary}
+              onCoordinatorStart={onCoordinatorStart ?? undefined}
+              onCoordinatorStop={onCoordinatorStop ?? undefined}
+              coordinatorRunning={coordinatorRunning}
+            />
+          ) : state.goalKanbanPanelOpen ? (
+            <GoalKanbanPanel
+              projectRoot={projectRoot}
+              goal={state.goalSummary}
+              onClose={() => dispatch({ type: 'toggleGoalKanbanPanel' })}
+            />
+          ) : state.contextPanelOpen ? (
+            <ContextPanel
+              data={{
+                ctxPct: state.leader.ctxPct,
+                ctxTokens: state.leader.ctxTokens,
+                ctxMaxTokens: state.leader.ctxMaxTokens,
+                provider: (agent.ctx.provider as { id?: string } | undefined)?.id ?? 'unknown',
+                model: agent.ctx.model,
+                mode: getModeLabel?.() ?? 'default',
+                uptime: (() => {
+                  const elapsed = Date.now() - state.leader.startedAt;
+                  const hrs = Math.floor(elapsed / 3600000);
+                  const mins = Math.floor((elapsed % 3600000) / 60000);
+                  const secs = Math.floor((elapsed % 60000) / 1000);
+                  if (hrs > 0) return `${hrs}h ${mins}m`;
+                  if (mins > 0) return `${mins}m ${secs}s`;
+                  return `${secs}s`;
+                })(),
+                cacheStats: cacheStats ?? {
+                  readTokens: 0,
+                  writeTokens: 0,
+                  hitRatio: 0,
+                  savedUsd: 0,
+                },
+                cacheCoverageTokens: cacheCoverageTokens ?? 0,
+                providerCacheStats: cacheStats?.providers ?? [],
+                fleetEntries: Object.values(state.fleet).map((e) => ({
+                  name: e.name,
+                  status: e.status,
+                  currentTool: e.currentTool?.name,
+                  ctxPct: e.ctxPct,
+                })),
+                leaderIterations: state.leader.iterations,
+                leaderToolCalls: state.leader.toolCalls,
+                leaderStatus: state.status,
+                breakdown: contextBreakdown,
+                memoryContext: memoryContextMonitor,
+              }}
+              onClose={() => dispatch({ type: 'toggleContextPanel' })}
+            />
+          ) : state.sessionsPanelOpen && routedToBottom('sessions') ? (
+            <SessionsPanel
+              sessions={state.sessionsPanel.sessions}
+              busy={state.sessionsPanel.busy}
+              selected={state.sessionsPanel.selected}
+              resumeConfirm={
+                state.sessionResumeConfirm
+                  ? { sessionName: state.sessionResumeConfirm.sessionName }
+                  : undefined
               }
-            }}
-            onToggleRefine={(pos) => dispatch({ type: 'queueToggleRefine', position: pos })}
-          />
-        ) : state.processListOpen && routedToBottom('processList') ? (
-          <ProcessListMonitor />
-        ) : state.cronMonitorOpen ? (
-          <CronJobsMonitor
-            getCronJobs={getCronJobs}
-            onCancel={async (name) => {
-              const tool = agent.tools.get('cron_cancel');
-              if (!tool) return 'Cron plugin not loaded (cron_cancel tool not found).';
-              try {
-                const result = (await tool.execute({ name }, agent.ctx, {
-                  signal: AbortSignal.timeout(5000),
-                })) as { ok?: boolean | undefined; error?: string | undefined };
-                return result.ok === false ? (result.error ?? `Could not cancel ${name}.`) : null;
-              } catch (error) {
-                return error instanceof Error ? error.message : String(error);
-              }
-            }}
-          />
-        ) : state.goalPanelOpen && routedToBottom('goal') ? (
-          <GoalPanel
-            goal={state.goalSummary}
-            onCoordinatorStart={onCoordinatorStart ?? undefined}
-            onCoordinatorStop={onCoordinatorStop ?? undefined}
-            coordinatorRunning={coordinatorRunning}
-          />
-        ) : state.goalKanbanPanelOpen ? (
-          <GoalKanbanPanel
-            projectRoot={projectRoot}
-            goal={state.goalSummary}
-            onClose={() => dispatch({ type: 'toggleGoalKanbanPanel' })}
-          />
-        ) : state.contextPanelOpen ? (
-          <ContextPanel
-            data={{
-              ctxPct: state.leader.ctxPct,
-              ctxTokens: state.leader.ctxTokens,
-              ctxMaxTokens: state.leader.ctxMaxTokens,
-              provider: (agent.ctx.provider as { id?: string } | undefined)?.id ?? 'unknown',
-              model: agent.ctx.model,
-              mode: getModeLabel?.() ?? 'default',
-              uptime: (() => {
-                const elapsed = Date.now() - state.leader.startedAt;
-                const hrs = Math.floor(elapsed / 3600000);
-                const mins = Math.floor((elapsed % 3600000) / 60000);
-                const secs = Math.floor((elapsed % 60000) / 1000);
-                if (hrs > 0) return `${hrs}h ${mins}m`;
-                if (mins > 0) return `${mins}m ${secs}s`;
-                return `${secs}s`;
-              })(),
-              cacheStats: cacheStats ?? { readTokens: 0, writeTokens: 0, hitRatio: 0, savedUsd: 0 },
-              cacheCoverageTokens: cacheCoverageTokens ?? 0,
-              providerCacheStats: cacheStats?.providers ?? [],
-              fleetEntries: Object.values(state.fleet).map((e) => ({
-                name: e.name,
-                status: e.status,
-                currentTool: e.currentTool?.name,
-                ctxPct: e.ctxPct,
-              })),
-              leaderIterations: state.leader.iterations,
-              leaderToolCalls: state.leader.toolCalls,
-              leaderStatus: state.status,
-              breakdown: contextBreakdown,
-              memoryContext: memoryContextMonitor,
-            }}
-            onClose={() => dispatch({ type: 'toggleContextPanel' })}
-          />
-        ) : state.sessionsPanelOpen && routedToBottom('sessions') ? (
-          <SessionsPanel
-            sessions={state.sessionsPanel.sessions}
-            busy={state.sessionsPanel.busy}
-            selected={state.sessionsPanel.selected}
-            resumeConfirm={
-              state.sessionResumeConfirm
-                ? { sessionName: state.sessionResumeConfirm.sessionName }
-                : undefined
-            }
-            currentSessionId={agent.ctx.session?.id}
-          />
-        ) : (director || hasVisibleFleetPanel || state.collabSession) &&
-          effectiveAgentSwarmPanelMode(state, liveSettings) !== 'off' &&
-          routedToBottom('fleet') ? (
-          <FleetPanel
-            entries={entriesWithLeader}
-            totalCost={state.fleetCost}
-            roster={fleetRoster}
-            todos={liveTodos}
-            nowTick={nowTick}
-            collabSession={state.collabSession}
-            maxWidth={mainColumnWidth}
-          />
-        ) : null}
-        {state.goalRun && !lowerFunctionPanelOpen && routedToBottom('coordinator') ? (
-          <PhasePanel
-            phases={state.goalRun.phases}
-            runningPhaseIds={state.goalRun.runningPhaseIds}
-            nowTick={nowTick}
-          />
-        ) : null}
-        {Object.keys(state.worktrees).length > 0 &&
-        !lowerFunctionPanelOpen &&
-        routedToBottom('worktree') ? (
-          <WorktreePanel worktrees={state.worktrees} nowTick={nowTick} />
-        ) : null}
+              currentSessionId={agent.ctx.session?.id}
+            />
+          ) : !lowerFunctionPanelOpen &&
+            (director || hasVisibleFleetPanel || state.collabSession) &&
+            effectiveAgentSwarmPanelMode(state, liveSettings) !== 'off' &&
+            routedToBottom('fleet') ? (
+            <FleetPanel
+              entries={entriesWithLeader}
+              totalCost={state.fleetCost}
+              roster={fleetRoster}
+              todos={liveTodos}
+              nowTick={nowTick}
+              collabSession={state.collabSession}
+              maxWidth={mainColumnWidth}
+            />
+          ) : null}
+          {state.goalRun && !lowerFunctionPanelOpen && routedToBottom('coordinator') ? (
+            <PhasePanel
+              phases={state.goalRun.phases}
+              runningPhaseIds={state.goalRun.runningPhaseIds}
+              nowTick={nowTick}
+            />
+          ) : null}
+          {Object.keys(state.worktrees).length > 0 &&
+          !lowerFunctionPanelOpen &&
+          routedToBottom('worktree') ? (
+            <WorktreePanel worktrees={state.worktrees} nowTick={nowTick} />
+          ) : null}
+        </Box>
       </Box>
     </>
   );

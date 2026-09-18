@@ -938,7 +938,8 @@ export function App(props: AppProps): React.ReactElement {
     panelPositions: effectivePanelPositions(state, liveSettings),
   });
 
-  if (pendingUserInput) return <UserInputPrompt pending={pendingUserInput} />;
+  if (pendingUserInput)
+    return <UserInputPrompt pending={pendingUserInput} onInterrupt={runInterruptLadder} />;
 
   return (
     <AppView

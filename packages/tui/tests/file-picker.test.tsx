@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { FilePicker } from '../src/components/file-picker.js';
 
 describe('FilePicker', () => {
@@ -24,7 +24,7 @@ describe('FilePicker', () => {
     );
     const frame = lastFrame() ?? '';
     expect(frame).toContain('@bar');
-    expect(frame).toContain('↑/↓ select, Enter attach');
+    expect(frame).toContain('↑↓ · Enter attach');
     expect(frame).toContain('src/bar.ts');
     expect(frame).toContain('src/bar/util.ts');
     unmount();

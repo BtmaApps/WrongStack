@@ -37,6 +37,7 @@ export function ResumePicker({
   hint,
   maxRows,
 }: ResumePickerProps): React.ReactElement {
+  const compact = maxRows !== undefined && maxRows < 12;
   // Each session occupies 3 visual rows (title + meta + preview). The window
   // is sized against the caller's measured `maxRows` budget when provided;
   // the legacy `rows - 10` guess under-reserved the real status bar + input
@@ -46,9 +47,9 @@ export function ResumePicker({
   const { start, end, hasAbove, hasBelow } = useWindowedPicker({
     total: sessions.length,
     selected,
-    rowSpan: 3,
+    rowSpan: compact ? 1 : 3,
     chromeRows: 4,
-    markerRows: 3,
+    markerRows: 2 + Number(Boolean(error)) + Number(Boolean(hint)),
     maxRows,
   });
   const visibleSessions = sessions.slice(start, end);
@@ -57,16 +58,22 @@ export function ResumePicker({
       <Text color="cyan" bold>
         ━━ Resume Session ━━
       </Text>
-      <Text dimColor>
+      <Text dimColor wrap="truncate-end">
         {busy
           ? 'Resuming selected session…'
           : // Position and total, because the list is windowed: three rows per
             // session means most of it is off-screen at any moment, and without
             // a count a scrollable list of 200 is indistinguishable from the
             // page of 20 this picker used to be handed.
-            `${sessions.length > 0 ? `${selected + 1}/${sessions.length} · ` : ''}↑/↓ navigate · Enter select · Esc cancel`}
+            compact
+            ? '↑↓ · Enter select · Esc cancel'
+            : `${sessions.length > 0 ? `${selected + 1}/${sessions.length} · ` : ''}↑/↓ navigate · Enter select · Esc cancel`}
       </Text>
-      {error ? <Text color="red">{error}</Text> : null}
+      {error ? (
+        <Text color="red" wrap="truncate-end">
+          {error}
+        </Text>
+      ) : null}
       {sessions.length === 0 && !busy ? (
         <Text dimColor>No sessions found.</Text>
       ) : (
@@ -105,6 +112,7 @@ export function ResumePicker({
             return (
               <Box key={s.id} flexDirection="column">
                 <Text
+                  wrap="truncate-end"
                   inverse={isSelected}
                   dimColor={(isCurrent ?? false) || live !== undefined}
                   {...(isSelected ? { color: isCurrent || live ? 'gray' : 'cyan' } : {})}
@@ -125,30 +133,38 @@ export function ResumePicker({
                     · {s.id} · {date}
                   </Text>
                 </Text>
-                <Text dimColor>
-                  {isSelected ? '   ' : '   '}
-                  {outcomeBadge}
-                  {s.tokenTotal.toLocaleString()} tok
-                  {(s.messageCount ?? 0) > 0 ? ` · ${s.messageCount} msg` : ''}
-                  {toolStr ? ` · ${toolStr}` : ''}
-                  {iterStr ? ` · ${iterStr}` : ''}
-                  {s.toolErrorCount > 0 ? (
-                    <Text color="yellow"> · {s.toolErrorCount} err</Text>
-                  ) : null}
-                </Text>
-                <Text dimColor>
-                  {isSelected ? '   ' : '   '}
-                  {(contentPreview ?? s.title).length > 72
-                    ? `${(contentPreview ?? s.title).slice(0, 71)}…`
-                    : (contentPreview ?? s.title)}
-                </Text>
+                {!compact ? (
+                  <Text dimColor wrap="truncate-end">
+                    {isSelected ? '   ' : '   '}
+                    {outcomeBadge}
+                    {s.tokenTotal.toLocaleString()} tok
+                    {(s.messageCount ?? 0) > 0 ? ` · ${s.messageCount} msg` : ''}
+                    {toolStr ? ` · ${toolStr}` : ''}
+                    {iterStr ? ` · ${iterStr}` : ''}
+                    {s.toolErrorCount > 0 ? (
+                      <Text color="yellow"> · {s.toolErrorCount} err</Text>
+                    ) : null}
+                  </Text>
+                ) : null}
+                {!compact ? (
+                  <Text dimColor wrap="truncate-end">
+                    {isSelected ? '   ' : '   '}
+                    {(contentPreview ?? s.title).length > 72
+                      ? `${(contentPreview ?? s.title).slice(0, 71)}…`
+                      : (contentPreview ?? s.title)}
+                  </Text>
+                ) : null}
               </Box>
             );
           })}
           {hasBelow ? <Text dimColor> … {sessions.length - end} more below</Text> : null}
         </>
       )}
-      {hint ? <Text color="yellow">{hint}</Text> : null}
+      {hint ? (
+        <Text color="yellow" wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
 }

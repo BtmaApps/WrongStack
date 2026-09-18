@@ -245,5 +245,22 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
         expect(output.slice(closeStart)).not.toContain('preserved-draftz');
       }
     }
+    child.write('\x15');
+    await sleep(300);
+    for (const [command, title] of [
+      ['/model', 'Switch model'],
+      ['/theme', 'TUI Theme'],
+      ['/settings', 'Settings'],
+      ['/resume', 'Resume Session'],
+    ] as const) {
+      const pickerStart = output.length;
+      await type(command);
+      child.write('\r');
+      await expectSoon(title, 10_000, pickerStart);
+      await sleep(200);
+      const closeStart = output.length;
+      child.write(ESC);
+      await expectSoon('Enter send', 10_000, closeStart);
+    }
   }, 120_000);
 });

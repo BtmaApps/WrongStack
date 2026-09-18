@@ -95,8 +95,8 @@ Two-step: Step 1 = select provider, Step 2 = select model.
 | ← | Cycle field value backward / toggle boolean off |
 | → | Cycle field value forward / toggle boolean on |
 | Mouse wheel | Move field selection |
-| Enter | Close settings (changes auto-saved) |
-| Esc, Ctrl+S | Close settings |
+| Enter | Cycle the focused value, or open/commit its inline text editor |
+| Esc, Ctrl+S | Close settings; Esc first cancels an active inline text edit |
 
 ### Statusline picker (`/statusline`, `/sl`, click chip)
 
@@ -106,8 +106,13 @@ Two-step: Step 1 = select provider, Step 2 = select model.
 | ↓ | Move focus to next chip |
 | ← | Toggle focused chip on/off |
 | → | Toggle focused chip on/off |
+| 1–4 | Move chip to that line; immediately regroup the menu and retain focus |
+| o / O | Move chip later / earlier within its line; update the menu order |
 | Mouse wheel | Move focus |
 | Esc | Close picker |
+
+The list is grouped by the current line (1–4), then by saved chip order within
+each group. Short panels prioritize the selected chip over the four-rail preview.
 
 ### Project picker (F1, `/project`)
 

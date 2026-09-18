@@ -1,4 +1,5 @@
 import type { State } from './app-state.js';
+import { bottomPanelOwnsInput } from './app-ui-state.js';
 import { composerStatusFromState } from './components/composer-status-chip.js';
 import { DEFAULT_INPUT_PROMPT, inputContentWidth } from './components/input.js';
 import { activeBottomFKeyPanel } from './f-key-panels.js';
@@ -26,6 +27,7 @@ export function deriveAppViewState(options: AppViewStateOptions) {
   const { state, terminalColumns, displayThinkingWord, fleetRunning, liveAnimationStyle } = options;
   const onBottom = (id: PanelId): boolean => options.panelPositions[id] !== 'sidebar';
   const functionPanel = activeBottomFKeyPanel(state, options.panelPositions);
+  const panelOwnsInput = bottomPanelOwnsInput(state, options.panelPositions);
   const inputHint =
     state.status === 'idle' && state.buffer.startsWith('/')
       ? 'slash command — Enter to dispatch'
@@ -51,7 +53,7 @@ export function deriveAppViewState(options: AppViewStateOptions) {
     ).length + 2,
   );
   const hideInput =
-    functionPanel !== null ||
+    panelOwnsInput ||
     enhanceActive ||
     state.refineFailure != null ||
     state.continueConfirm != null ||
@@ -78,7 +80,7 @@ export function deriveAppViewState(options: AppViewStateOptions) {
     (state.sessionsPanelOpen && onBottom('sessions')) ||
     state.authPanel.open;
   const lowerFunctionPanelOpen =
-    functionPanel !== null ||
+    panelOwnsInput ||
     (state.monitorOpen && onBottom('fleet')) ||
     (state.agentsMonitorOpen && onBottom('agents')) ||
     ((state.goalRun?.monitorOpen ?? false) && onBottom('coordinator')) ||
@@ -99,5 +101,6 @@ export function deriveAppViewState(options: AppViewStateOptions) {
     hideInput,
     lowerFunctionPanelOpen,
     functionPanel,
+    panelOwnsInput,
   };
 }

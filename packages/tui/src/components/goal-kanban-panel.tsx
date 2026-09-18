@@ -2,10 +2,10 @@ import { getBoard, type KanbanBoard, type KanbanTask, listBoards } from '@wrongs
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { GoalSummary } from '../app-state.js';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
-import { usePanelShortcutsEnabled } from './monitor-shell.js';
+import { usePanelInput as useInput, usePanelShortcutsEnabled } from './monitor-shell.js';
 import { fmtPct } from './status-bar-format.js';
 
 interface GoalKanbanPanelProps {
@@ -84,6 +84,7 @@ export function GoalKanbanPanel({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((_input, key) => {
+    if (key.ctrl || key.meta) return;
     if (key.escape || (shortcutsEnabled && _input === 'q')) {
       onClose();
     }

@@ -1,5 +1,7 @@
 import type React from 'react';
+import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, Text } from '../ink.js';
+import { truncateDisplay } from '../terminal-width.js';
 import { EFFORT_KEEP, type ModelEffortChoice } from './model-picker-effort.js';
 import { colorForFamily, UI_COLORS } from './provider-colors.js';
 
@@ -71,17 +73,21 @@ interface ModelPickerProps {
 const MAX_VISIBLE = 10;
 
 /** Compute the visible window, keeping `selected` centered when possible. */
-function getVisibleWindow(selected: number, total: number): { start: number; end: number } {
-  const half = Math.floor(MAX_VISIBLE / 2);
+function getVisibleWindow(
+  selected: number,
+  total: number,
+  limit = MAX_VISIBLE,
+): { start: number; end: number } {
+  const half = Math.floor(limit / 2);
   let start = selected - half;
-  let end = start + MAX_VISIBLE;
+  let end = start + limit;
   if (start < 0) {
     start = 0;
-    end = Math.min(total, MAX_VISIBLE);
+    end = Math.min(total, limit);
   }
   if (end > total) {
     end = total;
-    start = Math.max(0, end - MAX_VISIBLE);
+    start = Math.max(0, end - limit);
   }
   return { start, end };
 }
@@ -102,11 +108,17 @@ export function ModelPicker({
   searchQuery,
   hint,
   titleLabel,
-  columns = 0,
+  columns: columnsOverride,
   maxRows,
   effortOptions = [],
   effortChoice = EFFORT_KEEP,
 }: ModelPickerProps): React.ReactElement {
+  const terminal = useTerminalSize();
+  const columns = columnsOverride || terminal.columns;
+  const rowBudget = maxRows ?? Math.max(8, terminal.rows - 6);
+  const compact = columns < 76 || rowBudget < 16;
+  // Border, title, navigation, both scroll markers, optional status hint.
+  const visibleLimit = Math.max(1, Math.min(MAX_VISIBLE, rowBudget - 6 - (hint ? 1 : 0)));
   const title = titleLabel ?? 'Switch model';
   if (step === 'provider') {
     const focused = providerOptions[Math.max(0, Math.min(selected, providerOptions.length - 1))];
@@ -115,7 +127,9 @@ export function ModelPicker({
       0,
     );
     const listWidth = Math.max(38, Math.min(56, longest + 24));
-    const split = columns >= listWidth + 42 && Boolean(focused);
+    const split =
+      columnsOverride !== undefined && !compact && columns >= listWidth + 42 && Boolean(focused);
+    const providerWindow = getVisibleWindow(selected, providerOptions.length, visibleLimit);
     const list = (
       <Box
         flexDirection="column"
@@ -124,20 +138,24 @@ export function ModelPicker({
         paddingX={1}
         {...(split ? { width: listWidth, flexShrink: 0 } : {})}
       >
-        <Text color={UI_COLORS.title} bold>
-          {`━━ ${title} — Step 1/2: Pick provider ━━`}
+        <Text color={UI_COLORS.title} bold wrap="truncate-end">
+          {compact ? `${title} · Step 1/2` : `━━ ${title} — Step 1/2: Pick provider ━━`}
         </Text>
-        <Text dimColor>↑/↓ navigate · Enter select · Esc cancel · Ctrl+C exit</Text>
+        <Text dimColor wrap="truncate-end">
+          ↑↓ · Enter select · Esc cancel
+        </Text>
         {providerOptions.length === 0 ? (
           <Text dimColor>(no providers with keys — add one via `wstack auth`)</Text>
         ) : (
-          <Box flexDirection="column" minHeight={providerOptions.length}>
-            {providerOptions.map((p, i) => {
-              const isSelected = i === selected;
+          <Box flexDirection="column">
+            {providerWindow.start > 0 ? <Text dimColor>▲ {providerWindow.start} above</Text> : null}
+            {providerOptions.slice(providerWindow.start, providerWindow.end).map((p, i) => {
+              const isSelected = providerWindow.start + i === selected;
               const famColor = colorForFamily(p.family);
               return (
                 <Text
                   key={p.id}
+                  wrap="truncate-end"
                   inverse={isSelected}
                   {...(isSelected ? { color: UI_COLORS.focused } : {})}
                 >
@@ -156,16 +174,23 @@ export function ModelPicker({
                 </Text>
               );
             })}
+            {providerWindow.end < providerOptions.length ? (
+              <Text dimColor>▼ {providerOptions.length - providerWindow.end} below</Text>
+            ) : null}
           </Box>
         )}
-        {hint ? <Text color={UI_COLORS.hint}>{hint}</Text> : null}
+        {hint ? (
+          <Text color={UI_COLORS.hint} wrap="truncate-end">
+            {hint}
+          </Text>
+        ) : null}
       </Box>
     );
     if (!split || !focused) return list;
     // Fixed line budget for the model preview so the detail panel height never
     // changes as the user navigates between providers with different model
     // counts — mirrors the padding idiom Step 2 uses for its scroll window.
-    const previewBudget = Math.max(3, (maxRows ?? 14) - 8);
+    const previewBudget = Math.max(1, rowBudget - 10);
     const previewModels = focused.models.slice(0, previewBudget);
     return (
       <Box flexDirection="row">
@@ -176,6 +201,8 @@ export function ModelPicker({
           borderColor={UI_COLORS.border}
           paddingX={1}
           flexGrow={1}
+          maxHeight={rowBudget}
+          overflow="hidden"
         >
           <Text color={UI_COLORS.title} bold>
             {focused.id}
@@ -223,7 +250,7 @@ export function ModelPicker({
 
   // ── Step 2: model picker with scroll window + search ───────────────────────
   const total = filteredOptions.length;
-  const { start, end } = getVisibleWindow(selected, total);
+  const { start, end } = getVisibleWindow(selected, total, visibleLimit);
   const visibleItems = filteredOptions.slice(start, end);
 
   const searchHint = searchQuery
@@ -235,14 +262,16 @@ export function ModelPicker({
   const focusedModel = filteredOptions[Math.max(0, Math.min(selected, filteredOptions.length - 1))];
   // Built as a string, not JSX children: a conditional segment inline in JSX
   // loses the separating space to whitespace collapsing.
-  const navHint = [
-    '↑/↓ navigate',
-    ...(effortOptions.length > 0 ? ['←/→ effort'] : []),
-    'Enter select',
-    'Esc back',
-    'Ctrl+C exit',
-    'type to filter',
-  ].join(' · ');
+  const navHint = compact
+    ? `↑↓ · Enter select · Esc back${effortOptions.length > 0 ? ' · ←→ effort' : ''}`
+    : [
+        '↑/↓ navigate',
+        ...(effortOptions.length > 0 ? ['←/→ effort'] : []),
+        'Enter select',
+        'Esc back',
+        'Ctrl+C exit',
+        'type to filter',
+      ].join(' · ');
   const longestModel = filteredOptions.reduce((value, model) => Math.max(value, model.length), 0);
   // The focused row carries an effort chip ("  ‹ medium ›"). Its width is added
   // to the fixed list width rather than eaten from it: a bordered Box with a
@@ -253,7 +282,11 @@ export function ModelPicker({
       ? effortOptions.reduce((value, option) => Math.max(value, option.length), 0) + 6
       : 0;
   const modelListWidth = Math.max(38, Math.min(62, longestModel + 7) + effortChipWidth);
-  const split = columns >= modelListWidth + 42 && Boolean(focusedModel);
+  const split =
+    columnsOverride !== undefined &&
+    !compact &&
+    columns >= modelListWidth + 42 &&
+    Boolean(focusedModel);
   const modelList = (
     <Box
       flexDirection="column"
@@ -262,11 +295,14 @@ export function ModelPicker({
       paddingX={1}
       {...(split ? { width: modelListWidth, flexShrink: 0 } : {})}
     >
-      <Text color={UI_COLORS.title} bold>
-        {`━━ ${title} — Step 2/2: Pick model `}({pickedProviderId}
-        {searchHint}){' ━━'}
+      <Text color={UI_COLORS.title} bold wrap="truncate-end">
+        {compact
+          ? `${title} · Step 2/2 (${pickedProviderId}${searchHint})`
+          : `━━ ${title} — Step 2/2: Pick model (${pickedProviderId}${searchHint}) ━━`}
       </Text>
-      <Text dimColor>{navHint}</Text>
+      <Text dimColor wrap="truncate-end">
+        {navHint}
+      </Text>
       {total === 0 ? (
         <Text dimColor>
           {searchQuery
@@ -274,7 +310,7 @@ export function ModelPicker({
             : '(no models known for this provider)'}
         </Text>
       ) : (
-        <Box flexDirection="column" minHeight={MAX_VISIBLE + 2}>
+        <Box flexDirection="column" minHeight={visibleLimit + 2}>
           {start > 0 && <Text dimColor>▲ {start} above</Text>}
           {visibleItems.map((id, vi) => {
             const absoluteIndex = start + vi;
@@ -282,23 +318,34 @@ export function ModelPicker({
             return (
               <Text
                 key={id}
+                wrap="truncate-end"
                 inverse={isSelected}
                 {...(isSelected ? { color: UI_COLORS.selectedModel } : {})}
               >
                 {isSelected ? '› ' : '  '}
-                {id}
+                {truncateDisplay(
+                  id,
+                  Math.max(
+                    1,
+                    (split ? modelListWidth : columns) - 6 - (isSelected ? effortChipWidth : 0),
+                  ),
+                )}
                 {isSelected && effortOptions.length > 0 ? `  ‹ ${effortChoice} ›` : ''}
               </Text>
             );
           })}
           {/* Pad remaining slots so old longer list never leaves ghost text */}
-          {Array.from({ length: MAX_VISIBLE - visibleItems.length }).map((_, i) => (
+          {Array.from({ length: visibleLimit - visibleItems.length }).map((_, i) => (
             <Text key={`pad-${i}`}> </Text>
           ))}
           {end < total && <Text dimColor>▼ {total - end} below</Text>}
         </Box>
       )}
-      {hint ? <Text color={UI_COLORS.hint}>{hint}</Text> : null}
+      {hint ? (
+        <Text color={UI_COLORS.hint} wrap="truncate-end">
+          {hint}
+        </Text>
+      ) : null}
     </Box>
   );
   if (!split || !focusedModel) return modelList;
@@ -313,6 +360,8 @@ export function ModelPicker({
         borderColor={UI_COLORS.border}
         paddingX={1}
         flexGrow={1}
+        maxHeight={rowBudget}
+        overflow="hidden"
       >
         <Text color={UI_COLORS.selectedModel} bold wrap="truncate-end">
           {focusedModel}

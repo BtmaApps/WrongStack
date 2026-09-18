@@ -1,7 +1,6 @@
 import { toErrorMessage } from '@wrongstack/core/utils';
-import { effectivePanelPositions } from './app-ui-state.js';
-import type { KeyEvent } from './components/input.js';
-import { activeBottomFKeyPanel } from './f-key-panels.js';
+import { bottomPanelOwnsInput, effectivePanelPositions } from './app-ui-state.js';
+import { EMPTY_KEY, type KeyEvent } from './components/input.js';
 import type { AppKeyHandlerOptions, KeyRouteContext } from './key-handler-context.js';
 import { routeBusyInterrupt, routeCtrlCEscalation } from './key-routes/key-route-busy.js';
 import { routeComposer, routeComposerTail } from './key-routes/key-route-composer.js';
@@ -73,7 +72,7 @@ export function createAppKeyHandler(
 
   // Shared view for the ordered route modules (decomposition Phase 3).
   const ctx: KeyRouteContext = { ...options, stdout, historyWidth, detach };
-  const functionPanel = activeBottomFKeyPanel(
+  const panelOwnsInput = bottomPanelOwnsInput(
     state,
     effectivePanelPositions(state, options.getSettings?.()),
   );
@@ -106,8 +105,8 @@ export function createAppKeyHandler(
     if (inputGateRef.current) return;
 
     // Function keys switch/close panels even when a picker owns all other keys.
-    if (functionPanel !== null && key.fn !== undefined && routeFKeyPanels(ctx, input, key)) return;
-    if (functionPanel !== null && key.meta && (key.pageUp || key.pageDown)) return;
+    if (panelOwnsInput && key.fn !== undefined && routeFKeyPanels(ctx, input, key)) return;
+    if (panelOwnsInput && key.meta && (key.pageUp || key.pageDown)) return;
 
     // ── Bracketed-paste accumulation ──────────────────────────────────
     // Moved verbatim to routePastePipeline (key-routes/key-route-paste.ts,
@@ -115,7 +114,7 @@ export function createAppKeyHandler(
     // fragments accumulate until the end marker (\x1b[201~), then the whole
     // payload finalizes at once — before Enter handling, so a "\n" fragment
     // inside a paste never submits mid-paste.
-    if (functionPanel === null && (await routePastePipeline(ctx, input))) return;
+    if (!panelOwnsInput && (await routePastePipeline(ctx, input))) return;
 
     // Some terminals emit \r\n for Enter as two separate stdin events.
     // \r arrives with key.return=true (handled below); \n may arrive as
@@ -134,6 +133,9 @@ export function createAppKeyHandler(
 
     // Right-click cancels the open overlay (mirrors each picker's Esc path).
     if (cancelAction) {
+      // Cancellation may abort OAuth, leave an inline editor, or dismiss a
+      // resume confirmation. Use the same lifecycle as the physical Esc key.
+      if (tryPickerKey('', { ...EMPTY_KEY, escape: true }, false)) return;
       dispatch(cancelAction);
       return;
     }
@@ -182,7 +184,7 @@ export function createAppKeyHandler(
 
     // Local panel handlers receive the same Ink event. Never also edit or
     // submit the hidden composer, including when it holds a saved draft.
-    if (functionPanel !== null) return;
+    if (panelOwnsInput) return;
 
     // overlayOpen tracks whether the renderer hides the right sidebar for a
     // bottom-routed panel/overlay. Sidebar-routed panels must not suppress

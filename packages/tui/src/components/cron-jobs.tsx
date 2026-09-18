@@ -13,7 +13,7 @@
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -22,6 +22,7 @@ import {
   MonitorShell,
   panelWindow,
   truncatePanelText,
+  usePanelInput as useInput,
   useMonitorSize,
   usePanelShortcutsEnabled,
 } from './monitor-shell.js';
@@ -161,6 +162,7 @@ export function CronJobsMonitor({
 
   const shortcutsEnabled = usePanelShortcutsEnabled();
   useInput((input, key) => {
+    if (key.meta || (key.ctrl && input !== 'a' && input !== 'e')) return;
     if (confirmCancel) {
       if (input.toLowerCase() === 'y') {
         const name = confirmCancel;
@@ -187,7 +189,7 @@ export function CronJobsMonitor({
       setSelectedIndex(0);
     } else if (key.end || (shortcutsEnabled && ((key.ctrl && input === 'e') || input === 'G'))) {
       setSelectedIndex(Math.max(0, jobs.length - 1));
-    } else if (input.toLowerCase() === 'x' && onCancel) {
+    } else if (shortcutsEnabled && input.toLowerCase() === 'x' && onCancel) {
       const job = jobs[safeIndex];
       if (job) setConfirmCancel(job.name);
     }

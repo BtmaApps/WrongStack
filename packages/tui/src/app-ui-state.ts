@@ -2,6 +2,7 @@ import type { State } from './app-reducer.js';
 import type { AgentSwarmPanelMode, Settings } from './app-settings-type.js';
 import { computeSidebarContentWidth, computeSidebarWidth } from './components/sidebar.js';
 import type { StatuslineItem } from './components/statusline-picker.js';
+import { activeBottomFKeyPanel } from './f-key-panels.js';
 import { sumSidebarTwinRowCount } from './sidebar-sizing.js';
 import {
   coercePanelPositionMap,
@@ -10,6 +11,17 @@ import {
   type PanelId,
   type PanelPositionMap,
 } from './ui-contracts.js';
+
+/** Interactive bottom panels own keys; sidebar twins leave the composer available. */
+export function bottomPanelOwnsInput(state: State, positions: PanelPositionMap): boolean {
+  return (
+    activeBottomFKeyPanel(state, positions) !== null ||
+    state.cronMonitorOpen ||
+    state.contextPanelOpen ||
+    state.goalKanbanPanelOpen ||
+    (state.connectionsPanelOpen && positions.connections !== 'sidebar')
+  );
+}
 
 export function mergeStatuslineHiddenItems(
   hookHidden: StatuslineItem[],

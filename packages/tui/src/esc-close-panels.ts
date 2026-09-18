@@ -14,7 +14,6 @@
  *
  * Excluded panels (own their own Esc):
  *  - worktreeMonitor  — `isWorktreeMonitorCloseKey` in WorktreeMonitor.tsx
- *  - goalRun monitor — PhaseMonitor owns Esc via its own useInput
  *  - kanbanPanel       — `key.escape || 'q' → onClose` in KanbanPanel.tsx
  *  - goalKanbanPanel   — `key.escape || 'q' → onClose` in GoalKanbanPanel.tsx
  *
@@ -47,6 +46,11 @@ export const ESC_CLOSE_PANELS: readonly EscCloseEntry[] = [
     close: { type: 'toggleAgentsMonitor' },
   },
   { name: 'fleetMonitor', isOpen: (s) => s.monitorOpen, close: { type: 'toggleMonitor' } },
+  {
+    name: 'phaseMonitor',
+    isOpen: (s) => s.goalRun?.monitorOpen === true,
+    close: { type: 'goalRunMonitorToggle' },
+  },
   // Non-modal overlays (input stays live behind these).
   {
     name: 'todosMonitor',
@@ -121,10 +125,5 @@ export function escCloseAction(state: State): Action | null {
  * the run on the same keypress.
  */
 export function escSelfOwnedPanelOpen(state: State): boolean {
-  return (
-    state.worktreeMonitorOpen ||
-    state.kanbanPanelOpen ||
-    state.goalKanbanPanelOpen ||
-    (state.goalRun?.monitorOpen ?? false)
-  );
+  return state.worktreeMonitorOpen || state.kanbanPanelOpen || state.goalKanbanPanelOpen;
 }

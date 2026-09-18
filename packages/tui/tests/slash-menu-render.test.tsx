@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
-import { SlashMenu } from '../src/components/slash-menu.js';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import type { SlashCommandMatch } from '../src/app-state.js';
+import { SlashMenu } from '../src/components/slash-menu.js';
 
 function command(overrides: Partial<SlashCommandMatch> = {}): SlashCommandMatch {
   return {
@@ -33,7 +33,7 @@ describe('SlashMenu rendering', () => {
     expect(frame).toContain('(2/2)');
     expect(frame).toContain('Type to filter commands by name, alias, or description.');
     expect(frame).toContain('alias /h');
-    expect(frame).toContain('↑↓ nav · Enter run · Tab fill · Esc close');
+    expect(frame).toContain('↑↓ · Enter run · Tab fill · Esc close');
     unmount();
   });
 

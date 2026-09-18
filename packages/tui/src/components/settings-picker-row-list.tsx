@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Text } from '../ink.js';
+import { displayWidth, padDisplayEnd, truncateDisplay } from '../terminal-width.js';
 import type { SettingsFilterResult, SettingsHighlightSegment } from './settings-picker-filter.js';
 
 export interface SettingsPickerRowData {
@@ -10,6 +11,7 @@ export interface SettingsPickerRowData {
 }
 
 interface SettingsPickerRowListProps {
+  compactWidth?: number | undefined;
   rows: readonly SettingsPickerRowData[];
   field: number;
   fieldRowIndex: readonly number[];
@@ -28,7 +30,24 @@ function renderPickerRow(
   selected: boolean,
   filterActive: boolean,
   highlightSegments: (label: string) => readonly SettingsHighlightSegment[],
+  compactWidth?: number,
 ): React.ReactElement {
+  if (compactWidth !== undefined) {
+    const value = truncateDisplay(String(row.value ?? ''), 12);
+    const labelWidth = Math.max(1, compactWidth - displayWidth(value) - 4);
+    return (
+      <Text
+        key={`row-${fieldIdx}`}
+        inverse={selected}
+        color={selected ? 'yellow' : undefined}
+        wrap="truncate-end"
+      >
+        {selected ? '› ' : '  '}
+        {padDisplayEnd(truncateDisplay(row.label ?? '', labelWidth), labelWidth)}{' '}
+        <Text color="cyan">{value}</Text>
+      </Text>
+    );
+  }
   const labelStr = row.label ?? '';
   const segments = highlightSegments(labelStr);
   const padNeeded = Math.max(0, 26 - labelStr.length);
@@ -91,6 +110,7 @@ export function buildVisibleSectionHeaders(
 }
 
 export function SettingsPickerRowList({
+  compactWidth,
   rows,
   field,
   fieldRowIndex,
@@ -110,7 +130,14 @@ export function SettingsPickerRowList({
           const rowIdx = fieldRowIndex[fieldIdx] ?? -1;
           const row = rows[rowIdx];
           if (!row?.label) return null;
-          return renderPickerRow(row, fieldIdx, fieldIdx === field, true, highlightSegments);
+          return renderPickerRow(
+            row,
+            fieldIdx,
+            fieldIdx === field,
+            true,
+            highlightSegments,
+            compactWidth,
+          );
         })}
       </>
     );
@@ -122,7 +149,7 @@ export function SettingsPickerRowList({
       {rows.map((row, i) => {
         const fieldAtRow = fieldRowIndex.indexOf(i);
         if (fieldAtRow === -1) {
-          if (!visibleSections.has(i)) return null;
+          if (compactWidth !== undefined || !visibleSections.has(i)) return null;
           return (
             <Text key={`section-${i}`} bold color="green">
               ── {row.section} ──
@@ -130,7 +157,14 @@ export function SettingsPickerRowList({
           );
         }
         if (fieldAtRow < windowStart || fieldAtRow >= windowEnd) return null;
-        return renderPickerRow(row, fieldAtRow, fieldAtRow === field, false, highlightSegments);
+        return renderPickerRow(
+          row,
+          fieldAtRow,
+          fieldAtRow === field,
+          false,
+          highlightSegments,
+          compactWidth,
+        );
       })}
     </>
   );

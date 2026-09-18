@@ -57,8 +57,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   const { workingTimeMs } = activity;
   const { autonomyLive } = environment;
   const { inputHint, composerStatus, composerAnimationStyle, inputHeight, hideInput } = viewState;
-  const foregroundPrompt =
-    isPickerOverlayOpen(state) ||
+  const blockingPrompt =
     state.confirmQueue.length > 0 ||
     state.shellCommandWarning != null ||
     state.brainPrompt != null ||
@@ -78,6 +77,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
     state.inspectOverlay != null ||
     state.helpOpen ||
     (state.status === 'aborting' && !state.steeringPending);
+  const foregroundPrompt = blockingPrompt || isPickerOverlayOpen(state);
   // Bash mode relabels the whole composer (`$` prompt, warn-colored rail,
   // BASH MODE title) so the shell-command state is unmistakable at a glance.
   const bashMode = state.bashMode;
@@ -97,8 +97,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   } = resolveAppSidebarLayout(state, termCols, liveSettings, mailbox.mailboxPanelOpen);
   const routedToSidebar = (id: PanelId): boolean => panelPositions[id] === 'sidebar';
 
-  const effectiveInputHeight =
-    state.helpPanel.open || viewState.functionPanel != null ? 0 : inputHeight;
+  const effectiveInputHeight = state.helpPanel.open || viewState.panelOwnsInput ? 0 : inputHeight;
   const pickerMaxRows = Math.max(
     8,
     runtime.termRows - runtime.statusBarRows - effectiveInputHeight - 1,
@@ -177,7 +176,7 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
 
   return (
     <PanelInputProvider value={!foregroundPrompt}>
-      <PanelShortcutsProvider value={viewState.functionPanel != null || state.buffer.length === 0}>
+      <PanelShortcutsProvider value={viewState.panelOwnsInput || state.buffer.length === 0}>
         <Box
           flexDirection="column"
           height={runtime.termRows}
@@ -264,10 +263,12 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                     runtime={runtime}
                     mainColumnWidth={mainColumnWidth}
                     pickerMaxRows={pickerMaxRows}
+                    pickerInputEnabled={!blockingPrompt}
                     routedToSidebar={routedToSidebar}
                     panelPositions={panelPositions}
                   />
                   <AppStatusRegion
+                    panelsSuppressed={foregroundPrompt}
                     host={host}
                     runtime={runtime}
                     mainColumnWidth={mainColumnWidth}

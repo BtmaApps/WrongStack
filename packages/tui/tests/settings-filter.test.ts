@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
 import { render } from 'ink-testing-library';
-import { DEFAULT_PANEL_POSITIONS } from '../src/ui-contracts.js';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { SettingsPicker, settingsPickerJumpByName } from '../src/components/settings-picker.js';
+import { DEFAULT_PANEL_POSITIONS } from '../src/ui-contracts.js';
 
 // ── Minimal props factory ──────────────────────────────────────────────
 // SettingsPicker has 30+ props. This factory covers every required field
@@ -98,7 +98,8 @@ describe('SettingsPicker filter mode', () => {
       const { lastFrame } = render(React.createElement(SettingsPicker, baseProps()));
       const frame = lastFrame() ?? '';
       expect(frame).toContain('Settings');
-      expect(frame).toContain('`/` to search');
+      expect(frame).toContain('/ find');
+      expect(frame).toContain('Esc close');
     });
 
     it('renders section headers in normal mode', () => {
