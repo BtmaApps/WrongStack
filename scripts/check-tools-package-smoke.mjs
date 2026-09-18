@@ -48,7 +48,15 @@ async function main() {
     const tarball = readdirSync(packDir).find((entry) => entry.endsWith('.tgz'));
     if (!tarball) throw new Error('Tools package packing produced no .tgz artifact.');
 
-    run('tar', ['-xzf', path.join(packDir, tarball), '-C', installedTools, '--strip-components=1']);
+    // A GNU/MSYS tar on PATH reads a leading `D:` as a remote host spec and
+    // mangles backslashes, so the archive is extracted from inside the target
+    // directory with a POSIX-style relative path — no drive letter, no
+    // backslashes. Windows' own bsdtar accepts the same form.
+    const relativeTarball = path
+      .relative(installedTools, path.join(packDir, tarball))
+      .split(path.sep)
+      .join('/');
+    run('tar', ['-xzf', relativeTarball, '--strip-components=1'], installedTools);
 
     // The parser is imported from the extracted package, while its declared
     // runtime dependency is linked from this workspace's installed modules.
