@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/core",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "license": "MIT",
   "description": "WrongStack core: kernel, types, and shared utilities for the WrongStack CLI agent.",
   "repository": {
@@ -10,7 +10,7 @@
   },
   "homepage": "https://github.com/WrongStack/WrongStack#readme",
   "bugs": "https://github.com/WrongStack/WrongStack/issues",
-  "author": "ECOSTACK TECHNOLOGY O\u00dc",
+  "author": "ECOSTACK TECHNOLOGY OÜ",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

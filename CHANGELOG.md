@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.21] — 2026-09-18
+
+### Added
+
+- **Standalone binaries.** WrongStack now ships as one self-contained executable
+  per platform — Windows x64, macOS x64/arm64, Linux x64/arm64 (glibc and musl)
+  — with the runtime, every surface and all bundled assets inside; no Node.js or
+  npm needed. Install with
+  `curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh`
+  or `irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex`.
+  The installers verify the download against the release `SHA256SUMS`.
+- **`wstack update` for the binary** downloads the latest GitHub release for the
+  executable's own target, verifies its checksum and swaps it in place.
+
+### Changed
+
+- **Releases no longer wait on npm.** The GitHub release is built from the
+  binaries (smoke-tested on Linux, Windows and macOS before upload); npm
+  publishing still runs but cannot hold a release back.
+- **Official plugin factories import each plugin with a literal specifier**, so
+  bundlers include them.
+
+### Known limitations of the binary
+
+- No WebUI terminal panel (native `node-pty`), no Electron desktop shell, and no
+  browser tool unless Playwright is installed separately.
+- `wstack hq service install` manages an npm install and refuses in the binary;
+  run `wstack hq` under your own service manager.
+- The musl builds need `libstdc++` and `libgcc` (`apk add libstdc++ libgcc`).
+
 ## [1.0.20] — 2026-09-17
 
 ### Added
