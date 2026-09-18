@@ -270,6 +270,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           : 'normal',
       showAgentSwarmPanel: coerceAgentSwarmMode(autonomy?.showAgentSwarmPanel),
       showSidebar: autonomy?.showSidebar ?? true,
+      lastSettingsField: autonomy?.lastSettingsField ?? 0,
       // Migrate the legacy `autonomy.showAgentSwarmPanel: 'sidebar'` into
       // the new per-panel `panelPositions.fleet` map at the read boundary
       // so users with old configs (no `panelPositions` key on disk) get
@@ -356,6 +357,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
         s.showAgentSwarmPanel !== undefined ||
         s.showSidebar !== undefined ||
         s.panelPositions !== undefined ||
+        s.lastSettingsField !== undefined ||
         s.showSageMemoryInject !== undefined ||
         s.sageMemoryInjectThreshold !== undefined ||
         s.readSymbols !== undefined ||
@@ -426,6 +428,7 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           autonomy.showAgentSwarmPanel = s.showAgentSwarmPanel;
         if (s.showSidebar !== undefined) autonomy.showSidebar = s.showSidebar;
         if (s.panelPositions !== undefined) autonomy.panelPositions = s.panelPositions;
+        if (s.lastSettingsField !== undefined) autonomy.lastSettingsField = s.lastSettingsField;
         if (s.showSageMemoryInject !== undefined)
           autonomy.showSageMemoryInject = s.showSageMemoryInject;
         if (s.readSymbols !== undefined) autonomy.readAdvancedMode = s.readSymbols;

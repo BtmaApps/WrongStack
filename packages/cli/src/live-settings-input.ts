@@ -94,6 +94,13 @@ export interface LiveSettingsInput {
    * stores it as-is. Default: every panel 'bottom' when unset.
    */
   panelPositions?: Readonly<Record<string, 'bottom' | 'sidebar'>> | undefined;
+  /**
+   * Settings-picker cursor restore: the field index the picker was last on
+   * when a value changed. Persisted as `autonomy.lastSettingsField`; the
+   * settingsOpen hydration reads it back so a fresh session reopens the
+   * picker at the same field. 0 = no saved value.
+   */
+  lastSettingsField?: number | undefined;
   /** Show SAGE Memory Inject blocks in tool results. Default: false. */
   showSageMemoryInject?: boolean | undefined;
   /**

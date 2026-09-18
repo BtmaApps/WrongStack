@@ -709,6 +709,50 @@ describe('preRefineSeconds persistence (SettingsPicker field 41)', () => {
   });
 });
 
+describe('lastSettingsField persistence (SettingsPicker cursor restore)', () => {
+  // The TUI auto-save hook sends `lastSettingsField` in every saveSettings()
+  // snapshot (packages/tui/src/hooks/use-settings-auto-save.ts:62), and the
+  // settingsOpen restore path documents the contract: "a non-zero persisted
+  // value (loaded from disk) takes priority on a fresh open"
+  // (packages/tui/src/reducers/settings-panel.ts). The adapter must persist it
+  // to `autonomy.lastSettingsField` and read it back in getSettings() —
+  // default 0 (= no saved value; the reducer falls back to runtime state).
+  it('saveSettings persists lastSettingsField and getSettings reads it back', async () => {
+    const { adapter, globalConfig } = makeAdapter();
+    const err = await adapter.saveSettings({ lastSettingsField: 7 });
+    expect(err).toBeNull();
+    const written = JSON.parse(readFileSync(globalConfig, 'utf8')) as {
+      autonomy?: { lastSettingsField?: number };
+    };
+    expect(written.autonomy?.lastSettingsField).toBe(7);
+    expect(adapter.getSettings().lastSettingsField).toBe(7);
+  });
+
+  it('defaults lastSettingsField to 0 (no saved value) when config has no value', () => {
+    const { adapter } = makeAdapter();
+    expect(adapter.getSettings().lastSettingsField).toBe(0);
+  });
+
+  it('round-trips 0 (no-saved-value sentinel) and re-saves without disturbing autonomy siblings', async () => {
+    const { adapter, globalConfig } = makeAdapter();
+    const err = await adapter.saveSettings({ lastSettingsField: 0, chime: false });
+    expect(err).toBeNull();
+    const first = JSON.parse(readFileSync(globalConfig, 'utf8')) as {
+      autonomy?: { lastSettingsField?: number; chime?: boolean };
+    };
+    expect(first.autonomy?.lastSettingsField).toBe(0);
+    expect(first.autonomy?.chime).toBe(false);
+
+    const err2 = await adapter.saveSettings({ lastSettingsField: 9 });
+    expect(err2).toBeNull();
+    const second = JSON.parse(readFileSync(globalConfig, 'utf8')) as {
+      autonomy?: { lastSettingsField?: number };
+    };
+    expect(second.autonomy?.lastSettingsField).toBe(9);
+    expect(adapter.getSettings().lastSettingsField).toBe(9);
+  });
+});
+
 describe('toolResultViewMode persistence (SettingsPicker field 62)', () => {
   it('defaults to normal and round-trips the selected global mode', async () => {
     const { adapter, globalConfig } = makeAdapter();
