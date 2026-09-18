@@ -1,3 +1,5 @@
+import { type Theme, theme } from '../theme.js';
+
 /**
  * Shared provider-family → Ink color mapping for the TUI model picker,
  * auth panel, and statusline. All values are hex strings compatible with
@@ -81,18 +83,34 @@ export const OAUTH_KIND_COLORS: Record<string, string> = {
 };
 
 /** Semantic UI colors used across auth / model panels. */
-export const UI_COLORS = {
-  focused: '#89b4fa',
-  active: '#a6e3a1',
-  inactive: '#585b70',
-  warning: '#f9e2af',
-  error: '#f38ba8',
-  hint: '#f9e2af',
-  border: '#89b4fa',
-  title: '#89b4fa',
-  selectedModel: '#89b4fa',
-  dimmed: undefined as string | undefined, // Ink dimColor prop
-} as const;
+function themeColors<K extends string>(tokens: Record<K, keyof Theme>): Record<K, string> {
+  return Object.defineProperties(
+    {} as Record<K, string>,
+    Object.fromEntries(
+      Object.entries(tokens).map(([key, token]) => [
+        key,
+        { enumerable: true, get: () => theme[token as keyof Theme] },
+      ]),
+    ),
+  );
+}
+
+export const UI_COLORS = Object.assign(
+  themeColors({
+    focused: 'accent',
+    active: 'success',
+    inactive: 'textMuted',
+    warning: 'warn',
+    error: 'error',
+    hint: 'warn',
+    border: 'borderActive',
+    title: 'brandPrimary',
+    selectedModel: 'accent',
+  }),
+  {
+    dimmed: undefined as string | undefined, // Ink dimColor prop
+  },
+);
 
 /**
  * Statusline item category colors — imported by status-bar.tsx and

@@ -1,9 +1,9 @@
 import type React from 'react';
 import { isValidElement } from 'react';
 import { Text } from '../ink.js';
+import { statuslineBackgrounds } from '../statusline-palette.js';
 import { displayWidth } from '../terminal-width.js';
-import { theme } from '../theme.js';
-import { mixHexColors } from '../theme-utils.js';
+import { type Theme, theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 
 export function visibleNodeText(node: React.ReactNode): string {
@@ -228,6 +228,8 @@ interface PowerlineRailProps {
   rightAnchor?: React.ReactElement | null | undefined;
   /** Keep the segmented silhouette but emit no foreground/background colors. */
   monochrome?: boolean | undefined;
+  /** Explicit candidate palette for the theme picker; never changes the active theme. */
+  palette?: Theme | undefined;
 }
 
 function toEntries(segments: PowerlineRailProps['segments']): RailSpanEntry[] {
@@ -236,16 +238,12 @@ function toEntries(segments: PowerlineRailProps['segments']): RailSpanEntry[] {
   );
 }
 
-function segmentBackground(index: number): string {
-  const colors = [theme.accent, theme.brand, theme.success, theme.warn, theme.brandPrimary];
-  return mixHexColors(colors[index % colors.length]!, theme.surfaceRaised, 0.48);
-}
-
 interface CapsuleProps {
   items: RailLayoutItem[];
   dropped?: number | undefined;
   droppedAfter?: number | undefined;
   monochrome: boolean;
+  palette: Theme;
 }
 
 function RailCapsule({
@@ -253,9 +251,11 @@ function RailCapsule({
   dropped = 0,
   droppedAfter = items.length - 1,
   monochrome,
+  palette,
 }: CapsuleProps): React.ReactElement {
-  const painted = !monochrome && theme.supportsBackground;
-  const backgrounds = items.map((_, index) => segmentBackground(index));
+  const painted = !monochrome && palette.supportsBackground;
+  const tones = painted ? statuslineBackgrounds(palette) : [];
+  const backgrounds = items.map((_, index) => tones[index % tones.length]);
 
   return (
     <Text>
@@ -275,7 +275,7 @@ function RailCapsule({
               </Text>
             )}
             <Text
-              color={painted ? theme.textPrimary : undefined}
+              color={painted ? palette.textPrimary : undefined}
               backgroundColor={painted ? background : undefined}
             >
               {' '}
@@ -293,8 +293,8 @@ function RailCapsule({
 }
 
 /**
- * Theme-aware, Powerline-style status capsules. Chip payloads keep their
- * semantic foreground colors while low-contrast surface tones provide the
+ * Theme-aware, Powerline-style status capsules. Chip payloads share a readable
+ * foreground while five theme-derived surface tones provide the
  * connected silhouette. The renderer and layout fitter share the exact cap,
  * transition, padding and anchor costs, keeping overflow and pointer spans
  * aligned with the cells on screen.
@@ -304,6 +304,7 @@ export function PowerlineRail({
   budget,
   rightAnchor,
   monochrome = false,
+  palette = theme,
 }: PowerlineRailProps): React.ReactElement {
   // Empty logical rails still occupy one row so the detailed layout remains
   // stable while live chips appear and disappear.
@@ -332,6 +333,7 @@ export function PowerlineRail({
           dropped={dropped}
           droppedAfter={layout.items.length - 1}
           monochrome={monochrome}
+          palette={palette}
         />
       ) : null}
     </Text>

@@ -1,4 +1,4 @@
-import { baseTheme, themePresets } from './theme-presets.js';
+import { themePresets } from './theme-presets.js';
 import type { SyntaxPalette, SyntaxRole, Theme, ThemeListener, ThemeName } from './theme-types.js';
 import {
   mixHexColors,
@@ -17,7 +17,7 @@ export type {
 } from './theme-types.js';
 export { catppuccin, detectSupportsBackground, pastel, SYNTAX_TOKEN } from './theme-utils.js';
 
-export const theme: Theme = { ...baseTheme };
+export const theme: Theme = { ...themePresets.catppuccin };
 
 /**
  * "Tinted" surface for the right sidebar's cards. We mix the theme's plain
@@ -68,7 +68,7 @@ export function getActiveTheme(): Theme {
 }
 
 function isThemeName(name: string): name is ThemeName {
-  return name in themePresets;
+  return Object.hasOwn(themePresets, name);
 }
 
 /**

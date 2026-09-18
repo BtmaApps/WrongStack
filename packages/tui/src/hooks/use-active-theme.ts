@@ -6,7 +6,8 @@ import { getActiveTheme, getActiveThemeName, subscribeToTheme, type Theme } from
  * current `theme` snapshot. Used by the App shell to force a re-render
  * when `setActiveTheme()` mutates the global theme — child components
  * read `theme` directly via destructuring, so the parent re-render
- * propagates the new palette into the whole tree.
+ * propagates the new palette into ordinary children. Memoized boundaries
+ * subscribe separately: unchanged props must not keep an old palette alive.
  *
  * The hook itself returns the live `theme` reference; callers don't
  * typically need to use it (they can keep reading `theme` directly),

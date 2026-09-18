@@ -3,12 +3,42 @@ import type { FleetEntry } from '../app-state.js';
 import { theme } from '../theme.js';
 
 export const STATUS: Record<FleetEntry['status'], { icon: string; color: string }> = {
-  idle: { icon: '○', color: theme.textMuted },
-  running: { icon: '▶', color: theme.warn },
-  success: { icon: '✓', color: theme.success },
-  failed: { icon: '✗', color: theme.error },
-  timeout: { icon: '⏱', color: theme.warn },
-  stopped: { icon: '⊘', color: theme.textMuted },
+  idle: {
+    icon: '○',
+    get color() {
+      return theme.textMuted;
+    },
+  },
+  running: {
+    icon: '▶',
+    get color() {
+      return theme.warn;
+    },
+  },
+  success: {
+    icon: '✓',
+    get color() {
+      return theme.success;
+    },
+  },
+  failed: {
+    icon: '✗',
+    get color() {
+      return theme.error;
+    },
+  },
+  timeout: {
+    icon: '⏱',
+    get color() {
+      return theme.warn;
+    },
+  },
+  stopped: {
+    icon: '⊘',
+    get color() {
+      return theme.textMuted;
+    },
+  },
 };
 
 export const IDLE_HIDE_MS = 60_000;

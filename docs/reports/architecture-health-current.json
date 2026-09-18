@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-18T10:34:12.033Z",
+  "generatedAt": "2026-09-18T10:59:05.606Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3836,
+    "sourceFiles": 3837,
     "testFiles": 3488,
-    "sourceLines": 939723,
+    "sourceLines": 939839,
     "workspaceEdges": 128,
-    "moduleEdges": 12332,
+    "moduleEdges": 12348,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
@@ -760,7 +760,7 @@
     {
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
-      "sourceFiles": 395,
+      "sourceFiles": 396,
       "testFiles": 362,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -22606,8 +22606,8 @@
     },
     {
       "file": "packages/tui/src/components/history/code-block.tsx",
-      "lines": 837,
-      "relativeImports": 7
+      "lines": 839,
+      "relativeImports": 8
     },
     {
       "file": "packages/tui/src/components/history/utils.tsx",

@@ -13,6 +13,7 @@ import {
   langFromPath,
   type Token,
 } from '../../highlight.js';
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { Box, Text } from '../../ink.js';
 import {
   displayWidth,
@@ -21,7 +22,6 @@ import {
   truncateDisplay,
 } from '../../terminal-width.js';
 import { theme } from '../../theme.js';
-import { HistoryRail } from './entry-helpers.js';
 import {
   collectMultiFileDiffItems,
   countUnifiedDiffChanges,
@@ -29,6 +29,7 @@ import {
   joinReplaceDiffs,
   newFileDiffFromWriteInput,
 } from './code-block-diff-helpers.js';
+import { HistoryRail } from './entry-helpers.js';
 import { stringOf, tryParseJson } from './utils.js';
 
 // ── Types ──
@@ -142,6 +143,7 @@ function CodeBlockImpl({
   lang: Lang;
   contentWidth: number;
 }): React.ReactElement {
+  useActiveTheme();
   let lines = sanitizeTerminalText(code, HARD_TAB_WIDTH).replace(/\n+$/, '').split('\n');
   const hidden = Math.max(0, lines.length - MAX_CODE_LINES);
   if (hidden > 0) lines = lines.slice(0, MAX_CODE_LINES);

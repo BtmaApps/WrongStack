@@ -1,6 +1,7 @@
 import type React from 'react';
 import { memo } from 'react';
 import { detectLang, type Lang } from '../../highlight.js';
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { Box } from '../../ink.js';
 import { MarkdownView } from '../../markdown.js';
 import { CodeBlock } from './code-block.js';
@@ -86,6 +87,7 @@ function AssistantBodyImpl({
   /** Real inner width of the surrounding panel. Defaults to `termWidth`. */
   contentWidth?: number | undefined;
 }): React.ReactElement {
+  useActiveTheme();
   const segments = splitFencedBlocks(text);
   const inner = contentWidth ?? termWidth;
   return (

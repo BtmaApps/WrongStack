@@ -1,6 +1,7 @@
 import type React from 'react';
 import type { MutableRefObject } from 'react';
 import { memo, useMemo } from 'react';
+import { useActiveTheme } from '../hooks/use-active-theme.js';
 import { Box, type DOMElement, measureElement, Text, useInput } from '../ink.js';
 import { theme } from '../theme.js';
 import { LIVE_TOOL_STREAM_COPY_ID } from './history/copy-geometry.js';
@@ -149,6 +150,7 @@ export const InspectOverlay = memo(function InspectOverlay({
   copied = false,
   headerRef,
 }: InspectOverlayProps): React.ReactElement {
+  useActiveTheme();
   const { width, height } = inspectOverlaySize(termCols, viewportRows);
   // Inner width minus border(2) + paddingX(2), then reserve one column for the
   // scrollbar gutter so wrapped line count stays stable while scrolling.

@@ -1,10 +1,21 @@
+import { stripVTControlCharacters } from 'node:util';
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
+import { AssistantBody } from '../src/components/history/assistant.js';
+import { CodeBlock } from '../src/components/history/code-block.js';
+import { PowerlineRail } from '../src/components/powerline-rail.js';
 import { Card } from '../src/components/sidebar-card.js';
 import { StatusBar, type StatusBarProps } from '../src/components/status-bar.js';
 import { Text } from '../src/ink.js';
-import { sidebarCardSurface, theme } from '../src/theme.js';
+import { statuslineBackgrounds } from '../src/statusline-palette.js';
+import {
+  setActiveTheme,
+  sidebarCardSurface,
+  THEME_OPTIONS,
+  theme,
+  themePresets,
+} from '../src/theme.js';
 
 /**
  * Raw-SGR color pins for the status bar — the only statusline tests that
@@ -29,6 +40,52 @@ import { sidebarCardSurface, theme } from '../src/theme.js';
  */
 
 describe('StatusBar version-chip SGR color pins', () => {
+  it.each(THEME_OPTIONS.map(({ id }) => id))(
+    'renders %s capsule colors without changing no-color geometry',
+    (id) => {
+      const palette = { ...themePresets[id], supportsBackground: true };
+      const segments = ['project', 'model', 'state', 'tokens', 'cost'].map((text) =>
+        React.createElement(Text, { key: text }, text),
+      );
+      const colored = render(React.createElement(PowerlineRail, { segments, budget: 90, palette }));
+      const raw = colored.lastFrame() ?? '';
+      colored.unmount();
+      for (const hex of statuslineBackgrounds(palette)) {
+        const rgb = [1, 3, 5]
+          .map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16))
+          .join(';');
+        expect(raw).toContain(`\x1b[48;2;${rgb}m`);
+      }
+      const plain = render(
+        React.createElement(PowerlineRail, { segments, budget: 90, palette, monochrome: true }),
+      );
+      const plainRaw = plain.lastFrame() ?? '';
+      plain.unmount();
+      expect(plainRaw).not.toMatch(/\x1b\[(?:38|48);/);
+      expect(stripVTControlCharacters(raw)).toBe(plainRaw);
+    },
+  );
+  it.each([
+    ['statusline', React.createElement(StatusBar, { model: 'test', state: 'idle' })],
+    [
+      'code',
+      React.createElement(CodeBlock, { code: 'const value = 1', lang: 'ts', contentWidth: 80 }),
+    ],
+    ['assistant', React.createElement(AssistantBody, { text: '**hello**', termWidth: 80 })],
+  ])('repaints memoized %s immediately when the theme changes', async (_name, element) => {
+    setActiveTheme('catppuccin');
+    const view = render(element);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const before = view.lastFrame();
+      setActiveTheme('gruvbox-dark');
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      expect(view.lastFrame()).not.toBe(before);
+    } finally {
+      view.unmount();
+      setActiveTheme('catppuccin');
+    }
+  });
   it('paints connected status capsules while preserving foreground colors', () => {
     const previous = theme.supportsBackground;
     theme.supportsBackground = true;

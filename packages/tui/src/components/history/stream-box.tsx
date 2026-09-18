@@ -1,4 +1,5 @@
 import React from 'react';
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { Text, useAnimation } from '../../ink.js';
 import { sanitizeTerminalText, truncateDisplay } from '../../terminal-width.js';
 import { theme } from '../../theme.js';
@@ -41,6 +42,7 @@ export const ToolPendingLine = React.memo(function ToolPendingLine({
   startedAt: number;
   termWidth: number;
 }): React.ReactElement {
+  useActiveTheme();
   const { frame } = useAnimation({ interval: 180 });
   const { glyph, color } = getToolVisual(name);
   const spinner = ['◐', '◓', '◑', '◒'][frame % 4] ?? '◐';
@@ -95,6 +97,7 @@ export const ToolStreamBox = React.memo(function ToolStreamBox({
   startedAt: number;
   termWidth: number;
 }): React.ReactElement {
+  useActiveTheme();
   const { glyph, color } = getToolVisual(name);
   // This box only exists for an active tool; share its elapsed-time clock with
   // every other Ink animation instead of owning another interval.
@@ -120,9 +123,7 @@ export const ToolStreamBox = React.memo(function ToolStreamBox({
           {isWritePreview ? 'write · creating' : safeName}
         </Text>
         <Text dimColor>{`  · ${fmtDuration(elapsedMs)}`}</Text>
-        {hidden > 0 ? (
-          <Text dimColor>{`  (${totalLines} lines, last ${streamLines})`}</Text>
-        ) : null}
+        {hidden > 0 ? <Text dimColor>{`  (${totalLines} lines, last ${streamLines})`}</Text> : null}
       </Text>
       {rows.map((r, i) => (
         <Text
@@ -145,6 +146,7 @@ export const AssistantStreamBox = React.memo(function AssistantStreamBox({
   text: string;
   termWidth: number;
 }): React.ReactElement {
+  useActiveTheme();
   const contentWidth = Math.max(1, Math.min(termWidth - 4, 100));
   const rows = streamBoxRows(text, ASSISTANT_STREAM_LINES, contentWidth);
   const color = theme.assistant ?? 'cyan';

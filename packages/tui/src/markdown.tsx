@@ -1,5 +1,6 @@
 import type React from 'react';
 import { memo } from 'react';
+import { useActiveTheme } from './hooks/use-active-theme.js';
 import { Box, Text } from './ink.js';
 import { detectTable, renderTable } from './markdown-table.js';
 import { sanitizeTerminalText, truncateDisplay } from './terminal-width.js';
@@ -302,6 +303,7 @@ function MarkdownViewImpl({
   /** Width available for tables. Defaults to `contentWidth ?? termWidth`. */
   tableWidth?: number | undefined;
 }): React.ReactElement {
+  useActiveTheme();
   const lines = sanitizeTerminalText(text).split('\n');
   const rows: React.ReactNode[] = [];
   let i = 0;

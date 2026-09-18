@@ -4,6 +4,7 @@ import type { ParsedNextStep } from '@wrongstack/tools/next-steps';
 import { parseNextSteps } from '@wrongstack/tools/next-steps';
 import React, { useEffect, useMemo, useState } from 'react';
 import { MEMORY_GATE_DEFAULTS } from '../../history-entry.js';
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { Box, Text } from '../../ink.js';
 import { sanitizeTerminalText } from '../../terminal-width.js';
 import { theme } from '../../theme.js';
@@ -175,6 +176,7 @@ export const Entry = React.memo(function Entry({
   showSageMemoryInject?: boolean | undefined;
   toolResultViewMode?: ToolResultViewMode | undefined;
 }): React.ReactElement | null {
+  useActiveTheme();
   // Whether the agent still has open (pending/in_progress) todos. While it
   // does, finishing them takes priority over offering `<nextsteps>` — both
   // the host callback (execution.ts → parseSuggestionsFromOutput) and this
@@ -486,9 +488,7 @@ export const Entry = React.memo(function Entry({
           <Text bold color={accent}>
             {fallback ? '↺ FALLBACK' : '↺ MODEL'}
           </Text>
-          {entry.status ? (
-            <Text dimColor>{`  HTTP ${entry.status}`}</Text>
-          ) : null}
+          {entry.status ? <Text dimColor>{`  HTTP ${entry.status}`}</Text> : null}
           {fromRef ? (
             <Text>
               <Text dimColor>{'  from  '}</Text>

@@ -57,6 +57,20 @@ const ANSI_TOKEN: Readonly<Record<string, keyof Theme>> = Object.freeze({
   red: 'error',
   magenta: 'brand',
   white: 'textPrimary',
+  blue: 'brandPrimary',
+  gray: 'textMuted',
+  grey: 'textMuted',
+  black: 'surface',
+  blackBright: 'borderDefault',
+  grayBright: 'textSecondary',
+  greyBright: 'textSecondary',
+  whiteBright: 'textPrimary',
+  redBright: 'error',
+  greenBright: 'success',
+  yellowBright: 'warn',
+  blueBright: 'accent',
+  cyanBright: 'accent',
+  magentaBright: 'brand',
 });
 
 export function resolveSyntaxColor(role: SyntaxRole, palette: Theme): string {
@@ -78,7 +92,7 @@ export function softColorWithTheme(
   if (!color) return color;
   if (color.startsWith(SYNTAX_PREFIX)) {
     const role = color.slice(SYNTAX_PREFIX.length) as SyntaxRole;
-    return role in SYNTAX_TOKEN ? resolveSyntaxColor(role, currentTheme) : color;
+    return Object.hasOwn(SYNTAX_TOKEN, role) ? resolveSyntaxColor(role, currentTheme) : color;
   }
   const token = ANSI_TOKEN[color];
   if (token !== undefined) {
@@ -89,7 +103,7 @@ export function softColorWithTheme(
 }
 
 /**
- * Mix two hex colors in linear-light sRGB. `weight` is the fraction of
+ * Mix two hex colors in encoded sRGB. `weight` is the fraction of
  * `colorA` (0..1) — at 0 the result is `colorB`, at 1 it is `colorA`. Used
  * by the sidebar's card tints to derive per-card "raised" surfaces from
  * the theme's accent + surface tokens, so each panel feels color-coded

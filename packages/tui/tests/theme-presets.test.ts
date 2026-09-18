@@ -18,8 +18,12 @@
 
 import { THEME_PRESET_IDS } from '@wrongstack/core/types';
 import { afterEach, describe, expect, it } from 'vitest';
+import { STATUS } from '../src/components/agents-monitor-constants.js';
 import { applyWashTokens } from '../src/components/history/code-block.js';
+import { UI_COLORS } from '../src/components/provider-colors.js';
+import { contextBarColor } from '../src/components/status-bar-format.js';
 import { highlightLine } from '../src/highlight.js';
+import { statuslineBackgrounds } from '../src/statusline-palette.js';
 import {
   baseTheme,
   getActiveThemeName,
@@ -34,6 +38,7 @@ import {
 } from '../src/theme.js';
 
 const HEX = /^#[0-9a-f]{6}$/;
+const startupTheme = { ...theme };
 
 /** Relative luminance (WCAG 2.x) of a `#rrggbb` string. */
 function luminance(hex: string): number {
@@ -89,6 +94,18 @@ const MARKER_CONTRAST_FLOOR: Partial<Record<(typeof THEME_PRESET_IDS)[number], n
 };
 
 describe('theme preset registry', () => {
+  it('boots with the same palette as explicitly selecting the default theme', () => {
+    expect(startupTheme).toEqual(themePresets.catppuccin);
+  });
+  it.each(['constructor', 'toString', '__proto__'])('ignores inherited preset name %s', (name) => {
+    setActiveTheme('catppuccin');
+    try {
+      expect(setActiveTheme(name)).toBe('catppuccin');
+      expect(theme).toEqual(themePresets.catppuccin);
+    } finally {
+      setActiveTheme('catppuccin');
+    }
+  });
   it('has a palette for every canonical preset id, and no extras', () => {
     expect(Object.keys(themePresets).sort()).toEqual([...THEME_PRESET_IDS].sort());
   });
@@ -109,6 +126,45 @@ describe('theme preset registry', () => {
 
 describe.each(THEME_PRESET_IDS)('preset %s', (id) => {
   const preset = themePresets[id];
+
+  it('updates F3 status colors and the context meter after a theme switch', () => {
+    const before = getActiveThemeName();
+    try {
+      setActiveTheme(id);
+      expect(STATUS.idle.color).toBe(preset.textMuted);
+      expect(STATUS.running.color).toBe(preset.warn);
+      expect(STATUS.success.color).toBe(preset.success);
+      expect(STATUS.failed.color).toBe(preset.error);
+      expect(contextBarColor(0.6)).toBe(preset.brandPrimary);
+      expect(UI_COLORS.focused).toBe(preset.accent);
+      expect(UI_COLORS.error).toBe(preset.error);
+      expect(UI_COLORS.inactive).toBe(preset.textMuted);
+      for (const [alias, token] of Object.entries({
+        blue: 'brandPrimary',
+        gray: 'textMuted',
+        grey: 'textMuted',
+        grayBright: 'textSecondary',
+        blueBright: 'accent',
+        redBright: 'error',
+        greenBright: 'success',
+        yellowBright: 'warn',
+        magentaBright: 'brand',
+      })) {
+        expect(softColor(alias), `${id}/${alias}`).toBe(preset[token as keyof Theme]);
+      }
+    } finally {
+      setActiveTheme(before);
+    }
+  });
+
+  it('keeps statusline text readable on every segment tone', () => {
+    for (const background of statuslineBackgrounds(preset)) {
+      expect(
+        contrast(preset.textPrimary, background),
+        `${id}/${background}`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 
   it('defines every color key as a 6-digit lowercase hex', () => {
     for (const key of COLOR_KEYS) {
@@ -365,13 +421,11 @@ describe('bare ANSI names follow the active theme', () => {
     expect(after).not.toEqual(before);
   });
 
-  it('leaves unmapped names on the frozen floor', () => {
+  it('maps remaining ANSI colors to the active theme', () => {
     setActiveTheme('gruvbox-dark');
-    // No token equals these on Catppuccin, so mapping them would move the
-    // default theme — they intentionally stay pinned.
-    expect(softColor('gray')).toBe(pastel.gray);
-    expect(softColor('blue')).toBe(pastel.blue);
-    expect(softColor('grayBright')).toBe(pastel.grayBright);
+    expect(softColor('gray')).toBe(theme.textMuted);
+    expect(softColor('blue')).toBe(theme.brandPrimary);
+    expect(softColor('grayBright')).toBe(theme.textSecondary);
     // Unknown names still pass through untouched.
     expect(softColor('transparent')).toBe('transparent');
     expect(softColor('#abcdef')).toBe('#abcdef');

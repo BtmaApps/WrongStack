@@ -14,9 +14,10 @@
 //      corner around. `composerStatusReservedWidth` computes that stable width
 //      from the descriptor (not the live animation frame).
 
-import { Text, useAnimation } from '../ink.js';
 import type React from 'react';
+import { Text, useAnimation } from '../ink.js';
 import { displayWidth, truncateDisplay } from '../terminal-width.js';
+import { theme } from '../theme.js';
 import { resolveIconStyle } from '../ui-glyphs.js';
 import {
   type AnimationStyle,
@@ -54,9 +55,6 @@ const ACTIVITY_INTERVAL_MS = 130;
 const ACTIVITY_FRAMES_UNICODE = ['·', '◦', '•', '●', '◉', '●', '•', '◦'] as const;
 const ACTIVITY_FRAMES_ASCII = ['.', 'o', 'O', '0', 'O', 'o'] as const;
 
-// Catppuccin surface0 — the dim end of every brightness pulse.
-const PULSE_DIM = '#313244';
-
 function activityFrames(): readonly string[] {
   return resolveIconStyle() === 'ascii' ? ACTIVITY_FRAMES_ASCII : ACTIVITY_FRAMES_UNICODE;
 }
@@ -70,14 +68,14 @@ function activityFrames(): readonly string[] {
 function activityColor(kind: ComposerStatus['kind'], frame: number, energy: number): string {
   switch (kind) {
     case 'working':
-      return HUE_WHEEL[frame % HUE_WHEEL.length] ?? '#cba6f7';
+      return HUE_WHEEL[frame % HUE_WHEEL.length] ?? theme.brand;
     case 'aborting':
     case 'confirm':
-      return mixHex(PULSE_DIM, '#f38ba8', energy); // pulsing red
+      return mixHex(theme.surfaceRaised, theme.error, energy);
     case 'queued':
-      return mixHex(PULSE_DIM, '#89dceb', energy); // pulsing sky
+      return mixHex(theme.surfaceRaised, theme.accent, energy);
     default:
-      return mixHex(PULSE_DIM, '#94e2d5', energy); // pulsing teal (fallback)
+      return mixHex(theme.surfaceRaised, theme.accent, energy);
   }
 }
 
@@ -117,7 +115,7 @@ export function ComposerActivityIcon({
   // Triangle 0→1→0 across the frame set → brightness tracks the orb's size.
   const energy = 0.4 + 0.6 * Math.sin((idx / frames.length) * Math.PI);
   const color = disabled
-    ? mixHex(PULSE_DIM, '#f38ba8', energy)
+    ? mixHex(theme.surfaceRaised, theme.error, energy)
     : activityColor(status.kind, frame, energy);
 
   return (

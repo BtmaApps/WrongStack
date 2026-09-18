@@ -1,3 +1,4 @@
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 /**
  * tool-group — Consecutive same-tool entries grouped under a single header.
  *
@@ -359,6 +360,7 @@ function ToolGroupImpl({
   termWidth: number;
   viewMode?: ToolResultViewMode | undefined;
 }): React.ReactElement {
+  useActiveTheme();
   const { name, entries, totalDurationMs, okCount: _okCount, failCount } = data;
   const railColor = failCount === 0 ? theme.borderSubtle : theme.error;
   const toolContentWidth = Math.max(1, termWidth - 2);

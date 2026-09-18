@@ -387,8 +387,8 @@
       "relativeImports": 6
     },
     "packages/tui/src/components/history/code-block.tsx": {
-      "lines": 837,
-      "relativeImports": 7
+      "lines": 839,
+      "relativeImports": 8
     },
     "packages/tui/src/components/history/utils.tsx": {
       "lines": 1038,

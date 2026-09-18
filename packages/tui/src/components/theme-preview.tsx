@@ -1,6 +1,7 @@
 import type React from 'react';
 import { Box, Text } from '../ink.js';
-import { resolveSyntaxColor, themePresets, type ThemeName } from '../theme.js';
+import { resolveSyntaxColor, type ThemeName, themePresets } from '../theme.js';
+import { PowerlineRail } from './powerline-rail.js';
 
 interface ThemePreviewProps {
   /** Preset whose palette this preview renders. Must exist in `themePresets`. */
@@ -126,12 +127,16 @@ export function ThemePreview({
       cost: 2,
       render: (
         <Box flexDirection="column">
-          <Text dimColor>status</Text>
-          <Box flexDirection="row">
-            <Text color={preset.success}> ✓ ok </Text>
-            <Text color={preset.warn}> ! wait </Text>
-            <Text color={preset.error}> ✕ fail </Text>
-          </Box>
+          <Text color={preset.textSecondary}>statusline</Text>
+          <PowerlineRail
+            palette={preset}
+            budget={Math.max(12, columns - 4)}
+            segments={[
+              <Text key="ok">✓ ok</Text>,
+              <Text key="wait">! wait</Text>,
+              <Text key="fail">✕ fail</Text>,
+            ]}
+          />
         </Box>
       ),
     },

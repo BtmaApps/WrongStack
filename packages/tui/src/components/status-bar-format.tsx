@@ -1,7 +1,7 @@
 import type React from 'react';
 import { isValidElement } from 'react';
-import { pastel, theme } from '../theme.js';
 import { truncateDisplay } from '../terminal-width.js';
+import { theme } from '../theme.js';
 import { normalizeTuiThinkingWord } from '../thinking-word.js';
 
 /**
@@ -109,7 +109,7 @@ export function renderProgress(ratio: number, width: number): string {
 export function contextBarColor(ratio: number): string {
   if (ratio < 0.25) return theme.accent;
   if (ratio < 0.5) return theme.success;
-  if (ratio < 0.65) return pastel.peach;
+  if (ratio < 0.65) return theme.brandPrimary;
   if (ratio < 0.8) return theme.warn;
   return theme.error;
 }

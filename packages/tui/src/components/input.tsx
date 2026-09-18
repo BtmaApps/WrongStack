@@ -1,6 +1,7 @@
 import type React from 'react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { fnKey } from '../fn-keys.js';
+import { useActiveTheme } from '../hooks/use-active-theme.js';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, Text, useInput, useStdin } from '../ink.js';
 import { type InputCell, layoutInputRows } from '../input-tokens.js';
@@ -329,6 +330,7 @@ export const Input = memo(function Input({
   onKey,
   maxWidth,
 }: InputProps): React.ReactElement | null {
+  useActiveTheme();
   // Suppress duplicate key events: when our raw-stdin handler catches a key
   // before Ink's useInput does, we set a suppression flag so Ink doesn't
   // fire a duplicate event. Without this, Backspace deletes two characters

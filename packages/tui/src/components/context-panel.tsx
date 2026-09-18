@@ -124,7 +124,7 @@ function zoneColor(zone: ZoneLevel): string {
     case 'critical':
       return theme.error;
     case 'danger':
-      return '#f2cdcd'; // flamingo
+      return theme.error;
   }
 }
 

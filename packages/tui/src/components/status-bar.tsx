@@ -2,6 +2,7 @@ import { effectiveDensity, type StatuslineDensity } from '@wrongstack/core/statu
 import { expectDefined } from '@wrongstack/core/utils';
 import type React from 'react';
 import { memo, useMemo } from 'react';
+import { useActiveTheme } from '../hooks/use-active-theme.js';
 import {
   computeTokenFingerprint,
   useChipStalenessGuard,
@@ -22,12 +23,7 @@ import {
   truncateChip,
 } from './status-bar-format.js';
 import { countdownColor, hasMailboxActivity, isStreamChipVisible } from './status-bar-helpers.js';
-import {
-  SPINNER_FRAMES,
-  SPINNER_INTERVAL_MS,
-  STACK_ORANGE,
-  STATUSLINE_ICONS,
-} from './status-bar-icons.js';
+import { SPINNER_FRAMES, SPINNER_INTERVAL_MS, STATUSLINE_ICONS } from './status-bar-icons.js';
 import {
   buildIndexStatusChip,
   buildMemoryDetailEntries,
@@ -153,6 +149,7 @@ export const StatusBar = memo(function StatusBar({
   maxWidth,
   clickMapRef,
 }: StatusBarProps): React.ReactElement {
+  useActiveTheme();
   const { columns: termWidth } = useTerminalSize({ maxWidth, fallbackColumns: 90 });
 
   const isNoColor = mode === 'no-color';
@@ -377,7 +374,10 @@ export const StatusBar = memo(function StatusBar({
           v{version}
         </Text>
         {showUpdateNotice ? (
-          <Text color={isNoColor ? undefined : STACK_ORANGE}> · (update v{latestVersion})</Text>
+          <Text color={isNoColor ? undefined : theme.brandPrimary}>
+            {' '}
+            · (update v{latestVersion})
+          </Text>
         ) : null}
       </Text>
     ) : null;

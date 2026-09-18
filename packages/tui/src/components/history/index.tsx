@@ -1,5 +1,6 @@
 import type React from 'react';
 import { memo, useMemo, useRef } from 'react';
+import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { useTerminalSize } from '../../hooks/use-terminal-size.js';
 import { Box, Static } from '../../ink.js';
 import { Entry, findArmedNextStepsEntryId } from './entry.js';
@@ -92,6 +93,7 @@ export const History = memo(function History({
   toolResultViewMode,
   toolResultViewOverrides,
 }: HistoryProps): React.ReactElement {
+  useActiveTheme();
   const termSize = useTerminalSize();
   const termWidth = termSize.columns;
   const armedNextStepsEntryId = useMemo(

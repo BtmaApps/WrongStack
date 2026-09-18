@@ -27,7 +27,7 @@ import type { FleetEntry } from '../app-state-fleet.js';
 import type { HeapSample } from '../heap-watchdog.js';
 import { Box, Text } from '../ink.js';
 import { displayWidth } from '../terminal-width.js';
-import { getActiveThemeName, pastel, theme } from '../theme.js';
+import { getActiveThemeName, theme } from '../theme.js';
 import type { PanelId } from '../ui-contracts.js';
 import { SIDEBAR_MISSION_ROWS } from '../ui-contracts.js';
 import { glyphs } from '../ui-glyphs.js';
@@ -263,7 +263,7 @@ export function contextSpectrum(
           label: 'System',
           shortLabel: 'SYS',
           tokens: breakdown.system.total,
-          color: pastel.peach,
+          color: theme.brandPrimary,
           glyph: '◆',
         },
         {

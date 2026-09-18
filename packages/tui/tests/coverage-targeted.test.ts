@@ -6,27 +6,28 @@
  * DO NOT modify source code — only add test coverage.
  */
 
-import { describe, expect, it } from 'vitest';
 import React from 'react';
-import { detectLang, highlightLine, langFromPath } from '../src/highlight.js';
-import { Text } from '../src/ink.js';
+import { describe, expect, it } from 'vitest';
+import {
+  type AuthPanelState,
+  authMoveSelected,
+  authPanelRows,
+} from '../src/components/auth-panel-model.js';
 import { colorForFamily, dimColorForFamily } from '../src/components/provider-colors.js';
 import { actionForFKeyPanel } from '../src/f-key-panels.js';
+import { detectLang, highlightLine, langFromPath } from '../src/highlight.js';
+import { Text } from '../src/ink.js';
 import { createPanelOpenDispatcher, type PanelOpenDeps } from '../src/on-panel-open.js';
 import { handleQueueCommand, type QueueSlashDeps } from '../src/queue-slash.js';
-import { buildSlashCommandMatches } from '../src/slash-command-search.js';
-import { normalizeTuiThinkingWord } from '../src/thinking-word.js';
 import {
-  authPanelRows,
-  authMoveSelected,
-  type AuthPanelState,
-} from '../src/components/auth-panel-model.js';
-import {
+  clampContextLoad,
   closePanels,
   firstSelectable,
-  clampContextLoad,
   skipDivider,
 } from '../src/reducers/helpers.js';
+import { buildSlashCommandMatches } from '../src/slash-command-search.js';
+import { softColor } from '../src/theme.js';
+import { normalizeTuiThinkingWord } from '../src/thinking-word.js';
 import type { ProjectPickerItem } from '../src/ui-contracts.js';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -95,7 +96,7 @@ describe('ink.tsx — branch gaps', () => {
     >;
     expect(el).toBeDefined();
     expect((el as unknown as { props: Record<string, unknown> }).props.backgroundColor).toBe(
-      '#89b4fa',
+      softColor('blue'),
     );
   });
 

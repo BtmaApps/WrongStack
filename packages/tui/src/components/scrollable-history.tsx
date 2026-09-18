@@ -2,6 +2,7 @@ import type React from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EntryHeightCache } from '../height-cache.js';
 import { SCROLLBAR_HIT_WIDTH } from '../hit-test.js';
+import { useActiveTheme } from '../hooks/use-active-theme.js';
 import { Box, type DOMElement, measureElement, useStdout } from '../ink.js';
 import { computeLayout } from '../layout-engine.js';
 import {
@@ -106,6 +107,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   toolResultViewOverrides,
   onToolResultViewChange,
 }: ScrollableHistoryProps): React.ReactElement {
+  useActiveTheme();
   const { stdout } = useStdout();
   const resolveViewportWidth = useCallback(() => {
     const raw = stdout?.columns ?? 80;
