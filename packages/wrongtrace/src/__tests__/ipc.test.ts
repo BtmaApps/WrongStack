@@ -136,10 +136,10 @@ describe('createIpcTransport (JSON-RPC 2.0, \\n-framed)', () => {
   });
 
   it('surfaces daemon error envelopes as { result: null, error } — never as a fake result', async () => {
-    const server = startRpcServer((method) =>
+    const server = startRpcServer((method, _params, id) =>
       JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id,
         error: { code: -32601, message: `method not found: ${method}` },
       }),
     );
@@ -268,10 +268,10 @@ describe('createWrongTraceClient() IPC-first routing', () => {
   });
 
   it('getFileHealth falls back to HTTP when the pipe answers with an error envelope', async () => {
-    const server = startRpcServer((method) =>
+    const server = startRpcServer((method, _params, id) =>
       JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id,
         error: { code: -32601, message: `method not found: ${method}` },
       }),
     );
@@ -357,10 +357,10 @@ describe('createWrongTraceClient() IPC-first routing', () => {
   });
 
   it('getAtlas falls back to HTTP when the pipe answers -32601 (pre-v0.3.3 daemon)', async () => {
-    const server = startRpcServer((method) =>
+    const server = startRpcServer((method, _params, id) =>
       JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id,
         error: { code: -32601, message: `method not found: ${method}` },
       }),
     );
@@ -401,10 +401,10 @@ describe('createWrongTraceClient() IPC-first routing', () => {
   });
 
   it('unlockFile falls back to HTTP when the pipe answers with an error envelope', async () => {
-    const server = startRpcServer((method) =>
+    const server = startRpcServer((method, _params, id) =>
       JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id,
         error: { code: -32601, message: `method not found: ${method}` },
       }),
     );

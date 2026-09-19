@@ -1,15 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import {
-  type BrainDecisionRequest,
-  type BrainDecision,
-  DefaultBrainArbiter,
-} from '../../src/coordination/brain.js';
+import type { BrainDecisionRequest } from '../../src/coordination/brain.js';
 import { BrainDecisionCache } from '../../src/coordination/brain-cache.js';
-import { compileBrainRules } from '../../src/coordination/brain-rules.js';
 import {
-  explainBrainDecision,
   type BrainExplainContext,
+  explainBrainDecision,
 } from '../../src/coordination/brain-explain.js';
+import { compileBrainRules } from '../../src/coordination/brain-rules.js';
 import { createBrainRuntime } from '../../src/execution/brain-runtime.js';
 import type { Provider } from '../../src/types/provider.js';
 
@@ -90,7 +86,8 @@ describe('explainBrainDecision', () => {
       {
         id: 'deny-hard-reset',
         when: { question: 'git reset --hard' },
-        then: { action: 'deny', text: 'Hard reset is not permitted automatically.' },
+        // biome-ignore lint/suspicious/noThenProperty: BrainRule's domain contract names this action field `then`.
+        then: { action: 'deny', reason: 'Hard reset is not permitted automatically.' },
       },
     ]);
 
@@ -193,7 +190,7 @@ describe('explainBrainDecision', () => {
 describe('BrainRuntime.explain', () => {
   const dummyProvider: Provider = {
     id: 'mock',
-    chat: async () => ({ content: 'ok' } as any),
+    chat: async () => ({ content: 'ok' }) as any,
   } as unknown as Provider;
 
   it('provides explain simulation via the live runtime', () => {
@@ -205,6 +202,7 @@ describe('BrainRuntime.explain', () => {
           {
             id: 'auto-ping',
             when: { question: 'ping heartbeat' },
+            // biome-ignore lint/suspicious/noThenProperty: BrainRule's domain contract names this action field `then`.
             then: { action: 'answer', text: 'pong' },
           },
         ],
@@ -215,9 +213,7 @@ describe('BrainRuntime.explain', () => {
       resolveProvider: () => dummyProvider,
     });
 
-    const explanation = runtime.explain(
-      makeRequest({ question: 'ping heartbeat' }),
-    );
+    const explanation = runtime.explain(makeRequest({ question: 'ping heartbeat' }));
 
     expect(explanation.verdict.settledDeterministically).toBe(true);
     expect(explanation.verdict.resolvingTier).toBe('rule');

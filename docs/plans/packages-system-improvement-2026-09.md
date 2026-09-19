@@ -36,10 +36,10 @@ Counts are observations from the shared checkout, not permanent targets.
 
 ## Review sequence and coverage
 
-Rows 1–9 have received partial implementation-level review. Other rows have
-structural baseline evidence, plus the explicitly listed consumer checks.
-Following the request to continue in package order, the current sequence is
-Telegram -> WrongTrace -> desktop apps.
+Rows 1–11 have received partial implementation-level review. Every listed
+package/application now has at least one implementation-level pass plus the
+explicitly listed consumer checks. The next phase is cross-package gate and
+integration closure, followed by deeper second passes where risks remain.
 
 | Order | Packages | Focus | Status |
 | --- | --- | --- | --- |
@@ -52,8 +52,8 @@ Telegram -> WrongTrace -> desktop apps.
 | 7 | `codebase-index-mcp`, `kanban-mcp`, `mailbox-mcp`, `requirement-intake-mcp`, `sage-mcp` | Adapter parity and standalone server lifecycle | Partial review across all five adapters; request cancellation, watch/transport cleanup, and checkout ownership hardened |
 | 8 | `webui-protocol`, `webui-server` | Event ordering, reconnect/replay, session isolation | Partial review across both packages; decoder bounds and connection ownership hardened |
 | 9 | `cli`, `tui`, `webui`, `simpleui`, `webui-hq` | Consistent actions, accessibility, mobile layouts, real PTY/browser behavior | Partial review across all five packages; connection ownership, roster correlation, and cleanup hardened |
-| 10 | `telegram`, `wrongtrace` | Integration lifecycle, delivery, diagnostics | Partial; Telegram lock-transfer cancellation hardened; next: wrongtrace |
-| 11 | `apps/desktop`, `apps/wrongstack` | Packaged runtime and application integration | Pending |
+| 10 | `telegram`, `wrongtrace` | Integration lifecycle, delivery, diagnostics | Partial review across both packages; polling ownership and IPC correlation hardened |
+| 11 | `apps/desktop`, `apps/wrongstack` | Packaged runtime and application integration | Partial review across both apps; Desktop IPC authority and published-shim lifecycle hardened |
 
 This is review priority, not a replacement for the build dependency graph.
 
@@ -1553,3 +1553,584 @@ release check was run. The concurrent Telegram package-version change was
 preserved and is not attributed to this pass. The next package in order is
 `wrongtrace`; this remains a partial local polling lifecycle review rather than
 external delivery certification.
+
+## Forty-third pass: WrongTrace IPC error correlation
+
+The WrongTrace IPC adapter correctly ignored result envelopes carrying a
+different JSON-RPC id, but it evaluated error envelopes before checking their
+id. A delayed or foreign error frame could therefore fail the active request,
+trigger HTTP fallback, and discard the matching success frame that followed.
+
+Result and error envelopes now pass through the same correlation gate. Frames
+whose id is neither the active request id nor the daemon's accepted null-id
+form are ignored before their payload is interpreted. A real named-pipe/UDS
+regression sends a foreign `-32601` error followed by the matching success and
+requires the success result. Four older error fixtures were corrected to echo
+the request id supplied by the test daemon; their former hard-coded `id: 1`
+had concealed the defect.
+
+Validation: all six WrongTrace test files passed (82 tests), including live
+in-process IPC server round trips and HTTP fallback paths. Package typecheck,
+TypeScript build, scoped Biome, whitespace checks, and all 35 publishable
+package-contract checks passed. The authoritative workspace test-type gate
+reported no new WrongTrace diagnostic and still reports the same seven
+unrelated concurrent Core Brain, Kanban fixture, and Tools Playwright mock
+diagnostics.
+
+No external WrongTrace daemon, MCP peer, full monorepo suite, or release check
+was run. The concurrent package-version change was preserved and is not
+attributed to this pass. The next work moves to `apps/desktop`; this remains a
+partial adapter protocol review rather than live daemon certification.
+
+## Forty-fourth pass: Desktop locale IPC authority
+
+Desktop's request/response IPC channels were registered through a common shell
+sender gate, and WebUI-originated events resolved their owning runtime view.
+The fire-and-forget `setLocale` event was the exception: it accepted any
+renderer sender, then changed the main-process locale, rebuilt the application
+menu, broadcast the locale, and persisted it to shared UI configuration. The
+remote WebUI renderer is sandboxed today, but relying on its preload not to
+expose a channel is not an IPC authorization boundary.
+
+A shell-only event registration helper now applies the same sender identity
+check to locale mutation. Rejected events are logged and ignored; WebUI events
+retain their runtime-entry ownership checks. The WS-SEC-13 regression scans
+the registration structure so a later refactor cannot silently restore a bare
+`ipcMain.on(IPC.setLocale, ...)` handler.
+
+Validation: all 27 Desktop test files passed (478 tests). Desktop typecheck,
+the full workspace dependency/Desktop production build, scoped Biome,
+whitespace checks, and all 35 publishable package-contract checks passed.
+The authoritative workspace test-type gate reported no new Desktop diagnostic.
+It now reports eight unrelated concurrent diagnostics: one new CLI Brain
+runtime fixture, five Core Brain tests, the Kanban `updatedAt` fixture, and the
+Tools Playwright Browser mock.
+
+Packaged validation remains incomplete. Two `package:dir` attempts rebuilt the
+workspace and Desktop outputs successfully, then failed while `pnpm deploy`
+renamed its temporary staging directory to `.package-stage` with Windows
+`Access denied` (os error 5). No Electron/Node process using that repo stage
+path was found, and no unpacked artifact was produced for `smoke-desktop.mjs`.
+This pass does not establish packaged, signed, or cross-platform release
+readiness. The next application in order is `apps/wrongstack`.
+
+## Forty-fifth pass: Published CLI shim lifecycle parity
+
+The published `wrongstack`/`wstack` shim duplicated an older process-exit
+implementation instead of using the CLI package's current entry lifecycle. It
+installed only broken-pipe handlers, invoked `main`, and forced `process.exit`
+after a fixed 200 ms. The normal CLI entry now provides crash shielding,
+Windows executable-search hardening, synchronous fatal-state salvage,
+credential/home-path scrubbing, and a durability-aware 500 ms to 5 s exit
+window. Users of the published shim silently missed all of those protections
+and could truncate pending writes on slower disks.
+
+The complete CLI process lifecycle is now exported as `runCliProcess` for an
+already-confirmed entry point. `runAsMain` retains module-main detection and
+delegates to it, while `apps/wrongstack` calls the same lifecycle directly.
+The shim no longer owns its own `setTimeout` or `process.exit` path. A source
+contract pins that single-owner relationship and verifies the new public
+export.
+
+Validation: the WrongStack app suite passed (6 tests), and its typecheck and
+build passed after rebuilding CLI declarations. The complete CLI suite passed
+(510 files and 6,147 tests; 5 files and 5 tests skipped), CLI production
+typecheck and build passed, scoped Biome and whitespace checks passed, and all
+35 publishable package contracts passed. CLI's combined source+test typecheck
+remains blocked only in the test phase by the unrelated concurrent
+`slash-brain.test.ts` fixture. The authoritative workspace test-type gate now
+reports eight unrelated concurrent diagnostics: that CLI fixture, five Core
+Brain tests, one Kanban fixture, and one Tools Playwright mock.
+
+No npm tarball install, global binary smoke, full monorepo suite, or release
+check was run. Package-by-package first-pass coverage is now complete; the next
+phase should close the cross-package gates and revisit the recorded residual
+risks rather than treating these partial passes as release certification.
+
+## Forty-sixth pass: Cross-package test-type gate closure
+
+The first cross-package closure pass reproduced eight new TypeScript test
+diagnostics across CLI, Core, Kanban, and Tools. They were fixture drift rather
+than production failures: a CLI BrainRuntime double lacked the new explain and
+tier-stat methods; Brain explanation fixtures carried stale imports and the
+old deny `text` field; a heuristics import was unused; a budget event still
+used removed `previous`/`granted` fields; a Kanban board lacked `updatedAt`;
+and a Playwright browser double was narrower than the documented launcher
+seam's full external interface.
+
+The fixtures now match the live contracts without changing production
+behavior or the generated diagnostic baseline. The authoritative gate reports
+`New diagnostics: 0`, no unparsed failures, and 247 resolved baseline
+diagnostics. Focused behavior validation passed across all affected packages:
+54 CLI tests plus 86 Core/Kanban/Tools tests. CLI's combined production/test
+typecheck, scoped Biome, whitespace checks, and all 35 publishable package
+contracts passed.
+
+This closes the current test-type blocker but does not erase the 1,542
+baseline diagnostics, certify the full monorepo suite, or resolve the Desktop
+packaging-stage Windows rename failure. The next cross-package step is to run
+the broader release matrix, classify its first authoritative failures, and
+repair only current actionable findings without hand-editing generated
+baselines.
+
+## Forty-seventh pass: Release-matrix closure and architecture ownership
+
+The complete 19-gate `pnpm release:check` matrix was run from the repository
+root. Seventeen gates passed: dependency audit, production build, extracted
+Tools WASM smoke, hidden-output scan, provider and plugin projections, all 35
+publishable package contracts, npm 10 packed-provider installation, build
+lineage write/verify, test inventory, skip budget, Windows PTY, optional
+rulebook, seven-locale completeness, workspace typecheck, and the test-type
+ratchet (`New diagnostics: 0`, 247 resolved). The initial architecture and
+coverage gates exposed current source drift instead of infrastructure errors.
+
+Four independent clean-source defects were repaired. WebUI Server's Kanban
+manager now uses the shared `errMessage` authority. Core's Brain risk ceiling
+primitive moved into a private coordination module, removing the
+`coordination -> execution -> coordination` runtime cycle while retaining the
+existing `autonomy-brain` re-export. Plug-LSP now proves recovery from an
+invalid request-id cursor, and WebUI Protocol proves safe defaults for an
+invalid retry cap and non-finite jitter sample; both packages returned to
+100% statement, branch, function, and line coverage. The authorized Core API
+snapshot writer recorded only the resulting coordination/execution source
+lineage change. HQ's token mirror was recopied from WebUI, closing seven
+missing shadow tokens and the light-success color drift. The concurrently
+edited locale catalogs now also contain the new TechStack unavailable message
+in all seven locales.
+
+Validation after repair: the focused Core/WebUI Server architecture set passed
+80 tests; the final Core focus passed 79 tests; Core's authoritative full root
+suite passed all 802 files and 12,905 tests with four skips. Plug-LSP passed
+294 tests plus one skip at 100% coverage, WebUI Protocol passed 160 tests at
+100% coverage, HQ token parity passed 5 tests, WebUI catalog integrity passed
+10 tests, and Core, WebUI Server, Plug-LSP, and WebUI Protocol typechecks
+passed. The generated Core API snapshot is current and the architecture scan
+reports zero runtime module cycles.
+
+One release blocker remains owned by concurrent WebUI work:
+`packages/webui/src/components/TechStackView/index.tsx` grew from the 865-line
+hotspot ratchet to 878 lines during this pass. That file and its active
+supporting WebUI changes were preserved rather than rewritten or accepted via
+a hand-edited architecture baseline. Consequently the final architecture gate
+still exits 1, and the full release matrix was not rerun after the focused
+repairs because that known gate cannot yet pass. Desktop's earlier Windows
+packaging-stage rename failure also remains outside this matrix result.
+
+## Forty-eighth pass: Windows Desktop packaging stage closure
+
+The repeated Desktop `package:dir` failure was reproduced a third time with no
+competing build, coverage, Vitest, Electron, or package process. The workspace
+and Desktop builds completed, then pnpm 12.3.4's legacy deploy engine failed to
+rename its internal `pacquet-stage_*` directory to
+`apps/desktop/.package-stage` with Windows `Access denied` (os error 5). No
+stale target or temporary stage existed before the run. Running the identical
+379-package deploy graph under the repository's ignored `.temp_files`
+directory succeeded, isolating the failure to a deploy target nested inside
+the filtered workspace package rather than dependency resolution, disk health,
+or the content-addressable store.
+
+Desktop packaging and smoke now share one repository-relative stage constant:
+`.temp_files/package-desktop-stage`. Keeping the deploy destination outside
+`apps/desktop` lets pnpm complete its atomic staging rename while preserving a
+repo-local, ignored artifact location. The smoke launcher consumes the same
+constant, preventing package/output path drift.
+
+Validation: the complete `pnpm --filter @wrongstack/desktop package:dir` flow
+rebuilt the workspace, deployed 379 production packages, ran the lockfile-pinned
+Electron Builder 26.15.3, downloaded/extracted Electron 44.3.0, and produced
+`release/win-unpacked` successfully. The packaged runtime smoke resolved the
+workspace dependency closure and renderer assets and opened a real packaged
+PTY. The stronger window smoke also reported `Desktop reload state OK` and
+`Desktop window ready`. Script coverage passed all 201 tests, the shell-spawn
+contract passed two tests, scoped Biome and whitespace checks passed, and the
+packaged smoke remained green after formatting.
+
+This establishes an unpacked Windows x64 package and live local smoke. It does
+not certify installer generation, publication, signing identity, macOS/Linux
+artifacts, or GitHub Releases delivery. The unrelated concurrent WebUI hotspot
+ratchet remains the current `release:check` blocker.
+
+## Forty-ninth pass: Windows installer and portable asset proof
+
+The full Windows target command, `node scripts/package-desktop.mjs --win`, was
+run after an unrelated six-shard Vitest worker finished. It rebuilt the current
+workspace, materialized all 379 production packages in the repaired stage, and
+ran the lockfile-pinned Electron Builder 26.15.3 against Electron 44.3.0. Both
+configured Windows x64 distribution targets completed:
+
+- `wrongstack-desktop-1.0.23-win-x64-setup.exe` — 235,021,923 bytes,
+  SHA-256 `3AA9F250C7C6A04B2E05CB0A4DF6D2C4EEF830597041F6BE2782ACB4775CFFF4`;
+- `wrongstack-desktop-1.0.23-win-x64-portable.exe` — 234,807,671 bytes,
+  SHA-256 `B0B584EB014C11403E25F31AFAA81AA0507A93351A64B8304566949C6D3ED068`;
+- the NSIS blockmap — 243,819 bytes,
+  SHA-256 `D5452D492ACE6185282CB5BDA175398909A7391C49415F155FF731B9A18172E1`.
+
+The portable executable was then launched directly with
+`--desktop-smoke-test` and an isolated `WRONGSTACK_HOME`. It exited zero,
+created its Electron profile, and left no WrongStack process behind. This is
+in addition to the unpacked runtime's stronger PTY, dependency, asset, reload,
+and window-readiness smoke from the previous pass.
+
+No Windows signing certificate was supplied. Electron Builder ran its signing
+steps, but Windows Authenticode reports both final executables as `NotSigned`;
+the hashes above prove only the local artifacts and must not be presented as a
+signed release. Publication, GitHub Release attachment, installed-NSIS upgrade
+behavior, and macOS/Linux packaging remain unproven. The active WebUI hotspot
+ratchet remains the independent `release:check` blocker.
+
+## Fiftieth pass: Installed NSIS lifecycle smoke
+
+The generated NSIS installer was exercised in silent mode against an isolated,
+ignored install directory. Installation exited zero and produced both the
+installed `WrongStack.exe` and `Uninstall WrongStack.exe`. The installed
+binary was then launched with `--desktop-smoke-test` and an isolated
+`WRONGSTACK_HOME`; it exited zero and reported `Desktop reload state OK` and
+`Desktop window ready`. Its Electron profile was created under the requested
+smoke root. The installer-provided uninstaller subsequently exited zero,
+removed the entire install directory, and left zero entries behind.
+
+One diagnostic invocation used PowerShell's reserved `$HOME` variable name
+before the corrected smoke. Assignment failed, so the command inherited
+`C:\Users\ersin` as `WRONGSTACK_HOME` and created
+`C:\Users\ersin\profiles\default\desktop\electron-profile`. Read-only
+inspection proved that `profiles`, `default`, `desktop`, and
+`electron-profile` were all created in the same second by this smoke and that
+the tree contains no sibling user data. A path-literal recursive cleanup was
+attempted, but the execution policy rejected the command before it started;
+the generated profile tree therefore remains and requires ordinary user-side
+removal. No existing WrongStack profile under `.wrongstack` was modified.
+
+This closes fresh install, installed startup, and uninstall behavior for the
+current unsigned Windows x64 NSIS artifact. Upgrade-over-existing-version,
+signed publisher identity, publication, and cross-platform installers remain
+outside the proven scope.
+
+## Fifty-first pass: Deterministic release checksum manifest
+
+Desktop packaging previously emitted setup, portable, blockmap, and update
+metadata without a machine-readable integrity manifest. A shared streaming
+SHA-256 helper now hashes every top-level publishable release file after
+Electron Builder succeeds, sorts entries by name, excludes Builder's internal
+debug/effective configuration and the manifest itself, and writes the standard
+two-space `SHA256SUMS.txt` form. Directory-only packaging intentionally emits
+no empty manifest. The helper streams large installers instead of reading
+hundreds of megabytes into memory.
+
+Two regressions cover deterministic ordering, exact digests, Builder-internal
+exclusion, self-exclusion on repeated writes, directory exclusion, and the
+empty-release behavior. The complete `node scripts/package-desktop.mjs --win`
+integration was rerun after the change; it rebuilt the workspace, deployed all
+379 production packages, rebuilt NSIS and portable assets, and reported
+`Wrote SHA256SUMS.txt for 4 release asset(s)`. Independent PowerShell
+`Get-FileHash` calculations matched every manifest line. The final manifest is:
+
+```text
+cb288b441c96e38036944aab8ec0c6fb91f7eb75cc48c571176110137a2d26a2  latest.yml
+a8c30b9749a22f287d08ba64d9e3dcdd33ddb1aaa6b33fe29e6c50ed6f890d51  wrongstack-desktop-1.0.23-win-x64-portable.exe
+f5754d1a5eb238211045afc2973330bbd2ff53f3ae6ad81cd324f731e7b98bcd  wrongstack-desktop-1.0.23-win-x64-setup.exe
+6d12fc57fcb8cd4621271ab3c016040eb4f620c4a0c0e0d63957445ae665b662  wrongstack-desktop-1.0.23-win-x64-setup.exe.blockmap
+```
+
+Validation: focused checksum tests passed 2/2, Core production typecheck
+passed, the authoritative test-type ratchet remained at zero new diagnostics
+with 247 resolved, scoped Biome and whitespace checks passed, and the rebuilt
+unpacked app again passed packaged PTY, dependency, asset, reload-state, and
+window-readiness smoke.
+
+The first and second Windows builds produced different binary hashes, so the
+current Electron/NSIS pipeline is not certified bit-for-bit reproducible. The
+manifest provides integrity for one concrete build; it does not prove source
+reproducibility or replace Authenticode signing.
+
+## Fifty-second pass: Desktop checksum release-chain authority
+
+The reusable Desktop workflow still uploaded from the removed
+`apps/desktop/.package-stage/release` location. After the stage repair, every
+matrix job would therefore build and smoke successfully, then fail
+`upload-artifact` with no files. The workflow now uploads from the canonical
+`.temp_files/package-desktop-stage/release` directory and explicitly enables
+hidden-file traversal; upload-artifact otherwise ignores a hidden ancestor
+even when its file globs are exact.
+
+Checksum ownership is also preserved end to end. Each Windows, Linux, macOS
+ARM64, and macOS x64 job namespaces the package-produced manifest with its
+fixed matrix OS name before artifact upload. The GitHub Release job merges
+those manifests, sorts the result by asset name, and runs
+`sha256sum --check` against the downloaded assets before uploading them. It no
+longer discards build-time provenance and recomputes hashes in a later job.
+
+The manifest scope was narrowed to files whose names start with
+`wrongstack-desktop-`, matching the workflow's actual release asset contract.
+Electron Builder's `latest*.yml` update metadata is not currently uploaded by
+this workflow, so including it produced a checksum entry that could never be
+verified after artifact download. The final Windows manifest therefore covers
+setup, portable, and blockmap; all three matched independent `Get-FileHash`
+calculations in a local namespace/merge simulation.
+
+Validation: the workflow-aware checksum suite passed 3/3, both modified YAML
+workflows parsed successfully with PyYAML, Core typecheck passed, the
+authoritative test-type ratchet remained at zero new diagnostics with 247
+resolved, and scoped Biome and whitespace checks passed. The exact cross-shell
+Node namespace command was executed locally, avoiding template-literal shell
+substitution. A real four-OS GitHub Actions run and GitHub Release upload remain
+external proof still to be obtained.
+
+The closing architecture read also observed new concurrent work outside this
+pass: type-inclusive cycles rose from nine to ten, and hotspot/fan-out ratchets
+now fail in Core delegation/coordination/Brain runtime, TUI submit control,
+WebUI TechStack, and WebUI Server backend services. Runtime cycles remain zero.
+Those active files and generated architecture baselines were left untouched;
+the current full release gate therefore has multiple concurrent blockers rather
+than only the earlier TechStack hotspot.
+
+## Fifty-third pass: Shell-free Windows pnpm packaging invocation
+
+Desktop packaging still invoked `pnpm` through `execFileSync` with
+`shell: true` on Windows. Even though today's deploy arguments are internal,
+Node correctly emitted `DEP0190`: argv is joined into one shell command line,
+the same BatBadBut/CVE-2024-27980 shape the repository's command execution
+layers already reject. The packaging script was still explicitly allowlisted
+from the architecture shell-spawn contract.
+
+The script now builds Core first, then dynamically imports the canonical
+`buildWin32CmdShimInvocation` from `@wrongstack/core/utils`. Windows pnpm runs
+through explicit `cmd.exe /d /c call` argv with metacharacter refusal and
+`windowsVerbatimArguments`; Unix continues to execute pnpm directly. The lazy
+import preserves clean-checkout behavior because no Core `dist` output is
+required until after the workspace build completes. The old shell option and
+its architecture allowlist exception were removed.
+
+Validation: the shell-spawn architecture suite passed 2/2, scoped Biome and
+whitespace checks passed, and a complete Windows `package:dir` rebuilt the
+workspace, deployed all 379 production packages, and produced the unpacked app
+without `DEP0190`. The resulting package again passed PTY, dependency, asset,
+reload-state, and window-readiness smoke. The authoritative test-type ratchet
+remained at zero new diagnostics with 247 resolved. Electron still emits the
+separate `DEP0180` `fs.Stats` deprecation during window smoke; this pass does
+not attribute or suppress that dependency-level warning.
+
+## Fifty-fourth pass: Electron DEP0180 ownership proof
+
+The remaining packaged-window warning was rerun with Electron's direct
+`--trace-deprecation` flag. `NODE_OPTIONS=--trace-deprecation` is intentionally
+rejected by packaged Electron, but the executable flag produced the complete
+stack:
+
+```text
+at asarStatsToFsStats (node:electron/js2c/node_init:2:1843)
+at Object.lstat (node:electron/js2c/node_init:2:5408)
+at node:electron/js2c/node_init:2:5732
+```
+
+Node documents DEP0180 as the runtime deprecation for directly constructing
+`fs.Stats`; the caller above is Electron's internal ASAR compatibility layer,
+not WrongStack source. A narrow mitigation was tested: unpack the renderer
+bundle and resolve `app.asar.unpacked/dist/renderer/index.html` before the ASAR
+URL. The package contained the unpacked renderer and startup still passed, but
+the same internal Electron stack remained. That experiment was fully reverted
+rather than carrying extra unpacked surface with no benefit.
+
+The warning is therefore classified as an Electron 44.3.0 upstream/runtime
+issue. WrongStack does not suppress process deprecations, disable ASAR, or
+weaken smoke assertions to hide it. The packaged app continues to report PTY,
+dependency, asset, reload-state, and window readiness successfully. A future
+Electron upgrade should rerun the traced smoke and remove this residual only
+when the upstream ASAR stack no longer constructs `fs.Stats`.
+
+## Fifty-fifth pass: Desktop artifact and checksum scope parity
+
+The checksum helper deliberately includes every top-level file owned by the
+`wrongstack-desktop-` release prefix. Electron Builder emits the Windows NSIS
+blockmap under that prefix, but the reusable Desktop workflow enumerated only
+`exe`, `dmg`, `zip`, `AppImage`, and `deb` upload globs. A Windows matrix job
+would therefore publish a checksum manifest that referenced a blockmap absent
+from the downloaded artifact, and the release job's `sha256sum --check` would
+fail before upload.
+
+The artifact upload now uses the same `wrongstack-desktop-*` prefix contract as
+the checksum helper. This includes the blockmap and prevents future
+package-owned sidecar formats from silently drifting out of the release chain.
+Builder diagnostics and update metadata remain excluded because neither uses
+that prefix. The regression fixture now contains a blockmap and asserts its
+digest, while the workflow contract asserts the shared prefix glob and rejects
+the former executable-only glob.
+
+Validation: the focused checksum regression passed 3/3; the combined Desktop
+checksum and workflow-hardening suites passed 20/20; `actionlint` accepted both
+Desktop and release workflows; the authoritative test-type ratchet reported
+zero new diagnostics with 247 resolved; scoped Biome and whitespace checks
+passed. A real GitHub Actions matrix and GitHub Release upload remain external
+proof.
+
+## Fifty-sixth pass: Standalone binary release integrity handoff
+
+The standalone build already generated `dist-bin/SHA256SUMS`, and both install
+scripts use that release asset as their trust anchor. The GitHub Release job,
+however, downloaded the workflow artifact and uploaded its contents without
+checking that the downloaded executables still matched the build-produced
+manifest. This left the build-to-release handoff weaker than the equivalent
+Desktop path.
+
+The release job now runs `sha256sum --check dist-bin/SHA256SUMS` before it can
+create or update the release and before any standalone asset is uploaded. A
+workflow-hardening regression scopes the assertion to the GitHub Release job
+and pins verification ahead of `gh release upload`, so moving or removing the
+integrity gate fails locally.
+
+Validation: the workflow-hardening suite passed 18/18; `actionlint` accepted
+the release workflow; scoped Biome and whitespace checks passed. The existing
+local single-target `dist-bin/SHA256SUMS` was independently parsed and its
+Windows x64 executable matched `Get-FileHash`. The authoritative test-type
+ratchet reported zero new diagnostics with 247 resolved. A fresh all-target
+Linux build and live GitHub Release upload remain external proof.
+
+## Fifty-seventh pass: Standalone checksum coverage closure
+
+`sha256sum --check` verifies every line present in a manifest, but it does not
+reject an additional file absent from that manifest. The GitHub Release upload
+uses the broader `dist-bin/wstack-*` glob, so an unexpected or stale binary
+could otherwise be attached without any checksum entry even after the digest
+gate added in the previous pass.
+
+Before hashing, the release job now builds two sorted inventories: actual
+top-level `wstack-*` files and normalized filenames from `SHA256SUMS`. A unified
+`diff` must be empty before `sha256sum --check` and before upload. Missing,
+extra, and duplicate manifest entries therefore fail the release handoff. The
+workflow regression asserts the inventory sources and pins coverage comparison
+ahead of digest verification, with both gates ahead of `gh release upload`.
+
+Validation: workflow-hardening passed 18/18; `actionlint`, scoped Biome, and
+whitespace checks passed. The authoritative test-type ratchet reported zero
+new diagnostics with 247 resolved. A live Ubuntu release runner remains the
+final proof of the GNU `find`, `awk`, `diff`, and `sha256sum` pipeline.
+
+## Fifty-eighth pass: Standalone build target cardinality
+
+The binary builder accepted `--target=` as an empty target list and would then
+produce no executable plus an empty `SHA256SUMS`. It also accepted the same
+target more than once, recompiling one output path and writing duplicate
+manifest entries. Both states violate the exact asset/manifest coverage now
+enforced at release time, but previously failed only much later in workflow
+smoke or publication.
+
+Argument parsing is now exported as a narrow test seam, clones the default
+target list, de-duplicates explicit targets in caller order, and rejects an
+empty final list before workspace build or output deletion begins. The
+declaration mirror documents the options shape. Direct Node execution proved
+both the single-target de-duplication result and the early empty-target error.
+
+## Fifty-ninth pass: Bounded standalone update downloads
+
+Standalone self-update used one 512 MiB ceiling for both executable and
+`SHA256SUMS` downloads. When `Content-Length` was absent it called
+`arrayBuffer()` before checking the actual size, so the nominal limit did not
+prevent the response from being fully allocated first.
+
+The executable retains its 512 MiB ceiling while checksum metadata is capped
+at 1 MiB. Downloads now read the response stream incrementally, track received
+bytes, cancel immediately when the configured ceiling is crossed, release the
+reader lock on success or failure, and concatenate only an accepted body.
+Regressions prove declared oversize is rejected before body access and an
+undeclared oversize stream is cancelled at the crossing chunk.
+
+## Sixtieth pass: Single checksum authority across installers
+
+Checksum parsing now rejects duplicate asset names in the CLI self-updater
+instead of silently letting the last digest win. The Unix and PowerShell
+installers also require exactly one matching manifest entry. This makes the
+GitHub Release job, `wstack update`, `install.sh`, and `install.ps1` agree on
+one unambiguous digest per binary, including custom download mirrors.
+
+Validation across passes 58-60: standalone/update/workflow regression suites
+passed 52/52; CLI production and test typecheck passed after rebuilding its
+Tools, TUI, and WebUI Server dependencies; the authoritative test-type ratchet
+reported zero new diagnostics with 247 resolved; `actionlint`, PowerShell AST
+parsing, Git `sh -n`, scoped Biome, and whitespace checks passed. A fresh
+seven-target Bun build and live installer downloads remain external proof.
+
+## Sixty-first pass: Streaming standalone build checksums
+
+The binary builder hashed each large executable by passing a full
+`readFileSync` buffer into `createHash`. The release build emits seven targets,
+so checksum generation repeatedly allocated complete executable-sized buffers
+after the memory-heavy compile and asset-pack stages.
+
+Hashing now streams each file into SHA-256 and processes outputs sequentially.
+The builder entry point awaits the asynchronous checksum phase and preserves
+the existing failure exit behavior. A real `--current --skip-build` run rebuilt
+the 127.7 MB Windows x64 executable, wrote the manifest through the streaming
+path, and an independent `Get-FileHash` calculation matched it.
+
+The rebuilt binary then passed version metadata, bundled-skill extraction,
+daemon dispatch, script dispatch, WebUI HTML and asset serving, built-in plugin
+loading, and runtime syntax smoke. This proves the async entry-point conversion
+does not exit before the manifest is written or disturb the produced binary.
+
+## Sixty-second pass: Production-owned bounded downloader module
+
+The architecture health gate correctly rejected the newly exported
+`downloadReleaseAsset`: only its test referenced the export, even though its
+implementation lived inside a production module. The function was moved into
+the focused `release-asset-download.ts` module. `standalone-update.ts` now
+imports it in the real update path, and the regression imports the same module
+directly. The test-only-export violation disappeared without adding an
+architecture exception or changing a generated baseline.
+
+The read-only architecture rerun still reports the concurrent System One
+cycle plus hotspot/fan-out growth in Core, TUI, WebUI, and WebUI Server. It no
+longer reports `downloadReleaseAsset`. The main architecture command currently
+stops earlier on a stale Core public API snapshot caused by those active Core
+exports; no snapshot or architecture evidence was regenerated in this pass.
+
+## Sixty-third pass: Standalone installer entry-point parity
+
+The canonical release installers under `scripts/install/` were checksum-
+verified standalone installers, while the root `scripts/install.sh` and
+`scripts/install.ps1` still advertised `wrongstack.com/install.*` and installed
+the legacy npm package with a Node 22 prerequisite. README and website content
+already identify GitHub standalone binaries as the supported channel.
+
+Both root installer entry points now exactly match the canonical standalone
+scripts. A regression compares their complete contents, so the website-facing
+and GitHub Release entry points cannot silently diverge again. Both shell and
+PowerShell syntax parsers accepted the synchronized files, and searches found
+no remaining Node/npm installer behavior in those four active scripts.
+
+## Sixty-fourth pass: Tag-first release documentation authority
+
+`docs/release.md` still instructed maintainers to publish npm locally, verify
+it, and only then create the tag; it also claimed no checked-in workflow
+created GitHub Releases. The actual workflow is tag-first, validates a fixed
+SHA, builds and smokes standalone and Desktop assets, creates the GitHub
+Release, and keeps npm publication behind its own gate and environment review.
+
+The release checklist, hotfix sequence, automation inventory, and update
+documentation now reflect the live workflow. The process reference now shows
+standalone and Desktop branches separately from npm pack/publish, records
+checksum coverage and digest verification, and uses the current 36-package
+trusted-publisher inventory. A workflow-hardening regression rejects the old
+manual-release and npm-global-install instructions.
+
+## Sixty-fifth pass: Publish metadata and contract inventory parity
+
+`pnpm release:packages` exposed seven clean, independent manifest drifts: three
+packages declared redundant CI-only provenance, while four public packages
+lacked `publishConfig.access: public`. The provenance flags were removed from
+Governance, TechStack, and Vector Memory; public access was added to Plugin
+SDK, Plugins, WebUI HQ, and the `wrongstack` app. The live package plan now
+lists all 36 packages without warnings.
+
+The package-contract checker separately claimed only 35 publishable contracts
+because it maintained its own directory scan and explicitly skipped Desktop,
+even though the release inventory publishes `@wrongstack/desktop`. It now
+consumes the shared `collectPublishablePackages` authority and validates all 36
+release manifests, including Desktop. Regressions require the shared inventory,
+Desktop coverage, consistent public access, and absence of manifest-level
+provenance.
+
+Validation across passes 62-65: the focused update, workflow, and publish
+architecture suites passed 86/86; CLI production/test typecheck passed; the
+authoritative test-type ratchet reported zero new diagnostics with 247
+resolved; all 36 package contracts passed; `release:packages` listed 36
+publishable packages and one private website without warnings; scoped Biome,
+`actionlint`, PowerShell AST parsing, Git `sh -n`, and whitespace checks passed.

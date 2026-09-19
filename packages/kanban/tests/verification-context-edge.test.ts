@@ -31,8 +31,8 @@ import {
   parseGitNameStatus,
   parseGitNumstat,
   SHELL_OPERATOR_RE,
-  validateCommand,
   VerificationContext,
+  validateCommand,
 } from '../src/verification/verification-context.js';
 
 // ── normalizeBaseCommand ─────────────────────────────────────────────────
@@ -370,6 +370,7 @@ describe('round-44: resolveConfiguredExecutable accepts legal ..-prefixed in-roo
       columns: [{ id: 'review', title: 'Review', order: 0, wipLimit: 0 }],
       tasks: [task],
       createdAt: now,
+      updatedAt: now,
       version: 1,
     };
     return { board, task };
@@ -407,11 +408,7 @@ describe('round-44: resolveConfiguredExecutable accepts legal ..-prefixed in-roo
     );
     const binDir = join(pkgDir, '..hidden');
     await mkdir(binDir, { recursive: true });
-    await writeFile(
-      join(binDir, 'r44tool.js'),
-      "process.stdout.write('r44-edge-ok');\n",
-      'utf8',
-    );
+    await writeFile(join(binDir, 'r44tool.js'), "process.stdout.write('r44-edge-ok');\n", 'utf8');
 
     const { board, task } = fixture();
     const ctx = new VerificationContext({

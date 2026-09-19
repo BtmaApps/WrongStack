@@ -278,5 +278,8 @@
     "@wrongstack/plugin-sdk": "workspace:*",
     "@wrongstack/primitives": "workspace:*",
     "@wrongstack/tools": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

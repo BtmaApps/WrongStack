@@ -365,7 +365,11 @@ describe('createLedgerGuardBrainArbiter — ladder step', () => {
 
     expect(outcomes).toEqual([{ requestId: 'req-steer-1', outcome: 'success' }]);
     const rows = ledger.tail(5);
-    expect(rows.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'success', requestId: 'req-steer-1' });
+    expect(rows.at(-1)).toMatchObject({
+      kind: 'outcome',
+      outcome: 'success',
+      requestId: 'req-steer-1',
+    });
     await ledger.stop();
   });
 
@@ -378,9 +382,8 @@ describe('createLedgerGuardBrainArbiter — ladder step', () => {
     events.emit('subagent.budget_extended', {
       subagentId,
       kind: 'tokens',
-      previous: 100,
-      granted: 200,
-      at: Date.now(),
+      newLimit: 200,
+      totalExtensions: 1,
     });
 
     events.emit('delegate.completed', {

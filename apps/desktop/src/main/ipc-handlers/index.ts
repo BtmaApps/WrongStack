@@ -62,6 +62,21 @@ function handleShellOnly(
   });
 }
 
+/** Register a fire-and-forget channel that only the shell renderer may emit. */
+function onShellOnly(
+  ctx: IpcHandlerContext,
+  channel: string,
+  listener: (event: Electron.IpcMainEvent, ...args: unknown[]) => void,
+): void {
+  ipcMain.on(channel, (event, ...args) => {
+    if (!isShellSender(ctx, event.sender.id)) {
+      validationLogger.log(`${channel}: rejected event from sender ${event.sender.id}`);
+      return;
+    }
+    listener(event, ...args);
+  });
+}
+
 /**
  * Register all IPC handlers with validation.
  */
@@ -250,7 +265,7 @@ export function registerIpcHandlers(ctx: IpcHandlerContext): void {
   );
 
   // Locale handlers
-  ipcMain.on(IPC.setLocale, (_event, locale: unknown) => {
+  onShellOnly(ctx, IPC.setLocale, (_event, locale: unknown) => {
     const result = validate(setLocaleSchema, { locale });
     if (!result.success) {
       validationLogger.log(`setLocale: ${result.error}`);

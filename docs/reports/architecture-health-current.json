@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-19T14:13:42.800Z",
+  "generatedAt": "2026-09-19T19:00:54.447Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3859,
-    "testFiles": 3545,
-    "sourceLines": 945417,
+    "sourceFiles": 3861,
+    "testFiles": 3546,
+    "sourceLines": 945478,
     "workspaceEdges": 128,
-    "moduleEdges": 12452,
+    "moduleEdges": 12457,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 9,
@@ -147,7 +147,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 498,
+      "sourceFiles": 499,
       "testFiles": 516,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -217,8 +217,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 890,
-      "testFiles": 802,
+      "sourceFiles": 891,
+      "testFiles": 803,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +233,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 802
+          "testFiles": 803
         }
       ]
     },
@@ -5049,6 +5049,12 @@
       },
       {
         "file": "packages/core/tests/architecture/deprecated-export-tracker.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/architecture/desktop-package-checksums.test.ts",
         "projects": [
           "root-node"
         ]

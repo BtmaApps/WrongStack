@@ -590,6 +590,14 @@ describe('/brain slash command', () => {
         getHumanTimeoutMs: () => snapshot.humanTimeoutMs,
         getSnapshot: () => snapshot,
         getConfig: () => ({}),
+        explain: vi.fn() as BrainRuntime['explain'],
+        getTierStats: () => ({
+          byTier: {},
+          total: 0,
+          deterministic: 0,
+          llmBacked: 0,
+          unattributed: 0,
+        }),
         apply: (patch: BrainConfigPatch) => {
           patches.push(patch);
           return { snapshot, persisted: Promise.resolve({ ok: true }) };

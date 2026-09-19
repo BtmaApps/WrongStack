@@ -154,6 +154,21 @@ describe('planConnectionReconnect', () => {
     const { plan } = planConnectionReconnect(createSurfaceConnectionState(), cfg, 1_000, () => 0.5);
     expect(plan).toEqual({ attempt: 1, delayMs: 1_000, retryAt: 2_000 });
   });
+
+  it('normalizes an invalid attempt cap and non-finite jitter sample', () => {
+    const cfg = {
+      ...DEFAULT_SURFACE_CONNECTION_CONFIG,
+      maxReconnectAttempts: Number.NaN,
+      jitterRatio: 0.5,
+    };
+    const { plan } = planConnectionReconnect(
+      createSurfaceConnectionState(),
+      cfg,
+      1_000,
+      () => Number.NaN,
+    );
+    expect(plan).toEqual({ attempt: 1, delayMs: 1_000, retryAt: 2_000 });
+  });
 });
 
 describe('isConnectionHeartbeatTimedOut', () => {

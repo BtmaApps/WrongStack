@@ -11,44 +11,23 @@
  *
  * Exit 0 = all contracts satisfied, exit 1 = one or more broken.
  */
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectPublishablePackages } from './lib/publishable-packages.mjs';
 
 const root = resolve(fileURLToPath(import.meta.url), '..', '..');
 
-// Workspace package directories (mirrors pnpm-workspace.yaml).
-const workspaceDirs = ['packages', 'apps'];
-const skipPackages = new Set([
-  '@wrongstack/desktop', // Electron app — not a publishable npm package in the normal flow
-]);
-
-function discoverPackages() {
-  const found = [];
-  for (const dir of workspaceDirs) {
-    const abs = join(root, dir);
-    if (!existsSync(abs)) continue;
-    for (const entry of readdirSync(abs)) {
-      const pkgJsonPath = join(abs, entry, 'package.json');
-      if (!existsSync(pkgJsonPath)) continue;
-      found.push(join(dir, entry));
-    }
-  }
-  return found;
-}
-
 function checkTargets(pkgDir) {
-  const pkgPath = join(root, pkgDir, 'package.json');
+  const pkgPath = join(pkgDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   const errors = [];
-
-  if (skipPackages.has(pkg.name)) return errors;
 
   const checkPath = (rel) => {
     if (!rel || typeof rel !== 'string') return;
     // Skip non-file specifiers (URLs, globs, special exports).
     if (rel.includes('://') || rel.includes('*')) return;
-    const abs = join(root, pkgDir, rel);
+    const abs = join(pkgDir, rel);
     if (!existsSync(abs)) {
       errors.push(`${pkg.name}: missing "${rel}" (referenced in package.json)`);
     }
@@ -88,11 +67,11 @@ function checkTargets(pkgDir) {
 }
 
 // Main
-const packages = discoverPackages();
+const { publishable } = collectPublishablePackages(root);
 const allErrors = [];
 
-for (const pkgDir of packages) {
-  const errors = checkTargets(pkgDir);
+for (const pkg of publishable) {
+  const errors = checkTargets(pkg.dir);
   allErrors.push(...errors);
 }
 
@@ -104,9 +83,5 @@ if (allErrors.length > 0) {
   console.error('Run `pnpm build` to produce the missing dist files.');
   process.exit(1);
 } else {
-  const checked = packages.filter((d) => {
-    const pkg = JSON.parse(readFileSync(join(root, d, 'package.json'), 'utf8'));
-    return !skipPackages.has(pkg.name);
-  }).length;
-  console.log(`✅ All ${checked} publishable package contracts satisfied.`);
+  console.log(`✅ All ${publishable.length} publishable package contracts satisfied.`);
 }

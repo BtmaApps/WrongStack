@@ -72,5 +72,8 @@
     "dist",
     "!dist/**/*.map",
     "README.md"
-  ]
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

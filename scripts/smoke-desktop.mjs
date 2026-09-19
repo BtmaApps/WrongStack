@@ -6,18 +6,30 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { DESKTOP_PACKAGE_STAGE_RELATIVE } from './desktop-package-paths.mjs';
 
-const output = resolve('apps/desktop/.package-stage/release');
-const defaultExecutable = process.platform === 'win32'
-  ? join(output, 'win-unpacked', 'WrongStack.exe')
-  : process.platform === 'darwin'
-    ? join(output, process.arch === 'arm64' ? 'mac-arm64' : 'mac', 'WrongStack.app', 'Contents', 'MacOS', 'WrongStack')
-    : join(output, 'linux-unpacked', 'wrongstack-desktop');
+const output = resolve(DESKTOP_PACKAGE_STAGE_RELATIVE, 'release');
+const defaultExecutable =
+  process.platform === 'win32'
+    ? join(output, 'win-unpacked', 'WrongStack.exe')
+    : process.platform === 'darwin'
+      ? join(
+          output,
+          process.arch === 'arm64' ? 'mac-arm64' : 'mac',
+          'WrongStack.app',
+          'Contents',
+          'MacOS',
+          'WrongStack',
+        )
+      : join(output, 'linux-unpacked', 'wrongstack-desktop');
 const windowSmoke = process.argv.includes('--window');
-const executable = resolve(process.argv.slice(2).find(arg => arg !== '--window') || defaultExecutable);
-const resources = process.platform === 'darwin'
-  ? resolve(dirname(executable), '..', 'Resources')
-  : join(dirname(executable), 'resources');
+const executable = resolve(
+  process.argv.slice(2).find((arg) => arg !== '--window') || defaultExecutable,
+);
+const resources =
+  process.platform === 'darwin'
+    ? resolve(dirname(executable), '..', 'Resources')
+    : join(dirname(executable), 'resources');
 const scratch = mkdtempSync(join(tmpdir(), 'wrongstack-desktop-smoke-'));
 const probe = String.raw`
   import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -63,13 +75,22 @@ const probe = String.raw`
   })().catch(error => { console.error(error); process.exit(1); });
 `;
 try {
-  execFileSync(executable, ['--experimental-import-meta-resolve', '--input-type=module', '-e', probe], {
-    cwd: scratch,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', WRONGSTACK_HOME: scratch, DESKTOP_SMOKE_RESOURCES: resources },
-    stdio: 'inherit',
-    timeout: 60_000,
-    windowsHide: true,
-  });
+  execFileSync(
+    executable,
+    ['--experimental-import-meta-resolve', '--input-type=module', '-e', probe],
+    {
+      cwd: scratch,
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+        WRONGSTACK_HOME: scratch,
+        DESKTOP_SMOKE_RESOURCES: resources,
+      },
+      stdio: 'inherit',
+      timeout: 60_000,
+      windowsHide: true,
+    },
+  );
   if (windowSmoke) {
     // Exercise non-English first-load state; the watcher only reports changes.
     const profile = join(scratch, 'profiles', 'default');
@@ -78,9 +99,14 @@ try {
     const env = { ...process.env, WRONGSTACK_HOME: scratch };
     delete env.ELECTRON_RUN_AS_NODE;
     const result = execFileSync(executable, ['--desktop-smoke-test'], {
-      cwd: scratch, env, encoding: 'utf8', timeout: 45_000, windowsHide: true,
+      cwd: scratch,
+      env,
+      encoding: 'utf8',
+      timeout: 45_000,
+      windowsHide: true,
     });
-    if (!result.includes('Desktop window ready')) throw new Error('Desktop did not report window readiness');
+    if (!result.includes('Desktop window ready'))
+      throw new Error('Desktop did not report window readiness');
     console.log(result.trim());
   }
 } finally {

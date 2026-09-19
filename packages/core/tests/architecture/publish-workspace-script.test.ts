@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -100,6 +100,25 @@ describe('publish dependency layering', () => {
         .map((p) => p.name)
         .sort(),
     ).toEqual(['a', 'b', 'c']);
+  });
+
+  it('uses one publishable inventory for planning and package-contract checks', () => {
+    const checker = readFileSync(
+      path.resolve(import.meta.dirname, '../../../../scripts/check-package-contracts.mjs'),
+      'utf8',
+    );
+    const { publishable } = collectPublishablePackages();
+
+    expect(checker).toContain('collectPublishablePackages(root)');
+    expect(checker).not.toContain('skipPackages');
+    expect(publishable.map((pkg) => pkg.name)).toContain('@wrongstack/desktop');
+  });
+
+  it('keeps public-package metadata consistent with trusted publishing', () => {
+    const { publishable } = collectPublishablePackages();
+
+    expect(publishable.filter((pkg) => pkg.access !== 'public')).toEqual([]);
+    expect(publishable.filter((pkg) => pkg.provenance)).toEqual([]);
   });
 });
 

@@ -146,4 +146,13 @@ describe('IPC invoke channels are shell-only (WS-SEC-13)', () => {
     expect(src).toMatch(/function handleShellOnly\(/);
     expect((src.match(/handleShellOnly\(ctx, IPC\./g) ?? []).length).toBeGreaterThanOrEqual(18);
   });
+
+  it('registers the locale mutation event through the shell sender gate', async () => {
+    const src = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('../src/main/ipc-handlers/index.ts', import.meta.url), 'utf8'),
+    );
+
+    expect(src).not.toMatch(/ipcMain\.on\(IPC\.setLocale/);
+    expect(src).toMatch(/onShellOnly\(ctx, IPC\.setLocale/);
+  });
 });

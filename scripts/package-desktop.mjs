@@ -34,25 +34,35 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DESKTOP_PACKAGE_STAGE_RELATIVE } from './desktop-package-paths.mjs';
+import { writeDesktopChecksums } from './lib/desktop-package-checksums.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const desktopDir = join(repoRoot, 'apps', 'desktop');
-const stageDir = join(repoRoot, 'apps', 'desktop', '.package-stage');
-
-function run(command, args, cwd) {
-  execFileSync(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
-}
+const stageDir = join(repoRoot, DESKTOP_PACKAGE_STAGE_RELATIVE);
 
 /**
  * Run a Node CLI directly, with NO shell.
- *
- * `run()` above keeps `shell: true` because it invokes `pnpm`, which on Windows
- * is a `.cmd` shim that `execFileSync` cannot execute otherwise. A plain
- * `node <script>` needs no shim and therefore no shell, so nothing this script
- * assembles is ever re-parsed as a command line.
  */
 function runNode(args, cwd) {
   execFileSync(process.execPath, args, { cwd, stdio: 'inherit' });
+}
+
+/** Run pnpm without joining its argv through `shell: true` on Windows. */
+async function runPnpm(args, cwd) {
+  if (process.platform !== 'win32') {
+    execFileSync('pnpm', args, { cwd, stdio: 'inherit' });
+    return;
+  }
+  // Core is built before this function is called. Import its canonical shim
+  // builder lazily so a clean checkout does not need pre-existing dist output.
+  const { buildWin32CmdShimInvocation } = await import('@wrongstack/core/utils');
+  const invocation = buildWin32CmdShimInvocation('pnpm', args);
+  execFileSync(invocation.command, invocation.args, {
+    cwd,
+    stdio: 'inherit',
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+  });
 }
 
 const forwarded = process.argv.slice(2);
@@ -64,13 +74,18 @@ runNode([join(repoRoot, 'scripts', 'build.mjs'), '--target', '@wrongstack/deskto
 //    stage is removed first; it is disposable by construction.
 if (existsSync(stageDir)) rmSync(stageDir, { recursive: true, force: true });
 mkdirSync(dirname(stageDir), { recursive: true });
-run(
-  'pnpm',
+await runPnpm(
   // Ink's workspace patch is unused in Desktop's production dependency closure.
   // Keep this exception local to deploy, not the workspace install policy.
   [
-    '--filter', '@wrongstack/desktop', 'deploy', '--legacy', '--prod',
-    '--config.allow-unused-patches=true', '--ignore-scripts', stageDir,
+    '--filter',
+    '@wrongstack/desktop',
+    'deploy',
+    '--legacy',
+    '--prod',
+    '--config.allow-unused-patches=true',
+    '--ignore-scripts',
+    stageDir,
   ],
   repoRoot,
 );
@@ -135,4 +150,9 @@ runNode(
   stageDir,
 );
 
-console.log(`\nArtifacts: ${join(stageDir, 'release')}`);
+const releaseDir = join(stageDir, 'release');
+const checksums = await writeDesktopChecksums(releaseDir);
+if (checksums.length > 0) {
+  console.log(`[package-desktop] Wrote SHA256SUMS.txt for ${checksums.length} release asset(s).`);
+}
+console.log(`\nArtifacts: ${releaseDir}`);

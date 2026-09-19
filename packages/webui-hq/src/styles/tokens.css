@@ -54,6 +54,22 @@
   --radius-2xl: 0;
   --radius-3xl: 0;
   --radius-4xl: 0;
+
+  /* Elevation: one warm-ink shadow family. The stock shadow utilities
+     (shadow-sm … shadow-2xl) resolve to these, so scattered call sites inherit
+     the system's shadow color instead of Tailwind's pure-black defaults — and
+     a palette can tint --shadow-color without touching any component. */
+  --shadow-2xs: 0 1px hsl(var(--shadow-color) / 0.05);
+  --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm:
+    0 1px 3px 0 hsl(var(--shadow-color) / 0.1), 0 1px 2px -1px hsl(var(--shadow-color) / 0.1);
+  --shadow-md:
+    0 4px 6px -1px hsl(var(--shadow-color) / 0.1), 0 2px 4px -2px hsl(var(--shadow-color) / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px hsl(var(--shadow-color) / 0.1), 0 4px 6px -4px hsl(var(--shadow-color) / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px hsl(var(--shadow-color) / 0.1), 0 8px 10px -6px hsl(var(--shadow-color) / 0.1);
+  --shadow-2xl: 0 25px 50px -12px hsl(var(--shadow-color) / 0.25);
 }
 
 @layer base {
@@ -82,7 +98,7 @@
     --input: 40 14.3% 75.3%;
     --ring: 344.8 74.6% 47.8%;
 
-    --success: 150 58% 36%;
+    --success: 150 58% 30%;
     --warning: 32 92% 44%;
     --info: 200 80% 40%;
     --running: 344.8 74.6% 47.8%;

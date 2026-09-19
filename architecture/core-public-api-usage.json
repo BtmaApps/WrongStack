@@ -214,9 +214,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 607,
+      "files": 608,
       "typeOnly": 57,
-      "runtimeOrMixed": 582
+      "runtimeOrMixed": 583
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -21646,6 +21646,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "scripts/check-npm-package-install.mjs",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "scripts/package-desktop.mjs",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

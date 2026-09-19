@@ -36,12 +36,17 @@ try {
   Invoke-WebRequest -Uri "$Base/$Asset" -OutFile $Exe -UseBasicParsing
   Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile $Sums -UseBasicParsing
 
-  $Expected = $null
+  $ExpectedMatches = @()
   foreach ($Line in Get-Content $Sums) {
     $Parts = $Line.Trim() -split '\s+', 2
-    if ($Parts.Count -eq 2 -and $Parts[1].TrimStart('*') -eq $Asset) { $Expected = $Parts[0].ToLower() }
+    if ($Parts.Count -eq 2 -and $Parts[1].TrimStart('*') -eq $Asset) {
+      $ExpectedMatches += $Parts[0].ToLower()
+    }
   }
-  if (-not $Expected) { throw "SHA256SUMS has no entry for $Asset" }
+  if ($ExpectedMatches.Count -ne 1) {
+    throw "SHA256SUMS must contain exactly one entry for $Asset"
+  }
+  $Expected = $ExpectedMatches[0]
   $Actual = (Get-FileHash -Algorithm SHA256 $Exe).Hash.ToLower()
   if ($Expected -ne $Actual) { throw "checksum mismatch for $Asset" }
 

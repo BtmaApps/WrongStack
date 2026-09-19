@@ -13,12 +13,13 @@
  * functions exported from @wrongstack/cli.
  */
 
-import { describe, expect, it } from 'vitest';
 import * as cli from '@wrongstack/cli';
+import { describe, expect, it } from 'vitest';
 
 describe('apps/wrongstack shim contract', () => {
-  it('cli re-exports installBrokenPipeHandlers and main as functions', () => {
+  it('cli re-exports its process lifecycle and main as functions', () => {
     expect(typeof cli.installBrokenPipeHandlers).toBe('function');
+    expect(typeof cli.runCliProcess).toBe('function');
     expect(typeof cli.main).toBe('function');
   });
 
@@ -42,11 +43,10 @@ describe('apps/wrongstack shim contract', () => {
     teardown2();
   });
 
-  it('shim source contains the delegation glue (sliced argv → cli.main)', async () => {
+  it('shim source delegates to the CLI-owned process lifecycle', async () => {
     // Static check: import the shim source as text and assert that it
-    // (a) calls installBrokenPipeHandlers before main, (b) passes
-    // process.argv.slice(2) into main, (c) routes the rejection branch
-    // through process.exitCode + setTimeout. This catches the
+    // (a) delegates to the CLI-owned process lifecycle and (b) does not
+    // retain a second fixed-delay process.exit implementation. This catches the
     // "dead wiring that silently voids the documented contract"
     // failure mode flagged by the reviewer agent.
     const fs = await import('node:fs/promises');
@@ -56,9 +56,9 @@ describe('apps/wrongstack shim contract', () => {
     const shimPath = path.resolve(here, '../src/index.ts');
     const shimSource = await fs.readFile(shimPath, 'utf8');
 
-    expect(shimSource).toMatch(/installBrokenPipeHandlers\(\)/);
-    expect(shimSource).toMatch(/main\(process\.argv\.slice\(2\)\)/);
-    expect(shimSource).toMatch(/process\.exitCode/);
+    expect(shimSource).toMatch(/runCliProcess\(main\)/);
+    expect(shimSource).not.toMatch(/setTimeout\(/);
+    expect(shimSource).not.toMatch(/process\.exit\(/);
   });
 });
 

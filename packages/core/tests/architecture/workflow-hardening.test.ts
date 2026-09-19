@@ -115,10 +115,7 @@ describe('release workflow (WS-040)', () => {
     const text = release();
     const publishStart = text.indexOf('  publish:');
     const nextJobIndex = text.indexOf('  github-release:');
-    const publishJob = text.slice(
-      publishStart,
-      nextJobIndex !== -1 ? nextJobIndex : undefined,
-    );
+    const publishJob = text.slice(publishStart, nextJobIndex !== -1 ? nextJobIndex : undefined);
     expect(publishJob).toMatch(/id-token:\s*write/);
     // npm trusted publishing needs OIDC only. Repository write access belongs
     // exclusively to the separate job that creates the GitHub release.
@@ -142,6 +139,35 @@ describe('release workflow (WS-040)', () => {
   it('never cancels a run that may be mid-publish', () => {
     // A cancelled multi-package publish leaves the workspace half-shipped.
     expect(release()).toMatch(/cancel-in-progress:\s*false/);
+  });
+
+  it('verifies downloaded standalone binaries before attaching them to a release', () => {
+    const text = release();
+    const releaseStart = text.indexOf('  github-release:');
+    const releaseEnd = text.indexOf('  publish-desktop:', releaseStart);
+    const githubReleaseJob = text.slice(releaseStart, releaseEnd !== -1 ? releaseEnd : undefined);
+
+    const coverageCheck = githubReleaseJob.indexOf(
+      'diff -u "$RUNNER_TEMP/release-binary-assets" "$RUNNER_TEMP/checksummed-binary-assets"',
+    );
+    const checksumCheck = githubReleaseJob.indexOf('sha256sum --check dist-bin/SHA256SUMS');
+    const upload = githubReleaseJob.indexOf('gh release upload');
+
+    expect(githubReleaseJob).toContain("find dist-bin -maxdepth 1 -type f -name 'wstack-*'");
+    expect(githubReleaseJob).toContain("awk 'NF == 2");
+    expect(coverageCheck).toBeGreaterThan(-1);
+    expect(coverageCheck).toBeLessThan(checksumCheck);
+    expect(checksumCheck).toBeLessThan(upload);
+  });
+
+  it('keeps the operator runbook on the tag-first automated release path', () => {
+    const runbook = readFileSync(join(repoRoot, 'docs', 'release.md'), 'utf8');
+
+    expect(runbook).toContain('git push origin v0.5.0');
+    expect(runbook).toContain('all seven `wstack-*` targets');
+    expect(runbook).toContain('`DESKTOP-SHA256SUMS`');
+    expect(runbook).not.toContain('no checked-in release workflow currently does this');
+    expect(runbook).not.toContain('Test install: `npm install -g wrongstack');
   });
 });
 

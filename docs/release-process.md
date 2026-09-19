@@ -17,8 +17,10 @@ git tag v<version> && git push origin v<version>
 That does **not** publish. It requests a publish: the workflow's `publish` job
 targets the `npm-publish` GitHub Environment, so a required reviewer must
 approve before anything reaches the registry. Before that, a `verify` job
-proves the tag matches `package.json`, that it is an ancestor of `origin/main`,
-and that the full `release:check` gate passes.
+proves the tag matches `package.json` and that it is an ancestor of
+`origin/main`. Standalone and Desktop packaging branch from that verified SHA.
+The npm pack/publish branch separately waits for the full `release:check` gate
+and the environment approval.
 
 **Why this replaced a laptop publish.** The old path used a long-lived npm
 automation token in a maintainer's environment — a credential that publishes
@@ -34,7 +36,7 @@ support `--provenance`, but passing it would be redundant in this setup.)
 
 1. **Per package on npmjs.com.** Trust is bound per package, not per org:
    register the trusted publisher (repository, workflow `release.yml`,
-   environment `npm-publish`) on each one. There are 29 — every public
+   environment `npm-publish`) on each one. There are currently 36 — every public
    workspace member (all non-private `packages/*` plus the two `apps/*`
    binaries `wrongstack` and `@wrongstack/desktop`; `website` is private):
 
@@ -50,17 +52,13 @@ support `--provenance`, but passing it would be redundant in this setup.)
    reviewers. This is the control that keeps a tag push from shipping on its
    own; removing it silently converts tag-push into publish.
 
-### Known drift to fix during setup
+### Package manifest consistency
 
-`pnpm release:packages` flags two things worth resolving:
-
-- `@wrongstack/governance` and `@wrongstack/techstack` declare
-  `publishConfig.provenance: true`. Provenance requires a CI OIDC context, so
-  those two cannot be published from a laptop at all. Under trusted publishing
-  the field is redundant — provenance is emitted regardless.
-- `@wrongstack/plugins`, `@wrongstack/webui-hq`, and the `wrongstack` app have
-  no `publishConfig.access`. Not fatal (the command passes `--access public`),
-  but they are the odd ones out.
+`pnpm release:packages` must list every publishable package without manifest
+warnings. Public manifests declare `publishConfig.access: public` consistently.
+They do not set `publishConfig.provenance`: npm trusted publishing emits
+provenance from the CI OIDC exchange, while a manifest-level provenance flag
+would make the documented emergency laptop fallback fail outside CI.
 
 ### `--no-git-checks`
 
@@ -103,7 +101,9 @@ binary still has to pass the cross-platform smoke.
 | --- | --- |
 | `binaries` | `node scripts/build-binaries.mjs` cross-compiles all targets on one Ubuntu runner, then `scripts/smoke-binary.mjs` runs the Linux x64 build |
 | `binaries-smoke` | runs the same smoke on real Windows and macOS (arm64) runners |
-| `github-release` | uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
+| `github-release` | verifies manifest coverage and digests, then uploads `wstack-*`, `SHA256SUMS`, `install.sh`, `install.ps1` |
+| `desktop` | packages and smokes Windows, Linux, macOS arm64, and macOS x64 through the reusable Desktop workflow |
+| `publish-desktop` | merges and verifies package-owned checksum manifests, then attaches Desktop assets to the GitHub Release |
 
 Targets: `windows-x64`, `linux-x64`, `linux-arm64`, `linux-x64-musl`,
 `linux-arm64-musl`, `darwin-x64`, `darwin-arm64`.
@@ -183,7 +183,7 @@ machine and the full suite is much larger than this three-file selection.
 | `pnpm release:check` | Full repository release gate, no publication |
 | `pnpm test:guard` / `pnpm prepublishOnly` | Three focused plugin tests only |
 | `pnpm test` | Root Vitest suite, then the WebUI package test script |
-| Tag push (`v*.*.*`) | WS-040 release workflow: `verify` job, then the `publish` job gated behind the `npm-publish` environment approval |
+| Tag push (`v*.*.*`) | Verify the tag/SHA; build and smoke standalone plus Desktop assets; create the GitHub Release; run the separately gated npm pack/publish path |
 
 ## Adding a new guard
 

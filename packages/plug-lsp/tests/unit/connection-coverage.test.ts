@@ -197,6 +197,21 @@ describe('Connection protocol completion coverage', () => {
     await Promise.allSettled([first, boundary, wrapped]);
   });
 
+  it('recovers an invalid request ID cursor before writing a request', async () => {
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const messages = collectMessages(stdin) as Array<{ id?: number }>;
+    const connection = new Connection(stdin, stdout);
+    const controller = new AbortController();
+
+    (connection as unknown as { nextId: number }).nextId = Number.NaN;
+    const pending = connection.sendRequest('recovered', null, 1_000, controller.signal);
+
+    expect(messages.map(({ id }) => id)).toEqual([1]);
+    controller.abort(new Error('test complete'));
+    await Promise.allSettled([pending]);
+  });
+
   it('fails pending requests for stdout errors and close events, including non-Errors', async () => {
     for (const terminal of ['error', 'close'] as const) {
       const stdin = new PassThrough();

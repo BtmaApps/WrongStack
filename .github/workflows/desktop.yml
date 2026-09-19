@@ -53,14 +53,16 @@ jobs:
       - name: Check Linux Desktop with a virtual display
         if: runner.os == 'Linux'
         run: xvfb-run -a node scripts/smoke-desktop.mjs --window
+      - name: Namespace package-owned checksum manifest
+        env:
+          DESKTOP_MATRIX_OS: ${{ matrix.os }}
+        run: node -e "const fs=require('node:fs');const dir='.temp_files/package-desktop-stage/release';fs.renameSync(dir+'/SHA256SUMS.txt',dir+'/DESKTOP-SHA256SUMS-'+process.env.DESKTOP_MATRIX_OS)"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.artifact-name || format('desktop-{0}', github.run_id) }}-${{ matrix.os }}
           path: |
-            apps/desktop/.package-stage/release/wrongstack-desktop-*.exe
-            apps/desktop/.package-stage/release/wrongstack-desktop-*.dmg
-            apps/desktop/.package-stage/release/wrongstack-desktop-*.zip
-            apps/desktop/.package-stage/release/wrongstack-desktop-*.AppImage
-            apps/desktop/.package-stage/release/wrongstack-desktop-*.deb
+            .temp_files/package-desktop-stage/release/wrongstack-desktop-*
+            .temp_files/package-desktop-stage/release/DESKTOP-SHA256SUMS-*
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

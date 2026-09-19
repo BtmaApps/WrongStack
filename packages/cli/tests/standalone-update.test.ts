@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { downloadReleaseAsset } from '../src/release-asset-download.js';
 import {
   parseSha256Sums,
   replaceExecutable,
@@ -20,6 +21,18 @@ describe('standaloneAssetName', () => {
     expect(standaloneAssetName('bun-windows-x64')).toBe('wstack-windows-x64.exe');
     expect(standaloneAssetName('bun-linux-arm64-musl')).toBe('wstack-linux-arm64-musl');
   });
+
+  it('rejects empty build target lists and de-duplicates explicit targets', async () => {
+    const { parseBinaryBuildArgs } = await import('../../../scripts/build-binaries.mjs');
+
+    expect(() => parseBinaryBuildArgs(['--target='])).toThrow(
+      '--target requires at least one build target',
+    );
+    expect(parseBinaryBuildArgs(['--target=bun-linux-x64,bun-linux-x64', '--skip-build'])).toEqual({
+      targets: ['bun-linux-x64'],
+      skipBuild: true,
+    });
+  });
 });
 
 describe('parseSha256Sums', () => {
@@ -32,6 +45,86 @@ describe('parseSha256Sums', () => {
     expect(sums.get('wstack-linux-x64')).toBe(a);
     expect(sums.get('wstack-windows-x64.exe')).toBe(b.toLowerCase());
     expect(sums.size).toBe(2);
+  });
+
+  it('rejects duplicate asset names instead of silently trusting the last digest', () => {
+    const name = 'wstack-linux-x64';
+    expect(() =>
+      parseSha256Sums(`${'a'.repeat(64)}  ${name}\n${'b'.repeat(64)}  ${name}\n`),
+    ).toThrow(`Duplicate SHA256SUMS entry: ${name}`);
+  });
+
+  it('keeps both standalone installers on the same single-entry checksum contract', () => {
+    const shell = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../scripts/install/install.sh'),
+      'utf8',
+    );
+    const powershell = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../scripts/install/install.ps1'),
+      'utf8',
+    );
+    const rootShell = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../scripts/install.sh'),
+      'utf8',
+    );
+    const rootPowershell = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../scripts/install.ps1'),
+      'utf8',
+    );
+
+    expect(shell).toContain('if (count == 1) print hash; else exit 1');
+    expect(shell).toContain('must contain exactly one entry for $asset');
+    expect(powershell).toContain('$ExpectedMatches.Count -ne 1');
+    expect(powershell).toContain('must contain exactly one entry for $Asset');
+    expect(rootShell).toBe(shell);
+    expect(rootPowershell).toBe(powershell);
+  });
+});
+
+describe('downloadReleaseAsset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects an oversized declared response before reading its body', async () => {
+    const getReader = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        headers: new Headers({ 'content-length': '5' }),
+        body: { getReader },
+      })),
+    );
+
+    await expect(downloadReleaseAsset('https://example.test/asset', 1000, 4)).rejects.toThrow(
+      'is too large',
+    );
+    expect(getReader).not.toHaveBeenCalled();
+  });
+
+  it('cancels an oversized streamed body when content-length is absent', async () => {
+    const cancel = vi.fn(async () => undefined);
+    const releaseLock = vi.fn();
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({ done: false, value: Uint8Array.from([1, 2, 3]) })
+      .mockResolvedValueOnce({ done: false, value: Uint8Array.from([4, 5]) });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        headers: new Headers(),
+        body: { getReader: () => ({ read, cancel, releaseLock }) },
+      })),
+    );
+
+    await expect(downloadReleaseAsset('https://example.test/asset', 1000, 4)).rejects.toThrow(
+      'is too large',
+    );
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(releaseLock).toHaveBeenCalledOnce();
   });
 });
 

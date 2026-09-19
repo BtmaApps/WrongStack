@@ -15,12 +15,14 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { FetchError } from '@wrongstack/core/types';
+import { downloadReleaseAsset } from './release-asset-download.js';
 import type { TerminalRenderer } from './renderer.js';
 import { STANDALONE_TARGET } from './version.js';
 
 export const RELEASES_REPO = 'WrongStack/WrongStack';
 const API_LATEST = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 const MAX_BINARY_BYTES = 512 * 1024 * 1024;
+const MAX_CHECKSUM_BYTES = 1024 * 1024;
 
 interface ReleaseAsset {
   name: string;
@@ -70,26 +72,16 @@ export async function fetchLatestStandaloneVersion(
   return (await fetchLatestRelease(timeoutMs, signal)).version;
 }
 
-async function download(url: string, timeoutMs: number): Promise<Buffer> {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(timeoutMs),
-    headers: { 'User-Agent': 'wrongstack-cli' },
-    redirect: 'follow',
-  });
-  if (!res.ok) throw new Error(`download ${url} responded ${res.status}`);
-  const declared = Number(res.headers.get('content-length') ?? '0');
-  if (declared > MAX_BINARY_BYTES) throw new Error(`download ${url} is too large`);
-  const body = Buffer.from(await res.arrayBuffer());
-  if (body.length > MAX_BINARY_BYTES) throw new Error(`download ${url} is too large`);
-  return body;
-}
-
 /** `<sha256>  <name>` lines → map. */
 export function parseSha256Sums(text: string): Map<string, string> {
   const sums = new Map<string, string>();
   for (const line of text.split(/\r?\n/)) {
     const match = line.trim().match(/^([0-9a-f]{64})\s+\*?(.+)$/i);
-    if (match?.[1] && match[2]) sums.set(match[2].trim(), match[1].toLowerCase());
+    if (match?.[1] && match[2]) {
+      const name = match[2].trim();
+      if (sums.has(name)) throw new Error(`Duplicate SHA256SUMS entry: ${name}`);
+      sums.set(name, match[1].toLowerCase());
+    }
   }
   return sums;
 }
@@ -146,8 +138,10 @@ export async function updateStandaloneBinary(options: {
     renderer.write(`Updating wrongstack from v${options.current} to v${release.version}...\n`);
     renderer.write(`Downloading ${assetName}\n`);
     const [bytes, sumsText] = await Promise.all([
-      download(asset.browser_download_url, 600_000),
-      download(sumsAsset.browser_download_url, 30_000).then((b) => b.toString('utf8')),
+      downloadReleaseAsset(asset.browser_download_url, 600_000, MAX_BINARY_BYTES),
+      downloadReleaseAsset(sumsAsset.browser_download_url, 30_000, MAX_CHECKSUM_BYTES).then((b) =>
+        b.toString('utf8'),
+      ),
     ]);
     const expected = parseSha256Sums(sumsText).get(assetName);
     const actual = createHash('sha256').update(bytes).digest('hex');

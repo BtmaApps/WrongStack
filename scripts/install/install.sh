@@ -86,8 +86,12 @@ printf 'Downloading %s...\n' "$asset"
 fetch "$base/$asset" "$tmp/$asset" || fail "download failed: $base/$asset"
 fetch "$base/SHA256SUMS" "$tmp/SHA256SUMS" || fail "download failed: $base/SHA256SUMS"
 
-expected=$(awk -v name="$asset" '$2 == name || $2 == "*"name { print $1 }' "$tmp/SHA256SUMS")
-[ -n "$expected" ] || fail "SHA256SUMS has no entry for $asset"
+if ! expected=$(awk -v name="$asset" '
+  $2 == name || $2 == "*"name { count++; hash=$1 }
+  END { if (count == 1) print hash; else exit 1 }
+' "$tmp/SHA256SUMS"); then
+  fail "SHA256SUMS must contain exactly one entry for $asset"
+fi
 actual=$(sha256 "$tmp/$asset")
 [ "$expected" = "$actual" ] || fail "checksum mismatch for $asset"
 

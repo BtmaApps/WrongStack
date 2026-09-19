@@ -74,7 +74,7 @@ function makeManager(proj: string) {
   };
   const manager = new BrowserSessionManager(
     { artifactRoot: path.join(proj, 'artifacts') },
-    async () => browser,
+    async () => browser as never,
   );
   return { manager, uploaded };
 }

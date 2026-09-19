@@ -19,6 +19,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  createReadStream,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -78,8 +79,8 @@ const ASSETS = {
 /** Build noise that is never read at runtime. */
 const EXCLUDED = /(?:\.map|\.d\.ts|\.d\.mts|\.tsbuildinfo)$/;
 
-function parseArgs(argv) {
-  const opts = { targets: ALL_TARGETS, skipBuild: false };
+export function parseBinaryBuildArgs(argv) {
+  const opts = { targets: [...ALL_TARGETS], skipBuild: false };
   for (const arg of argv) {
     if (arg === '--skip-build') opts.skipBuild = true;
     else if (arg === '--current') opts.targets = [currentTarget()];
@@ -90,6 +91,10 @@ function parseArgs(argv) {
   for (const target of opts.targets) {
     if (!ALL_TARGETS.includes(target))
       throw new Error(`Unknown target ${target}. Known: ${ALL_TARGETS.join(', ')}`);
+  }
+  opts.targets = [...new Set(opts.targets)];
+  if (opts.targets.length === 0) {
+    throw new Error('--target requires at least one build target');
   }
   return opts;
 }
@@ -191,12 +196,14 @@ function compile(target, { version, apiVersion, packId }) {
   return outfile;
 }
 
-function sha256File(file) {
-  return createHash('sha256').update(readFileSync(file)).digest('hex');
+async function sha256File(file) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest('hex');
 }
 
-function main() {
-  const opts = parseArgs(process.argv.slice(2));
+async function main() {
+  const opts = parseBinaryBuildArgs(process.argv.slice(2));
   const bun = spawnSync('bun', ['--version'], { encoding: 'utf8', windowsHide: true });
   if (bun.status !== 0) throw new Error('Bun is required to build binaries (https://bun.sh).');
   console.log(`bun ${bun.stdout.trim()}`);
@@ -217,8 +224,11 @@ function main() {
   const packId = buildAssetPack();
   const outputs = opts.targets.map((target) => compile(target, { ...versions, packId }));
 
-  const sums = outputs.map((file) => `${sha256File(file)}  ${path.basename(file)}`).join('\n');
-  writeFileSync(path.join(outDir, 'SHA256SUMS'), `${sums}\n`);
+  const sums = [];
+  for (const file of outputs) {
+    sums.push(`${await sha256File(file)}  ${path.basename(file)}`);
+  }
+  writeFileSync(path.join(outDir, 'SHA256SUMS'), `${sums.join('\n')}\n`);
   rmSync(stageDir, { recursive: true, force: true });
 
   console.log(`\nWrongStack ${versions.version} — ${outputs.length} binaries in dist-bin/:`);
@@ -228,10 +238,8 @@ function main() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     console.error(`build-binaries: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
-  }
+  });
 }

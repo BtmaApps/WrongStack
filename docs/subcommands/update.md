@@ -2,22 +2,30 @@
 
 ## What it does
 
-Checks the npm registry for a newer version of `wrongstack` and updates the global install with the matching package manager when possible.
+Checks for a newer WrongStack version and updates through the channel that
+installed the running CLI. Standalone binaries use GitHub Releases; legacy npm
+installs use their detected global package manager.
 
 ## Behavior
 
 ```
 wstack update
-  → Fetch latest version from npm
-  → Compare with current (API_VERSION from version.ts)
-  → If newer: run the detected global package-manager update command
+  → Standalone: fetch latest GitHub Release
+  → Legacy npm install: fetch latest registry version
+  → Compare with the current CLI version
+  → If newer standalone: download this platform's wstack-* asset and SHA256SUMS
+  → Verify SHA-256 and atomically replace the executable
+  → If newer legacy install: run the detected global package-manager command
   → If current: "You are on the latest version"
   → If error: "Update check failed — check your internet connection"
 ```
 
 Use `wstack update --check-only` (or `-c`) to report availability without running a package manager.
 
-By default the command detects `pnpm`, `yarn`, and `bun` from the runtime environment or install path, then falls back to npm. You can force a package manager with `--pm` or `--package-manager`; `--npm`, `--pnpm`, `--yarn`, and `--bun` are also accepted shortcuts:
+Package-manager selection applies only to a legacy npm installation. The
+command detects `pnpm`, `yarn`, and `bun` from the runtime environment or
+install path, then falls back to npm. You can force it with `--pm` or
+`--package-manager`; `--npm`, `--pnpm`, `--yarn`, and `--bun` are shortcuts:
 
 ```text
 wstack update --pm npm
@@ -25,7 +33,9 @@ wstack update --package-manager pnpm
 wstack update --yarn
 ```
 
-Package lifecycle scripts are disabled for the update by default. Pass `--allow-scripts` (alias `--lifecycle-scripts`) only when the global package requires them.
+Package lifecycle scripts are disabled for legacy package-manager updates by
+default. Pass `--allow-scripts` (alias `--lifecycle-scripts`) only when that
+global package requires them. The flag has no effect on a standalone update.
 
 On Windows, the updater resolves the package-manager executable from PATH outside
 the current project. A project-local `node_modules/.bin/npm.cmd` must not be

@@ -74,5 +74,8 @@
   "dependencies": {
     "@wrongstack/core": "workspace:*",
     "@wrongstack/tools": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
