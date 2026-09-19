@@ -331,7 +331,11 @@ export class BrowserSessionManager {
     for (const file of files) {
       const absolute = path.resolve(root, file);
       const relative = path.relative(root, absolute);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      // Canonical escape test (same predicate as paths.ts escapesRoot /
+      // _util.ts isInsideAny): a legal in-root first segment like `..uploads`
+      // yields a relative path that a bare startsWith('..') misreads as a
+      // parent traversal and wrongly rejects.
+      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
         throw new Error('browser: upload files must stay inside the project root');
       }
       let realFile: string;
@@ -346,7 +350,14 @@ export class BrowserSessionManager {
         throw error;
       }
       const realRelative = path.relative(realRoot, realFile);
-      if (realRelative.startsWith('..') || path.isAbsolute(realRelative)) {
+      // Same canonical escape test as the lexical check above, applied to the
+      // symlink-resolved real path: an in-root real target under a
+      // ..-prefixed directory is legal, not an escape.
+      if (
+        realRelative === '..' ||
+        realRelative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelative)
+      ) {
         throw new Error('browser: upload files must not escape the project root through a symlink');
       }
       const stat = await fs.stat(realFile);
