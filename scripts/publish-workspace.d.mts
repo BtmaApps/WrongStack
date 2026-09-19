@@ -21,6 +21,8 @@ export interface PublishOptions {
 
 export function parseArgs(argv: string[]): PublishOptions;
 
+export function resolveTarball(dir: string, name: string, version: string): string;
+
 export function checkPublished(
   registry: string,
   name: string,
