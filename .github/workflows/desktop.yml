@@ -43,6 +43,40 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm rebuild electron-winstaller esbuild node-pty
+      - name: TEMP diagnose pnpm cmd shim
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cat > diag.mjs <<'EOF'
+          import { execFileSync } from 'node:child_process';
+          import { existsSync, readFileSync } from 'node:fs';
+          const comspec = process.env.COMSPEC ?? 'cmd.exe';
+          const show = (label, fn) => {
+            try { console.log(`### ${label}\n${fn()}`); }
+            catch (e) { console.log(`### ${label}\nTHREW: ${e.message}\nstdout=${e.stdout}\nstderr=${e.stderr}`); }
+          };
+          show('where pnpm', () =>
+            execFileSync(comspec, ['/d', '/c', 'where pnpm'], { encoding: 'utf8' }));
+          show('PATH entries with pnpm', () =>
+            (process.env.Path ?? process.env.PATH ?? '').split(';').filter((p) => /pnpm/i.test(p)).join('\n'));
+          const shim = (() => {
+            try {
+              return execFileSync(comspec, ['/d', '/c', 'where pnpm'], { encoding: 'utf8' })
+                .split(/\r?\n/).find((l) => l.toUpperCase().endsWith('.CMD'));
+            } catch { return undefined; }
+          })();
+          show('shim path', () => String(shim));
+          show('shim contents', () => (shim && existsSync(shim) ? readFileSync(shim, 'utf8') : 'NO .CMD SHIM FOUND'));
+          show('verbatim call "pnpm" "--version"', () =>
+            execFileSync(comspec, ['/d', '/c', 'call "pnpm" "--version"'],
+              { encoding: 'utf8', windowsVerbatimArguments: true }));
+          show('verbatim call "pnpm" "--version" with cwd=repo', () =>
+            execFileSync(comspec, ['/d', '/c', 'call "pnpm" "--version"'],
+              { encoding: 'utf8', windowsVerbatimArguments: true, cwd: process.cwd() }));
+          show('non-verbatim call pnpm --version', () =>
+            execFileSync(comspec, ['/d', '/c', 'call pnpm --version'], { encoding: 'utf8' }));
+          EOF
+          node diag.mjs
       - name: Package (no publishing credentials)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
