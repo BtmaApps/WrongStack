@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   collectPublishablePackages,
@@ -10,6 +13,7 @@ import {
   confirmOnOrigin,
   parseArgs,
   partitionLive,
+  resolveTarball,
 } from '../../../../scripts/publish-workspace.mjs';
 
 /** Default seam for resume tests: the origin holds nothing unless a test says so. */
@@ -512,5 +516,24 @@ describe('origin publication check', () => {
       ok: false,
       reason: 'origin packument fetch failed: ECONNRESET',
     });
+  });
+});
+
+describe('resolveTarball', () => {
+  // npm 11.19 parsed `release-tarballs/wrongstack-persistence-1.0.22.tgz` as a
+  // GitHub `user/repo` shorthand and tried to clone it over SSH.
+  it('returns an absolute path for a relative tarball directory', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'ws-tarballs-'));
+    const cwd = process.cwd();
+    try {
+      writeFileSync(path.join(root, 'wrongstack-persistence-1.0.22.tgz'), '');
+      process.chdir(path.dirname(root));
+      const resolved = resolveTarball(path.basename(root), '@wrongstack/persistence', '1.0.22');
+      expect(path.isAbsolute(resolved)).toBe(true);
+      expect(resolved).toBe(path.join(root, 'wrongstack-persistence-1.0.22.tgz'));
+    } finally {
+      process.chdir(cwd);
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

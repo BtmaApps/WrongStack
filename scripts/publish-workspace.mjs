@@ -311,7 +311,11 @@ function tarballPath(dir, name, version) {
  * @param {string} version
  * @returns {string} resolved tarball path
  */
-function resolveTarball(dir, name, version) {
+export function resolveTarball(dir, name, version) {
+  // Always absolute: npm reads a relative `dir/file.tgz` with exactly one
+  // slash as a GitHub `user/repo` shorthand and tries `git ls-remote
+  // ssh://git@github.com/dir/file.tgz.git` (npm 11.19 on the v1.0.22 publish).
+  dir = path.resolve(dir);
   const expected = tarballPath(dir, name, version);
   if (existsSync(expected)) return expected;
   const expectedBasename = path.basename(expected).toLowerCase();
