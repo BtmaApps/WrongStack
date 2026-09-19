@@ -32,7 +32,7 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DESKTOP_PACKAGE_STAGE_RELATIVE } from './desktop-package-paths.mjs';
 import { writeDesktopChecksums } from './lib/desktop-package-checksums.mjs';
@@ -48,16 +48,56 @@ function runNode(args, cwd) {
   execFileSync(process.execPath, args, { cwd, stdio: 'inherit' });
 }
 
+/**
+ * Resolve a bare command name to an absolute path, PATH + PATHEXT, no cwd.
+ *
+ * cmd.exe resolves `call pnpm` and `call "pnpm"` differently. Unquoted, it
+ * appends each PATHEXT extension and finds `pnpm.CMD`. Quoted, it matches the
+ * EXTENSIONLESS `pnpm` that npm-style bin directories ship next to the shim for
+ * Git Bash, and fails with "The system cannot find the path specified." — which
+ * is what broke Windows Desktop packaging on CI while working on developer
+ * machines whose bin directory happens to hold only the `.CMD`.
+ *
+ * The shim builder has to quote every token; that quoting is what stops an
+ * argument from starting a second command. So the command must arrive already
+ * resolved. The cwd is deliberately not searched, matching
+ * `hardenWin32ExecutableSearch`.
+ */
+function resolveWin32Executable(command) {
+  const exts = (process.env['PATHEXT'] ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean);
+  const dirs = (process.env['Path'] ?? process.env['PATH'] ?? '').split(delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    for (const ext of exts) {
+      const candidate = join(dir, `${command}${ext}`);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+}
+
 /** Run pnpm without joining its argv through `shell: true` on Windows. */
 async function runPnpm(args, cwd) {
   if (process.platform !== 'win32') {
     execFileSync('pnpm', args, { cwd, stdio: 'inherit' });
     return;
   }
+  const resolved = resolveWin32Executable('pnpm');
+  if (!resolved) {
+    throw new Error(
+      'pnpm was not found on PATH (searched every PATHEXT extension). ' +
+        'Desktop packaging needs pnpm to materialise the workspace closure.',
+    );
+  }
+  // A real executable needs no shell at all: spawn it and skip cmd.exe, and
+  // with it the whole quoting problem this function exists to navigate.
+  if (extname(resolved).toLowerCase() === '.exe') {
+    execFileSync(resolved, args, { cwd, stdio: 'inherit' });
+    return;
+  }
   // Core is built before this function is called. Import its canonical shim
   // builder lazily so a clean checkout does not need pre-existing dist output.
   const { buildWin32CmdShimInvocation } = await import('@wrongstack/core/utils');
-  const invocation = buildWin32CmdShimInvocation('pnpm', args);
+  const invocation = buildWin32CmdShimInvocation(resolved, args);
   execFileSync(invocation.command, invocation.args, {
     cwd,
     stdio: 'inherit',
