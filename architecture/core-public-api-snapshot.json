@@ -1712,7 +1712,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 72,
-      "sourceLines": 12835
+      "sourceLines": 12854
     },
     {
       "directory": "wiring",

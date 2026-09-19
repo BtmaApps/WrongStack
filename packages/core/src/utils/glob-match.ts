@@ -318,7 +318,26 @@ export function compileGlobMatcher(pattern: string, commandSubject = false): Com
     }
   };
 
+  // Consecutive literal tokens consume consecutive input characters, so every
+  // accepted span contains the longest literal run verbatim. An input that
+  // lacks it cannot match under any boundaries, and one `includes` is far
+  // cheaper than the NFA walk. The gitignore matcher runs ~260 rules per path
+  // over the whole tree on every WebUI `files.tree`, and nearly every rule
+  // is ruled out here.
+  let requiredLiteral = '';
+  for (let j = 0, runStart = 0; j <= tokenCount; j++) {
+    if (j < tokenCount && tokens[j]?.kind === 'literal') continue;
+    if (j - runStart > requiredLiteral.length) {
+      requiredLiteral = tokens
+        .slice(runStart, j)
+        .map((t) => (t as { ch: string }).ch)
+        .join('');
+    }
+    runStart = j + 1;
+  }
+
   const run = (input: string, isStart: GlobBoundary, isEnd: GlobBoundary): boolean => {
+    if (requiredLiteral && !input.includes(requiredLiteral)) return false;
     const n = input.length;
     cur.fill(0);
     if (isStart(0, input)) cur[0] = 1;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchAny, matchGlob } from '../../src/utils/glob-match.js';
+import { compileGlobMatcher, matchAny, matchGlob } from '../../src/utils/glob-match.js';
 
 describe('glob-match', () => {
   it('matches *', () => {
@@ -82,5 +82,32 @@ describe('glob-match', () => {
     expect(() => matchAny([longPattern, 'ls', 'true'], 'true')).not.toThrow();
     expect(matchAny([longPattern, 'ls', 'true'], 'true')).toBe(true);
     expect(matchAny([longPattern, 'ls'], 'echo hello')).toBe(false);
+  });
+});
+
+describe('compileGlobMatcher required-literal short-circuit', () => {
+  const START_ANY_SEGMENT = (i: number, s: string) => i === 0 || s[i - 1] === '/';
+  const END_EQ_OR_UNDER = (i: number, s: string) => i === s.length || s[i] === '/';
+
+  it('still matches when the longest literal run sits between wildcards', () => {
+    const m = compileGlobMatcher('a*-eval-tr.json?');
+    expect(m.test('abc-eval-tr.jsonl')).toBe(true);
+    expect(m.test('abc-eval-t.jsonl')).toBe(false);
+  });
+
+  it('does not fold a class member into the literal run', () => {
+    expect(compileGlobMatcher('[ab]cd').test('bcd')).toBe(true);
+    expect(compileGlobMatcher('[ab]cd').test('ccd')).toBe(false);
+  });
+
+  it('finds the literal run inside a span, not only at the string start', () => {
+    const m = compileGlobMatcher('node_modules');
+    expect(m.testSpan('packages/x/node_modules/y', START_ANY_SEGMENT, END_EQ_OR_UNDER)).toBe(true);
+    expect(m.testSpan('packages/x/node_module/y', START_ANY_SEGMENT, END_EQ_OR_UNDER)).toBe(false);
+  });
+
+  it('matches a pattern with no literals at all', () => {
+    expect(compileGlobMatcher('*').test('anything')).toBe(true);
+    expect(compileGlobMatcher('**').test('a/b/c')).toBe(true);
   });
 });
