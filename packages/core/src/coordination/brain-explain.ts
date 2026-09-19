@@ -11,23 +11,23 @@
 import type {
   BrainDecision,
   BrainDecisionRequest,
-  BrainRisk,
   BrainEscalationMode,
+  BrainRisk,
   BrainTerminalPolicy,
 } from './brain.js';
 import { BRAIN_RISK_LEVELS, terminalPolicyDecision } from './brain.js';
-import type { CompiledBrainRule } from './brain-rules.js';
-import { ruleMatches, applyRule } from './brain-rules.js';
+import type { BrainDecisionCache } from './brain-cache.js';
 import {
   type BrainHeuristicsConfig,
-  resolveBrainHeuristics,
   isBlockedResolved,
+  isContinuePing,
   isDeadlockWithFailedWork,
   isRetryExhausted,
-  isContinuePing,
+  resolveBrainHeuristics,
 } from './brain-heuristics.js';
-import type { BrainDecisionCache } from './brain-cache.js';
-import { type BrainAutoRisk, resolveRiskCeiling } from '../execution/autonomy-brain.js';
+import { type BrainAutoRisk, resolveRiskCeiling } from './brain-risk.js';
+import type { CompiledBrainRule } from './brain-rules.js';
+import { applyRule, ruleMatches } from './brain-rules.js';
 
 export interface BrainExplainLedgerHost {
   isEnabled(): boolean;
@@ -43,10 +43,12 @@ export interface BrainExplainContext {
   rules?: readonly CompiledBrainRule[] | undefined;
   heuristics?: BrainHeuristicsConfig | undefined;
   maxAutoRisk?: BrainAutoRisk | BrainRisk | undefined;
-  council?: {
-    enabled?: boolean | undefined;
-    minRisk?: 'medium' | 'high' | 'critical' | undefined;
-  } | undefined;
+  council?:
+    | {
+        enabled?: boolean | undefined;
+        minRisk?: 'medium' | 'high' | 'critical' | undefined;
+      }
+    | undefined;
   mode?: BrainEscalationMode | undefined;
   terminalPolicy?: BrainTerminalPolicy | undefined;
 }
@@ -385,7 +387,10 @@ export function explainBrainDecision(
   });
 
   // 6. Terminal Escalation Stage (Headless Mode Simulation)
-  if (nextTier === 'ask_human' && (ctx.mode === 'headless' || request.allowHumanEscalation === false)) {
+  if (
+    nextTier === 'ask_human' &&
+    (ctx.mode === 'headless' || request.allowHumanEscalation === false)
+  ) {
     const termPolicy = ctx.terminalPolicy ?? 'conservative';
     const termDecision = terminalPolicyDecision(request, termPolicy);
     steps.push({

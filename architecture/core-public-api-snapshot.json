@@ -1509,8 +1509,8 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 196,
-      "sourceLines": 57009
+      "sourceFiles": 197,
+      "sourceLines": 57026
     },
     {
       "directory": "core",
@@ -1531,7 +1531,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 61,
-      "sourceLines": 19357
+      "sourceLines": 19350
     },
     {
       "directory": "extension",

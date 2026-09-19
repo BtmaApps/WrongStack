@@ -27,6 +27,11 @@ import {
   type BrainDecision,
   type BrainDecisionRequest,
 } from '../coordination/brain.js';
+
+import { type BrainAutoRisk, resolveRiskCeiling } from '../coordination/brain-risk.js';
+
+export { type BrainAutoRisk, resolveRiskCeiling } from '../coordination/brain-risk.js';
+
 import {
   type BrainHeuristicsConfig,
   isBlockedResolved,
@@ -139,18 +144,6 @@ export interface AutonomyBrainOptions {
 }
 
 const RISK_LEVELS = BRAIN_RISK_LEVELS;
-
-/** Runtime-adjustable autonomy ceiling for the tiered brain. */
-export type BrainAutoRisk = 'off' | 'low' | 'medium' | 'high' | 'all';
-
-/**
- * Resolve an autonomy ceiling to a level comparable against `RISK_LEVELS`.
- */
-export function resolveRiskCeiling(ceiling: BrainAutoRisk | undefined): number {
-  if (ceiling === 'off') return -1;
-  if (ceiling === 'all') return 3;
-  return RISK_LEVELS[ceiling ?? 'medium'] ?? 1;
-}
 
 export interface TieredBrainArbiterOptions {
   /** Fast deterministic policy layer (DefaultBrainArbiter). Consulted first. */
