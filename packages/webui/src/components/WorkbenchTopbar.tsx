@@ -214,7 +214,7 @@ export function WorkbenchTopbar({
             <div className="flex items-center gap-1.5">
               <span className="truncate text-xs font-semibold">{projectName || 'WrongStack'}</span>
               <span className="rounded bg-muted/60 px-1 py-0.5 text-[10px] text-muted-foreground font-mono">
-                {viewLabel(currentView)}
+                {t(`activity:topbar.view.${currentView}`, { defaultValue: viewLabel(currentView) })}
               </span>
               {isLoading && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary">
@@ -356,7 +356,9 @@ export function WorkbenchTopbar({
                   </span>
                 ) : null}
                 <span className="rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                  {viewLabel(currentView)}
+                  {t(`activity:topbar.view.${currentView}`, {
+                    defaultValue: viewLabel(currentView),
+                  })}
                 </span>
                 <span
                   className={cn(
@@ -369,7 +371,7 @@ export function WorkbenchTopbar({
                   ) : (
                     <Sparkles className="h-3 w-3" />
                   )}
-                  {isLoading ? 'Running' : 'Ready'}
+                  {isLoading ? t('activity:topbar.statusRunning') : t('activity:topbar.statusReady')}
                   {iteration ? (
                     <span className="tabular">
                       {iteration.index}
@@ -435,7 +437,7 @@ export function WorkbenchTopbar({
                 ) : null}
               </div>
               <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {sessionLabel || 'No named session'}
+                {sessionLabel || t('activity:topbar.noNamedSession')}
               </div>
             </div>
           </div>

@@ -171,7 +171,7 @@ export function SddTaskDrawer({
           )}
         >
           <StatusIcon className={cn('h-3 w-3', running && 'animate-spin')} />
-          {s.label}
+          {t(s.labelKey)}
         </span>
       </div>
 

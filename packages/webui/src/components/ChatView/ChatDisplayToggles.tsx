@@ -72,7 +72,7 @@ export function ChatDisplayToggles({
                 title={`${totalTokens.input.toLocaleString()} tokens in`}
               >
                 <span className="font-medium text-foreground/80">{fmtTok(totalTokens.input)}</span>
-                <span className="text-[9px]">in</span>
+                <span className="text-[9px]">{t('activity:chatView.tokensIn')}</span>
               </span>
             )}
             {totalTokens.output > 0 && (
@@ -81,7 +81,7 @@ export function ChatDisplayToggles({
                 title={`${totalTokens.output.toLocaleString()} tokens out`}
               >
                 <span className="font-medium text-foreground/80">{fmtTok(totalTokens.output)}</span>
-                <span className="text-[9px]">out</span>
+                <span className="text-[9px]">{t('activity:chatView.tokensOut')}</span>
               </span>
             )}
             {rowsCount > 0 && (

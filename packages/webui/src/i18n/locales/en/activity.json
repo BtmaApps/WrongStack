@@ -70,7 +70,14 @@
   },
   "sidePanel": {
     "dragHint": "Drag to resize · double-click to reset",
-    "collapse": "Collapse panel (Ctrl+\\)"
+    "collapse": "Collapse panel (Ctrl+\\)",
+    "chat": "Run state, model, context and quick controls",
+    "agents": "Live fleet roster and agent monitoring",
+    "files": "Browse and open project files",
+    "changes": "Review source control changes",
+    "mailbox": "Cross-surface coordination messages",
+    "skills": "Installed skills and capability docs",
+    "design": "Design studio assets and previews"
   },
   "history": {
     "openDashboard": "Open sessions dashboard"
@@ -784,14 +791,14 @@
   },
   "sdd": {
     "status": {
-      "pending": "pending",
-      "queued": "queued",
-      "in_progress": "running",
-      "blocked": "blocked",
-      "review": "review",
-      "failed": "failed",
-      "completed": "done",
-      "cancelled": "cancelled"
+      "pending": "Pending",
+      "queued": "Ready",
+      "in_progress": "Running",
+      "blocked": "Blocked",
+      "review": "Review",
+      "failed": "Failed",
+      "completed": "Done",
+      "cancelled": "Cancelled"
     },
     "activityHeading": "Activity",
     "feedEmpty": "Nothing yet — events appear here as agents pick up and finish tasks.",
@@ -2479,7 +2486,39 @@
     "confirmDeleteTask": "Click again to confirm task deletion",
     "confirmDeleteTaskAria": "Confirm delete: {{title}}",
     "moveTaskToColumn": "Move {{title}} to column",
-    "activityNoteTemplate": "{{action}} from WebUI to {{target}}."
+    "activityNoteTemplate": "{{action}} from WebUI to {{target}}.",
+    "workbench": {
+      "now": {
+        "title": "NOW",
+        "subtitle": "Actively executing"
+      },
+      "next": {
+        "title": "NEXT",
+        "subtitle": "Ready or queued"
+      },
+      "blocked": {
+        "title": "BLOCKED",
+        "subtitle": "Needs intervention"
+      },
+      "review": {
+        "title": "REVIEW",
+        "subtitle": "Needs proof or acceptance"
+      },
+      "loading": "Loading project workbench…",
+      "loadError": "Project workbench could not be loaded: {{error}}",
+      "notLoaded": "Project workbench has not been loaded yet.",
+      "retry": "Retry workbench",
+      "headerLabel": "Project workbench",
+      "headline": "One truthful view of every active board",
+      "description": "Session mirrors remain tactical; managed cards remain durable. This view only projects their shared execution state and never creates a second source of truth.",
+      "metricBoards": "BOARDS",
+      "metricActive": "ACTIVE",
+      "metricAlerts": "ALERTS",
+      "attentionRequired": "Attention required · {{count}}",
+      "moreAlertsHidden": "{{count}} more alerts hidden by the bounded view",
+      "noWorkInLane": "No work in this lane",
+      "moreCardsHidden": "{{count}} more cards hidden to keep focus"
+    }
   },
   "cronJobs": {
     "heading": "Cron Jobs",
@@ -2955,7 +2994,13 @@
     "tabTrends": "Trends",
     "tabRemediation": "Remediation",
     "majorsBehind": "majors behind",
-    "knownAdvisories": "known advisories"
+    "knownAdvisories": "known advisories",
+    "noScanYet": "No scan yet",
+    "scanHint": "Scan the open project to inventory its dependencies.",
+    "snapshotUnavailable": "TechStack service unavailable — start the WebUI server to scan.",
+    "workspaceCount_one": "{{count}} workspace",
+    "workspaceCount_other": "{{count}} workspaces",
+    "scannedAt": "{{root}} · scanned {{when}}"
   },
   "techStackStatus": {
     "current": "Current",
@@ -3411,7 +3456,9 @@
     "providerLimit": "Provider limit {{limit}}",
     "providerLimitDecreased": "Provider context window decreased from {{previous}} to {{current}} tokens.",
     "restoringTranscript": "Restoring transcript…",
-    "restoringTranscriptHint": "Reading this session's journal. A long conversation can take a while."
+    "restoringTranscriptHint": "Reading this session's journal. A long conversation can take a while.",
+    "tokensIn": "in",
+    "tokensOut": "out"
   },
   "ctxBreakdown": {
     "tokenAllocation": "Token Allocation",
@@ -3505,7 +3552,26 @@
     "settings": "Settings",
     "search": "Search",
     "command": "Command",
-    "model": "Model"
+    "model": "Model",
+    "noNamedSession": "No named session",
+    "view": {
+      "chat": "Chat",
+      "goal": "Goal",
+      "kanban": "Kanban",
+      "sddhub": "SDD Hub",
+      "settings": "Settings",
+      "provider-test": "Provider Test",
+      "memory": "Memory",
+      "roster": "Roster",
+      "codemap": "Code Map",
+      "techstack": "Tech Stack",
+      "chronicle": "Chronicle",
+      "prompts": "Prompts",
+      "chimera": "Chimera",
+      "history": "History"
+    },
+    "statusRunning": "Running",
+    "statusReady": "Ready"
   },
   "agentsPanel": {
     "agentRoster": "Agent roster"
@@ -3788,5 +3854,31 @@
     "humanJudgement": "Escalated for Human Judgement:",
     "decisionResult": "Brain Strategy & Answer:",
     "cognitiveRationale": "Cognitive Rationale & Policy Trace"
+  },
+  "userInput": {
+    "readyToSubmit": "Ready to submit",
+    "missingAnswers_one": "{{count}} required answer missing",
+    "missingAnswers_other": "{{count}} required answers missing",
+    "submitTimeout": "No confirmation received — check the connection, then retry or cancel.",
+    "answerRequired": "Answer required: {{prompt}}",
+    "sendFailed": "Could not send the answers. Check the connection and try again.",
+    "cancelRequested": "Cancel requested — it may not have reached the agent while the connection is down.",
+    "cancelFailed": "Could not cancel — check the connection and try again.",
+    "recommendedApplied": "Recommended answers applied.",
+    "submitting": "Submitting…",
+    "submitAnswers": "Submit answers",
+    "delegatedNotice": "Unanswered decisions delegated to the model.",
+    "queuedForms": "Form 1 of {{count}} waiting in this session",
+    "answeredProgress": "{{answered}}/{{total}} answered",
+    "delegateUnansweredButton": "Let model decide unanswered",
+    "applyTabRecommendations": "Apply tab recommendations",
+    "applyAllRecommendations": "Apply all recommendations",
+    "recommendationLabel": "Recommendation:",
+    "recommendedChip": "Recommended",
+    "selectCustomAria": "Select custom answer",
+    "customAnswerAria": "Custom answer",
+    "customAnswerPlaceholder": "Other / custom answer (optional)",
+    "youDecide": "You decide",
+    "youDecideHint": "I do not want to answer this question. Let the model choose."
   }
 }

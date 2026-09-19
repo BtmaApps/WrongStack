@@ -33,8 +33,8 @@ type SddStatus =
   | 'cancelled';
 
 interface SddStatusStyle {
-  /** Short label, e.g. "Running". */
-  label: string;
+  /** i18n key resolving to the short label, e.g. "Running". */
+  labelKey: string;
   /** Lucide icon for the status. */
   icon: LucideIcon;
   /** True for the running state (drives spin + glow). */
@@ -51,7 +51,7 @@ interface SddStatusStyle {
 
 export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
   pending: {
-    label: 'Pending',
+    labelKey: 'activity:sdd.status.pending',
     icon: CircleDot,
     text: 'text-muted-foreground',
     ring: 'border-border/70 bg-muted/45',
@@ -59,7 +59,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--muted-foreground))',
   },
   queued: {
-    label: 'Ready',
+    labelKey: 'activity:sdd.status.queued',
     icon: CircleDot,
     text: 'text-primary',
     ring: 'border-primary/35 bg-primary/10',
@@ -67,7 +67,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--primary))',
   },
   in_progress: {
-    label: 'Running',
+    labelKey: 'activity:sdd.status.in_progress',
     icon: Loader2,
     spin: true,
     text: 'text-warning',
@@ -76,7 +76,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--warning))',
   },
   blocked: {
-    label: 'Blocked',
+    labelKey: 'activity:sdd.status.blocked',
     icon: CircleDot,
     text: 'text-destructive',
     ring: 'border-destructive/30 bg-destructive/10',
@@ -84,7 +84,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--destructive))',
   },
   review: {
-    label: 'Review',
+    labelKey: 'activity:sdd.status.review',
     icon: CircleDot,
     text: 'text-primary',
     ring: 'border-primary/35 bg-primary/10',
@@ -92,7 +92,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--info))',
   },
   failed: {
-    label: 'Failed',
+    labelKey: 'activity:sdd.status.failed',
     icon: X,
     text: 'text-destructive',
     ring: 'border-destructive/45 bg-destructive/10',
@@ -100,7 +100,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--destructive))',
   },
   completed: {
-    label: 'Done',
+    labelKey: 'activity:sdd.status.completed',
     icon: Check,
     text: 'text-success',
     ring: 'border-success/35 bg-success/10',
@@ -108,7 +108,7 @@ export const SDD_STATUS: Record<SddStatus, SddStatusStyle> = {
     hex: 'hsl(var(--success))',
   },
   cancelled: {
-    label: 'Cancelled',
+    labelKey: 'activity:sdd.status.cancelled',
     icon: Ban,
     text: 'text-muted-foreground',
     ring: 'border-border/70 bg-muted/45',

@@ -515,7 +515,7 @@
       "relativeImports": 3
     },
     "packages/webui/src/components/TechStackView/index.tsx": {
-      "lines": 865,
+      "lines": 881,
       "relativeImports": 5
     },
     "packages/webui/src/hooks/ws-handlers/misc-handlers.ts": {

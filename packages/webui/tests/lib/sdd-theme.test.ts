@@ -24,13 +24,13 @@ describe('SDD_STATUS', () => {
 
   it('each entry has the required fields', () => {
     for (const style of Object.values(SDD_STATUS)) {
-      expect(style).toHaveProperty('label');
+      expect(style).toHaveProperty('labelKey');
       expect(style).toHaveProperty('icon');
       expect(style).toHaveProperty('text');
       expect(style).toHaveProperty('ring');
       expect(style).toHaveProperty('dot');
       expect(style).toHaveProperty('hex');
-      expect(typeof style.label).toBe('string');
+      expect(typeof style.labelKey).toBe('string');
       expect(['function', 'object']).toContain(typeof style.icon); // Lucide component
       expect(typeof style.text).toBe('string');
       expect(typeof style.ring).toBe('string');

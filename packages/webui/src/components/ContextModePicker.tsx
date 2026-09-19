@@ -78,12 +78,12 @@ export function ContextModePicker() {
 
   return (
     <div ref={rootRef} className="relative shrink-0">
-      <div className="flex items-center gap-1">
+      <div className="ws-ctx-strip flex items-center gap-1">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+            'ws-touch-target flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
             'bg-success/10 text-success hover:bg-success/15 transition-colors border border-transparent hover:border-success/30',
           )}
           title={t('activity:ctxMode.triggerTitle')}
@@ -100,7 +100,7 @@ export function ContextModePicker() {
             type="button"
             onClick={() => setOpsOpen((v) => !v)}
             className={cn(
-              'flex items-center justify-center h-5 w-5 rounded-full',
+              'ws-touch-target flex items-center justify-center h-5 w-5 rounded-full',
               'text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors',
               opsOpen && 'bg-accent/50 text-foreground',
             )}

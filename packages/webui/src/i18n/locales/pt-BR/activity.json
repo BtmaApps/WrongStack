@@ -62,7 +62,14 @@
   },
   "sidePanel": {
     "dragHint": "Arraste para redimensionar · duplo clique para redefinir",
-    "collapse": "Recolher painel (Ctrl+\\)"
+    "collapse": "Recolher painel (Ctrl+\\)",
+    "chat": "Estado de execução, modelo, contexto e controles rápidos",
+    "agents": "Lista de frota ao vivo e monitoramento de agentes",
+    "files": "Navegar e abrir arquivos do projeto",
+    "changes": "Revisar alterações do controle de versão",
+    "mailbox": "Mensagens de coordenação entre superfícies",
+    "skills": "Habilidades instaladas e documentos de capacidades",
+    "design": "Recursos do estúdio de design e pré-visualizações"
   },
   "history": {
     "openDashboard": "Abrir painel de sessões"
@@ -776,14 +783,14 @@
   },
   "sdd": {
     "status": {
-      "pending": "pendente",
-      "queued": "em fila",
-      "in_progress": "em execução",
-      "blocked": "bloqueado",
-      "review": "revisão",
-      "failed": "falhou",
-      "completed": "concluído",
-      "cancelled": "cancelado"
+      "pending": "Pendente",
+      "queued": "Pronto",
+      "in_progress": "Executando",
+      "blocked": "Bloqueado",
+      "review": "Revisão",
+      "failed": "Falhou",
+      "completed": "Concluído",
+      "cancelled": "Cancelado"
     },
     "activityHeading": "Atividade",
     "feedEmpty": "Ainda nada — os eventos aparecem aqui conforme os agentes pegam e concluem tarefas.",
@@ -2418,7 +2425,39 @@
     "confirmDeleteTask": "Clique novamente para confirmar a exclusão da tarefa",
     "confirmDeleteTaskAria": "Confirmar exclusão: {{title}}",
     "moveTaskToColumn": "Mover {{title}} para a coluna",
-    "activityNoteTemplate": "{{action}} do WebUI para {{target}}."
+    "activityNoteTemplate": "{{action}} do WebUI para {{target}}.",
+    "workbench": {
+      "now": {
+        "title": "AGORA",
+        "subtitle": "Em execução ativa"
+      },
+      "next": {
+        "title": "A SEGUIR",
+        "subtitle": "Pronto ou na fila"
+      },
+      "blocked": {
+        "title": "BLOQUEADO",
+        "subtitle": "Precisa de intervenção"
+      },
+      "review": {
+        "title": "REVISÃO",
+        "subtitle": "Precisa de prova ou aceitação"
+      },
+      "loading": "Carregando o banco de trabalho do projeto…",
+      "loadError": "Não foi possível carregar o banco de trabalho do projeto: {{error}}",
+      "notLoaded": "O banco de trabalho do projeto ainda não foi carregado.",
+      "retry": "Recarregar o banco de trabalho",
+      "headerLabel": "Banco de trabalho do projeto",
+      "headline": "Uma visão fiel de todos os quadros ativos",
+      "description": "Espelhos de sessão permanecem táticos; cartões gerenciados permanecem duráveis. Esta visão apenas projeta o estado de execução compartilhado e nunca cria uma segunda fonte de verdade.",
+      "metricBoards": "QUADROS",
+      "metricActive": "ATIVOS",
+      "metricAlerts": "ALERTAS",
+      "attentionRequired": "Requer atenção · {{count}}",
+      "moreAlertsHidden": "{{count}} alertas mais ocultos pela visão limitada",
+      "noWorkInLane": "Sem trabalho nesta faixa",
+      "moreCardsHidden": "{{count}} cartões mais ocultos para manter o foco"
+    }
   },
   "cronJobs": {
     "heading": "Trabalhos cron",
@@ -2894,7 +2933,13 @@
     "tabTrends": "Tendências",
     "tabRemediation": "Correção",
     "majorsBehind": "versões maiores atrás",
-    "knownAdvisories": "avisos conhecidos"
+    "knownAdvisories": "avisos conhecidos",
+    "noScanYet": "Ainda sem varredura",
+    "scanHint": "Varra o projeto aberto para inventariar suas dependências.",
+    "snapshotUnavailable": "Serviço TechStack indisponível — inicie o servidor WebUI para varrer.",
+    "workspaceCount_one": "{{count}} espaço de trabalho",
+    "workspaceCount_other": "{{count}} espaços de trabalho",
+    "scannedAt": "{{root}} · varrido em {{when}}"
   },
   "techStackStatus": {
     "current": "Atual",
@@ -3350,7 +3395,9 @@
     "providerLimit": "Limite do provedor {{limit}}",
     "providerLimitDecreased": "A janela de contexto do provedor foi reduzida de {{previous}} para {{current}} tokens.",
     "restoringTranscript": "Restaurando a conversa…",
-    "restoringTranscriptHint": "Lendo o registro desta sessão. Conversas longas podem levar um momento."
+    "restoringTranscriptHint": "Lendo o registro desta sessão. Conversas longas podem levar um momento.",
+    "tokensIn": "entrada",
+    "tokensOut": "saída"
   },
   "ctxBreakdown": {
     "tokenAllocation": "Alocação de tokens",
@@ -3444,7 +3491,26 @@
     "settings": "Configurações",
     "search": "Pesquisar",
     "command": "Comando",
-    "model": "Modelo"
+    "model": "Modelo",
+    "noNamedSession": "Sessão sem nome",
+    "view": {
+      "chat": "Chat",
+      "goal": "Objetivo",
+      "kanban": "Kanban",
+      "sddhub": "Hub SDD",
+      "settings": "Configurações",
+      "provider-test": "Teste de provedores",
+      "memory": "Memória",
+      "roster": "Roster",
+      "codemap": "Atlas de código",
+      "techstack": "TechStack",
+      "chronicle": "Crônica",
+      "prompts": "Prompts",
+      "chimera": "Chimera",
+      "history": "Histórico"
+    },
+    "statusRunning": "Executando",
+    "statusReady": "Pronto"
   },
   "agentsPanel": {
     "agentRoster": "Elenco de agentes"
@@ -3788,5 +3854,31 @@
       "http": "HTTP",
       "events": "Events"
     }
+  },
+  "userInput": {
+    "readyToSubmit": "Pronto para envio",
+    "missingAnswers_one": "Falta {{count}} resposta obrigatória",
+    "missingAnswers_other": "Faltam {{count}} respostas obrigatórias",
+    "submitTimeout": "Nenhuma confirmação recebida — verifique a conexão, então tente novamente ou cancele.",
+    "answerRequired": "Resposta obrigatória: {{prompt}}",
+    "sendFailed": "Não foi possível enviar as respostas. Verifique a conexão e tente novamente.",
+    "cancelRequested": "Cancelamento solicitado — pode não ter chegado ao agente com a conexão fora.",
+    "cancelFailed": "Não foi possível cancelar — verifique a conexão e tente novamente.",
+    "recommendedApplied": "Respostas recomendadas aplicadas.",
+    "submitting": "Enviando…",
+    "submitAnswers": "Enviar respostas",
+    "delegatedNotice": "Decisões não respondidas delegadas ao modelo.",
+    "queuedForms": "Formulário 1 de {{count}} aguardando nesta sessão",
+    "answeredProgress": "{{answered}}/{{total}} respondidas",
+    "delegateUnansweredButton": "Delegar as não respondidas ao modelo",
+    "applyTabRecommendations": "Aplicar recomendações da aba",
+    "applyAllRecommendations": "Aplicar todas as recomendações",
+    "recommendationLabel": "Recomendação:",
+    "recommendedChip": "Recomendado",
+    "selectCustomAria": "Selecionar resposta personalizada",
+    "customAnswerAria": "Resposta personalizada",
+    "customAnswerPlaceholder": "Outra / resposta personalizada (opcional)",
+    "youDecide": "Você decide",
+    "youDecideHint": "Não quero responder a esta pergunta. Deixo o modelo escolher."
   }
 }

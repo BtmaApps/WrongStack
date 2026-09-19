@@ -30,16 +30,6 @@ import { DesignStudioPanel } from './DesignStudioPanel';
 import { SessionPanel } from './SessionPanel';
 import { SkillsList } from './SkillsList';
 
-const PANEL_DESCRIPTIONS: Record<string, string> = {
-  chat: 'Run state, model, context and quick controls',
-  agents: 'Live fleet roster and agent monitoring',
-  files: 'Browse and open project files',
-  changes: 'Review source control changes',
-  mailbox: 'Cross-surface coordination messages',
-  skills: 'Installed skills and capability docs',
-  design: 'Design studio assets and previews',
-};
-
 export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | undefined }) {
   const activeActivity = useUIStore((s) => s.activeActivity);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
@@ -129,7 +119,7 @@ export function SidePanel({ desktopShell = false }: { desktopShell?: boolean | u
               {t(`activity:nav.${activeActivity}`)}
             </div>
             <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-              {PANEL_DESCRIPTIONS[activeActivity]}
+              {t(`activity:sidePanel.${activeActivity}`)}
             </div>
           </div>
           <Button

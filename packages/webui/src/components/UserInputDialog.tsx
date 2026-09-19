@@ -1,6 +1,7 @@
 import type { UserInputAnswer, UserInputQuestion, UserInputRequest } from '@wrongstack/core/types';
 import { Check, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import { getWSClient } from '@/lib/ws-client';
 import {
   activeSessionLaneId,
@@ -43,6 +44,7 @@ const EMPTY_ANSWER: DraftAnswer = {
 const SUBMIT_TIMEOUT_MS = 10_000;
 
 export function UserInputDialog() {
+  const { t } = useAppTranslation();
   const wsUrl = useConfigStore((state) => state.wsUrl);
   const activeSessionId = useActiveSessionId();
   const queues = useUserInputStore((state) => state.queues);
@@ -92,9 +94,7 @@ export function UserInputDialog() {
     if (!submitting) return;
     const timer = setTimeout(() => {
       setSubmitting(false);
-      setValidationMessage(
-        'No confirmation received — check the connection, then retry or cancel.',
-      );
+      setValidationMessage(t('activity:userInput.submitTimeout'));
     }, SUBMIT_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [submitting]);
@@ -114,7 +114,7 @@ export function UserInputDialog() {
         item.questions.some((question) => question.id === first.id),
       );
       setActiveTab(Math.max(0, targetTab));
-      setValidationMessage(`Answer required: ${first.prompt}`);
+      setValidationMessage(t('activity:userInput.answerRequired', { prompt: first.prompt }));
       window.requestAnimationFrame(() =>
         document.getElementById(`user-input-${first.id}`)?.focus(),
       );
@@ -144,7 +144,7 @@ export function UserInputDialog() {
     });
     if (!sent) {
       setSubmitting(false);
-      setValidationMessage('Could not send the answers. Check the connection and try again.');
+      setValidationMessage(t('activity:userInput.sendFailed'));
     }
   };
 
@@ -166,9 +166,7 @@ export function UserInputDialog() {
     });
     setSubmitting(false);
     setValidationMessage(
-      sent
-        ? 'Cancel requested — it may not have reached the agent while the connection is down.'
-        : 'Could not cancel — check the connection and try again.',
+      sent ? t('activity:userInput.cancelRequested') : t('activity:userInput.cancelFailed'),
     );
   };
 
@@ -187,7 +185,7 @@ export function UserInputDialog() {
       }
       return next;
     });
-    setValidationMessage('Recommended answers applied.');
+    setValidationMessage(t('activity:userInput.recommendedApplied'));
   };
 
   const delegateUnanswered = () => {
@@ -206,7 +204,7 @@ export function UserInputDialog() {
       }
       return next;
     });
-    setValidationMessage('Unanswered decisions delegated to the model.');
+    setValidationMessage(t('activity:userInput.delegatedNotice'));
   };
 
   const queuedForSession = queues[entry.sessionId]?.length ?? 1;
@@ -227,7 +225,7 @@ export function UserInputDialog() {
           {request.description && <DialogDescription>{request.description}</DialogDescription>}
           {queuedForSession > 1 && (
             <p className="text-left text-xs text-muted-foreground">
-              Form 1 of {queuedForSession} waiting in this session
+              {t('activity:userInput.queuedForms', { count: queuedForSession })}
             </p>
           )}
         </DialogHeader>
@@ -257,11 +255,14 @@ export function UserInputDialog() {
           {tab.description && <p className="text-sm text-muted-foreground">{tab.description}</p>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">
-              {answeredCount(tab.questions, draft)}/{tab.questions.length} answered
+              {t('activity:userInput.answeredProgress', {
+                answered: answeredCount(tab.questions, draft),
+                total: tab.questions.length,
+              })}
             </span>
             <div className="flex gap-2">
               <Button type="button" size="sm" variant="ghost" onClick={delegateUnanswered}>
-                Let model decide unanswered
+                {t('activity:userInput.delegateUnansweredButton')}
               </Button>
               <Button
                 type="button"
@@ -269,7 +270,7 @@ export function UserInputDialog() {
                 variant="ghost"
                 onClick={() => applyRecommendations('tab')}
               >
-                Apply tab recommendations
+                {t('activity:userInput.applyTabRecommendations')}
               </Button>
               {request.tabs.length > 1 && (
                 <Button
@@ -278,7 +279,7 @@ export function UserInputDialog() {
                   variant="ghost"
                   onClick={() => applyRecommendations('all')}
                 >
-                  Apply all recommendations
+                  {t('activity:userInput.applyAllRecommendations')}
                 </Button>
               )}
             </div>
@@ -310,13 +311,17 @@ export function UserInputDialog() {
             aria-live="polite"
           >
             {validationMessage ||
-              (valid ? 'Ready to submit' : `${missing.length} required answer(s) missing`)}
+              (valid
+                ? t('activity:userInput.readyToSubmit')
+                : t('activity:userInput.missingAnswers', { count: missing.length }))}
           </span>
           <Button type="button" variant="outline" onClick={cancel}>
-            Cancel
+            {t('common:action.cancel')}
           </Button>
           <Button disabled={submitting} onClick={submit}>
-            {submitting ? 'Submitting…' : (request.submitLabel ?? 'Submit answers')}
+            {submitting
+              ? t('activity:userInput.submitting')
+              : (request.submitLabel ?? t('activity:userInput.submitAnswers'))}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -333,6 +338,7 @@ function Question({
   value: DraftAnswer;
   onChange: (value: DraftAnswer) => void;
 }) {
+  const { t } = useAppTranslation();
   const recommended = new Set(question.recommendedOptionIds ?? []);
   return (
     <fieldset className="space-y-3">
@@ -347,7 +353,7 @@ function Question({
         <div className="flex gap-2 rounded-md border border-primary/30 bg-primary/5 p-2 text-xs">
           <Sparkles className="h-4 w-4 shrink-0 text-primary" />
           <span>
-            <b>Recommendation:</b> {question.recommendationReason}
+            <b>{t('activity:userInput.recommendationLabel')}</b> {question.recommendationReason}
           </span>
         </div>
       )}
@@ -399,7 +405,7 @@ function Question({
                     {recommended.has(option.id) && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
                         <Check className="h-3 w-3" />
-                        Recommended
+                        {t('activity:userInput.recommendedChip')}
                       </span>
                     )}
                   </span>
@@ -419,7 +425,7 @@ function Question({
               <input
                 type={question.kind === 'multi_select' ? 'checkbox' : 'radio'}
                 name={question.id}
-                aria-label="Select custom answer"
+                aria-label={t('activity:userInput.selectCustomAria')}
                 checked={value.customSelected}
                 onChange={() =>
                   onChange({
@@ -432,8 +438,10 @@ function Question({
               />
               <input
                 className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-                aria-label="Custom answer"
-                placeholder={question.placeholder ?? 'Other / custom answer (optional)'}
+                aria-label={t('activity:userInput.customAnswerAria')}
+                placeholder={
+                  question.placeholder ?? t('activity:userInput.customAnswerPlaceholder')
+                }
                 value={value.text}
                 onFocus={() =>
                   onChange({
@@ -465,9 +473,9 @@ function Question({
         }
         className={`w-full rounded-md border p-3 text-left text-sm ${value.delegated ? 'border-primary bg-primary/5 font-medium' : 'text-muted-foreground'}`}
       >
-        You decide
+        {t('activity:userInput.youDecide')}
         <span className="mt-1 block text-xs font-normal text-muted-foreground">
-          I do not want to answer this question. Let the model choose.
+          {t('activity:userInput.youDecideHint')}
         </span>
       </button>
     </fieldset>

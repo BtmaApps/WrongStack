@@ -216,8 +216,8 @@ export function scheduleForcedExit(code: number, deps: ForcedExitDeps = {}): voi
   first.unref();
 }
 
-export function runAsMain(mainFn: (argv: string[]) => Promise<number>): void {
-  if (!isMain) return;
+/** Run the complete CLI process lifecycle for an already-confirmed entry point. */
+export function runCliProcess(mainFn: (argv: string[]) => Promise<number>): void {
   installBrokenPipeHandlers();
   // Last-resort shield: one escaped rejection in a timer, watcher, or socket
   // callback otherwise kills the whole in-process host — TUI, WebUI, HQ, fleet.
@@ -268,4 +268,9 @@ export function runAsMain(mainFn: (argv: string[]) => Promise<number>): void {
       scheduleForcedExit(1);
     },
   );
+}
+
+export function runAsMain(mainFn: (argv: string[]) => Promise<number>): void {
+  if (!isMain) return;
+  runCliProcess(mainFn);
 }

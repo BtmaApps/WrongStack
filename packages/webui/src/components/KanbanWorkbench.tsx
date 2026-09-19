@@ -13,32 +13,33 @@ import {
   Layers3,
   ShieldAlert,
 } from 'lucide-react';
+import { useAppTranslation } from '@/i18n';
 
 const LANE_COPY: Record<
   KanbanWorkbenchLane,
-  { title: string; subtitle: string; icon: typeof Clock3; tone: string }
+  { titleKey: string; subtitleKey: string; icon: typeof Clock3; tone: string }
 > = {
   now: {
-    title: 'NOW',
-    subtitle: 'Actively executing',
+    titleKey: 'activity:kanban.workbench.now.title',
+    subtitleKey: 'activity:kanban.workbench.now.subtitle',
     icon: Clock3,
     tone: 'border-amber-500/30 bg-amber-500/5',
   },
   next: {
-    title: 'NEXT',
-    subtitle: 'Ready or queued',
+    titleKey: 'activity:kanban.workbench.next.title',
+    subtitleKey: 'activity:kanban.workbench.next.subtitle',
     icon: CircleDot,
     tone: 'border-blue-500/30 bg-blue-500/5',
   },
   blocked: {
-    title: 'BLOCKED',
-    subtitle: 'Needs intervention',
+    titleKey: 'activity:kanban.workbench.blocked.title',
+    subtitleKey: 'activity:kanban.workbench.blocked.subtitle',
     icon: ShieldAlert,
     tone: 'border-red-500/30 bg-red-500/5',
   },
   review: {
-    title: 'REVIEW',
-    subtitle: 'Needs proof or acceptance',
+    titleKey: 'activity:kanban.workbench.review.title',
+    subtitleKey: 'activity:kanban.workbench.review.subtitle',
     icon: CheckCircle2,
     tone: 'border-violet-500/30 bg-violet-500/5',
   },
@@ -57,16 +58,18 @@ export function KanbanWorkbench({
   onRetry: () => void;
   onSelectTask: (boardId: string, taskId: string) => void;
 }) {
+  const { t } = useAppTranslation();
+
   if (!snapshot) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
         <Layers3 size={28} strokeWidth={1.5} aria-hidden="true" />
         <div>
           {loading
-            ? 'Loading project workbench…'
+            ? t('activity:kanban.workbench.loading')
             : error
-              ? `Project workbench could not be loaded: ${error}`
-              : 'Project workbench has not been loaded yet.'}
+              ? t('activity:kanban.workbench.loadError', { error })
+              : t('activity:kanban.workbench.notLoaded')}
         </div>
         {!loading ? (
           <button
@@ -74,7 +77,7 @@ export function KanbanWorkbench({
             onClick={onRetry}
             className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
           >
-            Retry workbench
+            {t('activity:kanban.workbench.retry')}
           </button>
         ) : null}
       </div>
@@ -87,18 +90,29 @@ export function KanbanWorkbench({
         <div className="flex flex-wrap items-start justify-between gap-4 border-b p-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Layers3 size={15} /> Project workbench
+              <Layers3 size={15} /> {t('activity:kanban.workbench.headerLabel')}
             </div>
-            <h2 className="mt-1 text-xl font-semibold">One truthful view of every active board</h2>
+            <h2 className="mt-1 text-xl font-semibold">
+              {t('activity:kanban.workbench.headline')}
+            </h2>
             <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-              Session mirrors remain tactical; managed cards remain durable. This view only projects
-              their shared execution state and never creates a second source of truth.
+              {t('activity:kanban.workbench.description')}
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <Metric label="BOARDS" value={snapshot.boardCount} />
-            <Metric label="ACTIVE" value={snapshot.totals.active} />
-            <Metric label="ALERTS" value={snapshot.alertTotal} warning={snapshot.alertTotal > 0} />
+            <Metric
+              label={t('activity:kanban.workbench.metricBoards')}
+              value={snapshot.boardCount}
+            />
+            <Metric
+              label={t('activity:kanban.workbench.metricActive')}
+              value={snapshot.totals.active}
+            />
+            <Metric
+              label={t('activity:kanban.workbench.metricAlerts')}
+              value={snapshot.alertTotal}
+              warning={snapshot.alertTotal > 0}
+            />
           </div>
         </div>
 
@@ -126,7 +140,8 @@ export function KanbanWorkbench({
       {snapshot.alertTotal > 0 ? (
         <section className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-            <AlertTriangle size={14} /> Attention required · {snapshot.alertTotal}
+            <AlertTriangle size={14} />{' '}
+            {t('activity:kanban.workbench.attentionRequired', { count: snapshot.alertTotal })}
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {snapshot.alerts.map((alert) => (
@@ -148,7 +163,7 @@ export function KanbanWorkbench({
           </div>
           {snapshot.alertsOmitted > 0 ? (
             <div className="mt-2 text-[10px] text-muted-foreground">
-              +{snapshot.alertsOmitted} more alerts hidden by the bounded view
+              +{t('activity:kanban.workbench.moreAlertsHidden', { count: snapshot.alertsOmitted })}
             </div>
           ) : null}
         </section>
@@ -164,9 +179,11 @@ export function KanbanWorkbench({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold tracking-wider">
-                    <Icon size={13} /> {copy.title}
+                    <Icon size={13} /> {t(copy.titleKey)}
                   </div>
-                  <div className="mt-0.5 text-[10px] text-muted-foreground">{copy.subtitle}</div>
+                  <div className="mt-0.5 text-[10px] text-muted-foreground">
+                    {t(copy.subtitleKey)}
+                  </div>
                 </div>
                 <span className="rounded-full border bg-background px-2 py-0.5 text-xs font-semibold">
                   {laneSnapshot.total}
@@ -183,13 +200,13 @@ export function KanbanWorkbench({
                   ))
                 ) : (
                   <div className="rounded-lg border border-dashed p-3 text-center text-[11px] text-muted-foreground">
-                    No work in this lane
+                    {t('activity:kanban.workbench.noWorkInLane')}
                   </div>
                 )}
               </div>
               {laneSnapshot.omitted > 0 ? (
                 <div className="mt-2 text-[10px] text-muted-foreground">
-                  +{laneSnapshot.omitted} more cards hidden to keep focus
+                  +{t('activity:kanban.workbench.moreCardsHidden', { count: laneSnapshot.omitted })}
                 </div>
               ) : null}
             </div>

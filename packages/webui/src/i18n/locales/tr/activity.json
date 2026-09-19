@@ -62,7 +62,14 @@
   },
   "sidePanel": {
     "dragHint": "Yeniden boyutlandırmak için sürükle · sıfırlamak için çift tıkla",
-    "collapse": "Paneli daralt (Ctrl+\\)"
+    "collapse": "Paneli daralt (Ctrl+\\)",
+    "chat": "Çalışma durumu, model, bağlam ve hızlı kontroller",
+    "agents": "Canlı filo listesi ve ajan izleme",
+    "files": "Proje dosyalarına göz at ve aç",
+    "changes": "Kaynak denetimi değişikliklerini incele",
+    "mailbox": "Çapraz yüzey koordinasyon mesajları",
+    "skills": "Yüklü yetenekler ve yetenek belgeleri",
+    "design": "Tasarım stüdyosu varlıkları ve önizlemeler"
   },
   "history": {
     "openDashboard": "Oturum panosunu aç"
@@ -776,14 +783,14 @@
   },
   "sdd": {
     "status": {
-      "pending": "bekliyor",
-      "queued": "sırada",
-      "in_progress": "çalışıyor",
-      "blocked": "engellendi",
-      "review": "inceleme",
-      "failed": "başarısız",
-      "completed": "bitti",
-      "cancelled": "iptal edildi"
+      "pending": "Beklemede",
+      "queued": "Hazır",
+      "in_progress": "Çalışıyor",
+      "blocked": "Engellendi",
+      "review": "İnceleme",
+      "failed": "Başarısız",
+      "completed": "Tamamlandı",
+      "cancelled": "İptal Edildi"
     },
     "activityHeading": "Etkinlik",
     "feedEmpty": "Henüz bir şey yok — aracılar görevleri alıp bitirdikçe olaylar burada görünür.",
@@ -2479,7 +2486,39 @@
     "confirmDeleteTask": "Görevi silmeyi onaylamak için tekrar tıklayın",
     "confirmDeleteTaskAria": "Silmeyi onayla: {{title}}",
     "moveTaskToColumn": "{{title}} sütununa taşı",
-    "activityNoteTemplate": "{{action}} WebUI'dan {{target}} adresine."
+    "activityNoteTemplate": "{{action}} WebUI'dan {{target}} adresine.",
+    "workbench": {
+      "now": {
+        "title": "ŞİMDİ",
+        "subtitle": "Aktif olarak yürütülüyor"
+      },
+      "next": {
+        "title": "SIRADAKİ",
+        "subtitle": "Hazır veya kuyrukta"
+      },
+      "blocked": {
+        "title": "ENGELLİ",
+        "subtitle": "Müdahale gerekiyor"
+      },
+      "review": {
+        "title": "İNCELEME",
+        "subtitle": "Kanıt veya kabul gerekiyor"
+      },
+      "loading": "Proje çalışma tezgahı yükleniyor…",
+      "loadError": "Proje çalışma tezgahı yüklenemedi: {{error}}",
+      "notLoaded": "Proje çalışma tezgahı henüz yüklenmedi.",
+      "retry": "Çalışma tezgahını yeniden dene",
+      "headerLabel": "Proje çalışma tezgahı",
+      "headline": "Her aktif panonun tek gerçek görünümü",
+      "description": "Oturum aynaları taktiksel kalır; yönetilen kartlar kalıcıdır. Bu görünüm yalnızca paylaşılan yürütme durumlarını yansıtır ve asla ikinci bir doğruluk kaynağı oluşturmaz.",
+      "metricBoards": "PANOLAR",
+      "metricActive": "AKTİF",
+      "metricAlerts": "UYARILAR",
+      "attentionRequired": "Dikkat gerekiyor · {{count}}",
+      "moreAlertsHidden": "{{count}} uyarı sınırlı görünümle gizlendi",
+      "noWorkInLane": "Bu şeritte iş yok",
+      "moreCardsHidden": "Odakta tutmak için {{count}} kart gizlendi"
+    }
   },
   "cronJobs": {
     "heading": "Zamanlanmış Görevler",
@@ -2955,7 +2994,13 @@
     "tabTrends": "Eğilimler",
     "tabRemediation": "Düzeltme",
     "majorsBehind": "ana sürüm geride",
-    "knownAdvisories": "bilinen güvenlik duyurusu"
+    "knownAdvisories": "bilinen güvenlik duyurusu",
+    "noScanYet": "Henüz tarama yok",
+    "scanHint": "Bağımlılıklarını envanterlemek için açık projeyi tarayın.",
+    "snapshotUnavailable": "TechStack servisi kullanılamıyor — taramak için WebUI sunucusunu başlatın.",
+    "workspaceCount_one": "{{count}} çalışma alanı",
+    "workspaceCount_other": "{{count}} çalışma alanı",
+    "scannedAt": "{{root}} · {{when}} tarihinde tarandı"
   },
   "techStackStatus": {
     "current": "Güncel",
@@ -3411,7 +3456,9 @@
     "providerLimit": "Sağlayıcı sınırı {{limit}}",
     "providerLimitDecreased": "Sağlayıcı bağlam penceresi {{previous}} tokendan {{current}} tokene düşürüldü.",
     "restoringTranscript": "Konuşma geri yükleniyor…",
-    "restoringTranscriptHint": "Bu oturumun günlüğü okunuyor. Uzun konuşmalar biraz sürebilir."
+    "restoringTranscriptHint": "Bu oturumun günlüğü okunuyor. Uzun konuşmalar biraz sürebilir.",
+    "tokensIn": "giriş",
+    "tokensOut": "çıkış"
   },
   "ctxBreakdown": {
     "tokenAllocation": "Token Dağılımı",
@@ -3505,7 +3552,26 @@
     "settings": "Ayarlar",
     "search": "Ara",
     "command": "Komut",
-    "model": "Model"
+    "model": "Model",
+    "noNamedSession": "Adlandırılmış oturum yok",
+    "view": {
+      "chat": "Sohbet",
+      "goal": "Hedef",
+      "kanban": "Kanban",
+      "sddhub": "SDD Merkezi",
+      "settings": "Ayarlar",
+      "provider-test": "Sağlayıcı Testi",
+      "memory": "Bellek",
+      "roster": "Filo",
+      "codemap": "Kod Atlası",
+      "techstack": "TechStack",
+      "chronicle": "Kronik",
+      "prompts": "İstemler",
+      "chimera": "Chimera",
+      "history": "Geçmiş"
+    },
+    "statusRunning": "Çalışıyor",
+    "statusReady": "Hazır"
   },
   "agentsPanel": {
     "agentRoster": "Ajan kadrosu"
@@ -3788,5 +3854,31 @@
     "humanJudgement": "İnsan Kararına Yönlendirildi:",
     "decisionResult": "Brain Stratejisi & Yanıtı:",
     "cognitiveRationale": "Bilişsel Gerekçe & Politika İzi"
+  },
+  "userInput": {
+    "readyToSubmit": "Gönderilmeye hazır",
+    "missingAnswers_one": "{{count}} gerekli yanıt eksik",
+    "missingAnswers_other": "{{count}} gerekli yanıt eksik",
+    "submitTimeout": "Onay alınamadı — bağlantıyı kontrol edip tekrar deneyin veya iptal edin.",
+    "answerRequired": "Yanıt gerekli: {{prompt}}",
+    "sendFailed": "Yanıtlar gönderilemedi. Bağlantıyı kontrol edip tekrar deneyin.",
+    "cancelRequested": "İptal istendi — bağlantı kesikken ajana ulaşmamış olabilir.",
+    "cancelFailed": "İptal edilemedi — bağlantıyı kontrol edip tekrar deneyin.",
+    "recommendedApplied": "Önerilen yanıtlar uygulandı.",
+    "submitting": "Gönderiliyor…",
+    "submitAnswers": "Yanıtları gönder",
+    "delegatedNotice": "Yanıtsız kararlar modele devredildi.",
+    "queuedForms": "Bu oturumda bekleyen {{count}} formdan 1.si",
+    "answeredProgress": "{{answered}}/{{total}} yanıtlandı",
+    "delegateUnansweredButton": "Yanıtsızları modele devret",
+    "applyTabRecommendations": "Sekme önerilerini uygula",
+    "applyAllRecommendations": "Tüm önerileri uygula",
+    "recommendationLabel": "Öneri:",
+    "recommendedChip": "Önerilen",
+    "selectCustomAria": "Özel yanıtı seç",
+    "customAnswerAria": "Özel yanıt",
+    "customAnswerPlaceholder": "Diğer / özel yanıt (isteğe bağlı)",
+    "youDecide": "Sen karar ver",
+    "youDecideHint": "Bu soruyu yanıtlamak istemiyorum. Seçimi modele bırakıyorum."
   }
 }

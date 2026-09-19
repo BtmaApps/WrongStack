@@ -15,7 +15,7 @@ export function ToggleSwitch({
       role="switch"
       aria-checked={value}
       onClick={onChange}
-      className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/75 hover:text-foreground/80 transition-colors select-none"
+      className="ws-touch-target inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/75 hover:text-foreground/80 transition-colors select-none"
     >
       <span
         className={cn(

@@ -6,7 +6,10 @@ import { useLocalPrefs } from '../../src/stores/local-prefs';
 
 vi.mock('../../src/i18n', () => ({
   useAppTranslation: () => ({
-    t: (k: string, d?: string) => d ?? k,
+    // Mirror real i18next: a string second arg is the defaultValue; an options
+    // object falls back to its defaultValue, else the key.
+    t: (k: string, d?: string | { defaultValue?: string }) =>
+      typeof d === 'string' ? d : (d?.defaultValue ?? k),
   }),
 }));
 

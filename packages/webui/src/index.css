@@ -48,6 +48,22 @@
   --radius-2xl: 0;
   --radius-3xl: 0;
   --radius-4xl: 0;
+
+  /* Elevation: one warm-ink shadow family. The stock shadow utilities
+     (shadow-sm … shadow-2xl) resolve to these, so scattered call sites inherit
+     the system's shadow color instead of Tailwind's pure-black defaults — and
+     a palette can tint --shadow-color without touching any component. */
+  --shadow-2xs: 0 1px hsl(var(--shadow-color) / 0.05);
+  --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm:
+    0 1px 3px 0 hsl(var(--shadow-color) / 0.1), 0 1px 2px -1px hsl(var(--shadow-color) / 0.1);
+  --shadow-md:
+    0 4px 6px -1px hsl(var(--shadow-color) / 0.1), 0 2px 4px -2px hsl(var(--shadow-color) / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px hsl(var(--shadow-color) / 0.1), 0 4px 6px -4px hsl(var(--shadow-color) / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px hsl(var(--shadow-color) / 0.1), 0 8px 10px -6px hsl(var(--shadow-color) / 0.1);
+  --shadow-2xl: 0 25px 50px -12px hsl(var(--shadow-color) / 0.25);
 }
 
 @layer base {
@@ -76,7 +92,7 @@
     --input: 40 14.3% 75.3%;
     --ring: 344.8 74.6% 47.8%;
 
-    --success: 150 58% 36%;
+    --success: 150 58% 30%;
     --warning: 32 92% 44%;
     --info: 200 80% 40%;
     --running: 344.8 74.6% 47.8%;
@@ -560,6 +576,29 @@
     [role="menuitemcheckbox"],
     [role="menuitemradio"] {
       min-height: 44px;
+    }
+
+    /* Compact chat-chrome controls (display toggles, context picker) stay
+       visually dense on desktop but grow an invisible hit area on touch
+       surfaces. The pseudo-element contributes no layout box, so pointer:fine
+       geometry is untouched. -10px/-6px lifts a 17px chip to a 37px-tall
+       target (≥24px WCAG 2.5.8 floor with margin) without relayout. */
+    .ws-touch-target {
+      position: relative;
+    }
+
+    .ws-touch-target::after {
+      content: "";
+      position: absolute;
+      inset: -10px -6px;
+    }
+
+    /* The status strip packs two pickers 4px apart (gap-1): a ±6px horizontal
+       spread would overlap the neighbours' hit areas there, so this row trades
+       horizontal reach for zero overlap. The wrench is 20px wide → still 24px,
+       on the 2.5.8 floor. */
+    .ws-ctx-strip .ws-touch-target::after {
+      inset: -10px -2px;
     }
   }
 
@@ -1130,13 +1169,13 @@ kbd {
   0%,
   100% {
     box-shadow:
-      0 0 0 1px hsl(38 95% 55% / 0.55),
-      0 0 16px 1px hsl(38 95% 55% / 0.35);
+      0 0 0 1px hsl(var(--warning) / 0.55),
+      0 0 16px 1px hsl(var(--warning) / 0.35);
   }
   50% {
     box-shadow:
-      0 0 0 1px hsl(38 95% 60% / 0.85),
-      0 0 28px 4px hsl(38 95% 55% / 0.6);
+      0 0 0 1px hsl(var(--warning) / 0.85),
+      0 0 28px 4px hsl(var(--warning) / 0.6);
   }
 }
 .sdd-node-running {
@@ -1147,12 +1186,12 @@ kbd {
 @keyframes sddCompleteFlash {
   0% {
     box-shadow:
-      0 0 0 1px hsl(152 60% 45% / 0.9),
-      0 0 30px 6px hsl(152 70% 45% / 0.7);
+      0 0 0 1px hsl(var(--success) / 0.9),
+      0 0 30px 6px hsl(var(--success) / 0.7);
   }
   100% {
     box-shadow:
-      0 0 0 1px hsl(152 45% 40% / 0.5),
+      0 0 0 1px hsl(var(--success) / 0.5),
       0 0 0 0 transparent;
   }
 }
@@ -1197,13 +1236,13 @@ kbd {
 /* Live agent dot — a pulsing presence ring around the worker avatar. */
 @keyframes sddAgentPing {
   0% {
-    box-shadow: 0 0 0 0 hsl(199 89% 60% / 0.7);
+    box-shadow: 0 0 0 0 hsl(var(--info) / 0.7);
   }
   70% {
-    box-shadow: 0 0 0 6px hsl(199 89% 60% / 0);
+    box-shadow: 0 0 0 6px hsl(var(--info) / 0);
   }
   100% {
-    box-shadow: 0 0 0 0 hsl(199 89% 60% / 0);
+    box-shadow: 0 0 0 0 hsl(var(--info) / 0);
   }
 }
 .sdd-agent-live {
@@ -1220,7 +1259,7 @@ kbd {
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    hsl(38 95% 55% / 0.5) 40deg,
+    hsl(var(--warning) / 0.5) 40deg,
     transparent 80deg
   );
   animation: sddConic 2.4s linear infinite;

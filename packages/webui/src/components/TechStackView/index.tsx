@@ -167,9 +167,20 @@ export function TechStackView() {
       const data = (await response.json()) as SnapshotResponse;
       store.setSnapshot(data.snapshot, data.stale);
     } catch (cause) {
-      store.setError(cause instanceof Error ? cause.message : String(cause));
+      const raw = cause instanceof Error ? cause.message : String(cause);
+      // A static/dev server answers an unknown /api route with index.html, so the
+      // JSON parse fails with "Unexpected token '<' …" — meaningless to operators.
+      // Collapse that one shape to a state claim; real server errors stay verbatim.
+      const htmlNotJson = /unexpected token/i.test(raw) && /<!doctype|<html/i.test(raw);
+      store.setError(
+        htmlNotJson
+          ? t('activity:techStack.snapshotUnavailable', {
+              defaultValue: 'TechStack service unavailable — start the WebUI server to scan.',
+            })
+          : raw,
+      );
     }
-  }, []);
+  }, [t]);
 
   const startJob = useCallback(async (kind: 'inventory' | 'analyze') => {
     const store = useTechStackStore.getState();
@@ -374,7 +385,9 @@ export function TechStackView() {
                 {t('activity:techStack.techstack')}
               </h1>
               <span className="border border-info/35 bg-info/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-info">
-                {snapshot ? `${snapshot.workspaces.length} workspaces` : 'no scan yet'}
+                {snapshot
+                  ? t('activity:techStack.workspaceCount', { count: snapshot.workspaces.length })
+                  : t('activity:techStack.noScanYet')}
               </span>
               {stale && (
                 <span className="border border-warning/35 bg-warning/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-warning">
@@ -384,8 +397,11 @@ export function TechStackView() {
             </div>
             <p className="mt-0.5 truncate text-[10px] text-muted-foreground sm:text-xs">
               {snapshot
-                ? `${snapshot.targetRoot} · scanned ${new Date(snapshot.createdAt).toLocaleString()}`
-                : 'Scan the open project to inventory its dependencies.'}
+                ? t('activity:techStack.scannedAt', {
+                    root: snapshot.targetRoot,
+                    when: new Date(snapshot.createdAt).toLocaleString(),
+                  })
+                : t('activity:techStack.scanHint')}
             </p>
           </div>
 

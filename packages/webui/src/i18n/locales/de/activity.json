@@ -62,7 +62,14 @@
   },
   "sidePanel": {
     "dragHint": "Ziehen zum Skalieren · Doppelklick zum Zurücksetzen",
-    "collapse": "Panel einklappen (Ctrl+\\)"
+    "collapse": "Panel einklappen (Ctrl+\\)",
+    "chat": "Laufzustand, Modell, Kontext und Schnellsteuerungen",
+    "agents": "Live-Flottenliste und Agentenüberwachung",
+    "files": "Projektdateien durchsuchen und öffnen",
+    "changes": "Quellcode-Änderungen prüfen",
+    "mailbox": "Übergreifende Koordinierungsnachrichten",
+    "skills": "Installierte Skills und Fähigkeitsdokumente",
+    "design": "Design-Studio-Assets und Vorschauen"
   },
   "history": {
     "openDashboard": "Sitzungs-Dashboard öffnen"
@@ -776,14 +783,14 @@
   },
   "sdd": {
     "status": {
-      "pending": "ausstehend",
-      "queued": "in Warteschlange",
-      "in_progress": "läuft",
-      "blocked": "blockiert",
+      "pending": "Ausstehend",
+      "queued": "Bereit",
+      "in_progress": "Läuft",
+      "blocked": "Blockiert",
       "review": "Review",
-      "failed": "fehlgeschlagen",
-      "completed": "erledigt",
-      "cancelled": "abgebrochen"
+      "failed": "Fehlgeschlagen",
+      "completed": "Abgeschlossen",
+      "cancelled": "Abgebrochen"
     },
     "activityHeading": "Aktivität",
     "feedEmpty": "Noch nichts — Ereignisse erscheinen hier, sobald Agents Aufgaben übernehmen und abschließen.",
@@ -2418,7 +2425,39 @@
     "confirmDeleteTask": "Erneut klicken, um das Löschen der Aufgabe zu bestätigen",
     "confirmDeleteTaskAria": "Löschen bestätigen: {{title}}",
     "moveTaskToColumn": "{{title}} in Spalte verschieben",
-    "activityNoteTemplate": "{{action}} von WebUI an {{target}}."
+    "activityNoteTemplate": "{{action}} von WebUI an {{target}}.",
+    "workbench": {
+      "now": {
+        "title": "JETZT",
+        "subtitle": "Wird aktiv ausgeführt"
+      },
+      "next": {
+        "title": "ALS NÄCHSTES",
+        "subtitle": "Bereit oder in Warteschlange"
+      },
+      "blocked": {
+        "title": "BLOCKIERT",
+        "subtitle": "Eingriff erforderlich"
+      },
+      "review": {
+        "title": "REVIEW",
+        "subtitle": "Braucht Nachweis oder Abnahme"
+      },
+      "loading": "Projekt-Workbench wird geladen…",
+      "loadError": "Projekt-Workbench konnte nicht geladen werden: {{error}}",
+      "notLoaded": "Projekt-Workbench wurde noch nicht geladen.",
+      "retry": "Workbench erneut laden",
+      "headerLabel": "Projekt-Workbench",
+      "headline": "Eine getreue Ansicht aller aktiven Boards",
+      "description": "Sitzungsspiegel bleiben taktisch; verwaltete Karten bleiben dauerhaft. Diese Ansicht projiziert nur den gemeinsamen Ausführungsstatus und erzeugt nie eine zweite Quelle der Wahrheit.",
+      "metricBoards": "BOARDS",
+      "metricActive": "AKTIV",
+      "metricAlerts": "WARNUNGEN",
+      "attentionRequired": "Aufmerksamkeit erforderlich · {{count}}",
+      "moreAlertsHidden": "{{count}} weitere Warnungen durch die begrenzte Ansicht ausgeblendet",
+      "noWorkInLane": "Keine Arbeit in dieser Spur",
+      "moreCardsHidden": "{{count}} weitere Karten ausgeblendet, um den Fokus zu halten"
+    }
   },
   "cronJobs": {
     "heading": "Cron-Jobs",
@@ -2894,7 +2933,13 @@
     "tabTrends": "Trends",
     "tabRemediation": "Behebung",
     "majorsBehind": "Major-Versionen zurück",
-    "knownAdvisories": "bekannte Sicherheitshinweise"
+    "knownAdvisories": "bekannte Sicherheitshinweise",
+    "noScanYet": "Noch keine Analyse",
+    "scanHint": "Scanne das geöffnete Projekt, um seine Abhängigkeiten zu inventarisieren.",
+    "snapshotUnavailable": "TechStack-Dienst nicht verfügbar — starte den WebUI-Server, um zu scannen.",
+    "workspaceCount_one": "{{count}} Workspace",
+    "workspaceCount_other": "{{count}} Workspaces",
+    "scannedAt": "{{root}} · gescannt am {{when}}"
   },
   "techStackStatus": {
     "current": "Aktuell",
@@ -3350,7 +3395,9 @@
     "providerLimit": "Anbieterlimit {{limit}}",
     "providerLimitDecreased": "Das Kontextfenster des Anbieters wurde von {{previous}} auf {{current}} Token reduziert.",
     "restoringTranscript": "Verlauf wird wiederhergestellt…",
-    "restoringTranscriptHint": "Das Journal dieser Sitzung wird gelesen. Bei langen Unterhaltungen kann das einen Moment dauern."
+    "restoringTranscriptHint": "Das Journal dieser Sitzung wird gelesen. Bei langen Unterhaltungen kann das einen Moment dauern.",
+    "tokensIn": "rein",
+    "tokensOut": "raus"
   },
   "ctxBreakdown": {
     "tokenAllocation": "Token-Zuteilung",
@@ -3444,7 +3491,26 @@
     "settings": "Einstellungen",
     "search": "Suchen",
     "command": "Befehl",
-    "model": "Modell"
+    "model": "Modell",
+    "noNamedSession": "Unbenannte Sitzung",
+    "view": {
+      "chat": "Chat",
+      "goal": "Ziel",
+      "kanban": "Kanban",
+      "sddhub": "SDD-Hub",
+      "settings": "Einstellungen",
+      "provider-test": "Providertest",
+      "memory": "Speicher",
+      "roster": "Roster",
+      "codemap": "Code-Atlas",
+      "techstack": "TechStack",
+      "chronicle": "Chronik",
+      "prompts": "Prompts",
+      "chimera": "Chimera",
+      "history": "Verlauf"
+    },
+    "statusRunning": "Läuft",
+    "statusReady": "Bereit"
   },
   "agentsPanel": {
     "agentRoster": "Agenten-Roster"
@@ -3788,5 +3854,31 @@
       "http": "HTTP",
       "events": "Events"
     }
+  },
+  "userInput": {
+    "readyToSubmit": "Bereit zum Senden",
+    "missingAnswers_one": "{{count}} erforderliche Antwort fehlt",
+    "missingAnswers_other": "{{count}} erforderliche Antworten fehlen",
+    "submitTimeout": "Keine Bestätigung erhalten — prüfe die Verbindung und wiederhole oder brich ab.",
+    "answerRequired": "Antwort erforderlich: {{prompt}}",
+    "sendFailed": "Antworten konnten nicht gesendet werden. Prüfe die Verbindung und versuche es erneut.",
+    "cancelRequested": "Abbruch angefordert — er hat den Agenten bei getrennter Verbindung möglicherweise nicht erreicht.",
+    "cancelFailed": "Abbrechen nicht möglich — prüfe die Verbindung und versuche es erneut.",
+    "recommendedApplied": "Empfohlene Antworten übernommen.",
+    "submitting": "Wird gesendet…",
+    "submitAnswers": "Antworten senden",
+    "delegatedNotice": "Unbeantwortete Entscheidungen an das Modell delegiert.",
+    "queuedForms": "Formular 1 von {{count}} wartet in dieser Sitzung",
+    "answeredProgress": "{{answered}}/{{total}} beantwortet",
+    "delegateUnansweredButton": "Unbeantwortete vom Modell entscheiden lassen",
+    "applyTabRecommendations": "Tab-Empfehlungen anwenden",
+    "applyAllRecommendations": "Alle Empfehlungen anwenden",
+    "recommendationLabel": "Empfehlung:",
+    "recommendedChip": "Empfohlen",
+    "selectCustomAria": "Eigene Antwort auswählen",
+    "customAnswerAria": "Eigene Antwort",
+    "customAnswerPlaceholder": "Andere / eigene Antwort (optional)",
+    "youDecide": "Du entscheidest",
+    "youDecideHint": "Ich möchte diese Frage nicht beantworten. Das Modell soll wählen."
   }
 }
