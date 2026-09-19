@@ -57,7 +57,6 @@ import { ALLOWED_ACTION_TYPES } from './input-validation/action-types.js';
 import {
   ALLOWED_AUTONOMY_MODES,
   ALLOWED_CAPABILITY_FIELDS,
-  ALLOWED_COLLAB_VERDICTS,
   ALLOWED_ENTRY_KINDS,
   ALLOWED_FLEET_CHAT_MODES,
   ALLOWED_SEND_MODES,
@@ -75,6 +74,7 @@ import {
   MAX_PICKER_MATCHES,
 } from './input-validation/limits.js';
 import type { ValidationResult } from './input-validation/result.js';
+import { validateCoordinationAction } from './input-validation-coordination.js';
 import { MAX_TOOL_STREAM_RETAINED_CHARS } from './reducers/helpers.js';
 
 export { ALLOWED_ACTION_TYPES } from './input-validation/action-types.js';
@@ -603,109 +603,18 @@ export function validateAction(action: {
       }
       return { valid: true, value: payload };
     }
-
-    // ── Goal ────────────────────────────────────────────────────────
-    case 'goalRunInit': {
-      const title = String(action.title ?? '');
-      if (title.length > 500) {
-        return { valid: false, error: `goalRunInit.title: exceeds 500 chars.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'goalRunPhaseUpdate': {
-      const completed = Number(action.completedTasks);
-      if (!Number.isInteger(completed) || completed < 0) {
-        return {
-          valid: false,
-          error: `goalRunPhaseUpdate.completedTasks: ${completed} is not a non-negative integer.`,
-        };
-      }
-      const total = Number(action.totalTasks);
-      if (!Number.isInteger(total) || total < 0) {
-        return {
-          valid: false,
-          error: `goalRunPhaseUpdate.totalTasks: ${total} is not a non-negative integer.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'goalRunRunningPhases': {
-      const phaseIds = action.phaseIds;
-      if (!Array.isArray(phaseIds)) {
-        return { valid: false, error: 'goalRunRunningPhases.phaseIds: not an array.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'goalRunElapsed': {
-      const ms = Number(action.ms);
-      if (!Number.isFinite(ms) || ms < 0) {
-        return { valid: false, error: `goalRunElapsed.ms: ${ms} is not a non-negative number.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'goalRunTaskActive': {
-      if (typeof action.active !== 'boolean') {
-        return { valid: false, error: 'goalRunTaskActive.active: not a boolean.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── SDD board ───────────────────────────────────────────────────
-    case 'sddBoardSnapshot': {
-      if (!action.snapshot || typeof action.snapshot !== 'object') {
-        return { valid: false, error: 'sddBoardSnapshot.snapshot: missing or non-object.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Worktree ────────────────────────────────────────────────────
-    case 'worktreeUpsert': {
-      const handleId = String(action.handleId ?? '');
-      if (handleId.length === 0) {
-        return { valid: false, error: 'worktreeUpsert.handleId: empty.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'worktreeRemove': {
-      const handleId = String(action.handleId ?? '');
-      if (handleId.length === 0) {
-        return { valid: false, error: 'worktreeRemove.handleId: empty.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Collaboration ───────────────────────────────────────────────
-    case 'collabBugFound': {
-      const bugId = String(action.bugId ?? '');
-      if (bugId.length === 0) {
-        return { valid: false, error: 'collabBugFound.bugId: empty.' };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'collabSessionDone': {
-      const verdict = String(action.verdict ?? '');
-      if (!ALLOWED_COLLAB_VERDICTS.has(verdict)) {
-        return {
-          valid: false,
-          error: `collabSessionDone.verdict: "${verdict}" not on allow-list.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'collabSubagentSpawned': {
-      const role = String(action.role ?? '');
-      if (role.length === 0) {
-        return { valid: false, error: 'collabSubagentSpawned.role: empty.' };
-      }
-      return { valid: true, value: payload };
-    }
+    case 'goalRunInit':
+    case 'goalRunPhaseUpdate':
+    case 'goalRunRunningPhases':
+    case 'goalRunElapsed':
+    case 'goalRunTaskActive':
+    case 'sddBoardSnapshot':
+    case 'worktreeUpsert':
+    case 'worktreeRemove':
+    case 'collabBugFound':
+    case 'collabSessionDone':
+    case 'collabSubagentSpawned':
+      return validateCoordinationAction(action, payload);
 
     // ── Debug stream ────────────────────────────────────────────────
     case 'debugStreamStats': {

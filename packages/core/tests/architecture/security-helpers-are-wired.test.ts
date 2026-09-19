@@ -122,7 +122,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/primitives/src/timing-safe.ts', // the single definition
       'packages/core/src/security/totp.ts', // TOTP codes + recovery-code hashes
       'packages/cli/src/hq-server/auth.ts', // signed session-cookie HMAC
-      'packages/core/src/hq/auth-store.ts',
+      'packages/core/src/hq/auth-passwords.ts', // password hash comparison extracted from auth-store
       'packages/core/src/hq/bootstrap-store.ts',
       'packages/core/src/coordination/mailbox-credential-store.ts',
       'packages/core/src/coordination/mailbox-http-auth.ts',
@@ -288,7 +288,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/session-handlers.ts',
       // The helper's own module: the match there is a validation *message*
       // naming the field, not a read of it.
-      'packages/webui-server/src/server/ws-payload-validation.ts',
+      'packages/webui-server/src/server/ws-mailbox-validation.ts',
     ]);
 
     const offenders: string[] = [];
@@ -324,7 +324,7 @@ describe('security helpers are wired, not just present', () => {
       'packages/webui-server/src/server/kanban-task-routes.ts',
       'packages/webui-server/src/server/routes.ts',
       'packages/webui-server/src/server/session-handlers.ts',
-      'packages/webui-server/src/server/ws-payload-validation.ts',
+      'packages/webui-server/src/server/ws-mailbox-validation.ts',
     ];
 
     expect(listed.filter((rel) => !known.has(rel))).toEqual([]);

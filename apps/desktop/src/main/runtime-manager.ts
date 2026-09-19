@@ -2,25 +2,15 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import * as fs from 'node:fs/promises';
-import * as http from 'node:http';
-import * as net from 'node:net';
-import * as os from 'node:os';
 import * as path from 'node:path';
+import type { TrustBoundary } from '@wrongstack/core/security';
 import {
   atomicWrite,
   buildChildEnv,
   projectSlug,
   resolveWstackPaths,
   toErrorMessage,
-  wstackGlobalRoot,
 } from '@wrongstack/core/utils';
-import type { TrustBoundary } from '@wrongstack/core/security';
-import {
-  authorizeDesktopRuntimeStart,
-  authorizeDesktopRuntimeStop,
-  desktopCompatibilityTrustBoundary,
-} from './desktop-privileged-actions.js';
-import { resolveWebUiDistDir, resolveWebUiEntry } from './runtime-manager-paths.js';
 import type {
   DesktopProjectEntry,
   DesktopRuntimeKind,
@@ -28,6 +18,21 @@ import type {
   DesktopStateSnapshot,
   DesktopWindowState,
 } from '../shared/types.js';
+import {
+  authorizeDesktopRuntimeStart,
+  authorizeDesktopRuntimeStop,
+  desktopCompatibilityTrustBoundary,
+} from './desktop-privileged-actions.js';
+import { resolveWebUiDistDir, resolveWebUiEntry } from './runtime-manager-paths.js';
+import { findFreePort, terminateProcessTree, waitForHttpReady } from './runtime-process.js';
+import {
+  normalizeProjectEntries,
+  pathKey,
+  readGlobalProjectManifest,
+  removeGlobalProjectManifest,
+  samePath,
+  touchGlobalProjectManifest,
+} from './runtime-project-manifest.js';
 
 interface DesktopStateFile {
   recentProjects?: DesktopProjectEntry[] | undefined;
@@ -684,82 +689,6 @@ export class DesktopRuntimeManager extends EventEmitter {
   }
 }
 
-function hasChildExited(child: ChildProcess): boolean {
-  return child.exitCode !== null || child.signalCode !== null;
-}
-
-/** Wait for actual process exit; ChildProcess.killed only means a signal was sent. */
-export function waitForChildExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
-  if (hasChildExited(child)) return Promise.resolve(true);
-
-  return new Promise<boolean>((resolve) => {
-    let settled = false;
-    const finish = (exited: boolean): void => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      child.off('exit', onExit);
-      resolve(exited);
-    };
-    const onExit = (): void => finish(true);
-    const timer = setTimeout(() => finish(hasChildExited(child)), timeoutMs);
-    timer.unref?.();
-    child.once('exit', onExit);
-
-    // Close the race between the initial state check and listener registration.
-    if (hasChildExited(child)) finish(true);
-  });
-}
-
-async function terminateProcessTree(child: ChildProcess | null): Promise<void> {
-  if (!child?.pid || hasChildExited(child)) return;
-  if (process.platform !== 'win32') {
-    // macOS / Linux: send SIGTERM first, then SIGKILL after a grace
-    // period. Electron child processes spawned with ELECTRON_RUN_AS_NODE
-    // may ignore the initial signal during busy I/O.
-    const pid = child.pid;
-    const exited = waitForChildExit(child, 5000);
-    child.kill('SIGTERM');
-    if (await exited) return;
-
-    // Grace period expired — force kill the process tree. Do not use
-    // child.killed here: it becomes true as soon as SIGTERM is sent.
-    if (!hasChildExited(child)) {
-      try {
-        process.kill(-pid, 'SIGKILL');
-      } catch {
-        child.kill('SIGKILL');
-      }
-      await waitForChildExit(child, 1000);
-    }
-    return;
-  }
-
-  await new Promise<void>((resolve) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    const timer = setTimeout(finish, 3000);
-    timer.unref?.();
-    const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
-      stdio: 'ignore',
-      windowsHide: true,
-    });
-    killer.once('exit', () => {
-      clearTimeout(timer);
-      finish();
-    });
-    killer.once('error', () => {
-      clearTimeout(timer);
-      child.kill();
-      finish();
-    });
-  });
-}
-
 /** Log lines carried in a snapshot, for the one runtime that can display them. */
 export const SNAPSHOT_LOG_LINES = 40;
 
@@ -917,202 +846,11 @@ function nextRuntimeName(
   return liveSameRoot === 0 ? baseName : `${baseName} #${liveSameRoot + 1}`;
 }
 
-function pathKey(value: string): string {
-  const resolved = path.resolve(value);
-  return os.platform() === 'win32' ? resolved.toLowerCase() : resolved;
-}
-
-async function findFreePort(startPort: number, exclude: Set<number>): Promise<number> {
-  for (let port = startPort; port < startPort + 200; port++) {
-    if (exclude.has(port)) continue;
-    if (await isPortFree(port)) return port;
-  }
-  throw new Error(`No free local port found near ${startPort}`);
-}
-
-function isPortFree(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => {
-      server.close(() => resolve(true));
-    });
-    server.listen(port, '127.0.0.1');
-  });
-}
-
-function waitForHttpReady(baseUrl: string, token: string, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  const url = new URL(baseUrl);
-  url.searchParams.set('token', token);
-  url.searchParams.set('shell', 'desktop');
-
-  return new Promise((resolve, reject) => {
-    let probeTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const cleanup = (): void => {
-      if (probeTimer) {
-        clearTimeout(probeTimer);
-        probeTimer = undefined;
-      }
-    };
-
-    const probe = (): void => {
-      let done = false;
-
-      const triggerRetry = (): void => {
-        if (done) return;
-        done = true;
-        if (Date.now() >= deadline) {
-          reject(new Error(`WebUI did not become ready at ${baseUrl}`));
-          return;
-        }
-        probeTimer = setTimeout(probe, 250);
-      };
-
-      const req = http.get(url, (res) => {
-        res.resume();
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 500) {
-          if (!done) {
-            done = true;
-            cleanup();
-            resolve();
-          }
-          return;
-        }
-        triggerRetry();
-      });
-
-      req.once('error', () => {
-        triggerRetry();
-      });
-
-      req.setTimeout(1000, () => {
-        req.destroy();
-        triggerRetry();
-      });
-    };
-
-    probe();
-  });
-}
-
-async function readGlobalProjectManifest(): Promise<DesktopProjectEntry[]> {
-  const manifestFile = path.join(wstackGlobalRoot(), 'projects.json');
-  try {
-    const raw = await fs.readFile(manifestFile, 'utf8');
-    return normalizeProjectManifest(JSON.parse(raw) as unknown);
-  } catch {
-    return [];
-  }
-}
-
-export function normalizeProjectManifest(value: unknown): DesktopProjectEntry[] {
-  if (Array.isArray(value)) return normalizeProjectEntries(value).slice(0, 80);
-  if (!value || typeof value !== 'object') return [];
-  const manifest = value as { projects?: unknown; recentProjects?: unknown; recents?: unknown };
-  const source = Array.isArray(manifest.projects)
-    ? manifest.projects
-    : Array.isArray(manifest.recentProjects)
-      ? manifest.recentProjects
-      : Array.isArray(manifest.recents)
-        ? manifest.recents
-        : [];
-  return normalizeProjectEntries(source).slice(0, 80);
-}
-
-function normalizeProjectEntries(value: unknown): DesktopProjectEntry[] {
-  if (!Array.isArray(value)) return [];
-  const seen = new Set<string>();
-  const projects: DesktopProjectEntry[] = [];
-  for (const item of value) {
-    const project = normalizeProjectEntry(item);
-    if (!project) continue;
-    const key = pathKey(project.root);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    projects.push(project);
-  }
-  return projects.sort((a, b) =>
-    (b.lastSeen ?? b.createdAt ?? '').localeCompare(a.lastSeen ?? a.createdAt ?? ''),
-  );
-}
-
-function normalizeProjectEntry(value: unknown): DesktopProjectEntry | null {
-  if (!value || typeof value !== 'object') return null;
-  const candidate = value as Partial<DesktopProjectEntry>;
-  if (typeof candidate.root !== 'string' || !candidate.root.trim()) return null;
-  const root = path.resolve(candidate.root);
-  const name =
-    typeof candidate.name === 'string' && candidate.name.trim()
-      ? candidate.name.trim()
-      : path.basename(root) || root;
-  const entry: DesktopProjectEntry = {
-    name,
-    root,
-    slug:
-      typeof candidate.slug === 'string' && candidate.slug.trim()
-        ? candidate.slug.trim()
-        : projectSlug(root),
-  };
-  if (typeof candidate.lastSeen === 'string' && candidate.lastSeen.trim()) {
-    entry.lastSeen = candidate.lastSeen.trim();
-  }
-  if (typeof candidate.createdAt === 'string' && candidate.createdAt.trim()) {
-    entry.createdAt = candidate.createdAt.trim();
-  }
-  if (typeof candidate.lastWorkingDir === 'string' && candidate.lastWorkingDir.trim()) {
-    entry.lastWorkingDir = path.resolve(candidate.lastWorkingDir);
-  }
-  return entry;
-}
-
-async function touchGlobalProjectManifest(
-  entry: DesktopProjectEntry,
-): Promise<DesktopProjectEntry[]> {
-  const manifestFile = path.join(wstackGlobalRoot(), 'projects.json');
-  const projects = await readGlobalProjectManifest();
-  const existing = projects.find((p) => samePath(p.root, entry.root));
-  if (existing) {
-    existing.name = entry.name;
-    existing.slug = entry.slug;
-    existing.lastSeen = entry.lastSeen;
-    existing.lastWorkingDir = entry.lastWorkingDir;
-  } else {
-    projects.push({ ...entry, createdAt: entry.lastSeen });
-  }
-  const sorted = projects
-    .sort((a, b) =>
-      (b.lastSeen ?? b.createdAt ?? '').localeCompare(a.lastSeen ?? a.createdAt ?? ''),
-    )
-    .slice(0, 80);
-  await fs.mkdir(path.dirname(manifestFile), { recursive: true });
-  await atomicWrite(manifestFile, `${JSON.stringify({ projects: sorted }, null, 2)}\n`, {
-    mode: 0o600,
-  });
-  return sorted;
-}
-
-async function removeGlobalProjectManifest(projectRoot: string): Promise<DesktopProjectEntry[]> {
-  const manifestFile = path.join(wstackGlobalRoot(), 'projects.json');
-  const resolved = path.resolve(projectRoot);
-  const projects = (await readGlobalProjectManifest()).filter(
-    (project) => !samePath(project.root, resolved),
-  );
-  await fs.mkdir(path.dirname(manifestFile), { recursive: true });
-  await atomicWrite(manifestFile, `${JSON.stringify({ projects }, null, 2)}\n`, { mode: 0o600 });
-  return projects;
-}
-
-function samePath(left: string, right: string): boolean {
-  const a = path.resolve(left);
-  const b = path.resolve(right);
-  return os.platform() === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
-}
-
 export {
   desktopSettingsWorkspaceRoot,
   preloadPath,
   rendererIndexPath,
   webuiPreloadPath,
 } from './runtime-manager-paths.js';
+export { waitForChildExit } from './runtime-process.js';
+export { normalizeProjectManifest } from './runtime-project-manifest.js';

@@ -1,5 +1,5 @@
 import type { HqClientKind, HqClientRecord } from './client.js';
-import type { HqMachineRecord } from './core.js';
+import type { HqMachineRecord } from './common-payloads.js';
 import type { HqFleetSummary } from './fleet.js';
 import type { HqMailboxSummary } from './mailbox.js';
 import type { HqMcpServerHealth } from './mcp.js';
@@ -18,25 +18,6 @@ export interface HqSessionStatusPayload {
   status: HqSessionStatus;
   phase?: string;
   message?: string;
-}
-
-export interface HqSubagentSummary {
-  subagentId: string;
-  role?: string;
-  status: 'pending' | 'running' | 'idle' | 'completed' | 'failed' | 'stopped';
-  task?: string;
-  currentTool?: string;
-  runtimeMs?: number;
-  costUsd?: number;
-  lastActivityAt?: string;
-  /**
-   * The provider/model this worker actually runs on, `provider/model` when the
-   * provider is known. `FleetTelemetryBridge` has always put it on the wire —
-   * the field was missing from this contract, so a consumer could not read it
-   * type-safely. It is the answer to "did my per-session model routing take
-   * effect", which is otherwise invisible from HQ.
-   */
-  model?: string;
 }
 
 /** Payload for `agent.message` events — a subagent's conversational output. */
@@ -227,3 +208,5 @@ export interface HqSnapshot {
     };
   };
 }
+
+export type { HqSubagentSummary } from './common-payloads.js';

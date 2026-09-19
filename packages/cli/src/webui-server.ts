@@ -12,6 +12,7 @@
  *
  * Public surface: `runWebUI` plus WS message shapes.
  */
+
 import type { Server as HttpServer } from 'node:http';
 import * as path from 'node:path';
 import { createCompatibilityTrustBoundary, DefaultSecretScrubber } from '@wrongstack/core/security';
@@ -45,24 +46,23 @@ import {
   sendSerialized,
   stampDispatchSession,
   startTerminalDashboard,
-  startWebUILiveStatusLogger,
   toSessionHistoryEntries,
 } from '@wrongstack/webui-server';
 import { verifyClient as verifyWsClient } from '@wrongstack/webui-server/server/ws-auth';
 import { type WebSocket, WebSocketServer } from 'ws';
-import { createWebuiClientRegistration } from './webui-server/client-registration.js';
-import type {
-  WSClientMessage as EmbeddedWSClientMessage,
-  WSServerMessage as EmbeddedWSServerMessage,
-} from './webui-server/contracts.js';
-export type WSClientMessage = EmbeddedWSClientMessage;
-export type WSServerMessage = EmbeddedWSServerMessage;
-
 import { WEBUI_SESSION_CHILD_CAPABILITIES } from './boot/webui-session-child.js';
+import {
+  createEmbeddedClientRegistration,
+  startEmbeddedLiveStatusLogger,
+} from './webui-client-observability.js';
 import {
   type ConnectedClient,
   createConnectionHandler,
 } from './webui-server/connection-handler.js';
+import type {
+  WSClientMessage as EmbeddedWSClientMessage,
+  WSServerMessage as EmbeddedWSServerMessage,
+} from './webui-server/contracts.js';
 import { startWebuiCredentialWatcher } from './webui-server/credential-watcher.js';
 import { createWebuiDomainHandlers } from './webui-server/domain-handlers.js';
 import { createCliKanbanHostRoutes } from './webui-server/kanban-host-adapter.js';
@@ -83,8 +83,10 @@ import { createSessionStartPayloadBuilder } from './webui-server/session-start-p
 import { createSetupEvents } from './webui-server/setup-events.js';
 import { startStaticServe } from './webui-server/static-serve.js';
 import { createStreamCoalescer } from './webui-server/stream-coalescer.js';
-
 import type { CliWebUIOptions } from './webui-server-options.js';
+
+export type WSClientMessage = EmbeddedWSClientMessage;
+export type WSServerMessage = EmbeddedWSServerMessage;
 
 export type { CliWebUIOptions } from './webui-server-options.js';
 export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
@@ -225,65 +227,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   });
 
   const { register: registerWebuiClient, unregister: unregisterWebuiClient } =
-    createWebuiClientRegistration({
-      projectRoot: opts.projectRoot,
-      appConfig: opts.appConfig,
-      events: opts.events,
-      hqSessionId: opts.session.id,
-      getSessionId: () => opts.agent.ctx.session?.id ?? opts.session.id,
-      // One HQ session per open tab. The set is the same one the terminal
-      // panel lists: every session a connected browser is displaying.
-      listSessions: () => {
-        const ids = new Set<string>();
-        for (const client of clients.values()) {
-          if (client.sessionId) ids.add(client.sessionId);
-          for (const id of client.sessionIds ?? []) ids.add(id);
-        }
-        return [...ids];
-      },
-      // `cli-main` already runs a tracker and a bridge for the boot session.
-      // Announcing it here too would put two trackers on one bus flushing the
-      // same agent list.
-      isSessionOwnedElsewhere: (sessionId: string) => sessionId === opts.session.id,
-      // The tab's own journal, so HQ takes its turns from the write path
-      // instead of tailing the file.
-      getSessionWriter: (sessionId: string) => sessionAgentsRef?.peek(sessionId)?.ctx.session,
-      hqControl: {
-        // HQ speaks for the LEADER — the boot session, the one it registered
-        // itself under (`hqSessionId`) — not for whatever else the browser
-        // has open. This used to abort every controller in the map and clear
-        // it, so a remote "interrupt" issued against the leader also killed
-        // the three other tabs' in-flight runs. Deleting the entries was
-        // wrong on its own terms too: the run's own `end()` owns removal, and
-        // clearing early makes `isRunActive` lie to every tab still running.
-        // Every open tab is its own session with its own abort controller, so
-        // the command's session is the one that gets stopped. Falling back to
-        // the boot session keeps a dashboard that sends no session — every one
-        // before this existed — behaving exactly as before.
-        interruptLeader: (sessionId?: string) => {
-          const leaderId = sessionId ?? opts.session.id;
-          const controller = abortControllers.get(leaderId);
-          if (!controller) return false;
-          controller.abort();
-          // Stopping a run means stopping its work; this session's subagents
-          // are part of it (same treatment as the `abort` seam). Session
-          // scoped, so one tab's Stop never reaches another tab's fleet.
-          try {
-            void Promise.resolve(opts.stopSessionFleet?.(leaderId)).catch(() => undefined);
-          } catch {
-            // Best effort: the run is already aborted and a teardown failure
-            // must not surface instead of the stop.
-          }
-          return true;
-        },
-        allowRunCommand: () => opts.hqAllowExec === true,
-        // A command naming a tab this process no longer holds is refused, not
-        // redirected onto the boot session: the operator picked a terminal,
-        // and steering a different one is worse than not steering at all.
-        ownsSession: (sessionId: string) =>
-          sessionId === opts.session.id || sessionAgentsRef?.has(sessionId) === true,
-      },
-    });
+    createEmbeddedClientRegistration(opts, clients, abortControllers, () => sessionAgentsRef);
 
   registerWebuiClient();
 
@@ -630,28 +574,13 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
    * model and provider. `peek`, never `get` — the panel must not materialise
    * agents for stale tab ids.
    */
-  const stopLiveStatusLogger = startWebUILiveStatusLogger({
-    events: opts.events,
-    dashboard: terminalLogView,
-    getSessionList: () => {
-      const ids = new Set<string>();
-      for (const client of clients.values()) {
-        if (client.sessionId) ids.add(client.sessionId);
-        for (const id of client.sessionIds ?? []) ids.add(id);
-      }
-      const currentId = opts.agent.ctx.session?.id ?? opts.session.id;
-      if (ids.size === 0 && currentId) ids.add(currentId);
-      return Array.from(ids).map((id) => {
-        const ctx = sessionAgentsRef?.peek(id)?.ctx;
-        return {
-          id,
-          model: ctx?.model ?? opts.agent.ctx.model ?? '',
-          provider: ctx?.provider?.id ?? opts.agent.ctx.provider?.id ?? '',
-          isRunning: abortControllers.has(id),
-        };
-      });
-    },
-  });
+  const stopLiveStatusLogger = startEmbeddedLiveStatusLogger(
+    opts,
+    clients,
+    abortControllers,
+    () => sessionAgentsRef,
+    terminalLogView,
+  );
 
   /**
    * Salvage every tab's journal on a fatal exit, not just the leader's.

@@ -1,3 +1,18 @@
+import type {
+  KanbanAgentAssignment,
+  KanbanManagementState,
+  KanbanSupervisorConfig,
+} from './supervision-types.js';
+import type { KanbanCheckType, KanbanRetryPolicy } from './task-policy-types.js';
+import type {
+  KanbanAtomicityAssessment,
+  KanbanBoardAtomicityPolicy,
+  KanbanCompletionGatePolicy,
+  KanbanExpectedFileChange,
+  KanbanTaskPark,
+  KanbanVerificationReport,
+} from './verification-types.js';
+
 /**
  * Project-scoped multi-kanban data model.
  *
@@ -119,19 +134,6 @@ export interface KanbanBoundaryPolicy {
   deny?: KanbanBoundarySelector[] | undefined;
 }
 
-export type KanbanCheckType =
-  | 'manual'
-  | 'auto'
-  | 'agent'
-  | 'test'
-  | 'review'
-  | 'command'
-  | 'file_exists'
-  | 'file_matches'
-  | 'git_diff'
-  | 'metric'
-  | 'council';
-
 export type KanbanCheckStatus = 'pending' | 'passed' | 'failed' | 'skipped';
 /**
  * Post-execution check result status.
@@ -151,14 +153,6 @@ export type KanbanLinkType =
   | 'url'
   | 'other';
 
-export type KanbanAgentRunStatus =
-  | 'assigned'
-  | 'queued'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
-
 export type KanbanGoalMetricStatus = 'pending' | 'met' | 'missed' | 'waived';
 
 /**
@@ -169,8 +163,6 @@ export type KanbanGoalMetricStatus = 'pending' | 'met' | 'missed' | 'waived';
  *   are unaffected.
  */
 export type KanbanGoalMetricDirection = 'at_least' | 'at_most';
-
-export type KanbanRetryPolicy = 'off' | 'incremental' | 'exponential';
 
 export type KanbanManualActivityKind =
   | 'decision'
@@ -191,168 +183,6 @@ export interface RecordKanbanTaskActivityInput {
   summary: string;
   outcome?: KanbanManualActivityOutcome | undefined;
   details?: string | undefined;
-}
-
-/**
- * How an agent assigned to a task obtains its primary model.
- *
- * - 'session'          — inherit whatever the session leader is running.
- * - 'fixed'            — a pinned provider/model.
- * - 'fallback_profile' — a named chain; chain[0] is the primary.
- * - 'tier'             — a named cost level ('budget' / 'standard' / 'premium').
- *                        Resolved through `modelTiers`, so the board stores the
- *                        INTENT ('run this cheaply') rather than a model id that
- *                        goes stale the moment the config changes.
- */
-export type KanbanModelRoutingMode = 'session' | 'fixed' | 'fallback_profile' | 'tier';
-
-/**
- * Persisted, inspectable execution route. Keeping the mode explicit avoids the
- * old ambiguity where an empty provider/model could mean either "use session"
- * or "configuration was forgotten".
- */
-export interface KanbanExecutionRouting {
-  mode: KanbanModelRoutingMode;
-  provider?: string | undefined;
-  model?: string | undefined;
-  fallbackProfile?: string | undefined;
-  fallbackModels?: string[] | undefined;
-  /** Tier id when `mode` is 'tier'. Resolved at dispatch time against `modelTiers`. */
-  tier?: string | undefined;
-}
-
-export type KanbanSupervisorMode = 'deterministic' | 'agentic';
-
-/** Board-level policy for the quiet Kanban supervisor. */
-export interface KanbanSupervisorConfig {
-  /** Undefined config enables background management when the host supports dispatch. */
-  enabled: boolean;
-  /** Deterministic reconciliation is always performed; agentic also manages task quality. */
-  mode: KanbanSupervisorMode;
-  /** Audit cadence. Hosts clamp this to a safe minimum. */
-  intervalMs?: number | undefined;
-  /** Minimum delay between agentic anomaly reviews. */
-  agentCooldownMs?: number | undefined;
-  /** What to do with expired assignment leases. */
-  recoveryMode?: KanbanRecoveryMode | undefined;
-  /** Explicit model source for an agentic review. */
-  routing?: KanbanExecutionRouting | undefined;
-  /** Agent skills whose instructions must be injected into an agentic review. */
-  skills?: string[] | undefined;
-}
-
-/** Durable task-manager ownership and review checkpoint; never copied to a new board. */
-export interface KanbanManagementState {
-  status?: 'running' | 'completed' | 'failed' | undefined;
-  lease?:
-    | {
-        token: string;
-        fingerprint: string;
-        expiresAt: number;
-        reviews?: Record<string, KanbanManagementReview>;
-      }
-    | undefined;
-  reviews?: Record<string, KanbanManagementReview> | undefined;
-  pendingTaskIds?: string[] | undefined;
-  reviewedFingerprint?: string | undefined;
-  /** Only receipt-validated completions may suppress future reviews. */
-  reviewCoverageVersion?: 1 | undefined;
-  lastAttemptAt?: number | undefined;
-  lastCompletedAt?: number | undefined;
-  summary?: string | undefined;
-  error?: string | undefined;
-}
-
-export interface KanbanManagementReview {
-  taskVersion: string;
-  disposition: 'adequate' | 'enriched' | 'needs_leader';
-  reason: string;
-  reviewedAt: number;
-  reviewedBy: string;
-}
-
-export type KanbanSupervisorStatus = 'disabled' | 'healthy' | 'attention' | 'running' | 'error';
-
-/** Ephemeral runtime snapshot returned by the hosting surface. */
-export interface KanbanSupervisorSnapshot {
-  boardId: string;
-  status: KanbanSupervisorStatus;
-  mode: KanbanSupervisorMode;
-  lastAuditAt?: string | undefined;
-  lastAgentRunAt?: string | undefined;
-  nextAuditAt?: string | undefined;
-  reconciledTaskIds: string[];
-  staleRecoveredTaskIds: string[];
-  anomalyCount: number;
-  summary?: string | undefined;
-  error?: string | undefined;
-}
-
-/**
- * Sprint 2 recovery mode surface. `'auto'` defers per-task mode to
- * `selectRecoveryMode` based on the configured `RecoverStaleKanbanAssignmentsInput.policy`.
- * Explicit modes keep the historical semantics:
- *   - `'release'` clears the assignment and returns the task to ready/blocked.
- *   - `'retry'` increments attempt and re-queues unless `maxAttempts` is exhausted.
- *   - `'fail'` marks the assignment failed (retry budget exhausted).
- */
-export type KanbanRecoveryMode = 'auto' | 'release' | 'retry' | 'fail';
-
-/**
- * Optional policy that biases per-task recovery decisions. When present and
- * `RecoverStaleKanbanAssignmentsInput.mode === 'auto'`, each stale task gets
- * a per-task mode derived from its assignment metadata, the queue health
- * signal summary for the task's board, and the policy rules below.
- */
-export interface KanbanRecoveryPolicy {
-  /** When true, prefer `fail` over `retry` for tasks whose `costCeilingUsd` is set. */
-  failWhenCostCeilingSet?: boolean | undefined;
-  /** When set, prefer `release` for tasks whose `lastFailureKind` matches any of these. */
-  releaseOnFailureKinds?: string[] | undefined;
-  /** When true, also `release` if the heartbeat-due signal mentions this task. Default: false. */
-  releaseOnHeartbeatDue?: boolean | undefined;
-  /** Incremental/exponential/off hint returned for cost boundary diagnostics. */
-  retryPolicyOverride?: KanbanRetryPolicy | undefined;
-}
-
-export interface KanbanAgentAssignment {
-  agentId?: string | undefined;
-  name?: string | undefined;
-  role?: string | undefined;
-  provider?: string | undefined;
-  model?: string | undefined;
-  /** Explicit source used to resolve provider/model for this run. */
-  modelRouting?: KanbanModelRoutingMode | undefined;
-  fallbackProfile?: string | undefined;
-  fallbackModels?: string[] | undefined;
-  /**
-   * Named cost level when `modelRouting` is 'tier'. Storing the level rather
-   * than a resolved model id keeps a queued task correct across config edits.
-   */
-  tier?: string | undefined;
-  /** Agentic skills that are force-loaded into the worker prompt. */
-  skills?: string[] | undefined;
-  tools?: string[] | undefined;
-  allowedCapabilities?: string[] | undefined;
-  status: KanbanAgentRunStatus;
-  dispatchedAt?: string | undefined;
-  completedAt?: string | undefined;
-  leaseId?: string | undefined;
-  claimedAt?: string | undefined;
-  heartbeatAt?: string | undefined;
-  leaseExpiresAt?: string | undefined;
-  attempt?: number | undefined;
-  maxAttempts?: number | undefined;
-  /** Sprint 2: cost ceiling for this assignment in USD; 0/undefined means unbounded. */
-  costCeilingUsd?: number | undefined;
-  /** Sprint 2: which retry strategy the recovery router should follow. */
-  retryPolicy?: KanbanRetryPolicy | undefined;
-  /** Sprint 2: last failure kind observed by the worker, used by routing hints. */
-  lastFailureKind?: string | undefined;
-  subagentId?: string | undefined;
-  runTaskId?: string | undefined;
-  lastResult?: string | undefined;
-  error?: string | undefined;
 }
 
 /** Escalation mode for a single check that cannot be deterministically verified. */
@@ -651,251 +481,6 @@ export interface KanbanTask {
   park?: KanbanTaskPark | undefined;
 }
 
-/** Expected file operation for a task's verification scope. */
-export interface KanbanExpectedFileChange {
-  path: string;
-  operation: 'create' | 'modify' | 'delete';
-  /** Optional: human-readable note about why this change is expected. */
-  note?: string | undefined;
-}
-
-/**
- * Immutable snapshot of a completed verification run.
- * Written atomically into the authoritative board record inside the owner transaction.
- */
-export interface KanbanVerificationReport {
-  taskId: string;
-  taskTitle: string;
-  boardId: string;
-  startedAt: string;
-  completedAt: string;
-  /** Overall verdict. */
-  verdict: 'passed' | 'failed' | 'needs_human' | 'incomplete';
-  /** Every check evaluated, in order. */
-  checks: KanbanVerificationCheckResult[];
-  /** File-scope analysis. */
-  fileScope?: KanbanVerificationFileScope | undefined;
-  /** Sub-task aggregation (only when task.atomic === true). */
-  subtasks?: KanbanVerificationSubtasks | undefined;
-  /** Human-readable Markdown summary. */
-  markdownSummary: string;
-  /** Raw evidence attachments. */
-  attachments: KanbanVerificationAttachment[];
-  /**
-   * Attempt counter from the assignment that produced the verified work.
-   * Lets a reviewer tell apart "re-verified attempt 3" from "first attempt
-   * that was never run." Optional and backwards-compatible: older reports
-   * simply omit it.
-   */
-  attempt?: number | undefined;
-  /**
-   * Lease id of the assignment that owned the work. Ties the report to a
-   * specific claim so a stale owner's evidence cannot be confused with the
-   * current owner's.
-   */
-  leaseId?: string | undefined;
-  /**
-   * Board revision at the moment verification ran. Binds the report to a
-   * specific version of the task contract so a later edit cannot silently
-   * re-frame an old verdict.
-   */
-  taskRevision?: number | undefined;
-  /**
-   * Git baseline captured for the file-scope diff. The eventual goal is to
-   * capture this at dispatch/claim time (before the worker touches files)
-   * rather than at verification time; for now it records whichever snapshot
-   * the VerificationContext held when the report was built, preserving the
-   * prior behaviour while making the binding explicit and queryable.
-   */
-  baseline?: KanbanVerificationBaseline | undefined;
-  /**
-   * Criterion ids the verifier actually exercised with a passing result. Used
-   * by `validateDefinitionOfDone` to skip the per-check `passed` gate when
-   * the verifier is already authoritative — without this list the agent has
-   * to duplicate bookkeeping by calling `update_check` after a successful
-   * `verify_completion` run.
-   *
-   * Backwards-compatible: absent on older reports and on reports produced by
-   * the empty-check fast path; both behave exactly as before.
-   */
-  coveredCheckIds?: string[] | undefined;
-}
-
-export interface KanbanVerificationBaseline {
-  /** Snapshot id (randomUUID assigned by VerificationContext.captureSnapshot). */
-  id: string;
-  /** `git rev-parse HEAD` at capture time (empty for an unborn repo). */
-  commitHash: string;
-  /** `git write-tree` of the full tracked+untracked worktree at capture time. */
-  treeHash: string;
-  /** ISO timestamp of the capture. */
-  capturedAt: string;
-}
-
-export interface KanbanBackingRef {
-  kind: 'file' | 'test' | 'command' | 'diff';
-  path: string;
-  summary: string;
-}
-
-export interface KanbanVerificationCheckResult {
-  checkId: string;
-  description: string;
-  type: KanbanCheckType;
-  /**
-   * Post-execution snapshot status. Unlike `KanbanCheckStatus` (which includes
-   * 'pending'), this report is always the result of a completed verification
-   * run so 'pending' is inapplicable and 'error' captures runtime failures.
-   */
-  status: 'passed' | 'failed' | 'skipped' | 'error';
-  /** Structured evidence payload (depends on check type). */
-  evidence: Record<string, unknown>;
-  error?: string | undefined;
-  /** For agent/council checks: concrete proof references. */
-  backingRefs?: KanbanBackingRef[] | undefined;
-}
-
-export interface KanbanVerificationFileScope {
-  expectedChanges: number;
-  actualChanges: number;
-  scopeMatches: boolean;
-  files: Array<{
-    path: string;
-    operation: 'create' | 'modify' | 'delete';
-    expected: boolean;
-    linesChanged: number;
-  }>;
-}
-
-export interface KanbanVerificationSubtasks {
-  total: number;
-  completed: number;
-  failed: number;
-  children: Array<{
-    taskId: string;
-    title: string;
-    verdict: 'passed' | 'failed' | 'needs_human' | 'incomplete';
-  }>;
-}
-
-export interface KanbanVerificationAttachment {
-  kind: 'file' | 'test_output' | 'command_output' | 'diff';
-  label: string;
-  /** Truncated content or path reference. */
-  content: string;
-  /** Full path when the attachment references a file on disk. */
-  path?: string | undefined;
-}
-
-/**
- * Verdict produced by the deterministic atomicity rule set.
- *   - 'atomic': small enough to work directly; no decomposition needed.
- *   - 'borderline': between thresholds; treated as atomic unless enforced.
- *   - 'needs_decomposition': too large/vague; should be split before dispatch.
- *   - 'composite': already has children; verified via subtask aggregation,
- *     never worked directly.
- */
-export type AtomicityVerdict = 'atomic' | 'borderline' | 'needs_decomposition' | 'composite';
-
-/** Per-criterion outcome inside an atomicity assessment. Score 1 = fully atomic on this axis. */
-export interface KanbanAtomicityCriterionResult {
-  id: string;
-  score: number;
-  weight: number;
-  reason: string;
-}
-
-/**
- * Result of scoring a task against the atomicity rule set.
- * Stamped by addTask/splitTask (board policy mode !== 'off') and by the
- * assess_atomicity tool action; purely advisory unless board mode is 'enforce'.
- */
-export interface KanbanAtomicityAssessment {
-  verdict: AtomicityVerdict;
-  /** Weighted aggregate in [0, 1]; 1 = clearly atomic. */
-  score: number;
-  criteria: KanbanAtomicityCriterionResult[];
-  assessedAt: string;
-  assessedBy: 'rules' | 'agent' | 'human';
-  /** Hash of the rule-set config so stale assessments are detectable after config changes. */
-  configHash?: string | undefined;
-}
-
-/** Thresholds and weights for the deterministic atomicity rule set. */
-export interface AtomicityRuleSetConfig {
-  /** A task estimated above this is penalized on the effort axis. Default 4. */
-  maxEstimatedHours?: number | undefined;
-  /** Expected file changes above this count are penalized. Default 5. */
-  maxExpectedFileChanges?: number | undefined;
-  /** Dependency fan-in above this count is penalized. Default 3. */
-  maxDependencies?: number | undefined;
-  /** Conjunction/enumeration markers in title+description above this are penalized. Default 2. */
-  maxScopeMarkers?: number | undefined;
-  /** Aggregate score at or above this is 'atomic'. Default 0.7. */
-  atomicThreshold?: number | undefined;
-  /** Aggregate score below this is 'needs_decomposition'. Default 0.45. */
-  decomposeThreshold?: number | undefined;
-  /** Per-criterion weight overrides; unknown ids are ignored. */
-  weights?: Partial<Record<string, number>> | undefined;
-}
-
-/**
- * Completion-gate enforcement for a board.
- *   - 'strict': completion is blocked unless verification passes (managed default).
- *   - 'soft': verification runs and its report/warning events persist, but
- *     completion is never blocked (legacy default).
- *   - 'off': the gate is skipped entirely (mirror boards whose source system
- *     already verified, e.g. SDD runs).
- */
-export type KanbanCompletionGateEnforcement = 'strict' | 'soft' | 'off';
-
-export interface KanbanCompletionGatePolicy {
-  enforcement: KanbanCompletionGateEnforcement;
-  /**
-   * How many times the gate may refuse one card before it is parked.
-   * Defaults to `DEFAULT_MAX_VERIFICATION_ATTEMPTS` (2) — the task-level form
-   * of "two failures in the same place means the model is wrong". A value
-   * below 1 is treated as 1; parking cannot be disabled by setting 0, because
-   * a card that can never park is the wedge this policy exists to prevent.
-   */
-  maxVerificationAttempts?: number | undefined;
-}
-
-/**
- * Why a card stopped being retried.
- *
- * A parked card is deliberately NOT a third status: it stays `blocked`, which
- * every existing readiness, queue, and projection path already understands.
- * This record is the part those paths could not express — that the block came
- * from an exhausted verification budget rather than an unmet dependency, so
- * the next reader knows retrying it unchanged is pointless.
- *
- * Parked is honest, durable, and reversible: clearing it is what `update_task`
- * and a passing verification already do. It is never a completion state.
- */
-export interface KanbanTaskPark {
-  /** One sentence: what the gate refused, in the words the gate used. */
-  reason: string;
-  parkedAt: string;
-  /** Refusals counted when the budget ran out. */
-  attempts: number;
-  /** The refusal's validation issues, so the card carries its own evidence. */
-  issues?: string[] | undefined;
-}
-
-/** Board-level atomicity policy: whether/how tasks are assessed and decomposed. */
-export interface KanbanBoardAtomicityPolicy {
-  /**
-   * 'off' = never assess; 'assess' (default) = annotate only;
-   * 'enforce' = additionally, childless needs_decomposition leaves are not
-   * ready for claim/dispatch until split.
-   */
-  mode: 'off' | 'assess' | 'enforce';
-  /** 'auto' = apply proposed splits immediately; 'propose' = park for approval. */
-  decomposition: 'auto' | 'propose';
-  config?: AtomicityRuleSetConfig | undefined;
-}
-
 export interface KanbanColumn {
   id: string;
   title: string;
@@ -1038,3 +623,39 @@ export type KanbanBoardSummary = Pick<
   completedTaskCount: number;
   lastActivity?: string | undefined;
 };
+export type {
+  KanbanAgentAssignment,
+  KanbanExecutionRouting,
+  KanbanManagementReview,
+  KanbanManagementState,
+  KanbanModelRoutingMode,
+  KanbanRecoveryMode,
+  KanbanRecoveryPolicy,
+  KanbanSupervisorConfig,
+  KanbanSupervisorMode,
+  KanbanSupervisorSnapshot,
+  KanbanSupervisorStatus,
+} from './supervision-types.js';
+export type {
+  KanbanAgentRunStatus,
+  KanbanCheckType,
+  KanbanRetryPolicy,
+} from './task-policy-types.js';
+export type {
+  AtomicityRuleSetConfig,
+  AtomicityVerdict,
+  KanbanAtomicityAssessment,
+  KanbanAtomicityCriterionResult,
+  KanbanBackingRef,
+  KanbanBoardAtomicityPolicy,
+  KanbanCompletionGateEnforcement,
+  KanbanCompletionGatePolicy,
+  KanbanExpectedFileChange,
+  KanbanTaskPark,
+  KanbanVerificationAttachment,
+  KanbanVerificationBaseline,
+  KanbanVerificationCheckResult,
+  KanbanVerificationFileScope,
+  KanbanVerificationReport,
+  KanbanVerificationSubtasks,
+} from './verification-types.js';

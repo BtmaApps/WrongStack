@@ -20,27 +20,16 @@
  * @module subcommands/handlers/hq
  */
 
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import {
   HQ_AUTH_FILE_VERSION,
   HQ_CLI_DEFAULT_HOST,
-  type HqAlert,
-  HqAlertEngine,
-  type HqAlertRuleConfig,
   HqInsecureExposureError,
-  type HqSnapshot,
   type HqToken,
-  hqAuthAuditPath,
-  hqAuthContentHash,
-  hqAuthFilePath,
   isLoopbackHost,
   logHqAuthAudit,
   mintHqToken,
   mutateHqAuthFile,
-  readHqAlertsConfig,
   readHqAuthFile,
-  resolveHqDataDir,
 } from '@wrongstack/core/hq';
 import { expectDefined } from '@wrongstack/core/utils';
 import { resolveAuditActor } from '../../hq-server/audit-actor.js';
@@ -50,23 +39,18 @@ import { resolveHqPasswordInput } from '../../hq-server/secret-input.js';
 import { normalizeHqPublicOrigin } from '../../hq-server/utils.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
 
-export { resolveAuditActor } from '../../hq-server/audit-actor.js';
+// ── --ttl parsing ──────────────────────────────────────────────────────────
+//
+// Delegates to the shared `parseTokenTtlValue` from utils/hq-ttl.ts so the
+// same syntax (1h, 7d, 3600s, bare ms) is accepted here and in the
+// server-startup `--hq-token-ttl` flag.
 
-/**
- * Build a free-form actor string for the auth audit log. Combines the OS
- * username (best-effort) with the hostname so an operator reviewing the
- * log can see "who minted this token" without parsing environment
- * variables. Never includes the token string.
- *
- * Shared by the `wstack hq token` create/revoke handlers and by
- * `startHqServer`'s first-run bootstrap so every audit entry point
- * produces the same actor shape.
- */
-function resolveDataDir(deps: SubcommandDeps): string {
-  const override =
-    typeof deps.flags?.['data-dir'] === 'string' ? deps.flags['data-dir'] : undefined;
-  return resolveHqDataDir(override);
-}
+import { parseTokenTtlValue as parseTtlValue } from '../../utils/hq-ttl.js';
+import { hqAlertsCmd } from './hq-alerts.js';
+import { computeAuditHashField, hqAuditCmd } from './hq-audit.js';
+import { resolveDataDir } from './hq-data-dir.js';
+
+export { resolveAuditActor } from '../../hq-server/audit-actor.js';
 
 export const hqCmd: SubcommandHandler = async (args, deps) => {
   const sub = args[0];
@@ -344,131 +328,6 @@ async function hqTokenCmd(args: string[], deps: SubcommandDeps): Promise<number>
 }
 
 /**
- * `wstack hq audit verify` — re-derive the contentHash from the current
- * on-disk `auth.json` and print it so an operator can compare against a
- * `contentHash` field in an audit entry. This closes the forensic
- * tie-back loop without requiring the operator to write a script: copy
- * the hash from the audit log, run this command, eyeball (or `diff`)
- * the two values.
- *
- * Prints:
- *   - the resolved `auth.json` path (so the operator knows which file
- *     was hashed)
- *   - the SHA-256 contentHash, or `(unavailable)` if the file is
- *     missing/unreadable
- *   - the `auth-audit.jsonl` path (so the operator knows where to look
- *     for entries to compare against)
- *
- * Exit codes:
- *   0 — hash computed and printed
- *   1 — `auth.json` missing or unreadable (hash unavailable); the
- *       audit-log path is still printed so the operator can inspect
- *       historical entries
- */
-async function hqAuditCmd(args: string[], deps: SubcommandDeps): Promise<number> {
-  const action = args[0];
-
-  // `wstack hq audit --help` / `wstack hq audit help` → focused audit help.
-  if (deps.flags?.['help'] === true || action === 'help' || action === '--help') {
-    printAuditHelp(deps);
-    return 0;
-  }
-
-  if (action === 'verify' || action === undefined) {
-    return hqAuditVerify(deps);
-  }
-
-  deps.renderer.writeError(`Unknown hq audit subcommand: ${action ?? '(none)'}\n`);
-  printAuditHelp(deps);
-  return 1;
-}
-
-async function hqAuditVerify(deps: SubcommandDeps): Promise<number> {
-  const dataDir = resolveDataDir(deps);
-  const authPath = hqAuthFilePath(dataDir);
-  const auditPath = hqAuthAuditPath(dataDir);
-
-  deps.renderer.write(`auth file:   ${authPath}\n`);
-  deps.renderer.write(`audit log:   ${auditPath}\n`);
-
-  // readHqAuthFile returns a synthetic default when auth.json is missing
-  // (it doesn't throw), so hqAuthContentHash would still produce a hash
-  // over that default — which is misleading: no audit entry corresponds
-  // to a file that isn't on disk. Check existence directly so the
-  // operator gets an honest "unavailable" when there's nothing to hash.
-  const fileExists = await fileExistsQuiet(authPath);
-  if (!fileExists) {
-    deps.renderer.write(`contentHash: (unavailable — auth.json does not exist)\n`);
-    deps.renderer.write(
-      `Compare historical entries in the audit log above against a known-good hash.\n`,
-    );
-    return 1;
-  }
-
-  const authFile = await readHqAuthFile(dataDir, {
-    warn: (msg) => deps.renderer.writeWarning(`${msg}\n`),
-  });
-
-  const hash = hqAuthContentHash(authFile);
-  if (hash === undefined) {
-    deps.renderer.write(`contentHash: (unavailable — auth.json is unreadable or malformed)\n`);
-    deps.renderer.write(
-      `Compare historical entries in the audit log above against a known-good hash.\n`,
-    );
-    return 1;
-  }
-
-  deps.renderer.write(`contentHash: ${hash}\n`);
-  deps.renderer.write('\n');
-  deps.renderer.write(
-    `Compare this value against the 'contentHash' field of entries in the audit log.\n`,
-  );
-  deps.renderer.write(
-    `A match means the redacted projection of auth.json is identical to when that\n`,
-  );
-  deps.renderer.write(
-    `entry was emitted (secrets may differ — only the non-secret shape is hashed).\n`,
-  );
-  return 0;
-}
-
-async function fileExistsQuiet(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Re-read the persisted `auth.json` and return a conditional
- * `contentHash` field for embedding in an audit entry. This closes the
- * forensic tie-back loop: an operator reviewing `auth-audit.jsonl` can
- * compare the `contentHash` against the current on-disk file via
- * `wstack hq audit verify`.
- *
- * Re-reads rather than hashing the in-memory post-mutation snapshot
- * because `writeHqAuthFile` re-stamps `updatedAt` on the persisted
- * payload — hashing the in-memory `next` would diverge from what
- * `verify` computes. Matches the pattern established by the `first-run`
- * and `expired-prune` emitters in `auth-store.ts` / `hq-server.ts`.
- *
- * Returns `{}` (no `contentHash` key) when the file is unreadable, so
- * the audit entry still records the event without a tie-back — the
- * absence itself is meaningful. Conditional spread preserves
- * `exactOptionalPropertyTypes`.
- */
-async function computeAuditHashField(
-  dataDir: string,
-  warn: (msg: string) => void,
-): Promise<{ contentHash?: string }> {
-  const persisted = await readHqAuthFile(dataDir, { warn });
-  const hash = hqAuthContentHash(persisted);
-  return hash !== undefined ? { contentHash: hash } : {};
-}
-
-/**
  * Token scope: `browser` (validated on `/ws/browser`) or `client`
  * (validated on `/ws/client`). Defaults to `browser` for backward
  * compatibility with Phase 3.
@@ -627,14 +486,6 @@ async function tokenCreate(args: string[], deps: SubcommandDeps): Promise<number
     return 1;
   }
 }
-
-// ── --ttl parsing ──────────────────────────────────────────────────────────
-//
-// Delegates to the shared `parseTokenTtlValue` from utils/hq-ttl.ts so the
-// same syntax (1h, 7d, 3600s, bare ms) is accepted here and in the
-// server-startup `--hq-token-ttl` flag.
-
-import { parseTokenTtlValue as parseTtlValue } from '../../utils/hq-ttl.js';
 
 interface ResolvedTtl {
   value?: number | undefined;
@@ -902,200 +753,6 @@ function printTokenHelp(deps: SubcommandDeps): void {
   );
   deps.renderer.write(
     `  --ttl <duration>    Stamp an expiresAt on the token (e.g. --ttl 1h, --ttl 7d, --ttl 3600s).\n`,
-  );
-  deps.renderer.write('\n');
-  deps.renderer.write(`Run \`wstack hq --help\` for the full HQ command list.\n`);
-}
-
-/** Focused help for `wstack hq audit --help`. */
-function printAuditHelp(deps: SubcommandDeps): void {
-  deps.renderer.write(`Usage: wstack hq audit <verify>\n`);
-  deps.renderer.write('\n');
-  deps.renderer.write(
-    `  wstack hq audit verify   Re-derive the SHA-256 contentHash from the current\n`,
-  );
-  deps.renderer.write(
-    `                           on-disk auth.json and print it so an operator can compare\n`,
-  );
-  deps.renderer.write(
-    `                           it against a contentHash field in an audit-log entry.\n`,
-  );
-  deps.renderer.write('\n');
-  deps.renderer.write(`Flags:\n`);
-  deps.renderer.write(
-    `  --data-dir <path>   Override HQ data directory (default ~/.wrongstack/hq).\n`,
-  );
-  deps.renderer.write('\n');
-  deps.renderer.write(`Run \`wstack hq --help\` for the full HQ command list.\n`);
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// W2 #6 (RFC hq-improvements-2026-09.md): `wstack hq alerts` subcommand.
-//
-// Subcommand tree:
-//   wstack hq alerts eval [--snapshot <path>]   Run HqAlertEngine against a
-//                                              snapshot file or the live HQ
-//                                              snapshot. Pure-function dry
-//                                              run; no server required.
-//
-// The handler mirrors `hqAuditCmd`/`hqTokenCmd` conventions: focused help
-// for `--help`/`help`, a single action that defaults when no action is
-// given, and a clear error for unknown actions.
-// ──────────────────────────────────────────────────────────────────────────
-
-async function hqAlertsCmd(args: string[], deps: SubcommandDeps): Promise<number> {
-  const action = args[0];
-
-  // `wstack hq alerts --help` / `wstack hq alerts help` → focused alerts help.
-  if (deps.flags?.['help'] === true || action === 'help' || action === '--help') {
-    printAlertsHelp(deps);
-    return 0;
-  }
-
-  if (action === 'eval' || action === undefined) {
-    return hqAlertsEval(args.slice(1), deps);
-  }
-
-  deps.renderer.writeError(`Unknown hq alerts subcommand: ${action ?? '(none)'}\n`);
-  printAlertsHelp(deps);
-  return 1;
-}
-
-/**
- * W2 #6: `wstack hq alerts eval` — run `HqAlertEngine.evaluate()` against
- * a snapshot file or the live HQ snapshot.
- *
- * Defaults to `<dataDir>/snapshot.json`. Operators can pass
- * `--snapshot <path>` to evaluate against any historical snapshot.
- *
- * Exits 0 when no rules fire, 1 when rules fire (so the command is
- * usable in CI as a smoke test: "fail the build if the fleet is
- * currently over budget"). Exits 2 on argument or file errors.
- */
-async function hqAlertsEval(_args: string[], deps: SubcommandDeps): Promise<number> {
-  const flags = deps.flags ?? {};
-  const snapshotArg =
-    typeof flags['snapshot'] === 'string' ? (flags['snapshot'] as string) : undefined;
-
-  // Resolve the snapshot path. When no --snapshot is given, default to
-  // the live snapshot.json under the HQ data dir.
-  let snapshotPath: string;
-  try {
-    if (snapshotArg !== undefined) {
-      snapshotPath = path.resolve(snapshotArg);
-    } else {
-      const dataDir = resolveDataDir(deps);
-      snapshotPath = path.join(dataDir, 'snapshot.json');
-    }
-  } catch (err) {
-    deps.renderer.writeError(`Failed to resolve snapshot path: ${(err as Error).message}\n`);
-    return 2;
-  }
-
-  let raw: string;
-  try {
-    raw = await fs.readFile(snapshotPath, 'utf8');
-  } catch (err) {
-    deps.renderer.writeError(
-      `Cannot read snapshot at ${snapshotPath}: ${(err as Error).message}\n` +
-        'Pass --snapshot <path> to evaluate against a specific file.\n',
-    );
-    return 2;
-  }
-
-  let snapshot: unknown;
-  try {
-    snapshot = JSON.parse(raw);
-  } catch (err) {
-    deps.renderer.writeError(
-      `Snapshot at ${snapshotPath} is not valid JSON: ${(err as Error).message}\n`,
-    );
-    return 2;
-  }
-
-  // Load any persisted thresholds (the operator's tuning) so the eval
-  // matches what the running engine would use.
-  const dataDir = resolveDataDir(deps);
-  let thresholds: HqAlertRuleConfig | undefined;
-  try {
-    const config = await readHqAlertsConfig(dataDir);
-    thresholds = config.thresholds;
-  } catch {
-    // Best-effort: a missing or unreadable alerts-config falls back to
-    // the engine's built-in defaults. The user will see "no thresholds"
-    // in the eval output, which is itself a useful diagnostic.
-  }
-
-  const engine = new HqAlertEngine({
-    onAlert: () => {
-      /* eval prints; no callback needed */
-    },
-  });
-
-  let fired: HqAlert[];
-  try {
-    fired = engine.evaluate(snapshot as HqSnapshot | null, thresholds);
-  } catch (err) {
-    deps.renderer.writeError(`Alert evaluation failed: ${(err as Error).message}\n`);
-    return 2;
-  }
-
-  if (fired.length === 0) {
-    deps.renderer.write(`No alert rules fired against ${snapshotPath}.\n`);
-    if (thresholds === undefined) {
-      deps.renderer.write(
-        '(No persisted thresholds; using built-in defaults. Run `wstack hq alerts` with a populated alerts-config.json to override.)\n',
-      );
-    }
-    return 0;
-  }
-
-  deps.renderer.write(`${fired.length} alert rule(s) fired against ${snapshotPath}:\n`);
-  for (const alert of fired) {
-    deps.renderer.write(`  [${alert.severity}] ${alert.ruleId}: ${alert.message}\n`);
-  }
-  // Non-zero exit when alerts fire, so a CI smoke test can `wstack hq alerts eval`
-  // as a budget guard.
-  return 1;
-}
-
-/** Focused help for `wstack hq alerts --help`. */
-function printAlertsHelp(deps: SubcommandDeps): void {
-  deps.renderer.write(`Usage: wstack hq alerts <eval>\n`);
-  deps.renderer.write('\n');
-  deps.renderer.write(
-    `  wstack hq alerts eval [--snapshot <path>]   Run HqAlertEngine.evaluate() against a\n`,
-  );
-  deps.renderer.write(
-    `                                            snapshot file (or the live <dataDir>/\n`,
-  );
-  deps.renderer.write(
-    `                                            snapshot.json). Pure-function dry run;\n`,
-  );
-  deps.renderer.write(
-    `                                            no server required. Exits 0 when no\n`,
-  );
-  deps.renderer.write(
-    `                                            rules fire, 1 when rules fire, 2 on errors.\n`,
-  );
-  deps.renderer.write('\n');
-  deps.renderer.write(
-    `Persisted thresholds (<dataDir>/alerts-config.json) are loaded automatically when\n`,
-  );
-  deps.renderer.write(
-    `present; otherwise the engine's built-in defaults apply. Snoozes are NOT honored\n`,
-  );
-  deps.renderer.write(
-    `by this command — eval is a "what would fire RIGHT NOW if there were no snoozes"\n`,
-  );
-  deps.renderer.write(`probe.\n`);
-  deps.renderer.write('\n');
-  deps.renderer.write(`Flags:\n`);
-  deps.renderer.write(
-    `  --snapshot <path>   Evaluate against this snapshot file instead of the live one.\n`,
-  );
-  deps.renderer.write(
-    `  --data-dir <path>   Override HQ data directory (default ~/.wrongstack/hq).\n`,
   );
   deps.renderer.write('\n');
   deps.renderer.write(`Run \`wstack hq --help\` for the full HQ command list.\n`);

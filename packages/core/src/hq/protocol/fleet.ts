@@ -1,4 +1,4 @@
-import type { HqSubagentSummary } from './session.js';
+import type { HqSubagentSummary } from './common-payloads.js';
 
 export interface HqFleetSnapshotPayload {
   runId: string;

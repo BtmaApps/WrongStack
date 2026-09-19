@@ -37,13 +37,13 @@ interface StatusbarViewModelOptions {
   tokenRefresh?: TokenRefreshData;
 }
 
-interface PlanCounts {
+export interface PlanCounts {
   open: number;
   inProgress: number;
   done: number;
 }
 
-interface TaskCounts {
+export interface TaskCounts {
   pending: number;
   inProgress: number;
   completed: number;

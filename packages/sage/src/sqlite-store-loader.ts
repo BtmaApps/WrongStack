@@ -88,3 +88,11 @@ export function setDatabaseSyncCtor(
 ): void {
   DatabaseSyncCtor = value;
 }
+
+/**
+ * Non-throwing probe — returns true if `node:sqlite` is available
+ * in the current runtime. Safe to call from outside the store.
+ */
+export function isSqliteAvailable(): boolean {
+  return probeSqliteAvailable();
+}

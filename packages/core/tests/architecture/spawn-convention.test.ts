@@ -123,7 +123,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'tools/src/process-registry.ts': REASON_TRUSTED_DAEMON,
   'core/src/skills/skill-generator.ts': REASON_TRUSTED_DAEMON,
   // ── Internal parser/toolchain workers ──
-  'tools/src/codebase-index/indexer.ts': REASON_INTERNAL_WORKER,
+  'tools/src/codebase-index/index-source-files.ts': REASON_INTERNAL_WORKER,
   // Shared `runToolchainChild` — go/py parsers and parser-batch spawn through it.
   'tools/src/codebase-index/toolchain-scripts.ts': REASON_INTERNAL_WORKER,
   'tools/src/codebase-index/py-parser.ts': REASON_INTERNAL_WORKER,
@@ -135,7 +135,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'plugins/src/dependency-vulnerability-gate/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/diff-summary/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/format-on-save/index.ts': REASON_PLUGIN_RUNNER,
-  'plugins/src/git-autocommit/index.ts': REASON_PLUGIN_RUNNER,
+  'plugins/src/git-autocommit/git-operations.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/import-organizer/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/lint-gate/index.ts': REASON_PLUGIN_RUNNER,
   'plugins/src/loop-breaker/index.ts': REASON_PLUGIN_RUNNER,
@@ -359,7 +359,7 @@ export function buildChildEnvDerivedIdentifiers(fileText: string): Set<string> {
   // statement, so a definition that closes BEFORE any buildChildEnv cannot
   // be credited by a composition that appears in a LATER statement.
   for (const m of fileText.matchAll(
-    /(?:const|let|var)\s+([A-Za-z_$][\w$]*)[^=;\n]*=\s*\{[^\};]{0,400}?buildChildEnv\s*\(/g,
+    /(?:const|let|var)\s+([A-Za-z_$][\w$]*)[^=;\n]*=\s*\{[^};]{0,400}?buildChildEnv\s*\(/g,
   )) {
     if (m[1]) names.add(m[1]);
   }
@@ -568,8 +568,9 @@ describe('child-process environment convention (buildChildEnv)', () => {
 
     it('ignores a method that merely shares a name with a child-process API', () => {
       // `RegExp.prototype.exec` overridden by a compiled-glob matcher.
-      expect(scanChildCallLines(['  override exec(input: string): RegExpExecArray | null {'], none))
-        .toHaveLength(0);
+      expect(
+        scanChildCallLines(['  override exec(input: string): RegExpExecArray | null {'], none),
+      ).toHaveLength(0);
       expect(scanChildCallLines(['  private exec(cmd: string) {'], none)).toHaveLength(0);
       expect(scanChildCallLines(['function spawn(opts: Opts): Child {'], none)).toHaveLength(0);
     });

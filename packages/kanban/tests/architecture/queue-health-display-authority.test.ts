@@ -23,7 +23,7 @@ function read(relativePath: string): string {
 
 /** Files that render queue health to a human. */
 const DISPLAY_SURFACES = [
-  'packages/tui/src/kanban-slash.ts',
+  'packages/tui/src/kanban-reports.ts',
   'packages/webui/src/components/KanbanQueueHealthBar.tsx',
   'packages/webui-hq/src/domain/kanban-queue-health.ts',
   'packages/webui-hq/src/views/kanban/queue-health.tsx',
@@ -36,14 +36,14 @@ const DISPLAY_SURFACES = [
 /**
  * Reads of the diagnostic field that are correct as written.
  *
- * `kanban-slash.ts` sums the raw status partition to decide whether a board has
+ * `kanban-reports.ts` sums the raw status partition to decide whether a board has
  * any lifecycle-tracked cards at all. Every card lands in exactly one bucket
  * there, so dropping `ready` would under-count and substituting `startable`
  * would double-count (a startable card is already in `pending`).
  */
 const ALLOWED_READS: ReadonlyArray<{ file: string; fragment: string }> = [
   {
-    file: 'packages/tui/src/kanban-slash.ts',
+    file: 'packages/tui/src/kanban-reports.ts',
     fragment: 'c.pending + c.ready + c.running',
   },
 ];
@@ -79,7 +79,7 @@ describe('queue health display authority', () => {
 
   it('renders the startable count on every surface that shows claimable work', () => {
     // Assembled so the literal is not itself a template placeholder.
-    expect(read('packages/tui/src/kanban-slash.ts')).toContain(`startable $\{c.startable}`);
+    expect(read('packages/tui/src/kanban-reports.ts')).toContain(`startable $\{c.startable}`);
     expect(read('packages/webui/src/components/KanbanQueueHealthBar.tsx')).toContain(
       'queueHealth.counts.startable',
     );

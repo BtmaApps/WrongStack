@@ -19,10 +19,8 @@ import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/typ
 import { ulid } from '@wrongstack/core/utils';
 import { resolveSagePaths } from './paths.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
-import { augmentLexicalWithVectorRecall } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
 import { syncSqliteAnchorEdges } from './sqlite-store-anchor-sync.js';
-import { retrieveSqliteSageForAudience } from './sqlite-store-audience.js';
 import { pruneSqliteAuditLog, readSqliteAudit, writeSqliteAudit } from './sqlite-store-audit.js';
 import {
   acceptCandidateOp,
@@ -59,7 +57,9 @@ import { forgetLegacySqliteMemory } from './sqlite-store-legacy-forget.js';
 import { listLegacySqliteMemory } from './sqlite-store-legacy-list.js';
 import { listSqliteMemories } from './sqlite-store-list-memories.js';
 import { listSqliteSagePage } from './sqlite-store-list-page.js';
-import { probeSqliteAvailable } from './sqlite-store-loader.js';
+
+export { isSqliteAvailable } from './sqlite-store-loader.js';
+
 import { SqliteMutationQueue } from './sqlite-store-mutation-queue.js';
 import {
   backfillAdminSage,
@@ -69,11 +69,15 @@ import {
   recoverAdminSage,
   type SqliteAdminHost,
 } from './sqlite-store-operations.js';
+import {
+  explainSqliteSageRecall,
+  retrieveSageAudienceWithAudit,
+  searchSqliteSageWithRecall,
+} from './sqlite-store-recall.js';
 import { syncSqliteRelationshipEdges } from './sqlite-store-relationship-sync.js';
 import { rememberSqliteSage } from './sqlite-store-remember.js';
 import { retrieveSqliteSageForPath } from './sqlite-store-retrieve-path.js';
 import { executeUnifiedSearch } from './sqlite-store-search.js';
-import { materializeSageByIdFactory, searchSqliteSage } from './sqlite-store-search-sage.js';
 import { consolidateSqliteSession } from './sqlite-store-session-consolidation.js';
 import { SqliteStatementCache } from './sqlite-store-statement-cache.js';
 import { getSqliteSageStats } from './sqlite-store-stats.js';
@@ -114,14 +118,6 @@ import type {
 import { DEFAULT_PERSISTENCE } from './types.js';
 
 export { sqliteStoreCoverage } from './sqlite-store-coverage.js';
-
-/**
- * Non-throwing probe — returns true if `node:sqlite` is available
- * in the current runtime. Safe to call from outside the store.
- */
-export function isSqliteAvailable(): boolean {
-  return probeSqliteAvailable();
-}
 
 // ─── Store ──────────────────────────────────────────────────────────────
 
@@ -583,69 +579,15 @@ export class SqliteSageStore implements MemoryStore {
 
   async searchSage(query: string, opts?: SageSearchOptions): Promise<Sage[]> {
     await this.initialize();
-    const lexical = searchSqliteSage({ stmt: (sql) => this.stmt(sql) }, query, opts);
-    if (!opts?.vectorRecall) return lexical;
-    // Fused semantic recall — the vector channel is fail-open by contract
-    // (any backend error falls through to the lexical list).
-    const fused = await augmentLexicalWithVectorRecall(query, lexical, {
-      vectorRecall: opts.vectorRecall,
-      // Vector-only hits (semantically close but lexically missed) are
-      // materialized by id under the SAME visibility rules as the lexical
-      // channel — see materializeSageByIdFactory.
-      materializeVectorOnly: materializeSageByIdFactory({ stmt: (sql) => this.stmt(sql) }, opts),
-      ...(opts.vectorRecallWeight !== undefined ? { vectorWeight: opts.vectorRecallWeight } : {}),
-      ...(opts.vectorRecallMinScore !== undefined ? { threshold: opts.vectorRecallMinScore } : {}),
-      ...(opts.vectorRecallThreshold !== undefined
-        ? { vectorOnlyThreshold: opts.vectorRecallThreshold }
-        : {}),
-      ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-    });
-    return fused.map((hit) => hit.memory);
+    return searchSqliteSageWithRecall((sql) => this.stmt(sql), query, opts);
   }
-
-  /**
-   * Rich variant of `searchSage` that returns the augmented hits
-   * (memory + per-channel scores + RRF final score + source attribution)
-   * rather than a flat `Sage[]`. Use this when the caller wants to
-   * surface the dual-channel breakdown to the user — e.g. the
-   * `memory_search_explain` tool, the WebUI memory manager, or any
-   * diagnostic that needs to answer "did this hit come from lexical,
-   * semantic, or both?".
-   *
-   * When no `vectorRecall` is wired the result collapses to
-   * `source: 'lexical'` hits with `vectorScore: null` — the same shape
-   * the fused path would have produced, so consumers don't need to
-   * branch.
-   */
+  /** See {@link explainSqliteSageRecall}. */
   async searchSageWithBreakdown(
     query: string,
     opts?: SageSearchOptions,
   ): Promise<VectorAugmentHit[]> {
     await this.initialize();
-    const lexical = searchSqliteSage({ stmt: (sql) => this.stmt(sql) }, query, opts);
-    if (!opts?.vectorRecall) {
-      // No semantic channel — return lexical hits as augmentation hits
-      // with `vectorScore: null` so consumers can render them uniformly.
-      return lexical.map((memory, index) => ({
-        memory,
-        vectorScore: null,
-        lexicalScore: lexical.length <= 1 ? 1 : 1 - index / (lexical.length - 1),
-        finalScore: lexical.length <= 1 ? 1 : 1 - index / (lexical.length - 1),
-        source: 'lexical' as const,
-      }));
-    }
-    return augmentLexicalWithVectorRecall(query, lexical, {
-      vectorRecall: opts.vectorRecall,
-      // Same vector-only materialization contract as searchSage —
-      // visibility-respecting, fail-open on unknown ids.
-      materializeVectorOnly: materializeSageByIdFactory({ stmt: (sql) => this.stmt(sql) }, opts),
-      ...(opts.vectorRecallWeight !== undefined ? { vectorWeight: opts.vectorRecallWeight } : {}),
-      ...(opts.vectorRecallMinScore !== undefined ? { threshold: opts.vectorRecallMinScore } : {}),
-      ...(opts.vectorRecallThreshold !== undefined
-        ? { vectorOnlyThreshold: opts.vectorRecallThreshold }
-        : {}),
-      ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-    });
+    return explainSqliteSageRecall((sql) => this.stmt(sql), query, opts);
   }
 
   async retrieveForPath(paths: string[], opts?: SageForPathOptions): Promise<Sage[]> {
@@ -669,59 +611,23 @@ export class SqliteSageStore implements MemoryStore {
       opts,
     );
   }
-
-  /**
-   * Retrieve memories scoped to a specific agent audience (role, taskType, mode).
-   * Queries all audience-scoped memories (status active/stale) then filters in JS
-   * for correctness (the SQLite LIKE approach produced false negatives when a
-   * memory targeted only one audience dimension).
-   *
-   * **Note:** The internal SQL prefilter pulls `limit * 5` rows as a safety
-   * net to bound the in-memory audience filter pass. The over-fetch factor
-   * (5) matches `AUDIENCE_OVERFETCH_FACTOR` in `sqlite-store-audience.ts`
-   * and is the trigger for the `memory.audience_truncated` audit event
-   * the onTruncated callback emits when more matching rows likely exist
-   * beyond the prefilter window. Bump the factor if narrow role/task
-   * filters warrant a larger window.
-   */
+  /** See {@link retrieveSageAudienceWithAudit}. */
   async retrieveForAudience(
     context: MemoryAudienceContext,
     limit?: number,
-    /**
-     * Optional truncation callback. Fires when the SQL prefilter is fully
-     * exhausted and more matching rows likely exist beyond it. When
-     * omitted, the store still emits the internal
-     * `memory.audience_truncated` audit event so downstream observers
-     * can pick it up via the audit log without having to thread a
-     * callback through every call site. Both the callback and the
-     * audit event fire on the same condition, so callers may use
-     * whichever channel fits their observability story.
-     */
     onTruncated?: (info: { sqlRowsExamined: number; returned: number }) => void,
-    /**
-     * Session ownership filter. When set, only session-scoped memories owned
-     * by this session (plus all non-session memories) are returned. When
-     * unset (and `includeAllSessions` is not true), owned session-scoped
-     * memories are hidden — only unowned session memories remain visible,
-     * so pass `sessionId` to see your own session's records.
-     */
     sessionId?: string | undefined,
-    /** Admin opt-out: include all sessions' session-scoped memories. */
     includeAllSessions?: boolean | undefined,
   ): Promise<Sage[]> {
     await this.initialize();
-    return retrieveSqliteSageForAudience(
-      {
-        stmt: (sql) => this.stmt(sql),
-        onTruncated: (info) => {
-          this.audit('memory.audience_truncated', { context, ...info });
-          onTruncated?.(info);
-        },
-      },
+    return retrieveSageAudienceWithAudit(
+      (sql) => this.stmt(sql),
+      (event, data) => this.audit(event, data),
       context,
-      limit === undefined
-        ? { sessionId, includeAllSessions }
-        : { limit, sessionId, includeAllSessions },
+      limit,
+      onTruncated,
+      sessionId,
+      includeAllSessions,
     );
   }
 

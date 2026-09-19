@@ -12,9 +12,9 @@ const allowedNegativeKillSources = new Set([
   // killProcessTree() signals -child.pid of a child this module itself spawned
   // (taskkill /T on win32), so the group kill cannot reach a foreign group.
   'packages/core/src/hooks/shell-executor.ts',
-  // Desktop runtime-manager kills its own child's process group (-pid) on macOS
+  // Desktop runtime-process kills its own child's process group (-pid) on macOS
   // to catch grandchildren. Same pattern as process-registry.ts.
-  'apps/desktop/src/main/runtime-manager.ts',
+  'apps/desktop/src/main/runtime-process.ts',
   // Kanban verification spawns check commands detached into their own process
   // group on POSIX; terminateProcessTree() group-kills -child.pid of a child
   // this module itself spawned (taskkill /T on win32). Same pattern as
@@ -29,9 +29,9 @@ const allowedDirectSignalSources = new Set([
   // @wrongstack/webui-server package. The webui.shutdown self-SIGINT now lives
   // in the moved message-dispatcher.ts.
   'packages/webui-server/src/server/message-dispatcher.ts',
-  // Desktop runtime-manager signals its own child's process group (-pid).
+  // Desktop runtime-process signals its own child's process group (-pid).
   // Same pattern as shell-executor.ts.
-  'apps/desktop/src/main/runtime-manager.ts',
+  'apps/desktop/src/main/runtime-process.ts',
   // Kanban verification SIGKILLs its own detached check-command child (group
   // kill on POSIX, child.kill fallback). Same reviewed pattern as
   // shell-executor.ts.

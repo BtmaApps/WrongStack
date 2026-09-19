@@ -231,6 +231,20 @@ export class IndexStore {
   private static readonly NEXT_SYMBOL_ID_KEY = NEXT_SYMBOL_ID_KEY;
   private static readonly MAX_SQL_VARS = 900;
 
+  private runWriteTransaction<T>(operation: () => T): T {
+    return this.runWithRetry(() => {
+      const ownsTransaction = this.beginWriteTransaction();
+      try {
+        const result = operation();
+        this.commitWriteTransaction(ownsTransaction);
+        return result;
+      } catch (error) {
+        this.rollbackWriteTransaction(ownsTransaction);
+        throw error;
+      }
+    });
+  }
+
   private allocateSymbolIds(count: number): number {
     return allocateSymbolIds(
       (sql) => this.stmt(sql),
@@ -268,95 +282,74 @@ export class IndexStore {
 
   insertSymbols(symbols: IndexSymbol[]): IndexSymbol[] {
     this.invalidateBm25();
-    return this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const result = insertSymbolsWithStatement(
-          (sql) => this.stmt(sql),
-          IndexStore.MAX_SQL_VARS,
-          this.ftsAvailable,
-          this.vectorsAvailable,
-          this.allocateSymbolIds.bind(this),
-          symbols,
-        );
-        this.recordFtsChurn(symbols.length);
-        this.commitWriteTransaction(ownsTransaction);
-        return result;
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    return this.runWriteTransaction(() => {
+      const result = insertSymbolsWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        this.ftsAvailable,
+        this.vectorsAvailable,
+        this.allocateSymbolIds.bind(this),
+        symbols,
+      );
+      this.recordFtsChurn(symbols.length);
+      return result;
     });
   }
 
   deleteSymbolsForFile(file: string): void {
     this.invalidateBm25();
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const affectedNames = this.invalidateIncomingRefsForFiles([file]);
-        if (this.ftsAvailable) {
-          this.stmt(
-            'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(file);
-        }
-        if (this.vectorsAvailable) {
-          this.stmt(
-            'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(file);
-        }
+    this.runWriteTransaction(() => {
+      const affectedNames = this.invalidateIncomingRefsForFiles([file]);
+      if (this.ftsAvailable) {
         this.stmt(
-          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
         ).run(file);
-        const deletedChanges = Number(
-          this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
-        );
-        this.recordFtsChurn(deletedChanges);
-        this.resolveRefsForNamesUnsafe(affectedNames);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (error) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw error;
       }
+      if (this.vectorsAvailable) {
+        this.stmt(
+          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(file);
+      }
+      this.stmt(
+        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+      ).run(file);
+      const deletedChanges = Number(
+        this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
+      );
+      this.recordFtsChurn(deletedChanges);
+      this.resolveRefsForNamesUnsafe(affectedNames);
     });
   }
 
   deleteFile(file: string): void {
     this.invalidateBm25();
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const affectedNames = this.invalidateIncomingRefsForFiles([file]);
-        if (this.ftsAvailable) {
-          this.stmt(
-            'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(file);
-        }
-        if (this.vectorsAvailable) {
-          this.stmt(
-            'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(file);
-        }
-        this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
-          file,
-        );
-        // Rank rows go with their symbols and file: left behind, the rank
-        // readers returned deleted files until the next full run.
+    this.runWriteTransaction(() => {
+      const affectedNames = this.invalidateIncomingRefsForFiles([file]);
+      if (this.ftsAvailable) {
         this.stmt(
-          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
         ).run(file);
-        this.stmt('DELETE FROM file_rank WHERE file = ?').run(file);
-        const deletedChanges = Number(
-          this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
-        );
-        this.recordFtsChurn(deletedChanges);
-        this.stmt('DELETE FROM files WHERE file = ?').run(file);
-        this.resolveRefsForNamesUnsafe(affectedNames);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
       }
+      if (this.vectorsAvailable) {
+        this.stmt(
+          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(file);
+      }
+      this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
+        file,
+      );
+      // Rank rows go with their symbols and file: left behind, the rank
+      // readers returned deleted files until the next full run.
+      this.stmt(
+        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+      ).run(file);
+      this.stmt('DELETE FROM file_rank WHERE file = ?').run(file);
+      const deletedChanges = Number(
+        this.stmt('DELETE FROM symbols WHERE file = ?').run(file).changes,
+      );
+      this.recordFtsChurn(deletedChanges);
+      this.stmt('DELETE FROM files WHERE file = ?').run(file);
+      this.resolveRefsForNamesUnsafe(affectedNames);
     });
   }
 
@@ -517,32 +510,25 @@ export class IndexStore {
 
   clearAll(): void {
     this.invalidateBm25();
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        this.db.exec('DROP TABLE IF EXISTS refs');
-        this.db.exec('DROP TABLE IF EXISTS symbols');
-        this.db.exec('DROP TABLE IF EXISTS files');
-        this.db.exec('DROP TABLE IF EXISTS metadata');
-        if (this.ftsAvailable) this.db.exec('DROP TABLE IF EXISTS symbols_fts');
-        this.db.exec('DROP TABLE IF EXISTS symbol_vectors');
-        this.db.exec('DROP TABLE IF EXISTS symbol_rank');
-        this.db.exec('DROP TABLE IF EXISTS file_rank');
-        this.db.exec('DROP TABLE IF EXISTS file_concepts');
-        this.db.exec('DROP TABLE IF EXISTS subsystems');
-        this.db.exec('DROP TABLE IF EXISTS concept_edges');
-        this.db.exec('DROP TABLE IF EXISTS file_vectors');
-        this.stmtCache.clear();
-        this.initSchema();
-        this.stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)').run(
-          IndexStore.NEXT_SYMBOL_ID_KEY,
-          '1',
-        );
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    this.runWriteTransaction(() => {
+      this.db.exec('DROP TABLE IF EXISTS refs');
+      this.db.exec('DROP TABLE IF EXISTS symbols');
+      this.db.exec('DROP TABLE IF EXISTS files');
+      this.db.exec('DROP TABLE IF EXISTS metadata');
+      if (this.ftsAvailable) this.db.exec('DROP TABLE IF EXISTS symbols_fts');
+      this.db.exec('DROP TABLE IF EXISTS symbol_vectors');
+      this.db.exec('DROP TABLE IF EXISTS symbol_rank');
+      this.db.exec('DROP TABLE IF EXISTS file_rank');
+      this.db.exec('DROP TABLE IF EXISTS file_concepts');
+      this.db.exec('DROP TABLE IF EXISTS subsystems');
+      this.db.exec('DROP TABLE IF EXISTS concept_edges');
+      this.db.exec('DROP TABLE IF EXISTS file_vectors');
+      this.stmtCache.clear();
+      this.initSchema();
+      this.stmt('INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)').run(
+        IndexStore.NEXT_SYMBOL_ID_KEY,
+        '1',
+      );
     });
   }
 
@@ -578,43 +564,36 @@ export class IndexStore {
     options: { deleteForFiles?: string[] | undefined } = {},
   ): IndexSymbol[] {
     this.invalidateBm25();
-    return this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const owned = options.deleteForFiles?.length ?? 0;
-        let churnRows = entries.reduce((sum, e) => sum + e.symbols.length, 0);
-        // P2 review fix: deleteForFiles removes FTS rows too. Count those
-        // pre-existing rows (pre-DELETE, inside this transaction) so
-        // delete-only batches can also cross the maintenance gate.
-        if (owned > 0) {
-          let cursor = 0;
-          for (const take of inListChunks(owned, Math.floor(IndexStore.MAX_SQL_VARS / 4))) {
-            const bucket = options.deleteForFiles!.slice(cursor, cursor + take);
-            cursor += take;
-            const row = this.stmt(
-              `SELECT COUNT(*) AS n FROM symbols WHERE file IN (${placeholders(bucket.length)})`,
-            ).get(...bucket) as { n?: number } | undefined;
-            churnRows += Number(row?.n ?? 0);
-          }
+    return this.runWriteTransaction(() => {
+      const owned = options.deleteForFiles?.length ?? 0;
+      let churnRows = entries.reduce((sum, e) => sum + e.symbols.length, 0);
+      // P2 review fix: deleteForFiles removes FTS rows too. Count those
+      // pre-existing rows (pre-DELETE, inside this transaction) so
+      // delete-only batches can also cross the maintenance gate.
+      if (owned > 0) {
+        let cursor = 0;
+        for (const take of inListChunks(owned, Math.floor(IndexStore.MAX_SQL_VARS / 4))) {
+          const bucket = options.deleteForFiles!.slice(cursor, cursor + take);
+          cursor += take;
+          const row = this.stmt(
+            `SELECT COUNT(*) AS n FROM symbols WHERE file IN (${placeholders(bucket.length)})`,
+          ).get(...bucket) as { n?: number } | undefined;
+          churnRows += Number(row?.n ?? 0);
         }
-        const result = commitBatchWithStatement(
-          (sql) => this.stmt(sql),
-          IndexStore.MAX_SQL_VARS,
-          this.ftsAvailable,
-          this.vectorsAvailable,
-          this.allocateSymbolIds.bind(this),
-          this.invalidateIncomingRefsForFiles.bind(this),
-          this.resolveRefsForNamesUnsafe.bind(this),
-          entries,
-          options,
-        );
-        this.recordFtsChurn(churnRows);
-        this.commitWriteTransaction(ownsTransaction);
-        return result;
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
       }
+      const result = commitBatchWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        this.ftsAvailable,
+        this.vectorsAvailable,
+        this.allocateSymbolIds.bind(this),
+        this.invalidateIncomingRefsForFiles.bind(this),
+        this.resolveRefsForNamesUnsafe.bind(this),
+        entries,
+        options,
+      );
+      this.recordFtsChurn(churnRows);
+      return result;
     });
   }
 
@@ -636,32 +615,30 @@ export class IndexStore {
 
   replaceEmptyFile(meta: FileMeta): void {
     this.invalidateBm25();
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        const affectedNames = this.invalidateIncomingRefsForFiles([meta.file]);
-        if (this.ftsAvailable) {
-          this.stmt(
-            'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(meta.file);
-        }
-        if (this.vectorsAvailable) {
-          this.stmt(
-            'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-          ).run(meta.file);
-        }
-        this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
-          meta.file,
-        );
+    this.runWriteTransaction(() => {
+      const affectedNames = this.invalidateIncomingRefsForFiles([meta.file]);
+      if (this.ftsAvailable) {
         this.stmt(
-          'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
         ).run(meta.file);
-        const deletedChanges = Number(
-          this.stmt('DELETE FROM symbols WHERE file = ?').run(meta.file).changes,
-        );
-        this.recordFtsChurn(deletedChanges);
+      }
+      if (this.vectorsAvailable) {
         this.stmt(
-          `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
+          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+        ).run(meta.file);
+      }
+      this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
+        meta.file,
+      );
+      this.stmt(
+        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
+      ).run(meta.file);
+      const deletedChanges = Number(
+        this.stmt('DELETE FROM symbols WHERE file = ?').run(meta.file).changes,
+      );
+      this.recordFtsChurn(deletedChanges);
+      this.stmt(
+        `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
            VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT(file) DO UPDATE SET
              lang = excluded.lang,
@@ -669,20 +646,15 @@ export class IndexStore {
              content_hash = excluded.content_hash,
              symbol_count = excluded.symbol_count,
              last_indexed = excluded.last_indexed`,
-        ).run(
-          meta.file,
-          meta.lang,
-          meta.mtimeMs,
-          meta.contentHash ?? '',
-          meta.symbolCount,
-          meta.lastIndexed,
-        );
-        this.resolveRefsForNamesUnsafe(affectedNames);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+      ).run(
+        meta.file,
+        meta.lang,
+        meta.mtimeMs,
+        meta.contentHash ?? '',
+        meta.symbolCount,
+        meta.lastIndexed,
+      );
+      this.resolveRefsForNamesUnsafe(affectedNames);
     });
   }
 
@@ -869,16 +841,9 @@ export class IndexStore {
    * would describe a graph that never existed.
    */
   replaceRanks(symbols: readonly SymbolRankRow[], files: readonly FileRankRow[]): void {
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        replaceSymbolRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, symbols);
-        replaceFileRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, files);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    this.runWriteTransaction(() => {
+      replaceSymbolRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, symbols);
+      replaceFileRanksWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, files);
     });
   }
 
@@ -901,15 +866,8 @@ export class IndexStore {
   }
 
   upsertFileVectors(rows: readonly FileVectorRow[]): void {
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        upsertFileVectorsWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, rows);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    this.runWriteTransaction(() => {
+      upsertFileVectorsWithStatement((sql) => this.stmt(sql), IndexStore.MAX_SQL_VARS, rows);
     });
   }
 
@@ -928,15 +886,8 @@ export class IndexStore {
   // ── Concept layer ────────────────────────────────────────────────────────
 
   upsertFileConcept(concept: FileConcept): void {
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        upsertFileConceptWithStatement((sql) => this.stmt(sql), concept);
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    this.runWriteTransaction(() => {
+      upsertFileConceptWithStatement((sql) => this.stmt(sql), concept);
     });
   }
 
@@ -967,20 +918,13 @@ export class IndexStore {
   }
 
   replaceSubsystems(subsystems: readonly Subsystem[], edges: readonly ConceptEdge[]): void {
-    this.runWithRetry(() => {
-      const ownsTransaction = this.beginWriteTransaction();
-      try {
-        replaceSubsystemsWithStatement(
-          (sql) => this.stmt(sql),
-          IndexStore.MAX_SQL_VARS,
-          subsystems,
-          edges,
-        );
-        this.commitWriteTransaction(ownsTransaction);
-      } catch (err) {
-        this.rollbackWriteTransaction(ownsTransaction);
-        throw err;
-      }
+    this.runWriteTransaction(() => {
+      replaceSubsystemsWithStatement(
+        (sql) => this.stmt(sql),
+        IndexStore.MAX_SQL_VARS,
+        subsystems,
+        edges,
+      );
     });
   }
 

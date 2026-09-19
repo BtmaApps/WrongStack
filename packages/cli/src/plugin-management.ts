@@ -1,13 +1,11 @@
-import { execFile } from 'node:child_process';
-import * as fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
-  type PluginEnablementSource,
   defaultPluginTrustPath,
   discoverExternalPlugins,
   hashFileContents,
   normalizeTrustKey,
+  type PluginEnablementSource,
   pinPluginTrust,
   readPluginTrustStore,
   resolvePluginEnablement,
@@ -15,12 +13,21 @@ import {
   unpinPluginTrust,
 } from '@wrongstack/core/plugin';
 import type { Config, PluginConfig, PluginManagerConfig } from '@wrongstack/core/types';
-import { atomicWrite, buildChildEnv } from '@wrongstack/core/utils';
+import { atomicWrite } from '@wrongstack/core/utils';
 import {
   PLUGIN_AUDIT_ENTRIES,
   type PluginAuditEntry,
 } from '@wrongstack/plugins/plugin-audit-catalog';
-import { resolveExecInvocation } from '@wrongstack/plugins/runtime';
+import {
+  errorResult,
+  globalPluginsRoot,
+  isRecord,
+  pluginName,
+  readConfig,
+  upsertPlugin,
+} from './plugin-config.js';
+import type { PluginManagementDeps, PluginManagementResult } from './plugin-management-types.js';
+import { installPluginPackage } from './plugin-package-install.js';
 import { normalizeConfigPath, resolveSpecifierEntry } from './wiring/external-plugins.js';
 
 export type { PluginAuditEntry };
@@ -42,40 +49,6 @@ const OFFICIAL_PLUGINS = [
     description: 'Language Server Protocol tools for code intelligence.',
   },
 ] as const;
-
-interface PluginManagementDeps {
-  config: Config;
-  configPath: string;
-  /** Override `~/.wrongstack` for tests. Defaults to the real home dir. */
-  globalRoot?: string | undefined;
-  /** Injectable package-manager runner for tests. */
-  runPackageManager?:
-    | ((pm: string, args: readonly string[], cwd: string) => Promise<PackageManagerRunResult>)
-    | undefined;
-}
-
-interface PackageManagerRunResult {
-  code: number | null;
-  stdout: string;
-  stderr: string;
-}
-
-interface PluginManagementResult {
-  code: number;
-  level: 'output' | 'info' | 'error';
-  message: string;
-  patch?: {
-    plugins?: (string | PluginConfig)[] | undefined;
-    features?: Record<string, unknown>;
-    pluginManager?: PluginManagerConfig | undefined;
-    /**
-     * Full replacement `extensions` map (patchConfig is a SHALLOW merge,
-     * so per-plugin llm overrides must ship the whole merged object).
-     */
-    extensions?: Record<string, Record<string, unknown>> | undefined;
-  };
-  restartRequired?: boolean | undefined;
-}
 
 const OFFICIAL_ALIASES = new Map<string, string>(
   OFFICIAL_PLUGINS.flatMap((p) => [
@@ -506,23 +479,6 @@ export function renderPluginAuditReport(config: Config): string {
   return lines.join('\n');
 }
 
-async function readConfig(file: string): Promise<Record<string, unknown>> {
-  try {
-    return JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
-function pluginName(p: string | PluginConfig): string {
-  return typeof p === 'string' ? p : p.name;
-}
-
-function pluginEntry(spec: string, enabled: boolean, path?: string): string | PluginConfig {
-  if (path !== undefined) return { name: spec, path, enabled };
-  return enabled ? spec : { name: spec, enabled: false };
-}
-
 function pluginMatchesToggleSpec(p: string | PluginConfig, spec: string): boolean {
   const name = pluginName(p);
   if (spec === 'telegram') return name === 'telegram' || name === '@wrongstack/telegram';
@@ -671,42 +627,6 @@ async function togglePlugin(
   };
 }
 
-async function upsertPlugin(
-  spec: string,
-  opts: { enabled: boolean; path?: string },
-  deps: PluginManagementDeps,
-  verb: string,
-): Promise<PluginManagementResult> {
-  const existing = await readConfig(deps.configPath);
-  const plugins = Array.isArray(existing.plugins)
-    ? (existing.plugins as Array<string | PluginConfig>)
-    : [];
-  const idx = plugins.findIndex((p) => pluginName(p) === spec);
-  const nextEntry = pluginEntry(spec, opts.enabled, opts.path);
-  if (idx >= 0) plugins[idx] = nextEntry;
-  else plugins.push(nextEntry);
-  const features = {
-    ...(isRecord(deps.config.features) ? deps.config.features : {}),
-    ...(isRecord(existing.features) ? existing.features : {}),
-    plugins: true,
-  };
-  existing.plugins = plugins;
-  existing.features = features;
-  await atomicWrite(deps.configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
-  const restartRequired = spec === 'branch-guard' && !opts.enabled ? undefined : true;
-  return {
-    code: 0,
-    level: 'info',
-    message:
-      `${verb} "${spec}" (${opts.enabled ? 'enabled' : 'disabled'}). Config written to ${deps.configPath}.` +
-      (spec === 'branch-guard' && !opts.enabled
-        ? ' The running branch-guard hook will disable itself on config update.'
-        : ''),
-    patch: { plugins, features },
-    restartRequired,
-  };
-}
-
 async function removePlugin(
   spec: string,
   deps: PluginManagementDeps,
@@ -728,18 +648,6 @@ async function removePlugin(
     patch: { plugins: next },
     restartRequired: true,
   };
-}
-
-function errorResult(message: string): PluginManagementResult {
-  return { code: 1, level: 'error', message };
-}
-
-// ---------------------------------------------------------------------------
-// External plugin trust (TOFU re-pin / listing)
-// ---------------------------------------------------------------------------
-
-function globalPluginsRoot(deps: PluginManagementDeps): string {
-  return join(deps.globalRoot ?? join(homedir(), '.wrongstack'), 'plugins');
 }
 
 /**
@@ -849,184 +757,4 @@ async function runPluginTrustCommand(
     level: 'info',
     message: `Re-pinned "${name}" → ${integrity.slice(0, 19)}… (${canonical}).`,
   };
-}
-
-// ---------------------------------------------------------------------------
-// `wstack plugin add --install` — fetch a third-party plugin via a package
-// manager into ~/.wrongstack/plugins and register it with an explicit path.
-// ---------------------------------------------------------------------------
-
-type PackageManagerId = 'npm' | 'pnpm' | 'yarn' | 'bun';
-
-function detectPackageManager(args: string[]): PackageManagerId {
-  const override = args.find((a) => a.startsWith('--pm='));
-  if (override) {
-    const pm = override.slice(5) as PackageManagerId;
-    if (pm === 'npm' || pm === 'pnpm' || pm === 'yarn' || pm === 'bun') return pm;
-  }
-  const idx = args.indexOf('--pm');
-  if (idx >= 0 && args[idx + 1]) {
-    const pm = args[idx + 1] as PackageManagerId;
-    if (pm === 'npm' || pm === 'pnpm' || pm === 'yarn' || pm === 'bun') return pm;
-  }
-  const ua = process.env.npm_config_user_agent ?? '';
-  if (ua.startsWith('pnpm')) return 'pnpm';
-  if (ua.startsWith('yarn')) return 'yarn';
-  if (ua.startsWith('bun')) return 'bun';
-  return 'npm';
-}
-
-/**
- * Extract the package name from an npm specifier. Handles scoped packages
- * and `name@range` / `name@tag` suffixes (`@scope/pkg@1.2.3`, `pkg@next`).
- */
-function packageNameFromSpec(spec: string): string {
-  const stripped = spec.trim();
-  if (stripped.startsWith('@')) {
-    const scopedEnd = stripped.indexOf('/', 1);
-    if (scopedEnd === -1) return stripped.split('@')[0] ?? stripped;
-    const rest = stripped.slice(scopedEnd + 1);
-    const at = rest.lastIndexOf('@');
-    return at === -1 ? stripped : stripped.slice(0, scopedEnd + 1 + at);
-  }
-  const at = stripped.indexOf('@');
-  return at === -1 ? stripped : stripped.slice(0, at);
-}
-
-function buildInstallArgs(
-  pm: PackageManagerId,
-  targetDir: string,
-  runScripts: boolean,
-  spec: string,
-): string[] {
-  const ignoreScripts = runScripts ? [] : ['--ignore-scripts'];
-  switch (pm) {
-    case 'pnpm':
-      return ['add', '--dir', targetDir, ...ignoreScripts, spec];
-    case 'yarn':
-      // Yarn classic honours --ignore-scripts; Berry users relying on
-      // build scripts must pass --run-scripts and configure scripts policy.
-      return ['add', '--cwd', targetDir, ...ignoreScripts, spec];
-    case 'bun':
-      return ['add', '--cwd', targetDir, ...ignoreScripts, spec];
-    default:
-      return ['install', '--prefix', targetDir, '--no-audit', '--no-fund', ...ignoreScripts, spec];
-  }
-}
-
-function runPackageManagerInstall(
-  pm: string,
-  args: readonly string[],
-  cwd: string,
-): Promise<PackageManagerRunResult> {
-  return new Promise((resolvePromise) => {
-    let invocation: { cmd: string; args: string[]; windowsVerbatimArguments: boolean };
-    try {
-      invocation = resolveExecInvocation(pm, args);
-    } catch (err) {
-      resolvePromise({
-        code: 127,
-        stdout: '',
-        stderr: err instanceof Error ? err.message : String(err),
-      });
-      return;
-    }
-    execFile(
-      invocation.cmd,
-      invocation.args,
-      {
-        cwd,
-        // H-8 (security report VF-09): this runs npm/pnpm install — including
-        // untrusted package lifecycle scripts — with the full inherited
-        // environment. Strip credentials via the shared child env.
-        env: buildChildEnv(),
-        timeout: 300_000,
-        maxBuffer: 16 * 1024 * 1024,
-        windowsHide: true,
-        ...(invocation.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
-      },
-      (err, stdout, stderr) => {
-        const code = err ? ((err as NodeJS.ErrnoException).code ?? 1) : 0;
-        resolvePromise({
-          code: typeof code === 'number' ? code : 1,
-          stdout: typeof stdout === 'string' ? stdout : '',
-          stderr: typeof stderr === 'string' ? stderr : '',
-        });
-      },
-    );
-  });
-}
-
-async function installPluginPackage(
-  spec: string,
-  args: string[],
-  deps: PluginManagementDeps,
-): Promise<PluginManagementResult> {
-  const pm = detectPackageManager(args);
-  const runScripts = args.includes('--run-scripts');
-  const targetDir = globalPluginsRoot(deps);
-  try {
-    await fs.mkdir(targetDir, { recursive: true });
-    // Bootstrap a minimal manifest so --prefix installs have a root to
-    // record dependencies against.
-    const pkgJsonPath = join(targetDir, 'package.json');
-    try {
-      await fs.access(pkgJsonPath);
-    } catch {
-      await fs.writeFile(
-        pkgJsonPath,
-        `${JSON.stringify({ name: 'wrongstack-user-plugins', private: true, version: '0.0.0' }, null, 2)}\n`,
-        'utf8',
-      );
-    }
-  } catch (err) {
-    return errorResult(
-      `Could not prepare plugin directory ${targetDir}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  const run = deps.runPackageManager ?? runPackageManagerInstall;
-  const pmArgs = buildInstallArgs(pm, targetDir, runScripts, spec);
-  let result: PackageManagerRunResult;
-  try {
-    result = await run(pm, pmArgs, targetDir);
-  } catch (err) {
-    return errorResult(
-      `${pm} failed to start: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-  if (result.code !== 0) {
-    const tail = (result.stderr || result.stdout).trim().split('\n').slice(-8).join('\n');
-    return errorResult(`${pm} ${pmArgs.join(' ')} failed (exit ${result.code}):\n${tail}`);
-  }
-
-  const pkgName = packageNameFromSpec(spec);
-  const installPath = join(targetDir, 'node_modules', ...pkgName.split('/'));
-  try {
-    await fs.access(installPath);
-  } catch {
-    return errorResult(
-      `${pm} reported success but "${installPath}" does not exist — check the package name "${pkgName}".`,
-    );
-  }
-
-  const upsert = await upsertPlugin(
-    pkgName,
-    { enabled: !args.includes('--disabled'), path: installPath },
-    deps,
-    'Installed',
-  );
-  if (upsert.code !== 0) return upsert;
-  return {
-    ...upsert,
-    message:
-      `${upsert.message} Loaded from ${installPath}. It will be trusted (pinned) on first load.` +
-      (runScripts
-        ? ''
-        : ' Install scripts were skipped (default --ignore-scripts; pass --run-scripts if the package needs build steps).'),
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

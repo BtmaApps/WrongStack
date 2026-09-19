@@ -207,20 +207,29 @@ function menuRelevantPrefsChanged(
 // Layout Functions
 // ============================================================================
 
+/**
+ * The area child views are actually laid out in.
+ *
+ * Deliberately `contentView.getBounds()` and not `getContentSize()`: with an
+ * in-window menu bar (Windows and Linux; macOS puts the menu in the system bar)
+ * the two disagree, and sizing views by the larger one puts the bottom of the
+ * sidebar — its footer — below the visible client area.
+ */
+function clientSize(): { width: number; height: number } {
+  const bounds = mainWindow?.contentView.getBounds();
+  return { width: bounds?.width ?? 0, height: bounds?.height ?? 0 };
+}
+
 function layoutViews(): void {
   if (!mainWindow || !shellView) return;
-  const size = mainWindow.getContentSize();
-  const width = size[0] ?? 0;
-  const height = size[1] ?? 0;
+  const { width, height } = clientSize();
   shellView.setBounds({ x: 0, y: 0, width, height });
   layoutWebuiViews();
 }
 
 function layoutWebuiViews(): void {
   if (!mainWindow) return;
-  const size = mainWindow.getContentSize();
-  const width = size[0] ?? 0;
-  const height = size[1] ?? 0;
+  const { width, height } = clientSize();
   const snapshot = manager.snapshot();
   const active = snapshot.runtimes.find((runtime) => runtime.id === snapshot.activeRuntimeId);
   const sidebarWidth = getSidebarWidth(width, shellSidebarCollapsed);
@@ -610,8 +619,15 @@ app
       const footerBottom = await shellView!.webContents.executeJavaScript(
         'document.querySelector(".sidebar-foot")?.getBoundingClientRect().bottom ?? 0',
       );
-      if (footerBottom > mainWindow!.contentView.getBounds().height) {
-        throw new Error('Desktop footer extends beyond the native client area');
+      const clientHeight = mainWindow!.contentView.getBounds().height;
+      if (footerBottom > clientHeight) {
+        // Report the measurements: a bare assertion here cost a CI round trip
+        // to learn by how much, and on which of the two height APIs.
+        const [, contentSizeHeight] = mainWindow!.getContentSize();
+        throw new Error(
+          `Desktop footer extends beyond the native client area: footer bottom ${footerBottom}, ` +
+            `contentView height ${clientHeight}, getContentSize height ${contentSizeHeight}`,
+        );
       }
       setShellSidebarCollapsed(true);
       await shellView!.webContents.loadURL(rendererIndexPath());

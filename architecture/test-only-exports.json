@@ -2,11 +2,9 @@
   "schemaVersion": 1,
   "files": {
     "apps/desktop/src/main/runtime-manager.ts": [
-      "normalizeProjectManifest",
       "reclaimableRuntimeIds",
       "resolveIdleTimeoutMs",
-      "SNAPSHOT_LOG_LINES",
-      "waitForChildExit"
+      "SNAPSHOT_LOG_LINES"
     ],
     "apps/desktop/src/main/state/constants.ts": [
       "LOG_NOTIFY_DEBOUNCE_MS",
@@ -390,9 +388,6 @@
     ],
     "packages/core/src/coordination/collab-debug.ts": [
       "DEFAULT_MAX_TARGET_FILES"
-    ],
-    "packages/core/src/coordination/delegation/run-delegation.ts": [
-      "readSubagentPartial"
     ],
     "packages/core/src/coordination/fleet.ts": [
       "EXPLORE_COMPANION_TOOLS"
@@ -864,9 +859,6 @@
     "packages/plugins/src/factories/index.ts": [
       "OFFICIAL_PLUGIN_SPECIFIERS"
     ],
-    "packages/plugins/src/git-autocommit/index.ts": [
-      "parsePorcelainLine"
-    ],
     "packages/plugins/src/gitignore-guard/index.ts": [
       "classifyArtifact",
       "DEFAULT_ARTIFACT_PATTERNS",
@@ -1012,9 +1004,6 @@
       "compareByUpdatedDesc",
       "DEFAULT_PAGE_LIMIT",
       "normalizeListStatuses"
-    ],
-    "packages/sage/src/types.ts": [
-      "kindToLegacyType"
     ],
     "packages/sdd/src/sdd-board-store.ts": [
       "sameIndexSignature"
@@ -1274,20 +1263,6 @@
     "packages/tui/src/brain-panel-model.ts": [
       "personaCycle"
     ],
-    "packages/tui/src/components/agents-monitor.tsx": [
-      "agentRisk",
-      "fmtExactTokens",
-      "formatAgentDetailHeader",
-      "formatContextRunway",
-      "formatRecentToolChip",
-      "formatTranscriptLine",
-      "nextEmptyAgentsCloseStartedAt",
-      "selectAgentDetail",
-      "selectLiveAgents",
-      "selectTranscriptWindow",
-      "shouldCloseEmptyAgentsMonitor",
-      "transcriptRowsForTerminal"
-    ],
     "packages/tui/src/components/animation-style.tsx": [
       "CYCLE_INTERVAL_SECONDS",
       "CYCLE_ORDER",
@@ -1350,12 +1325,6 @@
       "scrollbarThumbGeometry",
       "wrapInspectLines"
     ],
-    "packages/tui/src/components/kanban-panel.tsx": [
-      "computeBoardColumnLayout",
-      "stageForColumn",
-      "summarizeGoalMetrics",
-      "summarizeSuccessCriteria"
-    ],
     "packages/tui/src/components/model-picker-effort.ts": [
       "modelEffortOptions"
     ],
@@ -1377,9 +1346,6 @@
     ],
     "packages/tui/src/components/shell-command-warning.tsx": [
       "truncateShellCommandWarningCommand"
-    ],
-    "packages/tui/src/components/sidebar-content.tsx": [
-      "contextSpectrum"
     ],
     "packages/tui/src/components/sidebar-ipc-icons.tsx": [
       "ipcStatusColor"
@@ -1501,10 +1467,6 @@
       "validateAction"
     ],
     "packages/tui/src/kanban-slash.ts": [
-      "parseKanbanArgs",
-      "renderAuditReport",
-      "renderBoardsList",
-      "renderHealthReport",
       "resolveAddTarget"
     ],
     "packages/tui/src/layout-engine.ts": [
@@ -1659,9 +1621,6 @@
     "packages/webui-server/src/server/proxy-runtime.ts": [
       "probeWrongProxyActive",
       "seedWrongProxyFromConfig"
-    ],
-    "packages/webui-server/src/server/routes.ts": [
-      "computeConfigPrefUpdates"
     ],
     "packages/webui-server/src/server/session-agent-registry.ts": [
       "inheritedSessionMeta"
@@ -1838,15 +1797,18 @@
       "handleWorktreeState"
     ],
     "packages/webui/src/hooks/ws-handlers/misc-handlers.ts": [
-      "handleBrainAnswer",
-      "handleBrainEvent",
-      "handleGoalLifecycle",
-      "handleGoalList",
-      "handleGoalProgress",
-      "handleGoalState",
-      "handleGoalUpdated",
+      "handleChimeraReportAvailable",
+      "handleChimeraReports",
+      "handleCollabEvent",
+      "handleCollabInjectionGranted",
+      "handleCronJobFired",
+      "handleCronSnapshot",
+      "handleEternalIteration",
+      "handleGitActionResult",
+      "handleModelRefineResult",
       "handlePrefsUpdated",
-      "handleSystemPromptInfo"
+      "handleSystemPromptInfo",
+      "handleWorkingDirChanged"
     ],
     "packages/webui/src/hooks/ws-handlers/techstack-handlers.ts": [
       "handleTechStackJobCancelled",

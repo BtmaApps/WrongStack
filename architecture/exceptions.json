@@ -78,32 +78,18 @@
         "packages/core/src/types/messages.ts",
         "packages/core/src/types/provider.ts",
         "packages/core/src/types/run-env.ts",
+        "packages/core/src/types/session-events.ts",
+        "packages/core/src/types/session-storage.ts",
         "packages/core/src/types/session.ts",
         "packages/core/src/types/token-counter.ts",
         "packages/core/src/types/tool.ts"
       ],
       "owner": "architecture-refactor",
-      "reason": "Successor of the original 2026-07-21 G1 SCC. RESOLVED 2026-08-23 (Roadmap 10A close-out): the Context class module (core/context.ts), ConversationState class module, and the three utils back-edges (context-evidence, token-estimate, tool-wire-compact) left this SCC — the AgentContext/ConversationStateApi/RunEnv dependency leaves now own those types and every former back-edge imports from the leaves. What remains is a strictly smaller, types/-internal SCC: AgentContext (types/context.ts) references Tool (types/tool.ts) which references AgentContext back, with RunEnv + the shared message/provider/session/block value types in the same component. Still type-only (runtime cycles: 0); membership re-verified exact-current against the computed SCC after the flip; all six former members that left the component are verified cycle-free. Next decoupling step if desired: extract the Tool type's ctx-facing member shapes into a leaf that neither imports Tool nor AgentContext (mirrors the envelope.ts split done for ARCH-CYCLE-TYPE-13).",
+      "reason": "Successor of the original 2026-07-21 G1 SCC. RESOLVED 2026-08-23 (Roadmap 10A close-out): the Context class module (core/context.ts), ConversationState class module, and the three utils back-edges (context-evidence, token-estimate, tool-wire-compact) left this SCC — the AgentContext/ConversationStateApi/RunEnv dependency leaves now own those types and every former back-edge imports from the leaves. What remains is a strictly smaller, types/-internal SCC: AgentContext (types/context.ts) references Tool (types/tool.ts) which references AgentContext back, with RunEnv + the shared message/provider/session/block value types in the same component. Still type-only (runtime cycles: 0); membership re-verified exact-current against the computed SCC after the flip; all six former members that left the component are verified cycle-free. Next decoupling step if desired: extract the Tool type's ctx-facing member shapes into a leaf that neither imports Tool nor AgentContext (mirrors the envelope.ts split done for ARCH-CYCLE-TYPE-13). Reviewed 2026-09-20: SessionEvent and SessionStore/SessionWriter declarations moved unchanged from session.ts to session-events.ts and session-storage.ts. These two files replace portions of the existing member; runtime edges remain absent and no additional contract dependency was introduced.",
       "introduced": "2026-07-21",
       "reviewBy": "2026-10-01",
       "removeWhen": "Core contracts, context, events, and implementations obey the accepted one-way ownership model.",
       "canonicalTask": "R1"
-    },
-    {
-      "id": "ARCH-CYCLE-TYPE-13",
-      "kind": "type-module-cycle",
-      "members": [
-        "packages/core/src/hq/protocol/client.ts",
-        "packages/core/src/hq/protocol/core.ts",
-        "packages/core/src/hq/protocol/fleet.ts",
-        "packages/core/src/hq/protocol/session.ts"
-      ],
-      "owner": "architecture-refactor",
-      "reason": "Pre-existing type-level module SCC captured by the 2026-07-21 G1 baseline; no new members are allowed. On 2026-07-31 a fifth member (resume.ts) was removed from the SCC by extracting the shared envelope primitives (HqEventEnvelope, HqEventType, HqProtocolVersion, HQ_PROTOCOL_VERSION) into the dependency-leaf hq/protocol/envelope.ts; resume.ts now imports from that leaf, restoring this exception's exact 4-member scope. Re-reviewed 2026-08-18 ahead of the 2026-09-15 lapse: membership verified exact-current against the computed SCC and still type-only (runtime cycles: 0); decoupling deferred behind higher-priority deliverables, next review 2026-10-01.",
-      "introduced": "2026-07-21",
-      "reviewBy": "2026-10-01",
-      "removeWhen": "HQ protocol DTO modules are dependency-leaf contracts.",
-      "canonicalTask": "P1"
     },
     {
       "id": "ARCH-CYCLE-TYPE-14",

@@ -1,363 +1,18 @@
+import { isDirectoryAmbiguousPath, isUnresolvedPathScope, resolveTargetPath } from './glob.js';
+import { maskNonExecutingHeredocBodies } from './shell-heredocs.js';
 import {
-  isDirectoryAmbiguousPath,
-  isUnresolvedPathScope,
-  normalizePath,
-  resolveTargetPath,
-} from './glob.js';
-
-export const VALUE_TAKING_GIT_OPTIONS = new Set([
-  '-C',
-  '-c',
-  '--git-dir',
-  '--work-tree',
-  '--namespace',
-  '--super-prefix',
-  '--exec-path',
-  '--config-env',
-  '--attr-source',
-]);
-
-export interface ShellToken {
-  value: string;
-  start: number;
-  end: number;
-}
-
-export const MAX_LAUNCHER_TOKENS = 256;
-export const MAX_LAUNCHER_LENGTH = 64 * 1024;
-
-export function boundedShellTokens(raw: string): ShellToken[] {
-  const tokens: ShellToken[] = [];
-  let token = '';
-  let tokenStart = -1;
-  let quote: "'" | '"' | null = null;
-  const limit = Math.min(raw.length, MAX_LAUNCHER_LENGTH);
-  for (let index = 0; index < limit && tokens.length < MAX_LAUNCHER_TOKENS; index += 1) {
-    const char = raw[index] ?? '';
-    if (tokenStart < 0 && !/\s/.test(char)) tokenStart = index;
-    if (char === '\\' && quote !== "'" && index + 1 < limit) {
-      const escaped = raw[index + 1] ?? '';
-      const shellEscaped =
-        quote === '"' ? /[$\x60"\\\r\n]/.test(escaped) : /[\s'"\\;&|()`]/.test(escaped);
-      token += shellEscaped ? escaped : `\\${escaped}`;
-      index += 1;
-      continue;
-    }
-    if (char === "'" || char === '"') {
-      if (quote === char) quote = null;
-      else if (quote === null) quote = char;
-      else token += char;
-      continue;
-    }
-    if (quote === null && /\s/.test(char)) {
-      if (tokenStart >= 0) tokens.push({ value: token, start: tokenStart, end: index });
-      token = '';
-      tokenStart = -1;
-      continue;
-    }
-    token += char;
-  }
-  if (tokenStart >= 0 && tokens.length < MAX_LAUNCHER_TOKENS) {
-    tokens.push({ value: token, start: tokenStart, end: limit });
-  }
-  return tokens;
-}
-
-export function shellTokens(raw: string): string[] {
-  return boundedShellTokens(raw).map((token) => token.value);
-}
-
-/**
- * Optional binary-path prefix before a destructive tool name (`/bin/rm`,
- * `/usr/bin/tee`, `C:\tools\dd`). The launcher stripper and the `sh -c`
- * wrapper rule already recognize path-qualified invocations; without the
- * same allowance in the writer/find/git rules, `/bin/rm -rf .env` anchored
- * at a command boundary matched no rule and silently bypassed the guard
- * while the bare `rm -rf .env` was blocked. Non-capturing so the rules'
- * existing group numbers stay stable. No nested quantifiers: the fragment
- * is a single bounded class, so it adds no ReDoS surface.
- */
-const COMMAND_PATH_PREFIX = String.raw`(?:[^\s;&|(){}]+[\\/])?`;
-
-export function gitInvocationArguments(command: string): string[] {
-  const argumentsList: string[] = [];
-  const quotedIndexes = new Uint8Array(command.length);
-  let activeQuote: "'" | '"' | null = null;
-  for (let index = 0; index < command.length; index += 1) {
-    const char = command[index];
-    if (isQuoteBoundary(command, index, activeQuote)) {
-      quotedIndexes[index] = 1;
-      activeQuote = activeQuote === char ? null : char === "'" ? "'" : '"';
-    } else if (activeQuote !== null) {
-      quotedIndexes[index] = 1;
-    }
-  }
-
-  const gitStart = new RegExp(
-    String.raw`(?:^|[;&|\r\n]\s*|\(\s*|\u0060\s*)${COMMAND_PATH_PREFIX}git\b`,
-    'gi',
-  );
-  let match: RegExpExecArray | null = gitStart.exec(command);
-  while (match !== null) {
-    const gitOffset = match[0].toLowerCase().lastIndexOf('git');
-    if (gitOffset < 0 || quotedIndexes[match.index + gitOffset] === 1) {
-      match = gitStart.exec(command);
-      continue;
-    }
-    const start = gitStart.lastIndex;
-    let quote: "'" | '"' | null = null;
-    let end = start;
-    for (; end < command.length; end += 1) {
-      const char = command[end] ?? '';
-      if (char === '\\' && quote !== "'") {
-        end += 1;
-        continue;
-      }
-      if (char === "'" || char === '"') {
-        if (quote === char) quote = null;
-        else if (quote === null) quote = char;
-        continue;
-      }
-      if (quote === null && /[;&|)`\r\n]/.test(char)) break;
-    }
-    argumentsList.push(command.slice(start, end));
-    gitStart.lastIndex = Math.max(end, start);
-    match = gitStart.exec(command);
-  }
-  return argumentsList;
-}
-
-export function gitSubcommandIndex(tokens: string[]): number {
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index] ?? '';
-    if (token === '--') return index + 1 < tokens.length ? index + 1 : -1;
-    if (!token.startsWith('-')) return index;
-    const optionName =
-      token.startsWith('-C') && token !== '-C' ? '-C' : (token.split('=', 1)[0] ?? token);
-    const hasAttachedValue = token.includes('=') || (token.startsWith('-C') && token !== '-C');
-    if (VALUE_TAKING_GIT_OPTIONS.has(optionName) && !hasAttachedValue) index += 1;
-  }
-  return -1;
-}
-
-export function commandDeletesImplicitScope(command: string): boolean {
-  const stripped = stripTransparentLaunchers(maskNonExecutingHeredocBodies(command));
-  for (const rawArguments of gitInvocationArguments(stripped)) {
-    const tokens = shellTokens(rawArguments);
-    const commandIndex = gitSubcommandIndex(tokens);
-    const subcommand = commandIndex >= 0 ? tokens[commandIndex]?.toLowerCase() : undefined;
-    const operands = tokens.slice(commandIndex + 1);
-    if (/^(?:clean|restore|reset|checkout|switch)$/.test(subcommand ?? '')) return true;
-    if (subcommand === 'stash') {
-      const action = operands.find((token) => !token.startsWith('-'))?.toLowerCase();
-      if (action === undefined || /^(?:push|save|pop|apply)$/.test(action)) return true;
-    }
-  }
-  return false;
-}
-
-export function normalizeEnvSplitPayload(payload: string): string {
-  const removeUnbalanced = (value: string, quote: "'" | '"'): string => {
-    let boundaries = 0;
-    for (let index = 0; index < value.length; index += 1) {
-      if (value[index] === quote && !quoteIsEscaped(value, index)) boundaries += 1;
-    }
-    return boundaries % 2 === 0 ? value : value.replaceAll(quote, '');
-  };
-  return removeUnbalanced(removeUnbalanced(payload, "'"), '"');
-}
-
-export function unwrapEnvSplitStringAtBoundary(command: string): string {
-  const pattern = /(^|[;&|\r\n]\s*|\(\s*|`\s*)(?:[^\s;&|(){}]+[\\/])?env\b/gi;
-  const match = pattern.exec(command);
-  if (!match) return command;
-
-  const boundary = match[1] ?? '';
-  const afterStart = match.index + match[0].length;
-  const after = command.slice(afterStart);
-  const tokens = boundedShellTokens(after);
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (!token) continue;
-    const separator = firstUnquotedShellSeparator(after, token.start, token.end);
-    const tokenEnd = separator ?? token.end;
-    const tokenValue = boundedShellTokens(after.slice(token.start, tokenEnd))[0]?.value ?? '';
-
-    const attachedShort = /^-[i0v]*S(.+)$/.exec(tokenValue)?.[1];
-    const attachedLong = tokenValue.startsWith('--split-string=')
-      ? tokenValue.slice('--split-string='.length)
-      : undefined;
-    const attachedPayload = attachedShort ?? attachedLong;
-    if (attachedPayload !== undefined) {
-      return `${command.slice(0, match.index)}${boundary}${normalizeEnvSplitPayload(attachedPayload)}${after.slice(tokenEnd)}`;
-    }
-
-    if (!/^-[i0v]*S$/.test(tokenValue) && tokenValue !== '--split-string') {
-      if (separator !== undefined) return command;
-      continue;
-    }
-    const payload = tokens[index + 1];
-    if (!payload) return command;
-    const payloadSeparator = firstUnquotedShellSeparator(after, payload.start, payload.end);
-    const payloadEnd = payloadSeparator ?? payload.end;
-    const payloadValue = boundedShellTokens(after.slice(payload.start, payloadEnd))[0]?.value ?? '';
-    return `${command.slice(0, match.index)}${boundary}${normalizeEnvSplitPayload(payloadValue)}${after.slice(payloadEnd)}`;
-  }
-  return command;
-}
-
-export const SUDO_VALUE_TAKING = new Set([
-  '-u',
-  '-g',
-  '-h',
-  '-p',
-  '-C',
-  '-R',
-  '-D',
-  '-r',
-  '-t',
-  '--user',
-  '--group',
-  '--host',
-  '--prompt',
-  '--close-from',
-  '--chroot',
-  '--chdir',
-  '--role',
-  '--type',
-  '--command-timeout',
-]);
-
-export const ENV_VALUE_TAKING = new Set([
-  '-u',
-  '-C',
-  '-P',
-  '-a',
-  '--argv0',
-  '--unset',
-  '--chdir',
-  '--split-string',
-]);
-
-export const ENV_FLAG_OPTIONS = new Set([
-  '-i',
-  '-0',
-  '-v',
-  '--ignore-environment',
-  '--null',
-  '--debug',
-  '--help',
-  '--version',
-]);
-
-export function stripTransparentLaunchers(command: string): string {
-  let stripped = command;
-  let previous: string;
-  do {
-    previous = stripped;
-    let beforeUnwrap: string;
-    do {
-      beforeUnwrap = stripped;
-      stripped = unwrapEnvSplitStringAtBoundary(stripped);
-    } while (stripped !== beforeUnwrap);
-    stripped = stripLauncherAtBoundary(stripped, 'env', ENV_VALUE_TAKING);
-    stripped = stripLauncherAtBoundary(stripped, 'sudo', SUDO_VALUE_TAKING);
-  } while (stripped !== previous);
-  return stripped;
-}
-
-export function firstUnquotedShellSeparator(
-  raw: string,
-  start: number,
-  end: number,
-): number | undefined {
-  let quote: "'" | '"' | null = null;
-  for (let index = start; index < end; index += 1) {
-    const char = raw[index];
-    if (isQuoteBoundary(raw, index, quote)) {
-      quote = quote === char ? null : char === "'" ? "'" : '"';
-      continue;
-    }
-    if (quote === null && !quoteIsEscaped(raw, index) && /[;&|]/.test(char ?? '')) return index;
-  }
-  return undefined;
-}
-
-export function launcherPrefixLength(
-  after: string,
-  valueTaking: Set<string>,
-  flagOptions?: Set<string>,
-): number | undefined {
-  const tokens = boundedShellTokens(after);
-  let consumed = 0;
-  for (let i = 0; i < tokens.length; i += 1) {
-    const tok = tokens[i] ?? { value: '', start: 0, end: 0 };
-    const token = tok.value;
-    const separator = firstUnquotedShellSeparator(after, tok.start, tok.end);
-    if (separator !== undefined) return consumed || separator;
-    if (token === '--') return tok.end;
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) {
-      consumed = tok.end;
-      continue;
-    }
-    if (token === '-' || !token.startsWith('-')) break;
-    const optionName = token.split('=', 1)[0] ?? token;
-    const combinedValueOption = [...valueTaking].find(
-      (option) => option.length === 2 && token.startsWith(option) && token !== option,
-    );
-    const combinedShortValueOption =
-      token.startsWith('-') && !token.startsWith('--')
-        ? [...valueTaking].find(
-            (option) => option.length === 2 && token.includes(option[1] ?? '', 2),
-          )
-        : undefined;
-    const hasAttachedValue = token.includes('=') || combinedValueOption !== undefined;
-    if (
-      !hasAttachedValue &&
-      (valueTaking.has(optionName) || combinedShortValueOption !== undefined)
-    ) {
-      if (i + 1 >= tokens.length) return flagOptions ? undefined : tok.end;
-      const valueToken = tokens[i + 1] ?? tok;
-      const valueSeparator = firstUnquotedShellSeparator(after, valueToken.start, valueToken.end);
-      if (valueSeparator !== undefined) return consumed || valueSeparator;
-      consumed = valueToken.end;
-      i += 1;
-    } else {
-      const knownFlag =
-        flagOptions?.has(optionName) || (flagOptions !== undefined && /^-[i0v]+$/.test(token));
-      const knownAttachedValue =
-        hasAttachedValue && (valueTaking.has(optionName) || combinedValueOption !== undefined);
-      if (flagOptions && !knownFlag && !knownAttachedValue) return undefined;
-      consumed = tok.end;
-    }
-  }
-  return consumed;
-}
-
-export function stripLauncherAtBoundary(
-  command: string,
-  launcher: 'env' | 'sudo',
-  valueTaking: Set<string>,
-): string {
-  const pattern = new RegExp(
-    `(^|[;&|\\r\\n]\\s*|\\(\\s*|\u0060\\s*)(?:[^\\s;&|(){}]+[\\\\/])?${launcher}\\b`,
-    'i',
-  );
-  const match = pattern.exec(command);
-  if (!match) return command;
-  const boundary = match[1] ?? '';
-  const afterStart = match.index + match[0].length;
-  const after = command.slice(afterStart);
-  const consumed = launcherPrefixLength(
-    after,
-    valueTaking,
-    launcher === 'env' ? ENV_FLAG_OPTIONS : undefined,
-  );
-  if (consumed === undefined) {
-    return `${command.slice(0, match.index)}${boundary}rm -rf **`;
-  }
-  return `${command.slice(0, match.index)}${boundary}${after.slice(consumed).replace(/^\s+/, '')}`;
-}
+  COMMAND_PATH_PREFIX,
+  gitInvocationArguments,
+  gitSubcommandIndex,
+  shellTokens,
+  stripTransparentLaunchers,
+  VALUE_TAKING_GIT_OPTIONS,
+} from './shell-launchers.js';
+import {
+  executableCommandSubstitutions,
+  isQuoteBoundary,
+  quoteIsEscaped,
+} from './shell-quoting.js';
 
 /**
  * xargs option run: bridges any mix of flag tokens and VALUE-taking options
@@ -436,244 +91,7 @@ export function commandRecursivelyDeletes(command: string): boolean {
   return false;
 }
 
-export function quoteIsEscaped(command: string, index: number): boolean {
-  let backslashes = 0;
-  for (let cursor = index - 1; cursor >= 0 && command[cursor] === '\\'; cursor -= 1) {
-    backslashes += 1;
-  }
-  return backslashes % 2 === 1;
-}
-
-export function isQuoteBoundary(
-  command: string,
-  index: number,
-  activeQuote: "'" | '"' | null,
-): boolean {
-  const char = command[index];
-  if (char !== "'" && char !== '"') return false;
-  if (activeQuote === "'") return char === "'";
-  if (activeQuote !== null && char !== activeQuote) return false;
-  return !quoteIsEscaped(command, index);
-}
-
-export function executableCommandSubstitutions(command: string): string[] {
-  const bodies: string[] = [];
-  let outerQuote: "'" | '"' | null = null;
-  for (let index = 0; index < command.length; index += 1) {
-    const char = command[index];
-    if (isQuoteBoundary(command, index, outerQuote)) {
-      outerQuote = outerQuote === char ? null : char === "'" ? "'" : '"';
-      continue;
-    }
-    if (outerQuote === "'" || quoteIsEscaped(command, index)) continue;
-
-    if (char === '\x60') {
-      let end = index + 1;
-      while (end < command.length && (command[end] !== '\x60' || quoteIsEscaped(command, end))) {
-        end += 1;
-      }
-      if (end < command.length) {
-        bodies.push(command.slice(index + 1, end));
-        index = end;
-      }
-      continue;
-    }
-
-    const commandSubstitution = char === '\x24' && command[index + 1] === '(';
-    const processSubstitution = (char === '>' || char === '<') && command[index + 1] === '(';
-    if (
-      (!commandSubstitution && !processSubstitution) ||
-      (commandSubstitution && command[index + 2] === '(')
-    )
-      continue;
-    let depth = 1;
-    let innerQuote: "'" | '"' | null = null;
-    let end = index + 2;
-    for (; end < command.length; end += 1) {
-      const innerChar = command[end];
-      if (isQuoteBoundary(command, end, innerQuote)) {
-        innerQuote = innerQuote === innerChar ? null : innerChar === "'" ? "'" : '"';
-        continue;
-      }
-      if (innerQuote !== null) continue;
-      if ((innerChar === '(' || innerChar === ')') && quoteIsEscaped(command, end)) continue;
-      if (innerChar === '(') depth += 1;
-      else if (innerChar === ')') {
-        depth -= 1;
-        if (depth === 0) break;
-      }
-    }
-    if (depth === 0) {
-      bodies.push(command.slice(index + 2, end));
-      index = end;
-    } else {
-      break;
-    }
-  }
-  return bodies;
-}
-
 export const MAX_DESTRUCTIVE_TARGET_DEPTH = 64;
-
-export interface HeredocDelimiter {
-  delimiter: string;
-  start: number;
-  end: number;
-  quoted: boolean;
-  stripTabs: boolean;
-}
-
-export function heredocDelimiterOnLine(line: string): HeredocDelimiter | null {
-  let quote: "'" | '"' | null = null;
-  for (let index = 0; index < line.length - 1; index += 1) {
-    const char = line[index];
-    if (isQuoteBoundary(line, index, quote)) {
-      quote = quote === char ? null : char === "'" ? "'" : '"';
-      continue;
-    }
-    if (
-      quote !== null ||
-      quoteIsEscaped(line, index) ||
-      char !== '<' ||
-      line[index - 1] === '<' ||
-      line[index + 1] !== '<' ||
-      line[index + 2] === '<'
-    )
-      continue;
-
-    let cursor = index + 2;
-    const stripTabs = line[cursor] === '-';
-    if (stripTabs) cursor += 1;
-    while (line[cursor] === ' ' || line[cursor] === '\t') cursor += 1;
-
-    let delimiter = '';
-    let delimiterQuote: "'" | '"' | null = null;
-    let quoted = false;
-    for (; cursor < line.length; cursor += 1) {
-      const delimiterChar = line[cursor] ?? '';
-      if (delimiterQuote !== null) {
-        if (delimiterChar === delimiterQuote && !quoteIsEscaped(line, cursor)) {
-          delimiterQuote = null;
-          quoted = true;
-        } else if (delimiterChar === '\\' && delimiterQuote === '"' && cursor + 1 < line.length) {
-          quoted = true;
-          cursor += 1;
-          delimiter += line[cursor] ?? '';
-        } else {
-          delimiter += delimiterChar;
-        }
-        continue;
-      }
-      if (delimiterChar === "'" || delimiterChar === '"') {
-        delimiterQuote = delimiterChar;
-        quoted = true;
-        continue;
-      }
-      if (delimiterChar === '\\' && cursor + 1 < line.length) {
-        quoted = true;
-        cursor += 1;
-        delimiter += line[cursor] ?? '';
-        continue;
-      }
-      if (/\s|[;&|<>]/.test(delimiterChar)) break;
-      delimiter += delimiterChar;
-    }
-    return delimiter.length > 0
-      ? { delimiter, start: index, end: cursor, quoted, stripTabs }
-      : null;
-  }
-  return null;
-}
-
-export function commandSegmentBeforeHeredoc(prefix: string): string {
-  let segmentStart = 0;
-  let quote: "'" | '"' | null = null;
-  for (let index = 0; index < prefix.length; index += 1) {
-    const char = prefix[index];
-    if (isQuoteBoundary(prefix, index, quote)) {
-      quote = quote === char ? null : char === "'" ? "'" : '"';
-      continue;
-    }
-    if (quote === null && !quoteIsEscaped(prefix, index) && /[;&|\r\n]/.test(char ?? '')) {
-      segmentStart = index + 1;
-    }
-  }
-  return prefix.slice(segmentStart).trim();
-}
-
-export function maskNonExecutingHeredocBodies(command: string): string {
-  const lines = command.split(/(?<=\n)/);
-  let heredoc: (HeredocDelimiter & { bodyStart: number }) | null = null;
-  const maskBody = (start: number, end: number, quoted: boolean): void => {
-    const body = lines.slice(start, end).join('');
-    const substitutions = quoted ? [] : executableCommandSubstitutions(body);
-    for (let index = start; index < end; index += 1) {
-      const line = lines[index] ?? '';
-      lines[index] = line.endsWith('\r\n') ? '\r\n' : line.endsWith('\n') ? '\n' : '';
-    }
-    if (substitutions.length > 0 && start < end)
-      lines[start] = `${substitutions.join(';')}${lines[start] ?? ''}`;
-  };
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? '';
-    if (heredoc !== null) {
-      const content = line.replace(/\r?\n$/, '');
-      const terminator = heredoc.stripTabs ? content.replace(/^\t+/, '') : content;
-      if (terminator === heredoc.delimiter) {
-        maskBody(heredoc.bodyStart, index, heredoc.quoted);
-        heredoc = null;
-      }
-      continue;
-    }
-    const marker = heredocDelimiterOnLine(line);
-    if (!marker) continue;
-    const prefix = line.slice(0, marker.start).trim();
-    const suffix = line.slice(marker.end).trim();
-    const owner = stripTransparentLaunchers(commandSegmentBeforeHeredoc(prefix));
-    const commandBeforeMarker = `${lines.slice(0, index).join('')}${prefix}`;
-    const whileReadLoopOwnsHeredoc =
-      /^done$/i.test(owner) &&
-      /(?:^|[;&|\r\n])\s*while\s+read(?:\s|$)[\s\S]*\bdone\s*$/i.test(commandBeforeMarker);
-    const receivesDataWithoutExecuting =
-      /^(?:[^\s;&|]+[\\/])?(?:cat|tee)(?:\s|$)/i.test(owner) ||
-      /^(?:while\s+)?read(?:\s|$)/i.test(owner) ||
-      whileReadLoopOwnsHeredoc;
-    const redirectedFileMatch = /^(?:>>|>\||>)\s*("[^"]+"|'[^']+'|[^\s;&|<>]+)/.exec(suffix);
-    const redirectedFile = redirectedFileMatch?.[1]?.replace(/^['"]|['"]$/g, '');
-    const remainingCommand = lines.slice(index + 1).join('');
-    const executionSearch = `${suffix}\n${remainingCommand}`;
-    const normalizedRedirectedFile = redirectedFile ? normalizePath(redirectedFile) : undefined;
-    const executesRedirectedFile =
-      normalizedRedirectedFile !== undefined &&
-      boundedShellTokens(executionSearch).some((token) => {
-        if (normalizePath(token.value) !== normalizedRedirectedFile) return false;
-        const segmentStart = Math.max(
-          executionSearch.lastIndexOf(';', token.start - 1),
-          executionSearch.lastIndexOf('&', token.start - 1),
-          executionSearch.lastIndexOf('|', token.start - 1),
-          executionSearch.lastIndexOf('\n', token.start - 1),
-          executionSearch.lastIndexOf('\r', token.start - 1),
-        );
-        const segmentTokens = shellTokens(executionSearch.slice(segmentStart + 1, token.start));
-        const previous = segmentTokens.at(-1)?.toLowerCase();
-        return previous === undefined || /^(?:(?:ba|z|k)?sh|source|\.)$/.test(previous);
-      });
-    const processSubstitution = /^(?:>>|>\||>)\s*>\s*\(\s*([^)]*)/.exec(suffix);
-    const processCommand = boundedShellTokens(
-      stripTransparentLaunchers(processSubstitution?.[1]?.trim() ?? ''),
-    )[0]
-      ?.value.replace(/^.*[\\/]/, '')
-      .toLowerCase();
-    const executesBody =
-      /^(?:\||;|&|\(|\{)/.test(suffix) ||
-      /^(?:(?:ba|z|k)?sh|source|\.)$/.test(processCommand ?? '') ||
-      executesRedirectedFile;
-    if (!receivesDataWithoutExecuting || executesBody) continue;
-    heredoc = { ...marker, bodyStart: index + 1 };
-  }
-  if (heredoc !== null) maskBody(heredoc.bodyStart, lines.length, heredoc.quoted);
-  return lines.join('');
-}
 
 /**
  * Strip trailing `)` characters that close an enclosing subshell rather than
@@ -1068,4 +486,50 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
         .filter((target) => target !== '/dev/null' && target.toLowerCase() !== 'nul'),
     ),
   ];
+}
+export type { HeredocDelimiter } from './shell-heredocs.js';
+export {
+  commandSegmentBeforeHeredoc,
+  heredocDelimiterOnLine,
+  maskNonExecutingHeredocBodies,
+} from './shell-heredocs.js';
+export type { ShellToken } from './shell-launchers.js';
+export {
+  boundedShellTokens,
+  ENV_FLAG_OPTIONS,
+  ENV_VALUE_TAKING,
+  firstUnquotedShellSeparator,
+  gitInvocationArguments,
+  gitSubcommandIndex,
+  launcherPrefixLength,
+  MAX_LAUNCHER_LENGTH,
+  MAX_LAUNCHER_TOKENS,
+  normalizeEnvSplitPayload,
+  SUDO_VALUE_TAKING,
+  shellTokens,
+  stripLauncherAtBoundary,
+  stripTransparentLaunchers,
+  unwrapEnvSplitStringAtBoundary,
+  VALUE_TAKING_GIT_OPTIONS,
+} from './shell-launchers.js';
+export {
+  executableCommandSubstitutions,
+  isQuoteBoundary,
+  quoteIsEscaped,
+} from './shell-quoting.js';
+
+export function commandDeletesImplicitScope(command: string): boolean {
+  const stripped = stripTransparentLaunchers(maskNonExecutingHeredocBodies(command));
+  for (const rawArguments of gitInvocationArguments(stripped)) {
+    const tokens = shellTokens(rawArguments);
+    const commandIndex = gitSubcommandIndex(tokens);
+    const subcommand = commandIndex >= 0 ? tokens[commandIndex]?.toLowerCase() : undefined;
+    const operands = tokens.slice(commandIndex + 1);
+    if (/^(?:clean|restore|reset|checkout|switch)$/.test(subcommand ?? '')) return true;
+    if (subcommand === 'stash') {
+      const action = operands.find((token) => !token.startsWith('-'))?.toLowerCase();
+      if (action === undefined || /^(?:push|save|pop|apply)$/.test(action)) return true;
+    }
+  }
+  return false;
 }

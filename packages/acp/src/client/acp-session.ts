@@ -21,7 +21,9 @@ import {
   type StopReason,
 } from '../types/acp-v1.js';
 import { ACP_PACKAGE_VERSION } from '../version.js';
+import { cancelLateAcpSession } from './acp-late-session.js';
 import { isBestEffortAckMethod } from './acp-message-routing.js';
+import type { PendingRequest, State } from './acp-request-state.js';
 import {
   type ACPCallbackOptions,
   type ACPResponseSender,
@@ -77,21 +79,6 @@ export type {
   ACPSessionOptions,
   ACPSessionRunResult,
 } from './acp-session-types.js';
-
-interface PendingRequest {
-  method: string;
-  resolve: (v: unknown) => void;
-  reject: (e: Error) => void;
-  timeoutMs: number;
-  timeoutHandle: ReturnType<typeof setTimeout>;
-}
-
-type State = 'init' | 'ready' | 'authenticated' | 'sessioning' | 'prompting' | 'done' | 'closed';
-
-/** Bound for the best-effort late session/cancel send. `session/cancel` is a
- * notification — the server sends no response — so this only bounds a hung
- * transport, not a protocol wait. */
-const LATE_CANCEL_SEND_TIMEOUT_MS = 10_000;
 
 export class ACPSession {
   private readonly transport: ACPClientTransport;
@@ -706,58 +693,7 @@ export class ACPSession {
    * being silently swallowed.
    */
   private cancelLateSession(createPromise: Promise<SessionId>): void {
-    createPromise
-      .then(async (lateId) => {
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const timer = setTimeout(() => {
-              // Plain Error, not kind:'aborted' — the wire hung, nobody aborted.
-              reject(new Error('late session/cancel send timed out'));
-            }, LATE_CANCEL_SEND_TIMEOUT_MS);
-            Promise.resolve(
-              this.transport.send({
-                jsonrpc: '2.0',
-                method: 'session/cancel',
-                params: { sessionId: lateId },
-              } as never as ACPMessage),
-            ).then(
-              () => {
-                clearTimeout(timer);
-                resolve();
-              },
-              (sendErr: unknown) => {
-                clearTimeout(timer);
-                reject(sendErr instanceof Error ? sendErr : new Error(String(sendErr)));
-              },
-            );
-          });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          // eslint-disable-next-line no-console
-          console.warn(
-            JSON.stringify({
-              level: 'warn',
-              event: 'acp_session.late_cancel_failed',
-              sessionId: lateId,
-              message,
-            }),
-          );
-        }
-      })
-      .catch((reason: unknown) => {
-        // The abandoned creation itself failed after we stopped waiting
-        // (e.g. the server refused the late session/new): nothing is left
-        // to cancel, but the refusal is observable, not swallowed.
-        const message = reason instanceof Error ? reason.message : String(reason);
-        // eslint-disable-next-line no-console
-        console.warn(
-          JSON.stringify({
-            level: 'warn',
-            event: 'acp_session.late_cancel_failed',
-            reason: message,
-          }),
-        );
-      });
+    cancelLateAcpSession(this.transport, createPromise);
   }
 
   private async closeSession(): Promise<void> {

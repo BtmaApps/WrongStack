@@ -15,7 +15,6 @@ import type {
 import type { SessionWriter } from '../types/session.js';
 import type { Tool } from '../types/tool.js';
 import { toErrorMessage } from '../utils/error.js';
-import { safeStringify } from '../utils/safe-json.js';
 import { InMemoryAgentBridge } from './agent-bridge.js';
 import {
   acquireCheckpointLock as acquireDirectorCheckpointLock,
@@ -33,6 +32,7 @@ import { DirectorCollabController } from './director/director-collab.js';
 import { FleetSpawnBudgetError } from './director/director-errors.js';
 import { DirectorTaskRegistry } from './director/director-task-registry.js';
 import { buildDirectorToolset } from './director/director-toolset.js';
+import { DirectorIdleRetirement } from './director-idle-retirement.js';
 import type { DirectorOptions } from './director-options.js';
 import {
   composeDirectorPrompt,
@@ -45,7 +45,8 @@ import {
   type DirectorSubagentSessionSummary,
   readDirectorSubagentSession,
 } from './director-session.js';
-import { resolveDirectorSpawnModel } from './director-spawn-model.js';
+import { isHumanPinnedSpawn, resolveDirectorSpawnModel } from './director-spawn-model.js';
+import { completeDirectorTask } from './director-task-completion.js';
 import { FleetBus, type FleetUsage, FleetUsageAggregator } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
 import { type DirectorFleetHost, spawn as fleetSpawn, type ManifestEntry } from './fleet-spawn.js';
@@ -78,35 +79,8 @@ export {
   FleetTokenCapError,
 } from './director/director-errors.js';
 export type { DirectorOptions, TaskResultNotification } from './director-options.js';
+
 export type { ModelMatrixSource } from './model-matrix.js';
-
-/**
- * Minimum delay for re-arming an idle-retirement check that fired while the
- * subagent was still busy. Re-arms reuse the caller's window; this floor only
- * prevents a retire-on-complete (0ms) check from spinning sub-millisecond
- * while the subagent keeps working.
- */
-const BUSY_REARM_FLOOR_MS = 1_000;
-
-/**
- * True when a PERSON pinned this spawn's model rather than the leader.
- *
- * `spawn_subagent` / `delegate` stamp `modelChosenByLeader`; everything else
- * that carries a provider/model — `/spawn --model=…`, an ACP flag, a Kanban
- * task route someone authored — came from a human. A one-off they typed is
- * more specific than a standing lane, so the session plan steps aside
- * entirely: it does not even claim a lane, which leaves that lane free for a
- * spawn the plan actually routes.
- *
- * Stepping aside WHOLESALE (rather than filling the missing half) is
- * deliberate: a human `model` beside a lane `provider` names a pair that
- * exists in neither place. The layers below — matrix, tier, session — fill the
- * gap the same way they did before the plan existed.
- */
-function isHumanPinnedSpawn(config: SubagentConfig): boolean {
-  if (config.modelChosenByLeader === true) return false;
-  return Boolean(config.provider || config.model);
-}
 
 export class Director implements DirectorFleetHost, ICoordinator {
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars — just a cast helper */
@@ -190,7 +164,11 @@ export class Director implements DirectorFleetHost, ICoordinator {
   private readonly taskResultNotifier?: DirectorOptions['taskResultNotifier'];
   private readonly subagentIdleTimeoutMs: number | undefined;
   private readonly retireSubagentOnTaskComplete: boolean;
-  private readonly subagentIdleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly idleRetirement = new DirectorIdleRetirement(
+    () => this.coordinator,
+    (id) => this.remove(id),
+    (err) => this.logShutdownError('subagent_idle_retirement', err),
+  );
   /**
    * Effective idle window per subagent (spawn-time `idleTimeoutMs` override
    * or the Director-wide default; undefined = no window). Internal-task
@@ -392,100 +370,23 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   private handleTaskCompleted(payload: { task: TaskSpec; result: TaskResult }): void {
-    const r = payload.result;
-    const settled = this.tasks.settle(r);
-    if (settled.internal) {
-      // Internal tasks (background probes, shadow passes) are exempt from
-      // retire-on-complete — that policy is for the leader-visible one-shot
-      // surface. But exemption must not mean "no bound": arm the subagent's
-      // OWN idle window (spawn-time override or Director-wide default) so an
-      // internal-only resident (e.g. the resident `explore-companion`) is
-      // reaped after that window instead of living forever. Never retire-0
-      // here — that would kill the resident mid-session, the opposite of
-      // the exemption's intent.
-      this.armSubagentIdleRetirement(
-        r.subagentId,
-        this.subagentIdleDelayMs.get(r.subagentId) ?? this.subagentIdleTimeoutMs,
-      );
-      return;
-    }
-    const title = this.tasks.descriptionFor(r.taskId, payload.task.description ?? r.taskId);
-    if (!settled.consumedInBand && this.taskResultNotifier) {
-      const resultText =
-        typeof r.result === 'string'
-          ? r.result
-          : r.result !== undefined
-            ? safeStringify(r.result)
-            : undefined;
-      try {
-        void Promise.resolve(
-          this.taskResultNotifier({
-            taskId: r.taskId,
-            title,
-            status: r.status,
-            subagentId: r.subagentId,
-            subagentName: Director._asManifestEntry(this.manifestEntries.get(r.subagentId))?.name,
-            resultText,
-            errorText: r.error ? `${r.error.kind}: ${r.error.message}` : undefined,
-            partialText: r.partial?.text,
-            report: r.report,
-            iterations: r.iterations,
-            toolCalls: r.toolCalls,
-            durationMs: r.durationMs,
-          }),
-        ).catch(() => {});
-      } catch (err) {
-        // Sync throws from taskResultNotifier land here. Async throws are
-        // swallowed by the inner .catch(() => {}) — acceptable degradation.
-        // Sync throws must not be silently discarded: surface them as warnings.
-        this.logger?.warn('[director] taskResultNotifier sync error', { err });
-      }
-    }
-    const failed = r.status !== 'success';
-    const errorString = r.error ? `${r.error.kind}: ${r.error.message}` : undefined;
-    this.stateCheckpoint?.recordTaskStatus(r.taskId, {
-      status: failed ? (r.status as 'failed' | 'timeout' | 'stopped') : 'completed',
-      completedAt: new Date().toISOString(),
-      iterations: r.iterations,
-      toolCalls: r.toolCalls,
-      durationMs: r.durationMs,
-      error: errorString,
-    });
-    this.stateCheckpoint?.setUsage(this.usage.snapshot());
-    void this.appendSessionEvent(
-      failed
-        ? {
-            type: 'task_failed',
-            ts: new Date().toISOString(),
-            taskId: r.taskId,
-            title,
-            error: errorString ?? r.status,
-          }
-        : {
-            type: 'task_completed',
-            ts: new Date().toISOString(),
-            taskId: r.taskId,
-            title,
-          },
-    );
-    if (failed) {
-      void this.appendSessionEvent({
-        type: 'agent_error',
-        ts: new Date().toISOString(),
-        agentId: r.subagentId,
-        error: errorString ?? r.status,
-      });
-    }
-    if (this.fleetManager) {
-      void this.fleetManager.flushManifest();
-    } else {
-      this.scheduleManifest();
-    }
-    this.armSubagentIdleRetirement(
-      r.subagentId,
-      this.retireSubagentOnTaskComplete
-        ? 0
-        : (this.subagentIdleDelayMs.get(r.subagentId) ?? this.subagentIdleTimeoutMs),
+    completeDirectorTask(
+      {
+        tasks: this.tasks,
+        subagentIdleDelayMs: this.subagentIdleDelayMs,
+        subagentIdleTimeoutMs: this.subagentIdleTimeoutMs,
+        taskResultNotifier: this.taskResultNotifier,
+        manifestEntries: this.manifestEntries,
+        logger: this.logger,
+        stateCheckpoint: this.stateCheckpoint,
+        usage: this.usage,
+        fleetManager: this.fleetManager,
+        retireSubagentOnTaskComplete: this.retireSubagentOnTaskComplete,
+        armSubagentIdleRetirement: (id, delay) => this.armSubagentIdleRetirement(id, delay),
+        appendSessionEvent: (event) => this.appendSessionEvent(event),
+        scheduleManifest: () => this.scheduleManifest(),
+      },
+      payload,
     );
   }
 
@@ -741,8 +642,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
       this.taskCompletedListener = null;
     }
     this.budgetPolicy.dispose();
-    for (const timer of this.subagentIdleTimers.values()) clearTimeout(timer);
-    this.subagentIdleTimers.clear();
+    this.idleRetirement.dispose();
     this.subagentIdleDelayMs.clear();
     await this.coordinator.stopAll();
     this.tasks.resolveWaitersOnShutdown();
@@ -950,43 +850,11 @@ export class Director implements DirectorFleetHost, ICoordinator {
   }
 
   private clearSubagentIdleRetirement(subagentId: string): void {
-    const timer = this.subagentIdleTimers.get(subagentId);
-    if (!timer) return;
-    clearTimeout(timer);
-    this.subagentIdleTimers.delete(subagentId);
+    this.idleRetirement.clear(subagentId);
   }
 
   private armSubagentIdleRetirement(subagentId: string, delayMs: number | undefined): void {
-    this.clearSubagentIdleRetirement(subagentId);
-    if (delayMs === undefined) return;
-    const timer = setTimeout(() => {
-      this.subagentIdleTimers.delete(subagentId);
-      const entry = this.coordinator.getStatus().subagents.find((a) => a.id === subagentId);
-      // Already gone: nothing to retire. (The normal removal path clears the
-      // armed timer itself; re-arming here would chain 1s timers on a dead id.)
-      if (entry === undefined) return;
-      // Busy at the tick: re-arm, never drop. Dropping stranded a resident
-      // mid-flight on its only armed timer — it stayed in the fleet forever
-      // with nothing left to retire it. Re-arm reuses the SAME window the
-      // caller chose; the floor keeps a retire-on-complete (0ms) check from
-      // becoming a sub-millisecond spin while the subagent keeps working. A
-      // task completing on the subagent re-arms retirement itself
-      // (handleTaskCompleted), so this re-arm is only the safety net between
-      // status flips.
-      if (entry.status !== 'idle') {
-        this.armSubagentIdleRetirement(subagentId, Math.max(delayMs, BUSY_REARM_FLOOR_MS));
-        return;
-      }
-      if (this.coordinator.listPendingTasks().some((task) => task.subagentId === subagentId)) {
-        this.armSubagentIdleRetirement(subagentId, Math.max(delayMs, BUSY_REARM_FLOOR_MS));
-        return;
-      }
-      void this.remove(subagentId).catch((err) =>
-        this.logShutdownError('subagent_idle_retirement', err),
-      );
-    }, delayMs);
-    if (typeof timer.unref === 'function') timer.unref();
-    this.subagentIdleTimers.set(subagentId, timer);
+    this.idleRetirement.arm(subagentId, delayMs);
   }
 
   status(): CoordinatorStatus {

@@ -1,10 +1,20 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
-import type { MCPAuthorizationProvider } from './authorization.js';
+import { MCPCapabilityClient } from './client-capabilities.js';
 import { forceKillTree } from './client-process.js';
-import { pageParams, parseEmptyResult, validateProtocolString } from './client-protocol-helpers.js';
+import type {
+  ExitListener,
+  JsonRpcRequest,
+  JsonRpcServerRequest,
+  MCPClientOptions,
+  MCPListChangedListener,
+  MCPPageOptions,
+  MCPRequestOptions,
+  ToolsChangedListener,
+} from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
+import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
 import {
   type MCPGetPromptResult,
   type MCPListPromptsResult,
@@ -12,11 +22,6 @@ import {
   type MCPListResourceTemplatesResult,
   type MCPReadResourceResult,
   type MCPServerMetadata,
-  parseGetPromptResult,
-  parseListPromptsResult,
-  parseListResourcesResult,
-  parseListResourceTemplatesResult,
-  parseReadResourceResult,
   parseServerMetadata,
 } from './protocol.js';
 import { listAllTools } from './tool-schema.js';
@@ -27,75 +32,14 @@ import { isJsonRpcResult } from './transport-jsonrpc.js';
 export { forceKillTree } from './client-process.js';
 export { quoteWindowsArg } from './client-protocol-helpers.js';
 
-export type Transport = 'stdio' | 'sse' | 'streamable-http';
-
-export interface MCPClientOptions {
-  name: string;
-  transport: Transport;
-  command?: string | undefined;
-  args?: string[] | undefined;
-  env?: Record<string, string> | undefined;
-  url?: string | undefined;
-  headers?: Record<string, string> | undefined;
-  startupTimeoutMs?: number | undefined;
-  requestTimeoutMs?: number | undefined;
-  /**
-   * Working directory for a stdio server process. Presets address the project
-   * as `--project-root .` / `server-filesystem .`, which resolve against the
-   * spawn cwd — without this the child inherited WrongStack's PROCESS cwd, so
-   * a host serving a project from elsewhere (WebUI, ACP sessions with their
-   * own cwd) pointed those servers at the wrong directory.
-   */
-  cwd?: string | undefined;
-  /** Host-owned, vault-backed authorization for HTTP transports. */
-  authorizationProvider?: MCPAuthorizationProvider | undefined;
-  /**
-   * Allowlist of env var names to forward from the parent process (process.env)
-   * to the child. Values are resolved at spawn time and merged into `env`
-   * via the `extra` path of `buildChildEnv` (unfiltered). This is how built-in
-   * MCP server presets (GitHub, Slack, Brave Search, …) get their API tokens
-   * without storing them in config.json or being scrubbed by the secret filter.
-   */
-  passthroughEnv?: string[] | undefined;
-  /**
-   * Resolution-bound private-network policy for HTTP transports. Default:
-   * private/LAN targets are blocked at dial time (DNS-rebinding safe); the
-   * flag opts this server in. See MCPServerConfig.allowPrivateNetworks.
-   */
-  allowPrivateNetworks?: boolean | undefined;
-}
-
-import type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult } from './contracts.js';
-
 export type { ConnectionState, JsonRpcResponse, MCPTool, ToolCallResult };
 
-export interface MCPRequestOptions {
-  signal?: AbortSignal | undefined;
-}
-
-export interface MCPPageOptions extends MCPRequestOptions {
-  cursor?: string | undefined;
-}
-
-interface JsonRpcRequest {
-  jsonrpc: '2.0';
-  id: number;
-  method: string;
-  params?: unknown | undefined;
-}
-
-type JsonRpcServerRequest = {
-  jsonrpc: '2.0';
-  id: number | string;
-  method: string;
-  params?: unknown | undefined;
-};
-
-type ExitListener = (name: string, code: number | null, signal: string | null) => void;
-type ToolsChangedListener = (name: string, tools: MCPTool[]) => void;
-export type MCPListChangedListener = (name: string) => void;
-
 export class MCPClient {
+  private readonly capabilityClient = new MCPCapabilityClient(
+    this.requestCapability.bind(this),
+    this.requireResourceSubscriptions.bind(this),
+  );
+
   /**
    * Maximum bytes the rx buffer may accumulate before the connection is
    * forcefully closed. A well-behaved JSON-RPC server emits newline-delimited
@@ -548,65 +492,27 @@ export class MCPClient {
   }
 
   async listResources(opts: MCPPageOptions = {}): Promise<MCPListResourcesResult> {
-    const params = pageParams(opts.cursor, 'resources/list cursor');
-    return this.requestCapability(
-      'resources',
-      'resources/list',
-      params,
-      parseListResourcesResult,
-      opts,
-    );
+    return this.capabilityClient.listResources(opts);
   }
 
   async listResourceTemplates(opts: MCPPageOptions = {}): Promise<MCPListResourceTemplatesResult> {
-    const params = pageParams(opts.cursor, 'resources/templates/list cursor');
-    return this.requestCapability(
-      'resources',
-      'resources/templates/list',
-      params,
-      parseListResourceTemplatesResult,
-      opts,
-    );
+    return this.capabilityClient.listResourceTemplates(opts);
   }
 
   async readResource(uri: string, opts: MCPRequestOptions = {}): Promise<MCPReadResourceResult> {
-    validateProtocolString(uri, 'resource URI');
-    return this.requestCapability(
-      'resources',
-      'resources/read',
-      { uri },
-      parseReadResourceResult,
-      opts,
-    );
+    return this.capabilityClient.readResource(uri, opts);
   }
 
   async subscribeResource(uri: string, opts: MCPRequestOptions = {}): Promise<void> {
-    validateProtocolString(uri, 'resource URI');
-    this.requireResourceSubscriptions('resources/subscribe');
-    await this.requestCapability(
-      'resources',
-      'resources/subscribe',
-      { uri },
-      parseEmptyResult,
-      opts,
-    );
+    return this.capabilityClient.subscribeResource(uri, opts);
   }
 
   async unsubscribeResource(uri: string, opts: MCPRequestOptions = {}): Promise<void> {
-    validateProtocolString(uri, 'resource URI');
-    this.requireResourceSubscriptions('resources/unsubscribe');
-    await this.requestCapability(
-      'resources',
-      'resources/unsubscribe',
-      { uri },
-      parseEmptyResult,
-      opts,
-    );
+    return this.capabilityClient.unsubscribeResource(uri, opts);
   }
 
   async listPrompts(opts: MCPPageOptions = {}): Promise<MCPListPromptsResult> {
-    const params = pageParams(opts.cursor, 'prompts/list cursor');
-    return this.requestCapability('prompts', 'prompts/list', params, parseListPromptsResult, opts);
+    return this.capabilityClient.listPrompts(opts);
   }
 
   async getPrompt(
@@ -614,21 +520,7 @@ export class MCPClient {
     args?: Record<string, string> | undefined,
     opts: MCPRequestOptions = {},
   ): Promise<MCPGetPromptResult> {
-    validateProtocolString(name, 'prompt name');
-    if (args && Object.keys(args).length > 64) {
-      throw new Error('MCP prompt arguments exceed the limit of 64');
-    }
-    for (const [key, value] of Object.entries(args ?? {})) {
-      validateProtocolString(key, 'prompt argument name');
-      validateProtocolString(value, `prompt argument "${key}"`, true);
-    }
-    return this.requestCapability(
-      'prompts',
-      'prompts/get',
-      args === undefined ? { name } : { name, arguments: args },
-      parseGetPromptResult,
-      opts,
-    );
+    return this.capabilityClient.getPrompt(name, args, opts);
   }
 
   async close(): Promise<void> {
@@ -1094,3 +986,10 @@ export class MCPClient {
     }
   }
 }
+export type {
+  MCPClientOptions,
+  MCPListChangedListener,
+  MCPPageOptions,
+  MCPRequestOptions,
+  Transport,
+} from './client-types.js';

@@ -1,27 +1,18 @@
 import type { EventBus } from '@wrongstack/core/kernel';
-import type { MemoryEntry, MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
+import type { MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
+import type {
+  MemoryAnchor,
+  MemoryAudienceContext,
+  MemoryAudienceSelector,
+  MemorySourceRef,
+  PersistenceClass,
+  Sage,
+  SageKind,
+  SageScope,
+  SageStatus,
+} from './memory-model.js';
 
 export const SAGE_SCHEMA_VERSION = 1;
-
-export type SageScope = 'project' | 'user' | 'session' | 'file' | 'symbol';
-
-/**
- * Persistence class — controls how hygiene treats a memory.
- *
- * - `permanent`:   Hygiene never deletes or recommends deletion. Anchors are
- *                  still verified, and a stale flag is set on failure, but no
- *                  time-based or usage-based retention ever fires.
- * - `long_lived`:  Default. Hygiene surfaces review candidates for never-used,
- *                  injected-but-unused, or low-confidence memories; final
- *                  decision always belongs to the user/LLM via `memory_forget`
- *                  or `memory_update`. Time-based deletion is **off**.
- * - `short_lived`: Subject to the (still advisory, not auto-applying) time-
- *                  based review thresholds. Caller may also set `expiresAt`
- *                  for a hard TTL the user explicitly opted into.
- *
- * Migration: existing stores without this field are treated as `long_lived`.
- */
-export type PersistenceClass = 'permanent' | 'long_lived' | 'short_lived';
 
 export const DEFAULT_PERSISTENCE: PersistenceClass = 'long_lived';
 export const VALID_PERSISTENCE: ReadonlySet<PersistenceClass> = new Set([
@@ -29,143 +20,6 @@ export const VALID_PERSISTENCE: ReadonlySet<PersistenceClass> = new Set([
   'long_lived',
   'short_lived',
 ]);
-
-export type SageKind =
-  | 'fact'
-  | 'decision'
-  | 'convention'
-  | 'preference'
-  | 'warning'
-  | 'anti_pattern'
-  | 'workflow'
-  | 'bug_root_cause'
-  | 'file_note'
-  | 'symbol_note'
-  | 'command_note'
-  | 'summary'
-  | 'memory_review'
-  // ── New SAGE-only kinds (added 2026-08-08, retrospective analysis) ───
-  // All map to legacy `MemoryType='fact'` for backward compat — they are
-  // semantically distinct in SAGE so retrieval + the WebUI can render them
-  // differently, but the legacy `MemoryStore` surface stays closed.
-  | 'tool_outcome' // durable result of a successful tool call (e.g. command exited 0)
-  | 'error_pattern' // recurring error signature → root cause + fix
-  | 'session_digest' // per-session outcome summary (owned by session, expires)
-  | 'role_operational' // guidance for a specific agent role / task type
-  | 'task_outcome' // what worked (or didn't) for a Kanban/task type
-  | 'security_signal' // denial patterns, secret-scrubber hits, path-guard rejections
-  | 'fleet_convention'; // cross-agent handoff / roster etiquette
-
-export type SageStatus =
-  | 'active'
-  | 'stale'
-  | 'superseded'
-  | 'contradicted'
-  | 'archived'
-  | 'deleted';
-
-export interface MemoryAnchor {
-  type: 'file' | 'directory' | 'symbol' | 'package' | 'command' | 'test' | 'git' | 'agent';
-  path?: string | undefined;
-  symbol?: string | undefined;
-  command?: string | undefined;
-  /** Stable roster/catalog role id when type is `agent`. */
-  role?: string | undefined;
-  contentHash?: string | undefined;
-  gitBlobHash?: string | undefined;
-  lineStart?: number | undefined;
-  lineEnd?: number | undefined;
-}
-
-export interface MemoryAudienceSelector {
-  /** Stable fleet/catalog role ids (for example `reviewer`, `refactor-planner`, or `git`). */
-  roles?: string[] | undefined;
-  /** Work classifications such as `review`, `refactor`, or Kanban task types. */
-  taskTypes?: string[] | undefined;
-  /** Runtime modes that should receive the memory (for example `code-review`). */
-  modes?: string[] | undefined;
-}
-
-export interface MemoryAudienceContext {
-  role?: string | undefined;
-  taskType?: string | undefined;
-  mode?: string | undefined;
-}
-
-export interface MemorySourceRef {
-  type:
-    | 'user'
-    | 'session'
-    | 'tool_result'
-    | 'project_instruction'
-    | 'file'
-    | 'test'
-    | 'command'
-    | 'legacy_memory';
-  sessionId?: string | undefined;
-  toolUseId?: string | undefined;
-  path?: string | undefined;
-  command?: string | undefined;
-  excerptHash?: string | undefined;
-}
-
-export interface Sage {
-  id: string;
-  revision: number;
-  scope: SageScope;
-  legacyScope?: MemoryScope | undefined;
-  kind: SageKind;
-  status: SageStatus;
-  /** Orthogonal to lifecycle: only `never` is an absolute LLM-context ban. */
-  contextPolicy?: 'eligible' | 'never' | undefined;
-  /**
-   * Persistence class. Optional for back-compat: legacy records without this
-   * field are treated as `long_lived` by the load path (see
-   * `withDefaultPersistence` in store.ts).
-   */
-  persistence?: PersistenceClass | undefined;
-  text: string;
-  summary?: string | undefined;
-  importance: number;
-  confidence: number;
-  freshness: number;
-  tags: string[];
-  anchors: MemoryAnchor[];
-  /** Optional project-local audience. Omitted memories remain general project knowledge. */
-  audience?: MemoryAudienceSelector | undefined;
-  sources: MemorySourceRef[];
-  supersedes?: string[] | undefined;
-  supersededBy?: string | undefined;
-  contradicts?: string[] | undefined;
-  createdAt: string;
-  updatedAt: string;
-  lastAccessedAt?: string | undefined;
-  lastVerifiedAt?: string | undefined;
-  /**
-   * Why a `stale` memory is stale. `verification` — anchor verification
-   * demoted it, so a later passing verification may restore it.
-   * `manual` — someone set the status (retirement); automatic passes leave it
-   * alone. Absent on records written before the field existed.
-   */
-  staleReason?: 'verification' | 'manual' | undefined;
-  /** Last time the assistant referenced an injected memory (usefulness signal). */
-  lastUsedAt?: string | undefined;
-  expiresAt?: string | undefined;
-  /**
-   * How often this memory was injected into context. Approximate: stores batch
-   * counter persistence (JSONL) or count process-locally (SQLite); the audit
-   * log's `memory.injected` events remain the exact record.
-   */
-  injectionCount?: number | undefined;
-  /** How often an injected memory was referenced by the assistant afterwards. */
-  useCount?: number | undefined;
-  /**
-   * The session that owns a `scope: 'session'` memory. Required for
-   * session-scoped writes so retrieval and injection can filter by the
-   * requesting session. Undefined for project/user/file/symbol scopes.
-   */
-  ownerSessionId?: string | undefined;
-}
 
 export type MemoryGraphRelation =
   | 'about_file'
@@ -193,154 +47,6 @@ export interface MemoryGraphEdge {
   evidence?: string[] | undefined;
   createdAt: string;
   deletedAt?: string | undefined;
-}
-
-export type VerificationStatus = 'verified' | 'stale' | 'contradicted' | 'unknown';
-
-export interface AnchorVerificationResult {
-  anchor: MemoryAnchor;
-  status: VerificationStatus;
-  reason: string;
-  contentHash?: string | undefined;
-  gitBlobHash?: string | undefined;
-}
-
-export interface MemoryVerificationResult {
-  memoryId: string;
-  status: VerificationStatus;
-  checkedAt: string;
-  anchors: AnchorVerificationResult[];
-}
-
-export interface SageHygieneOptions {
-  retentionDays?: number | undefined;
-  /**
-   * Soft-delete session-scoped memories older than this many days when they
-   * have no explicit `expiresAt`. Default: 7. Session scope is ephemeral;
-   * hygiene deletes these immediately instead of creating review candidates.
-   */
-  sessionRetentionDays?: number | undefined;
-  archiveLowConfidenceAfterDays?: number | undefined;
-  /**
-   * Archive active memories that were injected at least `unusedMinInjections`
-   * times but never referenced by the assistant, this many days after their
-   * last content update. Default: 30.
-   */
-  archiveUnusedAfterDays?: number | undefined;
-  /** Minimum injection count before a never-used memory is archived. Default: 10. */
-  unusedMinInjections?: number | undefined;
-  /** When false, skip anchor verification entirely. Default: true. */
-  verify?: boolean | undefined;
-  /**
-   * Anchor verification depth for the hygiene sweep.
-   * - `existence` (default): path still present on disk.
-   * - `content` / `git`: deep verify via `verifyMemoryAnchors` (content hash,
-   *   symbol, command; git blob when depth is `git` or anchor carries a hash).
-   */
-  verifyDepth?: 'existence' | 'content' | 'git' | undefined;
-  /**
-   * Run a second dedup pass that catches near-duplicate texts (semantically
-   * similar but not byte-identical after canonical normalization) via SimHash
-   * bucketing. Default: true.
-   *
-   * Set to `false` to skip the pass for any of:
-   * - Small corpora (< ~200 active memories) where the O(N) bucketing cost
-   *   is dominated by the I/O of `updateMemory` writes, not by the analysis.
-   * - Experimental recall-tuning sessions where you want exact-match dedup
-   *   behavior preserved verbatim so you can isolate recall regressions to
-   *   the cache layer rather than the dedup layer.
-   * - Stores where transitive-merge audit clarity matters more than recall
-   *   compression — the near-dedup keeper inherits the merged `tags` /
-   *   `anchors` / `sources` of all near-duplicate members, which can
-   *   obscure the provenance of any single memory.
-   *
-   * The pass only operates on the post-first-pass `active` set, so memories
-   * already superseded by exact-identity dedup are not re-fed in.
-   */
-  nearDedup?: boolean | undefined;
-  /**
-   * OPT-IN, destructive: physically remove records that are ALREADY
-   * `status: 'deleted'` and whose deletion is older than this many days.
-   *
-   * This is the ONLY hygiene step that physically drops rows from SQLite
-   * (or compacting JSONL). It never changes any live memory's status and
-   * never touches `permanent` records. It exists to stop the soft-delete
-   * audit trail (including session-GC tombstones) from growing unbounded.
-   *
-   * Undefined/omitted or <= 0 → the purge is disabled (default). `0` is treated
-   * as "disabled" rather than "purge everything" to prevent accidental data loss.
-   */
-  purgeDeletedAfterDays?: number | undefined;
-}
-
-export interface SageHygieneReport {
-  startedAt: string;
-  completedAt: string;
-  examined: number;
-  deduplicated: number;
-  superseded: number;
-  contradicted: number;
-  staled: number;
-  /** Review candidates produced by hygiene this run. Final deletion/archival
-   *  decision is made by the user or LLM via `memory_forget`/`memory_update`,
-   *  never by hygiene itself. */
-  reviewCandidatesCreated: number;
-  /** Subset of historical semantics: ALWAYS 0 in the current pipeline —
-   *  retained for backward-compatible tooling that reads the field. */
-  archived: number;
-  /** Subset of historical semantics: ALWAYS 0 in the current pipeline. */
-  archivedUnused: number;
-  /**
-   * Soft-deleted memories this run. Currently only session-scope GC
-   * (expired / aged-out session memories) increments this; project memories
-   * still go through review candidates.
-   */
-  deleted: number;
-  /**
-   * Number of already-`deleted` records physically removed by the opt-in
-   * `purgeDeletedAfterDays` step. 0 unless that option was passed.
-   */
-  purgedDeleted: number;
-  verified: number;
-  /**
-   * Stale memories whose anchors verified again this run and were returned to
-   * `active`. Optional for reports produced by older stores.
-   */
-  reactivated?: number | undefined;
-  /**
-   * Number of near-dup groups in the SimHash pass whose size exceeded 2
-   * (transitive union-find collapse). See `findNearDuplicateGroups` for the
-   * trade-off; the `SIMHASH_THRESHOLD = 7` mitigation makes 3-way collapse
-   * of unrelated texts unlikely, but a non-zero counter on a real corpus
-   * is a signal that the threshold or band-bits may want re-tuning.
-   * Always 0 when `nearDedup === false`.
-   */
-  transitiveMerges: number;
-}
-
-/**
- * Why hygiene surfaced a memory for review. Distinct from the candidate's own
- * status (`pending`/`accepted`/`rejected`) — these are the *reasons* a candidate
- * exists, surfaced as tags on the candidate and in the audit log.
- */
-export type MemoryReviewReason =
-  | 'anchor_invalid'
-  | 'never_injected'
-  | 'injected_never_used'
-  | 'confidence_low'
-  | 'expires_at_passed'
-  | 'contradicted_by_graph'
-  | 'freshness_low';
-
-export interface SageStats {
-  total: number;
-  byStatus: Record<SageStatus, number>;
-  byKind: Partial<Record<SageKind, number>>;
-  edges: number;
-  /** Total recorded context injections across all memories. */
-  injections?: number | undefined;
-  /** Total recorded assistant references to injected memories. */
-  uses?: number | undefined;
 }
 
 /**
@@ -931,95 +637,30 @@ export interface FindMemoriesForFileResponse {
   /** Count of matches that have a pending review candidate (any bucket). */
   reviewPendingCount: number;
 }
-
-export function sageToLegacyScope(scope: SageScope): MemoryScope {
-  switch (scope) {
-    case 'user':
-      return 'user-memory';
-    case 'project':
-    case 'session':
-    case 'file':
-    case 'symbol':
-      return 'project-memory';
-  }
-}
-
-export function legacyToSageScope(scope: MemoryScope): SageScope {
-  switch (scope) {
-    case 'user-memory':
-      return 'user';
-    case 'project-agents':
-    case 'project-memory':
-      return 'project';
-  }
-}
-
-export function kindToLegacyType(kind: SageKind): MemoryType {
-  switch (kind) {
-    case 'decision':
-      return 'decision';
-    case 'convention':
-      return 'convention';
-    case 'preference':
-      return 'preference';
-    case 'anti_pattern':
-      return 'anti_pattern';
-    case 'file_note':
-    case 'symbol_note':
-    case 'command_note':
-      return 'reference';
-    case 'warning':
-    case 'workflow':
-    case 'bug_root_cause':
-    case 'summary':
-    case 'memory_review':
-    case 'tool_outcome':
-    case 'error_pattern':
-    case 'session_digest':
-    case 'role_operational':
-    case 'task_outcome':
-    case 'security_signal':
-    case 'fleet_convention':
-    case 'fact':
-      return 'fact';
-  }
-}
-
-export function legacyTypeToKind(type: MemoryType | undefined): SageKind {
-  switch (type) {
-    case 'decision':
-      return 'decision';
-    case 'convention':
-      return 'convention';
-    case 'preference':
-      return 'preference';
-    case 'anti_pattern':
-      return 'anti_pattern';
-    case 'reference':
-      return 'file_note';
-    case 'fact':
-    case undefined:
-      return 'fact';
-  }
-}
-
-export function toLegacyEntry(memory: Sage): MemoryEntry {
-  return {
-    scope: memory.legacyScope ?? sageToLegacyScope(memory.scope),
-    text: memory.text,
-    ts: memory.createdAt,
-    type: kindToLegacyType(memory.kind),
-    tags: memory.tags.length > 0 ? memory.tags : undefined,
-    priority: priorityFromImportance(memory.importance),
-    source: memory.sources[0]?.type,
-    confidence: memory.confidence,
-    lastAccessed: memory.lastAccessedAt,
-  };
-}
-
-function priorityFromImportance(importance: number): MemoryPriority {
-  if (importance >= 0.9) return 'critical';
-  if (importance >= 0.75) return 'high';
-  if (importance >= 0.4) return 'medium';
-  return 'low';
-}
+export {
+  kindToLegacyType,
+  legacyToSageScope,
+  legacyTypeToKind,
+  sageToLegacyScope,
+  toLegacyEntry,
+} from './legacy-memory-conversion.js';
+export type {
+  AnchorVerificationResult,
+  MemoryReviewReason,
+  MemoryVerificationResult,
+  SageHygieneOptions,
+  SageHygieneReport,
+  SageStats,
+  VerificationStatus,
+} from './memory-hygiene-types.js';
+export type {
+  MemoryAnchor,
+  MemoryAudienceContext,
+  MemoryAudienceSelector,
+  MemorySourceRef,
+  PersistenceClass,
+  Sage,
+  SageKind,
+  SageScope,
+  SageStatus,
+} from './memory-model.js';

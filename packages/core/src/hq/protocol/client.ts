@@ -1,4 +1,4 @@
-import type { HqEventEnvelope, HqProtocolVersion } from './core.js';
+import type { HqEventEnvelope, HqProtocolVersion } from './envelope.js';
 import type { HqProjectIdentity, HqProjectStatus } from './project.js';
 import type { HqRedactionPolicy } from './tool.js';
 

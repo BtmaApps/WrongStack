@@ -217,3 +217,23 @@ export function resolveDirectorSpawnModel(
     }
   }
 }
+
+/**
+ * True when a PERSON pinned this spawn's model rather than the leader.
+ *
+ * `spawn_subagent` / `delegate` stamp `modelChosenByLeader`; everything else
+ * that carries a provider/model — `/spawn --model=…`, an ACP flag, a Kanban
+ * task route someone authored — came from a human. A one-off they typed is
+ * more specific than a standing lane, so the session plan steps aside
+ * entirely: it does not even claim a lane, which leaves that lane free for a
+ * spawn the plan actually routes.
+ *
+ * Stepping aside WHOLESALE (rather than filling the missing half) is
+ * deliberate: a human `model` beside a lane `provider` names a pair that
+ * exists in neither place. The layers below — matrix, tier, session — fill the
+ * gap the same way they did before the plan existed.
+ */
+export function isHumanPinnedSpawn(config: SubagentConfig): boolean {
+  if (config.modelChosenByLeader === true) return false;
+  return Boolean(config.provider || config.model);
+}

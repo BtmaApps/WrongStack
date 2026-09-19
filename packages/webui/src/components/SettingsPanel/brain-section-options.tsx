@@ -30,7 +30,7 @@ export const RISK_COPY: Record<RiskLevel, string> = {
 const PERSONAS = ['executor', 'skeptic', 'auditor'] as const;
 
 /** One entry of the lens picker. */
-interface CouncilPersonaOption {
+export interface CouncilPersonaOption {
   id: string;
   name: string;
   description?: string | undefined;

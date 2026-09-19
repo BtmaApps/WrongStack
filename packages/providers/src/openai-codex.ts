@@ -26,21 +26,15 @@ import {
   quotaResetInMs,
   recordProviderQuota,
 } from '@wrongstack/core/quota';
-import { scrubErrorText } from '@wrongstack/core/security';
 import {
   type Capabilities,
-  classifyProviderError,
-  isRetryableKind,
   isVolatileSystemBlock,
   ProviderError,
   type ReasoningEffort,
   type Request,
-  type StopReason,
   type StreamEvent,
-  type Usage,
 } from '@wrongstack/core/types';
 import { safeParse } from '@wrongstack/core/utils';
-import { parseToolInput } from './_tool-input.js';
 import {
   type CodexResponseMetadata,
   type CodexWebSocketFactory,
@@ -48,12 +42,7 @@ import {
   CodexWebSocketPool,
   defaultCodexWebSocketFactory,
 } from './codex-websocket.js';
-import {
-  type HeadersLike,
-  parseProviderErrorBody,
-  parseProviderHttpError,
-  scrubProviderErrorBody,
-} from './error-parse.js';
+import { type HeadersLike, parseProviderHttpError } from './error-parse.js';
 import { capabilitiesForFamily } from './family-capabilities.js';
 import type { BuildBodyContext } from './model-output-limits.js';
 import {
@@ -68,15 +57,21 @@ import {
 } from './oauth/codex-protocol.js';
 import { OAuthRefreshCoordinator } from './oauth-refresh-coordinator.js';
 import { extractAccountId, extractPlanType } from './openai-codex-account.js';
+import type {
+  CodexLiveModel,
+  CodexModelMetadata,
+  CodexModelPolicy,
+  CodexModelsResponse,
+} from './openai-codex-model-policy.js';
 import {
-  parseCodexRateLimitEvent,
-  parseCodexRateLimitHeaders,
-} from './openai-codex-rate-limits.js';
-
-// Owned by `codex-websocket.ts` (both transports carry it); re-exported here
-// so the long-standing public name keeps resolving from the provider module.
-export type { CodexResponseMetadata };
-
+  CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT,
+  clampReasoningEffort,
+  codexSendCeiling,
+  parseReasoningEffort,
+  parseSupportedReasoningEfforts,
+} from './openai-codex-model-policy.js';
+import { parseCodexRateLimitHeaders } from './openai-codex-rate-limits.js';
+import { parseOpenAIResponsesStream } from './openai-codex-stream.js';
 import { applyPromptCacheKey } from './prompt-cache-key.js';
 import {
   isCacheProbeEnabled,
@@ -84,14 +79,12 @@ import {
   recordCacheProbeUsage,
 } from './prompt-cache-probe.js';
 import { redirectSafeFetch } from './redirect-safe-fetch.js';
-import { createSseLineFoldingTransform, parseSSE } from './sse.js';
-import {
-  CODEX_REASONING_ENCRYPTED_META,
-  CODEX_REASONING_ID_META,
-  messagesToResponsesInput,
-  toolsToResponses,
-} from './tool-format/to-responses.js';
+import { messagesToResponsesInput, toolsToResponses } from './tool-format/to-responses.js';
 import { WireAdapter, type WireAdapterStreamOptions } from './wire-adapter.js';
+
+// Owned by `codex-websocket.ts` (both transports carry it); re-exported here
+// so the long-standing public name keeps resolving from the provider module.
+export type { CodexResponseMetadata };
 
 // ── OAuth refresh (shared protocol — see ./oauth/codex-protocol.ts) ──────────
 
@@ -162,168 +155,6 @@ const CODEX_MODELS_TIMEOUT_MS = 3_000;
 const CODEX_MODELS_CACHE_TTL_MS = 5 * 60_000;
 /** The official client proactively refreshes ChatGPT access tokens five minutes early. */
 const CODEX_TOKEN_REFRESH_SKEW_MS = 5 * 60_000;
-/**
- * Fraction of a model's catalog `context_window` the backend actually lets a
- * request occupy, when the catalog does not say. The official Codex client
- * computes its usable window as
- * `resolved_context_window * effective_context_window_percent / 100`
- * (codex-rs/core/src/session/context_window.rs) and the live ChatGPT catalog
- * ships `effective_context_window_percent: 95` on every model, so 95 is the
- * value the field defaults to rather than a guess.
- */
-const CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT = 95;
-
-/**
- * Derive the effective SEND ceiling from a catalog entry.
- *
- * The catalog publishes TWO windows and they mean different things:
- *
- * - `context_window` is the model's DEFAULT window (272K across the current
- *   lineup, 128K on spark).
- * - `max_context_window` is the largest window the model supports — the
- *   ceiling an explicit configured override may reach. The official client
- *   resolves it as `configured.min(max_context_window)`
- *   (codex-rs/models-manager/src/model_info.rs, `with_config_overrides`).
- *
- * So `max_context_window` IS a bigger window, just one a client has to ask
- * for; on gpt-6-astra and the gpt-5.6 family it is 872K against a 272K
- * default. Reporting the default as a hard cap throws away two thirds of the
- * window these models actually have, which is why the maximum is preferred
- * here and the default is only the fallback for older catalogs. The agent loop
- * still clamps this against its own configured baseline and any learned
- * overflow limit, so this is a ceiling, not a target.
- *
- * The effective percent is the output/overhead reserve the backend keeps
- * inside whichever window applies; there is no separate fixed subtraction to
- * make on top of it.
- */
-function codexSendCeiling(contextWindow: number, effectivePercent: number): number {
-  const percent =
-    Number.isFinite(effectivePercent) && effectivePercent > 0 && effectivePercent <= 100
-      ? effectivePercent
-      : CODEX_DEFAULT_EFFECTIVE_CONTEXT_PERCENT;
-  return Math.max(1, Math.floor((contextWindow * percent) / 100));
-}
-
-interface CodexModelMetadata {
-  slug?: unknown;
-  context_window?: unknown;
-  max_context_window?: unknown;
-  effective_context_window_percent?: unknown;
-  default_reasoning_level?: unknown;
-  supported_reasoning_levels?: unknown;
-  input_modalities?: unknown;
-  supports_parallel_tool_calls?: unknown;
-  visibility?: unknown;
-  display_name?: unknown;
-  description?: unknown;
-}
-
-/** One picker-visible model, as the ChatGPT backend describes it. */
-export interface CodexLiveModel {
-  id: string;
-  name: string;
-  description?: string | undefined;
-  /** Largest window the model supports, before the effective-window discount. */
-  maxContext?: number | undefined;
-}
-
-/** Per-model policy the catalog publishes and the transport honours. */
-interface CodexModelPolicy {
-  /** Input-token ceiling, already discounted by the effective-window percent. */
-  sendCeiling: number;
-  /** The model's own default reasoning effort, when the catalog names one. */
-  defaultReasoningEffort?: ReasoningEffort | undefined;
-  /**
-   * Efforts this model accepts, in the catalog's own ascending order. Empty
-   * when the catalog does not say, which means "send whatever was asked".
-   */
-  supportedReasoningEfforts: readonly ReasoningEffort[];
-  /** False when the catalog lists no `image` input modality. */
-  acceptsImages: boolean;
-  /** False only when the catalog explicitly says the model cannot parallelise. */
-  parallelToolCalls: boolean;
-}
-
-/**
- * Reasoning efforts in ascending strength. Used only to answer "which
- * supported level is nearest below the one asked for" — the catalog decides
- * what a given model supports, this decides how to walk it.
- */
-const CODEX_REASONING_LADDER = [
-  'none',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-  'max',
-] as const satisfies readonly ReasoningEffort[];
-
-const CODEX_REASONING_EFFORTS: ReadonlySet<string> = new Set(CODEX_REASONING_LADDER);
-
-function parseReasoningEffort(value: unknown): ReasoningEffort | undefined {
-  return typeof value === 'string' && CODEX_REASONING_EFFORTS.has(value)
-    ? (value as ReasoningEffort)
-    : undefined;
-}
-
-/**
- * Read `supported_reasoning_levels`, an array of `{ effort, description }`.
- *
- * Kept in the catalog's order rather than sorted: that order is the backend's
- * own ranking, which is what makes "the nearest supported effort" meaningful
- * without this module hardcoding a ladder that the next model tier changes.
- */
-function parseSupportedReasoningEfforts(value: unknown): ReasoningEffort[] {
-  if (!Array.isArray(value)) return [];
-  const out: ReasoningEffort[] = [];
-  for (const raw of value) {
-    if (!raw || typeof raw !== 'object') continue;
-    const effort = parseReasoningEffort((raw as { effort?: unknown }).effort);
-    if (effort && !out.includes(effort)) out.push(effort);
-  }
-  return out;
-}
-
-/**
- * Clamp a requested reasoning effort to something this model actually accepts.
- *
- * The catalog's levels differ by tier — `max` exists on gpt-6-astra and the
- * gpt-5.6 family but NOT on gpt-5.5, gpt-5.4-mini or gpt-5.3-codex-spark, and
- * `minimal` exists nowhere. Forwarding an unsupported effort spends a whole
- * request to earn a 400, then spends another on the retry; degrading to the
- * nearest supported level spends one request that works.
- *
- * "Nearest" walks DOWN the catalog's own ordering from the requested level, so
- * `max` on a low/medium/high/xhigh model becomes `xhigh` rather than the
- * timid `medium` a blind fallback would pick.
- */
-function clampReasoningEffort(
-  effort: ReasoningEffort,
-  supported: readonly ReasoningEffort[],
-): ReasoningEffort {
-  if (supported.length === 0 || supported.includes(effort)) return effort;
-  const requestedRank = CODEX_REASONING_LADDER.indexOf(effort);
-  if (requestedRank < 0) return supported[supported.length - 1] ?? effort;
-  let best: ReasoningEffort | undefined;
-  let bestRank = -1;
-  for (const candidate of supported) {
-    const rank = CODEX_REASONING_LADDER.indexOf(candidate);
-    if (rank < 0 || rank > requestedRank) continue;
-    if (rank > bestRank) {
-      bestRank = rank;
-      best = candidate;
-    }
-  }
-  // Everything the model offers is stronger than what was asked for: take the
-  // weakest of those rather than silently escalating to the top.
-  return best ?? supported[0] ?? effort;
-}
-
-interface CodexModelsResponse {
-  models?: unknown;
-}
 
 /**
  * Token shape returned by a refresh. Structurally the shared
@@ -350,6 +181,9 @@ export function refreshCodexAccessToken(
 // extractAccountId lives in openai-codex-account.ts so the oauth entry can
 // use it without bundling this provider. Re-exported for API compatibility.
 export { extractAccountId } from './openai-codex-account.js';
+export type { CodexLiveModel } from './openai-codex-model-policy.js';
+export { codexOutputCap } from './openai-codex-model-policy.js';
+export { parseOpenAIResponsesStream } from './openai-codex-stream.js';
 
 // ── Provider ────────────────────────────────────────────────────────────────
 
@@ -362,20 +196,6 @@ export interface CodexCredentials {
   expiresAt?: number | undefined;
   /** Cached ChatGPT account id. Re-derived from the live token when missing. */
   accountId?: string | undefined;
-}
-
-/**
- * Decide what happens to a caller's `req.maxTokens` on the Codex wire.
- *
- * ChatGPT's subscription-backed `/backend-api/codex/responses` surface rejects
- * `max_output_tokens` with HTTP 400, even though the public Responses API
- * accepts it. Always omit the field and let the backend apply the selected
- * model's own output policy.
- *
- * Kept as an exported compatibility helper for existing callers.
- */
-export function codexOutputCap(_maxTokens: number | undefined): undefined {
-  return undefined;
 }
 
 export interface OpenAICodexProviderOptions {
@@ -1148,457 +968,4 @@ function mapToolChoice(
   if (choice === undefined) return 'auto';
   if (choice === 'auto' || choice === 'required' || choice === 'none') return choice;
   return { type: 'function', name: choice.name };
-}
-
-// ── Responses SSE → StreamEvent ──────────────────────────────────────────────
-
-interface ResponsesUsage {
-  input_tokens?: number;
-  output_tokens?: number;
-  total_tokens?: number;
-  input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
-}
-
-interface StreamingArgBuffer {
-  chunks: string[];
-  length: number;
-}
-
-function appendArgChunk(buf: StreamingArgBuffer, chunk: string): void {
-  if (chunk.length === 0) return;
-  buf.chunks.push(chunk);
-  buf.length += chunk.length;
-}
-
-function joinArgBuffer(buf: StreamingArgBuffer): string {
-  return buf.chunks.length === 1 ? (buf.chunks[0] ?? '') : buf.chunks.join('');
-}
-
-/**
- * Join the text of a Responses `message` item's `content` array. The backend
- * echoes assistant prose as `content: [{ type: 'output_text', text }, ...]`
- * (and refusals as `{ type: 'refusal', refusal }`). Returns the concatenated
- * text, or '' for any non-message / malformed shape.
- */
-function extractOutputText(content: unknown): string {
-  if (!Array.isArray(content)) return '';
-  let out = '';
-  for (const part of content) {
-    if (!part || typeof part !== 'object') continue;
-    const p = part as { type?: unknown; text?: unknown; refusal?: unknown };
-    if ((p.type === 'output_text' || p.type === 'text') && typeof p.text === 'string') {
-      out += p.text;
-    } else if (p.type === 'refusal' && typeof p.refusal === 'string') {
-      out += p.refusal;
-    }
-  }
-  return out;
-}
-
-/**
- * Read a response-metadata event, whichever dialect the backend used.
- *
- * The live ChatGPT WebSocket sends `{ type: 'codex.response.metadata',
- * headers: {...} }` — the headers sit at the TOP LEVEL, not under a `metadata`
- * envelope. Upstream documents the same two shapes ("`response.headers` for
- * standard Responses stream events; top-level `headers` for websocket metadata
- * events") and accepts both event names.
- *
- * This mattered more than a parsing nicety: after the handshake a WebSocket has
- * no HTTP response headers, so this frame is the only delivery of
- * `x-codex-turn-state` and `x-models-etag` for every turn of a WebSocket
- * session — which is the default transport. Matching only the envelope dialect
- * left both silently unread there.
- */
-function responseMetadataFromEvent(
-  evt: Record<string, unknown>,
-): CodexResponseMetadata | undefined {
-  const raw =
-    (evt['metadata'] as Record<string, unknown> | undefined) ??
-    ((evt['response'] as Record<string, unknown> | undefined)?.['metadata'] as
-      | Record<string, unknown>
-      | undefined) ??
-    evt;
-  if (!raw || typeof raw !== 'object') return undefined;
-  const rawHeaders = raw['headers'];
-  if (!rawHeaders || typeof rawHeaders !== 'object') return undefined;
-  const headers: Record<string, string> = {};
-  for (const [name, value] of Object.entries(rawHeaders as Record<string, unknown>)) {
-    if (typeof value === 'string' && value.trim()) headers[name.toLowerCase()] = value;
-  }
-  if (Object.keys(headers).length === 0) return undefined;
-  const requestId =
-    typeof raw['request_id'] === 'string'
-      ? raw['request_id']
-      : typeof raw['requestId'] === 'string'
-        ? raw['requestId']
-        : undefined;
-  const model = typeof raw['model'] === 'string' ? raw['model'] : undefined;
-  return { headers, ...(requestId ? { requestId } : {}), ...(model ? { model } : {}) };
-}
-
-export async function* parseOpenAIResponsesStream(
-  body: ReadableStream<Uint8Array> | NodeJS.ReadableStream | null,
-  fallbackModel: string,
-  providerId = 'openai-codex',
-  onResponseMetadata?: ((metadata: CodexResponseMetadata) => void) | undefined,
-): AsyncIterable<StreamEvent> {
-  let model = fallbackModel;
-  let started = false;
-  let usage: Usage = { input: 0, output: 0 };
-  let stopReason: StopReason = 'end_turn';
-  let sawToolUse = false;
-  // Set once a terminal envelope (`response.completed`/`response.incomplete`,
-  // or `[DONE]`) is seen. If the stream closes without one after we started,
-  // the response was cut mid-stream and must surface as retryable.
-  let sawTerminal = false;
-
-  // Server id of the reasoning item currently streaming, so its encrypted
-  // payload can be paired with it when the item closes.
-  let reasoningItemId: string | undefined;
-
-  // Currently-streaming function call (Responses streams one item at a time).
-  let toolCallId: string | undefined;
-  let toolArgBuf: StreamingArgBuffer = { chunks: [], length: 0 };
-
-  // Assistant-text recovery. The ChatGPT Responses backend does not always
-  // stream a message's text as `output_text.delta` chunks — reasoning turns
-  // (gpt-5-codex) frequently deliver the full text only in the terminal
-  // `response.output_text.done` (`text`) or the message `output_item.done`
-  // (`content[].text`) events. We count how many text chars we have already
-  // emitted for the current message item; the terminal events then emit ONLY
-  // the un-streamed remainder, so a fully-streamed message adds nothing and a
-  // never-streamed one is recovered in full — no duplication either way.
-  let msgTextStreamed = 0;
-  const flushRemainingText = (full: string): StreamEvent | undefined => {
-    if (full.length <= msgTextStreamed) return undefined;
-    const remainder = full.slice(msgTextStreamed);
-    msgTextStreamed = full.length;
-    return { type: 'text_delta', text: remainder };
-  };
-
-  const ensureStart = (): StreamEvent | undefined => {
-    if (started) return undefined;
-    started = true;
-    return { type: 'message_start', model };
-  };
-
-  // The ChatGPT-backend Responses API occasionally emits a single `data:`
-  // field (typically a `response.completed` envelope echoing large input, or
-  // a `function_call` with multi-KB JSON `arguments`) that exceeds parseSSE's
-  // 256 KiB safety cap. We fold any oversized `data:` line into multiple
-  // JSON-safe continuation lines before handing the stream to the parser —
-  // the parser then rejoins them via `dataLines.join('\n')` and JSON.parse
-  // reconstructs the original object. Wrapped only when the body is a Web
-  // ReadableStream; Node streams hit the existing path unchanged.
-  const foldedBody =
-    body && typeof (body as ReadableStream<Uint8Array>).getReader === 'function'
-      ? createSseLineFoldingTransform(body as ReadableStream<Uint8Array>)
-      : body;
-  for await (const msg of parseSSE(foldedBody)) {
-    if (msg.data === '[DONE]') {
-      sawTerminal = true;
-      continue;
-    }
-    if (!msg.data) continue;
-    const parsed = safeParse<Record<string, unknown>>(msg.data);
-    if (!parsed.ok || !parsed.value) continue;
-    const evt = parsed.value;
-    const type = typeof evt['type'] === 'string' ? (evt['type'] as string) : '';
-
-    switch (type) {
-      case 'response.metadata':
-      case 'codex.response.metadata': {
-        const metadata = responseMetadataFromEvent(evt);
-        if (metadata) onResponseMetadata?.(metadata);
-        break;
-      }
-
-      case 'response.created':
-      case 'response.in_progress': {
-        const resp = evt['response'] as { model?: string } | undefined;
-        if (typeof resp?.model === 'string') model = resp.model;
-        const s = ensureStart();
-        if (s) yield s;
-        break;
-      }
-
-      case 'response.output_item.added': {
-        const s = ensureStart();
-        if (s) yield s;
-        const item = evt['item'] as
-          | {
-              type?: string;
-              id?: string;
-              call_id?: string;
-              name?: string;
-              arguments?: string;
-              content?: unknown;
-            }
-          | undefined;
-        if (!item) break;
-        if (item.type === 'reasoning') {
-          // Keep the server's item id on the block. Replaying a reasoning item
-          // needs BOTH the id and the encrypted payload (which only arrives on
-          // `output_item.done`), so the id is stashed now and the payload is
-          // attached below as the block's signature.
-          reasoningItemId = typeof item.id === 'string' ? item.id : undefined;
-          yield reasoningItemId
-            ? {
-                type: 'thinking_start',
-                providerMeta: { [CODEX_REASONING_ID_META]: reasoningItemId },
-              }
-            : { type: 'thinking_start' };
-        } else if (item.type === 'function_call') {
-          toolCallId = item.call_id ?? item.id ?? `call_${Math.random().toString(36).slice(2)}`;
-          toolArgBuf = { chunks: [], length: 0 };
-          if (item.arguments) appendArgChunk(toolArgBuf, item.arguments);
-          sawToolUse = true;
-          yield { type: 'tool_use_start', id: toolCallId, name: item.name ?? 'unknown' };
-          for (const partial of toolArgBuf.chunks) {
-            yield { type: 'tool_use_input_delta', id: toolCallId, partial };
-          }
-        } else if (item.type === 'message') {
-          // A fresh message item begins — reset the per-message text counter so
-          // its terminal events emit only its own un-streamed text. Some backends
-          // inline the full text on `added` (no deltas at all); recover it now.
-          msgTextStreamed = 0;
-          const prefilled = extractOutputText(item.content);
-          const ev0 = flushRemainingText(prefilled);
-          if (ev0) yield ev0;
-        }
-        break;
-      }
-
-      case 'codex.rate_limits': {
-        // Some ChatGPT backends restate the quota windows as an SSE event
-        // instead of (or in addition to) the response headers. Same numbers,
-        // same store — a surface reading the quota must not care which path
-        // delivered it.
-        const snapshot = parseCodexRateLimitEvent(evt);
-        if (snapshot) recordProviderQuota(providerId, [snapshot]);
-        break;
-      }
-
-      case 'response.output_text.delta':
-      case 'response.refusal.delta': {
-        const delta = typeof evt['delta'] === 'string' ? (evt['delta'] as string) : '';
-        if (delta) {
-          msgTextStreamed += delta.length;
-          yield { type: 'text_delta', text: delta };
-        }
-        break;
-      }
-
-      case 'response.output_text.done': {
-        // Terminal text event carrying the full message text. Emit only the
-        // remainder we have not already streamed (nothing when deltas covered
-        // it; the whole text when the backend skipped deltas entirely).
-        const full = typeof evt['text'] === 'string' ? (evt['text'] as string) : '';
-        const ev1 = flushRemainingText(full);
-        if (ev1) yield ev1;
-        break;
-      }
-
-      case 'response.reasoning_text.delta':
-      case 'response.reasoning_summary_text.delta': {
-        const delta = typeof evt['delta'] === 'string' ? (evt['delta'] as string) : '';
-        if (delta) yield { type: 'thinking_delta', text: delta };
-        break;
-      }
-
-      case 'response.function_call_arguments.delta': {
-        const delta = typeof evt['delta'] === 'string' ? (evt['delta'] as string) : '';
-        if (toolCallId && delta) {
-          appendArgChunk(toolArgBuf, delta);
-          yield { type: 'tool_use_input_delta', id: toolCallId, partial: delta };
-        }
-        break;
-      }
-
-      case 'response.function_call_arguments.done': {
-        // Final arguments authoritative — captured at output_item.done below.
-        const args =
-          typeof evt['arguments'] === 'string' ? (evt['arguments'] as string) : undefined;
-        if (args !== undefined) {
-          toolArgBuf = { chunks: [args], length: args.length };
-        }
-        break;
-      }
-
-      case 'response.output_item.done': {
-        const item = evt['item'] as
-          | {
-              type?: string;
-              id?: string;
-              call_id?: string;
-              name?: string;
-              arguments?: string;
-              content?: unknown;
-            }
-          | undefined;
-        if (!item) break;
-        if (item.type === 'reasoning') {
-          const encrypted = (item as { encrypted_content?: unknown }).encrypted_content;
-          const itemId = reasoningItemId ?? (typeof item.id === 'string' ? item.id : undefined);
-          if (typeof encrypted === 'string' && encrypted.length > 0 && itemId) {
-            yield {
-              type: 'thinking_meta',
-              providerMeta: {
-                [CODEX_REASONING_ID_META]: itemId,
-                [CODEX_REASONING_ENCRYPTED_META]: encrypted,
-              },
-            };
-          }
-          reasoningItemId = undefined;
-          yield { type: 'thinking_stop' };
-        } else if (item.type === 'function_call') {
-          const id = item.call_id ?? toolCallId ?? `call_${Math.random().toString(36).slice(2)}`;
-          const raw =
-            item.arguments && item.arguments.length > 0
-              ? item.arguments
-              : joinArgBuffer(toolArgBuf);
-          yield { type: 'tool_use_stop', id, input: parseToolInput(raw || '{}') };
-          toolCallId = undefined;
-          toolArgBuf = { chunks: [], length: 0 };
-        } else if (item.type === 'message') {
-          // Final safety net: recover any message text the backend delivered
-          // only in the completed item's `content` (no deltas, no
-          // output_text.done). flushRemainingText dedupes against what we
-          // already streamed, so this is a no-op on the normal delta path.
-          const full = extractOutputText(item.content);
-          const ev2 = flushRemainingText(full);
-          if (ev2) yield ev2;
-        }
-        break;
-      }
-
-      case 'response.completed':
-      case 'response.incomplete':
-      // The WebSocket transport treats `response.done` as terminal and ends the
-      // frame queue on it; without a case here the parser then reported the
-      // finished response as truncated (retryable 599) and dropped its usage.
-      case 'response.done': {
-        const resp = evt['response'] as { status?: string; usage?: ResponsesUsage } | undefined;
-        if (evt['type'] === 'response.done' && resp?.status === 'failed') {
-          const errorBody = parseProviderErrorBody(JSON.stringify(evt));
-          const status = responseFailureStatus(errorBody.type, errorBody.message);
-          const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
-          const kind = classifyProviderError(status, errorBody, rawMessage);
-          throw new ProviderError(
-            scrubErrorText(rawMessage),
-            status,
-            isRetryableKind(kind),
-            providerId,
-            {
-              body: scrubProviderErrorBody(errorBody),
-              kind,
-            },
-          );
-        }
-        if (resp?.usage) {
-          usage = normalizeUsage(resp.usage);
-          // A usage-bearing terminal envelope must never silently drop its
-          // telemetry, even when the backend skipped every start-producing
-          // event (`response.created`/`in_progress`/`output_item.added`):
-          // emit message_start here so the final `if (started)` yields the
-          // paired usage-bearing message_stop. No-op on the normal path where
-          // message_start was already emitted.
-          const s = ensureStart();
-          if (s) yield s;
-        }
-        stopReason = mapResponsesStatus(resp?.status, sawToolUse);
-        sawTerminal = true;
-        break;
-      }
-
-      case 'error':
-      case 'response.failed': {
-        // These are application-level failures delivered over an HTTP 200 SSE
-        // stream, not HTTP 502 responses. Parse the entire envelope so the
-        // provider's code/message can drive canonical classification (notably
-        // context_overflow) and remain available in persisted diagnostics.
-        // Serialize once to reuse the shared tolerant parser and preserve its
-        // bounded raw-envelope diagnostics instead of duplicating extraction.
-        const raw = JSON.stringify(evt);
-        const errorBody = parseProviderErrorBody(raw);
-        const response = evt['response'] as Record<string, unknown> | undefined;
-        const statusCode =
-          typeof response?.['status_code'] === 'number' ? response['status_code'] : undefined;
-        const status = responseFailureStatus(errorBody.type, errorBody.message, statusCode);
-        const rawMessage = errorBody.message ?? 'OpenAI Responses request failed';
-        const kind = classifyProviderError(status, errorBody, rawMessage);
-        const body = scrubProviderErrorBody(errorBody);
-        const message = scrubErrorText(rawMessage);
-        throw new ProviderError(message, status, isRetryableKind(kind), providerId, { body, kind });
-      }
-
-      default:
-        break;
-    }
-  }
-
-  if (started && !sawTerminal) {
-    // Output arrived, then the stream closed with no `response.completed` and
-    // no `[DONE]` — cut mid-stream. Retryable rather than a synthetic end_turn.
-    throw new ProviderError(
-      'OpenAI Responses stream ended without a terminal envelope (response.completed/[DONE]) — response truncated mid-stream',
-      599,
-      true,
-      providerId,
-      { body: { message: 'stream truncated before completion' } },
-    );
-  }
-  if (started) {
-    yield { type: 'message_stop', stopReason, usage };
-  }
-}
-
-function responseFailureStatus(
-  type: string | undefined,
-  message: string | undefined,
-  statusCode?: number,
-): number {
-  if (statusCode !== undefined) return statusCode;
-  const text = `${type ?? ''}\n${message ?? ''}`;
-  if (/rate.?limit/i.test(text)) return 429;
-  if (/insufficient.quota|quota.exhausted/i.test(text)) return 402;
-  if (/overload|server_error|internal_error/i.test(text)) return 529;
-
-  const kind = classifyProviderError(400, { type, message }, message);
-  switch (kind) {
-    case 'context_overflow':
-      return 413;
-    case 'quota_exhausted':
-      return 402;
-    case 'auth':
-      return 401;
-    case 'content_filter':
-    case 'invalid_request':
-      return 400;
-    default:
-      return 502;
-  }
-}
-
-function normalizeUsage(u: ResponsesUsage): Usage {
-  const cached = nonNegative(u.input_tokens_details?.cached_tokens);
-  const cacheWrite = nonNegative(u.input_tokens_details?.cache_write_tokens);
-  const total = nonNegative(u.input_tokens);
-  return {
-    input: Math.max(0, total - cached - cacheWrite),
-    output: nonNegative(u.output_tokens),
-    cacheRead: cached || undefined,
-    cacheWrite: cacheWrite || undefined,
-  };
-}
-
-function nonNegative(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
-}
-
-function mapResponsesStatus(status: string | undefined, sawToolUse: boolean): StopReason {
-  if (status === 'incomplete') return 'max_tokens';
-  // 'completed' (and anything else benign) → tool_use when a call was emitted.
-  return sawToolUse ? 'tool_use' : 'end_turn';
 }
