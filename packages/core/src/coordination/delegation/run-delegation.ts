@@ -59,6 +59,17 @@ export interface DelegationRuntimeOptions {
   directorRunId?: string | undefined;
   subagentTimeoutBufferMs?: number | undefined;
   events?: EventBus | undefined;
+  /**
+   * Tier for a task that named none (`createSystemOneTierSuggester`). Only
+   * consulted when the caller set no tier, model or provider; `undefined`
+   * keeps the routing-table default.
+   */
+  suggestTier?:
+    | ((input: {
+        task: string | undefined;
+        role?: string | undefined;
+      }) => Promise<string | undefined>)
+    | undefined;
 }
 
 export interface DelegateInput {
@@ -337,6 +348,10 @@ export async function prepareDelegation(
   // tier layer can tighten roster defaults without ever overriding a number
   // the caller typed here.
   if (i.tier) cfg.tier = i.tier;
+  else if (!cfg.model && !cfg.provider && opts.suggestTier) {
+    const suggested = await opts.suggestTier({ task: i.task, role: i.role });
+    if (suggested) cfg.tier = suggested;
+  }
   const budgetPins: string[] = [];
   if (typeof i.maxIterations === 'number') budgetPins.push('maxIterations');
   if (typeof i.maxToolCalls === 'number') budgetPins.push('maxToolCalls');

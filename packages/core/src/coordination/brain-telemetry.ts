@@ -38,6 +38,7 @@ import type { BrainDecisionRequest } from './brain.js';
  * - `heuristic`   — a built-in pattern heuristic (quickDecide / blocked-resolved).
  * - `cache`       — a previous identical decision was replayed.
  * - `ledger-guard`— denied deterministically from observed failure history.
+ * - `system-one`  — a TypeSafe System One Choice settled it (cheap, not free).
  * - `council`     — the multi-LLM panel decided.
  * - `llm`         — the single-LLM tier decided.
  * - `terminal`    — headless terminal policy (no human available).
@@ -49,6 +50,7 @@ export type BrainDecisionTier =
   | 'heuristic'
   | 'cache'
   | 'ledger-guard'
+  | 'system-one'
   | 'council'
   | 'llm'
   | 'terminal'

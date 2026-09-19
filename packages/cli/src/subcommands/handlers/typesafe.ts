@@ -19,17 +19,27 @@
  * place that asks the host directly and reports what it said.
  */
 
+import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
 import type { Config } from '@wrongstack/core/types';
 import {
   BUILT_IN_ROUTES,
+  BUILT_IN_SEMANTIC_LINT_RULES,
   estimateTypeSafeCostUsd,
+  findSemanticLintCandidates,
+  isTypeSafeJudgmentEnabled,
   isTypeSafeRoute,
+  judgeSemanticLintCandidates,
+  parseSemanticLintRules,
   resolveTypeSafeAccount,
+  resolveTypeSafeJudge,
   resolveTypeSafeRoute,
+  TYPESAFE_JUDGMENT_FEATURES,
   TYPESAFE_ROUTES,
   type TypeSafeRoute,
 } from '@wrongstack/core/typesafe';
-import { color } from '@wrongstack/core/utils';
+import { buildChildEnv, color } from '@wrongstack/core/utils';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
 import { maskedKey, mutateConfigProviders } from '../../provider-config-utils.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
@@ -42,6 +52,17 @@ const USAGE = [
   '  wstack typesafe login [--route <id>]     store an API key in the active profile',
   '      [--endpoint <url>] [--model <id>]    configure a proxy or pin a model',
   '  wstack typesafe test                     send one question and report the answer',
+  '  wstack typesafe lint-conventions         judge convention-rule hits in the diff',
+  '      [--staged | --base <ref>] [--threshold <0..1>] [--json]',
+  '      rules: built-in + .wrongstack/semantic-lint.json; exit 1 on findings',
+  '  wstack typesafe check-judgments          run every judgment on known cases (live)',
+  '  wstack typesafe replay-brain-ledger      compare Jev with past Brain decisions',
+  '      [--ledger <path>] [--limit <per kind>] [--kind <signal>] [--json]',
+  '  wstack typesafe replay-topic-shift       compare Jev with the provider on past session prompts',
+  '      [--sessions <dir>] [--limit <n>] [--max-context <n>] [--no-llm] [--json]',
+  '  wstack typesafe replay-memory-triage     compare Jev with the LLM on SAGE gray-zone memories',
+  '      [--limit <n>] [--provider <id>] [--model <id>] [--llm-max-tokens <n>]',
+  '      [--no-llm] [--json]',
   '',
   `Routes: ${BUILT_IN_ROUTES.map((r) => `${r} (${TYPESAFE_ROUTES[r].env})`).join(', ')}, custom (typesafe.endpoint)`,
   '',
@@ -64,6 +85,16 @@ export const typesafeCmd: SubcommandHandler = async (args, deps) => {
       return await login(deps, write);
     case 'test':
       return await test(deps, write);
+    case 'lint-conventions':
+      return await lintConventions(deps, write);
+    case 'replay-topic-shift':
+      return await (await import('./typesafe-topic-replay.js')).replayTopicShift(deps, write);
+    case 'replay-memory-triage':
+      return await (await import('./typesafe-triage-replay.js')).replayMemoryTriage(deps, write);
+    case 'replay-brain-ledger':
+      return await (await import('./typesafe-brain-replay.js')).replayBrainLedger(deps, write);
+    case 'check-judgments':
+      return await (await import('./typesafe-judgment-check.js')).checkJudgments(deps, write);
     default:
       write(`Unknown subcommand: ${sub}\n`);
       write(USAGE);
@@ -103,6 +134,20 @@ function showStatus(deps: SubcommandDeps, write: (line: string) => void): number
   } else {
     write(`  key        ${color.dim('—')}`);
     write(`  ${color.amber('!')} ${account.reason}`);
+  }
+
+  write('');
+  write(
+    color.bold('Judgments') +
+      color.dim('  (on with an account; typesafe.judgments.<id>: false turns one off)'),
+  );
+  for (const feature of TYPESAFE_JUDGMENT_FEATURES) {
+    const on = isTypeSafeJudgmentEnabled(deps.config, feature);
+    write(
+      `  ${
+        !on ? color.dim('off') : account.status === 'ready' ? color.green('on ') : color.dim('idle')
+      }  ${feature}`,
+    );
   }
 
   write('');
@@ -211,7 +256,9 @@ async function login(deps: SubcommandDeps, write: (line: string) => void): Promi
 }
 
 async function test(deps: SubcommandDeps, write: (line: string) => void): Promise<number> {
-  const account = resolveTypeSafeAccount({ config: deps.config });
+  // No rest gate: this probe exists to find out whether the host answers NOW,
+  // so it must not be short-circuited by an earlier rest in this process.
+  const account = resolveTypeSafeAccount({ config: deps.config, restGate: null });
   if (account.status !== 'ready') {
     write(`${color.red('✗')} ${account.reason}`);
     write('  Run `wstack typesafe login`.');
@@ -272,4 +319,101 @@ async function test(deps: SubcommandDeps, write: (line: string) => void): Promis
     }
     return 1;
   }
+}
+
+function runGit(cwd: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'git',
+      args,
+      {
+        cwd,
+        env: buildChildEnv(),
+        encoding: 'utf8',
+        timeout: 30_000,
+        windowsHide: true,
+        maxBuffer: 32 * 1024 * 1024,
+      },
+      (err, stdout) => (err ? reject(err) : resolve(stdout)),
+    );
+  });
+}
+
+/**
+ * `lint-conventions`: regexes find candidate lines in the diff, System One
+ * decides which are real violations. Unlike the in-session judgments this is
+ * something the user ran on purpose, so an unavailable account is an error,
+ * not a silent fallback.
+ */
+async function lintConventions(
+  deps: SubcommandDeps,
+  write: (line: string) => void,
+): Promise<number> {
+  const flags = deps.flags ?? {};
+  const judge = resolveTypeSafeJudge({ config: deps.config, feature: 'semanticLint' });
+  if (!judge) {
+    const account = resolveTypeSafeAccount({ config: deps.config });
+    write(
+      `${color.red('✗')} ${
+        account.status === 'ready'
+          ? 'typesafe.judgments.semanticLint is false.'
+          : `${account.reason}. Run \`wstack typesafe login\`.`
+      }`,
+    );
+    return 2;
+  }
+
+  const rules = [...BUILT_IN_SEMANTIC_LINT_RULES];
+  const rulesPath = path.join(deps.projectRoot, '.wrongstack', 'semantic-lint.json');
+  try {
+    const parsed = parseSemanticLintRules(JSON.parse(await readFile(rulesPath, 'utf8')));
+    for (const error of parsed.errors) write(color.amber(`! ${rulesPath}: ${error}`));
+    rules.push(...parsed.rules);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      write(color.amber(`! ${rulesPath}: ${err instanceof Error ? err.message : String(err)}`));
+    }
+  }
+
+  const base = typeof flags['base'] === 'string' ? flags['base'] : undefined;
+  const diffArgs = ['diff', '--no-color', '--no-ext-diff', '-U24'];
+  if (flags['staged'] === true) diffArgs.push('--cached');
+  else if (base) diffArgs.push(`${base}...HEAD`);
+  let diff: string;
+  try {
+    diff = await runGit(deps.projectRoot, diffArgs);
+  } catch (err) {
+    write(`${color.red('✗')} git diff failed: ${err instanceof Error ? err.message : String(err)}`);
+    return 2;
+  }
+
+  const candidates = findSemanticLintCandidates(diff, rules);
+  const thresholdFlag = Number(flags['threshold']);
+  const threshold =
+    Number.isFinite(thresholdFlag) && thresholdFlag > 0 && thresholdFlag <= 1 ? thresholdFlag : 0.7;
+  const result =
+    candidates.length === 0
+      ? { findings: [], cleared: 0, unjudged: 0 }
+      : await judgeSemanticLintCandidates(judge, rules, candidates, { threshold });
+
+  if (flags['json'] === true) {
+    write(JSON.stringify({ candidates: candidates.length, ...result }, null, 2));
+  } else {
+    for (const f of result.findings) {
+      write(
+        `${color.amber(`${f.file}:${f.line}`)}  ${color.bold(f.ruleId)}  ` +
+          color.dim(`p=${f.probability.toFixed(2)}`),
+      );
+      write(`    ${f.text.slice(0, 160)}`);
+    }
+    write(
+      color.dim(
+        `${candidates.length} candidate(s) across ${rules.length} rule(s): ` +
+          `${result.findings.length} finding(s), ${result.cleared} cleared` +
+          (result.unjudged ? `, ${result.unjudged} not judged (host unavailable)` : ''),
+      ),
+    );
+  }
+  if (result.findings.length > 0) return 1;
+  return result.unjudged > 0 ? 2 : 0;
 }

@@ -14,6 +14,7 @@
  */
 
 import type { Sage } from '../types.js';
+import type { SystemOneTriage } from './system-one.js';
 import type { ValueScoreBreakdown } from './value-score.js';
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -64,7 +65,15 @@ export interface LlmEvaluatorOptions {
   maxBatchSize?: number | undefined;
   /** Whether to log each evaluation to stderr. */
   verbose?: boolean | undefined;
+  /**
+   * TypeSafe front. A decisive rating is used as-is; anything else (not
+   * concentrated, host resting, failure) falls through to `callLlm`.
+   */
+  systemOne?: SystemOneTriage | undefined;
 }
+
+/** Parallel System One ratings in flight. The LLM path stays sequential. */
+const SYSTEM_ONE_CONCURRENCY = 8;
 
 const DEFAULT_MAX_BATCH_SIZE = 50;
 
@@ -126,7 +135,28 @@ export async function evaluateMemory(
   memory: Sage,
   valueScore: ValueScoreBreakdown,
   callLlm: LlmCallFn,
+  systemOne?: SystemOneTriage | undefined,
 ): Promise<LlmTriageResult> {
+  const rated = systemOne ? await systemOne.rateMemory(memory, valueScore) : undefined;
+  return evaluateMemoryWith(memory, valueScore, callLlm, rated);
+}
+
+async function evaluateMemoryWith(
+  memory: Sage,
+  valueScore: ValueScoreBreakdown,
+  callLlm: LlmCallFn,
+  rated: { score: LlmEvaluation['score']; reason: string } | undefined,
+): Promise<LlmTriageResult> {
+  if (rated) {
+    const evaluation: LlmEvaluation = {
+      score: rated.score,
+      reason: rated.reason,
+      raw: `system-one:${rated.score}`,
+      ok: true,
+    };
+    const { action, actionReason } = resolveAction(memory, valueScore, evaluation);
+    return { memory, valueScore, evaluation, action, actionReason };
+  }
   const userPrompt = buildUserPrompt(memory, valueScore);
   let evaluation: LlmEvaluation;
 
@@ -163,6 +193,25 @@ export async function evaluateBatch(
   const batch = memories.slice(0, maxBatch);
   const results: LlmTriageResult[] = [];
 
+  // Ask System One for the whole batch first, a few at a time. A resting or
+  // failing host answers `undefined` immediately, so this costs nothing when
+  // TypeSafe is down and every memory simply takes the LLM path below.
+  const rated = new Map<string, { score: LlmEvaluation['score']; reason: string }>();
+  const systemOne = options.systemOne;
+  if (systemOne) {
+    const pending = batch.filter((m) => valueScores.has(m.id));
+    for (let i = 0; i < pending.length; i += SYSTEM_ONE_CONCURRENCY) {
+      const slice = pending.slice(i, i + SYSTEM_ONE_CONCURRENCY);
+      const answers = await Promise.all(
+        slice.map((m) => systemOne.rateMemory(m, valueScores.get(m.id)!)),
+      );
+      slice.forEach((m, j) => {
+        const answer = answers[j];
+        if (answer) rated.set(m.id, answer);
+      });
+    }
+  }
+
   for (const memory of batch) {
     const vs = valueScores.get(memory.id);
     if (!vs) {
@@ -174,7 +223,7 @@ export async function evaluateBatch(
     if (options.verbose) {
       process.stderr.write(`[triage] evaluating ${memory.id} (score ${vs.total}/100)...\n`);
     }
-    const result = await evaluateMemory(memory, vs, callLlm);
+    const result = await evaluateMemoryWith(memory, vs, callLlm, rated.get(memory.id));
     results.push(result);
   }
 

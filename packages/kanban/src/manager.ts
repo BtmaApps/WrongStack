@@ -21,6 +21,13 @@ export * from './verification/completion-park.js';
 export * from './verification/completion-protocol.js';
 export * from './verification/evidence-validator.js';
 export { createDefaultRegistry } from './verification/plugins/index.js';
+export {
+  type KanbanCriterionJudge,
+  type KanbanCriterionJudgeInput,
+  type KanbanCriterionJudgeResult,
+  SystemOneVerifierPlugin,
+  setKanbanCriterionJudge,
+} from './verification/plugins/system-one.js';
 export * from './verification/verification-context.js';
 export * from './verification/verification-report.js';
 export * from './verification/verifier-plugin.js';

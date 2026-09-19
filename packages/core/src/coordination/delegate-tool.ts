@@ -74,6 +74,8 @@ export interface CreateDelegateToolOptions {
    * `fleet.delegate.defaultWait`). Default false = background.
    */
   defaultWait?: boolean | (() => boolean | undefined) | undefined;
+  /** See {@link DelegationRuntimeOptions.suggestTier}. */
+  suggestTier?: DelegationRuntimeOptions['suggestTier'];
 }
 
 const BACKGROUND_NOTE =
@@ -100,6 +102,7 @@ export function createDelegateTool(opts: CreateDelegateToolOptions): Tool {
     directorRunId: opts.directorRunId,
     subagentTimeoutBufferMs: opts.subagentTimeoutBufferMs,
     events: opts.events,
+    suggestTier: opts.suggestTier,
   };
   let privateTracker: DelegationTracker | undefined;
   const trackerFor = (): DelegationTracker => {

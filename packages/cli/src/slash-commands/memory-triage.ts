@@ -20,9 +20,11 @@
  * (Phase 3 and 4 will degrade to skip-only; report is still useful).
  */
 
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { LlmCallFn, Sage, SageSurface, UpdateSageInput } from '@wrongstack/sage';
 import {
+  createSystemOneTriage,
   fileTriageProposals,
   formatTriageReport,
   getSageSurface,
@@ -32,6 +34,7 @@ import {
 import type { SlashCommandContext } from './command-context.js';
 
 const DEFAULT_MAX_PHASE3 = 1000;
+const TRIAGE_LLM_MAX_TOKENS = 2_000;
 const DEFAULT_MAX_PHASE4_PAIRS = 50;
 
 export async function runTriageCommand(
@@ -126,13 +129,19 @@ export async function runTriageCommand(
   const model = opts.llmModel ?? '';
   const callLlm: LlmCallFn = provider?.complete
     ? async (system: string, userPrompt: string) => {
-        const signal = AbortSignal.timeout(30_000);
+        const signal = AbortSignal.timeout(60_000);
         const response = await provider.complete!(
           {
             model,
             system: [{ type: 'text', text: system }],
             messages: [{ role: 'user', content: userPrompt }],
-            maxTokens: 60,
+            // The reply is one line ("4 | reason"), but a reasoning model draws
+            // its thinking from the same allowance: at 60 tokens glm-5.3-flash
+            // returned an empty reply on every memory (2026-09-19,
+            // `wstack typesafe replay-memory-triage --llm-max-tokens`), so Phase 3
+            // rated nothing and Phase 4 read every pair as "NO". Same root cause
+            // the council fixed with its voter budget.
+            maxTokens: TRIAGE_LLM_MAX_TOKENS,
             temperature: 0.1,
           },
           { signal },
@@ -145,6 +154,16 @@ export async function runTriageCommand(
       }
     : async () => '3'; // no provider → neutral score, no merges
 
+  // ── TypeSafe front (optional) ────────────────────────────────
+  // Used only when an account is configured, `typesafe.judgments.memoryTriage`
+  // is not false and the host answers; every judgment it is not sure of, and
+  // every call while it rests, goes to `callLlm` exactly as before.
+  // Not every surface that renders this command carries a config store; no
+  // config simply means no TypeSafe front.
+  const config = (opts.configStore as typeof opts.configStore | undefined)?.get?.();
+  const judge = config ? resolveTypeSafeJudge({ config, feature: 'memoryTriage' }) : undefined;
+  const systemOne = judge ? createSystemOneTriage({ judge }) : undefined;
+
   // ── Run pipeline ─────────────────────────────────────────────
   let report: TriageReport;
   try {
@@ -153,6 +172,7 @@ export async function runTriageCommand(
       maxPhase3Calls: maxPhase3,
       maxPhase4Pairs,
       verbose: false,
+      systemOne,
     });
   } catch (err) {
     return { message: `Triage failed: ${toErrorMessage(err)}` };

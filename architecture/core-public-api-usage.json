@@ -19,9 +19,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/coordination": {
-      "files": 227,
-      "typeOnly": 85,
-      "runtimeOrMixed": 199
+      "files": 229,
+      "typeOnly": 87,
+      "runtimeOrMixed": 200
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/execution": {
-      "files": 62,
+      "files": 65,
       "typeOnly": 18,
-      "runtimeOrMixed": 59
+      "runtimeOrMixed": 62
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -89,9 +89,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/models": {
-      "files": 32,
+      "files": 33,
       "typeOnly": 9,
-      "runtimeOrMixed": 25
+      "runtimeOrMixed": 26
     },
     "@wrongstack/core/notifications": {
       "files": 6,
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1118,
-      "typeOnly": 999,
+      "files": 1120,
+      "typeOnly": 1001,
       "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -209,14 +209,14 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 4,
-      "typeOnly": 0,
-      "runtimeOrMixed": 4
+      "files": 19,
+      "typeOnly": 4,
+      "runtimeOrMixed": 15
     },
     "@wrongstack/core/utils": {
-      "files": 608,
+      "files": 613,
       "typeOnly": 57,
-      "runtimeOrMixed": 583
+      "runtimeOrMixed": 588
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2835,6 +2835,18 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/tui-resource-menus.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -3930,6 +3942,24 @@
       "file": "packages/cli/src/slash-commands/goal-refiner.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/execution",
@@ -7374,6 +7404,12 @@
       "file": "packages/cli/src/subcommands/handlers/providers-models.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/models",
@@ -12346,6 +12382,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17997,13 +18045,103 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/slash-commands/memory-triage.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-triage-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/wiring/brain-and-orchestration.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/runtime/src/container.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/sage/src/host-wiring.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/sage/src/retrieval/system-one-recall.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/sage/src/triage/system-one.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/sage/tests/system-one-recall.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/sage/tests/triage-system-one.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/tui/src/submit-controller.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/webui-server/src/server/backend-services.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/webui-server/src/server/conversation-operations.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -19371,6 +19509,30 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/typesafe-triage-replay.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/typesafe.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20332,6 +20494,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/tests/sage-heading-contract.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/tests/use-credit-render-path.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

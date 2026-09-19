@@ -24,6 +24,7 @@ import { evaluateBatch } from './llm-evaluator.js';
 import type { MergeAction, OverlapProposal } from './merge-detection.js';
 import { detectMerges } from './merge-detection.js';
 import { preFilterBatch } from './pre-filter.js';
+import type { SystemOneTriage } from './system-one.js';
 import type { InjectorEvidence } from './value-score.js';
 import { computeValueScore } from './value-score.js';
 
@@ -95,6 +96,11 @@ export interface RunTriageOptions {
   maxPhase4Pairs?: number;
   /** When true, log progress to stderr. */
   verbose?: boolean;
+  /**
+   * TypeSafe System One front for Phases 3 and 4 (`createSystemOneTriage`).
+   * Decisive judgments settle a memory or pair; the rest go to `callLlm`.
+   */
+  systemOne?: SystemOneTriage | undefined;
 }
 
 const DEFAULT_MAX_PHASE3_CALLS = 1000;
@@ -154,6 +160,7 @@ export async function runTriage(
   const llmResults = await evaluateBatch(grayMemories, valueScores, callLlm, {
     maxBatchSize: maxPhase3,
     verbose,
+    systemOne: options.systemOne,
   });
 
   // ── Phase 4: Merge detection ─────────────────────────────────
@@ -162,6 +169,7 @@ export async function runTriage(
   const mergeResult = await detectMerges(memories, callLlm, {
     maxPairs: maxPhase4Pairs,
     verbose,
+    systemOne: options.systemOne,
   });
 
   // ── Phase 5: Dispatch ────────────────────────────────────────

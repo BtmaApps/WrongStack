@@ -201,26 +201,30 @@ export class InjectionTracker {
     // (e.g. the model only wrote a memory id reference).
     const matched: string[] = [];
 
-    // When sessionId is provided, build a set of memory ids that belong to
-    // a DIFFERENT session so they can be excluded. Entries recorded without
-    // a session, or recorded for the requesting session, remain eligible.
-    let otherSessionMemoryIds: Set<string> | undefined;
+    // When sessionId is provided, exclude memories that were injected ONLY
+    // into other sessions. The tracker is process-wide with a 2h TTL, so the
+    // same memory routinely sits in several sessions at once (a subagent, a
+    // second WebUI tab, an earlier session). Excluding any memory another
+    // session ALSO received made the most-injected memories uncreditable
+    // everywhere — the project store showed 277k injections and zero uses.
+    // Entries recorded without a session remain eligible.
+    let otherSessionOnlyMemoryIds: Set<string> | undefined;
     if (sessionId) {
-      otherSessionMemoryIds = new Set<string>();
+      const other = new Set<string>();
+      const own = new Set<string>();
       for (const [contextKey] of this.contextEntries) {
         const nullIdx = contextKey.indexOf('\0');
         const entrySession = nullIdx >= 0 ? contextKey.slice(0, nullIdx) : '<no-session>';
         const memoryId = nullIdx >= 0 ? contextKey.slice(nullIdx + 1) : contextKey;
-        if (entrySession !== '<no-session>' && entrySession !== sessionId) {
-          otherSessionMemoryIds.add(memoryId);
-        }
+        if (entrySession === '<no-session>' || entrySession === sessionId) own.add(memoryId);
+        else other.add(memoryId);
       }
+      otherSessionOnlyMemoryIds = new Set([...other].filter((id) => !own.has(id)));
     }
 
     for (const [memoryId, entry] of this.entries) {
-      // Session filter: skip entries that belong to a different session.
-      // Entries with no session or the same session remain eligible.
-      if (otherSessionMemoryIds?.has(memoryId)) continue;
+      // Session filter: skip memories only another session received.
+      if (otherSessionOnlyMemoryIds?.has(memoryId)) continue;
       if (options.onlyIds && !options.onlyIds.has(memoryId)) continue;
       // Explicit id citation is the strongest usefulness signal — models often
       // reference `<memory id="…">` without restating the full body.

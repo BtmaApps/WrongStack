@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Context } from '../core/context.js';
 import { isTextBlock, type Message, type Provider } from '../types/index.js';
+import type { TypeSafeJudge } from '../typesafe/judgments.js';
 import { createContextEvidenceState } from '../utils/context-evidence.js';
 
 const TOPIC_ADVISOR_SYSTEM = [
@@ -9,6 +10,8 @@ const TOPIC_ADVISOR_SYSTEM = [
   'Choose same_context for follow-ups, tests, documentation, fixes, questions, or next steps about the current work.',
   'Reply with ONLY JSON: {"decision":"new_context|same_context","confidence":0..1,"reason":"short phrase","nextTopic":"short label"}.',
 ].join(' ');
+
+const TOPIC_ADVISOR_MAX_TOKENS = 1_024;
 
 const STRONG_SHIFT_PATTERN =
   /\b(?:new\s+topic|different\s+topic|unrelated\s+(?:question|task)|switch\s+topics?|fresh\s+context|yeni\s+konu|farkl[ıi]\s+(?:bir\s+)?konu|alakas[ıi]z\s+(?:bir\s+)?(?:soru|i[şs])|konuyu\s+de[ğg]i[şs]tir)\b/iu;
@@ -49,7 +52,7 @@ export interface TopicShiftAdvice {
   confidence: number;
   reason: string;
   nextTopic?: string | undefined;
-  source: 'explicit' | 'model' | 'cache' | 'local';
+  source: 'explicit' | 'model' | 'system-one' | 'cache' | 'local';
 }
 
 export interface TopicShiftAdvisorInput {
@@ -69,7 +72,29 @@ export interface TopicShiftAdvisorOptions {
   ttlMs?: number | undefined;
   timeoutMs?: number | undefined;
   now?: (() => number) | undefined;
+  /**
+   * TypeSafe judge, read per check. When present and decisive it answers
+   * instead of the provider call; an ambiguous probability, a resting host or
+   * a failure falls through to the provider exactly as before.
+   */
+  getJudge?: (() => TypeSafeJudge | undefined) | undefined;
+  /**
+   * Calibration hook: what each stage saw. `gate` fires when a prompt passes
+   * the local gate (a classifier will be consulted), `system-one` with the raw
+   * Noul, `model` with the provider's raw text or error. Never throws into the
+   * advisor.
+   */
+  onDiagnostic?: ((event: TopicShiftDiagnostic) => void) | undefined;
 }
+
+export type TopicShiftDiagnostic =
+  | { stage: 'gate' }
+  | { stage: 'system-one'; noul?: number | undefined; error?: string | undefined }
+  | { stage: 'model'; text?: string | undefined; parsed: boolean; error?: string | undefined };
+
+/** Noul at or above this suggests a new context; at or below `SAME` keeps it. */
+const SYSTEM_ONE_NEW = 0.8;
+const SYSTEM_ONE_SAME = 0.3;
 
 interface CachedAdvice {
   advice: TopicShiftAdvice;
@@ -89,6 +114,8 @@ export class TopicShiftAdvisor {
   private readonly ttlMs: number;
   private readonly timeoutMs: number;
   private readonly now: () => number;
+  private readonly getJudge: (() => TypeSafeJudge | undefined) | undefined;
+  private readonly onDiagnostic: ((event: TopicShiftDiagnostic) => void) | undefined;
   private readonly cache = new Map<string, CachedAdvice>();
 
   constructor(options: TopicShiftAdvisorOptions = {}) {
@@ -96,6 +123,8 @@ export class TopicShiftAdvisor {
     this.ttlMs = positiveNumber(options.ttlMs, 30 * 60_000);
     this.timeoutMs = positiveNumber(options.timeoutMs, 8_000);
     this.now = options.now ?? Date.now;
+    this.getJudge = options.getJudge;
+    this.onDiagnostic = options.onDiagnostic;
   }
 
   async advise(input: TopicShiftAdvisorInput): Promise<TopicShiftAdvice> {
@@ -117,9 +146,16 @@ export class TopicShiftAdvisor {
       return localSame('Prompt overlaps the current topic.');
     }
 
+    this.diagnose({ stage: 'gate' });
     const cacheKey = hashKey(`${recent.basis}\n---\n${prompt}`);
     const cached = this.get(cacheKey);
     if (cached) return { ...cached, source: 'cache' };
+
+    const judged = await this.classifySystemOne(input, prompt, recent.basis);
+    if (judged) {
+      this.set(cacheKey, judged);
+      return judged;
+    }
 
     if (!input.provider || !input.model) {
       const advice = strongShift
@@ -147,6 +183,80 @@ export class TopicShiftAdvisor {
         : localSame('Topic check failed; continuing without interruption.'));
     this.set(cacheKey, advice);
     return advice;
+  }
+
+  /**
+   * One Noul: is this a materially different goal? Decisive only at the
+   * extremes; the ambiguous middle is exactly what the provider call is for.
+   */
+  private async classifySystemOne(
+    input: TopicShiftAdvisorInput,
+    prompt: string,
+    historyBasis: string,
+  ): Promise<TopicShiftAdvice | null> {
+    const judge = this.getJudge?.();
+    if (!judge) return null;
+    const signals = [AbortSignal.timeout(Math.min(this.timeoutMs, 4_000))];
+    if (input.signal) signals.push(input.signal);
+    try {
+      const result = await judge.client.systemOne(
+        {
+          state: { conversation: historyBasis, newPrompt: prompt },
+          questions: {
+            newGoal: {
+              type: 'noul',
+              instructions:
+                'Does `newPrompt` start a materially different goal from the work in ' +
+                '`conversation`, so that the earlier chat would only add noise to it?',
+              criteria: {
+                true: 'A different task or subject; the earlier conversation is not needed for it.',
+                false:
+                  'A follow-up, fix, test, documentation, question or next step about the same work.',
+              },
+            },
+          },
+          model: judge.model,
+        },
+        AbortSignal.any(signals),
+      );
+      const answer = result.answers['newGoal'];
+      this.diagnose({
+        stage: 'system-one',
+        noul: answer?.type === 'noul' ? answer.noul : undefined,
+      });
+      if (answer?.type !== 'noul') return null;
+      if (answer.noul >= SYSTEM_ONE_NEW) {
+        return {
+          suggestNewContext: true,
+          confidence: answer.noul,
+          reason: 'The prompt starts a different goal from the current conversation.',
+          source: 'system-one',
+        };
+      }
+      if (answer.noul <= SYSTEM_ONE_SAME) {
+        return {
+          suggestNewContext: false,
+          confidence: 1 - answer.noul,
+          reason: 'The prompt continues the current work.',
+          source: 'system-one',
+        };
+      }
+      return null;
+    } catch (err) {
+      this.diagnose({
+        stage: 'system-one',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  }
+
+  private diagnose(event: TopicShiftDiagnostic): void {
+    try {
+      this.onDiagnostic?.(event);
+    } catch {
+      // A diagnostic sink must not change the advice.
+    }
   }
 
   private async classify(
@@ -183,7 +293,17 @@ export class TopicShiftAdvisor {
               ],
             },
           ],
-          maxTokens: 180,
+          // The reply is one small JSON object, but a reasoning model draws its
+          // thinking from the same allowance. At 180, glm-5.3-flash answered 10
+          // of 30 real prompts: 9 empty replies and 8 truncated/unparseable
+          // (`wstack typesafe replay-topic-shift`, 2026-09-19). Asking for JSON
+          // on the wire as well as in prose is the Brain's fix for the same
+          // failure; providers without the field drop it.
+          maxTokens: TOPIC_ADVISOR_MAX_TOKENS,
+          responseFormat: { type: 'json_object' },
+          // A one-line classification needs no deliberation, and every second
+          // here is a second the user's submitted prompt waits.
+          reasoning: { enabled: false },
         },
         { signal },
       );
@@ -191,8 +311,15 @@ export class TopicShiftAdvisor {
         .filter(isTextBlock)
         .map((block) => block.text)
         .join('\n');
-      return parseModelAdvice(text);
-    } catch {
+      const parsed = parseModelAdvice(text);
+      this.diagnose({ stage: 'model', text, parsed: parsed !== null });
+      return parsed;
+    } catch (err) {
+      this.diagnose({
+        stage: 'model',
+        parsed: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
       return null;
     } finally {
       clearTimeout(timer);

@@ -19,6 +19,7 @@
 
 import type { Sage } from '../types.js';
 import type { LlmCallFn } from './llm-evaluator.js';
+import type { SystemOneTriage } from './system-one.js';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ const MIN_SHARED_TAGS = 3;
 export async function detectMerges(
   memories: Sage[],
   callLlm: LlmCallFn,
-  options: { maxPairs?: number; verbose?: boolean } = {},
+  options: { maxPairs?: number; verbose?: boolean; systemOne?: SystemOneTriage | undefined } = {},
 ): Promise<MergeDetectionResult> {
   const maxPairs = options.maxPairs ?? DEFAULT_MAX_PAIRS;
   const verbose = options.verbose ?? false;
@@ -132,7 +133,7 @@ export async function detectMerges(
   }
 
   // Phase 4c: LLM evaluation
-  const pairResults = await evaluateMergePairs(pairs, callLlm, verbose);
+  const pairResults = await evaluateMergePairs(pairs, callLlm, verbose, options.systemOne);
 
   // Phase 4d: Produce actions
   return buildResult(memories, clusters, allPairs, pairResults);
@@ -280,15 +281,33 @@ async function evaluateMergePairs(
   pairs: MergeCandidate[],
   callLlm: LlmCallFn,
   verbose: boolean,
+  systemOne?: SystemOneTriage | undefined,
 ): Promise<MergePairResult[]> {
   const results: MergePairResult[] = [];
 
   for (const pair of pairs) {
+    // A decisive System One verdict settles the pair; anything else (not
+    // sure, host resting, failure) asks the LLM exactly as before.
+    const judged = systemOne ? await systemOne.judgeMerge(pair.memoryA, pair.memoryB) : undefined;
+    if (judged) {
+      if (verbose && judged !== 'NO') {
+        process.stderr.write(
+          `[merge] ${judged} (system-one): ${pair.memoryA.id.slice(0, 12)} ↔ ${pair.memoryB.id.slice(0, 12)}
+`,
+        );
+      }
+      results.push({ candidate: pair, verdict: judged, raw: `system-one:${judged}`, ok: true });
+      continue;
+    }
     const prompt = buildMergePrompt(pair.memoryA, pair.memoryB);
 
     let result: MergePairResult;
     try {
       const raw = await callLlm(MERGE_SYSTEM_PROMPT, prompt);
+      // An empty reply is not a "NO": it is no verdict (a reasoning model
+      // that spent its budget thinking returns nothing). Counting it as NO
+      // made a starved model look like one that never finds duplicates.
+      if (!raw.trim()) throw new Error('Empty LLM response');
       const verdict = parseMergeVerdict(raw);
 
       if (verbose && verdict !== 'NO') {

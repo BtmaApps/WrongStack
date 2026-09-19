@@ -52,6 +52,7 @@ import { parseModelRef } from '../core/fallback-model.js';
 import type { EventBus } from '../kernel/events.js';
 import type { BrainConfig, BrainCouncilVoterConfig, BrainModelEntry } from '../types/config.js';
 import type { Provider } from '../types/provider.js';
+import type { TypeSafeJudge } from '../typesafe/judgments.js';
 import {
   type BrainAutoRisk,
   createTieredBrainArbiter,
@@ -69,6 +70,7 @@ import {
   TERMINAL_POLICIES,
   TRACE_CONTENT_MODES,
 } from './brain-runtime-constants.js';
+import { createSystemOneBrainTier } from './brain-system-one.js';
 import { MAX_COUNCIL_DELIBERATION_ROUNDS } from './council-profiles.js';
 
 export type BrainCouncilMinRisk = 'medium' | 'high' | 'critical';
@@ -279,6 +281,12 @@ export interface BrainRuntimeOptions {
   onApplied?: ((snapshot: BrainConfigSnapshot) => void) | undefined;
   /** Bus for Brain trace events. Absent = no LLM/council tracing. */
   events?: EventBus | undefined;
+  /**
+   * TypeSafe judge for the System One tier, read per decision so an account
+   * that appears, rests or is revoked mid-session is honoured. Absent or
+   * returning `undefined` = the tier is skipped.
+   */
+  getSystemOneJudge?: (() => TypeSafeJudge | undefined) | undefined;
 }
 
 export interface BrainApplyResult {
@@ -507,6 +515,12 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       // callers that wire it directly; the product default lives here.
       getDenyIsTerminal: () => cfg.llm?.denyIsTerminal ?? 'when-decided',
       events: opts.events,
+      systemOne: opts.getSystemOneJudge
+        ? createSystemOneBrainTier({
+            getJudge: opts.getSystemOneJudge,
+            getDecisionDigest,
+          })
+        : undefined,
     });
 
     // Deterministic rules sit in FRONT of the tiered chain so a configured

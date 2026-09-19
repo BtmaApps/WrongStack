@@ -1,6 +1,7 @@
 import type { Agent } from '@wrongstack/core/agent';
 import { startFreshTopicContext, TopicShiftAdvisor } from '@wrongstack/core/execution';
 import type { ContentBlock, UserInputResponse } from '@wrongstack/core/types';
+import { typeSafeJudgeFromContainer } from '@wrongstack/core/typesafe';
 import {
   buildUserContentBlocks,
   IncomingImageError,
@@ -123,7 +124,9 @@ function requestedSessionId(msg: WSClientMessage): string | undefined {
 export function createConversationOperations(
   ctx: ConversationOperationsContext,
 ): ConversationOperations {
-  const topicShiftAdvisor = new TopicShiftAdvisor();
+  const topicShiftAdvisor = new TopicShiftAdvisor({
+    getJudge: () => typeSafeJudgeFromContainer(ctx.getAgent().container, 'topicShift'),
+  });
   const sessionPayload = (payload: Record<string, unknown>): Record<string, unknown> => {
     const provided = payload['sessionId'];
     const sessionId =

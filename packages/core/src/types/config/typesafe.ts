@@ -57,4 +57,32 @@ export interface TypeSafeConfig {
    * a credential the host has actually rejected.
    */
   authFailureLimit?: number | undefined;
+  /**
+   * Per-feature switches for the System One judgments that sit in front of
+   * (never instead of) an existing path. Each one runs ONLY while this account
+   * resolves `ready` and the host is not resting; otherwise the feature takes
+   * the path it always had. Unset means ON when an account is configured —
+   * a TypeSafe key exists for nothing else — and `false` turns one off.
+   */
+  judgments?: TypeSafeJudgmentsConfig | undefined;
+}
+
+/** See {@link TypeSafeConfig.judgments}. `false` disables; unset = on with an account. */
+export interface TypeSafeJudgmentsConfig {
+  /** Brain decisions: a Choice over the options before the LLM tier. */
+  brain?: boolean | undefined;
+  /** `/memory triage` phase 3 value rating and merge decisions. */
+  memoryTriage?: boolean | undefined;
+  /** Topic-shift advice on a new prompt (new vs same context). */
+  topicShift?: boolean | undefined;
+  /** SAGE recall: drop recalled memories that do not help the current turn. */
+  memoryRecall?: boolean | undefined;
+  /** Compaction selector: which history ranges the current goal still needs. */
+  compaction?: boolean | undefined;
+  /** Kanban completion check: does the evidence support "done"? */
+  kanbanVerify?: boolean | undefined;
+  /** Subagent model tier: task difficulty/risk before picking a lane. */
+  modelTier?: boolean | undefined;
+  /** Semantic lint: judge grep-found candidates against project conventions. */
+  semanticLint?: boolean | undefined;
 }

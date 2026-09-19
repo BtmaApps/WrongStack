@@ -196,6 +196,19 @@ export {
 } from './triage/index.js';
 export type { LlmCallFn } from './triage/llm-evaluator.js';
 export {
+  createSystemOneRecallFilter,
+  type SystemOneRecallFilter,
+  type SystemOneRecallFilterOptions,
+} from './retrieval/system-one-recall.js';
+export {
+  createSystemOneTriage,
+  type MemoryValueProbe,
+  probeMemoryValue,
+  type SystemOneRating,
+  type SystemOneTriage,
+  type SystemOneTriageOptions,
+} from './triage/system-one.js';
+export {
   formatTriageReport,
   type RunTriageOptions,
   runTriage,

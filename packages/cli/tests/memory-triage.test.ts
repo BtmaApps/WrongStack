@@ -237,7 +237,9 @@ describe('runTriageCommand', () => {
         { signal: AbortSignal },
       ];
       expect(request.model).toBe('triage-model');
-      expect(request.maxTokens).toBe(60);
+      // Room for a reasoning model's thinking; 60 starved glm-5.3-flash into
+      // empty replies on every memory.
+      expect(request.maxTokens).toBe(2_000);
       expect(request.temperature).toBeCloseTo(0.1);
       expect(options.signal.aborted).toBe(false);
     }

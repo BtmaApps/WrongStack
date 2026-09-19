@@ -104,7 +104,13 @@ describe('TopicShiftAdvisor', () => {
     };
     expect(request.system[0]?.cache_control).toEqual({ type: 'ephemeral' });
     expect(request.messages[0]?.content[0]?.text.length).toBeLessThan(9_000);
-    expect(request.maxTokens).toBe(180);
+    // Room for a reasoning model plus JSON on the wire and no deliberation:
+    // at 180 with reasoning on, glm-5.3-flash answered 10 of 30 real prompts.
+    expect(request.maxTokens).toBe(1_024);
+    expect(request).toMatchObject({
+      responseFormat: { type: 'json_object' },
+      reasoning: { enabled: false },
+    });
   });
 
   it('reuses a cached decision for duplicate edit/retry submits', async () => {
@@ -198,5 +204,63 @@ describe('startFreshTopicContext', () => {
     expect(ctx.meta['realAnchorMsgCount']).toBeUndefined();
     expect(ctx.meta['contextWindowPolicy']).toEqual({ mode: 'balanced' });
     expect(ctx.session.id).toBe('preserved-session');
+  });
+});
+
+describe('TopicShiftAdvisor — System One front', () => {
+  const holiday = 'Plan a summer holiday itinerary for Portugal and estimate the budget.';
+  const judge = (noul: number | Error) => ({
+    feature: 'topicShift' as const,
+    model: 'jev-test',
+    client: {
+      systemOne: vi.fn(async () => {
+        if (noul instanceof Error) throw noul;
+        return {
+          answers: { newGoal: { type: 'noul' as const, noul } },
+          usage: { inputTokens: 1, outputTokens: 0 },
+        };
+      }),
+    },
+  });
+  const ask = (advisor: TopicShiftAdvisor, provider: Provider) =>
+    advisor.advise({
+      prompt: holiday,
+      messages: longHistory(),
+      provider,
+      model: 'test-model',
+      contextTokens: 50_000,
+      maxContext: 200_000,
+    });
+
+  it('answers a decisive shift without the provider call', async () => {
+    const { provider, complete } = providerReply({ decision: 'same_context', confidence: 0.9 });
+    const advice = await ask(new TopicShiftAdvisor({ getJudge: () => judge(0.93) }), provider);
+    expect(advice).toMatchObject({ suggestNewContext: true, source: 'system-one' });
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('leaves the ambiguous middle to the provider', async () => {
+    const { provider, complete } = providerReply({
+      decision: 'new_context',
+      confidence: 0.91,
+      reason: 'unrelated',
+    });
+    const advice = await ask(new TopicShiftAdvisor({ getJudge: () => judge(0.55) }), provider);
+    expect(advice.source).toBe('model');
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the provider when TypeSafe is resting or failing', async () => {
+    const { provider, complete } = providerReply({
+      decision: 'new_context',
+      confidence: 0.91,
+      reason: 'unrelated',
+    });
+    const advice = await ask(
+      new TopicShiftAdvisor({ getJudge: () => judge(new Error('resting')) }),
+      provider,
+    );
+    expect(advice.source).toBe('model');
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 });

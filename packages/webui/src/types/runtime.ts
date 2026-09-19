@@ -376,7 +376,7 @@ export interface WSTopicAdviceResult {
     confidence: number;
     reason: string;
     nextTopic?: string | undefined;
-    source: 'explicit' | 'model' | 'cache' | 'local';
+    source: 'explicit' | 'model' | 'system-one' | 'cache' | 'local';
   };
 }
 

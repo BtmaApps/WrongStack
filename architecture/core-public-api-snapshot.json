@@ -625,9 +625,10 @@
         "export { buildGoalPreamble } from './goal-preamble.js';",
         "export { buildRecoveryStrategies, DEFAULT_RECOVERY_STRATEGIES, DefaultErrorHandler, type RecoveryStrategy, } from './error-handler.js';",
         "export { buildRefinerContextSections, DEFAULT_REFINER_RETRY_FEEDBACK, type EnhanceFailureKind, enhanceUserPrompt, gatedEnhancerReasoning, isValidEnglishRefinement, normalizedEqual, parseBilingualEnhancement, recentTextTurns, shouldEnhance, } from './prompt-enhancer.js';",
+        "export { createSystemOneBrainTier, probeSystemOneBrain, type SystemOneBrainProbe, type SystemOneBrainTier, type SystemOneBrainTierOptions, systemOneBrainSettles, } from './brain-system-one.js';",
         "export { installSubagentAutoCompaction } from './subagent-compaction.js';",
         "export { nextEnhanceTimeout, resolveConfiguredRefinerRef, resolveEnhanceFallbackRef, } from './enhance-recovery.js';",
-        "export { startFreshTopicContext, type TopicShiftAdvice, TopicShiftAdvisor, type TopicShiftAdvisorInput, type TopicShiftAdvisorOptions, } from './topic-shift-advisor.js';",
+        "export { startFreshTopicContext, type TopicShiftAdvice, TopicShiftAdvisor, type TopicShiftAdvisorInput, type TopicShiftAdvisorOptions, type TopicShiftDiagnostic, } from './topic-shift-advisor.js';",
         "export { type AutonomyBrainOptions, type BrainAutoRisk, type BrainLlmTarget, buildBrainUserMessage, completeBrainLlm, createAutonomyBrain, createTieredBrainArbiter, formatDecisionSummary, parseOptionDecision, type TieredBrainArbiterOptions, } from './autonomy-brain.js';",
         "export { type AutonomyPromptContributorOptions, makeAutonomyPromptContributor, } from './autonomy-prompt-contributor.js';",
         "export { type BrainApplyResult, type BrainConfigPatch, type BrainConfigSnapshot, type BrainCouncilMinRisk, type BrainCouncilPatch, type BrainDefaultsContext, type BrainPoolStrategy, type BrainRuntime, type BrainRuntimeLedgerHost, type BrainRuntimeOptions, createBrainRuntime, resolveBrainConfigDefaults, } from './brain-runtime.js';",
@@ -724,6 +725,7 @@
         "export { createMailboxHooks, type MailboxHooksOptions, } from './mailbox-hooks.js';",
         "export { createMessage, InMemoryAgentBridge, InMemoryBridgeTransport, } from './agent-bridge.js';",
         "export { createProjectMailbox, getSharedProjectMailbox, type ProjectMailboxOptions, RemoteMailbox, } from './remote-mailbox.js';",
+        "export { createSystemOneTierSuggester, type SystemOneTierSuggester, type SystemOneTierSuggesterOptions, } from './system-one-tier.js';",
         "export { detectEcosystem, getFullPackageLog, getManifestPackages, getPackageAuthor, getPackagesByAgent, type PackageAuthorEntry, type PackageAuthorLog, type PackageAuthorTrackerOptions, recordPackageAction, updatePackageOutdatedStatus, } from './package-author-tracker.js';",
         "export { evaluateLeaderTierSwitch, evaluateSwitchEconomics, type LeaderTierRefusalCode, type LeaderTierSwitchRequest, type LeaderTierVerdict, leaderTierPolicy, type ResolvedLeaderTierPolicy, type TierModelEconomics, tierRank, } from './model-tier-leader.js';",
         "export { findDelegationForTask, markDelegationDelivered, noteLeaderConsumedTask, type TrackedDelegationInfo, } from './delegation/delegation-lookup.js';",
@@ -1127,6 +1129,7 @@
         "export { DefaultModeStore, loadProjectModes, loadUserModes, type ModeLoaderOptions, } from './mode-store.js';",
         "export { LLMSelector, type LLMSelectorOptions } from './llm-selector.js';",
         "export { MODELS_DEV_MODALITY_VALUES, type ModelsDevModelParsed, type ModelsDevPayloadParsed, type ModelsDevProviderParsed, type ModelsDevSchemaSyncProof, modelsDevCostSchema, modelsDevLimitSchema, modelsDevModalitiesSchema, modelsDevModelSchema, modelsDevPayloadSchema, modelsDevProviderSchema, } from './models-dev-schema.js';",
+        "export { SystemOneSelector, type SystemOneSelectorOptions } from './system-one-selector.js';",
         "export { classifyFamily, DefaultModelsRegistry, type DefaultModelsRegistryOptions, type RuntimeModelsOverlayOptions, } from './models-registry.js';",
         "export { describeCatalogModel, type ProviderModelDescriptor, resolveProviderModelList, } from './provider-model-resolve.js';",
         "export { findModelProfile, inferTaskType, MODEL_PROFILES, type ModelProfile, scoreModelForTask, TASK_TO_ROLE, type TaskType, } from './model-intelligence.js';",
@@ -1274,9 +1277,13 @@
       "source": "packages/core/src/typesafe/index.ts",
       "declarations": [
         "export { BUILT_IN_ROUTES, estimateTypeSafeCostUsd, isTypeSafeRoute, JEV_INPUT_USD_PER_MTOK, TYPESAFE_ROUTE_IDS, TYPESAFE_ROUTES, type TypeSafeRoute, type TypeSafeRouteSpec, } from './route.js';",
+        "export { BUILT_IN_SEMANTIC_LINT_RULES, findSemanticLintCandidates, judgeSemanticLintCandidates, parseSemanticLintRules, type SemanticLintCandidate, type SemanticLintFinding, type SemanticLintResult, type SemanticLintRule, } from './semantic-lint.js';",
+        "export { askTypeSafeJudge, isTypeSafeJudgmentEnabled, type ResolveTypeSafeJudgeDeps, resetTypeSafeJudgesForTests, resolveTypeSafeJudge, TYPESAFE_JUDGMENT_FEATURES, type TypeSafeJudge, type TypeSafeJudgmentFeature, typeSafeJudgeFromContainer, } from './judgments.js';",
         "export { createTypeSafeBreaker, type TypeSafeBreaker, type TypeSafeBreakerOptions, TypeSafeDisabledError, } from './breaker.js';",
+        "export { createTypeSafeRestGate, resetSharedTypeSafeRestGatesForTests, sharedTypeSafeRestGate, type TypeSafeRestGate, type TypeSafeRestGateOptions, TypeSafeRestingError, typeSafeFailureWeight, withTypeSafeRest, } from './rest.js';",
         "export { resetWarnOnceForTests, type WarnSink, warnFeatureUnusable, warnOnce, } from './notify.js';",
         "export { type ChoiceAnswer, type ChoiceQuestion, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type NoulAnswer, type NoulQuestion, parseSystemOneResult, type ScoreAnswer, type ScoreQuestion, type SystemOneRequest, type SystemOneResult, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, type TypeSafeUsage, } from './client.js';",
+        "export { type CriterionJudgeInput, type CriterionJudgeResult, createTypeSafeCriterionJudge, } from './criterion.js';",
         "export { type ResolveTypeSafeClientDeps, resolveTypeSafeAccount, resolveTypeSafeClient, resolveTypeSafeRoute, TYPESAFE_API_KEY_ENV, type TypeSafeAccount, type TypeSafeAccountReady, type TypeSafeAccountUnconfigured, type TypeSafeAccountUnusable, type TypeSafeKeySource, typeSafeModel, } from './resolve.js';"
       ]
     },
@@ -1509,8 +1516,8 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 197,
-      "sourceLines": 57026
+      "sourceFiles": 198,
+      "sourceLines": 57148
     },
     {
       "directory": "core",
@@ -1530,8 +1537,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 61,
-      "sourceLines": 19350
+      "sourceFiles": 62,
+      "sourceLines": 19753
     },
     {
       "directory": "extension",
@@ -1579,8 +1586,8 @@
       "directory": "models",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
-      "sourceFiles": 11,
-      "sourceLines": 2564
+      "sourceFiles": 12,
+      "sourceLines": 2808
     },
     {
       "directory": "notifications",
@@ -1699,14 +1706,14 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 74,
-      "sourceLines": 14015
+      "sourceLines": 14043
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
-      "sourceFiles": 6,
-      "sourceLines": 899
+      "sourceFiles": 10,
+      "sourceLines": 1636
     },
     {
       "directory": "utils",

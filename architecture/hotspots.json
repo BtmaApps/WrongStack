@@ -91,7 +91,7 @@
       "relativeImports": 10
     },
     "packages/core/src/coordination/delegation/run-delegation.ts": {
-      "lines": 1134,
+      "lines": 1149,
       "relativeImports": 9
     },
     "packages/core/src/coordination/director-tools.ts": {
@@ -107,8 +107,8 @@
       "relativeImports": 6
     },
     "packages/core/src/coordination/index.ts": {
-      "lines": 844,
-      "relativeImports": 100
+      "lines": 849,
+      "relativeImports": 101
     },
     "packages/core/src/coordination/sqlite-mailbox.ts": {
       "lines": 982,
@@ -131,8 +131,8 @@
       "relativeImports": 14
     },
     "packages/core/src/execution/brain-runtime.ts": {
-      "lines": 1045,
-      "relativeImports": 17
+      "lines": 1059,
+      "relativeImports": 19
     },
     "packages/core/src/execution/eternal-autonomy.ts": {
       "lines": 978,
@@ -443,7 +443,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/submit-controller.ts": {
-      "lines": 918,
+      "lines": 925,
       "relativeImports": 13
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
@@ -551,7 +551,7 @@
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 965,
+      "lines": 970,
       "relativeImports": 14
     },
     "packages/webui-server/src/server/context-editor.ts": {

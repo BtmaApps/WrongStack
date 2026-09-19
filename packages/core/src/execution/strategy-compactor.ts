@@ -1,7 +1,10 @@
 import type { Context } from '../core/context.js';
+import { LLMSelector } from '../models/llm-selector.js';
+import { SystemOneSelector } from '../models/system-one-selector.js';
 import type { Compactor, CompactReport } from '../types/compactor.js';
 import type { ContextWindowPolicy } from '../types/context-window.js';
 import type { Message } from '../types/messages.js';
+import type { TypeSafeJudge } from '../typesafe/judgments.js';
 import { toErrorMessage } from '../utils/index.js';
 import { compactionReportStillCurrent } from './compaction-result-state.js';
 import { HybridCompactor } from './compactor.js';
@@ -42,6 +45,13 @@ export interface StrategyCompactorOptions {
    * calls, gaining fallback chain support and a cheap default model.
    */
   oneShotOrchestrator?: OneShotOrchestrator | undefined;
+  /**
+   * TypeSafe judge for the 'selective' strategy's selector, read per
+   * compaction. When it resolves, turns are rated by System One and packed
+   * into the budget in code; otherwise (or on any failure) the LLM selector
+   * decides exactly as before.
+   */
+  getSystemOneJudge?: (() => TypeSafeJudge | undefined) | undefined;
 }
 
 /**
@@ -210,8 +220,19 @@ class ProviderBackedCompactor implements Compactor {
     };
 
     if (this.strategy === 'selective') {
+      const getJudge = this.opts.getSystemOneJudge;
       return new SelectiveCompactor({
         ...common,
+        selector: getJudge
+          ? new SystemOneSelector({
+              getJudge,
+              fallback: new LLMSelector({
+                provider,
+                model: this.opts.summarizerModel,
+                maxOutputTokens: this.opts.selectorMaxOutputTokens,
+              }),
+            })
+          : undefined,
         selectorModel: this.opts.summarizerModel,
         selectorMaxOutputTokens: this.opts.selectorMaxOutputTokens,
         summarizerModel: this.opts.summarizerModel,

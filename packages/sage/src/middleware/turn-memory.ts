@@ -8,6 +8,7 @@ import {
 import { formatMemoryEvidenceBlock } from '@wrongstack/core/utils';
 import { formatMemoryHintsDetailed } from '../retrieval/format.js';
 import { memoryQueryRelevance, memorySemanticRelevance } from '../retrieval/relevance.js';
+import type { SystemOneRecallFilter } from '../retrieval/system-one-recall.js';
 import { normalizeTextKey, tokenize } from '../store-helpers.js';
 import { InjectionTracker } from './injection-tracker.js';
 import type { SageSearchLike } from './tool-call-memory.js';
@@ -41,6 +42,12 @@ export interface SageTurnMiddlewareOptions {
    * monitor owns crediting there.
    */
   creditUses?: boolean | undefined;
+  /**
+   * Optional TypeSafe check (`createSystemOneRecallFilter`) run on the
+   * candidates that passed the relevance gate. It can only DROP candidates;
+   * a failure or resting host drops nothing.
+   */
+  recallFilter?: SystemOneRecallFilter | undefined;
 }
 
 /** Sessions whose last rendered memory set is remembered. */
@@ -183,7 +190,13 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
             if (accepted) seenText.add(textKey);
             return accepted;
           });
-          const rendered = formatMemoryHintsDetailed(eligible, {
+          const dropped =
+            opts.recallFilter && eligible.length > 0
+              ? await opts.recallFilter(query, eligible)
+              : undefined;
+          const kept =
+            dropped && dropped.size > 0 ? eligible.filter((m) => !dropped.has(m.id)) : eligible;
+          const rendered = formatMemoryHintsDetailed(kept, {
             maxChars: opts.maxChars ?? 2_400,
           });
           const renderedIds = new Set(rendered.text ? rendered.memoryIds : []);
@@ -194,7 +207,7 @@ export function createSageTurnMiddleware(opts: SageTurnMiddlewareOptions): Middl
             if (entered.length > 0) {
               await opts.memory.recordInjection?.(entered, 'turn_context', sessionId);
             }
-            for (const memory of eligible) {
+            for (const memory of kept) {
               if (renderedIds.has(memory.id)) {
                 tracker.record(memory.id, memory.text, Date.now(), sessionId, rendered.text);
               }

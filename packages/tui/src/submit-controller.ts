@@ -7,6 +7,7 @@ import {
 import type { Director } from '@wrongstack/core/coordination';
 import { PROMPT_JOURNAL_RAW_MARKER } from '@wrongstack/core/prompts';
 import type { AttachmentStore, ContentBlock } from '@wrongstack/core/types';
+import { typeSafeJudgeFromContainer } from '@wrongstack/core/typesafe';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import { todoTool } from '@wrongstack/tools/todo';
 import type { Action, State } from './app-reducer.js';
@@ -125,7 +126,13 @@ const topicAdvisorByAgent = new WeakMap<object, TopicShiftAdvisor>();
 function topicAdvisorFor(agent: object): TopicShiftAdvisor {
   let advisor = topicAdvisorByAgent.get(agent);
   if (!advisor) {
-    advisor = new TopicShiftAdvisor();
+    advisor = new TopicShiftAdvisor({
+      getJudge: () =>
+        typeSafeJudgeFromContainer(
+          (agent as { container?: { safeResolve(token: unknown): unknown } }).container,
+          'topicShift',
+        ),
+    });
     topicAdvisorByAgent.set(agent, advisor);
   }
   return advisor;

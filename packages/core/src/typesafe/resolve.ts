@@ -31,6 +31,7 @@
 import type { Config } from '../types/config/root.js';
 import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
+import { sharedTypeSafeRestGate, type TypeSafeRestGate, withTypeSafeRest } from './rest.js';
 import { isTypeSafeRoute, TYPESAFE_ROUTES, type TypeSafeRoute } from './route.js';
 
 /**
@@ -55,6 +56,17 @@ export interface ResolveTypeSafeClientDeps {
   onUsage?: ((usage: TypeSafeUsage) => void) | undefined;
   /** Called once if the breaker opens on a revoked credential. */
   onDisabled?: ((reason: string) => void) | undefined;
+  /**
+   * Called each time the host is put to rest after transient failures
+   * (429/5xx/timeouts). Rests end on their own; this is informational.
+   */
+  onRest?: ((reason: string) => void) | undefined;
+  /**
+   * Transient-failure gate. Defaults to the process-wide gate shared by every
+   * client of the same endpoint + credential; `null` disables resting (tests,
+   * and the `wstack typesafe test` probe, which must always hit the network).
+   */
+  restGate?: TypeSafeRestGate | null | undefined;
 }
 
 /** An account that can answer questions. */
@@ -69,6 +81,8 @@ export interface TypeSafeAccountReady {
   keySource: TypeSafeKeySource;
   /** Env var the key came from, when `keySource` is `env`. */
   keyEnv: string | undefined;
+  /** The transient-failure gate in front of `client`, when one is installed. */
+  rest: TypeSafeRestGate | undefined;
 }
 
 /** No credential anywhere. The user configured nothing; say nothing. */
@@ -165,14 +179,22 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
   }
 
   const model = account.model?.trim() || spec?.model || TYPESAFE_ROUTES.typesafe.model;
+  const transport = createTypeSafeClient({
+    apiKey,
+    endpoint,
+    model,
+    timeoutMs: deps.timeoutMs ?? account.requestTimeoutMs,
+    onUsage: deps.onUsage,
+  });
+  // Rest sits INSIDE the auth breaker: a resting gate throws its own error
+  // type, which the breaker passes through without counting, so load can
+  // never be mistaken for a revoked key.
+  const rest =
+    deps.restGate === null
+      ? undefined
+      : (deps.restGate ?? sharedTypeSafeRestGate(endpoint, apiKey));
   const client = createTypeSafeBreaker({
-    client: createTypeSafeClient({
-      apiKey,
-      endpoint,
-      model,
-      timeoutMs: deps.timeoutMs ?? account.requestTimeoutMs,
-      onUsage: deps.onUsage,
-    }),
+    client: rest ? withTypeSafeRest(transport, rest, deps.onRest) : transport,
     threshold: account.authFailureLimit,
     label: spec?.label ?? 'TypeSafe',
     onOpen: deps.onDisabled,
@@ -186,6 +208,7 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
     model,
     keySource: configured ? 'config' : 'env',
     keyEnv: configured ? undefined : keyEnv,
+    rest,
   };
 }
 

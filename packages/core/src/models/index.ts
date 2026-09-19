@@ -30,7 +30,6 @@ export {
   type RouterConfig,
   type RouterCosts,
 } from './model-router.js';
-
 // models.dev schema (ME-1): runtime-validated mirror of models.dev/api.json
 export {
   MODELS_DEV_MODALITY_VALUES,
@@ -63,3 +62,4 @@ export {
   type ProviderModelDescriptor,
   resolveProviderModelList,
 } from './provider-model-resolve.js';
+export { SystemOneSelector, type SystemOneSelectorOptions } from './system-one-selector.js';

@@ -34,3 +34,11 @@ export type {
 
 export { runTriage, formatTriageReport } from './orchestrator.js';
 export type { TriageReport, RunTriageOptions } from './orchestrator.js';
+
+export { createSystemOneTriage, probeMemoryValue } from './system-one.js';
+export type {
+  MemoryValueProbe,
+  SystemOneRating,
+  SystemOneTriage,
+  SystemOneTriageOptions,
+} from './system-one.js';

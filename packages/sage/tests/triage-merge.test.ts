@@ -496,3 +496,17 @@ describe('merge detection — edge cases', () => {
     expect(result.summary.pairsEvaluated).toBe(3);
   });
 });
+
+describe('detectMerges — empty LLM replies', () => {
+  it('counts an empty reply as an error, not as a NO verdict', async () => {
+    // A reasoning model starved by a small token budget replies with nothing;
+    // reading that as NO made "never finds duplicates" indistinguishable
+    // from "never answered".
+    const anchors = [{ type: 'file' as const, path: 'src/auth.ts' }];
+    const m1 = makeMem('a', 'Auth module uses bcrypt', { anchors });
+    const m2 = makeMem('b', 'Auth module hashes passwords with bcrypt', { anchors });
+    const result = await detectMerges([m1, m2], async () => '');
+    expect(result.summary.errors).toBeGreaterThanOrEqual(1);
+    expect(result.merges).toHaveLength(0);
+  });
+});

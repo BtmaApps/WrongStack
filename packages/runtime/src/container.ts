@@ -33,7 +33,9 @@ import {
   resolveSessionLoggingConfig,
 } from '@wrongstack/core/storage';
 import type { Config, Logger, ModelsRegistry, Tool } from '@wrongstack/core/types';
+import { createTypeSafeCriterionJudge, resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import type { WstackPaths } from '@wrongstack/core/utils';
+import { setKanbanCriterionJudge } from '@wrongstack/kanban';
 import { createProjectSageMemoryPort, isSqliteAvailable } from '@wrongstack/sage';
 
 export interface CreateContainerOptions {
@@ -280,8 +282,28 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
       smart: true,
       summarizerModel: config.context?.summarizerModel,
       llmSelector: config.context?.llmSelector,
+      getSystemOneJudge: () =>
+        resolveTypeSafeJudge({
+          config,
+          feature: 'compaction',
+          logger: container.safeResolve(TOKENS.Logger),
+        }),
     }),
   );
+
+  // Kanban `agent` checks: judged by System One from the task's diff while a
+  // TypeSafe account is configured, `typesafe.judgments.kanbanVerify` is not
+  // false and the host answers; otherwise they stay open exactly as before.
+  // Process-wide and resolved per check from the live config.
+  setKanbanCriterionJudge(() => {
+    const store = container.safeResolve(TOKENS.ConfigStore);
+    const judge = resolveTypeSafeJudge({
+      config: store?.get() ?? config,
+      feature: 'kanbanVerify',
+      logger: container.safeResolve(TOKENS.Logger),
+    });
+    return judge ? createTypeSafeCriterionJudge(judge) : undefined;
+  });
 
   return container;
 }

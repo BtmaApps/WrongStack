@@ -6,6 +6,7 @@ import {
   BrainMonitor,
   BrainTraceRecorder,
   createDelegateTool,
+  createSystemOneTierSuggester,
   DelegationTracker,
   EscalationRoutingBrainArbiter,
   ObservableBrainArbiter,
@@ -27,6 +28,7 @@ import {
   type SecretVault,
   type SessionWriter,
 } from '@wrongstack/core/types';
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { subscribeBrainDecisionLog } from '../boot/brain-decision-log.js';
 import { createSubagentWrongTraceHookRunner } from '../fleet/subagent-hook-runner.js';
 import { MultiAgentHost } from '../multi-agent.js';
@@ -246,6 +248,14 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
     sessionProvider: () => provider,
     sessionModel: () => config.model,
     resolveProvider: (providerId) => buildProviderForId({ config, providerRegistry }, providerId),
+    // Read per decision: the live config, so a key added or a judgment
+    // switched off mid-session takes effect on the next decision.
+    getSystemOneJudge: () =>
+      resolveTypeSafeJudge({
+        config: (configStore.get?.() as Config | undefined) ?? config,
+        feature: 'brain',
+        logger: container.safeResolve(TOKENS.Logger),
+      }),
     ledger: {
       getPath: () => (ledgerEnabled ? ledgerPath : undefined),
       isEnabled: () => ledgerEnabled,
@@ -509,6 +519,18 @@ export function setupBrainAndOrchestration(deps: BrainOrchestrationDeps): BrainO
           return undefined;
         }
       },
+      // A task with no tier, model or role route gets a System One pick among
+      // the configured `modelTiers` levels; off/unconfigured/resting = the
+      // routing-table default, as before.
+      suggestTier: createSystemOneTierSuggester({
+        getConfig: () => (configStore.get?.() as Config | undefined) ?? config,
+        getJudge: () =>
+          resolveTypeSafeJudge({
+            config: (configStore.get?.() as Config | undefined) ?? config,
+            feature: 'modelTier',
+            logger: container.safeResolve(TOKENS.Logger),
+          }),
+      }),
     }),
   );
   toolRegistry.exposeToProvider('delegate');

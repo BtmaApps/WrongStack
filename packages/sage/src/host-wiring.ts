@@ -11,6 +11,7 @@
 import type { AgentPipelines } from '@wrongstack/core/agent';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Config, Logger, MemoryPort } from '@wrongstack/core/types';
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 import { getSageRetrieval, getSageSurface } from './memory-port.js';
 import { createSageContextMonitorMiddleware } from './middleware/context-monitor.js';
 import { createSageDomainTermExtractorMiddleware } from './middleware/domain-term-extractor-middleware.js';
@@ -20,9 +21,11 @@ import { createSagePathRemapMiddleware } from './middleware/path-remap.js';
 import { subscribeSessionEndCommitExtractor } from './middleware/session-end-commit-extractor.js';
 import { createSageToolCallMiddleware } from './middleware/tool-call-memory.js';
 import { createSageTurnMiddleware } from './middleware/turn-memory.js';
+import { createSystemOneRecallFilter } from './retrieval/system-one-recall.js';
 import { fileTriageProposals } from './shared/file-proposals.js';
 import type { LlmCallFn } from './triage/llm-evaluator.js';
 import { runTriage } from './triage/orchestrator.js';
+import { createSystemOneTriage } from './triage/system-one.js';
 import type { SageHygieneOptions } from './types.js';
 
 export interface SageHostWiringDeps {
@@ -156,6 +159,16 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
         // would scan the same assistant message twice.
         creditUses: false,
         getSessionId: deps.getSessionId,
+        // Read per turn: used only while a TypeSafe account is configured,
+        // `typesafe.judgments.memoryRecall` is not false and the host is up.
+        recallFilter: createSystemOneRecallFilter({
+          getJudge: () =>
+            resolveTypeSafeJudge({
+              config: deps.config,
+              feature: 'memoryRecall',
+              logger: deps.logger,
+            }),
+        }),
       }),
     );
   }
@@ -215,11 +228,17 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
           const memories = page.memories ?? [];
           if (memories.length > 0) {
             const llm = deps.getLlmCall?.() ?? (async () => '3');
+            const judge = resolveTypeSafeJudge({
+              config: deps.config,
+              feature: 'memoryTriage',
+              logger: deps.logger,
+            });
             const report = await runTriage(memories, llm, {
               dryRun: true,
               maxPhase3Calls: 40,
               maxPhase4Pairs: 15,
               verbose: false,
+              systemOne: judge ? createSystemOneTriage({ judge }) : undefined,
             });
             // File proposals even on dry-run so Review tab fills without --apply.
             // Auto-apply status mutations are NOT executed (dryRun: true).

@@ -83,12 +83,78 @@ user profile, then restart the session/server that loaded that configuration:
 |---|---|---|---|
 | Skill suggestion | Shared CLI/TUI request pipeline and WebUI server pipeline | 0–2 evaluations per distinct latest user text, cached per session across tool iterations; 3s combined deadline | Optional skill relevance hint; does not load/install a skill or force its use |
 | Fleet dispatch | CLI/TUI `/delegate`, `/fleet dispatch`, and the fleet host's classifier callback | One evaluation containing Choice + Noul when the keyword heuristic is ambiguous; 4s total timeout | Selects an eligible role or declines to heuristic/generalist routing |
+| `brain` | Brain ladder (CLI + WebUI), option-bearing requests below the council floor | Choice + "decidable" (concrete evidence) Noul, 4s | Settles only confident, evidence-backed decisions (conf ≥ 0.75, p ≥ 0.7, decidable ≥ 0.4); else the LLM tier runs as before. Tier `system-one` in traces |
+| `memoryTriage` | `/memory triage`, post-session auto-triage | One Score per gray-zone memory (8 in parallel) and per merge pair | Decisive rating/verdict skips the LLM call; a YES merge needs p ≥ 0.8; the rest go to the LLM |
+| `topicShift` | TUI + WebUI prompt submit, only after the local gate found low continuity | One Noul, ≤ 4s | ≥ 0.8 suggests a new context, ≤ 0.3 keeps it; the ambiguous middle goes to the provider classifier |
+| `memoryRecall` | SAGE turn-context injection (itself opt-in) | One request per user message, one Noul per surviving candidate, 1.5s, cached across tool iterations | Can only DROP candidates (< 0.2); failure drops nothing |
+| `compaction` | `selective` compaction strategy only | One Score per middle turn, chunks of 40, 8s | Keeps tail + opening turn, packs rated turns into the budget in code; any failure hands off to the LLM selector |
+| `kanbanVerify` | `agent` checks in Kanban verification (process-wide hook) | One Noul per check over the task diff (≤ 24k chars), 8s | ≥ 0.92 passed, ≤ 0.08 failed, else the escalation stays open (skipped). Never re-judges a status a person set |
+| `modelTier` | `delegate` with no tier/model and no role/phase tier route | One Choice over `modelTiers` levels, 3s | Confident pick (≥ 0.6) becomes the spawn tier; budgets/ceilings apply as for any tier |
+| `semanticLint` | `wstack typesafe lint-conventions` (explicit command) | One Noul per regex candidate in the diff's added lines, 32 per request | Reports judged violations (≥ 0.7, `--threshold`); rules: built-in + `.wrongstack/semantic-lint.json` |
 
 Each HTTP evaluation permits two attempts by default for transient errors.
 Short requests (under 12 characters), small skill rosters, and confident
-heuristic dispatches avoid calls. This is not wired into Brain policy, council
-voting, approvals, every tool call, or normal chat generation. There is no
+heuristic dispatches avoid calls. It is not wired into council voting,
+approvals/permissions, every tool call, or normal chat generation. There is no
 dedicated TypeSafe auth panel in the WebUI; use the CLI account commands.
+
+## Judgments: on with an account, always with a fallback
+
+The eight judgment features above (`typesafe.judgments.<id>`) differ from the
+two original consumers in one way: they are **on whenever an account resolves
+`ready`**, and `typesafe.judgments.<id>: false` turns one off. A TypeSafe key
+exists for nothing else, and every judgment sits IN FRONT of a path that
+already works — it can make that path faster or cheaper, never make it answer
+less. `wstack typesafe status` lists them.
+
+`wstack typesafe check-judgments` runs every judgment on a few cases whose
+right answer is not in doubt, against the live host, through the features' own
+question builders. Run it after the `jev-latest` alias moves: a failure means a
+question or threshold drifted, not that a hard case was hard. First run
+(2026-09-19, jev-1.13.0): 15/15, 250–830ms per case, Turkish topic prompt
+included.
+
+`wstack typesafe replay-brain-ledger` replays this project's past BrainMonitor
+decisions (file churn, tool-failure streak, stall, error storm — rebuilt from
+`brain-ledger.jsonl`) through the Brain tier's questions and compares Jev with
+what the council/policy recorded. First run (90 decisions, jev-1.13.0): Jev
+picked "steer" on every case with p ≈ 0.98, while the council chose
+"continue" on 35% of file-churn signals. The fix was not a probability
+threshold but the "decidable" Noul, reworded to ask for concrete evidence
+beyond the counts that raised the question: signal-only questions now score
+0.05–0.13, an evidence-bearing request ~0.56, so `minDecidable` is 0.4 and
+signal-only decisions go to the council/LLM. The same ledger shows 469 of 473
+file-churn steers were followed by the same signal within minutes.
+
+`wstack typesafe replay-memory-triage` opens the project's SAGE database
+read-only, takes the Phase 1–2 gray zone as `/memory triage` would, and rates a
+sample with Jev and with the configured LLM (same prompt and parser). First run
+(2026-09-19, 40 of 3,456 gray-zone memories, hand-labelled as a third
+reference): Jev 18/40 exact, 35/40 within one level, **never** rated a
+keep-worthy memory as archivable; glm-5.3-flash 11/40 exact and would have
+proposed archiving 7 durable rules. Jev errs optimistic (a few work logs rated
+"useful"). Choice confidence did not separate right from wrong, so the
+threshold stays at 0.55 and the level texts were sharpened instead.
+
+The same run found that `/memory triage` sent the LLM `maxTokens: 60`: a
+reasoning model spent it thinking and replied with nothing on every memory, so
+Phase 3 rated nothing and Phase 4 read every pair as "NO". The budget is now
+2,000, and an empty merge reply counts as an error instead of a verdict.
+
+`wstack typesafe replay-topic-shift` rebuilds the conversation at each user
+prompt from the session journals and replays the prompts that pass the
+advisor's local gate through Jev alone and through the provider alone. First
+run (30 gated prompts of 162, 2026-09-19): Jev answered all 30 — 22 decisive
+"same topic", all correct by inspection, 8 left to the provider — and never
+raised a false "new topic". The provider path (glm-5.3-flash) answered only
+10/30 with its production request (`maxTokens: 180`, reasoning on): 9 empty
+replies, 8 truncated JSON, 3 timeouts. With 1,024 tokens, JSON on the wire and
+reasoning disabled it answers 30/30, agreeing with every decisive Jev call.
+
+All of them share one client per (endpoint, model, credential) through
+`resolveTypeSafeJudge`, so the auth breaker and the rest gate see every
+feature's evidence. Every judgment treats any throw — resting, revoked,
+timeout, malformed answer — as "take the fallback".
 
 Malformed or incomplete answers do not supply a decision. A failed or timed-out
 skill evaluation adds no relevance block; a valid negative evaluation can still
@@ -143,6 +209,17 @@ success resets the count before the breaker opens. After it opens, recreate the
 client/session after fixing the credential. Other sessions and consumers have
 their own clients; this is not a process-global credential circuit breaker.
 
+## Resting (429 / 5xx / timeouts)
+
+The auth breaker deliberately ignores load. The rest gate (`rest.ts`) covers
+it: a 429/529 counts double, a 5xx/408/timeout/network error counts once, and
+at weight 2 the host **rests** — every client of that endpoint + credential
+skips the network and throws `TypeSafeRestingError` immediately, so features
+fall back without paying a timeout. First rest 30s; each failed probe after a
+rest doubles it, capped at 10 minutes; one success resets it. 401/403/422 and
+caller aborts never count. The gate is process-wide (rate limits are per
+account); `wstack typesafe test` bypasses it so it always asks the host now.
+
 ## Cost
 
 Jev bills input tokens only — $0.042 per million, output free. Every successful
@@ -155,9 +232,9 @@ neither host returns a price.
 `jev-latest` is an alias and the version behind it moves — a threshold
 calibrated against one version, in a trace that cannot name it, is silent drift.
 
-## Adding a third consumer
+## Adding a consumer
 
-Each consumer keeps **its own `enabled` switch** and **its own degraded path**.
+Each consumer keeps **its own switch** and **its own degraded path**.
 Sharing a credential is not the same as wanting a behaviour, and what "running
 without TypeSafe" means differs: the dispatch classifier falls back to the prose
 classifier, the skill suggester emits no block at all.

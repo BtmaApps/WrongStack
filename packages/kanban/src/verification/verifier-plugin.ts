@@ -26,6 +26,11 @@ export interface VerifierPlugin {
   /** True when this plugin can handle the given check type string. */
   canHandle(checkType: string): boolean;
   /**
+   * Optional per-check refinement of {@link canHandle}. A plugin that returns
+   * false is skipped for this check and resolution continues with the next.
+   */
+  accepts?(check: KanbanCheck): boolean;
+  /**
    * Execute the verification and return a structured result.
    * Deterministic plugins must never call an LLM.
    * Escalation plugins must populate `backingRefs` with concrete proof.

@@ -60,6 +60,7 @@ import {
   withDecisionDigest,
 } from './autonomy-brain-llm.js';
 import type { BrainCircuitBreaker } from './brain-circuit.js';
+import type { SystemOneBrainTier } from './brain-system-one.js';
 
 export type { BrainLlmTarget };
 export {
@@ -170,6 +171,13 @@ export interface TieredBrainArbiterOptions {
   /** Live council risk floor. Default 'high'. Read on every decision. */
   getCouncilMinRisk?: (() => 'medium' | 'high' | 'critical') | undefined;
   /**
+   * TypeSafe System One tier (`createSystemOneBrainTier`). Consulted before
+   * the council/LLM tiers for option-bearing requests BELOW the council floor
+   * (or at most `medium` with no council). It only settles decisions it is
+   * sure of; `null` lets the ladder continue unchanged.
+   */
+  systemOne?: SystemOneBrainTier | undefined;
+  /**
    * Whether an LLM-tier `deny` ends the decision. Read per decision.
    * Default 'never' — see `BrainConfig.llm.denyIsTerminal`.
    */
@@ -189,7 +197,7 @@ export interface TieredBrainArbiterOptions {
 export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): BrainArbiter {
   const trace = (
     request: BrainDecisionRequest,
-    tier: 'policy' | 'council' | 'llm',
+    tier: 'policy' | 'system-one' | 'council' | 'llm',
     outcome: 'answer' | 'deny' | 'ask_human' | 'error' | 'skipped',
     terminal: boolean,
     startedAt: number,
@@ -242,6 +250,30 @@ export function createTieredBrainArbiter(opts: TieredBrainArbiterOptions): Brain
           `risk ${request.risk} exceeds the autonomy ceiling`,
         );
         return policyDecision;
+      }
+
+      if (opts.systemOne && request.options && request.options.length > 1) {
+        const floor = opts.council ? (opts.getCouncilMinRisk?.() ?? 'high') : 'high';
+        const floorLevel = RISK_LEVELS[floor] ?? 2;
+        const systemOneAt = Date.now();
+        if (requestLevel < floorLevel) {
+          const decision = await opts.systemOne.decide(request);
+          if (decision) {
+            markDecisionTier(request, 'system-one');
+            trace(request, 'system-one', decision.type, true, systemOneAt);
+            return decision;
+          }
+          trace(request, 'system-one', 'skipped', false, systemOneAt, 'not confident; deferred');
+        } else {
+          trace(
+            request,
+            'system-one',
+            'skipped',
+            false,
+            systemOneAt,
+            `risk ${request.risk} at or above the ${floor} floor`,
+          );
+        }
       }
 
       if (opts.council) {

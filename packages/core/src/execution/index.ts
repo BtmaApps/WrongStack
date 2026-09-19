@@ -58,6 +58,14 @@ export {
   createBrainRuntime,
   resolveBrainConfigDefaults,
 } from './brain-runtime.js';
+export {
+  createSystemOneBrainTier,
+  probeSystemOneBrain,
+  type SystemOneBrainProbe,
+  type SystemOneBrainTier,
+  type SystemOneBrainTierOptions,
+  systemOneBrainSettles,
+} from './brain-system-one.js';
 export { type CompactorOptions, HybridCompactor } from './compactor.js';
 export {
   COUNCIL_REFUSE_OPTION_ID,
@@ -208,4 +216,5 @@ export {
   TopicShiftAdvisor,
   type TopicShiftAdvisorInput,
   type TopicShiftAdvisorOptions,
+  type TopicShiftDiagnostic,
 } from './topic-shift-advisor.js';

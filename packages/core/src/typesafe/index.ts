@@ -24,6 +24,22 @@ export {
   type TypeSafeUsage,
 } from './client.js';
 export {
+  type CriterionJudgeInput,
+  type CriterionJudgeResult,
+  createTypeSafeCriterionJudge,
+} from './criterion.js';
+export {
+  askTypeSafeJudge,
+  isTypeSafeJudgmentEnabled,
+  type ResolveTypeSafeJudgeDeps,
+  resetTypeSafeJudgesForTests,
+  resolveTypeSafeJudge,
+  TYPESAFE_JUDGMENT_FEATURES,
+  type TypeSafeJudge,
+  type TypeSafeJudgmentFeature,
+  typeSafeJudgeFromContainer,
+} from './judgments.js';
+export {
   resetWarnOnceForTests,
   type WarnSink,
   warnFeatureUnusable,
@@ -43,6 +59,16 @@ export {
   typeSafeModel,
 } from './resolve.js';
 export {
+  createTypeSafeRestGate,
+  resetSharedTypeSafeRestGatesForTests,
+  sharedTypeSafeRestGate,
+  type TypeSafeRestGate,
+  type TypeSafeRestGateOptions,
+  TypeSafeRestingError,
+  typeSafeFailureWeight,
+  withTypeSafeRest,
+} from './rest.js';
+export {
   BUILT_IN_ROUTES,
   estimateTypeSafeCostUsd,
   isTypeSafeRoute,
@@ -52,3 +78,13 @@ export {
   type TypeSafeRoute,
   type TypeSafeRouteSpec,
 } from './route.js';
+export {
+  BUILT_IN_SEMANTIC_LINT_RULES,
+  findSemanticLintCandidates,
+  judgeSemanticLintCandidates,
+  parseSemanticLintRules,
+  type SemanticLintCandidate,
+  type SemanticLintFinding,
+  type SemanticLintResult,
+  type SemanticLintRule,
+} from './semantic-lint.js';

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-19T19:00:54.447Z",
+  "generatedAt": "2026-09-19T19:48:36.958Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,21 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3861,
-    "testFiles": 3546,
-    "sourceLines": 945478,
+    "sourceFiles": 3875,
+    "testFiles": 3555,
+    "sourceLines": 949132,
     "workspaceEdges": 128,
-    "moduleEdges": 12457,
+    "moduleEdges": 12525,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 9,
+    "typeModuleCycles": 10,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 964
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -147,7 +149,7 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 499,
+      "sourceFiles": 503,
       "testFiles": 516,
       "workspaceDependencies": [
         "@wrongstack/acp",
@@ -217,8 +219,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 891,
-      "testFiles": 803,
+      "sourceFiles": 898,
+      "testFiles": 807,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +235,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 803
+          "testFiles": 807
         }
       ]
     },
@@ -285,8 +287,8 @@
     {
       "name": "@wrongstack/kanban",
       "dir": "packages/kanban",
-      "sourceFiles": 90,
-      "testFiles": 71,
+      "sourceFiles": 91,
+      "testFiles": 72,
       "workspaceDependencies": [
         "@wrongstack/persistence",
         "@wrongstack/primitives"
@@ -300,7 +302,7 @@
         {
           "path": "packages/kanban/tsconfig.test.json",
           "error": null,
-          "testFiles": 71
+          "testFiles": 72
         }
       ]
     },
@@ -572,8 +574,8 @@
     {
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
-      "sourceFiles": 107,
-      "testFiles": 102,
+      "sourceFiles": 109,
+      "testFiles": 106,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -588,7 +590,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 102
+          "testFiles": 106
         }
       ]
     },
@@ -1082,6 +1084,14 @@
           "packages/sage/src/middleware/tool-call-memory-trace.ts",
           "packages/sage/src/middleware/tool-call-memory.ts"
         ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/sage/src/triage/llm-evaluator.ts",
+          "packages/sage/src/triage/merge-detection.ts",
+          "packages/sage/src/triage/system-one.ts"
+        ]
       }
     ],
     "matchedExceptions": [
@@ -1095,7 +1105,16 @@
       "ARCH-CYCLE-TYPE-30",
       "ARCH-CYCLE-TYPE-31"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/sage/src/triage/llm-evaluator.ts",
+          "packages/sage/src/triage/merge-detection.ts",
+          "packages/sage/src/triage/system-one.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -8384,6 +8403,12 @@
         ]
       },
       {
+        "file": "packages/core/tests/semantic-lint.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/session-agents.test.ts",
         "projects": [
           "root-node"
@@ -9140,6 +9165,18 @@
         ]
       },
       {
+        "file": "packages/core/tests/system-one-selector.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/system-one-tier.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/core/tests/tasking/task-tracker.test.ts",
         "projects": [
           "root-node"
@@ -9285,6 +9322,12 @@
       },
       {
         "file": "packages/core/tests/typesafe-client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/typesafe-judgments.test.ts",
         "projects": [
           "root-node"
         ]
@@ -10371,6 +10414,12 @@
       },
       {
         "file": "packages/kanban/tests/verification/plugins/metric.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/kanban/tests/verification/plugins/system-one.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12944,6 +12993,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/system-one-recall.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/tool-call-memory-helpers-coverage.test.ts",
         "projects": [
           "root-node"
@@ -12975,6 +13030,12 @@
       },
       {
         "file": "packages/sage/tests/triage-orchestrator.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/triage-system-one.test.ts",
         "projects": [
           "root-node"
         ]
@@ -13017,6 +13078,18 @@
       },
       {
         "file": "packages/sage/tests/update-validation.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/use-credit-cross-session.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/use-credit-render-path.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22584,7 +22657,7 @@
     },
     {
       "file": "packages/core/src/coordination/delegation/run-delegation.ts",
-      "lines": 1134,
+      "lines": 1149,
       "relativeImports": 9
     },
     {
@@ -22604,8 +22677,8 @@
     },
     {
       "file": "packages/core/src/coordination/index.ts",
-      "lines": 844,
-      "relativeImports": 100
+      "lines": 849,
+      "relativeImports": 101
     },
     {
       "file": "packages/core/src/coordination/sqlite-mailbox.ts",
@@ -22634,8 +22707,8 @@
     },
     {
       "file": "packages/core/src/execution/brain-runtime.ts",
-      "lines": 1045,
-      "relativeImports": 17
+      "lines": 1059,
+      "relativeImports": 19
     },
     {
       "file": "packages/core/src/execution/eternal-autonomy.ts",
@@ -23024,7 +23097,7 @@
     },
     {
       "file": "packages/tui/src/submit-controller.ts",
-      "lines": 918,
+      "lines": 925,
       "relativeImports": 13
     },
     {
@@ -23159,7 +23232,7 @@
     },
     {
       "file": "packages/webui-server/src/server/backend-services.ts",
-      "lines": 965,
+      "lines": 970,
       "relativeImports": 14
     },
     {
@@ -23216,7 +23289,7 @@
     },
     {
       "file": "packages/core/src/coordination/delegation/run-delegation.ts",
-      "lines": 1134,
+      "lines": 1149,
       "relativeImports": 9
     },
     {
@@ -23285,6 +23358,11 @@
       "relativeImports": 3
     },
     {
+      "file": "packages/core/src/execution/brain-runtime.ts",
+      "lines": 1059,
+      "relativeImports": 19
+    },
+    {
       "file": "packages/core/src/index.ts",
       "lines": 1059,
       "relativeImports": 165
@@ -23333,11 +23411,6 @@
       "file": "packages/core/src/hq/protocol/core.ts",
       "lines": 1046,
       "relativeImports": 13
-    },
-    {
-      "file": "packages/core/src/execution/brain-runtime.ts",
-      "lines": 1045,
-      "relativeImports": 17
     },
     {
       "file": "packages/webui/src/components/ContextDashboard.tsx",

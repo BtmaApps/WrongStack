@@ -49,6 +49,7 @@ import type {
   SessionStore,
   SkillLoader,
 } from '@wrongstack/core/types';
+import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
 
 /** Session shape returned by `SessionStore.create()`. */
 type Session = Awaited<ReturnType<SessionStore['create']>>;
@@ -325,6 +326,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     smart: true,
     summarizerModel: config.context?.summarizerModel,
     llmSelector: config.context?.llmSelector,
+    getSystemOneJudge: () =>
+      resolveTypeSafeJudge({ config: input.config, feature: 'compaction', logger }),
   });
 
   // `context_manager` — registered HERE, not in `registerCanonicalHostTools`.
@@ -621,6 +624,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
         type: providerId,
       } as never);
     },
+    getSystemOneJudge: () =>
+      resolveTypeSafeJudge({ config: input.config, feature: 'brain', logger }),
     ledger: {
       getPath: () => (brainLedgerEnabled ? brainLedgerPath : undefined),
       isEnabled: () => brainLedgerEnabled,

@@ -67,7 +67,7 @@ export class VerifierRegistry {
           ? 'council'
           : check.type;
 
-    const plugin = this.resolve(effectiveType);
+    const plugin = this.resolve(effectiveType, check);
     if (!plugin) {
       // Checks without a plugin (manual/review/...) carry a human-set status
       // that the verifier must respect, not overwrite: an explicitly passed or
@@ -100,8 +100,11 @@ export class VerifierRegistry {
 
     const result = await plugin.verify(check, context);
 
-    // Escalation plugins must produce concrete evidence.
-    if (plugin.kind === 'escalation') {
+    // Escalation plugins must produce concrete evidence for a VERDICT. A
+    // `skipped` result is "no verdict yet, escalation still open" and carries
+    // nothing to cite; turning it into `failed` would fail a task on the
+    // verifier's own indecision.
+    if (plugin.kind === 'escalation' && result.status !== 'skipped') {
       const ev = new EvidenceValidator(DEFAULT_EVIDENCE_RULES);
       // When the check has its own escalation mode, use stricter rules.
       if (check.escalation === 'council') {
@@ -126,10 +129,12 @@ export class VerifierRegistry {
   }
 
   /** Find the first plugin that handles the given check type. */
-  private resolve(checkType: string): VerifierPlugin | undefined {
+  private resolve(checkType: string, check?: KanbanCheck): VerifierPlugin | undefined {
     for (const id of this.resolutionOrder) {
       const plugin = this.plugins.get(id);
-      if (plugin?.canHandle(checkType)) return plugin;
+      if (!plugin?.canHandle(checkType)) continue;
+      if (check && plugin.accepts && !plugin.accepts(check)) continue;
+      return plugin;
     }
     return undefined;
   }
