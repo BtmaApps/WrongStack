@@ -19,7 +19,7 @@
 
 import type { Sage } from '../types.js';
 import type { LlmCallFn } from './llm-evaluator.js';
-import type { SystemOneTriage } from './system-one.js';
+import type { MergeVerdict, SystemOneTriage } from './system-one.js';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export interface MergeCandidate {
 }
 
 /** The LLM's verdict on a pair. */
-export type MergeVerdict = 'YES' | 'NO' | 'OVERLAP';
+export type { MergeVerdict };
 
 export interface MergePairResult {
   candidate: MergeCandidate;

@@ -15,8 +15,13 @@
 
 import type { TypeSafeJudge, TypeSafeQuestion } from '@wrongstack/core/typesafe';
 import type { Sage } from '../types.js';
-import type { MergeVerdict } from './merge-detection.js';
 import type { ValueScoreBreakdown } from './value-score.js';
+
+/**
+ * The verdict on a merge pair. Lives here, not in `merge-detection.ts`, so this
+ * module stays a leaf: merge detection and the evaluator both import it.
+ */
+export type MergeVerdict = 'YES' | 'NO' | 'OVERLAP';
 
 export interface SystemOneRating {
   score: 1 | 2 | 3 | 4 | 5;

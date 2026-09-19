@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-19T19:59:01.023Z
+**Generated:** 2026-09-19T20:05:04.946Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,19 +9,19 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3875 |
-| Production source lines | 949170 |
+| Production source lines | 949175 |
 | Test files | 3555 |
 | Workspace dependency edges | 128 |
-| Relative module edges | 12525 |
+| Relative module edges | 12524 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 10 |
+| Type-inclusive module cycles | 9 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-- 1 unexcepted module cycle(s)
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
@@ -81,7 +81,6 @@ None.
 - packages/core/src/index.ts ↔ packages/core/src/plugins/prompts-plugin.ts ↔ packages/core/src/plugins/skills-plugin.ts ↔ packages/core/src/plugins/sync-plugin.ts ↔ packages/core/src/tools/mcp-control.ts ↔ packages/core/src/tools/mcp-use.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
 - packages/sage/src/middleware/tool-call-memory-retrieval.ts ↔ packages/sage/src/middleware/tool-call-memory-trace.ts ↔ packages/sage/src/middleware/tool-call-memory.ts
-- packages/sage/src/triage/llm-evaluator.ts ↔ packages/sage/src/triage/merge-detection.ts ↔ packages/sage/src/triage/system-one.ts
 
 ## Largest production files
 
