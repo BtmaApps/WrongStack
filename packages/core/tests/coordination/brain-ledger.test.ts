@@ -337,4 +337,66 @@ describe('createLedgerGuardBrainArbiter — ladder step', () => {
 
     expect(steps).toEqual([]);
   });
+
+  it('correlates agent.run.completed done as success outcome for pending intervention', async () => {
+    const ledger = await makeLedger();
+    const outcomes: Array<{ requestId: string; outcome: string }> = [];
+    events.on('brain.outcome', (e) =>
+      outcomes.push({ requestId: e.requestId, outcome: e.outcome }),
+    );
+
+    events.emit('brain.intervention', {
+      sessionId: 's1',
+      kind: 'agent_stall',
+      request: request({ id: 'req-steer-1' }),
+      decision: { type: 'answer', text: 'steer' },
+      intervened: true,
+      at: Date.now(),
+    });
+
+    events.emit('agent.run.completed', {
+      sessionId: 's1',
+      ctx: {} as never,
+      status: 'done',
+      iterations: 3,
+      durationMs: 1000,
+      at: new Date().toISOString(),
+    });
+
+    expect(outcomes).toEqual([{ requestId: 'req-steer-1', outcome: 'success' }]);
+    const rows = ledger.tail(5);
+    expect(rows.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'success', requestId: 'req-steer-1' });
+    await ledger.stop();
+  });
+
+  it('correlates delegate.completed as outcome for pending budget extension', async () => {
+    const ledger = await makeLedger();
+    const subagentId = 'sub-42';
+    const requestId = `director-budget-${subagentId}-tokens`;
+
+    answered(request({ id: requestId }), 'extend');
+    events.emit('subagent.budget_extended', {
+      subagentId,
+      kind: 'tokens',
+      previous: 100,
+      granted: 200,
+      at: Date.now(),
+    });
+
+    events.emit('delegate.completed', {
+      sessionId: 's1',
+      subagentId,
+      target: 'worker',
+      task: 'build app',
+      ok: true,
+      summary: 'Task finished successfully',
+      durationMs: 500,
+      iterations: 2,
+      toolCalls: 4,
+    });
+
+    const digest = ledger.digestFor(request({ id: 'req-other' }));
+    expect(digest).toContain('later succeeded');
+    await ledger.stop();
+  });
 });

@@ -2,7 +2,7 @@ import { ExtensionRegistry } from '@wrongstack/core/extension';
 import { EventBus } from '@wrongstack/core/kernel';
 import { ProviderRegistry, SlashCommandRegistry, ToolRegistry } from '@wrongstack/core/registry';
 import type { Provider, Tool } from '@wrongstack/core/types';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyWrongStackPack,
   applyWrongStackPacks,
@@ -86,6 +86,52 @@ describe('runtime host composition', () => {
     expect(shutdownCalled).toBe(true);
   });
 
+  it('shares host shutdown completion and runs cleanup only once', async () => {
+    const gate = Promise.withResolvers<void>();
+    const shutdown = vi.fn(() => gate.promise);
+    const host = createRuntimeHostFromParts({
+      ...hostParts(),
+      agent: {} as never,
+      context: {} as never,
+      session: {} as never,
+      shutdown,
+    });
+    const first = host.shutdown();
+    const second = host.shutdown();
+    let settled = false;
+    void second.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    gate.resolve();
+    await Promise.all([first, second]);
+    await host.shutdown();
+    expect(shutdown).toHaveBeenCalledTimes(1);
+    expect(first).toBe(second);
+  });
+
+  it.each(['throw', 'reject'] as const)(
+    'retains a host shutdown %s without repeating cleanup',
+    async (mode) => {
+      const error = new Error('shutdown failed');
+      const shutdown = vi.fn(() => {
+        if (mode === 'throw') throw error;
+        return Promise.reject(error);
+      });
+      const host = createRuntimeHostFromParts({
+        ...hostParts(),
+        agent: {} as never,
+        context: {} as never,
+        session: {} as never,
+        shutdown,
+      });
+      await expect(host.shutdown()).rejects.toBe(error);
+      await expect(host.shutdown()).rejects.toBe(error);
+      expect(shutdown).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('applies tools, providers, slash commands, and extensions from a pack', async () => {
     const host = hostParts();
     const pack: WrongStackPack = {
@@ -141,6 +187,84 @@ describe('runtime host composition', () => {
 
     await expect(applyWrongStackPacks(host, [first, second])).rejects.toThrow('no PluginAPI');
     expect(host.extensions.list()).toEqual([]);
+  });
+
+  it.each(['teardown', 'setup-failure'] as const)(
+    'restores an existing provider after pack %s',
+    async (exit) => {
+      const host = hostParts();
+      host.providers.register({
+        type: 'noop',
+        family: 'openai-compatible',
+        create: () => noopProvider,
+      });
+      const replacement = { ...noopProvider, id: 'replacement' };
+      const pack: WrongStackPack = {
+        name: 'override',
+        providers: [{ type: 'noop', family: 'openai-compatible', create: () => replacement }],
+        setup() {
+          expect(host.providers.create({ type: 'noop' })).toBe(replacement);
+          if (exit === 'setup-failure') throw new Error('setup failed');
+        },
+      };
+      if (exit === 'setup-failure') {
+        await expect(applyWrongStackPack(host, pack, { api: {} as never })).rejects.toThrow(
+          'setup failed',
+        );
+      } else {
+        const applied = await applyWrongStackPack(host, pack, { api: {} as never });
+        await applied.teardown();
+      }
+      expect(host.providers.create({ type: 'noop' })).toBe(noopProvider);
+    },
+  );
+
+  it.each([true, false])(
+    'restores nested providers when oldest-first teardown is %s',
+    async (oldestFirst) => {
+      const host = hostParts();
+      host.providers.register({
+        type: 'noop',
+        family: 'openai-compatible',
+        create: () => noopProvider,
+      });
+      const firstProvider = { ...noopProvider, id: 'first' };
+      const secondProvider = { ...noopProvider, id: 'second' };
+      const first = await applyWrongStackPack(host, {
+        name: 'first',
+        providers: [{ type: 'noop', family: 'openai-compatible', create: () => firstProvider }],
+      });
+      const second = await applyWrongStackPack(host, {
+        name: 'second',
+        providers: [{ type: 'noop', family: 'openai-compatible', create: () => secondProvider }],
+      });
+      try {
+        await (oldestFirst ? first : second).teardown();
+        expect(host.providers.create({ type: 'noop' })).toBe(
+          oldestFirst ? secondProvider : firstProvider,
+        );
+      } finally {
+        await first.teardown();
+        await second.teardown();
+      }
+      expect(host.providers.create({ type: 'noop' })).toBe(noopProvider);
+    },
+  );
+
+  it('preserves a provider registered independently after the pack', async () => {
+    const host = hostParts();
+    const applied = await applyWrongStackPack(host, {
+      name: 'first',
+      providers: [{ type: 'noop', family: 'openai-compatible', create: () => noopProvider }],
+    });
+    const replacement = { ...noopProvider, id: 'independent' };
+    host.providers.register({
+      type: 'noop',
+      family: 'openai-compatible',
+      create: () => replacement,
+    });
+    await applied.teardown();
+    expect(host.providers.create({ type: 'noop' })).toBe(replacement);
   });
 
   it('emits a warning when a pack teardown fails during rollback', async () => {
@@ -217,6 +341,56 @@ describe('runtime host composition', () => {
     expect(host.tools.get('noop')).toBeUndefined();
     expect(host.providers.has('noop')).toBe(false);
     expect(host.slashCommands.get('idempotent-pack:hi')).toBeUndefined();
+  });
+
+  it('does not remove a reloaded pack when an old handle is torn down again', async () => {
+    const host = hostParts();
+    const pack: WrongStackPack = {
+      name: 'reloadable',
+      tools: [noopTool],
+      providers: [{ type: 'noop', family: 'openai-compatible', create: () => noopProvider }],
+      extensions: [{ name: 'reloadable-extension' }],
+    };
+    const first = await applyWrongStackPack(host, pack);
+    await first.teardown();
+    const second = await applyWrongStackPack(host, pack);
+    try {
+      await first.teardown();
+      expect(host.tools.get('noop')).toBe(noopTool);
+      expect(host.providers.has('noop')).toBe(true);
+      expect(host.extensions.list()).toEqual(['reloadable-extension']);
+    } finally {
+      await second.teardown();
+    }
+  });
+
+  it('shares concurrent teardown completion and invokes the hook only once', async () => {
+    const gate = Promise.withResolvers<void>();
+    const teardown = vi.fn(() => gate.promise);
+    const applied = await applyWrongStackPack(
+      hostParts(),
+      { name: 'concurrent-close', teardown },
+      { api: {} as never },
+    );
+    const first = applied.teardown();
+    const second = applied.teardown();
+    gate.resolve();
+    await Promise.all([first, second]);
+    await applied.teardown();
+    expect(teardown).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves a failed teardown result without repeating partial cleanup', async () => {
+    const error = new Error('cleanup failed');
+    const teardown = vi.fn().mockRejectedValue(error);
+    const applied = await applyWrongStackPack(
+      hostParts(),
+      { name: 'failed-close', teardown },
+      { api: {} as never },
+    );
+    await expect(applied.teardown()).rejects.toBe(error);
+    await expect(applied.teardown()).rejects.toBe(error);
+    expect(teardown).toHaveBeenCalledTimes(1);
   });
 
   it('rolls back and then allows a clean teardown after a setup error', async () => {

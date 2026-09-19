@@ -427,6 +427,56 @@ describe.skipIf(!isSqliteAvailable())('hygiene reactivation', () => {
     expect(restored?.staleReason).toBeUndefined();
   });
 
+  it('reactivates a verification-staled memory anchored to an in-root ..-prefixed path', async () => {
+    const store = makeStore();
+    const hidden = await rememberFileNote(
+      store,
+      '..hidden/theme.css',
+      'Hidden theme tokens anchor the shell palette decisions.',
+    );
+    const plain = await rememberFileNote(
+      store,
+      'src/plain.ts',
+      'Plain retry queue owns the backpressure budget for streams.',
+    );
+    // rememberSage correctly rejects real ../ escapes, so the escape control
+    // is written through the internal upsert — the corrupted/imported-row
+    // shape this containment layer exists to guard against.
+    const escapeRow = await rememberFileNote(
+      store,
+      'src/escape-placeholder.ts',
+      'Deprecated exporter warning lives outside the root tree.',
+    );
+    const outsideRel = `../outside-${path.basename(tmpDir)}.ts`;
+    (
+      store as unknown as {
+        upsertMemory(memory: { id: string; anchors: unknown; [key: string]: unknown }): void;
+      }
+    ).upsertMemory({
+      ...(await store.getSage(escapeRow.id))!,
+      anchors: [{ type: 'file', path: outsideRel }],
+    });
+
+    await store.hygiene();
+    expect(await store.getSage(hidden.id)).toMatchObject({
+      status: 'stale',
+      staleReason: 'verification',
+    });
+
+    await writeFile('..hidden/theme.css');
+    await writeFile('src/plain.ts');
+    await fs.writeFile(path.resolve(tmpDir, outsideRel), 'export {};\n', 'utf8');
+
+    const report = await store.hygiene();
+    // "..hidden\theme.css" is INSIDE the root: the containment predicate must
+    // not misread a '..-prefixed first segment as an escape.
+    expect(await store.getSage(hidden.id)).toMatchObject({ status: 'active' });
+    expect(await store.getSage(plain.id)).toMatchObject({ status: 'active' });
+    expect(await store.getSage(escapeRow.id)).toMatchObject({ status: 'stale' });
+    expect(report.reactivated).toBe(2);
+    await fs.rm(path.resolve(tmpDir, outsideRel), { force: true });
+  });
+
   it('never revives a memory someone retired by hand', async () => {
     const store = makeStore();
     await writeFile('src/iota.ts');

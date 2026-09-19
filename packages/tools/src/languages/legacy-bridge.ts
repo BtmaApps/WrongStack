@@ -54,7 +54,10 @@ export async function detectNonJsEcosystem(
 
     const isInsideOrSame = (d: string, r: string): boolean => {
       const rel = path.relative(r, d);
-      return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+      // Canonical escape test: `..hidden` is a legal in-root first segment.
+      return (
+        rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel))
+      );
     };
 
     for (let depth = 0; depth <= 4 && isInsideOrSame(dir, root); depth++) {

@@ -22,7 +22,7 @@ import {
 } from '@wrongstack/core/utils';
 
 import { retryProviderComplete } from './llm-client.js';
-import type { ReportOptions } from './report-generator.js';
+import { createSecurityReportFilename, type ReportOptions } from './report-generator.js';
 import type { ScanResult } from './scanner.js';
 import type { TechStackInfo } from './types.js';
 
@@ -185,8 +185,7 @@ export async function writeReport(
     // Directory may already exist
   }
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filename = `security-report-${timestamp}.${format}`;
+  const filename = createSecurityReportFilename(format);
   const filepath = path.join(outputDir, filename);
 
   await atomicWrite(filepath, content);

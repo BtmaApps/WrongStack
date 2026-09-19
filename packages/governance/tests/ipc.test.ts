@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createGovernanceEvidenceCandidate,
   decodeGovernanceIpcEnvelope,
@@ -121,6 +121,108 @@ afterEach(async () => {
 });
 
 describe('governance project IPC', () => {
+  it('correlates concurrent replies with the ids sent before the input object is reused', async () => {
+    const root = projectRoot();
+    const instance = server(root);
+    await instance.start();
+    const issued = instance.issueGrant({
+      clientId: 'reader',
+      capabilities: ['task_read'],
+      ttlMs: 60_000,
+    });
+    const remote = client(root, issued, 'reader');
+    const input = request('health', 'first-request');
+    const first = remote.request(input);
+    input.requestId = 'second-request';
+    const second = remote.request(input);
+    input.requestId = 'reused-after-send';
+    const replies = await Promise.all([first, second]);
+    expect(replies).toMatchObject([
+      { ok: true, requestId: 'first-request', result: { type: 'health' } },
+      { ok: true, requestId: 'second-request', result: { type: 'health' } },
+    ]);
+  });
+
+  it('rejects a mismatched reply even when the caller changes its input to that reply id', async () => {
+    const root = projectRoot();
+    const instance = server(root);
+    await instance.start();
+    const issued = instance.issueGrant({
+      clientId: 'reader',
+      capabilities: ['task_read'],
+      ttlMs: 60_000,
+    });
+    const sender = instance as unknown as {
+      send(
+        socket: import('node:net').Socket,
+        response: import('../src/project-service.js').GovernanceServiceResponse,
+      ): void;
+    };
+    const send = sender.send.bind(instance);
+    const spy = vi.spyOn(sender, 'send').mockImplementation((socket, response) => {
+      send(socket, { ...response, requestId: 'mutated-request' });
+    });
+    try {
+      const input = request('health', 'sent-request');
+      const pending = client(root, issued, 'reader').request(input);
+      input.requestId = 'mutated-request';
+      await expect(pending).rejects.toThrow('response request id does not match');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('does not reopen storage or its endpoint when closed during startup', async () => {
+    const instance = server(projectRoot());
+    const starting = instance.start();
+    const closing = instance.close();
+    const [startResult, closeResult] = await Promise.allSettled([starting, closing]);
+    expect(closeResult.status).toBe('fulfilled');
+    expect(startResult.status).toBe('rejected');
+    expect(instance.ready).toBe(false);
+    expect(instance.storageOpen).toBe(false);
+    expect(existsSync(instance.databasePath)).toBe(false);
+  });
+
+  it('shares close completion while an in-progress listener startup unwinds', async () => {
+    const instance = server(projectRoot());
+    const listening = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const lifecycle = instance as unknown as {
+      listen(listener: import('node:net').Server): Promise<void>;
+    };
+    const realListen = lifecycle.listen.bind(instance);
+    const spy = vi.spyOn(lifecycle, 'listen').mockImplementation(async (listener) => {
+      await realListen(listener);
+      listening.resolve();
+      await release.promise;
+    });
+    const starting = instance.start();
+    await listening.promise;
+    const first = instance.close();
+    const second = instance.close();
+    let closed = false;
+    void second.then(() => {
+      closed = true;
+    });
+    try {
+      // Let an incorrectly early close settle without relying on disk timings.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect.soft(closed).toBe(false);
+    } finally {
+      release.resolve();
+      await Promise.allSettled([starting, first, second]);
+      spy.mockRestore();
+    }
+    expect(instance.ready).toBe(false);
+    expect(instance.storageOpen).toBe(false);
+    expect(first).toBe(second);
+    // A new owner can bind the same endpoint after close has completed.
+    const successor = server(instance.projectRoot);
+    await successor.start();
+    expect(successor.ready).toBe(true);
+  });
+
   it('derives deterministic project-scoped endpoints and database paths', () => {
     const root = projectRoot();
     expect(governanceProjectServerEndpoint(root)).toBe(

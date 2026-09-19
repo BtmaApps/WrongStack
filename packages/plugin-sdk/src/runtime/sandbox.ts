@@ -62,24 +62,31 @@ export function safePath(input: string, options: SafePathOptions = {}): string |
   if (input.length === 0 || input.length > MAX_PATH_BYTES) return null;
   if (input.startsWith('-')) return null;
 
-  const projectRoot = resolve(options.projectRoot ?? process.cwd());
+  const configuredRoot = resolve(options.projectRoot ?? process.cwd());
+  const followSymlinks = options.followSymlinks !== false;
+  const projectRoot = followSymlinks ? realpathWithMissingLeaf(configuredRoot) : configuredRoot;
+  if (projectRoot === null) return null;
 
   // First resolve to an absolute path so the relative-to-project
   // check has a stable input. realpathSync may throw on a missing
   // path; fall back to lexical resolve so a `write` to a brand-new
   // file is not silently rejected.
-  const lexical = isAbsolute(input) ? resolve(input) : resolve(projectRoot, input);
-  if (!withinLexical(projectRoot, lexical)) return null;
+  const absoluteInput = isAbsolute(input);
+  const lexical = absoluteInput ? resolve(input) : resolve(configuredRoot, input);
+  // Relative input must not escape the spelling of the configured root before
+  // symlink resolution. Absolute input is judged against the canonical root
+  // below so callers may use either side of a linked project-root path.
+  if (!absoluteInput && !withinLexical(configuredRoot, lexical)) return null;
 
   // Now canonicalize: follow symlinks so a path that LIVES inside
   // the project but POINTS outside is rejected.
-  if (options.followSymlinks !== false) {
+  if (followSymlinks) {
     const real = realpathWithMissingLeaf(lexical);
     if (real === null || !withinLexical(projectRoot, real)) return null;
     return real;
   }
 
-  return lexical;
+  return withinLexical(configuredRoot, lexical) ? lexical : null;
 }
 
 /** Canonicalize existing ancestors while preserving a new leaf path. */

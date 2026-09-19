@@ -29,7 +29,6 @@
 
 import type { EventBus } from '../kernel/events.js';
 import type { BrainArbiter, BrainDecision, BrainDecisionRequest } from './brain.js';
-import { brainDecisionKey } from './brain-ledger.js';
 import { emitBrainTierTransition, markDecisionTier, readDecisionTier } from './brain-telemetry.js';
 
 export interface BrainDecisionCacheOptions {
@@ -64,27 +63,52 @@ export interface BrainCacheStats {
 }
 
 /**
+ * Strip high-churn volatile tokens from request context for cache keying:
+ * - Elapsed / idle / duration timers (e.g. "Idle for: 312s", "Duration: 45ms", "waited 10s")
+ * - Dynamic ISO / epoch timestamps
+ *
+ * This allows repeated monitor engagements and recurring status checks to hit
+ * the cache instead of busting it on trivial second-by-second drift, while
+ * preserving concrete domain details, file paths, error messages, and status codes.
+ */
+export function normalizeContextForCache(context: string | undefined): string | undefined {
+  if (!context) return undefined;
+  return context
+    .replace(
+      /\b(?:idle|waited|elapsed|duration)(?:\s+for)?\s*:?\s*\d+(?:\.\d+)?\s*(?:s|ms|m|sec|min|seconds|minutes)\b/gi,
+      '<elapsed>',
+    )
+    .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\b/g, '<timestamp>')
+    .replace(/\b1\d{12}\b/g, '<epoch>')
+    .trim();
+}
+
+/**
  * Build the cache key for a request.
  *
- * Reuses `brainDecisionKey` for the question so id/number-shaped tokens
- * collapse (the same question about two different subagents shares an entry),
- * then adds every other field that can legitimately change the answer.
+ * Unlike the ledger's similarity key, replay requires identical decision
+ * inputs. Numbers, subjects, session context and option meanings must survive.
  */
 export function brainCacheKey(request: BrainDecisionRequest): string {
   const options = (request.options ?? [])
-    .map((option) => option.id)
-    .sort()
-    .join(',');
-  return [
-    brainDecisionKey(request.source, request.question),
+    .map((option) => [option.id, option.label, option.consequence, option.risk, option.recommended])
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  return JSON.stringify([
+    request.sessionId,
+    request.source,
+    request.question.trim().replace(/\s+/g, ' '),
+    normalizeContextForCache(request.context),
     request.risk,
     request.fallback,
+    request.allowHumanEscalation,
     options,
-  ].join('|');
+  ]);
 }
 
 /** Tiers whose decisions cost a provider call and are therefore worth caching. */
 const CACHEABLE_TIERS = new Set(['council', 'llm']);
+// In-flight decisions from before a settings change cannot repopulate the cache.
+const cacheGenerations = new WeakMap<BrainDecisionCache, number>();
 
 export class BrainDecisionCache {
   /**
@@ -147,6 +171,22 @@ export class BrainDecisionCache {
   stop(): void {
     for (const off of this.unsubscribers) off();
     this.unsubscribers.length = 0;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  /**
+   * Pure inspection without recording hits/misses or modifying request tracking.
+   */
+  peek(request: BrainDecisionRequest): BrainDecision | undefined {
+    if (!this.enabled) return undefined;
+    const key = brainCacheKey(request);
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+    if (this.now() - entry.storedAt > this.ttlMs) return undefined;
+    return entry.decision;
   }
 
   get(request: BrainDecisionRequest): BrainDecision | undefined {
@@ -214,6 +254,7 @@ export class BrainDecisionCache {
   }
 
   clear(): void {
+    cacheGenerations.set(this, (cacheGenerations.get(this) ?? 0) + 1);
     this.entries.clear();
     this.keyByRequestId.clear();
   }
@@ -255,10 +296,13 @@ export function createCachingBrainArbiter(opts: CachingBrainArbiterOptions): Bra
         );
         return hit;
       }
+      const generation = cacheGenerations.get(opts.cache) ?? 0;
       const decision = await opts.inner.decide(request);
       // Read the tier the inner chain recorded — that is what tells us
       // whether this decision actually cost anything.
-      opts.cache.set(request, decision, readDecisionTier(request));
+      if (generation === (cacheGenerations.get(opts.cache) ?? 0)) {
+        opts.cache.set(request, decision, readDecisionTier(request));
+      }
       return decision;
     },
   };

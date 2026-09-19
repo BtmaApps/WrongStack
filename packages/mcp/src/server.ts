@@ -36,7 +36,11 @@ export interface MCPServerCallResult {
  */
 export interface MCPServerToolHost {
   listTools(): MCPServerTool[] | Promise<MCPServerTool[]>;
-  callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult>;
+  callTool(
+    name: string,
+    args: Record<string, unknown>,
+    opts?: { signal?: AbortSignal | undefined },
+  ): Promise<MCPServerCallResult>;
 }
 
 export interface MCPServerResource {
@@ -95,6 +99,7 @@ export class MCPServer {
   private readonly logger?: MCPServerLogger | undefined;
   private readonly resources: MCPServerResource[];
   private readonly prompts: MCPServerPrompt[];
+  private readonly inFlightRequests = new Map<number | string, AbortController>();
 
   constructor(opts: MCPServerOptions) {
     this.host = opts.host;
@@ -123,7 +128,18 @@ export class MCPServer {
       return this.encodeError(null, PARSE_ERROR, 'Parse error');
     }
 
-    if (typeof msg !== 'object' || msg === null || typeof msg.method !== 'string') {
+    const validId =
+      msg?.id === undefined ||
+      msg.id === null ||
+      typeof msg.id === 'string' ||
+      typeof msg.id === 'number';
+    if (
+      typeof msg !== 'object' ||
+      msg === null ||
+      msg.jsonrpc !== '2.0' ||
+      typeof msg.method !== 'string' ||
+      !validId
+    ) {
       const id = msg && typeof msg === 'object' ? (msg.id ?? null) : null;
       return this.encodeError(id ?? null, INVALID_REQUEST, 'Invalid Request');
     }
@@ -133,17 +149,27 @@ export class MCPServer {
     // Notifications never get a response. We still dispatch known ones for
     // side effects, but `notifications/initialized` is purely a handshake ack.
     if (isNotification) {
+      if (msg.method === 'notifications/cancelled') {
+        const input = paramsRecord(msg.params);
+        const requestId = input['requestId'];
+        if (typeof requestId === 'number' || typeof requestId === 'string') {
+          const reason =
+            typeof input['reason'] === 'string' && input['reason'].trim().length > 0
+              ? input['reason'].trim().slice(0, 500)
+              : 'MCP request cancelled by client';
+          this.inFlightRequests.get(requestId)?.abort(new Error(reason));
+        }
+      }
       return null;
     }
 
+    const requestId = expectDefined(msg.id);
+    const controller = new AbortController();
+    this.inFlightRequests.set(requestId, controller);
     try {
-      const result = await this.dispatch(msg.method, msg.params);
+      const result = await this.dispatch(msg.method, msg.params, controller.signal);
       if (result === METHOD_NOT_FOUND_SENTINEL) {
-        return this.encodeError(
-          expectDefined(msg.id),
-          METHOD_NOT_FOUND,
-          `Method not found: ${msg.method}`,
-        );
+        return this.encodeError(requestId, METHOD_NOT_FOUND, `Method not found: ${msg.method}`);
       }
       return JSON.stringify({ jsonrpc: '2.0', id: msg.id, result });
     } catch (err) {
@@ -152,11 +178,19 @@ export class MCPServer {
       // A schema violation is the caller's fault, not ours — JSON-RPC has a
       // code for exactly that, and clients retry differently on it (WS-026).
       const code = err instanceof InvalidToolArgumentsError ? INVALID_PARAMS : INTERNAL_ERROR;
-      return this.encodeError(expectDefined(msg.id), code, message);
+      return this.encodeError(requestId, code, message);
+    } finally {
+      if (this.inFlightRequests.get(requestId) === controller) {
+        this.inFlightRequests.delete(requestId);
+      }
     }
   }
 
-  private async dispatch(method: string, params: unknown): Promise<unknown> {
+  private async dispatch(
+    method: string,
+    params: unknown,
+    signal?: AbortSignal | undefined,
+  ): Promise<unknown> {
     switch (method) {
       case 'initialize':
         return {
@@ -188,7 +222,7 @@ export class MCPServer {
             ? (p.arguments as Record<string, unknown>)
             : {};
         await this.assertArgumentsMatchSchema(p.name, args);
-        const res = await this.host.callTool(p.name, args);
+        const res = await this.host.callTool(p.name, args, { signal });
         return { content: toContentBlocks(res.content), isError: res.isError };
       }
       case 'resources/list': {

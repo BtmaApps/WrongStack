@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrainPanel } from '../src/brain-panel.js';
 import { dispatchSimplePanel } from '../src/lib/panel-events.js';
 
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 const roots: Root[] = [];
 
 /** A socket whose `onMessage` subscriber can be driven from the test. */
@@ -53,6 +55,117 @@ function renderPanel() {
 }
 
 describe('BrainPanel — answers', () => {
+  function ask(container: HTMLElement) {
+    const input = container.querySelector('input')!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(
+        input,
+        'Ship it?',
+      );
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    act(() =>
+      Array.from(container.querySelectorAll('button'))
+        .find((b) => b.textContent === 'Ask')!
+        .click(),
+    );
+  }
+
+  it('keeps an in-flight answer when the panel was closed', () => {
+    const { container, emit, sent } = renderPanel();
+    ask(container);
+    expect(sent.some((message) => message.type === 'brain.ask')).toBe(true);
+    expect(container.textContent).toContain('Thinking…');
+    act(() =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
+    );
+    act(() =>
+      emit({
+        type: 'brain.answer',
+        payload: {
+          question: 'Ship it?',
+          decision: { type: 'answer', text: 'Ready to ship.' },
+        },
+      }),
+    );
+    act(() => dispatchSimplePanel('open-brain-panel'));
+    expect(container.textContent).toContain('Ready to ship.');
+    expect(container.textContent).not.toContain('Thinking…');
+  });
+
+  it('ignores another request reply even when its question matches', () => {
+    const { container, sent, emit } = renderPanel();
+    ask(container);
+    const requestId = sent.find((message) => message.type === 'brain.ask')?.payload?.requestId;
+    expect(requestId).toEqual(expect.any(String));
+    act(() =>
+      emit({
+        type: 'brain.answer',
+        payload: {
+          requestId: 'old-request',
+          question: 'Ship it?',
+          decision: { type: 'answer', text: 'Stale answer' },
+        },
+      }),
+    );
+    expect(container.textContent).toContain('Thinking…');
+    expect(container.textContent).not.toContain('Stale answer');
+    act(() =>
+      emit({
+        type: 'key.operation_result',
+        payload: {
+          requestId: 'old-request',
+          success: false,
+          message: 'Brain consultation failed: old',
+        },
+      }),
+    );
+    expect(container.textContent).toContain('Thinking…');
+    act(() =>
+      emit({
+        type: 'brain.answer',
+        payload: {
+          requestId,
+          question: 'Ship it?',
+          decision: { type: 'answer', text: 'Current answer' },
+        },
+      }),
+    );
+    expect(container.textContent).toContain('Current answer');
+    expect(container.textContent).not.toContain('Thinking…');
+    act(() =>
+      emit({
+        type: 'brain.answer',
+        payload: {
+          requestId: 'old-request',
+          question: 'Ship it?',
+          decision: { type: 'answer', text: 'Stale answer' },
+        },
+      }),
+    );
+    expect(container.textContent).toContain('Current answer');
+  });
+
+  it('clears pending state on a Brain failure but ignores unrelated operation failures', () => {
+    const { container, emit } = renderPanel();
+    ask(container);
+    act(() =>
+      emit({
+        type: 'key.operation_result',
+        payload: { success: false, message: 'File read failed' },
+      }),
+    );
+    expect(container.textContent).toContain('Thinking…');
+    act(() =>
+      emit({
+        type: 'key.operation_result',
+        payload: { success: false, message: 'Brain consultation failed: offline' },
+      }),
+    );
+    expect(container.textContent).not.toContain('Thinking…');
+    expect(container.textContent).toContain('Brain consultation failed: offline');
+  });
+
   it('shows the decision text, not the word "answer"', () => {
     const { container, emit } = renderPanel();
 

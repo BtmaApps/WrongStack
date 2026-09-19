@@ -99,6 +99,21 @@ describe('ownerless empty session cleanup', () => {
     );
   });
 
+  it('skips sessions the catalog refuses with an ownership conflict without logging an error', async () => {
+    const fixture = context({ ids: ['held', 'free'] });
+    const conflict = new Error('Session held is live');
+    conflict.name = 'SessionOwnershipConflictError';
+    fixture.store.delete.mockRejectedValueOnce(conflict);
+
+    await expect(cleanupOwnerlessEmptySessions(fixture.ctx)).resolves.toEqual({
+      deleted: 1,
+      errors: 0,
+    });
+
+    expect(fixture.store.delete).toHaveBeenCalledTimes(2);
+    expect(fixture.logger.error).not.toHaveBeenCalled();
+  });
+
   it('uses the default interval for missing or invalid environment values', () => {
     expect(resolveEmptySessionCleanupInterval(undefined)).toBe(
       DEFAULT_EMPTY_SESSION_CLEANUP_INTERVAL_MS,

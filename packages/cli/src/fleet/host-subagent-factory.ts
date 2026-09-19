@@ -347,6 +347,7 @@ export function createHostSubagentFactory(
     // resolvers already consult first; this is the only place that can know
     // the answer, so it is stamped here rather than guessed downstream.
     ctx.meta['sessionId'] = owningSessionId;
+    if (task?.context?.['kanban']) ctx.meta['kanban'] = task.context['kanban'];
     if (effectiveCfg.role) ctx.meta['agentRole'] = effectiveCfg.role;
     const normalizedAgentName = (effectiveCfg.name ?? subagentName).trim().toLowerCase();
     if (normalizedAgentName === 'chimera' || normalizedAgentName.startsWith('chimera-')) {

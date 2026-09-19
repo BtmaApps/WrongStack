@@ -356,6 +356,9 @@
     "packages/cli/src/wiring/wrongtrace-telemetry.ts": [
       "buildWrongTraceTelemetryReport"
     ],
+    "packages/codebase-index-mcp/src/cli.ts": [
+      "resolveIndexProjectRoot"
+    ],
     "packages/core/src/boot.ts": [
       "cleanupStaleProjects"
     ],
@@ -455,8 +458,7 @@
       "safeJsonOrRaw"
     ],
     "packages/core/src/execution/autonomy-brain.ts": [
-      "quickDecide",
-      "resolveRiskCeiling"
+      "quickDecide"
     ],
     "packages/core/src/execution/council-brain.ts": [
       "makeSeatCallerForVoter"
@@ -1698,8 +1700,7 @@
       "alertModal"
     ],
     "packages/webui/src/components/CustomRosterPanel.tsx": [
-      "CustomRosterPanel",
-      "setCustomRosterWS"
+      "CustomRosterPanel"
     ],
     "packages/webui/src/components/KanbanBoundaryEditor.tsx": [
       "formatBoundarySelectors",

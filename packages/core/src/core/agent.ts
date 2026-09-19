@@ -62,6 +62,7 @@ export class Agent {
   readonly executionStrategy: 'parallel' | 'sequential' | 'smart';
   readonly perIterationOutputCapBytes: number;
   private readonly plugins: { plugin: Plugin; api: PluginAPI }[] = [];
+  private teardownPromise: Promise<void> | undefined;
   readonly toolExecutor: ToolExecutorLike;
   readonly autoExtendLimit: boolean;
   /** Bounded auto-grants of +100 iterations per run (see `tools.maxAutoExtensions`). */
@@ -175,7 +176,18 @@ export class Agent {
     this.plugins.push({ plugin, api });
   }
 
-  async teardown(): Promise<void> {
+  teardown(): Promise<void> {
+    // Concurrent shutdown paths must await the same plugin/hook cleanup and
+    // receive the same error. Publish the promise before invoking user hooks.
+    this.teardownPromise ??= Promise.resolve()
+      .then(() => this.teardownOnce())
+      .finally(() => {
+        this.teardownPromise = undefined;
+      });
+    return this.teardownPromise;
+  }
+
+  private async teardownOnce(): Promise<void> {
     const errors: unknown[] = [];
     for (const { plugin, api } of this.plugins.toReversed()) {
       if (typeof plugin.teardown !== 'function') continue;

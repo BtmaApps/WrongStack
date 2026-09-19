@@ -73,17 +73,73 @@ try {
   Write-Host ""
   Write-Host "Installed $Version -> $Target"
 
-  # Any other wstack/wrongstack still reachable is an older install that can
-  # shadow this one (the machine PATH is searched before the user PATH).
+  # Globals left by the old npm distribution (wrongstack / @wrongstack/cli via
+  # npm, pnpm, yarn or bun) carry their own wstack shim that keeps shadowing
+  # this binary, so they get removed. An interactive session is asked first
+  # (default yes); a non-interactive run removes them without asking.
+  $OldInstalls = @()
+  foreach ($Pm in 'npm', 'pnpm', 'yarn', 'bun') {
+    if (-not (Get-Command $Pm -ErrorAction SilentlyContinue)) { continue }
+    $Root = $null
+    try {
+      switch ($Pm) {
+        'npm' { $Root = & npm root -g 2>$null | Select-Object -First 1 }
+        'pnpm' { $Root = & pnpm root -g 2>$null | Select-Object -First 1 }
+        'yarn' {
+          $YarnDir = & yarn global dir 2>$null | Select-Object -First 1
+          if ($YarnDir) { $Root = Join-Path $YarnDir 'node_modules' }
+        }
+        'bun' {
+          $BunHome = if ($env:BUN_INSTALL) { $env:BUN_INSTALL } else { Join-Path $HOME '.bun' }
+          $Root = Join-Path $BunHome 'install\global\node_modules'
+        }
+      }
+    } catch { $Root = $null }
+    if (-not $Root) { continue }
+    foreach ($Pkg in 'wrongstack', '@wrongstack/cli') {
+      if (Test-Path -PathType Leaf (Join-Path $Root "$Pkg\package.json")) {
+        $OldInstalls += [pscustomobject]@{ Pm = $Pm; Pkg = $Pkg }
+      }
+    }
+  }
+
+  if ($OldInstalls.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Old WrongStack installs from the npm era are still on this machine:" -ForegroundColor Yellow
+    $OldInstalls | ForEach-Object { Write-Host "  $($_.Pkg)  ($($_.Pm) global)" }
+    Write-Host "They shadow the standalone binary, so they are coming off."
+    $Answer = 'y'
+    if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+      try { $Answer = Read-Host 'Uninstall them now? [Y/n]' } catch { $Answer = 'y' }
+    }
+    if ($Answer -match '^[nN]') {
+      Write-Host "Kept. Until they are gone, wstack may keep running the old version." -ForegroundColor Yellow
+    } else {
+      foreach ($Old in $OldInstalls) {
+        $PmArgs = switch ($Old.Pm) {
+          'npm' { @('uninstall', '-g', $Old.Pkg) }
+          'pnpm' { @('remove', '-g', $Old.Pkg) }
+          'yarn' { @('global', 'remove', $Old.Pkg) }
+          'bun' { @('remove', '-g', $Old.Pkg) }
+        }
+        $Line = "$($Old.Pm) $($PmArgs -join ' ')"
+        Write-Host "Uninstalling: $Line"
+        $Ok = $false
+        try { & $Old.Pm @PmArgs *> $null; $Ok = ($LASTEXITCODE -eq 0) } catch { $Ok = $false }
+        if (-not $Ok) { Write-Host "Failed (stop any running wstack and retry): $Line" -ForegroundColor Yellow }
+      }
+    }
+  }
+
+  # Anything else still reachable can shadow this one (the machine PATH is
+  # searched before the user PATH).
   $Shadows = @(Get-Command wstack, wrongstack -All -ErrorAction SilentlyContinue |
     Where-Object { $_.Source -and -not $_.Source.StartsWith($InstallDir, [StringComparison]::OrdinalIgnoreCase) } |
     ForEach-Object { $_.Source } | Sort-Object -Unique)
   if ($Shadows.Count -gt 0) {
     Write-Host ""
-    Write-Host "Other WrongStack installs were found and may run instead of this one:" -ForegroundColor Yellow
+    Write-Host "Other WrongStack installs are still reachable and may run instead of this one:" -ForegroundColor Yellow
     $Shadows | ForEach-Object { Write-Host "  $_" }
-    Write-Host "Remove them with whichever applies:"
-    Write-Host "  npm uninstall -g wrongstack; pnpm remove -g wrongstack; bun remove -g wrongstack"
   }
   Write-Host "Update later with: wstack update"
 } finally {

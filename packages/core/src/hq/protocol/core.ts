@@ -468,8 +468,11 @@ function isHqMcpServerHealth(x: unknown): x is HqMcpServerHealth {
   const v = x as Record<string, unknown>;
   return (
     typeof v.name === 'string' &&
-    typeof v.projectId === 'string' &&
-    typeof v.clientId === 'string' &&
+    // HQ stamps projectId/clientId from the authenticated connection right
+    // after validation; requiring the publisher to send them rejected every
+    // snapshot from a client with at least one MCP server configured.
+    (v.projectId === undefined || typeof v.projectId === 'string') &&
+    (v.clientId === undefined || typeof v.clientId === 'string') &&
     typeof v.connectionState === 'string' &&
     HQ_MCP_CONNECTION_STATES.has(v.connectionState) &&
     typeof v.healthState === 'string' &&

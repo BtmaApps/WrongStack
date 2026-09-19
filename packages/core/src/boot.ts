@@ -625,7 +625,10 @@ export function assertProjectRootOutsideStateDir(projectRoot: string, globalRoot
   const stateNamespace = path.resolve(globalRoot, 'projects');
   const rel = path.relative(stateNamespace, path.resolve(projectRoot));
   // Outside → the relative path escapes upward, or is absolute (other drive).
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return;
+  // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
+  // startsWith('..') misread it as outside and let a state-dir projectRoot
+  // boot.
+  if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return;
   // `rel === ''` means projectRoot IS `projects/`; anything else is nested.
   throw new Error(
     `Refusing to start: the resolved project root is inside WrongStack's per-project ` +
@@ -807,7 +810,11 @@ export async function cleanupStaleProjects(wpaths: WstackPaths): Promise<void> {
       const meta = JSON.parse(raw) as { root?: string | undefined };
       if (typeof meta.root !== 'string') continue;
       const rel = path.relative(stateNamespace, path.resolve(meta.root));
-      const nested = rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+      // Canonical escape test: `..hidden` is a legal in-root first segment; a
+      // bare startsWith('..') misread nested phantoms under such dirs as
+      // legitimate and skipped their cleanup.
+      const nested =
+        rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
       if (nested) {
         // Phantom project registered from a state path — never legitimate.
         await fs.rm(projectPath, { recursive: true, force: true });

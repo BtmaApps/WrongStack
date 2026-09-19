@@ -42,9 +42,9 @@ export interface CodebaseIndexMcpDependencies {
     context: Context,
     signal: AbortSignal,
   ) => Promise<unknown>;
-  packageGraph?: (args: GraphBaseArgs) => Promise<unknown>;
-  fileGraph?: (args: FileGraphArgs) => Promise<unknown>;
-  symbolGraph?: (args: SymbolGraphArgs) => Promise<unknown>;
+  packageGraph?: (args: GraphBaseArgs, signal?: AbortSignal) => Promise<unknown>;
+  fileGraph?: (args: FileGraphArgs, signal?: AbortSignal) => Promise<unknown>;
+  symbolGraph?: (args: SymbolGraphArgs, signal?: AbortSignal) => Promise<unknown>;
 }
 
 export interface CodebaseIndexMcpToolHostOptions extends CodebaseIndexMcpPolicyOptions {
@@ -200,7 +200,11 @@ export function createCodebaseIndexMcpToolHost(
       return selected.map(toolDescriptor);
     },
 
-    async callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult> {
+    async callTool(
+      name: string,
+      args: Record<string, unknown>,
+      callOptions?: { signal?: AbortSignal | undefined },
+    ): Promise<MCPServerCallResult> {
       if (!allowed.has(name as CodebaseIndexMcpToolName)) {
         return {
           content: `Tool "${name}" is not exposed by this Codebase Index MCP server`,
@@ -211,6 +215,7 @@ export function createCodebaseIndexMcpToolHost(
       const toolName = name as CodebaseIndexMcpToolName;
       const validationError = validateArgs(toolName, args);
       if (validationError) return { content: validationError, isError: true };
+      const signal = callOptions?.signal ?? new AbortController().signal;
 
       try {
         const builtin = BUILTIN_TOOLS[toolName];
@@ -222,7 +227,7 @@ export function createCodebaseIndexMcpToolHost(
               return { content: errors.join('\n'), isError: true };
             }
           }
-          const content = await executeTool(builtin, args, context, new AbortController().signal);
+          const content = await executeTool(builtin, args, context, signal);
           // The built-in tools THROW on failure (caught below). This guards a
           // payload from an older tool build that still degraded a failed
           // query to `indexStatus: 'error'` — an MCP client must see a failure.
@@ -234,16 +239,22 @@ export function createCodebaseIndexMcpToolHost(
           ...(opts.indexDir ? { indexDir: opts.indexDir } : {}),
         };
         if (toolName === 'codebase_package_graph') {
-          return { content: await getPackageGraph(base), isError: false };
+          return { content: await getPackageGraph(base, signal), isError: false };
         }
         if (toolName === 'codebase_file_graph') {
           return {
-            content: await getFileGraph({ ...base, packageFilter: String(args['package']).trim() }),
+            content: await getFileGraph(
+              { ...base, packageFilter: String(args['package']).trim() },
+              signal,
+            ),
             isError: false,
           };
         }
         return {
-          content: await getSymbolGraph({ ...base, fileFilter: String(args['file']).trim() }),
+          content: await getSymbolGraph(
+            { ...base, fileFilter: String(args['file']).trim() },
+            signal,
+          ),
           isError: false,
         };
       } catch (error) {

@@ -138,10 +138,13 @@ const plugin: Plugin = {
     clearCronResources();
     state.createdAt = new Date().toISOString();
 
+    const rawMaxConcurrent = (api.config.extensions?.['cron'] as Record<string, unknown>)?.[
+      'maxConcurrentJobs'
+    ];
     const maxConcurrent =
-      ((api.config.extensions?.['cron'] as Record<string, unknown>)?.[
-        'maxConcurrentJobs'
-      ] as number) ?? 5;
+      typeof rawMaxConcurrent === 'number' && Number.isFinite(rawMaxConcurrent)
+        ? Math.max(1, Math.floor(rawMaxConcurrent))
+        : 5;
 
     function scheduleNextRun(name: string): void {
       const job = state.jobs.get(name);

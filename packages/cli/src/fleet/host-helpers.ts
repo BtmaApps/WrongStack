@@ -5,9 +5,9 @@ import {
   makeSubagentResultTool,
 } from '@wrongstack/core/coordination';
 import {
+  clampSubagentCapabilities,
   ToolCapabilities,
   WIDE_SUBAGENT_CAPABILITIES,
-  clampSubagentCapabilities,
 } from '@wrongstack/core/security';
 import type { Config, SubagentConfig, TaskSpec, Tool } from '@wrongstack/core/types';
 import { makePreferSideConflictResolver } from '@wrongstack/sdd';
@@ -16,7 +16,12 @@ type AgentAvailability = NonNullable<SubagentConfig['availability']>;
 
 export function isInsideDirectory(root: string, candidate: string): boolean {
   const relative = path.relative(path.resolve(root), path.resolve(candidate));
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
+  // startsWith('..') wrongly rejects it.
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 export function isAgentAvailable(

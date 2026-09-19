@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { atomicWrite } from '@wrongstack/core/utils';
@@ -18,6 +19,11 @@ const DEFAULT_REPORT_OPTIONS: ReportOptions = {
   groupBySeverity: true,
 };
 
+export function createSecurityReportFilename(format: ReportOptions['format']): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  return `security-report-${timestamp}-${randomUUID().slice(0, 8)}.${format}`;
+}
+
 export class ReportGenerator {
   private options: ReportOptions;
 
@@ -28,8 +34,7 @@ export class ReportGenerator {
   async generate(scanResult: ScanResult): Promise<string> {
     await this.ensureOutputDir();
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `security-report-${timestamp}.${this.options.format}`;
+    const filename = createSecurityReportFilename(this.options.format);
     const filepath = join(this.options.outputDir, filename);
 
     let content: string;

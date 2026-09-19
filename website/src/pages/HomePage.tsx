@@ -27,9 +27,10 @@ import {
   creatorWorkshopProjects,
   homeJourneys,
   installCommand,
-  nodeVersion,
+  installCommandWindows,
   PLUGIN_COUNT,
   repoUrl,
+  runtimeBadge,
   surfaces,
   TOOL_COUNT,
   version,
@@ -174,7 +175,7 @@ export function HomePage() {
               <span className="rounded-full bg-brand-2 px-3 py-1.5 font-black text-ink">
                 OPEN SOURCE · FREE
               </span>
-              <span>Node {nodeVersion}</span>
+              <span>{runtimeBadge}</span>
               <span>MIT licensed</span>
             </div>
             <h1 className="max-w-[820px] font-display text-[clamp(4rem,7.5vw,7.05rem)] font-bold leading-[0.86] tracking-[-0.022em] text-fg">
@@ -199,7 +200,8 @@ export function HomePage() {
               <span className="text-brand">Shipped anyway.</span>
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <CopyCommand command={installCommand} />
+              <CopyCommand label="macOS / Linux" command={installCommand} />
+              <CopyCommand label="Windows" command={installCommandWindows} />
               <Link
                 href="/how-it-works"
                 className="group inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-fg"
@@ -619,7 +621,8 @@ export function HomePage() {
             already work in.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <CopyCommand command={installCommand} />
+            <CopyCommand label="macOS / Linux" command={installCommand} />
+              <CopyCommand label="Windows" command={installCommandWindows} />
             <a
               href={repoUrl}
               target="_blank"

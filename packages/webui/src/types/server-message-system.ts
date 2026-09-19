@@ -138,6 +138,7 @@ export type WSSystemMiscServerMessage =
   | {
       type: 'brain.answer';
       payload: SessionScopedPayload & {
+        requestId?: string;
         question: string;
         decision: {
           type: string;

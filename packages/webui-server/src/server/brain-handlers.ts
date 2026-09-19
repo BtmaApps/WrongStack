@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { BrainArbiter } from '@wrongstack/core/coordination';
 import type { BrainAutoRisk, BrainConfigPatch, BrainRuntime } from '@wrongstack/core/execution';
 import { BUILTIN_COUNCIL_PERSONAS } from '@wrongstack/core/execution';
@@ -225,21 +226,31 @@ export async function handleBrainAsk(
    * session gate then dropped.
    */
   sessionId?: string | undefined,
+  requestId?: string | undefined,
 ): Promise<void> {
   const q = question?.trim();
+  const answerSessionId = sessionId ?? ctx.getSessionId?.();
+  const correlation = {
+    ...(answerSessionId ? { sessionId: answerSessionId } : {}),
+    ...(requestId ? { requestId } : {}),
+  };
+  const fail = (message: string) =>
+    ctx.send(ws, {
+      type: 'key.operation_result',
+      payload: { success: false, message, ...correlation },
+    });
   if (!q) {
-    sendResult(ctx, ws, false, 'Usage: /brain ask <question>');
-    return;
-  }
-  const arbiter = ctx.resolveArbiter();
-  if (!arbiter) {
-    sendResult(ctx, ws, false, 'No Brain is wired into this server.');
+    fail('Usage: /brain ask <question>');
     return;
   }
   try {
-    const answerSessionId = sessionId ?? ctx.getSessionId?.();
+    const arbiter = ctx.resolveArbiter();
+    if (!arbiter) {
+      fail('No Brain is wired into this server.');
+      return;
+    }
     const decision = await arbiter.decide({
-      id: `brain-ask-${Date.now().toString(36)}`,
+      id: `brain-ask-${randomUUID()}`,
       sessionId: answerSessionId,
       source: 'user',
       question: q,
@@ -254,12 +265,12 @@ export async function handleBrainAsk(
       // sessionId — stamping '' would hide the answer from its own asker
       // in an embedded host with an unbound agent context.
       payload: {
-        ...(answerSessionId ? { sessionId: answerSessionId } : {}),
+        ...correlation,
         question: q,
         decision,
       },
     });
   } catch (err) {
-    sendResult(ctx, ws, false, `Brain consultation failed: ${toErrorMessage(err)}`);
+    fail(`Brain consultation failed: ${toErrorMessage(err)}`);
   }
 }

@@ -173,6 +173,23 @@ describe('createIpcTransport (JSON-RPC 2.0, \\n-framed)', () => {
     expect(res.result).toEqual({ right: true });
   });
 
+  it('ignores error envelopes carrying a different id and waits for its own response', async () => {
+    const server = startRpcServer((_method, _params, id) => [
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 999,
+        error: { code: -32601, message: 'error for another request' },
+      }),
+      JSON.stringify({ jsonrpc: '2.0', id, result: { right: true } }),
+    ]);
+    servers.push(server);
+    const ipc = createIpcTransport(server.path);
+
+    const res = await ipc.call<{ right: boolean }>('telemetry/file_health', {});
+
+    expect(res).toEqual({ result: { right: true } });
+  });
+
   it('resolves { result: null } when the socket disappears without answering (read timeout honored)', async () => {
     // Server that accepts the connection and never writes back.
     const silent = net.createServer(() => {

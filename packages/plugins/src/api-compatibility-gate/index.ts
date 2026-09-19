@@ -153,7 +153,7 @@ function withinProject(filePath: string): boolean {
   const resolved = resolveToProjectRoot(filePath);
   const rel = relative(process.cwd(), resolved);
   if (rel === '' || rel === '.') return true;
-  if (rel.startsWith('..')) return false;
+  if (rel.split(/[\\/]/)[0] === '..') return false;
   if (isAbsolute(rel)) return false;
   return true;
 }

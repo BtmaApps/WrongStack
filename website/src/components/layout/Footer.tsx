@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
 import { BrandMark } from '@/components/site/BrandMark';
-import { docsUrl, license, nodeVersion, repoUrl, version } from '@/data/content';
+import { docsUrl, license, repoUrl, runtimeBadge, version } from '@/data/content';
 import { Link } from '@/lib/router';
 
 const columns = [
@@ -75,7 +75,7 @@ export function Footer() {
             <div className="mt-7 flex flex-wrap gap-2 font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">
               <span className="rounded-full border border-white/10 px-3 py-1.5">v{version}</span>
               <span className="rounded-full border border-white/10 px-3 py-1.5">
-                Node {nodeVersion}
+                {runtimeBadge}
               </span>
               <span className="rounded-full border border-white/10 px-3 py-1.5">{license}</span>
               <span className="rounded-full border border-white/10 px-3 py-1.5">

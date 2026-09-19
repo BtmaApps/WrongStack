@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppTranslation } from '@/i18n';
+import { sendRosterMessage } from '@/lib/roster-ws';
 import { cn } from '@/lib/utils';
 
 // ─── Types (mirror of ProjectAgentLearnStats from project-agent-identity.ts) ──
@@ -46,53 +47,6 @@ export interface ProjectAgentLearnStats {
   conflictCount?: number;
   sharedLearnedExists?: boolean;
   sharedIdentityExists?: boolean;
-}
-
-// ─── Helper: send WS message and wait for response ──────────────────────────
-
-let wsRef: WebSocket | null = null;
-
-export function setCustomRosterWS(ws: WebSocket | null): void {
-  wsRef = ws;
-}
-
-function sendRosterMessage(type: string, payload?: unknown): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const ws = wsRef;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      reject(new Error('WebSocket not connected'));
-      return;
-    }
-    const _msgId = `roster-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let settled = false;
-
-    const handler = (event: MessageEvent) => {
-      if (settled) return;
-      try {
-        const data = JSON.parse(event.data as string);
-        if (data.type === type || data.type === `agent-roster.${type.split('.').pop()}`) {
-          settled = true;
-          if (timer) clearTimeout(timer);
-          ws.removeEventListener('message', handler);
-          resolve(data.payload ?? data);
-        }
-      } catch {
-        /* non-JSON message, skip */
-      }
-    };
-
-    // Timeout safety
-    timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      ws.removeEventListener('message', handler);
-      reject(new Error(`Roster request "${type}" timed out`));
-    }, 15_000);
-
-    ws.addEventListener('message', handler);
-    ws.send(JSON.stringify({ type, payload }));
-  });
 }
 
 // ─── Panel component ────────────────────────────────────────────────────────
@@ -122,36 +76,49 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
   >([]);
 
   // ── Load roster data ──────────────────────────────────────────────────
-  const loadRoster = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = (await sendRosterMessage('agent-roster.list', { projectRoot })) as {
-        roles: string[];
-        stats: ProjectAgentLearnStats[];
-      };
-      setRoles(data.stats ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('activity:customRoster.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [projectRoot]);
+  const loadRoster = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = (await sendRosterMessage('agent-roster.list', { projectRoot }, signal)) as {
+          roles: string[];
+          stats: ProjectAgentLearnStats[];
+        };
+        setRoles(data.stats ?? []);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : t('activity:customRoster.loadFailed'));
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [projectRoot],
+  );
 
-  const loadConflicts = useCallback(async () => {
-    try {
-      const data = (await sendRosterMessage('agent-roster.conflicts', { projectRoot })) as {
-        conflicts: Array<{ roleA: string; roleB: string; similarity: number }>;
-      };
-      setConflicts(data.conflicts ?? []);
-    } catch {
-      /* non-critical */
-    }
-  }, [projectRoot]);
+  const loadConflicts = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const data = (await sendRosterMessage(
+          'agent-roster.conflicts',
+          { projectRoot },
+          signal,
+        )) as {
+          conflicts: Array<{ roleA: string; roleB: string; similarity: number }>;
+        };
+        setConflicts(data.conflicts ?? []);
+      } catch {
+        /* non-critical */
+      }
+    },
+    [projectRoot],
+  );
 
   useEffect(() => {
-    loadRoster();
-    loadConflicts();
+    const controller = new AbortController();
+    void loadRoster(controller.signal);
+    void loadConflicts(controller.signal);
+    return () => controller.abort();
   }, [loadRoster, loadConflicts]);
 
   // ── Select role and load its data ─────────────────────────────────────
@@ -319,7 +286,7 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
       <div className="flex items-center justify-center h-full text-destructive">
         <AlertTriangle className="h-4 w-4 mr-2" />
         {error}
-        <button type="button" onClick={loadRoster} className="ml-2 underline">
+        <button type="button" onClick={() => void loadRoster()} className="ml-2 underline">
           {t('common:action.retry')}
         </button>
       </div>
@@ -366,7 +333,11 @@ export function CustomRosterPanel({ projectRoot }: CustomRosterPanelProps) {
       <div className="w-64 border-r border-line shrink-0 overflow-y-auto">
         <div className="p-3 border-b border-line flex items-center justify-between">
           <h2 className="text-sm font-semibold">{t('activity:customRoster.heading')}</h2>
-          <button type="button" onClick={loadRoster} className="p-1 hover:bg-accent rounded">
+          <button
+            type="button"
+            onClick={() => void loadRoster()}
+            className="p-1 hover:bg-accent rounded"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>

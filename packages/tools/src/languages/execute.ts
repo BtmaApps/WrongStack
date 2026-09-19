@@ -219,14 +219,19 @@ async function validatePlanRealpaths(
 
 function isRealInside(candidate: string, root: string): boolean {
   const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: a legal in-root first segment like `..hidden` must
+  // not read as an escape (bare startsWith('..') over-rejects it).
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 async function assertContainedFile(candidate: string, projectRoot: string): Promise<string> {
   const realRoot = await fs.realpath(projectRoot);
   const realTarget = await fs.realpath(candidate);
   const relative = path.relative(realRoot, realTarget);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`Internal syntax target resolves outside project root: ${candidate}`);
   }
   return realTarget;

@@ -80,6 +80,95 @@ const voter = (text: string, over: Partial<CouncilVoter> = {}): CouncilVoter => 
 const vote = (optionId: string, rationale = 'because') => JSON.stringify({ optionId, rationale });
 
 describe('createCouncilBrainArbiter — weighted majority', () => {
+  it('publishes the actual tallied ballots when deliberation falls back to an earlier round', async () => {
+    const events = new EventBus();
+    const resolved = vi.fn();
+    const streamed = vi.fn();
+    events.on('brain.council_resolved', resolved);
+    events.on('brain.council_vote', streamed);
+    const provider = fakeProvider('');
+    provider.complete = vi.fn<Provider['complete']>(async (input) => {
+      if (JSON.stringify(input.messages).includes('<council-deliberation>'))
+        throw new Error('round two unavailable');
+      return {
+        content: [{ type: 'text', text: vote('merge', 'private reasoning') }],
+        model: 'test',
+        usage: { input: 1, output: 1 },
+        stopReason: 'end_turn',
+      };
+    });
+    const council = createCouncilBrainArbiter({
+      voters: [voter('', { provider }), voter('', { provider })],
+      deliberationRounds: 2,
+      events,
+      traceContent: false,
+    });
+    expect(await council.decide(req())).toMatchObject({ type: 'answer', optionId: 'merge' });
+    expect(streamed).toHaveBeenCalledTimes(4);
+    const result = resolved.mock.calls[0]?.[0];
+    expect(result.votes).toHaveLength(2);
+    expect(
+      result.votes.every(
+        (ballot: { round: number; status: string }) =>
+          ballot.round === 1 && ballot.status === 'valid',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(result.votes)).not.toContain('private reasoning');
+    expect(result.warnings.join(' ')).toContain('round 1');
+  });
+  it('emits completed seats before the slowest voter finishes, without duplicate events', async () => {
+    const events = new EventBus();
+    const votes = vi.fn();
+    const resolved = vi.fn();
+    let firstVote!: () => void;
+    const observed = new Promise<void>((resolve) => {
+      firstVote = resolve;
+    });
+    events.on('brain.council_vote', (payload) => {
+      votes(payload);
+      firstVote();
+    });
+    events.on('brain.council_resolved', resolved);
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = fakeProvider(vote('merge'));
+    slow.complete = vi.fn<Provider['complete']>(async () => {
+      await blocked;
+      return {
+        content: [{ type: 'text', text: vote('merge') }],
+        stopReason: 'end_turn',
+        usage: { input: 1, output: 1 },
+        model: 'm',
+      };
+    });
+    const council = createCouncilBrainArbiter({
+      voters: [voter(vote('merge')), voter('', { provider: slow })],
+      deliberationRounds: 1,
+      events,
+    });
+    const pending = council.decide(req({ sessionId: 'streaming-session' }));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        observed,
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 500);
+        }),
+      ]);
+      expect(votes).toHaveBeenCalledTimes(1);
+      expect(votes.mock.calls[0]?.[0]).toMatchObject({ sessionId: 'streaming-session', round: 1 });
+      expect(resolved).not.toHaveBeenCalled();
+    } finally {
+      clearTimeout(timer);
+      release();
+      await pending;
+    }
+    expect(votes).toHaveBeenCalledTimes(2);
+    expect(resolved).toHaveBeenCalledTimes(1);
+  });
+
   it('answers with the majority option without needing a judge', async () => {
     const council = createCouncilBrainArbiter({
       voters: [
@@ -675,7 +764,7 @@ describe('completeBrainLlmDetailed — abort signal composition', () => {
     const provider = abortSensitiveProvider();
     await expect(
       completeBrainLlmDetailed({ provider, model: 'm' }, { system: 's', user: 'u', timeoutMs: 20 }),
-    ).rejects.toThrow('aborted');
+    ).rejects.toThrow('Brain call timeout exceeded.');
   }, 2_000);
 
   it('completes normally when no external signal aborts', async () => {

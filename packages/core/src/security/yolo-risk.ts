@@ -144,7 +144,15 @@ export function pathLooksInsideProject(rawPath: string, projectRoot: string | un
   if (rawPath === '~' || rawPath.startsWith('~/') || rawPath.startsWith('~\\')) return false;
   const resolved = path.resolve(projectRoot, rawPath);
   const relative = path.relative(projectRoot, resolved);
-  return !!relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+  // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
+  // startsWith('..') would misclassify it as outside the project and skip the
+  // in-project destructive-command gates.
+  return (
+    !!relative &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 function tokenizeShell(command: string): string[] {

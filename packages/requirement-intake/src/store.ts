@@ -25,7 +25,7 @@ import {
   withFileLock,
 } from '@wrongstack/core/utils';
 import { type IntakeStatus, MAX_HISTORY_ENTRIES } from './constants.js';
-import { IntakeConflictError, IntakeNotFoundError } from './errors.js';
+import { IntakeConflictError, IntakeNotFoundError, IntakeValidationError } from './errors.js';
 import type { ChangeHistoryEntry, RequirementIntakeRecord } from './types.js';
 
 export interface IntakeIndexEntry {
@@ -109,6 +109,14 @@ export class RequirementIntakeStore {
   }
 
   private recordPath(id: string): string {
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+      throw new IntakeValidationError([
+        {
+          field: 'id',
+          message: 'record id must contain only letters, numbers, underscores, or hyphens',
+        },
+      ]);
+    }
     return path.join(this.baseDir, `${id}.json`);
   }
 

@@ -35,6 +35,23 @@ describe('MCPServer.handleMessage', () => {
     }
   });
 
+  it('rejects requests that do not declare JSON-RPC 2.0 before dispatch', async () => {
+    const listTools = vi.fn(() => [
+      { name: 'echo', description: 'echo back', inputSchema: { type: 'object' } },
+    ]);
+    const server = new MCPServer({ host: makeHost({ listTools }) });
+
+    for (const message of [
+      { id: 1, method: 'tools/list' },
+      { jsonrpc: '1.0', id: 2, method: 'tools/list' },
+      { jsonrpc: '2.0', id: { nested: true }, method: 'tools/list' },
+    ]) {
+      const response = await call(server, message);
+      expect((response!.error as { code: number }).code).toBe(-32600);
+    }
+    expect(listTools).not.toHaveBeenCalled();
+  });
+
   it('responds to initialize with protocol version and serverInfo', async () => {
     const server = new MCPServer({ host: makeHost(), serverInfo: { name: 'ws', version: '9' } });
     const res = await call(server, { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
@@ -67,6 +84,46 @@ describe('MCPServer.handleMessage', () => {
     };
     expect(result.isError).toBe(false);
     expect(result.content[0]).toEqual({ type: 'text', text: 'echo:{"x":1}' });
+  });
+
+  it('aborts an in-flight tool call on notifications/cancelled', async () => {
+    const started = Promise.withResolvers<void>();
+    let toolSignal: AbortSignal | undefined;
+    const server = new MCPServer({
+      host: makeHost({
+        callTool: async (_name, _args, opts) => {
+          toolSignal = opts?.signal;
+          started.resolve();
+          if (!toolSignal) return { content: 'missing cancellation signal', isError: true };
+          await new Promise<void>((_resolve, reject) => {
+            toolSignal!.addEventListener('abort', () => reject(toolSignal!.reason), { once: true });
+          });
+          return { content: 'unreachable', isError: false };
+        },
+      }),
+    });
+
+    const pending = server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 41,
+        method: 'tools/call',
+        params: { name: 'echo', arguments: {} },
+      }),
+    );
+    await started.promise;
+    const notification = await server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'notifications/cancelled',
+        params: { requestId: 41, reason: 'operator cancelled' },
+      }),
+    );
+
+    expect(notification).toBeNull();
+    expect(toolSignal?.aborted).toBe(true);
+    const response = JSON.parse((await pending) ?? '') as { error?: { message?: string } };
+    expect(response.error?.message).toContain('operator cancelled');
   });
 
   it('passes the call through when the host cannot enumerate tools', async () => {
@@ -135,7 +192,11 @@ describe('MCPServer.handleMessage', () => {
       });
     }
     expect(callTool).toHaveBeenCalledTimes(3);
-    expect(callTool).toHaveBeenCalledWith('echo', {});
+    expect(callTool).toHaveBeenCalledWith(
+      'echo',
+      {},
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it('returns INTERNAL_ERROR when the host throws', async () => {

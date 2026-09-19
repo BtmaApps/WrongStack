@@ -343,8 +343,8 @@ export function handleBrainEvent(msg: WSServerMessage) {
     };
   };
   // The question text lives on the decision_* events, not the council ones.
-  // Fold it into an already-open panel so the log row reads as a question
-  // rather than a bare request id.
+  // Retain it before the first ballot, or enrich an existing panel, so the
+  // live log reads as a question rather than a bare request id.
   //
   // NOTE the two id shapes: the council events carry a top-level `requestId`,
   // while every `brain.decision_*` event nests it as `request.id`. Reading only
@@ -374,13 +374,17 @@ export function handleBrainEvent(msg: WSServerMessage) {
     return;
   }
   if (p.event === 'brain.council_resolved') {
-    councilLogFor(msg).recordResolution(p as Record<string, unknown>);
     const requestId = p.requestId ?? 'unknown';
+    const previous = councilLogFor(msg).panels.find((entry) => entry.requestId === requestId);
+    councilLogFor(msg).recordResolution(p as Record<string, unknown>);
     // Read the panel's seats back from the log store — recordResolution above
     // upserts the panel, so it is always present. No parallel buffer: eviction
     // is per-panel, so a live panel's votes can never be dropped by other
     // requests' traffic.
     const panel = councilLogFor(msg).panels.find((entry) => entry.requestId === requestId);
+    // The reducer rejects duplicate/older frames. Replaying one must not add
+    // another transcript card or show the same warning toast again.
+    if (panel && panel === previous) return;
     const seats = panel?.seats ?? [];
     const seatLines = seats.map(
       (seat) =>
@@ -401,6 +405,9 @@ export function handleBrainEvent(msg: WSServerMessage) {
 
     const councilDecision: CouncilDecisionData = {
       requestId,
+      phase: panel?.phase,
+      startedAt: panel?.startedAt,
+      resolvedAt: panel?.resolvedAt,
       status: p.status ?? panel?.status ?? 'decided',
       resolution: p.resolution ?? panel?.resolution ?? 'decided',
       optionId: p.optionId ?? panel?.optionId,
@@ -413,6 +420,10 @@ export function handleBrainEvent(msg: WSServerMessage) {
         panel?.distinctTargetCount ??
         new Set(seats.map((s) => s.model || s.persona)).size,
       judgeUsed: Boolean(p.judgeUsed ?? panel?.judgeUsed),
+      judgeModel: panel?.judgeLabel,
+      judgeIsVoter: panel?.judgeIsVoter,
+      rounds: panel?.rounds,
+      deliberationChanges: panel?.deliberationChanges,
       totalTokens: p.usage?.totalTokens ?? panel?.totalTokens,
       durationMs: p.usage?.durationMs ?? panel?.durationMs,
       warnings: p.warnings ?? panel?.warnings,

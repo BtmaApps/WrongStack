@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertManagementWrite } from '../management-fence.js';
 import { EVENT_LOG_TRIM_TO, mutateBoard, readBoard, readKanbanEvents } from '../storage.js';
 import type {
   KanbanBoard,
@@ -230,6 +231,18 @@ export async function updateTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
+    if (
+      eventContext.expectedManagementToken !== undefined &&
+      Object.keys(input).some(
+        (key) =>
+          key !== 'description' &&
+          key !== 'priority' &&
+          input[key as keyof UpdateKanbanTaskInput] !== undefined,
+      )
+    ) {
+      throw new Error('Kanban manager may change only description and priority.');
+    }
     const before = taskEventSnapshot(task);
     assertManagedTaskPatchAllowed(board, task, input);
     applyTaskPatch(board, task, input);
@@ -525,6 +538,15 @@ export async function addCheckToTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
+    if (eventContext.expectedManagementToken !== undefined) {
+      if (check.status !== undefined && check.status !== 'pending')
+        throw new Error('Kanban manager acceptance checks must be pending.');
+      const existing = task.successCriteria?.find(
+        (item) => item.description.trim() === check.description.trim() && item.type === check.type,
+      );
+      if (existing) return existing;
+    }
     const newCheck: KanbanCheck = {
       id: randomUUID(),
       description: check.description,
@@ -665,9 +687,16 @@ export async function addNoteToTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext, 'note');
+    if (eventContext.expectedManagementToken !== undefined) {
+      const existing = task.notes?.find(
+        (item) => item.author === 'kanban-manager' && item.content.trim() === note.content.trim(),
+      );
+      if (existing) return existing;
+    }
     const newNote: KanbanNote = {
       id: randomUUID(),
-      author: note.author,
+      author: eventContext.expectedManagementToken !== undefined ? 'kanban-manager' : note.author,
       content: note.content,
       createdAt: nowIso(),
     };
@@ -695,6 +724,11 @@ export async function addLinkToTask(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], eventContext);
+    if (eventContext.expectedManagementToken !== undefined) {
+      const existing = task.links?.find((item) => item.url === link.url && item.type === link.type);
+      if (existing) return existing;
+    }
     task.links = [...(task.links ?? []), link];
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;

@@ -301,13 +301,17 @@ export const securityLayers = [
   },
 ] as const;
 
-export const installCommand = 'npm install -g wrongstack';
 export const repoUrl = 'https://github.com/WrongStack/WrongStack';
+/** WrongStack ships as a standalone binary from GitHub Releases; npm is legacy. */
+export const releasesUrl = `${repoUrl}/releases`;
+const releaseDownloadUrl = `${releasesUrl}/latest/download`;
+export const installCommand = `curl -fsSL ${releaseDownloadUrl}/install.sh | sh`;
+export const installCommandWindows = `irm ${releaseDownloadUrl}/install.ps1 | iex`;
 export const docsUrl = `${repoUrl}/tree/main/docs`;
 /** Single source of truth with JSON-LD / META — do not hard-code a second number. */
 export const version = META.version;
 
-export const nodeVersion = '22.19+';
+export const runtimeBadge = 'Single binary · no Node.js';
 export const license = 'MIT';
 
 /* =========================================================================

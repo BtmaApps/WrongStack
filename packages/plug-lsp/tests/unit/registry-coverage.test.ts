@@ -47,6 +47,23 @@ function registry(onAvailabilityChange?: (available: boolean) => void) {
 }
 
 describe('registry completion coverage', () => {
+  it('shuts down mounted servers before rebinding the registry', async () => {
+    const { value } = registry();
+    const shutdown = vi.fn(async () => undefined);
+    const state = value as unknown as {
+      servers: Map<string, unknown>;
+      reconnectAttempts: Map<string, number>;
+    };
+    state.servers.set('old-workspace', { name: 'old-workspace', shutdown });
+    state.reconnectAttempts.set('old-workspace', 3);
+
+    await value.bind(process.cwd(), 'lazy');
+
+    expect(shutdown).toHaveBeenCalledOnce();
+    expect(state.reconnectAttempts.size).toBe(0);
+    expect(value.list()).toEqual([]);
+  });
+
   it('logs eager server start failures', async () => {
     const server = {
       name: 'broken',

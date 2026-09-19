@@ -103,6 +103,13 @@ export interface BrainRule {
   enabled?: boolean | undefined;
   /** Free-text note for humans; never interpreted. */
   description?: string | undefined;
+  /**
+   * Maximum times this rule can fire within `windowMs` before deferring to
+   * subsequent tiers (infinite rule loop protection). Optional.
+   */
+  maxHits?: number | undefined;
+  /** Window for `maxHits` in ms. Default 60_000 (1 minute). */
+  windowMs?: number | undefined;
   when: BrainRuleMatch;
   then: BrainRuleAction;
 }
@@ -125,6 +132,8 @@ export interface CompiledBrainRule {
   id: string;
   match: CompiledMatch;
   then: BrainRuleAction;
+  maxHits?: number | undefined;
+  windowMs?: number | undefined;
 }
 
 export interface BrainRuleCompileResult {
@@ -207,6 +216,13 @@ export function compileBrainRules(rules: readonly BrainRule[] | undefined): Brai
         throw new Error(`${id}: an "answer" rule needs an optionId or text`);
       }
 
+      if (rule.maxHits !== undefined && (!Number.isFinite(rule.maxHits) || rule.maxHits <= 0)) {
+        throw new Error(`${id}: maxHits must be a positive integer`);
+      }
+      if (rule.windowMs !== undefined && (!Number.isFinite(rule.windowMs) || rule.windowMs <= 0)) {
+        throw new Error(`${id}: windowMs must be a positive integer`);
+      }
+
       seen.add(id);
       // `when`/`then` is the rule DSL's public config vocabulary (documented
       // in configuration.md, mirrored in the WebUI wire types), so renaming it
@@ -215,7 +231,13 @@ export function compileBrainRules(rules: readonly BrainRule[] | undefined): Brai
       // value as a promise when `.then` is CALLABLE — awaiting a compiled rule
       // would simply resolve to the rule itself.
       // biome-ignore lint/suspicious/noThenProperty: public rule-DSL field; the value is never callable
-      compiled.push({ id, match, then: rule.then });
+      compiled.push({
+        id,
+        match,
+        then: rule.then,
+        ...(rule.maxHits !== undefined ? { maxHits: rule.maxHits } : {}),
+        ...(rule.windowMs !== undefined ? { windowMs: rule.windowMs } : {}),
+      });
     } catch (err) {
       errors.push(err instanceof Error ? err.message : String(err));
     }
@@ -315,13 +337,25 @@ export function applyRule(
   }
 }
 
+export interface BrainRuleRateLimiter {
+  isRateLimited: (ruleId: string, maxHits: number, windowMs: number) => boolean;
+}
+
 /** Evaluate a compiled table; first rule that yields a decision wins. */
 export function evaluateBrainRules(
   rules: readonly CompiledBrainRule[],
   request: BrainDecisionRequest,
+  rateLimiter?: BrainRuleRateLimiter | undefined,
 ): { decision: BrainDecision; ruleId: string } | null {
   for (const rule of rules) {
     if (!ruleMatches(rule, request)) continue;
+    if (
+      rule.maxHits !== undefined &&
+      rateLimiter?.isRateLimited(rule.id, rule.maxHits, rule.windowMs ?? 60_000)
+    ) {
+      // Exceeded max allowed hits in this window — defer to prevent infinite loops
+      return null;
+    }
     const decision = applyRule(rule, request);
     // A matching rule that produced nothing (defer, or an unusable action)
     // hands over to the NEXT TIER, not to the next rule — otherwise `defer`
@@ -355,11 +389,26 @@ export interface RuleBrainArbiterOptions {
  * rule can settle a question before any of the tiers that cost tokens.
  */
 export function createRuleBrainArbiter(opts: RuleBrainArbiterOptions): BrainArbiter {
+  const hitTimestamps = new Map<string, number[]>();
+
+  const rateLimiter: BrainRuleRateLimiter = {
+    isRateLimited(ruleId: string, maxHits: number, windowMs: number): boolean {
+      const now = Date.now();
+      const stamps = (hitTimestamps.get(ruleId) ?? []).filter((t) => now - t <= windowMs);
+      return stamps.length >= maxHits;
+    },
+  };
+
   return {
     async decide(request: BrainDecisionRequest): Promise<BrainDecision> {
       const startedAt = Date.now();
-      const hit = evaluateBrainRules(opts.getRules(), request);
+      const hit = evaluateBrainRules(opts.getRules(), request, rateLimiter);
       if (hit) {
+        const now = Date.now();
+        const stamps = (hitTimestamps.get(hit.ruleId) ?? []).filter((t) => now - t <= 300_000);
+        stamps.push(now);
+        hitTimestamps.set(hit.ruleId, stamps);
+
         markDecisionTier(request, 'rule');
         emitBrainTierTransition(
           opts.events,

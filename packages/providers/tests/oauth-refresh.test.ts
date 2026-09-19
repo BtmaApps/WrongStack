@@ -27,6 +27,26 @@ describe('createSingleFlightRefresh', () => {
     expect(sf.inFlight).toBe(false);
   });
 
+  it('shares synchronous refresh failures and allows a later retry', async () => {
+    const error = new Error('refresh setup failed');
+    const refreshFn = vi
+      .fn<() => Promise<string>>()
+      .mockImplementationOnce(() => {
+        throw error;
+      })
+      .mockResolvedValueOnce('recovered');
+    const refresh = createSingleFlightRefresh(refreshFn);
+    const first = refresh.refresh();
+    const second = refresh.refresh();
+    expect(first).toBe(second);
+    await expect(first).rejects.toBe(error);
+    await expect(second).rejects.toBe(error);
+    expect(refreshFn).toHaveBeenCalledTimes(1);
+    expect(refresh.inFlight).toBe(false);
+    await expect(refresh.refresh()).resolves.toBe('recovered');
+    expect(refreshFn).toHaveBeenCalledTimes(2);
+  });
+
   it('clears the in-flight slot after rejection so retries can fire', async () => {
     let rejectRefresh!: (err: Error) => void;
     const refreshFn = vi.fn(

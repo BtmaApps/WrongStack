@@ -345,9 +345,12 @@ describe('listMcp', () => {
     expect(list[0]?.tools).toEqual([]);
   });
 
-  it('treats unreadable or malformed config as empty', async () => {
+  it('surfaces a malformed config instead of reporting an empty list', async () => {
+    // A malformed config must fail loudly. Silently reading it as empty is
+    // what let the next read-modify-write persist a config containing only
+    // `mcpServers`, destroying every other top-level profile setting.
     await fs.writeFile(configPath, '{invalid');
-    await expect(listMcp(deps(makeRegistry()))).resolves.toEqual([]);
+    await expect(listMcp(deps(makeRegistry()))).rejects.toThrow(/not valid JSON/i);
     await fs.writeFile(configPath, JSON.stringify({ mcpServers: [] }));
     await expect(listMcp(deps(makeRegistry()))).resolves.toEqual([]);
   });
@@ -506,5 +509,40 @@ describe('management edge cases', () => {
         { configPath, registry: makeRegistry() },
       ),
     ).resolves.toMatchObject({ ok: true });
+  });
+});
+
+describe('readConfig corrupt-config guard', () => {
+  const proofInput = { name: 'proof', transport: 'stdio', command: 'node', enabled: false };
+
+  it('addMcp rejects and leaves a corrupt config.json untouched instead of resetting it', async () => {
+    // A corrupt file must fail loudly: reading it as `{}` makes the next
+    // read-modify-write persist a config containing only `mcpServers`,
+    // silently destroying every other top-level profile setting.
+    const corrupt = '{"keep":true,"mcpServers":';
+    await fs.writeFile(configPath, corrupt, 'utf8');
+    await expect(addMcp(proofInput, deps(makeRegistry()))).rejects.toThrow(/not valid JSON/i);
+    expect(await fs.readFile(configPath, 'utf8')).toBe(corrupt);
+  });
+
+  it('addMcp rejects a config.json that is valid JSON but not an object', async () => {
+    await fs.writeFile(configPath, '[]', 'utf8');
+    await expect(addMcp(proofInput, deps(makeRegistry()))).rejects.toThrow(/JSON object/i);
+    expect(await fs.readFile(configPath, 'utf8')).toBe('[]');
+  });
+
+  it('a missing config.json still takes the fresh-config path', async () => {
+    await fs.rm(configPath);
+    await expect(addMcp(proofInput, deps(makeRegistry()))).resolves.toMatchObject({ ok: true });
+    const written = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    expect(written.mcpServers.proof).toBeTruthy();
+  });
+
+  it('a valid config keeps its other top-level keys across an add', async () => {
+    await fs.writeFile(configPath, JSON.stringify({ keep: { v: 1 } }), 'utf8');
+    await expect(addMcp(proofInput, deps(makeRegistry()))).resolves.toMatchObject({ ok: true });
+    const written = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    expect(written.keep).toEqual({ v: 1 });
+    expect(written.mcpServers.proof).toBeTruthy();
   });
 });

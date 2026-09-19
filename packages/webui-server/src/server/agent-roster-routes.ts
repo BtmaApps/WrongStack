@@ -13,17 +13,34 @@ export async function handleAgentRosterRoute(
   handlers: AgentRosterRouteHandlers,
 ): Promise<boolean> {
   if (!msg.type.startsWith('agent-roster.')) return false;
+  const requestId =
+    msg.payload &&
+    typeof msg.payload === 'object' &&
+    typeof (msg.payload as { requestId?: unknown }).requestId === 'string'
+      ? (msg.payload as { requestId: string }).requestId
+      : undefined;
   try {
     const response = await handlers.rosterHandler.handleMessage(
       ws,
       msg.type,
       msg.payload as Record<string, unknown> | undefined,
     );
-    send(ws, response);
+    send(
+      ws,
+      requestId
+        ? {
+            ...response,
+            payload: {
+              ...(response.payload && typeof response.payload === 'object' ? response.payload : {}),
+              requestId,
+            },
+          }
+        : response,
+    );
   } catch (error) {
     send(ws, {
       type: msg.type,
-      payload: { error: errMessage(error) },
+      payload: { error: errMessage(error), ...(requestId ? { requestId } : {}) },
     });
   }
   return true;

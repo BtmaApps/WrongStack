@@ -30,9 +30,9 @@
  * `resolveWin32Command` (exported here for that purpose).
  */
 
+import { accessSync, constants, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { accessSync, constants, readFileSync } from 'node:fs';
 import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { buildWin32CmdShimInvocation, resolveWin32Command } from '@wrongstack/tools/win32';
 
@@ -231,9 +231,19 @@ export function resolveNodeBin(
     if (relativeBin && !isAbsolute(relativeBin)) {
       const packageDir = dirname(packagePath);
       const entry = resolve(packageDir, relativeBin);
-      // Sandbox: the bin entry must live inside its own package.
+      // Sandbox: the bin entry must be a real file inside its own package.
+      // Lexical containment alone accepts a package-local symlink/junction
+      // whose target is arbitrary JavaScript outside the package.
       if (isInside(packageDir, entry)) {
-        resolved = { cmd: process.execPath, args: scriptSpawnArgs(entry, []), entry };
+        const canonicalPackageDir = realpathSync(packageDir);
+        const canonicalEntry = realpathSync(entry);
+        if (isInside(canonicalPackageDir, canonicalEntry) && statSync(canonicalEntry).isFile()) {
+          resolved = {
+            cmd: process.execPath,
+            args: scriptSpawnArgs(canonicalEntry, []),
+            entry: canonicalEntry,
+          };
+        }
       }
     }
   } catch {

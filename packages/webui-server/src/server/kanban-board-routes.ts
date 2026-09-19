@@ -131,7 +131,7 @@ export async function handleKanbanBoardRoute(
             : hasKanbanQueueAnomalies(health)
               ? 'attention'
               : 'healthy',
-        mode: board.supervisor?.mode ?? 'deterministic',
+        mode: board.supervisor?.mode ?? 'agentic',
         lastAuditAt: new Date().toISOString(),
         reconciledTaskIds: reconciled?.tasks.map((task) => task.id) ?? [],
         staleRecoveredTaskIds: recovered?.tasks.map((task) => task.id) ?? [],

@@ -113,6 +113,21 @@ describe('decodeProtocolMessage', () => {
     if (!result.ok) expect(result.issue.code).toBe('too_deep');
   });
 
+  it('returns a decode issue instead of throwing for unreadable object properties', () => {
+    const payload: Record<string, unknown> = {};
+    Object.defineProperty(payload, 'broken', {
+      enumerable: true,
+      get() {
+        throw new Error('getter exploded');
+      },
+    });
+
+    expect(() => decodeProtocolMessage({ type: 'session.start', payload }, 'server')).not.toThrow();
+    const result = decodeProtocolMessage({ type: 'session.start', payload }, 'server');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issue.code).toBe('invalid_envelope');
+  });
+
   it('every registered server type round-trips', () => {
     for (const type of SERVER_MESSAGE_TYPES) {
       const result = decodeProtocolMessage({ type, payload: {} }, 'server');

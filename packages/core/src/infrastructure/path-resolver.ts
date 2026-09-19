@@ -72,7 +72,8 @@ export class DefaultPathResolver implements PathResolver {
     const root = path.normalize(this.projectRoot);
     if (normalized === root) return true;
     const rel = path.relative(root, normalized);
-    return !rel.startsWith('..') && !path.isAbsolute(rel);
+    // Canonical escape test: `..hidden` is a legal in-root first segment.
+    return rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
   }
 
   ensureInsideRoot(absPath: string): string {

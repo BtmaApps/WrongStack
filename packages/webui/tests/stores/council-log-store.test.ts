@@ -44,6 +44,28 @@ beforeEach(() => {
 });
 
 describe('recordVote', () => {
+  it('does not replace a newer ballot with an earlier-round replay', () => {
+    useCouncilLogStore.getState().recordVote(vote({ round: 2, optionId: 'hold', at: 1500 }));
+    useCouncilLogStore.getState().recordVote(vote({ round: 1, optionId: 'merge', at: 1000 }));
+    expect(panel().seats[0]).toMatchObject({ round: 2, optionId: 'hold' });
+  });
+
+  it('fills missing seats on a resolved panel without reopening it for an old replay', () => {
+    useCouncilLogStore.getState().recordResolution(resolution());
+    useCouncilLogStore.getState().recordVote(vote());
+    expect(panel().phase).toBe('resolved');
+    expect(panel().seats).toHaveLength(1);
+  });
+
+  it('starts a new run even when it reuses the same seats, and ignores an old resolution', () => {
+    useCouncilLogStore.getState().recordVote(vote());
+    useCouncilLogStore.getState().recordResolution(resolution());
+    useCouncilLogStore.getState().recordVote(vote({ at: 3000 }));
+    expect(panel().phase).toBe('voting');
+    expect(panel().resolution).toBeUndefined();
+    useCouncilLogStore.getState().recordResolution(resolution());
+    expect(panel().phase).toBe('voting');
+  });
   it('opens a panel on the first seat so a running council is visible before it resolves', () => {
     // The whole point of the tab: a council is N provider calls and up to ~90s.
     // Waiting for the resolution to show anything would leave the most
@@ -109,6 +131,27 @@ describe('recordVote', () => {
 });
 
 describe('recordResolution', () => {
+  it('uses authoritative earlier-round ballots and protects them from late failed-round replay', () => {
+    const store = useCouncilLogStore.getState();
+    store.recordVote(vote({ round: 2, status: 'failed', at: 1500 }));
+    store.recordResolution(resolution({ rounds: 2, votes: [vote({ round: 1 })] }));
+    expect(panel().seats[0]).toMatchObject({ round: 1, status: 'valid', optionId: 'merge' });
+    store.recordVote(vote({ round: 2, status: 'failed', at: 1500 }));
+    expect(panel().seats[0]).toMatchObject({ round: 1, status: 'valid' });
+  });
+
+  it('can reconstruct resolved votes without receiving live seat events', () => {
+    useCouncilLogStore.getState().recordResolution(resolution({ votes: [vote()] }));
+    expect(panel().seats).toHaveLength(1);
+  });
+  it('ignores duplicate or older resolution frames', () => {
+    useCouncilLogStore.getState().recordResolution(resolution());
+    const resolved = panel();
+    useCouncilLogStore.getState().recordResolution(resolution());
+    expect(panel()).toBe(resolved);
+    useCouncilLogStore.getState().recordResolution(resolution({ at: 1900, status: 'failed' }));
+    expect(panel()).toBe(resolved);
+  });
   it('flips the panel to resolved and records the tally', () => {
     useCouncilLogStore.getState().recordVote(vote());
     useCouncilLogStore.getState().recordResolution(resolution());
@@ -157,6 +200,25 @@ describe('recordResolution', () => {
 });
 
 describe('noteQuestion', () => {
+  it('remembers the question that arrived before the first council vote', () => {
+    useCouncilLogStore.getState().noteQuestion('req-1', 'Deploy the migration?');
+    expect(useCouncilLogStore.getState().panels).toHaveLength(0);
+    useCouncilLogStore.getState().recordVote(vote());
+    expect(panel().question).toBe('Deploy the migration?');
+  });
+
+  it('bounds pending questions and clears them with the session log', () => {
+    for (let i = 0; i <= MAX_COUNCIL_PANELS; i++) {
+      useCouncilLogStore.getState().noteQuestion(`req-${i}`, `Question ${i}`);
+    }
+    useCouncilLogStore.getState().recordVote(vote({ requestId: 'req-0' }));
+    expect(panel().question).toBeUndefined();
+    useCouncilLogStore.getState().recordVote(vote({ requestId: `req-${MAX_COUNCIL_PANELS}` }));
+    expect(panel().question).toBe(`Question ${MAX_COUNCIL_PANELS}`);
+    useCouncilLogStore.getState().clear();
+    useCouncilLogStore.getState().recordVote(vote({ requestId: `req-${MAX_COUNCIL_PANELS}` }));
+    expect(panel().question).toBeUndefined();
+  });
   it('folds the question into an open panel', () => {
     useCouncilLogStore.getState().recordVote(vote());
     useCouncilLogStore.getState().noteQuestion('req-1', 'Merge the risky auth change?');
@@ -281,7 +343,7 @@ describe('deliberation rendering', () => {
     // seat once per round.
     expect(panel.seats).toHaveLength(2);
     expect(panel.seats.find((seat) => seat.seatId === 'a')?.changed).toBe(true);
-    expect(summarizeCouncilPanel(panel)).toContain('r2');
+    expect(summarizeCouncilPanel(panel)).toBe('voting r2 · 1 seat in');
   });
 
   it('reports the round count and how many seats moved', () => {

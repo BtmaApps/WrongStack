@@ -4,7 +4,7 @@
  *
  * Coverage targets:
  * - normalizeBaseCommand: normalizes paths, extensions, and casing
- * - extractBaseCommand: extracts from quoted commands
+ * - extractBaseCommand: extracts from quoted strings
  * - parseCommandArguments: handles quotes, whitespace, unterminated strings
  * - buildAllowlist: prefix semantics (+/-, mix with block)
  * - validateCommand: empty command, newlines, blocked commands, allowAll,
@@ -14,8 +14,15 @@
  * - parseGitNameStatus: edge cases (empty, tab-separated, unknown status)
  * - parseGitNumstat: malformed lines, missing parts
  * - debug helpers: isTestCount, isTestJsonObject
+ * - resolveConfiguredExecutable / detectTestRunner: accepts legal in-root
+ *   first segments that merely BEGIN with '..' (e.g. ..hidden/bin.js)
+ *   instead of misreading them as parent traversals (round-44 regression).
  */
-import { describe, expect, it } from 'vitest';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, sep } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { KanbanBoard, KanbanTask } from '../src/types.js';
 import {
   DEFAULT_ALLOWED_COMMANDS,
   DEFAULT_BLOCKED_COMMANDS,
@@ -25,6 +32,7 @@ import {
   parseGitNumstat,
   SHELL_OPERATOR_RE,
   validateCommand,
+  VerificationContext,
 } from '../src/verification/verification-context.js';
 
 // ── normalizeBaseCommand ─────────────────────────────────────────────────
@@ -325,4 +333,104 @@ describe('DEFAULT_BLOCKED_COMMANDS', () => {
     expect(DEFAULT_BLOCKED_COMMANDS).toContain('sudo');
     expect(DEFAULT_BLOCKED_COMMANDS).toContain('python');
   });
+});
+
+// ── resolveConfiguredExecutable / detectTestRunner dot-dot regression ────
+// Round-44 regression: the binary-resolution predicates at lines 754 and
+// 824 of verification-context.ts used the loose
+// `path.relative(packageDir, entry).startsWith('..')`, which misread
+// legal in-root first segments whose NAME merely begins with '..'
+// (e.g. `..hidden/bin.js`) as parent traversals and rejected them,
+// forcing a fallthrough to the .bin shim or PATH. The canonical
+// predicate (`rel === '..' || rel.startsWith('..' + sep) ||
+// isAbsolute(rel)`) accepts such legal names while still blocking
+// real `../` climbs. Wave 3 fixed the containment helpers at lines
+// 521/525/530 but explicitly left the binary-resolution sites
+// untouched ("unrelated to command grammar"); this test pins the
+// binary-resolution path.
+
+describe('round-44: resolveConfiguredExecutable accepts legal ..-prefixed in-root bin', () => {
+  const roots: string[] = [];
+
+  function fixture(): { board: KanbanBoard; task: KanbanTask } {
+    const now = '2026-09-19T00:00:00.000Z';
+    const task: KanbanTask = {
+      id: 'task-1',
+      title: 'Verify dotdot-bin regression',
+      columnId: 'review',
+      order: 0,
+      priority: 'high',
+      status: 'review',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const board: KanbanBoard = {
+      id: 'board-1',
+      title: 'Dotdot bin regression',
+      columns: [{ id: 'review', title: 'Review', order: 0, wipLimit: 0 }],
+      tasks: [task],
+      createdAt: now,
+      version: 1,
+    };
+    return { board, task };
+  }
+
+  afterEach(async () => {
+    await Promise.all(roots.splice(0).map((r) => rm(r, { recursive: true, force: true })));
+  });
+
+  it('resolves a local bin under a ..hidden/ directory (legal in-root first segment)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'r44-edge-dotdot-bin-'));
+    roots.push(root);
+
+    // Minimal project package.json so createRequire resolves.
+    await writeFile(
+      join(root, 'package.json'),
+      JSON.stringify({ name: 'r44-edge-fixture', version: '0.0.0' }),
+      'utf8',
+    );
+
+    // Local package whose bin points to a file under a directory whose
+    // first segment begins with '..' — a legal in-root name, NOT a
+    // parent traversal. The script writes a marker so we can assert
+    // the resolved binary actually executed (not a fallback).
+    const pkgDir = join(root, 'node_modules', 'r44tool');
+    await mkdir(pkgDir, { recursive: true });
+    await writeFile(
+      join(pkgDir, 'package.json'),
+      JSON.stringify({
+        name: 'r44tool',
+        version: '0.0.0',
+        bin: { r44tool: `..hidden${sep}r44tool.js` },
+      }),
+      'utf8',
+    );
+    const binDir = join(pkgDir, '..hidden');
+    await mkdir(binDir, { recursive: true });
+    await writeFile(
+      join(binDir, 'r44tool.js'),
+      "process.stdout.write('r44-edge-ok');\n",
+      'utf8',
+    );
+
+    const { board, task } = fixture();
+    const ctx = new VerificationContext({
+      projectRoot: root,
+      board,
+      task,
+      commandAllowlist: { allowedCommands: ['r44tool'] },
+    });
+
+    const result = await ctx.runCommand('r44tool');
+
+    // Pre-fix: the loose predicate rejected the ..hidden/ bin and
+    // fell through to node_modules/.bin/r44tool (which we did NOT
+    // create), producing `rejected: true` with stderr starting with
+    // "Could not resolve r44tool.".
+    // Post-fix: the canonical predicate accepts the ..hidden/ bin
+    // and spawns it, producing stdout 'r44-edge-ok'.
+    expect(result.rejected).not.toBe(true);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('r44-edge-ok');
+  }, 15_000);
 });

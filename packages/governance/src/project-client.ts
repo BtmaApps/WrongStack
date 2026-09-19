@@ -66,6 +66,15 @@ export class GovernanceProjectClient {
   }
 
   request(request: unknown): Promise<GovernanceServiceResponse> {
+    // Correlate against the request being sent, not a caller-owned object that
+    // may be reused or changed before the response arrives.
+    const expectedRequestId =
+      request &&
+      typeof request === 'object' &&
+      'requestId' in request &&
+      typeof request.requestId === 'string'
+        ? request.requestId
+        : null;
     const envelope: GovernanceIpcRequestEnvelope = {
       protocolVersion: GOVERNANCE_SERVICE_PROTOCOL_VERSION,
       credential: this.credential,
@@ -108,13 +117,6 @@ export class GovernanceProjectClient {
         try {
           const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
           const response = decodeGovernanceIpcResponse(parsed);
-          const expectedRequestId =
-            request &&
-            typeof request === 'object' &&
-            'requestId' in request &&
-            typeof request.requestId === 'string'
-              ? request.requestId
-              : null;
           if (expectedRequestId && response.requestId !== expectedRequestId) {
             finish(new Error('Governance IPC response request id does not match.'));
             return;

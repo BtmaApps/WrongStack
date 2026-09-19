@@ -265,6 +265,39 @@ describe('createMailboxMcpToolHost', () => {
     });
     expect(emitter.subscriberCount).toBe(0);
   });
+
+  it('cancels a Mailbox watch and removes its subscription immediately', async () => {
+    const emitter = new MailboxEventEmitter();
+    const controller = new AbortController();
+    const host = createMailboxMcpToolHost(backend(), emitter, { actor: 'external-agent' });
+    const pending = host.callTool(
+      'mailbox_watch',
+      { timeoutMs: 100 },
+      { signal: controller.signal },
+    );
+    await vi.waitFor(() => expect(emitter.subscriberCount).toBe(1));
+    controller.abort(new Error('client stopped watching'));
+
+    await expect(pending).resolves.toEqual({
+      content: 'client stopped watching',
+      isError: true,
+    });
+    expect(emitter.subscriberCount).toBe(0);
+  });
+
+  it('does not execute Mailbox operations for a pre-cancelled request', async () => {
+    const status = vi.fn();
+    const controller = new AbortController();
+    controller.abort(new Error('already cancelled'));
+    const host = createMailboxMcpToolHost(backend({ status }), new MailboxEventEmitter(), {
+      actor: 'external-agent',
+    });
+
+    await expect(
+      host.callTool('mailbox_read', { action: 'status' }, { signal: controller.signal }),
+    ).resolves.toEqual({ content: 'already cancelled', isError: true });
+    expect(status).not.toHaveBeenCalled();
+  });
 });
 
 describe('createMailboxMcpServer', () => {

@@ -1,4 +1,6 @@
-import { expectDefined, scriptSpawnArgs, toErrorMessage } from '@wrongstack/core/utils';
+import { execFile } from 'node:child_process';
+import { access, readdir, readFile, writeFile } from 'node:fs/promises';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 /**
  * semver-bump plugin — Conventional-commit-driven semver version bumps.
  *
@@ -8,9 +10,8 @@ import { expectDefined, scriptSpawnArgs, toErrorMessage } from '@wrongstack/core
  * - semver_changelog: Generate a changelog between two versions
  */
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
-import { execFile } from 'node:child_process';
-import { access, readFile, readdir, writeFile } from 'node:fs/promises';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { expectDefined, scriptSpawnArgs, toErrorMessage } from '@wrongstack/core/utils';
+
 const API_VERSION = '^0.1.10';
 
 function requireProjectRoot(rawCwd: string | undefined): string {
@@ -36,7 +37,7 @@ function resolveProjectRoot(rawCwd: string | undefined, root = process.cwd()): s
   const base = resolve(root);
   const resolved = isAbsolute(rawCwd) ? resolve(rawCwd) : resolve(base, rawCwd);
   const rel = relative(base, resolved);
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return resolved;
+  if (rel === '' || (rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel))) return resolved;
   return null;
 }
 

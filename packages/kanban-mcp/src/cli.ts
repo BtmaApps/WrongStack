@@ -76,30 +76,58 @@ export function parseArgs(
     help: false,
   };
 
+  const warn = (event: string, message: string): void => {
+    console.warn(
+      JSON.stringify({ level: 'warn', event, message, timestamp: new Date().toISOString() }),
+    );
+  };
+
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
+    const value = (): string | undefined => {
+      const next = argv[index + 1];
+      if (next === undefined || next.startsWith('-')) {
+        warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
+        return undefined;
+      }
+      index++;
+      return next;
+    };
     switch (arg) {
-      case '--project-root':
-        parsed.projectRoot = path.resolve(argv[++index] ?? '');
+      case '--project-root': {
+        const next = value();
+        if (next !== undefined) parsed.projectRoot = path.resolve(next);
         break;
+      }
       case '--stdio':
         parsed.transport = 'stdio';
         break;
       case '--http':
         parsed.transport = 'http';
         break;
-      case '--port':
-        parsed.httpPort = Number(argv[++index] ?? '') || 0;
+      case '--port': {
+        const next = value();
+        if (next === undefined) break;
+        const port = Number(next);
+        if (Number.isInteger(port) && port >= 0 && port <= 65_535) parsed.httpPort = port;
+        else warn('mcp_cli_invalid_port', `--port ${next} is not a valid port; using 0.`);
         break;
-      case '--host':
-        parsed.httpHost = argv[++index] ?? '127.0.0.1';
+      }
+      case '--host': {
+        const next = value();
+        if (next !== undefined) parsed.httpHost = next;
         break;
-      case '--token':
-        parsed.httpToken = argv[++index];
+      }
+      case '--token': {
+        const next = value();
+        if (next !== undefined) parsed.httpToken = next;
         break;
-      case '--actor':
-        parsed.actor = argv[++index];
+      }
+      case '--actor': {
+        const next = value();
+        if (next !== undefined) parsed.actor = next;
         break;
+      }
       case '--writable':
         parsed.writable = true;
         break;
@@ -112,6 +140,7 @@ export function parseArgs(
         parsed.help = true;
         break;
       default:
+        if (arg?.startsWith('-')) warn('mcp_cli_unknown_option', `unknown option ${arg} ignored.`);
         break;
     }
   }

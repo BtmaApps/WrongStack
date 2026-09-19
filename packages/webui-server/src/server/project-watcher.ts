@@ -68,7 +68,11 @@ export function startProjectWatcher(deps: ProjectWatcherDeps): () => void {
   // heavyweight dir). We compare path segments against SKIP_DIRS.
   const shouldIgnore = (changedPath: string): boolean => {
     const rel = path.relative(projectRoot, changedPath);
-    if (rel.startsWith('..')) return true; // outside project root
+    // Canonical escape test: `..hidden` is a legal in-root first segment; a
+    // bare startsWith('..') misread it as outside and dropped its events.
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      return true; // outside project root
+    }
     const segments = rel.split(/[\\/]/);
     return segments.some((seg) => SKIP_DIRS.has(seg));
   };

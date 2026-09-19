@@ -79,6 +79,7 @@ export type KanbanAction =
   | 'update_check'
   | 'remove_check'
   | 'add_note'
+  | 'review_task'
   | 'add_link'
   | 'verify_completion'
   | 'split_atomic'
@@ -158,6 +159,7 @@ export interface KanbanToolInput extends Omit<AssignKanbanTaskInput, 'status'> {
   metricStatus?: 'pending' | 'met' | 'missed' | 'waived' | undefined;
   metricNotes?: string | undefined;
   checkId?: string | undefined;
+  reviewDisposition?: 'adequate' | 'enriched' | 'needs_leader' | undefined;
   checkDescription?: string | undefined;
   checkStatus?: 'pending' | 'passed' | 'failed' | 'skipped' | undefined;
   /**

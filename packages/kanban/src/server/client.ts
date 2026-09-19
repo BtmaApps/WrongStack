@@ -343,7 +343,14 @@ class KanbanServerConnection {
   ): Promise<KanbanServerOperations[M]['result']> {
     if (this.destroyed) throw new Error('Connection closed');
     await this.helloPromise;
+    if (this.destroyed) throw new Error('Connection closed');
     const id = this.nextId++;
+    const frame: KanbanRequest<M> = { id, method, params, authToken: this.currentAuthToken() };
+    // Serialization can throw before anything is sent; do not allocate a
+    // pending entry or timer until the complete frame exists.
+    const encoded = JSON.stringify(frame) + '\n';
+    const socket = this.socket;
+    if (this.destroyed || !socket || socket.destroyed) throw new Error('Connection closed');
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
@@ -355,8 +362,13 @@ class KanbanServerConnection {
         reject,
         timer,
       });
-      const frame: KanbanRequest<M> = { id, method, params, authToken: this.currentAuthToken() };
-      this.socket!.write(JSON.stringify(frame) + '\n');
+      try {
+        socket.write(encoded);
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 

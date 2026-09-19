@@ -221,7 +221,7 @@ const plugin: Plugin = {
 
               if (autoIndex && isIndexableFile(fullPath)) {
                 debounceEvent(
-                  `index:${fullPath}`,
+                  `${handle.id}:index:${fullPath}`,
                   async () => {
                     try {
                       // Route through the background coordinator (mutex + watchdog +
@@ -319,6 +319,16 @@ const plugin: Plugin = {
         if (!rawPaths || !Array.isArray(rawPaths)) {
           throw new ToolValidationError({
             message: 'paths must be an array of file/directory paths',
+            field: 'paths',
+          });
+        }
+        if (
+          !rawPaths.every((candidate) =>
+            typeof candidate === 'string' ? candidate.trim().length > 0 : false,
+          )
+        ) {
+          throw new ToolValidationError({
+            message: 'paths must contain only non-empty strings',
             field: 'paths',
           });
         }

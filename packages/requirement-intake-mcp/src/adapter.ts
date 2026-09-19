@@ -28,16 +28,16 @@ import {
   AllowAllIntakeAuthorizer,
   INTAKE_PRIORITIES,
   INTAKE_STATUSES,
-  RequirementIntakeService,
-  RequirementIntakeStore,
   type IntakeContext,
   type IntakePriority,
   type IntakeStatus,
+  RequirementIntakeService,
+  RequirementIntakeStore,
 } from '@wrongstack/requirement-intake';
 import {
-  selectRequirementIntakeTools,
   type RequirementIntakeMcpPolicyOptions,
   type RequirementIntakeMcpToolName,
+  selectRequirementIntakeTools,
 } from './policy.js';
 import { SERVER_INFO } from './version.js';
 
@@ -134,6 +134,13 @@ function intakeContext(projectId: string, actor: string): IntakeContext {
   return { id: actor, type: 'automation', projectId };
 }
 
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new Error('Requirement intake call cancelled');
+}
+
 async function defaultResolveProjectId(
   projectRoot: string,
   createIfMissing: boolean,
@@ -172,7 +179,11 @@ export function createRequirementIntakeMcpToolHost(
       return policy.map((entry) => toolDescriptor(entry.name));
     },
 
-    async callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult> {
+    async callTool(
+      name: string,
+      args: Record<string, unknown>,
+      callOptions?: { signal?: AbortSignal | undefined },
+    ): Promise<MCPServerCallResult> {
       if (!allowed.has(name as RequirementIntakeMcpToolName)) {
         return {
           content: `Tool "${name}" is not exposed by this Requirements Intake MCP server`,
@@ -180,10 +191,12 @@ export function createRequirementIntakeMcpToolHost(
         };
       }
       try {
+        const signal = callOptions?.signal;
+        throwIfAborted(signal);
         if (name === 'requirement_intake_submit') {
-          return await submitIntake(args);
+          return await submitIntake(args, signal);
         }
-        return await listIntakes(args);
+        return await listIntakes(args, signal);
       } catch (error) {
         return {
           content: error instanceof Error ? error.message : String(error),
@@ -193,7 +206,10 @@ export function createRequirementIntakeMcpToolHost(
     },
   };
 
-  async function submitIntake(args: Record<string, unknown>): Promise<MCPServerCallResult> {
+  async function submitIntake(
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<MCPServerCallResult> {
     const request = args['request'];
     if (typeof request !== 'string' || request.trim().length === 0) {
       return {
@@ -202,6 +218,7 @@ export function createRequirementIntakeMcpToolHost(
       };
     }
     const projectId = await resolveProjectId(true);
+    throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);
     const result = await service.createIntake(
       {
@@ -236,8 +253,12 @@ export function createRequirementIntakeMcpToolHost(
     };
   }
 
-  async function listIntakes(args: Record<string, unknown>): Promise<MCPServerCallResult> {
+  async function listIntakes(
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<MCPServerCallResult> {
     const projectId = await resolveProjectId(false);
+    throwIfAborted(signal);
     const ctx = intakeContext(projectId, actor);
     const statuses = filterStatuses(args['statuses']);
     const records = await service.listIntakes(projectId, ctx, statuses ? { statuses } : undefined);

@@ -114,7 +114,7 @@ function resolveProjectPath(rawPath: string, roots: readonly string[]): string |
     if (!root) continue;
     const base = resolve(root);
     const rel = relative(base, resolved);
-    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return resolved;
+    if (rel === '' || (rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel))) return resolved;
   }
   return null;
 }

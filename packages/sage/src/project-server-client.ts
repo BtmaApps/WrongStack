@@ -538,28 +538,34 @@ export class SageProjectServerConnection {
             ...(message.type === 'shutdown' ? { authToken: this.currentAuthToken() } : {}),
           };
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const rejectRequest = (error: unknown, notifyServer = false): void => {
         const entry = this.pending.get(id);
         if (!entry) return;
         this.pending.delete(id);
-        this.write({ type: 'cancel', id });
         this.cleanupPending(entry);
-        entry.reject(
+        if (notifyServer) {
+          try {
+            this.write({ type: 'cancel', id });
+          } catch {
+            // Cancellation is best-effort on the wire. A failed notification
+            // must not prevent local cleanup or leave the caller unsettled.
+          }
+        }
+        entry.reject(error);
+      };
+      const timer = setTimeout(() => {
+        rejectRequest(
           new Error(
             `SAGE ${message.type === 'request' ? message.op : message.type} exceeded its ${options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS}ms timeout`,
           ),
+          true,
         );
       }, options.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS);
       timer.unref?.();
       const signal = options.signal;
       const onAbort = signal
         ? () => {
-            const entry = this.pending.get(id);
-            if (!entry) return;
-            this.pending.delete(id);
-            this.write({ type: 'cancel', id });
-            this.cleanupPending(entry);
-            entry.reject(cancellationError(signal));
+            rejectRequest(cancellationError(signal), true);
           }
         : undefined;
       this.pending.set(id, { resolve, reject, timer, signal, onAbort });
@@ -570,7 +576,11 @@ export class SageProjectServerConnection {
           return;
         }
       }
-      this.write(outbound);
+      try {
+        this.write(outbound);
+      } catch (error) {
+        rejectRequest(error);
+      }
     });
   }
 

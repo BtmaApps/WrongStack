@@ -1,5 +1,5 @@
-import * as fs from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { detectLanguageWorkspaces } from './detect.js';
 import { languageProfileRegistry } from './registry.js';
@@ -322,7 +322,11 @@ async function canonicalTarget(cwd: string, target: string, projectRoot: string)
 
 function isInside(candidate: string, root: string): boolean {
   const relative = path.relative(path.resolve(root), canonicalExisting(candidate));
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: `..hidden` is a legal in-root first segment.
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 /**

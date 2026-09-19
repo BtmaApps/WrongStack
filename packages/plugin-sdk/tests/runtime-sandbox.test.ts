@@ -34,6 +34,25 @@ describe('safePath', () => {
     expect(safePath('src/app.ts', { projectRoot: root })).toBe(path.join(root, 'src', 'app.ts'));
   });
 
+  it('canonicalizes a project root reached through a directory link', async () => {
+    const linkedRoot = `${root}-link`;
+    try {
+      await fs.symlink(root, linkedRoot, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch {
+      return;
+    }
+    try {
+      expect(safePath('src/app.ts', { projectRoot: linkedRoot })).toBe(
+        path.join(root, 'src', 'app.ts'),
+      );
+      expect(safePath(path.join(root, 'src', 'app.ts'), { projectRoot: linkedRoot })).toBe(
+        path.join(root, 'src', 'app.ts'),
+      );
+    } finally {
+      await fs.unlink(linkedRoot);
+    }
+  });
+
   it('accepts a path that does not exist yet', () => {
     // A plugin writing a new file must not be rejected merely because the
     // target has no inode yet.

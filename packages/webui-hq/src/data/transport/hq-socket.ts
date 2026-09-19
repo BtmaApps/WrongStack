@@ -176,7 +176,17 @@ export class HqSocket {
     };
 
     socket.onclose = () => this.handleClose(socket);
-    socket.onerror = () => this.handleClose(socket);
+    socket.onerror = () => {
+      if (this.socket !== socket) return;
+      try {
+        socket.close();
+      } finally {
+        // Some WebSocket implementations fire `close` asynchronously (or not
+        // at all after an error). Release ownership and schedule reconnect now;
+        // a later close event is ignored by handleClose's identity guard.
+        this.handleClose(socket);
+      }
+    };
   }
 
   close(): void {

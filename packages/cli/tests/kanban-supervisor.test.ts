@@ -18,7 +18,10 @@ describe('kanban supervisor', () => {
   it('repairs status/column drift without dispatching an LLM', async () => {
     const projectRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'kanban-supervisor-'));
     tempRoots.push(projectRoot);
-    const board = await createBoard(projectRoot, { title: 'Live work' });
+    const board = await createBoard(projectRoot, {
+      title: 'Live work',
+      supervisor: { enabled: true, mode: 'deterministic' },
+    });
     const created = await addTask(projectRoot, board.id, {
       title: 'Already running',
       status: 'in_progress',

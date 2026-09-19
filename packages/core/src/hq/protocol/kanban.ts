@@ -1,5 +1,12 @@
 const HQ_KANBAN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-const MAX_HQ_KANBAN_BOARDS = 250;
+/**
+ * Most board records — and, separately, most tombstones — one snapshot frame
+ * may carry. Exported for the same reason as the byte limit below: HQ drops an
+ * over-count frame whole and silently, so the sender has to chunk by count as
+ * well as by bytes. Tombstones are ~100 bytes each, so a byte-only chunker
+ * packs hundreds of them into one frame.
+ */
+export const MAX_HQ_KANBAN_BOARDS = 250;
 /**
  * Largest single board record HQ will accept, in bytes of serialized board JSON.
  *

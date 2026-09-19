@@ -33,9 +33,9 @@
 // (no string concatenation), and `windowsHide` keeps the
 // launcher console out of the way.
 
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { spawn } from 'node:child_process';
 import type { Logger } from '@wrongstack/core/types';
 import { errMessage } from './ws-utils.js';
 
@@ -130,8 +130,12 @@ export async function handleShellOpen(
     {
       const relLex = path.relative(root, resolved);
       const relReal = path.relative(realProjectRoot, resolved);
-      const insideLex = !relLex.startsWith('..') && !path.isAbsolute(relLex);
-      const insideReal = !relReal.startsWith('..') && !path.isAbsolute(relReal);
+      // Canonical escape test: `..hidden` is a legal in-root first segment; a
+      // bare startsWith('..') misreads it as a traversal.
+      const insideLex =
+        relLex !== '..' && !relLex.startsWith(`..${path.sep}`) && !path.isAbsolute(relLex);
+      const insideReal =
+        relReal !== '..' && !relReal.startsWith(`..${path.sep}`) && !path.isAbsolute(relReal);
       if (!insideLex && !insideReal) {
         return {
           success: false,
@@ -148,7 +152,7 @@ export async function handleShellOpen(
     const realResolved = await fs.realpath(resolved);
     {
       const relative = path.relative(realProjectRoot, realResolved);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
         return {
           success: false,
           message: 'Path must be inside the project directory.',

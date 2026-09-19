@@ -94,6 +94,8 @@ export interface BrainTraceCouncilResolution {
   judgeUsed: boolean;
   /** Deliberation rounds run, and how many seats moved in the final one. */
   rounds?: number | undefined;
+  /** The round actually tallied when a later round failed. */
+  talliedRound?: number | undefined;
   deliberationChanges?: number | undefined;
   /** Which model broke the tie, and whether it had already voted. */
   judgeLabel?: string | undefined;
@@ -350,6 +352,7 @@ export class BrainTraceRecorder {
           distinctTargetCount: e.distinctTargetCount,
           judgeUsed: e.judgeUsed,
           rounds: e.rounds,
+          talliedRound: e.votes?.[0]?.round,
           deliberationChanges: e.deliberationChanges,
           judgeLabel: e.judgeLabel,
           judgeIsVoter: e.judgeIsVoter,

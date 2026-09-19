@@ -43,6 +43,146 @@ function mutatingToolPayload() {
 }
 
 describe('CLI governance mutation snapshot bridge', () => {
+  it('does not install new tool boundaries after closing', async () => {
+    const bridge = createGovernanceMutationSnapshotBridge({
+      events: new EventBus(),
+      sink: { recordWorkspaceSnapshot: vi.fn() },
+      captureWorkspaceCheckpoint: vi.fn(),
+      logger: { warn: vi.fn() },
+    });
+    const pipelines = createDefaultPipelines();
+    await bridge.close();
+    bridge.installToolBoundary(pipelines);
+    expect(pipelines.toolCall.list()).not.toContain('GovernanceWorkspaceSnapshotFence');
+  });
+
+  it('can retry boundary installation after a registration conflict is removed', async () => {
+    const captureWorkspaceCheckpoint = vi.fn(async () => checkpoint('a'.repeat(64)));
+    const recordWorkspaceSnapshot = vi.fn(async () => recorded('a'.repeat(64), 1));
+    const bridge = createGovernanceMutationSnapshotBridge({
+      events: new EventBus(),
+      sink: { recordWorkspaceSnapshot },
+      captureWorkspaceCheckpoint,
+      logger: { warn: vi.fn() },
+    });
+    const pipelines = createDefaultPipelines();
+    pipelines.toolCall.prepend({
+      name: 'GovernanceWorkspaceSnapshotFence',
+      async handler(payload, next) {
+        return next(payload);
+      },
+    });
+    try {
+      expect(() => bridge.installToolBoundary(pipelines)).toThrow();
+      pipelines.toolCall.remove('GovernanceWorkspaceSnapshotFence');
+      bridge.installToolBoundary(pipelines);
+      bridge.installToolBoundary(pipelines);
+      await pipelines.toolCall.run(mutatingToolPayload());
+      expect(captureWorkspaceCheckpoint).toHaveBeenCalledTimes(1);
+      expect(recordWorkspaceSnapshot).toHaveBeenCalledTimes(1);
+    } finally {
+      await bridge.close();
+    }
+  });
+
+  it('deduplicates reused tool ids after more than 512 acknowledged completions', async () => {
+    const events = new EventBus();
+    const captureWorkspaceCheckpoint = vi.fn(async () => checkpoint('a'.repeat(64)));
+    const recordWorkspaceSnapshot = vi.fn(async () => recorded('a'.repeat(64), 1));
+    const bridge = createGovernanceMutationSnapshotBridge({
+      events,
+      sink: { recordWorkspaceSnapshot },
+      captureWorkspaceCheckpoint,
+      logger: { warn: vi.fn() },
+    });
+    const pipelines = createDefaultPipelines();
+    bridge.installToolBoundary(pipelines);
+    try {
+      for (let index = 0; index <= 512; index++) {
+        const id = index === 512 ? 'tool-0' : `tool-${index}`;
+        const payload = mutatingToolPayload();
+        payload.toolUse.id = id;
+        payload.result.tool_use_id = id;
+        await pipelines.toolCall.run(payload);
+        events.emit('tool.executed', {
+          sessionId: 'session-1',
+          id,
+          name: 'edit',
+          durationMs: 1,
+          ok: true,
+          mutating: true,
+        });
+      }
+    } finally {
+      await bridge.close();
+    }
+    expect(captureWorkspaceCheckpoint).toHaveBeenCalledTimes(513);
+    expect(recordWorkspaceSnapshot).toHaveBeenCalledTimes(513);
+  });
+
+  it('keeps the newest 512 outstanding acknowledgements bounded', async () => {
+    const events = new EventBus();
+    const captureWorkspaceCheckpoint = vi.fn(async () => checkpoint('a'.repeat(64)));
+    const bridge = createGovernanceMutationSnapshotBridge({
+      events,
+      sink: { recordWorkspaceSnapshot: async () => recorded('a'.repeat(64), 1) },
+      captureWorkspaceCheckpoint,
+      logger: { warn: vi.fn() },
+    });
+    const pipelines = createDefaultPipelines();
+    bridge.installToolBoundary(pipelines);
+    try {
+      for (let index = 0; index <= 512; index++) {
+        const payload = mutatingToolPayload();
+        payload.toolUse.id = `pending-${index}`;
+        payload.result.tool_use_id = payload.toolUse.id;
+        await pipelines.toolCall.run(payload);
+      }
+      // Oldest was evicted and falls back to capture; newest still deduplicates.
+      for (const id of ['pending-0', 'pending-512']) {
+        events.emit('tool.executed', {
+          sessionId: 'session-1',
+          id,
+          name: 'edit',
+          durationMs: 1,
+          ok: true,
+          mutating: true,
+        });
+      }
+    } finally {
+      await bridge.close();
+    }
+    expect(captureWorkspaceCheckpoint).toHaveBeenCalledTimes(514);
+  });
+
+  it('does not record a successful-mutation snapshot when downstream execution throws', async () => {
+    const events = new EventBus();
+    const captureWorkspaceCheckpoint = vi.fn(async () => checkpoint('a'.repeat(64)));
+    const recordWorkspaceSnapshot = vi.fn(async () => recorded('a'.repeat(64), 1));
+    const bridge = createGovernanceMutationSnapshotBridge({
+      events,
+      sink: { recordWorkspaceSnapshot },
+      captureWorkspaceCheckpoint,
+      logger: { warn: vi.fn() },
+    });
+    const pipelines = createDefaultPipelines();
+    bridge.installToolBoundary(pipelines);
+    const failure = new Error('tool execution failed');
+    pipelines.toolCall.use({
+      name: 'failing-execution',
+      async handler() {
+        throw failure;
+      },
+    });
+    try {
+      await expect(pipelines.toolCall.run(mutatingToolPayload())).rejects.toBe(failure);
+    } finally {
+      await bridge.close();
+    }
+    expect(captureWorkspaceCheckpoint).not.toHaveBeenCalled();
+    expect(recordWorkspaceSnapshot).not.toHaveBeenCalled();
+  });
+
   it('ignores reads, failed mutations, and legacy events without mutation metadata', async () => {
     const events = new EventBus();
     const captureWorkspaceCheckpoint = vi.fn(async () => checkpoint('a'.repeat(64)));

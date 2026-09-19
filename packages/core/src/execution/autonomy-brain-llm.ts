@@ -4,6 +4,7 @@ import type { Provider, ResponseFormat, Usage } from '../types/provider.js';
 import { readBundledInstructionText } from '../utils/instruction-file.js';
 import { safeParse } from '../utils/safe-json.js';
 import type { BrainCircuitBreaker } from './brain-circuit.js';
+import { callWithDeadline } from './llm-call-deadline.js';
 
 export interface BrainLlmTarget {
   provider: Provider;
@@ -124,17 +125,21 @@ export async function completeBrainLlmDetailed(
   if (input.signal?.aborted) {
     throw new DOMException('Brain call aborted before it started.', 'AbortError');
   }
-  const timeoutSignal = AbortSignal.timeout(input.timeoutMs);
-  const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
-  const response = await target.provider.complete(
-    {
-      model: target.model,
-      system: [{ type: 'text', text: input.system }],
-      messages: [{ role: 'user', content: input.user || 'Decide.' }],
-      maxTokens: input.maxTokens ?? DEFAULT_BRAIN_MAX_TOKENS,
-      ...(input.responseFormat ? { responseFormat: input.responseFormat } : {}),
-    },
-    { signal },
+  const response = await callWithDeadline(
+    (signal) =>
+      target.provider.complete(
+        {
+          model: target.model,
+          system: [{ type: 'text', text: input.system }],
+          messages: [{ role: 'user', content: input.user || 'Decide.' }],
+          maxTokens: input.maxTokens ?? DEFAULT_BRAIN_MAX_TOKENS,
+          ...(input.responseFormat ? { responseFormat: input.responseFormat } : {}),
+        },
+        { signal },
+      ),
+    input.signal,
+    input.timeoutMs,
+    'Brain call timeout exceeded.',
   );
   return {
     text: extractText(response).trim(),

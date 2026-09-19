@@ -86,39 +86,72 @@ export function parseArgs(
     admin: false,
     help: false,
   };
+  const warn = (event: string, message: string): void => {
+    console.warn(
+      JSON.stringify({ level: 'warn', event, message, timestamp: new Date().toISOString() }),
+    );
+  };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
+    const value = (): string | undefined => {
+      const next = argv[index + 1];
+      if (next === undefined || next.startsWith('-')) {
+        warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
+        return undefined;
+      }
+      index++;
+      return next;
+    };
     switch (arg) {
-      case '--project-root':
-        parsed.projectRoot = path.resolve(argv[++index] ?? '');
+      case '--project-root': {
+        const next = value();
+        if (next !== undefined) parsed.projectRoot = path.resolve(next);
         break;
-      case '--actor':
-        parsed.actor = argv[++index] ?? '';
+      }
+      case '--actor': {
+        const next = value();
+        if (next !== undefined) parsed.actor = next;
         break;
-      case '--session-id':
-        parsed.sessionId = argv[++index];
+      }
+      case '--session-id': {
+        const next = value();
+        if (next !== undefined) parsed.sessionId = next;
         break;
-      case '--name':
-        parsed.actorName = argv[++index];
+      }
+      case '--name': {
+        const next = value();
+        if (next !== undefined) parsed.actorName = next;
         break;
-      case '--role':
-        parsed.actorRole = argv[++index];
+      }
+      case '--role': {
+        const next = value();
+        if (next !== undefined) parsed.actorRole = next;
         break;
+      }
       case '--stdio':
         parsed.transport = 'stdio';
         break;
       case '--http':
         parsed.transport = 'http';
         break;
-      case '--port':
-        parsed.httpPort = Number(argv[++index] ?? '') || 0;
+      case '--port': {
+        const next = value();
+        if (next === undefined) break;
+        const port = Number(next);
+        if (Number.isInteger(port) && port >= 0 && port <= 65_535) parsed.httpPort = port;
+        else warn('mcp_cli_invalid_port', `--port ${next} is not a valid port; using 0.`);
         break;
-      case '--host':
-        parsed.httpHost = argv[++index] ?? '127.0.0.1';
+      }
+      case '--host': {
+        const next = value();
+        if (next !== undefined) parsed.httpHost = next;
         break;
-      case '--token':
-        parsed.httpToken = argv[++index];
+      }
+      case '--token': {
+        const next = value();
+        if (next !== undefined) parsed.httpToken = next;
         break;
+      }
       case '--writable':
         parsed.writable = true;
         break;
@@ -131,6 +164,7 @@ export function parseArgs(
         parsed.help = true;
         break;
       default:
+        if (arg?.startsWith('-')) warn('mcp_cli_unknown_option', `unknown option ${arg} ignored.`);
         break;
     }
   }
@@ -186,34 +220,44 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   });
   const policyText = `writable=${String(args.writable)} admin=${String(args.admin)}`;
 
-  if (args.transport === 'http') {
-    const handle = await serveHttp(server, {
-      port: args.httpPort,
-      host: args.httpHost,
-      ...(args.httpToken ? { token: args.httpToken } : {}),
-      logger: { warn: (message) => process.stderr.write(`[mailbox-mcp] ${message}\n`) },
-    });
-    process.stderr.write(
-      `${SERVER_INFO.name}: ready at ${handle.url} — projectRoot=${projectRoot} actor=${args.actor} transport=http ${policyText}${
-        args.httpToken ? ' [token auth]' : ''
-      }\n`,
-    );
-    await new Promise<void>((resolve) => {
-      process.once('SIGINT', resolve);
-      process.once('SIGTERM', resolve);
-    });
-    await handle.close();
-    await mailbox.close();
-    return 0;
-  }
+  try {
+    if (args.transport === 'http') {
+      const handle = await serveHttp(server, {
+        port: args.httpPort,
+        host: args.httpHost,
+        ...(args.httpToken ? { token: args.httpToken } : {}),
+        logger: { warn: (message) => process.stderr.write(`[mailbox-mcp] ${message}\n`) },
+      });
+      try {
+        process.stderr.write(
+          `${SERVER_INFO.name}: ready at ${handle.url} — projectRoot=${projectRoot} actor=${args.actor} transport=http ${policyText}${
+            args.httpToken ? ' [token auth]' : ''
+          }\n`,
+        );
+        await new Promise<void>((resolve) => {
+          const finish = (): void => {
+            process.off('SIGINT', finish);
+            process.off('SIGTERM', finish);
+            resolve();
+          };
+          process.once('SIGINT', finish);
+          process.once('SIGTERM', finish);
+        });
+      } finally {
+        await handle.close();
+      }
+      return 0;
+    }
 
-  const handle = serveStdio(server);
-  process.stderr.write(
-    `${SERVER_INFO.name}: ready on stdio — projectRoot=${projectRoot} actor=${args.actor} transport=stdio ${policyText}\n`,
-  );
-  await handle.done;
-  await mailbox.close();
-  return 0;
+    const handle = serveStdio(server);
+    process.stderr.write(
+      `${SERVER_INFO.name}: ready on stdio — projectRoot=${projectRoot} actor=${args.actor} transport=stdio ${policyText}\n`,
+    );
+    await handle.done;
+    return 0;
+  } finally {
+    await mailbox.close();
+  }
 }
 
 function isMainModule(): boolean {

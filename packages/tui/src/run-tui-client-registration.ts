@@ -57,26 +57,41 @@ export function createRunTuiClientRegistration(
   let tuiHqPublisher: ReturnType<typeof createHqPublisherFromEnv>;
   let registrationGeneration = 0;
   const stopHqAuxBridges: Array<() => void> = [];
+  const bestEffort = (cleanup: (() => void) | null | undefined): void => {
+    try {
+      cleanup?.();
+    } catch {
+      // Cleanup must never turn optional presence registration into a startup failure.
+    }
+  };
 
   const register = async (): Promise<string | null> => {
     if (!opts.projectRoot) return null;
     const generation = ++registrationGeneration;
+    let mailbox: RemoteMailbox | null = null;
+    let clientId: string | null = null;
+    let clientRegistered = false;
+    let unsubscribe: (() => void) | null = null;
+    let localSnapshotCoalesceTimer: ReturnType<typeof setTimeout> | null = null;
+    let localHqPublisher: ReturnType<typeof createHqPublisherFromEnv>;
     try {
       const projectDir = resolveProjectDir(opts.projectRoot, wstackGlobalRoot());
-      const mailbox = new RemoteMailbox({ projectDir, events: opts.events });
-      const clientId = `tui@${randomUUID().slice(0, 8)}`;
-      await mailbox.initialize();
+      const attemptMailbox = new RemoteMailbox({ projectDir, events: opts.events });
+      mailbox = attemptMailbox;
+      const attemptClientId = `tui@${randomUUID().slice(0, 8)}`;
+      clientId = attemptClientId;
+      await attemptMailbox.initialize();
 
       const publishSnapshot = async (): Promise<void> => {
         if (opts.isCleaned() || generation !== registrationGeneration) return;
         try {
           const actorId = opts.getAgentId?.();
           const [messages, agents, clients, service, unread] = await Promise.all([
-            mailbox.query({ limit: 50 }),
-            mailbox.getAgentStatuses(),
-            mailbox.getClientStatuses(),
-            mailbox.status(),
-            actorId === undefined ? Promise.resolve(0) : mailbox.unreadCount(actorId),
+            attemptMailbox.query({ limit: 50 }),
+            attemptMailbox.getAgentStatuses(),
+            attemptMailbox.getClientStatuses(),
+            attemptMailbox.status(),
+            actorId === undefined ? Promise.resolve(0) : attemptMailbox.unreadCount(actorId),
           ]);
           if (opts.isCleaned() || generation !== registrationGeneration) return;
           const clientCounts = { tui: 0, webui: 0, repl: 0 };
@@ -118,12 +133,15 @@ export function createRunTuiClientRegistration(
 
       const scheduleSnapshot = (): void => {
         if (opts.isCleaned() || generation !== registrationGeneration) return;
-        if (snapshotCoalesceTimer) return;
-        snapshotCoalesceTimer = setTimeout(() => {
-          snapshotCoalesceTimer = null;
+        if (localSnapshotCoalesceTimer) return;
+        const timer = setTimeout(() => {
+          localSnapshotCoalesceTimer = null;
+          if (snapshotCoalesceTimer === timer) snapshotCoalesceTimer = null;
           void publishSnapshot();
         }, SNAPSHOT_COALESCE_MS);
-        snapshotCoalesceTimer.unref?.();
+        localSnapshotCoalesceTimer = timer;
+        snapshotCoalesceTimer = timer;
+        timer.unref?.();
       };
 
       // Held in a local so the abort branch below can remove exactly THIS
@@ -131,42 +149,44 @@ export function createRunTuiClientRegistration(
       // write the shared `unsubscribeMailboxEvents` slot, and the loser's
       // subscription used to leak — a live listener publishing snapshots
       // for a project the TUI had already left.
-      const unsubscribe = opts.events.onPattern('mailbox.*', (event) => {
+      unsubscribe = opts.events.onPattern('mailbox.*', (event) => {
         if (event === 'mailbox.snapshot' || event === 'mailbox.sync_clients') return;
         scheduleSnapshot();
       });
       unsubscribeMailboxEvents = unsubscribe;
-      await mailbox.registerClient({
-        clientId,
+      await attemptMailbox.registerClient({
+        clientId: attemptClientId,
         sessionId: opts.getSessionId?.() ?? opts.projectRoot,
         name: `TUI [${path.basename(opts.projectRoot)}]`,
         source: 'tui',
         pid: process.pid,
       });
+      clientRegistered = true;
       if (opts.isCleaned() || generation !== registrationGeneration) {
         // Mirror the unregister path: drop the listener AND close the
         // named-pipe connection. Leaving the pipe open here was what put
         // the NEXT startup on the "zombie pipe" recovery path after an F1
         // project switch aborted a registration mid-flight.
-        unsubscribe();
+        bestEffort(unsubscribe);
         if (unsubscribeMailboxEvents === unsubscribe) unsubscribeMailboxEvents = null;
-        await mailbox.deregisterClient(clientId).catch(() => undefined);
-        mailbox.close();
+        await attemptMailbox.deregisterClient(attemptClientId).catch(() => undefined);
+        bestEffort(() => attemptMailbox.close());
         return null;
       }
-      registeredMailbox = mailbox;
-      registeredClientId = clientId;
+      registeredMailbox = attemptMailbox;
+      registeredClientId = attemptClientId;
       await publishSnapshot();
 
       // The CLI host already owns the single session/fleet publisher. Standalone
       // TUI consumers still get a local publisher, which cleanup closes below.
       if (!opts.hqTelemetryOwnedExternally) {
-        tuiHqPublisher = createHqPublisherFromEnv({
+        localHqPublisher = createHqPublisherFromEnv({
           clientKind: 'tui',
           projectRoot: opts.projectRoot,
           projectName: path.basename(opts.projectRoot),
           appConfig: opts.appConfig,
         } as never as Parameters<typeof createHqPublisherFromEnv>[0]);
+        tuiHqPublisher = localHqPublisher;
         tuiHqPublisher?.connect();
         const tuiSessionId = opts.getSessionId?.() ?? opts.projectRoot;
         if (tuiHqPublisher) {
@@ -244,8 +264,11 @@ export function createRunTuiClientRegistration(
       }
 
       clientHeartbeatTimer = setInterval(() => {
-        mailbox
-          .clientHeartbeat({ clientId, sessionId: opts.getSessionId?.() ?? opts.projectRoot })
+        attemptMailbox
+          .clientHeartbeat({
+            clientId: attemptClientId,
+            sessionId: opts.getSessionId?.() ?? opts.projectRoot,
+          })
           .catch(() => {
             // best-effort — ignore heartbeat failures during shutdown
           });
@@ -254,7 +277,7 @@ export function createRunTuiClientRegistration(
 
       const syncClients = async (): Promise<void> => {
         try {
-          const statuses = await mailbox.getClientStatuses();
+          const statuses = await attemptMailbox.getClientStatuses();
           const counts = { tui: 0, webui: 0, repl: 0 };
           for (const s of statuses) {
             if (s.online && s.source in counts) counts[s.source as keyof typeof counts]++;
@@ -273,9 +296,27 @@ export function createRunTuiClientRegistration(
       clientSyncTimer = setInterval(() => void syncClients(), CLIENT_SYNC_MS);
       clientSyncTimer.unref();
 
-      return clientId;
+      return attemptClientId;
     } catch {
       // best-effort — client registration errors should not block TUI startup
+      bestEffort(unsubscribe);
+      if (unsubscribeMailboxEvents === unsubscribe) unsubscribeMailboxEvents = null;
+      if (localSnapshotCoalesceTimer) {
+        clearTimeout(localSnapshotCoalesceTimer);
+        if (snapshotCoalesceTimer === localSnapshotCoalesceTimer) snapshotCoalesceTimer = null;
+      }
+      if (mailbox) {
+        if (clientRegistered && clientId) {
+          await mailbox.deregisterClient(clientId).catch(() => undefined);
+        }
+        bestEffort(() => mailbox?.close());
+      }
+      if (registeredMailbox === mailbox) registeredMailbox = null;
+      if (registeredClientId === clientId) registeredClientId = null;
+      if (tuiHqPublisher === localHqPublisher) {
+        bestEffort(() => localHqPublisher?.close());
+        tuiHqPublisher = undefined;
+      }
       return null;
     }
   };
@@ -294,7 +335,7 @@ export function createRunTuiClientRegistration(
       clearTimeout(initialClientSyncTimer);
       initialClientSyncTimer = null;
     }
-    unsubscribeMailboxEvents?.();
+    bestEffort(unsubscribeMailboxEvents);
     unsubscribeMailboxEvents = null;
     if (snapshotCoalesceTimer) {
       clearTimeout(snapshotCoalesceTimer);
@@ -308,7 +349,7 @@ export function createRunTuiClientRegistration(
       }
     }
     stopHqAuxBridges.length = 0;
-    tuiHqPublisher?.close();
+    bestEffort(() => tuiHqPublisher?.close());
     tuiHqPublisher = undefined;
     const mailbox = registeredMailbox;
     const clientId = registeredClientId;
@@ -318,7 +359,7 @@ export function createRunTuiClientRegistration(
       void mailbox
         .deregisterClient(clientId)
         .catch(() => undefined)
-        .finally(() => mailbox.close());
+        .finally(() => bestEffort(() => mailbox.close()));
     }
   };
 

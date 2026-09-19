@@ -115,7 +115,7 @@ function resolveInside(
   const rootAbs = path.resolve(root);
   const target = path.resolve(rootAbs, rel);
   const relative = path.relative(rootAbs, target);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     return { ok: false, error: `assertion path escapes workdir: ${rel}` };
   }
   return { ok: true, path: target };

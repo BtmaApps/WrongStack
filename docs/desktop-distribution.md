@@ -42,6 +42,8 @@ Run `node scripts/smoke-desktop.mjs --window` to verify packaged dependencies,
 assets, a real PTY process, and window startup using an isolated profile and the
 host platform's bundled Electron runtime. Linux needs a display; CI uses
 `xvfb-run -a`. CI runs this before uploading.
+The window smoke also starts with a Turkish profile and reloads the shell with
+the sidebar collapsed, checking that locale and native sidebar state survive.
 Build-time dependencies still come from the package registry. This migration
 removes the end user's registry dependency, not the build system's dependency.
 

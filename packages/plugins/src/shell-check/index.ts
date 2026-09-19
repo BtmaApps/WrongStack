@@ -8,10 +8,11 @@
  * via the `directory` + `pattern` parameters. Pass `files` for specific
  * files, or `directory` (optionally with `pattern`) for recursive scanning.
  */
-import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+
 import { execFile } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve } from 'node:path';
+import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
 
 const API_VERSION = '^0.1.10';
 
@@ -38,7 +39,7 @@ function withinProject(p: string): boolean {
   const resolved = isAbsolute(p) ? resolve(p) : resolve(root, p);
   const rel = relative(root, resolved);
   if (rel === '' || rel === '.') return true;
-  if (rel.startsWith('..')) return false;
+  if (rel.split(/[\\/]/)[0] === '..') return false;
   if (isAbsolute(rel)) return false;
   return true;
 }

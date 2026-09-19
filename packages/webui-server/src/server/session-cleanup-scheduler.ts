@@ -105,7 +105,11 @@ export async function cleanupOwnerlessEmptySessions(
       deleted++;
     } catch (error) {
       // SessionStore.delete is the final ownership/maintenance guard. A session
-      // claimed after candidate selection is therefore logged and left intact.
+      // another process (TUI, subagent, a second surface) still holds a live
+      // lease on is not ownerless — the catalog refuses with an ownership
+      // conflict, which is the expected outcome, not a failure. Skip it the
+      // same way the catalog's own prune does; anything else is a real error.
+      if ((error as Error | undefined)?.name === 'SessionOwnershipConflictError') continue;
       errors++;
       ctx.logger.error('Empty session cleanup failed for session', {
         event: 'webui.empty_session_cleanup_error',

@@ -138,7 +138,14 @@ export class TaskGraphStore implements TaskStore {
     const dir = path.resolve(this.baseDir);
     const resolved = path.resolve(dir, `${id}.json`);
     const rel = path.relative(dir, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel) || rel.includes(path.sep)) {
+    // Canonical escape test: `..hidden` is a legal single-segment id; a bare
+    // startsWith('..') misreads it as a traversal.
+    if (
+      rel === '..' ||
+      rel.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(rel) ||
+      rel.includes(path.sep)
+    ) {
       throw new Error(`Invalid task-graph id: ${JSON.stringify(id)}`);
     }
     return resolved;

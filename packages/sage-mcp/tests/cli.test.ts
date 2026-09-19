@@ -10,10 +10,13 @@
  * right place for that end-to-end check.
  */
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/cli.js';
 
 describe('parseArgs', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('defaults to stdio transport and 127.0.0.1:0', () => {
     const args = parseArgs([]);
     expect(args.transport).toBe('stdio');
@@ -88,5 +91,21 @@ describe('parseArgs', () => {
       writable: true,
       help: false,
     });
+  });
+
+  it('does not consume a following writable flag as a missing value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--project-root', '--writable'], {})).toMatchObject({
+      projectRoot: '',
+      writable: true,
+    });
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('accepts only integer HTTP ports in range', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--port', '99999'], {}).httpPort).toBe(0);
+    expect(parseArgs(['--port', '12.5'], {}).httpPort).toBe(0);
+    expect(warn).toHaveBeenCalled();
   });
 });

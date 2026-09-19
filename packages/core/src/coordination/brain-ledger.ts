@@ -165,7 +165,10 @@ export class BrainDecisionLedger {
   private readonly outcomeByRequest = new Map<string, 'success' | 'failure'>();
   /** subagentId → decision request ids awaiting that subagent's task result. */
   private readonly pendingBudgetOutcomes = new Map<string, Set<string>>();
-  private readonly lastInterventionByKind = new Map<string, { requestId: string; at: number }>();
+  private readonly lastInterventionByKind = new Map<
+    string,
+    { requestId: string; at: number; sessionId?: string | undefined }
+  >();
   private readonly unsubscribers: Array<() => void> = [];
   /** Serialized fire-and-forget writes — awaited by `stop()` (drain). */
   private writeChain: Promise<unknown> = Promise.resolve();
@@ -260,7 +263,49 @@ export class BrainDecisionLedger {
             e.sessionId,
           );
         }
-        this.lastInterventionByKind.set(e.kind, { requestId: e.request.id, at: e.at });
+        this.lastInterventionByKind.set(e.kind, {
+          requestId: e.request.id,
+          at: e.at,
+          sessionId: e.sessionId,
+        });
+      }),
+      // ── Outcome correlation: agent run completion ─────────────────────
+      events.on('agent.run.completed', (e) => {
+        for (const [kind, entry] of [...this.lastInterventionByKind.entries()]) {
+          if (entry.sessionId && e.sessionId && entry.sessionId !== e.sessionId) continue;
+          this.lastInterventionByKind.delete(kind);
+          if (e.status === 'done') {
+            this.recordOutcome(
+              entry.requestId,
+              'success',
+              `steered agent run completed successfully (${kind})`,
+              e.sessionId,
+            );
+          } else {
+            this.recordOutcome(
+              entry.requestId,
+              'failure',
+              `steered agent run ended with status "${e.status}" (${kind})`,
+              e.sessionId,
+            );
+          }
+        }
+      }),
+      // ── Outcome correlation: delegation completion ────────────────────
+      events.on('delegate.completed', (e) => {
+        if (!e.subagentId) return;
+        const pending = this.pendingBudgetOutcomes.get(e.subagentId);
+        if (!pending) return;
+        this.pendingBudgetOutcomes.delete(e.subagentId);
+        const outcome = e.ok ? 'success' : 'failure';
+        for (const requestId of pending) {
+          this.recordOutcome(
+            requestId,
+            outcome,
+            `budget-extended subagent task ${e.ok ? 'succeeded' : 'failed'}: ${e.summary.slice(0, 100)}`,
+            e.sessionId,
+          );
+        }
       }),
       // ── Outcome correlation: budget extensions ────────────────────────
       events.on('subagent.budget_extended', (e) => {

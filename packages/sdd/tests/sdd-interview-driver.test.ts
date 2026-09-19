@@ -66,6 +66,20 @@ const TASKS_OUTPUT = [
 ].join('\n');
 
 describe('SddInterviewDriver', () => {
+  it('uses per-interview context and clears it on the next plain start', () => {
+    const h = makeDriver();
+    const contextual = h.driver.start(
+      'Intake-backed interview',
+      'Build the requested feature',
+      'Business goal: reduce support load',
+    );
+    expect(contextual).toContain('**Project Context:**');
+    expect(contextual).toContain('Business goal: reduce support load');
+
+    const plain = h.driver.start('Plain interview', 'Another feature');
+    expect(plain).not.toContain('Business goal: reduce support load');
+  });
+
   let h: ReturnType<typeof makeDriver>;
   beforeEach(() => {
     h = makeDriver();

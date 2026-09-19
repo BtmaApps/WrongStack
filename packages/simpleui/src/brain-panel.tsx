@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from './hooks/use-focus-trap.js';
 import { onPanelActivation, onSimplePanel } from './lib/panel-events.js';
+import { messageId } from './lib/session-helpers.js';
 import { type SocketRequestHandle, socketRequest } from './lib/socket-request.js';
 import type { SimpleSocket } from './lib/ws.js';
 
@@ -102,6 +103,7 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
   // Handle of the in-flight brain.status request so a repeat load (or an
   // unmount) cancels the previous subscription and its 3s timeout.
   const pendingStatusRef = useRef<SocketRequestHandle | null>(null);
+  const pendingAskRef = useRef<{ question: string; requestId: string } | null>(null);
 
   useEffect(() => () => pendingStatusRef.current?.cancel(), []);
 
@@ -119,15 +121,33 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // Listen for brain.answer responses — stays subscribed while the panel is open.
+  // Keep the subscription while hidden: closing the panel does not cancel
+  // the server's decision, and its eventual reply must clear the busy state.
   useEffect(() => {
-    if (!open) return;
     const socket = socketRef.current;
     if (!socket) return;
     const unsub = socket.onMessage((msg) => {
-      if (msg.type !== 'brain.answer') return;
       const p = msg.payload as Record<string, unknown> | undefined;
       if (!p) return;
+      if (typeof p.requestId === 'string' && p.requestId !== pendingAskRef.current?.requestId)
+        return;
+      if (
+        msg.type === 'key.operation_result' &&
+        pendingAskRef.current !== null &&
+        p.success === false &&
+        typeof p.message === 'string' &&
+        (p.requestId === pendingAskRef.current.requestId ||
+          p.message.startsWith('Brain consultation failed:') ||
+          p.message === 'No Brain is wired into this server.')
+      ) {
+        setAnswer({ question: pendingAskRef.current.question, decision: p.message, kind: 'deny' });
+        pendingAskRef.current = null;
+        setThinking(false);
+        return;
+      }
+      if (msg.type !== 'brain.answer') return;
+      if (pendingAskRef.current !== null && p.question !== pendingAskRef.current.question) return;
+      pendingAskRef.current = null;
       setThinking(false);
       const parsed = readDecision(p.decision);
       setAnswer({
@@ -137,7 +157,7 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
       });
     });
     return unsub;
-  }, [open, socketRef]);
+  }, [socketRef]);
 
   const loadStatus = useCallback(() => {
     const socket = socketRef.current;
@@ -155,6 +175,8 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
       if (pendingStatusRef.current !== handle) return;
       pendingStatusRef.current = null;
       if (!p) return;
+      if (typeof p.requestId === 'string' && p.requestId !== pendingAskRef.current?.requestId)
+        return;
       setStatus({
         maxAutoRisk: String(p.maxAutoRisk ?? 'medium'),
         log: Array.isArray(p.log) ? (p.log as BrainLogEntry[]) : [],
@@ -178,11 +200,25 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
   }, [loadStatus]);
 
   const askBrain = () => {
-    if (!question.trim()) return;
+    const text = question.trim();
+    if (!text || pendingAskRef.current !== null) return;
+    const socket = socketRef.current;
+    if (!socket) {
+      setAnswer({ question: text, decision: 'Brain connection is unavailable.', kind: 'deny' });
+      return;
+    }
+    const requestId = messageId('brain-ask');
+    pendingAskRef.current = { question: text, requestId };
     setThinking(true);
     setAnswer(null);
-    socketRef.current?.send('brain.ask', { question: question.trim() });
-    setQuestion('');
+    try {
+      socket.send('brain.ask', { question: text, requestId });
+      setQuestion('');
+    } catch {
+      pendingAskRef.current = null;
+      setThinking(false);
+      setAnswer({ question: text, decision: 'Brain request could not be sent.', kind: 'deny' });
+    }
   };
 
   const riskColor = (level: string) =>
@@ -252,7 +288,7 @@ export function BrainPanel({ socketRef }: BrainPanelProps) {
               if (e.key === 'Enter') askBrain();
             }}
           />
-          <button type="button" onClick={askBrain} disabled={!question.trim()}>
+          <button type="button" onClick={askBrain} disabled={thinking || !question.trim()}>
             Ask
           </button>
         </div>

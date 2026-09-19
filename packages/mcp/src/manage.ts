@@ -89,11 +89,29 @@ export interface McpManageDeps {
 // ── config IO (atomic) ──────────────────────────────────────────────────────
 
 async function readConfig(path: string): Promise<Record<string, unknown>> {
+  // Missing file = fresh config. A CORRUPT file must fail loudly instead of
+  // reading as `{}`: the next read-modify-write would then persist a config
+  // containing only `mcpServers`, silently destroying every other top-level
+  // profile setting (same contract as token-store.ts#readFile).
+  let raw: string;
   try {
-    return JSON.parse(await fs.readFile(path, 'utf8')) as Record<string, unknown>;
-  } catch {
-    return {};
+    raw = await fs.readFile(path, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `Profile config "${path}" is not valid JSON — fix or remove it before changing MCP servers`,
+    );
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`Profile config "${path}" must contain a JSON object`);
+  }
+  return parsed as Record<string, unknown>;
 }
 
 async function writeConfig(path: string, cfg: Record<string, unknown>): Promise<void> {

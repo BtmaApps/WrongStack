@@ -228,6 +228,7 @@ export class GovernanceRuntimeBootstrapHandle {
   readonly #runtime: GovernanceCompatibilityRuntime;
   readonly #snapshot: GovernanceRuntimeBootstrapSnapshot;
   readonly #pendingObservations = new Set<Promise<GovernanceRuntimeObservationResult>>();
+  readonly #pendingSnapshots = new Set<Promise<GovernanceRuntimeWorkspaceSnapshotResult>>();
   #acceptingRuntimeWrites = true;
   #closePromise: Promise<GovernanceRuntimeBootstrapCloseResult> | undefined;
 
@@ -288,6 +289,18 @@ export class GovernanceRuntimeBootstrapHandle {
         message: 'Governance runtime is closing and no longer accepts workspace snapshots.',
       });
     }
+    const pending = this.recordWorkspaceSnapshotOnce(manifestHash);
+    this.#pendingSnapshots.add(pending);
+    try {
+      return await pending;
+    } finally {
+      this.#pendingSnapshots.delete(pending);
+    }
+  }
+
+  private async recordWorkspaceSnapshotOnce(
+    manifestHash: string,
+  ): Promise<GovernanceRuntimeWorkspaceSnapshotResult> {
     try {
       const response = await this.#runtime.recordWorkspaceSnapshot(manifestHash);
       if (!response.ok) {
@@ -326,13 +339,18 @@ export class GovernanceRuntimeBootstrapHandle {
 
   close(): Promise<GovernanceRuntimeBootstrapCloseResult> {
     if (this.#closePromise) return this.#closePromise;
-    this.#closePromise = this.closeOnce();
+    this.#closePromise = this.closeOnce().then((result) => {
+      // A failed remote detach/shutdown is retryable. Keep writes closed,
+      // but do not permanently cache a transient transport failure.
+      if (!result.ok) this.#closePromise = undefined;
+      return result;
+    });
     return this.#closePromise;
   }
 
   private async closeOnce(): Promise<GovernanceRuntimeBootstrapCloseResult> {
     this.#acceptingRuntimeWrites = false;
-    await Promise.allSettled([...this.#pendingObservations]);
+    await Promise.allSettled([...this.#pendingObservations, ...this.#pendingSnapshots]);
     const action = this.#snapshot.source === 'launched' ? 'shutdown' : 'detach';
     try {
       const response =

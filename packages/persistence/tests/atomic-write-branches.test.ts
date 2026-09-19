@@ -8,6 +8,7 @@ const doubles = vi.hoisted(() => {
   const lockHandle = {
     writeFile: vi.fn(),
     close: vi.fn(),
+    utimes: vi.fn(),
   };
   const fs = {
     mkdir: vi.fn(),
@@ -76,6 +77,7 @@ beforeEach(() => {
   doubles.syncHandle.close.mockResolvedValue(undefined);
   doubles.lockHandle.writeFile.mockResolvedValue(undefined);
   doubles.lockHandle.close.mockResolvedValue(undefined);
+  doubles.lockHandle.utimes.mockResolvedValue(undefined);
   doubles.fs.open.mockImplementation(async (_file: string, flag: string) =>
     flag === 'r+' ? doubles.syncHandle : doubles.lockHandle,
   );
@@ -268,7 +270,7 @@ describe('persistence primitive edge branches', () => {
   });
 
   it('refreshes the heartbeat and tolerates heartbeat cleanup failures', async () => {
-    doubles.fs.utimes.mockRejectedValue(errorWithCode('EIO'));
+    doubles.lockHandle.utimes.mockRejectedValue(errorWithCode('EIO'));
     doubles.lockHandle.close.mockRejectedValue(errorWithCode('EIO'));
     doubles.fs.unlink.mockRejectedValue(errorWithCode('EPERM'));
     const primitives = createPersistencePrimitives();
@@ -277,13 +279,23 @@ describe('persistence primitive edge branches', () => {
       primitives.withFileLock(
         '/tmp/state.json',
         async () => {
-          await new Promise((resolve) => setTimeout(resolve, 70));
+          // The heartbeat ticks at staleMs/2; a fixed sleep once expired
+          // before the interval fired under full-suite CPU contention (the
+          // interval is cleared when the section ends). Wait for the actual
+          // refresh instead of guessing the delay.
+          await vi.waitFor(
+            () => {
+              expect(doubles.lockHandle.utimes).toHaveBeenCalled();
+            },
+            { timeout: 5_000, interval: 20 },
+          );
           return 'done';
         },
         { staleMs: 100 },
       ),
     ).resolves.toBe('done');
-    expect(doubles.fs.utimes).toHaveBeenCalled();
+    expect(doubles.lockHandle.utimes).toHaveBeenCalled();
+    expect(doubles.fs.utimes).not.toHaveBeenCalled();
   });
 
   // Regression: both of these used to `continue` back to `fs.open` without

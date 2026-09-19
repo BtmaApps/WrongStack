@@ -256,6 +256,7 @@ export class AISpecBuilder {
   private readonly store: SpecStore;
   private readonly minQuestions: number;
   private readonly maxQuestions: number;
+  private readonly projectContext: string;
   private readonly sessionPath?: string | undefined;
   private readonly sessionPersistence?: AISpecSessionPersistence | undefined;
   private pendingSessionWrite: Promise<void> = Promise.resolve();
@@ -264,6 +265,7 @@ export class AISpecBuilder {
     this.store = opts.store;
     this.minQuestions = opts.minQuestions ?? 2;
     this.maxQuestions = opts.maxQuestions ?? 10;
+    this.projectContext = opts.projectContext ?? '';
     this.sessionPath = opts.sessionPath;
     this.sessionPersistence = opts.sessionPersistence;
     this.session = {
@@ -271,7 +273,7 @@ export class AISpecBuilder {
       phase: 'questioning',
       title: '',
       userIntent: '',
-      projectContext: opts.projectContext ?? '',
+      projectContext: this.projectContext,
       answers: [],
       questionCount: 0,
       approved: false,
@@ -366,10 +368,11 @@ export class AISpecBuilder {
 
   // ── Session Lifecycle ─────────────────────────────────────────────────────
 
-  /** Start a new session with a title and optional intent. */
-  startSession(title: string, intent?: string): void {
+  /** Start a new session with a title, optional intent, and per-session context. */
+  startSession(title: string, intent?: string, projectContext?: string): void {
     this.session.title = title;
     this.session.userIntent = intent ?? '';
+    this.session.projectContext = projectContext ?? this.projectContext;
     this.session.phase = 'questioning';
     this.session.updatedAt = Date.now();
     this.autoSave();
@@ -590,6 +593,7 @@ export class AISpecBuilder {
     this.session.phase = 'questioning';
     this.session.title = '';
     this.session.userIntent = '';
+    this.session.projectContext = this.projectContext;
     this.session.answers = [];
     this.session.questionCount = 0;
     this.session.spec = undefined;

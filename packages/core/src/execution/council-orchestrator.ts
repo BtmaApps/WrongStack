@@ -53,6 +53,7 @@ import {
   parseVote,
   withTruncationNote,
 } from './council-response-parser.js';
+import { callWithDeadline } from './llm-call-deadline.js';
 
 export { COUNCIL_REFUSAL_OPTION_ID, DEFAULT_COUNCIL_MAX_CONCURRENCY, MAX_COUNCIL_CONCURRENCY };
 
@@ -112,7 +113,10 @@ export class CouncilOrchestrator {
     });
   }
 
-  async ask(question: CouncilQuestion): Promise<CouncilResult> {
+  async ask(
+    question: CouncilQuestion,
+    onVote?: (vote: CouncilVoteResult) => void,
+  ): Promise<CouncilResult> {
     const startedAt = Date.now();
     const profile = this.resolveProfile(question.profile);
     validateRefusalCollision(question, this.refusalOptionId);
@@ -139,14 +143,15 @@ export class CouncilOrchestrator {
         profile.seats,
         Math.min(this.maxConcurrency, profile.seats.length),
         async (seat, i) => {
+          let vote: CouncilVoteResult;
           try {
-            return await this.callSeat(question, profile, seat, i, signal, usage, {
+            vote = await this.callSeat(question, profile, seat, i, signal, usage, {
               round,
               ...(previous ? { previous } : {}),
             });
           } catch (error) {
             const timedOut = signal.aborted && !question.signal?.aborted;
-            return {
+            vote = {
               seatId: seat.id,
               persona: seat.persona,
               round,
@@ -158,6 +163,13 @@ export class CouncilOrchestrator {
                   : errorMessage(error),
             } satisfies CouncilVoteResult;
           }
+          // Observers cannot change the ballot or break arbitration.
+          try {
+            onVote?.({ ...vote });
+          } catch {
+            /* telemetry is best-effort */
+          }
+          return vote;
         },
       );
       roundVotes.push(current);
@@ -166,6 +178,17 @@ export class CouncilOrchestrator {
       // spend a whole extra wave of calls that can only come back aborted,
       // and would overwrite a usable round with a wave of failures.
       if (signal.aborted) break;
+
+      // Early short-circuit: if a seat with veto power cast a refusal, the
+      // decision is already terminal (veto cannot be overturned in subsequent
+      // rounds). Break immediately to save token spend and latency.
+      const hasVeto = current.some(
+        (v) =>
+          v.status === 'valid' &&
+          v.optionId === this.refusalOptionId &&
+          profile.seats.find((s) => s.id === v.seatId)?.veto === true,
+      );
+      if (hasVeto) break;
     }
     // A later round that failed wholesale is worse than the independent round
     // it replaced: falling back to the last round that produced any usable
@@ -176,6 +199,11 @@ export class CouncilOrchestrator {
       if (lastUsable) votes = lastUsable;
     }
     const warnings = [
+      ...(votes[0]?.round !== undefined && votes[0].round < roundVotes.length
+        ? [
+            `Council retained round ${votes[0].round} because later rounds produced no valid ballots.`,
+          ]
+        : []),
       ...distinctnessWarnings(votes, profile),
       ...deliberationWarnings(roundVotes, profile),
     ];
@@ -543,6 +571,7 @@ export class CouncilOrchestrator {
           usage,
           startedAt,
           warnings,
+          roundVotes,
           errors,
         });
       }
@@ -557,6 +586,7 @@ export class CouncilOrchestrator {
           usage,
           startedAt,
           warnings,
+          roundVotes,
           errors,
         });
       }
@@ -697,20 +727,26 @@ export class CouncilOrchestrator {
     const startedAt = Date.now();
 
     try {
-      const result = await effectiveCaller.call({
-        system: input.system,
-        userPrompt: input.userPrompt,
-        responseFormat: { type: 'json_object' },
-        maxTokens: input.maxTokens,
-        timeoutMs: input.timeoutMs,
-        signal: input.signal,
-        ...(resolvedTarget?.providerId ? { providerId: resolvedTarget.providerId } : {}),
-        ...(resolvedTarget?.model ? { model: resolvedTarget.model } : {}),
-        ...(resolvedTarget?.role ? { role: resolvedTarget.role } : {}),
-        ...(resolvedTarget?.fallbackModels && resolvedTarget.fallbackModels.length > 0
-          ? { fallbackModels: [...resolvedTarget.fallbackModels] }
-          : {}),
-      });
+      const result = await callWithDeadline(
+        (signal) =>
+          effectiveCaller.call({
+            system: input.system,
+            userPrompt: input.userPrompt,
+            responseFormat: { type: 'json_object' },
+            maxTokens: input.maxTokens,
+            timeoutMs: input.timeoutMs,
+            signal,
+            ...(resolvedTarget?.providerId ? { providerId: resolvedTarget.providerId } : {}),
+            ...(resolvedTarget?.model ? { model: resolvedTarget.model } : {}),
+            ...(resolvedTarget?.role ? { role: resolvedTarget.role } : {}),
+            ...(resolvedTarget?.fallbackModels && resolvedTarget.fallbackModels.length > 0
+              ? { fallbackModels: [...resolvedTarget.fallbackModels] }
+              : {}),
+          }),
+        input.signal,
+        input.timeoutMs,
+        'Council call timeout exceeded.',
+      );
       addUsage(input.usage, result);
       return result;
     } catch (error) {

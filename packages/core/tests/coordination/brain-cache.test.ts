@@ -35,9 +35,32 @@ const tierArbiter = (tier: string, decision: BrainDecision) => {
 };
 
 describe('brainCacheKey', () => {
-  it('collapses id-shaped tokens so the same question about different subjects shares an entry', () => {
-    expect(brainCacheKey(req({ question: 'Extend the budget for subagent-7?' }))).toBe(
+  it('keeps different subjects and numeric constraints separate', () => {
+    expect(brainCacheKey(req({ question: 'Extend the budget for subagent-7?' }))).not.toBe(
       brainCacheKey(req({ question: 'Extend the budget for subagent-42?' })),
+    );
+    expect(brainCacheKey(req({ question: 'Spend 10 dollars?' }))).not.toBe(
+      brainCacheKey(req({ question: 'Spend 10000 dollars?' })),
+    );
+  });
+
+  it.each([
+    { sessionId: 'another-session' },
+    { context: 'The last attempt destroyed data.' },
+    { allowHumanEscalation: false },
+  ])('isolates decision inputs %j', (patch) => {
+    expect(brainCacheKey(req())).not.toBe(brainCacheKey(req(patch)));
+  });
+
+  it.each([
+    { label: 'Delete production' },
+    { consequence: 'Permanent data loss' },
+    { risk: 'critical' as const },
+    { recommended: true },
+  ])('includes option meaning %j', (patch) => {
+    const option = { id: 'yes', label: 'Proceed' };
+    expect(brainCacheKey(req({ options: [option] }))).not.toBe(
+      brainCacheKey(req({ options: [{ ...option, ...patch }] })),
     );
   });
 
@@ -73,10 +96,47 @@ describe('brainCacheKey', () => {
     expect(brainCacheKey(a)).toBe(brainCacheKey(b));
     expect(brainCacheKey(a)).not.toBe(brainCacheKey(c));
   });
+
+  it('normalizes volatile elapsed counters and timestamps in context', () => {
+    const a = req({ context: 'Active runs: 1\nIdle for: 301s\nStall threshold: 300s' });
+    const b = req({ context: 'Active runs: 1\nIdle for: 305s\nStall threshold: 300s' });
+    expect(brainCacheKey(a)).toBe(brainCacheKey(b));
+
+    const withTime1 = req({ context: '2026-09-19T14:10:00.000Z - Task waiting on resource' });
+    const withTime2 = req({ context: '2026-09-19T14:12:35.123Z - Task waiting on resource' });
+    expect(brainCacheKey(withTime1)).toBe(brainCacheKey(withTime2));
+  });
+
+  it('normalizes multi-space, tabs and surrounding whitespace in question', () => {
+    const a = req({ question: 'Should we extend the budget?' });
+    const b = req({ question: '  Should  we   extend   the budget? \n' });
+    expect(brainCacheKey(a)).toBe(brainCacheKey(b));
+  });
 });
 
 describe('BrainDecisionCache', () => {
   const answer: BrainDecision = { type: 'answer', text: 'Extend it.' };
+
+  it('does not resurrect an in-flight approval after settings invalidated the cache', async () => {
+    const cache = new BrainDecisionCache({ enabled: true });
+    let finish!: (decision: BrainDecision) => void;
+    const arbiter = createCachingBrainArbiter({
+      cache,
+      inner: {
+        decide: async (request) => {
+          markDecisionTier(request, 'llm');
+          return new Promise<BrainDecision>((resolve) => {
+            finish = resolve;
+          });
+        },
+      },
+    });
+    const pending = arbiter.decide(req());
+    cache.clear();
+    finish(answer);
+    await pending;
+    expect(cache.get(req())).toBeUndefined();
+  });
 
   it('is inert until enabled', () => {
     const cache = new BrainDecisionCache();

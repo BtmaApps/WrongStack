@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
 
 import { isPathInside, resolveWorkingDirInsideProject } from '../src/server/path-containment.js';
 
@@ -26,6 +26,12 @@ describe('isPathInside', () => {
 
   it('returns false when target is an absolute path outside', () => {
     expect(isPathInside(root, '/outside')).toBe(false);
+  });
+
+  it('accepts a legal in-root ..-prefixed first segment', () => {
+    // `..hidden` is a legal directory name; a bare startsWith('..') misread it
+    // as a parent traversal.
+    expect(isPathInside(root, '/project/root/..hidden/file.txt')).toBe(true);
   });
 
   it('handles Windows-style paths (forward slash normalized)', () => {
@@ -69,6 +75,21 @@ describe('resolveWorkingDirInsideProject', () => {
     try {
       const result = await resolveWorkingDirInsideProject(projectRoot, '.');
       expect(result).toBe(path.resolve(projectRoot));
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('resolves a legal in-root ..-prefixed subdirectory', async () => {
+    // `..configs` is a legal directory name; the containment predicate must
+    // not misread its leading dots as a parent traversal.
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-test-'));
+    projectRoot = path.join(tmpDir, 'project');
+    await fs.mkdir(path.join(projectRoot, '..configs'), { recursive: true });
+
+    try {
+      const result = await resolveWorkingDirInsideProject(projectRoot, '..configs');
+      expect(result).toBe(path.resolve(projectRoot, '..configs'));
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }

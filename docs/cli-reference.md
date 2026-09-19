@@ -60,24 +60,31 @@ See [`docs/subcommands/`](subcommands/) for the full per-subcommand reference.
 
 ### One-liner
 
-```bash
-# Install (or reinstall) the latest release globally
-npm i -g wrongstack
+WrongStack ships as a standalone binary through GitHub Releases:
 
-# Then keep it current from inside the tool
-wstack update
+```bash
+# macOS / Linux — install (or reinstall) the latest release
+curl -fsSL https://github.com/WrongStack/WrongStack/releases/latest/download/install.sh | sh
 ```
+
+```powershell
+# Windows
+irm https://github.com/WrongStack/WrongStack/releases/latest/download/install.ps1 | iex
+```
+
+Then keep it current from inside the tool with `wstack update`.
+
+The npm packages are legacy. The installer uninstalls old `wrongstack` /
+`@wrongstack/cli` globals from npm, pnpm, yarn or bun (asking first on a
+terminal) so they cannot shadow the binary.
 
 ### `wstack update`
 
-`wstack update` detects your global package manager and reinstalls the latest
-published `wrongstack` in place. Lifecycle scripts are skipped by default
-(`--ignore-scripts`) for safety.
+`wstack update` downloads the latest GitHub release for your platform, verifies
+it against the release `SHA256SUMS` and swaps the executable in place.
 
-On Windows, `wstack update` ignores project-local package-manager shims and
-uses an executable resolved outside the current project. If npm reports a
-locked WrongStack native file (`EBUSY`, `EPERM`, or `EACCES`), stop running
-WrongStack WebUI, Desktop, and background processes before retrying.
+The `--pm` and `--allow-scripts` flags only apply to a legacy npm install,
+where `wstack update` still reinstalls through the detected package manager.
 
 ```
 Usage: wstack update [--check-only] [--pm <manager>] [--allow-scripts]
@@ -92,17 +99,11 @@ Usage: wstack update [--check-only] [--pm <manager>] [--allow-scripts]
 Examples:
 
 ```bash
-wstack update                         # update via the detected package manager
+wstack update                         # download + verify the latest release
 wstack update --check-only            # is there a newer release?
-wstack update --pm pnpm               # force pnpm
+wstack update --pm pnpm               # legacy npm install only: force pnpm
 wstack update --pnpm                  # equivalent shortcut for `--pm pnpm`
 wstack update --lifecycle-scripts     # equivalent shortcut for `--allow-scripts`
 ```
 
-You can always update manually instead:
-
-```bash
-npm i -g wrongstack@latest
-# or
-pnpm add -g wrongstack@latest
-```
+You can always update manually by re-running the install one-liner.

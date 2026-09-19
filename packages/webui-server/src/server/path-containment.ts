@@ -8,7 +8,13 @@ export function isPathInside(root: string, target: string): boolean {
   const normTarget =
     process.platform === 'win32' ? path.resolve(target).toLowerCase() : path.resolve(target);
   const relative = path.relative(normRoot, normTarget);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
+  // startsWith('..') wrongly rejects it (same predicate as paths.ts
+  // escapesRoot / design.ts guards).
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 export async function resolveWorkingDirInsideProject(

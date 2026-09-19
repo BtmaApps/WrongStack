@@ -18,6 +18,14 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  claimBoardManagement,
+  finishBoardManagement,
+  recordTaskManagementReview,
+  renewBoardManagement,
+  updateTask as updateTaskViaIpc,
+} from '../src/client-domain.js';
+import { managementTaskVersion } from '../src/management-fence.js';
 import { getProductionKanbanStorage } from '../src/server/remote-storage.js';
 import {
   addTask,
@@ -205,6 +213,69 @@ describe('production storage path conformance', () => {
     expect(after?.tasks.find((task) => task.id === taskId)?.lifecycle?.currentStage).toBe('todo');
   }, 60_000);
 });
+
+it('fences competing task managers through the real SQLite IPC owner', async () => {
+  const root = await bootDaemon('management');
+  const board = await createBoard(root, { title: 'Managed todo work' });
+  const card = (await addTask(root, board.id, { title: 'Search', description: 'Initial scope' }))!
+    .task;
+  const claims = await Promise.all(
+    ['host-a', 'host-b'].map((token) =>
+      claimBoardManagement(root, board.id, { token, fingerprint: 'todo-v1', cooldownMs: 0 }),
+    ),
+  );
+  expect(claims.filter(Boolean)).toHaveLength(1);
+  const owner = claims[0] ? 'host-a' : 'host-b';
+  const read = (await getBoard(root, board.id))!;
+  const fence = {
+    sessionId: 'manager-session',
+    expectedManagementToken: owner,
+    expectedManagementTaskVersions: { [card.id]: managementTaskVersion(read, read.tasks[0]!) },
+  };
+  expect(await renewBoardManagement(root, board.id, owner)).toBe(true);
+  await updateTaskViaIpc(root, board.id, card.id, { description: 'Detailed scope' }, fence);
+  await updateTaskViaIpc(
+    root,
+    board.id,
+    card.id,
+    { status: 'in_progress' },
+    { sessionId: 'leader-session' },
+  );
+  await expect(
+    updateTaskViaIpc(root, board.id, card.id, { description: 'Stale manager scope' }, fence),
+  ).rejects.toThrow('worker-owned');
+  expect((await getBoard(root, board.id))!.tasks[0]!.description).toBe('Detailed scope');
+  const latest = (await getBoard(root, board.id))!;
+  await recordTaskManagementReview(
+    root,
+    board.id,
+    card.id,
+    { disposition: 'needs_leader', reason: 'The worker must provide the test result.' },
+    {
+      ...fence,
+      expectedManagementTaskVersions: {
+        [card.id]: managementTaskVersion(latest, latest.tasks[0]!),
+      },
+    },
+  );
+  expect(await finishBoardManagement(root, board.id, 'stale-owner', { status: 'completed' })).toBe(
+    false,
+  );
+  expect(
+    await finishBoardManagement(root, board.id, owner, {
+      status: 'completed',
+      result: 'Acceptance criteria reviewed.',
+    }),
+  ).toBe(true);
+  expect((await getBoard(root, board.id))?.management?.reviewedFingerprint).toBe('todo-v1');
+  expect(
+    await claimBoardManagement(root, board.id, {
+      token: 'host-c',
+      fingerprint: 'todo-v1',
+      cooldownMs: 0,
+    }),
+  ).toBe(false);
+}, 60_000);
 
 async function bootDaemon(label: string): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), `wstack-kanban-conformance-${label}-`));

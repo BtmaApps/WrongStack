@@ -3,6 +3,10 @@
 > Architecture and operating report for WrongStack's project-scoped multi-kanban
 > system.
 
+**2026-09-19 update:** [Background task management](kanban-task-management.md)
+adds automatic card enrichment, evidence planning, dependency review and durable
+manager ownership across CLI/TUI and WebUI hosts.
+
 **Status as of 2026-08-11**: the Kanban system runs as one detached,
 project-scoped IPC service with an authoritative SQLite database. It supports multiple boards per
 project, human CRUD, agent-visible queue operations, dependency-aware claiming,

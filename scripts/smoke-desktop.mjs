@@ -3,7 +3,7 @@
 // --window additionally checks application startup. All checks use a scratch
 // profile, so they do not access the user's WrongStack settings or sessions.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -71,6 +71,10 @@ try {
     windowsHide: true,
   });
   if (windowSmoke) {
+    // Exercise non-English first-load state; the watcher only reports changes.
+    const profile = join(scratch, 'profiles', 'default');
+    mkdirSync(profile, { recursive: true });
+    writeFileSync(join(profile, 'config.json'), JSON.stringify({ uiLocale: 'tr' }));
     const env = { ...process.env, WRONGSTACK_HOME: scratch };
     delete env.ELECTRON_RUN_AS_NODE;
     const result = execFileSync(executable, ['--desktop-smoke-test'], {

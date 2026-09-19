@@ -252,7 +252,7 @@ export function resolveFindingPath(raw: string, cwd: string): string | null {
   if (relative === '..' || relative.startsWith('../') || pathMod.isAbsolute(relative)) return null;
   const resolved = pathMod.resolve(cwd, relative);
   const rel = pathMod.relative(cwd, resolved);
-  if (rel === '..' || rel.startsWith('..') || pathMod.isAbsolute(rel)) return null;
+  if (rel === '..' || rel.startsWith(`..${pathMod.sep}`) || pathMod.isAbsolute(rel)) return null;
   return resolved;
 }
 

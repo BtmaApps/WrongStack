@@ -37,8 +37,16 @@ export async function detectPackageManager(cwd: string, stopAt?: string): Promis
     if (dir === stop) break;
     const parent = path.dirname(dir);
     const relParent = path.relative(stop, parent);
-    // Stop when the parent would step outside `stopAt` (or the fs root).
-    if (parent === dir || relParent.startsWith('..') || path.isAbsolute(relParent)) break;
+    // Stop when the parent would step outside `stopAt` (or the fs root). A
+    // legal in-root directory named `..dot` must not read as an escape here.
+    if (
+      parent === dir ||
+      relParent === '..' ||
+      relParent.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relParent)
+    ) {
+      break;
+    }
     dir = parent;
   }
   return 'npm';
@@ -99,7 +107,12 @@ function allowedRoots(ctx: Context): string[] {
 function isInsideAny(target: string, roots: string[]): boolean {
   return roots.some((root) => {
     const rel = path.relative(root, target);
-    return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+    // Canonical escape test: `..hidden` is a legal in-root first segment, so a
+    // bare startsWith('..') would wrongly reject it (same predicate as
+    // paths.ts escapesRoot / design.ts guards).
+    return (
+      rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel))
+    );
   });
 }
 
@@ -423,8 +436,7 @@ export function makeRootRelativizer(root: string): (absPath: string) => string {
   const prefix = resolved.endsWith(path.sep) ? resolved : resolved + path.sep;
   const compare = process.platform === 'win32' ? prefix.toLowerCase() : prefix;
   return (absPath: string): string => {
-    const normalizedAbs =
-      process.platform === 'win32' ? absPath.replace(/\//g, '\\') : absPath;
+    const normalizedAbs = process.platform === 'win32' ? absPath.replace(/\//g, '\\') : absPath;
     if (normalizedAbs.length <= prefix.length) return absPath;
     const head =
       process.platform === 'win32'

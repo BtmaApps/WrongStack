@@ -18,7 +18,7 @@
 import type { KanbanDomainOperation } from '../domain-operations.js';
 import type { KanbanBoard, KanbanBoardHistoryEntry, KanbanEvent } from '../types.js';
 
-export const KANBAN_PROJECT_SERVER_PROTOCOL_VERSION = 6;
+export const KANBAN_PROJECT_SERVER_PROTOCOL_VERSION = 9;
 
 export type KanbanDomainWireValue =
   | ['null']

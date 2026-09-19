@@ -70,7 +70,8 @@ export async function resolveCollabTargetInsideRoot(
   const realTarget = await fsp.realpath(filePath).catch(() => path.resolve(filePath));
   const realRoot = await fsp.realpath(projectRoot).catch(() => path.resolve(projectRoot));
   const rel = path.relative(realRoot, realTarget);
-  const inside = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  const inside =
+    rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
   return inside ? realTarget : null;
 }
 

@@ -27,7 +27,7 @@ export function sessionScopedPath(dir: string, sessionId: string, suffix: string
   }
   const resolved = path.resolve(dir, `${sessionId}${suffix}`);
   const rel = path.relative(path.resolve(dir), resolved);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+  if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
     throw invalid(sessionId);
   }
   return resolved;

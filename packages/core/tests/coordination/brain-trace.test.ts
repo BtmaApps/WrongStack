@@ -194,6 +194,17 @@ describe('BrainTraceRecorder', () => {
       requestId: request.id,
       status: 'denied',
       resolution: 'veto',
+      rounds: 2,
+      votes: [
+        {
+          requestId: request.id,
+          seatId: 'voter-1',
+          persona: 'skeptic',
+          status: 'valid',
+          round: 1,
+          at: 1_100,
+        },
+      ],
       configuredSeatCount: 3,
       validVoteCount: 3,
       distinctTargetCount: 3,
@@ -211,7 +222,12 @@ describe('BrainTraceRecorder', () => {
 
     const [record] = await readBrainTrace(file);
     expect(record?.councilVotes[0]).toMatchObject({ seatId: 'voter-1', veto: true });
-    expect(record?.councilResolution).toMatchObject({ resolution: 'veto', judgeUsed: false });
+    expect(record?.councilResolution).toMatchObject({
+      resolution: 'veto',
+      judgeUsed: false,
+      rounds: 2,
+      talliedRound: 1,
+    });
     // Council usage folds into the same totals as single-LLM calls.
     expect(record?.totals.totalTokens).toBe(360);
   });

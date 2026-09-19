@@ -297,4 +297,47 @@ describe('createRuleBrainArbiter — ladder step', () => {
 
     expect(steps).toEqual([]);
   });
+
+  it('rate-limits rules that exceed maxHits within windowMs and falls through to inner', async () => {
+    const rules = compileBrainRules([
+      {
+        id: 'rate-limited-rule',
+        when: {},
+        then: { action: 'answer', text: 'from rule' },
+        maxHits: 2,
+        windowMs: 60_000,
+      },
+    ]).rules;
+
+    const arbiter = createRuleBrainArbiter({ inner, getRules: () => rules });
+
+    // 1st hit -> rule
+    expect(await arbiter.decide(req())).toMatchObject({ text: 'from rule' });
+    // 2nd hit -> rule
+    expect(await arbiter.decide(req())).toMatchObject({ text: 'from rule' });
+    // 3rd hit -> rate-limited, falls through to inner
+    expect(await arbiter.decide(req())).toMatchObject({ type: 'deny', reason: 'inner' });
+  });
+
+  it('validates maxHits and windowMs in compileBrainRules', () => {
+    const res = compileBrainRules([
+      {
+        id: 'bad-hits',
+        when: {},
+        then: { action: 'answer', text: 'ok' },
+        maxHits: -1,
+      },
+      {
+        id: 'bad-window',
+        when: {},
+        then: { action: 'answer', text: 'ok' },
+        windowMs: 0,
+      },
+    ]);
+    expect(res.rules).toHaveLength(0);
+    expect(res.errors).toHaveLength(2);
+    expect(res.errors[0]).toContain('maxHits must be a positive integer');
+    expect(res.errors[1]).toContain('windowMs must be a positive integer');
+  });
 });
+

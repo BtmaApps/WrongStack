@@ -34,6 +34,7 @@ export interface RuntimeHostParts {
 }
 
 export function createRuntimeHostFromParts(parts: RuntimeHostParts): RuntimeHost {
+  let shutdownPromise: Promise<void> | undefined;
   return {
     agent: parts.agent,
     context: parts.context,
@@ -43,8 +44,11 @@ export function createRuntimeHostFromParts(parts: RuntimeHostParts): RuntimeHost
     slashCommands: parts.slashCommands,
     session: parts.session,
     extensions: parts.extensions,
-    async shutdown() {
-      await parts.shutdown?.();
+    shutdown() {
+      // Shutdown owns one resource lifetime. Publish the shared promise before
+      // invoking host code, and retain failures to avoid replaying partial cleanup.
+      shutdownPromise ??= Promise.resolve().then(() => parts.shutdown?.());
+      return shutdownPromise;
     },
   };
 }
@@ -70,11 +74,11 @@ export async function applyWrongStackPack(
   const owner = opts.owner ?? pack.name;
   const unregisterExtensions: Array<() => void> = [];
 
-  // Track registered tool names, command names, and provider types so teardown
+  // Track registered tools, commands, and provider scopes so teardown
   // can reverse everything in registration order.
   const registeredToolNames: string[] = [];
   const registeredCommandNames: string[] = [];
-  const registeredProviderTypes: string[] = [];
+  const unregisterProviders: Array<() => void> = [];
 
   // Roll back in reverse order: extensions first, then commands, then tools,
   // then providers. Extensions are unregistered before tools/commands because
@@ -93,8 +97,8 @@ export async function applyWrongStackPack(
     for (let i = registeredToolNames.length - 1; i >= 0; i--) {
       host.tools.unregister(registeredToolNames[i]!);
     }
-    for (let i = registeredProviderTypes.length - 1; i >= 0; i--) {
-      host.providers.unregister(registeredProviderTypes[i]!);
+    for (let i = unregisterProviders.length - 1; i >= 0; i--) {
+      unregisterProviders[i]!();
     }
   };
 
@@ -115,8 +119,7 @@ export async function applyWrongStackPack(
     }
     if (pack.providers) {
       for (const p of pack.providers) {
-        host.providers.register(p);
-        registeredProviderTypes.push(p.type);
+        unregisterProviders.push(host.providers.registerScoped(p));
       }
     }
     if (pack.slashCommands) {
@@ -145,19 +148,25 @@ export async function applyWrongStackPack(
     throw mountErr;
   }
 
+  let teardownPromise: Promise<void> | undefined;
   return {
     pack,
     owner,
-    async teardown() {
-      // Unregister extensions, commands, tools, and providers so the same pack
-      // can be re-loaded cleanly without name/type conflicts.
-      rollback();
-      if (pack.teardown) {
-        if (!opts.api) {
-          throw new Error(`Pack "${pack.name}" defines teardown() but no PluginAPI was provided`);
+    teardown() {
+      // All callers share one cleanup, including its failure. Replaying an
+      // old handle after reload must not unregister the new pack's resources.
+      teardownPromise ??= Promise.resolve().then(async () => {
+        // Unregister extensions, commands, tools, and providers so the same pack
+        // can be re-loaded cleanly without name/type conflicts.
+        rollback();
+        if (pack.teardown) {
+          if (!opts.api) {
+            throw new Error(`Pack "${pack.name}" defines teardown() but no PluginAPI was provided`);
+          }
+          await pack.teardown(opts.api);
         }
-        await pack.teardown(opts.api);
-      }
+      });
+      return teardownPromise;
     },
   };
 }

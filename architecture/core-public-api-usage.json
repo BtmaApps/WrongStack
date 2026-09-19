@@ -4,9 +4,9 @@
   "rootImportFiles": 0,
   "bySpecifier": {
     "@wrongstack/core/agent": {
-      "files": 322,
-      "typeOnly": 257,
-      "runtimeOrMixed": 82
+      "files": 329,
+      "typeOnly": 263,
+      "runtimeOrMixed": 83
     },
     "@wrongstack/core/agent-catalog": {
       "files": 17,
@@ -19,9 +19,9 @@
       "runtimeOrMixed": 11
     },
     "@wrongstack/core/coordination": {
-      "files": 225,
-      "typeOnly": 84,
-      "runtimeOrMixed": 198
+      "files": 227,
+      "typeOnly": 85,
+      "runtimeOrMixed": 199
     },
     "@wrongstack/core/coordination/agent-subagent-runner.js": {
       "files": 2,
@@ -64,9 +64,9 @@
       "runtimeOrMixed": 10
     },
     "@wrongstack/core/hq": {
-      "files": 138,
-      "typeOnly": 87,
-      "runtimeOrMixed": 83
+      "files": 139,
+      "typeOnly": 88,
+      "runtimeOrMixed": 84
     },
     "@wrongstack/core/hq/protocol": {
       "files": 5,
@@ -154,9 +154,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 14,
+      "files": 15,
       "typeOnly": 2,
-      "runtimeOrMixed": 13
+      "runtimeOrMixed": 14
     },
     "@wrongstack/core/statusline": {
       "files": 24,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 4
     },
     "@wrongstack/core/utils": {
-      "files": 608,
+      "files": 607,
       "typeOnly": 57,
-      "runtimeOrMixed": 583
+      "runtimeOrMixed": 582
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -1323,6 +1323,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/src/kanban-management-guard.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/src/next-steps-tool.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -1348,6 +1354,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/src/session-kanban-graph.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/src/session-kanban-management.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -1533,6 +1545,18 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/kanban-management-flow.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/kanban-management-guard.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/kanban-no-dead-ends.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -1600,6 +1624,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/tools/tests/session-kanban-mailbox.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/tools/tests/session-kanban-management.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -1983,6 +2013,12 @@
     },
     {
       "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/src/server/kanban-management-dispatch.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/src/server/kanban-orchestration-routes.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -2170,6 +2206,12 @@
     {
       "specifier": "@wrongstack/core/agent",
       "file": "packages/webui-server/tests/kanban-activity-attribution.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/agent",
+      "file": "packages/webui-server/tests/kanban-management-roundtrip.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -3603,6 +3645,12 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/src/server/kanban-management-dispatch.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
       "file": "packages/webui-server/src/server/leader-auto-wake-host.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -3666,6 +3714,12 @@
       "file": "packages/webui-server/src/server/start-webui-security.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/webui-server/tests/brain-request-correlation.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/coordination",
@@ -4895,7 +4949,7 @@
       "specifier": "@wrongstack/core/hq",
       "file": "packages/cli/tests/kanban-hq-sync.test.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/hq",
@@ -5140,6 +5194,12 @@
     {
       "specifier": "@wrongstack/core/hq",
       "file": "packages/webui-hq/tests/coalesce-streamed-text.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/hq",
+      "file": "packages/webui-hq/tests/components/brain-lifecycle.test.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -9857,6 +9917,12 @@
       "specifier": "@wrongstack/core/skills",
       "file": "packages/webui-server/src/server/backend-services.ts",
       "typeOnly": 1,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/webui-server/src/server/kanban-management-dispatch.ts",
+      "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
@@ -19836,12 +19902,6 @@
       "file": "packages/cli/tests/zero-statement-cli-modules.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/codebase-index-mcp/src/cli.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

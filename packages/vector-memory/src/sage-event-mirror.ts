@@ -110,9 +110,14 @@ export function subscribeVectorMemoryToSage(
   // rows for one sageId whenever the texts differed). Chaining keeps the
   // vector store applying writes in event order.
   const chains = new Map<string, Promise<void>>();
+  let disposed = false;
   const serialized = (memoryId: string, work: () => Promise<void>): void => {
+    if (disposed) return;
     const previous = chains.get(memoryId) ?? Promise.resolve();
-    const next = previous.then(work, work).finally(() => {
+    const run = async (): Promise<void> => {
+      if (!disposed) await work();
+    };
+    const next = previous.then(run, run).finally(() => {
       if (chains.get(memoryId) === next) chains.delete(memoryId);
     });
     chains.set(memoryId, next);
@@ -120,7 +125,7 @@ export function subscribeVectorMemoryToSage(
 
   const mirror = async (memoryId: string): Promise<void> => {
     const memory = await fetch(memoryId);
-    if (!memory) return;
+    if (disposed || !memory) return;
     // Session-scoped memories stay private — never mirror them. This
     // matches `createSageSurfaceSyncSource`'s privacy contract.
     if (memory.scope === 'session') return;
@@ -147,6 +152,7 @@ export function subscribeVectorMemoryToSage(
       // the source of truth.
       const existing = store.findBySageId(memoryId);
       if (existing) await store.forget(existing.id);
+      if (disposed) return;
       await store.remember({
         text: memory.text,
         ...(memory.summary ? { summary: memory.summary } : {}),
@@ -215,6 +221,9 @@ export function subscribeVectorMemoryToSage(
 
   return {
     dispose: () => {
+      // Already-started store calls may finish; queued work and reads must
+      // not start another store operation after the subscription is closed.
+      disposed = true;
       offAccepted();
       offRecovered();
       offMerged();

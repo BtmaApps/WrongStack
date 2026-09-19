@@ -34,6 +34,7 @@ import { handleGoalGet } from './goal-handlers.js';
 import type { GoalSnapshotRouteHandlers } from './goal-snapshot-routes.js';
 import type { HostRouteHandlers } from './host-routes.js';
 import type { KanbanHostRouteHandlers } from './kanban-host-routes.js';
+import { createManagementDispatcher } from './kanban-management-dispatch.js';
 import { handleKanbanRoute } from './kanban-routes.js';
 import { createKanbanSupervisor } from './kanban-supervisor.js';
 import type { PendingConfirm } from './pending-confirms.js';
@@ -301,6 +302,7 @@ export function createMessageDispatcher(
     broadcast: (message: { type: string; payload: unknown }) =>
       broadcast(state.getClients(), message),
     log: (message) => deps.logger.warn?.(`[KanbanSupervisor] ${message}`),
+    dispatchTask: createManagementDispatcher(deps, state),
   });
   // Opt-in server-side watchdog (env WRONGSTACK_AUTO_HEAL_SERVICES=1): reuses
   // the exact restart path behind the RotateCcw button for services stuck in

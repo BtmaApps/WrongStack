@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
 import { getSageSurface, isSqliteAvailable, SqliteMemoryPort } from '@wrongstack/sage';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   forgetStaleSageMirrors,
@@ -45,6 +45,7 @@ describeIfSqlite('vector mirror status lifecycle', () => {
   afterEach(async () => {
     handle?.dispose();
     handle = undefined;
+    vi.restoreAllMocks();
     vectorStore.close();
     await sagePort.dispose();
   });
@@ -139,6 +140,50 @@ describeIfSqlite('vector mirror status lifecycle', () => {
     const rows = rowsFor(created.id);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.text).toBe('wording two');
+  });
+
+  it('disposal cancels queued deletes before they reach the store', async () => {
+    const surface = getSageSurface(sagePort)!;
+    const memory = await surface.rememberSage({
+      text: 'retained mirror after disposal',
+      anchors: [],
+    });
+    await vectorStore.remember({ text: memory.text, metadata: { sageId: memory.id } });
+    const forget = vi.spyOn(vectorStore, 'forget');
+    handle = subscribeVectorMemoryToSage({ store: vectorStore, memoryStore: sagePort });
+    events.emit('memory.deleted', {
+      memoryId: memory.id,
+      reason: 'disposal regression',
+      persistence: memory.persistence ?? 'long_lived',
+      removedEdges: 0,
+      contextPolicy: 'eligible',
+    });
+    handle.dispose();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(forget).not.toHaveBeenCalled();
+    expect(vectorStore.findBySageId(memory.id)).toBeDefined();
+  });
+
+  it('disposal cancels a mirror waiting for its SAGE read', async () => {
+    const surface = getSageSurface(sagePort)!;
+    const memory = await surface.rememberSage({
+      text: 'pending mirror after disposal',
+      anchors: [],
+    });
+    const read = Promise.withResolvers<typeof memory | null>();
+    const started = Promise.withResolvers<void>();
+    vi.spyOn(surface, 'getSage').mockImplementation(() => {
+      started.resolve();
+      return read.promise;
+    });
+    const remember = vi.spyOn(vectorStore, 'remember');
+    handle = subscribeVectorMemoryToSage({ store: vectorStore, memoryStore: sagePort });
+    events.emit('memory.updated', { memoryId: memory.id, status: memory.status });
+    await started.promise;
+    handle.dispose();
+    read.resolve(memory);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(remember).not.toHaveBeenCalled();
   });
 
   it('sweep drops rows for archived memories', async () => {

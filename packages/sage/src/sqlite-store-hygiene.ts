@@ -114,7 +114,14 @@ async function anchorsPresentOnDisk(
     try {
       const real = await fs.promises.realpath(path.resolve(projectRoot, anchor.path!));
       const relative = path.relative(realRoot, real);
-      if (relative.startsWith('..') || path.isAbsolute(relative)) return false;
+      // `rel === '..'` / a '..<sep>' prefix (not a bare startsWith('..')):
+      // legal in-root names whose first segment starts with '..' (e.g.
+      // `..hidden/theme.css`) produce rel values like "..hidden\theme.css"
+      // and must not be misread as escapes. Same predicate as paths.ts
+      // escapesRoot and the design tool's materialize/verify guards.
+      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+        return false;
+      }
       const stat = await fs.promises.stat(real);
       const wantsDirectory = anchor.type === 'directory' || anchor.type === 'package';
       if (wantsDirectory ? !stat.isDirectory() : !stat.isFile()) return false;
@@ -797,6 +804,16 @@ export async function runSqliteSageHygiene(
       await ctx.runMutation(() => {
         const del = ctx.stmt('DELETE FROM memories WHERE id = ?');
         for (const id of purgeIds) {
+          // Re-read inside the mutation: a concurrent revive (update/recovery)
+          // can land between the tombstone listing above and this mutation —
+          // the listing is a stale snapshot by the time the queued mutation
+          // runs. Purging a now-live memory would be permanent data loss.
+          // Same in-mutation re-read convention as the verification and
+          // reactivation passes.
+          const current = readSqliteSageRow(ctx.stmt, id);
+          if (!current) continue;
+          if (current.status !== 'deleted') continue;
+          if ((current.persistence ?? DEFAULT_PERSISTENCE) === 'permanent') continue;
           ctx.cascadeDeleteEdges(memoryNodeId(id));
           del.run(id);
           purgedDeleted++;

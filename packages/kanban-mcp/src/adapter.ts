@@ -154,40 +154,65 @@ async function watchForKanbanMutation(
   projectRoot: string,
   args: Record<string, unknown>,
   getConnection: (projectRoot: string) => Promise<KanbanEventConnection | null>,
+  signal: AbortSignal,
 ): Promise<unknown> {
   const boardId = typeof args['boardId'] === 'string' ? args['boardId'] : undefined;
   const timeoutMs = normalizeTimeout(args['timeoutMs']);
+  if (signal.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Kanban watch cancelled');
+  }
   const connection = await getConnection(projectRoot);
   if (!connection) {
     throw new Error('Kanban project server is disabled; live watch is unavailable');
   }
+  if (signal.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Kanban watch cancelled');
+  }
 
-  return await new Promise((resolve) => {
+  return await new Promise((resolve, reject) => {
     let settled = false;
     let unsubscribeEvent = (): void => {};
     let unsubscribeDisconnect = (): void => {};
     let timer: NodeJS.Timeout | undefined;
 
+    const cleanup = (): void => {
+      if (timer) clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      unsubscribeEvent();
+      unsubscribeDisconnect();
+    };
     const finish = (result: unknown): void => {
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
-      unsubscribeEvent();
-      unsubscribeDisconnect();
+      cleanup();
       resolve(result);
     };
+    const onAbort = (): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(signal.reason instanceof Error ? signal.reason : new Error('Kanban watch cancelled'));
+    };
 
-    unsubscribeEvent = connection.subscribe((event) => {
+    const eventOff = connection.subscribe((event) => {
       const changedBoardId = eventBoardId(event);
       if (boardId && changedBoardId !== boardId) return;
       finish({ changed: true, event: event.event, data: event.data });
     });
-    unsubscribeDisconnect = connection.onDisconnect(() => {
+    unsubscribeEvent = eventOff;
+    if (settled) eventOff();
+    const disconnectOff = connection.onDisconnect(() => {
       finish({ changed: false, disconnected: true, reason: 'Kanban daemon disconnected' });
     });
+    unsubscribeDisconnect = disconnectOff;
+    if (settled) disconnectOff();
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+    if (settled) return;
     timer = setTimeout(() => {
       finish({ changed: false, timedOut: true, timeoutMs });
     }, timeoutMs);
+    timer.unref?.();
   });
 }
 
@@ -211,7 +236,11 @@ export function createKanbanMcpToolHost(
       return policy.map((entry) => toolDescriptor(entry.name, entry.actions));
     },
 
-    async callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult> {
+    async callTool(
+      name: string,
+      args: Record<string, unknown>,
+      callOptions?: { signal?: AbortSignal | undefined },
+    ): Promise<MCPServerCallResult> {
       if (!allowed.has(name as KanbanMcpToolName)) {
         return {
           content: `Tool "${name}" is not exposed by this Kanban MCP server`,
@@ -219,9 +248,10 @@ export function createKanbanMcpToolHost(
         };
       }
 
+      const signal = callOptions?.signal ?? new AbortController().signal;
       if (name === 'kanban_watch') {
         try {
-          const content = await watchForKanbanMutation(projectRoot, args, getConnection);
+          const content = await watchForKanbanMutation(projectRoot, args, getConnection, signal);
           return { content, isError: false };
         } catch (error) {
           return {
@@ -241,7 +271,7 @@ export function createKanbanMcpToolHost(
       }
 
       try {
-        const result = await executeKanban(args, context, new AbortController().signal);
+        const result = await executeKanban(args, context, signal);
         const failed =
           !!result &&
           typeof result === 'object' &&

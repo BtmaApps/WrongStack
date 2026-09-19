@@ -303,7 +303,8 @@ async function detectPackageManager(
     const relativeParent = path.relative(scanRoot, parent);
     if (
       parent === directory ||
-      relativeParent.startsWith('..') ||
+      relativeParent === '..' ||
+      relativeParent.startsWith(`..${path.sep}`) ||
       path.isAbsolute(relativeParent)
     ) {
       break;
@@ -426,7 +427,10 @@ function nearestPackage(
     if (found) return found;
     if (directory === scanRoot) return undefined;
     const parent = path.dirname(directory);
-    if (parent === directory || relativePath(scanRoot, parent).startsWith('..')) return undefined;
+    const relParent = relativePath(scanRoot, parent);
+    if (parent === directory || relParent === '..' || relParent.startsWith(`..${path.sep}`)) {
+      return undefined;
+    }
     directory = parent;
   }
 }
@@ -494,7 +498,9 @@ export async function discoverE2EProjects(
       : undefined;
     const unsafeTestDirectory = Boolean(
       relativeTestDirectory &&
-        (relativeTestDirectory.startsWith('..') || path.isAbsolute(relativeTestDirectory)),
+        (relativeTestDirectory === '..' ||
+          relativeTestDirectory.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relativeTestDirectory)),
     );
     const specs =
       options.includeSpecs === false || unsafeTestDirectory

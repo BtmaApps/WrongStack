@@ -42,6 +42,66 @@ function baseOpts(
 }
 
 describe('createBrainRuntime', () => {
+  it('serializes persistence so an older settings write cannot overwrite a newer one', async () => {
+    let release!: () => void;
+    const firstWrite = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const writes: BrainConfig[] = [];
+    const rt = createBrainRuntime(
+      baseOpts(undefined, {
+        persist: async (config) => {
+          if (config.maxAutoRisk === 'high') await firstWrite;
+          writes.push(config);
+        },
+      }),
+    );
+    const first = rt.apply({ maxAutoRisk: 'high' });
+    const second = rt.apply({ maxAutoRisk: 'low' });
+    await Promise.resolve();
+    expect(writes).toHaveLength(0);
+    release();
+    await Promise.all([first.persisted, second.persisted]);
+    expect(writes.map((config) => config.maxAutoRisk)).toEqual(['high', 'low']);
+  });
+
+  it('reports synchronous persistence errors and still persists later edits', async () => {
+    const persist = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('disk offline');
+      })
+      .mockResolvedValue(undefined);
+    const rt = createBrainRuntime(baseOpts(undefined, { persist }));
+    expect(await rt.apply({ maxAutoRisk: 'high' }).persisted).toEqual({
+      ok: false,
+      error: 'disk offline',
+    });
+    expect(await rt.apply({ maxAutoRisk: 'low' }).persisted).toEqual({ ok: true });
+  });
+
+  it('invalidates cached approvals when the autonomy ceiling is lowered without rebuilding', async () => {
+    const rt = createBrainRuntime(
+      baseOpts({
+        maxAutoRisk: 'all',
+        cache: { enabled: true },
+        heuristics: { lowRiskAutoAnswer: false },
+      }),
+    );
+    const request = req({
+      risk: 'high',
+      question: 'Evaluate this migration plan.',
+      fallback: 'ask_human',
+    });
+    await rt.arbiter.decide(request);
+    expect(rt.getSnapshot().cache.size).toBe(1);
+    rt.apply({ maxAutoRisk: 'off' }, { persist: false });
+    expect(rt.getSnapshot().cache.size).toBe(0);
+    expect(await rt.arbiter.decide({ ...request, id: 'after' })).toMatchObject({
+      type: 'ask_human',
+    });
+  });
+
   it('starts on the session model and switches to a new pool via apply() without replacing the arbiter handle', async () => {
     const session = fakeProvider('Continue execution.');
     const poolProvider = fakeProvider('Pool model answer: continue.');
@@ -624,4 +684,43 @@ describe('createBrainRuntime — config round-trip (brain-config-roundtrip)', ()
     expect(persisted[0]?.trace).toEqual(fullConfig.trace);
     expect(persisted[0]?.llm).toEqual(fullConfig.llm);
   });
+
+  it('tracks decision tier statistics across runtime resolutions', async () => {
+    const { EventBus } = await import('../../src/kernel/events.js');
+    const events = new EventBus();
+    const rt = createBrainRuntime(
+      baseOpts(
+        {
+          rules: [
+            {
+              id: 'rule-proceed',
+              when: { question: 'proceed now' },
+              then: { action: 'answer', text: 'proceeding' },
+            },
+          ],
+        },
+        { events },
+      ),
+    );
+
+    // Initial stats
+    expect(rt.getTierStats()).toMatchObject({
+      total: 0,
+      deterministic: 0,
+      llmBacked: 0,
+    });
+
+    // Make a decision that matches a deterministic rule
+    await rt.arbiter.decide(req({ question: 'proceed now' }));
+
+    const stats = rt.getTierStats();
+    expect(stats.total).toBe(1);
+    expect(stats.deterministic).toBe(1);
+    expect(stats.llmBacked).toBe(0);
+    expect(stats.byTier.rule).toBe(1);
+
+    // Snapshot also reflects live tierStats
+    expect(rt.getSnapshot().tierStats).toEqual(stats);
+  });
 });
+

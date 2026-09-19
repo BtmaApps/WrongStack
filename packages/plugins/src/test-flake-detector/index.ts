@@ -24,8 +24,8 @@ import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { scriptSpawnArgs } from '@wrongstack/core/utils';
 import { withinProject } from '../runtime/index.js';
 
 const API_VERSION = '^0.1.10';
@@ -191,7 +191,7 @@ function isAllowedRunnerArg(arg: string): boolean {
 function isInside(parent: string, child: string): boolean {
   if (parent === child) return true;
   const rel = relative(parent, child);
-  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+  return rel !== '' && rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel);
 }
 
 function tokenizeCommand(command: string): string[] | null {

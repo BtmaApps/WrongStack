@@ -73,6 +73,17 @@ describe('SddBoardStore', () => {
     expect(await store.load('older')).toBeNull();
   });
 
+  it('serializes concurrent index removals without resurrecting deleted runs', async () => {
+    const store = new SddBoardStore({ baseDir: directory });
+    await store.saveSnapshot(snapshot('delete-a', 30));
+    await store.saveSnapshot(snapshot('delete-b', 20));
+    await store.saveSnapshot(snapshot('keep', 10));
+
+    await Promise.all([store.delete('delete-a'), store.delete('delete-b')]);
+
+    expect((await store.list()).map((entry) => entry.runId)).toEqual(['keep']);
+  });
+
   it('reloads an externally changed or invalid index', async () => {
     const store = new SddBoardStore({ baseDir: directory });
     await store.saveSnapshot(snapshot('one', 1));

@@ -117,6 +117,32 @@ describe('SecurityScanner refactor contracts', () => {
     );
   });
 
+  it('falls back to one worker when file concurrency is not finite', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'scanner-concurrency-'));
+    temporaryDirectories.push(root);
+    await fs.writeFile(path.join(root, 'value.ts'), 'danger\n');
+    const pattern: SecurityPattern = {
+      id: 'danger',
+      name: 'Danger',
+      severity: 'high',
+      description: 'danger',
+      patterns: [/danger/g],
+      fileExtensions: ['.ts'],
+      falsePositiveMarkers: [],
+      remediation: 'fix',
+      category: 'filesystem',
+    };
+
+    const result = await new SecurityScanner({ fileConcurrency: Number.NaN }).scan(
+      root,
+      skill([pattern]),
+      stack,
+    );
+
+    expect(result.scannedFiles).toBe(1);
+    expect(result.findings).toHaveLength(1);
+  });
+
   it('gathers and scans wildcard targetFiles such as **/.env* in BatchScanner', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'batch-scanner-wildcard-'));
     temporaryDirectories.push(root);

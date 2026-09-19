@@ -213,7 +213,7 @@ async function revertSnapshots(
         const absPath = path.resolve(file.path);
         const root = path.resolve(projectRoot);
         const rel = path.relative(root, absPath);
-        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
           errors.push(`${file.path}: path resolves outside project root — skipping`);
           continue;
         }

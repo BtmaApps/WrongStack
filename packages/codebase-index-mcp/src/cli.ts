@@ -2,7 +2,6 @@
 import { realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalProjectRoot } from '@wrongstack/core/utils';
 import { serveHttp, serveStdio } from '@wrongstack/mcp';
 import {
   checkCodebaseIndexServerHealth,
@@ -93,7 +92,7 @@ export function parseArgs(
     // MCP client happened to launch in, and swallowed the next flag as a value.
     const value = (): string | undefined => {
       const next = argv[index + 1];
-      if (next === undefined || next.startsWith('--')) {
+      if (next === undefined || next.startsWith('-')) {
         warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
         return undefined;
       }
@@ -163,6 +162,19 @@ export function parseArgs(
   return parsed;
 }
 
+/** Resolve the checkout whose source files and local index are served. */
+export function resolveIndexProjectRoot(projectRoot: string): string {
+  const resolved = path.resolve(projectRoot);
+  try {
+    // Canonicalize filesystem aliases without collapsing a linked Git
+    // worktree into its main checkout. Codebase Index storage is local to the
+    // physical checkout because each worktree can contain different source.
+    return realpathSync(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
 function availabilityError(
   availability: ReturnType<typeof resolveProjectIndexDaemonAvailability>,
 ): string | null {
@@ -191,7 +203,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 2;
   }
 
-  const projectRoot = canonicalProjectRoot(args.projectRoot);
+  const projectRoot = resolveIndexProjectRoot(args.projectRoot);
   const availability = resolveProjectIndexDaemonAvailability(projectRoot, args.indexDir);
   const unavailable = availabilityError(availability);
   if (unavailable) {

@@ -85,7 +85,10 @@ async function filesOutsideRoot(files: readonly string[], projectRoot: string): 
 
 function isWithin(root: string, target: string): boolean {
   const relative = path.relative(root, target);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 export function applyTextEdits(original: string, edits: TextEdit[]): string {

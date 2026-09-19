@@ -259,7 +259,7 @@ function projectRelativePath(
   const root = cwd ?? process.cwd();
   const abs = isAbsolute(rawPath) ? rawPath : resolve(root, rawPath);
   const rel = toForwardSlashes(relative(root, abs));
-  if (rel.startsWith('..') || isAbsolute(rel) || rel === '') return null;
+  if (rel.split(/[\\/]/)[0] === '..' || isAbsolute(rel) || rel === '') return null;
   return { abs, rel, root };
 }
 

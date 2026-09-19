@@ -352,7 +352,9 @@ async function importLegacyFiles(
     // resolve to the real path first and check containment on that.
     const resolved = await fsPromises.realpath(file);
     const rel = path.relative(projectRoot, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    // Canonical escape test: `..hidden` is a legal in-root first segment; a
+    // bare startsWith('..') would misread it as an escape.
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
       throw new Error(`importLegacyFiles: file path must stay inside the project root: ${file}`);
     }
     const stat = await fsPromises.stat(resolved);

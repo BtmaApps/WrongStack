@@ -41,6 +41,23 @@ describe('createCodebaseIndexMcpToolHost', () => {
     );
   });
 
+  it('forwards the MCP request cancellation signal to canonical tools', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ total: 0, results: [] });
+    const host = createCodebaseIndexMcpToolHost('C:/project', {
+      dependencies: { executeTool },
+    });
+    const controller = new AbortController();
+
+    await host.callTool('codebase_search', { query: 'Thing' }, { signal: controller.signal });
+
+    expect(executeTool).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'codebase-search' }),
+      { query: 'Thing' },
+      expect.anything(),
+      controller.signal,
+    );
+  });
+
   it('reports a degraded codebase_context failure as an MCP error', async () => {
     const executeTool = vi
       .fn()
@@ -65,28 +82,46 @@ describe('createCodebaseIndexMcpToolHost', () => {
       indexDir: 'C:/index',
       dependencies: { executeTool: vi.fn(), packageGraph, fileGraph, symbolGraph },
     });
+    const controller = new AbortController();
 
-    await expect(host.callTool('codebase_package_graph', {})).resolves.toMatchObject({
-      isError: false,
-    });
     await expect(
-      host.callTool('codebase_file_graph', { package: '@wrongstack/core' }),
+      host.callTool('codebase_package_graph', {}, { signal: controller.signal }),
     ).resolves.toMatchObject({ isError: false });
     await expect(
-      host.callTool('codebase_symbol_graph', { file: 'packages/core/src/index.ts' }),
+      host.callTool(
+        'codebase_file_graph',
+        { package: '@wrongstack/core' },
+        { signal: controller.signal },
+      ),
+    ).resolves.toMatchObject({ isError: false });
+    await expect(
+      host.callTool(
+        'codebase_symbol_graph',
+        { file: 'packages/core/src/index.ts' },
+        { signal: controller.signal },
+      ),
     ).resolves.toMatchObject({ isError: false });
 
-    expect(packageGraph).toHaveBeenCalledWith({ projectRoot: 'C:/project', indexDir: 'C:/index' });
-    expect(fileGraph).toHaveBeenCalledWith({
-      projectRoot: 'C:/project',
-      indexDir: 'C:/index',
-      packageFilter: '@wrongstack/core',
-    });
-    expect(symbolGraph).toHaveBeenCalledWith({
-      projectRoot: 'C:/project',
-      indexDir: 'C:/index',
-      fileFilter: 'packages/core/src/index.ts',
-    });
+    expect(packageGraph).toHaveBeenCalledWith(
+      { projectRoot: 'C:/project', indexDir: 'C:/index' },
+      controller.signal,
+    );
+    expect(fileGraph).toHaveBeenCalledWith(
+      {
+        projectRoot: 'C:/project',
+        indexDir: 'C:/index',
+        packageFilter: '@wrongstack/core',
+      },
+      controller.signal,
+    );
+    expect(symbolGraph).toHaveBeenCalledWith(
+      {
+        projectRoot: 'C:/project',
+        indexDir: 'C:/index',
+        fileFilter: 'packages/core/src/index.ts',
+      },
+      controller.signal,
+    );
   });
 
   it('rejects hidden writers and malformed required inputs', async () => {
@@ -137,5 +172,46 @@ describe('createCodebaseIndexMcpServer', () => {
     expect(prompts.result.prompts).toContainEqual(
       expect.objectContaining({ name: 'explore-codebase' }),
     );
+  });
+
+  it('propagates JSON-RPC cancellation into a running index tool', async () => {
+    let observedSignal: AbortSignal | undefined;
+    let started!: () => void;
+    const toolStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const server = createCodebaseIndexMcpServer('C:/project', {
+      dependencies: {
+        executeTool: vi.fn(async (_tool, _args, _context, signal) => {
+          observedSignal = signal;
+          started();
+          await new Promise<never>((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+          });
+        }),
+      },
+    });
+
+    const pending = server.handleMessage(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/call',
+        params: { name: 'codebase_search', arguments: { query: 'slow' } },
+      }),
+    );
+    await toolStarted;
+    await expect(
+      server.handleMessage(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'notifications/cancelled',
+          params: { requestId: 7, reason: 'client stopped' },
+        }),
+      ),
+    ).resolves.toBeNull();
+
+    expect(observedSignal?.aborted).toBe(true);
+    await expect(pending).resolves.toContain('client stopped');
   });
 });

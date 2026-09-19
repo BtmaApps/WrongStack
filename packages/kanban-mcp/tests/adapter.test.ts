@@ -44,6 +44,22 @@ describe('createKanbanMcpToolHost', () => {
     );
   });
 
+  it('forwards the MCP request cancellation signal to Kanban actions', async () => {
+    const executeKanban = vi.fn().mockResolvedValue({ ok: true, boards: [] });
+    const host = createKanbanMcpToolHost('C:/project', {
+      dependencies: { executeKanban },
+    });
+    const controller = new AbortController();
+
+    await host.callTool('kanban_read', { action: 'list_boards' }, { signal: controller.signal });
+
+    expect(executeKanban).toHaveBeenCalledWith(
+      { action: 'list_boards' },
+      expect.anything(),
+      controller.signal,
+    );
+  });
+
   it('rejects hidden tools and cross-tier actions', async () => {
     const host = createKanbanMcpToolHost('C:/project', {
       dependencies: { executeKanban: vi.fn() },
@@ -139,6 +155,50 @@ describe('createKanbanMcpToolHost', () => {
       content: 'Kanban project server is disabled; live watch is unavailable',
       isError: true,
     });
+  });
+
+  it('cancels a live watch and releases daemon listeners immediately', async () => {
+    const unsubscribeEvent = vi.fn();
+    const unsubscribeDisconnect = vi.fn();
+    const controller = new AbortController();
+    const host = createKanbanMcpToolHost('C:/project', {
+      dependencies: {
+        executeKanban: vi.fn(),
+        getConnection: vi.fn().mockResolvedValue({
+          subscribe: () => unsubscribeEvent,
+          onDisconnect: () => unsubscribeDisconnect,
+        }),
+      },
+    });
+
+    const pending = host.callTool(
+      'kanban_watch',
+      { timeoutMs: 25_000 },
+      { signal: controller.signal },
+    );
+    await vi.waitFor(() => expect(unsubscribeEvent).not.toHaveBeenCalled());
+    controller.abort(new Error('client stopped watching'));
+
+    await expect(pending).resolves.toEqual({
+      content: 'client stopped watching',
+      isError: true,
+    });
+    expect(unsubscribeEvent).toHaveBeenCalledOnce();
+    expect(unsubscribeDisconnect).toHaveBeenCalledOnce();
+  });
+
+  it('does not acquire a daemon connection for a pre-cancelled watch', async () => {
+    const getConnection = vi.fn();
+    const controller = new AbortController();
+    controller.abort(new Error('already cancelled'));
+    const host = createKanbanMcpToolHost('C:/project', {
+      dependencies: { executeKanban: vi.fn(), getConnection },
+    });
+
+    await expect(host.callTool('kanban_watch', {}, { signal: controller.signal })).resolves.toEqual(
+      { content: 'already cancelled', isError: true },
+    );
+    expect(getConnection).not.toHaveBeenCalled();
   });
 });
 

@@ -85,7 +85,8 @@ export function resolveHqDistDir(): string | null {
 /** Check whether a resolved path stays inside the dist directory (no traversal). */
 function isInsideDist(filePath: string, distDir: string): boolean {
   const rel = path.relative(distDir, filePath);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  // Canonical escape test: `..hidden` is a legal in-root first segment.
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
 interface ServeStaticResult {

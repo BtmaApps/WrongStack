@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { runWstack } from '../src/runner.js';
 import type { ModelCell } from '../src/types.js';
 
@@ -37,10 +37,22 @@ afterAll(async () => {
 
 const realPlatform = process.platform;
 afterEach(() => {
+  vi.restoreAllMocks();
   Object.defineProperty(process, 'platform', { value: realPlatform, configurable: true });
 });
 
 describe('runWstack error paths', () => {
+  it('keeps elapsed time non-negative when the wall clock moves backwards', async () => {
+    const entry = await fakeEntry(
+      'console.log(JSON.stringify({status:"completed",usage:{iterations:1}}));',
+    );
+    vi.spyOn(Date, 'now').mockReturnValueOnce(10_000).mockReturnValue(1_000);
+
+    const res = await run(entry);
+
+    expect(res.elapsedMs).toBeGreaterThanOrEqual(0);
+  });
+
   it('returns crashed when spawn throws synchronously', async () => {
     const entry = await fakeEntry('process.exit(0);');
     const res = await run(entry, { nodeBin: `bad${String.fromCharCode(0)}node` });
@@ -124,6 +136,18 @@ describe('mapWithConcurrency edge cases', () => {
   it('handles an empty item list', async () => {
     const { mapWithConcurrency } = await import('../src/runner.js');
     expect(await mapWithConcurrency([], 4, async (x) => x)).toEqual([]);
+  });
+
+  it('falls back to one worker for a non-finite concurrency value', async () => {
+    const { mapWithConcurrency } = await import('../src/runner.js');
+    const visited: number[] = [];
+    const result = await mapWithConcurrency([1, 2, 3], Number.NaN, async (value) => {
+      visited.push(value);
+      return value * 2;
+    });
+
+    expect(visited).toEqual([1, 2, 3]);
+    expect(result).toEqual([2, 4, 6]);
   });
 });
 

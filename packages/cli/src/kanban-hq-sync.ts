@@ -7,6 +7,7 @@ import type {
 import {
   deriveHqProjectId,
   MAX_HQ_KANBAN_BOARD_BYTES,
+  MAX_HQ_KANBAN_BOARDS,
   redactHqEventPayload,
 } from '@wrongstack/core/hq';
 import {
@@ -513,9 +514,14 @@ function chunkSnapshotPayload(
         { code: 'WRONGSTACK_HQ_KANBAN_OVERSIZED_RECORD' },
       );
     }
+    // HQ also caps each list by COUNT and drops an over-count frame whole.
+    // Tombstones are tiny, so the byte target alone let a project's full
+    // tombstone set (1000+ after a month of board churn) ride in one frame —
+    // rejected on every attach, taking that chunk's boards down with it.
     if (
       (currentBoards.length > 0 || currentTombstones.length > 0) &&
-      currentBytes + additionalBytes > MAX_KANBAN_SNAPSHOT_PAYLOAD_BYTES
+      (currentBytes + additionalBytes > MAX_KANBAN_SNAPSHOT_PAYLOAD_BYTES ||
+        itemCount >= MAX_HQ_KANBAN_BOARDS)
     ) {
       pushCurrent();
     }

@@ -436,6 +436,7 @@ export function validateBrainRiskPayload(
 
 interface BrainAskPayload {
   question: string;
+  requestId?: string;
 }
 
 export function validateBrainAskPayload(
@@ -445,10 +446,20 @@ export function validateBrainAskPayload(
     return { ok: false, message: 'brain.ask payload must be an object with string question' };
   }
   const question = payload['question'];
+  const requestId = payload['requestId'];
+  if (requestId !== undefined && (typeof requestId !== 'string' || !requestId.trim())) {
+    return { ok: false, message: 'brain.ask payload.requestId must be a non-empty string' };
+  }
   if (typeof question !== 'string' || question.trim().length === 0) {
     return { ok: false, message: 'brain.ask payload.question must be a non-empty string' };
   }
-  return { ok: true, value: { question: question.trim() } };
+  return {
+    ok: true,
+    value: {
+      question: question.trim(),
+      ...(typeof requestId === 'string' ? { requestId: requestId.trim() } : {}),
+    },
+  };
 }
 
 interface BrainConfigSetPayload {

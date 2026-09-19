@@ -250,6 +250,7 @@ export class SimpleSocket {
   private queue: string[] = [];
   private queueChars = 0;
   private listeners: Set<(msg: ServerMessage) => void> = new Set();
+  private connectGeneration = 0;
 
   constructor(private readonly options: SimpleSocketOptions) {}
 
@@ -263,13 +264,16 @@ export class SimpleSocket {
 
   async connect(): Promise<void> {
     if (this.connectionState.stopped) return;
+    const generation = ++this.connectGeneration;
     this.connectionState = markConnectionConnecting(this.connectionState);
     this.options.onState('connecting');
     const url = await exchangeAuthCookie(defaultWsUrl());
-    if (this.connectionState.stopped) return;
+    if (this.connectionState.stopped || generation !== this.connectGeneration) return;
 
     const socket = new WebSocket(url);
+    const previousSocket = this.socket;
     this.socket = socket;
+    previousSocket?.close();
     socket.addEventListener('open', () => {
       if (this.socket !== socket) return;
       this.connectionState = markConnectionOpen(this.connectionState);
@@ -279,6 +283,7 @@ export class SimpleSocket {
       for (const message of queued) socket.send(message);
     });
     socket.addEventListener('message', (event) => {
+      if (this.socket !== socket || this.connectionState.stopped) return;
       this.connectionState = markConnectionActivity(this.connectionState);
       const decoded = decodeProtocolFrame(String(event.data), 'server');
       if (!decoded.ok) return;
@@ -287,7 +292,8 @@ export class SimpleSocket {
       for (const fn of this.listeners) fn(message);
     });
     socket.addEventListener('close', () => {
-      if (this.socket === socket) this.socket = null;
+      if (this.socket !== socket) return;
+      this.socket = null;
       // A LOCAL teardown is already covered by the `stopped` flag one line
       // below (`stop()` sets it before closing), so the close code tells us
       // nothing we need: every close that reaches past this guard is REMOTE.
@@ -314,7 +320,9 @@ export class SimpleSocket {
     // Closing with no code produces a clean 1000 handshake, which is why a
     // transient error on an otherwise healthy socket used to land in the dead
     // branch above too.
-    socket.addEventListener('error', () => socket.close());
+    socket.addEventListener('error', () => {
+      if (this.socket === socket) socket.close();
+    });
   }
 
   send(type: string, payload: Record<string, unknown> = {}): void {
@@ -364,6 +372,7 @@ export class SimpleSocket {
   }
 
   close(): void {
+    this.connectGeneration++;
     this.connectionState = stopConnection(this.connectionState);
     if (this.timer) clearTimeout(this.timer);
     this.socket?.close();

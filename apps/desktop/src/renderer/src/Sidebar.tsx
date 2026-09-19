@@ -249,15 +249,17 @@ const ProjectRow = memo(function ProjectRow({
         </div>
       </div>
 
-      {expanded ? <SessionRows sessions={sessions} /> : null}
+      {expanded ? <SessionRows sessions={sessions} busy={busy} /> : null}
     </div>
   );
 });
 
 function SessionRows({
   sessions,
+  busy,
 }: {
   sessions: Array<DesktopOpenSessionEntry & { runtimeId: string }>;
+  busy: boolean;
 }) {
   const t = useT();
   if (sessions.length === 0) {
@@ -266,7 +268,7 @@ function SessionRows({
   return (
     <ul className="session-list">
       {sessions.map((entry) => (
-        <SessionRow key={`${entry.runtimeId}:${entry.id}`} entry={entry} />
+        <SessionRow key={`${entry.runtimeId}:${entry.id}`} entry={entry} busy={busy} />
       ))}
     </ul>
   );
@@ -274,8 +276,10 @@ function SessionRows({
 
 const SessionRow = memo(function SessionRow({
   entry,
+  busy,
 }: {
   entry: DesktopOpenSessionEntry & { runtimeId: string };
+  busy: boolean;
 }) {
   const open = useCallback(() => {
     void actions.focusSession(entry.runtimeId, entry.id, entry.title);
@@ -288,6 +292,8 @@ const SessionRow = memo(function SessionRow({
         className={`session-row${entry.active ? ' is-active' : ''}`}
         onClick={open}
         title={entry.title}
+        disabled={busy}
+        aria-current={entry.active ? 'page' : undefined}
       >
         <span className={`dot ${entry.running ? 'starting' : 'stopped'}`} aria-hidden="true" />
         <span className="session-title">{entry.title}</span>

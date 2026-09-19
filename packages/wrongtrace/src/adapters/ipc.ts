@@ -135,13 +135,15 @@ export function createIpcTransport(socketPath?: string, timeouts?: IpcTimeouts):
             } catch {
               continue; // malformed line — tolerate, keep scanning
             }
+            if (envelope.id !== id && envelope.id !== null) {
+              // Result and error envelopes share the same correlation rule.
+              // A stale/foreign error must not fail the current request.
+              continue;
+            }
             if (envelope.error) {
               return { result: null, error: envelope.error };
             }
-            if (envelope.id === id || envelope.id === null) {
-              return { result: (envelope.result ?? null) as T | null };
-            }
-            // Different id — a frame for someone else; keep scanning.
+            return { result: (envelope.result ?? null) as T | null };
           }
         }
         // Socket closed without a usable frame.

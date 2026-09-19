@@ -33,7 +33,9 @@ export async function deleteRewoundSubagentTranscripts(
     // as an escape and silently skip every deletion.
     const realResolved = await fsp.realpath(resolved).catch(() => resolved);
     const relative = path.relative(realAllowedRoot, realResolved);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      continue;
+    }
     await fsp.rm(resolved, { force: true }).then(
       () => {
         deleted.push(realResolved);

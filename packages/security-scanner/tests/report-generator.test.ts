@@ -270,12 +270,24 @@ describe('ReportGenerator', () => {
     expect(file.startsWith(outDir)).toBe(true);
   });
 
+  it('does not overwrite reports generated in the same second', async () => {
+    const gen = new ReportGenerator({ outputDir: path.join(tmp, 'reports') });
+    const [first, second] = await Promise.all([
+      gen.generate(mkScanResult({ projectRoot: '/first' })),
+      gen.generate(mkScanResult({ projectRoot: '/second' })),
+    ]);
+
+    expect(first).not.toBe(second);
+    await expect(fs.readFile(first, 'utf8')).resolves.toContain('/first');
+    await expect(fs.readFile(second, 'utf8')).resolves.toContain('/second');
+  });
+
   it('embeds an ISO-style timestamp in the filename', async () => {
     const gen = new ReportGenerator({ outputDir: path.join(tmp, 'reports') });
     const file = await gen.generate(mkScanResult());
     // Replace : and . with - → 2026-05-22T10-00-00 style
     expect(path.basename(file)).toMatch(
-      /^security-report-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.markdown$/,
+      /^security-report-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-[0-9a-f]{8}\.markdown$/,
     );
   });
 });

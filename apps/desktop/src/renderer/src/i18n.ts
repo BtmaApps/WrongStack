@@ -38,7 +38,7 @@ function readLocale(): DesktopLocale {
   return 'en';
 }
 
-let currentLocale: DesktopLocale = readLocale();
+let currentLocale: DesktopLocale = 'en';
 
 /**
  * Apply a locale. `propagate: true` (default) also pushes the change to main so
@@ -650,6 +650,9 @@ const ptBR: Catalog = {
 };
 
 const CATALOGS: Record<DesktopLocale, Catalog> = { en, tr, de, fr, it, es, 'pt-BR': ptBR };
+// Catalog validation must run after CATALOGS exists, otherwise the caught
+// temporal-dead-zone error silently turns every saved locale into English.
+currentLocale = readLocale();
 
 /** Translate a key, falling back to the key itself if not found. */
 export function t(key: string): string {

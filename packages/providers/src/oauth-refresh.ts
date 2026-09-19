@@ -50,7 +50,15 @@ export function createSingleFlightRefresh<T>(
     // every refreshFn impl already wraps its own `AbortSignal.timeout`, so the
     // shared work stays bounded, just not caller-cancellable.
     if (!inFlight) {
-      const flight = refreshFn(undefined).finally(() => {
+      let pending: Promise<T>;
+      try {
+        pending = refreshFn(undefined);
+      } catch (error) {
+        // A setup/validation throw must obey the same shared rejection and
+        // retry contract as an asynchronous refresh failure.
+        pending = Promise.reject(error);
+      }
+      const flight = pending.finally(() => {
         inFlight = null;
       });
       // The shared flight can outlive every awaiter: a first caller whose

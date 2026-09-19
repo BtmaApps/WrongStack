@@ -224,6 +224,8 @@ export async function* parseSSE(
   if (isNodeReadable(body)) {
     const nodeStream = body as NodeJS.ReadableStream & {
       destroy?: (err?: Error) => void;
+      destroyed?: boolean;
+      readableEnded?: boolean;
       [Symbol.asyncIterator]?: () => AsyncIterator<unknown>;
     };
     try {
@@ -233,7 +235,7 @@ export async function* parseSSE(
         }
       } else {
         const chunks: Uint8Array[] = [];
-        let ended = false;
+        let ended = nodeStream.readableEnded === true;
         let error: Error | null = null;
         let resume: (() => void) | null = null;
 
@@ -249,10 +251,21 @@ export async function* parseSSE(
           error = err;
           resume?.();
         };
+        const onClose = () => {
+          if (!ended && !error) {
+            error = Object.assign(new Error('SSE stream closed before end.'), {
+              code: 'ERR_STREAM_PREMATURE_CLOSE',
+            });
+          }
+          resume?.();
+        };
 
         nodeStream.on('data', onData);
         nodeStream.on('end', onEnd);
         nodeStream.on('error', onError);
+        nodeStream.on('close', onClose);
+        // A close/end that happened before listener registration will not replay.
+        if (nodeStream.destroyed) onClose();
 
         try {
           while (!ended || chunks.length > 0) {
@@ -275,6 +288,7 @@ export async function* parseSSE(
           nodeStream.removeListener?.('data', onData);
           nodeStream.removeListener?.('end', onEnd);
           nodeStream.removeListener?.('error', onError);
+          nodeStream.removeListener?.('close', onClose);
         }
       }
     } finally {
@@ -295,9 +309,10 @@ export async function* parseSSE(
       // cancel(), not just releaseLock(): an early consumer exit — break/throw/
       // return out of the generator that drives parseSSE — must close the HTTP
       // body, otherwise the socket stays open until the outer AbortSignal (if
-      // any) fires. cancel() also releases the lock; on a fully-drained stream
-      // it is a harmless no-op.
+      // any) fires. Cancellation does not release a reader's lock. Release it
+      // explicitly without waiting for a possibly slow upstream cancel hook.
       void reader.cancel().catch(() => {});
+      reader.releaseLock();
     }
   }
 
@@ -373,78 +388,95 @@ export function createSseLineFoldingTransform(
   };
 
   const reader = source.getReader();
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      // Drain the source until we have emitted at least one chunk OR the
-      // source is exhausted. Without the inner loop, a chunk that only
-      // carries a partial line (no `\n` yet) would return from `pull`
-      // without enqueueing anything, and the consumer would block forever
-      // because Web Streams only re-invokes `pull` once the previous call
-      // made progress.
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) {
-          if (lineBuf.length > 0) {
-            let line = lineBuf;
-            if (line.length > 0 && line[line.length - 1] === 0x0d) {
-              line = line.subarray(0, line.length - 1);
-            }
-            lineBuf = new Uint8Array(0);
-            emitLine(controller, line);
-          }
-          controller.close();
-          return;
-        }
-        if (!value || value.length === 0) continue;
-
-        let chunkStart = 0;
-        let emittedThisChunk = false;
-        for (let i = 0; i < value.length; i++) {
-          const byte = value[i]!;
-          if (skipLeadingLf && i === chunkStart) {
-            skipLeadingLf = false;
-            if (byte === 0x0a) {
-              chunkStart = i + 1;
-              continue;
-            }
-          }
-          if (byte !== 0x0a && byte !== 0x0d) continue;
-          const lineEnd = i;
-          const lineTail = value.subarray(chunkStart, lineEnd);
-          let line =
-            lineBuf.length === 0 ? Uint8Array.from(lineTail) : concatBytes(lineBuf, lineTail);
+  let cancelled = false;
+  const pull = async (controller: ReadableStreamDefaultController<Uint8Array>): Promise<void> => {
+    // Drain the source until we have emitted at least one chunk OR the
+    // source is exhausted. Without the inner loop, a chunk that only
+    // carries a partial line (no `\n` yet) would return from `pull`
+    // without enqueueing anything, and the consumer would block forever
+    // because Web Streams only re-invokes `pull` once the previous call
+    // made progress.
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (cancelled) return;
+      if (done) {
+        if (lineBuf.length > 0) {
+          let line = lineBuf;
           if (line.length > 0 && line[line.length - 1] === 0x0d) {
             line = line.subarray(0, line.length - 1);
           }
           lineBuf = new Uint8Array(0);
           emitLine(controller, line);
-          emittedThisChunk = true;
-          chunkStart = i + 1;
-          skipLeadingLf = byte === 0x0d;
         }
+        reader.releaseLock();
+        controller.close();
+        return;
+      }
+      if (!value || value.length === 0) continue;
 
-        if (chunkStart < value.length) {
-          const tail = value.subarray(chunkStart);
-          if (lineBuf.length === 0) {
-            const copiedTail = new Uint8Array(new ArrayBuffer(tail.length));
-            copiedTail.set(tail);
-            lineBuf = copiedTail;
-          } else {
-            const merged = concatBytes(lineBuf, tail);
-            lineBuf = new Uint8Array(new ArrayBuffer(merged.length));
-            lineBuf.set(merged);
+      let chunkStart = 0;
+      let emittedThisChunk = false;
+      for (let i = 0; i < value.length; i++) {
+        const byte = value[i]!;
+        if (skipLeadingLf && i === chunkStart) {
+          skipLeadingLf = false;
+          if (byte === 0x0a) {
+            chunkStart = i + 1;
+            continue;
           }
         }
+        if (byte !== 0x0a && byte !== 0x0d) continue;
+        const lineEnd = i;
+        const lineTail = value.subarray(chunkStart, lineEnd);
+        let line =
+          lineBuf.length === 0 ? Uint8Array.from(lineTail) : concatBytes(lineBuf, lineTail);
+        if (line.length > 0 && line[line.length - 1] === 0x0d) {
+          line = line.subarray(0, line.length - 1);
+        }
+        lineBuf = new Uint8Array(0);
+        emitLine(controller, line);
+        emittedThisChunk = true;
+        chunkStart = i + 1;
+        skipLeadingLf = byte === 0x0d;
+      }
 
-        // Made progress (at least one complete line was forwarded) — let the
-        // consumer drain before we go back to the source for more. Otherwise
-        // (no `\n` in this chunk, partial line still buffered) loop and read
-        // the next chunk synchronously to avoid the no-progress deadlock.
-        if (emittedThisChunk) return;
+      if (chunkStart < value.length) {
+        const tail = value.subarray(chunkStart);
+        if (lineBuf.length === 0) {
+          const copiedTail = new Uint8Array(new ArrayBuffer(tail.length));
+          copiedTail.set(tail);
+          lineBuf = copiedTail;
+        } else {
+          const merged = concatBytes(lineBuf, tail);
+          lineBuf = new Uint8Array(new ArrayBuffer(merged.length));
+          lineBuf.set(merged);
+        }
+      }
+
+      // Made progress (at least one complete line was forwarded) — let the
+      // consumer drain before we go back to the source for more. Otherwise
+      // (no `\n` in this chunk, partial line still buffered) loop and read
+      // the next chunk synchronously to avoid the no-progress deadlock.
+      if (emittedThisChunk) return;
+    }
+  };
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        await pull(controller);
+      } catch (error) {
+        if (cancelled) return;
+        void reader.cancel(error).catch(() => {});
+        reader.releaseLock();
+        throw error;
       }
     },
     cancel(reason) {
-      return reader.cancel(reason);
+      cancelled = true;
+      lineBuf = new Uint8Array(0);
+      const pending = reader.cancel(reason);
+      reader.releaseLock();
+      return pending;
     },
   });
 }

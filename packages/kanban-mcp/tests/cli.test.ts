@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/cli.js';
 
 describe('Kanban MCP CLI arguments', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('defaults to read-only stdio', () => {
     expect(parseArgs(['--project-root', '.'])).toMatchObject({
       transport: 'stdio',
@@ -44,5 +47,21 @@ describe('Kanban MCP CLI arguments', () => {
       writable: true,
       destructive: true,
     });
+  });
+
+  it('does not consume the next option when a value is missing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--project-root', '--writable'], {})).toMatchObject({
+      projectRoot: '',
+      writable: true,
+    });
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('rejects invalid and out-of-range HTTP ports', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--port', '70000'], {}).httpPort).toBe(0);
+    expect(parseArgs(['--port', '-1'], {}).httpPort).toBe(0);
+    expect(warn).toHaveBeenCalled();
   });
 });

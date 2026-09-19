@@ -21,7 +21,12 @@ interface FileObservation {
 
 function isInside(root: string, target: string): boolean {
   const relative = path.relative(root, target);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
+  // startsWith('..') wrongly rejects it.
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 function errno(err: unknown): string | undefined {

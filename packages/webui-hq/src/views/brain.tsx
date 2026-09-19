@@ -64,6 +64,7 @@ export function BrainView(): React.ReactElement {
     let waitingOnHuman = 0;
     let councilTokens = 0;
     let degradedPanels = 0;
+    const latestDecisions = new Map<string, { at: number; pending: boolean }>();
     for (const event of events) {
       const payload = event.payload as HqBrainEventPayload;
       if (payload.kind === 'decision_requested') requested += 1;
@@ -73,14 +74,31 @@ export function BrainView(): React.ReactElement {
       if (payload.risk === 'high' || payload.risk === 'critical') highRisk += 1;
       // What the fleet's Brain actually spends. Everything else is free.
       if (payload.tier !== undefined && !FREE_TIERS.has(payload.tier)) modelBacked += 1;
-      if (payload.kind === 'decision_ask_human' && payload.pending === true) waitingOnHuman += 1;
+      if (
+        payload.requestId &&
+        (payload.kind === 'decision_ask_human' ||
+          payload.kind === 'decision_answered' ||
+          payload.kind === 'decision_denied')
+      ) {
+        const key = JSON.stringify([event.clientId, event.sessionId, payload.requestId]);
+        const previous = latestDecisions.get(key);
+        const pending = payload.kind === 'decision_ask_human' && payload.pending === true;
+        if (!previous || payload.at > previous.at || (payload.at === previous.at && !pending)) {
+          latestDecisions.set(key, { at: payload.at, pending });
+        }
+      }
       if (payload.kind === 'council_resolved') {
         councilTokens += payload.totalTokens ?? 0;
-        if ((payload.warnings?.length ?? 0) > 0 || payload.judgeIsVoter === true) {
+        if (
+          (payload.warnings?.length ?? 0) > 0 ||
+          payload.judgeIsVoter === true ||
+          ['failed', 'cancelled', 'abstained'].includes(payload.decision ?? '')
+        ) {
           degradedPanels += 1;
         }
       }
     }
+    waitingOnHuman = [...latestDecisions.values()].filter((entry) => entry.pending).length;
     return {
       requested,
       answered,

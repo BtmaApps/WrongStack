@@ -10,8 +10,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_SURFACE_CONNECTION_CONFIG,
   createSurfaceConnectionState,
+  DEFAULT_SURFACE_CONNECTION_CONFIG,
   enqueueBounded,
   isConnectionHeartbeatTimedOut,
   markConnectionActivity,
@@ -142,6 +142,18 @@ describe('planConnectionReconnect', () => {
     const { plan } = planConnectionReconnect(createSurfaceConnectionState(), cfg, 12345);
     expect(plan?.retryAt).toBe(12345 + (plan?.delayMs ?? 0));
   });
+
+  it('normalizes non-finite reconnect configuration to finite defaults', () => {
+    const cfg = {
+      ...DEFAULT_SURFACE_CONNECTION_CONFIG,
+      initialBackoffMs: Number.NaN,
+      maxBackoffMs: Number.POSITIVE_INFINITY,
+      backoffMultiplier: Number.NaN,
+      jitterRatio: Number.NaN,
+    };
+    const { plan } = planConnectionReconnect(createSurfaceConnectionState(), cfg, 1_000, () => 0.5);
+    expect(plan).toEqual({ attempt: 1, delayMs: 1_000, retryAt: 2_000 });
+  });
 });
 
 describe('isConnectionHeartbeatTimedOut', () => {
@@ -219,5 +231,14 @@ describe('enqueueBounded', () => {
     const result = enqueueBounded([undefined as unknown as number], 1, 1);
     expect(result.dropped).toBeNull();
     expect(result.queue).toEqual([1]);
+  });
+
+  it('fails closed for non-finite limits and floors fractional limits', () => {
+    expect(enqueueBounded([1, 2], 3, Number.NaN)).toEqual({ queue: [], dropped: 3 });
+    expect(enqueueBounded([1, 2], 3, Number.POSITIVE_INFINITY)).toEqual({
+      queue: [],
+      dropped: 3,
+    });
+    expect(enqueueBounded([1, 2], 3, 1.9)).toEqual({ queue: [3], dropped: 1 });
   });
 });

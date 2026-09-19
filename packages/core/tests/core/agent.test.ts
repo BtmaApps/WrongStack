@@ -235,6 +235,88 @@ describe('Agent', () => {
     expect(ctx.activeRunSessionWriter).toBeUndefined();
   });
 
+  it.each(['before-run', 'response', 'abort'] as const)(
+    'keeps journal writes and recovery markers on the starting session after a %s switch',
+    async (phase) => {
+      const provider = new MockProvider([
+        { content: [{ type: 'text', text: 'original reply' }], stopReason: 'end_turn' },
+      ]);
+      const extensions = new ExtensionRegistry();
+      const { agent, ctx, tmp, sessionStore } = await buildAgent(provider, [], extensions);
+      cleanupDirs.push(tmp);
+      const starting = ctx.session;
+      const replacement = await sessionStore.create({ id: '', model: 'test', provider: 'mock' });
+      const startingAppend = vi.spyOn(starting, 'append');
+      const startingCheckpoint = vi.spyOn(starting, 'writeCheckpoint');
+      const startingMarker = vi.spyOn(starting, 'writeInFlightMarker');
+      const startingClear = vi.spyOn(starting, 'clearInFlightMarker');
+      const replacementWrites = [
+        vi.spyOn(replacement, 'append'),
+        vi.spyOn(replacement, 'writeCheckpoint'),
+        vi.spyOn(replacement, 'writeInFlightMarker'),
+        vi.spyOn(replacement, 'clearInFlightMarker'),
+        vi.spyOn(replacement, 'flush'),
+      ];
+      const controller = new AbortController();
+      const switchSession = async () => {
+        await Promise.resolve();
+        ctx.session = replacement;
+      };
+      if (phase === 'before-run') {
+        extensions.register({ name: 'switch-session', beforeRun: switchSession });
+      } else if (phase === 'response') {
+        agent.pipelines.response.use({
+          name: 'switch-session',
+          async handler(response: Response) {
+            await switchSession();
+            return response;
+          },
+        });
+      } else {
+        vi.spyOn(provider, 'complete').mockImplementationOnce(async () => {
+          await switchSession();
+          controller.abort('session switched');
+          throw new DOMException('session switched', 'AbortError');
+        });
+      }
+      try {
+        const result = await agent.run('original input', { signal: controller.signal });
+        expect(result.status).toBe(phase === 'abort' ? 'aborted' : 'done');
+        for (const write of replacementWrites) expect.soft(write).not.toHaveBeenCalled();
+        expect(startingAppend).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'user_input' }),
+        );
+        expect(startingAppend).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'llm_request' }),
+        );
+        if (phase !== 'abort') {
+          expect(startingAppend).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'llm_response' }),
+          );
+        }
+        expect(startingCheckpoint).toHaveBeenCalledWith(0, 'original input');
+        expect(startingMarker).toHaveBeenCalled();
+        expect(startingClear).toHaveBeenCalledWith(phase === 'abort' ? 'aborted' : 'clean');
+        expect(ctx.session).toBe(replacement);
+        expect(ctx.activeRunSessionWriter).toBeUndefined();
+        // Once the run ends, ordinary state changes belong to the new session.
+        ctx.state.appendMessage({
+          role: 'user',
+          content: [{ type: 'text', text: 'next session' }],
+        });
+        await ctx.flushConversationJournal();
+        expect(replacementWrites[0]).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'message_appended',
+            message: expect.objectContaining({ content: [{ type: 'text', text: 'next session' }] }),
+          }),
+        );
+      } finally {
+        await Promise.all([starting.close(), replacement.close()]);
+      }
+    },
+  );
+
   it('starts an automatic follow-up on the model transition that was already requested', async () => {
     const previousProvider = new MockProvider([
       { content: [{ type: 'text', text: 'old' }], stopReason: 'end_turn' },
@@ -1465,6 +1547,54 @@ describe('Agent — additional coverage', () => {
     expect(result.status).toBe('failed');
     expect(result.error?.message).toBe('terminal recovery decision');
   });
+
+  it.each([false, true])(
+    'shares concurrent teardown without repeating plugin cleanup (failure=%s)',
+    async (fail) => {
+      const { agent, ctx, tmp } = await buildAgent(new MockProvider([]));
+      cleanupDirs.push(tmp);
+      const gate = Promise.withResolvers<void>();
+      const entered = Promise.withResolvers<void>();
+      const failure = new Error('cleanup failed');
+      const cleanup = vi.fn(async () => {
+        entered.resolve();
+        await gate.promise;
+        if (fail) throw failure;
+      });
+      const lifetimeCleanup = vi.fn();
+      ctx.registerAgentHook(lifetimeCleanup);
+      await agent.use(
+        { name: 'slow-cleanup', apiVersion: '^0.1', setup() {}, teardown: cleanup } as never,
+        {} as never,
+      );
+      try {
+        const first = agent.teardown();
+        await entered.promise;
+        const second = agent.teardown();
+        const results = Promise.allSettled([first, second]);
+        expect(lifetimeCleanup).not.toHaveBeenCalled();
+        gate.resolve();
+        const settled = await results;
+        expect(cleanup).toHaveBeenCalledTimes(1);
+        expect(lifetimeCleanup).toHaveBeenCalledTimes(1);
+        expect(settled.map((result) => result.status)).toEqual(
+          fail ? ['rejected', 'rejected'] : ['fulfilled', 'fulfilled'],
+        );
+        if (settled[0]?.status === 'rejected' && settled[1]?.status === 'rejected') {
+          expect(settled[0].reason).toBe(settled[1].reason);
+          expect(settled[0].reason.cause).toBe(failure);
+        }
+        // A later cleanup cycle must still handle newly registered hooks.
+        const laterCleanup = vi.fn();
+        ctx.registerAgentHook(laterCleanup);
+        await agent.teardown();
+        expect(laterCleanup).toHaveBeenCalledTimes(1);
+      } finally {
+        gate.resolve();
+        await ctx.session.close();
+      }
+    },
+  );
 
   it('teardown throws a structured AgentError when a plugin teardown fails', async () => {
     const provider = new MockProvider([]);

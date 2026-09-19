@@ -140,6 +140,8 @@ export class GovernanceProjectServer {
   private lastListenerError: Error | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private lastActivityAt = Date.now();
+  private startPromise: Promise<void> | undefined;
+  private closePromise: Promise<void> | undefined;
 
   constructor(options: GovernanceProjectServerOptions) {
     if (options.projectId.trim().length === 0) throw new Error('projectId must not be empty.');
@@ -162,14 +164,27 @@ export class GovernanceProjectServer {
     return this.lastListenerError;
   }
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
     if (this.state !== 'idle')
-      throw new Error(`Governance server cannot start from ${this.state}.`);
+      return Promise.reject(new Error(`Governance server cannot start from ${this.state}.`));
     this.state = 'starting';
+    this.startPromise = this.startOnce();
+    return this.startPromise;
+  }
+
+  private requireStarting(): void {
+    if (this.state !== 'starting') {
+      throw new Error('Governance server startup was cancelled by close().');
+    }
+  }
+
+  private async startOnce(): Promise<void> {
     try {
       const root = await fs.stat(this.projectRoot);
+      this.requireStarting();
       if (!root.isDirectory()) throw new Error('Governance project root must be a directory.');
       await this.ensureEndpointParent();
+      this.requireStarting();
     } catch (error) {
       this.state = 'closed';
       throw error;
@@ -180,7 +195,9 @@ export class GovernanceProjectServer {
     this.listener = listener;
     try {
       await this.listen(listener);
+      this.requireStarting();
       await fs.mkdir(path.dirname(this.databasePath), { recursive: true });
+      this.requireStarting();
       const store = SqliteGovernanceEventStore.open(this.databasePath);
       this.store = store;
       const service = new GovernanceProjectService(
@@ -248,9 +265,19 @@ export class GovernanceProjectServer {
     if (!result.handled) throw new Error(result.message);
   }
 
-  async close(): Promise<void> {
-    if (this.state === 'closed') return;
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
+    if (this.state === 'closed') return Promise.resolve();
+    // Signal cancellation immediately, but let startup release any listener
+    // it is still acquiring before closing storage or resolving shutdown.
     this.state = 'closing';
+    this.closePromise = this.closeOnce();
+    return this.closePromise;
+  }
+
+  private async closeOnce(): Promise<void> {
+    await this.startPromise?.catch(() => undefined);
+    if (this.state === 'closed') return;
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = undefined;
     for (const socket of this.sockets) socket.destroy();

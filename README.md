@@ -245,17 +245,17 @@ Playwright is installed separately. The HQ systemd installer (`wstack hq
 service install`) manages an npm install; run `wstack hq` under your own
 service manager instead.
 
-### npm / pnpm
+### npm (legacy)
 
-```bash
-npm i -g wrongstack
-# or
-pnpm add -g wrongstack
-```
+The npm packages (`wrongstack`, `@wrongstack/cli`) are legacy and no longer the
+way to install WrongStack — GitHub Releases is the only supported channel. If
+you installed through npm, pnpm, yarn or bun before, just run the installer
+above: it finds those globals and uninstalls them (asking first on a terminal)
+so they cannot shadow the binary.
 
-This pulls the full stack. The TUI ships but is lazy-loaded behind `--tui`, so
-plain-REPL users pay no React/Ink cost at startup. The browser UI, HQ, and
-Desktop shell are available through their launch flags (see [Surfaces](#surfaces)).
+The TUI is lazy-loaded behind `--tui`, so plain-REPL users pay no React/Ink cost
+at startup. The browser UI, HQ, and Desktop shell are available through their
+launch flags (see [Surfaces](#surfaces)).
 
 For standalone CLI users, Desktop is a separate Electron application distributed
 through GitHub Releases. `wstack --desktop` opens an installed application;
@@ -290,23 +290,14 @@ authentication and an optional IP/CIDR admission list, see
 Update the CLI in place from inside the tool:
 
 ```bash
-wstack update                 # binary: download + verify the latest release; npm: your package manager
+wstack update                 # download + verify the latest release
 wstack update --check-only    # is a newer release available?
-wstack update --pm pnpm       # npm installs only: force a specific package manager
 ```
 
-The standalone binary updates from GitHub releases and checks the download
-against the release `SHA256SUMS` before swapping the executable in place.
+`wstack update` pulls from GitHub Releases and checks the download against the
+release `SHA256SUMS` before swapping the executable in place. Re-running the
+install one-liner does the same thing.
 
-Or update manually:
-
-```bash
-npm i -g wrongstack@latest
-# or
-pnpm add -g wrongstack@latest
-```
-
-Lifecycle scripts are skipped by default; pass `--allow-scripts` to opt in.
 Full flag reference: [CLI reference → Updating](docs/cli-reference.md#updating).
 
 ---

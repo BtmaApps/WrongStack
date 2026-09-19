@@ -69,10 +69,16 @@ export function createKanbanSddSessionPersistence(
     },
 
     async delete(): Promise<void> {
-      await writeChain;
-      await deleteKanbanWorkflowState(projectRoot, SDD_SESSION_WORKFLOW_ID);
-      revision = 0;
-      if (legacySessionPath) await fsp.unlink(legacySessionPath).catch(() => undefined);
+      const pending = writeChain.then(async () => {
+        await deleteKanbanWorkflowState(projectRoot, SDD_SESSION_WORKFLOW_ID);
+        revision = 0;
+        if (legacySessionPath) await fsp.unlink(legacySessionPath).catch(() => undefined);
+      });
+      // Make deletion part of the same mutation chain as save(). A save that
+      // starts after delete() must run after the state has been removed, not
+      // race the delete and get erased by whichever transport call finishes last.
+      writeChain = pending.catch(() => undefined);
+      await pending;
     },
   };
 }

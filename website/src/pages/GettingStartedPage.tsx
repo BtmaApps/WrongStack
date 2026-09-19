@@ -16,14 +16,15 @@ import {
   PageNext,
   SectionIntro,
 } from '@/components/site/primitives';
+import { installCommand, installCommandWindows, releasesUrl } from '@/data/content';
 import { Link } from '@/lib/router';
 
 const setupSteps = [
   [
     '01',
     'Install the CLI',
-    'Node.js 22.19 or newer is required. npm and pnpm installs expose both wrongstack and the wstack alias.',
-    'npm install -g wrongstack',
+    'One self-contained binary from GitHub Releases, checksum-verified. No Node.js or npm needed. Installs wstack with a wrongstack alias; on Windows run the PowerShell line instead.',
+    installCommand,
   ],
   [
     '02',
@@ -72,9 +73,29 @@ export function GettingStartedPage() {
               <span className="font-mono text-xs font-black text-brand-2">{number}</span>
               <h2 className="text-xl font-black tracking-[-0.035em] text-fg">{title}</h2>
               <p className="text-sm leading-7 text-muted">{body}</p>
-              <CopyCommand command={command} />
+              <div className="flex flex-col items-start gap-2">
+                <CopyCommand command={command} />
+                {number === '01' && (
+                  <CopyCommand label="Windows" command={installCommandWindows} />
+                )}
+              </div>
             </article>
           ))}
+        </div>
+        <div className="mt-6 rounded-2xl border border-line bg-surface p-6 text-sm leading-7 text-muted">
+          <h2 className="font-black text-fg">Installed from npm before?</h2>
+          <p className="mt-2">
+            The npm packages are legacy and no longer updated. The installer finds old
+            <code className="mx-1 font-mono text-fg">wrongstack</code>/
+            <code className="mx-1 font-mono text-fg">@wrongstack/cli</code>
+            globals from npm, pnpm, yarn or bun and uninstalls them so they cannot shadow the
+            binary. From then on, <code className="font-mono text-fg">wstack update</code> pulls
+            new versions straight from{' '}
+            <a href={releasesUrl} target="_blank" rel="noreferrer" className="font-bold text-fg underline hover:text-brand">
+              GitHub Releases
+            </a>
+            .
+          </p>
         </div>
       </section>
       <section className="border-y border-line bg-surface">
@@ -278,15 +299,15 @@ export function GettingStartedPage() {
           {[
             {
               title: 'macOS',
-              body: 'Install Node.js 22+ via Homebrew. Git is pre-installed. Use Terminal.app or iTerm2. API keys go in the active ~/.wrongstack/profiles/<name>/config.json.',
+              body: 'Native binary for Apple silicon and Intel, ad-hoc signed by the installer. Git is pre-installed. Use Terminal.app or iTerm2. API keys go in the active ~/.wrongstack/profiles/<name>/config.json.',
             },
             {
               title: 'Linux',
-              body: 'Node.js 22+ via nvm or package manager. Git, build-essential, and python3 for native modules. Works on any terminal emulator.',
+              body: 'x64 and arm64 builds for glibc and musl (Alpine needs libstdc++ and libgcc). Git is the only prerequisite. Works on any terminal emulator.',
             },
             {
               title: 'Windows',
-              body: 'Node.js 22+ from nodejs.org. Git for Windows. Use Windows Terminal or cmd.exe. Path handling uses forward slashes internally.',
+              body: 'x64 binary (runs on ARM under emulation); the installer puts it first on your user PATH. Git for Windows. Use Windows Terminal or PowerShell.',
             },
           ].map(({ title, body }) => (
             <div key={title} className="rounded-xl border border-line bg-card p-5">

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { IntakeStatusLockedError } from '../src/errors.js';
+import { describe, expect, it, vi } from 'vitest';
+import { IntakeStatusLockedError, IntakeValidationError } from '../src/errors.js';
 import { RequirementIntakeStore } from '../src/store.js';
 import { ALICE, BOB, makeHarness, stubGenerator } from './helpers.js';
 
@@ -106,6 +106,87 @@ describe('integration — persistence across instances', () => {
 });
 
 describe('integration — concurrent safety', () => {
+  it('reports one create and one duplicate for concurrent idempotent requests', async () => {
+    const harness = makeHarness();
+    const preflight = Promise.withResolvers<void>();
+    let preflightLookups = 0;
+    const findByKey = harness.store.findByIdempotencyKey.bind(harness.store);
+    vi.spyOn(harness.store, 'findByIdempotencyKey').mockImplementation(async (key) => {
+      preflightLookups++;
+      if (preflightLookups <= 2) {
+        if (preflightLookups === 2) preflight.resolve();
+        await preflight.promise;
+        return null;
+      }
+      return findByKey(key);
+    });
+
+    const input = {
+      projectId: 'proj_alpha',
+      originalRequest: 'concurrent idempotent creation',
+      requestedBy: 'user-alice',
+      idempotencyKey: 'concurrent-create-key',
+    };
+    const results = await Promise.all([
+      harness.service.createIntake(input, ALICE),
+      harness.service.createIntake(input, BOB),
+    ]);
+
+    expect(results.filter((result) => result.created)).toHaveLength(1);
+    expect(results.filter((result) => result.idempotent)).toHaveLength(1);
+    expect(
+      harness.events.filter((event) => event.event === 'RequirementIntakeCreated'),
+    ).toHaveLength(1);
+    expect(harness.metrics.count('intake.created')).toBe(1);
+    expect(harness.metrics.count('intake.duplicate_create')).toBe(1);
+  });
+
+  it('does not expose a concurrent idempotency winner from another project', async () => {
+    const harness = makeHarness();
+    const preflight = Promise.withResolvers<void>();
+    let preflightLookups = 0;
+    const findByKey = harness.store.findByIdempotencyKey.bind(harness.store);
+    vi.spyOn(harness.store, 'findByIdempotencyKey').mockImplementation(async (key) => {
+      preflightLookups++;
+      if (preflightLookups <= 2) {
+        if (preflightLookups === 2) preflight.resolve();
+        await preflight.promise;
+        return null;
+      }
+      return findByKey(key);
+    });
+
+    const results = await Promise.allSettled([
+      harness.service.createIntake(
+        {
+          projectId: 'proj_alpha',
+          originalRequest: 'alpha project request',
+          requestedBy: 'user-alice',
+          idempotencyKey: 'cross-project-race',
+        },
+        ALICE,
+      ),
+      harness.service.createIntake(
+        {
+          projectId: 'proj_beta',
+          originalRequest: 'beta project request',
+          requestedBy: 'user-carol',
+          idempotencyKey: 'cross-project-race',
+        },
+        { id: 'user-carol', type: 'user', projectId: 'proj_beta' },
+      ),
+    ]);
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    expect(rejected?.reason).toBeInstanceOf(IntakeValidationError);
+    expect(
+      harness.events.filter((event) => event.event === 'RequirementIntakeCreated'),
+    ).toHaveLength(1);
+  });
+
   it('serializes unconditional updates without losing any', async () => {
     const harness = makeHarness();
     const { record } = await harness.service.createIntake(

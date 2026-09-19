@@ -78,15 +78,34 @@ export function planConnectionReconnect(
   now = Date.now(),
   random = Math.random,
 ): { state: SurfaceConnectionState; plan: ReconnectPlan | null } {
-  if (state.stopped || state.reconnectAttempt >= config.maxReconnectAttempts) {
+  const maxReconnectAttempts = finiteInteger(
+    config.maxReconnectAttempts,
+    DEFAULT_SURFACE_CONNECTION_CONFIG.maxReconnectAttempts,
+  );
+  if (state.stopped || state.reconnectAttempt >= maxReconnectAttempts) {
     return { state: { ...state, phase: 'closed' }, plan: null };
   }
   const attempt = state.reconnectAttempt + 1;
-  const base = Math.min(
-    config.initialBackoffMs * config.backoffMultiplier ** (attempt - 1),
-    config.maxBackoffMs,
+  const initialBackoffMs = finiteNonNegative(
+    config.initialBackoffMs,
+    DEFAULT_SURFACE_CONNECTION_CONFIG.initialBackoffMs,
   );
-  const centeredJitter = (random() * 2 - 1) * config.jitterRatio;
+  const maxBackoffMs = finiteNonNegative(
+    config.maxBackoffMs,
+    DEFAULT_SURFACE_CONNECTION_CONFIG.maxBackoffMs,
+  );
+  const backoffMultiplier = finitePositive(
+    config.backoffMultiplier,
+    DEFAULT_SURFACE_CONNECTION_CONFIG.backoffMultiplier,
+  );
+  const jitterRatio = Math.min(
+    1,
+    finiteNonNegative(config.jitterRatio, DEFAULT_SURFACE_CONNECTION_CONFIG.jitterRatio),
+  );
+  const base = Math.min(initialBackoffMs * backoffMultiplier ** (attempt - 1), maxBackoffMs);
+  const randomValue = random();
+  const sample = Number.isFinite(randomValue) ? Math.min(1, Math.max(0, randomValue)) : 0.5;
+  const centeredJitter = (sample * 2 - 1) * jitterRatio;
   const delayMs = Math.max(0, Math.round(base * (1 + centeredJitter)));
   return {
     state: { ...state, phase: 'reconnecting', reconnectAttempt: attempt },
@@ -109,7 +128,23 @@ export function enqueueBounded<T>(
   item: T,
   limit: number,
 ): { queue: T[]; dropped: T | null } {
-  if (limit <= 0) return { queue: [], dropped: item };
-  if (queue.length < limit) return { queue: [...queue, item], dropped: null };
-  return { queue: [...queue.slice(queue.length - limit + 1), item], dropped: queue[0] ?? null };
+  const boundedLimit = Number.isSafeInteger(Math.floor(limit)) ? Math.max(0, Math.floor(limit)) : 0;
+  if (boundedLimit <= 0) return { queue: [], dropped: item };
+  if (queue.length < boundedLimit) return { queue: [...queue, item], dropped: null };
+  return {
+    queue: [...queue.slice(queue.length - boundedLimit + 1), item],
+    dropped: queue[0] ?? null,
+  };
+}
+
+function finiteNonNegative(value: number, fallback: number): number {
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function finitePositive(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function finiteInteger(value: number, fallback: number): number {
+  return Number.isSafeInteger(value) && value >= 0 ? Math.floor(value) : fallback;
 }

@@ -150,6 +150,36 @@ describe('createKanbanSddSessionPersistence — focused branches', () => {
     expect(h.deleteState).toHaveBeenCalledWith(dir, 'sdd:session');
   });
 
+  it('queues a save started while deletion is in flight', async () => {
+    const deleting = Promise.withResolvers<boolean>();
+    const deleteStarted = Promise.withResolvers<void>();
+    const writeStarted = Promise.withResolvers<void>();
+    h.deleteState.mockImplementationOnce(async () => {
+      deleteStarted.resolve();
+      return deleting.promise;
+    });
+    h.writeState.mockImplementationOnce(async (_root, _id, value, expectedRevision) => {
+      writeStarted.resolve();
+      return { revision: (expectedRevision ?? 0) + 1, value };
+    });
+    const persistence = createKanbanSddSessionPersistence(dir);
+
+    const deletePromise = persistence.delete();
+    await deleteStarted.promise;
+    const savePromise = persistence.save({ ...session, title: 'saved after delete', updatedAt: 2 });
+    const startedBeforeDeleteFinished = await Promise.race([
+      writeStarted.promise.then(() => true),
+      new Promise<false>((resolve) => setImmediate(() => resolve(false))),
+    ]);
+    expect(startedBeforeDeleteFinished).toBe(false);
+
+    deleting.resolve(true);
+    await Promise.all([deletePromise, savePromise]);
+    expect(h.deleteState.mock.invocationCallOrder[0]).toBeLessThan(
+      h.writeState.mock.invocationCallOrder[0]!,
+    );
+  });
+
   it('load() imports a legacy file even when the post-import unlink fails (:49)', async () => {
     const legacyPath = path.join(dir, 'legacy-session-unlink-fail.json');
     await fsp.writeFile(legacyPath, JSON.stringify(session));

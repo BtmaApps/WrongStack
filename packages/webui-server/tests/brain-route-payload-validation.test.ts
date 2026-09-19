@@ -119,6 +119,81 @@ describe('brain routes reject malformed payloads through the shared validators',
 });
 
 describe('brain routes still serve well-formed payloads', () => {
+  it('returns the caller request id on successful answers', async () => {
+    const { sent } = await route('brain.ask', { question: 'What next?', requestId: 'ask-123' });
+    expect(sent.find((message) => message.type === 'brain.answer')?.payload).toMatchObject({
+      requestId: 'ask-123',
+    });
+  });
+
+  it('correlates errors thrown while resolving the arbiter', async () => {
+    const ws = mockWs();
+    const ctx = makeCtx();
+    ctx.resolveArbiter = () => {
+      throw new Error('container unavailable');
+    };
+    await handleBrainRoute(
+      ws,
+      { type: 'brain.ask', payload: { question: 'What next?', requestId: 'resolver-error' } },
+      createBrainRouteHandlers(ctx),
+    );
+    expect(results(ws)[0]?.payload).toMatchObject({ requestId: 'resolver-error', success: false });
+  });
+
+  it('correlates invalid questions and unavailable Brain errors', async () => {
+    const invalid = await route('brain.ask', {
+      question: '',
+      requestId: 'ask-invalid',
+      sessionId: 'tab-a',
+    });
+    expect(invalid.sent[0]?.payload).toMatchObject({
+      requestId: 'ask-invalid',
+      sessionId: 'tab-a',
+      success: false,
+    });
+    const ws = mockWs();
+    const ctx = makeCtx();
+    ctx.resolveArbiter = () => undefined;
+    await handleBrainRoute(
+      ws,
+      {
+        type: 'brain.ask',
+        payload: { question: 'What next?', requestId: 'ask-missing', sessionId: 'tab-b' },
+      },
+      createBrainRouteHandlers(ctx),
+    );
+    expect(results(ws)[0]?.payload).toMatchObject({
+      requestId: 'ask-missing',
+      sessionId: 'tab-b',
+      success: false,
+    });
+  });
+
+  it('uses unique internal ids even for simultaneous identical caller ids', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(123456);
+    try {
+      const ctx = makeCtx();
+      const decide = vi.mocked(ctx.resolveArbiter()!.decide);
+      const routes = createBrainRouteHandlers(ctx);
+      const message = {
+        type: 'brain.ask',
+        payload: { question: 'Continue?', requestId: 'same-client-id' },
+      };
+      await Promise.all([
+        handleBrainRoute(mockWs(), message, routes),
+        handleBrainRoute(mockWs(), message, routes),
+      ]);
+      expect(decide.mock.calls[0]?.[0].id).not.toBe(decide.mock.calls[1]?.[0].id);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it.each([123, '', '   ', {}])('rejects invalid request ids: %j', async (requestId) => {
+    const { sent, ctx } = await route('brain.ask', { question: 'Continue?', requestId });
+    expect(sent[0]?.payload.success).toBe(false);
+    expect(ctx.resolveArbiter()?.decide).not.toHaveBeenCalled();
+  });
   it('answers a valid brain.ask from the arbiter', async () => {
     const { sent, ctx } = await route('brain.ask', { question: '  What next?  ' });
     expect(ctx.resolveArbiter()?.decide).toHaveBeenCalledTimes(1);

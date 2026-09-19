@@ -572,6 +572,7 @@ export class ClientTransport implements ACPClientTransport {
     this.messageQueue.length = 0;
     this.queuedChars = 0;
     this.handlers.clear();
+    this.claimHandlers.clear();
     if (code !== 0 && code !== null) {
       writeErr(`[acp-child exited with code ${code}]\n`);
     }
@@ -582,19 +583,29 @@ export class ClientTransport implements ACPClientTransport {
       const resolve = this.resolveRead;
       this.resolveRead = null;
       resolve(msg);
-    } else if (this.handlers.size === 0) {
-      if (
-        this.messageQueue.length >= this.maxQueuedMessages ||
-        this.queuedChars + chars > this.maxQueuedChars
-      ) {
-        writeErr(
-          `[acp-child message queue exceeds ${this.maxQueuedMessages} entries or ${this.maxQueuedChars} characters]\n`,
-        );
-        this.stop();
-        return;
+    } else {
+      let claimed = false;
+      for (const handler of this.claimHandlers) {
+        try {
+          if (handler(msg)) claimed = true;
+        } catch (err) {
+          writeErr(`[acp-child handler error] ${err}\n`);
+        }
       }
-      this.messageQueue.push({ message: msg, chars });
-      this.queuedChars += chars;
+      if (!claimed && this.handlers.size === 0) {
+        if (
+          this.messageQueue.length >= this.maxQueuedMessages ||
+          this.queuedChars + chars > this.maxQueuedChars
+        ) {
+          writeErr(
+            `[acp-child message queue exceeds ${this.maxQueuedMessages} entries or ${this.maxQueuedChars} characters]\n`,
+          );
+          this.stop();
+          return;
+        }
+        this.messageQueue.push({ message: msg, chars });
+        this.queuedChars += chars;
+      }
     }
     for (const handler of this.handlers) {
       try {

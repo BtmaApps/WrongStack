@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/cli.js';
 
 describe('Mailbox MCP CLI arguments', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('defaults to read-only stdio', () => {
     expect(parseArgs(['--project-root', '.', '--actor', 'codex'])).toMatchObject({
       actor: 'codex',
@@ -51,5 +54,22 @@ describe('Mailbox MCP CLI arguments', () => {
       writable: true,
       admin: true,
     });
+  });
+
+  it('does not consume a following permission option as a missing value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--project-root', '--admin'], {})).toMatchObject({
+      projectRoot: '',
+      writable: true,
+      admin: true,
+    });
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('accepts only integer HTTP ports in range', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--port', '70000'], {}).httpPort).toBe(0);
+    expect(parseArgs(['--port', '12.5'], {}).httpPort).toBe(0);
+    expect(warn).toHaveBeenCalled();
   });
 });

@@ -53,14 +53,14 @@ export function intakeToInterviewKickoff(record: RequirementIntakeRecord): Intak
 
 /**
  * Start a spec-builder interview from an intake record. Returns the first AI
- * prompt (a question kickoff), ready to feed the agent loop. The driver should
- * be constructed with `projectContext: kickoff.projectContext` so the
- * questioning prompt already knows the collected facts.
+ * prompt (a question kickoff), ready to feed the agent loop. Collected intake
+ * facts are passed as this interview's project context so the questioning
+ * prompt already knows them.
  */
 export function startInterviewFromIntake(
   driver: Pick<SddInterviewDriver, 'start'>,
   record: RequirementIntakeRecord,
 ): string {
   const kickoff = intakeToInterviewKickoff(record);
-  return driver.start(kickoff.title, kickoff.intent);
+  return driver.start(kickoff.title, kickoff.intent, kickoff.projectContext);
 }

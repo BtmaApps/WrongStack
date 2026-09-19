@@ -281,6 +281,10 @@ export const fetchTool: Tool<FetchInput, FetchOutput> = {
       });
     } finally {
       clearTimeout(timer);
+      // Rejection and generator.return() may leave the response unread. Stop
+      // the transport even when the caller abandons at the HTTP-header yield,
+      // before a body reader exists, or while partial output is being yielded.
+      ctrl.abort();
     }
   },
 };

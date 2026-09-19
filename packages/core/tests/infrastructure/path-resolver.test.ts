@@ -43,6 +43,13 @@ describe('DefaultPathResolver', () => {
     expect(pr.isInsideRoot(path.dirname(tmp))).toBe(false);
   });
 
+  it('isInsideRoot accepts a legal in-root ..-prefixed first segment', () => {
+    // `..hidden` is a legal directory name; a bare startsWith('..') misread it
+    // as a parent traversal.
+    const pr = new DefaultPathResolver(tmp);
+    expect(pr.isInsideRoot(path.join(tmp, '..hidden', 'a.ts'))).toBe(true);
+  });
+
   it('ensureInsideRoot throws for outside paths', () => {
     const pr = new DefaultPathResolver(tmp);
     expect(() => pr.ensureInsideRoot(path.dirname(tmp))).toThrow(/outside the project root/);

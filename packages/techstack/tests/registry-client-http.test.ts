@@ -361,6 +361,17 @@ describe('lookupRegistryBatch', () => {
     expect(results.get('missing-a')).toBeUndefined();
     expect(results.get('missing-b')).toBeUndefined();
   });
+
+  it('propagates a pre-aborted batch without starting registry requests', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { lookupRegistryBatch } = await import('../src/registry/client.js');
+
+    await expect(
+      lookupRegistryBatch('npm', ['pkg-a', 'pkg-b'], { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mockedHttpsGet).not.toHaveBeenCalled();
+  });
 });
 
 // ── Per-ecosystem parsers ──────────────────────────────────────────────
@@ -458,6 +469,28 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
     expect(entry!.latestStable).toBe('6.0.0');
   });
 
+  it('orders multi-digit NuGet versions numerically', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockedHttpsGet.mockImplementation(
+      mockGet(
+        200,
+        JSON.stringify({
+          items: [
+            {
+              items: [
+                { catalogEntry: { version: '10.0.0' } },
+                { catalogEntry: { version: '9.0.0' } },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    const entry = await lookupRegistry('nuget', 'Versioned.Package');
+    expect(entry?.latestStable).toBe('10.0.0');
+  });
+
   it('parses Packagist JSON for composer ecosystem', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockedHttpsGet.mockImplementation(
@@ -475,6 +508,23 @@ describe('lookupRegistry — per-ecosystem parsers', () => {
     expect(entry).toBeDefined();
     expect(entry!.latestStable).toBe('3.0.0');
     expect(entry!.license).toBe('MIT');
+  });
+
+  it('orders multi-digit Packagist versions numerically', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockedHttpsGet.mockImplementation(
+      mockGet(
+        200,
+        JSON.stringify({
+          packages: {
+            'vendor/package': [{ version: 'v10.0.0' }, { version: 'v9.0.0' }],
+          },
+        }),
+      ),
+    );
+
+    const entry = await lookupRegistry('composer', 'vendor/package');
+    expect(entry?.latestStable).toBe('v10.0.0');
   });
 
   it('parses pub.dev JSON for pub ecosystem', async () => {

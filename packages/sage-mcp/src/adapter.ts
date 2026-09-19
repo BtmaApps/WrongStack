@@ -19,21 +19,22 @@
  * (`packages/sage/src/tools/memory-tools.ts:166-178`); we force
  * `arguments.no_auto_audience = true` so MCP callers must opt in explicitly.
  */
+
+import type { Context } from '@wrongstack/core/agent';
+import type { JSONSchema, MemoryPort, Tool } from '@wrongstack/core/types';
 import {
   MCPServer,
   type MCPServerCallResult,
   type MCPServerTool,
   type MCPServerToolHost,
 } from '@wrongstack/mcp';
-import type { Context } from '@wrongstack/core/agent';
-import type { JSONSchema, MemoryPort, Tool } from '@wrongstack/core/types';
 import {
-  type SageServiceLike,
   createSageTools,
   getSageService,
   isSqliteAvailable,
+  type SageServiceLike,
 } from '@wrongstack/sage';
-import { selectAllowedTools, type SageMcpPolicyOptions } from './policy.js';
+import { type SageMcpPolicyOptions, selectAllowedTools } from './policy.js';
 import { SERVER_INFO } from './version.js';
 
 export interface SageMcpToolHostOptions extends SageMcpPolicyOptions {
@@ -97,8 +98,6 @@ export function createSageMcpToolHost(
   // ops never read those fields; `ctx.meta` is empty, which makes
   // `no_auto_audience = true` (set below) both deterministic and defensible.
   const ctx = createSyntheticContext(opts.projectRoot);
-  const ac = new AbortController();
-  const signal = ac.signal;
 
   function jsonSchemaToObject(schema: JSONSchema): Record<string, unknown> {
     // JSONSchema's permissive `[k: string]: unknown` already satisfies the
@@ -118,7 +117,11 @@ export function createSageMcpToolHost(
       );
     },
 
-    async callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult> {
+    async callTool(
+      name: string,
+      args: Record<string, unknown>,
+      callOptions?: { signal?: AbortSignal | undefined },
+    ): Promise<MCPServerCallResult> {
       const tool = allowedByName.get(name);
       if (!tool) {
         return {
@@ -127,40 +130,38 @@ export function createSageMcpToolHost(
         };
       }
 
-      // For `remember`, force no_auto_audience=true. SAGE's auto-audience
-      // detection reads `ctx.meta['agentRole']`/`ctx.meta['mode']`; MCP
-      // callers do not supply a role/mode so we cannot infer one.
-      const callArgs: Record<string, unknown> = { ...args };
-      if (name === 'remember' && callArgs['no_auto_audience'] === undefined) {
-        callArgs['no_auto_audience'] = true;
-      }
-
-      // Tool.validate is the canonical safety gate (e.g., the `force: true`
-      // requirement on memory_delete). Surface validation failures exactly
-      // like `wstack mcp serve` would.
-      const validate = tool.validate;
-      if (typeof validate === 'function') {
-        const errors = await validate(callArgs);
-        if (Array.isArray(errors) && errors.length > 0) {
-          return { content: errors.join('\n'), isError: true };
-        }
-      }
-
-      let output: unknown;
       try {
-        output = await tool.execute(callArgs, ctx, { signal });
+        const signal = callOptions?.signal ?? new AbortController().signal;
+        if (signal.aborted) {
+          throw signal.reason instanceof Error ? signal.reason : new Error('SAGE call cancelled');
+        }
+
+        // For `remember`, force no_auto_audience=true. SAGE's auto-audience
+        // detection reads `ctx.meta['agentRole']`/`ctx.meta['mode']`; MCP
+        // callers do not supply a role/mode so we cannot infer one.
+        const callArgs: Record<string, unknown> = { ...args };
+        if (name === 'remember' && callArgs['no_auto_audience'] === undefined) {
+          callArgs['no_auto_audience'] = true;
+        }
+
+        // Tool.validate is the canonical safety gate (e.g., the `force: true`
+        // requirement on memory_delete). Surface validation failures exactly
+        // like `wstack mcp serve` would.
+        const validate = tool.validate;
+        if (typeof validate === 'function') {
+          const errors = await validate(callArgs);
+          if (Array.isArray(errors) && errors.length > 0) {
+            return { content: errors.join('\n'), isError: true };
+          }
+        }
+
+        const output = await tool.execute(callArgs, ctx, { signal });
+        if (typeof output === 'string') return { content: output, isError: false };
+        return { content: output as unknown, isError: false };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return { content: message, isError: true };
       }
-
-      // The output shape mirrors how `wstack mcp serve` returns its
-      // executor result (a string, see packages/cli/src/mcp-serve.ts:316).
-      // Sage tools return strings, structured objects, or arrays; we let
-      // `MCPServer.toContentBlocks` (server.ts:303-316) handle the
-      // text-block wrapping uniformly.
-      if (typeof output === 'string') return { content: output, isError: false };
-      return { content: output as unknown, isError: false };
     },
   };
 }

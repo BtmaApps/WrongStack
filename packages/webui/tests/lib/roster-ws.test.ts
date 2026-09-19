@@ -61,15 +61,23 @@ describe('sendRosterMessage', () => {
   it('connects before sending, then resolves with the reply payload', async () => {
     const promise = sendRosterMessage('agent-roster.list', { scope: 'all' });
     await flush();
-    expect(sent).toEqual([{ type: 'agent-roster.list', payload: { scope: 'all' } }]);
+    expect(sent).toEqual([
+      {
+        type: 'agent-roster.list',
+        payload: { scope: 'all', requestId: expect.any(String) },
+      },
+    ]);
     emit('agent-roster.list', { payload: { agents: ['a', 'b'] } });
     await expect(promise).resolves.toEqual({ agents: ['a', 'b'] });
   });
 
-  it('sends payload: undefined when the caller omits it', async () => {
+  it('sends a correlation id when the caller omits the payload', async () => {
     const promise = sendRosterMessage('agent-roster.list');
     await flush();
-    expect(sent[0]).toEqual({ type: 'agent-roster.list', payload: undefined });
+    expect(sent[0]).toEqual({
+      type: 'agent-roster.list',
+      payload: { requestId: expect.any(String) },
+    });
     emit('agent-roster.list', { payload: {} });
     await promise;
   });
@@ -161,6 +169,36 @@ describe('sendRosterMessage', () => {
     // The late reply resolves the *new* promise, not the superseded one.
     emit('agent-roster.list', { payload: { agents: ['fresh'] } });
     await expect(second).resolves.toEqual({ agents: ['fresh'] });
+  });
+
+  it('ignores a late superseded reply before resolving the replacement request', async () => {
+    const first = sendRosterMessage('agent-roster.list', { scope: 'old' });
+    await flush();
+    const firstRejection = expect(first).rejects.toThrow('superseded');
+    const second = sendRosterMessage('agent-roster.list', { scope: 'new' });
+    await flush();
+
+    await firstRejection;
+    const firstRequestId = sent[0]?.payload?.requestId;
+    const secondRequestId = sent[1]?.payload?.requestId;
+    expect(firstRequestId).toEqual(expect.any(String));
+    expect(secondRequestId).toEqual(expect.any(String));
+    expect(secondRequestId).not.toBe(firstRequestId);
+
+    let replacementSettled = false;
+    void second.finally(() => {
+      replacementSettled = true;
+    });
+    emit('agent-roster.list', {
+      payload: { requestId: firstRequestId, agents: ['stale'] },
+    });
+    await flush();
+    expect(replacementSettled).toBe(false);
+
+    emit('agent-roster.list', {
+      payload: { requestId: secondRequestId, agents: ['fresh'] },
+    });
+    await expect(second).resolves.toEqual({ requestId: secondRequestId, agents: ['fresh'] });
   });
 
   it('does not supersede requests of a different type', async () => {

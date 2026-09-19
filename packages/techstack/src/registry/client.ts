@@ -8,6 +8,7 @@
  * @see docs/specs/techstack-sdd.md §5, §6
  */
 
+import { compareVersions } from '../policy/status.js';
 import { parseJsonResponse, requestWithRetry } from './http-fetch.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -137,6 +138,10 @@ interface EcosystemFetcher {
   ) => RegistryEntry | undefined;
 }
 
+function compareRegistryVersions(left: string, right: string): number {
+  return compareVersions(left.replace(/^v/i, ''), right.replace(/^v/i, ''));
+}
+
 // ── Per-ecosystem parsers ──────────────────────────────────────────────────
 
 /**
@@ -259,7 +264,7 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
                   latestStable = ver;
                 } else if (!ver.includes('-') && !latestStable.includes('-')) {
                   // Both stable — take greater
-                  if (ver > latestStable) latestStable = ver;
+                  if (compareRegistryVersions(ver, latestStable) > 0) latestStable = ver;
                 }
               }
             }
@@ -300,7 +305,7 @@ const ECOSYSTEM_FETCHERS: Readonly<Record<string, EcosystemFetcher>> = {
           !version.includes('RC') &&
           !version.includes('rc')
         ) {
-          if (!latestStable || version > latestStable) {
+          if (!latestStable || compareRegistryVersions(version, latestStable) > 0) {
             latestStable = version;
           }
         }
@@ -403,6 +408,7 @@ export async function lookupRegistry(
   name: string,
   options: RegistryLookupOptions = {},
 ): Promise<RegistryEntry | undefined> {
+  options.signal?.throwIfAborted();
   const fetcher = ECOSYSTEM_FETCHERS[ecosystem];
   if (!fetcher) {
     throw new Error(`Unsupported ecosystem for registry lookup: ${ecosystem}`);
@@ -505,7 +511,8 @@ export async function lookupRegistryBatch(
         try {
           const entry = await lookupRegistry(ecosystem, name, options);
           return { name, entry } as const;
-        } catch {
+        } catch (error) {
+          if (options.signal?.aborted) throw error;
           return { name, entry: undefined } as const;
         }
       }),

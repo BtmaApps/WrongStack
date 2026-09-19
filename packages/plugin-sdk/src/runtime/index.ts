@@ -353,6 +353,9 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
       });
       return;
     }
+    const resolvedCwd = isAbsolute(trimmedCwd)
+      ? resolve(trimmedCwd)
+      : resolve(projectRoot, trimmedCwd);
     let timedOut = false;
     let spawnErrored = false;
     // Wall-clock start for timeout disambiguation. execFile kills the
@@ -398,7 +401,7 @@ export function runRunnerCommand(argv: readonly string[], options: RunOptions): 
       invocation.cmd,
       invocation.args,
       {
-        cwd: trimmedCwd,
+        cwd: resolvedCwd,
         // H-8 (security report VF-09): plugin subprocesses inherit the FULL
         // environment by default — every provider API key and the vault
         // passphrase were visible to any plugin exec(). Route through the

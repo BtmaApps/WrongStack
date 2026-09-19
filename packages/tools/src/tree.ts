@@ -241,7 +241,7 @@ function matchesTreeGlob(
   globRe.lastIndex = 0;
   const rel = path.relative(basePath, absPath);
   const posixRel =
-    !rel || rel.startsWith('..') || path.isAbsolute(rel)
+    !rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)
       ? absPath.split(path.sep).join('/')
       : rel.split(path.sep).join('/');
   const matches = globRe.test(posixRel);

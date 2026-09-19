@@ -14,7 +14,7 @@ import {
 } from '@wrongstack/core/hq';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { Config, SessionWriter } from '@wrongstack/core/types';
-import type { MCPRegistry } from '@wrongstack/mcp';
+import type { MCPRegistry, MCPServerOperationalHealth } from '@wrongstack/mcp';
 import { startGovernanceHqTelemetry } from '../governance-hq-telemetry.js';
 import {
   createHqCommandDispatcher,
@@ -25,6 +25,21 @@ import {
 import { startCliHqConnection } from '../hq-publisher.js';
 import type { KanbanHqSyncStats } from '../kanban-hq-sync.js';
 import type { ApprovalMirrorRef } from '../permission-prompt-mirror.js';
+
+/**
+ * The registry reports epoch-ms timestamps; the HQ wire contract carries ISO
+ * strings, and HQ rejects a snapshot whose `lastSuccessAt`/`lastFailureAt` is
+ * a number. projectId/clientId are stamped by HQ from the connection.
+ */
+function toHqMcpServers(servers: readonly MCPServerOperationalHealth[]) {
+  return servers.map((server) => ({
+    ...server,
+    lastSuccessAt:
+      server.lastSuccessAt === undefined ? undefined : new Date(server.lastSuccessAt).toISOString(),
+    lastFailureAt:
+      server.lastFailureAt === undefined ? undefined : new Date(server.lastFailureAt).toISOString(),
+  }));
+}
 
 /**
  * Mutable holder for the HQ publisher reference. The ref is created in
@@ -204,7 +219,7 @@ export function setupHqTelemetry(deps: SetupHqTelemetryDeps): HqTelemetryResult 
       try {
         publisher.publishEvent({
           type: 'mcp.health.snapshot',
-          payload: { servers: mcpRegistry.operationalHealth() },
+          payload: { servers: toHqMcpServers(mcpRegistry.operationalHealth()) },
           sessionId: session.id,
         });
         stopHqAuxBridges.push(
@@ -213,7 +228,7 @@ export function setupHqTelemetry(deps: SetupHqTelemetryDeps): HqTelemetryResult 
               type: 'mcp.operation',
               payload: {
                 operation,
-                servers: mcpRegistry.operationalHealth(),
+                servers: toHqMcpServers(mcpRegistry.operationalHealth()),
               },
               sessionId: session.id,
             });

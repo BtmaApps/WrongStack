@@ -645,9 +645,18 @@ describe('ClientTransport', () => {
     });
   });
 
-  it('ClientTransport onMessageClaim registers and unsubscribes handler', () => {
+  it('ClientTransport onMessageClaim can consume a message and unsubscribe', () => {
     const transport = new ClientTransport({ command: 'agent' });
-    const unsub = transport.onMessageClaim(() => true);
+    const claim = vi.fn(() => true);
+    const unsub = transport.onMessageClaim(claim);
+    (
+      transport as unknown as {
+        dispatch: (message: ACPMessage) => void;
+        messageQueue: ACPMessage[];
+      }
+    ).dispatch({ method: 'claimed' });
+    expect(claim).toHaveBeenCalledWith({ method: 'claimed' });
+    expect((transport as unknown as { messageQueue: ACPMessage[] }).messageQueue).toHaveLength(0);
     expect(typeof unsub).toBe('function');
     expect(() => unsub()).not.toThrow();
   });

@@ -7,7 +7,7 @@
       "relativeImports": 2
     },
     "packages/acp/src/client/acp-session.ts": {
-      "lines": 1043,
+      "lines": 1053,
       "relativeImports": 19
     },
     "packages/cli/src/auth-menu/panel-service.ts": {
@@ -27,8 +27,8 @@
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 948,
-      "relativeImports": 43
+      "lines": 965,
+      "relativeImports": 44
     },
     "packages/cli/src/fleet/host.ts": {
       "lines": 875,
@@ -75,7 +75,7 @@
       "relativeImports": 21
     },
     "packages/core/src/boot.ts": {
-      "lines": 828,
+      "lines": 835,
       "relativeImports": 15
     },
     "packages/core/src/chronicle/file-observer.ts": {
@@ -87,7 +87,7 @@
       "relativeImports": 18
     },
     "packages/core/src/coordination/collab-debug.ts": {
-      "lines": 964,
+      "lines": 965,
       "relativeImports": 10
     },
     "packages/core/src/coordination/delegation/run-delegation.ts": {
@@ -131,8 +131,8 @@
       "relativeImports": 14
     },
     "packages/core/src/execution/brain-runtime.ts": {
-      "lines": 1007,
-      "relativeImports": 14
+      "lines": 1045,
+      "relativeImports": 17
     },
     "packages/core/src/execution/eternal-autonomy.ts": {
       "lines": 978,
@@ -147,12 +147,12 @@
       "relativeImports": 7
     },
     "packages/core/src/hq/protocol/core.ts": {
-      "lines": 1043,
+      "lines": 1046,
       "relativeImports": 13
     },
     "packages/core/src/index.ts": {
-      "lines": 1051,
-      "relativeImports": 164
+      "lines": 1059,
+      "relativeImports": 165
     },
     "packages/core/src/plugin/api.ts": {
       "lines": 924,
@@ -167,7 +167,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 952,
+      "lines": 960,
       "relativeImports": 1
     },
     "packages/core/src/storage/session-store.ts": {
@@ -207,11 +207,11 @@
       "relativeImports": 10
     },
     "packages/kanban/src/types.ts": {
-      "lines": 1003,
+      "lines": 1041,
       "relativeImports": 1
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 824,
+      "lines": 849,
       "relativeImports": 3
     },
     "packages/mcp/src/authorization.ts": {
@@ -227,7 +227,7 @@
       "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {
-      "lines": 840,
+      "lines": 874,
       "relativeImports": 2
     },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
@@ -255,7 +255,7 @@
       "relativeImports": 2
     },
     "packages/plugins/src/semver-bump/index.ts": {
-      "lines": 832,
+      "lines": 833,
       "relativeImports": 0
     },
     "packages/plugins/src/test-runner-gate/index.ts": {
@@ -278,16 +278,20 @@
       "lines": 1605,
       "relativeImports": 17
     },
+    "packages/requirement-intake/src/service.ts": {
+      "lines": 807,
+      "relativeImports": 13
+    },
     "packages/sage/src/domain-term-extractor.ts": {
       "lines": 873,
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 995,
+      "lines": 997,
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 834,
+      "lines": 851,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {
@@ -311,7 +315,7 @@
       "relativeImports": 6
     },
     "packages/sdd/src/spec-builder.ts": {
-      "lines": 801,
+      "lines": 805,
       "relativeImports": 3
     },
     "packages/simpleui/src/lib/message-handler.ts": {
@@ -327,7 +331,7 @@
       "relativeImports": 7
     },
     "packages/tools/src/codebase-index/background-indexer.ts": {
-      "lines": 1023,
+      "lines": 1032,
       "relativeImports": 8
     },
     "packages/tools/src/codebase-index/dead-code-scan.ts": {
@@ -359,16 +363,16 @@
       "relativeImports": 2
     },
     "packages/tools/src/kanban-lifecycle-actions.ts": {
-      "lines": 930,
-      "relativeImports": 6
+      "lines": 932,
+      "relativeImports": 7
     },
     "packages/tools/src/pwsh.ts": {
       "lines": 834,
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {
-      "lines": 919,
-      "relativeImports": 4
+      "lines": 921,
+      "relativeImports": 5
     },
     "packages/tui/src/app-action-type.ts": {
       "lines": 889,
@@ -515,7 +519,7 @@
       "relativeImports": 5
     },
     "packages/webui/src/hooks/ws-handlers/misc-handlers.ts": {
-      "lines": 1021,
+      "lines": 1032,
       "relativeImports": 0
     },
     "packages/webui/src/hooks/ws-handlers.ts": {
@@ -579,7 +583,7 @@
       "relativeImports": 35
     },
     "packages/webui-server/src/server/ws-payload-validation.ts": {
-      "lines": 1059,
+      "lines": 1070,
       "relativeImports": 1
     },
     "apps/desktop/src/main/runtime-manager.ts": {

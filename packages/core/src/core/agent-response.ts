@@ -532,6 +532,7 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
     req: Request,
     requestProvider: Provider = a.ctx.provider,
   ): Promise<ProcessResponseResult> {
+    const sessionWriter = a.ctx.activeRunSessionWriter ?? a.ctx.session;
     let res = raw;
     res = await a.pipelines.response.run(res);
     // Fold in any `<nextsteps>` block parked by the `nextsteps` tool before the
@@ -559,7 +560,7 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       // Persist the semantic provider response before its exact-state
       // projection. The conversation journal drains independently, so state
       // mutation first can race `message_appended` ahead of `llm_response`.
-      await a.ctx.session.append({
+      await sessionWriter.append({
         type: 'llm_response',
         ts: new Date().toISOString(),
         content: res.content,
@@ -589,7 +590,7 @@ export function createAgentResponseHandler(a: AgentInternals): AgentResponseHand
       // writers may reject, which is logged without masking the provider result.
       try {
         await a.ctx.flushConversationJournal();
-        await a.ctx.session.flush();
+        await sessionWriter.flush();
       } catch (err) {
         (a.logger.debug ?? a.logger.warn)?.(`LLM response flush failed: ${toErrorMessage(err)}`);
       }

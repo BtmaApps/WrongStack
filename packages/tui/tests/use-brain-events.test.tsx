@@ -10,6 +10,79 @@ describe('useBrainEvents', () => {
     vi.useRealTimers();
   });
 
+  const monitorRequest = {
+    id: 'brainmon-reused',
+    source: 'system' as const,
+    question: 'Should we intervene?',
+    risk: 'medium' as const,
+    fallback: 'ask_human' as const,
+  };
+  const monitorDecision = { type: 'answer' as const, text: 'Continue' };
+
+  it('does not render a foreign request when only the nested request names its session', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch, () => 'alpha'));
+    act(() =>
+      events.emit('brain.decision_answered', {
+        request: { ...monitorRequest, id: 'ordinary-answer', sessionId: 'beta' },
+        decision: monitorDecision,
+        at: 1,
+      }),
+    );
+    expect(dispatch).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('anchors an untagged delayed monitor reply to the session that received it', () => {
+    vi.useFakeTimers();
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    let sessionId = 'alpha';
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch, () => sessionId));
+    act(() =>
+      events.emit('brain.decision_answered', {
+        request: monitorRequest,
+        decision: monitorDecision,
+        at: 1,
+      }),
+    );
+    sessionId = 'beta';
+    act(() => vi.advanceTimersByTime(5000));
+    expect(dispatch).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('keeps monitor deduplication separate across sessions with the same request id', () => {
+    vi.useFakeTimers();
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    let sessionId = 'alpha';
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch, () => sessionId));
+    act(() => {
+      events.emit('brain.decision_answered', {
+        sessionId,
+        request: monitorRequest,
+        decision: monitorDecision,
+        at: 1,
+      });
+      vi.advanceTimersByTime(5000);
+    });
+    sessionId = 'beta';
+    act(() =>
+      events.emit('brain.intervention', {
+        sessionId,
+        request: monitorRequest,
+        decision: monitorDecision,
+        kind: 'agent_stall',
+        intervened: false,
+        at: 2,
+      }),
+    );
+    expect(dispatch.mock.calls.filter(([action]) => action.type === 'addEntry')).toHaveLength(2);
+    unmount();
+  });
+
   it('renders a monitor decision and its outcome as one history card', () => {
     const events = new EventBus();
     const dispatch = vi.fn();
@@ -271,6 +344,96 @@ describe('useBrainEvents — council tier', () => {
       source: 'council',
       summary: 'council · 2 seats voted',
     });
+    unmount();
+  });
+
+  it('attaches the tallied round rather than the last failed round', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch));
+    act(() => {
+      events.emit('brain.council_vote', councilVote({ round: 2, status: 'failed' }));
+      events.emit('brain.council_resolved', {
+        requestId: request.id,
+        status: 'decided',
+        resolution: 'majority',
+        configuredSeatCount: 1,
+        validVoteCount: 1,
+        distinctTargetCount: 1,
+        judgeUsed: false,
+        rounds: 2,
+        votes: [councilVote({ round: 1 })],
+        at: 2,
+      });
+      events.emit('brain.decision_answered', {
+        request,
+        decision: { type: 'answer', text: 'merge' },
+        at: 3,
+      });
+    });
+    const entry = dispatch.mock.calls
+      .map(([action]) => action)
+      .find((action) => action.type === 'addEntry')?.entry;
+    expect(entry.council.seats[0]).toMatchObject({ round: 1, status: 'valid' });
+    unmount();
+  });
+
+  it('counts only current-round votes and ignores an older round replay', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch));
+    act(() => {
+      events.emit('brain.council_vote', councilVote({ round: 1 }));
+      events.emit('brain.council_vote', councilVote({ seatId: 'voter-1', round: 1 }));
+      events.emit('brain.council_vote', councilVote({ round: 2 }));
+    });
+    expect(dispatch.mock.calls.at(-1)?.[0].summary).toBe('council r2 · 1 seat voted');
+    const count = dispatch.mock.calls.length;
+    act(() => events.emit('brain.council_vote', councilVote({ round: 1 })));
+    expect(dispatch).toHaveBeenCalledTimes(count);
+    unmount();
+  });
+
+  it('does not attach another session council when request ids are reused after switching', () => {
+    const events = new EventBus();
+    const dispatch = vi.fn();
+    let sessionId = 'alpha';
+    const { unmount } = renderHook(() => useBrainEvents(events, dispatch, () => sessionId));
+    act(() => {
+      events.emit('brain.council_vote', councilVote({ sessionId: 'alpha' }));
+      events.emit('brain.council_resolved', {
+        sessionId: 'alpha',
+        requestId: request.id,
+        status: 'decided',
+        resolution: 'majority',
+        configuredSeatCount: 1,
+        validVoteCount: 1,
+        distinctTargetCount: 1,
+        judgeUsed: false,
+        usage: { calls: 1, inputTokens: 1, outputTokens: 1, totalTokens: 2, durationMs: 1 },
+        at: 1,
+      });
+      sessionId = 'beta';
+      events.emit('brain.decision_answered', {
+        sessionId,
+        request,
+        decision: { type: 'answer', text: 'Beta answer' },
+        at: 2,
+      });
+    });
+    const entries = () =>
+      dispatch.mock.calls.map(([action]) => action).filter((action) => action.type === 'addEntry');
+    expect(entries().at(-1)?.entry.council).toBeUndefined();
+    act(() => {
+      sessionId = 'alpha';
+      events.emit('brain.decision_answered', {
+        sessionId,
+        request,
+        decision: { type: 'answer', text: 'Alpha answer' },
+        at: 3,
+      });
+    });
+    expect(entries().at(-1)?.entry.council?.seats).toHaveLength(1);
     unmount();
   });
 

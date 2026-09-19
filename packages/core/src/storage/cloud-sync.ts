@@ -1,11 +1,11 @@
-import { expectDefined } from '../utils/expect-defined.js';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { atomicWrite } from '../utils/atomic-write.js';
-import { createHash } from 'node:crypto';
-import type { WstackPaths } from '../utils/wstack-paths.js';
 import type { SyncCategory, SyncConfig } from '../types/config.js';
-import { FsError, WrongStackError, ERROR_CODES } from '../types/errors.js';
+import { ERROR_CODES, FsError, WrongStackError } from '../types/errors.js';
+import { atomicWrite } from '../utils/atomic-write.js';
+import { expectDefined } from '../utils/expect-defined.js';
+import type { WstackPaths } from '../utils/wstack-paths.js';
 export const ALL_SYNC_CATEGORIES: SyncCategory[] = [
   'settings',
   'skills',
@@ -615,7 +615,7 @@ function resolvePulledCategoryPath(
   // On POSIX, a backslash is not a path separator, so an input such as
   // `..\\secret` reaches this containment check even though the first guard
   // rejects ordinary `../secret` traversal.
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new FsError({
       message: `Refusing CloudSync path outside category root: ${remotePath}`,
       code: ERROR_CODES.FS_DELETE_FAILED,

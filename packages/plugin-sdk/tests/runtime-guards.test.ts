@@ -103,14 +103,17 @@ describe('credential patterns', () => {
 
 describe('withReDoSGuard', () => {
   it('returns the match for a well-behaved regex', async () => {
-    const result = await withReDoSGuard(/(\d+)-(\d+)/, 'order 12-34');
+    // Explicit generous budget: the watchdog races worker-thread SCHEDULING
+    // (not regex cost), which flaked a 100ms trivial-input test under
+    // full-suite load. See the guardedMatcher test below for the full note.
+    const result = await withReDoSGuard(/(\d+)-(\d+)/, 'order 12-34', 5_000);
     expect(result.timedOut).toBe(false);
     expect(result.match?.[1]).toBe('12');
     expect(result.match?.[2]).toBe('34');
   });
 
   it('reports no match without timing out', async () => {
-    const result = await withReDoSGuard(/zzz/, 'abc');
+    const result = await withReDoSGuard(/zzz/, 'abc', 5_000);
     expect(result).toEqual({ timedOut: false, match: null });
   });
 
@@ -135,8 +138,19 @@ describe('withReDoSGuard', () => {
   }, 20_000);
 
   it('guardedMatcher binds a regex and budget for repeated use', async () => {
-    const match = guardedMatcher(/(\w+)@(\w+)/, 100);
-    await expect(match('mail a@b here')).resolves.toMatchObject({ timedOut: false });
+    // The watchdog races the pooled worker's THREAD SCHEDULING, not regex
+    // cost — under full-suite CPU contention a 100ms bound flaked once
+    // (timedOut:true on this trivial input; 44,777-test gate 2026-09-19).
+    // A trivial match costs microseconds, so 5s bounds scheduling only; the
+    // budget-HONORING path stays pinned by the adversarial tests above at
+    // 100ms. Match content is asserted so a silent non-match cannot
+    // masquerade as a pass.
+    const match = guardedMatcher(/(\w+)@(\w+)/, 5_000);
+    const hit = await match('mail a@b here');
+    expect(hit.timedOut).toBe(false);
+    expect(hit.match?.[0]).toBe('a@b');
+    expect(hit.match?.[1]).toBe('a');
+    expect(hit.match?.[2]).toBe('b');
     await expect(match('nothing here')).resolves.toEqual({ timedOut: false, match: null });
   }, 20_000);
 });

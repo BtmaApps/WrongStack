@@ -27,6 +27,24 @@ export const BLOCKED_RESOLVED_MARKERS =
 export const COMPETING_ALTERNATIVE = /\bor\b/;
 
 /**
+ * Work-unit failure nouns following "failed " in the context.
+ */
+export const DEADLOCK_FAILED_WORK_PATTERN =
+  /\bfailed\s+(?:task|step|job|build|test|phase|stage|item|unit)s?\b/;
+
+/**
+ * Patterns that indicate retries have been demonstrably exhausted in the context.
+ */
+export const RETRY_EXHAUSTED_PATTERN =
+  /\bexhausted\b|\b(?:[3-9]|\d{2,})\s+(?:consecutive\s+)?(?:times|attempts|retries|failures)\b|\b(?:attempt|retr(?:y|ies)|failure)s?\W{0,3}(?:[3-9]|\d{2,})\b/;
+
+/** Keywords indicating execution continuation pings. */
+export const CONTINUE_PING_PATTERN = /\b(?:continue|proceed)\b/;
+
+/** Keywords indicating explicit stops or aborts. */
+export const STOP_PING_PATTERN = /\b(?:stop|abort|halt|cancel|pause|rollback)\b/;
+
+/**
  * Evaluate the blocked-resolved heuristic against a question/context pair.
  *
  * Returns `true` when:
@@ -48,6 +66,37 @@ export function isBlockedResolved(
 ): boolean {
   return (
     question.includes('blocked') && !COMPETING_ALTERNATIVE.test(question) && markers.test(context)
+  );
+}
+
+/**
+ * Evaluate the deadlock skip heuristic: question mentions deadlock and
+ * context mentions failed work units blocking progress.
+ */
+export function isDeadlockWithFailedWork(question: string, context: string): boolean {
+  return question.includes('deadlock') && DEADLOCK_FAILED_WORK_PATTERN.test(context);
+}
+
+/**
+ * Evaluate the retry exhaustion heuristic: question mentions failure/retry
+ * and context contains explicit retry exhaustion evidence.
+ */
+export function isRetryExhausted(question: string, context: string): boolean {
+  return (
+    (question.includes('failed') || question.includes('retry')) &&
+    RETRY_EXHAUSTED_PATTERN.test(context)
+  );
+}
+
+/**
+ * Evaluate the continue ping heuristic: bare continue/proceed without
+ * stop/abort or competing alternatives.
+ */
+export function isContinuePing(question: string): boolean {
+  return (
+    CONTINUE_PING_PATTERN.test(question) &&
+    !STOP_PING_PATTERN.test(question) &&
+    !COMPETING_ALTERNATIVE.test(question)
   );
 }
 

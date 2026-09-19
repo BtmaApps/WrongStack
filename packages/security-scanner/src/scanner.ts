@@ -88,7 +88,14 @@ export class SecurityScanner {
       excludePatterns: this.options.excludePaths,
     });
 
-    const concurrency = Math.max(1, Math.floor(this.options.fileConcurrency));
+    const concurrency = Math.max(
+      1,
+      Math.floor(
+        Number.isFinite(this.options.fileConcurrency)
+          ? this.options.fileConcurrency
+          : DEFAULT_SCAN_OPTIONS.fileConcurrency,
+      ),
+    );
     for (let index = 0; index < files.length; index += concurrency) {
       const batch = files.slice(index, index + concurrency);
       const results = await Promise.allSettled(

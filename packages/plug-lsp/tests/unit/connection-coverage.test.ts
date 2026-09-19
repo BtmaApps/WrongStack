@@ -8,6 +8,27 @@ function frame(value: unknown): Buffer {
   return Buffer.from(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
 }
 
+function collectMessages(stream: PassThrough): unknown[] {
+  const messages: unknown[] = [];
+  let buffer = Buffer.alloc(0);
+  stream.on('data', (chunk: Buffer) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    for (;;) {
+      const separator = buffer.indexOf('\r\n\r\n');
+      if (separator === -1) return;
+      const header = buffer.subarray(0, separator).toString('ascii');
+      const match = /Content-Length:\s*(\d+)/i.exec(header);
+      if (!match) return;
+      const length = Number(match[1]);
+      const end = separator + 4 + length;
+      if (buffer.length < end) return;
+      messages.push(JSON.parse(buffer.subarray(separator + 4, end).toString('utf8')));
+      buffer = buffer.subarray(end);
+    }
+  });
+  return messages;
+}
+
 describe('Connection protocol completion coverage', () => {
   it('dispatches successful, failed, unknown, and notification messages', async () => {
     const stdin = new PassThrough();
@@ -136,6 +157,44 @@ describe('Connection protocol completion coverage', () => {
     });
     controller.abort(new Error('operator cancelled'));
     await expect(pending).rejects.toThrow('operator cancelled');
+  });
+
+  it('cancels timed-out requests on the server', async () => {
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const messages = collectMessages(stdin);
+    const connection = new Connection(stdin, stdout);
+
+    await expect(
+      connection.sendRequest(
+        'workspace/symbol',
+        { query: 'slow' },
+        5,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: LSPErrorCode.RequestTimeout });
+
+    expect(messages).toEqual([
+      { jsonrpc: '2.0', id: 1, method: 'workspace/symbol', params: { query: 'slow' } },
+      { jsonrpc: '2.0', method: '$/cancelRequest', params: { id: 1 } },
+    ]);
+  });
+
+  it('wraps request IDs at the safe integer boundary without reusing pending IDs', async () => {
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const messages = collectMessages(stdin) as Array<{ id?: number }>;
+    const connection = new Connection(stdin, stdout);
+    const controller = new AbortController();
+
+    const first = connection.sendRequest('first', null, 1_000, controller.signal);
+    (connection as unknown as { nextId: number }).nextId = Number.MAX_SAFE_INTEGER;
+    const boundary = connection.sendRequest('boundary', null, 1_000, controller.signal);
+    const wrapped = connection.sendRequest('wrapped', null, 1_000, controller.signal);
+
+    expect(messages.map(({ id }) => id)).toEqual([1, Number.MAX_SAFE_INTEGER, 2]);
+    controller.abort(new Error('test complete'));
+    await Promise.allSettled([first, boundary, wrapped]);
   });
 
   it('fails pending requests for stdout errors and close events, including non-Errors', async () => {

@@ -72,6 +72,9 @@ export async function createBoardFromTaskGraph(
       childTaskIds: node.children,
       origin: {
         system: options.sourceSystem ?? 'task-graph',
+        sourceDescription: node.description,
+        sourcePriority: node.priority,
+        sourceDependencyTaskIds: [],
         graphId: graph.id,
         taskId: node.id,
         specId: graph.specId,
@@ -101,6 +104,7 @@ export async function createBoardFromTaskGraph(
     const task = taskId ? board.tasks.find((candidate) => candidate.id === taskId) : undefined;
     if (!dependencyId || !task) continue;
     task.dependsOn = uniqueStrings([...(task.dependsOn ?? []), dependencyId]);
+    if (task.origin) task.origin.sourceDependencyTaskIds = [...task.dependsOn];
   }
   normalizeAllColumnTaskOrders(board);
   await writeBoard(projectRoot, board);

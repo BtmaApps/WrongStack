@@ -141,6 +141,17 @@ describe('HqSocket', () => {
     expect(prevAttempts).toBe(1);
   });
 
+  it('physically closes an errored socket before reconnecting', () => {
+    client.connect();
+    currentWs!._open();
+    const closeSpy = vi.spyOn(currentWs!, 'close');
+
+    currentWs!.onerror?.({});
+
+    expect(closeSpy).toHaveBeenCalledOnce();
+    expect(client.state).toBe('reconnecting');
+  });
+
   // ── Heartbeat ─────────────────────────────────────────────────────────
 
   it('isHeartbeatTimedOut is false when messages arrive', () => {

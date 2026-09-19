@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/cli.js';
 
 describe('Requirement Intake MCP CLI arguments', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('defaults to read-only stdio', () => {
     expect(parseArgs(['--project-root', '.'])).toMatchObject({
       transport: 'stdio',
@@ -43,5 +46,21 @@ describe('Requirement Intake MCP CLI arguments', () => {
     ).toMatchObject({
       httpToken: 'env-token',
     });
+  });
+
+  it('does not consume a following writable flag as a missing value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--project-root', '--writable'], {})).toMatchObject({
+      projectRoot: '',
+      writable: true,
+    });
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('accepts only integer HTTP ports in range', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(parseArgs(['--port', '65536'], {}).httpPort).toBe(0);
+    expect(parseArgs(['--port', '8.5'], {}).httpPort).toBe(0);
+    expect(warn).toHaveBeenCalled();
   });
 });

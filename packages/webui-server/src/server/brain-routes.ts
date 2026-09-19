@@ -56,10 +56,26 @@ export function createBrainRouteHandlers(ctx: BrainHandlerContext): BrainRouteHa
     ask: (ws, msg) => {
       const parsed = validateBrainAskPayload(msg.payload);
       if (!parsed.ok) {
-        sendResult(ws, false, parsed.message);
+        const rawId = (msg.payload as { requestId?: unknown } | undefined)?.requestId;
+        const sessionId = messageSessionId(msg);
+        ctx.send(ws, {
+          type: 'key.operation_result',
+          payload: {
+            success: false,
+            message: parsed.message,
+            ...(typeof rawId === 'string' && rawId.trim() ? { requestId: rawId.trim() } : {}),
+            ...(sessionId ? { sessionId } : {}),
+          },
+        });
         return;
       }
-      return handleBrainAsk(ctx, ws, parsed.value.question, messageSessionId(msg));
+      return handleBrainAsk(
+        ctx,
+        ws,
+        parsed.value.question,
+        messageSessionId(msg),
+        parsed.value.requestId,
+      );
     },
     configGet: (ws) => handleBrainConfigGet(ctx, ws),
     configSet: (ws, msg) => {

@@ -15,6 +15,7 @@ export {
   assignTask,
   attachVerificationReport,
   cancelKanbanDispatch,
+  claimBoardManagement,
   claimReadyTask,
   completeKanbanDispatch,
   configureContractGraph,
@@ -29,6 +30,7 @@ export {
   exportBoardToTaskGraph,
   failKanbanDispatch,
   finalizeTaskCompletion,
+  finishBoardManagement,
   getBoard,
   getBoardWithLivePresence,
   getContractGraph,
@@ -52,6 +54,7 @@ export {
   recordCompletionRefusal,
   recordTaskActivity,
   recordTaskFileActivity,
+  recordTaskManagementReview,
   recoverStaleTaskAssignments,
   releaseTaskClaim,
   removeBoard,
@@ -59,6 +62,7 @@ export {
   removeContractEdge,
   removeContractNode,
   removeTask,
+  renewBoardManagement,
   repairManagedTaskProjection,
   reserveKanbanDispatch,
   resolveDecompositionProposal,
@@ -84,6 +88,7 @@ export {
   evaluateContractGraphReadiness,
   taskContractEndpoint,
 } from './contract-graph.js';
+export { managementTaskVersion } from './management-fence.js';
 export * from './manager.js';
 export {
   hasKanbanQueueAnomalies,

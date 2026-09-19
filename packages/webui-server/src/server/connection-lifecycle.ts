@@ -116,7 +116,7 @@ export interface ConnectionLifecycleOptions<Client, Request, Message> {
    * delays the message handler. Wrap any async work in a promise that is
    * intentionally not awaited.
    */
-  onSecurityRejection?: ((event: SecurityRejectionEvent) => void) | undefined;
+  onSecurityRejection?: ((event: SecurityRejectionEvent) => void | Promise<void>) | undefined;
 }
 
 /**
@@ -206,12 +206,28 @@ export function createConnectionLifecycle<Client, Request, Message>(
   return async (ws, request) => {
     const onError = (error: unknown) => log('warn', 'webui_server.client_socket_error', error);
     if (typeof ws.on === 'function') ws.on('error', onError);
-    if (options.authenticate && !(await options.authenticate(ws, request))) {
+    const detachErrorListener = (): void => {
       if (typeof ws.removeListener === 'function') {
         ws.removeListener('error', onError);
       } else if (typeof (ws as unknown as { off?: unknown }).off === 'function') {
         (ws as unknown as { off: (event: string, fn: unknown) => void }).off('error', onError);
       }
+    };
+    let authenticated = true;
+    try {
+      if (options.authenticate) authenticated = await options.authenticate(ws, request);
+    } catch (error) {
+      log('error', 'webui_server.authentication_failed', error);
+      detachErrorListener();
+      try {
+        ws.close?.(1011, 'Authentication failed');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (!authenticated) {
+      detachErrorListener();
       try {
         ws.close?.(4401, 'Unauthorized');
       } catch {
@@ -220,9 +236,25 @@ export function createConnectionLifecycle<Client, Request, Message>(
       return;
     }
 
-    const client = options.createClient(ws, `c${++connectionSequence}`);
-    options.clients.set(ws, client);
-    options.registerClient(ws);
+    let client: Client;
+    let ownershipStarted = false;
+    try {
+      client = options.createClient(ws, `c${++connectionSequence}`);
+      options.clients.set(ws, client);
+      ownershipStarted = true;
+      options.registerClient(ws);
+    } catch (error) {
+      log('error', 'webui_server.client_registration_failed', error);
+      options.clients.delete(ws);
+      if (ownershipStarted) options.unregisterClient?.(ws);
+      detachErrorListener();
+      try {
+        ws.close?.(1011, 'Client registration failed');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
 
     if (confirmDrainTimer) {
       clearTimeout(confirmDrainTimer);
@@ -312,17 +344,24 @@ export function createConnectionLifecycle<Client, Request, Message>(
           (decoded.issue.code === 'unsafe_key' || decoded.issue.code === 'too_deep')
         ) {
           const c = client as unknown as ClientWithConnectionInfo | undefined;
-          void options.onSecurityRejection({
-            issueCode: decoded.issue.code,
-            issueMessage: decoded.issue.message,
-            eventName,
-            ...(c?.connId ? { connectionId: c.connId } : {}),
-            ...(c?.sessionId != null ? { sessionId: c.sessionId } : {}),
-            ...(options.clientContext?.agentId ? { agentId: options.clientContext.agentId } : {}),
-            ...(options.clientContext?.projectRoot
-              ? { projectRoot: options.clientContext.projectRoot }
-              : {}),
-          } as SecurityRejectionEvent);
+          try {
+            const notification = options.onSecurityRejection({
+              issueCode: decoded.issue.code,
+              issueMessage: decoded.issue.message,
+              eventName,
+              ...(c?.connId ? { connectionId: c.connId } : {}),
+              ...(c?.sessionId != null ? { sessionId: c.sessionId } : {}),
+              ...(options.clientContext?.agentId ? { agentId: options.clientContext.agentId } : {}),
+              ...(options.clientContext?.projectRoot
+                ? { projectRoot: options.clientContext.projectRoot }
+                : {}),
+            } as SecurityRejectionEvent);
+            void Promise.resolve(notification).catch((error) => {
+              log('warn', 'webui_server.security_rejection_callback_failed', error);
+            });
+          } catch (error) {
+            log('warn', 'webui_server.security_rejection_callback_failed', error);
+          }
         }
         logRejection(
           level,
@@ -359,8 +398,9 @@ export function createConnectionLifecycle<Client, Request, Message>(
         // this one on, so a background tab's "provider key saved" / "commit
         // failed" answer reaches the tab that asked instead of the tab in
         // front. See `runWithDispatchSession` in ws-utils.ts (B-05).
-        await runWithDispatchSession(messageSessionId(decoded.message as { payload?: unknown }), () =>
-          options.dispatch(ws, client, decoded.message),
+        await runWithDispatchSession(
+          messageSessionId(decoded.message as { payload?: unknown }),
+          () => options.dispatch(ws, client, decoded.message),
         );
       } catch (error) {
         log('error', 'webui_server.message_handler_failed', error);

@@ -295,6 +295,19 @@ export interface CliWebUIOptions {
           fallbackProfile?: string | undefined;
           skills?: string[] | undefined;
           tools?: string[] | undefined;
+          signal?: AbortSignal | undefined;
+          context?:
+            | {
+                sessionId?: string;
+                kanban?: {
+                  boardId?: string;
+                  taskId?: string;
+                  projectRoot?: string;
+                  leaseId?: string;
+                  managementToken?: string;
+                };
+              }
+            | undefined;
           name?: string | undefined;
           allowedCapabilities?: readonly string[] | undefined;
           onDone?:

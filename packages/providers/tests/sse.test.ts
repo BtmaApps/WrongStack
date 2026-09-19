@@ -200,6 +200,54 @@ async function* arr<T>(items: T[]): AsyncIterable<T> {
 }
 
 describe('aggregateStream', () => {
+  it.each([
+    { chunks: ['{"path":', '"src/app.ts"}'], input: { path: 'src/app.ts' } },
+    { chunks: ['not-json'], input: { __raw: 'not-json' } },
+    { chunks: [], input: {} },
+  ])(
+    'preserves accumulated tool arguments without a tool stop ($chunks)',
+    async ({ chunks, input }) => {
+      const events: StreamEvent[] = [
+        { type: 'message_start', model: 'm' },
+        { type: 'text_delta', text: 'Before' },
+        { type: 'tool_use_start', id: 't1', name: 'read' },
+        ...chunks.map(
+          (partial): StreamEvent => ({ type: 'tool_use_input_delta', id: 't1', partial }),
+        ),
+        { type: 'message_stop', stopReason: 'tool_use', usage: { input: 5, output: 2 } },
+      ];
+      const result = await aggregateStream(arr(events));
+      expect(result.content).toEqual([
+        { type: 'text', text: 'Before' },
+        { type: 'tool_use', id: 't1', name: 'read', input },
+      ]);
+      expect(result.stopReason).toBe('tool_use');
+    },
+  );
+
+  it('keeps explicit tool-stop input authoritative over earlier deltas', async () => {
+    const result = await aggregateStream(
+      arr<StreamEvent>([
+        { type: 'tool_use_start', id: 't1', name: 'read' },
+        { type: 'tool_use_input_delta', id: 't1', partial: '{"path":"old.ts"}' },
+        { type: 'tool_use_stop', id: 't1', input: { path: 'final.ts' } },
+      ]),
+    );
+    expect(result.content).toEqual([
+      { type: 'tool_use', id: 't1', name: 'read', input: { path: 'final.ts' } },
+    ]);
+  });
+
+  it('propagates stream failures instead of converting buffered tool input to success', async () => {
+    const failure = new Error('upstream disconnected');
+    async function* interrupted(): AsyncIterable<StreamEvent> {
+      yield { type: 'tool_use_start', id: 't1', name: 'read' };
+      yield { type: 'tool_use_input_delta', id: 't1', partial: '{"path":"file.ts"}' };
+      throw failure;
+    }
+    await expect(aggregateStream(interrupted())).rejects.toBe(failure);
+  });
+
   it('builds a text-only Response from text_delta sequence', async () => {
     const events: StreamEvent[] = [
       { type: 'message_start', model: 'm' },

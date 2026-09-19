@@ -1,8 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
 import type { Specification, SpecStatus } from '@wrongstack/core/types';
+import { atomicWrite, ensureDir } from '@wrongstack/core/utils';
 
 export interface SpecStoreOptions {
   /** Directory where spec files are stored. Defaults to `.wrongstack/specs`. */
@@ -134,7 +134,14 @@ export class SpecStore {
     const dir = path.resolve(this.baseDir);
     const resolved = path.resolve(dir, `${id}.json`);
     const rel = path.relative(dir, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel) || rel.includes(path.sep)) {
+    // Canonical escape test: `..hidden` is a legal single-segment id; a bare
+    // startsWith('..') misreads it as a traversal.
+    if (
+      rel === '..' ||
+      rel.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(rel) ||
+      rel.includes(path.sep)
+    ) {
       throw new Error(`Invalid spec id: ${JSON.stringify(id)}`);
     }
     return resolved;

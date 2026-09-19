@@ -160,7 +160,12 @@ export class DefaultPromptStore implements PromptStore {
     const dir = path.resolve(this.dir);
     const resolved = path.resolve(dir, `${id}.json`);
     const rel = path.relative(dir, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel) || rel.includes(path.sep)) {
+    if (
+      rel === '..' ||
+      rel.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(rel) ||
+      rel.includes(path.sep)
+    ) {
       throw new Error(`Invalid prompt id: ${JSON.stringify(id)}`);
     }
     return resolved;

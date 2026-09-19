@@ -26,6 +26,8 @@ export interface CouncilPanelEntry {
   startedAt: number;
   resolvedAt?: number | undefined;
   seats: CouncilSeatVote[];
+  /** Final ballots supersede the live stream, including later failed rounds. */
+  hasFinalVotes?: boolean | undefined;
   /** Folded in from the matching `brain.decision_*` event, when it arrives. */
   question?: string | undefined;
   status?: string | undefined;
@@ -55,6 +57,8 @@ export const MAX_COUNCIL_PANELS = 50;
 interface CouncilLogState {
   /** Newest first. */
   panels: CouncilPanelEntry[];
+  /** Bounded, session-local questions received before the first ballot. */
+  questions: Map<string, string>;
   recordVote: (payload: Record<string, unknown>) => void;
   recordResolution: (payload: Record<string, unknown>) => void;
   noteQuestion: (requestId: string, question: string) => void;
@@ -96,9 +100,9 @@ export function summarizeCouncilPanel(entry: CouncilPanelEntry): string {
     // Name the round while voting: a deliberating panel re-polls every seat,
     // so the seat count resets and would otherwise look like it went backwards.
     const round = entry.seats.reduce((max, seat) => Math.max(max, seat.round ?? 1), 1);
+    const count = entry.seats.filter((seat) => (seat.round ?? 1) === round).length;
     return (
-      `voting${round > 1 ? ` r${round}` : ''} · ` +
-      `${entry.seats.length} seat${entry.seats.length === 1 ? '' : 's'} in`
+      `voting${round > 1 ? ` r${round}` : ''} · ` + `${count} seat${count === 1 ? '' : 's'} in`
     );
   }
   const seatCount = entry.configuredSeatCount ?? entry.seats.length;
@@ -156,8 +160,10 @@ function upsertPanel(
   const index = panels.findIndex((panel) => panel.requestId === requestId);
   if (index >= 0) {
     const existing = panels[index] as CouncilPanelEntry;
+    const updated = apply(existing);
+    if (updated === existing) return panels;
     const next = [...panels];
-    next[index] = apply(existing);
+    next[index] = updated;
     return next;
   }
   const created = apply({ requestId, phase: 'voting', startedAt: now, seats: [] });
@@ -170,39 +176,41 @@ function upsertPanel(
  */
 export const useCouncilLogStore = createSessionScopedStore<CouncilLogState>((set) => ({
   panels: [],
+  questions: new Map(),
 
   recordVote: (payload) => {
     const requestId = str(payload.requestId);
     if (!requestId) return;
-    const now = Date.now();
+    const eventAt = num(payload.at);
+    const now = eventAt ?? Date.now();
     set((state) => ({
       panels: upsertPanel(state.panels, requestId, now, (entry) => {
         const seatId = str(payload.seatId) ?? 'seat';
         const vote = toCouncilSeatVote(payload, now);
-        // A re-delivered vote for a seat the panel already has is a reconnect
-        // replay of the SAME run — update the seat in place and keep the
-        // resolution fields untouched.
-        if (entry.seats.some((seat) => seat.seatId === seatId)) {
+        const previous = entry.seats.find((seat) => seat.seatId === seatId);
+        const question = entry.question ?? state.questions.get(requestId);
+        // Timestamped frames identify a fresh run even when it reuses seats.
+        // Retain the legacy new-seat heuristic only for untimestamped hosts.
+        if (
+          entry.phase === 'resolved' &&
+          (eventAt !== undefined ? eventAt > (entry.resolvedAt ?? entry.startedAt) : !previous)
+        ) {
+          return { requestId, phase: 'voting', startedAt: now, seats: [vote], question };
+        }
+        if (entry.phase === 'resolved' && entry.hasFinalVotes) return entry;
+        if (previous) {
+          if (
+            (vote.round ?? 1) < (previous.round ?? 1) ||
+            ((vote.round ?? 1) === (previous.round ?? 1) && vote.at < previous.at)
+          )
+            return entry;
           return {
             ...entry,
+            question,
             seats: entry.seats.map((seat) => (seat.seatId === seatId ? vote : seat)),
           };
         }
-        // A vote for a NEW seat on an already-resolved panel means a FRESH run
-        // started under the same request id (a retried decision reusing the
-        // id): clear the stale verdict and the previous run's seats so the
-        // summary panel cannot keep showing the old verdict while the new run
-        // votes. The question survives — it is the same decision re-run.
-        if (entry.phase === 'resolved') {
-          return {
-            requestId: entry.requestId,
-            phase: 'voting',
-            startedAt: now,
-            seats: [vote],
-            question: entry.question,
-          };
-        }
-        return { ...entry, seats: [...entry.seats, vote] };
+        return { ...entry, question, seats: [...entry.seats, vote] };
       }),
     }));
   },
@@ -210,31 +218,47 @@ export const useCouncilLogStore = createSessionScopedStore<CouncilLogState>((set
   recordResolution: (payload) => {
     const requestId = str(payload.requestId);
     if (!requestId) return;
-    const now = Date.now();
+    const eventAt = num(payload.at);
+    const now = eventAt ?? Date.now();
     const usage = payload.usage as { totalTokens?: number; durationMs?: number } | undefined;
     set((state) => ({
-      panels: upsertPanel(state.panels, requestId, now, (entry) => ({
-        ...entry,
-        phase: 'resolved',
-        resolvedAt: num(payload.at) ?? now,
-        status: str(payload.status),
-        resolution: str(payload.resolution),
-        optionId: str(payload.optionId),
-        reason: str(payload.reason),
-        configuredSeatCount: num(payload.configuredSeatCount),
-        validVoteCount: num(payload.validVoteCount),
-        distinctTargetCount: num(payload.distinctTargetCount),
-        judgeUsed: bool(payload.judgeUsed),
-        judgeLabel: str(payload.judgeLabel),
-        judgeIsVoter: bool(payload.judgeIsVoter),
-        rounds: num(payload.rounds),
-        deliberationChanges: num(payload.deliberationChanges),
-        totalTokens: num(usage?.totalTokens),
-        durationMs: num(usage?.durationMs),
-        warnings: Array.isArray(payload.warnings)
-          ? payload.warnings.filter((w): w is string => typeof w === 'string')
-          : undefined,
-      })),
+      panels: upsertPanel(state.panels, requestId, now, (entry) => {
+        if (
+          eventAt !== undefined &&
+          (eventAt < entry.startedAt ||
+            (entry.resolvedAt !== undefined && eventAt <= entry.resolvedAt))
+        )
+          return entry;
+        return {
+          ...entry,
+          question: entry.question ?? state.questions.get(requestId),
+          phase: 'resolved',
+          hasFinalVotes: Array.isArray(payload.votes),
+          seats: Array.isArray(payload.votes)
+            ? payload.votes
+                .filter((vote) => vote && typeof vote === 'object' && !Array.isArray(vote))
+                .map((vote) => toCouncilSeatVote(vote, now))
+            : entry.seats,
+          resolvedAt: num(payload.at) ?? now,
+          status: str(payload.status),
+          resolution: str(payload.resolution),
+          optionId: str(payload.optionId),
+          reason: str(payload.reason),
+          configuredSeatCount: num(payload.configuredSeatCount),
+          validVoteCount: num(payload.validVoteCount),
+          distinctTargetCount: num(payload.distinctTargetCount),
+          judgeUsed: bool(payload.judgeUsed),
+          judgeLabel: str(payload.judgeLabel),
+          judgeIsVoter: bool(payload.judgeIsVoter),
+          rounds: num(payload.rounds),
+          deliberationChanges: num(payload.deliberationChanges),
+          totalTokens: num(usage?.totalTokens),
+          durationMs: num(usage?.durationMs),
+          warnings: Array.isArray(payload.warnings)
+            ? payload.warnings.filter((w): w is string => typeof w === 'string')
+            : undefined,
+        };
+      }),
     }));
   },
 
@@ -243,9 +267,15 @@ export const useCouncilLogStore = createSessionScopedStore<CouncilLogState>((set
     if (!requestId || !text) return;
     set((state) => {
       const index = state.panels.findIndex((panel) => panel.requestId === requestId);
-      // Only ENRICH an existing panel. Creating one here would spawn an empty
-      // row for every policy/LLM-tier decision, which never convenes a council.
-      if (index < 0) return state;
+      if (index < 0) {
+        if (state.questions.get(requestId) === text) return state;
+        const questions = new Map(state.questions);
+        questions.delete(requestId);
+        questions.set(requestId, text);
+        while (questions.size > MAX_COUNCIL_PANELS)
+          questions.delete(questions.keys().next().value!);
+        return { questions };
+      }
       const existing = state.panels[index] as CouncilPanelEntry;
       if (existing.question === text) return state;
       const next = [...state.panels];
@@ -254,7 +284,7 @@ export const useCouncilLogStore = createSessionScopedStore<CouncilLogState>((set
     });
   },
 
-  clear: () => set({ panels: [] }),
+  clear: () => set({ panels: [], questions: new Map() }),
 }));
 
 function str(value: unknown): string | undefined {

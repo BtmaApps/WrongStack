@@ -78,13 +78,21 @@ describe('SimpleUI socket-backed panels', () => {
     const input = container.querySelector('input') as HTMLInputElement;
     act(() => setValue(input, ' Should we proceed? '));
     act(() => (container.querySelector('.brain-panel-ask button') as HTMLButtonElement).click());
-    expect(socket.send).toHaveBeenCalledWith('brain.ask', { question: 'Should we proceed?' });
+    expect(socket.send).toHaveBeenCalledWith('brain.ask', {
+      question: 'Should we proceed?',
+      requestId: expect.stringMatching(/^brain-ask-/),
+    });
+    const requestId = socket.send.mock.calls.find(([type]) => type === 'brain.ask')?.[1].requestId;
 
     await act(async () => {
       for (const handler of handlers) {
         handler({
           type: 'brain.answer',
-          payload: { question: 'Should we proceed?', decision: { reason: 'Yes, guarded.' } },
+          payload: {
+            requestId,
+            question: 'Should we proceed?',
+            decision: { reason: 'Yes, guarded.' },
+          },
         });
       }
     });

@@ -40,6 +40,14 @@ import {
   compileBrainRules,
   createRuleBrainArbiter,
 } from '../coordination/brain-rules.js';
+import {
+  type BrainDecisionExplanation,
+  explainBrainDecision,
+} from '../coordination/brain-explain.js';
+import {
+  BrainTierCounter,
+  type BrainTierStats,
+} from '../coordination/brain-telemetry.js';
 import { parseModelRef } from '../core/fallback-model.js';
 import type { EventBus } from '../kernel/events.js';
 import type { BrainConfig, BrainCouncilVoterConfig, BrainModelEntry } from '../types/config.js';
@@ -51,6 +59,7 @@ import {
 } from './autonomy-brain.js';
 import { assembleBrainTiers } from './brain-chain.js';
 import { BrainCircuitBreaker } from './brain-circuit.js';
+import { createBrainPersistenceQueue } from './brain-persistence.js';
 import {
   AUTO_RISK_LEVELS,
   COUNCIL_DISTINCTNESS,
@@ -170,6 +179,8 @@ export interface BrainConfigSnapshot {
    */
   judgeIsVoter: boolean;
   usingSessionModel: boolean;
+  /** Live breakdown of decisions resolved across the ladder tiers. */
+  tierStats?: BrainTierStats | undefined;
 }
 
 /** Council sub-patch. Arrays REPLACE; `null` clears back to the default. */
@@ -287,6 +298,13 @@ export interface BrainRuntime {
   getConfig(): BrainConfig;
   /** Live-apply synchronously; persistence (default on) is async best-effort. */
   apply(patch: BrainConfigPatch, opts?: { persist?: boolean | undefined }): BrainApplyResult;
+  /**
+   * Pure, side-effect-free dry-run simulation of the deterministic decision ladder.
+   * Explains which tier resolved (or would resolve) the request and why.
+   */
+  explain(request: BrainDecisionRequest): BrainDecisionExplanation;
+  /** Live tier breakdown metrics. */
+  getTierStats(): BrainTierStats;
 }
 
 function normalizeEntry(raw: string | BrainModelEntry): BrainModelEntry {
@@ -434,6 +452,15 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
   let compiledRules: CompiledBrainRule[] = [];
   let ruleErrors: string[] = [];
   let current: BrainArbiter;
+  const persistConfig = createBrainPersistenceQueue(opts.persist);
+  const tierCounter = new BrainTierCounter();
+  if (opts.events) {
+    opts.events.on('brain.tier_transition', (e) => {
+      if (e.terminal) {
+        tierCounter.record(e.tier);
+      }
+    });
+  }
 
   // Digest + streak wrappers check the host's live ledger enablement per call
   // so a ledger toggle takes effect without re-plumbing.
@@ -920,6 +947,7 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
       judgeLabel,
       judgeIsVoter,
       usingSessionModel: (cfg.models ?? []).length === 0,
+      tierStats: tierCounter.snapshot(),
     };
   }
 
@@ -988,19 +1016,29 @@ export function createBrainRuntime(opts: BrainRuntimeOptions): BrainRuntime {
         opts.ledger?.setEnabled(patch.ledger.enabled);
       }
       if (rebuildNeeded) rebuild();
+      else decisionCache?.clear();
       const snapshot = getSnapshot();
-      const shouldPersist = applyOpts?.persist !== false && opts.persist !== undefined;
-      const persisted: Promise<{ ok: boolean; error?: string | undefined }> = shouldPersist
-        ? (opts.persist as (config: BrainConfig) => Promise<void>)(getConfig()).then(
-            () => ({ ok: true }),
-            (err: unknown) => ({
-              ok: false,
-              error: err instanceof Error ? err.message : String(err),
-            }),
-          )
-        : Promise.resolve({ ok: true });
+      const persisted =
+        applyOpts?.persist === false ? Promise.resolve({ ok: true }) : persistConfig(getConfig());
       opts.onApplied?.(snapshot);
       return { snapshot, persisted };
     },
+    explain(request: BrainDecisionRequest): BrainDecisionExplanation {
+      return explainBrainDecision(request, {
+        ledger: opts.ledger,
+        ledgerAutoDenyAfterFailures: cfg.ledger?.autoDenyAfterFailures,
+        cache: decisionCache,
+        rules: compiledRules,
+        heuristics: cfg.heuristics,
+        maxAutoRisk: cfg.maxAutoRisk,
+        council: {
+          enabled: councilLabels.length > 0,
+          minRisk: cfg.council?.minRisk ?? 'high',
+        },
+        mode: cfg.mode ?? 'interactive',
+        terminalPolicy: cfg.terminalPolicy ?? 'conservative',
+      });
+    },
+    getTierStats: () => tierCounter.snapshot(),
   };
 }

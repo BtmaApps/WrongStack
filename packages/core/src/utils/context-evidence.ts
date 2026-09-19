@@ -1,7 +1,7 @@
 import * as path from 'node:path';
-import type { AgentContext } from '../types/context.js';
 import { isTextBlock, type TextBlock } from '../types/blocks.js';
 import type { CompactReport } from '../types/compactor.js';
+import type { AgentContext } from '../types/context.js';
 import type {
   CompletedWorkEvidence,
   CompletedWorkSource,
@@ -554,7 +554,7 @@ function addPath(ctx: AgentContext, out: Set<string>, raw: string): void {
     const abs = path.isAbsolute(clean) ? path.resolve(clean) : null;
     if (abs) {
       const rel = path.relative(ctx.projectRoot, abs);
-      if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+      if (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)) {
         normalized = rel.replace(/\\/g, '/');
       }
     }

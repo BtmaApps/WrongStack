@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ProviderRegistry, type ProviderFactory } from '../../src/registry/provider-registry.js';
+import { type ProviderFactory, ProviderRegistry } from '../../src/registry/provider-registry.js';
 import type { Provider } from '../../src/types/provider.js';
 
 const fakeProvider: Provider = {
@@ -32,6 +32,39 @@ const makeFactory = (type: string, create?: (cfg: unknown) => Provider): Provide
 });
 
 describe('ProviderRegistry', () => {
+  it('removes a scoped registration without a predecessor, exactly once', () => {
+    const registry = new ProviderRegistry();
+    const dispose = registry.registerScoped(makeFactory('scoped'));
+    expect(registry.has('scoped')).toBe(true);
+    dispose();
+    expect(registry.has('scoped')).toBe(false);
+    registry.register(makeFactory('scoped'));
+    dispose();
+    expect(registry.has('scoped')).toBe(true);
+  });
+
+  it.each(['register', 'override'] as const)(
+    'does not undo an independent %s even with the same factory object',
+    (operation) => {
+      const registry = new ProviderRegistry();
+      const factory = makeFactory('scoped');
+      const dispose = registry.registerScoped(factory);
+      if (operation === 'register') registry.register(factory);
+      else registry.override('scoped', factory);
+      dispose();
+      expect(registry.create({ type: 'scoped' })).toBe(fakeProvider);
+    },
+  );
+
+  it('does not resurrect an explicitly unregistered provider', () => {
+    const registry = new ProviderRegistry();
+    registry.register(makeFactory('scoped'));
+    const dispose = registry.registerScoped(makeFactory('scoped'));
+    registry.unregister('scoped');
+    dispose();
+    expect(registry.has('scoped')).toBe(false);
+  });
+
   it('register / has / create / list', () => {
     const r = new ProviderRegistry();
     r.register(makeFactory('fake'));

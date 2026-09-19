@@ -4,6 +4,7 @@ import { handleKanbanContractAction } from './kanban-contract-actions.js';
 import { handleKanbanDecompositionAction } from './kanban-decomposition-actions.js';
 import { handleKanbanDetailAction } from './kanban-detail-actions.js';
 import { handleKanbanLifecycleAction } from './kanban-lifecycle-actions.js';
+import { guardKanbanManagement, rememberManagementRead } from './kanban-management-guard.js';
 import { createKanbanPresenceWrapper } from './kanban-presence.js';
 import { serializeKanbanOutput } from './kanban-serializer.js';
 import { invalidInput, KanbanToolError, toKanbanToolError } from './kanban-tool-results.js';
@@ -15,8 +16,6 @@ import {
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
 export type KanbanContext = Parameters<Tool<KanbanToolInput, KanbanToolOutput>['execute']>[1];
-export type { KanbanAction, KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
-export { KANBAN_READ_ONLY_ACTIONS } from './kanban-tool-types.js';
 export {
   isKanbanToolFailure,
   KanbanInputError,
@@ -24,6 +23,8 @@ export {
   type KanbanToolErrorCode,
   type KanbanToolFailure,
 } from './kanban-tool-results.js';
+export type { KanbanAction, KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
+export { KANBAN_READ_ONLY_ACTIONS } from './kanban-tool-types.js';
 
 /**
  * Agent-facing Kanban tool.
@@ -80,6 +81,7 @@ export const kanbanTool: Tool<KanbanToolInput, KanbanToolOutput> = {
 
     let result: KanbanToolOutput;
     try {
+      await guardKanbanManagement(normalizedInput, ctx);
       result = await dispatchKanbanAction(projectRoot, normalizedInput, ctx);
     } catch (err) {
       throw toKanbanToolError(err);
@@ -88,8 +90,9 @@ export const kanbanTool: Tool<KanbanToolInput, KanbanToolOutput> = {
     // An abort that lands AFTER the handler returned cannot undo the work: the
     // mutation (if any) is committed, so report what happened. Only skip the
     // best-effort presence write.
-    if (signal.aborted) return result;
-    return await withPresence(result);
+    const finalResult = signal.aborted ? result : await withPresence(result);
+    rememberManagementRead(ctx, finalResult.board);
+    return finalResult;
   },
   serialize(output, input) {
     return serializeKanbanOutput(output, input);

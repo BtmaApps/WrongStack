@@ -15,9 +15,9 @@ import {
   toStyle,
   unifiedDiff,
 } from '@wrongstack/core/utils';
+import { mapWithConcurrency } from './_concurrency.js';
 import { compileUserRegex } from './_regex.js';
 import { isBinaryBuffer, safeResolveReal, sha256hex, truncateDiffPayload } from './_util.js';
-import { mapWithConcurrency } from './_concurrency.js';
 import { enqueueReindex } from './codebase-index/background-indexer.js';
 
 /** Byte budget for the combined per-file diff payload — matches `maxOutputBytes`. */
@@ -163,7 +163,7 @@ export const replaceTool: Tool<ReplaceInput, ReplaceOutput> = {
         return null;
       }
       const rel = path.relative(realRoot, realPath);
-      if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+      if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
 
       // Now stat the real target so we use its mode for atomicWrite.
       const stat = await fs.stat(realPath).catch(() => null);
@@ -359,7 +359,7 @@ function passesExtraGlob(extraGlob: RegExp, name: string, full: string, base?: s
   if (base) {
     const rel = path.relative(base, full);
     const posixRel =
-      !rel || rel.startsWith('..') || path.isAbsolute(rel)
+      !rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)
         ? full.split(path.sep).join('/')
         : rel.split(path.sep).join('/');
     extraGlob.lastIndex = 0;

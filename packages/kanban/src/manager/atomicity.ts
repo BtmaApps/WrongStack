@@ -5,6 +5,7 @@
  */
 
 import { assessAtomicity, candidateFromKanbanTask } from '../atomicity/assess.js';
+import { assertManagementWrite } from '../management-fence.js';
 import { mutateBoard } from '../storage.js';
 import type {
   AtomicityRuleSetConfig,
@@ -38,6 +39,7 @@ export async function assessTaskAtomicity(
   const updated = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
+    assertManagementWrite(board, [task], options.eventContext);
     const assessment = assessAtomicity(
       candidateFromKanbanTask(task),
       options.config ?? board.atomicity?.config,

@@ -85,7 +85,7 @@ export class VectorMemoryStore {
     }
     const rootDir = path.resolve(opts.projectRoot, dir);
     const rel = path.relative(path.resolve(opts.projectRoot), rootDir);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
       throw new Error('Vector memory directory must stay inside the project root.');
     }
     fs.mkdirSync(rootDir, { recursive: true });

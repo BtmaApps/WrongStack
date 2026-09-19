@@ -223,31 +223,33 @@ export const actions = {
     label: string,
     runtimeId?: string,
   ): Promise<void> {
-    const commandKey = runtimeId ? `${runtimeId}:${label}` : label;
-    set({ launcher: { state: 'pending', label, commandKey } });
-    try {
-      if (runtimeId) {
-        const next = await api().activateRuntime(runtimeId);
-        set({ desktop: next });
+    return withBusy(async () => {
+      const commandKey = runtimeId ? `${runtimeId}:${label}` : label;
+      set({ launcher: { state: 'pending', label, commandKey } });
+      try {
+        if (runtimeId) {
+          const next = await api().activateRuntime(runtimeId);
+          set({ desktop: next });
+        }
+        const ok = await api().navigateWebui(command);
+        if (ok) {
+          set({ launcher: { state: 'success', label, commandKey } });
+          return;
+        }
+        set({
+          launcher: {
+            state: 'error',
+            label,
+            commandKey,
+            message: t('sessionLauncherError'),
+          },
+          error: t('sessionLauncherError'),
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        set({ launcher: { state: 'error', label, commandKey, message }, error: message });
       }
-      const ok = await api().navigateWebui(command);
-      if (ok) {
-        set({ launcher: { state: 'success', label, commandKey } });
-        return;
-      }
-      set({
-        launcher: {
-          state: 'error',
-          label,
-          commandKey,
-          message: 'WebUI did not accept the command',
-        },
-        error: 'WebUI did not accept the command',
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      set({ launcher: { state: 'error', label, commandKey, message }, error: message });
-    }
+    });
   },
 };
 

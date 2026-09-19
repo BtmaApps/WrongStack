@@ -98,6 +98,17 @@ describe('renderer locale IPC', () => {
   });
   afterEach(() => {
     delete (globalThis as { window?: unknown }).window;
+    vi.unstubAllGlobals();
+  });
+
+  it('uses the cached locale on first paint without publishing it to main', async () => {
+    vi.stubGlobal('localStorage', { getItem: () => 'tr', setItem: vi.fn() });
+    const setLocale = vi.fn();
+    (globalThis as { window?: unknown }).window = { wrongstackDesktop: { setLocale } };
+    const renderer = await import('../src/renderer/src/i18n.js');
+    expect(renderer.getLocale()).toBe('tr');
+    expect(renderer.t('openProject')).toBe('Proje Aç');
+    expect(setLocale).not.toHaveBeenCalled();
   });
 
   it('setLocale (user change) pushes to main so it lands in the shared config', async () => {

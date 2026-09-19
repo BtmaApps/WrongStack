@@ -151,6 +151,9 @@ function CouncilSeatRow({ seat }: { seat: CouncilSeatVote }) {
         {failed ? '×' : '•'}
       </span>
       <span className="shrink-0 text-muted-foreground">{seat.persona}</span>
+      {seat.round !== undefined ? (
+        <span className="shrink-0 text-muted-foreground/60">r{seat.round}</span>
+      ) : null}
       {seat.veto ? (
         <ShieldAlert
           className="h-2.5 w-2.5 shrink-0 text-warning"
@@ -162,7 +165,12 @@ function CouncilSeatRow({ seat }: { seat: CouncilSeatVote }) {
         {verdict}
       </span>
       {seat.model ? (
-        <span className="ml-auto shrink-0 pl-2 text-muted-foreground/60">{seat.model}</span>
+        <span
+          className="ml-auto max-w-[45%] shrink-0 truncate pl-2 text-muted-foreground/60"
+          title={seat.model}
+        >
+          {seat.model}
+        </span>
       ) : null}
     </li>
   );

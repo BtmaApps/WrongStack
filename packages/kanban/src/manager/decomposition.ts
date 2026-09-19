@@ -13,6 +13,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { assertManagementWrite } from '../management-fence.js';
 import { mutateBoard } from '../storage.js';
 import type {
   KanbanBoard,
@@ -153,7 +154,10 @@ export async function proposeTaskDecomposition(
   const seeded = await mutateBoard(projectRoot, boardId, (board) => {
     const task = findTask(board, taskId);
     if (!task) return null;
-    if (input.mode === undefined) {
+    assertManagementWrite(board, [task], eventContext);
+    if (eventContext.expectedManagementToken !== undefined) {
+      resolvedMode = 'approval';
+    } else if (input.mode === undefined) {
       resolvedMode = board.atomicity?.decomposition === 'auto' ? 'auto' : 'approval';
     }
     const proposal: KanbanDecompositionProposal = {

@@ -61,6 +61,7 @@ import {
   unregisterProject as unregisterProjectOperation,
 } from './runtime/operations.js';
 import { DesktopRuntimeManager, preloadPath, rendererIndexPath } from './runtime-manager.js';
+import { installShellStateReplay } from './shell-state-replay.js';
 // Constants — centralized in state/constants.ts to avoid duplication
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from './state/constants.js';
 import type { IpcHandlerContext, IRuntimeManager } from './state/types.js';
@@ -445,6 +446,10 @@ async function boot(): Promise<void> {
   // The shell preload can invoke desktop:* channels during renderer startup.
   registerExtractedIpcHandlers(buildIpcHandlerContext());
 
+  installShellStateReplay(shellView.webContents, () => ({
+    locale: getMainLocale(),
+    sidebarCollapsed: shellSidebarCollapsed,
+  }));
   bootPhase = 'load shell renderer';
   await shellView.webContents.loadURL(shellUrl);
 
@@ -589,21 +594,32 @@ app
   .then(boot)
   .then(async () => {
     if (desktopSmokeTest) {
-      let rendered = false;
-      for (let attempt = 0; attempt < 50; attempt++) {
-        rendered = await shellView!.webContents.executeJavaScript(
-          'Boolean(document.getElementById("app")?.children.length && window.wrongstackDesktop)',
-        );
-        if (rendered) break;
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      if (!rendered) throw new Error('Desktop renderer or preload did not initialize');
+      const waitForShell = async (expression: string, failure: string) => {
+        for (let attempt = 0; attempt < 50; attempt++) {
+          if (await shellView!.webContents.executeJavaScript(expression)) return;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(failure);
+      };
+      const settingsLabel = JSON.stringify(tMain('settings'));
+      const localeReady = `Array.from(document.querySelectorAll('button')).some(button => button.getAttribute('aria-label') === ${settingsLabel})`;
+      await waitForShell(
+        `Boolean(window.wrongstackDesktop && document.querySelector('.sidebar') && ${localeReady})`,
+        'Desktop renderer, preload or locale did not initialize',
+      );
       const footerBottom = await shellView!.webContents.executeJavaScript(
         'document.querySelector(".sidebar-foot")?.getBoundingClientRect().bottom ?? 0',
       );
       if (footerBottom > mainWindow!.contentView.getBounds().height) {
         throw new Error('Desktop footer extends beyond the native client area');
       }
+      setShellSidebarCollapsed(true);
+      await shellView!.webContents.loadURL(rendererIndexPath());
+      await waitForShell(
+        `Boolean(document.querySelector('.rail') && ${localeReady})`,
+        'Desktop reload lost native sidebar or locale state',
+      );
+      console.log('Desktop reload state OK');
       clearTimeout(smokeTimer);
       console.log('Desktop window ready');
       app.exit(0);

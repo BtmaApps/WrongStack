@@ -57,7 +57,7 @@ export function buildWorkingDirCommand(_opts: SlashCommandContext): SlashCommand
       // Check containment within project root
       const root = path.resolve(ctx.projectRoot);
       const rel = path.relative(root, resolved);
-      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
         return {
           message: color.red(
             `Directory "${trimmed}" is outside the project root.\n` +

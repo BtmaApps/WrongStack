@@ -359,7 +359,11 @@ function resolveFrom(cwd: string, input: string): string {
 
 function isInside(candidate: string, root: string): boolean {
   const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  // Canonical escape test: `..hidden` is a legal in-root first segment.
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 function pathDepth(candidate: string, root: string): number {

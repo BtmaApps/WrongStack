@@ -924,18 +924,27 @@ export async function codebaseVectorSearch(
 }
 
 /** Package dependency graph, served by the same per-project index process. */
-export async function packageGraphService(args: StatsOpArgs): Promise<CodeMapGraph> {
-  return callIndexOp('packageGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS });
+export async function packageGraphService(
+  args: StatsOpArgs,
+  signal?: AbortSignal,
+): Promise<CodeMapGraph> {
+  return callIndexOp('packageGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS, signal });
 }
 
 /** File dependency graph, served by the same per-project index process. */
-export async function fileGraphService(args: FileGraphOpArgs): Promise<CodeMapGraph> {
-  return callIndexOp('fileGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS });
+export async function fileGraphService(
+  args: FileGraphOpArgs,
+  signal?: AbortSignal,
+): Promise<CodeMapGraph> {
+  return callIndexOp('fileGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS, signal });
 }
 
 /** Symbol dependency graph, served by the same per-project index process. */
-export async function symbolGraphService(args: SymbolGraphOpArgs): Promise<CodeMapGraph> {
-  return callIndexOp('symbolGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS });
+export async function symbolGraphService(
+  args: SymbolGraphOpArgs,
+  signal?: AbortSignal,
+): Promise<CodeMapGraph> {
+  return callIndexOp('symbolGraph', args, { timeoutMs: DEFAULT_QUERY_TIMEOUT_MS, signal });
 }
 
 /** Incoming call sites for a named symbol (who calls/uses this symbol?). */

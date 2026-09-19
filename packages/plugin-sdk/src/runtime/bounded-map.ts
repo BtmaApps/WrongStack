@@ -97,9 +97,9 @@ export class BoundedMap<K, V> {
       this.prune();
     }
     while (this.map.size > this.max) {
-      const coldest = this.map.keys().next().value as K | undefined;
-      if (coldest === undefined) break;
-      this.map.delete(coldest);
+      const coldest = this.map.keys().next();
+      if (coldest.done) break;
+      this.map.delete(coldest.value);
       this.evictions += 1;
     }
     return this;

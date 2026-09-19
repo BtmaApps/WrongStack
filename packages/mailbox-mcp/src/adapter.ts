@@ -364,19 +364,33 @@ function normalizeTimeout(value: unknown): number {
 async function watchForMailboxEvent(
   emitter: MailboxEventEmitter,
   args: Record<string, unknown>,
+  signal: AbortSignal,
 ): Promise<unknown> {
   const eventType = optionalString(args, 'eventType');
   const timeoutMs = normalizeTimeout(args['timeoutMs']);
-  return await new Promise((resolve) => {
+  if (signal.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Mailbox watch cancelled');
+  }
+  return await new Promise((resolve, reject) => {
     let settled = false;
     let unsubscribe = (): void => {};
     let timer: NodeJS.Timeout | undefined;
+    const cleanup = (): void => {
+      if (timer) clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      unsubscribe();
+    };
     const finish = (value: unknown): void => {
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
-      unsubscribe();
+      cleanup();
       resolve(value);
+    };
+    const onAbort = (): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(signal.reason instanceof Error ? signal.reason : new Error('Mailbox watch cancelled'));
     };
     const sub = emitter.subscribe((event) => {
       if (eventType && event.type !== eventType) return;
@@ -384,7 +398,11 @@ async function watchForMailboxEvent(
     });
     unsubscribe = typeof sub === 'function' ? sub : () => {};
     if (settled) unsubscribe();
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+    if (settled) return;
     timer = setTimeout(() => finish({ changed: false, timedOut: true, timeoutMs }), timeoutMs);
+    timer.unref?.();
   });
 }
 
@@ -645,7 +663,11 @@ export function createMailboxMcpToolHost(
     listTools(): MCPServerTool[] {
       return policy.map((entry) => toolDescriptor(entry.name, entry.actions));
     },
-    async callTool(name: string, args: Record<string, unknown>): Promise<MCPServerCallResult> {
+    async callTool(
+      name: string,
+      args: Record<string, unknown>,
+      callOptions?: { signal?: AbortSignal | undefined },
+    ): Promise<MCPServerCallResult> {
       if (!allowed.has(name as MailboxMcpToolName)) {
         return {
           content: `Tool "${name}" is not exposed by this Mailbox MCP server`,
@@ -653,8 +675,14 @@ export function createMailboxMcpToolHost(
         };
       }
       try {
+        const signal = callOptions?.signal ?? new AbortController().signal;
+        if (signal.aborted) {
+          throw signal.reason instanceof Error
+            ? signal.reason
+            : new Error('Mailbox call cancelled');
+        }
         if (name === 'mailbox_watch') {
-          return { content: await watchForMailboxEvent(emitter, args), isError: false };
+          return { content: await watchForMailboxEvent(emitter, args, signal), isError: false };
         }
         const actions = allowed.get(name as MailboxMcpToolName);
         const action = args['action'];

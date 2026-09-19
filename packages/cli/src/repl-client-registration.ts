@@ -41,7 +41,10 @@ export function registerReplClient(opts: ReplOptions): ReplClientRegistration {
       pid: process.pid,
     })
     .then(() => {
-      if (closed) return;
+      if (closed) {
+        void clientMailbox.deregisterClient(clientId).catch(() => undefined);
+        return;
+      }
       clientHeartbeat = setInterval(() => {
         clientMailbox
           .clientHeartbeat({ clientId, sessionId: opts.getSessionId?.() ?? replProjectRoot })
@@ -57,6 +60,7 @@ export function registerReplClient(opts: ReplOptions): ReplClientRegistration {
   return {
     clientId,
     close() {
+      if (closed) return;
       closed = true;
       if (clientHeartbeat) clearInterval(clientHeartbeat);
       clientMailbox.deregisterClient(clientId).catch(() => undefined);

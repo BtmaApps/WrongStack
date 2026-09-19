@@ -372,7 +372,9 @@ export function createPersistencePrimitives(
     const refreshMs = Math.max(50, Math.floor(staleMs / 2));
     const heartbeat = setInterval(() => {
       const now = new Date();
-      void fs.utimes(lockPath, now, now).catch(() => undefined);
+      // Refresh the file we acquired, even if stale recovery replaced its
+      // pathname. Updating by path would keep a different owner's lock alive.
+      void handle?.utimes(now, now).catch(() => undefined);
     }, refreshMs);
     heartbeat.unref?.();
 

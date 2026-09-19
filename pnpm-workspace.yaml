@@ -85,3 +85,15 @@ minimumReleaseAgeExclude:
   - "@agentclientprotocol/sdk@1.4.0"
   - "@datadog/pprof@5.18.1"
 patchedDependencies: { ink@7.1.1: patches/ink@7.1.1.patch }
+# pnpm 12 no longer reads pnpm-specific settings from .npmrc (verified
+# 2026-09-19: `pnpm config get verify-deps-before-run` stayed `undefined` with
+# the key present in .npmrc) — this file is the operative config home.
+# Setting DISABLES the implicit verify-and-fix install that ran before every
+# `pnpm run/test/exec`: with two agents writing to this checkout, that pass
+# re-linked node_modules/.bin mid-flight and the script shell spawned into a
+# moment where `vitest` and siblings were transiently unlinked —
+# `'vitest' is not recognized as an internal or external command` fast-failed
+# three full-gate attempts (2026-09-19; the "Packages: +7" churn banner was
+# present on every failing attempt and absent on the successful one). Run
+# `pnpm install` explicitly after pulling dependency changes.
+verifyDepsBeforeRun: false

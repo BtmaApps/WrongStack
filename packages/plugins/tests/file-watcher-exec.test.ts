@@ -88,6 +88,14 @@ describe('watch_start', () => {
     await expect(tools.watch_start!.execute({ paths: [] })).rejects.toThrow(/at least one path/);
   });
 
+  it('rejects non-string path entries at the tool boundary', async () => {
+    const tools = setup();
+    await expect(tools.watch_start!.execute({ paths: ['src', 42] })).rejects.toThrow(
+      'paths must contain only non-empty strings',
+    );
+    expect(fsm.watch).not.toHaveBeenCalled();
+  });
+
   it('rejects path and watch-group counts that would leak watcher handles', async () => {
     const tools = setup();
     await expect(
@@ -329,6 +337,19 @@ describe('watch_stop', () => {
     const started = await tools.watch_start!.execute({ paths: ['src'] });
     const res = await tools.watch_stop!.execute({ watch_id: started.watch_id as string });
     expect(res.ok).toBe(true);
+  });
+
+  it('cancels a pending auto-index debounce owned by the stopped watch', async () => {
+    vi.useFakeTimers();
+    const tools = setup({ debounceMs: 50, autoIndex: true });
+    const started = await tools.watch_start!.execute({ paths: ['src'] });
+    lastCb!('change', 'mod.ts');
+    await vi.advanceTimersByTimeAsync(50); // emits change and schedules reindex
+
+    await tools.watch_stop!.execute({ watch_id: started.watch_id as string });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(idx.enqueueReindex).not.toHaveBeenCalled();
   });
 });
 

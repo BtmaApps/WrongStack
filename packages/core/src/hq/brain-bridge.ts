@@ -78,11 +78,12 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
     payload: Partial<HqBrainEventPayload>,
     at: number,
     correlationId?: string,
+    sessionId?: string,
   ): void {
     ctx.safePublish({
       type: 'brain.event',
       payload: { kind, at, ...payload } as HqBrainEventPayload,
-      ...ctx.sessionIdTag(),
+      ...ctx.sessionIdTag(sessionId),
       ...(correlationId !== undefined ? { correlationId } : {}),
       timestamp: ctx.now(),
     });
@@ -90,7 +91,13 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
 
   ctx.track(
     events.on('brain.decision_requested', (p) => {
-      publish('decision_requested', extractRequestFields(p.request), p.at, p.request?.id);
+      publish(
+        'decision_requested',
+        extractRequestFields(p.request),
+        p.at,
+        p.request?.id,
+        p.sessionId ?? p.request?.sessionId,
+      );
     }),
   );
   ctx.track(
@@ -105,6 +112,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.request?.id,
+        p.sessionId ?? p.request?.sessionId,
       );
     }),
   );
@@ -122,6 +130,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.request?.id,
+        p.sessionId ?? p.request?.sessionId,
       );
     }),
   );
@@ -136,6 +145,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.request?.id,
+        p.sessionId ?? p.request?.sessionId,
       );
     }),
   );
@@ -165,6 +175,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.requestId,
+        p.sessionId,
       );
     }),
   );
@@ -180,6 +191,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.id,
+        p.sessionId,
       );
     }),
   );
@@ -195,6 +207,7 @@ export function startBrainTelemetryBridge(opts: BrainTelemetryBridgeOptions): ()
         },
         p.at,
         p.request?.id,
+        p.sessionId ?? p.request?.sessionId,
       );
     }),
   );

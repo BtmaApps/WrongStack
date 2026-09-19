@@ -135,6 +135,27 @@ describe('cron plugin', () => {
     expect(unregister).toHaveBeenCalledTimes(1);
   });
 
+  it('falls back to a finite job limit when config is non-finite', async () => {
+    const api = createMockApi() as ReturnType<typeof createMockApi> & {
+      config: { extensions: Record<string, unknown> };
+    };
+    api.config.extensions['cron'] = { maxConcurrentJobs: Number.NaN };
+    cronPlugin.setup(api as any);
+    const schedule = api.tools.register.mock.calls.find(
+      ([tool]: any[]) => tool.name === 'cron_schedule',
+    )?.[0];
+
+    for (let index = 0; index < 5; index++) {
+      await expect(
+        schedule.execute({ name: `job-${index}`, intervalMs: 60_000, action: 'check' }),
+      ).resolves.toMatchObject({ ok: true });
+    }
+    await expect(
+      schedule.execute({ name: 'job-5', intervalMs: 60_000, action: 'check' }),
+    ).rejects.toThrow('Maximum concurrent jobs (5) reached');
+    cronPlugin.teardown?.(api as any);
+  });
+
   it('setup clears previous timers and unregisters previous extension before reinitializing', async () => {
     vi.useFakeTimers();
     const api = createMockApi();

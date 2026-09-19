@@ -326,6 +326,59 @@ describe('Poller supersede contract', () => {
     }
   });
 
+  it('aborts the old long poll on lock loss and re-acquires with a live signal', async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const getUpdates = vi.fn(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise<TelegramApiUpdate[]>((resolve, reject) => {
+          signals.push(signal);
+          signal.addEventListener(
+            'abort',
+            () => reject(new TelegramNetworkError('getUpdates', 'aborted', true)),
+            { once: true },
+          );
+          void resolve;
+        }),
+    );
+    const lock = {
+      held: false,
+      tryAcquire: () => {
+        lock.held = true;
+        return true;
+      },
+      onLost: undefined as (() => void) | undefined,
+    };
+    const poller = new Poller({
+      api: () => ({ safeBaseUrl: 'https://api.telegram.org/bot<redacted>', getUpdates }) as never,
+      pollIntervalMs: 1000,
+      log: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() } as never,
+      controller: new AbortController(),
+      standbyRetryMs: 500,
+      lock: lock as never,
+      onCallbackQuery: () => {},
+      onMessageUpdate: () => {},
+    });
+
+    try {
+      poller.start();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(signals).toHaveLength(1);
+      expect(signals[0]?.aborted).toBe(false);
+
+      lock.held = false;
+      lock.onLost?.();
+      expect(signals[0]?.aborted).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(signals).toHaveLength(2);
+      expect(signals[1]?.aborted).toBe(false);
+    } finally {
+      poller.stop();
+      vi.useRealTimers();
+    }
+  });
+
   it('stop() → start() mid-poll leaves ONE chain, not two', async () => {
     vi.useFakeTimers();
     const { poller, getUpdates, releases } = makeSupersedeablePoller();

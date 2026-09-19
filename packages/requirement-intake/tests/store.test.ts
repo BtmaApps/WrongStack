@@ -1,3 +1,5 @@
+import * as fsp from 'node:fs/promises';
+import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { IntakeConflictError, IntakeNotFoundError } from '../src/errors.js';
 import { newIntakeId } from '../src/store.js';
@@ -38,6 +40,20 @@ function buildRecord(
 }
 
 describe('RequirementIntakeStore', () => {
+  it('does not resolve record ids outside the intake directory', async () => {
+    const harness = makeHarness();
+    const outsideName = `${path.basename(harness.dir)}-outside`;
+    const outsidePath = path.join(path.dirname(harness.dir), `${outsideName}.json`);
+    const outsideRecord = buildRecord('proj_other', { id: `reqi_${outsideName}` });
+    await fsp.writeFile(outsidePath, JSON.stringify(outsideRecord), 'utf8');
+    try {
+      expect(await harness.store.load(`../${outsideName}`)).toBeNull();
+      expect(await harness.store.exists(`../${outsideName}`)).toBe(false);
+    } finally {
+      await fsp.rm(outsidePath, { force: true });
+    }
+  });
+
   it('persists and reloads a record', async () => {
     const harness = makeHarness();
     const record = buildRecord();

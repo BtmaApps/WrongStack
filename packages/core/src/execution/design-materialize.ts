@@ -416,7 +416,8 @@ export async function resolveMaterializeTarget(
   const absParent = await resolveReal(path.dirname(absResolved));
   const abs = path.join(absParent, path.basename(absResolved));
   const rel = path.relative(root, abs);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+  // Canonical escape test: `..hidden` is a legal in-root first segment.
+  if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
     throw new Error(`design: materialize path "${resultPath}" would escape the project root`);
   }
   return abs;

@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import {
+  claimBoardManagement,
   finalizeTaskCompletion,
+  finishBoardManagement,
   getBoard,
   getKanbanQueueHealth,
   type KanbanBoard,
@@ -12,10 +15,16 @@ import {
   listBoards,
   reconcileKanbanBoard,
   recoverStaleTaskAssignments,
+  renewBoardManagement,
   resolveGateEnforcement,
 } from '@wrongstack/kanban';
 import { systemSessionId } from '@wrongstack/primitives';
 import { publishKanbanBoard } from './kanban-broadcast.js';
+import {
+  buildManagementPrompt,
+  hasManageableWork,
+  managementFingerprint,
+} from './kanban-management.js';
 import { errMessage } from './ws-utils.js';
 
 /**
@@ -36,6 +45,8 @@ export interface KanbanSupervisorDispatchOptions {
   /** Named cost level; resolved against `modelTiers` at dispatch time. */
   tier?: string | undefined;
   skills?: string[] | undefined;
+  tools?: string[] | undefined;
+  signal?: AbortSignal | undefined;
   name?: string | undefined;
   /**
    * Free-form task context propagated into the spawned `TaskSpec.context`.
@@ -44,7 +55,13 @@ export interface KanbanSupervisorDispatchOptions {
    */
   context?:
     | {
-        kanban?: { boardId?: string; taskId?: string; projectRoot?: string };
+        sessionId?: string;
+        kanban?: {
+          boardId?: string;
+          taskId?: string;
+          projectRoot?: string;
+          managementToken?: string;
+        };
       }
     | undefined;
   onDone?:
@@ -96,22 +113,26 @@ const DEFAULT_AGENT_COOLDOWN_MS = 5 * 60_000;
 
 const DEFAULT_CONFIG: KanbanSupervisorConfig = {
   enabled: true,
-  mode: 'deterministic',
+  mode: 'agentic',
   intervalMs: DEFAULT_INTERVAL_MS,
   recoveryMode: 'auto',
 };
 
 /**
  * Quiet, project-local board custodian. The frequent pass is deterministic and
- * free; an LLM is spawned only when the board explicitly opts into agentic mode
- * and the health snapshot contains an anomaly.
+ * free; a manager assesses new/changed work once. Explicit deterministic mode
+ * disables LLM management. Unchanged successful reviews never poll the model.
  */
 export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSupervisor {
   const snapshots = new Map<string, KanbanSupervisorSnapshot>();
   const nextDue = new Map<string, number>();
   const agentLastRun = new Map<string, number>();
   const agentRunning = new Set<string>();
+  const reviewed = new Map<string, string>();
+  const watchdogs = new Map<string, ReturnType<typeof setTimeout>>();
+  const controllers = new Map<string, AbortController>();
   let disposed = false;
+  let activeProjectRoot = resolveProjectRoot(deps);
   let nextTimer: ReturnType<typeof setTimeout> | undefined;
 
   const forgetBoard = (boardId: string): void => {
@@ -119,6 +140,11 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
     nextDue.delete(boardId);
     agentLastRun.delete(boardId);
     agentRunning.delete(boardId);
+    reviewed.delete(boardId);
+    clearTimeout(watchdogs.get(boardId));
+    watchdogs.delete(boardId);
+    controllers.get(boardId)?.abort();
+    controllers.delete(boardId);
   };
 
   const pruneAbsentBoards = (presentBoardIds: ReadonlySet<string>): void => {
@@ -136,7 +162,17 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
     }
   };
 
+  const currentProject = (): string => {
+    const root = resolveProjectRoot(deps);
+    if (root !== activeProjectRoot) {
+      pruneAbsentBoards(new Set());
+      activeProjectRoot = root;
+    }
+    return root;
+  };
+
   const publish = (snapshot: KanbanSupervisorSnapshot) => {
+    if (disposed) return;
     snapshots.set(snapshot.boardId, snapshot);
     deps.broadcast({
       type: 'kanban.supervisor.status',
@@ -145,6 +181,7 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
   };
 
   const auditBoard = async (board: KanbanBoard): Promise<KanbanSupervisorSnapshot> => {
+    const projectRoot = resolveProjectRoot(deps);
     const config = effectiveConfig(board);
     const auditedAt = new Date().toISOString();
     const intervalMs = Math.max(MIN_INTERVAL_MS, config.intervalMs ?? DEFAULT_INTERVAL_MS);
@@ -167,20 +204,19 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
       return snapshot;
     }
 
-    const reconciled = await reconcileKanbanBoard(
-      resolveProjectRoot(deps),
-      board.id,
-      SUPERVISOR_EVENT_CONTEXT,
-    );
+    const reconciled = await reconcileKanbanBoard(projectRoot, board.id, SUPERVISOR_EVENT_CONTEXT);
     // Completion-gate sweep: catch tasks whose worker marked its assignment
     // completed through a path that never called finalizeTaskCompletion
     // (third-party board writers). They are parked in review by
     // updateTaskAssignment; run the gate so they reach a final state.
-    const gateSwept = await sweepGateParkedTasks(deps, reconciled?.board ?? board);
-    let health = await getKanbanQueueHealth(resolveProjectRoot(deps), { boardId: board.id });
+    const gateSwept = await sweepGateParkedTasks(
+      { ...deps, projectRoot },
+      reconciled?.board ?? board,
+    );
+    let health = await getKanbanQueueHealth(projectRoot, { boardId: board.id });
     const recovered = health.staleAssignments.count
       ? await recoverStaleTaskAssignments(
-          resolveProjectRoot(deps),
+          projectRoot,
           board.id,
           {
             mode: config.recoveryMode ?? 'auto',
@@ -189,33 +225,59 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
           SUPERVISOR_EVENT_CONTEXT,
         )
       : null;
-    if (recovered)
-      health = await getKanbanQueueHealth(resolveProjectRoot(deps), { boardId: board.id });
+    if (recovered) health = await getKanbanQueueHealth(projectRoot, { boardId: board.id });
 
     const anomalyCount = kanbanQueueAnomalyCount(health);
+    const currentBoard = recovered?.board ?? gateSwept ?? reconciled?.board ?? board;
+    const running =
+      agentRunning.has(board.id) || (currentBoard.management?.lease?.expiresAt ?? 0) > Date.now();
+    const pendingManagement =
+      config.mode === 'agentic' &&
+      hasManageableWork(currentBoard) &&
+      (currentBoard.management?.reviewCoverageVersion !== 1 ||
+        currentBoard.management.reviewedFingerprint !== managementFingerprint(currentBoard)) &&
+      reviewed.get(board.id) !== managementFingerprint(currentBoard);
+    const managementFailure = pendingManagement && currentBoard.management?.status === 'failed';
     const snapshot: KanbanSupervisorSnapshot = {
       boardId: board.id,
-      status: anomalyCount > 0 ? 'attention' : 'healthy',
+      status: running
+        ? 'running'
+        : managementFailure
+          ? 'error'
+          : anomalyCount > 0 || pendingManagement
+            ? 'attention'
+            : 'healthy',
       mode: config.mode,
       lastAuditAt: auditedAt,
       nextAuditAt,
       reconciledTaskIds: reconciled?.tasks.map((task) => task.id) ?? [],
       staleRecoveredTaskIds: recovered?.tasks.map((task) => task.id) ?? [],
       anomalyCount,
-      summary: healthSummary(health),
+      error: managementFailure ? currentBoard.management?.error : undefined,
+      summary: [
+        `${healthSummary(health)}${
+          pendingManagement
+            ? deps.dispatchTask
+              ? ' · task management pending'
+              : ' · task management unavailable: host has no agent dispatcher'
+            : ''
+        }`,
+        !running ? currentBoard.management?.summary : undefined,
+      ]
+        .filter(Boolean)
+        .join('\n'),
     };
+    if (disposed || projectRoot !== resolveProjectRoot(deps)) return snapshot;
     publish(snapshot);
 
     const changedBoard = recovered?.board ?? gateSwept ?? reconciled?.board;
     if (changedBoard) {
       // The sweep can retire a board, so the list is genuinely stale here.
-      await publishKanbanBoard(deps.broadcast, changedBoard, () =>
-        listBoards(resolveProjectRoot(deps)),
-      );
+      await publishKanbanBoard(deps.broadcast, changedBoard, () => listBoards(projectRoot));
     }
 
-    if (config.mode === 'agentic' && anomalyCount > 0) {
-      await maybeRunAgent(board, config, health, snapshot);
+    if (config.mode === 'agentic' && (hasManageableWork(currentBoard) || anomalyCount > 0)) {
+      await maybeRunAgent(currentBoard, config, health, snapshot);
     }
     return snapshots.get(board.id) ?? snapshot;
   };
@@ -226,71 +288,179 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
     health: KanbanQueueHealth,
     snapshot: KanbanSupervisorSnapshot,
   ): Promise<void> => {
-    if (!deps.dispatchTask || agentRunning.has(board.id)) return;
+    if (disposed || !deps.dispatchTask || agentRunning.has(board.id)) return;
+    const fingerprint = managementFingerprint(board);
+    if (reviewed.get(board.id) === fingerprint && snapshot.anomalyCount === 0) return;
+    if (
+      board.management?.reviewCoverageVersion === 1 &&
+      board.management.reviewedFingerprint === fingerprint
+    )
+      return;
+    if ((board.management?.lease?.expiresAt ?? 0) > Date.now()) return;
+    const projectRoot = resolveProjectRoot(deps);
     const cooldownMs = Math.max(
       MIN_INTERVAL_MS,
       config.agentCooldownMs ?? DEFAULT_AGENT_COOLDOWN_MS,
     );
     if (Date.now() - (agentLastRun.get(board.id) ?? 0) < cooldownMs) return;
     agentRunning.add(board.id);
+    const token = randomUUID();
+    try {
+      if (
+        !(await claimBoardManagement(projectRoot, board.id, { token, fingerprint, cooldownMs }))
+      ) {
+        agentRunning.delete(board.id);
+        return;
+      }
+    } catch (error) {
+      agentRunning.delete(board.id);
+      throw error;
+    }
+    if (disposed || resolveProjectRoot(deps) !== projectRoot) {
+      agentRunning.delete(board.id);
+      await finishBoardManagement(projectRoot, board.id, token, {
+        status: 'failed',
+        error: 'Host closed or switched project.',
+      });
+      return;
+    }
     agentLastRun.set(board.id, Date.now());
-    // Watchdog: if the spawned task crashes or is killed without invoking
-    // onDone, clear the lock after a bounded duration so the board isn't
-    // permanently blocked from future agentic runs.
-    const watchdog = setTimeout(
-      () => agentRunning.delete(board.id),
-      Math.max(cooldownMs * 2, DEFAULT_AGENT_COOLDOWN_MS * 2),
-    );
+    const controller = new AbortController();
+    controllers.set(board.id, controller);
+    const abandon = async (reason: string) => {
+      if (controllers.get(board.id) === controller) {
+        clearTimeout(watchdogs.get(board.id));
+        watchdogs.delete(board.id);
+        controllers.delete(board.id);
+        agentRunning.delete(board.id);
+        if (resolveProjectRoot(deps) === projectRoot)
+          publish({ ...snapshot, status: 'error', error: reason });
+      }
+      controller.abort();
+      try {
+        await finishBoardManagement(projectRoot, board.id, token, {
+          status: 'failed',
+          error: reason,
+        });
+      } catch (error) {
+        // A disconnected owner cannot acknowledge release. Its expiring
+        // durable lease still fences a replacement, and local retry stays live.
+        deps.log?.(`[KanbanSupervisor] release ${board.id}: ${toErrorMessage(error)}`);
+      }
+    };
+    // Owner death stops renewal; another host can recover the expired lease.
+    // On lease loss stop this worker before allowing any further edits.
+    const renew = async () => {
+      if (controller.signal.aborted) return;
+      try {
+        if (
+          disposed ||
+          resolveProjectRoot(deps) !== projectRoot ||
+          !(await renewBoardManagement(projectRoot, board.id, token))
+        ) {
+          await abandon('Kanban management lease was lost or its host changed.');
+          return;
+        }
+      } catch (error) {
+        await abandon(`Kanban management lease renewal failed: ${toErrorMessage(error)}`);
+        return;
+      }
+      if (controller.signal.aborted) return;
+      const timer = setTimeout(() => void renew(), 30_000);
+      timer.unref?.();
+      watchdogs.set(board.id, timer);
+    };
+    const watchdog = setTimeout(() => void renew(), 30_000);
     watchdog.unref?.();
+    watchdogs.set(board.id, watchdog);
     publish({
       ...snapshot,
       status: 'running',
       lastAgentRunAt: new Date().toISOString(),
-      summary: `Agentic anomaly review started. ${snapshot.summary ?? ''}`.trim(),
+      summary: `Task management review started. ${snapshot.summary ?? ''}`.trim(),
+      error: undefined,
     });
     const routing = config.routing ?? { mode: 'session' as const };
     try {
-      const spawnSummary = await deps.dispatchTask(buildAuditPrompt(board, health), {
-        ...dispatchRoute(routing),
-        ...(config.skills?.length ? { skills: config.skills } : {}),
-        name: `kanban-supervisor-${board.id.slice(0, 6)}`,
-        // Carry the board identity into the spawned TaskSpec.context so the
-        // tool-runtime boundary gate (`evaluateToolKanbanBoundary`) can resolve
-        // the live board policy instead of failing open. Whole-board agentic
-        // runs have no taskId, so only boardId is propagated.
-        context: { kanban: { boardId: board.id, projectRoot: resolveProjectRoot(deps) } },
-        onDone: async (result) => {
-          clearTimeout(watchdog);
-          agentRunning.delete(board.id);
-          // A long-running supervisor agent can finish after its board was
-          // deleted. Do not resurrect the removed board's snapshot entry.
-          if ((await getBoard(resolveProjectRoot(deps), board.id)) === null) return;
-          const current = snapshots.get(board.id) ?? snapshot;
-          publish({
-            ...current,
-            status:
-              result.status === 'failed' ? 'error' : current.anomalyCount ? 'attention' : 'healthy',
-            lastAgentRunAt: new Date().toISOString(),
-            summary: result.result ?? current.summary,
-            ...(result.error ? { error: result.error } : {}),
-          });
+      const spawnSummary = await deps.dispatchTask(
+        buildManagementPrompt(board, healthSummary(health)),
+        {
+          ...dispatchRoute(routing),
+          ...(config.skills?.length ? { skills: config.skills } : {}),
+          name: `kanban-supervisor-${board.id.slice(0, 6)}`,
+          tools: ['kanban', 'read', 'grep', 'glob', 'tree'],
+          signal: controller.signal,
+          // Carry the board identity into the spawned TaskSpec.context so the
+          // tool-runtime boundary gate (`evaluateToolKanbanBoundary`) can resolve
+          // the live board policy instead of failing open. Whole-board agentic
+          // runs have no taskId, so only boardId is propagated.
+          context: {
+            ...(board.tags?.find((tag) => tag.startsWith('session:'))
+              ? { sessionId: board.tags.find((tag) => tag.startsWith('session:'))!.slice(8) }
+              : {}),
+            kanban: { boardId: board.id, projectRoot, managementToken: token },
+          },
+          onDone: async (result) => {
+            const cancelled = controller.signal.aborted;
+            if (controllers.get(board.id) === controller) {
+              clearTimeout(watchdogs.get(board.id));
+              watchdogs.delete(board.id);
+              agentRunning.delete(board.id);
+              controllers.delete(board.id);
+            }
+            controller.abort(result.status === 'failed' ? result.error : undefined);
+            const accepted = await finishBoardManagement(
+              projectRoot,
+              board.id,
+              token,
+              cancelled ? { status: 'failed', error: 'Management run cancelled.' } : result,
+            );
+            if (!accepted) return;
+            if (disposed || resolveProjectRoot(deps) !== projectRoot) return;
+            // A long-running supervisor agent can finish after its board was
+            // deleted. Do not resurrect the removed board's snapshot entry.
+            const persisted = await getBoard(projectRoot, board.id);
+            if (persisted === null || disposed) return;
+            // Remember the input, not an unreviewed post-run snapshot: concurrent
+            // leader changes must receive their own pass.
+            const completed = !cancelled && persisted.management?.status === 'completed';
+            if (completed) reviewed.set(board.id, fingerprint);
+            const current = snapshots.get(board.id) ?? snapshot;
+            publish({
+              ...current,
+              status: !completed ? 'error' : current.anomalyCount ? 'attention' : 'healthy',
+              lastAgentRunAt: new Date().toISOString(),
+              summary: persisted.management?.summary ?? result.result ?? current.summary,
+              error: persisted.management?.error ?? result.error,
+            });
+          },
         },
-      });
+      );
       const current = snapshots.get(board.id) ?? snapshot;
-      publish({ ...current, status: 'running', summary: spawnSummary });
+      if (agentRunning.has(board.id))
+        publish({ ...current, status: 'running', summary: spawnSummary });
     } catch (error) {
-      clearTimeout(watchdog);
+      clearTimeout(watchdogs.get(board.id));
+      watchdogs.delete(board.id);
+      controller.abort();
+      controllers.delete(board.id);
       agentRunning.delete(board.id);
       const message = toErrorMessage(error);
+      await finishBoardManagement(projectRoot, board.id, token, {
+        status: 'failed',
+        error: message,
+      });
       deps.log?.(`[KanbanSupervisor] ${board.id}: ${message}`);
       publish({ ...snapshot, status: 'error', error: message });
     }
   };
 
   const auditNow = async (boardId?: string): Promise<KanbanSupervisorSnapshot[]> => {
+    if (disposed) return [];
+    const projectRoot = currentProject();
     let boards: KanbanBoard[];
     if (boardId) {
-      const board = await getBoard(resolveProjectRoot(deps), boardId);
+      const board = await getBoard(projectRoot, boardId);
       if (board === null) {
         forgetBoard(boardId);
         boards = [];
@@ -298,16 +468,17 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
         boards = [board];
       }
     } else {
-      const summaries = await listBoards(resolveProjectRoot(deps));
+      const summaries = await listBoards(projectRoot);
       pruneAbsentBoards(new Set(summaries.map((summary) => summary.id)));
       boards = (
-        await Promise.all(
-          summaries.map((summary) => getBoard(resolveProjectRoot(deps), summary.id)),
-        )
+        await Promise.all(summaries.map((summary) => getBoard(projectRoot, summary.id)))
       ).filter((board): board is KanbanBoard => Boolean(board));
     }
     const results: KanbanSupervisorSnapshot[] = [];
-    for (const board of boards) results.push(await auditBoard(board));
+    for (const board of boards) {
+      if (disposed || projectRoot !== resolveProjectRoot(deps)) break;
+      results.push(await auditBoard(board));
+    }
     scheduleNext();
     return results;
   };
@@ -347,14 +518,16 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
 
   const tick = async () => {
     if (disposed) return;
+    const projectRoot = currentProject();
     try {
       const now = Date.now();
-      const summaries = await listBoards(resolveProjectRoot(deps));
+      const summaries = await listBoards(projectRoot);
       pruneAbsentBoards(new Set(summaries.map((summary) => summary.id)));
       for (const summary of summaries) {
+        if (disposed || projectRoot !== resolveProjectRoot(deps)) break;
         if ((nextDue.get(summary.id) ?? 0) > now) continue;
-        const board = await getBoard(resolveProjectRoot(deps), summary.id);
-        if (board) await auditBoard(board);
+        const board = await getBoard(projectRoot, summary.id);
+        if (board && projectRoot === resolveProjectRoot(deps)) await auditBoard(board);
       }
     } catch (error) {
       deps.log?.(`[KanbanSupervisor] ${errMessage(error)}`);
@@ -385,6 +558,11 @@ export function createKanbanSupervisor(deps: KanbanSupervisorDeps): KanbanSuperv
       nextDue.clear();
       agentLastRun.clear();
       agentRunning.clear();
+      reviewed.clear();
+      for (const timer of watchdogs.values()) clearTimeout(timer);
+      watchdogs.clear();
+      for (const controller of controllers.values()) controller.abort();
+      controllers.clear();
     },
   };
 }
@@ -451,28 +629,4 @@ function healthSummary(health: KanbanQueueHealth): string {
     `${health.dependencyBlocked.count} dependency-blocked`,
     `${health.parked?.count ?? 0} parked`,
   ].join(' · ');
-}
-
-function buildAuditPrompt(board: KanbanBoard, health: KanbanQueueHealth): string {
-  // A parked card carries its ordinary status, so without the park note it
-  // reads to the supervisor exactly like one that is merely blocked — and the
-  // obvious recommendation ("re-run it") is the one thing that cannot work.
-  const taskLines = board.tasks.map(
-    (task) =>
-      `- ${task.id}: ${task.title} [task=${task.status}; assignment=${task.assignment?.status ?? 'none'}; column=${task.columnId}` +
-      (task.park ? `; PARKED after ${task.park.attempts} refusals: ${task.park.reason}` : '') +
-      ']',
-  );
-  return [
-    'You are the explicitly configured WrongStack Kanban supervisor.',
-    'Audit only this board. Do not implement product tasks.',
-    `Board: ${board.title} (${board.id})`,
-    `Health: ${healthSummary(health)}`,
-    '',
-    'Tasks:',
-    ...taskLines,
-    '',
-    'Use the kanban tool for corrections. Preserve manual blockers and dependencies.',
-    'Fix only demonstrable status/assignment/column drift, then report every action and remaining anomaly.',
-  ].join('\n');
 }

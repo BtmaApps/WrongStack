@@ -29,6 +29,51 @@ beforeEach(() => {
 });
 
 describe('createKanbanDispatchHandler', () => {
+  it('reports a completion callback error without invoking that callback a second time', async () => {
+    const onDone = vi.fn().mockRejectedValue(new Error('IPC unavailable'));
+    const dispose = vi.fn();
+    const factory = vi
+      .fn()
+      .mockResolvedValue({
+        agent: { run: vi.fn().mockResolvedValue({ status: 'done', finalText: 'Reviewed' }) },
+        dispose,
+      });
+    const events = { emit: vi.fn() };
+    const dispatch = createKanbanDispatchHandler({
+      config: {} as never,
+      events: events as never,
+      skillLoader: undefined,
+      sddSubagentFactory: factory,
+    }).onKanbanDispatch!;
+    await dispatch('Manage work', { onDone });
+    await flush();
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledTimes(1);
+  });
+  it('forwards board identity and cancellation and reports factory failures', async () => {
+    const onDone = vi.fn();
+    const factory = vi.fn().mockRejectedValue(new Error('Cannot build worker'));
+    const events = { emit: vi.fn() };
+    const dispatch = createKanbanDispatchHandler({
+      config: {} as never,
+      events: events as never,
+      skillLoader: undefined,
+      sddSubagentFactory: factory,
+    }).onKanbanDispatch!;
+    const controller = new AbortController();
+    const context = {
+      sessionId: 'leader-session',
+      kanban: { boardId: 'b', managementToken: 'lease' },
+    };
+    await dispatch('Manage work', { context, signal: controller.signal, onDone });
+    await flush();
+    expect(factory.mock.calls[0]![1]).toMatchObject({ context });
+    expect(onDone).toHaveBeenCalledExactlyOnceWith({
+      status: 'failed',
+      error: 'Cannot build worker',
+    });
+  });
   it('returns no callback when the subagent factory is unavailable', () => {
     expect(
       createKanbanDispatchHandler({

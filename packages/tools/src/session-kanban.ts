@@ -27,6 +27,7 @@ import {
   taskFileToSerializedGraph,
   todoListToSerializedGraph,
 } from './session-kanban-graph.js';
+import { deliverKanbanManagementReview } from './session-kanban-management.js';
 import {
   applyManagedKanbanBoardToTodos as applyManagedKanbanBoardToTodosSync,
   applySessionKanbanBoardToTodos as applySessionKanbanBoardToTodosSync,
@@ -683,6 +684,7 @@ export function attachSessionKanbanMirror(context: Context): () => void {
     if (!watchedBoardId) return;
     const board = await getBoard(context.projectRoot, watchedBoardId);
     if (!board) return;
+    deliverKanbanManagementReview(context, board);
     if (board.lifecycle?.mode === 'managed') applyManagedKanbanBoardToTodos(context, board);
     else applySessionKanbanBoardToTodos(context, board);
   };

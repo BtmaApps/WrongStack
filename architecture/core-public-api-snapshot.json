@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.22",
+  "packageVersion": "1.0.23",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -149,6 +149,7 @@
         "export { type BrainApplyResult, type BrainConfigPatch, type BrainConfigSnapshot, type BrainCouncilMinRisk, type BrainCouncilPatch, type BrainDefaultsContext, type BrainPoolStrategy, type BrainRuntime, type BrainRuntimeLedgerHost, type BrainRuntimeOptions, createBrainRuntime, resolveBrainConfigDefaults, } from './execution/brain-runtime.js';",
         "export { type BrainArbiter, type BrainDecision, type BrainDecisionOption, BrainDecisionQueue, type BrainDecisionRequest, type BrainDecisionSource, type BrainEscalationMode, type BrainFallback, type BrainRisk, type BrainTerminalPolicy, DefaultBrainArbiter, type DefaultBrainArbiterOptions, EscalationRoutingBrainArbiter, formatHumanPrompt, HumanEscalatingBrainArbiter, ObservableBrainArbiter, terminalPolicyDecision, } from './coordination/brain.js';",
         "export { type BrainCacheStats, BrainDecisionCache, type BrainDecisionCacheOptions, brainCacheKey, type CachingBrainArbiterOptions, createCachingBrainArbiter, } from './coordination/brain-cache.js';",
+        "export { type BrainDecisionExplanation, type BrainDecisionStepExplanation, type BrainDecisionTierName, type BrainExplainContext, type BrainExplainLedgerHost, explainBrainDecision, } from './coordination/brain-explain.js';",
         "export { type BrainDecisionTier, BrainTierCounter, type BrainTierStats, DETERMINISTIC_BRAIN_TIERS, emitBrainTierTransition, isDeterministicTier, markDecisionTier, readDecisionTier, } from './coordination/brain-telemetry.js';",
         "export { type BrainInterventionInput, BrainMonitor, type BrainMonitorOptions, type BrainMonitorPolicy, type BrainMonitorSignalToggles, DEFAULT_FILE_EDIT_TOOLS, } from './coordination/brain-monitor.js';",
         "export { type Checkpoint, CheckpointManager, type CheckpointManagerOptions, createGoalRunnerFromTaskGraph, type GoalOptions, GoalPlanner, type GoalPlannerOptions, type GoalPlanResult, GoalRunner, type GoalRunnerOptions, PHASE_EVENT_NAMES, type PhaseEventMap, type PhaseEventName, type PhaseExecutionContext, type PhaseFilter, type PhaseGraph, PhaseGraphBuilder, type PhaseGraphBuilderOptions, type PhaseNode, PhaseOrchestrator, type PhaseOrchestratorOptions, type PhaseProgress, type PhaseSort, type PhaseStatus, PhaseStore, type PhaseStoreOptions, type PhaseTemplate, } from './goal/index.js';",
@@ -1508,15 +1509,15 @@
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 195,
-      "sourceLines": 56398
+      "sourceFiles": 196,
+      "sourceLines": 57009
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 58,
-      "sourceLines": 13377
+      "sourceLines": 13394
     },
     {
       "directory": "design",
@@ -1529,8 +1530,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 59,
-      "sourceLines": 19241
+      "sourceFiles": 61,
+      "sourceLines": 19357
     },
     {
       "directory": "extension",
@@ -1544,7 +1545,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
       "sourceFiles": 14,
-      "sourceLines": 3526
+      "sourceLines": 3531
     },
     {
       "directory": "hooks",
@@ -1558,21 +1559,21 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 53,
-      "sourceLines": 11637
+      "sourceLines": 11660
     },
     {
       "directory": "infrastructure",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1965
+      "sourceLines": 1966
     },
     {
       "directory": "kernel",
       "classification": "kernel primitive",
       "intendedOwner": "Core",
       "sourceFiles": 19,
-      "sourceLines": 4128
+      "sourceLines": 4130
     },
     {
       "directory": "models",
@@ -1635,7 +1636,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
       "sourceFiles": 5,
-      "sourceLines": 1168
+      "sourceLines": 1194
     },
     {
       "directory": "replay",
@@ -1649,7 +1650,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 22,
-      "sourceLines": 7884
+      "sourceLines": 7892
     },
     {
       "directory": "session-catalog",
@@ -1677,7 +1678,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23550
+      "sourceLines": 23566
     },
     {
       "directory": "tasking",

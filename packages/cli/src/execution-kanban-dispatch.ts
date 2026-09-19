@@ -80,32 +80,47 @@ export function createKanbanDispatchHandler({
       }
     }
     void (async () => {
-      const built = await sddSubagentFactory({
-        id: subagentId,
-        name,
-        role: 'kanban-agent',
-        prompt: agentDescription,
-        allowedCapabilities: spawnOpts?.allowedCapabilities ?? WIDE_SUBAGENT_CAPABILITIES,
-        ...(resolvedProvider ? { provider: resolvedProvider } : {}),
-        ...(resolvedModel ? { model: resolvedModel } : {}),
-        ...(resolvedFallbackModels ? { fallbackModels: resolvedFallbackModels } : {}),
-        ...(spawnOpts?.tools ? { tools: spawnOpts.tools } : {}),
-      });
+      let built: Awaited<ReturnType<typeof sddSubagentFactory>> | undefined;
+      let completionReported = false;
       try {
-        const result = await built.agent.run(agentDescription);
+        if (spawnOpts?.signal?.aborted) throw new Error('Kanban dispatch cancelled.');
+        built = await sddSubagentFactory(
+          {
+            id: subagentId,
+            name,
+            role: 'kanban-agent',
+            prompt: agentDescription,
+            allowedCapabilities: spawnOpts?.allowedCapabilities ?? WIDE_SUBAGENT_CAPABILITIES,
+            ...(resolvedProvider ? { provider: resolvedProvider } : {}),
+            ...(resolvedModel ? { model: resolvedModel } : {}),
+            ...(resolvedFallbackModels ? { fallbackModels: resolvedFallbackModels } : {}),
+            ...(spawnOpts?.tools ? { tools: spawnOpts.tools } : {}),
+          },
+          ...(spawnOpts?.context
+            ? [{ id: taskId, description: agentDescription, context: spawnOpts.context }]
+            : []),
+        );
+        if (spawnOpts?.signal?.aborted) throw new Error('Kanban dispatch cancelled.');
+        const result = await built.agent.run(
+          agentDescription,
+          ...(spawnOpts?.signal ? [{ signal: spawnOpts.signal }] : []),
+        );
+        completionReported = true;
         await spawnOpts?.onDone?.({
           status: result.status === 'done' ? 'completed' : 'failed',
           result: result.finalText,
           ...('error' in result && result.error?.message ? { error: result.error.message } : {}),
         });
       } catch (err) {
-        await spawnOpts?.onDone?.({
-          status: 'failed',
-          error: err instanceof Error ? err.message : String(err),
-        });
+        if (!completionReported) {
+          await spawnOpts?.onDone?.({
+            status: 'failed',
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
         throw err;
       } finally {
-        await built.dispose?.();
+        await built?.dispose?.();
       }
     })().catch((err) => {
       events.emit('error', {

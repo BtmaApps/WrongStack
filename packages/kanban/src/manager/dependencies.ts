@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertManagementWrite } from '../management-fence.js';
 import { mutateBoard, readBoard } from '../storage.js';
 import type {
   KanbanBoard,
@@ -59,6 +60,7 @@ export async function addDependency(
     const task = findTask(board, taskId);
     const dependency = findTask(board, dependencyTaskId);
     if (!task || !dependency) return null;
+    assertManagementWrite(board, [task], eventContext);
     addDependencyToTask(board, task, dependency);
     task.updatedAt = nowIso();
     board.updatedAt = task.updatedAt;
@@ -313,6 +315,13 @@ export async function setTaskChain(
     const previousChainIds = uniqueStrings(
       tasks.map((task) => task.chain?.chainId).filter((id): id is string => Boolean(id)),
     );
+    const affected = board.tasks.filter(
+      (task) =>
+        tasks.includes(task) ||
+        (task.chain &&
+          (previousChainIds.includes(task.chain.chainId) || task.chain.chainId === chainId)),
+    );
+    assertManagementWrite(board, affected, eventContext);
     setChainMetadata(board, tasks, chainId, input.enforceDependencies !== false);
     for (const previousChainId of previousChainIds) {
       if (previousChainId !== chainId) normalizeChainMetadata(board, previousChainId);

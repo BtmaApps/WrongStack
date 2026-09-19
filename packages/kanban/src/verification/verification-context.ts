@@ -518,16 +518,26 @@ export class VerificationContext {
     const root = await fsp.realpath(this.projectRoot);
     const candidate = path.resolve(root, filePath);
     const relative = path.relative(root, candidate);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      return null;
+    }
     try {
       const real = await fsp.realpath(candidate);
       const realRelative = path.relative(root, real);
-      return realRelative.startsWith('..') || path.isAbsolute(realRelative) ? null : real;
+      return realRelative === '..' ||
+        realRelative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelative)
+        ? null
+        : real;
     } catch {
       const parent = await fsp.realpath(path.dirname(candidate)).catch(() => null);
       if (!parent) return null;
       const parentRelative = path.relative(root, parent);
-      return parentRelative.startsWith('..') || path.isAbsolute(parentRelative) ? null : candidate;
+      return parentRelative === '..' ||
+        parentRelative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(parentRelative)
+        ? null
+        : candidate;
     }
   }
 
@@ -741,7 +751,13 @@ export class VerificationContext {
       if (rel && !path.isAbsolute(rel)) {
         const packageDir = path.dirname(pkgJsonPath);
         const entry = path.resolve(packageDir, rel);
-        if (!path.relative(packageDir, entry).startsWith('..')) {
+        // Canonical escape test: `..hidden` is a legal in-root first segment;
+        // a bare `startsWith('..')` misreads it as a parent traversal and
+        // wrongly rejects legitimate local-bin resolutions. Same predicate
+        // as resolveProjectPath above (lines 521/525/530) and the design
+        // tool's materialize/verify guards.
+        const relToPkg = path.relative(packageDir, entry);
+        if (relToPkg !== '..' && !relToPkg.startsWith(`..${path.sep}`) && !path.isAbsolute(relToPkg)) {
           await fsp.access(entry);
           const isJsEntry = /\.(?:c|m)?js$/.test(entry);
           return isJsEntry
@@ -811,7 +827,16 @@ export class VerificationContext {
         if (!relativeBin || path.isAbsolute(relativeBin)) continue;
         const packageDir = path.dirname(packageJsonPath);
         const entry = path.resolve(packageDir, relativeBin);
-        if (path.relative(packageDir, entry).startsWith('..')) continue;
+        // Canonical escape test: `..hidden` is a legal in-root first segment;
+        // a bare `startsWith('..')` misreads it as a parent traversal and
+        // wrongly rejects legitimate local-runner binaries (forcing a
+        // fallthrough to the next candidate or to PATH). Same predicate as
+        // resolveConfiguredExecutable above and resolveProjectPath at
+        // lines 521/525/530.
+        const relToPkg = path.relative(packageDir, entry);
+        if (relToPkg === '..' || relToPkg.startsWith(`..${path.sep}`) || path.isAbsolute(relToPkg)) {
+          continue;
+        }
         await fsp.access(entry);
         return { command: process.execPath, args: scriptSpawnArgs(entry, []), kind: runner };
       } catch {

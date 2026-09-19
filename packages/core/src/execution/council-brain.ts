@@ -26,6 +26,7 @@ import type {
   CouncilModelTarget,
   CouncilProfileConfig,
   CouncilSeatConfig,
+  CouncilVoteResult,
 } from '../types/council.js';
 import type { OneShotLLMInput, OneShotLLMResult } from '../types/one-shot-llm.js';
 import type { Provider } from '../types/provider.js';
@@ -435,40 +436,34 @@ export function createCouncilBrainArbiter(opts: CouncilBrainOptions): BrainArbit
         profile: profile satisfies CouncilProfileConfig,
       };
 
-      const result = await orchestrator.ask(question);
+      const votePayload = (vote: CouncilVoteResult) => {
+        const seat = seats.find((s) => s.id === vote.seatId);
+        return {
+          sessionId: request.sessionId,
+          requestId: request.id,
+          seatId: vote.seatId,
+          persona: vote.persona,
+          status: vote.status,
+          round: vote.round,
+          changed: vote.changed,
+          providerId: vote.provider,
+          model: vote.model,
+          optionId: vote.optionId,
+          ...(opts.traceContent ? { stance: vote.stance, rationale: vote.rationale } : {}),
+          weight: seat?.weight,
+          veto: seat?.veto,
+          durationMs: vote.durationMs,
+          error: vote.error,
+          at: Date.now(),
+        };
+      };
+      // The same mapper keeps live and final ballots under the same content policy.
+      const result = await orchestrator.ask(question, (vote) => {
+        opts.events?.emit('brain.council_vote', votePayload(vote));
+      });
 
-      // ── Trace ────────────────────────────────────────────────────────
-      // `CouncilResult` already carries every seat's observable vote, the
-      // quorum counts, judge usage and token usage; the adapter used to
-      // discard all of it and surface only the verdict. Re-emitting it here
-      // needs no orchestrator changes and is what makes a council decision
-      // reconstructable.
       if (opts.events) {
         const at = Date.now();
-        // Emit EVERY round, not just the tallied one: a panel that was split
-        // and then converged is a materially different verdict from one that
-        // agreed outright, and only the earlier rounds show the difference.
-        for (const vote of result.roundVotes.flat()) {
-          const seat = seats.find((s) => s.id === vote.seatId);
-          opts.events.emit('brain.council_vote', {
-            sessionId: request.sessionId,
-            requestId: request.id,
-            seatId: vote.seatId,
-            persona: vote.persona,
-            status: vote.status,
-            round: vote.round,
-            changed: vote.changed,
-            providerId: vote.provider,
-            model: vote.model,
-            optionId: vote.optionId,
-            ...(opts.traceContent ? { stance: vote.stance, rationale: vote.rationale } : {}),
-            weight: seat?.weight,
-            veto: seat?.veto,
-            durationMs: vote.durationMs,
-            error: vote.error,
-            at,
-          });
-        }
         opts.events.emit('brain.council_resolved', {
           sessionId: request.sessionId,
           requestId: request.id,
@@ -479,6 +474,7 @@ export function createCouncilBrainArbiter(opts: CouncilBrainOptions): BrainArbit
           validVoteCount: result.validVoteCount,
           distinctTargetCount: result.distinctTargetCount,
           judgeUsed: result.judgeUsed,
+          votes: result.votes.map(votePayload),
           rounds: result.rounds,
           deliberationChanges: result.deliberationChanges,
           ...(judgeLabel !== undefined ? { judgeLabel, judgeIsVoter } : {}),

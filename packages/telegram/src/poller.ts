@@ -115,6 +115,12 @@ export class Poller {
   handleLockLost(): void {
     if (!this.pollActive) return;
     this.chainEpoch += 1;
+    // The lock defines delivery ownership, not only timer ownership. Abort a
+    // getUpdates call already in flight so this instance cannot process an
+    // update after another poller has taken over. The successor chain needs a
+    // fresh signal when standby later re-acquires the lock.
+    this.controller.abort();
+    this.controller = new AbortController();
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;

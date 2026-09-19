@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mailboxMocks = vi.hoisted(() => ({
   instances: [] as Array<Record<string, ReturnType<typeof vi.fn>>>,
   registerClientGate: null as (() => void) | null,
+  registerClientError: null as Error | null,
+  closeError: null as Error | null,
 }));
 
 vi.mock('@wrongstack/core/coordination', () => ({
@@ -12,6 +14,9 @@ vi.mock('@wrongstack/core/coordination', () => ({
     registerClient = vi.fn(
       () =>
         new Promise<void>((resolve) => {
+          if (mailboxMocks.registerClientError) {
+            throw mailboxMocks.registerClientError;
+          }
           if (mailboxMocks.registerClientGate) {
             // Test 1 parks the call here so unregister() can race it.
             const release = () => resolve();
@@ -22,7 +27,9 @@ vi.mock('@wrongstack/core/coordination', () => ({
         }),
     );
     deregisterClient = vi.fn(async () => {});
-    close = vi.fn();
+    close = vi.fn(() => {
+      if (mailboxMocks.closeError) throw mailboxMocks.closeError;
+    });
     clientHeartbeat = vi.fn(async () => {});
     query = vi.fn(async () => []);
     getAgentStatuses = vi.fn(async () => []);
@@ -79,6 +86,8 @@ describe('run-tui client registration', () => {
   beforeEach(() => {
     mailboxMocks.instances.length = 0;
     mailboxMocks.registerClientGate = null;
+    mailboxMocks.registerClientError = null;
+    mailboxMocks.closeError = null;
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -141,5 +150,38 @@ describe('run-tui client registration', () => {
     await vi.advanceTimersByTimeAsync(2);
     expect(mailbox['query']).toHaveBeenCalledTimes(1);
     registration.unregister();
+  });
+
+  it('closes the mailbox pipe and drops the listener when registration fails', async () => {
+    const events = makeEventsBus();
+    const registration = createRunTuiClientRegistration({
+      projectRoot: 'D:/proj',
+      events: events.bus,
+      hqTelemetryOwnedExternally: true,
+      isCleaned: () => false,
+    });
+    mailboxMocks.registerClientError = new Error('registration unavailable');
+
+    await expect(registration.register()).resolves.toBeNull();
+
+    const mailbox = mailboxMocks.instances[0];
+    expect(mailbox, 'RemoteMailbox was never constructed').toBeDefined();
+    expect(mailbox?.close, 'failed registration left the pipe open').toHaveBeenCalledOnce();
+    expect(events.listenerCount, 'mailbox.* listener leaked after registration failure').toBe(0);
+  });
+
+  it('does not let mailbox cleanup errors block TUI startup', async () => {
+    const events = makeEventsBus();
+    const registration = createRunTuiClientRegistration({
+      projectRoot: 'D:/proj',
+      events: events.bus,
+      hqTelemetryOwnedExternally: true,
+      isCleaned: () => false,
+    });
+    mailboxMocks.registerClientError = new Error('registration unavailable');
+    mailboxMocks.closeError = new Error('pipe close failed');
+
+    await expect(registration.register()).resolves.toBeNull();
+    expect(events.listenerCount).toBe(0);
   });
 });

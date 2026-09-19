@@ -106,9 +106,9 @@ export class SddInterviewDriver {
   }
 
   /** Begin a fresh interview. Returns the first AI prompt (a question kickoff). */
-  start(title: string, intent?: string): string {
+  start(title: string, intent?: string, projectContext?: string): string {
     this.builder.resetForNewInterview();
-    this.builder.startSession(title, intent);
+    this.builder.startSession(title, intent, projectContext);
     this.tracker = null;
     this.graph = null;
     this.resumedFromDisk = false;

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { spawnStream } from '../src/_spawn-stream.js';
 import { _resetProcessRegistry, getProcessRegistry } from '../src/process-registry.js';
 
@@ -82,6 +82,7 @@ describe('spawnStream teardown', () => {
   it('an already-aborted signal yields an immediate close without streaming', async () => {
     const ctrl = newController();
     ctrl.abort();
+    const register = vi.spyOn(getProcessRegistry(), 'register');
     const gen = spawnStream({
       cmd: 'node',
       args: ['-e', ...CHATTY],
@@ -98,6 +99,7 @@ describe('spawnStream teardown', () => {
     }
     expect([1, 124, 137, 143, null]).toContain(result?.exitCode ?? null);
     await expect.poll(() => getProcessRegistry().stats().activeCount, { timeout: 10_000 }).toBe(0);
+    expect(register).not.toHaveBeenCalled();
   });
 
   it('abandoning the generator (return) kills the child and detaches handlers', async () => {

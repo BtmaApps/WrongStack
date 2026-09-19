@@ -168,6 +168,8 @@ export interface BrainEventMap {
     validVoteCount: number;
     distinctTargetCount: number;
     judgeUsed: boolean;
+    /** Authoritative tallied ballots; may come from an earlier usable round. */
+    votes?: BrainEventMap['brain.council_vote'][] | undefined;
     /** Deliberation rounds the panel actually ran. 1 = no deliberation. */
     rounds?: number | undefined;
     /**

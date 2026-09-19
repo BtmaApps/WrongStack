@@ -225,9 +225,9 @@ export type KanbanSupervisorMode = 'deterministic' | 'agentic';
 
 /** Board-level policy for the quiet Kanban supervisor. */
 export interface KanbanSupervisorConfig {
-  /** Undefined config is treated as enabled deterministic supervision. */
+  /** Undefined config enables background management when the host supports dispatch. */
   enabled: boolean;
-  /** Deterministic reconciliation is always performed; agentic adds an LLM anomaly review. */
+  /** Deterministic reconciliation is always performed; agentic also manages task quality. */
   mode: KanbanSupervisorMode;
   /** Audit cadence. Hosts clamp this to a safe minimum. */
   intervalMs?: number | undefined;
@@ -239,6 +239,36 @@ export interface KanbanSupervisorConfig {
   routing?: KanbanExecutionRouting | undefined;
   /** Agent skills whose instructions must be injected into an agentic review. */
   skills?: string[] | undefined;
+}
+
+/** Durable task-manager ownership and review checkpoint; never copied to a new board. */
+export interface KanbanManagementState {
+  status?: 'running' | 'completed' | 'failed' | undefined;
+  lease?:
+    | {
+        token: string;
+        fingerprint: string;
+        expiresAt: number;
+        reviews?: Record<string, KanbanManagementReview>;
+      }
+    | undefined;
+  reviews?: Record<string, KanbanManagementReview> | undefined;
+  pendingTaskIds?: string[] | undefined;
+  reviewedFingerprint?: string | undefined;
+  /** Only receipt-validated completions may suppress future reviews. */
+  reviewCoverageVersion?: 1 | undefined;
+  lastAttemptAt?: number | undefined;
+  lastCompletedAt?: number | undefined;
+  summary?: string | undefined;
+  error?: string | undefined;
+}
+
+export interface KanbanManagementReview {
+  taskVersion: string;
+  disposition: 'adequate' | 'enriched' | 'needs_leader';
+  reason: string;
+  reviewedAt: number;
+  reviewedBy: string;
 }
 
 export type KanbanSupervisorStatus = 'disabled' | 'healthy' | 'attention' | 'running' | 'error';
@@ -420,6 +450,9 @@ export interface KanbanEventContext {
    * behavior.
    */
   expectedLeaseId?: string | undefined;
+  /** Background manager fence, checked inside the owner transaction. */
+  expectedManagementToken?: string | undefined;
+  expectedManagementTaskVersions?: Record<string, string> | undefined;
 }
 
 /** Task-scoped file telemetry folded into the durable Kanban activity ledger. */
@@ -460,6 +493,10 @@ export interface KanbanTaskChainRef {
 
 export interface KanbanTaskOrigin {
   system: string;
+  /** Last mirrored source values, used to preserve independently enriched cards. */
+  sourceDescription?: string | undefined;
+  sourcePriority?: KanbanTaskPriority | undefined;
+  sourceDependencyTaskIds?: string[] | undefined;
   graphId?: string | undefined;
   phaseId?: string | undefined;
   taskId?: string | undefined;
@@ -938,6 +975,7 @@ export interface KanbanBoard {
   requirementScopes?: KanbanRequirementScope[] | undefined;
   /** Quiet health/reconciliation policy for this board. */
   supervisor?: KanbanSupervisorConfig | undefined;
+  management?: KanbanManagementState | undefined;
   /** Opt-in strict Kanban Agent lifecycle policy. */
   lifecycle?: KanbanBoardLifecyclePolicy | undefined;
   /** Project-resource ceiling applied to every task agent on this board. */

@@ -53,6 +53,12 @@ export async function* spawnStream(
   opts: SpawnStreamOptions,
 ): AsyncGenerator<ToolProgressEvent, SpawnStreamResult> {
   const signal = opts.signal;
+  // An already-cancelled invocation must not start a command with side effects.
+  // Passing the signal to spawn (or killing immediately afterwards on Windows)
+  // still creates a child before cancellation is observed.
+  if (signal?.aborted) {
+    return { stdout: '', stderr: '', exitCode: 124, truncated: false };
+  }
   const max = opts.maxBytes ?? 999_999_999;
   const flushAt = opts.flushBytes ?? 4 * 1024;
   const maxQueue = opts.maxQueueSize ?? 500;

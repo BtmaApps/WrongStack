@@ -359,16 +359,18 @@ export class SddBoardStore {
   }
 
   private async removeFromIndex(runId: string): Promise<void> {
-    const current = await this.readIndex();
-    const index: SddBoardIndex = {
-      version: 1,
-      entries: current.entries
-        .filter((entry) => entry.runId !== runId)
-        .map((entry) => ({ ...entry })),
-    };
-    await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
-    this.cachedIndex = index;
-    this.cachedIndexSignature = await this.indexSignature();
+    await withFileLock(this.indexPath, async () => {
+      const current = await this.readIndex();
+      const index: SddBoardIndex = {
+        version: 1,
+        entries: current.entries
+          .filter((entry) => entry.runId !== runId)
+          .map((entry) => ({ ...entry })),
+      };
+      await atomicWrite(this.indexPath, JSON.stringify(index, null, 2), { mode: 0o600 });
+      this.cachedIndex = index;
+      this.cachedIndexSignature = await this.indexSignature();
+    });
   }
 
   private async indexSignature(): Promise<IndexSignature | null> {

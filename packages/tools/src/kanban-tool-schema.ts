@@ -61,6 +61,7 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
         'update_check',
         'remove_check',
         'add_note',
+        'review_task',
         'add_link',
         'verify_completion',
         'split_atomic',
@@ -78,6 +79,12 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
     },
     boardId: { type: 'string' },
     taskId: { type: 'string' },
+    reviewDisposition: {
+      type: 'string',
+      enum: ['adequate', 'enriched', 'needs_leader'],
+      description:
+        'review_task: record the background manager assessment after inspecting this card; note supplies the reason. Does not complete product work.',
+    },
     taskIds: { type: 'array', items: { type: 'string' } },
     chainId: { type: 'string' },
     columnId: { type: 'string' },

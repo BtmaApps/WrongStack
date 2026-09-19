@@ -7,8 +7,13 @@ import {
 
 class TestSocket {
   readonly listeners = new Map<string, (...args: unknown[]) => unknown>();
+  readonly close = vi.fn();
   on(event: string, listener: (...args: never[]) => unknown): this {
     this.listeners.set(event, listener as (...args: unknown[]) => unknown);
+    return this;
+  }
+  removeListener(event: string, listener: (...args: never[]) => unknown): this {
+    if (this.listeners.get(event) === listener) this.listeners.delete(event);
     return this;
   }
   async emit(event: string, value?: unknown): Promise<void> {
@@ -46,6 +51,70 @@ describe('createConnectionLifecycle', () => {
     await lifecycle(socket as never, undefined);
     expect(registerClient).not.toHaveBeenCalled();
     expect(clients.size).toBe(0);
+  });
+
+  it('fails closed and detaches socket protection when authentication throws', async () => {
+    const socket = new TestSocket();
+    const clients = new Map<WebSocket, { id: string }>();
+    const log = vi.fn();
+    const lifecycle = createConnectionLifecycle({
+      clients,
+      pendingConfirms: new Map(),
+      authenticate: async () => {
+        throw new Error('auth backend failed');
+      },
+      createClient: (_ws, id) => ({ id }),
+      registerClient: vi.fn(),
+      decode: () => ({ ok: false, issue: { code: 'bad', message: 'bad' } }),
+      dispatch: vi.fn(),
+      send: vi.fn(),
+      sessionPayload: (payload) => payload,
+      buildInitialPayload: vi.fn(async () => ({})),
+      log,
+    });
+
+    await expect(lifecycle(socket as never, undefined)).resolves.toBeUndefined();
+    expect(socket.close).toHaveBeenCalledWith(1011, 'Authentication failed');
+    expect(socket.listeners.has('error')).toBe(false);
+    expect(clients.size).toBe(0);
+    expect(log).toHaveBeenCalledWith(
+      'error',
+      'webui_server.authentication_failed',
+      expect.objectContaining({ message: 'auth backend failed' }),
+    );
+  });
+
+  it('rolls back partial client ownership when registration throws', async () => {
+    const socket = new TestSocket();
+    const clients = new Map<WebSocket, { id: string }>();
+    const unregisterClient = vi.fn();
+    const log = vi.fn();
+    const lifecycle = createConnectionLifecycle({
+      clients,
+      pendingConfirms: new Map(),
+      createClient: (_ws, id) => ({ id }),
+      registerClient: () => {
+        throw new Error('sub-handler registration failed');
+      },
+      unregisterClient,
+      decode: () => ({ ok: true, message: { type: 'ping' } }),
+      dispatch: vi.fn(),
+      send: vi.fn(),
+      sessionPayload: (payload) => payload,
+      buildInitialPayload: vi.fn(async () => ({})),
+      log,
+    });
+
+    await expect(lifecycle(socket as never, undefined)).resolves.toBeUndefined();
+    expect(clients.size).toBe(0);
+    expect(unregisterClient).toHaveBeenCalledWith(socket);
+    expect(socket.listeners.has('error')).toBe(false);
+    expect(socket.close).toHaveBeenCalledWith(1011, 'Client registration failed');
+    expect(log).toHaveBeenCalledWith(
+      'error',
+      'webui_server.client_registration_failed',
+      expect.objectContaining({ message: 'sub-handler registration failed' }),
+    );
   });
 
   it('replays pending confirms, sends session.start, and dispatches decoded messages', async () => {
@@ -430,6 +499,45 @@ describe('createConnectionLifecycle verbose rejection logging', () => {
     await lifecycle2(socket as never, undefined);
     await socket.emit('message', Buffer.from('{}'));
     expect(onSecurityRejection).toHaveBeenCalledTimes(1); // unchanged
+  });
+
+  it('contains a throwing security-rejection callback and still sends the parse error', async () => {
+    const socket = new TestSocket();
+    const send = vi.fn();
+    const log = vi.fn();
+    const lifecycle = createConnectionLifecycle({
+      clients: new Map<WebSocket, { id: string }>(),
+      pendingConfirms: new Map(),
+      onSecurityRejection: () => {
+        throw new Error('security sink failed');
+      },
+      createClient: (_ws, id) => ({ id }),
+      registerClient: vi.fn(),
+      decode: () => ({
+        ok: false,
+        issue: { code: 'unsafe_key', message: 'Unsafe protocol key: __proto__' },
+      }),
+      dispatch: vi.fn(async () => undefined),
+      send,
+      sessionPayload: (payload) => payload,
+      buildInitialPayload: async () => ({}),
+      log,
+    });
+
+    await lifecycle(socket as never, undefined);
+    await expect(socket.emit('message', Buffer.from('{}'))).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      'webui_server.security_rejection_callback_failed',
+      expect.objectContaining({ message: 'security sink failed' }),
+    );
+    expect(send).toHaveBeenCalledWith(
+      socket,
+      expect.objectContaining({
+        type: 'error',
+        payload: expect.objectContaining({ phase: 'parse' }),
+      }),
+    );
   });
 
   // Severity policy: only `unsafe_key` and `too_deep` trip the error

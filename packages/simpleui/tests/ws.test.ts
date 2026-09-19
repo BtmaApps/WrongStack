@@ -3,10 +3,11 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  __test__ as wsTestHooks,
   defaultWsUrl,
   exchangeAuthCookie,
+  SimpleSocket,
   scrubPageToken,
+  __test__ as wsTestHooks,
 } from '../src/lib/ws.js';
 
 const TOKEN_STORAGE_KEY = 'wrongstack.simpleui.token.v1';
@@ -35,6 +36,30 @@ describe('SimpleUI WebSocket URL', () => {
     document.head.append(meta);
 
     expect(defaultWsUrl().toString()).toBe('wss://public.example.test/socket');
+  });
+});
+
+describe('SimpleSocket connection ownership', () => {
+  it('opens only the newest socket when connect calls overlap', async () => {
+    class MockWebSocket {
+      static instances: MockWebSocket[] = [];
+      static OPEN = 1;
+      readyState = 0;
+      addEventListener = vi.fn();
+      send = vi.fn();
+      close = vi.fn();
+
+      constructor() {
+        MockWebSocket.instances.push(this);
+      }
+    }
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    const socket = new SimpleSocket({ onMessage: vi.fn(), onState: vi.fn() });
+
+    await Promise.all([socket.connect(), socket.connect()]);
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+    socket.close();
   });
 });
 

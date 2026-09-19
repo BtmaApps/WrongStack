@@ -15,8 +15,20 @@ const { mkSandbox, newSignal } = await import('./fixtures.js');
  */
 let base = '';
 let largeClosedEarly = false;
+const closedStreams = new Set<string>();
 const server: Server = createServer((req, res) => {
-  if (req.url === '/empty') {
+  if (req.url?.startsWith('/stream-')) {
+    const route = req.url;
+    res.writeHead(200, {
+      'content-type': route === '/stream-binary' ? 'application/octet-stream' : 'text/plain',
+    });
+    res.write('x'.repeat(4096));
+    const timer = setInterval(() => res.write('x'.repeat(4096)), 25);
+    res.on('close', () => {
+      clearInterval(timer);
+      closedStreams.add(route);
+    });
+  } else if (req.url === '/empty') {
     res.writeHead(204);
     res.end();
   } else if (req.url === '/page') {
@@ -58,6 +70,42 @@ afterAll(() => {
 });
 
 describe('fetch body handling', () => {
+  it('closes a rejected binary response without waiting for its body', async () => {
+    const sb = await mkSandbox();
+    try {
+      await expect(
+        fetchTool.execute({ url: `${base}/stream-binary` }, sb.ctx, { signal: newSignal() }),
+      ).rejects.toThrow(/binary/);
+      await expect.poll(() => closedStreams.has('/stream-binary'), { timeout: 1500 }).toBe(true);
+    } finally {
+      await sb.cleanup();
+    }
+  });
+
+  it.each(['headers', 'partial'])('closes the response when abandoned after %s', async (stage) => {
+    const sb = await mkSandbox();
+    const route = `/stream-${stage}`;
+    const stream = fetchTool.executeStream!({ url: `${base}${route}` }, sb.ctx, {
+      signal: newSignal(),
+    })[Symbol.asyncIterator]();
+    try {
+      await stream.next(); // GET log, before the request.
+      const headers = await stream.next();
+      expect(headers.value).toMatchObject({
+        type: 'log',
+        text: expect.stringContaining('HTTP 200'),
+      });
+      if (stage === 'partial') {
+        expect((await stream.next()).value).toMatchObject({ type: 'partial_output' });
+      }
+      await stream.return?.();
+      await expect.poll(() => closedStreams.has(route), { timeout: 1500 }).toBe(true);
+    } finally {
+      await stream.return?.();
+      await sb.cleanup();
+    }
+  });
+
   it('returns empty content for a 204 without a content-type instead of refusing it as binary', async () => {
     const sb = await mkSandbox();
     try {

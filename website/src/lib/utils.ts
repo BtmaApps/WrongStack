@@ -12,10 +12,8 @@ export function cn(...inputs: ClassValue[]) {
    ========================================================================= */
 
 export const META = {
-  version: '1.0.22',
+  version: '1.0.23',
   repo: 'https://github.com/WrongStack/WrongStack',
-  npm: 'wrongstack',
-  node: '22',
   license: 'MIT',
   domain: 'wrongstack.com',
 } as const;
@@ -1328,72 +1326,3 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
 ];
-
-/* =========================================================================
-   Release process — source: RELEASE.md
-   ========================================================================= */
-
-export interface ReleaseStep {
-  phase: string;
-  steps: string[];
-}
-
-export const releaseProcess: ReleaseStep[] = [
-  {
-    phase: 'Pre-release',
-    steps: [
-      'pnpm release:check — audit, build, contracts, typecheck and tests',
-      'pnpm release:dry — inspect the exact publish set',
-      'pnpm lint — optional full Biome policy gate',
-    ],
-  },
-  {
-    phase: 'Version bump',
-    steps: [
-      'node scripts/bump-version.mjs <patch|minor|major>',
-      'Version bumped in root + all 34 package manifests + both apps + website/',
-      'CHANGELOG.md updated with release date and highlights',
-    ],
-  },
-  {
-    phase: 'Commit & tag',
-    steps: ['git commit -am "release: X.Y.Z"', 'git tag vX.Y.Z', 'git push --follow-tags'],
-  },
-  {
-    phase: 'Publish',
-    steps: [
-      'Confirm npm authentication and intended registry',
-      'pnpm release — rerun release:check, then publish public workspaces',
-      'A tag alone does not publish packages',
-    ],
-  },
-  {
-    phase: 'Post-release',
-    steps: [
-      'Verify: npm info @wrongstack/core',
-      'Test install: npm install -g wrongstack && wrongstack version',
-      'Create or verify the GitHub Release and notes manually',
-    ],
-  },
-];
-
-export const releaseWorkflow = {
-  trigger: 'Run pnpm release after the release checklist',
-  automation: [
-    'Audit, build, contract checks, typecheck and tests',
-    'Dry-run the exact recursive publish set',
-    'Publish public workspaces through authenticated pnpm',
-    'Verify npm and create the GitHub Release manually',
-  ],
-  requiredSecrets: ['Authenticated npm session or token for the intended registry'],
-  preReleaseNote:
-    'Pre-release npm tags and GitHub Release flags are managed deliberately; no checked-in workflow infers them from a tag.',
-  hotfix: [
-    'git checkout vX.Y.Z',
-    'git checkout -b hotfix/X.Y.Z+1',
-    'node scripts/bump-version.mjs patch',
-    'git commit -am "release: X.Y.Z+1"',
-    'git tag vX.Y.Z+1',
-    'git push --follow-tags',
-  ],
-} as const;

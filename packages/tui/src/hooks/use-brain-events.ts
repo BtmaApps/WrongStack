@@ -52,7 +52,9 @@ export function useBrainEvents(
       string,
       NonNullable<Extract<HistoryEntry, { kind: 'brain' }>['council']>['seats']
     >();
-    // The maps are keyed by request id and only drained when that request
+    const requestKey = (id: string, sessionId?: string): string =>
+      JSON.stringify([sessionId ?? getSessionId?.() ?? null, id]);
+    // The maps are keyed by session + request id and only drained when that request
     // reaches a decision. A council that fails before resolving, or a request
     // whose decision event never arrives, would otherwise leak one entry per
     // decision for the lifetime of the session.
@@ -78,8 +80,10 @@ export function useBrainEvents(
       { history = true }: { history?: boolean } = {},
     ) => {
       const p = payload as {
+        sessionId?: string;
         request: {
           id: string;
+          sessionId?: string;
           source: string;
           risk: Extract<HistoryEntry, { kind: 'brain' }>['risk'];
           question: string;
@@ -89,10 +93,11 @@ export function useBrainEvents(
         decision: BrainDecision;
         tier?: string | undefined;
       };
-      const council = history ? councilTraces.get(p.request.id) : undefined;
+      const key = requestKey(p.request.id, p.sessionId ?? p.request.sessionId);
+      const council = history ? councilTraces.get(key) : undefined;
       if (history) {
-        councilTraces.delete(p.request.id);
-        councilVotes.delete(p.request.id);
+        councilTraces.delete(key);
+        councilVotes.delete(key);
       }
       const decision = decisionSummary(p.decision);
       dispatch({
@@ -147,7 +152,7 @@ export function useBrainEvents(
       }
     };
     const offRequested = events.on('brain.decision_requested', ({ sessionId, request }) => {
-      if (!isCurrentSession(sessionId)) return;
+      if (!isCurrentSession(sessionId ?? request.sessionId)) return;
       dispatch({
         type: 'brainStatus',
         state: 'deciding',
@@ -157,34 +162,37 @@ export function useBrainEvents(
       });
     });
     const offAnswered = events.on('brain.decision_answered', (payload) => {
-      if (!isCurrentSession(payload.sessionId)) return;
+      const sessionId = payload.sessionId ?? payload.request.sessionId ?? getSessionId?.();
+      if (!isCurrentSession(sessionId)) return;
       if (!payload.request.id.startsWith('brainmon-')) {
         addBrainEntry('answered', payload);
         return;
       }
       // The monitor normally follows with a richer intervention event after
       // steer delivery. Do not hide the decision forever if delivery stalls.
-      const previous = pendingMonitorAnswers.get(payload.request.id);
+      const key = requestKey(payload.request.id, sessionId);
+      const previous = pendingMonitorAnswers.get(key);
       if (previous) clearTimeout(previous);
       const timer = setTimeout(() => {
-        pendingMonitorAnswers.delete(payload.request.id);
-        if (isCurrentSession(payload.sessionId)) {
-          rememberShownAnswer(payload.request.id);
-          addBrainEntry('answered', payload);
+        pendingMonitorAnswers.delete(key);
+        if (isCurrentSession(sessionId)) {
+          rememberShownAnswer(key);
+          addBrainEntry('answered', { ...payload, sessionId });
         }
       }, MONITOR_INTERVENTION_GRACE_MS);
       timer.unref?.();
-      pendingMonitorAnswers.set(payload.request.id, timer);
+      pendingMonitorAnswers.set(key, timer);
     });
     const offAskHuman = events.on('brain.decision_ask_human', (payload) => {
-      if (!isCurrentSession(payload.sessionId)) return;
+      if (!isCurrentSession(payload.sessionId ?? payload.request.sessionId)) return;
       // A pending event is the prompt: it must raise the prompt UI and the
       // status line, but the history row belongs to whatever the human (or
       // the timeout) actually decides.
       addBrainEntry('ask_human', payload, { history: payload.pending !== true });
     });
     const offDenied = events.on('brain.decision_denied', (payload) => {
-      if (isCurrentSession(payload.sessionId)) addBrainEntry('denied', payload);
+      if (isCurrentSession(payload.sessionId ?? payload.request.sessionId))
+        addBrainEntry('denied', payload);
     });
     // ── Council tier ─────────────────────────────────────────────────
     // A council decision costs one provider call PER SEAT and can run for
@@ -192,7 +200,8 @@ export function useBrainEvents(
     // rather than a silent stall behind a generic "deciding" status.
     const offCouncilVote = events.on('brain.council_vote', (payload) => {
       if (!isCurrentSession(payload.sessionId)) return;
-      const seats = councilVotes.get(payload.requestId) ?? [];
+      const key = requestKey(payload.requestId, payload.sessionId);
+      const seats = councilVotes.get(key) ?? [];
       const ballot = {
         seatId: payload.seatId,
         persona: payload.persona,
@@ -211,11 +220,13 @@ export function useBrainEvents(
       // duplicate React keys — and only the final round is the verdict
       // anyway. A reconnect replay of the same seat lands here too.
       const existing = seats.findIndex((seat) => seat.seatId === ballot.seatId);
+      if (existing >= 0 && (ballot.round ?? 1) < (seats[existing]?.round ?? 1)) return;
       if (existing >= 0) seats[existing] = ballot;
       else seats.push(ballot);
-      councilVotes.set(payload.requestId, seats);
+      councilVotes.set(key, seats);
       capCouncilMap(councilVotes);
-      const round = payload.round ?? 1;
+      const round = seats.reduce((latest, seat) => Math.max(latest, seat.round ?? 1), 1);
+      const count = seats.filter((seat) => (seat.round ?? 1) === round).length;
       dispatch({
         type: 'brainStatus',
         state: 'deciding',
@@ -226,12 +237,13 @@ export function useBrainEvents(
         // appear to count backwards.
         summary:
           `council${round > 1 ? ` r${round}` : ''} · ` +
-          `${seats.length} seat${seats.length === 1 ? '' : 's'} voted`,
+          `${count} seat${count === 1 ? '' : 's'} voted`,
       });
     });
     const offCouncilResolved = events.on('brain.council_resolved', (payload) => {
       if (!isCurrentSession(payload.sessionId)) return;
-      councilTraces.set(payload.requestId, {
+      const key = requestKey(payload.requestId, payload.sessionId);
+      councilTraces.set(key, {
         resolution: payload.resolution,
         configuredSeatCount: payload.configuredSeatCount,
         validVoteCount: payload.validVoteCount,
@@ -244,22 +256,24 @@ export function useBrainEvents(
         totalTokens: payload.usage?.totalTokens,
         durationMs: payload.usage?.durationMs,
         ...(payload.warnings?.length ? { warnings: [...payload.warnings] } : {}),
-        seats: councilVotes.get(payload.requestId) ?? [],
+        seats: payload.votes?.map((vote) => ({ ...vote })) ?? councilVotes.get(key) ?? [],
       });
       capCouncilMap(councilTraces);
-      councilVotes.delete(payload.requestId);
+      councilVotes.delete(key);
     });
 
     // Self-activation: the BrainMonitor engaged on a distress signal
     // (tool-failure streak / error storm). Show whether it steered the
     // agent or just observed — the steer itself arrives as mailbox mail.
     const offIntervention = events.on('brain.intervention', (payload) => {
-      if (!isCurrentSession(payload.sessionId)) return;
-      if (shownMonitorAnswers.has(payload.request.id)) return;
-      const pending = pendingMonitorAnswers.get(payload.request.id);
+      const sessionId = payload.sessionId ?? payload.request.sessionId ?? getSessionId?.();
+      if (!isCurrentSession(sessionId)) return;
+      const key = requestKey(payload.request.id, sessionId);
+      if (shownMonitorAnswers.has(key)) return;
+      const pending = pendingMonitorAnswers.get(key);
       if (pending) {
         clearTimeout(pending);
-        pendingMonitorAnswers.delete(payload.request.id);
+        pendingMonitorAnswers.delete(key);
       }
       const outcome = payload.intervened
         ? `steered the agent (${payload.kind.replace(/_/g, ' ')})`

@@ -159,6 +159,28 @@ export class RequirementIntakeService {
     const now = Date.now();
     const record: RequirementIntakeRecord = this.buildNewRecord(validated, ctx, now);
     const result = await this.store.create(record, validated.idempotencyKey?.trim());
+    // The preflight lookup above is only a fast path. Another process can win
+    // the idempotency-key lock between that lookup and create(), so classify
+    // the store's authoritative result here as well. Recheck project ownership
+    // before returning the winner: concurrent reuse across projects must not
+    // expose the record that happened to be created first.
+    if (!result.created) {
+      if (result.record.projectId !== ctx.projectId) {
+        throw new IntakeValidationError([
+          {
+            field: 'idempotencyKey',
+            message: 'idempotency key already used for a different project',
+          },
+        ]);
+      }
+      this.metrics.increment('intake.duplicate_create');
+      this.logger.info('intake', 'intake.duplicate_create', {
+        intakeId: result.record.id,
+        projectId: result.record.projectId,
+        actorId: ctx.id,
+      });
+      return result;
+    }
     this.logger.info('intake', 'intake.created', {
       intakeId: result.record.id,
       projectId: result.record.projectId,

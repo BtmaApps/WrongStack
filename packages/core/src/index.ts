@@ -97,6 +97,14 @@ export {
   ruleMatches,
 } from './coordination/brain-rules.js';
 export {
+  type BrainDecisionExplanation,
+  type BrainDecisionStepExplanation,
+  type BrainDecisionTierName,
+  type BrainExplainContext,
+  type BrainExplainLedgerHost,
+  explainBrainDecision,
+} from './coordination/brain-explain.js';
+export {
   type BrainDecisionTier,
   BrainTierCounter,
   type BrainTierStats,

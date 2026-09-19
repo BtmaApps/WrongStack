@@ -70,6 +70,9 @@ export function taskInputFromGraphNode(
     ...(boundary !== undefined ? { boundary } : {}),
     origin: {
       system: options.sourceSystem ?? 'task-graph',
+      sourceDescription: node.description,
+      sourcePriority: node.priority,
+      sourceDependencyTaskIds: [],
       graphId: graph.id,
       taskId: node.id,
       specId: graph.specId,
@@ -91,8 +94,18 @@ export function applyGraphNodeToTask(
 ): void {
   const previousColumnId = task.columnId;
   task.title = requireNonBlank(node.title, 'Kanban task title');
-  task.description = node.description;
-  task.priority = node.priority;
+  const sessionMirror = (options.sourceSystem ?? task.origin?.system ?? '').startsWith('session-');
+  const enriched =
+    sessionMirror && !!task.description && task.description !== task.origin?.sourceDescription;
+  const sourceDescription =
+    enriched && node.description === task.description
+      ? task.origin?.sourceDescription
+      : node.description;
+  if (!enriched) {
+    task.description = node.description;
+  }
+  if (!sessionMirror || task.priority === task.origin?.sourcePriority)
+    task.priority = node.priority;
   task.type = node.type;
   task.status = taskGraphStatusToKanbanStatus(node.status);
   task.columnId = columnIdForTaskGraphStatus(board, node.status);
@@ -108,6 +121,11 @@ export function applyGraphNodeToTask(
   else delete task.labels;
   task.origin = {
     system: options.sourceSystem ?? task.origin?.system ?? 'task-graph',
+    sourceDescription,
+    sourcePriority: node.priority,
+    ...(task.origin?.sourceDependencyTaskIds !== undefined
+      ? { sourceDependencyTaskIds: task.origin.sourceDependencyTaskIds }
+      : {}),
     graphId: graph.id,
     taskId: node.id,
     specId: graph.specId,
@@ -150,22 +168,28 @@ export function applyTaskGraphRelationships(
     if (!task || !node) continue;
 
     const parentTaskId = node.parentId ? taskIdMap.get(node.parentId) : undefined;
+    const sessionMirror = task.origin?.system.startsWith('session-');
     if (parentTaskId) task.parentTaskId = parentTaskId;
-    else delete task.parentTaskId;
+    else if (!sessionMirror) delete task.parentTaskId;
 
     const childTaskIds = (node.children ?? [])
       .map((childId) => taskIdMap.get(childId))
       .filter((childId): childId is string => Boolean(childId));
     if (childTaskIds.length) task.childTaskIds = uniqueStrings(childTaskIds);
-    else delete task.childTaskIds;
+    else if (!sessionMirror) delete task.childTaskIds;
 
     const graphDeps = uniqueStrings(graphDepsByTaskId.get(taskId) ?? []);
     const manualDeps = options.preserveManualDependencies
-      ? (task.dependsOn ?? []).filter((depId) => !syncedTaskIds.has(depId))
+      ? (task.dependsOn ?? []).filter((depId) =>
+          sessionMirror
+            ? !(task.origin?.sourceDependencyTaskIds ?? []).includes(depId)
+            : !syncedTaskIds.has(depId),
+        )
       : [];
     const nextDeps = uniqueStrings([...graphDeps, ...manualDeps]);
     if (nextDeps.length) task.dependsOn = nextDeps;
     else delete task.dependsOn;
+    if (task.origin) task.origin.sourceDependencyTaskIds = graphDeps;
   }
 }
 

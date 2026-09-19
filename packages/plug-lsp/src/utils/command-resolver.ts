@@ -74,7 +74,7 @@ function gateProjectLocalPath(onPath: string | null, cwd: string): string | null
 function isInsideProject(candidate: string, cwd: string): boolean {
   const root = path.resolve(cwd);
   const rel = path.relative(root, path.resolve(candidate));
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }
 
 export async function findLocalBinary(cwd: string, command: string): Promise<string | null> {

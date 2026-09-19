@@ -866,6 +866,62 @@ describe('SqliteSageStore', () => {
       expect(await store.getSage(mem.id)).toBeFalsy();
     });
 
+    it('purge skips tombstones revived between listing and the purge mutation', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      const revived = await store.rememberSage({
+        text: 'Revived tombstone must survive the physical purge pass',
+        kind: 'fact',
+      });
+      const purged = await store.rememberSage({
+        text: 'Unrevived old tombstone is physically purged by hygiene',
+        kind: 'fact',
+      });
+      await store.deleteSage(revived.id, 'test: revived tombstone', { force: true });
+      await store.deleteSage(purged.id, 'test: purged tombstone', { force: true });
+      const host = store as unknown as {
+        upsertMemory(memory: { id: string; updatedAt: string; [key: string]: unknown }): void;
+      };
+      for (const m of [revived, purged]) {
+        host.upsertMemory({
+          ...(await store.getSage(m.id))!,
+          updatedAt: '2020-01-01T00:00:00.000Z',
+        });
+      }
+
+      // The facade dispatches hygiene's ctx.listMemories as
+      // `(listOpts) => this.listMemories(listOpts)`, so an instance wrapper
+      // deterministically injects a real concurrent revive (public updateSage,
+      // same runMutation queue) into the gap between the purge pass's
+      // tombstone listing (outside the mutation) and its queued DELETE.
+      const originalList = store.listMemories.bind(store);
+      let revivedInjected = false;
+      (store as unknown as { listMemories: unknown }).listMemories = async (
+        opts: { status?: string } | undefined,
+      ) => {
+        const rows = await originalList(opts as never);
+        if (opts?.status === 'deleted' && !revivedInjected) {
+          revivedInjected = true;
+          await store.updateSage(revived.id, { status: 'active' });
+        }
+        return rows;
+      };
+
+      const report = await store.hygiene({ verify: false, purgeDeletedAfterDays: 30 });
+
+      expect(revivedInjected).toBe(true);
+      expect(await store.getSage(purged.id)).toBeFalsy();
+      const survivor = await store.getSage(revived.id);
+      expect(survivor).not.toBeNull();
+      expect(survivor?.status).toBe('active');
+      expect(report.purgedDeleted).toBe(1);
+      // The test body is timing-free (queue-ordered mutations); this generous
+      // ceiling only guards vitest's 60s default against full-suite fsync/CPU
+      // contention — the test flaked once in the 2026-09-19 gate run B and
+      // the failure message was not captured, so this is the applicable
+      // widening.
+    }, 180_000);
+
     it('near-duplicate hygiene merges paraphrases that exact-text dedup missed', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();

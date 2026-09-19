@@ -135,7 +135,7 @@ function resolveProjectPath(rawPath: string, cwd = process.cwd()): string | null
   const root = resolve(cwd);
   const resolved = isAbsolute(rawPath) ? resolve(rawPath) : resolve(root, rawPath);
   const rel = relative(root, resolved);
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) return resolved;
+  if (rel === '' || (rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel))) return resolved;
   return null;
 }
 

@@ -8,6 +8,7 @@ export * from './manager/decomposition.js';
 export * from './manager/dependencies.js';
 export * from './manager/dispatch.js';
 export * from './manager/lifecycle.js';
+export * from './manager/management.js';
 export * from './manager/presence.js';
 export * from './manager/prune.js';
 export * from './manager/serialization.js';

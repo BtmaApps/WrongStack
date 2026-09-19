@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Context } from '@wrongstack/core/agent';
+import type { KanbanAgentAssignment } from '@wrongstack/kanban';
 import {
   addTask,
   assignTask,
@@ -27,6 +28,7 @@ import {
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
 import { recordKanbanVerificationEvidence } from './kanban-evidence-bridge.js';
+import { managementEventFence } from './kanban-management-guard.js';
 import { handleSplitTask } from './kanban-split-task-handler.js';
 import { assignmentInput, taskInput, taskPatch } from './kanban-task-inputs.js';
 import {
@@ -42,7 +44,6 @@ import {
   toKanbanToolError,
 } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
-import type { KanbanAgentAssignment } from '@wrongstack/kanban';
 import { applySessionKanbanTaskToSource } from './session-kanban.js';
 
 async function syncContextTask(
@@ -123,6 +124,7 @@ export async function handleKanbanLifecycleAction(
   ctx: Context,
 ): Promise<KanbanToolOutput | undefined> {
   const eventContext = {
+    ...managementEventFence(ctx),
     sessionId: ctx.eventSessionId?.() ?? ctx.session?.id ?? 'default-session',
     ...(ctx.agentId !== undefined ? { actor: ctx.agentId } : {}),
   };

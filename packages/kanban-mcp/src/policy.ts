@@ -47,6 +47,8 @@ export const KANBAN_MANAGE_ACTIONS = [
   'update_check',
   'remove_check',
   'add_note',
+  // Requires a host-issued management lease in the calling context.
+  'review_task',
   'add_link',
   'record_activity',
   'verify_completion',

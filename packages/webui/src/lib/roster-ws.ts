@@ -36,6 +36,7 @@
  *    `send()` no longer needs the `as unknown as WSClientMessage` cast.
  */
 
+import { safeId } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 
 /** Per-type gate. Only one in-flight request per full message type. */
@@ -74,6 +75,7 @@ export function sendRosterMessage(
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const client = getWSClient();
+    const requestId = safeId();
 
     let settled = false;
     let cleanupFns: Array<() => void> = [];
@@ -90,6 +92,15 @@ export function sendRosterMessage(
     const handle = (msg: unknown) => {
       const envelope = msg as { payload?: unknown } | undefined;
       const body = envelope && typeof envelope === 'object' ? (envelope.payload ?? envelope) : msg;
+      if (
+        body &&
+        typeof body === 'object' &&
+        'requestId' in body &&
+        typeof (body as { requestId?: unknown }).requestId === 'string' &&
+        (body as { requestId: string }).requestId !== requestId
+      ) {
+        return;
+      }
       if (
         body &&
         typeof body === 'object' &&
@@ -163,7 +174,7 @@ export function sendRosterMessage(
         // include `agent-roster.${string}`, so the cast is no longer needed.
         client.send({
           type: type as `agent-roster.${string}`,
-          payload,
+          payload: { ...payload, requestId },
         });
       })
       .catch((err) => settle(() => reject(err)));

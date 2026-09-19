@@ -506,7 +506,7 @@ export class Context implements RunEnv, AgentContext {
                     }
                   : null;
         if (!event) return;
-        this.enqueueConversationJournal(event, this.session);
+        this.enqueueConversationJournal(event, this.activeRunSessionWriter ?? this.session);
       });
     }
     return this._state;

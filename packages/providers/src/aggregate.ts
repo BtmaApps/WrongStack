@@ -198,7 +198,9 @@ export async function aggregateStream(
           input:
             tb.input && typeof tb.input === 'object' && !Array.isArray(tb.input)
               ? (tb.input as Record<string, unknown>)
-              : {},
+              : // Some streams finish without a per-tool stop event. Decode the
+                // collected arguments instead of silently replacing them with {}.
+                parseToolInput(tb.chunks.join('')),
         };
         if (tb.providerMeta && Object.keys(tb.providerMeta).length > 0) {
           (block as { providerMeta?: Record<string, unknown> }).providerMeta = tb.providerMeta;

@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
 import { cliSpawnArgs } from '@wrongstack/core/utils';
 import type { ModelCell, RawRun } from './types.js';
 
@@ -48,7 +49,7 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     ...(opts.extraArgs ?? []),
   ]);
 
-  const startedAt = Date.now();
+  const startedAt = performance.now();
   return new Promise<RawRun>((resolve) => {
     let child: ChildProcess;
     try {
@@ -97,7 +98,7 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
     });
 
     child.on('close', (code) => {
-      const elapsedMs = Date.now() - startedAt;
+      const elapsedMs = performance.now() - startedAt;
       if (timedOut) {
         finish({
           status: 'timeout',
@@ -228,7 +229,7 @@ function crashed(startedAt: number, reason: string): RawRun {
     tokensIn: 0,
     tokensOut: 0,
     costUsd: 0,
-    elapsedMs: Date.now() - startedAt,
+    elapsedMs: performance.now() - startedAt,
     exitCode: null,
     crashDetail: reason,
   };
@@ -285,7 +286,8 @@ export async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let next = 0;
-  const limit = Math.max(1, Math.min(concurrency, items.length || 1));
+  const requested = Number.isFinite(concurrency) ? Math.floor(concurrency) : 1;
+  const limit = Math.max(1, Math.min(requested, items.length || 1));
   const workers = Array.from({ length: limit }, async () => {
     while (true) {
       const i = next++;

@@ -40,36 +40,49 @@ export function decodeProtocolMessage(
   input: unknown,
   direction: ProtocolDirection,
 ): ProtocolDecodeResult<ProtocolEnvelope> {
-  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-    return {
-      ok: false,
-      issue: { code: 'invalid_envelope', message: 'Protocol message must be an object' },
-    };
-  }
+  try {
+    if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+      return {
+        ok: false,
+        issue: { code: 'invalid_envelope', message: 'Protocol message must be an object' },
+      };
+    }
 
-  const envelope = input as Record<string, unknown>;
-  if (typeof envelope['type'] !== 'string' || envelope['type'].length === 0) {
-    return {
-      ok: false,
-      issue: { code: 'invalid_type', message: 'Protocol message type must be a non-empty string' },
-    };
-  }
-  if (!isRegisteredMessageType(envelope['type'], direction)) {
-    return {
-      ok: false,
-      issue: { code: 'unknown_type', message: `Unknown ${direction} message: ${envelope['type']}` },
-    };
-  }
-  if (direction === 'server' && !Object.hasOwn(envelope, 'payload')) {
-    return {
-      ok: false,
-      issue: { code: 'invalid_envelope', message: 'Server protocol messages require a payload' },
-    };
-  }
+    const envelope = input as Record<string, unknown>;
+    if (typeof envelope['type'] !== 'string' || envelope['type'].length === 0) {
+      return {
+        ok: false,
+        issue: {
+          code: 'invalid_type',
+          message: 'Protocol message type must be a non-empty string',
+        },
+      };
+    }
+    if (!isRegisteredMessageType(envelope['type'], direction)) {
+      return {
+        ok: false,
+        issue: {
+          code: 'unknown_type',
+          message: `Unknown ${direction} message: ${envelope['type']}`,
+        },
+      };
+    }
+    if (direction === 'server' && !Object.hasOwn(envelope, 'payload')) {
+      return {
+        ok: false,
+        issue: { code: 'invalid_envelope', message: 'Server protocol messages require a payload' },
+      };
+    }
 
-  const issue = inspectValue(envelope, '$', 0);
-  if (issue) return { ok: false, issue };
-  return { ok: true, message: input as ProtocolEnvelope };
+    const issue = inspectValue(envelope, '$', 0);
+    if (issue) return { ok: false, issue };
+    return { ok: true, message: input as ProtocolEnvelope };
+  } catch {
+    return {
+      ok: false,
+      issue: { code: 'invalid_envelope', message: 'Protocol message contains unreadable values' },
+    };
+  }
 }
 
 export function decodeProtocolFrame(

@@ -26,7 +26,6 @@ export function createGovernanceMutationSnapshotBridge(input: {
   let tail: Promise<void> = Promise.resolve();
   const installedPipelines = new WeakSet<AgentPipelines>();
   const awaitedCompletions = new Set<string>();
-  const awaitedCompletionOrder: string[] = [];
 
   const warnOnce = (message: string, context?: unknown): void => {
     if (warned) return;
@@ -44,9 +43,10 @@ export function createGovernanceMutationSnapshotBridge(input: {
   const rememberAwaitedCompletion = (key: string | undefined): void => {
     if (key === undefined || awaitedCompletions.has(key)) return;
     awaitedCompletions.add(key);
-    awaitedCompletionOrder.push(key);
-    if (awaitedCompletionOrder.length > 512) {
-      const oldest = awaitedCompletionOrder.shift();
+    // Set order tracks only outstanding acknowledgements. A separate history
+    // can retain a consumed key and later evict a newer use of that same id.
+    if (awaitedCompletions.size > 512) {
+      const oldest = awaitedCompletions.values().next().value;
       if (oldest !== undefined) awaitedCompletions.delete(oldest);
     }
   };
@@ -103,8 +103,7 @@ export function createGovernanceMutationSnapshotBridge(input: {
 
   return Object.freeze({
     installToolBoundary: (pipelines: AgentPipelines) => {
-      if (installedPipelines.has(pipelines)) return;
-      installedPipelines.add(pipelines);
+      if (closed || installedPipelines.has(pipelines)) return;
       pipelines.toolCall.prepend({
         name: 'GovernanceWorkspaceSnapshotFence',
         owner: 'governance-compatibility',
@@ -113,15 +112,17 @@ export function createGovernanceMutationSnapshotBridge(input: {
           next: (value: ToolCallPipelinePayload) => Promise<ToolCallPipelinePayload>,
         ) => {
           let completed = payload;
+          let succeeded = false;
           try {
             completed = await next(payload);
+            succeeded = true;
             return completed;
           } finally {
             const sessionId = completed.ctx.activeRunSessionId ?? completed.ctx.session?.id;
             const key = completionKey(sessionId, completed.toolUse.id);
             await enqueueSnapshot(
               {
-                ok: !completed.result?.is_error,
+                ok: succeeded && !completed.result?.is_error,
                 mutating: completed.tool?.mutating === true,
               },
               true,
@@ -130,6 +131,8 @@ export function createGovernanceMutationSnapshotBridge(input: {
           }
         },
       });
+      // A failed registration must remain retryable after its conflict is removed.
+      installedPipelines.add(pipelines);
     },
     close: async () => {
       if (!closed) {

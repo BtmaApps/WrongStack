@@ -286,6 +286,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
   });
 
   let code = 0;
+  let backgroundKanbanSupervisor: { dispose(): void } | undefined;
   let fleetStatusLine: FleetStatusLine | null = null;
   try {
     const visionAdapters = () => createToolVisionAdapters(agent.tools);
@@ -314,6 +315,21 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       flags.tui = true;
     }
     const executionMode = resolveExecutionMode(positional, flags);
+    if (projectRoot && executionMode !== 'webui') {
+      backgroundKanbanSupervisor = (
+        await import('./webui-server/kanban-supervisor.js')
+      ).createKanbanSupervisor({
+        projectRoot,
+        broadcast: () => {},
+        dispatchTask: createKanbanDispatchHandler({
+          config,
+          events,
+          skillLoader,
+          sddSubagentFactory,
+        }).onKanbanDispatch,
+        log: (message) => console.log(message),
+      });
+    }
     const enteringTui = executionMode === 'tui';
     if (!enteringTui) {
       fleetStatusLine = new FleetStatusLine({ events, version: CLI_VERSION });
@@ -916,6 +932,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       }
     }
   } finally {
+    backgroundKanbanSupervisor?.dispose();
     // Release session-scoped wildcard listeners (chimera review/cascade)
     // BEFORE the cleanup drains below, so no stale listener survives into
     // teardown — the EventBus wildcard-disposer fix.

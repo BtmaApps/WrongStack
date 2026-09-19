@@ -129,7 +129,7 @@ function withinProject(p: string, cwd = process.cwd()): boolean {
   const resolved = isAbsolute(p) ? resolve(p) : resolve(root, p);
   const rel = relative(root, resolved);
   if (rel === '' || rel === '.') return true;
-  if (rel.startsWith('..')) return false;
+  if (rel.split(/[\\/]/)[0] === '..') return false;
   if (isAbsolute(rel)) return false;
   return true;
 }

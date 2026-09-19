@@ -7,10 +7,12 @@ import {
   addNoteToTask,
   getKanbanWorkbench,
   recordTaskActivity,
+  recordTaskManagementReview,
   removeCheckFromTask,
   updateCheckOnTask,
   updateGoalMetricOnTask,
 } from '@wrongstack/kanban';
+import { managementEventFence } from './kanban-management-guard.js';
 import { handleSplitTask } from './kanban-split-task-handler.js';
 import { invalidInput, notFound, okBoard } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
@@ -21,10 +23,27 @@ export async function handleKanbanDetailAction(
   ctx: Context,
 ): Promise<KanbanToolOutput | undefined> {
   const eventContext = {
+    ...managementEventFence(ctx),
     sessionId: ctx.eventSessionId?.() ?? ctx.session?.id ?? 'default-session',
     ...(ctx.agentId !== undefined ? { actor: ctx.agentId } : {}),
   };
   switch (input.action) {
+    case 'review_task': {
+      if (!input.boardId || !input.taskId || !input.reviewDisposition || !input.note?.trim()) {
+        throw invalidInput(
+          'review_task requires boardId, taskId, reviewDisposition and a nonblank note explaining the assessment.',
+        );
+      }
+      const board = await recordTaskManagementReview(
+        projectRoot,
+        input.boardId,
+        input.taskId,
+        { disposition: input.reviewDisposition, reason: input.note },
+        eventContext,
+      );
+      if (!board) throw notFound('Task not found.');
+      return okBoard(board, 'Management review recorded for the current card version.');
+    }
     case 'workbench': {
       const workbench = await getKanbanWorkbench(projectRoot, {
         ...(input.limit !== undefined

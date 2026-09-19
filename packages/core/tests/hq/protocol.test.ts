@@ -946,3 +946,45 @@ describe('parseHqEventPayload', () => {
     expect(parseHqEventPayload('peer.lost', [1, 2, 3]).ok).toBe(false);
   });
 });
+
+describe('parseHqEventPayload mcp.health.snapshot', () => {
+  // The shape a publisher actually sends: HQ stamps projectId/clientId from the
+  // authenticated connection after validation, so the publisher never has them.
+  const server = {
+    name: 'filesystem',
+    connectionState: 'connected',
+    healthState: 'healthy',
+    lastSuccessAt: '2026-09-19T06:00:00.000Z',
+    consecutiveFailures: 0,
+    failures: { transport: 0, protocol: 0, tool: 0 },
+    reconnectCount: 0,
+    wakeCount: 0,
+    sleepCount: 0,
+    restartCount: 0,
+    connectionLatency: { count: 1, lastMs: 12 },
+    discoveryLatency: { count: 0 },
+    callLatency: { count: 0 },
+    inFlightCalls: 0,
+    peakInFlightCalls: 0,
+    recentEvents: [],
+    healthChecks: [],
+  };
+
+  it('accepts a server without the HQ-stamped projectId/clientId', () => {
+    expect(parseHqEventPayload('mcp.health.snapshot', { servers: [server] }).ok).toBe(true);
+    expect(
+      parseHqEventPayload('mcp.operation', { operation: { kind: 'call' }, servers: [server] }).ok,
+    ).toBe(true);
+  });
+
+  it('still rejects epoch-number timestamps and non-string ids', () => {
+    expect(
+      parseHqEventPayload('mcp.health.snapshot', {
+        servers: [{ ...server, lastSuccessAt: 1_758_261_600_000 }],
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseHqEventPayload('mcp.health.snapshot', { servers: [{ ...server, clientId: 7 }] }).ok,
+    ).toBe(false);
+  });
+});

@@ -129,11 +129,62 @@ case ":$PATH:" in
     ;;
 esac
 
-# Another wstack earlier on PATH (an old npm/pnpm/bun global) would keep
-# running instead of this one.
+# Globals left by the old npm distribution (wrongstack / @wrongstack/cli via
+# npm, pnpm, yarn or bun) carry their own `wstack` shim that keeps shadowing
+# this binary, so they get removed. A terminal is asked first (default yes);
+# a non-interactive run removes them without asking.
+pm_global_root() {
+  case "$1" in
+    npm) npm root -g 2>/dev/null ;;
+    pnpm) pnpm root -g 2>/dev/null ;;
+    yarn) d=$(yarn global dir 2>/dev/null) && [ -n "$d" ] && printf '%s/node_modules\n' "$d" ;;
+    bun) printf '%s/install/global/node_modules\n' "${BUN_INSTALL:-$HOME/.bun}" ;;
+  esac
+}
+old_installs=""
+for pm in npm pnpm yarn bun; do
+  command -v "$pm" >/dev/null 2>&1 || continue
+  root=$(pm_global_root "$pm" | head -n 1)
+  [ -n "$root" ] || continue
+  for pkg in wrongstack @wrongstack/cli; do
+    [ -f "$root/$pkg/package.json" ] && old_installs="$old_installs $pm:$pkg"
+  done
+done
+
+if [ -n "$old_installs" ]; then
+  printf '\nOld WrongStack installs from the npm era are still on this machine:\n'
+  for entry in $old_installs; do printf '  %s  (%s global)\n' "${entry#*:}" "${entry%%:*}"; done
+  printf 'They shadow the standalone binary, so they are coming off.\n'
+  answer=y
+  if [ -t 1 ] && (: </dev/tty) 2>/dev/null; then
+    printf 'Uninstall them now? [Y/n] '
+    read -r answer </dev/tty || answer=y
+  fi
+  case "$answer" in
+    [nN]*)
+      printf 'Kept. Until they are gone, `wstack` may keep running the old version.\n' >&2
+      ;;
+    *)
+      for entry in $old_installs; do
+        pkg=${entry#*:}
+        case "${entry%%:*}" in
+          npm) set -- npm uninstall -g "$pkg" ;;
+          pnpm) set -- pnpm remove -g "$pkg" ;;
+          yarn) set -- yarn global remove "$pkg" ;;
+          bun) set -- bun remove -g "$pkg" ;;
+        esac
+        printf 'Uninstalling: %s\n' "$*"
+        "$@" >/dev/null 2>&1 || printf 'Failed (stop any running wstack and retry): %s\n' "$*" >&2
+      done
+      hash -r 2>/dev/null || true
+      ;;
+  esac
+fi
+
+# Anything else earlier on PATH would still run instead of this one.
 found=$(command -v wstack 2>/dev/null || true)
 if [ -n "$found" ] && [ "$found" != "$INSTALL_DIR/wstack" ]; then
   printf '\nAnother wstack is earlier on your PATH and will run instead: %s\n' "$found" >&2
-  printf 'Remove it with whichever applies: npm uninstall -g wrongstack; pnpm remove -g wrongstack; bun remove -g wrongstack\n' >&2
+  printf 'Remove it, or put %s first on your PATH.\n' "$INSTALL_DIR" >&2
 fi
 printf '\nUpdate later with: wstack update\n'

@@ -1,13 +1,13 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   AllowAllIntakeAuthorizer,
+  type IntakeContext,
   RequirementIntakeService,
   RequirementIntakeStore,
-  type IntakeContext,
 } from '@wrongstack/requirement-intake';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRequirementIntakeMcpServer,
   createRequirementIntakeMcpToolHost,
@@ -226,6 +226,55 @@ describe('createRequirementIntakeMcpToolHost', () => {
     const result = await host.callTool('requirement_intake_list', {});
     expect(result.isError).toBe(true);
     expect(String(result.content)).toContain('project identity');
+  });
+
+  it('does not resolve identity or touch the service for a pre-cancelled call', async () => {
+    const resolveProjectId = vi.fn();
+    const listIntakes = vi.fn();
+    const controller = new AbortController();
+    controller.abort(new Error('already cancelled'));
+    const host = createRequirementIntakeMcpToolHost('C:/project', {
+      dependencies: {
+        service: { listIntakes } as unknown as RequirementIntakeService,
+        resolveProjectId,
+      },
+    });
+
+    await expect(
+      host.callTool('requirement_intake_list', {}, { signal: controller.signal }),
+    ).resolves.toEqual({ content: 'already cancelled', isError: true });
+    expect(resolveProjectId).not.toHaveBeenCalled();
+    expect(listIntakes).not.toHaveBeenCalled();
+  });
+
+  it('stops after asynchronous identity resolution when cancellation wins', async () => {
+    let releaseIdentity!: (projectId: string) => void;
+    const identity = new Promise<string>((resolve) => {
+      releaseIdentity = resolve;
+    });
+    const createIntake = vi.fn();
+    const controller = new AbortController();
+    const host = createRequirementIntakeMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: {
+        service: { createIntake } as unknown as RequirementIntakeService,
+        resolveProjectId: vi.fn(() => identity),
+      },
+    });
+
+    const pending = host.callTool(
+      'requirement_intake_submit',
+      { request: REQUEST_TEXT },
+      { signal: controller.signal },
+    );
+    controller.abort(new Error('cancelled during identity lookup'));
+    releaseIdentity('proj_alpha');
+
+    await expect(pending).resolves.toEqual({
+      content: 'cancelled during identity lookup',
+      isError: true,
+    });
+    expect(createIntake).not.toHaveBeenCalled();
   });
 });
 

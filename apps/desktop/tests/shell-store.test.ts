@@ -101,6 +101,44 @@ describe('shell store', () => {
     expect(store.getSnapshot().busy).toBe(false);
   });
 
+  it('holds the operation lock across runtime activation and session navigation', async () => {
+    let finish!: (value: DesktopStateSnapshot) => void;
+    const activateRuntime = vi.fn(
+      () =>
+        new Promise<DesktopStateSnapshot>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const navigateWebui = vi.fn(async () => true);
+    installBridge({ activateRuntime, navigateWebui });
+    const first = store.actions.focusSession('first', 'session-first', 'First');
+    expect(store.getSnapshot().busy).toBe(true);
+    await store.actions.focusSession('second', 'session-second', 'Second');
+    expect(activateRuntime).toHaveBeenCalledTimes(1);
+    expect(navigateWebui).not.toHaveBeenCalled();
+    finish(snapshot({ activeRuntimeId: 'first' }));
+    await first;
+    expect(navigateWebui).toHaveBeenCalledWith({ sessionId: 'session-first' });
+    expect(store.getSnapshot().busy).toBe(false);
+  });
+
+  it('releases the navigation lock after activation fails so another session can open', async () => {
+    const activateRuntime = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('runtime disconnected'))
+      .mockResolvedValue(snapshot({ activeRuntimeId: 'second' }));
+    const navigateWebui = vi.fn(async () => true);
+    installBridge({ activateRuntime, navigateWebui });
+    await store.actions.focusSession('first', 'session-first', 'First');
+    expect(store.getSnapshot().busy).toBe(false);
+    expect(store.getSnapshot().error).toBe('runtime disconnected');
+    expect(navigateWebui).not.toHaveBeenCalled();
+    await store.actions.focusSession('second', 'session-second', 'Second');
+    expect(store.getSnapshot().error).toBeNull();
+    expect(navigateWebui).toHaveBeenCalledWith({ sessionId: 'session-second' });
+    expect(store.getSnapshot().launcher?.state).toBe('success');
+  });
+
   it('reopens a stopped project only after its previous runtime is closed', async () => {
     const order: string[] = [];
     installBridge({

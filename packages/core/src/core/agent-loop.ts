@@ -239,10 +239,13 @@ export function createAgentLoopHandler(
     controller: RunController,
     autonomousContinue: boolean,
   ): Promise<RunResult> {
+    // A host may select another session while middleware/provider work awaits.
+    // Every write and recovery marker in this run belongs to its starting writer.
+    const sessionWriter = a.ctx.activeRunSessionWriter ?? a.ctx.session;
     a.ctx.meta['subagentsPolicyLocked'] = true;
     await a.pipelines.userInput.run(inputPayload);
     recordUserIntentEvidence(a.ctx, inputPayload.text);
-    await a.ctx.session.append({
+    await sessionWriter.append({
       type: 'user_input',
       ts: new Date().toISOString(),
       content: inputPayload.content,
@@ -255,10 +258,10 @@ export function createAgentLoopHandler(
     });
     const promptIndex = a.ctx.messages.filter((m) => m.role === 'user').length - 1;
     const preview = inputPayload.text.slice(0, 80) + (inputPayload.text.length > 80 ? '…' : '');
-    await a.ctx.session.writeCheckpoint(promptIndex, preview);
+    await sessionWriter.writeCheckpoint(promptIndex, preview);
     try {
       await a.ctx.flushConversationJournal();
-      await a.ctx.session.flush();
+      await sessionWriter.flush();
     } catch (err) {
       (a.logger.debug ?? a.logger.warn)?.(`session boundary flush failed: ${toErrorMessage(err)}`);
     }
@@ -359,7 +362,7 @@ export function createAgentLoopHandler(
         }
 
         try {
-          await a.ctx.session.writeInFlightMarker(`iteration ${i} / max ${a.maxIterations}`);
+          await sessionWriter.writeInFlightMarker(`iteration ${i} / max ${a.maxIterations}`);
         } catch (err) {
           (a.logger.debug ?? a.logger.warn)?.(
             `in-flight marker write failed: ${toErrorMessage(err)}`,
@@ -434,7 +437,7 @@ export function createAgentLoopHandler(
           provider: requestProvider,
           preFlight,
         } = await loopContext.buildRequestWithPreflightCompaction(opts);
-        await a.ctx.session
+        await sessionWriter
           .append({
             type: 'llm_request',
             ts: new Date().toISOString(),
@@ -722,8 +725,8 @@ export function createAgentLoopHandler(
       offSubagentDone();
       const reason: 'clean' | 'aborted' = controller.signal.aborted ? 'aborted' : 'clean';
       try {
-        await a.ctx.session.clearInFlightMarker(reason);
-        await a.ctx.session.flush();
+        await sessionWriter.clearInFlightMarker(reason);
+        await sessionWriter.flush();
       } catch (err) {
         (a.logger.debug ?? a.logger.warn)?.(
           `in-flight marker clear failed: ${toErrorMessage(err)}`,

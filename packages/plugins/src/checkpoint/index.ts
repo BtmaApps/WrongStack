@@ -134,7 +134,7 @@ async function resolveProjectPath(rawPath: string, cwd = process.cwd()): Promise
   const root = resolve(cwd);
   const resolved = isAbsolute(rawPath) ? resolve(rawPath) : resolve(root, rawPath);
   const rel = relative(root, resolved);
-  const lexicallyInside = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  const lexicallyInside = rel === '' || (rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel));
   if (!lexicallyInside) return null;
   // Lexically inside is not sufficient: checkpoints hold file CONTENT, so a
   // project-local symlink/junction whose real target escaped the project
@@ -172,7 +172,9 @@ async function realResolutionEscapes(absPath: string, root: string): Promise<boo
     }
   }
   const realRel = relative(root, real);
-  return realRel !== '' && realRel !== '.' && (realRel.startsWith('..') || isAbsolute(realRel));
+  return (
+    realRel !== '' && realRel !== '.' && (realRel.split(/[\\/]/)[0] === '..' || isAbsolute(realRel))
+  );
 }
 
 /** Async existence probe (stat-based) so hot paths never touch sync fs APIs. */

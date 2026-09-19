@@ -35,6 +35,7 @@ import { governanceProjectServerEndpoint } from '../../governance/src/ipc-endpoi
 import { GovernanceProjectServer } from '../../governance/src/project-server.js';
 import { GOVERNANCE_SERVICE_PROTOCOL_VERSION } from '../../governance/src/service-protocol.js';
 import { kanbanProjectServerEndpoint } from '../../kanban/src/server/endpoint.js';
+import { KANBAN_PROJECT_SERVER_PROTOCOL_VERSION } from '../../kanban/src/server/protocol.js';
 import {
   sageProjectServerEndpoint,
   sageProjectServerMetadataPath,
@@ -213,7 +214,7 @@ const CASES: HarnessCase[] = [
     endpoint: (root) => kanbanProjectServerEndpoint(root),
     metadataPath: (root) => path.join(root, '.wrongstack', 'kanban-server.json'),
     idleEnv: 'WRONGSTACK_KANBAN_SERVER_IDLE_MS',
-    expectedProtocolVersion: 6,
+    expectedProtocolVersion: KANBAN_PROJECT_SERVER_PROTOCOL_VERSION,
     hasHello: true,
     supportsIdle: false, // every stop path calls process.exit(0)
     supportsShutdown: false,

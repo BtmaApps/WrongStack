@@ -76,7 +76,7 @@ export class Connection {
     signal: AbortSignal,
   ): Promise<R> {
     this.assertOpen();
-    const id = this.nextId++;
+    const id = this.allocateRequestId();
     const request: JsonRpcMessage = { jsonrpc: '2.0', id, method, params };
     const response = new Promise<R>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
@@ -86,7 +86,7 @@ export class Connection {
       return await promiseWithTimeout(response, timeoutMs, signal);
     } catch (err) {
       this.pending.delete(id);
-      if (signal.aborted) {
+      if (signal.aborted || (err instanceof LSPError && err.code === LSPErrorCode.RequestTimeout)) {
         try {
           this.sendNotification('$/cancelRequest', { id });
         } catch {
@@ -276,6 +276,20 @@ export class Connection {
 
   private assertOpen(): void {
     if (this.closed) throw new LSPError(LSPErrorCode.ProtocolError, 'LSP connection is closed');
+  }
+
+  private allocateRequestId(): number {
+    // JSON numbers cannot distinguish integers beyond MAX_SAFE_INTEGER. Wrap
+    // before that boundary and skip any IDs still owned by in-flight calls.
+    // At most pending.size + 1 probes are needed because there is always one
+    // more candidate than occupied IDs in that prefix of the ID space.
+    for (let attempts = 0; attempts <= this.pending.size; attempts++) {
+      const id = Number.isSafeInteger(this.nextId) && this.nextId > 0 ? this.nextId : 1;
+      this.nextId = id === Number.MAX_SAFE_INTEGER ? 1 : id + 1;
+      if (!this.pending.has(id)) return id;
+    }
+    /* v8 ignore next -- exhausting the safe-integer ID space is not operationally reachable. */
+    throw new LSPError(LSPErrorCode.ProtocolError, 'No LSP request IDs available');
   }
 
   private failAll(err: unknown): void {

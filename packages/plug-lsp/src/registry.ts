@@ -36,6 +36,11 @@ export class LSPRegistry {
   }
 
   async bind(cwd: string, autoStart: AutoStartMode = this.cfg.autoStart): Promise<void> {
+    // Rebinding replaces every mounted LSPServer instance. Stop their child
+    // processes first; clearing the maps alone would orphan those processes
+    // and leave their stdout/stderr listeners alive for the rest of the host.
+    if (this.servers.size > 0 || this.reconnectTimers.size > 0) await this.shutdown();
+    this.reconnectAttempts.clear();
     this.cwd = cwd;
     this.autoStart = autoStart;
     this.rebuildServers();

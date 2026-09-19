@@ -8,6 +8,7 @@ import {
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
 import { recordKanbanVerificationEvidence } from './kanban-evidence-bridge.js';
+import { managementEventFence } from './kanban-management-guard.js';
 import { conflict, invalidInput, notFound, okTask } from './kanban-tool-results.js';
 import type { KanbanToolInput, KanbanToolOutput } from './kanban-tool-types.js';
 
@@ -17,6 +18,7 @@ export async function handleKanbanDecompositionAction(
   ctx: Context,
 ): Promise<KanbanToolOutput | undefined> {
   const eventContext = {
+    ...managementEventFence(ctx),
     sessionId: ctx.eventSessionId?.() ?? ctx.session?.id ?? 'default-session',
     ...(ctx.agentId !== undefined ? { actor: ctx.agentId } : {}),
   };

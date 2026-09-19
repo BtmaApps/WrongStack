@@ -109,6 +109,23 @@ async function startSession(
 }
 
 describe('ACPSession — focused coverage', () => {
+  it('wraps request ids without reusing an id that is still pending', async () => {
+    const session = await startSession();
+    const internals = session as unknown as {
+      nextId: number;
+      pending: Map<number | string, unknown>;
+      allocId: () => number;
+    };
+    internals.pending.set(1, {});
+    internals.nextId = Number.MAX_SAFE_INTEGER;
+
+    expect(internals.allocId()).toBe(Number.MAX_SAFE_INTEGER);
+    expect(internals.allocId()).toBe(2);
+
+    internals.pending.delete(1);
+    await session.close();
+  });
+
   it('authenticate rejects an unadvertised method (auth_failed message lists methods)', async () => {
     // No auth methods are advertised, so any authenticate call must fail
     // with the advertised-list message (acp-session.ts:332-336).

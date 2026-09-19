@@ -158,7 +158,7 @@ export const patchTool: Tool<PatchInput, PatchOutput> = {
         return refuse(`patch refused: target "${t.raw}" ${toErrorMessage(err)}`);
       }
       const rel = path.relative(realRoot, real);
-      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
         return refuse(`patch refused: target "${t.raw}" resolves outside project root`);
       }
       resolvedTargets.push({ raw: t.raw, deleted: t.deleted, abs: real });

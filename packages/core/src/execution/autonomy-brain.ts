@@ -29,8 +29,10 @@ import {
 } from '../coordination/brain.js';
 import {
   type BrainHeuristicsConfig,
-  COMPETING_ALTERNATIVE,
   isBlockedResolved,
+  isContinuePing,
+  isDeadlockWithFailedWork,
+  isRetryExhausted,
   resolveBrainHeuristics,
 } from '../coordination/brain-heuristics.js';
 import { markDecisionTier } from '../coordination/brain-telemetry.js';
@@ -445,11 +447,7 @@ export function quickDecide(
   const q = request.question.toLowerCase();
   const ctx = request.context?.toLowerCase() ?? '';
 
-  if (
-    h.deadlockSkip &&
-    q.includes('deadlock') &&
-    /\bfailed\s+(?:task|step|job|build|test|phase|stage|item|unit)s?\b/.test(ctx)
-  ) {
+  if (h.deadlockSkip && isDeadlockWithFailedWork(q, ctx)) {
     return {
       type: 'answer',
       text: 'Skip deadlocked tasks and continue with remaining work. Failed tasks will be reported in the final summary.',
@@ -458,13 +456,7 @@ export function quickDecide(
     };
   }
 
-  if (
-    h.retryExhausted &&
-    (q.includes('failed') || q.includes('retry')) &&
-    (/\bexhausted\b/.test(ctx) ||
-      /\b(?:[3-9]|\d{2,})\s+(?:consecutive\s+)?(?:times|attempts|retries|failures)\b/.test(ctx) ||
-      /\b(?:attempt|retr(?:y|ies)|failure)s?\W{0,3}(?:[3-9]|\d{2,})\b/.test(ctx))
-  ) {
+  if (h.retryExhausted && isRetryExhausted(q, ctx)) {
     return {
       type: 'answer',
       text: 'Mark as failed and move on. Note the failure for the final report.',
@@ -488,13 +480,7 @@ export function quickDecide(
     return null;
   }
 
-  if (
-    h.continuePing &&
-    request.fallback === 'continue' &&
-    /\b(?:continue|proceed)\b/.test(q) &&
-    !/\b(?:stop|abort|halt|cancel|pause|rollback)\b/.test(q) &&
-    !COMPETING_ALTERNATIVE.test(q)
-  ) {
+  if (h.continuePing && request.fallback === 'continue' && isContinuePing(q)) {
     return {
       type: 'answer',
       text: 'Continue execution. Do not stop.',

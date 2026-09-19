@@ -22,6 +22,42 @@ const baseRequest = {
 };
 
 describe('startBrainTelemetryBridge', () => {
+  it('keeps multiplexed decisions and council resolutions on their originating session', () => {
+    const events = new EventBus();
+    const spy = vi.fn();
+    const stop = startBrainTelemetryBridge({
+      events,
+      publisher: fakePublisher(spy),
+      sessionId: 'host',
+    });
+    events.emit('brain.decision_requested', { sessionId: 'tab-a', request: baseRequest, at: 1 });
+    events.emit('brain.decision_answered', {
+      request: { ...baseRequest, sessionId: 'tab-b' },
+      decision: { type: 'answer', text: 'yes' },
+      at: 2,
+    });
+    events.emit('brain.human_answered', { sessionId: 'tab-c', id: 'r', text: 'yes', at: 3 });
+    events.emit('brain.council_resolved', {
+      sessionId: 'tab-d',
+      requestId: 'r',
+      status: 'decided',
+      resolution: 'majority',
+      configuredSeatCount: 2,
+      validVoteCount: 2,
+      distinctTargetCount: 2,
+      judgeUsed: false,
+      usage: { calls: 2, inputTokens: 1, outputTokens: 1, totalTokens: 2, durationMs: 1 },
+      at: 4,
+    });
+    expect(spy.mock.calls.map(([event]) => event.sessionId)).toEqual([
+      'tab-a',
+      'tab-b',
+      'tab-c',
+      'tab-d',
+    ]);
+    stop();
+  });
+
   it('forwards brain.decision_requested', () => {
     const events = new EventBus();
     const spy = vi.fn();

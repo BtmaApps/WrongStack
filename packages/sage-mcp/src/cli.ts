@@ -98,30 +98,57 @@ export function parseArgs(
     writable: false,
     help: false,
   };
+  const warn = (event: string, message: string): void => {
+    console.warn(
+      JSON.stringify({ level: 'warn', event, message, timestamp: new Date().toISOString() }),
+    );
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
+    const value = (): string | undefined => {
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith('-')) {
+        warn('mcp_cli_flag_missing_value', `${arg} expects a value; ignoring it.`);
+        return undefined;
+      }
+      i++;
+      return next;
+    };
     switch (arg) {
-      case '--project-root':
-        out.projectRoot = path.resolve(argv[++i] ?? '');
+      case '--project-root': {
+        const next = value();
+        if (next !== undefined) out.projectRoot = path.resolve(next);
         break;
-      case '--storage-dir':
-        out.storageDirectory = path.resolve(argv[++i] ?? '');
+      }
+      case '--storage-dir': {
+        const next = value();
+        if (next !== undefined) out.storageDirectory = path.resolve(next);
         break;
+      }
       case '--stdio':
         out.transport = 'stdio';
         break;
       case '--http':
         out.transport = 'http';
         break;
-      case '--port':
-        out.httpPort = Number(argv[++i] ?? '') || 0;
+      case '--port': {
+        const next = value();
+        if (next === undefined) break;
+        const port = Number(next);
+        if (Number.isInteger(port) && port >= 0 && port <= 65_535) out.httpPort = port;
+        else warn('mcp_cli_invalid_port', `--port ${next} is not a valid port; using 0.`);
         break;
-      case '--host':
-        out.httpHost = argv[++i] ?? '127.0.0.1';
+      }
+      case '--host': {
+        const next = value();
+        if (next !== undefined) out.httpHost = next;
         break;
-      case '--token':
-        out.httpToken = argv[++i];
+      }
+      case '--token': {
+        const next = value();
+        if (next !== undefined) out.httpToken = next;
         break;
+      }
       case '--writable':
         out.writable = true;
         break;
@@ -130,7 +157,7 @@ export function parseArgs(
         out.help = true;
         break;
       default:
-        // ignore unknown flags (forward-compat)
+        if (arg?.startsWith('-')) warn('mcp_cli_unknown_option', `unknown option ${arg} ignored.`);
         break;
     }
   }
@@ -148,8 +175,8 @@ export function parseArgs(
   return out;
 }
 
-async function main(): Promise<number> {
-  const args = parseArgs(process.argv.slice(2));
+export async function main(argv = process.argv.slice(2)): Promise<number> {
+  const args = parseArgs(argv);
   if (args.help) {
     printHelp(process.stdout);
     return 0;
@@ -172,6 +199,7 @@ async function main(): Promise<number> {
   try {
     await port.initialize();
   } catch (error) {
+    await port.dispose().catch(() => undefined);
     process.stderr.write(
       `${SERVER_INFO.name}: cannot attach to SAGE project server for ${projectRoot}: ` +
         (error instanceof Error ? error.message : String(error)) +

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { RequirementIntakeRecord } from '@wrongstack/requirement-intake';
+import { describe, expect, it, vi } from 'vitest';
 import { intakeToInterviewKickoff, startInterviewFromIntake } from '../src/intake-kickoff.js';
 import type { SddInterviewDriver } from '../src/sdd-interview-driver.js';
 
@@ -106,6 +106,7 @@ describe('startInterviewFromIntake', () => {
     expect(start).toHaveBeenCalledWith(
       'Add email-based password reset',
       'Please add email-based password reset so users can recover access.',
+      expect.stringContaining('Business goal: Reduce password reset support tickets'),
     );
     expect(prompt).toBe('first question prompt');
   });

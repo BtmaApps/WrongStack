@@ -817,7 +817,17 @@ export class ACPSession {
   // ────────────────────────────────────────────────────────────────────
 
   private allocId(): number {
-    return this.nextId++;
+    let candidate = Number.isSafeInteger(this.nextId) && this.nextId >= 1 ? this.nextId : 1;
+    // Probe at most pending.size + 1 distinct ids: among that many candidates
+    // at least one cannot be occupied by the current pending set. This keeps
+    // ids precise after MAX_SAFE_INTEGER and avoids overwriting a long-running
+    // request that still owns a low id after rollover.
+    for (let probe = 0; probe <= this.pending.size; probe++) {
+      this.nextId = candidate >= Number.MAX_SAFE_INTEGER ? 1 : candidate + 1;
+      if (!this.pending.has(candidate)) return candidate;
+      candidate = this.nextId;
+    }
+    throw new ACPSessionError('protocol_error', 'no JSON-RPC request id is available');
   }
 
   private async sendRequest(

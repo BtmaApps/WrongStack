@@ -99,7 +99,9 @@ export function parseRenameCommand(command: string): { from: string; to: string 
   const c = command.replace(/\s+/g, ' ').trim();
   const token = '(?:"([^"]+)"|\'([^\']+)\'|([^\\s]+))';
   // git mv [-flags] <from> <to>
-  let m = new RegExp(`(?:^|\\s)git\\s+mv\\s+(?:-[^\\s]+\\s+)*${token}\\s+${token}\\s*$`, 'i').exec(c);
+  let m = new RegExp(`(?:^|\\s)git\\s+mv\\s+(?:-[^\\s]+\\s+)*${token}\\s+${token}\\s*$`, 'i').exec(
+    c,
+  );
   if (m) {
     const from = m[1] ?? m[2] ?? m[3];
     const to = m[4] ?? m[5] ?? m[6];
@@ -113,7 +115,9 @@ export function parseRenameCommand(command: string): { from: string; to: string 
     if (from && to) return { from, to };
   }
   // PowerShell Move-Item
-  m = new RegExp(`Move-Item\\s+(?:-Path\\s+)?${token}\\s+(?:-Destination\\s+)?${token}`, 'i').exec(c);
+  m = new RegExp(`Move-Item\\s+(?:-Path\\s+)?${token}\\s+(?:-Destination\\s+)?${token}`, 'i').exec(
+    c,
+  );
   if (m) {
     const from = m[1] ?? m[2] ?? m[3];
     const to = m[4] ?? m[5] ?? m[6];
@@ -161,7 +165,8 @@ export function readIdentifierAt(
 export function toProjectRelative(projectRoot: string, cwd: string, inputPath: string): string {
   const abs = path.isAbsolute(inputPath) ? path.resolve(inputPath) : path.resolve(cwd, inputPath);
   const rel = path.relative(projectRoot, abs);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return normalizeRelPath(inputPath);
+  if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    return normalizeRelPath(inputPath);
+  }
   return normalizeRelPath(rel || '.');
 }
-

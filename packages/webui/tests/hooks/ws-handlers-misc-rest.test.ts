@@ -354,6 +354,87 @@ describe('misc ws-handlers — brain / memory / collab / git / cron', () => {
         useCouncilLogStore.getState().clear();
       });
 
+      it('uses the actual tallied ballots in the chat card after a failed later round', () => {
+        handleBrainEvent(
+          msg('brain.event', {
+            event: 'brain.council_vote',
+            requestId: 'round-fallback',
+            seatId: 'a',
+            persona: 'executor',
+            round: 2,
+            status: 'failed',
+            at: 1500,
+          }),
+        );
+        handleBrainEvent(
+          msg('brain.event', {
+            event: 'brain.council_resolved',
+            requestId: 'round-fallback',
+            rounds: 2,
+            status: 'decided',
+            resolution: 'majority',
+            validVoteCount: 1,
+            at: 2000,
+            votes: [
+              {
+                seatId: 'a',
+                persona: 'executor',
+                round: 1,
+                status: 'valid',
+                optionId: 'merge',
+                at: 1000,
+              },
+            ],
+            warnings: ['Council retained round 1 because later rounds produced no valid ballots.'],
+          }),
+        );
+        expect(useChatStore.getState().messages.at(-1)?.councilDecision?.seats).toMatchObject([
+          { seatId: 'a', round: 1, status: 'valid', optionId: 'merge' },
+        ]);
+        expect(lastChat()?.content).toContain('Council retained round 1');
+      });
+
+      it('preserves judge identity and deliberation evidence in the transcript card', () => {
+        handleBrainEvent(
+          msg('brain.event', {
+            event: 'brain.council_resolved',
+            requestId: 'deliberated',
+            at: 2000,
+            status: 'decided',
+            resolution: 'judge',
+            judgeUsed: true,
+            judgeLabel: 'account-alias/judge-model',
+            judgeIsVoter: true,
+            rounds: 3,
+            deliberationChanges: 2,
+          }),
+        );
+        expect(useChatStore.getState().messages.at(-1)?.councilDecision).toMatchObject({
+          phase: 'resolved',
+          resolvedAt: 2000,
+          judgeModel: 'account-alias/judge-model',
+          judgeIsVoter: true,
+          rounds: 3,
+          deliberationChanges: 2,
+        });
+      });
+
+      it('adds the verdict and warning only once when the resolution is replayed', () => {
+        const frame = msg('brain.event', {
+          event: 'brain.council_resolved',
+          requestId: 'replayed-resolution',
+          at: 2000,
+          status: 'decided',
+          resolution: 'majority',
+          warnings: ['Correlated voters'],
+        });
+        handleBrainEvent(frame);
+        const count = useChatStore.getState().messages.length;
+        handleBrainEvent(frame);
+        expect(useChatStore.getState().messages).toHaveLength(count);
+        expect(toast.warn).toHaveBeenCalledTimes(1);
+      });
+
       it('assembles a panel from seat votes and its resolution', () => {
         handleBrainEvent(
           msg('brain.event', {

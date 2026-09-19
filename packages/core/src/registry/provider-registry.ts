@@ -23,8 +23,14 @@ export interface ProviderFactory {
   create(cfg: ProviderConfig): Provider;
 }
 
+interface ProviderRegistration {
+  factory: ProviderFactory;
+  previous?: ProviderRegistration | undefined;
+  removed?: boolean;
+}
+
 export class ProviderRegistry {
-  private readonly factories = new Map<string, ProviderFactory>();
+  private readonly factories = new Map<string, ProviderRegistration>();
 
   /**
    * Register a provider factory. If a factory with the same type already
@@ -32,7 +38,27 @@ export class ProviderRegistry {
    * runtime overrides (e.g. from plugins or CLI flags).
    */
   register(f: ProviderFactory): void {
-    this.factories.set(f.type, f);
+    this.factories.set(f.type, { factory: f });
+  }
+
+  /**
+   * Temporarily replace a factory until the returned cleanup is called.
+   * Nested scopes may close in any order. Independent register/override/remove
+   * operations supersede the scope and are never undone by its cleanup.
+   */
+  registerScoped(f: ProviderFactory): () => void {
+    const type = f.type;
+    const entry: ProviderRegistration = { factory: f, previous: this.factories.get(type) };
+    this.factories.set(type, entry);
+    return () => {
+      if (entry.removed) return;
+      entry.removed = true;
+      if (this.factories.get(type) !== entry) return;
+      let previous = entry.previous;
+      while (previous?.removed) previous = previous.previous;
+      if (previous) this.factories.set(type, previous);
+      else this.factories.delete(type);
+    };
   }
 
   /**
@@ -51,7 +77,7 @@ export class ProviderRegistry {
     if (!this.factories.has(type)) {
       throw new Error(`Provider type "${type}" not registered; cannot override`);
     }
-    this.factories.set(type, f);
+    this.factories.set(type, { factory: f });
   }
 
   has(type: string): boolean {
@@ -73,7 +99,7 @@ export class ProviderRegistry {
         `Provider type "${factoryType}" not registered. Available: ${Array.from(this.factories.keys()).join(', ')}`,
       );
     }
-    return f.create(cfg);
+    return f.factory.create(cfg);
   }
 
   list(): string[] {

@@ -226,7 +226,9 @@ export function resolveTriggerPaths(
     if (/[*?{}[\]]/.test(value)) continue;
     const absolute = path.isAbsolute(value) ? path.resolve(value) : path.resolve(base, value);
     const relative = path.relative(root, absolute);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      continue;
+    }
     result.push(absolute);
   }
   return [...new Set(result)];

@@ -39,6 +39,10 @@ function bindDomainOperation<K extends KanbanDomainOperation>(operation: K): Dom
 }
 
 export const createBoard = bindDomainOperation('createBoard');
+export const claimBoardManagement = bindDomainOperation('claimBoardManagement');
+export const recordTaskManagementReview = bindDomainOperation('recordTaskManagementReview');
+export const renewBoardManagement = bindDomainOperation('renewBoardManagement');
+export const finishBoardManagement = bindDomainOperation('finishBoardManagement');
 export const listBoards = bindDomainOperation('listBoards');
 export const getBoard = bindDomainOperation('getBoard');
 export const updateBoard = bindDomainOperation('updateBoard');

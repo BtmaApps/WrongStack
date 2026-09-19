@@ -160,7 +160,11 @@ export function parseWebuiSessionChildOptions(
   const projectRoot = requireAbsolutePath(flagValue(flags, ['project-root']), '--project-root');
   const workingDir = requireAbsolutePath(flagValue(flags, ['working-dir']), '--working-dir');
   const relativeWorkingDir = path.relative(projectRoot, workingDir);
-  if (relativeWorkingDir.startsWith('..') || path.isAbsolute(relativeWorkingDir)) {
+  if (
+    relativeWorkingDir === '..' ||
+    relativeWorkingDir.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeWorkingDir)
+  ) {
     throw new Error('--working-dir must be inside --project-root');
   }
   const sessionId = flagValue(flags, ['session-id']);

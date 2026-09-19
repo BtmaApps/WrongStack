@@ -750,7 +750,7 @@ export type WSClientMessageCore =
   // for) whichever session the runtime last touched.
   | { type: 'brain.status'; payload?: SessionScopedPayload }
   | { type: 'brain.risk'; payload: { level: string } & SessionScopedPayload }
-  | { type: 'brain.ask'; payload: { question: string } & SessionScopedPayload }
+  | { type: 'brain.ask'; payload: { question: string; requestId?: string } & SessionScopedPayload }
   | { type: 'brain.config.get' }
   | { type: 'brain.config.set'; payload: { patch: BrainConfigPatchWire } & SessionScopedPayload }
   | {

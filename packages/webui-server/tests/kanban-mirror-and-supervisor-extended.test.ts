@@ -2,6 +2,9 @@ import type { KanbanBoard } from '@wrongstack/kanban';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@wrongstack/kanban', () => ({
+  claimBoardManagement: vi.fn(async () => true),
+  renewBoardManagement: vi.fn(async () => true),
+  finishBoardManagement: vi.fn(async () => true),
   createBoard: vi.fn(async (_root, opts) => ({
     id: 'mock-board-1',
     title: opts.title,

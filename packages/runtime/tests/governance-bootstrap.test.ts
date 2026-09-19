@@ -274,6 +274,55 @@ describe('runtime governance bootstrap adapter', () => {
     ).resolves.toMatchObject({ recorded: false, code: 'closed' });
   });
 
+  it.each(['attached', 'launched'] as const)(
+    'drains accepted workspace snapshots before closing a %s runtime',
+    async (source) => {
+      const fake = governedRuntime(source);
+      const response = await fake.recordWorkspaceSnapshot('a'.repeat(64));
+      fake.recordWorkspaceSnapshot.mockClear();
+      const gate = Promise.withResolvers<typeof response>();
+      fake.recordWorkspaceSnapshot.mockReturnValueOnce(gate.promise);
+      const prepared = await bootstrapGovernanceRuntimeWithFactory(options, async () => ({
+        mode: 'governed',
+        runtime: fake.runtime as never,
+      }));
+      if (prepared.mode !== 'governed') throw new Error(prepared.message);
+      const snapshot = prepared.handle.recordWorkspaceSnapshot('a'.repeat(64));
+      const closing = prepared.handle.close();
+      try {
+        await prepared.handle.recordWorkspaceSnapshot('b'.repeat(64)).then((result) => {
+          expect(result).toMatchObject({ recorded: false, code: 'closed' });
+        });
+        expect(fake.close).not.toHaveBeenCalled();
+        expect(fake.shutdownDaemon).not.toHaveBeenCalled();
+        expect(fake.recordWorkspaceSnapshot).toHaveBeenCalledTimes(1);
+      } finally {
+        gate.resolve(response);
+        await closing;
+      }
+      await expect(snapshot).resolves.toMatchObject({ recorded: true });
+      expect(source === 'attached' ? fake.close : fake.shutdownDaemon).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('allows retrying a failed detach while keeping runtime writes closed', async () => {
+    const fake = governedRuntime('attached');
+    fake.close.mockRejectedValueOnce(new Error('temporary disconnect'));
+    const prepared = await bootstrapGovernanceRuntimeWithFactory(options, async () => ({
+      mode: 'governed',
+      runtime: fake.runtime as never,
+    }));
+    if (prepared.mode !== 'governed') throw new Error(prepared.message);
+    await expect(prepared.handle.close()).resolves.toMatchObject({ ok: false });
+    await expect(prepared.handle.recordWorkspaceSnapshot('a'.repeat(64))).resolves.toMatchObject({
+      recorded: false,
+      code: 'closed',
+    });
+    await expect(prepared.handle.close()).resolves.toMatchObject({ ok: true });
+    await prepared.handle.close();
+    expect(fake.close).toHaveBeenCalledTimes(2);
+  });
+
   it('bounds the fail-open observation queue while the daemon is slow', async () => {
     const fake = governedRuntime('attached');
     const releases: Array<() => void> = [];

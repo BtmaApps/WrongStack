@@ -187,7 +187,12 @@ export class PhaseStore {
     const dir = path.resolve(this.baseDir);
     const resolved = path.resolve(dir, `${graphId}.json`);
     const rel = path.relative(dir, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel) || rel.includes(path.sep)) {
+    if (
+      rel === '..' ||
+      rel.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(rel) ||
+      rel.includes(path.sep)
+    ) {
       throw new Error(`Invalid phase-graph id: ${JSON.stringify(graphId)}`);
     }
     return resolved;

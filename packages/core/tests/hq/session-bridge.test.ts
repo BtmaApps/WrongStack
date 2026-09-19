@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   HqSessionEndedPayload,
   HqSessionSnapshotPayload,
@@ -381,9 +381,9 @@ describe('session telemetry bridge', () => {
       transcriptIntervalMs: 15,
     });
 
-    await tick(50);
-    const before = calls.transcripts.flatMap((t) => t.entries).length;
-    expect(before).toBeGreaterThanOrEqual(1);
+    await vi.waitFor(() => {
+      expect(calls.transcripts.flatMap((t) => t.entries).length).toBeGreaterThanOrEqual(1);
+    });
 
     // Append a new turn to the live log.
     const paths = resolveWstackPaths({ projectRoot, globalRoot });
@@ -394,9 +394,10 @@ describe('session telemetry bridge', () => {
       'utf8',
     );
 
-    await tick(60);
-    const entries = calls.transcripts.flatMap((t) => t.entries);
-    expect(entries.map((e) => e.text)).toContain('second');
+    await vi.waitFor(() => {
+      const entries = calls.transcripts.flatMap((t) => t.entries);
+      expect(entries.map((e) => e.text)).toContain('second');
+    });
 
     dispose();
   });

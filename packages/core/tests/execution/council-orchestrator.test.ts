@@ -91,6 +91,55 @@ describe('CouncilOrchestrator', () => {
   beforeEach(() => vi.useRealTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('settles cancellation even when a caller ignores the signal forever', async () => {
+    const controller = new AbortController();
+    const caller: CouncilLLMCaller = { call: vi.fn(() => new Promise<OneShotLLMResult>(() => {})) };
+    const orchestrator = new CouncilOrchestrator({ caller });
+    const pending = orchestrator.ask({ ...QUESTION, signal: controller.signal });
+    controller.abort();
+    const result = await pending;
+    expect(result.status).toBe('cancelled');
+    expect(result.votes.every((vote) => vote.status === 'cancelled')).toBe(true);
+  }, 1_000);
+
+  it('enforces per-call budgets even when the caller never settles', async () => {
+    const caller: CouncilLLMCaller = { call: vi.fn(() => new Promise<OneShotLLMResult>(() => {})) };
+    const orchestrator = new CouncilOrchestrator({ caller });
+    const result = await orchestrator.ask({
+      ...QUESTION,
+      profile: {
+        ...DEFAULT_COUNCIL_PROFILE_REGISTRY.require('balanced'),
+        deliberationRounds: 1,
+        perCallTimeoutMs: 10,
+        overallTimeoutMs: 100,
+      },
+    });
+    expect(result.status).not.toBe('decided');
+    expect(result.votes.every((vote) => vote.status === 'failed')).toBe(true);
+    expect(result.votes.every((vote) => vote.error?.includes('call timeout'))).toBe(true);
+    expect(result.usage.calls).toBe(3);
+  }, 1_000);
+
+  it('preserves all rounds for divergent open stances without a judge', async () => {
+    const { orchestrator } = makeOrchestrator({
+      voterResponses: new Map([
+        ['executor', '{"stance":"Ship"}'],
+        ['skeptic', '{"stance":"Wait"}'],
+        ['auditor', '{"stance":"Ship"}'],
+      ]),
+    });
+    const result = await orchestrator.ask({
+      question: 'What next?',
+      profile: {
+        ...DEFAULT_COUNCIL_PROFILE_REGISTRY.require('balanced'),
+        judge: false,
+      },
+    });
+    expect(result.status).toBe('abstained');
+    expect(result.roundVotes).toHaveLength(2);
+    expect(result.rounds).toBe(2);
+  });
+
   it('returns a decided result when the weighted majority exceeds the approval threshold', async () => {
     const profile = DEFAULT_COUNCIL_PROFILE_REGISTRY.require('balanced');
     const { orchestrator, log } = makeOrchestrator({
@@ -946,7 +995,7 @@ describe('CouncilOrchestrator — status + usage consistency', () => {
       distinctness: 'model' as const,
       voterMaxTokens: 300,
       judgeMaxTokens: 500,
-      perCallTimeoutMs: 50,
+      perCallTimeoutMs: 100,
       overallTimeoutMs: 100,
     } satisfies CouncilProfileConfig;
     const result = await orchestrator.ask({ ...QUESTION, profile });
@@ -974,7 +1023,7 @@ describe('CouncilOrchestrator — status + usage consistency', () => {
       distinctness: 'model' as const,
       voterMaxTokens: 300,
       judgeMaxTokens: 500,
-      perCallTimeoutMs: 50,
+      perCallTimeoutMs: 100,
       overallTimeoutMs: 100,
     } satisfies import('../../src/types/council.js').CouncilProfileConfig;
     // Voters tie (merge vs hold) so the judge is required; the judge is
@@ -1006,10 +1055,9 @@ describe('CouncilOrchestrator — status + usage consistency', () => {
     expect(result.judgeUsed).toBe(true);
   }, 3_000);
 
-  it('appends the standalone timeout error when no seat error carries it', async () => {
-    // A signal-blind caller resolves valid votes even after the overall
-    // budget expired: every seat looks fine, so the timeout must surface
-    // through the standalone errors entry (deduped — exactly once).
+  it('rejects late ballots from signal-blind callers after the overall timeout', async () => {
+    // A caller may keep running after cancellation, but its late ballots
+    // must never become valid votes or mutate the returned usage.
     const signalBlind: CouncilLLMCaller = {
       async call(input: OneShotLLMInput): Promise<OneShotLLMResult> {
         await new Promise((resolve) => setTimeout(resolve, 120));
@@ -1030,21 +1078,21 @@ describe('CouncilOrchestrator — status + usage consistency', () => {
       distinctness: 'model' as const,
       voterMaxTokens: 300,
       judgeMaxTokens: 500,
-      // Per-call budget < overall so the invariant holds; the signal-blind
-      // caller ignores the per-call timeout and only the overall (100ms) can
-      // fire while the calls are in flight.
-      perCallTimeoutMs: 50,
+      // Equal budgets exercise overall expiry before the per-call timers.
+      perCallTimeoutMs: 100,
       overallTimeoutMs: 100,
     } satisfies import('../../src/types/council.js').CouncilProfileConfig;
     const orchestrator = new CouncilOrchestrator({ caller: signalBlind, maxConcurrency: 2 });
     const result = await orchestrator.ask({ ...QUESTION, profile });
 
     expect(result.status).toBe('failed');
-    // Both seats started before the budget expired and resolved valid after
-    // it — no seat error carries the timeout text, so the standalone entry is
-    // appended exactly once.
-    expect(result.votes.every((vote) => vote.status === 'valid')).toBe(true);
-    expect(result.errors).toEqual(['Council overall timeout exceeded.']);
+    expect(result.votes.every((vote) => vote.status === 'failed')).toBe(true);
+    expect(
+      result.errors?.every((error) => error.includes('Council overall timeout exceeded.')),
+    ).toBe(true);
+    const usage = { ...result.usage };
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(result.usage).toEqual(usage);
   }, 3_000);
 
   it('marks votes cancelled when the caller signal aborts mid-run', async () => {
@@ -1372,5 +1420,37 @@ describe('CouncilOrchestrator — deliberation rounds', () => {
     expect(result.status).toBe('decided');
     expect(result.optionId).toBe('merge');
     expect(result.roundVotes).toHaveLength(2);
+  });
+
+  it('short-circuits deliberation rounds early when a veto seat casts a refusal', async () => {
+    let callCount = 0;
+    const caller: CouncilLLMCaller = {
+      async call(): Promise<OneShotLLMResult> {
+        callCount += 1;
+        return {
+          model: 'm',
+          provider: 'p',
+          tokens: { input: 1, output: 1, total: 2 },
+          durationMs: 1,
+          fromFallback: false,
+          text: '{"optionId":"council_refuse"}',
+        };
+      },
+    };
+    const orchestrator = new CouncilOrchestrator({ caller, maxConcurrency: 1 });
+    const result = await orchestrator.ask({
+      ...QUESTION,
+      profile: threeSeats({
+        seats: [{ id: 'skeptic', persona: 'skeptic', veto: true }],
+        deliberationRounds: 3,
+      }),
+    });
+
+    // Even though 3 rounds were configured, it should stop at round 1 because veto cannot be overturned.
+    expect(result.status).toBe('denied');
+    expect(result.resolution).toBe('veto');
+    expect(result.rounds).toBe(1);
+    expect(result.roundVotes).toHaveLength(1);
+    expect(callCount).toBe(1);
   });
 });

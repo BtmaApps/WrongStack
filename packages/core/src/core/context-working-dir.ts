@@ -13,7 +13,8 @@ export function resolveAndValidateWorkingDir(
   if (!allowOutsideProjectRoot) {
     const root = path.resolve(projectRoot);
     const rel = path.relative(root, resolved);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    // Canonical escape test: `..hidden` is a legal in-root first segment.
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
       throw new Error(`Working directory "${resolved}" is outside project root "${root}"`);
     }
 
@@ -26,7 +27,7 @@ export function resolveAndValidateWorkingDir(
       /* unresolvable — fall back to the lexically-validated pair */
     }
     const realRel = path.relative(realRoot, realTarget);
-    if (realRel.startsWith('..') || path.isAbsolute(realRel)) {
+    if (realRel === '..' || realRel.startsWith(`..${path.sep}`) || path.isAbsolute(realRel)) {
       throw new Error(
         `Working directory "${resolved}" resolves to "${realTarget}", outside project root "${realRoot}"`,
       );
