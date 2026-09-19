@@ -107,6 +107,11 @@ describe('runtime helpers', () => {
       path.resolve(root),
     );
     expect(displayPath(path.join(root, 'x.ts'), root)).toBe('x.ts');
+    // Canonical escape test: a legal in-root ..-prefixed first segment is not
+    // a parent traversal and stays relative; the bare parent and a real
+    // outside path still fall back to the absolute form.
+    expect(displayPath(path.join(root, '..configs', 'a.ts'), root)).toBe('..configs/a.ts');
+    expect(displayPath(path.join(root, '..'), root)).toBe(path.dirname(root));
     expect(displayPath(path.join(os.tmpdir(), 'outside.ts'), root)).toContain('outside.ts');
     expect(uriToPath(pathToUri(file))).toBe(file);
   });
@@ -205,10 +210,7 @@ describe('runtime helpers', () => {
     await fs.writeFile(source, 'const a = 3;');
     await tracker.fileWritten(source);
     expect(changed).toHaveBeenCalledTimes(1);
-    expect(changed).toHaveBeenCalledWith(
-      expect.objectContaining({ version: 3 }),
-      'const a = 3;',
-    );
+    expect(changed).toHaveBeenCalledWith(expect.objectContaining({ version: 3 }), 'const a = 3;');
     expect(opened).toHaveBeenCalledTimes(1);
   });
 

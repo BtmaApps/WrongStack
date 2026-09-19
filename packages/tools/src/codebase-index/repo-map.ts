@@ -185,7 +185,17 @@ export async function generateRepoMap(opts: RepoMapOptions): Promise<RepoMapResu
     const relative = path.relative(projectRoot, file);
     // A file outside the project root (a stale absolute path from another
     // machine) keeps its stored form rather than becoming a ../.. chain.
-    if (!relative || relative.startsWith('..')) return posixIndexPath(file);
+    // Canonical escape test (paths.ts escapesRoot): a legal in-root first
+    // segment like `..configs` is not a traversal; a bare startsWith('..')
+    // misread it and displayed the absolute path.
+    if (
+      !relative ||
+      relative === '..' ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      return posixIndexPath(file);
+    }
     return posixIndexPath(relative);
   };
 

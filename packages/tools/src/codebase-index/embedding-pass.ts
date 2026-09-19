@@ -262,7 +262,15 @@ export async function embedProjectFiles(
       port,
       (file) => {
         const relative = path.relative(projectRoot, file);
-        return posixIndexPath(relative && !relative.startsWith('..') ? relative : file);
+        // Canonical escape test (paths.ts escapesRoot): a legal in-root
+        // first segment like `..configs` is not a parent traversal; a bare
+        // startsWith('..') misread it and displayed the absolute path.
+        const inside =
+          relative !== '' &&
+          relative !== '..' &&
+          !relative.startsWith(`..${path.sep}`) &&
+          !path.isAbsolute(relative);
+        return posixIndexPath(inside ? relative : file);
       },
       rest,
     );

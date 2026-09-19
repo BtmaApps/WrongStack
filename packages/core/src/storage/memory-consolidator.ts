@@ -215,7 +215,13 @@ function buildConsolidationPrompt(
 
 function relativeEvidencePath(projectRoot: string, filePath: string): string {
   const relative = path.relative(projectRoot, filePath);
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
+  // Canonical escape test (paths.ts escapesRoot): a legal in-root first
+  // segment like `..notes` is not a parent traversal; a bare startsWith('..')
+  // misread it and fell back to the absolute path.
+  return relative &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
     ? relative.replaceAll('\\', '/')
     : filePath.replaceAll('\\', '/');
 }

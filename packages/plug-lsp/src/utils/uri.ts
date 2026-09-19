@@ -51,5 +51,10 @@ export function uriKey(uri: string, platform: NodeJS.Platform = process.platform
 
 export function displayPath(filePath: string, cwd: string): string {
   const rel = path.relative(cwd, filePath);
-  return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel.replace(/\\/g, '/') : filePath;
+  // Canonical escape test (paths.ts escapesRoot): a legal in-root first
+  // segment like `..configs` is not a parent traversal; a bare
+  // startsWith('..') misread it and fell back to the absolute path.
+  return rel && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
+    ? rel.replace(/\\/g, '/')
+    : filePath;
 }

@@ -138,7 +138,17 @@ export type {
 function relativeFactory(projectRoot: string): (file: string) => string {
   return (file) => {
     const relative = path.relative(projectRoot, file);
-    if (!relative || relative.startsWith('..')) return posixIndexPath(file);
+    // Canonical escape test (paths.ts escapesRoot / _util.ts isInsideAny): a
+    // legal in-root first segment like `..configs` is not a parent traversal;
+    // a bare startsWith('..') misread it and displayed the absolute path.
+    if (
+      !relative ||
+      relative === '..' ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      return posixIndexPath(file);
+    }
     return posixIndexPath(relative);
   };
 }

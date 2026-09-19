@@ -175,7 +175,10 @@ function importanceFromPriority(priority: string | undefined): number {
 
 function relativePath(projectRoot: string, filePath: string): string {
   const rel = path.relative(projectRoot, filePath);
-  return rel && !rel.startsWith('..') && !path.isAbsolute(rel)
+  // Canonical escape test (paths.ts escapesRoot): a legal in-root first
+  // segment like `..notes` is not a parent traversal; a bare startsWith('..')
+  // misread it and fell back to the absolute path.
+  return rel && rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
     ? rel.replaceAll('\\', '/')
     : filePath.replaceAll('\\', '/');
 }
