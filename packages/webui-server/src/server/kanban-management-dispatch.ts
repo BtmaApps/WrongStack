@@ -5,6 +5,7 @@ import { stripFrontmatter } from '@wrongstack/core/skills';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
 import type { KanbanSupervisorDeps } from './kanban-supervisor.js';
 import type { WebuiDeps, WebuiMutableState } from './routes.js';
+import { errMessage } from './ws-utils.js';
 
 /** Standalone WebUI uses the same isolated factory as its SDD workers. */
 export function createManagementDispatcher(
@@ -69,7 +70,7 @@ export function createManagementDispatcher(
       } catch (error) {
         outcome = {
           status: 'failed',
-          error: error instanceof Error ? error.message : String(error),
+          error: errMessage(error),
         };
       } finally {
         try {
