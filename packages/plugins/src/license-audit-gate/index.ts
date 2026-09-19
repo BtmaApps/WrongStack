@@ -150,6 +150,23 @@ export function parsePackageNames(command: string): string[] {
   ];
 }
 
+/** Managers whose installs materialize as `node_modules/<name>/package.json`.
+ *  `parseInstallCommands` (shared with dep-guard) also recognizes pip/uv/cargo,
+ *  but those packages never live under node_modules, so the node_modules-based
+ *  license audit cannot apply to them — feeding them through would fail every
+ *  read and block every legitimate non-node install. */
+const AUDITABLE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
+
+function parseAuditablePackageNames(command: string): string[] {
+  return [
+    ...new Set(
+      parseInstallCommands(command)
+        .filter((entry) => AUDITABLE_MANAGERS.has(entry.manager))
+        .flatMap((entry) => entry.packages.map((pkg) => pkg.name)),
+    ),
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Package audit
 // ---------------------------------------------------------------------------
@@ -327,7 +344,7 @@ const plugin: Plugin = {
       if (!command) return;
 
       state.invocations += 1;
-      const names = parsePackageNames(command);
+      const names = parseAuditablePackageNames(command);
       if (names.length === 0) return;
 
       state.installsSeen += 1;

@@ -346,4 +346,67 @@ describe('license-audit-gate plugin', () => {
       }),
     ).toBeUndefined();
   });
+
+  // Regression: pip/uv/cargo are recognized by the shared install parser, but
+  // their packages never live under node_modules — feeding them into the
+  // node_modules-based audit failed every read and blocked every legitimate
+  // non-node install with "could not read package.json".
+  describe('non-node manager installs are out of the audit scope', () => {
+    it('passes through pip/pip3/uv/cargo installs without reading or blocking', () => {
+      // readFileSync throws for EVERY path: any audit attempt on a pip/cargo
+      // package would necessarily hit node_modules/<pkg>/package.json and
+      // fail closed into a block. Pass-through must not read at all.
+      vi.mocked(readFileSync).mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
+      const api = makeApi();
+      licenseAuditPlugin.setup(api as never);
+      const hook = getHook(api);
+      for (const command of [
+        'pip install requests',
+        'pip3 install numpy',
+        'cargo add serde',
+        'uv add anyio',
+      ]) {
+        expect(
+          hook({
+            toolName: 'bash',
+            toolInput: { command },
+            toolResult: { content: '', isError: false },
+          }),
+        ).toBeUndefined();
+      }
+      expect(readFileSync).not.toHaveBeenCalled();
+    });
+
+    it('audits only the node-manager part of a compound command', () => {
+      mockPackage('react', { name: 'react', license: 'MIT' });
+      const api = makeApi();
+      licenseAuditPlugin.setup(api as never);
+      const hook = getHook(api);
+      // react (npm) is audited and allowed; requests (pip) must not poison it.
+      expect(
+        hook({
+          toolName: 'bash',
+          toolInput: { command: 'npm install react && pip install requests' },
+          toolResult: { content: '', isError: false },
+        }),
+      ).toBeUndefined();
+    });
+
+    it('still blocks disallowed node-manager installs in a compound command', () => {
+      mockPackage('gpl-pkg', { name: 'gpl-pkg', license: 'GPL-3.0' });
+      const api = makeApi();
+      licenseAuditPlugin.setup(api as never);
+      const hook = getHook(api);
+      const result = hook({
+        toolName: 'bash',
+        toolInput: { command: 'npm install gpl-pkg && pip install requests' },
+        toolResult: { content: '', isError: false },
+      }) as HookResult;
+      expect(result?.decision).toBe('block');
+      expect(result?.reason).toContain('gpl-pkg');
+      expect(result?.reason).not.toContain('requests');
+    });
+  });
 });
