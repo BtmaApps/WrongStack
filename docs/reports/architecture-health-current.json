@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-19T20:30:45.627Z",
+  "generatedAt": "2026-09-19T21:01:58.689Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,7 +13,7 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3875,
-    "testFiles": 3555,
+    "testFiles": 3557,
     "sourceLines": 949180,
     "workspaceEdges": 128,
     "moduleEdges": 12524,
@@ -148,7 +148,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 503,
-      "testFiles": 516,
+      "testFiles": 517,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 516
+          "testFiles": 517
         }
       ]
     },
@@ -218,7 +218,7 @@
       "name": "@wrongstack/core",
       "dir": "packages/core",
       "sourceFiles": 898,
-      "testFiles": 807,
+      "testFiles": 808,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +233,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 807
+          "testFiles": 808
         }
       ]
     },
@@ -4581,6 +4581,12 @@
       },
       {
         "file": "packages/cli/tests/tui-thinking-word.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/typesafe-calibration-commands.test.ts",
         "projects": [
           "root-node"
         ]
@@ -9303,6 +9309,12 @@
       },
       {
         "file": "packages/core/tests/typesafe-client.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/typesafe-criterion.test.ts",
         "projects": [
           "root-node"
         ]

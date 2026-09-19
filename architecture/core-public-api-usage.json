@@ -209,8 +209,8 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 19,
-      "typeOnly": 4,
+      "files": 20,
+      "typeOnly": 6,
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/utils": {
@@ -18090,6 +18090,12 @@
       "file": "packages/cli/src/wiring/brain-and-orchestration.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/tests/typesafe-calibration-commands.test.ts",
+      "typeOnly": 2,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/typesafe",
