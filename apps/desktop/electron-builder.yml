@@ -95,6 +95,11 @@ portable:
 
 linux:
   executableName: wrongstack-desktop
+  # The deb target refuses to build without a maintainer, and package.json's
+  # `author` is a bare name with no address to derive one from. Set here rather
+  # than adding an email to the published manifest: this is packaging metadata,
+  # and it only needs to name a contact for the .deb.
+  maintainer: WrongStack contributors <ersinkoc@gmail.com>
   icon: assets/icon.png
   category: Development
   synopsis: Electron shell for managing multiple local WrongStack runtimes

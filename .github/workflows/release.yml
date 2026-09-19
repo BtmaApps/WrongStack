@@ -405,7 +405,10 @@ jobs:
           find dist-bin -maxdepth 1 -type f -name 'wstack-*' -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/release-binary-assets"
           awk 'NF == 2 { name=$2; sub(/^\*/, "", name); print name }' dist-bin/SHA256SUMS | LC_ALL=C sort > "$RUNNER_TEMP/checksummed-binary-assets"
           diff -u "$RUNNER_TEMP/release-binary-assets" "$RUNNER_TEMP/checksummed-binary-assets"
-          sha256sum --check dist-bin/SHA256SUMS
+          # SHA256SUMS lists bare filenames (`wstack-linux-x64`), not paths, so
+          # --check resolves them against the working directory. Run it from
+          # dist-bin; from the workspace root every entry fails to open.
+          (cd dist-bin && sha256sum --check SHA256SUMS)
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
           fi
