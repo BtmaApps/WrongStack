@@ -1,7 +1,8 @@
 /**
  * Register all built-in deterministic verifier plugins.
  * Escalation plugins (agent, council) are registered separately
- * to keep the default path LLM-free.
+ * to keep the default path LLM-free. The one exception, System One, is
+ * inert until a host installs a criterion judge — see its registration.
  */
 import { VerifierRegistry } from '../verifier-registry.js';
 import { AgentVerifierPlugin } from './agent.js';

@@ -17,6 +17,7 @@
 import * as path from 'node:path';
 import { resolveTypeSafeAccount } from '@wrongstack/core/typesafe';
 import { color } from '@wrongstack/core/utils';
+import { loadRuntimeDatabaseSync } from '@wrongstack/persistence';
 import {
   computeValueScore,
   evaluateMemory,
@@ -45,8 +46,11 @@ const SYSTEM_ONE_MIN_PROBABILITY = 0.5;
 async function loadMemories(dbPath: string): Promise<Sage[]> {
   // Read-only: a running daemon owns this database, and calibration must
   // never be the thing that writes to it.
-  const { DatabaseSync } = await import('node:sqlite');
-  const db = new DatabaseSync(dbPath, { readOnly: true });
+  // Through the runtime loader, not `node:sqlite` directly: the standalone
+  // binary runs on Bun, and SQLite construction outside the owning stores is
+  // an architecture-test boundary.
+  const Database = loadRuntimeDatabaseSync();
+  const db = new Database(dbPath, { readOnly: true });
   try {
     const rows = db
       .prepare("SELECT data FROM memories WHERE status IN ('active', 'stale')")

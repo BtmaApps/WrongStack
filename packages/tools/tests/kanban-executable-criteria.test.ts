@@ -15,12 +15,18 @@ describe('kanban tool — every offered checkType has a verifier', () => {
     // registry, so a type offered here without a plugin there would produce
     // criteria that silently report `skipped — no verifier plugin registered`
     // — which is precisely the self-attestation this feature removes. The
-    // plugin ids ARE the check-type names, so the sets compare directly.
+    // deterministic plugin ids ARE the check-type names, so the sets compare
+    // directly. Escalation plugins answer an existing type (`system-one`
+    // answers `agent` checks) and are never offered as a type of their own.
     const offered = (
       (KANBAN_INPUT_SCHEMA.properties as Record<string, { enum?: string[] }>)['checkType']?.enum ??
       []
     ).filter((type) => type !== 'manual');
-    expect([...offered].sort()).toEqual([...createDefaultRegistry().list()].sort());
+    const registry = createDefaultRegistry();
+    const deterministic = registry
+      .list()
+      .filter((id) => registry.get(id)?.kind !== 'escalation');
+    expect([...offered].sort()).toEqual([...deterministic].sort());
   });
 });
 
