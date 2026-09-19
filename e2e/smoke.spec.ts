@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 /**
  * Smoke test — verifies the WebUI server starts and the page loads
@@ -32,7 +32,11 @@ test.describe('WebUI smoke', () => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    // Not 'networkidle': the WebUI keeps polling after boot, so the network
+    // may never go quiet for 500ms and the wait ate the 30s test timeout on
+    // CI. Wait for the app to mount, then leave a beat for boot-time errors.
+    await page.locator('#root > *').first().waitFor({ state: 'attached' });
+    await page.waitForTimeout(1_000);
     const critical = errors.filter((e) => !e.includes('favicon') && !isIgnoredError(e));
     expect(critical).toHaveLength(0);
   });
