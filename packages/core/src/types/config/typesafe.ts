@@ -69,6 +69,8 @@ export interface TypeSafeConfig {
 
 /** See {@link TypeSafeConfig.judgments}. `false` disables; unset = on with an account. */
 export interface TypeSafeJudgmentsConfig {
+  /** Agent-callable structured decision tool. Unset = on with an account. */
+  tool?: boolean | undefined;
   /** Brain decisions: a Choice over the options before the LLM tier. */
   brain?: boolean | undefined;
   /** `/memory triage` phase 3 value rating and merge decisions. */

@@ -165,7 +165,7 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     id: 'reasoning.oneshot',
     pack: 'core',
     exposure: 'on-demand',
-    tools: ['llm', 'council'],
+    tools: ['llm', 'council', 'jev', 'jev_status'],
   },
   {
     id: 'memory.manage',

@@ -48,11 +48,13 @@ describe('buildDomainGlossaryAdapter', () => {
 
     await adapter.list('project-memory', 0);
     await adapter.list('project-memory', 99);
+    await adapter.list('project-memory', 201);
     await adapter.list('project-memory');
 
     expect(mocks.searchSage.mock.calls).toEqual([
       ['domain-term', { limit: 1 }],
-      ['domain-term', { limit: 16 }],
+      ['domain-term', { limit: 99 }],
+      ['domain-term', { limit: 200 }],
       ['domain-term', { limit: 16 }],
     ]);
   });

@@ -1172,8 +1172,10 @@
       "declarations": [
         "export { AGENT_MODEL_ASSIGN_TOOL_NAME, createFallbackManageTools, FALLBACK_CHAIN_MANAGE_TOOL_NAME, FALLBACK_PROFILE_MANAGE_TOOL_NAME, FAVORITE_MANAGE_TOOL_NAME, type FallbackManageToolOptions, LEADER_MODEL_SET_TOOL_NAME, PROVIDER_KEY_SET_TOOL_NAME, PROVIDER_MANAGE_TOOL_NAME, SYSTEM_CONFIG_VIEW_TOOL_NAME, validateProviderBaseUrl, } from './fallback-manage-tools.js';",
         "export { COUNCIL_TOOL_NAME, type CouncilToolInput, type CreateCouncilToolOptions, createCouncilTool, MAX_COUNCIL_CONTEXT_CHARS, MAX_COUNCIL_QUESTION_CHARS, MAX_COUNCIL_TOOL_OPTIONS, } from './council-tool.js';",
+        "export { createJevStatusTool, createJevTool, evaluateJevQuestions, type JevToolInput, jevToolStatus, } from './jev-tool.js';",
         "export { createMcpControlTool, type MCPRegistryHandle } from './mcp-control.js';",
         "export { createMcpUseTool } from './mcp-use.js';",
+        "export { registerJevTools } from './jev-registration.js';",
         "export { type CreateOneShotLLMToolOptions, createOneShotLLMTool, ONE_SHOT_LLM_TOOL_NAME, } from './one-shot-llm-tool.js';",
         "export { type CreatePluginManagerToolOptions, createPluginManagerTool, PLUGIN_MANAGER_TOOL_NAME, type PluginManagerCatalogEntry, type PluginManagerHookRunner, type PluginManagerMutationResult, } from './plugin-manager.js';"
       ]
@@ -1633,22 +1635,22 @@
       "directory": "tools",
       "classification": "host/application concern",
       "intendedOwner": "@wrongstack/tools or product plugin",
-      "sourceFiles": 20,
-      "sourceLines": 4093
+      "sourceFiles": 22,
+      "sourceLines": 4368
     },
     {
       "directory": "types",
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 76,
-      "sourceLines": 14070
+      "sourceLines": 14072
     },
     {
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
       "sourceFiles": 13,
-      "sourceLines": 2052
+      "sourceLines": 2064
     },
     {
       "directory": "utils",

@@ -380,6 +380,7 @@ describe('check-judgments', () => {
   it('runs every feature through its real question builder and reports expected vs. actual', async () => {
     const { code, out } = await run(checkJudgments);
     for (const feature of [
+      'tool',
       'brain',
       'memoryTriage',
       'topicShift',
@@ -397,14 +398,14 @@ describe('check-judgments', () => {
     expect(code).toBe(1);
     expect(out).toContain('✓ met criterion');
     expect(out).toContain('✗ unmet criterion');
-    expect(out).toMatch(/\d+\/20 as expected — typesafe route, model jev-fake/);
+    expect(out).toMatch(/\d+\/22 as expected — typesafe route, model jev-fake/);
   });
 
   it('does not treat malformed replies as a correct no-suggestion verdict', async () => {
     host.empty = true;
     const { code, out } = await run(checkJudgments);
     expect(code).toBe(1);
-    expect(out).toContain('0/20 as expected');
+    expect(out).toContain('0/22 as expected');
   });
 
   it('fails every case, without throwing, when the host is down', async () => {
@@ -412,6 +413,6 @@ describe('check-judgments', () => {
     const { code, out } = await run(checkJudgments);
     expect(code).toBe(1);
     expect(out).not.toContain('✓');
-    expect(out).toMatch(/0\/20 as expected/);
+    expect(out).toMatch(/0\/22 as expected/);
   });
 });

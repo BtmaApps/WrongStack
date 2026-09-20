@@ -108,14 +108,17 @@ describe('Jev settings', () => {
     };
     await saveJevSettings(store, file, vault, {
       apiKey: 'new-secret',
-      features: { brain: false, skillSuggestion: true },
+      features: { brain: false, skillSuggestion: true, tool: false },
     });
     expect(await readFile(file, 'utf8')).not.toContain('new-secret');
     expect(store.get().typesafe?.apiKey).toBe('new-secret');
+    expect(store.get().typesafe?.judgments?.tool).toBe(false);
+    expect(JSON.parse(await readFile(file, 'utf8')).typesafe.judgments.tool).toBe(false);
     expect(JSON.stringify(jevSettingsSnapshot(store.get()))).not.toContain('new-secret');
     expect(jevSettingsSnapshot(store.get()).features).toMatchObject({
       brain: false,
       skillSuggestion: true,
+      tool: false,
     });
   });
   it('does not alter live config or corrupt files after a failed save', async () => {

@@ -24,6 +24,7 @@ In the TUI, `/jev` (alias `/typesafe`) shows the account and every feature switc
 /jev timeout 4000
 /jev feature brain off
 /jev feature skillSuggestion on
+/jev feature tool on
 /jev test
 /jev logs memoryRecall
 /jev remove-key
@@ -33,9 +34,51 @@ Login reads the credential through the surface's masked secret prompt; never put
 it in slash-command arguments. Jev is a decision provider and remains separate
 from chat model selection.
 
+## Agent-callable decisions
+
+With an account configured, the `tool` feature exposes `jev` alongside `llm`
+and `council`. Disable it with `/jev feature tool off` or **Agent decision tool**
+in Settings → Jev (`typesafe.judgments.tool: false`). This tool tracks saved
+account and feature changes in running CLI/TUI and embedded WebUI sessions.
+Its prompt guidance is included only when the tool is in the session catalog.
+
+The system prompt teaches the model to use Jev proactively at meaningful decision
+points: when interpreting known evidence against explicit criteria could change
+its next action. Examples include comparing plausible options, filtering relevant
+findings, prioritizing review candidates and assessing requirement coverage.
+Normally one request per unresolved decision is enough; related questions can be
+batched. Simple deterministic tasks may need none, while complex tasks can use it
+at several stages as evidence changes. Unchanged judgments should be reused, with
+no calls-per-turn quota or repeated questions seeking a preferred answer.
+
+`jev_status({})` reports local eligibility and shared authentication/cooldown
+state without a billed request. Use `/jev test` for a live connection check.
+The model calls `jev` only when a bounded judgment would help, passing explicit
+JSON evidence and question rubrics:
+
+```json
+{
+  "state": { "testsPassed": true, "remainingFailures": 0 },
+  "questions": {
+    "ready": {
+      "type": "noul",
+      "instructions": "Does the evidence show all tests passed?"
+    }
+  }
+}
+```
+
+`noul` returns a yes/no probability; `choice` requires at least two option IDs
+mapped to descriptions; `score` requires at least two concrete level descriptions,
+lowest first. Results include typed answers, model and token usage. The tool uses
+the saved account, shares its failure protection and records activity under `tool`.
+Missing or incompatible answers are errors, never implicit negative verdicts.
+Confidence measures distribution concentration, not correctness; use `llm` for
+prose and `council` for multiple perspectives.
+
 ## Permission, prerequisites and observed use
 
-The ten switches grant permission to use Jev; they do not mean that a call is
+The eleven switches grant permission to use Jev; they do not mean that a call is
 running. Each feature card shows its **saved profile** prerequisites, its trigger
 conditions and the latest runtime request in the displayed process log. An
 unconfigured account, non-selective compaction, disabled/undefined model tiers,
@@ -55,8 +98,8 @@ to be enabled; the tool-result injection path alone does not run this Jev filter
 
 ## Live capability checks
 
-**Test all 10 features**, `/jev check`, and `wstack typesafe check-judgments` share
-the same runner. It sends 20 synthetic cases through the real feature question
+**Test all 11 features**, `/jev check`, and `wstack typesafe check-judgments` share
+the same runner. It sends 22 synthetic cases through the real feature question
 builders, including skill suggestions and fleet dispatch. The checks use the
 saved account and run even for disabled features. They make billed calls but
 read no project content and do not change configuration, close Kanban cards or

@@ -20,6 +20,14 @@ export {
   SYSTEM_CONFIG_VIEW_TOOL_NAME,
   validateProviderBaseUrl,
 } from './fallback-manage-tools.js';
+export { registerJevTools } from './jev-registration.js';
+export {
+  createJevStatusTool,
+  createJevTool,
+  evaluateJevQuestions,
+  type JevToolInput,
+  jevToolStatus,
+} from './jev-tool.js';
 export { createMcpControlTool, type MCPRegistryHandle } from './mcp-control.js';
 export { createMcpUseTool } from './mcp-use.js';
 export {

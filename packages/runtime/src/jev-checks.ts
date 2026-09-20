@@ -28,6 +28,7 @@ import {
 } from '@wrongstack/core/execution';
 import { SystemOneSelector } from '@wrongstack/core/models';
 import { createSkillSuggester } from '@wrongstack/core/skills';
+import { evaluateJevQuestions } from '@wrongstack/core/tools';
 import type { Config, Message, SkillLoader } from '@wrongstack/core/types';
 import {
   BUILT_IN_SEMANTIC_LINT_RULES,
@@ -209,6 +210,23 @@ export async function checkJevJudgments(
       note,
     });
   };
+
+  for (const passed of [true, false]) {
+    await run('tool', passed ? 'passing tests' : 'failing tests', String(passed), async () => {
+      const result = await evaluateJevQuestions(
+        {
+          state: { testsPassed: passed, failingTests: passed ? 0 : 3 },
+          questions: {
+            ready: { type: 'noul', instructions: 'Does the evidence show all tests passed?' },
+          },
+        },
+        judge('tool'),
+        signal,
+      );
+      const answer = result.answers.ready;
+      return answer?.type === 'noul' ? String(answer.noul >= 0.5) : 'malformed';
+    });
+  }
 
   // Brain (probe + the tier's own thresholds, so values are visible) -------
   const brain = {

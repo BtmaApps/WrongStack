@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T16:40:45.253Z",
+  "generatedAt": "2026-09-20T17:28:15.014Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3966,
-    "testFiles": 3572,
-    "sourceLines": 952507,
+    "sourceFiles": 3968,
+    "testFiles": 3573,
+    "sourceLines": 952816,
     "workspaceEdges": 128,
-    "moduleEdges": 12842,
+    "moduleEdges": 12854,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -217,8 +217,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 915,
-      "testFiles": 809,
+      "sourceFiles": 917,
+      "testFiles": 810,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +233,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 809
+          "testFiles": 810
         }
       ]
     },
@@ -9229,6 +9229,12 @@
       },
       {
         "file": "packages/core/tests/tools/fallback-system-config-view-tool.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/tools/jev-tool.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22640,7 +22646,7 @@
     },
     {
       "file": "packages/cli/src/cli-main.ts",
-      "lines": 879,
+      "lines": 881,
       "relativeImports": 34
     },
     {

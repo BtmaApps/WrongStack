@@ -18,7 +18,7 @@ const HELP = [
   '/jev timeout <ms> — request timeout',
   '/jev compaction hybrid|intelligent|selective — profile compaction strategy',
   '/jev recall on|off — SAGE turn context recall dependency',
-  '/jev check — billed synthetic checks for all 10 features',
+  '/jev check — billed synthetic checks for all 11 features',
   '/jev feature <name> on|off — enable/disable a consumer',
   `/jev features: ${JEV_FEATURES.join(', ')}`,
   '/jev test — one billed connection probe using saved settings',

@@ -1127,6 +1127,7 @@
       "kanbanVerify": "Kanban doğrulama",
       "modelTier": "Alt ajan model seviyesi",
       "semanticLint": "Anlamsal lint",
+      "tool": "Ajan karar aracı",
       "skillSuggestion": "Skill önerileri",
       "fleetDispatch": "Fleet dağıtımı"
     },
@@ -1141,8 +1142,8 @@
     "configureTiers": "Model seviyelerini yapılandır",
     "tiersHint": "Seviye sistemini açıp en ucuzdan başlayarak en az iki seviye tanımlayın. Model veya fallback profillerini ve varsayılan seviyeyi seçin. Buradaki değişiklikler anında kaydedilir.",
     "checkHeading": "Canlı yetenek kontrolleri",
-    "checkHint": "Kayıtlı hesapla, kapalı özellikler dahil 10 alanda 20 sentetik vaka çalıştırır. Ücretli API çağrıları yapar; proje içeriği göndermez ve özellik ayarlarını değiştirmez. Başarılı sonuç gerçek iş kalitesini veya oturumun bu özelliği kullandığını kanıtlamaz.",
-    "checkAll": "10 özelliği canlı test et",
+    "checkHint": "Kayıtlı hesapla, kapalı özellikler dahil 11 alanda 22 sentetik vaka çalıştırır. Ücretli API çağrıları yapar; proje içeriği göndermez ve özellik ayarlarını değiştirmez. Başarılı sonuç gerçek iş kalitesini veya oturumun bu özelliği kullandığını kanıtlamaz.",
+    "checkAll": "11 özelliği canlı test et",
     "checkRunning": "Canlı kontroller çalışıyor…",
     "expected": "Beklenen",
     "actual": "Gelen",
@@ -1179,6 +1180,7 @@
       "kanbanVerify": "Açık agent türü kriterleri değişen dosyalar ve diff üzerinden değerlendirir.",
       "modelTier": "Açık model/seviye seçimi ve eşleşen rol/faz kuralı olmayan delegasyonlarda seviye önerir.",
       "semanticLint": "Anlamsal lint komutu aday bulduğunda çalışır; otomatik edit izleyicisi değildir.",
+      "tool": "Ajan jev aracını kanıt ve yapılandırılmış sorularla çağırdığında çalışır.",
       "skillSuggestion": "Skill sistemi, en az iki skill ve gate/fit eşiklerinin geçilmesi gerekir; önbellek kullanılabilir.",
       "fleetDispatch": "Yalnızca birden fazla aday rol arasında belirsiz yönlendirmede çalışır."
     },

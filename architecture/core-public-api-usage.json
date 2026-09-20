@@ -174,9 +174,9 @@
       "runtimeOrMixed": 21
     },
     "@wrongstack/core/tools": {
-      "files": 6,
+      "files": 7,
       "typeOnly": 0,
-      "runtimeOrMixed": 6
+      "runtimeOrMixed": 8
     },
     "@wrongstack/core/types": {
       "files": 1138,
@@ -11159,7 +11159,7 @@
       "specifier": "@wrongstack/core/tools",
       "file": "packages/cli/src/cli-main.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/tools",
@@ -11176,6 +11176,12 @@
     {
       "specifier": "@wrongstack/core/tools",
       "file": "packages/cli/src/wiring/provider-utility-tools.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/tools",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

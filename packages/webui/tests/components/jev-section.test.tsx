@@ -32,7 +32,7 @@ it('keeps unsaved edits during polling, uses correlated saves and clears submitt
     endpoint: 'https://api.typesafe.ai/v1/systemone',
     model: 'jev-latest',
     requestTimeoutMs: 4000,
-    features: { brain: true },
+    features: { brain: true, tool: true },
   };
   act(() =>
     handlers.get('jev.state')?.({ payload: { requestId, settings, activity: { entries: [] } } }),
@@ -47,10 +47,12 @@ it('keeps unsaved edits during polling, uses correlated saves and clears submitt
     'pinned-model',
   );
   fireEvent.change(screen.getByLabelText('settings:jev.key'), { target: { value: 'secret' } });
+  fireEvent.click(screen.getByLabelText('settings:jev.features.tool'));
   fireEvent.click(screen.getByText('settings:jev.save'));
   const sent = client.send.mock.calls.at(-1)?.[0];
   expect(sent.type).toBe('jev.set');
   expect(sent.payload.patch).toMatchObject({ apiKey: 'secret', model: 'pinned-model' });
+  expect(sent.payload.patch.features).toMatchObject({ brain: true, tool: false });
   act(() =>
     handlers.get('jev.state')?.({
       payload: {

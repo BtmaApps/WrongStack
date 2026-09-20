@@ -409,6 +409,8 @@ old notes.
 
 Manage the decision provider, key and feature switches in **Settings → Jev** in the WebUI, or **`/jev`** in the TUI. The WebUI includes a live activity view with request timing, usage, answers and safe failure categories; `/jev logs` exposes the same process history. See [Jev settings and activity](docs/jev-settings-and-activity.md).
 
+Configured accounts also expose the `jev` decision tool: agents can request yes/no probabilities, choose among alternatives, or score supplied evidence against a rubric. `jev_status` checks local availability without a network request. Control this independently with `/jev feature tool on|off` or **Settings → Jev → Agent decision tool**.
+
 Optional Jev integration suggests a relevant skill before a turn and classifies
 ambiguous fleet dispatches. Each feature is separately opt-in. It supports a
 native TypeSafe API key or OpenRouter's Decisions endpoint through

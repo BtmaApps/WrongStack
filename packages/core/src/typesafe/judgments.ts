@@ -41,6 +41,7 @@ import { TYPESAFE_ROUTES } from './route.js';
 export type TypeSafeJudgmentFeature = keyof TypeSafeJudgmentsConfig;
 
 export const TYPESAFE_JUDGMENT_FEATURES: readonly TypeSafeJudgmentFeature[] = [
+  'tool',
   'brain',
   'memoryTriage',
   'topicShift',
@@ -52,6 +53,8 @@ export const TYPESAFE_JUDGMENT_FEATURES: readonly TypeSafeJudgmentFeature[] = [
 ];
 
 export interface TypeSafeJudge {
+  /** Current shared client health, evaluated when the judge is resolved. */
+  unavailableReason?: 'auth-rejected' | 'resting' | undefined;
   client: TypeSafeClient;
   /** Model id to send; the account's own. */
   model: string;
@@ -125,7 +128,16 @@ export function resolveTypeSafeJudge(deps: ResolveTypeSafeJudgeDeps): TypeSafeJu
     account = resolved;
     if (!deps.env) accounts.set(id, account);
   }
-  return { client: account.client, model: account.model, feature: deps.feature };
+  return {
+    client: account.client,
+    model: account.model,
+    feature: deps.feature,
+    unavailableReason: account.client.open
+      ? 'auth-rejected'
+      : account.rest?.isResting()
+        ? 'resting'
+        : undefined,
+  };
 }
 
 /** Test seam. Never call from product code. */

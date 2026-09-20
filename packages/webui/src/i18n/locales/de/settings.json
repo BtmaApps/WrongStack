@@ -1127,6 +1127,7 @@
       "kanbanVerify": "Kanban verification",
       "modelTier": "Subagent model tier",
       "semanticLint": "Semantic lint",
+      "tool": "Entscheidungswerkzeug für Agenten",
       "skillSuggestion": "Skill suggestions",
       "fleetDispatch": "Fleet dispatch"
     },
@@ -1141,8 +1142,8 @@
     "configureTiers": "Configure model tiers",
     "tiersHint": "Enable tiers and define at least two levels, cheapest first. Set their models or fallback profiles and a default tier. Changes here save immediately.",
     "checkHeading": "Live capability checks",
-    "checkHint": "Runs 20 synthetic cases across all 10 features using the saved account, including disabled features. Makes billed API calls, sends no project content and changes no feature settings. Passing does not prove workload quality or that a session uses the feature.",
-    "checkAll": "Test all 10 features",
+    "checkHint": "Runs 22 synthetic cases across all 11 features using the saved account, including disabled features. Makes billed API calls, sends no project content and changes no feature settings. Passing does not prove workload quality or that a session uses the feature.",
+    "checkAll": "Test all 11 features",
     "checkRunning": "Running live checks…",
     "expected": "Expected",
     "actual": "Actual",
@@ -1179,6 +1180,7 @@
       "kanbanVerify": "Judges open agent-type criteria against changed files and their diff.",
       "modelTier": "Suggests a tier for delegations with no explicit model/tier and no matching role/phase route.",
       "semanticLint": "Runs when the semantic lint command finds candidates; it is not an automatic edit watcher.",
+      "tool": "Wird ausgeführt, wenn ein Agent jev mit Belegen und typisierten Fragen aufruft.",
       "skillSuggestion": "Requires skills enabled, at least two skills, and gate/fit thresholds; results may be cached.",
       "fleetDispatch": "Runs only for ambiguous routing with multiple candidate roles."
     },

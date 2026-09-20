@@ -1,6 +1,7 @@
 /** Top-level CLI phase orchestrator. */
 import { mailboxSessionTag } from '@wrongstack/core/coordination';
 import { TOKENS } from '@wrongstack/core/kernel';
+import { registerJevTools } from '@wrongstack/core/tools';
 import type { SystemPromptBuilder } from '@wrongstack/core/types';
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
@@ -195,6 +196,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     tuiOwnsScreen,
   });
 
+  teardownHandlers.push(registerJevTools(toolRegistry, configStore));
   const promptBuilder = container.resolve(TOKENS.SystemPromptBuilder) as SystemPromptBuilder;
   const onlineAgents = await loadOnlineAgentsForPrompt(
     wpaths.projectDir,

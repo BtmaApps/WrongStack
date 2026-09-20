@@ -97,21 +97,23 @@ user profile, then restart the session/server that loaded that configuration:
 | `kanbanVerify` | `agent` checks in Kanban verification (process-wide hook) | One Noul per check over the task diff (≤ 24k chars), 8s | ≥ 0.92 passed, ≤ 0.08 failed, else the escalation stays open (skipped). Never re-judges a status a person set |
 | `modelTier` | `delegate` with no tier/model and no role/phase tier route | One Choice over `modelTiers` levels, 3s | Confident pick (≥ 0.6) becomes the spawn tier; budgets/ceilings apply as for any tier |
 | `semanticLint` | `wstack typesafe lint-conventions` (explicit command) | One Noul per regex candidate in the diff's added lines, 32 per request | Reports judged violations (≥ 0.7, `--threshold`); rules: built-in + `.wrongstack/semantic-lint.json` |
+| `tool` | Agent calls `jev` when a structured judgment would help | Supplied JSON state and typed Noul/Choice/Score questions, using the account timeout | Returns validated answers, model and usage; errors leave the calling model to reason or use another tool. `jev_status` checks local availability without a request |
 
 Each HTTP evaluation permits two attempts by default for transient errors.
 Short requests (under 12 characters), small skill rosters, and confident
 heuristic dispatches avoid calls. It is not wired into council voting,
 approvals/permissions, every tool call, or normal chat generation. There is no
-dedicated TypeSafe auth panel in the WebUI; use the CLI account commands.
+chat-model entry for Jev; configure its decision account in **Settings → Jev**
+or with the CLI account commands.
 
 ## Judgments: on with an account, always with a fallback
 
-The eight judgment features above (`typesafe.judgments.<id>`) differ from the
+The nine judgment features above (`typesafe.judgments.<id>`) differ from the
 two original consumers in one way: they are **on whenever an account resolves
 `ready`**, and `typesafe.judgments.<id>: false` turns one off. A TypeSafe key
-exists for nothing else, and every judgment sits IN FRONT of a path that
-already works — it can make that path faster or cheaper, never make it answer
-less. `wstack typesafe status` lists them.
+exists for nothing else. Automatic judgments sit in front of existing paths;
+the `tool` feature lets the calling model request a judgment explicitly and
+handle failures itself. `wstack typesafe status` lists them.
 
 `wstack typesafe check-judgments` runs every judgment on a few cases whose
 right answer is not in doubt, against the live host, through the features' own
