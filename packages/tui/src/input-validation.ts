@@ -608,6 +608,7 @@ export function validateAction(action: {
     case 'goalRunRunningPhases':
     case 'goalRunElapsed':
     case 'goalRunTaskActive':
+    case 'goalRunTaskAgent':
     case 'goalRunTaskCompleted':
     case 'sddBoardSnapshot':
     case 'worktreeUpsert':

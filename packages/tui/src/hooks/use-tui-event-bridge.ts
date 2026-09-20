@@ -219,19 +219,17 @@ function useGoalEvents(
         }
         case 'phase.taskAssigned': {
           const p = payload as { phaseId: string; taskId: string; agentName?: string };
-          const active = stateRef.current.goalRun?.phases[p.phaseId]?.activeTasks?.find(
-            (t) => t.taskId === p.taskId,
-          );
-          if (active) {
-            dispatch({
-              type: 'goalRunTaskActive',
-              phaseId: p.phaseId,
-              taskId: p.taskId,
-              title: active.title,
-              agent: p.agentName,
-              active: true,
-            });
-          }
+          // The reducer owns the in-place update: looking the task up here via
+          // stateRef (render-synced) dropped the agent whenever taskAssigned
+          // arrived in the same tick as its taskStarted — the normal fresh-
+          // task path, since executeTask assigns synchronously right after
+          // the start emit.
+          dispatch({
+            type: 'goalRunTaskAgent',
+            phaseId: p.phaseId,
+            taskId: p.taskId,
+            agent: p.agentName,
+          });
           break;
         }
         case 'phase.taskFailed': {

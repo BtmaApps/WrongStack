@@ -178,3 +178,81 @@ describe('goal run task counting', () => {
     expect(next).toBe(s);
   });
 });
+
+describe('goal run agent assignment', () => {
+  it('attaches the agent when taskAssigned follows taskStarted in the same tick', async () => {
+    const captured: Captured = {};
+    const view = mountBridge(captured);
+    try {
+      await until(() => captured.handler !== undefined, 'subscribeGoal handler captured');
+      const h = captured.handler as GoalHandler;
+
+      h('phase.started', { phaseId: 'p1', name: 'Alpha' });
+      await until(() => phaseView(captured) !== undefined, 'phase p1 registered');
+
+      // Production order, one tick: executeSingleTask emits taskStarted (no
+      // assignee yet — the normal fresh-task path) and then calls
+      // ctx.executeTask synchronously, whose setTaskAssignee emits
+      // taskAssigned with the worker nickname before any render can happen.
+      h('phase.taskStarted', { phaseId: 'p1', taskId: 't1', taskTitle: 'T1' });
+      h('phase.taskAssigned', { phaseId: 'p1', taskId: 't1', agentName: 'executor-2' });
+
+      await until(() => (phaseView(captured)?.activeTasks ?? []).length === 1, 'task t1 active');
+
+      expect(phaseView(captured)?.activeTasks?.[0]?.agent).toBe('executor-2');
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('control: render-separated taskAssigned still attaches the agent', async () => {
+    const captured: Captured = {};
+    const view = mountBridge(captured);
+    try {
+      await until(() => captured.handler !== undefined, 'subscribeGoal handler captured');
+      const h = captured.handler as GoalHandler;
+
+      h('phase.started', { phaseId: 'p1', name: 'Alpha' });
+      await until(() => phaseView(captured) !== undefined, 'phase p1 registered');
+
+      h('phase.taskStarted', { phaseId: 'p1', taskId: 't1', taskTitle: 'T1' });
+      await until(() => (phaseView(captured)?.activeTasks ?? []).length === 1, 'task t1 active');
+
+      h('phase.taskAssigned', { phaseId: 'p1', taskId: 't1', agentName: 'executor-9' });
+
+      await until(
+        () => phaseView(captured)?.activeTasks?.[0]?.agent === 'executor-9',
+        'agent attached',
+      );
+      expect(phaseView(captured)?.activeTasks?.[0]?.agent).toBe('executor-9');
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('reducer attaches goalRunTaskAgent in place and ignores non-active tasks', () => {
+    let s = reducer(baseState, { type: 'goalRunInit', title: 'T' });
+    s = reducer(s, {
+      type: 'goalRunPhaseUpdate',
+      phaseId: 'p1',
+      name: 'Alpha',
+      status: 'running',
+      completedTasks: 0,
+      totalTasks: 0,
+    });
+    s = reducer(s, {
+      type: 'goalRunTaskActive',
+      phaseId: 'p1',
+      taskId: 't1',
+      title: 'T1',
+      active: true,
+    });
+    s = reducer(s, { type: 'goalRunTaskAgent', phaseId: 'p1', taskId: 't1', agent: 'w1' });
+    expect(s.goalRun?.phases['p1']?.activeTasks?.[0]?.agent).toBe('w1');
+
+    // Unknown task: no-op, same reference (assignment of a not-started task
+    // must not create a bogus live-worker row).
+    const next = reducer(s, { type: 'goalRunTaskAgent', phaseId: 'p1', taskId: 'zz', agent: 'w2' });
+    expect(next).toBe(s);
+  });
+});

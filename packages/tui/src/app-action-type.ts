@@ -740,6 +740,13 @@ export type Action =
       phaseId: string;
       taskId: string;
     }
+  | {
+      /** Attach the assigned agent to an already-active task (reducer-owned). */
+      type: 'goalRunTaskAgent';
+      phaseId: string;
+      taskId: string;
+      agent?: string | undefined;
+    }
   | { type: 'goalRunMonitorToggle' }
   | { type: 'goalRunReset' }
   | { type: 'sddBoardSnapshot'; snapshot: SddBoardSnapshot }

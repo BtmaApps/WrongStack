@@ -187,6 +187,7 @@ const workspacePanelActionTypes = [
   'goalRunInit',
   'goalRunPhaseUpdate',
   'goalRunTaskActive',
+  'goalRunTaskAgent',
   'goalRunTaskCompleted',
   'goalRunRunningPhases',
   'goalRunElapsed',
@@ -449,6 +450,30 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
           phases: {
             ...state.goalRun.phases,
             [action.phaseId]: { ...phase, completedTasks: phase.completedTasks + 1, activeTasks },
+          },
+        },
+      };
+    }
+    case 'goalRunTaskAgent': {
+      if (!state.goalRun) return state;
+      const phase = state.goalRun.phases[action.phaseId];
+      if (!phase) return state;
+      const tasks = phase.activeTasks ?? [];
+      const idx = tasks.findIndex((t) => t.taskId === action.taskId);
+      const current = idx === -1 ? undefined : tasks[idx];
+      if (!current) return state;
+      // Updated in place here (not in the event handler) so a taskAssigned
+      // arriving in the same tick as its taskStarted still lands: the reducer
+      // applies every action against its own latest state.
+      const activeTasks = tasks.slice();
+      activeTasks[idx] = { ...current, agent: action.agent };
+      return {
+        ...state,
+        goalRun: {
+          ...state.goalRun,
+          phases: {
+            ...state.goalRun.phases,
+            [action.phaseId]: { ...phase, activeTasks },
           },
         },
       };

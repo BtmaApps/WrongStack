@@ -56,6 +56,19 @@ export function validateCoordinationAction(
       return { valid: true, value: payload };
     }
 
+    case 'goalRunTaskAgent': {
+      if (typeof action.phaseId !== 'string' || !action.phaseId) {
+        return { valid: false, error: 'goalRunTaskAgent.phaseId: not a non-empty string.' };
+      }
+      if (typeof action.taskId !== 'string' || !action.taskId) {
+        return { valid: false, error: 'goalRunTaskAgent.taskId: not a non-empty string.' };
+      }
+      if (action.agent !== undefined && typeof action.agent !== 'string') {
+        return { valid: false, error: 'goalRunTaskAgent.agent: not a string.' };
+      }
+      return { valid: true, value: payload };
+    }
+
     case 'goalRunTaskCompleted': {
       if (typeof action.phaseId !== 'string' || !action.phaseId) {
         return {

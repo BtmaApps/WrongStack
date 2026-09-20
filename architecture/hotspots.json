@@ -323,7 +323,7 @@
       "relativeImports": 5
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 895,
+      "lines": 902,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -347,7 +347,7 @@
       "relativeImports": 7
     },
     "packages/tui/src/input-validation.ts": {
-      "lines": 923,
+      "lines": 924,
       "relativeImports": 14
     },
     "packages/tui/src/reducers/composer.ts": {

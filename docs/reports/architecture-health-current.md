@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-20T12:11:24.691Z
+**Generated:** 2026-09-20T12:18:45.348Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3964 |
-| Production source lines | 951827 |
+| Production source lines | 951872 |
 | Test files | 3563 |
 | Workspace dependency edges | 128 |
 | Relative module edges | 12838 |
@@ -132,8 +132,8 @@ None.
 | 925 | `packages/tui/src/submit-controller.ts` |
 | 924 | `packages/cli/src/boot.ts` |
 | 924 | `packages/core/src/plugin/api.ts` |
+| 924 | `packages/tui/src/input-validation.ts` |
 | 923 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
-| 923 | `packages/tui/src/input-validation.ts` |
 | 921 | `packages/tools/src/session-kanban.ts` |
 
 ## Exports only tests reference
