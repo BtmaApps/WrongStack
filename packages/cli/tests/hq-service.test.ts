@@ -65,8 +65,18 @@ describe('HQ systemd service assets', () => {
       password: 'long-enough-password',
       port: 3499,
     }).updateScript;
-    const result = spawnSync('bash', ['-n', '-s'], { input: script, encoding: 'utf8' });
-    if (result.error && 'code' in result.error && result.error.code === 'ENOENT') return;
+    // ENOENT is not the only way `bash` fails to be bash. On Windows the name
+    // resolves against System32 first, where `bash.exe` is the WSL launcher: it
+    // exists, so ENOENT never fires, and with no distro installed it blocks —
+    // and because spawnSync holds the event loop, vitest's own timeout cannot
+    // interrupt it. Bound the call and treat "no usable bash" as a skip, which
+    // is what this test already meant by "when bash is available".
+    const result = spawnSync('bash', ['-n', '-s'], {
+      input: script,
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    if (result.error) return;
     expect(result.status, result.stderr).toBe(0);
   });
 
