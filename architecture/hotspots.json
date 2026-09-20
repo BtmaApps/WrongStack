@@ -255,7 +255,7 @@
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {
-      "lines": 851,
+      "lines": 878,
       "relativeImports": 10
     },
     "packages/sage/src/sqlite-store.ts": {

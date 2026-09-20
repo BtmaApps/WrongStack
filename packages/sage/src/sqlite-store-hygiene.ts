@@ -764,10 +764,37 @@ export async function runSqliteSageHygiene(
   if (sessionGcTargets.length > 0) {
     await ctx.runMutation(() => {
       for (const m of sessionGcTargets) {
+        // Re-read inside the mutation — the same in-mutation re-read
+        // convention as the purge, verification and reactivation passes.
+        // The listing snapshot is stale by the time this queued mutation
+        // runs, and a concurrent update or revive landing in that gap must
+        // not be clobbered by it:
+        //   - an aged-out session memory whose concurrent update just
+        //     refreshed `updatedAt` is rescued (no longer expired);
+        //   - an `expiresAt`-expired memory is still tombstoned, but built
+        //     FROM the current row, so concurrent field changes and
+        //     advisory counters survive into the (recoverable) tombstone
+        //     instead of being silently reverted.
+        const current = readSqliteSageRow(ctx.stmt, m.id);
+        if (!current) continue;
+        if (
+          current.status === 'deleted' ||
+          current.status === 'superseded' ||
+          current.status === 'contradicted'
+        ) {
+          continue;
+        }
+        if ((current.persistence ?? DEFAULT_PERSISTENCE) === 'permanent') continue;
+        const stillExpired =
+          current.scope === 'session' &&
+          ((current.expiresAt !== undefined && Date.parse(current.expiresAt) <= nowMs) ||
+            (current.expiresAt === undefined &&
+              nowMs - Date.parse(current.updatedAt) >= sessionRetentionMs));
+        if (!stillExpired) continue;
         const tombstone: Sage = {
-          ...m,
+          ...current,
           status: 'deleted',
-          revision: m.revision + 1,
+          revision: current.revision + 1,
           updatedAt: ctx.nowIso(),
           contextPolicy: 'never',
         };
@@ -776,10 +803,10 @@ export async function runSqliteSageHygiene(
         ctx.cascadeDeleteEdges(memoryNodeId(m.id));
         ctx.audit('memory.session_gc', {
           memoryId: m.id,
-          reason: m.expiresAt ? 'expires_at_passed' : 'session_retention',
+          reason: current.expiresAt ? 'expires_at_passed' : 'session_retention',
           details: {
-            expiresAt: m.expiresAt,
-            updatedAt: m.updatedAt,
+            expiresAt: current.expiresAt,
+            updatedAt: current.updatedAt,
             sessionRetentionDays: opts?.sessionRetentionDays ?? DEFAULT_SESSION_RETENTION_DAYS,
           },
         });

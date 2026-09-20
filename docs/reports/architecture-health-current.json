@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T16:03:17.920Z",
+  "generatedAt": "2026-09-20T16:36:09.700Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3966,
-    "testFiles": 3571,
-    "sourceLines": 952471,
+    "testFiles": 3572,
+    "sourceLines": 952498,
     "workspaceEdges": 128,
     "moduleEdges": 12842,
     "nonCommandSlashImports": 0,
@@ -573,7 +573,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 115,
-      "testFiles": 110,
+      "testFiles": 111,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -588,7 +588,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 110
+          "testFiles": 111
         }
       ]
     },
@@ -12978,6 +12978,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/sqlite-store-hygiene-session-gc-toctou.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/sqlite-store-rollback-mask.test.ts",
         "projects": [
           "root-node"
@@ -22924,7 +22930,7 @@
     },
     {
       "file": "packages/sage/src/sqlite-store-hygiene.ts",
-      "lines": 851,
+      "lines": 878,
       "relativeImports": 10
     },
     {
