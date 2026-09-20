@@ -50,6 +50,18 @@ jobs:
       - name: Check packaged dependencies and assets with Electron
         if: runner.os != 'Linux'
         run: node scripts/smoke-desktop.mjs --window
+      - name: Give the unpacked Chromium sandbox its setuid bits
+        if: runner.os == 'Linux'
+        # linux-unpacked carries chrome-sandbox with the packer's ownership, and
+        # Chromium's SUID sandbox aborts unless it is root-owned and mode 4755.
+        # The .deb sets that on install, so only this staged tree needs it —
+        # and doing it here keeps the smoke on the real sandboxed startup path
+        # rather than waiving it with --no-sandbox.
+        run: |
+          set -euo pipefail
+          sandbox=.temp_files/package-desktop-stage/release/linux-unpacked/chrome-sandbox
+          sudo chown root:root "$sandbox"
+          sudo chmod 4755 "$sandbox"
       - name: Check Linux Desktop with a virtual display
         if: runner.os == 'Linux'
         run: xvfb-run -a node scripts/smoke-desktop.mjs --window
