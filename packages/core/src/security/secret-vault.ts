@@ -240,7 +240,7 @@ function writeKeyFileAtomicSync(keyFile: string, content: Buffer): void {
     fs.closeSync(fd);
   }
   try {
-    fs.renameSync(tmp, keyFile);
+    renameWithRetrySync(tmp, keyFile);
   } catch (err) {
     try {
       fs.unlinkSync(tmp);
@@ -248,6 +248,46 @@ function writeKeyFileAtomicSync(keyFile: string, content: Buffer): void {
       /* best-effort cleanup */
     }
     throw err;
+  }
+}
+
+/**
+ * `renameSync` over an existing destination, retried briefly on Windows.
+ *
+ * Every key write schedules an async `icacls` hardening pass on the key file
+ * (see `scheduleKeyHardening`). Back-to-back writes — a rotation loop is the
+ * reproducer — can fire the next rename while the previous `icacls` still holds
+ * a handle on the destination, and Windows reports that sharing violation as
+ * `EPERM`. Antivirus and the search indexer open the file the same way. The
+ * holder is always short-lived, so a bounded busy-wait is the right shape: a
+ * handful of sub-millisecond retries, then surface the original error.
+ *
+ * POSIX renames are atomic against open handles, so this is a no-op there.
+ */
+function renameWithRetrySync(tmp: string, dest: string): void {
+  if (process.platform !== 'win32') {
+    fs.renameSync(tmp, dest);
+    return;
+  }
+  const deadline = Date.now() + 1000;
+  for (;;) {
+    try {
+      fs.renameSync(tmp, dest);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (
+        (code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') ||
+        Date.now() >= deadline
+      ) {
+        throw err;
+      }
+      // Sync path: no event loop to yield to, so spin briefly.
+      const until = Date.now() + 10;
+      while (Date.now() < until) {
+        /* busy-wait */
+      }
+    }
   }
 }
 

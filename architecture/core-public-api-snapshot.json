@@ -1538,7 +1538,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "preferred Runtime pilot",
       "sourceFiles": 13,
-      "sourceLines": 2038
+      "sourceLines": 1944
     },
     {
       "directory": "performance",
@@ -1594,7 +1594,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 22,
-      "sourceLines": 7900
+      "sourceLines": 7940
     },
     {
       "directory": "session-catalog",

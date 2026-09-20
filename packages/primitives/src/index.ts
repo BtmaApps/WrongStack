@@ -15,6 +15,15 @@ export {
   MAX_SUBJECT_LEN,
 } from './regex-guard.js';
 export {
+  COMMAND_REDACTION_PROFILE,
+  OUTBOUND_REDACTION_PROFILE,
+  type RedactionProfile,
+  type RedactionProfileId,
+  redactCommand,
+  redactCommandArgs,
+  redactSecrets,
+} from './redact-command.js';
+export {
   isSystemSessionId,
   requireSessionId,
   SESSION_ID_REQUIRED,

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clock3,
+  Copy,
   GitBranch,
   Layers3,
   Radio,
@@ -47,6 +48,64 @@ const demoLines = [
   { type: 'tool', text: 'test', detail: 'checkout.retry.test.ts  12 passed' },
   { type: 'done', text: '✓ FIXED', detail: '1 file changed · evidence attached' },
 ] as const;
+
+function HeroInstall() {
+  const [platform, setPlatform] = useState<'unix' | 'windows'>('unix');
+  const [copied, setCopied] = useState(false);
+  const command = platform === 'unix' ? installCommand : installCommandWindows;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard access is unavailable in some embedded browsers.
+    }
+  };
+
+  return (
+    <div className="flex min-w-0 max-w-2xl items-center rounded-2xl border border-line bg-card p-1.5 shadow-sm">
+      <div
+        className="flex shrink-0 items-center rounded-xl bg-surface p-1"
+        role="tablist"
+        aria-label="Install platform"
+      >
+        {[
+          ['unix', 'macOS / Linux'],
+          ['windows', 'Windows'],
+        ].map(([value, label]) => {
+          const selected = platform === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setPlatform(value as 'unix' | 'windows')}
+              className={`rounded-lg px-2.5 py-2 text-[11px] font-bold transition-colors sm:px-3 ${
+                selected ? 'bg-fg text-bg shadow-sm' : 'text-muted hover:text-fg'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <code className="mx-3 min-w-0 flex-1 truncate font-mono text-xs font-bold text-fg sm:text-sm">
+        {command}
+      </code>
+      <button
+        type="button"
+        onClick={copy}
+        className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-2 text-ink transition-transform hover:scale-[1.03]"
+        aria-label={copied ? 'Copied' : `Copy ${command}`}
+      >
+        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      </button>
+    </div>
+  );
+}
 
 function LiveRun() {
   const [count, setCount] = useState(1);
@@ -165,7 +224,7 @@ export function HomePage() {
           className="hero-orbit absolute right-[-18vw] top-[-18vw] size-[70vw] max-h-[900px] max-w-[900px] rounded-full border border-line"
           aria-hidden="true"
         />
-        <div className="relative mx-auto grid max-w-[1380px] gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[1.03fr_.82fr] lg:items-center lg:px-10 lg:pb-20 lg:pt-20">
+        <div className="relative mx-auto grid max-w-[1380px] gap-12 px-4 pb-16 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,.9fr)_minmax(440px,1.1fr)] lg:items-center lg:gap-10 lg:px-10 lg:pb-20 lg:pt-20 xl:grid-cols-[minmax(0,.86fr)_minmax(520px,1.14fr)] xl:gap-14">
           <div>
             <div className="mb-8 flex flex-wrap items-center gap-3 font-mono text-xs font-bold uppercase tracking-[0.16em] text-muted">
               <span className="flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5">
@@ -199,23 +258,22 @@ export function HomePage() {
               <span className="text-brand-2">Built on the wrong stack.</span>{' '}
               <span className="text-brand">Shipped anyway.</span>
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <CopyCommand label="macOS / Linux" command={installCommand} />
-              <CopyCommand label="Windows" command={installCommandWindows} />
+            <div className="mt-8">
+              <HeroInstall />
               <Link
                 href="/how-it-works"
-                className="group inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-fg"
+                className="group mt-3 inline-flex items-center gap-2 px-2 py-2 text-sm font-bold text-fg"
               >
                 See how it works{' '}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
-            <p className="mt-4 max-w-xl text-xs leading-6 text-faint">
+            <p className="mt-2 max-w-xl text-xs leading-5 text-faint">
               No paid runtime tier. No proprietary feature gate. Bring your own model provider;
               provider API usage may have its own cost.
             </p>
           </div>
-          <div className="relative lg:mt-12">
+          <div className="relative lg:mt-8">
             <div className="absolute -left-4 -top-5 z-10 hidden rotate-[-4deg] rounded-full bg-brand px-4 py-2 font-mono text-xs font-black uppercase tracking-widest text-white sm:block">
               Actual agent loop
             </div>

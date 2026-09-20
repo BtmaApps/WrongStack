@@ -897,6 +897,9 @@ importers:
       '@wrongstack/core':
         specifier: workspace:*
         version: link:../core
+      '@wrongstack/primitives':
+        specifier: workspace:*
+        version: link:../primitives
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

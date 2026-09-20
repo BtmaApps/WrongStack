@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-20T18:30:02.438Z
+**Generated:** 2026-09-20T19:17:04.223Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,10 +8,10 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 3968 |
-| Production source lines | 952813 |
-| Test files | 3573 |
-| Workspace dependency edges | 128 |
+| Production source files | 3969 |
+| Production source lines | 952874 |
+| Test files | 3574 |
+| Workspace dependency edges | 129 |
 | Relative module edges | 12854 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
@@ -42,7 +42,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/plug-lsp | 50 | 46 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 79 | 113 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
-| @wrongstack/primitives | 6 | 5 | — |
+| @wrongstack/primitives | 7 | 6 | — |
 | @wrongstack/providers | 85 | 76 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
@@ -53,7 +53,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/security-scanner | 18 | 27 | @wrongstack/core |
 | @wrongstack/simpleui | 102 | 75 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 50 | 37 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
-| @wrongstack/telegram | 27 | 36 | @wrongstack/core |
+| @wrongstack/telegram | 27 | 36 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 224 | 268 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 412 | 374 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 19 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |

@@ -147,7 +147,7 @@
       "relativeImports": 14
     },
     "packages/core/src/security/secret-vault.ts": {
-      "lines": 865,
+      "lines": 905,
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {

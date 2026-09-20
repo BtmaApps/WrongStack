@@ -201,4 +201,37 @@ describe('redactCommand — secret redaction (P2 #13)', () => {
       expect(redactCommand('tool --token')).toBe('tool --token');
     });
   });
+
+  /**
+   * Regression: `,` is a separator the pattern list already declares —
+   * `(?:[=\s,][^\s]*)?` for named long flags and `[=\s,][A-Za-z0-9+/=]{32,}`
+   * for the high-entropy rule — but the callback only accepted '=', ':' and
+   * whitespace. A comma-separated value therefore reached the "no separator"
+   * branch, and for a `--flag` match that branch returns the match unchanged,
+   * so the secret was emitted verbatim.
+   */
+  describe('comma-separated values are redacted (pattern-declared separator)', () => {
+    const HIGH_ENTROPY = 'SkRmOQzN3a8qP4xY7vW2bH1cU6tZ0sL9';
+
+    it.each([
+      ['deploy --token,abc123def --dry-run', 'abc123def', '--token,[REDACTED]'],
+      ['probe --api-key,sk-abc123', 'sk-abc123', '--api-key,[REDACTED]'],
+      ['mysql --password,hunter2 db', 'hunter2', '--password,[REDACTED]'],
+    ])('redacts the value of %j', (cmd, secret, expected) => {
+      const out = redactCommand(cmd);
+      expect(out).not.toContain(secret);
+      expect(out).toContain(expected);
+    });
+
+    it('redacts a comma-separated high-entropy secret (pattern 5)', () => {
+      const out = redactCommand(`deploy --github-token,${HIGH_ENTROPY} --verbose`);
+      expect(out).not.toContain(HIGH_ENTROPY);
+      expect(out).toContain('--github-token,[REDACTED]');
+    });
+
+    it('stays idempotent for the comma form', () => {
+      const once = redactCommand('deploy --token,abc123def --dry-run');
+      expect(redactCommand(once)).toBe(once);
+    });
+  });
 });

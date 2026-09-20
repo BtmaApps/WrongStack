@@ -56,18 +56,24 @@ describe('redactSecrets', () => {
       expect(out).toBe('cmd -t [REDACTED] and -t [REDACTED]');
     });
 
-    it('does NOT redact a glued -tVALUE flag (too many false positives)', () => {
-      // Glued `-tVALUE` form is intentionally NOT redacted because it
-      // collides with common long flags like `-target`, `-tries`,
-      // `-timeout`. The test asserts current behavior so a future
-      // change is a conscious decision, not a silent regression.
+    it('redacts a glued -tVALUE flag (under-redaction closed; accepted FP cost)', () => {
+      // The glued form used to be ignored here so that `-target`, `-tries`
+      // and `-timeout` survived — which left `curl -tSECRET` reaching the
+      // phone verbatim. OUTBOUND now shares the command profile's short-flag
+      // patterns (packages/primitives/src/redact-command.ts, SHORT_FLAG_*),
+      // so a glued value is wiped whole.
       const input = `rsync -t${TOKEN_VALUE} user@host:/`;
-      expect(redactSecrets(input)).toBe(input);
+      const out = redactSecrets(input);
+      expect(out).not.toContain(TOKEN_VALUE);
+      expect(out).toBe('rsync **redacted** user@host:/');
     });
 
-    it('does not redact -t in unrelated words (e.g. -target)', () => {
+    it('redacts a word that merely starts with -t (accepted false positive)', () => {
+      // The price of matching glued short flags: `-target` is wiped together
+      // with its value. Cosmetic in a notification, and preferred over
+      // letting a real `-tSECRET` through. Matches the command profile.
       const out = redactSecrets('clang -target=x86_64 foo.c');
-      expect(out).toBe('clang -target=x86_64 foo.c');
+      expect(out).toBe('clang **redacted** foo.c');
     });
 
     it('redacts -a value (redis auth) — parity with canonical redactCommand', () => {
@@ -76,11 +82,13 @@ describe('redactSecrets', () => {
       expect(out).toContain('-a [REDACTED]');
     });
 
-    it('does NOT redact a glued -aVALUE flag (matches the -p/-t glued-form policy)', () => {
-      // Same intentional boundary as glued `-tVALUE` above: only the
-      // separated/-equals form is matched in this file.
+    it('redacts a glued -aVALUE flag (redis auth, parity with the command profile)', () => {
+      // Same rule as glued `-tVALUE` above: `redis-cli -aSECRET` must not
+      // reach a notification verbatim.
       const input = `redis-cli -a${REDIS_PW_VALUE} get key`;
-      expect(redactSecrets(input)).toBe(input);
+      const out = redactSecrets(input);
+      expect(out).not.toContain(REDIS_PW_VALUE);
+      expect(out).toBe('redis-cli **redacted** get key');
     });
   });
 

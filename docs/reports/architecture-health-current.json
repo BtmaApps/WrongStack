@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T18:30:02.438Z",
+  "generatedAt": "2026-09-20T19:17:04.223Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,10 +12,10 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3968,
-    "testFiles": 3573,
-    "sourceLines": 952813,
-    "workspaceEdges": 128,
+    "sourceFiles": 3969,
+    "testFiles": 3574,
+    "sourceLines": 952874,
+    "workspaceEdges": 129,
     "moduleEdges": 12854,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
@@ -462,8 +462,8 @@
     {
       "name": "@wrongstack/primitives",
       "dir": "packages/primitives",
-      "sourceFiles": 6,
-      "testFiles": 5,
+      "sourceFiles": 7,
+      "testFiles": 6,
       "workspaceDependencies": [],
       "tsconfigs": [
         {
@@ -474,7 +474,7 @@
         {
           "path": "packages/primitives/tsconfig.test.json",
           "error": null,
-          "testFiles": 5
+          "testFiles": 6
         }
       ]
     },
@@ -718,7 +718,8 @@
       "sourceFiles": 27,
       "testFiles": 36,
       "workspaceDependencies": [
-        "@wrongstack/core"
+        "@wrongstack/core",
+        "@wrongstack/primitives"
       ],
       "tsconfigs": [
         {
@@ -11784,6 +11785,12 @@
         ]
       },
       {
+        "file": "packages/primitives/tests/redaction-single-source.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/primitives/tests/regex-ambiguity.test.ts",
         "projects": [
           "root-node"
@@ -22801,7 +22808,7 @@
     },
     {
       "file": "packages/core/src/security/secret-vault.ts",
-      "lines": 865,
+      "lines": 905,
       "relativeImports": 9
     },
     {
