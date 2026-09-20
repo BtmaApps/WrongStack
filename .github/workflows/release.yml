@@ -29,8 +29,16 @@ name: Release
 #     reviewers. The environment is what makes a tag push a *request* to
 #     publish rather than a publish: pushing a tag cannot ship on its own.
 #
-# Until (1) is done for a given package, its publish step fails with a 404 from
-# the registry — that is npm rejecting an unknown publisher, not a bug here.
+# Until (1) is done for a given package, its publish step fails with
+#
+#   npm error need auth This command requires you to be logged in to
+#   https://registry.npmjs.org/
+#
+# and NOT the 404 this comment used to predict (observed on v1.0.23, npm
+# 11.19.1): with no trusted publisher registered, npm never attempts the OIDC
+# exchange at all and falls back to token auth, where there is no token. That
+# message is npm reporting a missing credential, not a bug here — nothing in
+# this workflow supplies one by design.
 #
 # pnpm version floor
 # ──────────────────
