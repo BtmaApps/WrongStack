@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T12:40:27.269Z",
+  "generatedAt": "2026-09-20T13:31:05.274Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3964,
-    "testFiles": 3563,
-    "sourceLines": 951873,
+    "sourceFiles": 3966,
+    "testFiles": 3566,
+    "sourceLines": 952360,
     "workspaceEdges": 128,
-    "moduleEdges": 12838,
+    "moduleEdges": 12841,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -217,7 +217,7 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 914,
+      "sourceFiles": 915,
       "testFiles": 809,
       "workspaceDependencies": [
         "@wrongstack/kanban",
@@ -546,7 +546,7 @@
     {
       "name": "@wrongstack/runtime",
       "dir": "packages/runtime",
-      "sourceFiles": 13,
+      "sourceFiles": 14,
       "testFiles": 18,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -737,7 +737,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 224,
-      "testFiles": 265,
+      "testFiles": 268,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -753,7 +753,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 265
+          "testFiles": 268
         }
       ]
     },
@@ -14472,6 +14472,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/architecture/sync-core-public-api-snapshot.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/architecture/typescript-compiler-boundary.test.ts",
         "projects": [
           "root-node"
@@ -15162,6 +15168,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/fetch-guard-regressions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/fetch-lookup.test.ts",
         "projects": [
           "root-node"
@@ -15739,6 +15751,12 @@
       },
       {
         "file": "packages/tools/tests/replace.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/search-cache-ttl.test.ts",
         "projects": [
           "root-node"
         ]

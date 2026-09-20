@@ -521,7 +521,11 @@ describe('read tool', () => {
       ctrl.abort();
       const ctxWithSignal = { ...sb.ctx, signal: ctrl.signal };
       await expect(
-        readTool.execute({ path: 'abort.txt' }, ctxWithSignal as any),
+        readTool.execute(
+          { path: 'abort.txt' },
+          ctxWithSignal as any,
+          undefined as unknown as { signal: AbortSignal },
+        ),
       ).rejects.toMatchObject({ name: 'AbortError' });
     });
 

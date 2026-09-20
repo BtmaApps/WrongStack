@@ -1109,7 +1109,7 @@
     "model": "Model override",
     "defaultHint": "Empty uses provider default",
     "requestTimeout": "Request timeout (ms)",
-    "featureHint": "Judgments default on with an account. Skill suggestions and fleet dispatch are opt-in. Enabled features send decision context to this provider.",
+    "featureHint": "Switches permit Jev usage. Actual use also depends on the prerequisites and triggers below.",
     "save": "Save Jev settings",
     "test": "Test saved connection",
     "testHint": "The test sends one small billed request. Save changes first. Restart existing sessions to apply all consumers.",
@@ -1129,6 +1129,60 @@
       "semanticLint": "Semantic lint",
       "skillSuggestion": "Skill suggestions",
       "fleetDispatch": "Fleet dispatch"
-    }
+    },
+    "readinessScope": "These are saved profile conditions, not the live state of every session. A request below means the service was called, not that its answer was accepted.",
+    "unknownReadiness": "Readiness unavailable on this server",
+    "unsaved": "Unsaved change",
+    "lastRequest": "Last runtime request",
+    "notObserved": "No runtime request in the displayed recent log.",
+    "contextStrategy": "Profile compaction strategy",
+    "contextScope": "Selective enables the Jev selection path. Save changes and restart existing sessions; a session-specific strategy can override this profile setting.",
+    "openContext": "Open session context settings",
+    "configureTiers": "Configure model tiers",
+    "tiersHint": "Enable tiers and define at least two levels, cheapest first. Set their models or fallback profiles and a default tier. Changes here save immediately.",
+    "checkHeading": "Live capability checks",
+    "checkHint": "Runs 20 synthetic cases across all 10 features using the saved account, including disabled features. Makes billed API calls, sends no project content and changes no feature settings. Passing does not prove workload quality or that a session uses the feature.",
+    "checkAll": "Test all 10 features",
+    "checkRunning": "Running live checks…",
+    "expected": "Expected",
+    "actual": "Actual",
+    "includeChecks": "Include diagnostic requests",
+    "selfTest": "Diagnostic",
+    "account": {
+      "ready": "Account configured",
+      "unconfigured": "Account required",
+      "unusable": "Account settings invalid"
+    },
+    "readiness": {
+      "disabled": "Disabled",
+      "account-required": "Account required",
+      "blocked": "Setup required",
+      "conditional": "Configured · waiting for trigger"
+    },
+    "reasons": {
+      "disabled": "This feature is not permitted to use Jev.",
+      "account-required": "Configure a valid Jev account first.",
+      "selective-required": "Jev selection requires selective compaction; hybrid and intelligent do not use this selector.",
+      "tiers-disabled": "The model tier system is disabled.",
+      "tiers-required": "Define at least two model tiers.",
+      "skills-disabled": "The global skills feature is disabled.",
+      "trigger-required": "Runs only when its trigger conditions are met.",
+      "memory-disabled": "Memory or SAGE is disabled.",
+      "recall-injection-required": "SAGE turn context recall is disabled; the Jev recall filter requires this path."
+    },
+    "triggers": {
+      "brain": "Runs before later decision tiers; uncertain answers defer.",
+      "memoryTriage": "Runs during triage value evaluation and merge decisions.",
+      "topicShift": "Runs when topic-change prechecks require a judgment; repeated results may be cached.",
+      "memoryRecall": "Filters candidates returned by SAGE turn context recall; cached judgments are reused.",
+      "compaction": "Rates middle conversation turns during selective compaction; requires a provider and sufficient history.",
+      "kanbanVerify": "Judges open agent-type criteria against changed files and their diff.",
+      "modelTier": "Suggests a tier for delegations with no explicit model/tier and no matching role/phase route.",
+      "semanticLint": "Runs when the semantic lint command finds candidates; it is not an automatic edit watcher.",
+      "skillSuggestion": "Requires skills enabled, at least two skills, and gate/fit thresholds; results may be cached.",
+      "fleetDispatch": "Runs only for ambiguous routing with multiple candidate roles."
+    },
+    "recallTurnContext": "SAGE turn context recall",
+    "recallTurnHint": "Adds relevant memories to each new turn; the Jev recall filter runs on this path. Memory and SAGE must also be enabled. Save and restart existing sessions."
   }
 }

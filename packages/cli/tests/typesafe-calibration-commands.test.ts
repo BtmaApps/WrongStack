@@ -18,6 +18,7 @@ import { loadRuntimeDatabaseSync } from '@wrongstack/persistence';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const host = vi.hoisted(() => ({
+  empty: false,
   ready: true,
   fail: undefined as string | undefined,
   noul: 0.95,
@@ -51,6 +52,7 @@ vi.mock('@wrongstack/core/typesafe', async (importOriginal) => {
     async systemOne(req: SystemOneRequest): Promise<SystemOneResult> {
       host.calls++;
       if (host.fail) throw new Error(host.fail);
+      if (host.empty) return { answers: {}, usage: { inputTokens: 0, outputTokens: 0 } };
       const answers: Record<string, TypeSafeAnswer> = {};
       for (const [id, q] of Object.entries(req.questions)) answers[id] = answerFor(q);
       return { answers, usage: { inputTokens: 1, outputTokens: 1 }, model: 'jev-fake' };
@@ -84,6 +86,7 @@ let dir: string;
 beforeEach(() => {
   dir = mkdtempSync(path.join(os.tmpdir(), 'ws-typesafe-cal-'));
   Object.assign(host, {
+    empty: false,
     ready: true,
     fail: undefined,
     noul: 0.95,
@@ -385,6 +388,8 @@ describe('check-judgments', () => {
       'kanbanVerify',
       'modelTier',
       'semanticLint',
+      'skillSuggestion',
+      'fleetDispatch',
     ]) {
       expect(out).toMatch(new RegExp(`^${feature}$`, 'm'));
     }
@@ -392,7 +397,14 @@ describe('check-judgments', () => {
     expect(code).toBe(1);
     expect(out).toContain('✓ met criterion');
     expect(out).toContain('✗ unmet criterion');
-    expect(out).toMatch(/\d+\/16 as expected — typesafe route, model jev-fake/);
+    expect(out).toMatch(/\d+\/20 as expected — typesafe route, model jev-fake/);
+  });
+
+  it('does not treat malformed replies as a correct no-suggestion verdict', async () => {
+    host.empty = true;
+    const { code, out } = await run(checkJudgments);
+    expect(code).toBe(1);
+    expect(out).toContain('0/20 as expected');
   });
 
   it('fails every case, without throwing, when the host is down', async () => {
@@ -400,6 +412,6 @@ describe('check-judgments', () => {
     const { code, out } = await run(checkJudgments);
     expect(code).toBe(1);
     expect(out).not.toContain('✓');
-    expect(out).toMatch(/0\/16 as expected/);
+    expect(out).toMatch(/0\/20 as expected/);
   });
 });

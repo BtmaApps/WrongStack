@@ -145,13 +145,15 @@ describe('searchTool', () => {
 
   it('throws when executeStream is unavailable', async () => {
     const original = searchTool.executeStream;
-    searchTool.executeStream = undefined;
+    (searchTool as { executeStream: typeof searchTool.executeStream | undefined }).executeStream =
+      undefined;
     try {
       await expect(searchTool.execute({ query: 'x' }, {} as any, makeOpts())).rejects.toThrow(
         /stream execution unavailable/,
       );
     } finally {
-      searchTool.executeStream = original;
+      (searchTool as { executeStream: typeof searchTool.executeStream | undefined }).executeStream =
+        original;
     }
   });
 
@@ -457,12 +459,17 @@ describe('search cache, dedup, and ranking', () => {
   it('safely executes without opts and falls back to ctx.signal or default signal', async () => {
     globalThis.fetch = mockFetch(() => DDG_FIXTURE) as any;
     const ctx = {} as any;
-    const result = await searchTool.execute({ query: 'hello' }, ctx);
+    const optsOmitted = undefined as unknown as { signal: AbortSignal };
+    const result = await searchTool.execute({ query: 'hello' }, ctx, optsOmitted);
     expect(result.results.length).toBeGreaterThan(0);
 
     const ac = new AbortController();
     const ctxWithSignal = { ...ctx, signal: ac.signal };
-    const resultWithSignal = await searchTool.execute({ query: 'hello' }, ctxWithSignal);
+    const resultWithSignal = await searchTool.execute(
+      { query: 'hello' },
+      ctxWithSignal,
+      optsOmitted,
+    );
     expect(resultWithSignal.results.length).toBeGreaterThan(0);
   });
 });

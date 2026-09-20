@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAppTranslation } from '@/i18n';
+import { useUIStore } from '@/stores';
 import type { JevSettings, JevState } from '@/types/jev';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { ModelTiersSection } from './ModelTiersSection';
 
-export function JevSection() {
+export function JevSection({
+  syncPref,
+}: {
+  syncPref?: (key: string, value: unknown) => void;
+} = {}) {
   const { client } = useWebSocket();
   const { t } = useAppTranslation();
   const [state, setState] = useState<JevState>({});
@@ -14,6 +20,8 @@ export function JevSection() {
   const [removeKey, setRemoveKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('');
+  const [includeChecks, setIncludeChecks] = useState(false);
+  const checking = useRef(false);
   const prefix = useRef(crypto.randomUUID());
   const pending = useRef<string | undefined>(undefined);
   const initialRoute = useRef('');
@@ -57,20 +65,24 @@ export function JevSection() {
   }, [client]);
   useEffect(() => {
     if (!busy) return;
-    const timer = setTimeout(() => {
-      pending.current = undefined;
-      setBusy(false);
-      setState((old) => ({ ...old, error: t('settings:jev.timeout') }));
-    }, 15000);
+    const timer = setTimeout(
+      () => {
+        pending.current = undefined;
+        setBusy(false);
+        setState((old) => ({ ...old, error: t('settings:jev.timeout') }));
+      },
+      checking.current ? 70000 : 15000,
+    );
     return () => clearTimeout(timer);
   }, [busy, t]);
-  const send = (type: 'jev.set' | 'jev.test') => {
+  const send = (type: 'jev.set' | 'jev.test' | 'jev.check') => {
     if (!form) return;
     const requestId = `${prefix.current}:${crypto.randomUUID()}`;
     pending.current = requestId;
     saving.current = type === 'jev.set';
+    checking.current = type === 'jev.check';
     setBusy(true);
-    if (type === 'jev.test') client.send({ type, payload: { requestId } });
+    if (type !== 'jev.set') client.send({ type, payload: { requestId } });
     else
       client.send({
         type,
@@ -82,13 +94,23 @@ export function JevSection() {
             model: form.model.trim() || null,
             requestTimeoutMs: form.requestTimeoutMs,
             features: form.features,
+            ...(form.recallTurnContext !== undefined &&
+            form.recallTurnContext !== state.settings?.recallTurnContext
+              ? { recallTurnContext: form.recallTurnContext }
+              : {}),
+            ...(form.contextStrategy && form.contextStrategy !== state.settings?.contextStrategy
+              ? { contextStrategy: form.contextStrategy }
+              : {}),
             ...(key.trim() ? { apiKey: key.trim() } : removeKey ? { apiKey: null } : {}),
           },
         },
       });
   };
   const entries =
-    state.activity?.entries.filter((entry) => !filter || entry.feature === filter) ?? [];
+    state.activity?.entries.filter(
+      (entry) =>
+        (!filter || entry.feature === filter) && (includeChecks || entry.purpose !== 'self-test'),
+    ) ?? [];
   return (
     <div className="space-y-5 min-w-0">
       <div>
@@ -97,7 +119,7 @@ export function JevSection() {
       </div>
       <p role="status" className="text-sm break-words">
         {state.settings
-          ? `${state.settings.status} · ${state.settings.keySource}`
+          ? `${t(`settings:jev.account.${state.settings.status}`)} · ${state.settings.keySource}`
           : t('settings:jev.loading')}{' '}
         {state.settings?.reason}
       </p>
@@ -175,23 +197,107 @@ export function JevSection() {
             />
           </label>
           <p className="text-xs text-muted-foreground">{t('settings:jev.featureHint')}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {Object.entries(form.features).map(([feature, enabled]) => (
-              <label key={feature} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      features: { ...form.features, [feature]: e.target.checked },
-                    })
-                  }
-                />
-                {t(`settings:jev.features.${feature}`)}
-              </label>
-            ))}
+          <p className="text-xs text-muted-foreground">{t('settings:jev.readinessScope')}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Object.entries(form.features).map(([feature, enabled]) => {
+              const readiness = state.settings?.readiness?.[feature];
+              const latest = state.activity?.entries.find(
+                (entry) => entry.feature === feature && entry.purpose !== 'self-test',
+              );
+              const draft = enabled !== state.settings?.features[feature];
+              return (
+                <div
+                  key={feature}
+                  className="rounded-lg border p-3 space-y-2"
+                  data-testid={`jev-feature-${feature}`}
+                >
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          features: { ...form.features, [feature]: e.target.checked },
+                        })
+                      }
+                    />
+                    {t(`settings:jev.features.${feature}`)}
+                  </label>
+                  <p className="text-xs font-medium" role="status">
+                    {draft
+                      ? t('settings:jev.unsaved')
+                      : readiness
+                        ? t(`settings:jev.readiness.${readiness.state}`)
+                        : t('settings:jev.unknownReadiness')}
+                  </p>
+                  {readiness && readiness.reason !== 'trigger-required' && (
+                    <p className="text-xs text-muted-foreground">
+                      {t(`settings:jev.reasons.${readiness.reason}`)}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {t(`settings:jev.triggers.${feature}`)}
+                  </p>
+                  <p className="text-xs">
+                    {latest
+                      ? `${t('settings:jev.lastRequest')}: ${new Date(latest.at).toLocaleString()} · ${latest.outcome} · ${latest.durationMs} ms${latest.reason ? ` · ${latest.reason}` : ''}`
+                      : t('settings:jev.notObserved')}
+                  </p>
+                </div>
+              );
+            })}
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.recallTurnContext === true}
+              onChange={(e) => setForm({ ...form, recallTurnContext: e.target.checked })}
+            />
+            {t('settings:jev.recallTurnContext')}
+          </label>
+          <p className="text-xs text-muted-foreground">{t('settings:jev.recallTurnHint')}</p>
+          <label htmlFor="jev-context-strategy" className="block text-sm">
+            {t('settings:jev.contextStrategy')}
+            <select
+              id="jev-context-strategy"
+              className="mt-1 block w-full rounded border bg-background p-2"
+              value={form.contextStrategy ?? 'hybrid'}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  contextStrategy: e.target.value as JevSettings['contextStrategy'],
+                })
+              }
+            >
+              <option value="hybrid">Hybrid</option>
+              <option value="intelligent">Intelligent</option>
+              <option value="selective">Selective (Jev)</option>
+            </select>
+          </label>
+          <p className="text-xs text-muted-foreground">{t('settings:jev.contextScope')}</p>
+          <Button
+            variant="outline"
+            onClick={() => useUIStore.getState().setSettingsActiveTab('context')}
+          >
+            {t('settings:jev.openContext')}
+          </Button>
+          {syncPref ? (
+            <details className="rounded border p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                {t('settings:jev.configureTiers')}
+              </summary>
+              <p className="my-3 text-xs text-muted-foreground">{t('settings:jev.tiersHint')}</p>
+              <ModelTiersSection syncPref={syncPref} />
+            </details>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => useUIStore.getState().setSettingsActiveTab('routing')}
+            >
+              {t('settings:jev.configureTiers')}
+            </Button>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => send('jev.set')}>{t('settings:jev.save')}</Button>
             <Button variant="outline" onClick={() => send('jev.test')}>
@@ -201,9 +307,56 @@ export function JevSection() {
           <p className="text-xs text-muted-foreground">{t('settings:jev.testHint')}</p>
         </fieldset>
       )}
+      <section className="space-y-3 border-t pt-4" aria-label={t('settings:jev.checkHeading')}>
+        <h4 className="font-semibold">{t('settings:jev.checkHeading')}</h4>
+        <p className="text-xs text-muted-foreground">{t('settings:jev.checkHint')}</p>
+        <Button
+          variant="outline"
+          disabled={busy || state.checks?.running || !form || state.settings?.status !== 'ready'}
+          onClick={() => send('jev.check')}
+        >
+          {state.checks?.running || (busy && checking.current)
+            ? t('settings:jev.checkRunning')
+            : t('settings:jev.checkAll')}
+        </Button>
+        {state.checks?.report && (
+          <div className="space-y-2" data-testid="jev-check-report">
+            <p className="text-sm font-medium">
+              {state.checks.report.passed}/{state.checks.report.total} · {state.checks.report.model}{' '}
+              · {new Date(state.checks.report.at).toLocaleString()}
+            </p>
+            {state.checks.report.cases.map((result) => (
+              <details
+                key={`${result.feature}:${result.name}`}
+                className="rounded border p-2 text-xs"
+              >
+                <summary className="cursor-pointer">
+                  {result.ok ? '✓' : '✗'} {t(`settings:jev.features.${result.feature}`)} ·{' '}
+                  {result.name} · {result.ms} ms
+                </summary>
+                <p>
+                  {t('settings:jev.expected')}: {result.expected}
+                </p>
+                <p>
+                  {t('settings:jev.actual')}: {result.actual}
+                </p>
+                {result.note && <p>{result.note}</p>}
+              </details>
+            ))}
+          </div>
+        )}
+      </section>
       <div className="space-y-3 border-t pt-4">
         <h4 className="font-semibold">{t('settings:jev.activity')}</h4>
         <p className="text-xs text-muted-foreground">{t('settings:jev.activityHint')}</p>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={includeChecks}
+            onChange={(e) => setIncludeChecks(e.target.checked)}
+          />
+          {t('settings:jev.includeChecks')}
+        </label>
         {state.activity?.path && (
           <p className="break-all text-xs font-mono">{state.activity.path}</p>
         )}
@@ -231,8 +384,9 @@ export function JevSection() {
         {entries.map((entry) => (
           <details key={entry.id} className="rounded border p-2 text-xs break-words">
             <summary className="cursor-pointer">
-              {new Date(entry.at).toLocaleTimeString()} · {entry.feature} · {entry.outcome} ·{' '}
-              {entry.durationMs} ms
+              {new Date(entry.at).toLocaleTimeString()} · {entry.feature} ·{' '}
+              {entry.purpose === 'self-test' ? `${t('settings:jev.selfTest')} · ` : ''}
+              {entry.outcome} · {entry.durationMs} ms
             </summary>
             <p className="mt-2">
               {entry.route} / {entry.model} · {entry.inputTokens ?? 0} in /{' '}

@@ -255,10 +255,12 @@ describe('patchTool — bookkeeping on every outcome', () => {
     const ctx = makeCtx();
     // Unparseable targets are refused before any signal is consulted by an
     // engine; the call must fail cleanly (not crash) with or without opts.
+    const optsOmitted = undefined as unknown as { signal: AbortSignal };
     await expect(
       patchTool.execute(
         { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
         ctx,
+        optsOmitted,
       ),
     ).rejects.toThrow(/patch refused/);
 
@@ -268,6 +270,7 @@ describe('patchTool — bookkeeping on every outcome', () => {
       patchTool.execute(
         { patch: '--- fake\n+++ fake\n@@ -1,1 +1,1 @@\n-old\n+new', dry_run: true },
         ctxWithSignal,
+        optsOmitted,
       ),
     ).rejects.toThrow(/patch refused/);
   });

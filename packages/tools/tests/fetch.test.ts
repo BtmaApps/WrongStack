@@ -235,7 +235,7 @@ describe('fetchTool', () => {
       // Public host returns a 302 redirecting to AWS metadata. The fix
       // requires re-checking each hop; pre-fix this would have fetched it.
       let firstHit = true;
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         if (firstHit && u.startsWith('https://public.example')) {
           firstHit = false;
@@ -321,7 +321,7 @@ describe('fetchTool', () => {
     });
 
     it('blocks redirect to http:// (downgrade attempt)', async () => {
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         return {
           status: 302,
@@ -346,7 +346,7 @@ describe('fetchTool', () => {
 
     it('rejects after too many redirects', async () => {
       // Always-redirect server — exhausts the 5-redirect budget.
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         return {
           status: 302,
@@ -370,7 +370,7 @@ describe('fetchTool', () => {
     });
 
     it('rejects a redirect to an unsupported protocol', async () => {
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         return {
           status: 302,
@@ -391,7 +391,7 @@ describe('fetchTool', () => {
     });
 
     it('rejects a redirect with no location header', async () => {
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         return {
           status: 302,
@@ -456,7 +456,7 @@ describe('fetchTool', () => {
 
     it('streams a large body (flushes partial output and caps at MAX_BYTES)', async () => {
       const big = 'x'.repeat(200 * 1024); // > MAX_BYTES (128 KB) and > FLUSH_AT
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         return mkResponse({ body: big, contentType: 'text/plain', url: u });
       }) as never as typeof fetch;
@@ -474,7 +474,7 @@ describe('fetchTool', () => {
 
     it('passes redirects to non-private targets through', async () => {
       let hop = 0;
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : (input as URL).toString();
         hop++;
         if (hop === 1 && u.startsWith('https://a.example')) {
@@ -548,7 +548,8 @@ describe('fetch prettyJson error handling', () => {
     ) as never as typeof fetch;
     const sb = await mkSandbox();
     try {
-      const out = await fetchTool.execute({ url: 'https://api.example.com/data' }, sb.ctx);
+      const optsOmitted = undefined as unknown as { signal: AbortSignal };
+      const out = await fetchTool.execute({ url: 'https://api.example.com/data' }, sb.ctx, optsOmitted);
       expect(out.status).toBe(200);
       expect(out.content).toBe('no-opts content');
 
@@ -557,6 +558,7 @@ describe('fetch prettyJson error handling', () => {
       const outWithSignal = await fetchTool.execute(
         { url: 'https://api.example.com/data' },
         ctxWithSignal,
+        optsOmitted,
       );
       expect(outWithSignal.status).toBe(200);
     } finally {

@@ -267,7 +267,11 @@ describe('glob tool', () => {
       ctrl.abort();
       const ctxWithSignal = { ...sb.ctx, signal: ctrl.signal };
 
-      const out = await globTool.execute({ pattern: '**/*.ts' }, ctxWithSignal as any);
+      const out = await globTool.execute(
+        { pattern: '**/*.ts' },
+        ctxWithSignal as any,
+        undefined as unknown as { signal: AbortSignal },
+      );
       expect(out.truncated).toBe(true);
       expect(out.files.length).toBe(0);
     });

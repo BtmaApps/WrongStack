@@ -22,13 +22,13 @@ export async function mkSandbox(): Promise<Sandbox> {
     writtenFiles: new Set<string>(),
     sideEffects: [],
     hasRead(p: string) {
-      return this.readFiles.has(p);
+      return (this as { readFiles: Set<string> }).readFiles.has(p);
     },
     hasWritten(p: string) {
       return (this as { writtenFiles: Set<string> }).writtenFiles.has(p);
     },
     lastReadMtime(p: string) {
-      return this.fileMtimes.get(p);
+      return (this as { fileMtimes: Map<string, number> }).fileMtimes.get(p);
     },
     lastReadHash(p: string) {
       return (this as { fileHashes: Map<string, string> }).fileHashes.get(p);
@@ -37,24 +37,25 @@ export async function mkSandbox(): Promise<Sandbox> {
       // Mirrors the real Context semantics: a hash-less record with a new
       // mtime drops the stored hash (content may have changed under us).
       const hashes = (this as { fileHashes: Map<string, string> }).fileHashes;
+      const mtimes = (this as { fileMtimes: Map<string, number> }).fileMtimes;
       if (contentHash !== undefined) {
         hashes.set(p, contentHash);
-      } else if (this.fileMtimes.get(p) !== m) {
+      } else if (mtimes.get(p) !== m) {
         hashes.delete(p);
       }
-      this.fileMtimes.set(p, m);
+      mtimes.set(p, m);
       if (source === 'write') {
         (this as { writtenFiles: Set<string> }).writtenFiles.add(p);
       } else {
-        this.readFiles.add(p);
+        (this as { readFiles: Set<string> }).readFiles.add(p);
       }
     },
     recordSideEffect(se: unknown) {
       (this as { sideEffects: unknown[] }).sideEffects.push(se);
     },
     clearFileTracking() {
-      this.readFiles.clear();
-      this.fileMtimes.clear();
+      (this as { readFiles: Set<string> }).readFiles.clear();
+      (this as { fileMtimes: Map<string, number> }).fileMtimes.clear();
       (this as { fileHashes: Map<string, string> }).fileHashes.clear();
       (this as { sideEffects: unknown[] }).sideEffects = [];
     },

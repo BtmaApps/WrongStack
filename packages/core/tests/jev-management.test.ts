@@ -37,6 +37,57 @@ async function fixture() {
   return { file, store: new DefaultConfigStore(initial as unknown as Config) };
 }
 describe('Jev settings', () => {
+  it('distinguishes permission from missing dependencies', () => {
+    const config = {
+      version: 1,
+      typesafe: { apiKey: 'k' },
+      context: { strategy: 'hybrid' },
+      modelTiers: { enabled: false },
+      skills: { suggest: { enabled: true } },
+      features: { skills: false },
+    } as unknown as Config;
+    const snapshot = jevSettingsSnapshot(config);
+    expect(snapshot.features.compaction).toBe(true);
+    expect(snapshot.readiness.compaction).toEqual({
+      state: 'blocked',
+      reason: 'selective-required',
+    });
+    expect(snapshot.readiness.modelTier?.reason).toBe('tiers-disabled');
+    expect(snapshot.readiness.skillSuggestion?.reason).toBe('skills-disabled');
+    expect(snapshot.readiness.memoryRecall?.reason).toBe('recall-injection-required');
+    expect(
+      jevSettingsSnapshot({ ...config, Sage: { enabled: false } }).readiness.memoryRecall?.reason,
+    ).toBe('memory-disabled');
+    expect(snapshot.readiness.brain?.state).toBe('conditional');
+    expect(
+      jevSettingsSnapshot({
+        ...config,
+        context: { ...config.context, strategy: 'selective' },
+        modelTiers: { enabled: true, levels: { budget: {}, premium: {} } },
+      }).readiness.modelTier?.state,
+    ).toBe('conditional');
+  });
+  it('saves selective compaction without overwriting sibling context preferences', async () => {
+    const { file, store } = await fixture();
+    await writeFile(
+      file,
+      JSON.stringify({
+        context: { preserveK: 9 },
+        Sage: { inject: { toolResults: true } },
+        unrelated: 42,
+      }),
+    );
+    await saveJevSettings(store, file, undefined, {
+      contextStrategy: 'selective',
+      recallTurnContext: true,
+    });
+    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({
+      context: { strategy: 'selective', preserveK: 9 },
+      Sage: { inject: { toolResults: true, turnContext: true } },
+      unrelated: 42,
+    });
+    expect(store.get().context.strategy).toBe('selective');
+  });
   it('clears route credentials and stale overrides while preserving unrelated profile settings', async () => {
     const { file, store } = await fixture();
     await saveJevSettings(store, file, undefined, { route: 'openrouter' });
@@ -140,12 +191,14 @@ describe('Jev activity', () => {
     );
     await client.systemOne({
       activityFeature: 'memoryRecall',
+      activityPurpose: 'self-test',
       state: { secret: 'sensitive-prompt' },
       questions: { fits: { type: 'noul', instructions: 'private-instructions' } },
     });
     const entry = jevActivitySnapshot().entries[0];
     expect(entry).toMatchObject({
       feature: 'memoryRecall',
+      purpose: 'self-test',
       outcome: 'answered',
       inputTokens: 23,
       answers: { fits: 0.8 },

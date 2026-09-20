@@ -67,7 +67,7 @@ function redirectResponse(url: string, location: string): Response {
 
 /** A fetch that never settles until the request's signal aborts. */
 function hangingFetch(): typeof fetch {
-  return ((_input: RequestInfo | URL, init?: RequestInit) =>
+  return ((_input: string | URL | Request, init?: RequestInit) =>
     new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => {
         reject(new DOMException('This operation was aborted', 'AbortError'));
@@ -132,7 +132,7 @@ describe('fetch guard regressions', () => {
       dnsRecords.set('public.example', ['93.184.216.34']);
       dnsRecords.set('internal.example', ['10.0.0.1']);
       const calls: string[] = [];
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input.toString();
         calls.push(u);
         if (u.startsWith('https://public.example')) {
@@ -158,7 +158,7 @@ describe('fetch guard regressions', () => {
 
     it('blocks a redirect hostname resolving to cloud metadata via DNS', async () => {
       dnsRecords.set('metadata.example', ['169.254.169.254']);
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input.toString();
         return redirectResponse(u, 'https://metadata.example/latest/meta-data/');
       }) as never as typeof fetch;
@@ -177,7 +177,7 @@ describe('fetch guard regressions', () => {
 
     it('allows a redirect to a hostname that resolves publicly', async () => {
       dnsRecords.set('cdn.example', ['93.184.216.35']);
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input.toString();
         if (u.startsWith('https://public.example')) {
           return redirectResponse(u, 'https://cdn.example/final');
@@ -203,7 +203,7 @@ describe('fetch guard regressions', () => {
   describe('per-hop embedded-credential rejection', () => {
     it('blocks a redirect whose Location header carries user:pass credentials', async () => {
       const calls: string[] = [];
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input.toString();
         calls.push(u);
         return redirectResponse(u, 'https://user:secret@creds.example/private');
@@ -224,7 +224,7 @@ describe('fetch guard regressions', () => {
     });
 
     it('blocks a redirect Location with a username only', async () => {
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
         const u = typeof input === 'string' ? input : input.toString();
         return redirectResponse(u, 'https://user@creds.example/');
       }) as never as typeof fetch;

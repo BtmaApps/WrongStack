@@ -114,14 +114,20 @@ describe('write tool', () => {
     ctrl.abort();
     const ctxWithSignal = { ...sb.ctx, signal: ctrl.signal };
 
+    const optsOmitted = undefined as unknown as { signal: AbortSignal };
     await expect(
-      writeTool.execute({ path: 'aborted_ctx.txt', content: 'never' }, ctxWithSignal as any),
+      writeTool.execute(
+        { path: 'aborted_ctx.txt', content: 'never' },
+        ctxWithSignal as any,
+        optsOmitted,
+      ),
     ).rejects.toMatchObject({ name: 'AbortError' });
     await expect(fs.access(path.join(sb.dir, 'aborted_ctx.txt'))).rejects.toThrow();
 
     const streamGen = writeTool.executeStream!(
       { path: 'aborted_stream_ctx.txt', content: 'never' },
       ctxWithSignal as any,
+      optsOmitted,
     );
     await expect(async () => {
       for await (const _ of streamGen) {

@@ -1109,7 +1109,7 @@
     "model": "Özel model",
     "defaultHint": "Boş bırakılırsa sağlayıcı varsayılanı",
     "requestTimeout": "İstek zaman aşımı (ms)",
-    "featureHint": "Hesap varsa karar özellikleri varsayılan olarak açıktır. Skill önerileri ve fleet dağıtımı ayrıca açılır. Etkin özellikler karar bağlamını bu sağlayıcıya gönderir.",
+    "featureHint": "Anahtarlar Jev kullanım iznini belirler. Gerçek kullanım, aşağıdaki bağımlılıklara ve tetiklenme koşullarına da bağlıdır.",
     "save": "Jev ayarlarını kaydet",
     "test": "Kayıtlı bağlantıyı test et",
     "testHint": "Test küçük, ücretli bir istek gönderir. Önce kaydedin. Tüm tüketicilere uygulanması için mevcut oturumları yeniden başlatın.",
@@ -1129,6 +1129,60 @@
       "semanticLint": "Anlamsal lint",
       "skillSuggestion": "Skill önerileri",
       "fleetDispatch": "Fleet dağıtımı"
-    }
+    },
+    "readinessScope": "Bunlar kayıtlı profil koşullarıdır; tüm oturumların canlı durumu değildir. İstek kaydı servisin çağrıldığını gösterir, yanıtın kabul edildiğini değil.",
+    "unknownReadiness": "Bu sunucuda hazırlık bilgisi yok",
+    "unsaved": "Kaydedilmemiş değişiklik",
+    "lastRequest": "Son gerçek kullanım isteği",
+    "notObserved": "Görüntülenen son kayıtlarda gerçek kullanım isteği yok.",
+    "contextStrategy": "Profil sıkıştırma stratejisi",
+    "contextScope": "Selective, Jev seçim yolunu açar. Kaydedip mevcut oturumları yeniden başlatın; oturuma özel strateji profil ayarını geçersiz kılabilir.",
+    "openContext": "Oturum bağlam ayarlarını aç",
+    "configureTiers": "Model seviyelerini yapılandır",
+    "tiersHint": "Seviye sistemini açıp en ucuzdan başlayarak en az iki seviye tanımlayın. Model veya fallback profillerini ve varsayılan seviyeyi seçin. Buradaki değişiklikler anında kaydedilir.",
+    "checkHeading": "Canlı yetenek kontrolleri",
+    "checkHint": "Kayıtlı hesapla, kapalı özellikler dahil 10 alanda 20 sentetik vaka çalıştırır. Ücretli API çağrıları yapar; proje içeriği göndermez ve özellik ayarlarını değiştirmez. Başarılı sonuç gerçek iş kalitesini veya oturumun bu özelliği kullandığını kanıtlamaz.",
+    "checkAll": "10 özelliği canlı test et",
+    "checkRunning": "Canlı kontroller çalışıyor…",
+    "expected": "Beklenen",
+    "actual": "Gelen",
+    "includeChecks": "Tanılama isteklerini göster",
+    "selfTest": "Tanılama",
+    "account": {
+      "ready": "Hesap yapılandırılmış",
+      "unconfigured": "Hesap gerekli",
+      "unusable": "Hesap ayarları geçersiz"
+    },
+    "readiness": {
+      "disabled": "Kapalı",
+      "account-required": "Hesap gerekli",
+      "blocked": "Kurulum gerekli",
+      "conditional": "Yapılandırılmış · tetiklenmeyi bekliyor"
+    },
+    "reasons": {
+      "disabled": "Bu özelliğin Jev kullanmasına izin verilmiyor.",
+      "account-required": "Önce geçerli bir Jev hesabı yapılandırın.",
+      "selective-required": "Jev seçicisi selective sıkıştırma gerektirir; hybrid ve intelligent bu seçiciyi kullanmaz.",
+      "tiers-disabled": "Model seviye sistemi kapalı.",
+      "tiers-required": "En az iki model seviyesi tanımlayın.",
+      "skills-disabled": "Genel skill özelliği kapalı.",
+      "trigger-required": "Yalnızca tetiklenme koşulları sağlanınca çalışır.",
+      "memory-disabled": "Genel bellek veya SAGE sistemi kapalı.",
+      "recall-injection-required": "SAGE konuşma başı bellek getirme kapalı; Jev recall filtresi bu yol gerektirir."
+    },
+    "triggers": {
+      "brain": "Sonraki karar katmanlarından önce çalışır; belirsiz yanıtı sonraki katmana bırakır.",
+      "memoryTriage": "Triage değer değerlendirmesinde ve bellek birleştirme kararlarında çalışır.",
+      "topicShift": "Konu değişimi ön kontrolleri karar gerektirirse çalışır; tekrarlanan sonuç önbellekten gelebilir.",
+      "memoryRecall": "SAGE konuşma başında aday bellek getirince ilgilerini değerlendirir; önbellekteki kararlar yeniden kullanılır.",
+      "compaction": "Selective sıkıştırmada konuşmanın orta turlarını puanlar; sağlayıcı ve yeterli geçmiş gerekir.",
+      "kanbanVerify": "Açık agent türü kriterleri değişen dosyalar ve diff üzerinden değerlendirir.",
+      "modelTier": "Açık model/seviye seçimi ve eşleşen rol/faz kuralı olmayan delegasyonlarda seviye önerir.",
+      "semanticLint": "Anlamsal lint komutu aday bulduğunda çalışır; otomatik edit izleyicisi değildir.",
+      "skillSuggestion": "Skill sistemi, en az iki skill ve gate/fit eşiklerinin geçilmesi gerekir; önbellek kullanılabilir.",
+      "fleetDispatch": "Yalnızca birden fazla aday rol arasında belirsiz yönlendirmede çalışır."
+    },
+    "recallTurnContext": "SAGE konuşma başı bellek getirme",
+    "recallTurnHint": "Her yeni turda uygun bellekleri bağlama ekler; Jev filtresi bu yolda çalışır. Genel bellek ve SAGE de açık olmalıdır. Kaydedip mevcut oturumları yeniden başlatın."
   }
 }

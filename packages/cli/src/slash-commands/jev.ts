@@ -16,6 +16,9 @@ const HELP = [
   '/jev endpoint <url> — set a custom endpoint before custom login',
   '/jev model <id>|default — pin/reset the decision model',
   '/jev timeout <ms> — request timeout',
+  '/jev compaction hybrid|intelligent|selective — profile compaction strategy',
+  '/jev recall on|off — SAGE turn context recall dependency',
+  '/jev check — billed synthetic checks for all 10 features',
   '/jev feature <name> on|off — enable/disable a consumer',
   `/jev features: ${JEV_FEATURES.join(', ')}`,
   '/jev test — one billed connection probe using saved settings',
@@ -41,7 +44,11 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
             `Jev · ${s.status} · ${s.route} · ${s.model}`,
             `Key: ${s.keySource} · timeout ${s.requestTimeoutMs} ms`,
             s.reason ?? 'Account configured; use /jev test to verify connectivity.',
-            ...Object.entries(s.features).map(([key, on]) => `${on ? 'on ' : 'off'} ${key}`),
+            ...Object.entries(s.features).map(
+              ([key, on]) =>
+                `${on ? 'on ' : 'off'} ${key} · ${s.readiness[key]?.state}: ${s.readiness[key]?.reason}`,
+            ),
+            `Profile compaction: ${s.contextStrategy}. Model tiers: /tier. Conditions do not prove runtime use.`,
             '',
             HELP,
           ].join('\n'),
@@ -62,6 +69,21 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
             rows.length ? '' : 'No matching Jev activity yet.',
           ].join('\n'),
         };
+      }
+      if (sub === 'check') {
+        const { checkJevJudgments } = await import('@wrongstack/runtime/jev-checks');
+        try {
+          const report = await checkJevJudgments(opts.configStore.get());
+          return {
+            message:
+              `${report.passed}/${report.total} synthetic checks passed · ${report.model}\n` +
+              report.cases
+                .map((c) => `${c.ok ? '✓' : '✗'} ${c.feature}: ${c.name} — ${c.actual}`)
+                .join('\n'),
+          };
+        } catch {
+          return { message: 'Jev checks unavailable; inspect /jev status.' };
+        }
       }
       if (sub === 'test') {
         try {
@@ -86,6 +108,9 @@ export function buildJevCommand(opts: SlashCommandContext): SlashCommand {
         patch = { route: arg };
       else if (sub === 'endpoint') patch = { route: 'custom', endpoint: arg };
       else if (sub === 'model') patch = { model: arg === 'default' ? null : arg };
+      else if (sub === 'recall' && ['on', 'off'].includes(arg))
+        patch = { recallTurnContext: arg === 'on' };
+      else if (sub === 'compaction') patch = { contextStrategy: arg };
       else if (sub === 'timeout') patch = { requestTimeoutMs: Number(arg) };
       else if (sub === 'remove-key') patch = { apiKey: null };
       else if (sub === 'feature' && ['on', 'off'].includes(value))

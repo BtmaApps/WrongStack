@@ -9,6 +9,7 @@ export interface JevActivity {
   id: string;
   at: number;
   feature: string;
+  purpose?: 'runtime' | 'self-test' | undefined;
   project: string;
   route: string;
   model: string;
@@ -85,6 +86,7 @@ export function observeJevClient(
         id: randomUUID(),
         at: start,
         feature: req.activityFeature ?? 'evaluation',
+        purpose: req.activityPurpose ?? 'runtime',
         project: process.cwd(),
         route,
         model: req.model ?? model,

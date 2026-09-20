@@ -143,13 +143,15 @@ describe('detectLinter config detection', () => {
 
   it('throws when executeStream is unavailable', async () => {
     const original = lintTool.executeStream;
-    lintTool.executeStream = undefined;
+    (lintTool as { executeStream: typeof lintTool.executeStream | undefined }).executeStream =
+      undefined;
     try {
       await expect(lintTool.execute({}, makeCtx(tmpDir), makeOpts())).rejects.toThrow(
         /stream execution unavailable/,
       );
     } finally {
-      lintTool.executeStream = original;
+      (lintTool as { executeStream: typeof lintTool.executeStream | undefined }).executeStream =
+        original;
     }
   });
 

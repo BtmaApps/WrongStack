@@ -21,12 +21,18 @@ const listeners = new Set();
 const originalOn = client.on.bind(client);
 client.on = (type, fn) => { if (type !== 'jev.state') return originalOn(type, fn); listeners.add(fn); return () => listeners.delete(fn); };
 let settings = { status: 'ready', keySource: 'config', route: 'typesafe', endpoint: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest', requestTimeoutMs: 4000, features: { brain: true, memoryTriage: true, topicShift: true, memoryRecall: true, compaction: true, kanbanVerify: true, modelTier: true, semanticLint: true, skillSuggestion: false, fleetDispatch: false } };
+settings.contextStrategy = 'hybrid';
+settings.readiness = Object.fromEntries(Object.keys(settings.features).map(feature => [feature, { state: feature === 'compaction' || feature === 'modelTier' ? 'blocked' : settings.features[feature] ? 'conditional' : 'disabled', reason: feature === 'compaction' ? 'selective-required' : feature === 'modelTier' ? 'tiers-disabled' : settings.features[feature] ? 'trigger-required' : 'disabled' }]));
+settings.recallTurnContext = false;
+settings.readiness.memoryRecall = { state: 'blocked', reason: 'recall-injection-required' };
+let checks = { running: false };
 window.__jevSent = [];
 client.send = (message) => {
   window.__jevSent.push(message);
   if (!message.type.startsWith('jev.')) return true;
-  if (message.type === 'jev.set') { const { apiKey, ...patch } = message.payload.patch; settings = { ...settings, ...patch }; }
-  queueMicrotask(() => listeners.forEach(fn => fn({ type: 'jev.state', payload: { requestId: message.payload.requestId, settings, message: message.type === 'jev.set' ? 'Saved' : undefined, activity: { scope: 'process', path: '/profile/logs/jev-123.jsonl', entries: [{ id: 'request-1', at: Date.now(), feature: 'memoryRecall', route: 'typesafe', model: 'jev-latest', durationMs: 128, outcome: 'answered', project: '/workspace/project', inputTokens: 142, outputTokens: 0, answers: { relevant: 0.91 } }] } } })));
+  if (message.type === 'jev.set') { const { apiKey, ...patch } = message.payload.patch; settings = { ...settings, ...patch }; if (settings.contextStrategy === 'selective') settings.readiness.compaction = { state: 'conditional', reason: 'trigger-required' }; if (settings.recallTurnContext) settings.readiness.memoryRecall = { state: 'conditional', reason: 'trigger-required' }; }
+  if (message.type === 'jev.check') checks = { running: false, report: { at: Date.now(), model: 'jev-test', route: 'typesafe', passed: 20, total: 20, cases: [{ feature: 'brain', name: 'synthetic case', ok: true, actual: 'retry', expected: 'retry', ms: 123 }] } };
+  queueMicrotask(() => listeners.forEach(fn => fn({ type: 'jev.state', payload: { requestId: message.payload.requestId, settings, checks, message: message.type === 'jev.set' ? 'Saved' : undefined, activity: { scope: 'process', path: '/profile/logs/jev-123.jsonl', entries: [{ id: 'request-1', at: Date.now(), feature: 'memoryRecall', route: 'typesafe', model: 'jev-latest', durationMs: 128, outcome: 'answered', project: '/workspace/project', inputTokens: 142, outputTokens: 0, answers: { relevant: 0.91 } }] } } })));
   return true;
 };
 createRoot(document.getElementById('root')).render(React.createElement('main', { className: 'h-screen' }, React.createElement(ThemeProvider, null, React.createElement(SettingsPanel))));
@@ -95,6 +101,12 @@ try {
       console.error(errors, await page.locator('body').innerText());
       throw error;
     });
+    assert.match(
+      await page.getByTestId('jev-feature-compaction').innerText(),
+      /Setup required|Kurulum gerekli/,
+    );
+    await page.locator('#jev-context-strategy').selectOption('selective');
+    await page.getByLabel(/SAGE turn context recall|SAGE konuşma başı bellek getirme/).check();
     await page.locator('#jev-model').fill('jev-pinned');
     await page.locator('#jev-key').fill('smoke-secret');
     await save.click();
@@ -102,6 +114,17 @@ try {
     assert.equal(await page.locator('#jev-key').inputValue(), '');
     const sent = await page.evaluate(() => window.__jevSent.findLast((m) => m.type === 'jev.set'));
     assert.equal(sent.payload.patch.model, 'jev-pinned');
+    assert.equal(sent.payload.patch.contextStrategy, 'selective');
+    assert.equal(sent.payload.patch.recallTurnContext, true);
+    assert.match(
+      await page.getByTestId('jev-feature-compaction').innerText(),
+      /waiting for trigger|tetiklenmeyi bekliyor/,
+    );
+    await page
+      .getByRole('button', { name: /Test all 10 features|10 özelliği canlı test et/ })
+      .click();
+    await page.getByTestId('jev-check-report').waitFor();
+    assert.match(await page.getByTestId('jev-check-report').innerText(), /20\/20/);
     await page.getByText(/memoryRecall · answered/).click();
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

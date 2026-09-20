@@ -751,7 +751,7 @@ export type WSClientMessageCore =
   | { type: 'brain.status'; payload?: SessionScopedPayload }
   | { type: 'brain.risk'; payload: { level: string } & SessionScopedPayload }
   | { type: 'brain.ask'; payload: { question: string; requestId?: string } & SessionScopedPayload }
-  | { type: 'jev.get' | 'jev.test'; payload?: { requestId: string } }
+  | { type: 'jev.get' | 'jev.test' | 'jev.check'; payload?: { requestId: string } }
   | { type: 'jev.set'; payload: { requestId: string; patch: Record<string, unknown> } }
   | { type: 'brain.config.get' }
   | { type: 'brain.config.set'; payload: { patch: BrainConfigPatchWire } & SessionScopedPayload }

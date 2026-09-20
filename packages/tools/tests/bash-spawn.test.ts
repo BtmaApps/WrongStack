@@ -38,6 +38,7 @@ const cfg: {
 } = hoisted.cfg;
 
 let _lastChild: EventEmitter & { killSignals: string[]; killed: boolean; exitCode: number | null };
+void _lastChild;
 
 vi.mock('node:os', async (orig) => {
   const actual = await orig<typeof import('node:os')>();
@@ -314,13 +315,15 @@ describe('bashTool input + shell resolution', () => {
 
   it('throws when executeStream is unavailable', async () => {
     const original = bashTool.executeStream;
-    bashTool.executeStream = undefined;
+    (bashTool as { executeStream: typeof bashTool.executeStream | undefined }).executeStream =
+      undefined;
     try {
       await expect(bashTool.execute({ command: 'x' }, ctx(), opts())).rejects.toThrow(
         /stream execution unavailable/,
       );
     } finally {
-      bashTool.executeStream = original;
+      (bashTool as { executeStream: typeof bashTool.executeStream | undefined }).executeStream =
+        original;
     }
   });
 

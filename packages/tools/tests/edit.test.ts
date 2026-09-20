@@ -64,10 +64,12 @@ describe('edit tool', () => {
     const ctrl = new AbortController();
     ctrl.abort();
     const ctxWithSignal = { ...sb.ctx, signal: ctrl.signal };
+    const optsOmitted = undefined as unknown as { signal: AbortSignal };
     await expect(
       editTool.execute(
         { path: 'a.txt', old_string: 'hello', new_string: 'bye' },
         ctxWithSignal as any,
+        optsOmitted,
       ),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(await fs.readFile(path.join(sb.dir, 'a.txt'), 'utf8')).toBe('hello world');

@@ -333,6 +333,7 @@ const profiles = {
       vision: 'src/vision.ts',
       clipboard: 'src/clipboard.ts',
       probe: 'src/local-llm-probe.ts',
+      'jev-checks': 'src/jev-checks.ts',
       'tool-registration': 'src/tool-registration.ts',
     },
     external: [

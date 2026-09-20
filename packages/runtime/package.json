@@ -56,7 +56,11 @@
       "types": "./dist/tool-registration.d.ts",
       "import": "./dist/tool-registration.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./jev-checks": {
+      "types": "./dist/jev-checks.d.ts",
+      "import": "./dist/jev-checks.js"
+    }
   },
   "files": [
     "dist",

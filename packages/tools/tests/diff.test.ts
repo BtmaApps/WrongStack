@@ -348,12 +348,17 @@ describe('diffTool', () => {
     const filePath = path.join(tmpDir, 'nosignal.txt');
     await fs.writeFile(filePath, 'x');
     const ctx = makeCtx();
-    const result = await diffTool.execute({ files: 'nosignal.txt' }, ctx);
+    const optsOmitted = undefined as unknown as { signal: AbortSignal };
+    const result = await diffTool.execute({ files: 'nosignal.txt' }, ctx, optsOmitted);
     expect(result.mode).toBe('dump');
 
     const ac = new AbortController();
     const ctxWithSignal = { ...ctx, signal: ac.signal };
-    const resultWithSignal = await diffTool.execute({ files: 'nosignal.txt' }, ctxWithSignal);
+    const resultWithSignal = await diffTool.execute(
+      { files: 'nosignal.txt' },
+      ctxWithSignal,
+      optsOmitted,
+    );
     expect(resultWithSignal).toHaveProperty('mode');
   });
 });

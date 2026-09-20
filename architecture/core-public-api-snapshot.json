@@ -1647,8 +1647,8 @@
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
-      "sourceFiles": 12,
-      "sourceLines": 1971
+      "sourceFiles": 13,
+      "sourceLines": 2052
     },
     {
       "directory": "utils",

@@ -210,13 +210,15 @@ describe('treeTool', () => {
 
   it('throws when executeStream is unavailable', async () => {
     const original = treeTool.executeStream;
-    treeTool.executeStream = undefined;
+    (treeTool as { executeStream: typeof treeTool.executeStream | undefined }).executeStream =
+      undefined;
     try {
       await expect(treeTool.execute({}, makeCtx(), makeOpts())).rejects.toThrow(
         /stream execution unavailable/,
       );
     } finally {
-      treeTool.executeStream = original;
+      (treeTool as { executeStream: typeof treeTool.executeStream | undefined }).executeStream =
+        original;
     }
   });
 

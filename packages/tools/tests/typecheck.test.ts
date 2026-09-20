@@ -152,13 +152,17 @@ describe('typecheckTool', () => {
 
   it('throws when executeStream is unavailable', async () => {
     const original = typecheckTool.executeStream;
-    typecheckTool.executeStream = undefined;
+    (typecheckTool as {
+      executeStream: typeof typecheckTool.executeStream | undefined;
+    }).executeStream = undefined;
     try {
       await expect(typecheckTool.execute({ all: true }, makeCtx(), makeOpts())).rejects.toThrow(
         /stream execution unavailable/,
       );
     } finally {
-      typecheckTool.executeStream = original;
+      (typecheckTool as {
+        executeStream: typeof typecheckTool.executeStream | undefined;
+      }).executeStream = original;
     }
   });
 

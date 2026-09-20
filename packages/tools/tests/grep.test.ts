@@ -386,6 +386,7 @@ describe('grep tool', () => {
     }
     // Check that some partial_output events have data
     const _partials = events.filter((e) => e.type === 'partial_output');
+    void _partials;
     expect(events.some((e) => e.type === 'final')).toBe(true);
   });
 
@@ -629,7 +630,8 @@ describe('grep tool', () => {
   it('executeStream validates regex on empty pattern string', async () => {
     // Empty string pattern may pass compileUserRegex but fail in executeStream
     await expect(
-      grepTool.executeStream!({ pattern: '' }, sb.ctx, { signal: newSignal() }).next(),
+      (grepTool.executeStream!({ pattern: '' }, sb.ctx, { signal: newSignal() }) as unknown as AsyncGenerator)
+        .next(),
     ).rejects.toThrow();
   });
 
@@ -820,7 +822,11 @@ describe('grep tool — buffer overflow path (rg mode)', () => {
 
   it('safely executes without opts and falls back to ctx.signal or default signal', async () => {
     await fs.writeFile(path.join(sb.dir, 'test-no-opts.txt'), 'hello world\n');
-    const out = await grepTool.execute({ pattern: 'hello', output_mode: 'content' }, sb.ctx);
+    const out = await grepTool.execute(
+      { pattern: 'hello', output_mode: 'content' },
+      sb.ctx,
+      undefined as unknown as { signal: AbortSignal },
+    );
     expect(out.count).toBeGreaterThanOrEqual(1);
 
     const ac = new AbortController();
@@ -828,6 +834,7 @@ describe('grep tool — buffer overflow path (rg mode)', () => {
     const outWithSignal = await grepTool.execute(
       { pattern: 'hello', output_mode: 'content' },
       ctxWithSignal,
+      undefined as unknown as { signal: AbortSignal },
     );
     expect(outWithSignal.count).toBeGreaterThanOrEqual(1);
   });

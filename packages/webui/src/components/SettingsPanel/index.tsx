@@ -631,7 +631,7 @@ export function SettingsPanel() {
               </TabsContent>
 
               <TabsContent value="jev" className="mt-0">
-                <JevSection />
+                <JevSection syncPref={syncPref} />
               </TabsContent>
               <TabsContent value="logs" className="mt-0 space-y-6">
                 <LogsSettingsTab syncPref={syncPref} />

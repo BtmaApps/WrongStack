@@ -154,9 +154,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/skills": {
-      "files": 15,
+      "files": 16,
       "typeOnly": 2,
-      "runtimeOrMixed": 14
+      "runtimeOrMixed": 15
     },
     "@wrongstack/core/statusline": {
       "files": 24,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 624,
+      "files": 623,
       "typeOnly": 59,
-      "runtimeOrMixed": 597
+      "runtimeOrMixed": 596
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -2853,12 +2853,6 @@
     },
     {
       "specifier": "@wrongstack/core/coordination",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/coordination",
       "file": "packages/cli/src/tui-resource-menus.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 1
@@ -3311,6 +3305,12 @@
       "specifier": "@wrongstack/core/coordination",
       "file": "packages/runtime/src/fleet/light-subagent-factory.ts",
       "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/coordination",
+      "file": "packages/runtime/src/jev-checks.ts",
+      "typeOnly": 1,
       "runtimeOrMixed": 1
     },
     {
@@ -3975,12 +3975,6 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4168,6 +4162,12 @@
     {
       "specifier": "@wrongstack/core/execution",
       "file": "packages/runtime/src/fleet/light-subagent-factory.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -7455,12 +7455,6 @@
     },
     {
       "specifier": "@wrongstack/core/models",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/models",
       "file": "packages/cli/src/webui-server/prefs-seeding.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -7540,6 +7534,12 @@
     {
       "specifier": "@wrongstack/core/models",
       "file": "packages/runtime/src/container.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/models",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9988,6 +9988,12 @@
     {
       "specifier": "@wrongstack/core/skills",
       "file": "packages/cli/tests/skill-suggest-eval-fixtures.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/skills",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12472,12 +12478,6 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/handlers/skill-suggest.ts",
-      "typeOnly": 1,
-      "runtimeOrMixed": 0
-    },
-    {
-      "specifier": "@wrongstack/core/types",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -15028,6 +15028,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/runtime/src/host.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18249,12 +18255,6 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/subcommands/handlers/typesafe-topic-replay.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18286,6 +18286,12 @@
     {
       "specifier": "@wrongstack/core/typesafe",
       "file": "packages/runtime/src/container.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/runtime/src/jev-checks.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -19738,12 +19744,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/subcommands/handlers/typesafe-judgment-check.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

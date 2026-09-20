@@ -33,6 +33,45 @@ Login reads the credential through the surface's masked secret prompt; never put
 it in slash-command arguments. Jev is a decision provider and remains separate
 from chat model selection.
 
+## Permission, prerequisites and observed use
+
+The ten switches grant permission to use Jev; they do not mean that a call is
+running. Each feature card shows its **saved profile** prerequisites, its trigger
+conditions and the latest runtime request in the displayed process log. An
+unconfigured account, non-selective compaction, disabled/undefined model tiers,
+disabled skills or disabled SAGE turn context recall are reported explicitly.
+Session-specific settings and middleware installed at boot can differ from the
+saved profile. Restart existing sessions after changing the profile dependencies.
+
+The Jev screen edits the profile compaction strategy and SAGE turn context recall
+directly. Its expandable model-tier editor uses the existing tier settings and
+saves immediately. Enable tiers, add at least two levels in cost/capability order,
+bind their models or fallback profiles, and choose a default. Explicit delegation
+model/tier choices and role/phase routing still take precedence over Jev advice.
+
+The CLI/TUI equivalents include `/jev compaction selective`, `/jev recall on`
+and `/tier`. SAGE memory recall requires both memory/SAGE and turn context recall
+to be enabled; the tool-result injection path alone does not run this Jev filter.
+
+## Live capability checks
+
+**Test all 10 features**, `/jev check`, and `wstack typesafe check-judgments` share
+the same runner. It sends 20 synthetic cases through the real feature question
+builders, including skill suggestions and fleet dispatch. The checks use the
+saved account and run even for disabled features. They make billed calls but
+read no project content and do not change configuration, close Kanban cards or
+spawn agents. A passing check is evidence about those fixtures, not proof of
+long-term decision quality or use in the current session.
+
+The server shares simultaneous requests for a check, limits a run to 60 seconds,
+and keeps the latest report in memory for that account configuration. A changed
+account invalidates the report. Provider failures, missing answers and cases
+that never reached Jev cannot pass merely because a feature returned its fallback.
+
+Diagnostic requests carry `purpose: self-test`. They are hidden from the normal
+activity view unless **Include diagnostic requests** is selected, and never
+populate a feature's latest runtime-request indicator.
+
 The WebUI activity view refreshes every three seconds and shows the most recent
 300 requests made by **this server process**, across its sessions. Each entry
 contains a request ID, time, consumer, process working directory, route, model,

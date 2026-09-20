@@ -99,6 +99,7 @@ export async function handleBrainRoute(
     case 'jev.get':
     case 'jev.set':
     case 'jev.test':
+    case 'jev.check':
       if (handlers.jev) await handlers.jev(ws, msg);
       else sendResult(ws, false, 'Jev settings unavailable on this host');
       return true;

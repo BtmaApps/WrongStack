@@ -4,6 +4,7 @@ import type { Config, ConfigStore } from '../types/config/root.js';
 import type { SecretVault } from '../types/secret-vault.js';
 import { atomicWrite, withFileLock } from '../utils/index.js';
 import { TYPESAFE_JUDGMENT_FEATURES } from './judgments.js';
+import { jevFeatureReadiness } from './readiness.js';
 import { resolveTypeSafeAccount, resolveTypeSafeRoute } from './resolve.js';
 import { isTypeSafeRoute, TYPESAFE_ROUTES } from './route.js';
 
@@ -19,6 +20,8 @@ export interface JevSettingsPatch {
   endpoint?: string | null;
   model?: string | null;
   requestTimeoutMs?: number;
+  contextStrategy?: 'hybrid' | 'intelligent' | 'selective';
+  recallTurnContext?: boolean;
   features?: Partial<Record<JevFeature, boolean>>;
 }
 
@@ -35,6 +38,11 @@ export function validateJevSettingsPatch(value: unknown): JevSettingsPatch {
     } else if (key === 'requestTimeoutMs') {
       if (typeof val !== 'number' || !Number.isInteger(val) || val < 100 || val > 120000)
         throw new Error('Timeout must be 100–120000 ms');
+    } else if (key === 'recallTurnContext') {
+      if (typeof val !== 'boolean') throw new Error('Invalid recall turn context setting');
+    } else if (key === 'contextStrategy') {
+      if (!['hybrid', 'intelligent', 'selective'].includes(val as string))
+        throw new Error('Invalid compaction strategy');
     } else if (key === 'features') {
       if (!val || typeof val !== 'object' || Array.isArray(val))
         throw new Error('Invalid Jev features');
@@ -77,6 +85,13 @@ function apply(config: Partial<Config>, patch: JevSettingsPatch): Partial<Config
     else Object.assign(typesafe, { [key]: val });
   }
   const next: Partial<Config> = { typesafe };
+  if (patch.recallTurnContext !== undefined)
+    next.Sage = {
+      ...config.Sage,
+      inject: { ...config.Sage?.inject, turnContext: patch.recallTurnContext },
+    };
+  if (patch.contextStrategy)
+    next.context = { ...config.context, strategy: patch.contextStrategy } as Config['context'];
   if (patch.features) {
     typesafe.judgments = { ...typesafe.judgments };
     for (const feature of TYPESAFE_JUDGMENT_FEATURES) {
@@ -114,6 +129,16 @@ export function jevSettingsSnapshot(config: Readonly<Config>) {
   } catch {
     /* Invalid legacy endpoints are not echoed to clients. */
   }
+  const features = Object.fromEntries(
+    JEV_FEATURES.map((key) => [
+      key,
+      key === 'skillSuggestion'
+        ? config.skills?.suggest?.enabled === true
+        : key === 'fleetDispatch'
+          ? config.fleet?.dispatch?.typesafeClassifier === true
+          : config.typesafe?.judgments?.[key] !== false,
+    ]),
+  ) as Record<JevFeature, boolean>;
   return {
     status: account.status,
     reason: account.status === 'ready' ? undefined : account.reason,
@@ -122,16 +147,11 @@ export function jevSettingsSnapshot(config: Readonly<Config>) {
     endpoint,
     requestTimeoutMs: config.typesafe?.requestTimeoutMs ?? 4000,
     keySource: account.status === 'ready' ? account.keySource : 'none',
-    features: Object.fromEntries(
-      JEV_FEATURES.map((key) => [
-        key,
-        key === 'skillSuggestion'
-          ? config.skills?.suggest?.enabled === true
-          : key === 'fleetDispatch'
-            ? config.fleet?.dispatch?.typesafeClassifier === true
-            : config.typesafe?.judgments?.[key] !== false,
-      ]),
-    ) as Record<JevFeature, boolean>,
+    features,
+    recallTurnContext: config.Sage?.inject?.turnContext === true,
+    readiness: jevFeatureReadiness(config, features, account.status === 'ready'),
+    contextStrategy:
+      config.context?.strategy ?? (config.context?.llmSelector ? 'selective' : 'hybrid'),
   };
 }
 
@@ -170,6 +190,7 @@ export async function testJevConnection(config: Readonly<Config>): Promise<strin
   const result = await account.client.systemOne(
     {
       activityFeature: 'connectionTest',
+      activityPurpose: 'self-test',
       state: { value: 2 },
       questions: { check: { type: 'noul', instructions: 'Is value equal to 2?' } },
     },

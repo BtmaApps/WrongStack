@@ -119,6 +119,7 @@ export interface SystemOneResult {
 export interface SystemOneRequest {
   /** Local activity attribution; never sent to the service. */
   activityFeature?: string | undefined;
+  activityPurpose?: 'runtime' | 'self-test' | undefined;
   state: unknown;
   questions: Record<string, TypeSafeQuestion>;
   model?: string | undefined;
