@@ -15,6 +15,23 @@ import type { TaskResult } from '../../src/types/multi-agent.js';
  * Director's lifetime with no test failing.
  */
 
+/**
+ * Poll until `condition` holds, or give up after `timeoutMs`.
+ *
+ * These lifecycle steps land on the microtask queue or a later tick, and the
+ * assertions below originally waited for them with a fixed 20–50ms sleep. That
+ * is a bet on machine speed: under the coverage run's instrumentation a session
+ * is listed as active before its agents finish registering, so `cancel()` ran
+ * with nothing to stop and the assertion read bookkeeping that had not been
+ * written yet. The assertion after each wait still decides pass or fail.
+ */
+async function waitUntil(condition: () => boolean, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition() && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
 function makeSuccessResult(subagentId: string, taskId: string): TaskResult {
   return {
     subagentId,
@@ -80,8 +97,13 @@ describe('DirectorCollabController', () => {
       timeoutMs: 30_000,
     });
 
-    // Wait for spawns + wireFleetBus + awaitTasks to settle.
-    await new Promise((r) => setTimeout(r, 50));
+    // Wait for spawns + wireFleetBus + awaitTasks to settle. Poll the mock's
+    // own bookkeeping instead of sleeping a fixed 50ms: the session is listed
+    // as active before its agents finish registering, so on a slow run — the
+    // coverage job — cancel() fired with nothing yet to stop and stoppedAgents
+    // came back empty while the active-session assertion above still passed.
+    await waitUntil(() => awaitResolvers.size === 3);
+    expect(awaitResolvers.size).toBe(3);
 
     // ── Pre-cancel: session is active ───────────────────────────────
     expect(controller.activeSessionIds()).toHaveLength(1);
@@ -135,7 +157,7 @@ describe('DirectorCollabController', () => {
       timeoutMs: 30_000,
     });
 
-    await new Promise((r) => setTimeout(r, 50));
+    await waitUntil(() => controller.ownsSubagent('bug-hunter-sub'));
 
     // While the session is active, ownsSubagent returns true for its agents.
     expect(controller.ownsSubagent('bug-hunter-sub')).toBe(true);
@@ -235,7 +257,7 @@ describe('DirectorCollabController', () => {
 
     // Allow the errorHandler's fire-and-forget coordinator.stop() calls to
     // land (they use .catch so they settle on the microtask queue).
-    await new Promise((r) => setTimeout(r, 20));
+    await waitUntil(() => stoppedAgents.length >= 2);
 
     // ── The regression assertions ───────────────────────────────────
     // 1. The two agents that spawned successfully (bug-hunter, refactor-planner)
@@ -285,7 +307,7 @@ describe('DirectorCollabController', () => {
     await expect(
       controller.spawn({ targetPaths: ['src/assign-fail.ts'], timeoutMs: 30_000 }),
     ).rejects.toThrow(/simulated assignment rejection/);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await waitUntil(() => stoppedAgents.length >= 3);
 
     expect(stoppedAgents.sort()).toEqual(['bug-hunter-sub', 'critic-sub', 'refactor-planner-sub']);
     expect(controller.activeSessionIds()).toHaveLength(0);
