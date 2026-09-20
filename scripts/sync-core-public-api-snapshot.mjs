@@ -31,6 +31,30 @@ export function changedSnapshotInputs(files) {
   return [...new Set(files.filter(isSnapshotInput))].sort();
 }
 
+/**
+ * Pure decision for the pre-commit snapshot sync, exported so the regression
+ * test can pin the semantics without shelling out to git.
+ *
+ *   skip     — the staged set touches no snapshot input: regeneration cannot
+ *              be affected by (and must not be blocked by) unrelated unstaged
+ *              or untracked work elsewhere in the shared tree. This is the
+ *              fenced-commit-in-a-dirty-tree case: a peer's in-flight edits
+ *              to snapshot inputs must not block a commit whose own staged
+ *              files never feed the generated artifacts.
+ *   fail     — the staged set DOES touch snapshot inputs (regeneration would
+ *              run), and other unstaged/untracked snapshot inputs exist:
+ *              regenerating now would capture that unrelated work in the
+ *              committed artifacts. Refuse and ask for a clean tree.
+ *   generate — staged inputs exist and nothing else dirty touches an input.
+ */
+export function decideSnapshotAction({ staged, unstaged, untracked }) {
+  const stagedInputs = changedSnapshotInputs(staged ?? []);
+  if (stagedInputs.length === 0) return { action: 'skip', stagedInputs };
+  const unsafeInputs = changedSnapshotInputs([...(unstaged ?? []), ...(untracked ?? [])]);
+  if (unsafeInputs.length > 0) return { action: 'fail', stagedInputs, unsafeInputs };
+  return { action: 'generate', stagedInputs };
+}
+
 function git(args) {
   return execFileSync('git', args, {
     cwd: repoRoot,
@@ -55,19 +79,26 @@ export function main() {
     throw new Error(`${helpText()}\nThis command does not accept arguments.`);
   }
 
-  const stagedInputs = changedSnapshotInputs(
-    git(['diff', '--cached', '--name-only', '--diff-filter=ACMRD']),
-  );
-  if (stagedInputs.length === 0) return;
+  const decision = decideSnapshotAction({
+    staged: git(['diff', '--cached', '--name-only', '--diff-filter=ACMRD']),
+    unstaged: git(['diff', '--name-only', '--diff-filter=ACMRD']),
+    untracked: git(['ls-files', '--others', '--exclude-standard']),
+  });
 
-  const unsafeInputs = changedSnapshotInputs([
-    ...git(['diff', '--name-only', '--diff-filter=ACMRD']),
-    ...git(['ls-files', '--others', '--exclude-standard']),
-  ]);
-  if (unsafeInputs.length > 0) {
+  if (decision.action === 'skip') {
+    // Staged files exist but none feed the Core API snapshots: nothing to
+    // regenerate, and unrelated unstaged work elsewhere in the shared tree
+    // cannot affect (and must not block) this commit. Logged rather than
+    // returning silently so the skip is observable when debugging why no
+    // snapshot was refreshed.
+    console.log('Core API snapshot sync skipped: staged set touches no Core API snapshot inputs.');
+    return;
+  }
+
+  if (decision.action === 'fail') {
     throw new Error(
       'Cannot safely auto-update Core API snapshots because snapshot inputs also have ' +
-        `unstaged or untracked edits: ${unsafeInputs.join(', ')}. ` +
+        `unstaged or untracked edits: ${decision.unsafeInputs.join(', ')}. ` +
         'Stage or set aside those edits first; this prevents unrelated shared-worktree work ' +
         'from being captured in the generated architecture artifacts.',
     );
