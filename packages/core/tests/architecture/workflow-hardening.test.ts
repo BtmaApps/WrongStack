@@ -150,7 +150,13 @@ describe('release workflow (WS-040)', () => {
     const coverageCheck = githubReleaseJob.indexOf(
       'diff -u "$RUNNER_TEMP/release-binary-assets" "$RUNNER_TEMP/checksummed-binary-assets"',
     );
-    const checksumCheck = githubReleaseJob.indexOf('sha256sum --check dist-bin/SHA256SUMS');
+    // Run from dist-bin, not the workspace root: SHA256SUMS lists bare
+    // filenames, so `sha256sum --check dist-bin/SHA256SUMS` resolved every
+    // entry against the wrong directory and failed the job before it ever
+    // created the release. Anchoring on the `cd` keeps that from coming back.
+    const checksumCheck = githubReleaseJob.indexOf(
+      '(cd dist-bin && sha256sum --check SHA256SUMS)',
+    );
     const upload = githubReleaseJob.indexOf('gh release upload');
 
     expect(githubReleaseJob).toContain("find dist-bin -maxdepth 1 -type f -name 'wstack-*'");
