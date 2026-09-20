@@ -183,6 +183,17 @@ export async function guardedFetch(
     // Hop 0 is the caller's own URL; calling it a "redirect" sent callers such
     // as read_url_content looking for a redirect that never happened.
     const target = redirectCount === 0 ? '' : 'redirect to ';
+    if (parsed.username || parsed.password) {
+      // Credentials embedded in URLs leak into logs, session transcripts, and
+      // further redirect targets; reject them outright instead of forwarding
+      // secrets. Mirrors the fetch tool's input-URL gate so every hop — and
+      // every direct guardedFetch caller (search, read_url_content) — gets
+      // the same protection, including Location headers an attacker controls.
+      throw new ToolValidationError({
+        message: `fetch: ${target}URLs with embedded credentials (user:pass@host) are not allowed`,
+        field: 'url',
+      });
+    }
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       throw new ToolValidationError({
         message: `fetch: ${target}unsupported protocol "${parsed.protocol}"`,
