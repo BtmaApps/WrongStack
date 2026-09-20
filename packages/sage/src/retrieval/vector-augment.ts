@@ -63,11 +63,13 @@ export interface VectorAugmentOptions {
   /** Cap on the final result list. */
   limit?: number | undefined;
   /**
-   * Cosine threshold below which a vector-only hit is dropped. Default 0.
-   * Use to keep semantic-only hits from flooding the result when the
-   * lexical side already produced strong matches. Only meaningful when
-   * `materializeVectorOnly` can admit such hits — without it, vector-only
-   * hits are always dropped regardless of this floor.
+   * Cosine threshold below which a vector-only hit is dropped. Defaults to
+   * `DEFAULT_VECTOR_ONLY_THRESHOLD` (0.62) — the deliberate MiniLM-class
+   * "clearly related" floor; see that constant for why the historical
+   * "default 0" was retired. Use to keep semantic-only hits from flooding
+   * the result when the lexical side already produced strong matches. Only
+   * meaningful when `materializeVectorOnly` can admit such hits — without
+   * it, vector-only hits are always dropped regardless of this floor.
    */
   vectorOnlyThreshold?: number | undefined;
   /**
@@ -187,7 +189,10 @@ export async function augmentLexicalWithVectorRecall(
     kind: 'boost' | 'materialize';
   }> = [];
   const seenSageIds = new Set<string>();
-  const maxMaterializations = Math.max(0, options.maxMaterializations ?? DEFAULT_MAX_MATERIALIZATIONS);
+  const maxMaterializations = Math.max(
+    0,
+    options.maxMaterializations ?? DEFAULT_MAX_MATERIALIZATIONS,
+  );
   let materializeBudget = maxMaterializations;
   for (const hit of vectorHits) {
     const sageId =

@@ -10,8 +10,10 @@
  * - Pure function — produces action items, does NOT execute them.
  *   The caller (agent, CLI command, cron job) executes via memory tools.
  * - Two output arrays:
- *   - `autoApply`: safe updates (confidence, importance, status=stale, superseded)
- *   - `proposals`: archive/delete/investigate proposals for user approval
+ *   - `autoApply`: safe updates (confidence, importance, status=stale)
+ *   - `proposals`: archive/investigate proposals for user approval
+ *     (supersession belongs to the Phase 4 merge path; triage never
+ *     auto-proposes `delete` — dedup collapses into supersedes chains)
  * - Safety gate: importance >= 0.9 memories never get destructive proposals.
  */
 

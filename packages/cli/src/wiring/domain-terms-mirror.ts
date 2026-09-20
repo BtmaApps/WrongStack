@@ -34,9 +34,11 @@
  *   regenerated atomically by `writeDomainTermsFile`, and the
  *   content is fully derived from the supplied in-memory
  *   `ExtractedTerm[]` (empty at boot).
- * - **Honest about scope.** Only the CLI host invokes this. TUI and
- *   WebUI hosts share the same on-disk path and read the same file;
- *   the CLI boot path is the canonical place to refresh the mirror.
+ * - **Honest about scope.** Only the CLI host invokes this refresh. The
+ *   file's readers are humans and ProjectRoot sandboxes inspecting the
+ *   glossary without the IPC client — no host prompt-assembly path reads
+ *   it — so the CLI boot path is the canonical place to refresh the
+ *   mirror.
  */
 import { writeErr } from '@wrongstack/core/utils';
 import { SageDomainTermExtractor } from '@wrongstack/sage';
