@@ -647,12 +647,21 @@ app
       );
       const clientHeight = mainWindow!.contentView.getBounds().height;
       if (footerBottom > clientHeight) {
-        // Report the measurements: a bare assertion here cost a CI round trip
-        // to learn by how much, and on which of the two height APIs.
+        // Report the measurements. A bare assertion cost a round trip to learn
+        // by how much; the height alone cost another, because `footer bottom
+        // 681` reads the same whether the viewport is still 681 or the viewport
+        // is 655 and the sidebar overflows it by 26. innerHeight and the view's
+        // own bounds separate those two.
         const [, contentSizeHeight] = mainWindow!.getContentSize();
+        const viewHeight = shellView!.getBounds().height;
+        const renderer = await shellView!.webContents.executeJavaScript(
+          '({ inner: window.innerHeight, sidebar: document.querySelector(".sidebar")?.getBoundingClientRect().height ?? 0 })',
+        );
         throw new Error(
           `Desktop footer extends beyond the native client area: footer bottom ${footerBottom}, ` +
-            `contentView height ${clientHeight}, getContentSize height ${contentSizeHeight}`,
+            `contentView height ${clientHeight}, getContentSize height ${contentSizeHeight}, ` +
+            `shellView height ${viewHeight}, innerHeight ${renderer.inner}, ` +
+            `sidebar height ${renderer.sidebar}`,
         );
       }
       setShellSidebarCollapsed(true);
