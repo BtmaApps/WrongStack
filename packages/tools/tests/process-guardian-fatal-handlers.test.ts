@@ -133,8 +133,8 @@ describe('ProcessGuardian fatal handlers', () => {
       expect(exitSpy).toHaveBeenCalledTimes(0);
       const deferred = logLines.filter((l) => l.event === 'process_guardian.sigterm_deferred');
       expect(deferred).toHaveLength(2);
-      expect(deferred[0].sigtermCount).toBe(1);
-      expect(deferred[1].sigtermCount).toBe(2);
+      expect(deferred[0]!.sigtermCount).toBe(1);
+      expect(deferred[1]!.sigtermCount).toBe(2);
 
       g.stop();
     });
@@ -153,7 +153,7 @@ describe('ProcessGuardian fatal handlers', () => {
 
       const exiting = logLines.filter((l) => l.event === 'process_guardian.sigterm_exiting');
       expect(exiting).toHaveLength(1);
-      expect(exiting[0].threshold).toBe(3);
+      expect(exiting[0]!.threshold).toBe(3);
 
       g.stop();
     });

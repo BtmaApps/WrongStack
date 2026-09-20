@@ -37,7 +37,9 @@ const cfg: {
   throwOnSpawn: boolean;
 } = hoisted.cfg;
 
-let _lastChild: EventEmitter & { killSignals: string[]; killed: boolean; exitCode: number | null };
+let _lastChild:
+  | (EventEmitter & { killSignals: string[]; killed: boolean; exitCode: number | null })
+  | undefined;
 void _lastChild;
 
 vi.mock('node:os', async (orig) => {

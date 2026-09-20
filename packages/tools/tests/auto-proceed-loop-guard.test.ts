@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   createAutoProceedLoopGuard,
   createContinuationAttemptTracker,
-  generateAdvancementPrompt,
   GROUNDED_NO_PROGRESS_STEER,
-  matchTodoIdFromPrompt,
+  generateAdvancementPrompt,
   MAX_ADVANCEMENT_ATTEMPTS,
+  matchTodoIdFromPrompt,
   normalizeForRepetition,
 } from '../src/auto-proceed-loop-guard.js';
 
@@ -128,7 +128,7 @@ describe('createAutoProceedLoopGuard — history() and size()', () => {
     const guard = createAutoProceedLoopGuard();
     guard.record('A');
     guard.record('B');
-    const snapshot = guard.history();
+    const snapshot = guard.history() as string[];
     // Mutate the returned array in place.
     snapshot.push('MUTATED');
     snapshot[0] = 'OVERWRITTEN';
@@ -359,7 +359,7 @@ describe('createContinuationAttemptTracker', () => {
     const tracker = createContinuationAttemptTracker();
     tracker.recordAttempt('a');
     const snap = tracker.snapshot();
-    snap['a'].attempts = 999;
+    snap['a']!.attempts = 999;
     snap['injected'] = { attempts: 5, skipped: true };
     // The tracker is unaffected.
     expect(tracker.getAttempts('a')).toBe(1);

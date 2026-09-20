@@ -136,7 +136,7 @@ describe('createModeTool', () => {
     const store = mockModeStore(modes, null);
     const tool = createModeTool(store);
     const result = await tool.execute({ action: 'list' }, {} as any, makeOpts());
-    expect(result.modes![0].family).toBe('custom');
+    expect(result.modes![0]!.family).toBe('custom');
   });
 
   it('get action returns message when no mode set', async () => {

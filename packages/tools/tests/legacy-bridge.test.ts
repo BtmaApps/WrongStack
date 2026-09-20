@@ -16,13 +16,13 @@ vi.mock('../src/_spawn-stream.js', async (original) => {
   return { ...actual, spawnStream: spawnMocks.spawnStream };
 });
 
-import { typecheckTool } from '../src/typecheck.js';
-import { lintTool } from '../src/lint.js';
-import { formatTool } from '../src/format.js';
-import { testTool } from '../src/test.js';
-import { installTool } from '../src/install.js';
 import { auditTool } from '../src/audit.js';
+import { formatTool } from '../src/format.js';
+import { installTool } from '../src/install.js';
+import { lintTool } from '../src/lint.js';
 import { outdatedTool } from '../src/outdated.js';
+import { testTool } from '../src/test.js';
+import { typecheckTool } from '../src/typecheck.js';
 
 let root: string;
 const opts = { signal: new AbortController().signal };
@@ -80,6 +80,7 @@ const _NPM_AUDIT = JSON.stringify({
     },
   },
 });
+void _NPM_AUDIT;
 const CARGO_AUDIT = JSON.stringify({
   vulnerabilities: {
     found: [

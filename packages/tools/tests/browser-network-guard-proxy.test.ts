@@ -201,8 +201,8 @@ describe('BrowserNetworkGuardProxy', () => {
     const target = http.createServer();
     const targetSockets = new Set<net.Socket>();
     target.on('upgrade', (_request, socket) => {
-      targetSockets.add(socket);
-      socket.once('close', () => targetSockets.delete(socket));
+      targetSockets.add(socket as net.Socket);
+      socket.once('close', () => targetSockets.delete(socket as net.Socket));
       socket.write(
         'HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n',
       );

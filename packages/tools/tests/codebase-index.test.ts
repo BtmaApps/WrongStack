@@ -43,23 +43,21 @@ process.env['WRONGSTACK_INDEX_INLINE'] = '1';
 function mkCtx(root: string): Context {
   const messages: Context['messages'] = [];
   const todos: Context['todos'] = [];
+  const readFiles = new Set<string>();
+  const fileMtimes = new Map<string, number>();
   return {
     cwd: root,
     projectRoot: root,
     // Redirect the index into the temp project dir so tests never touch the
     // real ~/.wrongstack home (the production default location).
     meta: { codebaseIndexDir: path.join(root, '.codebase-index') },
-    readFiles: new Set<string>(),
-    fileMtimes: new Map<string, number>(),
-    hasRead(p: string) {
-      return this.readFiles.has(p);
-    },
-    lastReadMtime(p: string) {
-      return this.fileMtimes.get(p);
-    },
-    recordRead(p: string, m: number) {
-      this.readFiles.add(p);
-      this.fileMtimes.set(p, m);
+    readFiles,
+    fileMtimes,
+    hasRead: (p: string) => readFiles.has(p),
+    lastReadMtime: (p: string) => fileMtimes.get(p),
+    recordRead: (p: string, m: number) => {
+      readFiles.add(p);
+      fileMtimes.set(p, m);
     },
     todos,
     session: {
@@ -121,7 +119,7 @@ describe('BM25', () => {
       const idx = buildBm25Index(docs);
       const results = idx.score('function');
       expect(results.length).toBeGreaterThan(0);
-      const top = results.sort((a, b) => b.score - a.score)[0];
+      const top = results.sort((a, b) => b.score - a.score)[0]!;
       expect(top.id).toBe(1);
     });
 
@@ -162,7 +160,7 @@ describe('BM25', () => {
       const idx = buildBm25Index(docs);
       const results = idx.score('function', (id) => id === 2);
       expect(results.length).toBe(1);
-      expect(results[0].id).toBe(2);
+      expect(results[0]!.id).toBe(2);
     });
   });
 });
@@ -363,29 +361,26 @@ describe('IndexStore', () => {
       },
     ]);
     expect(inserted).toHaveLength(2);
-    expect(inserted[0].id).toBe(1);
-    expect(inserted[1].id).toBe(2);
+    expect(inserted[0]!.id).toBe(1);
+    expect(inserted[1]!.id).toBe(2);
   });
 
   it('persists data across store reopens', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'Persisted',
-          file: '/p/P.ts',
-          line: 1,
-          col: 0,
-          signature: 'class Persisted',
-          docComment: '',
-          scope: '',
-          text: 'class Persisted',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'Persisted',
+        file: '/p/P.ts',
+        line: 1,
+        col: 0,
+        signature: 'class Persisted',
+        docComment: '',
+        scope: '',
+        text: 'class Persisted',
+      },
+    ]);
     store.close();
     const store2 = new IndexStore(tmpDir, { indexDir: path.join(tmpDir, '.codebase-index') });
     const stats = store2.getStats();
@@ -394,37 +389,34 @@ describe('IndexStore', () => {
   });
 
   it('deletes symbols for a file', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'A',
-          file: '/p/A.ts',
-          line: 1,
-          col: 0,
-          signature: 'class A',
-          docComment: '',
-          scope: '',
-          text: 'class A',
-        },
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'B',
-          file: '/p/B.ts',
-          line: 1,
-          col: 0,
-          signature: 'class B',
-          docComment: '',
-          scope: '',
-          text: 'class B',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'A',
+        file: '/p/A.ts',
+        line: 1,
+        col: 0,
+        signature: 'class A',
+        docComment: '',
+        scope: '',
+        text: 'class A',
+      },
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'B',
+        file: '/p/B.ts',
+        line: 1,
+        col: 0,
+        signature: 'class B',
+        docComment: '',
+        scope: '',
+        text: 'class B',
+      },
+    ]);
     store.deleteSymbolsForFile('/p/A.ts');
     const stats = store.getStats();
     expect(stats.totalSymbols).toBe(1);
@@ -446,84 +438,75 @@ describe('IndexStore', () => {
   });
 
   it('search returns matches filtered by kind', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'Foo',
-          file: '/p/Foo.ts',
-          line: 1,
-          col: 0,
-          signature: 'class Foo',
-          docComment: '',
-          scope: '',
-          text: 'Foo class Foo',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'Foo',
+        file: '/p/Foo.ts',
+        line: 1,
+        col: 0,
+        signature: 'class Foo',
+        docComment: '',
+        scope: '',
+        text: 'Foo class Foo',
+      },
+    ]);
     const results = store.search('foo', { kind: 'class' });
     expect(results.length).toBe(1);
   });
 
   it('search returns matches filtered by lang', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'TsClass',
-          file: '/p/a.ts',
-          line: 1,
-          col: 0,
-          signature: 'class TsClass',
-          docComment: '',
-          scope: '',
-          text: 'TsClass class TsClass',
-        },
-        {
-          id: 0,
-          lang: 'go',
-          kind: 'class',
-          name: 'GoClass',
-          file: '/p/b.go',
-          line: 1,
-          col: 0,
-          signature: 'type GoClass struct',
-          docComment: '',
-          scope: '',
-          text: 'GoClass type GoClass',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'TsClass',
+        file: '/p/a.ts',
+        line: 1,
+        col: 0,
+        signature: 'class TsClass',
+        docComment: '',
+        scope: '',
+        text: 'TsClass class TsClass',
+      },
+      {
+        id: 0,
+        lang: 'go',
+        kind: 'class',
+        name: 'GoClass',
+        file: '/p/b.go',
+        line: 1,
+        col: 0,
+        signature: 'type GoClass struct',
+        docComment: '',
+        scope: '',
+        text: 'GoClass type GoClass',
+      },
+    ]);
     const results = store.search('class', { lang: 'go' });
     expect(results.length).toBe(1);
-    expect(results[0].name).toBe('GoClass');
+    expect(results[0]!.name).toBe('GoClass');
   });
 
   it('clearAll removes everything', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'X',
-          file: '/p/X.ts',
-          line: 1,
-          col: 0,
-          signature: 'class X',
-          docComment: '',
-          scope: '',
-          text: 'class X',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'X',
+        file: '/p/X.ts',
+        line: 1,
+        col: 0,
+        signature: 'class X',
+        docComment: '',
+        scope: '',
+        text: 'class X',
+      },
+    ]);
     store.clearAll();
     expect(store.getStats().totalSymbols).toBe(0);
   });
@@ -536,24 +519,21 @@ describe('IndexStore', () => {
   });
 
   it('sizeBytes returns non-zero after inserts', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'X',
-          file: '/p/X.ts',
-          line: 1,
-          col: 0,
-          signature: 'class X',
-          docComment: '',
-          scope: '',
-          text: 'class X',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'X',
+        file: '/p/X.ts',
+        line: 1,
+        col: 0,
+        signature: 'class X',
+        docComment: '',
+        scope: '',
+        text: 'class X',
+      },
+    ]);
     expect(store.getStats().sizeBytes).toBeGreaterThan(0);
   });
 });
@@ -596,13 +576,10 @@ describe('IndexStore.searchRanked', () => {
   });
 
   it('matches camelCase parts of a symbol name with score and snippet', async () => {
-    store.insertSymbols(
-      [
-        sym(0, 'complexOperation', 'function', 'function complexOperation(): Promise<void>'),
-        sym(0, 'TreeNode', 'class', 'class TreeNode'),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym(0, 'complexOperation', 'function', 'function complexOperation(): Promise<void>'),
+      sym(0, 'TreeNode', 'class', 'class TreeNode'),
+    ]);
     const { results, total } = store.searchRanked('complex', undefined, 20);
     expect(total).toBe(1);
     expect(results[0]?.name).toBe('complexOperation');
@@ -611,29 +588,23 @@ describe('IndexStore.searchRanked', () => {
   });
 
   it('matches prefixes (old LIKE recall: "user" finds "users")', async () => {
-    store.insertSymbols([sym(0, 'users', 'function', 'function users(): User[]')], 1);
+    store.insertSymbols([sym(0, 'users', 'function', 'function users(): User[]')]);
     const { results } = store.searchRanked('user', undefined, 20);
     expect(results.some((r) => r.name === 'users')).toBe(true);
   });
 
   it('applies kind/lang filters on top of the match', async () => {
-    store.insertSymbols(
-      [
-        sym(0, 'fooHandler', 'function', 'function fooHandler()'),
-        sym(0, 'FooHandler', 'class', 'class FooHandler'),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym(0, 'fooHandler', 'function', 'function fooHandler()'),
+      sym(0, 'FooHandler', 'class', 'class FooHandler'),
+    ]);
     const { results } = store.searchRanked('handler', { kind: 'class' }, 20);
     expect(results.length).toBe(1);
     expect(results[0]?.kind).toBe('class');
   });
 
   it('empty query lists by filter only (legacy search("") semantics)', async () => {
-    store.insertSymbols(
-      [sym(0, 'A', 'class', 'class A'), sym(0, 'b', 'function', 'function b()')],
-      1,
-    );
+    store.insertSymbols([sym(0, 'A', 'class', 'class A'), sym(0, 'b', 'function', 'function b()')]);
     const { results, total } = store.searchRanked('', { kind: 'class' }, 20);
     expect(total).toBe(1);
     expect(results[0]?.name).toBe('A');
@@ -644,7 +615,6 @@ describe('IndexStore.searchRanked', () => {
       Array.from({ length: 10 }, (_, i) =>
         sym(0, `widget${i}`, 'function', `function widget${i}()`),
       ),
-      1,
     );
     const { results, total } = store.searchRanked('widget', undefined, 3);
     expect(results.length).toBe(3);
@@ -652,14 +622,14 @@ describe('IndexStore.searchRanked', () => {
   });
 
   it('FTS rows follow symbol deletion', async () => {
-    store.insertSymbols([sym(0, 'Gone', 'class', 'class Gone')], 1);
+    store.insertSymbols([sym(0, 'Gone', 'class', 'class Gone')]);
     store.deleteSymbolsForFile('/p/Gone.ts');
     const { total } = store.searchRanked('gone', undefined, 20);
     expect(total).toBe(0);
   });
 
   it('FTS query syntax in input is neutralised, not executed', async () => {
-    store.insertSymbols([sym(0, 'Safe', 'class', 'class Safe')], 1);
+    store.insertSymbols([sym(0, 'Safe', 'class', 'class Safe')]);
     // NEAR/AND/parens/quotes must not produce an FTS syntax error.
     expect(() => store.searchRanked('safe" OR (NEAR "x', undefined, 20)).not.toThrow();
   });
@@ -671,24 +641,21 @@ describe('schema migration', () => {
     const indexDir = path.join(tmpDir, '.codebase-index');
     try {
       const store = new IndexStore(tmpDir, { indexDir });
-      store.insertSymbols(
-        [
-          {
-            id: 0,
-            lang: 'ts',
-            kind: 'class',
-            name: 'Old',
-            file: '/p/Old.ts',
-            line: 1,
-            col: 0,
-            signature: 'class Old',
-            docComment: '',
-            scope: '',
-            text: 'class Old',
-          },
-        ],
-        1,
-      );
+      store.insertSymbols([
+        {
+          id: 0,
+          lang: 'ts',
+          kind: 'class',
+          name: 'Old',
+          file: '/p/Old.ts',
+          line: 1,
+          col: 0,
+          signature: 'class Old',
+          docComment: '',
+          scope: '',
+          text: 'class Old',
+        },
+      ]);
       // Simulate a database written by an older schema.
       (store as never as { db: { prepare(sql: string): { run(...a: unknown[]): unknown } } }).db
         .prepare('UPDATE metadata SET value = ? WHERE key = ?')
@@ -907,9 +874,9 @@ describe('codebase-search tool', () => {
     });
 
     expect(result.results.length).toBeGreaterThanOrEqual(1);
-    expect(result.results[0].name).toBe('UserService');
-    expect(result.results[0].kind).toBe('class');
-    expect(result.results[0].score).toBeGreaterThan(0);
+    expect(result.results[0]!.name).toBe('UserService');
+    expect(result.results[0]!.kind).toBe('class');
+    expect(result.results[0]!.score).toBeGreaterThan(0);
   });
 
   it('finds functions by signature keyword', async () => {
@@ -981,8 +948,8 @@ describe('codebase-search tool', () => {
     expect(result.results[0]).toBeDefined();
     expect(result.query).toBe('complex');
     expect(result.total).toBeGreaterThan(0);
-    expect(result.results[0].snippet).toBeTruthy();
-    expect(result.results[0].snippet.length).toBeGreaterThan(0);
+    expect(result.results[0]!.snippet).toBeTruthy();
+    expect(result.results[0]!.snippet.length).toBeGreaterThan(0);
   });
 });
 
@@ -1148,152 +1115,137 @@ describe('search with lspKind filter', () => {
   });
 
   it('filters by LSP kind number (class → 5)', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'FooClass',
-          file: '/p/Foo.ts',
-          line: 1,
-          col: 0,
-          signature: 'class FooClass',
-          docComment: '',
-          scope: '',
-          text: 'FooClass class',
-        },
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'function',
-          name: 'barFn',
-          file: '/p/bar.ts',
-          line: 1,
-          col: 0,
-          signature: 'function barFn()',
-          docComment: '',
-          scope: '',
-          text: 'barFn function',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'FooClass',
+        file: '/p/Foo.ts',
+        line: 1,
+        col: 0,
+        signature: 'class FooClass',
+        docComment: '',
+        scope: '',
+        text: 'FooClass class',
+      },
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'function',
+        name: 'barFn',
+        file: '/p/bar.ts',
+        line: 1,
+        col: 0,
+        signature: 'function barFn()',
+        docComment: '',
+        scope: '',
+        text: 'barFn function',
+      },
+    ]);
     const results = store.search('', { lspKind: LSPSymbolKind.Class });
     expect(results.length).toBe(1);
-    expect(results[0].name).toBe('FooClass');
-    expect(results[0].kind).toBe('class');
-    expect(results[0].lspKind).toBe(LSPSymbolKind.Class);
+    expect(results[0]!.name).toBe('FooClass');
+    expect(results[0]!.kind).toBe('class');
+    expect(results[0]!.lspKind).toBe(LSPSymbolKind.Class);
   });
 
   it('filters by LSP kind number (function → 12)', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'FooClass',
-          file: '/p/Foo.ts',
-          line: 1,
-          col: 0,
-          signature: 'class FooClass',
-          docComment: '',
-          scope: '',
-          text: 'FooClass class',
-        },
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'function',
-          name: 'barFn',
-          file: '/p/bar.ts',
-          line: 1,
-          col: 0,
-          signature: 'function barFn()',
-          docComment: '',
-          scope: '',
-          text: 'barFn function',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'FooClass',
+        file: '/p/Foo.ts',
+        line: 1,
+        col: 0,
+        signature: 'class FooClass',
+        docComment: '',
+        scope: '',
+        text: 'FooClass class',
+      },
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'function',
+        name: 'barFn',
+        file: '/p/bar.ts',
+        line: 1,
+        col: 0,
+        signature: 'function barFn()',
+        docComment: '',
+        scope: '',
+        text: 'barFn function',
+      },
+    ]);
     const results = store.search('', { lspKind: LSPSymbolKind.Function });
     expect(results.length).toBe(1);
-    expect(results[0].name).toBe('barFn');
-    expect(results[0].kind).toBe('function');
-    expect(results[0].lspKind).toBe(LSPSymbolKind.Function);
+    expect(results[0]!.name).toBe('barFn');
+    expect(results[0]!.kind).toBe('function');
+    expect(results[0]!.lspKind).toBe(LSPSymbolKind.Function);
   });
 
   it('filters by LSP kind number (enum → 10)', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'enum',
-          name: 'Status',
-          file: '/p/enums.ts',
-          line: 1,
-          col: 0,
-          signature: 'enum Status',
-          docComment: '',
-          scope: '',
-          text: 'Status enum',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'enum',
+        name: 'Status',
+        file: '/p/enums.ts',
+        line: 1,
+        col: 0,
+        signature: 'enum Status',
+        docComment: '',
+        scope: '',
+        text: 'Status enum',
+      },
+    ]);
     const results = store.search('', { lspKind: LSPSymbolKind.Enum });
     expect(results.length).toBe(1);
-    expect(results[0].name).toBe('Status');
-    expect(results[0].kind).toBe('enum');
+    expect(results[0]!.name).toBe('Status');
+    expect(results[0]!.kind).toBe('enum');
   });
 
   it('returns empty array when LSP kind has no internal mapping', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'FooClass',
-          file: '/p/Foo.ts',
-          line: 1,
-          col: 0,
-          signature: 'class FooClass',
-          docComment: '',
-          scope: '',
-          text: 'FooClass class',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'FooClass',
+        file: '/p/Foo.ts',
+        line: 1,
+        col: 0,
+        signature: 'class FooClass',
+        docComment: '',
+        scope: '',
+        text: 'FooClass class',
+      },
+    ]);
     // String (15) has no internal mapping
     const results = store.search('', { lspKind: LSPSymbolKind.String });
     expect(results.length).toBe(0);
   });
 
   it('lspKind is undefined in result when no lspKind filter was applied', async () => {
-    store.insertSymbols(
-      [
-        {
-          id: 0,
-          lang: 'ts',
-          kind: 'class',
-          name: 'FooClass',
-          file: '/p/Foo.ts',
-          line: 1,
-          col: 0,
-          signature: 'class FooClass',
-          docComment: '',
-          scope: '',
-          text: 'FooClass class',
-        },
-      ],
-      1,
-    );
+    store.insertSymbols([
+      {
+        id: 0,
+        lang: 'ts',
+        kind: 'class',
+        name: 'FooClass',
+        file: '/p/Foo.ts',
+        line: 1,
+        col: 0,
+        signature: 'class FooClass',
+        docComment: '',
+        scope: '',
+        text: 'FooClass class',
+      },
+    ]);
     const results = store.search('', { kind: 'class' });
-    expect(results[0].lspKind).toBeUndefined();
+    expect(results[0]!.lspKind).toBeUndefined();
   });
 });

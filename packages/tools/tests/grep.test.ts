@@ -630,8 +630,11 @@ describe('grep tool', () => {
   it('executeStream validates regex on empty pattern string', async () => {
     // Empty string pattern may pass compileUserRegex but fail in executeStream
     await expect(
-      (grepTool.executeStream!({ pattern: '' }, sb.ctx, { signal: newSignal() }) as unknown as AsyncGenerator)
-        .next(),
+      (
+        grepTool.executeStream!({ pattern: '' }, sb.ctx, {
+          signal: newSignal(),
+        }) as unknown as AsyncGenerator
+      ).next(),
     ).rejects.toThrow();
   });
 
@@ -833,7 +836,7 @@ describe('grep tool — buffer overflow path (rg mode)', () => {
     const ctxWithSignal = { ...sb.ctx, signal: ac.signal };
     const outWithSignal = await grepTool.execute(
       { pattern: 'hello', output_mode: 'content' },
-      ctxWithSignal,
+      ctxWithSignal as any,
       undefined as unknown as { signal: AbortSignal },
     );
     expect(outWithSignal.count).toBeGreaterThanOrEqual(1);

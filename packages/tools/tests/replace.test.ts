@@ -261,7 +261,7 @@ describe('replaceTool', () => {
       ctx,
       makeOpts(),
     );
-    expect(result.results[0].diff).toBeDefined();
+    expect(result.results[0]!.diff).toBeDefined();
   });
 
   it('skips binary files', async () => {
@@ -329,7 +329,7 @@ describe('replace change tracking', () => {
       tools: [],
       projectRoot: tmpDir,
       recordRead(p: string, _m: number, source = 'user', hash?: string) {
-        recorded.push({ path: p, source, hash });
+        recorded.push({ path: p, source, ...(hash !== undefined ? { hash } : {}) });
       },
       session: {
         recordFileChange(c: { path: string; action: string; before: unknown; after: unknown }) {
@@ -405,6 +405,7 @@ describe('replace change tracking', () => {
       replaceTool.execute(
         { pattern: 'hello', replacement: 'goodbye', files: filePath, dry_run: false },
         ctx,
+        undefined as unknown as { signal: AbortSignal },
       ),
     ).rejects.toThrow();
 

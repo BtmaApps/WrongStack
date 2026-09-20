@@ -172,7 +172,7 @@ describe('planTool', () => {
   it('promote creates todos and updates plan', async () => {
     // Set up a mock state.replaceTodos
     const replacedTodos: unknown[] = [];
-    sb.ctx.state = {
+    (sb.ctx as { state: Context['state'] }).state = {
       replaceTodos(todos: unknown[]) {
         replacedTodos.push(...todos);
       },

@@ -30,7 +30,7 @@ describe('toolSearchTool', () => {
     ]);
     const result = await executeToolSearch({ query: 'foo' }, ctx);
     expect(result.tools).toHaveLength(1);
-    expect(result.tools[0].name).toBe('foo');
+    expect(result.tools[0]!.name).toBe('foo');
   });
 
   it('searches the lazy catalog rather than only the direct provider tools', async () => {
@@ -88,7 +88,7 @@ describe('toolSearchTool', () => {
     ]);
     const result = await executeToolSearch({ permission: 'deny' }, ctx);
     expect(result.tools).toHaveLength(1);
-    expect(result.tools[0].name).toBe('bar');
+    expect(result.tools[0]!.name).toBe('bar');
   });
 
   it('filters by mutating flag', async () => {
@@ -98,7 +98,7 @@ describe('toolSearchTool', () => {
     ]);
     const result = await executeToolSearch({ mutating: false }, ctx);
     expect(result.tools).toHaveLength(1);
-    expect(result.tools[0].name).toBe('foo');
+    expect(result.tools[0]!.name).toBe('foo');
   });
 
   it('respects limit', async () => {

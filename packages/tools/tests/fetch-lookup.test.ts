@@ -26,7 +26,13 @@ const call = (
   options: { all?: boolean; family?: number },
 ): Promise<{ err: NodeJS.ErrnoException | null; address?: unknown; family?: number }> =>
   new Promise((resolve) => {
-    guardedLookup(hostname, options, (err, address, family) => resolve({ err, address, family }));
+    guardedLookup(hostname, options, (err, address, family) =>
+      resolve({
+        err,
+        ...(address !== undefined ? { address } : {}),
+        ...(family !== undefined ? { family } : {}),
+      }),
+    );
   });
 
 describe('guardedLookup', () => {

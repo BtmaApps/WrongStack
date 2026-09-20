@@ -15,6 +15,7 @@ const sampleEntry: MemoryEntry = {
 function fakeStore() {
   const calls: Array<{ method: string; args: unknown[] }> = [];
   const store: MemoryStore = {
+    withTraceId: vi.fn((_traceId: string) => store),
     readAll: vi.fn(async () => ''),
     read: vi.fn(async () => ''),
     remember: vi.fn(async (text: string, scope?: string, _meta?: Record<string, unknown>) => {
@@ -224,7 +225,7 @@ describe('memory tools', () => {
 
   it('find_related_memories falls back to content search without a graph backend', async () => {
     const { store } = fakeStore();
-    store.findRelated = undefined;
+    (store as { findRelated: MemoryStore['findRelated'] | undefined }).findRelated = undefined;
     (store.search as ReturnType<typeof vi.fn>).mockResolvedValue([sampleEntry]);
     const tool = relatedMemoryTool(store);
     const sb = await mkSandbox();

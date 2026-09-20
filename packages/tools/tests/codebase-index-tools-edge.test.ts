@@ -136,7 +136,7 @@ beforeEach(() => {
   state.indexing = false;
   state.currentFile = 0;
   state.totalFiles = 0;
-  state.lastError = undefined;
+  (state as { lastError: string | undefined }).lastError = undefined;
   state.circuit = { state: 'closed', cooldownRemainingMs: 0 };
   isIndexingValue = false;
   statsError = undefined;
@@ -487,9 +487,13 @@ describe('codebase call-graph tool gates', () => {
     const ctrl = new AbortController();
     ctrl.abort();
     const abortedCtx = { ...ctx(), signal: ctrl.signal };
-    await expect(codebaseSearchTool.execute({ query: 'Target' }, abortedCtx)).rejects.toMatchObject(
-      { name: 'AbortError' },
-    );
+    await expect(
+      codebaseSearchTool.execute(
+        { query: 'Target' },
+        abortedCtx as any,
+        undefined as unknown as { signal: AbortSignal },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('codebaseSearchTool honors execOpts.signal when pre-aborted', async () => {

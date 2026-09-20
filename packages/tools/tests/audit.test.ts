@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnStreamMocks = vi.hoisted(() => ({ spawnStream: vi.fn() }));
 
@@ -165,9 +165,9 @@ describe('auditTool', () => {
     spawnStreamMocks.spawnStream.mockImplementation(fakeSpawnStream(payload, 0));
     const result = await auditTool.execute({}, makeCtx(), makeOpts());
     expect(result.vulnerabilities).toHaveLength(1);
-    expect(result.vulnerabilities[0].title).toBe('Unknown vulnerability');
-    expect(result.vulnerabilities[0].severity).toBe('unknown');
-    expect(result.vulnerabilities[0].package).toBe('only_id');
+    expect(result.vulnerabilities[0]!.title).toBe('Unknown vulnerability');
+    expect(result.vulnerabilities[0]!.severity).toBe('unknown');
+    expect(result.vulnerabilities[0]!.package).toBe('only_id');
   });
 
   it('parses the npm >=7 vulnerabilities shape (via objects carry title/url)', async () => {

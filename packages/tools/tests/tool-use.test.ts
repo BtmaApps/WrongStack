@@ -36,9 +36,9 @@ describe('toolUseTool', () => {
 
   it('throws for unknown tool', async () => {
     const ctx = makeCtx([]);
-    await expect(toolUseTool.execute({ tool: 'nonexistent' }, ctx, makeOpts())).rejects.toThrow(
-      /not found/,
-    );
+    await expect(
+      toolUseTool.execute({ tool: 'nonexistent', input: {} }, ctx, makeOpts()),
+    ).rejects.toThrow(/not found/);
   });
 
   it('throws for denied tool', async () => {
@@ -50,9 +50,9 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    await expect(toolUseTool.execute({ tool: 'denied' }, ctx, makeOpts())).rejects.toThrow(
-      /denied by policy/,
-    );
+    await expect(
+      toolUseTool.execute({ tool: 'denied', input: {} }, ctx, makeOpts()),
+    ).rejects.toThrow(/denied by policy/);
   });
 
   it('fails closed when the governed executor bridge is unavailable', async () => {
@@ -102,9 +102,9 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    await expect(toolUseTool.execute({ tool: 'broken' }, ctx, makeOpts())).rejects.toThrow(
-      /"broken" failed: boom/,
-    );
+    await expect(
+      toolUseTool.execute({ tool: 'broken', input: {} }, ctx, makeOpts()),
+    ).rejects.toThrow(/"broken" failed: boom/);
   });
 
   it('returns result on success', async () => {
@@ -116,7 +116,7 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    const result = await toolUseTool.execute({ tool: 'works' }, ctx, makeOpts());
+    const result = await toolUseTool.execute({ tool: 'works', input: {} }, ctx, makeOpts());
     expect(result.success).toBe(true);
     expect(result.result).toEqual({ value: 42 });
   });
@@ -130,7 +130,7 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    const result = await toolUseTool.execute({ tool: 'works' }, ctx, makeOpts());
+    const result = await toolUseTool.execute({ tool: 'works', input: {} }, ctx, makeOpts());
     expect(result.executionMs).toBeGreaterThanOrEqual(0);
   });
 
@@ -143,8 +143,8 @@ describe('toolUseTool', () => {
         mutating: false,
       },
     ]);
-    await expect(toolUseTool.execute({ tool: 'throws-string' }, ctx, makeOpts())).rejects.toThrow(
-      /string error/,
-    );
+    await expect(
+      toolUseTool.execute({ tool: 'throws-string', input: {} }, ctx, makeOpts()),
+    ).rejects.toThrow(/string error/);
   });
 });

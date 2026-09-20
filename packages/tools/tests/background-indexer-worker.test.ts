@@ -62,7 +62,7 @@ vi.mock('node:fs', async (orig) => {
   return { ...actual, existsSync: () => true, default: { ...actual, existsSync: () => true } };
 });
 vi.mock('../src/codebase-index/index-service.js', () => ({
-  indexService: (...a: unknown[]) => indexServiceMock(...a),
+  indexService: (...a: Parameters<typeof indexServiceMock>) => indexServiceMock(...a),
   searchService: vi.fn(async () => ({ results: [], total: 0 })),
   statsService: vi.fn(async () => ({ totalSymbols: 0 })),
 }));
@@ -91,11 +91,13 @@ const STATS_ARGS: StatsOpArgs = { projectRoot: '/proj' };
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const lastWorker = () => FakeWorker.instances[FakeWorker.instances.length - 1]!;
-const lastRequest = (w: FakeWorker): Extract<HostToWorker, { type: 'request' }> =>
+const lastRequest = (
+  w: InstanceType<typeof FakeWorker>,
+): Extract<HostToWorker, { type: 'request' }> =>
   w.postMessage.mock.calls
-    .map((c) => c[0] as HostToWorker)
-    .find((m) => m.type === 'request') as never;
-const respond = (w: FakeWorker, msg: WorkerToHost) => w.emit('message', msg);
+    .map((c: unknown[]) => c[0] as HostToWorker)
+    .find((m: HostToWorker) => m.type === 'request') as never;
+const respond = (w: InstanceType<typeof FakeWorker>, msg: WorkerToHost) => w.emit('message', msg);
 
 beforeEach(async () => {
   FakeWorker.instances = [];

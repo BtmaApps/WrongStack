@@ -23,7 +23,7 @@ async function collect<O>(
     events.push(ev);
     if (ev.type === 'final') final = ev.output;
   }
-  return { events, final };
+  return { events, ...(final !== undefined ? { final } : {}) };
 }
 
 /**
@@ -94,7 +94,7 @@ describe('L0-A executeStream migration', () => {
     );
     const logPhases = events
       .filter((e) => e.type === 'log')
-      .map((e) => (e.data as { phase?: string } | undefined)?.phase);
+      .map((e) => (e as { data?: { phase?: string } | undefined }).data?.phase);
     expect(logPhases).toContain('resolve');
     expect(logPhases).toContain('fetch');
     expect(events.some((e) => e.type === 'final')).toBe(false);

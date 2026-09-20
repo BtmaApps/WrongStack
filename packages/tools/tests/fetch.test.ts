@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isFetchError } from '@wrongstack/core/types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchTool, guardedFetch } from '../src/fetch.js';
 import { mkSandbox, newSignal } from './fixtures.js';
 
@@ -446,8 +446,9 @@ describe('fetchTool', () => {
         expect(fe.context?.timedOut).toBe(false);
         // The cause chain is preserved end-to-end so callers can introspect
         // via `instanceof` / `.code` without parsing message text.
-        expect(fe.cause).toBeDefined();
-        const rootCause = (fe.cause as { cause?: unknown }).cause;
+        expect((fe as { cause?: unknown }).cause).toBeDefined();
+        const rootCause = ((fe as { cause?: unknown }).cause as { cause?: unknown } | undefined)
+          ?.cause;
         expect((rootCause as { code?: string })?.code).toBe('ENOTFOUND');
       } finally {
         await sb.cleanup();
@@ -549,7 +550,11 @@ describe('fetch prettyJson error handling', () => {
     const sb = await mkSandbox();
     try {
       const optsOmitted = undefined as unknown as { signal: AbortSignal };
-      const out = await fetchTool.execute({ url: 'https://api.example.com/data' }, sb.ctx, optsOmitted);
+      const out = await fetchTool.execute(
+        { url: 'https://api.example.com/data' },
+        sb.ctx,
+        optsOmitted,
+      );
       expect(out.status).toBe(200);
       expect(out.content).toBe('no-opts content');
 
@@ -557,7 +562,7 @@ describe('fetch prettyJson error handling', () => {
       const ctxWithSignal = { ...sb.ctx, signal: ac.signal };
       const outWithSignal = await fetchTool.execute(
         { url: 'https://api.example.com/data' },
-        ctxWithSignal,
+        ctxWithSignal as any,
         optsOmitted,
       );
       expect(outWithSignal.status).toBe(200);

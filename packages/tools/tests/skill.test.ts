@@ -23,9 +23,10 @@ function loader(manifests: SkillManifest[], bodies: Record<string, string>): Ski
   return {
     list: async () => manifests,
     listEntries: async () => [],
-    find: async (name) => manifests.find((m) => m.name.toLowerCase() === name.toLowerCase()),
+    find: async (name: string) =>
+      manifests.find((m) => m.name.toLowerCase() === name.toLowerCase()),
     manifestText: async () => '',
-    readBody: async (name) => bodies[name] ?? '',
+    readBody: async (name: string) => bodies[name] ?? '',
     readSaveBody: async () => '',
     invalidateCache: () => undefined,
   } as unknown as SkillLoader;
@@ -253,7 +254,7 @@ describe('makeSkillTool', () => {
     );
     await tool.execute({ name: 'ev-skill' }, ctx, RUN_OPTS);
     expect(append).toHaveBeenCalledOnce();
-    expect(append.mock.calls[0][0]).toMatchObject({
+    expect(append.mock.calls[0]![0]).toMatchObject({
       type: 'skill_activated',
       skillName: 'ev-skill',
     });

@@ -16,9 +16,9 @@ vi.mock('node:worker_threads', async (orig) => ({
   parentPort: port,
 }));
 vi.mock('../src/codebase-index/index-service.js', () => ({
-  indexService: (...a: unknown[]) => indexService(...a),
-  searchService: (...a: unknown[]) => searchService(...a),
-  statsService: (...a: unknown[]) => statsService(...a),
+  indexService: (...a: Parameters<typeof indexService>) => indexService(...a),
+  searchService: (...a: Parameters<typeof searchService>) => searchService(...a),
+  statsService: (...a: Parameters<typeof statsService>) => statsService(...a),
 }));
 
 const flush = () => new Promise((r) => setTimeout(r, 5));

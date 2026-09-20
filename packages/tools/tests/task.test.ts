@@ -32,11 +32,25 @@ async function mkTaskSandbox(): Promise<TaskSandbox> {
 }
 
 /** Read the raw task file from disk. */
-async function readTasksOnDisk(
-  taskPath: string,
-): Promise<Array<{ id: string; title: string; status: string; dependsOn?: string[] }>> {
+async function readTasksOnDisk(taskPath: string): Promise<
+  Array<{
+    id: string;
+    title: string;
+    status: string;
+    type?: string;
+    priority?: string;
+    dependsOn?: string[];
+  }>
+> {
   const raw = JSON.parse(await fs.readFile(taskPath, 'utf8')) as {
-    tasks: Array<{ id: string; title: string; status: string; dependsOn?: string[] }>;
+    tasks: Array<{
+      id: string;
+      title: string;
+      status: string;
+      type?: string;
+      priority?: string;
+      dependsOn?: string[];
+    }>;
   };
   return raw.tasks;
 }

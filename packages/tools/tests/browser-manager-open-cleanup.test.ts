@@ -52,7 +52,7 @@ function makeManager(fakes: ReturnType<typeof makeFakes>): BrowserSessionManager
       artifactRoot: path.join(os.tmpdir(), 'wstack-browser-open-cleanup-artifacts'),
       allowPrivateHosts: false,
     },
-    async () => fakes.browser,
+    async () => fakes.browser as never,
   );
 }
 

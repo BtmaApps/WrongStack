@@ -343,15 +343,11 @@ async function mkRealSandbox() {
     todos: [],
     readFiles: new Set<string>(),
     fileMtimes: new Map<string, number>(),
-    hasRead(p: string) {
-      return this.readFiles.has(p);
-    },
-    lastReadMtime(p: string) {
-      return this.fileMtimes.get(p);
-    },
-    recordRead(p: string, m: number) {
-      this.readFiles.add(p);
-      this.fileMtimes.set(p, m);
+    hasRead: (p: string) => ctx.readFiles.has(p),
+    lastReadMtime: (p: string) => ctx.fileMtimes.get(p),
+    recordRead: (p: string, m: number) => {
+      ctx.readFiles.add(p);
+      ctx.fileMtimes.set(p, m);
     },
   } as never as Context;
   return { ctx, cleanup: async () => fs.rm(dir, { recursive: true, force: true }) };

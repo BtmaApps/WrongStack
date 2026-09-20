@@ -65,32 +65,29 @@ describe('indexed file filter matching', () => {
 
 describe('IndexStore search filters', () => {
   beforeEach(() => {
-    store.insertSymbols(
-      [
-        sym({
-          name: 'UserClass',
-          kind: 'class',
-          lang: 'ts',
-          file: '/p/user.ts',
-          docComment: 'entity docs',
-        }),
-        sym({
-          name: 'helperFn',
-          kind: 'function',
-          lang: 'ts',
-          file: '/p/util.ts',
-          text: 'helperFn util',
-        }),
-        sym({
-          name: 'goThing',
-          kind: 'function',
-          lang: 'go',
-          file: '/p/main.go',
-          text: 'goThing main',
-        }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({
+        name: 'UserClass',
+        kind: 'class',
+        lang: 'ts',
+        file: '/p/user.ts',
+        docComment: 'entity docs',
+      }),
+      sym({
+        name: 'helperFn',
+        kind: 'function',
+        lang: 'ts',
+        file: '/p/util.ts',
+        text: 'helperFn util',
+      }),
+      sym({
+        name: 'goThing',
+        kind: 'function',
+        lang: 'go',
+        file: '/p/main.go',
+        text: 'goThing main',
+      }),
+    ]);
   });
 
   it('filters by kind', () => {
@@ -127,25 +124,22 @@ describe('IndexStore search filters', () => {
 
 describe('IndexStore searchRanked filters', () => {
   beforeEach(() => {
-    store.insertSymbols(
-      [
-        sym({
-          name: 'parseConfig',
-          kind: 'function',
-          lang: 'ts',
-          file: '/p/cfg.ts',
-          text: 'parseConfig config loader',
-        }),
-        sym({
-          name: 'ConfigType',
-          kind: 'type',
-          lang: 'ts',
-          file: '/p/types.ts',
-          text: 'ConfigType config shape',
-        }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({
+        name: 'parseConfig',
+        kind: 'function',
+        lang: 'ts',
+        file: '/p/cfg.ts',
+        text: 'parseConfig config loader',
+      }),
+      sym({
+        name: 'ConfigType',
+        kind: 'type',
+        lang: 'ts',
+        file: '/p/types.ts',
+        text: 'ConfigType config shape',
+      }),
+    ]);
   });
 
   it('returns nothing when the lspKind has no mapping', () => {
@@ -180,10 +174,10 @@ describe('IndexStore refs', () => {
   let calleeId: number;
 
   beforeEach(() => {
-    store.insertSymbols(
-      [sym({ name: 'caller', file: '/p/a.ts' }), sym({ name: 'callee', file: '/p/b.ts' })],
-      1,
-    );
+    store.insertSymbols([
+      sym({ name: 'caller', file: '/p/a.ts' }),
+      sym({ name: 'callee', file: '/p/b.ts' }),
+    ]);
     const all = store.search('', {});
     callerId = all.find((s) => s.name === 'caller')!.id;
     calleeId = all.find((s) => s.name === 'callee')!.id;
@@ -303,19 +297,16 @@ describe('IndexStore CodeMap graphs', () => {
   const toolsFile = '/workspace/packages/tools/src/read.ts';
 
   beforeEach(() => {
-    store.insertSymbols(
-      [
-        sym({ name: 'runAgent', file: coreFile, line: 10, signature: 'function runAgent(): void' }),
-        sym({ name: 'sibling', file: siblingFile, line: 5 }),
-        sym({
-          name: 'readFile',
-          file: toolsFile,
-          line: 20,
-          signature: 'function readFile(path: string): string',
-        }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({ name: 'runAgent', file: coreFile, line: 10, signature: 'function runAgent(): void' }),
+      sym({ name: 'sibling', file: siblingFile, line: 5 }),
+      sym({
+        name: 'readFile',
+        file: toolsFile,
+        line: 20,
+        signature: 'function readFile(path: string): string',
+      }),
+    ]);
     const all = store.search('', {});
     const callerId = all.find((symbol) => symbol.name === 'runAgent')!.id;
     // Import refs carry the specifier in `module` and its resolved target in
@@ -430,7 +421,7 @@ describe('IndexStore file ops + ranked fallback', () => {
 
   it('deleteFile removes symbols, refs, and the file row', () => {
     const inserted = store.insertSymbols([sym({ name: 'gone', file: '/p/gone.ts' })]);
-    const id = inserted[0].id;
+    const id = inserted[0]!.id;
     store.upsertFile({
       file: '/p/gone.ts',
       mtimeMs: 1,
@@ -449,7 +440,7 @@ describe('IndexStore file ops + ranked fallback', () => {
   });
 
   it('searchRanked with an empty query lists candidates via the fallback', () => {
-    store.insertSymbols([sym({ name: 'Listed', kind: 'class', file: '/p/l.ts' })], 1);
+    store.insertSymbols([sym({ name: 'Listed', kind: 'class', file: '/p/l.ts' })]);
     const r = store.searchRanked('   ', undefined, 10); // whitespace → no tokens → fallback
     expect(r.total).toBeGreaterThan(0);
     expect(r.results.length).toBeGreaterThan(0);
@@ -462,7 +453,7 @@ describe('IndexStore file ops + ranked fallback', () => {
   });
 
   it('searchRanked returns empty when nothing matches', () => {
-    store.insertSymbols([sym({ name: 'present', kind: 'function', file: '/p/f.ts' })], 1);
+    store.insertSymbols([sym({ name: 'present', kind: 'function', file: '/p/f.ts' })]);
     const miss = store.searchRanked('zzznomatchzzz', undefined, 10);
     expect(miss.results).toEqual([]);
     expect(miss.total).toBe(0);
@@ -538,13 +529,10 @@ describe('IndexStore.runWithRetry', () => {
 
 describe('IndexStore stats and clear', () => {
   it('reports byLang/byKind breakdowns and a positive size', () => {
-    store.insertSymbols(
-      [
-        sym({ name: 'A', kind: 'class', lang: 'ts', file: '/p/a.ts' }),
-        sym({ name: 'B', kind: 'function', lang: 'go', file: '/p/b.go' }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({ name: 'A', kind: 'class', lang: 'ts', file: '/p/a.ts' }),
+      sym({ name: 'B', kind: 'function', lang: 'go', file: '/p/b.go' }),
+    ]);
     store.upsertFile({
       file: '/p/a.ts',
       mtimeMs: 1,
@@ -562,7 +550,7 @@ describe('IndexStore stats and clear', () => {
   });
 
   it('clearAll empties the index', () => {
-    store.insertSymbols([sym({ name: 'X', file: '/p/x.ts' })], 1);
+    store.insertSymbols([sym({ name: 'X', file: '/p/x.ts' })]);
     store.clearAll();
     expect(store.getStats().totalSymbols).toBe(0);
   });
@@ -570,14 +558,11 @@ describe('IndexStore stats and clear', () => {
 
 describe('IndexStore search LIKE escaping', () => {
   beforeEach(() => {
-    store.insertSymbols(
-      [
-        sym({ name: 'fn', kind: 'function', file: '/p/a%b.ts' }),
-        sym({ name: 'fn', kind: 'function', file: '/p/a_b.ts' }),
-        sym({ name: 'fn', kind: 'function', file: '/p/aXb.ts' }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({ name: 'fn', kind: 'function', file: '/p/a%b.ts' }),
+      sym({ name: 'fn', kind: 'function', file: '/p/a_b.ts' }),
+      sym({ name: 'fn', kind: 'function', file: '/p/aXb.ts' }),
+    ]);
   });
 
   it('matches file paths literally (% and _ are not wildcards)', () => {
@@ -592,14 +577,11 @@ describe('IndexStore search LIKE escaping', () => {
 
 describe('IndexStore searchRanking exact/prefix boost', () => {
   beforeEach(() => {
-    store.insertSymbols(
-      [
-        sym({ name: 'handle', kind: 'function', file: '/p/handle.ts' }),
-        sym({ name: 'handleRequest', kind: 'function', file: '/p/handle-request.ts' }),
-        sym({ name: 'unrelatedThing', kind: 'function', file: '/p/unrelated.ts' }),
-      ],
-      1,
-    );
+    store.insertSymbols([
+      sym({ name: 'handle', kind: 'function', file: '/p/handle.ts' }),
+      sym({ name: 'handleRequest', kind: 'function', file: '/p/handle-request.ts' }),
+      sym({ name: 'unrelatedThing', kind: 'function', file: '/p/unrelated.ts' }),
+    ]);
   });
 
   it('ranks exact name ahead of prefix', () => {

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const spawnMocks = vi.hoisted(() => ({ spawn: vi.fn() }));
 
@@ -12,7 +12,7 @@ vi.mock('node:child_process', async (orig) => {
 });
 
 const fsMocks = vi.hoisted(() => ({
-  stat: vi.fn<() => Promise<{ isFile: () => boolean }>>(),
+  stat: vi.fn<(path?: string) => Promise<{ isFile: () => boolean }>>(),
   statSync: vi.fn(),
 }));
 
@@ -198,15 +198,16 @@ describe('detectManager via fs stat mocks', () => {
     // stat for pnpm-lock.yaml succeeds → returns 'pnpm'
     // stat for yarn.lock throws → falls through
     fsMocks.stat
-      .mockImplementationOnce(async (path: string) => {
+      .mockImplementationOnce(async (path?: string) => {
         if (String(path).endsWith('pnpm-lock.yaml')) return { isFile: () => true } as any;
         throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       })
-      .mockImplementationOnce(async (_path: string) => {
+      .mockImplementationOnce(async (_path?: string) => {
         // Second call is for yarn.lock — should throw
         throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       });
     const _result = await outdatedTool.execute({}, makeCtx(), makeOpts());
+    void _result;
     expect(spawnMocks.spawn).toHaveBeenCalledWith('pnpm', expect.any(Array), expect.any(Object));
   });
 
@@ -214,16 +215,17 @@ describe('detectManager via fs stat mocks', () => {
     // stat for pnpm-lock.yaml throws → falls through
     // stat for yarn.lock succeeds → returns 'yarn'
     fsMocks.stat
-      .mockImplementationOnce(async (path: string) => {
+      .mockImplementationOnce(async (path?: string) => {
         if (String(path).endsWith('pnpm-lock.yaml'))
           throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
         throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       })
-      .mockImplementationOnce(async (path: string) => {
+      .mockImplementationOnce(async (path?: string) => {
         if (String(path).endsWith('yarn.lock')) return { isFile: () => true } as any;
         throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
       });
     const _result = await outdatedTool.execute({}, makeCtx(), makeOpts());
+    void _result;
     expect(spawnMocks.spawn).toHaveBeenCalledWith('yarn', expect.any(Array), expect.any(Object));
   });
 });

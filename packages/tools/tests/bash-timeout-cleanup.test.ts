@@ -183,11 +183,11 @@ describe('bashTool.cleanup — timeout / abort teardown (P1 #2)', () => {
     const originalId = sb.ctx.session.id;
     try {
       // A bare-bones context (tests, embedded callers) may not set session.id.
-      (sb.ctx.session as { id?: string }).id = undefined;
+      (sb.ctx.session as { id?: string | undefined }).id = undefined;
       await expect(bashTool.cleanup!({ command: 'anything' }, sb.ctx)).resolves.toBeUndefined();
       expect(registry.list()).toHaveLength(0);
     } finally {
-      (sb.ctx.session as { id?: string }).id = originalId;
+      (sb.ctx.session as { id?: string | undefined }).id = originalId;
       _resetProcessRegistry();
     }
   });

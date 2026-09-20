@@ -138,7 +138,8 @@ describe('bashTool', () => {
       await new Promise((resolve) => setTimeout(resolve, 25));
 
       expect(registry.bySession('test').some((p) => p.pid === out.pid)).toBe(true);
-      if (out.pid !== undefined) registry.kill(out.pid, { force: true, graceMs: 10 });
+      if (out.pid !== null && out.pid !== undefined)
+        registry.kill(out.pid, { force: true, graceMs: 10 });
     } finally {
       for (const proc of registry.bySession('test'))
         registry.kill(proc.pid, { force: true, graceMs: 10 });
@@ -210,6 +211,7 @@ describe('bashTool partial_output flush paths', () => {
         events.push(ev);
       }
       const _partials = events.filter((e) => e.type === 'partial_output');
+      void _partials;
       // Should emit at least one partial_output before final
       expect(events.some((e) => e.type === 'final')).toBe(true);
       // On Windows or with small output, partials may be empty, but we exercised the flush logic
@@ -235,6 +237,7 @@ describe('bashTool partial_output flush paths', () => {
         events.push(ev);
       }
       const _partials = events.filter((e) => e.type === 'partial_output');
+      void _partials;
       const finals = events.filter((e) => e.type === 'final');
       expect(finals).toHaveLength(1);
       // Output was processed

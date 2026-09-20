@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { searchTool, __clearSearchCache, __getSearchCacheSizeForTest } from '../src/search.js';
+import { __clearSearchCache, __getSearchCacheSizeForTest, searchTool } from '../src/search.js';
 
 /**
  * Mocked-fetch tests for the search tool.
