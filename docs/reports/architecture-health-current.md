@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-20T00:33:14.920Z
+**Generated:** 2026-09-20T07:03:22.371Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3958 |
-| Production source lines | 950899 |
+| Production source lines | 950910 |
 | Test files | 3557 |
 | Workspace dependency edges | 128 |
 | Relative module edges | 12815 |
@@ -103,10 +103,10 @@ None.
 | 972 | `packages/providers/src/openai-codex.ts` |
 | 971 | `packages/core/src/coordination/fleet-supervisor.ts` |
 | 970 | `packages/webui-server/src/server/backend-services.ts` |
+| 968 | `packages/core/src/security/yolo-risk.ts` |
 | 965 | `packages/cli/src/execution.ts` |
 | 965 | `packages/core/src/coordination/collab-debug.ts` |
 | 965 | `packages/webui/src/components/SidePanel/SessionList.tsx` |
-| 960 | `packages/core/src/security/yolo-risk.ts` |
 | 958 | `packages/core/src/coordination/director-tools.ts` |
 | 958 | `packages/plugins/src/prompt-firewall/index.ts` |
 | 955 | `packages/webui/src/stores/local-prefs.ts` |

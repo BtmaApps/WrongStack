@@ -230,10 +230,10 @@ export function compileBrainRules(rules: readonly BrainRule[] | undefined): Brai
       // `then` is always a BrainRuleAction OBJECT, and `await` only treats a
       // value as a promise when `.then` is CALLABLE — awaiting a compiled rule
       // would simply resolve to the rule itself.
-      // biome-ignore lint/suspicious/noThenProperty: public rule-DSL field; the value is never callable
       compiled.push({
         id,
         match,
+        // biome-ignore lint/suspicious/noThenProperty: public rule-DSL field; the value is never callable
         then: rule.then,
         ...(rule.maxHits !== undefined ? { maxHits: rule.maxHits } : {}),
         ...(rule.windowMs !== undefined ? { windowMs: rule.windowMs } : {}),

@@ -142,7 +142,15 @@ export function pathLooksInsideProject(rawPath: string, projectRoot: string | un
   // path.resolve() treats "~/cache" as a relative path *inside* the project
   // (there is no shell tilde-expansion here), masking an escape like `rm -rf ~/cache`.
   if (rawPath === '~' || rawPath.startsWith('~/') || rawPath.startsWith('~\\')) return false;
-  const resolved = path.resolve(projectRoot, rawPath);
+  // Backslash-separated traversal, for the same reason as the drive-letter
+  // branch above: `\` is a legal filename character on POSIX, so path.resolve()
+  // reads `..\..\shared-secrets` as ONE filename inside the root and the escape
+  // goes unnoticed — `del /s ..\..\shared-secrets` was classified in-project by
+  // a POSIX-hosted agent. Normalise to a separator before resolving. A POSIX
+  // file whose name genuinely contains a backslash is then reported as outside
+  // the project, which only makes the destructive gates stricter.
+  const candidate = process.platform === 'win32' ? rawPath : rawPath.replace(/\\/g, '/');
+  const resolved = path.resolve(projectRoot, candidate);
   const relative = path.relative(projectRoot, resolved);
   // Canonical escape test: `..hidden` is a legal in-root first segment; a bare
   // startsWith('..') would misclassify it as outside the project and skip the

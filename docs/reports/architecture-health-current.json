@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T00:33:14.920Z",
+  "generatedAt": "2026-09-20T07:03:22.371Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -14,7 +14,7 @@
     "packages": 36,
     "sourceFiles": 3958,
     "testFiles": 3557,
-    "sourceLines": 950899,
+    "sourceLines": 950910,
     "workspaceEdges": 128,
     "moduleEdges": 12815,
     "nonCommandSlashImports": 0,
@@ -22710,7 +22710,7 @@
     },
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 960,
+      "lines": 968,
       "relativeImports": 1
     },
     {
@@ -23211,6 +23211,11 @@
       "relativeImports": 14
     },
     {
+      "file": "packages/core/src/security/yolo-risk.ts",
+      "lines": 968,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/cli/src/execution.ts",
       "lines": 965,
       "relativeImports": 44
@@ -23224,11 +23229,6 @@
       "file": "packages/webui/src/components/SidePanel/SessionList.tsx",
       "lines": 965,
       "relativeImports": 0
-    },
-    {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 960,
-      "relativeImports": 1
     },
     {
       "file": "packages/core/src/coordination/director-tools.ts",

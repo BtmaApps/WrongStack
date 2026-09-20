@@ -598,7 +598,11 @@ function resolvePulledCategoryPath(
   }
 
   if (!rel) return localPath;
-  const normalizedRel = path.normalize(rel);
+  // Git tree paths always separate with `/`, so a backslash in one is never a
+  // legitimate separator — but it becomes one once the same repository syncs to
+  // a Windows client. Normalise before the checks: on POSIX `..\escape.txt` is
+  // otherwise a single filename that walks past both guards below.
+  const normalizedRel = path.normalize(rel.replace(/\\/g, '/'));
   const traversesUp = normalizedRel === '..' || normalizedRel.startsWith(`..${path.sep}`);
   if (path.isAbsolute(normalizedRel) || traversesUp) {
     throw new FsError({
@@ -612,9 +616,8 @@ function resolvePulledCategoryPath(
   const dest = path.resolve(localPath, normalizedRel);
   const root = path.resolve(localPath);
   const relative = path.relative(root, dest);
-  // On POSIX, a backslash is not a path separator, so an input such as
-  // `..\\secret` reaches this containment check even though the first guard
-  // rejects ordinary `../secret` traversal.
+  // Backstop for anything the normalised traversal check above did not catch,
+  // such as a symlinked or drive-relative destination.
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new FsError({
       message: `Refusing CloudSync path outside category root: ${remotePath}`,
