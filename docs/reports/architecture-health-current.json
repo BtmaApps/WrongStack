@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T15:25:55.696Z",
+  "generatedAt": "2026-09-20T16:03:17.920Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3966,
-    "testFiles": 3570,
-    "sourceLines": 952479,
+    "testFiles": 3571,
+    "sourceLines": 952471,
     "workspaceEdges": 128,
     "moduleEdges": 12842,
     "nonCommandSlashImports": 0,
@@ -148,7 +148,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 514,
-      "testFiles": 519,
+      "testFiles": 520,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 519
+          "testFiles": 520
         }
       ]
     },
@@ -3913,6 +3913,12 @@
       },
       {
         "file": "packages/cli/tests/slash-commands/memory-flags.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/slash-commands/memory-purge-domain-terms.test.ts",
         "projects": [
           "root-node"
         ]

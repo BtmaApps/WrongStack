@@ -455,12 +455,14 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
           // The extractor no longer writes per-term SAGE memories with
           // the `domain-term` tag, but older corpora may still carry
           // such records. This command finds and deletes every memory
-          // whose `tags` array contains the canonical lookup tag
-          // (plus the historical companion tags `glossary` /
-          // `project-jargon` from the old trio) so the system prompt
-          // glossary and the on-disk mirror can no longer surface
-          // auto-mined terms. Idempotent — re-running on a clean
-          // corpus reports 0 deleted.
+          // whose `tags` array carries the canonical lookup tag — the
+          // tag every extractor-written entry has. The historical
+          // companions `glossary` / `project-jargon` alone must NOT
+          // target a memory: modern records use them topically, and a
+          // companion-only match deleted unrelated notes (observed
+          // live 2026-09-20 — six modern memories purged and
+          // recovered). Idempotent — re-running on a clean corpus
+          // reports 0 deleted.
           if (!Sage) return requiresSage('purge-domain-terms');
           const force = rest.includes('--force');
           if (!force) {
@@ -505,12 +507,7 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
                   ...(cursor !== undefined ? { cursor } : {}),
                 });
                 for (const mem of page.memories) {
-                  if (
-                    Array.isArray(mem.tags) &&
-                    mem.tags.some(
-                      (t) => t === DOMAIN_TERM_TAG || t === 'glossary' || t === 'project-jargon',
-                    )
-                  ) {
+                  if (Array.isArray(mem.tags) && mem.tags.includes(DOMAIN_TERM_TAG)) {
                     targets.push({ id: mem.id, tags: mem.tags });
                   }
                 }
@@ -523,12 +520,7 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
               // expose a sane limit.
               const memories = await Sage.listSage(['active', 'stale']);
               for (const mem of memories) {
-                if (
-                  Array.isArray(mem.tags) &&
-                  mem.tags.some(
-                    (t) => t === DOMAIN_TERM_TAG || t === 'glossary' || t === 'project-jargon',
-                  )
-                ) {
+                if (Array.isArray(mem.tags) && mem.tags.includes(DOMAIN_TERM_TAG)) {
                   targets.push({ id: mem.id, tags: mem.tags });
                 }
               }
@@ -584,7 +576,7 @@ export function buildMemoryCommand(opts: SlashCommandContext): SlashCommand {
               message:
                 `Purged ${deleted} of ${targets.length} legacy domain-term memories.\n\n` +
                 `Tag breakdown of matched memories:\n${tagBreakdown}\n\n` +
-                `The \`${DOMAIN_TERM_TAG}\` / \`glossary\` / \`project-jargon\` tags are now absent from the live corpus. ` +
+                `The \`${DOMAIN_TERM_TAG}\` tag is now absent from the live corpus. ` +
                 `Run \`/memory show\` to confirm.${tail}`,
             };
           } catch (err) {
