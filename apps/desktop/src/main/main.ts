@@ -210,10 +210,9 @@ function menuRelevantPrefsChanged(
 /**
  * The area child views are actually laid out in.
  *
- * Deliberately `contentView.getBounds()` and not `getContentSize()`: with an
- * in-window menu bar (Windows and Linux; macOS puts the menu in the system bar)
- * the two disagree, and sizing views by the larger one puts the bottom of the
- * sidebar — its footer — below the visible client area.
+ * One reading for both layout paths, which previously called `getContentSize()`
+ * separately. The two APIs were measured agreeing on Windows, Linux and macOS,
+ * so this is a consolidation and not a behaviour change.
  */
 function clientSize(): { width: number; height: number } {
   const bounds = mainWindow?.contentView.getBounds();
@@ -225,31 +224,6 @@ function layoutViews(): void {
   const { width, height } = clientSize();
   shellView.setBounds({ x: 0, y: 0, width, height });
   layoutWebuiViews();
-}
-
-/**
- * Re-run the layout once the client area has settled after `show()`.
- *
- * On Windows and Linux the in-window menu bar only takes its height out of the
- * client area when the window is actually shown, and it does so without
- * emitting `resize` — so the synchronous layout after `show()` sizes the shell
- * view to the pre-menu height and nothing ever corrects it. Measured on CI: the
- * view stayed 681px tall inside a 655px client area, which put the bottom of
- * the sidebar — its footer — below the visible region. macOS puts the menu in
- * the system bar and never showed this.
- *
- * Both passes compare before acting, so this is a no-op where the first layout
- * was already right.
- */
-function reconcileLayoutAfterShow(): void {
-  const reconcile = (): void => {
-    if (!mainWindow || !shellView) return;
-    const { width, height } = clientSize();
-    const bounds = shellView.getBounds();
-    if (bounds.width !== width || bounds.height !== height) layoutViews();
-  };
-  setTimeout(reconcile, 0);
-  setTimeout(reconcile, 100);
 }
 
 function layoutWebuiViews(): void {
@@ -592,7 +566,6 @@ async function boot(): Promise<void> {
 
   mainWindow.show();
   layoutViews();
-  reconcileLayoutAfterShow();
   shellView.webContents.focus();
   bootPhase = 'ready';
 }
@@ -642,26 +615,22 @@ app
         `Boolean(window.wrongstackDesktop && document.querySelector('.sidebar') && ${localeReady})`,
         'Desktop renderer, preload or locale did not initialize',
       );
-      const footerBottom = await shellView!.webContents.executeJavaScript(
-        'document.querySelector(".sidebar-foot")?.getBoundingClientRect().bottom ?? 0',
+      // Measure the footer against the viewport it was laid out in, not against
+      // the native view height. `getBoundingClientRect()` is in the renderer's
+      // CSS pixels and `contentView.getBounds()` is in native ones, and the two
+      // are not interchangeable: on Windows and Linux the menu bar takes its
+      // height out of the client area after the view is sized, and the renderer
+      // trails it. Measured on CI: shell view 655, innerHeight still 681, with
+      // the sidebar exactly filling its 681 viewport — nothing overflowing, the
+      // comparison just straddled two coordinate spaces. macOS keeps the menu
+      // in the system bar, the spaces agreed, and this never fired there.
+      const metrics = await shellView!.webContents.executeJavaScript(
+        '({ footerBottom: document.querySelector(".sidebar-foot")?.getBoundingClientRect().bottom ?? 0, viewport: window.innerHeight })',
       );
-      const clientHeight = mainWindow!.contentView.getBounds().height;
-      if (footerBottom > clientHeight) {
-        // Report the measurements. A bare assertion cost a round trip to learn
-        // by how much; the height alone cost another, because `footer bottom
-        // 681` reads the same whether the viewport is still 681 or the viewport
-        // is 655 and the sidebar overflows it by 26. innerHeight and the view's
-        // own bounds separate those two.
-        const [, contentSizeHeight] = mainWindow!.getContentSize();
-        const viewHeight = shellView!.getBounds().height;
-        const renderer = await shellView!.webContents.executeJavaScript(
-          '({ inner: window.innerHeight, sidebar: document.querySelector(".sidebar")?.getBoundingClientRect().height ?? 0 })',
-        );
+      if (metrics.footerBottom > metrics.viewport) {
         throw new Error(
-          `Desktop footer extends beyond the native client area: footer bottom ${footerBottom}, ` +
-            `contentView height ${clientHeight}, getContentSize height ${contentSizeHeight}, ` +
-            `shellView height ${viewHeight}, innerHeight ${renderer.inner}, ` +
-            `sidebar height ${renderer.sidebar}`,
+          `Desktop footer extends beyond the shell viewport: footer bottom ` +
+            `${metrics.footerBottom}, viewport ${metrics.viewport}`,
         );
       }
       setShellSidebarCollapsed(true);
