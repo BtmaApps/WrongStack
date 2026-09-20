@@ -26,7 +26,7 @@ import { fileTriageProposals } from './shared/file-proposals.js';
 import type { LlmCallFn } from './triage/llm-evaluator.js';
 import { runTriage } from './triage/orchestrator.js';
 import { createSystemOneTriage } from './triage/system-one.js';
-import type { SageHygieneOptions } from './types.js';
+import type { Sage, SageHygieneOptions } from './types.js';
 
 export interface SageHostWiringDeps {
   config: Config;
@@ -221,11 +221,24 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
         let filed = 0;
         let skippedDup = 0;
         try {
-          const page = await surface.listSagePage({
-            statuses: ['active', 'stale'],
-            limit: 200,
-          });
-          const memories = page.memories ?? [];
+          // Cursor-walk the whole active+stale corpus — the same enumeration
+          // the manual /memory triage command uses (loadActiveMemories). A
+          // single 200-row page would keep re-selecting the same
+          // most-recently-updated slice every day: updated_at DESC is stable
+          // and a dry run never bumps it, so the older tail would never be
+          // triaged by the only automatic triage pass. LLM cost stays bounded
+          // by the phase caps below.
+          const memories: Sage[] = [];
+          let cursor: string | undefined;
+          do {
+            const page = await surface.listSagePage({
+              statuses: ['active', 'stale'],
+              limit: 200,
+              ...(cursor !== undefined ? { cursor } : {}),
+            });
+            memories.push(...(page.memories ?? []));
+            cursor = page.nextCursor ?? undefined;
+          } while (cursor !== undefined);
           if (memories.length > 0) {
             const llm = deps.getLlmCall?.() ?? (async () => '3');
             const judge = resolveTypeSafeJudge({
