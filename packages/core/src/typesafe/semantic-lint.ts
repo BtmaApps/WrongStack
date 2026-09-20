@@ -204,6 +204,7 @@ export async function judgeSemanticLintCandidates(
       try {
         const result = await judge.client.systemOne(
           {
+            activityFeature: judge.feature,
             state: { snippets: chunk.map((c) => `// ${c.file}:${c.line}\n${c.snippet}`) },
             questions,
             model: judge.model,

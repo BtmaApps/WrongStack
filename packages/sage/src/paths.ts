@@ -5,11 +5,15 @@ import type { SagePaths } from './types.js';
 export const DEFAULT_SAGE_DIR = '.wrongstack/memories';
 
 function escapesRoot(relativePath: string): boolean {
-  return (
-    relativePath === '..' ||
-    relativePath.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativePath)
-  );
+  // `\` is a legal filename character on POSIX, so a Windows-style traversal
+  // (`..\..\shared-secrets`) reaches this check as ONE in-root filename and a
+  // platform-separator prefix misses it — but it becomes a real traversal once
+  // the same store syncs to a Windows client (same class as core yolo-risk /
+  // cloud-sync containment). Normalise separators before the `..` checks;
+  // conservative on POSIX: a file genuinely named with a backslash is then
+  // reported as outside the root, which only makes the gates stricter.
+  const normalized = relativePath.replace(/\\/g, '/');
+  return normalized === '..' || normalized.startsWith('../') || path.isAbsolute(relativePath);
 }
 
 export function resolveSagePaths(projectRoot: string, directory = DEFAULT_SAGE_DIR): SagePaths {

@@ -31,7 +31,9 @@
     "logsDesc": "Log level, audit detail, filesystem access scope, and debug stream.",
     "securityDesc": "Brain decision control, shadow agent, and tool access.",
     "fonts": "Fonts",
-    "fontsDesc": "Interface, chat, editor and terminal fonts; size, line height, and ligatures."
+    "fontsDesc": "Interface, chat, editor and terminal fonts; size, line height, and ligatures.",
+    "jev": "Jev",
+    "jevDesc": "TypeSafe / Jev"
   },
   "general": {
     "themeHeading": "Theme",
@@ -1093,5 +1095,40 @@
     },
     "resetAll": "Reset all font settings",
     "resetOverrides": "Clear role overrides"
+  },
+  "jev": {
+    "description": "Manage the decision provider and see where Jev is used.",
+    "loading": "Loading Jev settings…",
+    "timeout": "No response from server. Reconnect and retry.",
+    "route": "Decision provider",
+    "routeChange": "Changing provider clears the previous key, endpoint and model. Enter a new key or use the provider environment variable.",
+    "key": "API key",
+    "keyHint": "Leave blank to keep the current key",
+    "removeKey": "Remove saved key (environment key may still apply)",
+    "endpoint": "Endpoint override",
+    "model": "Model override",
+    "defaultHint": "Empty uses provider default",
+    "requestTimeout": "Request timeout (ms)",
+    "featureHint": "Judgments default on with an account. Skill suggestions and fleet dispatch are opt-in. Enabled features send decision context to this provider.",
+    "save": "Save Jev settings",
+    "test": "Test saved connection",
+    "testHint": "The test sends one small billed request. Save changes first. Restart existing sessions to apply all consumers.",
+    "activity": "Jev activity",
+    "activityHint": "Refreshes every 3 seconds. Last 300 requests in this server process, across its sessions. No prompts, credentials or raw errors. Disk log rotates at 5 MB. Answered means a typed response, not necessarily a decision accepted by the consumer.",
+    "filter": "Feature",
+    "all": "All",
+    "empty": "No matching Jev requests yet. Test the connection or use an enabled feature.",
+    "features": {
+      "brain": "Brain decisions",
+      "memoryTriage": "Memory triage",
+      "topicShift": "Topic changes",
+      "memoryRecall": "Memory recall",
+      "compaction": "Context compaction",
+      "kanbanVerify": "Kanban verification",
+      "modelTier": "Subagent model tier",
+      "semanticLint": "Semantic lint",
+      "skillSuggestion": "Skill suggestions",
+      "fleetDispatch": "Fleet dispatch"
+    }
   }
 }

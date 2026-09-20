@@ -128,6 +128,10 @@ export type WSSystemMiscServerMessage =
       };
     }
   | {
+      type: 'jev.state';
+      payload: import('./jev.js').JevState;
+    }
+  | {
       type: 'brain.config';
       payload: {
         config: BrainConfigWire;

@@ -169,6 +169,29 @@ describe('jsonTool', () => {
     );
   });
 
+  it('quotes yaml mapping keys that would re-parse as non-strings', async () => {
+    const result = await jsonTool.execute({
+      data: '[{"yes":"x"},{"123":"y"}]',
+      format: 'yaml',
+    });
+    expect(result.formatted).toBe('- "yes": x\n- "123": y\n');
+  });
+
+  it('quotes yaml mapping keys that would break the mapping', async () => {
+    const result = await jsonTool.execute({ data: '[{"b: c":"y"}]', format: 'yaml' });
+    expect(result.formatted).toBe('- "b: c": y\n');
+  });
+
+  it('quotes yaml mapping keys with reserved indicator characters', async () => {
+    const result = await jsonTool.execute({ data: '{"@x":1}', format: 'yaml' });
+    expect(result.formatted).toBe('"@x": 1\n');
+  });
+
+  it('emits plain yaml mapping keys without quoting', async () => {
+    const result = await jsonTool.execute({ data: '[{"plain":1}]', format: 'yaml' });
+    expect(result.formatted).toBe('- plain: 1\n');
+  });
+
   it('renders an empty array in yaml', async () => {
     const result = await jsonTool.execute({ data: '[]', format: 'yaml' });
     expect(result.formatted).toContain('[]');

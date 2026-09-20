@@ -606,6 +606,9 @@
       "normalizeRuntimeToolName",
       "runtimeCapabilityForTool"
     ],
+    "packages/core/src/typesafe/activity.ts": [
+      "appendJevActivity"
+    ],
     "packages/core/src/utils/child-env.ts": [
       "sanitizeNodeOptions"
     ],

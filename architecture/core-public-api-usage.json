@@ -164,9 +164,9 @@
       "runtimeOrMixed": 12
     },
     "@wrongstack/core/storage": {
-      "files": 125,
+      "files": 126,
       "typeOnly": 33,
-      "runtimeOrMixed": 122
+      "runtimeOrMixed": 123
     },
     "@wrongstack/core/tasking": {
       "files": 32,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 6
     },
     "@wrongstack/core/types": {
-      "files": 1134,
-      "typeOnly": 1012,
-      "runtimeOrMixed": 332
+      "files": 1138,
+      "typeOnly": 1016,
+      "runtimeOrMixed": 333
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -209,9 +209,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/typesafe": {
-      "files": 20,
+      "files": 22,
       "typeOnly": 6,
-      "runtimeOrMixed": 15
+      "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
       "files": 624,
@@ -10461,6 +10461,12 @@
     },
     {
       "specifier": "@wrongstack/core/storage",
+      "file": "packages/cli/tests/jev-command.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/storage",
       "file": "packages/cli/tests/light-subagent-rate-limit-end-to-end.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -12111,6 +12117,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/slash-commands/jev.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/kanban.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -13138,6 +13150,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/tests/hq-token-ttl-flag.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/tests/jev-command.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17183,7 +17201,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 0
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -17254,6 +17272,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/introspection-routes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/jev-routes.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -17710,6 +17734,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/integration-connect-src.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/jev-routes.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18195,6 +18225,12 @@
     },
     {
       "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/cli/src/slash-commands/jev.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
       "file": "packages/cli/src/slash-commands/memory-triage.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -18298,6 +18334,12 @@
     {
       "specifier": "@wrongstack/core/typesafe",
       "file": "packages/webui-server/src/server/conversation-operations.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/typesafe",
+      "file": "packages/webui-server/src/server/jev-routes.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

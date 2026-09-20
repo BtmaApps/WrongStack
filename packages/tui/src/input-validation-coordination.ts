@@ -56,6 +56,19 @@ export function validateCoordinationAction(
       return { valid: true, value: payload };
     }
 
+    case 'goalRunTaskCompleted': {
+      if (typeof action.phaseId !== 'string' || !action.phaseId) {
+        return {
+          valid: false,
+          error: 'goalRunTaskCompleted.phaseId: not a non-empty string.',
+        };
+      }
+      if (typeof action.taskId !== 'string' || !action.taskId) {
+        return { valid: false, error: 'goalRunTaskCompleted.taskId: not a non-empty string.' };
+      }
+      return { valid: true, value: payload };
+    }
+
     // ── SDD board ───────────────────────────────────────────────────
     case 'sddBoardSnapshot': {
       if (!action.snapshot || typeof action.snapshot !== 'object') {

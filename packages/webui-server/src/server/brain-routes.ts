@@ -16,6 +16,7 @@ import {
 import { messageSessionId, sendResult } from './ws-utils.js';
 
 export interface BrainRouteHandlers {
+  jev?: ((ws: WebSocket, msg: WSClientMessage) => Promise<boolean>) | undefined;
   status: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
   risk: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
   ask: (ws: WebSocket, msg: WSClientMessage) => Promise<void> | void;
@@ -95,6 +96,12 @@ export async function handleBrainRoute(
   handlers: BrainRouteHandlers,
 ): Promise<boolean> {
   switch (msg.type) {
+    case 'jev.get':
+    case 'jev.set':
+    case 'jev.test':
+      if (handlers.jev) await handlers.jev(ws, msg);
+      else sendResult(ws, false, 'Jev settings unavailable on this host');
+      return true;
     case 'brain.status':
       await handlers.status(ws, msg);
       return true;

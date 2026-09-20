@@ -1,3 +1,4 @@
+import { handleJevRoute } from './jev-routes.js';
 /**
  * WebUI route-table construction.
  *
@@ -700,6 +701,12 @@ export function buildRoutes(
     getSessionId: () => deps.context.session?.id,
   };
   const brainRoutes: BrainRouteHandlers = createBrainRouteHandlers(brainContext);
+  brainRoutes.jev = (ws, msg) =>
+    handleJevRoute(
+      { store: deps.configStore, file: deps.profileConfigPath, vault: deps.vault, send },
+      ws,
+      msg,
+    );
 
   const goalRoutes: GoalRouteHandlers = {
     handleMessage: (ws, msg) => deps.goalHandler.handleMessage(ws, msg),

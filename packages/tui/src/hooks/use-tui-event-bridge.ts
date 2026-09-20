@@ -247,24 +247,11 @@ function useGoalEvents(
         }
         case 'phase.taskCompleted': {
           const p = payload as { phaseId: string; taskId: string };
-          const existing = stateRef.current.goalRun?.phases[p.phaseId];
-          if (existing) {
-            dispatch({
-              type: 'goalRunPhaseUpdate',
-              phaseId: p.phaseId,
-              name: existing.name,
-              status: existing.status,
-              completedTasks: existing.completedTasks + 1,
-              totalTasks: existing.totalTasks,
-            });
-          }
-          dispatch({
-            type: 'goalRunTaskActive',
-            phaseId: p.phaseId,
-            taskId: p.taskId,
-            title: '',
-            active: false,
-          });
+          // The reducer owns the count arithmetic: computing +1 here from
+          // stateRef (render-synced) collapsed batched completions into a
+          // single increment — the orchestrator's allSettled settlement
+          // loop emits several taskCompleted events in one tick.
+          dispatch({ type: 'goalRunTaskCompleted', phaseId: p.phaseId, taskId: p.taskId });
           break;
         }
         case 'autonomous.tick': {

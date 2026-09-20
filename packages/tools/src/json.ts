@@ -804,6 +804,25 @@ const YAML_NON_STRING_SCALAR =
 /** Leading YAML indicator characters (or trimmable whitespace) force quoting. */
 const YAML_NEEDS_QUOTING = /^[-?:,[\]{}#&*!|>'"%@` \t]|[ \t]$/;
 
+/**
+ * Mapping keys meet the same quoting bar as string values: a key that would
+ * re-parse as a non-string ("123", "yes"), that breaks the mapping on re-read
+ * (`:`, `#`, whitespace), or that starts with a reserved indicator (`@`, `%`)
+ * has to be quoted — and a quoted key needs backslash escaping, or the YAML
+ * double-quoted scalar decodes `\b` as backspace instead of the literal two
+ * characters. One helper for both emission sites (object branch and
+ * array-item branch) so they cannot drift; the array-item branch shipped
+ * emitting keys raw, silently changing data served as `format: 'yaml'`.
+ */
+function safeYamlKey(key: string): string {
+  return key === '' ||
+    /[:#\s]/.test(key) ||
+    YAML_NON_STRING_SCALAR.test(key) ||
+    YAML_NEEDS_QUOTING.test(key)
+    ? `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+    : key;
+}
+
 function toYaml(data: unknown, indent = 0): string {
   if (data === null) return 'null\n';
   /* v8 ignore next -- parsed JSON never contains `undefined`; defensive for recursive calls. */
@@ -833,9 +852,9 @@ function toYaml(data: unknown, indent = 0): string {
           if (itemEntries.length === 0) return `${prefix}- {}\n`;
           const [firstK, firstV] = itemEntries[0]!;
           const rest = itemEntries.slice(1);
-          let itemYaml = `${prefix}- ${firstK}: ${toYaml(firstV, indent + 2).trimStart()}`;
+          let itemYaml = `${prefix}- ${safeYamlKey(firstK)}: ${toYaml(firstV, indent + 2).trimStart()}`;
           for (const [k, v] of rest) {
-            itemYaml += `${prefix}  ${k}: ${toYaml(v, indent + 2)}`;
+            itemYaml += `${prefix}  ${safeYamlKey(k)}: ${toYaml(v, indent + 2)}`;
           }
           return itemYaml;
         }
@@ -849,10 +868,7 @@ function toYaml(data: unknown, indent = 0): string {
     if (entries.length === 0) return '{}\n';
     return entries
       .map(([k, v]) => {
-        const safeKey =
-          k === '' || /[:#\s]/.test(k) || YAML_NON_STRING_SCALAR.test(k)
-            ? `"${k.replace(/"/g, '\\"')}"`
-            : k;
+        const safeKey = safeYamlKey(k);
         if (
           typeof v === 'object' &&
           v !== null &&

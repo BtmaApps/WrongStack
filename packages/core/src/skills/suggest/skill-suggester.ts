@@ -366,7 +366,7 @@ async function rankWide(
   // ONE request: they cannot see one another's answers anyway, and batching
   // them is the difference between one round trip and four.
   const result = await opts.client.systemOne(
-    { state: { request }, questions, model: opts.model },
+    { activityFeature: 'skillSuggestion', state: { request }, questions, model: opts.model },
     signal,
   );
 
@@ -442,7 +442,7 @@ async function rerank(
   questions[WHICH] = { type: 'choice', instructions: RERANK_INSTRUCTIONS, criteria };
 
   const result = await opts.client.systemOne(
-    { state: { request }, questions, model: opts.model },
+    { activityFeature: 'skillSuggestion', state: { request }, questions, model: opts.model },
     signal,
   );
 

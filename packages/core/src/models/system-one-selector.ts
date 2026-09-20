@@ -208,6 +208,7 @@ export class SystemOneSelector implements MessageSelector {
         });
         const result = await judge.client.systemOne(
           {
+            activityFeature: judge.feature,
             state: {
               currentGoal: goal,
               turns: chunk.map((t) => preview(messages, t, this.previewChars)),

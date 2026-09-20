@@ -104,6 +104,12 @@ export function useSettingsSlashCommands(
         settingsPickerJumpNames().join('\n  '),
       async run(args: string) {
         const query = args.trim();
+        if (query === 'jev' || query.startsWith('jev ')) {
+          const jev = slashRegistry.get('jev');
+          return jev
+            ? await jev.run(query.slice(3).trim())
+            : { message: 'Jev settings unavailable on this host.' };
+        }
         if (query === '') {
           openSettings();
           return { message: undefined };
@@ -240,6 +246,12 @@ export function useSettingsSlashCommands(
         settingsPickerJumpNames().join('\n  '),
       async run(args: string) {
         const query = args.trim();
+        if (query === 'jev' || query.startsWith('jev ')) {
+          const jev = slashRegistry.get('jev');
+          return jev
+            ? await jev.run(query.slice(3).trim())
+            : { message: 'Jev settings unavailable on this host.' };
+        }
         if (query === '') {
           // No argument: show all settings as a compact grouped summary.
           return { message: formatAllSettingsSummary(state.settingsPicker) };

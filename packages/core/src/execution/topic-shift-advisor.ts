@@ -201,6 +201,7 @@ export class TopicShiftAdvisor {
     try {
       const result = await judge.client.systemOne(
         {
+          activityFeature: judge.feature,
           state: { conversation: historyBasis, newPrompt: prompt },
           questions: {
             newGoal: {

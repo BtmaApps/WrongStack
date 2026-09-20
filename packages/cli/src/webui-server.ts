@@ -77,7 +77,7 @@ import {
 import { startDeferredHttpListen, startIpv6LoopbackProxy } from './webui-server/listen-helpers.js';
 import { consoleLogger } from './webui-server/logger-shim.js';
 import { createPrefsSeeding, seedConfigToMeta } from './webui-server/prefs-seeding.js';
-import { createProviderConfigStore } from './webui-server/provider-config.js';
+import { createProviderConfigStore, getVault } from './webui-server/provider-config.js';
 import { createWebuiRouteContexts } from './webui-server/route-contexts.js';
 import { createSessionStartPayloadBuilder } from './webui-server/session-start-payload.js';
 import { createSetupEvents } from './webui-server/setup-events.js';
@@ -738,6 +738,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   const shutdown = (): void => signalShutdown?.();
   let embeddedAutoHealDispose: (() => void | Promise<void>) | null = null;
   const handleMessage = createEmbeddedMessageRouter({
+    jevVault: getVault(opts.globalConfigPath ?? opts.profileConfigPath),
     trustBoundary,
     opts,
     logger: consoleLogger,

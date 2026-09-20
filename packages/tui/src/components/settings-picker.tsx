@@ -789,7 +789,7 @@ export function SettingsPicker({
       overflowY="hidden"
     >
       <Text color="cyan" bold wrap="truncate-end">
-        ━━ Settings ━━
+        ━━ Settings ━━ · Jev: /settings jev
       </Text>
       {filterActive ? (
         <Text

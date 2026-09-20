@@ -29,6 +29,7 @@
  */
 
 import type { Config } from '../types/config/root.js';
+import { observeJevClient } from './activity.js';
 import { createTypeSafeBreaker, type TypeSafeBreaker } from './breaker.js';
 import { createTypeSafeClient, type TypeSafeUsage } from './client.js';
 import { sharedTypeSafeRestGate, type TypeSafeRestGate, withTypeSafeRest } from './rest.js';
@@ -202,7 +203,7 @@ export function resolveTypeSafeAccount(deps: ResolveTypeSafeClientDeps): TypeSaf
 
   return {
     status: 'ready',
-    client,
+    client: observeJevClient(client, route, model),
     route,
     endpoint,
     model,

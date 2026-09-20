@@ -70,6 +70,7 @@ export function createSystemOneTierSuggester(
 
       const result = await judge.client.systemOne(
         {
+          activityFeature: judge.feature,
           state: { task: task.slice(0, 6_000), ...(role ? { role } : {}) },
           questions: {
             tier: {

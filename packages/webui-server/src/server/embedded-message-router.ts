@@ -51,6 +51,7 @@ import type { GoalSnapshotRouteHandlers } from './goal-snapshot-routes.js';
 import type { GoalWebSocketHandler } from './goal-ws-handler.js';
 import type { HostRouteHandlers } from './host-routes.js';
 import type { IntrospectionRouteContext } from './introspection-routes.js';
+import { handleJevRoute } from './jev-routes.js';
 import type { KanbanTaskDispatcher } from './kanban-dispatch.js';
 import type { KanbanHostRouteHandlers } from './kanban-host-routes.js';
 import type { MailboxRouteHandlers } from './mailbox-routes.js';
@@ -110,6 +111,7 @@ export interface EmbeddedMessageRouterOptions {
 }
 
 export interface EmbeddedMessageRouterDeps {
+  jevVault?: import('@wrongstack/core/types').SecretVault | undefined;
   trustBoundary: TrustBoundary;
   opts: EmbeddedMessageRouterOptions;
   logger: Logger;
@@ -662,6 +664,17 @@ export function createEmbeddedMessageRouter(
   // Both hosts used to hand-roll this with inline casts, which is how the
   // three validateBrain*Payload functions ended up tested but unreachable.
   const brain: BrainRouteHandlers = createBrainRouteHandlers(deps.brainCtx);
+  brain.jev = (ws, msg) =>
+    handleJevRoute(
+      {
+        store: deps.prefsCtx.configStore,
+        file: opts.profileConfigPath,
+        vault: deps.jevVault,
+        send: deps.send,
+      },
+      ws,
+      msg,
+    );
   /**
    * Worklist (todos / tasks / plan) for the session the request NAMES.
    *

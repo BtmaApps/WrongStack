@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T09:38:23.050Z",
+  "generatedAt": "2026-09-20T12:11:24.691Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,17 +12,17 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 3958,
-    "testFiles": 3557,
-    "sourceLines": 950910,
+    "sourceFiles": 3964,
+    "testFiles": 3563,
+    "sourceLines": 951827,
     "workspaceEdges": 128,
-    "moduleEdges": 12815,
+    "moduleEdges": 12838,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 940
+    "testOnlyExports": 941
   },
   "errors": [],
   "packageCycles": [],
@@ -147,8 +147,8 @@
     {
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
-      "sourceFiles": 513,
-      "testFiles": 517,
+      "sourceFiles": 514,
+      "testFiles": 518,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 517
+          "testFiles": 518
         }
       ]
     },
@@ -217,8 +217,8 @@
     {
       "name": "@wrongstack/core",
       "dir": "packages/core",
-      "sourceFiles": 912,
-      "testFiles": 808,
+      "sourceFiles": 914,
+      "testFiles": 809,
       "workspaceDependencies": [
         "@wrongstack/kanban",
         "@wrongstack/persistence",
@@ -233,7 +233,7 @@
         {
           "path": "packages/core/tsconfig.test.json",
           "error": null,
-          "testFiles": 808
+          "testFiles": 809
         }
       ]
     },
@@ -573,7 +573,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 115,
-      "testFiles": 106,
+      "testFiles": 107,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -588,7 +588,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 106
+          "testFiles": 107
         }
       ]
     },
@@ -761,7 +761,7 @@
       "name": "@wrongstack/tui",
       "dir": "packages/tui",
       "sourceFiles": 412,
-      "testFiles": 373,
+      "testFiles": 374,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -784,7 +784,7 @@
         {
           "path": "packages/tui/tsconfig.test.json",
           "error": null,
-          "testFiles": 373
+          "testFiles": 374
         }
       ]
     },
@@ -814,8 +814,8 @@
     {
       "name": "@wrongstack/webui",
       "dir": "packages/webui",
-      "sourceFiles": 562,
-      "testFiles": 396,
+      "sourceFiles": 564,
+      "testFiles": 397,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -838,7 +838,7 @@
         {
           "path": "packages/webui/tsconfig.test.json",
           "error": null,
-          "testFiles": 396
+          "testFiles": 397
         }
       ]
     },
@@ -890,8 +890,8 @@
     {
       "name": "@wrongstack/webui-server",
       "dir": "packages/webui-server",
-      "sourceFiles": 242,
-      "testFiles": 230,
+      "sourceFiles": 243,
+      "testFiles": 231,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -917,7 +917,7 @@
         {
           "path": "packages/webui-server/tsconfig.test.json",
           "error": null,
-          "testFiles": 230
+          "testFiles": 231
         }
       ]
     },
@@ -3097,6 +3097,12 @@
       },
       {
         "file": "packages/cli/tests/intake-slash-command.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/jev-command.test.ts",
         "projects": [
           "root-node"
         ]
@@ -7639,6 +7645,12 @@
       },
       {
         "file": "packages/core/tests/infrastructure/token-counter.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/core/tests/jev-management.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12648,6 +12660,12 @@
         ]
       },
       {
+        "file": "packages/sage/tests/paths-posix-backslash-containment.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/paths.test.ts",
         "projects": [
           "root-node"
@@ -16554,6 +16572,12 @@
         ]
       },
       {
+        "file": "packages/tui/tests/goal-run-batch-count.test.tsx",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tui/tests/heap-soak-benchmark.test.ts",
         "projects": [
           "root-node"
@@ -19050,6 +19074,12 @@
         ]
       },
       {
+        "file": "packages/webui-server/tests/jev-routes.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/webui-server/tests/kanban-activity-attribution.test.ts",
         "projects": [
           "root-node"
@@ -20437,6 +20467,12 @@
       },
       {
         "file": "packages/webui/tests/components/inspector-panel.test.tsx",
+        "projects": [
+          "webui-jsdom"
+        ]
+      },
+      {
+        "file": "packages/webui/tests/components/jev-section.test.tsx",
         "projects": [
           "webui-jsdom"
         ]
@@ -22600,7 +22636,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 982,
+      "lines": 983,
       "relativeImports": 21
     },
     {
@@ -22905,7 +22941,7 @@
     },
     {
       "file": "packages/tools/src/json.ts",
-      "lines": 870,
+      "lines": 886,
       "relativeImports": 2
     },
     {
@@ -22925,7 +22961,7 @@
     },
     {
       "file": "packages/tui/src/app-action-type.ts",
-      "lines": 889,
+      "lines": 895,
       "relativeImports": 13
     },
     {
@@ -22955,7 +22991,7 @@
     },
     {
       "file": "packages/tui/src/input-validation.ts",
-      "lines": 922,
+      "lines": 923,
       "relativeImports": 14
     },
     {
@@ -23085,7 +23121,7 @@
     },
     {
       "file": "packages/webui/src/types/client-message.ts",
-      "lines": 897,
+      "lines": 899,
       "relativeImports": 7
     },
     {
@@ -23095,8 +23131,8 @@
     },
     {
       "file": "packages/webui-server/src/server/embedded-message-router.ts",
-      "lines": 879,
-      "relativeImports": 53
+      "lines": 892,
+      "relativeImports": 54
     },
     {
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
@@ -23162,7 +23198,7 @@
     },
     {
       "file": "packages/cli/src/webui-server.ts",
-      "lines": 982,
+      "lines": 983,
       "relativeImports": 21
     },
     {
@@ -23362,7 +23398,7 @@
     },
     {
       "file": "packages/tui/src/input-validation.ts",
-      "lines": 922,
+      "lines": 923,
       "relativeImports": 14
     },
     {
@@ -24591,6 +24627,10 @@
     {
       "file": "packages/core/src/types/runtime-capability-manifest.ts",
       "name": "runtimeCapabilityForTool"
+    },
+    {
+      "file": "packages/core/src/typesafe/activity.ts",
+      "name": "appendJevActivity"
     },
     {
       "file": "packages/core/src/utils/child-env.ts",

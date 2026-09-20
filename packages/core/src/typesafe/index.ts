@@ -1,3 +1,4 @@
+export { type JevActivity, jevActivitySnapshot, recordJevActivity } from './activity.js';
 export {
   createTypeSafeBreaker,
   type TypeSafeBreaker,
@@ -88,3 +89,11 @@ export {
   type SemanticLintResult,
   type SemanticLintRule,
 } from './semantic-lint.js';
+export {
+  JEV_FEATURES,
+  type JevSettingsPatch,
+  jevSettingsSnapshot,
+  saveJevSettings,
+  testJevConnection,
+  validateJevSettingsPatch,
+} from './settings.js';

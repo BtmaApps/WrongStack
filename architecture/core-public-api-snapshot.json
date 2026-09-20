@@ -1211,12 +1211,14 @@
       "declarations": [
         "export { BUILT_IN_ROUTES, estimateTypeSafeCostUsd, isTypeSafeRoute, JEV_INPUT_USD_PER_MTOK, TYPESAFE_ROUTE_IDS, TYPESAFE_ROUTES, type TypeSafeRoute, type TypeSafeRouteSpec, } from './route.js';",
         "export { BUILT_IN_SEMANTIC_LINT_RULES, findSemanticLintCandidates, judgeSemanticLintCandidates, parseSemanticLintRules, type SemanticLintCandidate, type SemanticLintFinding, type SemanticLintResult, type SemanticLintRule, } from './semantic-lint.js';",
+        "export { JEV_FEATURES, type JevSettingsPatch, jevSettingsSnapshot, saveJevSettings, testJevConnection, validateJevSettingsPatch, } from './settings.js';",
         "export { askTypeSafeJudge, isTypeSafeJudgmentEnabled, type ResolveTypeSafeJudgeDeps, resetTypeSafeJudgesForTests, resolveTypeSafeJudge, TYPESAFE_JUDGMENT_FEATURES, type TypeSafeJudge, type TypeSafeJudgmentFeature, typeSafeJudgeFromContainer, } from './judgments.js';",
         "export { createTypeSafeBreaker, type TypeSafeBreaker, type TypeSafeBreakerOptions, TypeSafeDisabledError, } from './breaker.js';",
         "export { createTypeSafeRestGate, resetSharedTypeSafeRestGatesForTests, sharedTypeSafeRestGate, type TypeSafeRestGate, type TypeSafeRestGateOptions, TypeSafeRestingError, typeSafeFailureWeight, withTypeSafeRest, } from './rest.js';",
         "export { resetWarnOnceForTests, type WarnSink, warnFeatureUnusable, warnOnce, } from './notify.js';",
         "export { type ChoiceAnswer, type ChoiceQuestion, createTypeSafeClient, DEFAULT_TYPESAFE_ENDPOINT, DEFAULT_TYPESAFE_MODEL, type NoulAnswer, type NoulQuestion, parseSystemOneResult, type ScoreAnswer, type ScoreQuestion, type SystemOneRequest, type SystemOneResult, type TypeSafeAnswer, type TypeSafeClient, type TypeSafeClientOptions, type TypeSafeQuestion, type TypeSafeUsage, } from './client.js';",
         "export { type CriterionJudgeInput, type CriterionJudgeResult, createTypeSafeCriterionJudge, } from './criterion.js';",
+        "export { type JevActivity, jevActivitySnapshot, recordJevActivity } from './activity.js';",
         "export { type ResolveTypeSafeClientDeps, resolveTypeSafeAccount, resolveTypeSafeClient, resolveTypeSafeRoute, TYPESAFE_API_KEY_ENV, type TypeSafeAccount, type TypeSafeAccountReady, type TypeSafeAccountUnconfigured, type TypeSafeAccountUnusable, type TypeSafeKeySource, typeSafeModel, } from './resolve.js';"
       ]
     },
@@ -1450,7 +1452,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 202,
-      "sourceLines": 57270
+      "sourceLines": 57276
     },
     {
       "directory": "core",
@@ -1471,7 +1473,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 64,
-      "sourceLines": 19786
+      "sourceLines": 19788
     },
     {
       "directory": "extension",
@@ -1520,7 +1522,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 12,
-      "sourceLines": 2808
+      "sourceLines": 2809
     },
     {
       "directory": "notifications",
@@ -1645,8 +1647,8 @@
       "directory": "typesafe",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused TypeSafe integration",
-      "sourceFiles": 10,
-      "sourceLines": 1636
+      "sourceFiles": 12,
+      "sourceLines": 1971
     },
     {
       "directory": "utils",

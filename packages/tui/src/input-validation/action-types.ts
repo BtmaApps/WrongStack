@@ -149,6 +149,7 @@ export const ALLOWED_ACTION_TYPES = defineActionTypes([
   'goalRunReset',
   'goalRunRunningPhases',
   'goalRunTaskActive',
+  'goalRunTaskCompleted',
   'goalSummary',
   'helpClose',
   'helpFilter',

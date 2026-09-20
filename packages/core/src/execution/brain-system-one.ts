@@ -114,6 +114,7 @@ export async function probeSystemOneBrain(
 
   const result = await judge.client.systemOne(
     {
+      activityFeature: judge.feature,
       state: {
         question: request.question,
         risk: request.risk,

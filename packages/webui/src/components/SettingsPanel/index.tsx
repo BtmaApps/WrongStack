@@ -51,6 +51,7 @@ import { FallbacksSection } from './FallbacksSection';
 import { FleetSection } from './FleetSection';
 import { FontSettingsTab } from './FontSettingsTab';
 import { IntegrationsSection } from './IntegrationsSection';
+import { JevSection } from './JevSection';
 import { LogsSettingsTab } from './LogsSettingsTab';
 import { ModelEffortSelect } from './ModelEffortSelect';
 import { ModelSection } from './ModelSection';
@@ -74,6 +75,12 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
+  {
+    id: 'jev',
+    icon: <Zap className="h-3.5 w-3.5" />,
+    labelKey: 'settings:tabs.jev',
+    descKey: 'settings:tabs.jevDesc',
+  },
   {
     id: 'general',
     icon: <Palette className="h-3.5 w-3.5" />,
@@ -623,6 +630,9 @@ export function SettingsPanel() {
                 <ContextSettingsTab syncPref={syncPref} />
               </TabsContent>
 
+              <TabsContent value="jev" className="mt-0">
+                <JevSection />
+              </TabsContent>
               <TabsContent value="logs" className="mt-0 space-y-6">
                 <LogsSettingsTab syncPref={syncPref} />
               </TabsContent>

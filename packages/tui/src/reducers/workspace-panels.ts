@@ -187,6 +187,7 @@ const workspacePanelActionTypes = [
   'goalRunInit',
   'goalRunPhaseUpdate',
   'goalRunTaskActive',
+  'goalRunTaskCompleted',
   'goalRunRunningPhases',
   'goalRunElapsed',
   'goalRunMonitorToggle',
@@ -429,6 +430,25 @@ export function reduceWorkspacePanels(state: State, action: WorkspacePanelAction
           phases: {
             ...state.goalRun.phases,
             [action.phaseId]: { ...phase, activeTasks },
+          },
+        },
+      };
+    }
+    case 'goalRunTaskCompleted': {
+      if (!state.goalRun) return state;
+      const phase = state.goalRun.phases[action.phaseId];
+      if (!phase) return state;
+      // The completed-count arithmetic lives here (not in the event handler)
+      // so same-tick completion batches each increment: the reducer applies
+      // every action against its own latest state.
+      const activeTasks = (phase.activeTasks ?? []).filter((t) => t.taskId !== action.taskId);
+      return {
+        ...state,
+        goalRun: {
+          ...state.goalRun,
+          phases: {
+            ...state.goalRun.phases,
+            [action.phaseId]: { ...phase, completedTasks: phase.completedTasks + 1, activeTasks },
           },
         },
       };

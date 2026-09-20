@@ -155,3 +155,34 @@ describe('normalizeProjectPath symlink safety', () => {
     expect(() => normalizeProjectPath(projectRoot, linkPath)).toThrow(/inside the project root/i);
   });
 });
+
+describe('normalizeProjectPath / resolveSagePaths: backslash handling (native platform)', () => {
+  // Real host path ops (the POSIX-simulated cases live in
+  // paths-posix-backslash-containment.test.ts). On a POSIX host the traversal
+  // cases below ARE the containment bug; on win32 the native path ops already
+  // resolve backslash separators, so these pin the conservative fix against
+  // over-tightening legitimate in-root backslash paths.
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'wstack-native-slash-'));
+    clearProjectPathCache();
+  });
+
+  afterEach(() => {
+    clearProjectPathCache();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('rejects a backslash traversal above the root', () => {
+    expect(() => normalizeProjectPath(root, '..\\..\\x')).toThrow(/inside the project root/i);
+  });
+
+  it('still canonicalizes a backslash path inside the root', () => {
+    expect(normalizeProjectPath(root, 'nested\\file.ts')).toBe('nested/file.ts');
+  });
+
+  it('rejects a backslash-traversal sage directory', () => {
+    expect(() => resolveSagePaths(root, '..\\..\\evil')).toThrow(/inside the project root/i);
+  });
+});

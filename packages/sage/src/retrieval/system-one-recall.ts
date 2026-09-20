@@ -86,6 +86,7 @@ export function createSystemOneRecallFilter(
         try {
           const result = await judge.client.systemOne(
             {
+              activityFeature: judge.feature,
               state: {
                 userMessage: query.slice(0, MAX_QUERY_CHARS),
                 memories: unjudged.map((m) => m.text.slice(0, MAX_MEMORY_CHARS)),

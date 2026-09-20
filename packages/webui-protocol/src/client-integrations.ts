@@ -1,5 +1,8 @@
 export const CLIENT_KNOWLEDGE_MESSAGE_TYPES = [
   'brain.ask',
+  'jev.get',
+  'jev.set',
+  'jev.test',
   'brain.config.get',
   'brain.config.set',
   'brain.risk',

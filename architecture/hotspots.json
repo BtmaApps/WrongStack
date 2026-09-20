@@ -63,7 +63,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
-      "lines": 982,
+      "lines": 983,
       "relativeImports": 21
     },
     "packages/core/src/boot.ts": {
@@ -307,7 +307,7 @@
       "relativeImports": 24
     },
     "packages/tools/src/json.ts": {
-      "lines": 870,
+      "lines": 886,
       "relativeImports": 2
     },
     "packages/tools/src/kanban-lifecycle-actions.ts": {
@@ -323,7 +323,7 @@
       "relativeImports": 5
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 889,
+      "lines": 895,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
@@ -347,7 +347,7 @@
       "relativeImports": 7
     },
     "packages/tui/src/input-validation.ts": {
-      "lines": 922,
+      "lines": 923,
       "relativeImports": 14
     },
     "packages/tui/src/reducers/composer.ts": {
@@ -451,7 +451,7 @@
       "relativeImports": 17
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 897,
+      "lines": 899,
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
@@ -459,8 +459,8 @@
       "relativeImports": 14
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 879,
-      "relativeImports": 53
+      "lines": 892,
+      "relativeImports": 54
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
       "lines": 933,

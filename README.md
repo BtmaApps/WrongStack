@@ -407,6 +407,8 @@ old notes.
 
 ### TypeSafe / Jev decisions
 
+Manage the decision provider, key and feature switches in **Settings → Jev** in the WebUI, or **`/jev`** in the TUI. The WebUI includes a live activity view with request timing, usage, answers and safe failure categories; `/jev logs` exposes the same process history. See [Jev settings and activity](docs/jev-settings-and-activity.md).
+
 Optional Jev integration suggests a relevant skill before a turn and classifies
 ambiguous fleet dispatches. Each feature is separately opt-in. It supports a
 native TypeSafe API key or OpenRouter's Decisions endpoint through

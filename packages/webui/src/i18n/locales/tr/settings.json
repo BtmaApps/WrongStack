@@ -31,7 +31,9 @@
     "logsDesc": "Günlük düzeyi, denetim ayrıntısı, dosya sistemi erişim kapsamı ve hata ayıklama akışı.",
     "securityDesc": "Beyin karar kontrolü, gölge ajan ve araç erişimi.",
     "fonts": "Yazı tipleri",
-    "fontsDesc": "Arayüz, sohbet, editör ve terminal fontları; boyut, satır yüksekliği ve ligatürler."
+    "fontsDesc": "Arayüz, sohbet, editör ve terminal fontları; boyut, satır yüksekliği ve ligatürler.",
+    "jev": "Jev",
+    "jevDesc": "TypeSafe / Jev"
   },
   "model": {
     "heading": "Model",
@@ -1093,5 +1095,40 @@
     },
     "resetAll": "Tüm font ayarlarını sıfırla",
     "resetOverrides": "Rol değişikliklerini temizle"
+  },
+  "jev": {
+    "description": "Karar sağlayıcısını yönetin ve Jev’in nerede kullanıldığını izleyin.",
+    "loading": "Jev ayarları yükleniyor…",
+    "timeout": "Sunucudan yanıt gelmedi. Yeniden bağlanıp deneyin.",
+    "route": "Karar sağlayıcısı",
+    "routeChange": "Sağlayıcı değişince eski anahtar, endpoint ve model temizlenir. Yeni anahtarı girin veya sağlayıcının ortam değişkenini kullanın.",
+    "key": "API anahtarı",
+    "keyHint": "Mevcut anahtarı korumak için boş bırakın",
+    "removeKey": "Kayıtlı anahtarı kaldır (ortam anahtarı hâlâ kullanılabilir)",
+    "endpoint": "Özel endpoint",
+    "model": "Özel model",
+    "defaultHint": "Boş bırakılırsa sağlayıcı varsayılanı",
+    "requestTimeout": "İstek zaman aşımı (ms)",
+    "featureHint": "Hesap varsa karar özellikleri varsayılan olarak açıktır. Skill önerileri ve fleet dağıtımı ayrıca açılır. Etkin özellikler karar bağlamını bu sağlayıcıya gönderir.",
+    "save": "Jev ayarlarını kaydet",
+    "test": "Kayıtlı bağlantıyı test et",
+    "testHint": "Test küçük, ücretli bir istek gönderir. Önce kaydedin. Tüm tüketicilere uygulanması için mevcut oturumları yeniden başlatın.",
+    "activity": "Jev işlem kayıtları",
+    "activityHint": "3 saniyede bir yenilenir. Bu sunucu sürecinin tüm oturumlarındaki son 300 isteği gösterir. Prompt, anahtar ve ham hata kaydedilmez. Disk kaydı 5 MB’da döner. Answered yanıt alındığını belirtir; tüketicinin kararı kabul ettiğini garanti etmez.",
+    "filter": "Özellik",
+    "all": "Tümü",
+    "empty": "Henüz eşleşen Jev isteği yok. Bağlantıyı test edin veya etkin bir özelliği kullanın.",
+    "features": {
+      "brain": "Brain kararları",
+      "memoryTriage": "Bellek sınıflandırma",
+      "topicShift": "Konu değişimi",
+      "memoryRecall": "Bellek hatırlama",
+      "compaction": "Bağlam sıkıştırma",
+      "kanbanVerify": "Kanban doğrulama",
+      "modelTier": "Alt ajan model seviyesi",
+      "semanticLint": "Anlamsal lint",
+      "skillSuggestion": "Skill önerileri",
+      "fleetDispatch": "Fleet dağıtımı"
+    }
   }
 }

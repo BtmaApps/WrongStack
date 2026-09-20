@@ -31,7 +31,9 @@
     "logsDesc": "Niveau de journalisation, détail d'audit, portée d'accès au système de fichiers et flux de débogage.",
     "securityDesc": "Contrôle décisionnel Brain, agent fantôme et accès aux outils.",
     "fonts": "Polices",
-    "fontsDesc": "Polices de l’interface, du chat, de l’éditeur et du terminal ; taille, interligne et ligatures."
+    "fontsDesc": "Polices de l’interface, du chat, de l’éditeur et du terminal ; taille, interligne et ligatures.",
+    "jev": "Jev",
+    "jevDesc": "TypeSafe / Jev"
   },
   "model": {
     "heading": "Modèle",
@@ -1093,5 +1095,40 @@
     },
     "resetAll": "Réinitialiser tous les réglages de police",
     "resetOverrides": "Effacer les remplacements par rôle"
+  },
+  "jev": {
+    "description": "Manage the decision provider and see where Jev is used.",
+    "loading": "Loading Jev settings…",
+    "timeout": "No response from server. Reconnect and retry.",
+    "route": "Decision provider",
+    "routeChange": "Changing provider clears the previous key, endpoint and model. Enter a new key or use the provider environment variable.",
+    "key": "API key",
+    "keyHint": "Leave blank to keep the current key",
+    "removeKey": "Remove saved key (environment key may still apply)",
+    "endpoint": "Endpoint override",
+    "model": "Model override",
+    "defaultHint": "Empty uses provider default",
+    "requestTimeout": "Request timeout (ms)",
+    "featureHint": "Judgments default on with an account. Skill suggestions and fleet dispatch are opt-in. Enabled features send decision context to this provider.",
+    "save": "Save Jev settings",
+    "test": "Test saved connection",
+    "testHint": "The test sends one small billed request. Save changes first. Restart existing sessions to apply all consumers.",
+    "activity": "Jev activity",
+    "activityHint": "Refreshes every 3 seconds. Last 300 requests in this server process, across its sessions. No prompts, credentials or raw errors. Disk log rotates at 5 MB. Answered means a typed response, not necessarily a decision accepted by the consumer.",
+    "filter": "Feature",
+    "all": "All",
+    "empty": "No matching Jev requests yet. Test the connection or use an enabled feature.",
+    "features": {
+      "brain": "Brain decisions",
+      "memoryTriage": "Memory triage",
+      "topicShift": "Topic changes",
+      "memoryRecall": "Memory recall",
+      "compaction": "Context compaction",
+      "kanbanVerify": "Kanban verification",
+      "modelTier": "Subagent model tier",
+      "semanticLint": "Semantic lint",
+      "skillSuggestion": "Skill suggestions",
+      "fleetDispatch": "Fleet dispatch"
+    }
   }
 }

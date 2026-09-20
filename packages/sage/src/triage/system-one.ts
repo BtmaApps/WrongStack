@@ -142,7 +142,7 @@ export async function probeMemoryValue(
 ): Promise<MemoryValueProbe | undefined> {
   const { state, question } = valueQuestion(memory);
   const result = await judge.client.systemOne(
-    { state, questions: { q: question }, model: judge.model },
+    { activityFeature: judge.feature, state, questions: { q: question }, model: judge.model },
     AbortSignal.timeout(timeoutMs),
   );
   const answer = result.answers['q'];
@@ -178,7 +178,7 @@ export function createSystemOneTriage(opts: SystemOneTriageOptions): SystemOneTr
   const ask = async (state: unknown, question: TypeSafeQuestion): Promise<unknown> => {
     try {
       const result = await judge.client.systemOne(
-        { state, questions: { q: question }, model: judge.model },
+        { activityFeature: judge.feature, state, questions: { q: question }, model: judge.model },
         AbortSignal.timeout(timeoutMs),
       );
       return result.answers['q'];

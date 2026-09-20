@@ -734,6 +734,12 @@ export type Action =
       /** True when the task starts, false when it completes/fails. */
       active: boolean;
     }
+  | {
+      /** A task finished successfully; the reducer owns the count arithmetic. */
+      type: 'goalRunTaskCompleted';
+      phaseId: string;
+      taskId: string;
+    }
   | { type: 'goalRunMonitorToggle' }
   | { type: 'goalRunReset' }
   | { type: 'sddBoardSnapshot'; snapshot: SddBoardSnapshot }

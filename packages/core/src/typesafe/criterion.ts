@@ -29,6 +29,7 @@ export function createTypeSafeCriterionJudge(
     try {
       const result = await judge.client.systemOne(
         {
+          activityFeature: judge.feature,
           state: {
             criterion: input.criterion,
             changedFiles: input.changedFiles,

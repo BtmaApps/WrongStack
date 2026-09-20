@@ -14,7 +14,6 @@ import { buildAcpCommand } from './acp.js';
 import { buildAgentImproveCommand } from './agent-improve.js';
 import { buildAuthCommand } from './auth.js';
 import { buildAutonomyCommand } from './autonomy.js';
-
 import { buildBrainCommand } from './brain.js';
 import { buildBtwCommand } from './btw.js';
 import { buildClearCommand } from './clear.js';
@@ -49,6 +48,7 @@ import { buildHelpCommand } from './help.js';
 import { buildInitCommand } from './init.js';
 import { buildIntakeCommand } from './intake.js';
 import { buildInterruptCommand } from './interrupt.js';
+import { buildJevCommand } from './jev.js';
 import { buildKanbanCommand } from './kanban.js';
 import { buildMailboxCommand } from './mailbox.js';
 import { buildMailboxDemoCommand } from './mailbox-demo.js';
@@ -131,6 +131,7 @@ export function buildBuiltinSlashCommands(opts: SlashCommandContext): SlashComma
     buildMcpSlashCommand(opts),
     buildSuggestCommand(opts),
     buildAuthCommand(opts),
+    buildJevCommand(opts),
     buildDiagCommand(opts),
     buildStatsCommand(opts),
     buildSpawnCommand(opts),

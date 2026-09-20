@@ -1,9 +1,15 @@
 # TypeSafe account
 
-Shared credential, host and model for every System One feature. Two consume it
-today: [skill suggestion](./skills-suggestion.md) and the
-[dispatch classifier](./fleet-dispatch-classifier.md). Both are off by default,
-and both keep working — differently — when there is no account.
+Shared credential, host and model for every System One feature. Manage the
+account in **WebUI → Settings → Jev** or with **`/jev` in the TUI**. The
+[settings and activity guide](./jev-settings-and-activity.md) covers feature
+switches, connection tests and the live debug log.
+
+Brain, memory triage/recall, topic changes, compaction, Kanban verification,
+model tier selection and semantic lint allow judgments by default when an
+account is configured. [Skill suggestion](./skills-suggestion.md) and the
+[dispatch classifier](./fleet-dispatch-classifier.md) are separately opt-in.
+Each consumer keeps its fallback when a judgment is unavailable.
 
 ```
 wstack typesafe            inspect configuration (no network test)
@@ -11,7 +17,7 @@ wstack typesafe login      store a key in the active profile
 wstack typesafe test       spend one question proving the key really works
 ```
 
-## Why this is not a provider
+## Why Jev is separate from chat providers
 
 TypeSafe's Jev returns a typed judgment, not tokens. It has no messages, no
 streaming chat, no tool execution and no reasoning effort — none of the

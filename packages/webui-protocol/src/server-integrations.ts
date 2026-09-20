@@ -1,5 +1,6 @@
 export const SERVER_KNOWLEDGE_MESSAGE_TYPES = [
   'brain.answer',
+  'jev.state',
   'brain.config',
   'brain.event',
   'brain.status',
