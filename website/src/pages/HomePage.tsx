@@ -17,8 +17,8 @@ import { useEffect, useState } from 'react';
 import { ConnectWithPreview } from '@/components/site/ConnectWithPreview';
 import { CoordinationLitePreviews } from '@/components/site/CoordinationLitePreviews';
 import { FleetTopologyPreview } from '@/components/site/FleetTopologyPreview';
-import { TuiShowcase } from '@/components/site/TuiShowcase';
 import { CopyCommand, Eyebrow, Reveal, SectionIntro } from '@/components/site/primitives';
+import { TuiShowcase } from '@/components/site/TuiShowcase';
 import {
   capabilityIndex,
   commands,
@@ -247,11 +247,11 @@ export function HomePage() {
             <div className="max-w-3xl">
               <Eyebrow>Now shipping · v{version}</Eyebrow>
               <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-fg sm:text-4xl">
-                Choose the scope. Keep the context. Run deliberately.
+                Decide with evidence. Keep memory scoped.
               </h2>
               <p className="mt-4 text-base leading-7 text-muted">
-                In 1.0.20: scoped remembered approvals, more reliable context budgeting,
-                deliberate plugin defaults, and stronger filesystem boundaries.
+                In 1.0.24: agent-callable Jev judgments, inspectable decision activity,
+                session-correct SAGE triage, and safer outbound redirects.
               </p>
             </div>
             <a
@@ -265,16 +265,16 @@ export function HomePage() {
           <div className="mt-6 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
             {[
               [
-                'Scoped approvals',
-                'Remember exact input, an exec executable, or a whole tool. Denies and hard command guards still apply.',
+                'Typed Jev decisions',
+                'Ask bounded yes/no, choice, or score questions over supplied evidence, with validated answers and safe fallbacks.',
               ],
               [
-                'Reliable context',
-                'Reserve output space, refresh token accounting after changes, and isolate compaction across sessions.',
+                'Visible decision activity',
+                'Configure Jev in the TUI or WebUI and inspect timing, usage, answers, readiness, and safe failure states.',
               ],
               [
-                'Deliberate plugin defaults',
-                'Five Suite safety and diagnostic plugins load automatically. Enable other capabilities when you need them.',
+                'Session-correct memory',
+                'Daily triage paginates every candidate, carries the owning session evidence, and protects revived records during cleanup.',
               ],
             ].map(([title, body], index) => (
               <Reveal key={title} delay={index * 0.04} className="bg-card p-6">
@@ -622,7 +622,7 @@ export function HomePage() {
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <CopyCommand label="macOS / Linux" command={installCommand} />
-              <CopyCommand label="Windows" command={installCommandWindows} />
+            <CopyCommand label="Windows" command={installCommandWindows} />
             <a
               href={repoUrl}
               target="_blank"

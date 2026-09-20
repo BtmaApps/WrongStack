@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.24] — 2026-09-20
+
+### Added
+
+- **Jev settings and activity across CLI, TUI and WebUI.** Configure the
+  decision account, model, timeout and individual judgment features through
+  `/jev` or **Settings → Jev**. A live activity view and `/jev logs` expose
+  request timing, usage, answers and safe failure categories.
+- **Agent-callable Jev decisions.** When the Jev account and tool feature are
+  enabled, agents can submit self-contained evidence for typed yes/no,
+  alternative-choice or ordered-score judgments. `jev_status` reports local
+  readiness without making a network request; malformed or incompatible
+  answers are rejected rather than treated as decisions.
+
+### Changed
+
+- **Goal runs show the assigned worker reliably.** TUI task assignment is
+  reduced against the latest goal state, so an assignment arriving in the same
+  tick as task start is retained instead of disappearing between renders.
+- **SAGE daily triage uses the owning session's evidence.** Dry-run pagination
+  processes the full candidate set, session-scoped corpus and injector evidence
+  are surfaced consistently, and tagged glossary entries remain traceable.
+- **Core API snapshot synchronization is scoped to relevant staged inputs.**
+  Documentation-only and other unrelated commits no longer rewrite the
+  generated Core API evidence during the pre-commit path.
+
+### Fixed
+
+- **SAGE session cleanup closes a tombstone race.** Garbage collection re-reads
+  records inside the mutation boundary before deleting them, preventing a
+  concurrently revived session record from being removed.
+- **Domain-term maintenance targets only canonical glossary records.**
+  `/memory purge-domain-terms` no longer selects unrelated memories whose
+  metadata merely resembles a domain-term record.
+- **Jev readiness checks use the production runtime implementation.** The CLI,
+  settings surfaces and synthetic capability checks now share the same checks
+  and report feature-specific readiness without duplicating drift-prone logic.
+
+### Security
+
+- **Guarded fetch rejects embedded URL credentials after every redirect.** A
+  safe-looking URL can no longer redirect to a target containing a username or
+  password before the request guard evaluates the next hop.
+
+## [1.0.23] — 2026-09-20
+
+### Added
+
+- **TypeSafe System One judgments.** Optional Jev decisions can short-circuit
+  bounded, evidence-backed Brain choices, SAGE recall and triage, topic-shift
+  detection, selective compaction, Kanban verification, model-tier selection
+  and semantic linting. Every integration retains its existing fallback when
+  Jev is unavailable, uncertain or malformed; calibration and replay commands
+  make the thresholds inspectable.
+- **Packaged Desktop releases.** Windows setup/portable, macOS DMG/ZIP and
+  Linux AppImage/deb assets are built and smoke-tested per platform, published
+  with their own checksum manifest, and can be opened from the standalone CLI.
+- **Managed Kanban operations.** Assignment, dependency, decomposition,
+  lifecycle and queue-health mutations share a guarded management boundary and
+  are available through the connected CLI, WebUI and MCP paths.
+
+### Changed
+
+- **GitHub Releases are the supported installation channel.** Standalone CLI
+  binaries and installers no longer wait on npm publication; npm packages are
+  retained as a legacy compatibility path. Release packaging verifies the
+  complete binary and Desktop asset sets before upload.
+- **Brain and Council decisions are more inspectable and isolated.** Exact
+  decision inputs key replay, live policy changes invalidate cached approvals,
+  request identities cannot collide, and HQ derives waiting/degraded state from
+  the latest correlated lifecycle event.
+- **Large runtime and UI modules were split by responsibility.** Public Core
+  barrels, session/protocol types, provider streaming, code indexing, TUI
+  presentation, SimpleUI session logic and WebUI handlers now have narrower
+  ownership boundaries without changing their public workflows.
+
+### Fixed
+
+- **Desktop runtime and layout recovery.** Packaged launches resolve Windows
+  command shims safely, preserve project/session shell state, recompute layout
+  after the native menu bar appears, and keep sidebar controls within the real
+  viewport.
+- **Project-service and provider lifecycles.** MCP idle slots detach before
+  close, process-registry acquisitions use unique ownership tokens, vector
+  memory serializes SAGE mirror writes, and SSE cleanup handles terminal
+  streams without leaking pending work.
+
+### Security
+
+- **Path containment treats both slash styles as separators.** POSIX-hosted
+  containment checks reject backslash-based traversal in browser uploads,
+  display paths and other project-root guards.
+- **HQ authentication and protocol boundaries were tightened.** Password
+  storage, payload validation, route contracts and request correlation use
+  explicit typed boundaries; configuration and management mutations remain
+  behind their existing authorization gates.
+
 ## [1.0.22] — 2026-09-19
 
 ### Fixed

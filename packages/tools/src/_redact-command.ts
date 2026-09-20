@@ -41,20 +41,19 @@ export function redactCommand(cmd: string): string {
     result = result.replace(pattern, (match) => {
       // Preserve the flag name portion; redact only the value part.
       // e.g. "--token=sekrit_abc"  →  "--token=[REDACTED]"
-      const eq = match.indexOf('=');
-      const colon = match.indexOf(':');
-      const sp = match.search(/\s/);
-      const delim =
-        eq !== -1 && (colon === -1 || eq < colon)
-          ? '='
-          : colon !== -1
-            ? ':'
-            : sp !== -1
-              ? match[sp]
-              : null;
-      if (delim !== null) {
-        const flag = match.slice(0, match.indexOf(expectDefined(delim)) + 1);
-        return `${flag}[REDACTED]`;
+      // The separator is the FIRST character AFTER THE FLAG NAME. Choosing a
+      // delimiter by precedence instead (preferring ':' over whitespace)
+      // misreads a colon INSIDE a space-separated value as the flag/value
+      // separator and prints the value's prefix verbatim:
+      //   `redis-cli -a hunter2:pw`  ->  `-a hunter2:[REDACTED]`   (leak)
+      // The match always begins with the flag name, so anchor on that boundary.
+      // This also covers the glued short forms (`-apass:word`, `-tVALUE`) where
+      // no separator exists at all and the whole tail after the 2-char flag is
+      // the value — the fallback below redacts it.
+      const flagName = /^--[\w-]+|^-(?:password|p|a|t)|^[A-Za-z_]\w*/.exec(match)?.[0] ?? '';
+      const boundary = match[flagName.length];
+      if (boundary !== undefined && (boundary === '=' || boundary === ':' || /\s/.test(boundary))) {
+        return `${flagName}${boundary}[REDACTED]`;
       }
       // No delimitable separator found in the match.
       if (match.startsWith('--')) {

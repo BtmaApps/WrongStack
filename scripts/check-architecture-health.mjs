@@ -18,6 +18,7 @@ const supported = new Set([
   '--json',
   '--print-hotspot-baseline',
   '--report-only',
+  '--strict-hotspots',
   '--write',
   '--write-hotspot-baseline',
 ]);
@@ -146,3 +147,37 @@ if (
   !args.has('--write-hotspot-baseline')
 )
   process.exitCode = 1;
+
+// ── --strict-hotspots: hard-stop on hotspot ratchet drift ────────────────
+// Composes with any other flag, including --report-only: this is the only
+// exit path that fails on hotspot drift when the caller explicitly asked
+// for stricter enforcement (e.g. `pnpm release:prepare`, where a drifted
+// architecture/hotspots.json would otherwise ship to npm).
+//
+// --write-hotspot-baseline is the sanctioned refresh op and is intentionally
+// exempt: when the maintenance flag is set, the caller has accepted the new
+// baseline and the drift is by definition the intended next state.
+if (args.has('--strict-hotspots') && !args.has('--write-hotspot-baseline')) {
+  // buildArchitectureHealth reports hotspot ratchet drift via report.errors,
+  // so the strict check can simply re-read that same signal. We do not
+  // re-run validateHotspotBaseline separately because the report already
+  // contains its output; recomputing would re-measure the filesystem for no
+  // additional information.
+  const hotspotErrors = report.errors.filter((message) =>
+    /(?:new \d+-line hotspot|hotspot (?:grew|shrunk)|relative import fan-out|stale hotspot baseline)/.test(
+      message,
+    ),
+  );
+  if (hotspotErrors.length > 0) {
+    if (!args.has('--json')) {
+      console.error(`❌ Hotspot ratchet drift (${hotspotErrors.length}):`);
+      for (const message of hotspotErrors) console.error(`   ${message}`);
+      console.error(
+        'Regenerate the ratchet in the same change: `pnpm check:architecture:sync`.',
+      );
+    }
+    process.exitCode = 1;
+  } else if (!args.has('--json') && !args.has('--report-only')) {
+    console.log('✓ Hotspot ratchet matches current source (--strict-hotspots).');
+  }
+}

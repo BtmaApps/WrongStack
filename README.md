@@ -51,49 +51,40 @@ suite. Memory, tools, providers, permissions, and the multi-agent runtime are al
 first-party and work together, on your machine, with no upstream agent to phone
 home to.
 
-### What's new in 1.0.20
+### What's new in 1.0.24
 
-Highlights since 1.0.19:
+Highlights since 1.0.23:
 
-- **Choose what an approval remembers.** Allow once, or remember the exact input,
-  the executable with any arguments (`exec` only), or the whole tool. Explicit
-  denies and command guards still apply; destructive calls still prompt under
-  executable-wide and tool-wide grants.
-- **Keep long sessions within the context budget.** Requests reserve room for
-  output and safety, refresh accounting after history or model changes, and
-  isolate compaction state across sessions. Tool errors share the output budget.
-- **Load plugins deliberately.** Suite defaults are limited to `secret-scanner`,
-  `injection-shield`, `dep-guard`, `error-lens`, and `context-pins`; other Suite
-  plugins are opt-in. Nine redundant or noisy plugins have been removed.
-- **Recover and shut down cleanly.** Background hook findings reach the next
-  session boundary, process-registry locks verify ownership, and project services
-  shut down after their idle windows.
-- **Strengthen filesystem and command boundaries.** Scoped trust handles literal
-  wildcards and distinct argument arrays correctly, project containment resolves
-  symlinks, and structured `exec` supports more development toolchains.
+- **Give agents a typed decision specialist.** A configured Jev account exposes
+  `jev` for batched yes/no, alternative-choice and ordered-score judgments over
+  supplied evidence. `jev_status` checks local readiness without a network call;
+  invalid or incomplete answers never become decisions.
+- **Manage Jev where you work.** `/jev` in the TUI and **Settings → Jev** in the
+  WebUI configure the account, model, timeout and individual features. Activity
+  views show timing, usage, answers and safe failure categories.
+- **Keep SAGE triage scoped and complete.** Daily dry runs paginate the full
+  candidate set, use the owning session's corpus and injector evidence, preserve
+  tagged glossary provenance, and protect revived records during session GC.
+- **See who owns active goal work.** TUI goal runs retain task-to-agent
+  assignment even when start and assignment events arrive in the same render
+  tick.
+- **Harden outbound fetch redirects.** The guarded fetch path rejects embedded
+  username/password credentials on every redirect hop, not only the first URL.
 
-Recent additions retained from 1.0.19:
+Recent additions retained from 1.0.23:
 
-- **Explore code directly.** WebUI Code Atlas drills from packages to files to
-  symbols with one click, a workspace breadcrumb, and visible Open, Relations,
-  and Activity actions. Rich tool cards expose execution details in the chat.
-- **Investigate bugs with evidence.** `/bughunt [scope]` runs one investigation;
-  `/bughunt --rounds 3 packages/tui` authorizes three sequential rounds. The
-  workflow asks for a failing reproduction, an unaffected control, the same
-  passing check after the fix, and a retained regression. Rounds are an
-  investigation budget, not a promised number of bugs.
-- **Build UI with a deliberate design direction.** New `design-craft`,
-  `design-critique`, and `web-platform-baseline` skills complement Design Studio.
-  The kit catalog adds `flat-design`, `pixel-8bit`, and `grunge-press`.
-- **Keep tools discoverable.** Enabled tools whose schemas are deferred remain
-  available through `tool_search` and `tool_use`, including local and MCP tools.
-- **Track work across surfaces.** Kanban improves task activity history, parked
-  work visibility, and queue health. SimpleUI groups workspace utilities and
-  file management in a shared launcher; TUI statusline capsules support custom
-  ordering and font-aware icons.
-- **Recover more reliably.** Memory recovery, Windows registry writes, MCP
-  startup, and session handling have been hardened. Shared agent instructions
-  keep the evidence, memory, and work-tracking contracts consistent across roles.
+- **Use fast judgments with safe fallbacks.** Optional TypeSafe System One
+  decisions support Brain choices, memory triage and recall, topic shifts,
+  compaction, Kanban verification, model-tier routing and semantic linting.
+- **Install from one verified release.** GitHub Releases provide self-contained
+  CLI binaries and per-platform Desktop packages with checksum manifests and
+  smoke-tested installers; npm remains a legacy compatibility path.
+- **Operate Kanban through guarded management APIs.** Assignment, dependency,
+  decomposition, lifecycle and queue-health actions share the same managed
+  boundary across connected surfaces.
+- **Inspect Brain and Council outcomes.** Replay keys bind exact inputs, policy
+  changes invalidate cached approvals, request identities stay unique, and HQ
+  correlates the latest decision lifecycle state.
 
 See the complete [release notes](CHANGELOG.md).
 
@@ -407,15 +398,26 @@ old notes.
 
 ### TypeSafe / Jev decisions
 
-Manage the decision provider, key and feature switches in **Settings → Jev** in the WebUI, or **`/jev`** in the TUI. The WebUI includes a live activity view with request timing, usage, answers and safe failure categories; `/jev logs` exposes the same process history. See [Jev settings and activity](docs/jev-settings-and-activity.md).
+Manage the decision provider, key and feature switches in **Settings → Jev** in
+the WebUI, or **`/jev`** in the TUI. The WebUI includes a live activity view
+with request timing, usage, answers and safe failure categories; `/jev logs`
+exposes the same process history. See
+[Jev settings and activity](docs/jev-settings-and-activity.md).
 
-Configured accounts also expose the `jev` decision tool: agents can request yes/no probabilities, choose among alternatives, or score supplied evidence against a rubric. `jev_status` checks local availability without a network request. Control this independently with `/jev feature tool on|off` or **Settings → Jev → Agent decision tool**.
+Configured accounts also expose the `jev` decision tool: agents can request
+yes/no probabilities, choose among alternatives, or score supplied evidence
+against a rubric. `jev_status` checks local availability without a network
+request. Control this independently with `/jev feature tool on|off` or
+**Settings → Jev → Agent decision tool**.
 
 Optional Jev integration suggests a relevant skill before a turn and classifies
-ambiguous fleet dispatches. Each feature is separately opt-in. It supports a
-native TypeSafe API key or OpenRouter's Decisions endpoint through
-`wstack typesafe login --route typesafe` or `--route openrouter`; `wstack typesafe test`
-checks the selected account. Jev is a typed decision service, not a chat model.
+ambiguous fleet dispatches; those two consumers remain separately opt-in. The
+bounded judgment features are available when an account is ready and can each
+be switched off independently. Jev supports a native TypeSafe API key or
+OpenRouter's Decisions endpoint through
+`wstack typesafe login --route typesafe` or `--route openrouter`;
+`wstack typesafe test` checks the selected account. Jev is a typed decision
+service, not a chat model.
 See [account setup and coverage](docs/typesafe-account.md),
 [skill suggestion](docs/skills-suggestion.md), and
 [fleet classification](docs/fleet-dispatch-classifier.md).

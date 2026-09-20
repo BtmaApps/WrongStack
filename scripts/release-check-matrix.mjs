@@ -303,7 +303,7 @@ const LOCAL_ONLY_GATES = [
   {
     id: 'test',
     label: 'Vitest + WebUI tests',
-    cmd: 'pnpm test',
+    cmd: 'pnpm test:affected',
     prereq: 'build',
   },
   {
@@ -438,6 +438,7 @@ let listOnly = false;
 let only = null;
 let profile = 'release';
 let noCache = false;
+let shard = null;
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--list') listOnly = true;
@@ -458,10 +459,21 @@ for (let i = 0; i < args.length; i++) {
         .map((s) => s.trim())
         .filter(Boolean),
     );
+  } else if (a === '--shard') {
+    const raw = args[++i];
+    if (!raw) fail('--shard expects <i>/<n> where i is 1..n and n >= 1');
+    const match = /^(\d+)\/(\d+)$/.exec(raw);
+    if (!match) fail(`--shard expects <i>/<n> (got "${raw}")`);
+    const iShard = Number.parseInt(match[1], 10);
+    const nShard = Number.parseInt(match[2], 10);
+    if (nShard < 1) fail(`--shard total must be >= 1 (got ${nShard})`);
+    if (iShard < 1 || iShard > nShard)
+      fail(`--shard index must be in 1..${nShard} (got ${iShard})`);
+    shard = { index: iShard, total: nShard };
   } else if (a === '--no-cache') noCache = true;
   else
     fail(
-      `unknown flag "${a}" (supported: --list, --only <ids>, --tail <n>, --profile <name>, --no-cache)`,
+      `unknown flag "${a}" (supported: --list, --only <ids>, --tail <n>, --profile <name>, --shard <i>/<n>, --no-cache)`,
     );
 }
 
@@ -473,21 +485,40 @@ if (only) {
   }
 }
 
+/**
+ * Single source of truth for shard membership so --list and the run loop
+ * cannot drift apart. Returns true when this gate index belongs to the
+ * current shard (or always true when sharding is off).
+ */
+function belongsToShard(idx) {
+  if (!shard) return true;
+  return idx % shard.total === shard.index - 1;
+}
+
 const title =
   profile === 'local' ? 'local CI' : profile === 'release-fast' ? 'release:fast' : 'release:check';
 const LOG_DIR = LOG_DIRS[profile] ?? LOG_DIRS.release;
 
 if (listOnly) {
-  console.log(`${title} gate matrix — plan (--profile ${profile})`);
-  for (const g of profileGates) {
-    console.log(
-      `  ${g.id.padEnd(22)} ${g.prereq ? `[after ${g.prereq}] ` : '[standalone]   '} ${g.cmd}`,
-    );
+  console.log(`${title} gate matrix — plan (--profile ${profile}${shard ? `, --shard ${shard.index}/${shard.total}` : ''})`);
+  for (let idx = 0; idx < profileGates.length; idx += 1) {
+    const g = profileGates[idx];
+    const marker = shard
+      ? belongsToShard(idx)
+        ? '[this shard] '
+        : '[other shard]'
+      : g.prereq
+        ? `[after ${g.prereq}] `
+        : '[standalone]   ';
+    console.log(`  ${g.id.padEnd(22)} ${marker} ${g.cmd}`);
   }
   process.exit(0);
 }
 
-const selected = only ? profileGates.filter((g) => only.has(g.id)) : profileGates;
+const selected = profileGates.filter((g, idx) => {
+  if (only && !only.has(g.id)) return false;
+  return belongsToShard(idx);
+});
 const results = new Map(); // id -> { status, ms, code }
 mkdirSync(LOG_DIR, { recursive: true });
 const fingerprint = releaseInputFingerprint();

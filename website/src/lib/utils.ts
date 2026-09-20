@@ -353,9 +353,56 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.24',
+    date: '2026-09-20',
+    latest: true,
+    tagline: 'Agent-callable Jev decisions, scoped SAGE triage, and safer redirects',
+    highlights: [
+      'Configure Jev accounts, models, timeouts and feature switches through /jev or the WebUI settings panel',
+      'Agents can request validated Noul, Choice and Score judgments over supplied evidence; jev_status checks readiness offline',
+      'Jev activity views expose request timing, usage, answers and safe failure categories across terminal and browser surfaces',
+      'SAGE daily triage paginates the full candidate set and carries session corpus, injector evidence and glossary provenance',
+      'Session garbage collection preserves concurrently revived records and domain-term purging targets only canonical tags',
+      'TUI goal runs retain same-tick worker assignments; unrelated commits skip Core API snapshot regeneration',
+      'Guarded fetch rejects embedded username or password credentials on every redirect hop',
+    ],
+  },
+  {
+    version: '1.0.23',
+    date: '2026-09-20',
+    tagline: 'System One judgments, packaged Desktop, and hardened release boundaries',
+    highlights: [
+      'Optional TypeSafe System One judgments accelerate bounded Brain, SAGE, compaction, Kanban, routing and lint decisions while preserving fallbacks',
+      'Windows, macOS and Linux Desktop packages join standalone CLI assets with platform smoke tests and checksum manifests',
+      'GitHub Releases become the supported install channel; npm publication remains a legacy compatibility path',
+      'Managed Kanban assignment, dependency, decomposition, lifecycle and queue-health operations share one guarded boundary',
+      'Brain replay binds exact inputs, policy changes invalidate cached approvals, and HQ correlates current decision lifecycle state',
+      'Path containment rejects backslash traversal and project-service ownership, provider streaming and Desktop recovery are hardened',
+    ],
+  },
+  {
+    version: '1.0.22',
+    date: '2026-09-19',
+    tagline: 'Reliable standalone cleanup, worktree merges, and installer PATH handling',
+    highlights: [
+      'The standalone binary routes session cleanup through the catalog daemon and clears live Windows transcripts without EPERM',
+      'Worktree squash merges carry an identity fallback and no longer mistake an early merge failure for a resolved conflict',
+      'Installers put the standalone binary first on PATH and identify older package-manager shims that could shadow it',
+    ],
+  },
+  {
+    version: '1.0.21',
+    date: '2026-09-18',
+    tagline: 'Self-contained binaries and verified in-place updates',
+    highlights: [
+      'Seven Windows, macOS and Linux targets ship as self-contained executables with no Node.js installation required',
+      'wstack update downloads the executable for its current target, verifies SHA256SUMS and replaces it in place',
+      'GitHub binary releases no longer wait on npm publication and official plugin factories remain bundle-discoverable',
+    ],
+  },
+  {
     version: '1.0.20',
     date: '2026-09-17',
-    latest: true,
     tagline: 'Scoped approvals, context reliability, and deliberate plugin defaults',
     highlights: [
       'Remember approvals for exact input, an exec executable, or a whole tool across terminal and browser surfaces',
