@@ -68,11 +68,16 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo: build/Info.plist
+  # No `arch` here on purpose: the release matrix runs one job per architecture
+  # (macos-15 passes --arm64, macos-15-intel passes --x64) and a target-level
+  # arch list overrides those flags. Pinning both made BOTH mac jobs build BOTH
+  # architectures, so the two artifacts each carried a mac-arm64 and a mac-x64
+  # of their own — same filenames, different bytes — and the release checksum
+  # check failed on nine duplicated entries. It also doubled each mac job's
+  # output to ~1.1GB.
   target:
     - target: dmg
-      arch: [x64, arm64]
     - target: zip
-      arch: [x64, arm64]
 
 win:
   icon: assets/icon.png

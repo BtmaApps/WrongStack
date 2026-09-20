@@ -169,14 +169,27 @@ describe('SAGE daemon shutdown answers in-flight requests', () => {
     // Park the accept dispatch mid-flight: the test process holds the same
     // candidate-accept lock the server's accept path waits on.
     let releaseHold: (() => void) | undefined;
+    let holdEstablished: (() => void) | undefined;
+    const lockHeld = new Promise<void>((resolve) => {
+      holdEstablished = resolve;
+    });
     const held = withFileLock(
       join(projectRoot, '.wrongstack', 'memories', 'locks', `candidate-accept-${created.id}`),
-      () =>
-        new Promise<void>((resolve) => {
+      () => {
+        holdEstablished?.();
+        return new Promise<void>((resolve) => {
           releaseHold = resolve;
-        }),
+        });
+      },
       { timeoutMs: 30_000, staleMs: 30 * 60_000 },
     ).catch(() => undefined);
+
+    // Acquisition is async, so dispatching before it lands is a race the server
+    // can win: the accept then runs its DB work instead of parking, the ping
+    // below still sees it pending, and it completes successfully before the
+    // shutdown — the request this test needs rejected comes back ok. Rare
+    // normally, reproducible under the coverage run's instrumentation.
+    await lockHeld;
 
     h.request({
       type: 'request',
