@@ -545,6 +545,17 @@ describe('misc setters', () => {
     expect(typeof ui().settingsActiveTab).toBe('string');
     expect(ui().settingsActiveTab).not.toBe('not-a-tab');
   });
+
+  it('keeps Jev selected when navigating and restoring persisted settings', () => {
+    ui().setSettingsActiveTab('provider');
+    ui().setSettingsActiveTab('jev');
+    expect(ui().settingsActiveTab).toBe('jev');
+    const merge = options.merge as unknown as (p: unknown, c: unknown) => Record<string, unknown>;
+    expect(
+      merge({ settingsActiveTab: 'jev' }, { ...ui(), settingsActiveTab: 'general' })
+        .settingsActiveTab,
+    ).toBe('jev');
+  });
 });
 
 describe('persist migrate', () => {

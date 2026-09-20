@@ -11,9 +11,11 @@ const source = `
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import '/src/index.css';
-import { JevSection } from '/src/components/SettingsPanel/JevSection.tsx';
+import { ThemeProvider } from '/src/components/ThemeProvider.tsx';
+import { SettingsPanel } from '/src/components/SettingsPanel/index.tsx';
 import { getWSClient } from '/src/lib/ws-client.ts';
-import { useConfigStore } from '/src/stores/index.ts';
+import { useConfigStore, useUIStore } from '/src/stores/index.ts';
+useUIStore.getState().setSettingsActiveTab('provider');
 const client = getWSClient(useConfigStore.getState().wsUrl);
 const listeners = new Set();
 const originalOn = client.on.bind(client);
@@ -27,7 +29,7 @@ client.send = (message) => {
   queueMicrotask(() => listeners.forEach(fn => fn({ type: 'jev.state', payload: { requestId: message.payload.requestId, settings, message: message.type === 'jev.set' ? 'Saved' : undefined, activity: { scope: 'process', path: '/profile/logs/jev-123.jsonl', entries: [{ id: 'request-1', at: Date.now(), feature: 'memoryRecall', route: 'typesafe', model: 'jev-latest', durationMs: 128, outcome: 'answered', project: '/workspace/project', inputTokens: 142, outputTokens: 0, answers: { relevant: 0.91 } }] } } })));
   return true;
 };
-createRoot(document.getElementById('root')).render(React.createElement('main', { className: 'mx-auto max-w-3xl p-4' }, React.createElement(JevSection)));
+createRoot(document.getElementById('root')).render(React.createElement('main', { className: 'h-screen' }, React.createElement(ThemeProvider, null, React.createElement(SettingsPanel))));
 `;
 const id = 'virtual:jev-browser-smoke';
 const server = await createServer({
@@ -73,6 +75,21 @@ try {
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__jev_smoke`);
+    const jevTab = page.getByRole('tab', { name: 'Jev', exact: true });
+    await jevTab.click();
+    assert.equal(
+      await jevTab.getAttribute('aria-selected'),
+      'true',
+      'Jev must remain selected after clicking its Settings tab',
+    );
+    const tabValues = await page
+      .getByRole('tab')
+      .evaluateAll((tabs) => tabs.map((tab) => tab.id.split('-trigger-')[1]));
+    assert.equal(
+      tabValues.indexOf('jev'),
+      tabValues.indexOf('provider') + 1,
+      'Jev must immediately follow Provider',
+    );
     const save = page.getByRole('button', { name: /Save Jev settings|Jev ayarlarını kaydet/ });
     await save.waitFor({ timeout: 10000 }).catch(async (error) => {
       console.error(errors, await page.locator('body').innerText());
@@ -91,12 +108,14 @@ try {
       true,
     );
     await page.screenshot({ path: path.join(out, `${width}x${height}-activity.png`) });
-    await page.getByText('TypeSafe / Jev', { exact: true }).scrollIntoViewIfNeeded();
+    await page
+      .getByRole('heading', { name: 'TypeSafe / Jev', exact: true })
+      .scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, `${width}x${height}.png`) });
   }
   assert.deepEqual(errors, []);
   console.log(
-    'Jev browser smoke passed: 1280x900, 390x844, 390x300; save, masked key, activity and horizontal overflow.',
+    'Jev browser smoke passed: 1280x900, 390x844, 390x300; Settings tab navigation/order, save, masked key, activity and horizontal overflow.',
   );
 } finally {
   await browser.close();

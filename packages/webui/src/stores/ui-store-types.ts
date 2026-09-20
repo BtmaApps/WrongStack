@@ -106,6 +106,7 @@ export const SETTINGS_TABS = [
   'general',
   'fonts',
   'provider',
+  'jev',
   'connection',
   'agent',
   'execution',

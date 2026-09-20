@@ -76,12 +76,6 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   {
-    id: 'jev',
-    icon: <Zap className="h-3.5 w-3.5" />,
-    labelKey: 'settings:tabs.jev',
-    descKey: 'settings:tabs.jevDesc',
-  },
-  {
     id: 'general',
     icon: <Palette className="h-3.5 w-3.5" />,
     labelKey: 'settings:tabs.general',
@@ -98,6 +92,12 @@ const TABS: TabDef[] = [
     icon: <Network className="h-3.5 w-3.5" />,
     labelKey: 'settings:tabs.provider',
     descKey: 'settings:tabs.providerDesc',
+  },
+  {
+    id: 'jev',
+    icon: <Zap className="h-3.5 w-3.5" />,
+    labelKey: 'settings:tabs.jev',
+    descKey: 'settings:tabs.jevDesc',
   },
   {
     id: 'connection',
