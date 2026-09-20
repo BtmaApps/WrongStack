@@ -1,5 +1,3 @@
-import { expectDefined } from '@wrongstack/core/utils';
-
 // Sensitive CLI flag patterns that may appear in process command lines.
 // Redacted to [REDACTED] so crash dumps /ps output cannot leak secrets.
 // Split out of process-registry.ts so entries that only need the registry

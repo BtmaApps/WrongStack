@@ -150,4 +150,55 @@ describe('redactCommand — secret redaction (P2 #13)', () => {
       expect(out).toMatch(/--deploykey=\[REDACTED\]/);
     });
   });
+
+  /**
+   * Regression: the flag/value separator must be the first character AFTER THE
+   * FLAG NAME, not a delimiter picked by precedence.
+   *
+   * The callback used to choose `=` → `:` → whitespace in that order, so a
+   * colon INSIDE a space-separated value was mistaken for the separator and the
+   * value's prefix was printed verbatim — `redis-cli -a hunter2:pw` rendered as
+   * `-a hunter2:[REDACTED]`, leaking the password's first half into /ps output,
+   * crash dumps and telemetry that consume redactCommand.
+   */
+  describe('separator must follow the flag name, not a colon inside the value', () => {
+    it.each([
+      ['redis-cli -a hunter2:s3cr3tv@lue SET k v', 'hunter2', /-a \[REDACTED\]/],
+      ['curl --auth bearer123:xyz https://example.com', 'bearer123', /--auth \[REDACTED\]/],
+      ['mysql --password "hunter2:3306" -h db', 'hunter2', /--password \[REDACTED\]/],
+      ['probe --api-key sk-abc123:deadbeef', 'sk-abc123', /--api-key \[REDACTED\]/],
+    ])('does not leak the value prefix of %j', (cmd, secret, pattern) => {
+      const out = redactCommand(cmd);
+      expect(out).not.toContain(secret);
+      expect(out).toMatch(pattern);
+    });
+
+    it.each([
+      // Glued short forms: no separator exists at all, so the whole tail after
+      // the 2-char flag is the value and must be redacted.
+      ['redis-cli -apass:word PING', 'pass'],
+      ['probe -tsecret:token123', 'secret'],
+    ])('redacts the whole glued value of %j', (cmd, secret) => {
+      expect(redactCommand(cmd)).not.toContain(secret);
+    });
+
+    it('keeps the colon form it was introduced for', () => {
+      expect(redactCommand('run TOKEN:abc123def')).toBe('run TOKEN:[REDACTED]');
+      expect(redactCommand('run API_KEY:sk-abc123')).toBe('run API_KEY:[REDACTED]');
+    });
+
+    it('keeps the existing renders for equals and space separated forms', () => {
+      expect(redactCommand('curl --password=hunter2 x')).toBe('curl --password=[REDACTED] x');
+      expect(redactCommand('curl -t abc12345 https://example.com')).toBe(
+        'curl -t [REDACTED] https://example.com',
+      );
+      expect(redactCommand('curl -password hunter2 https://example.com')).toBe(
+        'curl -password [REDACTED] https://example.com',
+      );
+    });
+
+    it('still leaves a bare long flag untouched (no value to redact)', () => {
+      expect(redactCommand('tool --token')).toBe('tool --token');
+    });
+  });
 });

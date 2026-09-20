@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 623,
+      "files": 622,
       "typeOnly": 59,
-      "runtimeOrMixed": 596
+      "runtimeOrMixed": 595
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -20920,12 +20920,6 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tools/src/_output-spool.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
-      "file": "packages/tools/src/_redact-command.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
