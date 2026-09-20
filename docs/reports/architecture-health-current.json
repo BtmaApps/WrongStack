@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T14:42:11.240Z",
+  "generatedAt": "2026-09-20T15:25:55.696Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3966,
-    "testFiles": 3567,
-    "sourceLines": 952373,
+    "testFiles": 3570,
+    "sourceLines": 952479,
     "workspaceEdges": 128,
-    "moduleEdges": 12841,
+    "moduleEdges": 12842,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -148,7 +148,7 @@
       "name": "@wrongstack/cli",
       "dir": "packages/cli",
       "sourceFiles": 514,
-      "testFiles": 518,
+      "testFiles": 519,
       "workspaceDependencies": [
         "@wrongstack/acp",
         "@wrongstack/bench",
@@ -187,7 +187,7 @@
         {
           "path": "packages/cli/tsconfig.test.json",
           "error": null,
-          "testFiles": 518
+          "testFiles": 519
         }
       ]
     },
@@ -573,7 +573,7 @@
       "name": "@wrongstack/sage",
       "dir": "packages/sage",
       "sourceFiles": 115,
-      "testFiles": 108,
+      "testFiles": 110,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -588,7 +588,7 @@
         {
           "path": "packages/sage/tsconfig.test.json",
           "error": null,
-          "testFiles": 108
+          "testFiles": 110
         }
       ]
     },
@@ -4879,6 +4879,12 @@
       },
       {
         "file": "packages/cli/tests/wiring-tools.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/cli/tests/wiring/domain-glossary.test.ts",
         "projects": [
           "root-node"
         ]
@@ -12570,7 +12576,19 @@
         ]
       },
       {
+        "file": "packages/sage/tests/host-wiring-daily-triage-injector-evidence.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/sage/tests/host-wiring-daily-triage-pagination.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/sage/tests/host-wiring-daily-triage-session-scope.test.ts",
         "projects": [
           "root-node"
         ]

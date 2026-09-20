@@ -26,6 +26,7 @@ import { fileTriageProposals } from './shared/file-proposals.js';
 import type { LlmCallFn } from './triage/llm-evaluator.js';
 import { runTriage } from './triage/orchestrator.js';
 import { createSystemOneTriage } from './triage/system-one.js';
+import type { InjectorEvidence } from './triage/value-score.js';
 import type { Sage, SageHygieneOptions } from './types.js';
 
 export interface SageHostWiringDeps {
@@ -206,7 +207,89 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
   // Proposals are always reviewable (never auto-delete). Clears timers on teardown.
   let dailyInterval: ReturnType<typeof setInterval> | undefined;
   let dailyFirst: ReturnType<typeof setTimeout> | undefined;
+  let offInjectorRuns: (() => void) | undefined;
   if (cfg?.triage?.dailyDryRun === true) {
+    // Injector gate evidence for the daily triage pass: the injector emits
+    // `memory.injector_run` (same process, same bus) with per-memory rejection
+    // detail, and Phase 2 folds it into the value score — the BELOW_SCORE
+    // usage clamp plus the rejection-pressure line in the Phase-3 prompt.
+    // Bounded and process-lifetime scoped: counts reset on restart, which the
+    // scorer treats as "no evidence".
+    type AccumulatedInjectorEvidence = {
+      rejectedByGate: Partial<Record<keyof InjectorEvidence['rejectedByGate'], number>>;
+      lastActivated: boolean;
+      lastInjected: boolean;
+    };
+    const injectorEvidence = new Map<string, AccumulatedInjectorEvidence>();
+    const MAX_INJECTOR_EVIDENCE_ENTRIES = 2_000;
+    const touchInjectorEvidence = (id: string): AccumulatedInjectorEvidence => {
+      const existing = injectorEvidence.get(id);
+      if (existing) return existing;
+      const entry: AccumulatedInjectorEvidence = {
+        rejectedByGate: {},
+        lastActivated: false,
+        lastInjected: false,
+      };
+      injectorEvidence.set(id, entry);
+      if (injectorEvidence.size > MAX_INJECTOR_EVIDENCE_ENTRIES) {
+        const oldest = injectorEvidence.keys().next().value;
+        if (oldest !== undefined) injectorEvidence.delete(oldest);
+      }
+      return entry;
+    };
+    const handleInjectorRun = (payload: unknown): void => {
+      if (!payload || typeof payload !== 'object') return;
+      const run = payload as {
+        rejectedDetail?: Array<{ id?: unknown; gate?: unknown }> | undefined;
+        activated?: Array<{ id?: unknown }> | undefined;
+        injected?: Array<{ id?: unknown }> | undefined;
+      };
+      for (const detail of run.rejectedDetail ?? []) {
+        if (typeof detail?.id !== 'string') continue;
+        if (
+          detail.gate !== 'duplicate' &&
+          detail.gate !== 'belowScore' &&
+          detail.gate !== 'alreadyVisible' &&
+          detail.gate !== 'cooldown' &&
+          detail.gate !== 'budget'
+        ) {
+          continue;
+        }
+        const entry = touchInjectorEvidence(detail.id);
+        entry.rejectedByGate[detail.gate] = (entry.rejectedByGate[detail.gate] ?? 0) + 1;
+      }
+      for (const memory of run.activated ?? []) {
+        if (typeof memory?.id === 'string') touchInjectorEvidence(memory.id).lastActivated = true;
+      }
+      for (const memory of run.injected ?? []) {
+        if (typeof memory?.id === 'string') touchInjectorEvidence(memory.id).lastInjected = true;
+      }
+    };
+    // Feature-detected like mailbox-attach: a minimal events object without
+    // onPattern simply yields no evidence (the scorer's documented fallback).
+    offInjectorRuns =
+      typeof (deps.events as { onPattern?: unknown }).onPattern === 'function'
+        ? (
+            deps.events as unknown as {
+              onPattern: (
+                pattern: string,
+                handler: (event: string, payload: unknown) => void,
+              ) => () => void;
+            }
+          ).onPattern('memory.injector_run', (_event, payload) => handleInjectorRun(payload))
+        : undefined;
+    const readInjectorEvidence = (memoryId: string): InjectorEvidence | undefined => {
+      const entry = injectorEvidence.get(memoryId);
+      if (!entry) return undefined;
+      const counts = Object.values(entry.rejectedByGate);
+      const dominant = counts.length > 0 ? Math.max(...counts) : 0;
+      return {
+        rejectedByGate: entry.rejectedByGate,
+        lastActivated: entry.lastActivated,
+        lastInjected: entry.lastInjected,
+        ...(dominant > 0 ? { rejectionCount: dominant } : {}),
+      };
+    };
     const DAY_MS = 24 * 60 * 60_000;
     const runDaily = async () => {
       try {
@@ -234,6 +317,12 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
             const page = await surface.listSagePage({
               statuses: ['active', 'stale'],
               limit: 200,
+              // Admin surface: triage reviews the whole project corpus, so
+              // owned session-scoped memories must not vanish from the
+              // listing (buildSessionClause's default hides them). The
+              // manual /memory triage command passes the same flag
+              // (loadActiveMemories).
+              includeAllSessions: true,
               ...(cursor !== undefined ? { cursor } : {}),
             });
             memories.push(...(page.memories ?? []));
@@ -252,6 +341,7 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
               maxPhase4Pairs: 15,
               verbose: false,
               systemOne: judge ? createSystemOneTriage({ judge }) : undefined,
+              injectorEvidenceProvider: readInjectorEvidence,
             });
             // File proposals even on dry-run so Review tab fills without --apply.
             // Auto-apply status mutations are NOT executed (dryRun: true).
@@ -289,6 +379,7 @@ export function setupSage(deps: SageHostWiringDeps): () => Promise<void> {
   }
 
   return async () => {
+    offInjectorRuns?.();
     if (dailyFirst !== undefined) clearTimeout(dailyFirst);
     if (dailyInterval !== undefined) clearInterval(dailyInterval);
     await retrieval.flushPendingCounters?.();
