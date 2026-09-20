@@ -227,6 +227,31 @@ function layoutViews(): void {
   layoutWebuiViews();
 }
 
+/**
+ * Re-run the layout once the client area has settled after `show()`.
+ *
+ * On Windows and Linux the in-window menu bar only takes its height out of the
+ * client area when the window is actually shown, and it does so without
+ * emitting `resize` — so the synchronous layout after `show()` sizes the shell
+ * view to the pre-menu height and nothing ever corrects it. Measured on CI: the
+ * view stayed 681px tall inside a 655px client area, which put the bottom of
+ * the sidebar — its footer — below the visible region. macOS puts the menu in
+ * the system bar and never showed this.
+ *
+ * Both passes compare before acting, so this is a no-op where the first layout
+ * was already right.
+ */
+function reconcileLayoutAfterShow(): void {
+  const reconcile = (): void => {
+    if (!mainWindow || !shellView) return;
+    const { width, height } = clientSize();
+    const bounds = shellView.getBounds();
+    if (bounds.width !== width || bounds.height !== height) layoutViews();
+  };
+  setTimeout(reconcile, 0);
+  setTimeout(reconcile, 100);
+}
+
 function layoutWebuiViews(): void {
   if (!mainWindow) return;
   const { width, height } = clientSize();
@@ -567,6 +592,7 @@ async function boot(): Promise<void> {
 
   mainWindow.show();
   layoutViews();
+  reconcileLayoutAfterShow();
   shellView.webContents.focus();
   bootPhase = 'ready';
 }
