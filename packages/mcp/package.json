@@ -1,6 +1,6 @@
 {
   "name": "@wrongstack/mcp",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "license": "MIT",
   "description": "WrongStack Model Context Protocol client and registry: stdio, SSE, and streamable HTTP transports.",
   "repository": {
