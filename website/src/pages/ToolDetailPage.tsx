@@ -1,5 +1,5 @@
 import { ArrowRight, OctagonX, ShieldCheck, Wrench } from 'lucide-react';
-import { PageHero, PageNext, SectionIntro, heroTitleFontSize } from '@/components/site/primitives';
+import { heroTitleFontSize, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
 import { TOOL_COUNT, toolCatalog, toolFromSlug, toolSlug } from '@/data/runtime-catalog';
 import { toolDetails } from '@/data/tool-details';
 import { Link, useRouter } from '@/lib/router';

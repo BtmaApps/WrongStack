@@ -15,14 +15,15 @@ export const toolCatalog = [
   {
     name: 'browser_open',
     summary:
-      'Open an isolated first-party Playwright browser session, optionally navigating to a URL.',
+      'Create an isolated, agent-owned Playwright browser session, optionally opening an approved HTTP(S) URL. Use it to begin browser QA; private and localhost origins require an explicit allowlist.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_status',
-    summary: 'Check whether first-party Playwright Chromium is installed and ready to launch.',
+    summary:
+      'Check whether the managed Playwright Chromium installation is available before attempting browser automation.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
@@ -30,21 +31,23 @@ export const toolCatalog = [
   {
     name: 'browser_list',
     summary:
-      'List browser sessions owned by the current agent without exposing other agents sessions.',
+      'List browser sessions owned by this agent, including their state and current page, without exposing sessions owned by other agents.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_navigate',
-    summary: 'Navigate an owned browser session to an approved http(s) URL.',
+    summary:
+      'Navigate one of this agent’s browser sessions to an approved HTTP(S) URL. Use browser_open first; private and localhost origins require an explicit allowlist.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_snapshot',
-    summary: 'Return bounded accessibility state plus redacted console and network summaries.',
+    summary:
+      'Inspect the current page through a bounded accessibility snapshot, with redacted console and network summaries. Prefer this before interacting with page elements.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
@@ -52,70 +55,79 @@ export const toolCatalog = [
   {
     name: 'browser_screenshot',
     summary:
-      'Capture a page or element PNG and return sensitive artifact metadata with integrity hash.',
+      'Capture a PNG of the current page or a selected element for visual QA. The result is a sensitive artifact with integrity metadata.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_click',
-    summary: 'Click an element in an owned browser session.',
+    summary:
+      'Click a verified page element in an owned browser session. Snapshot first and use the most specific stable selector available.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_type',
-    summary: 'Fill an input in an owned browser session.',
+    summary:
+      'Fill a form control in an owned browser session. Use secretEnv for credentials so secret values never enter tool arguments or the audit trail.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_select',
-    summary: 'Select an option in an owned browser session.',
+    summary:
+      'Choose an option in a select control in an owned browser session after confirming the target selector and intended value.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_press',
-    summary: 'Press a keyboard key in an owned browser session.',
+    summary:
+      'Send a keyboard key or shortcut to an owned browser session, such as Enter after verifying a form is ready to submit.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_hover',
-    summary: 'Hover an element in an owned browser session.',
+    summary:
+      'Hover over a verified page element in an owned browser session to reveal menus, tooltips, or other hover-driven UI state.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_drag',
-    summary: 'Drag one element to another in an owned browser session.',
+    summary:
+      'Drag one page element onto another in an owned browser session. Use only when the page’s drag-and-drop interaction is the intended action.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_wait',
-    summary: 'Wait for an element or a bounded duration in an owned browser session.',
+    summary:
+      'Wait for a selector, navigation condition, or bounded duration in an owned browser session before taking the next browser action.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_evaluate',
-    summary: 'Evaluate bounded JavaScript in the page.',
+    summary:
+      'Run a bounded JavaScript expression in an owned page when browser APIs cannot inspect the needed state. Treat page code as arbitrary and use sparingly.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
   },
   {
     name: 'browser_upload',
-    summary: 'Upload project-local files through a file input in an owned browser session.',
+    summary:
+      'Upload project-local files through a page file input in an owned browser session. Verify both the file path and target control before uploading.',
     permission: 'confirm',
     mutating: true,
     category: 'Browser & E2E',
@@ -123,7 +135,7 @@ export const toolCatalog = [
   {
     name: 'browser_close',
     summary:
-      'Close an owned browser session, reclaim its context, and return sensitive trace metadata.',
+      'Close an owned browser session and reclaim its resources, returning trace-artifact metadata when tracing was enabled.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
@@ -131,63 +143,71 @@ export const toolCatalog = [
   {
     name: 'e2e_plan',
     summary:
-      'Discover Playwright and Cypress projects and preview bounded E2E execution plans without loading configs or starting processes.',
+      'Create an end-to-end test plan from a feature or user flow. Use it to identify scenarios and acceptance coverage; it plans tests rather than executing them.',
     permission: 'auto',
     mutating: false,
     category: 'Browser & E2E',
   },
   {
     name: 'read',
-    summary: 'Read the contents of a file with line numbers.',
+    summary:
+      'Read a project file safely, with optional line ranges and binary-aware output. Use it to inspect source before editing; paths must stay within the project.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
   },
   {
     name: 'read_url_content',
-    summary: 'Fetch a public URL and convert HTML into clean, bounded markdown.',
+    summary:
+      'Fetch content from a URL via HTTP request and convert HTML directly to clean markdown. Use for public docs and web pages without browser overhead.',
     permission: 'auto',
     mutating: false,
     category: 'Shell, Git & web',
   },
   {
     name: 'write',
-    summary: 'Write or completely overwrite a file on disk.',
+    summary:
+      'Create or replace one project file with the complete supplied content. Use for new files or intentional full rewrites, after reading existing content when applicable.',
     permission: 'confirm',
     mutating: true,
     category: 'Files & search',
   },
   {
     name: 'edit',
-    summary: 'Perform a precise, surgical text replacement in a file.',
+    summary:
+      'Make a precise, guarded text edit by replacing an expected block in a project file. Prefer it for small source changes so mismatches prevent accidental overwrites.',
     permission: 'confirm',
     mutating: true,
     category: 'Files & search',
   },
   {
     name: 'replace',
-    summary: 'Perform a search-and-replace across multiple files using a regex pattern.',
+    summary:
+      'Preview or apply a regular-expression replacement across selected project files. Start with dry_run, constrain files and globs carefully, then apply only reviewed changes.',
     permission: 'confirm',
     mutating: true,
     category: 'Files & search',
   },
   {
     name: 'glob',
-    summary: 'Find files matching a glob pattern.',
+    summary:
+      'Find project files by glob pattern, respecting repository boundaries and ignore rules. Use it to locate candidate paths before reading or editing them.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
   },
   {
     name: 'grep',
-    summary: 'Search across files using a regular expression.',
+    summary:
+      'Search project text with a bounded regular expression and contextual matches. Use it for exact literals or patterns when semantic codebase search is not appropriate.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
   },
   {
     name: 'bash',
-    summary: "Execute an arbitrary command in the user's default shell (bash/zsh/pwsh/cmd).",
+    summary:
+      'Run a shell command in the project with bounded output and timeout controls. Use it for development commands after checking side effects; background mode returns a process handle.',
     permission: 'confirm',
     mutating: true,
     category: 'Shell, Git & web',
@@ -195,7 +215,7 @@ export const toolCatalog = [
   {
     name: 'exec',
     summary:
-      'Execute a **whitelisted, restricted set of commands** with strict argument validation.',
+      'Execute a command directly without shell interpretation, using explicit program arguments. Prefer it when argument safety and predictable process invocation matter.',
     permission: 'confirm',
     mutating: true,
     category: 'Shell, Git & web',
@@ -203,42 +223,47 @@ export const toolCatalog = [
   {
     name: 'pwsh',
     summary:
-      'Execute a PowerShell command (`pwsh -Command`) in a fresh process on Windows and return its stdout/stderr.',
+      'Execute a PowerShell command in the project with timeout, output, and background controls. Use it for Windows-native project operations and verify commands that can modify state.',
     permission: 'confirm',
     mutating: true,
     category: 'Shell, Git & web',
   },
   {
     name: 'fetch',
-    summary: 'Fetch a URL and return its content.',
-    permission: 'auto',
+    summary:
+      'Fetch and extract content from an approved HTTP(S) URL for research or integration work. Use it for a known page or endpoint, not for general web discovery.',
+    permission: 'confirm',
     mutating: false,
     category: 'Shell, Git & web',
   },
   {
     name: 'search',
-    summary: 'Perform a web search and return results with title, URL, and snippet.',
+    summary:
+      'Search the public web for current external information, then inspect selected results with fetch. Use it when repository evidence is insufficient or the fact may have changed.',
     permission: 'auto',
     mutating: false,
     category: 'Shell, Git & web',
   },
   {
     name: 'todo',
-    summary: 'Manage the session-level todo list.',
-    permission: 'auto',
-    mutating: false,
+    summary:
+      'Create, update, or list the session’s concrete work items and their progress. Use it to keep multi-step work visible; it does not implement the tasks itself.',
+    permission: 'confirm',
+    mutating: true,
     category: 'Work & state',
   },
   {
     name: 'plan',
-    summary: 'Manage a session-persistent strategic plan.',
+    summary:
+      'Create and manage higher-level plan-board items, priorities, and status. Use it for strategic work tracking rather than small immediate edits.',
     permission: 'confirm',
     mutating: true,
     category: 'Work & state',
   },
   {
     name: 'kanban',
-    summary: 'Manage project-scoped multi-kanban boards stored under .wrongstack/kanbans.',
+    summary:
+      'Manage project Kanban boards, cards, assignments, and acceptance evidence. Use it for persistent team workflow; changing board state is intentional and reviewable.',
     permission: 'confirm',
     mutating: true,
     category: 'Work & state',
@@ -246,28 +271,31 @@ export const toolCatalog = [
   {
     name: 'task',
     summary:
-      'Manage session-persistent structured work items with dependencies, types, and priorities.',
+      'Manage structured task records, dependencies, ownership, and promotion into actionable session work. Use it to organize bounded work before delegation or execution.',
     permission: 'confirm',
     mutating: true,
     category: 'Work & state',
   },
   {
     name: 'git',
-    summary: 'Safe wrapper around common git operations.',
+    summary:
+      'Inspect or run scoped Git operations in the project, including status, diff, history, branches, and commits. Review the target and working tree before mutating operations.',
     permission: 'confirm',
     mutating: true,
     category: 'Shell, Git & web',
   },
   {
     name: 'patch',
-    summary: 'Apply a unified diff (patch) to the project.',
+    summary:
+      'Apply a unified diff to project files with patch-style context checking. Use it for a reviewed multi-file change when exact patch content is available.',
     permission: 'confirm',
     mutating: true,
     category: 'Files & search',
   },
   {
     name: 'json',
-    summary: 'Parse, pretty-print, query, validate, transform, and merge JSON/JSON5/YAML.',
+    summary:
+      'Read, query, validate, or merge JSON/JSON5/YAML files while preserving valid structure (read-only — does not write). Use it instead of raw text edits when reading or querying structured data.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
@@ -275,42 +303,47 @@ export const toolCatalog = [
   {
     name: 'diff',
     summary:
-      'Show file content with line numbers, staged/working-tree diffs via git, or commit/branch diffs.',
+      'Show file content with line numbers, staged/working-tree diffs via git, or commit/branch diffs. A safer and more structured alternative to raw `git diff` via shell.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
   },
   {
     name: 'tree',
-    summary: 'Display a directory tree of the project (or a subpath).',
+    summary:
+      'Render a bounded directory tree with depth, file, hidden-file, and ignore controls. Use it for repository orientation without reading every file.',
     permission: 'auto',
     mutating: false,
     category: 'Files & search',
   },
   {
     name: 'lint',
-    summary: 'Run the project linter (primarily Biome in this repo).',
+    summary:
+      'Run the project’s configured linter for a target path or working directory and return diagnostics. Use it after code edits to catch style and static-analysis issues.',
     permission: 'confirm',
     mutating: false,
     category: 'Quality & language',
   },
   {
     name: 'format',
-    summary: 'Format source files according to project style (Biome).',
+    summary:
+      'Run the project’s configured formatter on selected files or directories. Use it after editing code, while reviewing the resulting diff for unintended formatting scope.',
     permission: 'confirm',
     mutating: true,
     category: 'Quality & language',
   },
   {
     name: 'typecheck',
-    summary: "Run the project's TypeScript type checker (`tsc --noEmit` or equivalent).",
+    summary:
+      'Run TypeScript type checking for an auto-detected or specified tsconfig. Use it after type-affecting changes; it reports diagnostics without writing source files.',
     permission: 'confirm',
     mutating: false,
     category: 'Quality & language',
   },
   {
     name: 'test',
-    summary: "Execute the project's test suite.",
+    summary:
+      'Run the detected test runner for selected tests, with optional name filtering, coverage, watch, and timeout controls. Prefer focused tests first, then broader validation as needed.',
     permission: 'confirm',
     mutating: false,
     category: 'Quality & language',
@@ -318,7 +351,7 @@ export const toolCatalog = [
   {
     name: 'language_info',
     summary:
-      'Detect language workspaces and preview predefined language-specific command plans without executing them.',
+      'Inspect detected language tooling, workspaces, and supported operations for the project or target path. Use it before invoking language-specific tooling.',
     permission: 'auto',
     mutating: false,
     category: 'Quality & language',
@@ -326,7 +359,7 @@ export const toolCatalog = [
   {
     name: 'language',
     summary:
-      'Execute predefined language-specific checks, linters, formatters, tests, builds, and debugging evidence.',
+      'Run a supported language-tooling operation in a detected workspace. Use it when the language profile provides a safer, structured alternative to an arbitrary shell command.',
     permission: 'confirm',
     mutating: true,
     category: 'Quality & language',
@@ -334,7 +367,7 @@ export const toolCatalog = [
   {
     name: 'language_package',
     summary:
-      'Restore, mutate, audit, or report outdated packages via predefined ecosystem-specific plans.',
+      'Plan or perform a dependency operation through the detected package ecosystem. Use dry-run first when possible and specify the workspace or dependency scope deliberately.',
     permission: 'confirm',
     mutating: true,
     category: 'Quality & language',
@@ -342,42 +375,47 @@ export const toolCatalog = [
   {
     name: 'install',
     summary:
-      'Install, update or manage packages using the detected package manager (pnpm/npm/yarn).',
+      'Install project dependencies with the detected package manager. Use only when dependency changes are required, and inspect lockfile and manifest changes afterward.',
     permission: 'confirm',
     mutating: true,
     category: 'Dependencies & operations',
   },
   {
     name: 'audit',
-    summary: 'Run a security audit against project dependencies (using pnpm/npm audit).',
+    summary:
+      'Run the package manager’s dependency vulnerability audit and summarize actionable findings. Use it to assess known dependency advisories, not source-code vulnerabilities.',
     permission: 'confirm',
     mutating: false,
     category: 'Dependencies & operations',
   },
   {
     name: 'outdated',
-    summary: 'Check for outdated dependencies in the project.',
+    summary:
+      'List outdated project dependencies and available versions without changing manifests or lockfiles. Use it to plan dependency maintenance.',
     permission: 'confirm',
     mutating: true,
     category: 'Dependencies & operations',
   },
   {
     name: 'logs',
-    summary: 'Read logs from files or Docker containers.',
+    summary:
+      'Read or tail configured local, container, or process logs with bounded output. Use it to investigate a known runtime failure or service behavior.',
     permission: 'confirm',
     mutating: false,
     category: 'Dependencies & operations',
   },
   {
     name: 'design',
-    summary: 'Browse, load, customize, and enforce curated frontend/mobile UI design kits.',
+    summary:
+      'Choose, preview, or materialize a UI design kit (e.g. minimal-clarity, neo-brutalist) for the active stack. Lists available kits, previews tokens, or writes a design-token source file to the project.',
     permission: 'confirm',
     mutating: true,
     category: 'Generation & design',
   },
   {
     name: 'tool_search',
-    summary: 'Search the catalog of available tools by name or description.',
+    summary:
+      'Search the full tool catalog by name or description, including tools whose schemas were withheld from this request to save tokens. Results include each matching tool input schema; use it before concluding a capability is unavailable, then invoke the local tool with tool_use instead of searching MCP.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -385,28 +423,31 @@ export const toolCatalog = [
   {
     name: 'clarify',
     summary:
-      'Ask a structured question only when an irreversible decision has mutually exclusive trade-offs.',
+      'Record or ask a focused clarification when a missing decision would materially change the implementation. Do not use it for questions that can be answered from the repository.',
     permission: 'auto',
     mutating: false,
     category: 'Work & state',
   },
   {
     name: 'tool_use',
-    summary: 'Directly execute any registered tool by its exact name, bypassing normal discovery.',
+    summary:
+      'Invoke a registered tool by its exact name, including one not listed in this request. Use it for a tool found through tool_search; the call still goes through the same permission and capability checks as a direct call.',
     permission: 'confirm',
     mutating: true,
     category: 'Discovery & index',
   },
   {
     name: 'codebase-index',
-    summary: 'Build or incrementally update the project-wide symbol index.',
+    summary:
+      'Build or refresh the local semantic codebase index, optionally for selected languages. Use it when index results are absent or stale; force performs a full reindex.',
     permission: 'confirm',
     mutating: true,
     category: 'Discovery & index',
   },
   {
     name: 'codebase-search',
-    summary: 'Search code symbols using a fast SQLite+BM25 index, with optional LSP fallback.',
+    summary:
+      'Search indexed symbols, signatures, and documentation with optional language, kind, path, or LSP-kind filters. Use it for semantic discovery before broad text search.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -414,14 +455,15 @@ export const toolCatalog = [
   {
     name: 'codebase-skeleton',
     summary:
-      'Extract compact AST outlines while preserving contracts and stripping implementation bodies.',
+      'Extract a compact structural skeleton from a source file or directory, preserving declarations while omitting implementation detail. Use it to understand unfamiliar code quickly.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
   },
   {
     name: 'codebase-repo-map',
-    summary: 'Generate a reference-weighted repository map within a bounded token budget.',
+    summary:
+      'Generate a centrality-ranked, token-budgeted Repository Map within ~1200 tokens by default: package clusters with their hub file, the repo-wide hotspots, then the signatures of the most central files. Use at the beginning of complex tasks or when navigating unfamiliar repositories to get a bird-eye view of the architecture.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -429,7 +471,7 @@ export const toolCatalog = [
   {
     name: 'codebase-context',
     summary:
-      'Find files and declarations relevant to a task using ranked symbol search and a reference-graph walk.',
+      'Find the files and declarations a task touches from a plain-language description. Ranked symbol search seeds a personalised walk over the reference graph, so results include what the matches are structurally attached to, not just what matched by name. Start here for any task spanning more than one file.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -437,7 +479,7 @@ export const toolCatalog = [
   {
     name: 'codebase-ast-replace',
     summary:
-      'Replace a symbol body or definition through AST parsing with compatibility-invariant checks.',
+      'Replace a named declaration using source-aware structure instead of fragile text matching. Use it for a function, method, class, interface, or variable when the target is unambiguous.',
     permission: 'confirm',
     mutating: true,
     category: 'Discovery & index',
@@ -445,7 +487,7 @@ export const toolCatalog = [
   {
     name: 'codebase-invariant-check',
     summary:
-      'Verify AST backward-compatibility invariants between original code and a candidate mutation.',
+      'Compare candidate code with its original source and report structural invariants that may have changed. Use before writing a risky refactor; it validates but does not modify files.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -453,14 +495,15 @@ export const toolCatalog = [
   {
     name: 'codebase-impact-analysis',
     summary:
-      'Calculate the production and test blast radius before changing a function, class, or type.',
+      'Find likely callers, dependents, related tests, and change risk for a named symbol. Use it before changing a public or widely used declaration.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
   },
   {
     name: 'codebase-targeted-test',
-    summary: 'Discover and run only the test suites that cover a changed symbol or source file.',
+    summary:
+      'Discover and run tests that cover a specified symbol, source file, or explicit test files. Use it for focused regression validation after a change.',
     permission: 'confirm',
     mutating: false,
     category: 'Quality & language',
@@ -468,14 +511,15 @@ export const toolCatalog = [
   {
     name: 'security-ast-scan',
     summary:
-      'Scan source ASTs for security vulnerabilities and performance anti-patterns with ranked remediation.',
+      'Statically scan source code for supported security patterns and return findings with locations. Use it as a focused code check, not as a substitute for a full security assessment.',
     permission: 'auto',
     mutating: false,
     category: 'Quality & language',
   },
   {
     name: 'codebase-incoming-calls',
-    summary: 'Find all callers of a function, method, or symbol — who invokes or references it.',
+    summary:
+      'Find indexed call sites that invoke a named function, method, or type, optionally scoped to a file. Use it to estimate breakage before changing an API.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -483,7 +527,7 @@ export const toolCatalog = [
   {
     name: 'codebase-outgoing-calls',
     summary:
-      'Find all functions/methods/symbols that a given symbol calls or depends on — its callees.',
+      'Find indexed symbols called by a named function, method, or type, optionally scoped to a file. Use it to understand dependencies before refactoring behavior.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -491,7 +535,7 @@ export const toolCatalog = [
   {
     name: 'codebase-stats',
     summary:
-      'Return health and statistics about the current symbol index (total symbols, files, language/kind breakdown, size, last update).',
+      'Report codebase-index health, indexed file and symbol counts, languages, and freshness. Use it before relying on indexed discovery results.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -499,7 +543,7 @@ export const toolCatalog = [
   {
     name: 'dead-code-scan',
     summary:
-      'Scan TypeScript/JavaScript source files for exported symbols that appear unused anywhere in the project.',
+      'Analyze the indexed project for declarations that appear unreachable from configured entry points. Treat results as candidates for review, not automatic deletion instructions.',
     permission: 'auto',
     mutating: false,
     category: 'Discovery & index',
@@ -943,7 +987,8 @@ export const pluginCatalog = [
   {
     name: 'process-guard',
     risk: 'high',
-    summary: 'Reports kill commands; built-in bash and exec guards enforce protection for WrongStack processes and host terminals.',
+    summary:
+      'Reports kill commands; built-in bash and exec guards enforce protection for WrongStack processes and host terminals.',
     defaultState: 'inactive',
     source: 'Suite',
   },

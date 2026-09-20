@@ -219,6 +219,12 @@ const GATES = [
     prereq: 'build',
   },
   {
+    id: 'website-tool-catalog',
+    label: 'Website tool catalog and detail projections',
+    cmd: 'pnpm website:tools:check',
+    prereq: 'build',
+  },
+  {
     id: 'plugin-manifests',
     label: 'Plugin projection snapshots',
     cmd: 'pnpm plugins:manifest:check',
@@ -500,7 +506,9 @@ const title =
 const LOG_DIR = LOG_DIRS[profile] ?? LOG_DIRS.release;
 
 if (listOnly) {
-  console.log(`${title} gate matrix — plan (--profile ${profile}${shard ? `, --shard ${shard.index}/${shard.total}` : ''})`);
+  console.log(
+    `${title} gate matrix — plan (--profile ${profile}${shard ? `, --shard ${shard.index}/${shard.total}` : ''})`,
+  );
   for (let idx = 0; idx < profileGates.length; idx += 1) {
     const g = profileGates[idx];
     const marker = shard

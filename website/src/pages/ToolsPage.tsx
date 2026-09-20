@@ -39,20 +39,20 @@ const MUTATING_COUNT = toolCatalog.filter((t) => t.mutating).length;
  * the marketing page never disagrees with the runtime. Update both together if
  * the tier sets change — regenerate the numbers by importing
  * `BUILTIN_TIER_COUNTS` from packages/tools/src/tool-tier.ts and reading its
- * values (current: off=70, minimal/light/aggressive=23, medium=43).
+ * values (current: off=67, minimal/light/aggressive=26, medium=47).
  *
  *   off       → every registered tool
- *   minimal   → TIER1 only (23)
- *   light     → TIER1 only (23) — same membership as minimal, different guidance
- *   medium    → TIER1 ∪ TIER2 (23 + 20 = 43)
- *   aggressive → TIER1 only (23) — narrowest surface
+ *   minimal   → TIER1 only (26)
+ *   light     → TIER1 only (26) — same membership as minimal, different guidance
+ *   medium    → TIER1 ∪ TIER2 (26 + 21 = 47)
+ *   aggressive → TIER1 only (26) — narrowest surface
  */
 const TOOL_TIER_COUNTS = {
   off: TOOL_COUNT,
-  minimal: 23,
-  light: 23,
-  medium: 43,
-  aggressive: 23,
+  minimal: 26,
+  light: 26,
+  medium: 47,
+  aggressive: 26,
 } as const;
 
 type ToolScope = 'all' | 'auto' | 'confirm' | 'read-only' | 'mutating';
