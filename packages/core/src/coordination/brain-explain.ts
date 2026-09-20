@@ -90,7 +90,7 @@ export function explainBrainDecision(
   const steps: BrainDecisionStepExplanation[] = [];
 
   // 1. Ledger Guard Stage
-  if (ctx.ledger && ctx.ledger.isEnabled() && ctx.ledger.failureStreakFor) {
+  if (ctx.ledger?.isEnabled() && ctx.ledger.failureStreakFor) {
     const streak = ctx.ledger.failureStreakFor(request);
     const threshold = ctx.ledgerAutoDenyAfterFailures ?? 3;
     if (streak >= threshold) {
@@ -131,7 +131,7 @@ export function explainBrainDecision(
   }
 
   // 2. Decision Cache Stage
-  if (ctx.cache && ctx.cache.isEnabled()) {
+  if (ctx.cache?.isEnabled()) {
     const cachedDecision = ctx.cache.peek(request);
     if (cachedDecision) {
       steps.push({
