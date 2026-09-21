@@ -61,6 +61,30 @@ function parseComposerLock(content: string): Map<string, string> {
 }
 
 /**
+ * Composer "platform packages" are requirements on the runtime ENVIRONMENT, not
+ * packages: `php` (plus `php-*` variants), `hhvm`, `ext-*`, `lib-*`, and the
+ * `composer*` pseudo-packages (`composer`, `composer-plugin-api`,
+ * `composer-runtime-api`). Composer records them in the lockfile's `platform` /
+ * `platform-dev` sections, never under `packages`, so they can never resolve to
+ * a registry version — emitting them produced phantom dependencies
+ * (`pkg:php/ext-json`, no `locked`) in the inventory, the SBOM and every
+ * advisory query. Vendor-prefixed names always contain a `/` and are real
+ * packages (`composer/composer` must stay), so the slash guard protects them.
+ */
+function isPlatformRequirement(name: string): boolean {
+  if (name.includes('/')) return false;
+  return (
+    name === 'php' ||
+    name.startsWith('php-') ||
+    name === 'hhvm' ||
+    name.startsWith('ext-') ||
+    name.startsWith('lib-') ||
+    name === 'composer' ||
+    name.startsWith('composer-')
+  );
+}
+
+/**
  * Determine status from version constraint.
  */
 function statusForComposerSpec(spec: string): DependencyObservation['status'] {
@@ -138,6 +162,8 @@ export class PhpAdapter implements EcosystemAdapter {
     for (const { deps, scope } of sections) {
       if (!deps) continue;
       for (const [name, constraint] of Object.entries(deps)) {
+        // Platform requirements target the runtime, not a registry package.
+        if (isPlatformRequirement(name)) continue;
         if (seen.has(name)) continue;
         seen.add(name);
 

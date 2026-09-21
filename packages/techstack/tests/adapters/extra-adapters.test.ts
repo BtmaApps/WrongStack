@@ -104,6 +104,74 @@ describe('DartAdapter', () => {
     }, dir);
   });
 
+  // A constraint written anywhere but inline (bare `name:`, the block `version:`
+  // key, a flow mapping, or a custom-host mapping) used to leave the parser's
+  // `*` placeholder in place, which the adapter then discarded as if it were an
+  // SDK entry — the dependency disappeared from the inventory.
+  it('inventories bare, map-form and hosted declarations', async () => {
+    const PUBSPEC_FORMS = [
+      'name: my_app',
+      'dependencies:',
+      '  http: ^1.2.0',
+      '  collection:',
+      '  archive:',
+      '    version: ^3.4.0',
+      '  intl: {version: ^0.19.0}',
+      '  private_pkg:',
+      '    hosted: https://pub.example.com',
+      '    version: ^2.0.0',
+      '  flutter:',
+      '    sdk: flutter',
+      'dev_dependencies:',
+      '  test: ^1.24.0',
+    ].join('\n');
+    const LOCK_FORMS = [
+      'packages:',
+      '  http:',
+      '    version: "1.2.2"',
+      '  collection:',
+      '    version: "1.19.0"',
+      '  archive:',
+      '    version: "3.6.1"',
+      '  intl:',
+      '    version: "0.19.0"',
+      '  private_pkg:',
+      '    version: "2.0.1"',
+      '  test:',
+      '    version: "1.25.0"',
+    ].join('\n');
+    const { dir, ws } = mkWorkspace('dart', {
+      'pubspec.yaml': PUBSPEC_FORMS,
+      'pubspec.lock': LOCK_FORMS,
+    });
+    await withCleanup(async () => {
+      const deps = await new DartAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name).sort()).toEqual([
+        'archive',
+        'collection',
+        'http',
+        'intl',
+        'private_pkg',
+        'test',
+      ]);
+      expect(deps.find((d) => d.name === 'archive')).toMatchObject({
+        requested: '^3.4.0',
+        locked: '3.6.1',
+      });
+      expect(deps.find((d) => d.name === 'intl')?.requested).toBe('^0.19.0');
+      expect(deps.find((d) => d.name === 'private_pkg')).toMatchObject({
+        requested: '^2.0.0',
+        locked: '2.0.1',
+      });
+      // A bare declaration reports no requested version and no invented `@*`.
+      expect(deps.find((d) => d.name === 'collection')?.requested).toBeUndefined();
+      expect(deps.find((d) => d.name === 'collection')?.locked).toBe('1.19.0');
+      expect(deps.every((d) => !(d.purl ?? '').includes('@*'))).toBe(true);
+      // SDK-provided packages stay excluded.
+      expect(deps.find((d) => d.name === 'flutter')).toBeUndefined();
+    }, dir);
+  });
+
   it('has manifest evidence on every dep', async () => {
     const { dir, ws } = mkWorkspace('dart', { 'pubspec.yaml': PUBSPEC });
     await withCleanup(async () => {
@@ -152,6 +220,51 @@ describe('PhpAdapter', () => {
     await withCleanup(async () => {
       const deps = await new PhpAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'monolog/monolog')?.locked).toBe('3.5.0');
+    }, dir);
+  });
+
+  it('does not inventory Composer platform requirements as packages', async () => {
+    const { dir, ws } = mkWorkspace('php', {
+      'composer.json': JSON.stringify({
+        require: {
+          php: '>=8.2',
+          'ext-json': '*',
+          'lib-openssl': '*',
+          'composer-runtime-api': '^2.2',
+          'monolog/monolog': '^3.0',
+          // Vendor-prefixed name: a real package, not a platform package.
+          'composer/composer': '^2.7',
+        },
+        'require-dev': { 'ext-xdebug': '*', 'phpunit/phpunit': '^10.0' },
+      }),
+      'composer.lock': JSON.stringify({
+        packages: [
+          { name: 'monolog/monolog', version: '3.5.0' },
+          { name: 'composer/composer', version: '2.7.7' },
+        ],
+        'packages-dev': [{ name: 'phpunit/phpunit', version: '10.5.0' }],
+        platform: { php: '>=8.2', 'ext-json': '*' },
+        'platform-dev': { 'ext-xdebug': '*' },
+      }),
+    });
+    await withCleanup(async () => {
+      const deps = await new PhpAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name).sort()).toEqual([
+        'composer/composer',
+        'monolog/monolog',
+        'phpunit/phpunit',
+      ]);
+      for (const platform of [
+        'php',
+        'ext-json',
+        'ext-xdebug',
+        'lib-openssl',
+        'composer-runtime-api',
+      ]) {
+        expect(deps.find((d) => d.name === platform)).toBeUndefined();
+      }
+      // Platform requirements never resolve to a lockfile package.
+      expect(deps.filter((d) => d.locked === undefined)).toEqual([]);
     }, dir);
   });
 
@@ -226,6 +339,51 @@ describe('DotNetAdapter', () => {
     }, dir);
   });
 
+  // NuGet writes the restore graph to <project>/obj/project.assets.json. These
+  // fixtures resolve a version DIFFERENT from the declaration, so the assertion
+  // can only pass when the graph was actually read (the older fixture above
+  // declares the same version and cannot tell the read from the fallback).
+  const ASSETS_SDK = JSON.stringify({
+    libraries: { 'Newtonsoft.Json/13.0.3': { type: 'package' } },
+  });
+
+  function writeRestoreGraph(dir: string): string {
+    mkdirSync(join(dir, 'obj'), { recursive: true });
+    const graphPath = join(dir, 'obj', 'project.assets.json');
+    writeFileSync(graphPath, ASSETS_SDK);
+    return graphPath;
+  }
+
+  it('reads the restore graph from the SDK location obj/project.assets.json', async () => {
+    const { dir, ws } = mkWorkspace('dotnet', { 'App.csproj': CSPROJ });
+    await withCleanup(async () => {
+      const graphPath = writeRestoreGraph(dir);
+      const deps = await new DotNetAdapter().inventory({ ...ws, lockfiles: [graphPath] }, {});
+      const dep = deps.find((d) => d.name === 'Newtonsoft.Json');
+      expect(dep).toMatchObject({
+        requested: '13.0.3',
+        locked: '13.0.3',
+        purl: 'pkg:dotnet/Newtonsoft.Json@13.0.3',
+      });
+      expect(dep?.evidence.some((e) => e.kind === 'lockfile')).toBe(true);
+    }, dir);
+  });
+
+  it('reports the resolved version instead of a floating declaration', async () => {
+    const CSProj_FLOATING = CSPROJ.replace('Version="13.0.3"', 'Version="13.*"');
+    const { dir, ws } = mkWorkspace('dotnet', { 'App.csproj': CSProj_FLOATING });
+    await withCleanup(async () => {
+      writeRestoreGraph(dir);
+      const deps = await new DotNetAdapter().inventory(ws, {});
+      const dep = deps.find((d) => d.name === 'Newtonsoft.Json');
+      expect(dep).toMatchObject({
+        requested: '13.*',
+        locked: '13.0.3',
+        purl: 'pkg:dotnet/Newtonsoft.Json@13.0.3',
+      });
+    }, dir);
+  });
+
   it('returns [] when no .csproj is found', async () => {
     const { dir, ws } = mkWorkspace('dotnet', {});
     await withCleanup(async () => {
@@ -269,6 +427,106 @@ describe('RubyAdapter', () => {
     await withCleanup(async () => {
       const deps = await new RubyAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'puma')?.locked).toBe('6.4.2');
+    }, dir);
+  });
+
+  // Comments are not declarations, and an inline comment is not part of the
+  // declaration it trails.
+  const GEMFILE_WITH_COMMENTS = [
+    "source 'https://rubygems.org'",
+    "gem 'rack', '~> 3.1'",
+    "gem 'redis' # git: https://example.test/not-a-source",
+    "# gem 'nokogiri', '~> 1.16'",
+    "#gem 'byebug'",
+    "#  gem 'pry'",
+    "# gem 'evil', git: 'https://example.test/evil'",
+    'group :development do',
+    "  # gem 'rubocop'",
+    "  gem 'rspec'",
+    'end',
+  ].join('\n');
+
+  it('ignores commented-out gem declarations', async () => {
+    const { dir, ws } = mkWorkspace('ruby', { Gemfile: GEMFILE_WITH_COMMENTS });
+    await withCleanup(async () => {
+      const deps = await new RubyAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name).sort()).toEqual(['rack', 'redis', 'rspec']);
+      // A live gem inside a group block is still a dependency.
+      expect(deps.find((d) => d.name === 'rack')?.requested).toBe('~> 3.1');
+    }, dir);
+  });
+
+  it('does not let an inline comment forge the dependency source type', async () => {
+    const { dir, ws } = mkWorkspace('ruby', { Gemfile: GEMFILE_WITH_COMMENTS });
+    await withCleanup(async () => {
+      const deps = await new RubyAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'redis')).toMatchObject({
+        sourceType: 'registry',
+        status: 'current',
+      });
+    }, dir);
+  });
+
+  // Real Bundler shape: specs at 4-space indent, each spec's own requirements
+  // nested one level deeper (6 spaces) under an alphabetically-later gem.
+  const GEMFILE_LOCK_NESTED = [
+    'GEM',
+    '  remote: https://rubygems.org/',
+    '  specs:',
+    '    actionpack (7.1.4)',
+    '      rack (>= 2.2.4)',
+    '    puma (6.4.2)',
+    '    rack (3.1.8)',
+    '    rails (7.1.4)',
+    '      actionpack (= 7.1.4)',
+    '      rack (>= 2.2.4)',
+    '',
+    'PLATFORMS',
+    '  ruby',
+    '',
+    'DEPENDENCIES',
+    '  actionpack',
+    '  puma',
+    '  rack',
+  ].join('\n');
+  const GEMFILE_NESTED = [
+    "source 'https://rubygems.org'",
+    "gem 'actionpack'",
+    "gem 'puma'",
+    "gem 'rack'",
+  ].join('\n');
+
+  it('ignores nested requirement lines when reading resolved versions', async () => {
+    const { dir, ws } = mkWorkspace('ruby', {
+      Gemfile: GEMFILE_NESTED,
+      'Gemfile.lock': GEMFILE_LOCK_NESTED,
+    });
+    await withCleanup(async () => {
+      const deps = await new RubyAdapter().inventory(ws, {});
+      // `rails` requires these two; its requirement lines are not versions.
+      expect(deps.find((d) => d.name === 'actionpack')).toMatchObject({
+        locked: '7.1.4',
+        purl: 'pkg:gem/actionpack@7.1.4',
+      });
+      expect(deps.find((d) => d.name === 'rack')).toMatchObject({
+        locked: '3.1.8',
+        purl: 'pkg:gem/rack@3.1.8',
+      });
+      // A gem nothing depends on was never affected.
+      expect(deps.find((d) => d.name === 'puma')?.locked).toBe('6.4.2');
+    }, dir);
+  });
+
+  it('never records a constraint operator as a locked version', async () => {
+    const { dir, ws } = mkWorkspace('ruby', {
+      Gemfile: GEMFILE_NESTED,
+      'Gemfile.lock': GEMFILE_LOCK_NESTED,
+    });
+    await withCleanup(async () => {
+      const deps = await new RubyAdapter().inventory(ws, {});
+      for (const dep of deps) {
+        if (dep.locked !== undefined) expect(dep.locked).not.toMatch(/^[<>=~!^]/);
+      }
     }, dir);
   });
 

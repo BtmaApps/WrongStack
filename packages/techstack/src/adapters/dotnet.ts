@@ -118,16 +118,28 @@ export class DotNetAdapter implements EcosystemAdapter {
     // Parse PackageReferences
     const refs = parseCsproj(csprojContent);
 
-    // Read project.assets.json for locked versions
-    const assetsPath = join(root, 'project.assets.json');
+    // Read the NuGet restore graph for locked versions. NuGet writes it to
+    // `<project>/obj/project.assets.json`; probing only the workspace root meant
+    // the read never succeeded in a real layout, so `locked` silently fell back
+    // to the csproj declaration and no lockfile evidence was attached — a
+    // floating declaration such as `13.*` was then reported as the resolved
+    // version. Discovery-reported lockfiles come first, then both known paths.
+    const assetsCandidates = [
+      ...workspace.lockfiles.filter((f) => f.endsWith('project.assets.json')),
+      join(root, 'obj', 'project.assets.json'),
+      join(root, 'project.assets.json'),
+    ];
     let lockVersions = new Map<string, string>();
     let lockEv: Evidence | undefined;
-    try {
-      const assetsContent = await readFile(assetsPath, 'utf-8');
-      lockVersions = parseProjectAssetsJson(assetsContent);
-      lockEv = lockfileEvidence(assetsPath);
-    } catch {
-      // No assets file
+    for (const candidate of assetsCandidates) {
+      try {
+        const assetsContent = await readFile(candidate, 'utf-8');
+        lockVersions = parseProjectAssetsJson(assetsContent);
+        lockEv = lockfileEvidence(candidate);
+        break;
+      } catch {
+        // Try the next known location.
+      }
     }
 
     for (const ref of refs) {

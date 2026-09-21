@@ -63,8 +63,16 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
     if (depMatch && line.startsWith('  ') && !line.startsWith('    ')) {
       currentName = depMatch[1]!.trim();
       let constraint = depMatch[2]!.trim();
-      // Handle empty constraints (sdk: flutter has constraint as sub-props)
-      if (!constraint || constraint.startsWith('{')) {
+      // A flow mapping carries the constraint inline: `intl: {version: ^0.19.0}`.
+      if (constraint.startsWith('{')) {
+        constraint = /\bversion:\s*([^,}]+)/.exec(constraint)?.[1]?.trim() ?? '';
+      }
+      // `any` is pubspec's explicit "no constraint"; '' is either a bare
+      // `name:` or a block/failed-map form whose `version:` arrives later.
+      // All of them mean "any version" and use the `*` marker — they are real
+      // dependencies, NOT SDK declarations (the adapter used to conflate the
+      // two and drop them).
+      if (constraint === '' || constraint === 'any') {
         constraint = '*';
       }
       const sec = sections.get(currentSection)!;
@@ -75,8 +83,14 @@ function parsePubspecYaml(content: string): Map<string, Map<string, string>> {
     if (currentName && line.startsWith('    ')) {
       const sec = sections.get(currentSection);
       if (!sec) continue;
-      if (/^sdk:\s*flutter\b/.test(trimmed)) sec.set(currentName, 'sdk:flutter');
-      else if (/^git:\s*/.test(trimmed)) sec.set(currentName, `git:${trimmed.slice(4).trim()}`);
+      // Block-mapping constraint: `    version: ^3.4.0`.
+      if (/^version:\s*\S/.test(trimmed)) {
+        const declared = trimmed.slice('version:'.length).trim();
+        sec.set(currentName, declared === 'any' ? '*' : declared);
+      } else if (/^sdk:\s*\S/.test(trimmed)) {
+        // `sdk: flutter` / `sdk: dart` — provided by an SDK, not a package.
+        sec.set(currentName, `sdk:${trimmed.slice('sdk:'.length).trim()}`);
+      } else if (/^git:\s*/.test(trimmed)) sec.set(currentName, `git:${trimmed.slice(4).trim()}`);
       else if (/^path:\s*/.test(trimmed)) sec.set(currentName, `path:${trimmed.slice(5).trim()}`);
     }
   }
@@ -189,9 +203,10 @@ export class DartAdapter implements EcosystemAdapter {
         if (seen.has(name)) continue;
         seen.add(name);
 
-        // Skip sdk dependencies (they are the Dart SDK itself)
-        if (constraint === '*' || constraint === 'sdk:flutter' || constraint.startsWith('{'))
-          continue;
+        // Skip SDK-provided packages (they are the SDK itself). `*` is pubspec's
+        // "any version" declaration — a real dependency, which the old check
+        // discarded along with the SDK entries.
+        if (constraint.startsWith('sdk:')) continue;
 
         const locked = lockVersions.get(name);
 
@@ -208,13 +223,16 @@ export class DartAdapter implements EcosystemAdapter {
         }
 
         const isRegistry = sourceType === 'registry';
+        // `*` means "any version" — there is no declared version to report, and
+        // it must not leak into the purl as `@*`.
+        const declared = constraint === '*' ? undefined : constraint;
         // Strip caret/tilde/>= for PURL — use locked if available
         const purl =
-          isRegistry && (locked || constraint)
+          isRegistry && (locked || declared)
             ? buildPurl({
                 type: 'dart',
                 name,
-                version: locked || constraint.replace(/^[\^~>=<\s]+/, ''),
+                version: locked || declared!.replace(/^[\^~>=<\s]+/, ''),
               })
             : isRegistry
               ? buildPurl({ type: 'dart', name })

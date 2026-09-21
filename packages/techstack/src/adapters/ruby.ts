@@ -17,6 +17,7 @@ import type {
   Workspace,
 } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
+import { stripInlineComment } from './parse-utils.js';
 import { lockfileEvidence, manifestEvidence } from './paths.js';
 
 /**
@@ -33,9 +34,20 @@ function parseGemfile(content: string): Array<{
     sourceType: 'registry' | 'git' | 'path';
   }> = [];
   const gemRegex = /gem\s+['"]([^'"]+)['"]([^\n]*)/g;
-  for (const match of content.matchAll(gemRegex)) {
+  // A Gemfile declares dependencies through LIVE `gem '…'` calls; commented-out
+  // text is not a declaration. Scanning the raw file inventoried
+  // `# gem 'nokogiri'` as a real dependency and let a trailing comment forge the
+  // source type (`gem 'redis' # git: …` came out as a git dependency).
+  // `stripInlineComment` already understands quotes and escapes, so a `#` inside
+  // a name, version or repository URL survives.
+  const code = content
+    .split('\n')
+    .map((line) => stripInlineComment(line))
+    .join('\n');
+  for (const match of code.matchAll(gemRegex)) {
     const name = match[1]!;
-    // Skip gems that are clearly comments or block-evaluated
+    // Hard-coded name skip, pinned by tests/adapters/extra-adapters.test.ts: a
+    // declaration named `rails`/`ruby` is dropped regardless of its syntax.
     if (name === 'rails' || name === 'ruby') continue;
     const tail = match[2] ?? '';
     const version = /^\s*,\s*['"]([^'"]+)['"]/.exec(tail)?.[1];
@@ -71,7 +83,14 @@ function parseGemfileLock(content: string): Map<string, string> {
       continue;
     }
     if (!inSpecs) continue;
-    const match = /^\s{4,}([\w-]+)\s+\(([^)]+)\)/.exec(line);
+    // Bundler indents a spec line by EXACTLY four spaces and nests that spec's
+    // own requirements one level deeper (six spaces): `      rack (>= 2.2.4)`.
+    // The old `^\s{4,}` matched those nested lines too, recording the gem with
+    // the constraint fragment as its version (`>==`, `=`, `~>`) — and because a
+    // spec's requirements are written under a later, alphabetically-later gem,
+    // the fragment OVERWROTE the resolved version. A word character cannot match
+    // the fifth space, so anchoring on exactly four keeps them out.
+    const match = /^ {4}([\w-]+)\s+\(([^)]+)\)/.exec(line);
     if (match) {
       const version = match[2]!.split(' ')[0] ?? match[2]!;
       versions.set(match[1]!, version);
