@@ -71,16 +71,27 @@ const LITERAL_PIPE = String.raw`\|`;
 
 const SIGNATURES: ReadonlyArray<{ label: string; pattern: RegExp }> = [
   {
+    // Long flags now accept a hyphenated prefix before the keyword (compound
+    // spellings like a db-prefixed password flag), and the list is assembled
+    // from a keyword constant, so the needle matches the assembled-template
+    // shape OR an inlined keyword copy. Described by shape here, never by
+    // literal spelling (see the rule at the top of this block).
     label: 'long-flag / bare-long-flag keyword alternation',
-    pattern: new RegExp(String.raw`--\(\?[^)]*\b(?:${FLAG_KEYWORDS.join('|')})\b`, 'i'),
+    pattern: new RegExp(
+      String.raw`--\(\?:\[\\{1,2}w-\]\+-\)\?\(\?:(?:\$\{KEYWORDS\}|(?:${FLAG_KEYWORDS.join('|')}))`,
+      'i',
+    ),
   },
   {
     label: 'env-var name alternation',
     pattern: new RegExp(String.raw`\(\?:${ENV_KEYWORDS.join(LITERAL_PIPE)}\b`),
   },
   {
+    // The high-entropy flag-name classes cross hyphens now, so the needle
+    // tracks the hyphen-tolerant flag-name shape instead of the word-char-only
+    // one it replaced.
     label: 'high-entropy flag-name alternation',
-    pattern: new RegExp(String.raw`--\\w*\(\?:${HIGH_ENTROPY_KEYWORDS.join(LITERAL_PIPE)}`),
+    pattern: new RegExp(String.raw`--\[\\w-\]\*\(\?:(?:${HIGH_ENTROPY_KEYWORDS.join('|')})`),
   },
   {
     label: 'short-flag secret alternation',

@@ -109,12 +109,27 @@ const OUTBOUND_SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,]+/g;
 const OUTBOUND_SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,]+/gi;
 /** Shared: high-entropy value behind a secret-looking flag name. */
 const HIGH_ENTROPY_FLAG_PATTERN =
-  /--\w*(?:token|key|secret|password|passwd|auth|credential)\w*[=\s,][A-Za-z0-9+/=]{32,}/g;
+  /--[\w-]*(?:token|key|secret|password|passwd|auth|credential)[\w-]*[=\s,][A-Za-z0-9+/=]{32,}/g;
+
+/**
+ * Secret keywords are matched as the FINAL hyphen-separated segment of a
+ * compound long flag: `--(?:[\w-]+-)?KEYWORD`. Real tools spell secret flags
+ * `--db-password`, `--auth-token`, `--signing-key`, and a list that only
+ * accepts the keyword as the ENTIRE name left those leaking verbatim through
+ * every surface — while the value-less env-var pattern (which needs `[=:]`)
+ * could not backstop the space- or comma-separated forms. The optional
+ * hyphenated prefix closes that, and the existing callback rule (the
+ * separator must sit immediately after the flag NAME) keeps keyword-in-the-
+ * middle names such as `--token-file` and `--auth-scheme` visible: their
+ * match truncates before the separator and renders unchanged.
+ */
+const KEYWORDS =
+  'token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token';
 
 /** Shared by `tools` (`/ps` output, crash dumps) and `core` telemetry. */
 const COMMAND_PATTERNS: readonly RegExp[] = [
   // --flag=value, --flag "value", --flag,value (value captured up to the next space)
-  /--(?:token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token)(?:[=\s,][^\s]*)?/gi,
+  new RegExp(`--(?:[\\w-]+-)?(?:${KEYWORDS})(?:[=\\s,][^\\s]*)?`, 'gi'),
   SHORT_FLAG_TOKEN_PATTERN,
   SHORT_FLAG_SECRET_PATTERN,
   // env var–style secrets: TOKEN=x, API_KEY=y, TOKEN:z, …
@@ -125,7 +140,10 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
 /** Telegram outbound notifications: the highest-risk exfiltration surface. */
 const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // Same named long flags plus DATABASE_URL / CONNECTION_STRING spellings.
-  /--(?:token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token|database[-_]?url|connection[-_]?string)(?:[=\s,][^\s]*)?/gi,
+  new RegExp(
+    `--(?:[\\w-]+-)?(?:${KEYWORDS}|database[-_]?url|connection[-_]?string)(?:[=\\s,][^\\s]*)?`,
+    'gi',
+  ),
   // Glued short forms match here too, closing the `curl -tSECRET` /
   // `redis-cli -aSECRET` under-redaction. The outbound value class is wider
   // than the command profile's so a hyphenated secret is not truncated at its
@@ -203,8 +221,10 @@ export function redactSecrets(text: string): string {
 
 // Long flag names that carry a secret when supplied as a bare flag followed by
 // a separate value arg (e.g. ["--token", "s3cr3t"]). Used by redactCommandArgs.
-const BARE_SENSITIVE_LONG_FLAG =
-  /^--(?:token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token)$/i;
+// Same keyword-as-final-segment rule as the named long-flag patterns above, so
+// ["--db-password", "s3cr3t"] redacts like ["--password", "s3cr3t"] while
+// ["--token-file", "/path"] stays visible.
+const BARE_SENSITIVE_LONG_FLAG = new RegExp(`^--(?:[\\w-]+-)?(?:${KEYWORDS})$`, 'i');
 // Short flags that carry a secret when bare (e.g. ["-p", "s3cr3t"]).
 const BARE_SENSITIVE_SHORT_FLAG = /^-(?:p|t|a)$/i;
 

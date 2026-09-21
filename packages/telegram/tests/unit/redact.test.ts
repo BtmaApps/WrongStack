@@ -133,6 +133,46 @@ describe('redactSecrets', () => {
     expect(redactSecrets('run --token')).toBe('run **redacted**');
   });
 
+  /**
+   * Regression: hyphenated compound secret flags reached notifications
+   * verbatim because the named long-flag alternation required the keyword to
+   * be the ENTIRE flag name and the high-entropy fallback could not cross a
+   * hyphen. The equals form was incidentally saved by the env-var pattern
+   * (substring match on the keyword, needs `[=:]`), so the space-separated
+   * form and hyphen-keyword names like `--ssh-key` are the proven leak
+   * shapes here. Keywords are now matched as the FINAL hyphen-separated
+   * segment of the flag name. (Keyword-in-the-middle names such as
+   * `--token-file` are wiped via the pre-existing unseparable-match policy —
+   * unchanged by that fix and deliberately not asserted here.)
+   */
+  describe('hyphenated compound secret flags (keyword as final segment)', () => {
+    it('redacts --auth-token <value> (space form — env pattern cannot backstop)', () => {
+      expect(redactSecrets('runner --auth-token CANARY_HYPHEN_TOKEN_AAA https://x')).toBe(
+        'runner --auth-token [REDACTED] https://x',
+      );
+    });
+
+    it('redacts a high-entropy value behind hyphenated --ssh-key=', () => {
+      const out = redactSecrets('deploy --ssh-key=SkRmOQzN3a8qP4xY7vW2bH1cU6tZ0sL9 --verbose');
+      expect(out).not.toContain('SkRmOQzN3a8qP4xY7vW2bH1cU6tZ0sL9');
+      expect(out).toContain('--ssh-key=[REDACTED]');
+    });
+
+    it('redacts --db-password=<value> with the full flag name rendered', () => {
+      // Value interpolated from the CANARY constant: an inline `password=`
+      // literal in the source is rewritten at write time by the repo's
+      // secret filter and silently breaks the fixture.
+      const out = redactSecrets(`db-sync --db-password=${PASSWORD_VALUE} --host localhost`);
+      expect(out).toBe('db-sync --db-password=[REDACTED] --host localhost');
+    });
+
+    it('leaves a flag with no secret keyword unchanged', () => {
+      expect(redactSecrets('deploy --dry-run --color=always')).toBe(
+        'deploy --dry-run --color=always',
+      );
+    });
+  });
+
   describe('real-world tool output patterns', () => {
     it('redacts a mix of flag-style and env-style secrets in one block', () => {
       const input = [

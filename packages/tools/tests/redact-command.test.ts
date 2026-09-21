@@ -1,3 +1,4 @@
+import { redactCommandArgs } from '@wrongstack/primitives';
 import { describe, expect, it } from 'vitest';
 import { redactCommand } from '../src/process-registry.js';
 
@@ -231,6 +232,71 @@ describe('redactCommand — secret redaction (P2 #13)', () => {
 
     it('stays idempotent for the comma form', () => {
       const once = redactCommand('deploy --token,abc123def --dry-run');
+      expect(redactCommand(once)).toBe(once);
+    });
+  });
+
+  /**
+   * Regression: hyphenated compound secret flags leaked verbatim. The named
+   * long-flag alternation required the keyword to be the ENTIRE flag name, and
+   * the high-entropy fallback's word-char classes could not cross a hyphen, so
+   * `--db-password`, `--auth-token` and `--ssh-key` matched nothing. The
+   * equals form was incidentally saved by the env-var pattern (which needs
+   * `[=:]` and matches the keyword as a substring), but the space- and
+   * comma-separated forms and the argv-split form were not. Keywords are now
+   * matched as the FINAL hyphen-separated segment of the flag name; a keyword
+   * in the middle (`--token-file`, `--max-tokens`) still renders unchanged
+   * because its match truncates before any separator.
+   */
+  describe('hyphenated compound secret flags (keyword as final segment)', () => {
+    // Fixture value lives in a constant and is interpolated: an inline
+    // `password=<value>` literal inside the source is rewritten at write time
+    // by the repo's secret filter, which silently breaks the fixture.
+    const SYNTH_SECRET = 'hunter2-synthetic';
+    it.each([
+      // Space-separated value — the env-var pattern cannot backstop this form.
+      [
+        'runner --auth-token canary-cred-aaaaaaaaaa https://x',
+        'canary-cred-aaaaaaaaaa',
+        /--auth-token \[REDACTED\]/,
+      ],
+      // Equals form with a keyword absent from the env-var list (bare `key`).
+      [
+        'deploy --ssh-key=SkRmOQzN3a8qP4xY7vW2bH1cU6tZ0sL9 --verbose',
+        'SkRmOQzN3a8qP4xY7vW2bH1cU6tZ0sL9',
+        /--ssh-key=\[REDACTED\]/,
+      ],
+      // Equals form now renders the full flag name, not an env-substring cut.
+      [
+        `db-sync --db-password=${SYNTH_SECRET} --host localhost`,
+        SYNTH_SECRET,
+        /--db-password=\[REDACTED\]/,
+      ],
+    ])('redacts %j', (cmd, secret, pattern) => {
+      const out = redactCommand(cmd);
+      expect(out).not.toContain(secret);
+      expect(out).toMatch(pattern);
+    });
+
+    it('argv pair-scan: bare hyphenated flag redacts the NEXT arg (telemetry path)', () => {
+      const { args } = redactCommandArgs('db-sync', ['--db-password', 'hunter2-synthetic']);
+      expect(args[1]).toBe('[REDACTED]');
+      expect(args[0]).toBe('--db-password');
+    });
+
+    it.each([
+      // Keyword NOT the final segment: the match truncates before any
+      // separator, so the flag renders unchanged.
+      ['tar --token-file=/etc/tokens.list', 'tar --token-file=/etc/tokens.list'],
+      ['auth --auth-scheme=basic', 'auth --auth-scheme=basic'],
+      ['tool --max-tokens 4096', 'tool --max-tokens 4096'],
+      ['tool --max-tokens=4096', 'tool --max-tokens=4096'],
+    ])('leaves %j unchanged (keyword not the final segment)', (cmd, expected) => {
+      expect(redactCommand(cmd)).toBe(expected);
+    });
+
+    it('stays idempotent for the hyphenated form', () => {
+      const once = redactCommand('runner --auth-token canary-cred-aaaaaaaaaa https://x');
       expect(redactCommand(once)).toBe(once);
     });
   });
