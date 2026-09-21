@@ -152,7 +152,7 @@ describe('generateUpgradePlan', () => {
       action: 'upgrade_patch',
       targetVersion: '2.31.0',
     });
-    const specifier = structured.names.at(0) ?? '';
+    const specifier = structured.names?.at(0) ?? '';
     expect(pyItem?.suggestedCommand?.split(/\s+/)).toContain(specifier);
   });
 

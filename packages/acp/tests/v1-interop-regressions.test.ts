@@ -122,7 +122,7 @@ describe('official SDK v1 interoperability', () => {
       (u: any) => u?.update?.sessionUpdate === 'current_mode_update',
     );
     expect(modeUpdates.length).toBeGreaterThan(0);
-    expect(modeUpdates[0].update.currentModeId).toBe('code');
+    expect(modeUpdates[0]).toMatchObject({ update: { currentModeId: 'code' } });
   });
 
   it('only advertises terminal login to capable clients and never promises a no-op logout', async () => {

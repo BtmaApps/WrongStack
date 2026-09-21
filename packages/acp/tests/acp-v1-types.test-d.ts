@@ -117,7 +117,7 @@ describe('SessionUpdate discriminated union', () => {
   it('selects CurrentModeUpdate for "current_mode_update"', () => {
     const u: SessionUpdate = {
       sessionUpdate: 'current_mode_update',
-      modeId: 'code' as CurrentModeUpdate['modeId'],
+      currentModeId: 'code' as CurrentModeUpdate['currentModeId'],
     };
     const v: CurrentModeUpdate = u;
     void v;

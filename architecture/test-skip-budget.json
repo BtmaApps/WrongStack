@@ -24,7 +24,7 @@
     {
       "file": "packages/cli/tests/auth-menu-oauth.test.ts",
       "kind": "skipIf",
-      "fingerprint": "0ea378c848b6d617"
+      "fingerprint": "f5a23d12ca71d222"
     },
     {
       "file": "packages/cli/tests/auth-panel-tui-e2e.test.ts",
