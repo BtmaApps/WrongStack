@@ -1064,9 +1064,6 @@
       "exchangeAuthCookie",
       "scrubPageToken"
     ],
-    "packages/techstack/src/adapters/parse-utils.ts": [
-      "stripInlineComment"
-    ],
     "packages/techstack/src/adapters/python.ts": [
       "parsePoetryLock"
     ],
@@ -1084,11 +1081,9 @@
     "packages/techstack/src/policy/resolver.ts": [
       "findRuleMatches",
       "matchesSelector",
-      "parseRange",
       "RangeParseError",
       "resolveDependencies",
-      "resolveDependency",
-      "satisfiesRange"
+      "resolveDependency"
     ],
     "packages/techstack/src/policy/rulebook.ts": [
       "asIsoDateTime",
