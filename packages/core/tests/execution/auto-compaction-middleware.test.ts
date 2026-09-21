@@ -1188,7 +1188,9 @@ describe('AutoCompactionMiddleware', () => {
     const append = vi.fn();
     const mockBridge: SessionEventBridge = {
       append,
+      appendBatch: async () => {},
       level: 'standard',
+      setAuditLevel: () => {},
       allows: () => true,
     };
 
@@ -1243,8 +1245,12 @@ describe('AutoCompactionMiddleware', () => {
         events,
         sessionBridge: {
           level: 'standard',
+          setAuditLevel: () => {},
           allows: () => true,
           append: async () => {
+            throw new Error('session log disk full');
+          },
+          appendBatch: async () => {
             throw new Error('session log disk full');
           },
         },
@@ -1282,8 +1288,12 @@ describe('AutoCompactionMiddleware', () => {
       {
         sessionBridge: {
           level: 'standard',
+          setAuditLevel: () => {},
           allows: () => true,
           append: async () => {
+            throw new Error('session log disk full');
+          },
+          appendBatch: async () => {
             throw new Error('session log disk full');
           },
         },

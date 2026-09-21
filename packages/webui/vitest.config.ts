@@ -53,6 +53,10 @@ const sharedResolve = {
 
 export default defineConfig({
   ssr: sharedSsr,
+  // Pin an empty inline PostCSS config so Vite never searches the filesystem
+  // for `postcss.config.*` — that search climbs past the workspace root to the
+  // drive root and dies on any stray entry there. Mirrors `vite.config.ts`.
+  css: { postcss: {} },
   test: {
     maxWorkers: getVitestMaxWorkers(),
     // Two projects split by environment. tests/server suites exercise the

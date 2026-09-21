@@ -61,6 +61,12 @@ function injectWsUrlPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), injectWsUrlPlugin()],
+  // SimpleUI has no PostCSS config. Pin an inline one (as `packages/webui`
+  // does) so Vite never walks the filesystem looking for `postcss.config.*`:
+  // that search climbs past the workspace root to the drive root, and any
+  // stray entry there (e.g. a directory literally named `package.json`) fails
+  // the whole build with `EISDIR: illegal operation on a directory, read`.
+  css: { postcss: {} },
   // `rehype-pretty-code` imports `getSingletonHighlighter` from the `shiki`
   // root, which would bundle all ~340 languages / ~100 themes (~10MB). The
   // shim re-exports `shiki/core` and serves the curated highlighter instead.

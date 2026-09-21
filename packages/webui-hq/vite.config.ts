@@ -15,6 +15,10 @@ import { getVitestMaxWorkers } from '../../vitest.workers.ts';
 // `tests/design-tokens-parity.test.ts`.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Pin an empty inline PostCSS config so Vite never searches the filesystem
+  // for `postcss.config.*` — that search climbs past the workspace root to the
+  // drive root and dies on any stray entry there. See `packages/simpleui`.
+  css: { postcss: {} },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

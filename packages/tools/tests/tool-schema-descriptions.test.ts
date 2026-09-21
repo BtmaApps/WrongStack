@@ -4,8 +4,11 @@ import { builtinTools } from '../src/builtin.js';
 import { clarifyTool } from '../src/clarify.js';
 import { KANBAN_INPUT_SCHEMA } from '../src/kanban-tool-schema.js';
 
+// `| undefined` on both optional members is required: the callers pass
+// `JSONSchema`, whose own members are optional-and-undefined, and the package
+// compiles with `exactOptionalPropertyTypes`.
 function undocumentedTopLevelFields(schema: {
-  properties?: Record<string, { description?: string }>;
+  properties?: Record<string, { description?: string | undefined }> | undefined;
 }) {
   return Object.entries(schema.properties ?? {})
     .filter(([, property]) => !property.description?.trim())

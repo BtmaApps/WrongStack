@@ -51,7 +51,7 @@ describe('VectorMemoryStore transaction failure reporting', () => {
           provider: {
             id: 'proof-provider',
             dimensions: 4,
-            embed: async () => new Float32Array(4),
+            embed: async () => [new Float32Array(4)],
           },
         }),
     ).toThrow('PRIMARY: provider metadata write failed');
