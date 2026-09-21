@@ -275,6 +275,53 @@ dependencies = [
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  // ── PEP 503 identity ───────────────────────────────────────────────────
+
+  /** PyPI names are case-insensitive and treat `-`/`_` as equivalent. */
+  const canon = (name: string): string => name.toLowerCase().replace(/_/g, '-');
+
+  it('treats differently-spelled declarations of one package as a single dependency', async () => {
+    // pip-compile writes the normalised name, so a project whose pyproject uses
+    // PyPI's canonical spelling (`Django`) declares it twice across manifests.
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': '[project]\nname = "p"\ndependencies = ["Django>=5.0"]\n',
+      'requirements.txt': 'django==5.2.1\n',
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const rows = deps.filter((d) => canon(d.name) === 'django');
+      expect(rows.map((d) => d.name)).toEqual(['Django']);
+      expect(rows[0]!.locked).toBe('5.2.1');
+      expect(deps.map((d) => d.id)).toEqual([...new Set(deps.map((d) => d.id))]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not re-add a lock-normalised dependency as a fake transitive entry', async () => {
+    const { dir, ws } = mkWorkspace(
+      {
+        'pyproject.toml': '[project]\nname = "p"\ndependencies = ["Flask>=3.0"]\n',
+        'poetry.lock':
+          '[[package]]\nname = "flask"\nversion = "3.0.1"\n\n[[package]]\nname = "werkzeug"\nversion = "3.0.3"\n',
+      },
+      ['poetry.lock'],
+    );
+    try {
+      const deps = await new PythonAdapter().inventory(ws, { includeTransitive: true });
+      expect(deps.filter((d) => canon(d.name) === 'flask').map((d) => d.direct)).toEqual([true]);
+      expect(deps.find((d) => canon(d.name) === 'flask')?.locked).toBe('3.0.1');
+      // The genuinely lock-only package must still be inventoried.
+      expect(deps.find((d) => canon(d.name) === 'werkzeug')).toMatchObject({
+        direct: false,
+        scope: 'transitive',
+        locked: '3.0.3',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 // ── parsePoetryLock ───────────────────────────────────────────────────────

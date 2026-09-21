@@ -259,6 +259,11 @@ export class PythonAdapter implements EcosystemAdapter {
   ): Promise<readonly DependencyObservation[]> {
     const observations: DependencyObservation[] = [];
     const root = workspaceRoot(workspace, options);
+    // Identity keys are the PEP 503 names (`normalizePkgName`), matching what the
+    // lockfile maps below are keyed by. Deduping on the raw manifest spelling
+    // reported one package twice whenever manifests disagreed about casing or
+    // separators (`Django` in pyproject.toml vs pip-compile's `django==…`), and
+    // left the normalised lock key unmatched so the transitive pass re-added it.
     const seen = new Set<string>();
 
     const hasPyproject =
@@ -279,6 +284,9 @@ export class PythonAdapter implements EcosystemAdapter {
       scope: DependencyScope;
       source: string;
     }> = [];
+    /** PEP 503 identity — the same normalisation the lockfile maps are keyed by. */
+    const alreadyCollected = (name: string): boolean =>
+      allDeps.some((existing) => normalizePkgName(existing.name) === normalizePkgName(name));
     let pyprojectEv: Evidence | undefined;
 
     if (hasPyproject) {
@@ -301,7 +309,7 @@ export class PythonAdapter implements EcosystemAdapter {
         requirementsEv = manifestEvidence(join(root, 'requirements.txt'));
         const parsed = parseRequirementsTxt(content);
         for (const d of parsed) {
-          if (!allDeps.some((existing) => existing.name === d.name)) {
+          if (!alreadyCollected(d.name)) {
             allDeps.push({ ...d, scope: 'runtime', source: 'requirements.txt' });
           }
         }
@@ -317,7 +325,7 @@ export class PythonAdapter implements EcosystemAdapter {
         if (!pyprojectEv) pyprojectEv = manifestEvidence(join(root, 'Pipfile'));
         const parsed = parsePipfileDeps(content);
         for (const d of parsed) {
-          if (!allDeps.some((existing) => existing.name === d.name)) {
+          if (!alreadyCollected(d.name)) {
             allDeps.push({ ...d, source: 'Pipfile' });
           }
         }
@@ -345,8 +353,9 @@ export class PythonAdapter implements EcosystemAdapter {
     const manifestEv = pyprojectEv || requirementsEv;
 
     for (const dep of allDeps) {
-      if (seen.has(dep.name)) continue;
-      seen.add(dep.name);
+      const depKey = normalizePkgName(dep.name);
+      if (seen.has(depKey)) continue;
+      seen.add(depKey);
 
       const locked = lockVersions.get(normalizePkgName(dep.name));
       const isRegistry =
