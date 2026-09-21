@@ -94,12 +94,49 @@ function stripOuterFence(text: string): string {
  * `JSON.parse` is a coin flip. Same salvage the completion handler does
  * (`extractJson`).
  */
+/** Index just past the `}` matching the `{` at `start`, or undefined when unbalanced. */
+function balancedEnd(text: string, start: number): number | undefined {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index++) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{') depth++;
+    else if (char === '}' && --depth === 0) return index + 1;
+  }
+  return undefined;
+}
+
+/**
+ * Pull the outermost JSON object out of a response.
+ *
+ * Every `{` is tried in turn and the first BALANCED object that parses wins:
+ * prose around the object has braces of its own ("see the range {>=1.0}"), and
+ * both the old early return (`startsWith('{')` → the whole text, so ANY trailing
+ * prose broke the parse) and the first-`{`/last-`}` slice pulled that prose into
+ * the slice. `JSON.parse` then failed, `parseResearchJson` returned null, and the
+ * whole cluster's findings were dropped without a trace.
+ */
 function extractJsonObject(text: string): string {
   const trimmed = stripOuterFence(text);
-  if (trimmed.startsWith('{')) return trimmed;
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start !== -1 && end > start) return trimmed.slice(start, end + 1);
+  for (let start = trimmed.indexOf('{'); start !== -1; start = trimmed.indexOf('{', start + 1)) {
+    const end = balancedEnd(trimmed, start);
+    if (end === undefined) break;
+    const candidate = trimmed.slice(start, end);
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {
+      // Braces in prose are not JSON — try the next `{`.
+    }
+  }
   return trimmed;
 }
 

@@ -338,11 +338,20 @@ describe('parseResearchJson', () => {
     expect(result).toEqual({ answer: 42 });
   });
 
+  // Previous version of this test asserted `toBeNull()`: the name said "strips
+  // prose suffix" while the assertion pinned the failure, so a model reply with a
+  // friendly closing line silently dropped the whole cluster's findings.
+  // `extractJsonObject` now rescues the balanced object instead.
   it('strips prose suffix after JSON object', () => {
-    // When text starts with `{`, extractJsonObject returns it as-is without
-    // stripping trailing prose. The JSON.parse fails and returns null.
     const result = parseResearchJson('{"result": "ok"}\n\nHope this helps!');
-    expect(result).toBeNull();
+    expect(result).toEqual({ result: 'ok' });
+  });
+
+  it('ignores braces in the surrounding prose', () => {
+    const result = parseResearchJson(
+      'The range {>=1.0} is fine.\n{"answer": 42}\nSee {docs} for details.',
+    );
+    expect(result).toEqual({ answer: 42 });
   });
 });
 

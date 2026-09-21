@@ -215,6 +215,15 @@ describe('triageCandidates — cap', () => {
   it('handles an empty inventory', () => {
     expect(triageCandidates([])).toEqual([]);
   });
+
+  // A non-finite limit is malformed input, not the deliberate `limit: 0`
+  // disable: `Math.max(0, NaN)` stayed NaN and `slice(0, NaN)` returned nothing,
+  // so the whole research stage silently did no work.
+  it('falls back to the default cap for a non-finite limit', () => {
+    const deps = [makeDep({ name: 'vuln-a', status: 'vulnerable' })];
+    expect(triageCandidates(deps, { limit: Number.NaN })).toEqual(triageCandidates(deps));
+    expect(triageCandidates(deps, { limit: Number.NaN })).toHaveLength(1);
+  });
 });
 
 describe('clusterCandidates', () => {

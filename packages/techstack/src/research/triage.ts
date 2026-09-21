@@ -57,7 +57,14 @@ export function triageCandidates(
   dependencies: readonly DependencyObservation[],
   options: TriageOptions = {},
 ): readonly TriageCandidate[] {
-  const limit = Math.max(0, options.limit ?? DEFAULT_TRIAGE_LIMIT);
+  // `Number(...)` first: a malformed caller value (a string, or NaN from an
+  // unvalidated `AnalyzeOptions.researchLimit`) slips past `??`, and
+  // `Math.max(0, NaN)` stays NaN — `slice(0, NaN)` then returned NOTHING, which
+  // is indistinguishable from the deliberate `limit: 0` disable, so the whole
+  // research stage became a silent no-op. NaN falls back to the documented
+  // default; `Infinity` still means "no cap".
+  const requested = Number(options.limit ?? DEFAULT_TRIAGE_LIMIT);
+  const limit = Number.isNaN(requested) ? DEFAULT_TRIAGE_LIMIT : Math.max(0, requested);
   if (limit === 0) return [];
 
   const best = new Map<string, TriageCandidate>();
