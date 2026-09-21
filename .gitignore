@@ -283,3 +283,6 @@ $null
 
 # Standalone binaries (scripts/build-binaries.mjs)
 dist-bin/
+
+
+config-history/
