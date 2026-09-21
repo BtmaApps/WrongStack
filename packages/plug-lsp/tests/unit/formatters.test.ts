@@ -111,6 +111,7 @@ describe('formatters', () => {
   it('formats locations and symbols', () => {
     const uri = pathToUri(`${cwd}/a.ts`);
     expect(formatLocations(null, cwd)).toBe('No locations found.');
+    expect(formatLocations([], cwd)).toBe('No locations found.');
     expect(
       formatLocations(
         [

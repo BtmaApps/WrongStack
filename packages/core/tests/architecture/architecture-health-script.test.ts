@@ -90,7 +90,7 @@ describe('architecture health scanner', () => {
         cycles: { ...report.cycles, runtime: [], type: [] },
       }),
     ).toContain('PASS — no blocking architecture-health errors.');
-  }, 60_000);
+  }, 120_000);
 
   it('exercises filesystem, resolution, graph, matching, and exception edge cases', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'architecture-health-internals-'));

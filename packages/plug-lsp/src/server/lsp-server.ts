@@ -348,11 +348,12 @@ export class LSPServer {
     }
     await new Promise<void>((resolve) => {
       let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (): void => {
         /* v8 ignore next -- defensive: each waiter unregisters itself, so no path calls it twice. */
         if (settled) return;
         settled = true;
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         signal?.removeEventListener('abort', finish);
         this.diagnosticsWaiters.get(key)?.delete(finish);
         resolve();
@@ -361,7 +362,7 @@ export class LSPServer {
         finish();
         return;
       }
-      const timer = setTimeout(finish, timeoutMs);
+      timer = setTimeout(finish, timeoutMs);
       /* v8 ignore next -- Node timers always expose unref; the guard is for non-Node hosts. */
       timer.unref?.();
       signal?.addEventListener('abort', finish, { once: true });

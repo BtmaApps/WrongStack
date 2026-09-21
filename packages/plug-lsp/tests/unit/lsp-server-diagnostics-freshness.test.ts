@@ -28,6 +28,7 @@ type Internals = {
   state: string;
   /** Keyed by `uriKey(uri)`, not the raw URI — the two differ on POSIX. */
   diagnosticsFresh: Set<string>;
+  diagnosticsWaiters: Map<string, Set<() => void>>;
   setDiagnostics(uri: string, diagnostics: unknown[]): void;
 };
 
@@ -68,5 +69,25 @@ describe('LSPServer diagnostics freshness retention', () => {
     server.notifyDidClose(newestUri);
     expect(server.getDiagnostics(newestUri)).toEqual([]);
     expect(internal.diagnosticsFresh.has(uriKey(newestUri))).toBe(false);
+  });
+
+  it('handles an abort that lands between the fast-path check and waiter registration', async () => {
+    const server = makeServer();
+    const internal = server as unknown as Internals;
+    internal.state = 'ready';
+    let abortedReads = 0;
+    const signal = {
+      get aborted() {
+        abortedReads += 1;
+        return abortedReads > 1;
+      },
+      addEventListener() {},
+      removeEventListener() {},
+    } as unknown as AbortSignal;
+
+    await expect(
+      server.waitForDiagnostics('file:///abort-race.ts', 1_000, signal),
+    ).resolves.toEqual([]);
+    expect(internal.diagnosticsWaiters.size).toBe(0);
   });
 });
