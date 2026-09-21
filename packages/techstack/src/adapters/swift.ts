@@ -21,14 +21,22 @@ function identityFromLocation(location: string): string {
 
 function parsePackageSwift(content: string): SwiftManifestDependency[] {
   const deps: SwiftManifestDependency[] = [];
+  // Two requirement spellings follow the location:
+  //   from: "1.0.0"                  legacy labelled form
+  //   .upToNextMajor(from: "1.0.0")  Swift 5.2+ static members — also
+  //   .upToNextMinor(from:), .exact("1.0.0"), .branch("main"), .revision("abc")
+  // The older pattern accepted only the labelled form AND required the closing
+  // paren straight after it, so a static-member requirement made the whole
+  // declaration unmatchable and the dependency vanished from the inventory.
   const packageRegex =
-    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:from|exact|branch|revision):\s*["']([^"']+)["'])?\s*\)/g;
+    /\.package\s*\(\s*(?:name:\s*["'][^"']+["'],\s*)?(url|path):\s*["']([^"']+)["']\s*(?:,\s*(?:(?:from|exact|branch|revision):\s*["']([^"']+)["']|\.(?:upToNextMajor|upToNextMinor|exact|branch|revision)\s*\(\s*(?:from:\s*)?["']([^"']+)["']\s*\)))?\s*\)/g;
   for (const match of content.matchAll(packageRegex)) {
     const location = match[2];
     if (!location) continue;
     deps.push({
       identity: identityFromLocation(location),
-      requested: match[3],
+      // match[3] = labelled form, match[4] = static-member form.
+      requested: match[3] ?? match[4],
       sourceType: match[1] === 'path' ? 'path' : 'git',
     });
   }

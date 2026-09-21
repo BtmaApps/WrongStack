@@ -97,4 +97,64 @@ describe('SwiftAdapter', () => {
     expect(deps.find((dep) => dep.name === 'swift-log')?.direct).toBe(false);
     expect(deps.find((dep) => dep.name === 'swift-log')?.purl).toContain('pkg:swift/swift-log@def');
   });
+
+  // Swift 5.2+ expresses requirements with static members; requiring only the
+  // labelled form made the whole declaration unmatchable, so the dependency
+  // disappeared from the inventory.
+  it('parses static-member requirements (.upToNextMajor/.exact) as direct dependencies', async () => {
+    const { root, workspace } = fixture(
+      'swift',
+      {
+        'Package.swift': [
+          '// swift-tools-version:5.9',
+          'let package = Package(',
+          '    name: "proof",',
+          '    dependencies: [',
+          '        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.2.0")),',
+          '        .package(url: "https://github.com/apple/swift-nio.git", .exact("2.60.0")),',
+          '        .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),',
+          '        .package(path: "../local-pkg"),',
+          '    ],',
+          ')',
+        ].join('\n'),
+        'Package.resolved': JSON.stringify({
+          version: 2,
+          pins: [
+            {
+              identity: 'swift-argument-parser',
+              location: 'https://github.com/apple/swift-argument-parser.git',
+              state: { version: '1.3.0', revision: 'aaa' },
+            },
+            {
+              identity: 'swift-nio',
+              location: 'https://github.com/apple/swift-nio.git',
+              state: { version: '2.60.0', revision: 'ccc' },
+            },
+            {
+              identity: 'swift-collections',
+              location: 'https://github.com/apple/swift-collections.git',
+              state: { version: '1.1.0', revision: 'eee' },
+            },
+          ],
+        }),
+      },
+      ['Package.swift'],
+      ['Package.resolved'],
+    );
+    const deps = await swiftAdapter.inventory(workspace, { projectRoot: root });
+    expect(deps.map((dep) => dep.name).sort()).toEqual([
+      'local-pkg',
+      'swift-argument-parser',
+      'swift-collections',
+      'swift-nio',
+    ]);
+    expect(deps.find((dep) => dep.name === 'swift-argument-parser')).toMatchObject({
+      requested: '1.2.0',
+      locked: '1.3.0',
+      direct: true,
+    });
+    expect(deps.find((dep) => dep.name === 'swift-nio')?.requested).toBe('2.60.0');
+    // The legacy labelled form keeps working.
+    expect(deps.find((dep) => dep.name === 'swift-collections')?.requested).toBe('1.0.0');
+  });
 });
