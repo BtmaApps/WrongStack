@@ -236,16 +236,23 @@ export class VectorMemoryStore {
    * vector entries on SAGE delete events (the emitter knows the SAGE
    * id, not the vector entry id).
    *
-   * Index lookup is `json_extract(metadata, '$.sageId')` — the metadata
-   * column is the JSON blob `syncFromSage` writes, so this avoids a
-   * full table scan.
+   * Index lookup is the `CASE WHEN json_valid(metadata) THEN
+   * json_extract(metadata, '$.sageId') END` expression declared as an expression
+   * index in `initVectorSchema` (schema.ts), so this avoids a full table scan.
+   * The two spellings must stay byte-identical in structure: SQLite matches a
+   * query against an expression index by comparing the expression trees, so
+   * reverting either side to a bare `json_extract` silently drops the lookup
+   * back to a whole-corpus walk — and `json_extract` alone also raises on a
+   * corrupt `metadata` row instead of returning NULL.
    */
   findBySageId(sageId: string): VectorEntryWithVector | undefined {
     this.assertOpen();
     const row = this.db
       .prepare(
         `SELECT * FROM entries
-          WHERE json_extract(metadata, '$.sageId') = ?
+          WHERE CASE WHEN json_valid(metadata)
+                     THEN json_extract(metadata, '$.sageId')
+                END = ?
           ORDER BY updated_at DESC
           LIMIT 1`,
       )

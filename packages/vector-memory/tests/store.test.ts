@@ -197,4 +197,74 @@ describe('VectorMemoryStore', () => {
     expect(hits.map((h) => h.entry.id)).not.toContain(corrupted.id);
     expect(hits.every((h) => Number.isFinite(h.score))).toBe(true);
   });
+
+  it('serves the sageId lookup from an index, not a full entries scan', async () => {
+    // Contract under test: `findBySageId` documents `json_extract(metadata,
+    // '$.sageId')` as an indexed lookup that "avoids a full table scan". SQLite
+    // only honours that for an EXPRESSION index, and the mirror calls this on
+    // every SAGE write and delete (sage-event-mirror.ts), so a missing index
+    // silently turns each event into a whole-corpus walk. SQLite reports the
+    // difference deterministically in EXPLAIN QUERY PLAN — no timing involved.
+    type PlanProbe = {
+      prepare(sql: string): {
+        all(...params: unknown[]): Array<Record<string, unknown>>;
+        run(...params: unknown[]): unknown;
+      };
+    };
+    const db = (store as unknown as { db: PlanProbe }).db;
+
+    // Make the path live first: a mirrored entry that findBySageId resolves,
+    // so a green plan can never mean "matched nothing".
+    await store.remember({ text: 'mirrored memory body', metadata: { sageId: 'sage-mirror-1' } });
+    let fillerId = '';
+    for (let i = 0; i < 25; i++) {
+      fillerId = (await store.remember({ text: `unrelated filler ${i}`, metadata: { other: i } }))
+        .id;
+    }
+    expect(store.findBySageId('sage-mirror-1')?.metadata?.['sageId']).toBe('sage-mirror-1');
+
+    const plan = (
+      db
+        .prepare(
+          `EXPLAIN QUERY PLAN
+             SELECT * FROM entries
+              WHERE CASE WHEN json_valid(metadata)
+                         THEN json_extract(metadata, '$.sageId')
+                    END = ?
+              ORDER BY updated_at DESC
+              LIMIT 1`,
+        )
+        .all('sage-mirror-1') as Array<Record<string, unknown>>
+    )
+      .map((row) => String(row['detail'] ?? ''))
+      .join('\n');
+
+    // Harness sanity: a genuinely indexed column must show a seek, so an index
+    // that SQLite never uses cannot masquerade as a passing assertion.
+    const controlPlan = (
+      db
+        .prepare(`EXPLAIN QUERY PLAN SELECT * FROM entries WHERE content_hash = ?`)
+        .all('whatever') as Array<Record<string, unknown>>
+    )
+      .map((row) => String(row['detail'] ?? ''))
+      .join('\n');
+    expect(controlPlan).toMatch(/SEARCH entries USING (?:COVERING )?INDEX/);
+
+    expect(plan).toMatch(/SEARCH entries USING (?:COVERING )?INDEX/);
+    expect(plan).not.toMatch(/SCAN entries/);
+
+    // Why the `json_valid` guard exists. A bare `json_extract` RAISES
+    // "malformed JSON" on an unparseable `metadata` value rather than yielding
+    // NULL, so one corrupt legacy row would break every mirror write (and the
+    // unguarded index made it worse: CREATE INDEX evaluated the throwing
+    // expression over the whole table, so the store refused to open at all).
+    // Reverting the indexed expression and the query together to a bare
+    // json_extract leaves every assertion above green — the plan still matches
+    // itself — so this is the case that pins the guard's reason for existing.
+    expect(() =>
+      db.prepare('UPDATE entries SET metadata = ? WHERE id = ?').run('malformed json {', fillerId),
+    ).not.toThrow();
+    expect(store.findBySageId('sage-mirror-1')?.metadata?.['sageId']).toBe('sage-mirror-1');
+    expect(store.findBySageId('no-such-sage-id')).toBeUndefined();
+  });
 });

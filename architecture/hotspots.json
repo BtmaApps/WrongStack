@@ -195,7 +195,7 @@
       "relativeImports": 13
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 865,
+      "lines": 879,
       "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {
@@ -365,6 +365,10 @@
     "packages/tui/src/use-app-controller.tsx": {
       "lines": 978,
       "relativeImports": 53
+    },
+    "packages/vector-memory/src/store.ts": {
+      "lines": 802,
+      "relativeImports": 3
     },
     "packages/webui/src/components/activity-bar/index.tsx": {
       "lines": 869,

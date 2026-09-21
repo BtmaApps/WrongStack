@@ -2,6 +2,7 @@ import type { EventBus } from '@wrongstack/core/kernel';
 import type { ToolRegistry } from '@wrongstack/core/registry';
 import type { Logger } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
+import { createMCPServerOperationState } from '../src/operations.js';
 import { MCPRegistry } from '../src/registry.js';
 
 describe('MCPRegistry single-flight & cancellation', () => {
@@ -163,5 +164,147 @@ describe('MCPRegistry single-flight & cancellation', () => {
     expect(slot.operations.wakeCount).toBe(1);
     const wakeEvents = slot.operations.recentEvents.filter((e: any) => e.kind === 'wake');
     expect(wakeEvents).toHaveLength(1);
+  });
+
+  // The repo's own invariant, stated at registry.test.ts:105-109 ("no orphan
+  // client"): a client must never end up live-but-unreachable, "with registry
+  // listeners pointing into a slot no one can reach". `stop()` breaks it by a
+  // different route than `start()` ever did. It sets `state='disconnected'` but
+  // leaves `slot.client` on the CLOSING client until after its await, so a
+  // demand-wake (lazy tool calls resolve through `ensureConnected`,
+  // registry-connect-loop.ts:77) sees both single-flight guards inert —
+  // `state !== 'connected'` and `connecting` never set by stop() — connects for
+  // real, and is then erased by stop()'s unconditional post-await writes. The
+  // woken client and its child process are then unreachable by any later
+  // stop()/idle sweep/disconnect, and its disconnect handler reference is gone,
+  // so no teardown can ever detach the listener still registered on it.
+  it('stop() does not orphan a client a demand-wake installed during its close', async () => {
+    let releaseClose!: () => void;
+    const closeGate = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+    const woken = {
+      close: vi.fn(async () => {}),
+      removeExitListener: vi.fn(),
+      removeDisconnectListener: vi.fn(),
+      removeToolsChangedListener: vi.fn(),
+    };
+    const closing = {
+      close: async () => {
+        await closeGate;
+      },
+      removeExitListener: vi.fn(),
+      removeDisconnectListener: vi.fn(),
+      removeToolsChangedListener: vi.fn(),
+    };
+    const wokenHandler = vi.fn();
+
+    const registry = new MCPRegistry({
+      toolRegistry: dummyToolRegistry,
+      events: dummyEvents,
+      log: dummyLogger,
+    });
+    const slot: any = {
+      cfg: { name: 'stop-race', transport: 'stdio', command: 'node' },
+      state: 'connected',
+      client: closing,
+      lazy: true,
+      toolNames: [],
+      lazyTools: [],
+      discoveredTools: [],
+      lastUsed: Date.now(),
+      reconnectPending: false,
+      reconnectTimer: undefined,
+      reconnectCycles: 0,
+      attempts: 0,
+      registeredLazy: false,
+      onDisconnect: vi.fn(),
+      operations: createMCPServerOperationState(),
+    };
+    (registry as any).servers.set('stop-race', slot);
+    vi.spyOn(registry as any, 'attemptConnect').mockImplementation(async (s: any) => {
+      s.client = woken;
+      s.onDisconnect = wokenHandler;
+      s.state = 'connected';
+    });
+
+    const stopping = registry.stop('stop-race');
+    // `stop()` is now parked inside `await closing.close()`.
+    await registry.ensureConnected('stop-race');
+    releaseClose();
+    await stopping;
+
+    const tracked = slot.client === woken;
+    const tornDown = woken.close.mock.calls.length > 0;
+    expect(tracked || tornDown).toBe(true);
+    // If the slot kept the woken client, its handler must still be reachable.
+    if (tracked) expect(slot.onDisconnect).toBe(wokenHandler);
+  });
+
+  // stop()'s drain is bounded to two passes, and each pass awaits close(). A wake
+  // that lands in the FINAL pass's window therefore re-installs a client after the
+  // loop has detached it, breaking the postcondition registry.test.ts:337-342 pins
+  // (`after?.client` undefined once stop() resolves) and orphaning a client that
+  // nothing closes - the "no orphan client" invariant of registry.test.ts:105-109.
+  // Gates are created eagerly per client and released by index so the second wake
+  // cannot coalesce into the first pass's window.
+  it('stop() leaves no live client when a wake lands in its final close window', async () => {
+    const releases: Array<() => void> = [];
+    const mkClient = () => {
+      let release!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      releases.push(release);
+      return {
+        close: vi.fn(() => pending),
+        removeExitListener: vi.fn(),
+        removeDisconnectListener: vi.fn(),
+        removeToolsChangedListener: vi.fn(),
+      };
+    };
+    const clients = [mkClient(), mkClient(), mkClient()];
+    const registry = new MCPRegistry({
+      toolRegistry: dummyToolRegistry,
+      events: dummyEvents,
+      log: dummyLogger,
+    });
+    const slot: any = {
+      cfg: { name: 'final-window', transport: 'stdio', command: 'node' },
+      state: 'connected',
+      client: clients[0],
+      lazy: true,
+      toolNames: [],
+      lazyTools: [],
+      discoveredTools: [],
+      lastUsed: Date.now(),
+      reconnectPending: false,
+      reconnectTimer: undefined,
+      reconnectCycles: 0,
+      attempts: 0,
+      registeredLazy: false,
+      onDisconnect: vi.fn(),
+      operations: createMCPServerOperationState(),
+    };
+    (registry as any).servers.set('final-window', slot);
+    let wakes = 0;
+    vi.spyOn(registry as any, 'attemptConnect').mockImplementation(async (s: any) => {
+      wakes += 1;
+      s.client = clients[wakes];
+      s.onDisconnect = vi.fn();
+      s.state = 'connected';
+    });
+
+    const stopping = registry.stop('final-window');
+    await registry.ensureConnected('final-window'); // wake 1 -> consumed by pass 2
+    releases[0]();
+    await new Promise((resolve) => setImmediate(resolve)); // pass 2 detaches, parks
+    await registry.ensureConnected('final-window'); // wake 2 -> lands in final window
+    releases[1]();
+    await stopping;
+
+    expect(wakes).toBe(2);
+    expect(slot.client).toBeUndefined();
+    expect(clients.every((c) => c.close.mock.calls.length > 0)).toBe(true);
   });
 });

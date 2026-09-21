@@ -81,6 +81,25 @@ describe('validateMcpServerPayload', () => {
     expect(ok({ name: 'x', lazy: 1 }).ok).toBe(false);
   });
 
+  // `allowPrivateNetworks` belongs in that same boolean group: `buildConfig`
+  // copies it to disk, and `assertTransportAddressAllowed` gates the private/LAN
+  // dial relaxation on its TRUTHINESS. Any non-empty string is truthy in JS, so
+  // a frame carrying `allowPrivateNetworks: "false"` — the natural serialization
+  // of an "off" toggle — enabled private-range dialing while saying the opposite,
+  // and persisted across restarts. Rejecting the non-boolean is the fail-closed
+  // answer; `false` itself must stay valid (see the control below).
+  it('rejects non-boolean allowPrivateNetworks', () => {
+    expect(ok({ name: 'x', allowPrivateNetworks: 'false' }).ok).toBe(false);
+    expect(ok({ name: 'x', allowPrivateNetworks: 'yes' }).ok).toBe(false);
+    expect(ok({ name: 'x', allowPrivateNetworks: 1 }).ok).toBe(false);
+    expect(ok({ name: 'x', allowPrivateNetworks: {} }).ok).toBe(false);
+  });
+
+  it('CONTROL: accepts a genuine boolean allowPrivateNetworks', () => {
+    expect(ok({ name: 'x', allowPrivateNetworks: true }).ok).toBe(true);
+    expect(ok({ name: 'x', allowPrivateNetworks: false }).ok).toBe(true);
+  });
+
   it('bounds oversized strings and collections', () => {
     const huge = 'a'.repeat(5_000);
     expect(ok({ name: huge }).ok).toBe(false);
@@ -92,5 +111,44 @@ describe('validateMcpServerPayload', () => {
     expect(ok({ name: 'x', transport: { type: 'stdio' } }).ok).toBe(true);
     expect(ok({ name: 'x', transport: 'stdio' }).ok).toBe(true);
     expect(ok({ name: 'x', transport: 42 }).ok).toBe(false);
+  });
+
+  // `health` is the second field `buildConfig` copies to disk with no type check
+  // (`allowPrivateNetworks` was the first). `evaluateHealthThresholds` compares
+  // every threshold with `<=`, and a non-numeric operand makes that comparison
+  // false — so `applyHealthThresholds` pins an otherwise-healthy server to
+  // `degraded` permanently, surviving restarts. `null` matters specifically:
+  // each group above guards with `!== undefined`, so a null slips past all of
+  // them untouched. Numbers stay valid, including a legitimate `0`.
+  it('rejects non-numeric health thresholds', () => {
+    const bad = [
+      { connectionLatencyP95Ms: 'soon' },
+      { discoveryLatencyP95Ms: null },
+      { callLatencyP95Ms: { ms: 1 } },
+      { inFlightCalls: '5' },
+      { connectionLatencyP95Ms: true },
+    ];
+    for (const thresholds of bad) {
+      expect(ok({ name: 'x', health: { thresholds } }).ok).toBe(false);
+    }
+  });
+
+  it('rejects a malformed health envelope', () => {
+    expect(ok({ name: 'x', health: 'yes' }).ok).toBe(false);
+    expect(ok({ name: 'x', health: { thresholds: 'soon' } }).ok).toBe(false);
+  });
+
+  it('CONTROL: accepts declared health shapes and leaves unknown keys inert', () => {
+    expect(ok({ name: 'x', health: { thresholds: { connectionLatencyP95Ms: 500 } } }).ok).toBe(
+      true,
+    );
+    expect(ok({ name: 'x', health: { thresholds: { inFlightCalls: 0 } } }).ok).toBe(true);
+    // Omitted thresholds "cannot mark a server degraded" (operations.ts:168-169).
+    expect(ok({ name: 'x', health: { thresholds: {} } }).ok).toBe(true);
+    expect(ok({ name: 'x', health: {} }).ok).toBe(true);
+    // `evaluateHealthThresholds` reads its four keys by name and never enumerates
+    // Object.keys, so an unknown key is inert. Rejecting it would break a
+    // forward-compatible config for no safety gain.
+    expect(ok({ name: 'x', health: { thresholds: { futureThing: 'soon' } } }).ok).toBe(true);
   });
 });

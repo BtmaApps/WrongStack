@@ -108,6 +108,33 @@ export type TransportDnsLookup = (hostname: string) => Promise<readonly Transpor
 export type TransportAddressClass = 'loopback' | 'private' | 'blocked' | 'public';
 
 /**
+ * The AWS IPv6 IMDS address (`fd00:ec2::254`) matched by VALUE, not by spelling.
+ *
+ * `fd00:ec2:0:0:0:0:0:254` is the same 128-bit address as the compressed
+ * literal, so an exact string compare lets one spelling hit `blocked` while the
+ * other falls through to ordinary ULA `private` — and `private` is exactly the
+ * class `allowPrivateNetworks` relaxes. Comparing the eight 16-bit groups keeps
+ * the verdict spelling-independent, matching the `fe80::/10` rule beside it,
+ * which is a prefix regex for the same reason. An address `expandIPv6` cannot
+ * canonicalize keeps its existing verdict: redirecting every unexpandable
+ * string to `blocked` would change fall-through policy far beyond this fix.
+ */
+function isImdsIpv6Literal(v6: string): boolean {
+  const groups = expandIPv6(v6);
+  if (groups === null) return false;
+  return (
+    groups[0] === 0xfd00 &&
+    groups[1] === 0x0ec2 &&
+    groups[2] === 0 &&
+    groups[3] === 0 &&
+    groups[4] === 0 &&
+    groups[5] === 0 &&
+    groups[6] === 0 &&
+    groups[7] === 0x0254
+  );
+}
+
+/**
  * Classify one resolved address under MCP transport policy:
  *  - `blocked`  — link-local / IMDS (169.254/16, fe80::/10, fd00:ec2::254);
  *                 never a valid MCP target, regardless of opt-in.
@@ -126,9 +153,13 @@ export function classifyTransportAddress(address: string, family: number): Trans
   if (family === 6) {
     const v6 = address.toLowerCase();
     if (v6 === '::1') return 'loopback';
-    // fe80::/10 (zone suffixes like %eth0 still start fe8-feb) and the AWS
-    // IPv6 IMDS literal — the ranges validateTransportUrl never allows.
-    if (/^fe[89ab]/.test(v6) || v6 === 'fd00:ec2::254') return 'blocked';
+    // fe80::/10 (zone suffixes like %eth0 still start fe8-feb) is a prefix
+    // regex, so no spelling of link-local escapes it. The AWS IPv6 IMDS
+    // literal must hold that same line, so it is compared by its 16-bit
+    // groups rather than by string equality: `fd00:ec2:0:0:0:0:0:254` is the
+    // same address as `fd00:ec2::254`, and `blocked` is the one class an
+    // `allowPrivateNetworks` opt-in may never relax.
+    if (/^fe[89ab]/.test(v6) || isImdsIpv6Literal(v6)) return 'blocked';
     // IPv4-mapped IPv6 (::ffff:a.b.c.d, normalized by Node's DNS to
     // ::ffff:hextet:hextet) must inherit the embedded IPv4 verdict, or a
     // mapped 169.254.169.254 would slip past the unconditional IMDS block as

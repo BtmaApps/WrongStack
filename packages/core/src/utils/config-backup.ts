@@ -41,6 +41,13 @@ export function configSlug(absolutePath: string, globalRoot: string): string {
  * silently ignored so they never block the config write itself.
  */
 export async function backupConfigFile(filePath: string, paths: ConfigBackupPaths): Promise<void> {
+  // A backup the recovery reader can never find is worthless — it only scans
+  // `<globalRoot>/config-history` — and configHistoryDir's falsy-globalRoot
+  // branch resolves to the CWD-relative `./config-history`, littering
+  // whatever directory the process started in (leaked snapshots even got
+  // committed into the repo). Callers holding partial paths objects skip the
+  // best-effort backup instead of misdirecting it.
+  if (typeof paths.globalRoot !== 'string' || !paths.globalRoot) return;
   let currentContent: string;
   try {
     currentContent = await fs.readFile(filePath, 'utf8');

@@ -53,6 +53,34 @@ export function initVectorSchema(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind)');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_hash ON entries(content_hash)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_updated ON entries(updated_at DESC)');
+  // `VectorMemoryStore.findBySageId()` looks rows up by
+  // `json_extract(metadata, '$.sageId')` and documents that lookup as avoiding a
+  // full table scan. SQLite only honours that for an *expression* index, so it
+  // must be declared here — without it the planner walks the whole `entries`
+  // table in `updated_at` order and json_extracts every row. The mirror pays
+  // that scan on every SAGE write and delete (sage-event-mirror.ts
+  // upsertMirror/forgetMirror), so the cost scales with the mirrored corpus
+  // rather than with the single memory being touched.
+  //
+  // The `json_valid` guard is load-bearing, not decoration. `metadata` can hold
+  // malformed JSON (rows predating the JSON writer, or a hand-edited db), and
+  // `json_extract` RAISES on such a value rather than returning NULL. An
+  // unguarded index would therefore evaluate a throwing expression over every
+  // row at CREATE INDEX time — turning a tolerable corrupt row into
+  // `initVectorSchema` failing, i.e. the store refusing to open. The same
+  // guard makes the lookup itself immune: `findBySageId` must present the
+  // identical expression so the planner can use this index.
+  //
+  // Safe on existing databases: `IF NOT EXISTS` keeps `initVectorSchema`
+  // idempotent, so an already-created store gains the index on its next open
+  // with no backfill and no migration step.
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_entries_sage_id
+       ON entries(CASE
+                    WHEN json_valid(metadata)
+                    THEN json_extract(metadata, '$.sageId')
+                  END)`,
+  );
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS vectors (

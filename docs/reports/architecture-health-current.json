@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-21T10:16:38.908Z",
+  "generatedAt": "2026-09-21T15:09:48.585Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,8 +13,8 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3969,
-    "testFiles": 3575,
-    "sourceLines": 954131,
+    "testFiles": 3577,
+    "sourceLines": 954273,
     "workspaceEdges": 129,
     "moduleEdges": 12870,
     "nonCommandSlashImports": 0,
@@ -355,7 +355,7 @@
       "name": "@wrongstack/mcp",
       "dir": "packages/mcp",
       "sourceFiles": 39,
-      "testFiles": 39,
+      "testFiles": 41,
       "workspaceDependencies": [
         "@wrongstack/core"
       ],
@@ -368,7 +368,7 @@
         {
           "path": "packages/mcp/tsconfig.test.json",
           "error": null,
-          "testFiles": 39
+          "testFiles": 41
         }
       ]
     },
@@ -10639,6 +10639,12 @@
         ]
       },
       {
+        "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/mcp/tests/registry.test.ts",
         "projects": [
           "root-node"
@@ -10712,6 +10718,12 @@
       },
       {
         "file": "packages/mcp/tests/transport-protocol-conformance.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/mcp/tests/transport-security-imds-spelling.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22874,7 +22886,7 @@
     },
     {
       "file": "packages/mcp/src/registry.ts",
-      "lines": 865,
+      "lines": 879,
       "relativeImports": 19
     },
     {
@@ -23086,6 +23098,11 @@
       "file": "packages/tui/src/use-app-controller.tsx",
       "lines": 978,
       "relativeImports": 53
+    },
+    {
+      "file": "packages/vector-memory/src/store.ts",
+      "lines": 802,
+      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/components/activity-bar/index.tsx",

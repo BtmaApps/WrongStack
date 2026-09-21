@@ -42,6 +42,15 @@ export async function sleepIdleSlot(ctx: RegistryIdleContext, slot: ServerSlot):
       ctx.log.warn(`MCP server "${slot.cfg.name}" error during idle sleep close`, err);
     }
   }
+  // A demand-wake may have COMPLETED while the close above was pending — this
+  // function detaches `state`/`client` before awaiting precisely so that it can.
+  // If it did, the slot is live again under a new client and the bookkeeping
+  // below describes a sleep that never took place. Running it would drop the new
+  // client's `onDisconnect` reference (every later teardown guards
+  // `if (slot.onDisconnect)` before `removeDisconnectListener`, so that listener
+  // could then never be detached), inflate `sleepCount`, and broadcast
+  // `mcp.server.disconnected {reason:'idle-sleep'}` for a server now serving work.
+  if (slot.client || slot.state !== 'dormant') return;
   slot.onDisconnect = undefined;
   slot.operations.sleepCount++;
   ctx.recordOperation(slot, 'sleep', 'idle-timeout');

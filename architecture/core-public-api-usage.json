@@ -79,8 +79,8 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 279,
-      "typeOnly": 141,
+      "files": 280,
+      "typeOnly": 142,
       "runtimeOrMixed": 150
     },
     "@wrongstack/core/kernel/events.js": {
@@ -124,8 +124,8 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 131,
-      "typeOnly": 62,
+      "files": 132,
+      "typeOnly": 63,
       "runtimeOrMixed": 71
     },
     "@wrongstack/core/replay": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 8
     },
     "@wrongstack/core/types": {
-      "files": 1138,
-      "typeOnly": 1018,
+      "files": 1139,
+      "typeOnly": 1019,
       "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -6561,6 +6561,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8566,6 +8572,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/registry-single-flight.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -13750,6 +13762,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-single-flight.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

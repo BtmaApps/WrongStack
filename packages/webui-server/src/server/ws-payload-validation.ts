@@ -514,6 +514,19 @@ interface McpServerPayload {
 
 const MCP_MAX_STRING = 4_096;
 const MCP_MAX_ARRAY = 256;
+/**
+ * The threshold keys `evaluateHealthThresholds` actually reads. It accesses
+ * these four by name and never enumerates `Object.keys`, so extra keys in a
+ * `health.thresholds` object are inert — this list is the whole attack surface,
+ * and it is what makes the `health` check below precise rather than a broad
+ * "must be a number-ish blob" rejection that would also break legitimate configs.
+ */
+const MCP_HEALTH_THRESHOLD_KEYS = [
+  'connectionLatencyP95Ms',
+  'discoveryLatencyP95Ms',
+  'callLatencyP95Ms',
+  'inFlightCalls',
+] as const;
 
 function isStringArray(value: unknown, max = MCP_MAX_ARRAY): boolean {
   return (
@@ -565,7 +578,12 @@ export function validateMcpServerPayload(
     }
   }
 
-  for (const key of ['enabled', 'lazy'] as const) {
+  // `allowPrivateNetworks` is validated here, not just stored: `buildConfig`
+  // copies it verbatim into the global config and the dial guard tests it for
+  // TRUTHINESS to relax private/LAN routing. Any non-empty string (notably a
+  // form-serialized "false") would therefore enable the relaxation while saying
+  // the opposite, and persist across restarts.
+  for (const key of ['enabled', 'lazy', 'allowPrivateNetworks'] as const) {
     const value = payload[key];
     if (value !== undefined && typeof value !== 'boolean') {
       return { ok: false, message: `${label} payload.${key} must be a boolean` };
@@ -586,6 +604,35 @@ export function validateMcpServerPayload(
         ok: false,
         message: `${label} payload.${key} must be an object of string values`,
       };
+    }
+  }
+
+  // `health` is validated for the same reason as `allowPrivateNetworks`:
+  // `buildConfig` copies it verbatim into the global config, and the four
+  // threshold values are compared with `<=` inside `evaluateHealthThresholds`.
+  // A non-numeric threshold makes every such comparison false (`NaN <= x`), so
+  // `applyHealthThresholds` pins an otherwise-healthy server to `degraded`
+  // permanently — and it persists across restarts. `null` also defeats the
+  // `!== undefined` guard used by every other group in this function.
+  const health = payload['health'];
+  if (health !== undefined) {
+    if (!isRecord(health)) {
+      return { ok: false, message: `${label} payload.health must be an object` };
+    }
+    const thresholds = health['thresholds'];
+    if (thresholds !== undefined) {
+      if (!isRecord(thresholds)) {
+        return { ok: false, message: `${label} payload.health.thresholds must be an object` };
+      }
+      for (const key of MCP_HEALTH_THRESHOLD_KEYS) {
+        const value = thresholds[key];
+        if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) {
+          return {
+            ok: false,
+            message: `${label} payload.health.thresholds.${key} must be a finite number`,
+          };
+        }
+      }
     }
   }
 

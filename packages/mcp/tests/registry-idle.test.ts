@@ -144,4 +144,38 @@ describe('sleepIdleSlot teardown window', () => {
     expect((slot.client as unknown as { closeCalls: { count: number } }).closeCalls.count).toBe(0);
     expect(anyConnectedLazy).toBe(true);
   });
+
+  // `sleepIdleSlot` detaches `state`/`client` BEFORE awaiting close precisely so a
+  // demand-wake can land during that window (see the comment in registry-idle.ts).
+  // But the writes after the await were unconditional, so the resuming sleep
+  // clobbered the wake's `onDisconnect` reference — and every later teardown
+  // guards `if (slot.onDisconnect)` before `removeDisconnectListener`, so the live
+  // client's disconnect listener could never be detached. It also counted a sleep
+  // that never happened and broadcast `idle-sleep` for a server now serving work.
+  it('a demand-wake during the pending close keeps its own disconnect handler', async () => {
+    const gate = deferred();
+    const slot = makeSlot(gate.promise);
+    const ctx = makeCtx(new Map([['proof', slot]]));
+
+    const sleeping = sleepIdleSlot(ctx, slot);
+    await tick();
+
+    // Mirrors registry-connect-loop.ts:266-269: client, handler and state are
+    // assigned synchronously, so the wake lands atomically mid-close.
+    const boundDisconnect = vi.fn();
+    const woken = { close: async () => {}, removeDisconnectListener: vi.fn() };
+    slot.client = woken as unknown as ServerSlot['client'];
+    slot.onDisconnect = boundDisconnect;
+    slot.state = 'connected';
+
+    gate.resolve();
+    await sleeping;
+
+    expect(slot.onDisconnect).toBe(boundDisconnect);
+    expect(slot.operations.sleepCount).toBe(0);
+    expect(idleSleepEvents(ctx)).toBe(0);
+    // Control: the wake's connection survives untouched either way.
+    expect(slot.state).toBe('connected');
+    expect(slot.client).toBe(woken);
+  });
 });

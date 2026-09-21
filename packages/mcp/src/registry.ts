@@ -361,10 +361,25 @@ export class MCPRegistry {
       slot.reconnectTimer = undefined;
     }
     slot.state = 'disconnected';
-    if (slot.client) {
+    // Two passes, because a demand-wake can install a FRESH client while the
+    // `close()` below is pending — lazy tool calls resolve their client through
+    // `ensureConnected` (registry-connect-loop.ts:77), and while this await runs
+    // both single-flight guards are inert (`state` is not 'connected' and this
+    // method never sets `connecting`). Detaching `client`/`onDisconnect` BEFORE
+    // awaiting — the ordering `sleepIdleSlot` already uses — keeps that wake from
+    // reusing the closing client; the second pass then tears down whatever the
+    // wake installed, since `stop()` is the later intent. Clearing those fields
+    // only after the await instead would drop the replacement's only reference:
+    // a live client and its child process that no later stop(), idle sweep or
+    // disconnect can reach, with a disconnect listener nothing can detach.
+    for (let pass = 0; pass < 2; pass++) {
       const client = slot.client;
+      if (!client) break;
+      slot.client = undefined;
+      const handler = slot.onDisconnect;
+      slot.onDisconnect = undefined;
       client.removeExitListener?.(this.onChildExit);
-      if (slot.onDisconnect) client.removeDisconnectListener?.(slot.onDisconnect);
+      if (handler) client.removeDisconnectListener?.(handler);
       client.removeToolsChangedListener?.(this.onToolsChanged);
       this.removeCatalogListeners(client);
       try {
@@ -372,9 +387,8 @@ export class MCPRegistry {
       } catch (err) {
         this.log.warn(`MCP server "${name}" error during stop close`, err);
       }
-      slot.client = undefined;
+      slot.state = 'disconnected';
     }
-    slot.onDisconnect = undefined;
     slot.connecting = undefined;
     resetDisconnectedSlotTools(slot, this.toolRegistry);
     // Full teardown — a future start()/restart() re-registers lazy wrappers.
