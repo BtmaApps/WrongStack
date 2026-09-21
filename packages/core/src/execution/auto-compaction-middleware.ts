@@ -838,7 +838,8 @@ export class AutoCompactionMiddleware {
     try {
       const revisionBefore = ctx.state.revision;
       const report = await this.compactor.compact(ctx, { aggressive });
-      if (ctx.state.revision !== revisionBefore) {
+      const revisionAfterCompactor = ctx.state.revision;
+      if (revisionAfterCompactor !== revisionBefore) {
         this.invalidateTokenCaches(ctx);
       }
       // A stopped run must not trim. A stale summarizer/selector result must
@@ -846,12 +847,27 @@ export class AutoCompactionMiddleware {
       // trim, but the current transcript still has to pass the hard ceiling.
       if (ctx.signal?.aborted) return;
       let reportUsable = compactionReportStillCurrent(report, ctx);
+      // ...unless the transcript this pass measured no longer exists. A rewind,
+      // a resume, or a queued edit that lands while the compactor is awaiting
+      // its LLM replaces the history wholesale; the pressure numbers above
+      // describe the transcript it displaced, and the replacement has never
+      // been through a compaction pass at all. Trimming it here would shred a
+      // fresh conversation on the strength of a measurement taken from a dead
+      // one. `compactContextIfNeeded` runs again at the end of every iteration,
+      // before the next provider call, so the replacement is measured from
+      // scratch — and compacted properly rather than emergency-trimmed —
+      // without any send going out in between.
+      let historyReplaced = !reportUsable && revisionAfterCompactor !== revisionBefore;
       if (reportUsable) {
         this.recordAttempt(ctx, pressure.level, pressure.tokens, report);
         await this.reportCompaction(ctx, pressure, aggressive, report);
         if (ctx.signal?.aborted) return;
         reportUsable = compactionReportStillCurrent(report, ctx);
+        // Awaiting the event listeners and the session-log bridge is another
+        // suspension point a writer can land in.
+        if (!reportUsable) historyReplaced = ctx.state.revision !== revisionAfterCompactor;
       }
+      if (historyReplaced) return;
 
       if (reportUsable) {
         // Stale file-read metadata from before the compaction boundary is no

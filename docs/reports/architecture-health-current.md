@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-21T23:19:55.566Z
+**Generated:** 2026-09-21T23:28:44.943Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3969 |
-| Production source lines | 955066 |
+| Production source lines | 955082 |
 | Test files | 3583 |
 | Workspace dependency edges | 129 |
 | Relative module edges | 12871 |
@@ -85,7 +85,7 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1113 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 1129 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 1019 | `packages/sage/src/project-server.ts` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
