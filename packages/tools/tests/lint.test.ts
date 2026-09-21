@@ -46,7 +46,13 @@ describe('lintTool', () => {
   it('has correct metadata', () => {
     expect(lintTool.name).toBe('lint');
     expect(lintTool.permission).toBe('confirm');
-    expect(lintTool.mutating).toBe(false);
+    expect(lintTool.mutating).toBe(true);
+    expect(lintTool.capabilities).toContain('fs.write');
+    expect(lintTool.writeTargets?.({ files: 'src/a.ts, src/b.ts', fix: false })).toEqual([]);
+    expect(lintTool.writeTargets?.({ files: 'src/a.ts, src/b.ts', fix: true })).toEqual([
+      'src/a.ts',
+      'src/b.ts',
+    ]);
   });
 
   it('falls back to biome when no linter config found', async () => {

@@ -122,6 +122,67 @@ describe('RequirementIntakeView', () => {
     expect(body.originalRequest).toBe('Ship the dashboard');
   });
 
+  it('reuses the same idempotency key when submission is retried', async () => {
+    const createBodies: Array<{ idempotencyKey?: string }> = [];
+    const recordsByKey = new Map<string, string>();
+    const submitUrls: string[] = [];
+    let nextId = 1;
+    let listCalls = 0;
+    let submitCalls = 0;
+    let submittedId = 'reqi_retry_1';
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === '/api/requirement-intakes') {
+        listCalls++;
+        return jsonResponse({
+          projectId: 'proj_alpha',
+          intakes:
+            listCalls > 1 ? [{ ...INTAKES[0], id: submittedId, title: 'Retry this intake' }] : [],
+        });
+      }
+      if (url.endsWith('/requirement-intakes') && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { idempotencyKey?: string };
+        createBodies.push(body);
+        const key = body.idempotencyKey;
+        let id = key === undefined ? undefined : recordsByKey.get(key);
+        if (id === undefined) {
+          id = `reqi_retry_${nextId++}`;
+          if (key !== undefined) recordsByKey.set(key, id);
+        }
+        return jsonResponse({ record: { ...INTAKES[0], id } }, 201);
+      }
+      if (url.endsWith('/submit') && init?.method === 'POST') {
+        submitUrls.push(url);
+        submitCalls++;
+        submittedId = url.split('/').at(-2) ?? submittedId;
+        return submitCalls === 1
+          ? jsonResponse({ error: { message: 'Submit unavailable' } }, 502)
+          : jsonResponse({ record: { ...INTAKES[0], id: submittedId, status: 'submitted' } });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    render(<RequirementIntakeView />);
+    await screen.findByText(/No intake records yet/);
+    fireEvent.change(screen.getByLabelText(/Request text/), {
+      target: { value: 'Retry this intake' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /File \+ submit/ }));
+    expect(await screen.findByText('Submit unavailable')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /File \+ submit/ }));
+    expect(await screen.findByText(/Intake recorded and submitted/)).toBeTruthy();
+
+    expect(createBodies).toHaveLength(2);
+    expect(createBodies[0]?.idempotencyKey).toEqual(expect.any(String));
+    expect(createBodies[1]?.idempotencyKey).toBe(createBodies[0]?.idempotencyKey);
+    expect(submitUrls).toEqual([
+      '/api/requirement-intakes/reqi_retry_1/submit',
+      '/api/requirement-intakes/reqi_retry_1/submit',
+    ]);
+  });
+
   it('blocks submission when the request text is blank', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({ projectId: 'proj_alpha', intakes: [] }),

@@ -228,6 +228,7 @@ export async function startWebUI(
     projectRoot,
     workingDir,
     needsProvider,
+    vectorMemoryStore,
     touchProject: (root, wd) => touchProjectEntry(globalConfigPath, root, wd),
   });
   const {

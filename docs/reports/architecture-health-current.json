@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-21T20:47:35.019Z",
+  "generatedAt": "2026-09-21T22:35:30.180Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -13,10 +13,10 @@
   "summary": {
     "packages": 36,
     "sourceFiles": 3969,
-    "testFiles": 3579,
-    "sourceLines": 954319,
+    "testFiles": 3583,
+    "sourceLines": 955066,
     "workspaceEdges": 129,
-    "moduleEdges": 12870,
+    "moduleEdges": 12871,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -395,7 +395,7 @@
       "name": "@wrongstack/plug-lsp",
       "dir": "packages/plug-lsp",
       "sourceFiles": 50,
-      "testFiles": 46,
+      "testFiles": 48,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/tools"
@@ -409,7 +409,7 @@
         {
           "path": "packages/plug-lsp/tsconfig.test.json",
           "error": null,
-          "testFiles": 46
+          "testFiles": 48
         }
       ]
     },
@@ -738,7 +738,7 @@
       "name": "@wrongstack/tools",
       "dir": "packages/tools",
       "sourceFiles": 224,
-      "testFiles": 268,
+      "testFiles": 269,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/kanban",
@@ -754,7 +754,7 @@
         {
           "path": "packages/tools/tsconfig.test.json",
           "error": null,
-          "testFiles": 268
+          "testFiles": 269
         }
       ]
     },
@@ -793,7 +793,7 @@
       "name": "@wrongstack/vector-memory",
       "dir": "packages/vector-memory",
       "sourceFiles": 14,
-      "testFiles": 19,
+      "testFiles": 20,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/persistence",
@@ -808,7 +808,7 @@
         {
           "path": "packages/vector-memory/tsconfig.test.json",
           "error": null,
-          "testFiles": 19
+          "testFiles": 20
         }
       ]
     },
@@ -10921,7 +10921,19 @@
         ]
       },
       {
+        "file": "packages/plug-lsp/tests/unit/diagnostics-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plug-lsp/tests/unit/diagnostics-uri-matching.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
         "projects": [
           "root-node"
         ]
@@ -15991,6 +16003,12 @@
         ]
       },
       {
+        "file": "packages/tools/tests/tool-schema-descriptions.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/tools/tests/tool-search.test.ts",
         "projects": [
           "root-node"
@@ -18392,6 +18410,12 @@
       },
       {
         "file": "packages/vector-memory/tests/search-race.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/vector-memory/tests/store-rollback-mask.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22803,7 +22827,7 @@
     },
     {
       "file": "packages/core/src/execution/auto-compaction-middleware.ts",
-      "lines": 919,
+      "lines": 1113,
       "relativeImports": 16
     },
     {
@@ -23103,7 +23127,7 @@
     },
     {
       "file": "packages/tui/src/submit-controller.ts",
-      "lines": 925,
+      "lines": 932,
       "relativeImports": 13
     },
     {
@@ -23113,7 +23137,7 @@
     },
     {
       "file": "packages/vector-memory/src/store.ts",
-      "lines": 802,
+      "lines": 807,
       "relativeImports": 3
     },
     {
@@ -23248,7 +23272,7 @@
     },
     {
       "file": "packages/webui-server/src/server/start-webui.ts",
-      "lines": 811,
+      "lines": 812,
       "relativeImports": 35
     },
     {
@@ -23258,6 +23282,11 @@
     }
   ],
   "hotspots": [
+    {
+      "file": "packages/core/src/execution/auto-compaction-middleware.ts",
+      "lines": 1113,
+      "relativeImports": 16
+    },
     {
       "file": "packages/sage/src/project-server.ts",
       "lines": 1019,
@@ -23429,6 +23458,11 @@
       "relativeImports": 7
     },
     {
+      "file": "packages/tui/src/submit-controller.ts",
+      "lines": 932,
+      "relativeImports": 13
+    },
+    {
       "file": "packages/cli/src/goal-host.ts",
       "lines": 931,
       "relativeImports": 1
@@ -23484,11 +23518,6 @@
       "relativeImports": 7
     },
     {
-      "file": "packages/tui/src/submit-controller.ts",
-      "lines": 925,
-      "relativeImports": 13
-    },
-    {
       "file": "packages/core/src/plugin/api.ts",
       "lines": 924,
       "relativeImports": 22
@@ -23502,11 +23531,6 @@
       "file": "packages/tui/src/hooks/use-picker-keys-tools-settings.ts",
       "lines": 923,
       "relativeImports": 7
-    },
-    {
-      "file": "packages/tools/src/session-kanban.ts",
-      "lines": 921,
-      "relativeImports": 5
     }
   ],
   "testOnlyExports": [

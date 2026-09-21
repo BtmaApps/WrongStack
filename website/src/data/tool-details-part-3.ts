@@ -386,6 +386,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       {
         name: 'options',
         type: 'object',
+        description: 'Action-specific planning options used only when action=plan.',
       },
     ],
     doNotUseWhen: ['You need to execute a compiler, test runner, formatter, or package manager.'],
@@ -427,10 +428,12 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       {
         name: 'mode',
         type: "'fast' | 'standard' | 'thorough'",
+        description: 'Execution depth; thorough may run more checks.',
       },
       {
         name: 'check',
         type: "'syntax' | 'semantic' | 'all'",
+        description: 'Check type when action=check.',
       },
       {
         name: 'formatCheck',
@@ -445,6 +448,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       {
         name: 'coverage',
         type: 'boolean',
+        description: 'Coverage request; currently rejected until the language runner supports it.',
       },
       {
         name: 'noRun',
@@ -454,6 +458,7 @@ export const toolDetailsPart3: Record<string, ToolDetail> = {
       {
         name: 'debug',
         type: "'compile' | 'test' | 'runtime' | 'race'",
+        description: 'Debug evidence mode when action=debug.',
       },
     ],
     doNotUseWhen: ['You only need workspace detection/planning, or need to modify dependencies.'],

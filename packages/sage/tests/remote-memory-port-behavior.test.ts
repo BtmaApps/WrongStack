@@ -305,15 +305,32 @@ describe('ProjectSageMemoryPort', () => {
       'database error',
     );
 
-    // 4. surface.searchSageWithBreakdown maps rows directly
-    mocks.call.mockResolvedValueOnce([{ id: 'm1' }, { id: 'm2' }]);
-    const res3 = await surface.searchSageWithBreakdown('test', { limit: 2 });
-    expect(res3).toHaveLength(2);
+    // 4. Surface and service capabilities preserve the daemon's rich breakdown
+    // instead of silently downgrading it to a fabricated lexical-only result.
+    const richRows = [
+      {
+        memory: { id: 'm-vector' },
+        vectorScore: 0.91,
+        lexicalScore: 0.12,
+        finalScore: 0.73,
+        source: 'vector',
+      },
+    ];
+    mocks.call.mockResolvedValueOnce(richRows);
+    await expect(surface.searchSageWithBreakdown('test', { limit: 2 })).resolves.toEqual(richRows);
+    expect(mocks.call).toHaveBeenLastCalledWith(
+      'searchSageWithBreakdown',
+      { query: 'test', options: { limit: 2 } },
+      expect.any(Object),
+    );
 
-    // 5. service.searchSageWithBreakdown maps rows directly
-    mocks.call.mockResolvedValueOnce([{ id: 'm1' }]);
-    const res4 = await service.searchSageWithBreakdown('test', { limit: 2 });
-    expect(res4).toHaveLength(1);
+    mocks.call.mockResolvedValueOnce(richRows);
+    await expect(service.searchSageWithBreakdown('test', { limit: 2 })).resolves.toEqual(richRows);
+    expect(mocks.call).toHaveBeenLastCalledWith(
+      'searchSageWithBreakdown',
+      { query: 'test', options: { limit: 2 } },
+      expect.any(Object),
+    );
   });
 
   it('enriches event payload with meta traceId and sessionId when omitted in payload', async () => {
@@ -375,6 +392,26 @@ describe('ProjectSageMemoryPort', () => {
       options: { statuses: ['active', 'stale'], limit: 250, includeAllSessions: true },
     });
     expect(mocks.call.mock.calls[1]?.[1]).toMatchObject({ options: { cursor: 'c1' } });
+  });
+
+  it('stops when listSagePage repeats a non-empty cursor', async () => {
+    let calls = 0;
+    mocks.call.mockImplementation(async (op: string) => {
+      if (op !== 'listSagePage') return undefined;
+      calls++;
+      if (calls > 2) throw new Error('repeated cursor requested again');
+      return {
+        memories: [{ id: 'm1' }],
+        nextCursor: 'loop',
+        total: 1,
+        statusCounts: {},
+      };
+    });
+    const port = new ProjectSageMemoryPort({ projectRoot: 'D:/repo', clientId: 'client-loop' });
+    const surface = port.getCapability({ id: 'wrongstack.memory.surface.v1' } as never) as any;
+
+    await expect(surface.listSage(['active'])).resolves.toEqual([{ id: 'm1' }]);
+    expect(calls).toBe(2);
   });
 
   it('keeps listSage status semantics: default statuses, and [] for only-invalid statuses', async () => {

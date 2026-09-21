@@ -418,6 +418,7 @@ export function mergeStructuredEntries(
     .filter((entry) => entry.category === fresh.category)
     .sort((a, b) => directiveTrials(b).applied - directiveTrials(a).applied)[0];
   const inherited = ancestor ? directiveTrials(ancestor) : { applied: 0, wins: 0 };
+  const inheritedControl = ancestor ? directiveControl(ancestor) : { skipped: 0, skippedWins: 0 };
 
   const freshEntry: StructuredLearnedEntry = {
     key,
@@ -428,6 +429,9 @@ export function mergeStructuredEntries(
     capturedAt: fresh.capturedAt,
     ...(fresh.skill ? { skill: fresh.skill } : {}),
     ...(inherited.applied > 0 ? { applied: inherited.applied, wins: inherited.wins } : {}),
+    ...(inheritedControl.skipped > 0
+      ? { skipped: inheritedControl.skipped, skippedWins: inheritedControl.skippedWins }
+      : {}),
   };
   const merged = existing.filter(
     (entry) => entry.category !== fresh.category || tokenOverlap(entry.key, key) < 0.55,

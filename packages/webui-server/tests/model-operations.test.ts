@@ -1,9 +1,16 @@
 import type { Context } from '@wrongstack/core/agent';
-import { createModelOperations } from '../src/server/model-operations.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
+import { createModelOperations } from '../src/server/model-operations.js';
 
-function harness(options: { runActive?: boolean; fail?: boolean } = {}) {
+function harness(
+  options: {
+    runActive?: boolean;
+    activeSessionId?: string;
+    liveSessionId?: string;
+    fail?: boolean;
+  } = {},
+) {
   const context = {
     model: 'old-model',
     provider: { id: 'old-provider' },
@@ -15,13 +22,22 @@ function harness(options: { runActive?: boolean; fail?: boolean } = {}) {
     context.provider = { id: provider } as Context['provider'];
     context.model = model;
   });
+  const isRunActive = vi.fn((sessionId?: string) =>
+    options.activeSessionId ? sessionId === options.activeSessionId : (options.runActive ?? false),
+  );
   const operations = createModelOperations({
     context,
     getConfig: () => undefined,
     getLiveProviderId: () => context.provider.id,
     buildProvider: () => context.provider,
     applyModelSwitch,
-    isRunActive: () => options.runActive ?? false,
+    isRunActive,
+    ...(options.liveSessionId
+      ? {
+          getSessionContext: (sessionId?: string) =>
+            sessionId === options.liveSessionId ? context : undefined,
+        }
+      : {}),
     send: (_ws, message) => sent.push(message),
     broadcast: (message) => broadcasts.push(message),
   });
@@ -30,7 +46,10 @@ function harness(options: { runActive?: boolean; fail?: boolean } = {}) {
     sent,
     broadcasts,
     applyModelSwitch,
+    isRunActive,
     switchModel: (payload: unknown) => operations.switchModel({} as WebSocket, payload),
+    refineModel: (payload: Parameters<typeof operations.refineModel>[1]) =>
+      operations.refineModel({} as WebSocket, payload),
   };
 }
 
@@ -86,6 +105,76 @@ describe('model switch lifecycle', () => {
         }),
       },
     ]);
+  });
+
+  it('correlates and session-stamps validation failures', async () => {
+    const h = harness({ activeSessionId: 'session-B' });
+
+    await h.switchModel({
+      provider: 'openai',
+      model: '',
+      requestId: 'switch-invalid',
+      sessionId: 'session-B',
+    });
+
+    expect(h.applyModelSwitch).not.toHaveBeenCalled();
+    expect(h.isRunActive).toHaveBeenCalledWith('session-B');
+    expect(h.sent).toContainEqual({
+      type: 'model.switch_result',
+      payload: {
+        requestId: 'switch-invalid',
+        sessionId: 'session-B',
+        success: false,
+        message: 'model.switch payload.model must be a non-empty string',
+        runActive: true,
+      },
+    });
+  });
+
+  it('returns a correlated failure when a named session is no longer live', async () => {
+    const h = harness({ liveSessionId: 'session-live' });
+
+    await h.switchModel({
+      provider: 'openai',
+      model: 'gpt-missing',
+      requestId: 'switch-missing',
+      sessionId: 'session-gone',
+    });
+
+    expect(h.applyModelSwitch).not.toHaveBeenCalled();
+    expect(h.broadcasts).toEqual([]);
+    expect(h.sent).toContainEqual({
+      type: 'model.switch_result',
+      payload: {
+        requestId: 'switch-missing',
+        sessionId: 'session-gone',
+        success: false,
+        message:
+          'Session session-gone is not live in this runtime. Reopen or resume the tab, then retry.',
+        runActive: false,
+      },
+    });
+  });
+
+  it('returns a refine result when a named refinement session is no longer live', async () => {
+    const h = harness({ liveSessionId: 'session-live' });
+
+    await h.refineModel({
+      text: 'Please refine this prompt',
+      sessionId: 'session-gone',
+    });
+
+    expect(h.sent).toContainEqual({
+      type: 'model.refine_result',
+      payload: {
+        sessionId: 'session-gone',
+        refined: 'Please refine this prompt',
+        english: 'Please refine this prompt',
+        error:
+          'Session session-gone is not live in this runtime. Reopen or resume the tab, then retry.',
+        errorKind: 'provider_error',
+      },
+    });
   });
 
   it('keeps the legacy result only for clients without request correlation', async () => {

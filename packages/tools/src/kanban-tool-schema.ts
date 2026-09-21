@@ -369,3 +369,84 @@ export const KANBAN_INPUT_SCHEMA: JSONSchema = {
   },
   required: ['action'],
 };
+
+// `kanban` intentionally has a wide, action-discriminated input surface. A
+// flat schema keeps calls backward-compatible, but unnamed fields made lazy
+// discovery and generated tool details nearly unusable. Keep the individual
+// action handlers authoritative while guaranteeing that every exposed field
+// tells the model what it is for.
+const KANBAN_FIELD_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  action: 'Operation to perform. Choose an action first; supply only the fields that action needs.',
+  boardId: 'Target board identifier, returned by list_boards or create_board.',
+  taskId: 'Target card identifier, returned by add_task, get_board, or search_tasks.',
+  taskIds: 'Card identifiers for a bulk, merge, chain, or transfer action.',
+  title: 'Human-readable board or card title.',
+  description: 'Detailed board or card scope, expected outcome, or implementation context.',
+  query: 'Text query used by search_tasks or a generation/decomposition action.',
+  status: 'Card status to set or filter by for the selected action.',
+  priority: 'Card priority used when creating or updating work.',
+  assignee: 'Agent or person assigned to own this card.',
+  dependsOn: 'Card ids that must complete before this card can start.',
+  note: 'Human-readable rationale, progress note, review evidence, or activity summary.',
+  checkDescription: 'Acceptance criterion to add or update on the card.',
+  checkStatus: 'Current outcome of an acceptance criterion.',
+  attachmentUrl: 'URL or project reference attached to the card.',
+  attachmentTitle: 'Human-readable title for the attached reference.',
+  author: 'Actor recording the note, activity, check, or review.',
+  agentId: 'Stable agent identifier for an assignment, lease, or activity.',
+  leaseId: 'Lease token returned by claim_task; required by lease-protected updates.',
+  expectedLeaseId:
+    'Fence token expected by a mutation; prevents a stale worker from overwriting newer work.',
+  limit: 'Bound the number of returned records for this read-oriented action.',
+  tags: 'Free-form tags applied to a card or used to filter a result.',
+  labels: 'Labels applied to a card or used to filter results.',
+  dueDate: 'Optional due date recorded on the card.',
+  columns: 'Board column names for create_board or update_board.',
+  subtasks: 'Proposed child work for decomposition; each item must have a title.',
+  childTitles: 'Titles used by split_task to create child cards.',
+  checkId: 'Acceptance-criterion identifier returned by get_task.',
+  metricId: 'Goal-metric identifier returned by get_task.',
+  metricName: 'Display name for a new goal metric.',
+  metricTarget: 'Desired goal-metric value.',
+  metricCurrent: 'Observed goal-metric value used for verification.',
+  proposalId: 'Decomposition proposal identifier returned by propose_decomposition.',
+  sourceSystem: 'External system that produced an imported task graph.',
+  taskGraph: 'Structured task graph to import, synchronize, or materialize.',
+};
+
+function humanizeKanbanField(name: string): string {
+  return name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replaceAll('_', ' ')
+    .toLowerCase();
+}
+
+function describeKanbanField(name: string): string {
+  const explicit = KANBAN_FIELD_DESCRIPTIONS[name];
+  if (explicit) return explicit;
+  if (name.endsWith('Id')) {
+    return `Identifier for the ${humanizeKanbanField(name.slice(0, -2))} used by the selected action.`;
+  }
+  if (name.startsWith('include') || name.startsWith('preserve') || name.startsWith('inherit')) {
+    return `Whether the selected action should ${humanizeKanbanField(name)}.`;
+  }
+  return `Optional ${humanizeKanbanField(name)} value for the selected Kanban action. Supply it only when that action requires it.`;
+}
+
+function annotateKanbanProperties(schema: JSONSchema): void {
+  for (const [name, property] of Object.entries(schema.properties ?? {})) {
+    property.description ??= describeKanbanField(name);
+    annotateKanbanProperties(property);
+    if (property.items && typeof property.items === 'object')
+      annotateKanbanProperties(property.items);
+  }
+  for (const variant of [
+    ...(schema.oneOf ?? []),
+    ...(schema.anyOf ?? []),
+    ...(schema.allOf ?? []),
+  ]) {
+    annotateKanbanProperties(variant);
+  }
+}
+
+annotateKanbanProperties(KANBAN_INPUT_SCHEMA);

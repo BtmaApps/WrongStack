@@ -142,6 +142,9 @@ export class AutoCompactionMiddleware {
    * floor. Every pass rewrites already-transmitted messages, which forces the
    * provider to re-cache the whole prompt; spacing the passes out is what lets
    * the conversation prefix stay cached for the turns in between.
+   * The floor applies only when it fits between warn and hard. On a small
+   * window it is wider than that gap, so a second pass could never run before
+   * hard pressure already forces one.
    */
   private static readonly HYGIENE_GROWTH_RATIO = 0.15;
   private static readonly HYGIENE_MIN_GROWTH_TOKENS = 20_000;
@@ -246,7 +249,9 @@ export class AutoCompactionMiddleware {
       // it off and no other.
       if (!this.enabledFor(ctx) || ctx.signal?.aborted) return next(ctx);
 
-      let tokens = this.estimateContextTokens(ctx);
+      let counted = this.estimateContextTokens(ctx);
+      let tokens = counted.tokens;
+      let exactAnchor = counted.exact;
       // A provider overflow can teach the session a route-specific effective
       // limit that is lower than the catalog/native-model value. Resolve it on
       // every pass so the next retry compacts against the learned denominator.
@@ -269,7 +274,15 @@ export class AutoCompactionMiddleware {
       const targetLoad = normalizeTargetLoad(policy?.targetLoad, adaptiveThresholds);
 
       // Escalate past a calibrated under-count before deciding pressure.
-      let load = this.applySendGuard(ctx, calibratedLoad, budget.availableInputTokens);
+      // The protected line is warn: inflation that crosses warn, soft, or hard
+      // has to be visible to pressureLevelFor, not only a load of 1.0.
+      let load = this.pressureLoad(
+        ctx,
+        calibratedLoad,
+        budget.availableInputTokens,
+        adaptiveThresholds.warn,
+        exactAnchor,
+      );
 
       let level = pressureLevelFor(load, adaptiveThresholds);
 
@@ -288,16 +301,33 @@ export class AutoCompactionMiddleware {
       // the session. Gating on real pressure plus a growth interval turns that
       // into one rewrite per interval, leaving history append-only — and the
       // prompt prefix cacheable — for every turn in between.
-      if (this.shouldRunHygiene(ctx, level, tokens, budget.availableInputTokens)) {
+      if (
+        this.shouldRunHygiene(ctx, level, tokens, budget.availableInputTokens, adaptiveThresholds)
+      ) {
         const changed = this.runHistoryHygiene(ctx);
         // Anchor the next interval on the post-hygiene size even when nothing
         // changed, so a session with nothing left to trim does not re-attempt
         // the full O(n) walk on every subsequent turn.
-        tokens = changed ? this.estimateContextTokens(ctx) : tokens;
+        if (changed) {
+          counted = this.estimateContextTokens(ctx);
+          tokens = counted.tokens;
+          exactAnchor = counted.exact;
+        }
         this.stateFor(ctx).lastHygieneTokens = tokens;
         if (changed) {
           budget = contextWindowBudget(ctx, tokens, runtimeMaxContext);
-          load = this.applySendGuard(ctx, budget.load, budget.availableInputTokens);
+          load = this.pressureLoad(
+            ctx,
+            budget.load,
+            budget.availableInputTokens,
+            this.protectLoadForEstimate(
+              ctx,
+              budget.load,
+              budget.availableInputTokens,
+              adaptiveThresholds.warn,
+            ),
+            exactAnchor,
+          );
           const relevelled = pressureLevelFor(load, adaptiveThresholds);
           if (!relevelled) {
             this.stateFor(ctx).lastNoopAttempt = null;
@@ -346,7 +376,7 @@ export class AutoCompactionMiddleware {
    * estimator owns its own semantics and the middleware cannot safely cache its
    * result across calls.
    */
-  private estimateContextTokens(ctx: Context): number {
+  private estimateContextTokens(ctx: Context): { tokens: number; exact: boolean } {
     const state = this.stateFor(ctx);
     const msgCount = ctx.messages.length;
     const toolCount = (ctx.tools ?? []).length;
@@ -358,9 +388,14 @@ export class AutoCompactionMiddleware {
     // everything else is exact. Falls through to the estimate paths before
     // the first response or right after compaction shrank the array.
     const anchored = readRealAnchoredContextTokens(ctx);
-    if (anchored !== null) return anchored;
+    if (anchored !== null) {
+      // The provider count is real. Do not replace it with a density estimate
+      // of history the provider already billed. Only an unsent suffix is still
+      // an estimate, and only that suffix gets the upper bound.
+      return { tokens: this.tokensFromAnchor(ctx, anchored), exact: true };
+    }
     // Custom estimator — never cache; call fresh every invocation.
-    if (this._estimator) return this._estimator(ctx);
+    if (this._estimator) return { tokens: this._estimator(ctx), exact: false };
     const calibrationKey = `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`;
     const cal = getCalibrationState(calibrationKey);
     if (
@@ -375,7 +410,7 @@ export class AutoCompactionMiddleware {
       state._cachedTokens >= 0
     ) {
       // Default estimator, context unchanged — reuse cached value.
-      return state._cachedTokens;
+      return { tokens: state._cachedTokens, exact: false };
     }
 
     const stashed = this.tryStashedTokens(ctx, msgCount, toolCount, revision);
@@ -409,27 +444,69 @@ export class AutoCompactionMiddleware {
     state._cachedRevision = revision;
     state._cachedSystemRef = ctx.systemPrompt;
     state._cachedToolsRef = ctx.tools;
-    return tokens;
+    return { tokens, exact: false };
+  }
+
+  /**
+   * Real prefix plus a never-undercount estimate of messages appended since
+   * the provider usage was recorded. With no suffix the provider count stands.
+   */
+  private tokensFromAnchor(ctx: Context, anchored: number): number {
+    const covered = ctx.meta?.['realAnchorMsgCount'];
+    const prefix = ctx.lastRealInputTokens;
+    if (
+      typeof covered !== 'number' ||
+      typeof prefix !== 'number' ||
+      covered < 0 ||
+      covered >= ctx.messages.length
+    ) {
+      return anchored;
+    }
+    const suffixUpper = estimateRequestTokensUpperBound(
+      ctx.messages.slice(covered),
+      [],
+      [],
+      `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
+    ).total;
+    return prefix + suffixUpper;
+  }
+
+  /**
+   * Pressure load for one measurement. Exact provider usage is already real.
+   * Estimates still pass through the density guard.
+   */
+  private pressureLoad(
+    ctx: Context,
+    measuredLoad: number,
+    availableInputTokens: number,
+    protectLoad: number,
+    exactAnchor: boolean,
+  ): number {
+    if (exactAnchor) return measuredLoad;
+    return this.applySendGuard(ctx, measuredLoad, availableInputTokens, protectLoad);
   }
 
   /**
    * Never-undercount send guard.
    *
    * The calibrated estimate can under-count dense content (CJK, base64,
-   * minified) by >1.5×, which would let an over-limit request slip past the
-   * thresholds and reach the provider. Once the calibrated load is high enough
-   * that even the max density factor (2.5×) *could* overflow (load ≥ 1/2.5 =
-   * 0.4), re-check with the upper-bound estimator and escalate to whichever
-   * load is larger. Below 0.4 an overflow is arithmetically impossible, so the
-   * extra scan is skipped.
+   * minified). `guardGateLoad` is the calibrated load at which the upper bound
+   * can reach 1.0. Pressure and the emergency trim treat `protectLoad` (the
+   * warn line before compaction, the target line after it) as the decision
+   * boundary, and that line is below 1.0. Skipping the rescan is safe only
+   * while the inflated load is still under `protectLoad`, i.e. while the
+   * calibrated load is under `protectLoad * guardGateLoad`.
    */
   private applySendGuard(
     ctx: Context,
     calibratedLoad: number,
     availableInputTokens: number,
+    protectLoad: number,
   ): number {
     const calibrationKey = `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`;
-    if (calibratedLoad < AutoCompactionMiddleware.guardGateLoad(calibrationKey)) {
+    const windowGate = AutoCompactionMiddleware.guardGateLoad(calibrationKey);
+    const ceiling = Number.isFinite(protectLoad) && protectLoad > 0 ? Math.min(1, protectLoad) : 1;
+    if (calibratedLoad < ceiling * windowGate) {
       return calibratedLoad;
     }
     const guardTotal = estimateRequestTokensUpperBound(
@@ -440,6 +517,29 @@ export class AutoCompactionMiddleware {
     ).total;
     const guardLoad = guardTotal / availableInputTokens;
     return guardLoad > calibratedLoad ? guardLoad : calibratedLoad;
+  }
+
+  /**
+   * Hygiene can drop a real usage anchor and leave a custom estimator in
+   * charge. The density rescan is meaningful only when that number is the
+   * calibrated chars/token total; a caller-supplied estimator is a different
+   * scale and stays on the full-window skip gate.
+   */
+  private protectLoadForEstimate(
+    ctx: Context,
+    reportedLoad: number,
+    availableInputTokens: number,
+    protectLoad: number,
+  ): number {
+    if (!this._estimator) return protectLoad;
+    const calibratedTokens = estimateRequestTokensCalibrated(
+      ctx.messages,
+      ctx.systemPrompt,
+      ctx.tools ?? [],
+      `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
+    ).total;
+    const reportedTokens = reportedLoad * availableInputTokens;
+    return Math.abs(calibratedTokens - reportedTokens) <= 1 ? protectLoad : 1;
   }
 
   /**
@@ -456,7 +556,9 @@ export class AutoCompactionMiddleware {
    * only when the applied ratio is >= 1. At the ratio floor that let a request
    * at ~1.8x the window reach the provider with no compaction and no
    * hard-budget pass — below the gate `pressureLevelFor` returns null, so
-   * nothing else runs either.
+   * nothing else runs either. This helper still answers "when can inflation
+   * reach a load of 1?". Callers scale it by the lower pressure line they
+   * actually enforce.
    */
   private static guardGateLoad(calibrationKey: string): number {
     const cal = getCalibrationState(calibrationKey);
@@ -514,6 +616,7 @@ export class AutoCompactionMiddleware {
     level: PressureLevel,
     tokens: number,
     availableInputTokens: number,
+    thresholds: { warn: number; hard: number },
   ): boolean {
     if (level === 'hard') return true;
     const last = this.stateFor(ctx).lastHygieneTokens;
@@ -523,11 +626,31 @@ export class AutoCompactionMiddleware {
     // that has already been spent.
     const anchor = Math.min(last, tokens);
     this.stateFor(ctx).lastHygieneTokens = anchor;
-    const interval = Math.max(
-      AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS,
+    return tokens - anchor >= this.hygieneInterval(availableInputTokens, thresholds);
+  }
+
+  /**
+   * Growth required before another warn/soft hygiene pass.
+   * Large windows keep the 20k floor. Small windows use the 15% fraction,
+   * because the floor is wider than the warn→hard gap and would never fire.
+   */
+  private hygieneInterval(
+    availableInputTokens: number,
+    thresholds: { warn: number; hard: number },
+  ): number {
+    const fractional = Math.max(
+      1,
       Math.floor(availableInputTokens * AutoCompactionMiddleware.HYGIENE_GROWTH_RATIO),
     );
-    return tokens - anchor >= interval;
+    const gap = Math.max(
+      1,
+      Math.floor(availableInputTokens * thresholds.hard) -
+        Math.ceil(availableInputTokens * thresholds.warn),
+    );
+    if (AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS <= gap) {
+      return Math.max(AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS, fractional);
+    }
+    return fractional;
   }
 
   /**
@@ -582,8 +705,10 @@ export class AutoCompactionMiddleware {
 
   /**
    * Returns true when the previous compaction at the same or higher pressure
-   * level reduced nothing and context has not grown materially since. Prevents
-   * a stuck preserveK window from spamming compaction events every iteration.
+   * level reduced nothing and the token count is still about that same
+   * transcript. A material shrink is a different transcript (rewind, branch,
+   * or a replacement), not the stuck window. Prevents a stuck preserveK
+   * window from spamming compaction events every iteration.
    */
   private shouldSkipNoopRetry(ctx: Context, level: PressureLevel, tokens: number): boolean {
     // Hard pressure must still pass the overflow check on every retry.
@@ -592,8 +717,7 @@ export class AutoCompactionMiddleware {
     if (!stuck) return false;
     // Escalation always retries — soft → hard might be reducible aggressively.
     if (LEVEL_RANK[level] > LEVEL_RANK[stuck.level]) return false;
-    const delta = tokens - stuck.tokens;
-    return delta < AutoCompactionMiddleware.NOOP_RETRY_DELTA_TOKENS;
+    return Math.abs(tokens - stuck.tokens) < AutoCompactionMiddleware.NOOP_RETRY_DELTA_TOKENS;
   }
 
   private recordAttempt(
@@ -619,6 +743,83 @@ export class AutoCompactionMiddleware {
     }
   }
 
+  /**
+   * Success notifications are not part of the no-overflow guarantee.
+   * A throwing callback or session log must not become AGENT_CONTEXT_OVERFLOW
+   * and must not skip the hard-ceiling trim that follows.
+   */
+  private async reportCompaction(
+    ctx: Context,
+    pressure: {
+      level: PressureLevel;
+      tokens: number;
+      load: number;
+      budget: ContextWindowBudgetSnapshot;
+      signals: { repeatedReadCount: number };
+    },
+    aggressive: boolean,
+    report: CompactReport,
+  ): Promise<void> {
+    const note = (err: unknown): void => {
+      const error = err instanceof Error ? err : new Error(String(err));
+      try {
+        this.events?.emit('compaction.failed', {
+          sessionId: resolveEventSessionId(ctx),
+          err: error,
+          aggressive,
+          level: pressure.level,
+          tokens: pressure.tokens,
+          maxContext: pressure.budget.maxContext,
+          budget: pressure.budget,
+          signals: pressure.signals,
+          load: pressure.load,
+          fatal: false,
+        });
+      } catch {
+        // A listener failure must not hide the hard ceiling.
+      }
+    };
+    try {
+      this.onCompact?.(report);
+    } catch (err) {
+      if (ctx.signal?.aborted) return;
+      note(err);
+    }
+    try {
+      this.events?.emit('compaction.fired', {
+        sessionId: resolveEventSessionId(ctx),
+        level: pressure.level,
+        tokens: pressure.tokens,
+        load: pressure.load,
+        maxContext: pressure.budget.maxContext,
+        budget: pressure.budget,
+        signals: pressure.signals,
+        report,
+        aggressive,
+      });
+    } catch (err) {
+      if (ctx.signal?.aborted) return;
+      note(err);
+    }
+    try {
+      await this.sessionBridge?.append({
+        type: 'compaction',
+        ts: new Date().toISOString(),
+        before: report.before,
+        after: report.after,
+        level: pressure.level,
+        aggressive,
+        reductions: report.reductions?.map((r) => ({ phase: r.phase, saved: r.saved })),
+        budget: pressure.budget,
+        signals: pressure.signals,
+        ...(report.collapsedDigest ? { digest: truncateDigest(report.collapsedDigest) } : {}),
+      });
+    } catch (err) {
+      if (ctx.signal?.aborted) return;
+      note(err);
+    }
+  }
+
   private async compact(
     ctx: Context,
     aggressive: boolean,
@@ -640,53 +841,37 @@ export class AutoCompactionMiddleware {
       if (ctx.state.revision !== revisionBefore) {
         this.invalidateTokenCaches(ctx);
       }
-      // A late summarizer/selector result may arrive after the run was stopped.
-      // Do not turn its no-op report into a destructive emergency trim.
-      if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
-      this.recordAttempt(ctx, pressure.level, pressure.tokens, report);
-      this.onCompact?.(report);
-      this.events?.emit('compaction.fired', {
-        sessionId: resolveEventSessionId(ctx),
-        level: pressure.level,
-        tokens: pressure.tokens,
-        load: pressure.load,
-        maxContext: runtimeMaxContext,
-        budget: pressure.budget,
-        signals: pressure.signals,
-        report,
-        aggressive,
-      });
+      // A stopped run must not trim. A stale summarizer/selector result must
+      // not be logged as a successful compaction or used for the softer target
+      // trim, but the current transcript still has to pass the hard ceiling.
+      if (ctx.signal?.aborted) return;
+      let reportUsable = compactionReportStillCurrent(report, ctx);
+      if (reportUsable) {
+        this.recordAttempt(ctx, pressure.level, pressure.tokens, report);
+        await this.reportCompaction(ctx, pressure, aggressive, report);
+        if (ctx.signal?.aborted) return;
+        reportUsable = compactionReportStillCurrent(report, ctx);
+      }
 
-      // Persist a compaction event to the session log (if a bridge was provided).
-      // This is one of the highest-value audit events for understanding context
-      // window behavior over long runs.
-      await this.sessionBridge?.append({
-        type: 'compaction',
-        ts: new Date().toISOString(),
-        before: report.before,
-        after: report.after,
-        level: pressure.level,
-        aggressive,
-        reductions: report.reductions?.map((r) => ({ phase: r.phase, saved: r.saved })),
-        budget: pressure.budget,
-        signals: pressure.signals,
-        // Record what was collapsed so the audit trail shows the preserved
-        // content, not just token counts. Bounded to keep the log line small;
-        // the full original turns are already in the session JSONL.
-        ...(report.collapsedDigest ? { digest: truncateDigest(report.collapsedDigest) } : {}),
-      });
+      if (reportUsable) {
+        // Stale file-read metadata from before the compaction boundary is no
+        // longer useful and would cause hasRead() to skip legitimate re-reads.
+        ctx.clearFileTracking();
+      }
 
-      if (ctx.signal?.aborted || !compactionReportStillCurrent(report, ctx)) return;
-
-      // Stale file-read metadata from before the compaction boundary is no
-      // longer useful and would cause hasRead() to skip legitimate re-reads.
-      ctx.clearFileTracking();
-
-      const afterTokens = report.fullRequestTokensAfter ?? report.after;
+      const fresh = reportUsable ? undefined : this.estimateContextTokens(ctx);
+      const afterTokens = fresh ? fresh.tokens : (report.fullRequestTokensAfter ?? report.after);
       let afterBudget = contextWindowBudget(ctx, afterTokens, runtimeMaxContext);
       // Compactor reports are raw estimates. Dense content must pass the same
-      // upper-bound guard after compaction as before it.
-      let afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
+      // upper-bound guard after compaction as before it. An exact provider
+      // anchor is already real and must not be inflated.
+      let afterLoad = this.pressureLoad(
+        ctx,
+        afterBudget.load,
+        afterBudget.availableInputTokens,
+        Math.min(pressure.hardThreshold, pressure.targetLoad),
+        fresh?.exact ?? false,
+      );
       let stillHard = afterLoad >= pressure.hardThreshold;
 
       // Last-resort emergency trim — the no-overflow guarantee. When normal
@@ -704,7 +889,12 @@ export class AutoCompactionMiddleware {
             ctx.tools ?? [],
           ).total;
           afterBudget = contextWindowBudget(ctx, retryTokens, runtimeMaxContext);
-          afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
+          afterLoad = this.applySendGuard(
+            ctx,
+            afterBudget.load,
+            afterBudget.availableInputTokens,
+            Math.min(pressure.hardThreshold, pressure.targetLoad),
+          );
           stillHard = afterLoad >= pressure.hardThreshold;
           ctx.clearFileTracking();
           this.events?.emit('compaction.emergency_trim', {
@@ -722,7 +912,7 @@ export class AutoCompactionMiddleware {
         }
       }
 
-      if (!stillHard && afterLoad > pressure.targetLoad) {
+      if (reportUsable && !stillHard && afterLoad > pressure.targetLoad) {
         const trim = this.emergencyTrim(ctx, afterBudget, pressure.targetLoad);
         if (trim) {
           const retryTokens = estimateRequestTokens(
@@ -731,7 +921,12 @@ export class AutoCompactionMiddleware {
             ctx.tools ?? [],
           ).total;
           afterBudget = contextWindowBudget(ctx, retryTokens, runtimeMaxContext);
-          afterLoad = this.applySendGuard(ctx, afterBudget.load, afterBudget.availableInputTokens);
+          afterLoad = this.applySendGuard(
+            ctx,
+            afterBudget.load,
+            afterBudget.availableInputTokens,
+            Math.min(pressure.hardThreshold, pressure.targetLoad),
+          );
           stillHard = afterLoad >= pressure.hardThreshold;
           ctx.clearFileTracking();
           this.events?.emit('compaction.target_trim', {
@@ -750,13 +945,12 @@ export class AutoCompactionMiddleware {
         }
       }
 
-      // Only reachable if the emergency trim somehow could not fit the request
-      // (e.g. a budget smaller than a single floored message — not achievable in
-      // practice). Preserve the original fail-safe so nothing is silently sent.
-      const fatal =
-        stillHard &&
-        (this.failureMode === 'throw' ||
-          (this.failureMode === 'throw_on_hard' && pressure.level === 'hard'));
+      // The pass may have started at warn or soft and still finished over the
+      // hard line (the compactor grew the transcript, or its after-count is
+      // the first measurement that sees the overflow). `throw_on_hard` refuses
+      // that send. A compactor *exception* at warn/soft stays non-fatal; that
+      // path does not know the transcript is over the line.
+      const fatal = stillHard && this.failureMode !== 'continue';
       if (stillHard) {
         const error = new Error(
           `Auto-compaction left context above the hard threshold after ${pressure.level} compaction`,

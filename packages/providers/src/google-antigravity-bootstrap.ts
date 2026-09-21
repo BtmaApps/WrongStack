@@ -112,6 +112,23 @@ function timeoutSignal(signal: AbortSignal | undefined): AbortSignal {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
+function pollDelay(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+}
+
 async function postJson(
   path: string,
   body: unknown,
@@ -181,7 +198,7 @@ export async function bootstrapAntigravityProject(
     // answer while telling the user it might still work.
     if (body['done'] === false) {
       if (attempt === ONBOARD_MAX_ATTEMPTS) return { ok: false, reason: 'discovery_failed' };
-      await new Promise((resolve) => setTimeout(resolve, pollMs));
+      await pollDelay(pollMs, opts.signal);
       continue;
     }
 

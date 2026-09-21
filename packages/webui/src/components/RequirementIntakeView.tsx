@@ -80,6 +80,11 @@ function relativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
+function newSubmissionIdempotencyKey(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return `webui-${uuid ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}`;
+}
+
 export function RequirementIntakeView({
   onStartSdd,
 }: RequirementIntakeViewProps = {}): React.ReactElement {
@@ -101,6 +106,13 @@ export function RequirementIntakeView({
   // One indicator window at a time: a new copy must cancel the previous timer,
   // or that timer fires mid-window and clears the NEWEST record's "Copied!".
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Retain one create identity across transport/submit failures so a retry
+  // returns the same draft instead of creating another one.
+  const submissionKeyRef = useRef<string | null>(null);
+
+  const resetSubmissionKey = useCallback(() => {
+    submissionKeyRef.current = null;
+  }, []);
 
   const copyRequest = useCallback((id: string, text: string) => {
     void navigator.clipboard?.writeText(text);
@@ -130,14 +142,17 @@ export function RequirementIntakeView({
         throw new Error(body?.error?.message ?? `List failed (HTTP ${res.status})`);
       }
       const data = (await res.json()) as IntakeListResponse;
-      setProjectId(data.projectId);
+      setProjectId((current) => {
+        if (current !== null && current !== data.projectId) resetSubmissionKey();
+        return data.projectId;
+      });
       setIntakes(data.intakes);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resetSubmissionKey]);
 
   useEffect(() => {
     void load();
@@ -156,6 +171,8 @@ export function RequirementIntakeView({
     setSubmitting(true);
     setFormError(null);
     setFormNotice(null);
+    const idempotencyKey = submissionKeyRef.current ?? newSubmissionIdempotencyKey();
+    submissionKeyRef.current = idempotencyKey;
     try {
       const createRes = await fetch(
         `/api/projects/${encodeURIComponent(projectId)}/requirement-intakes`,
@@ -170,6 +187,7 @@ export function RequirementIntakeView({
             // user-identity surface exists, this becomes ctx.userId.
             projectId,
             requestedBy: 'webui',
+            idempotencyKey,
             originalRequest: text,
             ...(title.trim() ? { title: title.trim() } : {}),
             ...(requestType !== 'unspecified' ? { requestType } : {}),
@@ -195,6 +213,7 @@ export function RequirementIntakeView({
         } | null;
         throw new Error(submitBody?.error?.message ?? `Submit failed (HTTP ${submitRes.status})`);
       }
+      submissionKeyRef.current = null;
       setFormNotice(`Intake recorded and submitted (${createBody.record.id}).`);
       setRequest('');
       setTitle('');
@@ -252,7 +271,10 @@ export function RequirementIntakeView({
               <textarea
                 id="intake-request"
                 value={request}
-                onChange={(event) => setRequest(event.target.value)}
+                onChange={(event) => {
+                  resetSubmissionKey();
+                  setRequest(event.target.value);
+                }}
                 placeholder={t('activity:reqIntake.describeTheFeatureBugFixRefactorOrChange')}
                 rows={4}
                 className={cn(
@@ -282,7 +304,10 @@ export function RequirementIntakeView({
                 <Input
                   id="intake-title"
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => {
+                    resetSubmissionKey();
+                    setTitle(event.target.value);
+                  }}
                   placeholder={t('activity:reqIntake.shortDisplayTitle')}
                 />
               </div>
@@ -293,7 +318,10 @@ export function RequirementIntakeView({
                 <select
                   id="intake-type"
                   value={requestType}
-                  onChange={(event) => setRequestType(event.target.value)}
+                  onChange={(event) => {
+                    resetSubmissionKey();
+                    setRequestType(event.target.value);
+                  }}
                   className={cn(
                     'w-full rounded-md border border-border/70 bg-background px-2 py-2',
                     'text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring',
@@ -313,7 +341,10 @@ export function RequirementIntakeView({
                 <select
                   id="intake-priority"
                   value={priority}
-                  onChange={(event) => setPriority(event.target.value)}
+                  onChange={(event) => {
+                    resetSubmissionKey();
+                    setPriority(event.target.value);
+                  }}
                   className={cn(
                     'w-full rounded-md border border-border/70 bg-background px-2 py-2',
                     'text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring',

@@ -37,9 +37,14 @@ export const lintTool: Tool<LintInput, LintOutput> = {
     '- Target specific files or globs when you only want to check part of the project.\n' +
     'This is a fast and important quality gate. Use it before typecheck in most workflows.',
   permission: 'confirm',
-  mutating: false,
+  // `fix: true` forwards `--fix` / `--write` to the selected linter, so this
+  // is conditionally a filesystem mutator. Keep the declaration conservative:
+  // the permission, ledger and capability surfaces must never describe a
+  // possible rewrite as a read-only inspection.
+  subjectKey: 'files',
+  mutating: true,
   timeoutMs: 60_000,
-  capabilities: ['shell.restricted'],
+  capabilities: ['fs.write', 'shell.restricted'],
   icon: 'code',
   inputSchema: {
     type: 'object',
@@ -57,6 +62,18 @@ export const lintTool: Tool<LintInput, LintOutput> = {
       },
       cwd: { type: 'string', description: 'Working directory (default: cwd)' },
     },
+  },
+  writeTargets(input: LintInput): string[] {
+    if (!input?.fix || !input.files) return [];
+    const rawFiles = Array.isArray(input.files) ? input.files : input.files.split(',');
+    return [
+      ...new Set(
+        rawFiles
+          .filter((file): file is string => typeof file === 'string')
+          .map((file) => file.trim().replace(/\\/g, '/'))
+          .filter(Boolean),
+      ),
+    ];
   },
   async execute(input, ctx, opts) {
     let final: LintOutput | undefined;

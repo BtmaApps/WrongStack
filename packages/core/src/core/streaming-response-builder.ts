@@ -118,13 +118,10 @@ export function handleContentBlockStart(
     state.blockOrder.push({ kind: 'tool', id });
     state.currentTextIndex = -1;
   } else if (kind === 'thinking') {
-    state.currentThinkingIndex = state.thinking.length;
-    state.thinking.push({
-      textBuf: '',
-      ...(ev.providerMeta ? { providerMeta: ev.providerMeta } : {}),
-    });
-    state.blockOrder.push({ kind: 'thinking', idx: state.currentThinkingIndex });
-    state.currentTextIndex = -1;
+    // Same entry point as the `thinking_start` event — share the open-or-reuse
+    // rule rather than duplicating it, so a provider that announces blocks
+    // generically and one that emits typed thinking events cannot drift apart.
+    handleThinkingStart(state, ev.providerMeta ? { providerMeta: ev.providerMeta } : {});
   }
 }
 
@@ -195,17 +192,34 @@ export function handleToolUseStop(
 /**
  * Open a fresh thinking block. Providers that don't pre-announce blocks
  * (e.g. OpenAI/DeepSeek) can call this lazily on the first reasoning delta.
+ *
+ * Reuses the block already in flight instead of opening a second one. A
+ * thinking block is "in flight" only between its start and `thinking_stop`
+ * (which resets the index to -1), so the ordinary
+ * start → deltas → stop → start sequence still yields distinct blocks.
+ * The reuse matters when `thinking_signature` / `thinking_delta` arrives
+ * BEFORE the provider's own start event and lazily opened the block: without
+ * it the signature and the text land in two separate entries, and the
+ * response carries a duplicate, half-empty thinking block. Mirrors the same
+ * guard in `providers/aggregate.ts`, which this builder is the streaming twin
+ * of — the two must agree or a model's reasoning is shaped differently
+ * depending on which path assembled it.
  */
 export function handleThinkingStart(
   state: StreamingState,
   ev: { providerMeta?: Record<string, unknown> },
 ): void {
-  state.currentThinkingIndex = state.thinking.length;
-  state.thinking.push({
-    textBuf: '',
-    ...(ev.providerMeta ? { providerMeta: ev.providerMeta } : {}),
-  });
-  state.blockOrder.push({ kind: 'thinking', idx: state.currentThinkingIndex });
+  if (state.currentThinkingIndex === -1 || !state.thinking[state.currentThinkingIndex]) {
+    state.currentThinkingIndex = state.thinking.length;
+    state.thinking.push({ textBuf: '' });
+    state.blockOrder.push({ kind: 'thinking', idx: state.currentThinkingIndex });
+  }
+  // Always applied: `thinking_start` may carry metadata even when the block
+  // was opened by an earlier signature/delta that had none.
+  if (ev.providerMeta) {
+    const t = state.thinking[state.currentThinkingIndex];
+    if (t) t.providerMeta = { ...t.providerMeta, ...ev.providerMeta };
+  }
   state.currentTextIndex = -1;
 }
 

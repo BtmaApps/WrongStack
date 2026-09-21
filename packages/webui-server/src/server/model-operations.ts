@@ -95,13 +95,27 @@ export function createModelOperations(context: ModelOperationsContext) {
   async function switchModel(ws: WebSocket, input: unknown): Promise<void> {
     const parsed = validateModelSwitchPayload(input);
     if (!parsed.ok) {
+      const envelope =
+        input && typeof input === 'object' && !Array.isArray(input)
+          ? (input as Record<string, unknown>)
+          : undefined;
+      const requestId =
+        typeof envelope?.['requestId'] === 'string' && envelope['requestId'].trim().length > 0
+          ? envelope['requestId'].trim()
+          : undefined;
+      const sessionId =
+        typeof envelope?.['sessionId'] === 'string' && envelope['sessionId'].trim().length > 0
+          ? envelope['sessionId'].trim()
+          : undefined;
       sendResult(
         context,
         ws,
         {
+          ...(requestId ? { requestId } : {}),
+          ...(sessionId ? { sessionId } : {}),
           success: false,
           message: parsed.message,
-          runActive: context.isRunActive?.() ?? false,
+          runActive: context.isRunActive?.(sessionId) ?? false,
         },
         true,
       );
@@ -115,14 +129,18 @@ export function createModelOperations(context: ModelOperationsContext) {
       // the switch to the boot tab's context (cross-tab model bleed).
       const named = sessionId ? context.getSessionContext?.(sessionId) : context.context;
       if (sessionId && !named) {
-        context.send(ws, {
-          type: 'error',
-          payload: {
-            phase: 'model.switch',
-            message: `Session ${sessionId} is not live in this runtime. Reopen or resume the tab, then retry.`,
+        sendResult(
+          context,
+          ws,
+          {
+            ...(requestId ? { requestId } : {}),
             sessionId,
+            success: false,
+            message: `Session ${sessionId} is not live in this runtime. Reopen or resume the tab, then retry.`,
+            runActive: context.isRunActive?.(sessionId) ?? false,
           },
-        });
+          requestId === undefined,
+        );
         return;
       }
       const targetCtx = named ?? context.context;
@@ -216,11 +234,13 @@ export function createModelOperations(context: ModelOperationsContext) {
       : context.context;
     if (payload.sessionId && !named) {
       context.send(ws, {
-        type: 'error',
+        type: 'model.refine_result',
         payload: {
-          phase: 'model.refine',
-          message: `Session ${payload.sessionId} is not live in this runtime. Reopen or resume the tab, then retry.`,
-          sessionId: payload.sessionId,
+          ...stamp,
+          refined: text,
+          english: text,
+          error: `Session ${payload.sessionId} is not live in this runtime. Reopen or resume the tab, then retry.`,
+          errorKind: 'provider_error',
         },
       });
       return;

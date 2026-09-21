@@ -15,6 +15,10 @@ export interface ToolSearchOutput {
     /** Exact schema required by tool_use for an on-demand invocation. */
     inputSchema: Tool['inputSchema'];
     usageHint?: string | undefined;
+    /** Runtime family, suitable for passing back through the `tags` filter. */
+    category?: string | undefined;
+    /** Fine-grained runtime capabilities, when the tool declares them. */
+    capabilities?: readonly string[] | undefined;
     permission: string;
     mutating: boolean;
   }[];
@@ -36,7 +40,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     'SELF-DISCOVERY TOOL:\n\n' +
     '- Use when you need to find the right tool for a job.\n' +
     '- `query` searches names and descriptions.\n' +
-    '- You can filter by `tags` (category), `permission`, or `mutating`.\n' +
+    '- You can filter by `tags` (category, capability, or name terms), `permission`, or `mutating`.\n' +
     '- The catalog searched here is the full registry, not just the tools listed in this request.\n' +
     '- Once you find the right tool name, invoke it with `tool_use`.\n' +
     'Call this before concluding a capability is unavailable.',
@@ -90,8 +94,22 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
         return false;
       }
       if (input.tags && input.tags.length > 0) {
-        const toolCat = (t.category ?? '').toLowerCase();
-        if (!input.tags.some((tag: string) => toolCat.includes(tag.toLowerCase()))) {
+        // Tool historically exposed only a broad `category`, even though the
+        // input called this filter `tags`. Include category, declared
+        // capabilities, and name segments so callers can make a useful
+        // semantic selection without already knowing a tool's exact family.
+        const searchableTags = [
+          t.category ?? '',
+          ...(t.capabilities ?? []),
+          ...t.name.split(/[_-]/),
+        ].map((value) => value.toLowerCase());
+        const requestedTags = input.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+        if (
+          requestedTags.length > 0 &&
+          !requestedTags.some((tag) =>
+            searchableTags.some((candidate) => candidate.includes(tag) || tag.includes(candidate)),
+          )
+        ) {
           return false;
         }
       }
@@ -109,6 +127,8 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
       description: t.description,
       inputSchema: t.inputSchema,
       ...(t.usageHint ? { usageHint: t.usageHint } : {}),
+      ...(t.category ? { category: t.category } : {}),
+      ...(t.capabilities?.length ? { capabilities: t.capabilities } : {}),
       permission: t.permission,
       mutating: t.mutating,
     }));
@@ -119,7 +139,7 @@ export const toolSearchTool: Tool<ToolSearchInput, ToolSearchOutput> = {
     const totalAvailable = tools.length;
     const hint =
       results.length === 0 && query
-        ? `No tools matched "${input.query}". ${totalAvailable} tools are available; call tool_search with no query to list them all.`
+        ? `No tools matched "${input.query}". ${totalAvailable} tools are available; try a broader query, or call tool_search with no query and limit up to 100.`
         : undefined;
 
     return {

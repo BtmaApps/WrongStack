@@ -86,7 +86,13 @@ describe('runtime capability manifest', () => {
 
   it('normalizes legacy provider names without putting them in the roster', () => {
     expect(normalizeRuntimeToolName('playwright_navigate')).toBe('browser_navigate');
-    expect(toolsForRuntimeCapabilities(['mcp.dynamic'])).toEqual(['mcp_use']);
+    expect(toolsForRuntimeCapabilities(['mcp.dynamic'])).toEqual(['mcp_control', 'mcp_use']);
+    expect(toolsForRuntimeCapabilities(['memory.semantic'])).toEqual([
+      'vector_memory_remember',
+      'vector_memory_search',
+      'vector_memory_stats',
+      'vector_memory_forget',
+    ]);
   });
 
   it('keeps skill ids and provider-specific names out of roster tool slots', () => {

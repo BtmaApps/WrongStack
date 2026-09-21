@@ -45,6 +45,7 @@ describe('first-party browser tool contract', () => {
         .filter((tool) => tool.name !== 'browser_status')
         .every((tool) => tool.capabilities?.includes('net.outbound')),
     ).toBe(true);
+    expect(browserTools.every((tool) => tool.category === 'Browser & E2E')).toBe(true);
   });
 
   it('keeps observation automatic while navigation, evaluation, and upload require confirmation', () => {

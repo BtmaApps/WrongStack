@@ -30,8 +30,20 @@ export function useInputHistoryPersistence({
   const inputHistoryLoadedRef = useRef(false);
   const inputHistorySaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputHistoryLastSavedRef = useRef<string>('');
+  const inputHistoryStoreRef = useRef(inputHistoryStore);
+  const inputHistorySaveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
+    inputHistoryStoreRef.current = inputHistoryStore;
+    // Store identity is the project boundary. A pending snapshot from project A
+    // must not become eligible for project B merely because this long-lived
+    // hook already completed A's load.
+    inputHistoryLoadedRef.current = false;
+    inputHistoryLastSavedRef.current = '';
+    if (inputHistorySaveTimerRef.current) {
+      clearTimeout(inputHistorySaveTimerRef.current);
+      inputHistorySaveTimerRef.current = undefined;
+    }
     if (!inputHistoryStore) return;
     let cancelled = false;
     inputHistoryStore
@@ -57,11 +69,21 @@ export function useInputHistoryPersistence({
     if (snapshot === inputHistoryLastSavedRef.current) return;
     if (inputHistorySaveTimerRef.current) clearTimeout(inputHistorySaveTimerRef.current);
     inputHistorySaveTimerRef.current = setTimeout(() => {
-      inputHistoryLastSavedRef.current = snapshot;
-      inputHistoryStore.save(inputHistory).catch(() => {
-        // Best-effort persistence; a failed write does not disrupt the UI.
-        // The next change will retry.
-      });
+      inputHistorySaveTimerRef.current = undefined;
+      const store = inputHistoryStore;
+      const entries = inputHistory;
+      inputHistorySaveChainRef.current = inputHistorySaveChainRef.current
+        .catch(() => undefined)
+        .then(() => store.save(entries))
+        .then(() => {
+          if (inputHistoryStoreRef.current === store) {
+            inputHistoryLastSavedRef.current = snapshot;
+          }
+        })
+        .catch(() => {
+          // Best-effort persistence; a failed write does not disrupt the UI.
+          // Keeping the previous snapshot lets a later render retry.
+        });
     }, 200);
     return () => {
       if (inputHistorySaveTimerRef.current) clearTimeout(inputHistorySaveTimerRef.current);

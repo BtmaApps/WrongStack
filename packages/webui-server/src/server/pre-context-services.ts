@@ -22,7 +22,6 @@
 
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
-import { wrongstackPackageJsonPath } from '@wrongstack/core/utils';
 import { Context, DefaultSystemPromptBuilder } from '@wrongstack/core/agent';
 import type { AgentStatusTracker } from '@wrongstack/core/coordination';
 import {
@@ -31,6 +30,7 @@ import {
   makeMailboxTool,
   makeMailInboxTool,
   makeMailSendTool,
+  makeSessionNoteTool,
 } from '@wrongstack/core/coordination';
 import { DefaultPromptLoader, DefaultSkillLoader } from '@wrongstack/core/execution';
 import { DefaultTokenCounter, resolveMcpServerConfig } from '@wrongstack/core/infrastructure';
@@ -45,6 +45,7 @@ import {
   getSessionRegistry,
   PromptUsageStore,
 } from '@wrongstack/core/storage';
+import { createMcpControlTool, createMcpUseTool } from '@wrongstack/core/tools';
 import {
   type Config,
   type ConfigStore,
@@ -63,6 +64,7 @@ import {
   sessionScopedPath,
   toErrorMessage,
   type WstackPaths,
+  wrongstackPackageJsonPath,
 } from '@wrongstack/core/utils';
 import {
   createVaultBackedMcpAuthorizationProviderFactory,
@@ -79,6 +81,7 @@ import { createDefaultContainer } from '@wrongstack/runtime';
 import { registerCanonicalHostTools } from '@wrongstack/runtime/tool-registration';
 import { configureDangerBypass, configureExecPolicy } from '@wrongstack/tools';
 import { attachSessionKanbanMirror, hydrateSessionKanban } from '@wrongstack/tools/session-kanban';
+import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import { seedContextMeta } from './context-meta.js';
 import type { CustomModeStore } from './custom-context-modes.js';
 import { createCustomModeStore } from './custom-context-modes.js';
@@ -104,6 +107,8 @@ interface PreContextServicesInput {
   projectRoot: string;
   workingDir: string;
   needsProvider: boolean;
+  /** Optional semantic-memory store created by the standalone host before registry composition. */
+  vectorMemoryStore?: VectorMemoryStore | undefined;
   /** Callback to register/refresh the project in the manifest. */
   touchProject: (root: string, workDir?: string) => Promise<void>;
 }
@@ -145,7 +150,18 @@ interface PreContextServices {
 export async function createPreContextServices(
   input: PreContextServicesInput,
 ): Promise<PreContextServices> {
-  const { config, wpaths, logger, opts, vault, projectRoot, workingDir, needsProvider } = input;
+  const {
+    config,
+    wpaths,
+    logger,
+    opts,
+    vault,
+    globalConfigPath,
+    projectRoot,
+    workingDir,
+    needsProvider,
+    vectorMemoryStore,
+  } = input;
 
   // ── ModelsRegistry ──
   const modelsRegistry =
@@ -273,6 +289,7 @@ export async function createPreContextServices(
       registry: toolRegistry,
       tier: tokenSavingTier,
       memory: { enabled: config.features.memory, store: memoryStore },
+      vectorMemory: vectorMemoryStore ? { store: vectorMemoryStore } : undefined,
       nextSteps: { enabled: config.tools?.nextsteps?.enabled === true },
       skillLoader,
       coordinationTools: [
@@ -280,6 +297,7 @@ export async function createPreContextServices(
         makeMailSendTool({ projectDir: wpaths.projectDir, events }),
         makeMailInboxTool({ projectDir: wpaths.projectDir, events }),
         makeFleetStatusTool({ projectDir: wpaths.projectDir, events }),
+        makeSessionNoteTool({ projectDir: wpaths.projectDir, events }),
       ],
       descriptionMode: config.tools?.descriptionMode,
       resultRenderMode: config.tools?.resultRenderMode,
@@ -325,6 +343,28 @@ export async function createPreContextServices(
         logger.warn(`MCP server "${name}" failed to start at boot`, err);
       });
     }
+  }
+
+  // MCPRegistry owns the connections, but these gateways are what make a
+  // token-saving model able to discover a server schema and invoke a dormant
+  // server without exposing every MCP tool in every provider request.
+  const disabledTools = new Set(config.tools?.disabledTools ?? []);
+  const exposeMcpGateway = (name: string) => {
+    if (tokenSavingTier !== 'off') toolRegistry.exposeToProvider(name);
+  };
+  if (!disabledTools.has('mcp_control')) {
+    toolRegistry.registerDefault(
+      createMcpControlTool({
+        getConfig: () => configStore.get(),
+        configPath: globalConfigPath,
+        registry: mcpRegistry,
+      }),
+    );
+    exposeMcpGateway('mcp_control');
+  }
+  if (!disabledTools.has('mcp_use')) {
+    toolRegistry.registerDefault(createMcpUseTool({ registry: mcpRegistry, toolRegistry }));
+    exposeMcpGateway('mcp_use');
   }
 
   // ── Session store + session ──

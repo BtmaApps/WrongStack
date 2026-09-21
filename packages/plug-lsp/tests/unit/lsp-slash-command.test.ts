@@ -867,6 +867,7 @@ describe('buildLspCommand — diagnostics', () => {
       },
     ]);
     const result = await runCmd(ctx, 'diagnostics src/clean.ts');
-    expect(result.message).toContain('No diagnostics for');
+    expect(result.message).toContain('No buffered diagnostic report');
+    expect(result.message).toContain('does not mean the file is clean');
   });
 });

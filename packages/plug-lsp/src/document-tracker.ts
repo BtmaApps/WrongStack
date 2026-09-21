@@ -105,18 +105,18 @@ export class DocumentTracker {
     this.enforceBudget();
   }
 
-  async open(filePath: string, knownText?: string): Promise<void> {
+  async open(filePath: string, knownText?: string): Promise<boolean> {
     const absPath = this.resolve(filePath);
     const languageId = this.detectLanguage(absPath);
-    if (!languageId) return;
+    if (!languageId) return false;
     let text: string;
     if (knownText !== undefined) {
       // A caller-supplied body still counts against the per-document cap.
-      if (knownText.length > MAX_DOCUMENT_BYTES) return;
+      if (knownText.length > MAX_DOCUMENT_BYTES) return false;
       text = knownText;
     } else {
       const read = await this.readTrackable(absPath, 'file');
-      if (read === null) return;
+      if (read === null) return false;
       text = read;
     }
     let doc = this.docs.get(absPath);
@@ -133,14 +133,14 @@ export class DocumentTracker {
       this.docs.set(absPath, doc);
       this.accountText(undefined, text);
       this.events?.emit('lsp.document.opened', { path: absPath, language: languageId });
-    } else if (knownText !== undefined && knownText !== doc.text) {
+    } else if (text !== doc.text) {
       doc.version++;
-      this.accountText(doc.text, knownText);
-      doc.text = knownText;
+      this.accountText(doc.text, text);
+      doc.text = text;
       for (const server of this.registry().list()) {
         if (server.state !== 'ready' || !server.config.languages.includes(languageId)) continue;
         if (!doc.serverNames.has(server.name)) continue;
-        server.notifyDidChange({ uri: doc.uri, version: doc.version }, knownText);
+        server.notifyDidChange({ uri: doc.uri, version: doc.version }, text);
       }
     }
     this.touch(absPath);
@@ -152,6 +152,7 @@ export class DocumentTracker {
       doc.serverNames.add(server.name);
     }
     this.enforceBudget();
+    return this.docs.has(absPath);
   }
 
   async reopenForServer(server: LSPServer): Promise<void> {

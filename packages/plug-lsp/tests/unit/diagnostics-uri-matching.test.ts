@@ -150,5 +150,6 @@ describe('client capabilities', () => {
     // Push-only servers stay silent unless the client declares this.
     const caps = sent?.['capabilities'] as { textDocument?: Record<string, unknown> };
     expect(caps.textDocument?.['publishDiagnostics']).toBeDefined();
+    expect(caps.textDocument?.['publishDiagnostics']).toMatchObject({ versionSupport: true });
   });
 });

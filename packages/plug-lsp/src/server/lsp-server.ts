@@ -61,6 +61,7 @@ export class LSPServer {
    */
   private readonly diagnosticsFresh = new Set<string>();
   private readonly diagnosticsWaiters = new Map<string, Set<() => void>>();
+  private readonly documentRevisions = new Map<string, { version: number }>();
   private child: ChildProcessWithoutNullStreams | null = null;
   private connection: Connection | null = null;
   private processReachedReady = false;
@@ -98,6 +99,7 @@ export class LSPServer {
       return;
     }
     this.state = 'starting';
+    this.clearDiagnostics();
     this.processReachedReady = false;
     this.ctx.events.emit('lsp.server.starting', { name: this.name, command: this.config.command });
     const command = await resolveSpawnCommand(this.config.command, this.ctx.rootPath);
@@ -133,12 +135,14 @@ export class LSPServer {
       }
       this.ctx.events.emit('lsp.server.exited', { name: this.name, code, signal: sig });
       this.processReachedReady = false;
+      this.clearDiagnostics();
     });
     child.on('error', (err) => {
       /* v8 ignore next -- stale-child error after a restart is defensive; spawn failure is covered. */
       if (this.child !== child) return;
       const shouldReconnect = this.processReachedReady;
       this.state = 'failed';
+      this.clearDiagnostics();
       this.ctx.events.emit('lsp.server.crashed', { name: this.name, error: err.message });
       if (shouldReconnect) this.ctx.onCrash?.(this);
       this.processReachedReady = false;
@@ -146,9 +150,15 @@ export class LSPServer {
 
     this.connection = new Connection(child.stdin, child.stdout);
     this.connection.onNotification('textDocument/publishDiagnostics', (params) => {
-      const p = params as { uri?: string | undefined; diagnostics?: Diagnostic[] | undefined };
-      if (!p.uri || !Array.isArray(p.diagnostics)) return;
-      this.setDiagnostics(p.uri, p.diagnostics);
+      if (this.child !== child) return;
+      if (this.state !== 'ready' && this.state !== 'initializing') return;
+      const p = params as {
+        uri?: string | undefined;
+        diagnostics?: Diagnostic[] | undefined;
+        version?: number;
+      };
+      if (!p?.uri || !Array.isArray(p.diagnostics)) return;
+      if (!this.setDiagnostics(p.uri, p.diagnostics, p.version)) return;
       this.ctx.events.emit('lsp.diagnostics.updated', {
         path: p.uri.startsWith('file:') ? uriToPath(p.uri) : p.uri,
         count: p.diagnostics.length,
@@ -160,7 +170,9 @@ export class LSPServer {
       }
     });
     this.connection.onClose(() => {
+      if (this.child !== child) return;
       if (this.state === 'ready') this.state = 'failed';
+      this.clearDiagnostics();
     });
 
     this.state = 'initializing';
@@ -186,6 +198,7 @@ export class LSPServer {
     } catch (err) {
       startup.cancel();
       this.state = 'failed';
+      this.clearDiagnostics();
       this.connection?.close();
       treeKill(child);
       this.processReachedReady = false;
@@ -196,6 +209,7 @@ export class LSPServer {
   async shutdown(): Promise<void> {
     if (this.state === 'exited' || this.state === 'disabled') return;
     this.state = 'shutting_down';
+    this.clearDiagnostics();
     try {
       if (this.connection) {
         const ctrl = new AbortController();
@@ -211,6 +225,7 @@ export class LSPServer {
       this.child = null;
       this.processReachedReady = false;
       this.state = 'exited';
+      this.clearDiagnostics();
     }
   }
 
@@ -309,13 +324,37 @@ export class LSPServer {
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<Diagnostic[]> {
-    const result = await this.request<{ items?: Diagnostic[] | undefined }>(
+    const key = uriKey(uri);
+    const revision = this.documentRevisions.get(key);
+    const connection = this.connection;
+    const result = await this.request<{ kind?: string; items?: Diagnostic[] } | null>(
       'textDocument/diagnostic',
       { textDocument: { uri } },
       timeoutMs,
       signal,
     );
-    const items = result?.items ?? [];
+    signal.throwIfAborted();
+    if (this.state !== 'ready' || this.connection !== connection) {
+      throw new LSPError(
+        LSPErrorCode.ServerNotReady,
+        `Server "${this.name}" changed while requesting diagnostics`,
+      );
+    }
+    if (this.documentRevisions.get(key) !== revision) {
+      throw new LSPError(
+        LSPErrorCode.InvalidRequest,
+        `Document ${uri} changed while requesting diagnostics; retry the check.`,
+      );
+    }
+    // We do not send previousResultId, so an unchanged report cannot be used
+    // here. Missing/null items are not evidence that a document is clean.
+    if (result?.kind !== 'full' || !Array.isArray(result.items)) {
+      throw new LSPError(
+        LSPErrorCode.ProtocolError,
+        `Server "${this.name}" returned an invalid diagnostic report for ${uri}`,
+      );
+    }
+    const items = result.items;
     this.setDiagnostics(uri, items);
     return items;
   }
@@ -330,21 +369,39 @@ export class LSPServer {
    * servers analyse asynchronously, so reading the buffer the instant after
    * `didOpen` reports "no diagnostics" for a file that is about to be flagged.
    * Returns whatever is buffered once the wait ends — a timeout is not an
-   * error, it just means the server is still thinking.
+   * error for background/cache consumers. Explicit verification callers use
+   * `requireFresh` so a timeout, stopped server, or cancellation cannot be
+   * mistaken for a confirmed clean document.
    */
   async waitForDiagnostics(
     uri: string,
     timeoutMs: number,
     signal?: AbortSignal | undefined,
+    requireFresh = false,
   ): Promise<Diagnostic[]> {
     const key = uriKey(uri);
+    const result = (): Diagnostic[] => {
+      if (requireFresh) {
+        signal?.throwIfAborted();
+        if (this.state !== 'ready') {
+          throw new LSPError(LSPErrorCode.ServerNotReady, `Server "${this.name}" is not ready`);
+        }
+        if (!this.diagnosticsFresh.has(key)) {
+          throw new LSPError(
+            LSPErrorCode.RequestTimeout,
+            `Server "${this.name}" has not reported diagnostics for ${uri} within ${timeoutMs}ms; the file has not been verified.`,
+          );
+        }
+      }
+      return this.getDiagnostics(uri);
+    };
     if (
       this.diagnosticsFresh.has(key) ||
       timeoutMs <= 0 ||
       this.state !== 'ready' ||
       signal?.aborted
     ) {
-      return this.getDiagnostics(uri);
+      return result();
     }
     await new Promise<void>((resolve) => {
       let settled = false;
@@ -355,7 +412,9 @@ export class LSPServer {
         settled = true;
         if (timer) clearTimeout(timer);
         signal?.removeEventListener('abort', finish);
-        this.diagnosticsWaiters.get(key)?.delete(finish);
+        const waiters = this.diagnosticsWaiters.get(key);
+        waiters?.delete(finish);
+        if (waiters?.size === 0) this.diagnosticsWaiters.delete(key);
         resolve();
       };
       if (signal?.aborted) {
@@ -370,15 +429,17 @@ export class LSPServer {
       waiters.add(finish);
       this.diagnosticsWaiters.set(key, waiters);
     });
-    return this.getDiagnostics(uri);
+    return result();
   }
 
   notifyDidOpen(doc: TextDocumentItem): void {
+    this.documentRevisions.set(uriKey(doc.uri), { version: doc.version });
     this.diagnosticsFresh.delete(uriKey(doc.uri));
     this.notification('textDocument/didOpen', { textDocument: doc });
   }
 
   notifyDidChange(doc: VersionedTextDocumentIdentifier, text: string): void {
+    this.documentRevisions.set(uriKey(doc.uri), { version: doc.version });
     this.diagnosticsFresh.delete(uriKey(doc.uri));
     this.notification('textDocument/didChange', {
       textDocument: doc,
@@ -391,6 +452,8 @@ export class LSPServer {
     // would otherwise be retained (and counted against the cap) forever.
     this.diagnostics.delete(uriKey(uri));
     this.diagnosticsFresh.delete(uriKey(uri));
+    this.documentRevisions.delete(uriKey(uri));
+    this.wakeDiagnosticsWaiters(uriKey(uri));
     this.notification('textDocument/didClose', { textDocument: { uri } });
   }
 
@@ -419,18 +482,16 @@ export class LSPServer {
    * Store diagnostics with LRU semantics: re-insert so the entry becomes
    * most-recently-used, then evict the oldest entries past the cap.
    */
-  private setDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
+  private setDiagnostics(uri: string, diagnostics: Diagnostic[], version?: number): boolean {
     // Key on the canonical path, never the raw URI: a server may answer our
     // `file:///C:/…` with `file:///c%3A/…` and the buffer would never match.
     const key = uriKey(uri);
+    const revision = this.documentRevisions.get(key);
+    if (version !== undefined && revision && version !== revision.version) return false;
     if (this.diagnostics.has(key)) this.diagnostics.delete(key);
     this.diagnostics.set(key, diagnostics);
     this.diagnosticsFresh.add(key);
-    const waiters = this.diagnosticsWaiters.get(key);
-    if (waiters) {
-      this.diagnosticsWaiters.delete(key);
-      for (const wake of waiters) wake();
-    }
+    this.wakeDiagnosticsWaiters(key);
     while (this.diagnostics.size > LSPServer.MAX_DIAGNOSTICS_ENTRIES) {
       const oldest = this.diagnostics.keys().next().value;
       if (oldest === undefined) break;
@@ -440,6 +501,20 @@ export class LSPServer {
       // return an empty buffer immediately instead of waiting for a republish.
       this.diagnosticsFresh.delete(oldest);
     }
+    return true;
+  }
+
+  private wakeDiagnosticsWaiters(key: string): void {
+    const waiters = this.diagnosticsWaiters.get(key);
+    this.diagnosticsWaiters.delete(key);
+    if (waiters) for (const wake of waiters) wake();
+  }
+
+  private clearDiagnostics(): void {
+    this.diagnostics.clear();
+    this.diagnosticsFresh.clear();
+    this.documentRevisions.clear();
+    for (const key of this.diagnosticsWaiters.keys()) this.wakeDiagnosticsWaiters(key);
   }
 
   private captureStderr(chunk: Buffer): void {

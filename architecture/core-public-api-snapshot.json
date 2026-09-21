@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "package": "@wrongstack/core",
-  "packageVersion": "1.0.24",
+  "packageVersion": "1.0.25",
   "policy": "Root is compatibility-only; new imports use owned domain subpaths.",
   "subpaths": [
     {
@@ -1454,14 +1454,14 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 202,
-      "sourceLines": 57395
+      "sourceLines": 57405
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 58,
-      "sourceLines": 13394
+      "sourceLines": 13408
     },
     {
       "directory": "design",
@@ -1475,7 +1475,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 64,
-      "sourceLines": 19788
+      "sourceLines": 19982
     },
     {
       "directory": "extension",
@@ -1643,7 +1643,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 76,
-      "sourceLines": 14078
+      "sourceLines": 14097
     },
     {
       "directory": "typesafe",

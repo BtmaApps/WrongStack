@@ -802,6 +802,34 @@ describe('project agent self-learning lifecycle', () => {
       expect(merged.map((entry) => entry.category)).toEqual(['warning', 'convention']);
     });
 
+    it('preserves both evidence arms when rewording a directive', () => {
+      const original = mergeStructuredEntries([], {
+        text: 'Always run pnpm typecheck before declaring work complete.',
+        category: 'convention',
+        capturedAt: '2026-07-24T10:00:00Z',
+      })[0]!;
+      const evidenced = {
+        ...original,
+        applied: 5,
+        wins: 4,
+        skipped: 5,
+        skippedWins: 5,
+      };
+
+      const [replacement] = mergeStructuredEntries([evidenced], {
+        text: 'Always run pnpm typecheck before declaring work complete in this repository.',
+        category: 'convention',
+        capturedAt: '2026-07-24T10:00:01Z',
+      });
+
+      expect(replacement).toMatchObject({
+        applied: 5,
+        wins: 4,
+        skipped: 5,
+        skippedWins: 5,
+      });
+    });
+
     it('preserves historical entries through a re-capture (merge, not replace)', () => {
       captureLearnedFromAgentOutputDetailed(
         '## LEARNED\nAlways run pnpm typecheck before declaring work complete.',

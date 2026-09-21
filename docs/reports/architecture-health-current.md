@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-21T20:47:35.019Z
+**Generated:** 2026-09-21T22:35:30.180Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3969 |
-| Production source lines | 954319 |
-| Test files | 3579 |
+| Production source lines | 955066 |
+| Test files | 3583 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12870 |
+| Relative module edges | 12871 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -39,7 +39,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
 | @wrongstack/mcp | 39 | 42 | @wrongstack/core |
 | @wrongstack/persistence | 7 | 10 | — |
-| @wrongstack/plug-lsp | 50 | 46 | @wrongstack/core, @wrongstack/tools |
+| @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugins | 79 | 113 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
@@ -54,9 +54,9 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/simpleui | 102 | 75 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/techstack | 50 | 38 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 36 | @wrongstack/core, @wrongstack/primitives |
-| @wrongstack/tools | 224 | 268 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/tools | 224 | 269 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 412 | 374 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
-| @wrongstack/vector-memory | 14 | 19 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
+| @wrongstack/vector-memory | 14 | 20 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 564 | 397 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 46 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 17 | 8 | @wrongstack/core |
@@ -85,6 +85,7 @@ None.
 
 | Lines | File |
 |---:|---|
+| 1113 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 1019 | `packages/sage/src/project-server.ts` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
@@ -119,6 +120,7 @@ None.
 | 936 | `packages/simpleui/src/use-simple-ui-session.tsx` |
 | 933 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 932 | `packages/tools/src/kanban-lifecycle-actions.ts` |
+| 932 | `packages/tui/src/submit-controller.ts` |
 | 931 | `packages/cli/src/goal-host.ts` |
 | 931 | `packages/governance/src/verification-ledger-store.ts` |
 | 931 | `packages/simpleui/src/lib/message-handler.ts` |
@@ -130,11 +132,9 @@ None.
 | 925 | `packages/cli/src/boot.ts` |
 | 925 | `packages/core/src/utils/tool-output-serializer.ts` |
 | 925 | `packages/tools/src/codebase-index/project-server-client.ts` |
-| 925 | `packages/tui/src/submit-controller.ts` |
 | 924 | `packages/core/src/plugin/api.ts` |
 | 924 | `packages/tui/src/input-validation.ts` |
 | 923 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
-| 921 | `packages/tools/src/session-kanban.ts` |
 
 ## Exports only tests reference
 

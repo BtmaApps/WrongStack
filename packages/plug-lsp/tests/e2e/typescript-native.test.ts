@@ -15,7 +15,7 @@ import { resolveServerCommand } from '../../src/utils/command-resolver.js';
 // it ships no tsserver.js, so typescript-language-server cannot drive it. This
 // is the path every TS 7 workspace takes, including this repo.
 const major = await workspaceTypeScriptMajor(process.cwd());
-const command = await resolveServerCommand('tsc', process.cwd());
+const command = await resolveServerCommand('tsc', process.cwd(), { allowProjectLocal: true });
 const runnable = command !== null && major !== undefined && major >= 7;
 
 const log: Logger = {
@@ -75,20 +75,31 @@ describe.skipIf(!runnable)('native TypeScript language server E2E', () => {
     const ctx = { cwd: root, projectRoot: root } as never;
     const signal = new AbortController().signal;
 
-    const definition = await tools
-      .get('lsp_definition')!
-      .execute({ path: source, line: 1, character: 14 }, ctx, { signal });
-    expect(String(definition)).toContain('index.ts:1:14');
+    try {
+      const definition = await tools
+        .get('lsp_definition')!
+        .execute({ path: source, line: 1, character: 14 }, ctx, { signal });
+      expect(String(definition)).toContain('index.ts:1:14');
 
-    // This only passes because the client answers the server's
-    // `client/registerCapability` request — the native server registers a
-    // configuration watcher during `initialized` and blocks on the reply.
-    const diagnostics = await tools
-      .get('lsp_diagnostics')!
-      .execute({ path: source }, ctx, { signal });
-    expect(String(diagnostics).toLowerCase()).toContain('string');
+      // This only passes because the client answers the server's
+      // `client/registerCapability` request — the native server registers a
+      // configuration watcher during `initialized` and blocks on the reply.
+      const diagnostics = await tools
+        .get('lsp_diagnostics')!
+        .execute({ path: source }, ctx, { signal });
+      expect(String(diagnostics).toLowerCase()).toContain('string');
 
-    await registry.shutdown();
+      await fs.writeFile(source, 'export const answer: number = 42;\nanswer;\n');
+      const clean = await tools.get('lsp_diagnostics')!.execute({ path: source }, ctx, { signal });
+      expect(String(clean)).not.toContain('ERROR');
+      await fs.writeFile(source, 'export const answer: number = "external edit";\nanswer;\n');
+      const changed = await tools
+        .get('lsp_diagnostics')!
+        .execute({ path: source }, ctx, { signal });
+      expect(String(changed)).toContain('ERROR');
+    } finally {
+      await registry.shutdown();
+    }
     // No rm: the server process may still hold the directory on Windows
     // (EBUSY), and the OS reclaims the temp dir anyway.
   }, 60_000);

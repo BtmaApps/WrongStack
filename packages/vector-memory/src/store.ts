@@ -145,7 +145,12 @@ export class VectorMemoryStore {
         .run(VECTOR_DIMENSIONS_KEY, String(this.provider.dimensions));
       this.db.exec('COMMIT');
     } catch (e) {
-      this.db.exec('ROLLBACK');
+      try {
+        this.db.exec('ROLLBACK');
+      } catch {
+        // SQLite can end the transaction when a write or COMMIT fails.
+        // Preserve the primary database error instead of masking it.
+      }
       throw e;
     }
   }

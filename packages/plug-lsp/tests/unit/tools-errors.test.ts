@@ -90,10 +90,9 @@ describe('tool error and edge paths', () => {
       await createDiagnosticsTool(deps).execute({ path: file, limit: 1 }, ctx, opts),
     ).toContain('buffered');
     server.capabilities = { diagnosticProvider: {}, renameProvider: true };
-    expect(await createDiagnosticsTool(deps).execute({}, ctx, opts)).toContain('buffered');
+    expect(await createDiagnosticsTool(deps).execute({}, ctx, opts)).toContain('pulled');
 
-    // Workspace sweep with two files on ONE server: the wait happens once,
-    // because a server publishes for every document it has open.
+    // Every document must be checked, even on the same server.
     const second = path.join(root, 'b.ts');
     await fs.writeFile(second, 'const b = 2;');
     const twoDocs = makeDeps(server, [
@@ -101,8 +100,10 @@ describe('tool error and edge paths', () => {
       { path: second, uri: pathToUri(second) },
     ]);
     server.waitForDiagnostics.mockClear();
+    server.capabilities = {};
     expect(await createDiagnosticsTool(twoDocs).execute({}, ctx, opts)).toContain('buffered');
-    expect(server.waitForDiagnostics).toHaveBeenCalledTimes(1);
+    expect(server.waitForDiagnostics).toHaveBeenCalledTimes(2);
+    server.capabilities = { renameProvider: true };
     expect(
       await createRenameTool(deps).execute(
         { path: file, line: 1, character: 1, new_name: 'b' },
@@ -121,8 +122,8 @@ describe('tool error and edge paths', () => {
     ).rejects.toThrow('does not support rename');
 
     const missingDeps = makeDeps(null, [{ path: file, uri }]);
-    expect(await createDiagnosticsTool(missingDeps).execute({}, ctx, opts)).toBe(
-      'No LSP diagnostics.',
+    await expect(createDiagnosticsTool(missingDeps).execute({}, ctx, opts)).rejects.toThrow(
+      'No LSP server is configured',
     );
   });
 
@@ -291,7 +292,7 @@ function makeDeps(
   const tracker = {
     get: vi.fn(() => null),
     list: vi.fn(() => docs),
-    open: vi.fn(async () => undefined),
+    open: vi.fn(async () => true),
     fileWritten: vi.fn(async () => undefined),
   };
   return {

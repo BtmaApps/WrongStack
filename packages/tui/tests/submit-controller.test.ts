@@ -82,7 +82,7 @@ function makeHost(
   };
   const agent = { ctx };
   const slashRegistry = {
-    dispatch: vi.fn(async () => ({ ...(overrides.slashResult ?? {}) })),
+    dispatch: vi.fn(async (_raw: string, _ctx: unknown) => ({ ...(overrides.slashResult ?? {}) })),
   };
   const eternalLoop = vi.fn(async () => {});
   const parallelLoop = vi.fn(async () => {});
@@ -333,6 +333,38 @@ describe('createSubmitController — slash commands', () => {
     ).toBe(true);
     expect(findAction(h, 'historyPush')?.text).toBe('/model gpt-x');
     expect(h.actionFns['clearDraft']).toHaveBeenCalled();
+  });
+
+  it('drops an awaited slash result after /clear replaces its session', async () => {
+    let releaseSlow!: (result: Record<string, unknown>) => void;
+    const slow = new Promise<Record<string, unknown>>((resolve) => {
+      releaseSlow = resolve;
+    });
+    const h = makeHost();
+    h.slashRegistry.dispatch.mockImplementation(async (raw: string) =>
+      raw === '/slow' ? slow : { metadata: { cleared: true } },
+    );
+
+    const pendingSlow = h.submit('/slow');
+    for (let i = 0; i < 20 && h.slashRegistry.dispatch.mock.calls.length === 0; i++) {
+      await Promise.resolve();
+    }
+    expect(h.slashRegistry.dispatch).toHaveBeenCalledWith('/slow', h.ctx);
+
+    await h.submit('/clear');
+    expect(h.refs['sessionGeneration']?.current).toBe(1);
+    const actionsAfterClear = h.actions.length;
+
+    releaseSlow({ message: 'stale slash result' });
+    await pendingSlow;
+
+    expect(
+      h.actions
+        .slice(actionsAfterClear)
+        .some(
+          (action) => action.entry?.kind === 'info' && action.entry?.text === 'stale slash result',
+        ),
+    ).toBe(false);
   });
 
   it('redacts telegram setup tokens in the echoed user entry', async () => {

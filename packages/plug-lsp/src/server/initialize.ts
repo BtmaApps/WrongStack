@@ -29,7 +29,7 @@ const CLIENT_CAPABILITIES: InitializeParams['capabilities'] = {
     // implement it.
     publishDiagnostics: {
       relatedInformation: true,
-      versionSupport: false,
+      versionSupport: true,
       tagSupport: { valueSet: [1, 2] },
       codeDescriptionSupport: true,
       dataSupport: true,

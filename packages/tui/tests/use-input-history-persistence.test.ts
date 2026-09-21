@@ -141,6 +141,82 @@ describe('useInputHistoryPersistence', () => {
     view.unmount();
   });
 
+  it('serializes saves so an older slow write cannot overwrite newer history', async () => {
+    const { InputHistoryStore } = await import('@wrongstack/core/storage');
+    const pending: Array<{ entries: State['inputHistory']; resolve: () => void }> = [];
+    const store = {
+      load: vi.fn(async () => []),
+      save: vi.fn(
+        (entries: State['inputHistory']) =>
+          new Promise<void>((resolve) => pending.push({ entries, resolve })),
+      ),
+    };
+    // biome-ignore lint/complexity/useArrowFunction: constructed with `new`; an arrow impl throws.
+    (InputHistoryStore as unknown as Mock).mockImplementation(function () {
+      return store;
+    });
+
+    const refs = buildHarness();
+    refs.inputHistory = [];
+    const view = render(React.createElement(Harness, { refs }));
+    await vi.waitFor(() => expect(store.load).toHaveBeenCalled());
+    await act(async () => Promise.resolve());
+
+    const first = ['first'] as unknown as State['inputHistory'];
+    view.rerender(React.createElement(Harness, { refs: { ...refs, inputHistory: first } }));
+    await vi.waitFor(() => expect(pending).toHaveLength(1), { timeout: 1_000 });
+
+    const second = ['second'] as unknown as State['inputHistory'];
+    view.rerender(React.createElement(Harness, { refs: { ...refs, inputHistory: second } }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(pending).toHaveLength(1);
+
+    pending[0]!.resolve();
+    await vi.waitFor(() => expect(pending).toHaveLength(2), { timeout: 1_000 });
+    expect(pending[1]!.entries).toBe(second);
+    pending[1]!.resolve();
+    await act(async () => Promise.resolve());
+    view.unmount();
+  });
+
+  it('does not persist the previous project history when the project changes mid-debounce', async () => {
+    const { InputHistoryStore } = await import('@wrongstack/core/storage');
+    const projectA = {
+      load: vi.fn(async () => ['old-a']),
+      save: vi.fn(async () => undefined),
+    };
+    const projectB = {
+      load: vi.fn(async () => []),
+      save: vi.fn(async () => undefined),
+    };
+    let constructed = 0;
+    // biome-ignore lint/complexity/useArrowFunction: constructed with `new`; an arrow impl throws.
+    (InputHistoryStore as unknown as Mock).mockImplementation(function () {
+      return constructed++ === 0 ? projectA : projectB;
+    });
+
+    const refs = buildHarness();
+    refs.inputHistory = ['old-a'] as unknown as State['inputHistory'];
+    const view = render(React.createElement(Harness, { refs }));
+    await vi.waitFor(() => expect(projectA.load).toHaveBeenCalled());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const pendingA = ['new-a'] as unknown as State['inputHistory'];
+    view.rerender(React.createElement(Harness, { refs: { ...refs, inputHistory: pendingA } }));
+    view.rerender(
+      React.createElement(Harness, {
+        refs: { ...refs, projectRoot: '/test/project-b', inputHistory: pendingA },
+      }),
+    );
+    await vi.waitFor(() => expect(projectB.load).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(projectB.save).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
   it('skips save when snapshot matches last saved', async () => {
     const store = await installStore([]);
     const refs = buildHarness();

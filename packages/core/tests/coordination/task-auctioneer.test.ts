@@ -620,6 +620,23 @@ describe('TaskAuctioneer (extended coverage)', () => {
       const results = await auctioneer.findWork('a1', '', 2);
       expect(results.length).toBe(2);
     });
+
+    it('discovers a task whose declared blocker was already done when published', async () => {
+      dispatchResult.value = { confidence: 0.8, role: 'bug-hunter' };
+      const blocker = await auctioneer.publishTask({ title: 'Prerequisite', description: 'd' });
+      await auctioneer.complete(blocker);
+      const dependent = await auctioneer.publishTask({
+        title: 'Follow-up',
+        description: 'd',
+        blockedBy: [blocker],
+      });
+
+      const results = await auctioneer.findWork('a1', 'bug-hunter', 5);
+
+      expect(results.map(({ task }) => task.id)).toContain(dependent);
+      expect(auctioneer.getPendingTasks().map((task) => task.id)).toContain(dependent);
+      expect(auctioneer.getStats().pending).toBe(1);
+    });
   });
 
   describe('complete (dependent unblocking)', () => {

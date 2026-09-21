@@ -130,6 +130,19 @@ const optionalRelatedResourceArray = z
   .max(MAX_RELATED_RESOURCES)
   .optional();
 
+/** Strict, bounded representation of resumable VIBE protocol state. */
+export const vibeProtocolStateSchema = z
+  .object({
+    isVibeMode: z.literal(true),
+    detectedAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    stage: z.enum(['synthesizer', 'coder', 'auditor', 'passed']),
+    synthesizedSpec: z.string().max(MAX_ANSWER_LENGTH).optional(),
+    coderContract: z.string().max(MAX_ANSWER_LENGTH).optional(),
+    auditVerdict: z.enum(['PASS', 'REJECT']).optional(),
+    auditNotes: z.array(z.string().max(MAX_STRING_FIELD_LENGTH)).max(MAX_ARRAY_ITEMS).optional(),
+  })
+  .strict();
+
 export const createIntakeSchema = z
   .object({
     projectId: idSchema,
@@ -151,7 +164,7 @@ export const createIntakeSchema = z
     knownFields: z.array(z.string().trim().min(1).max(64)).max(MAX_ARRAY_ITEMS).optional(),
     questions: z.array(questionTemplateInputSchema).max(50).optional(),
     isVibeMode: z.boolean().optional(),
-    vibeProtocol: z.any().optional(),
+    vibeProtocol: vibeProtocolStateSchema.optional(),
   })
   .strict();
 
@@ -168,7 +181,7 @@ export const updateIntakeSchema = z
     providedContext: optionalStringArray,
     metadata: metadataSchema.optional(),
     isVibeMode: z.boolean().optional(),
-    vibeProtocol: z.any().optional(),
+    vibeProtocol: vibeProtocolStateSchema.optional(),
   })
   .strict();
 

@@ -522,14 +522,18 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
         name: 'action',
         type: "'list_boards' | 'get_board' | 'create_board' | 'duplicate_board' | 'update_board' | 'adopt_managed_lifecycle' | 'release_managed_lifecycle' | 'delete_board' | 'generate_board' | 'export_markdown' | 'export_task_graph' | 'sync_task_graph' | 'create_from_graph' | 'import_session_tasks' | 'search_tasks' | 'ready_tasks' | 'snapshot' | 'workbench' | 'add_task' | 'split_task' | 'merge_tasks' | 'copy_task' | 'transfer_task' | 'get_task' | 'start_task' | 'update_task' | 'transition_task' | 'repair_managed_projection' | 'move_task' | 'delete_task' | 'set_chain' | 'get_chain' | 'claim_task' | 'release_task' | 'assign_task' | 'mark_assignment' | 'heartbeat_assignment' | 'recover_stale' | 'events' | 'board_history' | 'record_activity' | 'queue_health' | 'add_dependency' | 'add_goal_metric' | 'update_goal_metric' | 'add_check' | 'update_check' | 'remove_check' | 'add_note' | 'review_task' | 'add_link' | 'verify_completion' | 'split_atomic' | 'assess_atomicity' | 'propose_decomposition' | 'approve_decomposition' | 'reject_decomposition' | 'get_contract_graph' | 'configure_contract_graph' | 'upsert_contract_node' | 'remove_contract_node' | 'add_contract_edge' | 'remove_contract_edge'",
         required: true,
+        description:
+          'Operation to perform. Choose an action first; supply only the fields that action needs.',
       },
       {
         name: 'boardId',
         type: 'string',
+        description: 'Target board identifier, returned by list_boards or create_board.',
       },
       {
         name: 'taskId',
         type: 'string',
+        description: 'Target card identifier, returned by add_task, get_board, or search_tasks.',
       },
       {
         name: 'reviewDisposition',
@@ -540,42 +544,52 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'taskIds',
         type: 'string[]',
+        description: 'Card identifiers for a bulk, merge, chain, or transfer action.',
       },
       {
         name: 'chainId',
         type: 'string',
+        description: 'Identifier for the chain used by the selected action.',
       },
       {
         name: 'columnId',
         type: 'string',
+        description: 'Identifier for the column used by the selected action.',
       },
       {
         name: 'targetBoardId',
         type: 'string',
+        description: 'Identifier for the target board used by the selected action.',
       },
       {
         name: 'targetColumnId',
         type: 'string',
+        description: 'Identifier for the target column used by the selected action.',
       },
       {
         name: 'title',
         type: 'string',
+        description: 'Human-readable board or card title.',
       },
       {
         name: 'description',
         type: 'string',
+        description: 'Detailed board or card scope, expected outcome, or implementation context.',
       },
       {
         name: 'dueDate',
         type: 'string',
+        description: 'Optional due date recorded on the card.',
       },
       {
         name: 'tags',
         type: 'string[]',
+        description: 'Free-form tags applied to a card or used to filter a result.',
       },
       {
         name: 'labels',
         type: 'string[]',
+        description: 'Labels applied to a card or used to filter results.',
       },
       {
         name: 'label',
@@ -586,22 +600,29 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'priority',
         type: "'critical' | 'high' | 'medium' | 'low'",
+        description: 'Card priority used when creating or updating work.',
       },
       {
         name: 'taskType',
         type: "'feature' | 'bugfix' | 'refactor' | 'docs' | 'test' | 'chore'",
+        description:
+          'Optional task type value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'status',
         type: "'pending' | 'ready' | 'in_progress' | 'blocked' | 'review' | 'completed' | 'failed' | 'archived'",
+        description: 'Card status to set or filter by for the selected action.',
       },
       {
         name: 'order',
         type: 'number',
+        description:
+          'Optional order value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'query',
         type: 'string',
+        description: 'Text query used by search_tasks or a generation/decomposition action.',
       },
       {
         name: 'limit',
@@ -612,98 +633,142 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'agentId',
         type: 'string',
+        description: 'Stable agent identifier for an assignment, lease, or activity.',
       },
       {
         name: 'name',
         type: 'string',
+        description:
+          'Optional name value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'role',
         type: 'string',
+        description:
+          'Optional role value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'provider',
         type: 'string',
+        description:
+          'Optional provider value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'model',
         type: 'string',
+        description:
+          'Optional model value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'fallbackProfile',
         type: 'string',
+        description:
+          'Optional fallback profile value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'fallbackModels',
         type: 'string[]',
+        description:
+          'Optional fallback models value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'tools',
         type: 'string[]',
+        description:
+          'Optional tools value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'allowedCapabilities',
         type: 'string[]',
+        description:
+          'Optional allowed capabilities value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'leaseId',
         type: 'string',
+        description: 'Lease token returned by claim_task; required by lease-protected updates.',
       },
       {
         name: 'claimedAt',
         type: 'string',
+        description:
+          'Optional claimed at value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'heartbeatAt',
         type: 'string',
+        description:
+          'Optional heartbeat at value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'leaseExpiresAt',
         type: 'string',
+        description:
+          'Optional lease expires at value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'attempt',
         type: 'number',
+        description:
+          'Optional attempt value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'maxAttempts',
         type: 'number',
+        description:
+          'Optional max attempts value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'subagentId',
         type: 'string',
+        description: 'Identifier for the subagent used by the selected action.',
       },
       {
         name: 'runTaskId',
         type: 'string',
+        description: 'Identifier for the run task used by the selected action.',
       },
       {
         name: 'lastResult',
         type: 'string',
+        description:
+          'Optional last result value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'error',
         type: 'string',
+        description:
+          'Optional error value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'expectedLeaseId',
         type: 'string',
+        description:
+          'Fence token expected by a mutation; prevents a stale worker from overwriting newer work.',
       },
       {
         name: 'assignmentStatus',
         type: "'assigned' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'",
+        description:
+          'Optional assignment status value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'lifecycleStage',
         type: "'backlog' | 'todo' | 'running' | 'review' | 'done'",
+        description:
+          'Optional lifecycle stage value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'transitionAction',
         type: 'string',
+        description:
+          'Optional transition action value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'transitionComment',
         type: 'string',
+        description:
+          'Optional transition comment value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'tickChecks',
@@ -714,66 +779,95 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'attachmentUrl',
         type: 'string',
+        description: 'URL or project reference attached to the card.',
       },
       {
         name: 'attachmentTitle',
         type: 'string',
+        description: 'Human-readable title for the attached reference.',
       },
       {
         name: 'attachmentType',
         type: "'issue' | 'pr' | 'doc' | 'commit' | 'design' | 'file' | 'url' | 'other'",
+        description:
+          'Optional attachment type value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'releaseStatus',
         type: "'pending' | 'ready' | 'blocked'",
+        description:
+          'Optional release status value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'releaseReason',
         type: 'string',
+        description:
+          'Optional release reason value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'clearAssignee',
         type: 'boolean',
+        description:
+          'Optional clear assignee value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryMode',
         type: "'auto' | 'release' | 'retry' | 'fail'",
+        description:
+          'Optional recovery mode value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryNow',
         type: 'string',
+        description:
+          'Optional recovery now value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryPolicyFailOnCostCeiling',
         type: 'boolean',
+        description:
+          'Optional recovery policy fail on cost ceiling value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryPolicyReleaseOnFailureKinds',
         type: 'string[]',
+        description:
+          'Optional recovery policy release on failure kinds value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryPolicyReleaseOnHeartbeatDue',
         type: 'boolean',
+        description:
+          'Optional recovery policy release on heartbeat due value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'recoveryPolicyRetryPolicyOverride',
         type: "'off' | 'incremental' | 'exponential'",
+        description:
+          'Optional recovery policy retry policy override value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'assignee',
         type: 'string',
+        description: 'Agent or person assigned to own this card.',
       },
       {
         name: 'costCeilingUsd',
         type: 'number',
+        description:
+          'Optional cost ceiling usd value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'retryPolicy',
         type: "'off' | 'incremental' | 'exponential'",
+        description:
+          'Optional retry policy value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'lastFailureKind',
         type: 'string',
+        description:
+          'Optional last failure kind value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'dependsOn',
@@ -796,138 +890,183 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'estimatedHours',
         type: 'number',
+        description:
+          'Optional estimated hours value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'actualHours',
         type: 'number',
+        description:
+          'Optional actual hours value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'taskGraph',
         type: 'object',
+        description: 'Structured task graph to import, synchronize, or materialize.',
       },
       {
         name: 'graphId',
         type: 'string',
+        description: 'Identifier for the graph used by the selected action.',
       },
       {
         name: 'specId',
         type: 'string',
+        description: 'Identifier for the spec used by the selected action.',
       },
       {
         name: 'specRequirementId',
         type: 'string',
+        description: 'Identifier for the spec requirement used by the selected action.',
       },
       {
         name: 'sourceSystem',
         type: 'string',
+        description: 'External system that produced an imported task graph.',
       },
       {
         name: 'phaseId',
         type: 'string',
+        description: 'Identifier for the phase used by the selected action.',
       },
       {
         name: 'preserveOriginTaskIds',
         type: 'boolean',
+        description: 'Whether the selected action should preserve origin task ids.',
       },
       {
         name: 'includeArchived',
         type: 'boolean',
+        description: 'Whether the selected action should include archived.',
       },
       {
         name: 'archiveMissingTasks',
         type: 'boolean',
+        description:
+          'Optional archive missing tasks value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'preserveManualDependencies',
         type: 'boolean',
+        description: 'Whether the selected action should preserve manual dependencies.',
       },
       {
         name: 'dependencyTaskId',
         type: 'string',
+        description: 'Identifier for the dependency task used by the selected action.',
       },
       {
         name: 'enforceDependencies',
         type: 'boolean',
+        description:
+          'Optional enforce dependencies value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'childTitles',
         type: 'string[]',
+        description: 'Titles used by split_task to create child cards.',
       },
       {
         name: 'inheritAssignment',
         type: 'boolean',
+        description: 'Whether the selected action should inherit assignment.',
       },
       {
         name: 'inheritLabels',
         type: 'boolean',
+        description: 'Whether the selected action should inherit labels.',
       },
       {
         name: 'inheritSuccessCriteria',
         type: 'boolean',
+        description: 'Whether the selected action should inherit success criteria.',
       },
       {
         name: 'inheritGoalMetrics',
         type: 'boolean',
+        description: 'Whether the selected action should inherit goal metrics.',
       },
       {
         name: 'inheritDependencies',
         type: 'boolean',
+        description: 'Whether the selected action should inherit dependencies.',
       },
       {
         name: 'chainChildren',
         type: 'boolean',
+        description:
+          'Optional chain children value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'rewireDependents',
         type: 'boolean',
+        description:
+          'Optional rewire dependents value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'closeSourceTasks',
         type: 'boolean',
+        description:
+          'Optional close source tasks value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'metricId',
         type: 'string',
+        description: 'Goal-metric identifier returned by get_task.',
       },
       {
         name: 'metricName',
         type: 'string',
+        description: 'Display name for a new goal metric.',
       },
       {
         name: 'metricTarget',
         type: 'string | number',
+        description: 'Desired goal-metric value.',
       },
       {
         name: 'metricCurrent',
         type: 'string | number',
+        description: 'Observed goal-metric value used for verification.',
       },
       {
         name: 'metricDirection',
         type: "'at_least' | 'at_most'",
+        description:
+          'Optional metric direction value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'metricUnit',
         type: 'string',
+        description:
+          'Optional metric unit value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'metricStatus',
         type: "'pending' | 'met' | 'missed' | 'waived'",
+        description:
+          'Optional metric status value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'metricNotes',
         type: 'string',
+        description:
+          'Optional metric notes value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'checkId',
         type: 'string',
+        description: 'Acceptance-criterion identifier returned by get_task.',
       },
       {
         name: 'checkDescription',
         type: 'string',
+        description: 'Acceptance criterion to add or update on the card.',
       },
       {
         name: 'checkStatus',
         type: "'pending' | 'passed' | 'failed' | 'skipped'",
+        description: 'Current outcome of an acceptance criterion.',
       },
       {
         name: 'checkType',
@@ -950,6 +1089,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'contractNodeId',
         type: 'string',
+        description: 'Identifier for the contract node used by the selected action.',
       },
       {
         name: 'contractNodeKind',
@@ -960,26 +1100,36 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'contractNodeTitle',
         type: 'string',
+        description:
+          'Optional contract node title value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractNodeDescription',
         type: 'string',
+        description:
+          'Optional contract node description value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractNodeState',
         type: "'unknown' | 'active' | 'satisfied' | 'violated' | 'waived' | 'resolved'",
+        description:
+          'Optional contract node state value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractNodeEnforcement',
         type: "'blocking' | 'advisory' | 'informational'",
+        description:
+          'Optional contract node enforcement value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractCheckId',
         type: 'string',
+        description: 'Identifier for the contract check used by the selected action.',
       },
       {
         name: 'contractMetricId',
         type: 'string',
+        description: 'Identifier for the contract metric used by the selected action.',
       },
       {
         name: 'contractWaiverReason',
@@ -989,6 +1139,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'contractEdgeId',
         type: 'string',
+        description: 'Identifier for the contract edge used by the selected action.',
       },
       {
         name: 'contractEdgeFrom',
@@ -999,18 +1150,26 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'contractEdgeTo',
         type: 'string',
+        description:
+          'Optional contract edge to value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractEdgeType',
         type: "'targets' | 'affects' | 'must_preserve' | 'exposes' | 'verified_by' | 'conflicts_with' | 'derived_from' | 'relates_to'",
+        description:
+          'Optional contract edge type value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'contractEdgeRationale',
         type: 'string',
+        description:
+          'Optional contract edge rationale value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'note',
         type: 'string',
+        description:
+          'Human-readable rationale, progress note, review evidence, or activity summary.',
       },
       {
         name: 'activityKind',
@@ -1021,66 +1180,92 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'activityOutcome',
         type: "'succeeded' | 'failed' | 'partial' | 'skipped' | 'unknown'",
+        description:
+          'Optional activity outcome value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'activityDetails',
         type: 'string',
+        description:
+          'Optional activity details value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'author',
         type: 'string',
+        description: 'Actor recording the note, activity, check, or review.',
       },
       {
         name: 'url',
         type: 'string',
+        description:
+          'Optional url value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'linkTitle',
         type: 'string',
+        description:
+          'Optional link title value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'linkType',
         type: "'issue' | 'pr' | 'doc' | 'commit' | 'design' | 'file' | 'url' | 'other'",
+        description:
+          'Optional link type value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'context',
         type: 'string',
+        description:
+          'Optional context value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'columns',
         type: 'string[]',
+        description: 'Board column names for create_board or update_board.',
       },
       {
         name: 'generatedBy',
         type: 'string',
+        description:
+          'Optional generated by value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'includeTasks',
         type: 'boolean',
+        description: 'Whether the selected action should include tasks.',
       },
       {
         name: 'includeCompletedTasks',
         type: 'boolean',
+        description: 'Whether the selected action should include completed tasks.',
       },
       {
         name: 'preserveAssignment',
         type: 'boolean',
+        description: 'Whether the selected action should preserve assignment.',
       },
       {
         name: 'preserveDependencies',
         type: 'boolean',
+        description: 'Whether the selected action should preserve dependencies.',
       },
       {
         name: 'atomicityMode',
         type: "'off' | 'assess' | 'enforce'",
+        description:
+          'Optional atomicity mode value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'atomicityDecomposition',
         type: "'auto' | 'propose'",
+        description:
+          'Optional atomicity decomposition value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'gateEnforcement',
         type: "'strict' | 'soft'",
+        description:
+          'Optional gate enforcement value for the selected Kanban action. Supply it only when that action requires it.',
       },
       {
         name: 'proposalId',
@@ -1091,6 +1276,7 @@ export const toolDetailsPart2: Record<string, ToolDetail> = {
       {
         name: 'subtasks',
         type: 'object[]',
+        description: 'Proposed child work for decomposition; each item must have a title.',
       },
     ],
     notes: [

@@ -101,6 +101,46 @@ describe('toolSearchTool', () => {
     expect(result.tools[0]!.name).toBe('foo');
   });
 
+  it('makes category and capability tags discoverable and filterable', async () => {
+    const ctx = makeCtx([
+      {
+        name: 'codebase-search',
+        description: 'Search indexed declarations',
+        category: 'Project',
+        capabilities: ['codebase.search'],
+        permission: 'auto',
+        mutating: false,
+      },
+      {
+        name: 'write',
+        description: 'Write a file',
+        category: 'Filesystem',
+        permission: 'confirm',
+        mutating: true,
+      },
+    ]);
+
+    const result = await executeToolSearch({ tags: ['codebase'] }, ctx);
+
+    expect(result.tools).toEqual([
+      expect.objectContaining({
+        name: 'codebase-search',
+        category: 'Project',
+        capabilities: ['codebase.search'],
+      }),
+    ]);
+  });
+
+  it('does not claim that a default empty search lists every tool', async () => {
+    const ctx = makeCtx([
+      { name: 'read', description: 'Read', permission: 'auto', mutating: false },
+    ]);
+    const result = await executeToolSearch({ query: 'missing' }, ctx);
+
+    expect(result.hint).toContain('limit up to 100');
+    expect(result.hint).not.toContain('list them all');
+  });
+
   it('respects limit', async () => {
     const ctx = makeCtx([
       { name: 'foo', description: 'Foo', permission: 'auto', mutating: false },

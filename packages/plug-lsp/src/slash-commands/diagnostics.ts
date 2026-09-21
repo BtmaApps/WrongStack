@@ -9,6 +9,7 @@ export function diagnosticsCommand(registry: LSPRegistry): SlashCommand {
     async run(_args, ctx) {
       const byFile = new Map<string, import('vscode-languageserver-protocol').Diagnostic[]>();
       for (const server of registry.list()) {
+        if (server.state !== 'ready') continue;
         for (const [filePath, diagnostics] of server.diagnostics.entries()) {
           // Keys are already `uriKey(uri)` — a normalized filesystem path, not
           // a URL — so they are used as-is. `uriToPath` (fileURLToPath) throws
@@ -21,12 +22,14 @@ export function diagnosticsCommand(registry: LSPRegistry): SlashCommand {
         }
       }
       return {
-        message: formatDiagnostics(byFile, {
-          cwd: ctx?.cwd ?? process.cwd(),
-          severityFilter: ['error', 'warning'],
-          maxPerFile: 10,
-          maxTotal: 100,
-        }),
+        message:
+          'Buffered LSP diagnostics only; files have not been refreshed or verified by this command.\n' +
+          formatDiagnostics(byFile, {
+            cwd: ctx?.cwd ?? process.cwd(),
+            severityFilter: ['error', 'warning'],
+            maxPerFile: 10,
+            maxTotal: 100,
+          }),
       };
     },
   };

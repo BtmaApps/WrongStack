@@ -55,7 +55,7 @@ describe('slash commands', () => {
     expect(message).toContain('bad');
     expect(
       (await diagnosticsCommand({ list: () => [] } as never).run('', undefined as never))?.message,
-    ).toBe('No LSP diagnostics.');
+    ).toContain('files have not been refreshed or verified');
   });
 
   it('prints diagnostics for a key that is not a file: URL', async () => {

@@ -317,9 +317,15 @@ export function createSubmitController(host: SubmitControllerHost) {
     // Slash commands always dispatch immediately, even mid-iteration —
     // they don't conflict with a running agent.
     if (trimmed.startsWith('/')) {
+      // Bind the initial slash dispatch flow to the session that submitted it.
+      // `/clear` may complete while attachment expansion or command dispatch is
+      // parked; an older continuation must not render or execute in the fresh
+      // transcript after the generation changes.
+      const slashGeneration = sessionGenerationRef.current;
       // Resolve full content from the canonical attachment store; the preview
       // cache intentionally retains only bounded display snippets.
       const resolvedForDispatch = await resolveAttachmentTokens(trimmed, attachments);
+      if (slashGeneration !== sessionGenerationRef.current) return;
       const pasteParts: string[] = [];
       for (const m of trimmed.matchAll(new RegExp(INLINE_TOKEN_SRC, 'g'))) {
         const token = m[0];
@@ -345,6 +351,7 @@ export function createSubmitController(host: SubmitControllerHost) {
       clearDraft();
       try {
         const res = await slashRegistry.dispatch(resolvedForDispatch, agent.ctx);
+        if (slashGeneration !== sessionGenerationRef.current) return;
         // Refresh goal summary after any slash command — `/goal clear` or
         // `/goal set` changed the goal file on disk; the status bar chip
         // must reflect the new state (or disappear).

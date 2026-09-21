@@ -176,6 +176,7 @@ export {
   validateQuestionTemplateInput,
   validateRelatedResourceInput,
   validateUpdateInput,
+  vibeProtocolStateSchema,
 } from './validation.js';
 
 // Vibe Protocol

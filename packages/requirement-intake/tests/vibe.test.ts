@@ -106,5 +106,28 @@ describe('VIBE Protocol — Requirement Intake', () => {
       expect(updated.isVibeMode).toBe(true);
       expect(updated.vibeProtocol?.stage).toBe('synthesizer');
     });
+
+    it('rejects malformed caller-supplied VIBE state before persistence', async () => {
+      const harness = makeHarness();
+
+      await expect(
+        harness.service.createIntake(
+          {
+            projectId: 'proj_alpha',
+            originalRequest: 'Do not persist malformed VIBE state',
+            requestedBy: 'user-alice',
+            vibeProtocol: {
+              isVibeMode: 'yes',
+              detectedAt: 'yesterday',
+              stage: 'root',
+              auditNotes: Array.from({ length: 51 }, (_, index) => `note-${index}`),
+            } as never,
+          },
+          ALICE,
+        ),
+      ).rejects.toMatchObject({ code: 'INTAKE_VALIDATION_ERROR' });
+
+      await expect(harness.store.list('proj_alpha')).resolves.toEqual([]);
+    });
   });
 });

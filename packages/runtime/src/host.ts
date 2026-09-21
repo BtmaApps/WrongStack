@@ -79,6 +79,7 @@ export async function applyWrongStackPack(
   const registeredToolNames: string[] = [];
   const registeredCommandNames: string[] = [];
   const unregisterProviders: Array<() => void> = [];
+  let setupStarted = false;
 
   // Roll back in reverse order: extensions first, then commands, then tools,
   // then providers. Extensions are unregistered before tools/commands because
@@ -141,9 +142,26 @@ export async function applyWrongStackPack(
       if (!opts.api) {
         throw new Error(`Pack "${pack.name}" defines setup() but no PluginAPI was provided`);
       }
+      setupStarted = true;
       await pack.setup(opts.api);
     }
   } catch (mountErr) {
+    // setup() may have opened resources before failing. The caller never
+    // receives an AppliedPack handle in this path, so this is the only chance
+    // to run the pack's own cleanup. Keep declarative capabilities mounted
+    // until that cleanup finishes in case teardown depends on them, and never
+    // let a secondary teardown failure mask the original mount error.
+    if (setupStarted && pack.teardown && opts.api) {
+      try {
+        await pack.teardown(opts.api);
+      } catch (teardownErr) {
+        const detail = teardownErr instanceof Error ? teardownErr.message : String(teardownErr);
+        process.emitWarning(
+          `Pack teardown after setup failure failed: ${detail}`,
+          'PackRollbackWarning',
+        );
+      }
+    }
     rollback();
     throw mountErr;
   }

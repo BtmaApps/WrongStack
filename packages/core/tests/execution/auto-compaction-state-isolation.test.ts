@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { AutoCompactionMiddleware } from '../../src/execution/auto-compaction-middleware.js';
+import { computeContextWindowBudget } from '../../src/utils/context-budget.js';
 import {
   estimateRequestTokens,
+  estimateRequestTokensCalibrated,
   estimateRequestTokensUpperBound,
   recordActualUsage,
   resetCalibration,
@@ -128,6 +130,94 @@ describe('post-compaction send guard', () => {
     expect(guard() / 9000).toBeLessThan(thresholds.hard);
   });
 });
+
+describe('send guard reaches the hard line below a full window', () => {
+  it('compacts uncalibrated dense text that the old 0.35 gate skipped', async () => {
+    const maxContext = 100_000;
+    const key = 'anthropic/claude-sonnet';
+    const policy = { warn: 0.55, soft: 0.7, hard: 0.85 };
+    // Historical skip: min(0.4, 0.875 / 2.5). It only kept inflated load under 1.0.
+    const historicalWindowGate = Math.min(0.4, 0.875 / 2.5);
+    resetCalibration(key);
+    try {
+      const chars = denseCharsUnderGate(maxContext, key, historicalWindowGate, policy.hard);
+      const ctx = context();
+      ctx.provider = { id: 'anthropic' } as Context['provider'];
+      ctx.model = 'claude-sonnet';
+      ctx.messages = [{ role: 'user', content: '漢'.repeat(chars) }];
+      const before = loadPair(ctx, maxContext, key);
+      expect(before.calibrated).toBeLessThan(historicalWindowGate);
+      expect(before.guarded).toBeGreaterThanOrEqual(policy.hard);
+
+      const compact = vi.fn(async (active: Context) => {
+        const total = estimateRequestTokensCalibrated(
+          active.messages,
+          active.systemPrompt,
+          active.tools ?? [],
+          key,
+        ).total;
+        return report(total);
+      });
+      const mw = new AutoCompactionMiddleware({ compact }, maxContext, undefined, policy);
+      const next = vi.fn(async (active: Context) => active);
+      await mw.handler()(ctx, next);
+
+      expect(compact).toHaveBeenCalledOnce();
+      expect(next).toHaveBeenCalledOnce();
+      expect(loadPair(ctx, maxContext, key).guarded).toBeLessThan(policy.hard);
+    } finally {
+      resetCalibration(key);
+    }
+  });
+});
+
+function loadPair(
+  ctx: Context,
+  maxContext: number,
+  key: string,
+): { calibrated: number; guarded: number } {
+  const calibrated = estimateRequestTokensCalibrated(
+    ctx.messages,
+    ctx.systemPrompt,
+    ctx.tools ?? [],
+    key,
+  ).total;
+  const guarded = estimateRequestTokensUpperBound(
+    ctx.messages,
+    ctx.systemPrompt,
+    ctx.tools ?? [],
+    key,
+  ).total;
+  const available = computeContextWindowBudget({
+    maxContext,
+    inputTokens: Math.max(calibrated, 1),
+  }).availableInputTokens;
+  return { calibrated: calibrated / available, guarded: guarded / available };
+}
+
+function denseCharsUnderGate(maxContext: number, key: string, gate: number, hard: number): number {
+  const probe = context();
+  probe.provider = { id: 'anthropic' } as Context['provider'];
+  probe.model = 'claude-sonnet';
+  let lo = 1_000;
+  let hi = 200_000;
+  let best = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    probe.messages = [{ role: 'user', content: '漢'.repeat(mid) }];
+    const sample = loadPair(probe, maxContext, key);
+    if (sample.calibrated < gate && sample.guarded >= hard) {
+      best = mid;
+      hi = mid - 1;
+    } else if (sample.guarded < hard) {
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (best < 0) throw new Error('no dense transcript sits under the old gate and over hard');
+  return best;
+}
 
 describe('token cache calibration identity', () => {
   it.each(['calibration update', 'model switch'])(

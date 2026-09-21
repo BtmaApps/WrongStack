@@ -194,7 +194,7 @@ export function buildLspCommand(ctx: LspContext): SlashCommand {
       '  /lsp start [name]             Start all servers, or a specific one by name',
       '  /lsp stop [name]              Stop all servers, or a specific one by name',
       '  /lsp restart [name]           Restart all servers, or a specific one by name',
-      '  /lsp diagnostics [file]      Show diagnostics for a file or the whole workspace',
+      '  /lsp diagnostics [file]      Show buffered diagnostics (does not verify files)',
       '  /lsp remove <name>            Stop the server and delete it from the config',
       '  /lsp enable|disable <name>    Flip a server on or off, now and on future sessions',
       '',
@@ -607,6 +607,9 @@ async function runRestartCommand(ctx: LspContext, name?: string): Promise<{ mess
 
 async function runDiagnosticsCommand(ctx: LspContext, file?: string): Promise<{ message: string }> {
   const lines: string[] = [`${colorize('LSP Diagnostics', 'bold')}`, '─'.repeat(60)];
+  lines.push(
+    'Buffered diagnostics only; files have not been refreshed or verified by this command.',
+  );
 
   // Aggregate diagnostics from all ready servers
   const allDiags = collectServerDiagnostics(ctx.registry);
@@ -617,8 +620,12 @@ async function runDiagnosticsCommand(ctx: LspContext, file?: string): Promise<{ 
     // `LSPServer.setDiagnostics`, which folds case on Windows. Look up in that
     // same space — the raw resolved path never matches the stored key there.
     const fileDiags = allDiags.get(uriKey(pathToUri(resolved)));
-    if (!fileDiags || fileDiags.length === 0) {
-      return { message: lines.join('\n') + `\nNo diagnostics for ${file}` };
+    if (!fileDiags) {
+      return {
+        message:
+          lines.join('\n') +
+          `\nNo buffered diagnostic report for ${file}; this does not mean the file is clean.`,
+      };
     }
     lines.push(`File: ${resolved}`);
     const diagMap = new Map([[resolved, fileDiags]]);
@@ -638,7 +645,7 @@ async function runDiagnosticsCommand(ctx: LspContext, file?: string): Promise<{ 
     lines.push('No diagnostics reported by any LSP server.');
     lines.push('');
     lines.push('LSP diagnostics are reported by language servers after you open/edit files.');
-    lines.push('Open a file and run `/lsp diagnostics <file>` to check specific files.');
+    lines.push('Use the lsp_diagnostics tool with a file path for current diagnostics.');
     return { message: lines.join('\n') };
   }
 

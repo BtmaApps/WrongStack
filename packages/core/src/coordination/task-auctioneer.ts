@@ -100,6 +100,10 @@ function isTerminalGoalStatus(status: GoalStatus): boolean {
   return status === 'done' || status === 'failed';
 }
 
+function hasOpenBlockers(graph: KnowledgeGraph, blockedBy: readonly string[]): boolean {
+  return blockedBy.some((id) => (graph.get(id) as GoalNode | undefined)?.status !== 'done');
+}
+
 export class TaskAuctioneer {
   private readonly graph: KnowledgeGraph;
   private readonly fleet?: FleetBus | undefined;
@@ -194,15 +198,13 @@ export class TaskAuctioneer {
     // A goal that declares blockers starts blocked: it must NOT be biddable
     // until its blockers complete (complete() flips it to 'pending').
     const blockedBy = input.blockedBy ?? [];
-    const hasOpenBlockers =
-      blockedBy.length > 0 &&
-      blockedBy.some((id) => (this.graph.get(id) as GoalNode | undefined)?.status !== 'done');
+    const blocked = hasOpenBlockers(this.graph, blockedBy);
     // Create the goal node
     const goal = (await this.graph.add({
       type: 'goal',
       title: input.title,
       description: input.description,
-      status: hasOpenBlockers ? 'blocked' : input.targetAgent ? 'in_progress' : 'pending',
+      status: blocked ? 'blocked' : input.targetAgent ? 'in_progress' : 'pending',
       priority: input.priority ?? 'medium',
       assignee: input.targetAgent,
       blockedBy,
@@ -235,7 +237,7 @@ export class TaskAuctioneer {
     }
 
     // If blocked, do not assign or auction yet — complete() will unblock and assign or auction
-    if (hasOpenBlockers) {
+    if (blocked) {
       // Stays blocked until all blockers reach 'done'
     } else if (input.targetAgent) {
       await this._assignDirect(goal.id, input.targetAgent);
@@ -493,8 +495,8 @@ export class TaskAuctioneer {
     const scored: { task: GoalNode; score: number; bids: number }[] = [];
 
     for (const goal of pending) {
-      // Skip if blocked
-      if (goal.blockedBy.length > 0) continue;
+      // Skip only while at least one declared blocker remains incomplete.
+      if (hasOpenBlockers(this.graph, goal.blockedBy)) continue;
 
       const dispatchResult = await dispatchAgent(goal.description);
       const roleBonus = agentRole && goal.tags.includes(agentRole) ? 1.3 : 1;
@@ -516,7 +518,9 @@ export class TaskAuctioneer {
 
   /** Get all pending tasks (available for bidding). */
   getPendingTasks(): GoalNode[] {
-    return this.graph.getGoals({ status: 'pending' }).filter((g) => g.blockedBy.length === 0);
+    return this.graph
+      .getGoals({ status: 'pending' })
+      .filter((goal) => !hasOpenBlockers(this.graph, goal.blockedBy));
   }
 
   /** Get tasks assigned to a specific agent. */
@@ -545,7 +549,9 @@ export class TaskAuctioneer {
     avgBidsPerTask: number;
   } {
     const all = this.graph.getGoals({});
-    const pending = all.filter((g) => g.status === 'pending' && g.blockedBy.length === 0);
+    const pending = all.filter(
+      (goal) => goal.status === 'pending' && !hasOpenBlockers(this.graph, goal.blockedBy),
+    );
     const inProgress = all.filter((g) => g.status === 'in_progress');
     const done = all.filter((g) => g.status === 'done');
     const failed = all.filter((g) => g.status === 'failed');

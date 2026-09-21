@@ -577,6 +577,38 @@ export const browserTools: Tool[] = [
   browserCloseTool,
 ];
 
+const BROWSER_PARAMETER_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  sessionId: 'Owned browser session id returned by browser_open.',
+  url: 'Absolute HTTP(S) URL. Private and localhost origins require an allowlist.',
+  width: 'Viewport width in CSS pixels; defaults to the browser profile width.',
+  height: 'Viewport height in CSS pixels; defaults to the browser profile height.',
+  selector: 'Stable CSS or supported Playwright selector for the target element.',
+  fullPage: 'Capture the entire scrollable page instead of only the viewport.',
+  text: 'Literal text to enter. Do not use for credentials; use secretEnv instead.',
+  value: 'Option value to select from the target select control.',
+  key: 'Keyboard key or shortcut to send, such as Enter or Control+A.',
+  from: 'Selector for the element to drag.',
+  to: 'Selector for the destination element.',
+  timeoutMs: 'Maximum wait time in milliseconds, capped at 30 seconds.',
+  expression: 'JavaScript expression evaluated in the page; treat page code as arbitrary.',
+  files: 'Project-local file paths to upload through the selected file input.',
+};
+
+function annotateBrowserParameterDescriptions(): void {
+  for (const tool of browserTools) {
+    for (const [name, property] of Object.entries(tool.inputSchema.properties ?? {})) {
+      property.description ??=
+        BROWSER_PARAMETER_DESCRIPTIONS[name] ?? `Input value for browser action field "${name}".`;
+    }
+  }
+}
+
+annotateBrowserParameterDescriptions();
+
+// Keep suite-level metadata uniform. Without a runtime category the sixteen
+// browser tools were invisible to category-based `tool_search` discovery even
+// though their website projections grouped them as Browser & E2E.
+for (const tool of browserTools) tool.category = 'Browser & E2E';
 for (const tool of browserTools) tool.icon = 'web';
 for (const tool of browserTools) tool.timeoutMs ??= 60_000;
 

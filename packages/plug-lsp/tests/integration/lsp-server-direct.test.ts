@@ -62,6 +62,16 @@ describe('LSPServer direct API', () => {
     expect(diagnostics).toHaveBeenCalled();
     expect(server.getDiagnostics(uri)[0]?.message).toBe('mock diagnostic');
     server.notifyDidChange({ uri, version: 2 }, 'const answer = 2;');
+    // Wire-level regression: do not discard publishDiagnostics.version in the
+    // notification handler and let an older empty result mark this edit clean.
+    (
+      server as unknown as { connection: { handleMessage(message: unknown): void } }
+    ).connection.handleMessage({
+      jsonrpc: '2.0',
+      method: 'textDocument/publishDiagnostics',
+      params: { uri, version: 1, diagnostics: [] },
+    });
+    expect(server.getDiagnostics(uri)[0]?.message).toBe('mock diagnostic');
     server.notifyDidClose(uri);
 
     expect(

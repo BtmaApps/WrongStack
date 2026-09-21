@@ -147,19 +147,8 @@ export class ProjectSageMemoryPort implements MemoryPort {
     deleteSage: (id, reason, options) => this.call('deleteSage', { id, reason, options }),
     retrieveForPath: (options) => this.call('retrieveForPath', { options }),
     searchSage: (query, options) => this.call('searchSage', { query, options } as never),
-    searchSageWithBreakdown: async (query, options) => {
-      const rows = (await this.call('searchSage', { query, options } as never)) as unknown[];
-      return rows.map((memory: unknown, index: number) => {
-        const total = rows.length;
-        return {
-          memory: memory as never,
-          vectorScore: null,
-          lexicalScore: total <= 1 ? 1 : 1 - index / (total - 1),
-          finalScore: total <= 1 ? 1 : 1 - index / (total - 1),
-          source: 'lexical' as const,
-        };
-      });
-    },
+    searchSageWithBreakdown: (query, options) =>
+      this.retrievalCapability.searchSageWithBreakdown!(query, options as never),
     acceptCandidate: (candidateId) => this.call('acceptCandidate', { candidateId }),
     rejectCandidate: (candidateId, reason) => this.call('rejectCandidate', { candidateId, reason }),
     resolveCandidate: (candidateId, decision, reason) =>
@@ -203,19 +192,8 @@ export class ProjectSageMemoryPort implements MemoryPort {
     retrieveForPath: (options) =>
       this.call('retrieveForPath', { options: options as SageForPathOptions }),
     searchSage: (query, options) => this.call('searchSage', { query, options } as never),
-    searchSageWithBreakdown: async (query, options) => {
-      const rows = (await this.call('searchSage', { query, options } as never)) as unknown[];
-      return rows.map((memory: unknown, index: number) => {
-        const total = rows.length;
-        return {
-          memory: memory as never,
-          vectorScore: null,
-          lexicalScore: total <= 1 ? 1 : 1 - index / (total - 1),
-          finalScore: total <= 1 ? 1 : 1 - index / (total - 1),
-          source: 'lexical' as const,
-        };
-      });
-    },
+    searchSageWithBreakdown: (query, options) =>
+      this.retrievalCapability.searchSageWithBreakdown!(query, options as never),
     retrieveForAudience: (context, limit, _onTruncated, sessionId, includeAllSessions) =>
       this.call('retrieveForAudience', { context, limit, sessionId, includeAllSessions }),
     graphFor: (query, maxDepth, limit) => this.call('graphFor', { query, maxDepth, limit }),
@@ -402,6 +380,7 @@ export class ProjectSageMemoryPort implements MemoryPort {
     const valid = effective.filter((status) => VALID_MEMORY_STATUSES.has(status));
     if (valid.length === 0) return [];
     const seen = new Set<string>();
+    const seenCursors = new Set<string>();
     const memories: Sage[] = [];
     let cursor: string | undefined;
     do {
@@ -419,7 +398,10 @@ export class ProjectSageMemoryPort implements MemoryPort {
         seen.add(memory.id);
         memories.push(memory);
       }
-      cursor = page.nextCursor ?? undefined;
+      const nextCursor = page.nextCursor ?? undefined;
+      if (nextCursor === undefined || seenCursors.has(nextCursor)) break;
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
     } while (cursor !== undefined);
     return memories;
   }

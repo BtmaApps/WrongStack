@@ -94,8 +94,16 @@ export const languageTool: Tool<LanguageToolInput, LanguageToolOutput> = {
       target: { type: 'string', description: 'Optional target file for workspace selection.' },
       language: { type: 'string', enum: LANGUAGE_IDS, description: 'Optional language filter.' },
       workspace: { type: 'string', description: 'Detected workspace id or root.' },
-      mode: { type: 'string', enum: ['fast', 'standard', 'thorough'] },
-      check: { type: 'string', enum: ['syntax', 'semantic', 'all'] },
+      mode: {
+        type: 'string',
+        enum: ['fast', 'standard', 'thorough'],
+        description: 'Execution depth; thorough may run more checks.',
+      },
+      check: {
+        type: 'string',
+        enum: ['syntax', 'semantic', 'all'],
+        description: 'Check type when action=check.',
+      },
       formatCheck: {
         type: 'boolean',
         description: 'Verify formatting without writing (default true).',
@@ -104,9 +112,16 @@ export const languageTool: Tool<LanguageToolInput, LanguageToolOutput> = {
         type: 'string',
         description: 'Validated test/debug filter passed to profile adapters.',
       },
-      coverage: { type: 'boolean' },
+      coverage: {
+        type: 'boolean',
+        description: 'Coverage request; currently rejected until the language runner supports it.',
+      },
       noRun: { type: 'boolean', description: 'Compile tests without running when supported.' },
-      debug: { type: 'string', enum: ['compile', 'test', 'runtime', 'race'] },
+      debug: {
+        type: 'string',
+        enum: ['compile', 'test', 'runtime', 'race'],
+        description: 'Debug evidence mode when action=debug.',
+      },
     },
     required: ['action'],
     additionalProperties: false,

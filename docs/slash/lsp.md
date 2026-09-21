@@ -16,7 +16,7 @@ and configure servers — all from the REPL.
 | `/lsp start [name]` | Start all enabled servers, or a specific one by name |
 | `/lsp stop [name]` | Stop all running servers, or a specific one by name |
 | `/lsp restart [name]` | Restart all enabled servers, or a specific one by name |
-| `/lsp diagnostics [file]` | Show LSP diagnostics for a file or the whole workspace |
+| `/lsp diagnostics [file]` | Show buffered LSP diagnostics; does not refresh or verify files |
 | `/lsp remove <name>` | Stop the server and delete its config entry |
 | `/lsp enable <name>` | Turn a server back on and start it |
 | `/lsp disable <name>` | Stop a server and keep it off across sessions |
@@ -37,10 +37,27 @@ and configure servers — all from the REPL.
 /lsp start gopls               # Start a specific server
 /lsp stop                      # Stop all servers
 /lsp restart rust-analyzer     # Restart rust-analyzer
-/lsp diagnostics src/index.ts   # Check diagnostics for a file
-/lsp diagnostics                # Workspace-wide diagnostics
+/lsp diagnostics src/index.ts   # Inspect buffered diagnostics for a file
+/lsp diagnostics                # Inspect workspace diagnostic buffers
 /lsp status                    # Detailed status report
 ```
+
+## Diagnostic verification
+
+The agent's `lsp_diagnostics` tool checks the current file contents and reports
+the server, number of checked files, and selected severities. A push server that
+has not supplied diagnostics before the wait expires produces an error, not a
+clean result. Without `path`, only tracked documents are checked; an empty
+tracked set is not a workspace verification. With no enabled server configured,
+LSP tools are removed. An enabled lazy server remains available and starts when
+a supported file is requested.
+
+`/lsp diagnostics` and `/diagnostics` display cached reports only and label them
+as such. The tool rejects invalid pull reports and replies from a replaced
+connection or an earlier document revision. Versioned push reports must match
+the tracked document version; servers that omit versions cannot provide that
+same version check. Stopping or losing a server clears its cached reports and
+releases pending diagnostic waits.
 
 ## TypeScript 7
 

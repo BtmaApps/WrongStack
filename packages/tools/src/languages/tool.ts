@@ -120,14 +120,32 @@ export const languageInfoTool: Tool<LanguageInfoInput, LanguageInfoOutput> = {
       },
       options: {
         type: 'object',
+        description: 'Action-specific planning options used only when action=plan.',
         properties: {
-          target: { type: 'string' },
-          filter: { type: 'string' },
-          coverage: { type: 'boolean' },
-          noRun: { type: 'boolean' },
-          packages: { type: 'array', items: { type: 'string' } },
-          packageScope: { type: 'string', enum: ['runtime', 'development', 'optional'] },
-          allowScripts: { type: 'boolean' },
+          target: { type: 'string', description: 'Operation target path or package target.' },
+          filter: { type: 'string', description: 'Validated test or debug filter.' },
+          coverage: {
+            type: 'boolean',
+            description: 'Request coverage when the planned operation supports it.',
+          },
+          noRun: {
+            type: 'boolean',
+            description: 'Compile tests without running them when supported.',
+          },
+          packages: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Packages affected by a package operation.',
+          },
+          packageScope: {
+            type: 'string',
+            enum: ['runtime', 'development', 'optional'],
+            description: 'Dependency scope for a package operation.',
+          },
+          allowScripts: {
+            type: 'boolean',
+            description: 'Allow package lifecycle scripts in a planned install operation.',
+          },
         },
         additionalProperties: false,
       },

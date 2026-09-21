@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { AutoCompactionMiddleware } from '../../src/execution/auto-compaction-middleware.js';
+import {
+  markStaleCompactionReport,
+  stampCompactionReport,
+} from '../../src/execution/compaction-result-state.js';
 import { EventBus } from '../../src/kernel/events.js';
 import type { SessionEventBridge } from '../../src/storage/session-event-bridge.js';
 import type { Compactor } from '../../src/types/compactor.js';
@@ -248,6 +252,48 @@ describe('AutoCompactionMiddleware', () => {
     expect(afterFirst).not.toBe(beforeSecond);
   });
 
+  it('re-collapses a small window on fractional growth instead of waiting for 20000 tokens', async () => {
+    const mw = new AutoCompactionMiddleware(
+      compactor,
+      16_000,
+      (ctx) => {
+        const count = ctx.meta['tokenCount'];
+        return typeof count === 'number' ? count : 0;
+      },
+      { warn: 0.55, soft: 0.7, hard: 0.85 },
+    );
+    const ctx = mockContext(0);
+    ctx.meta['contextWindowPolicy'] = { preserveK: 1, eliseThreshold: 50 };
+    ctx.meta['tokenCount'] = 9_000;
+    pushAcknowledgedExchanges(ctx, 20);
+    await mw.handler()(ctx, async (c) => c);
+
+    ctx.messages.pop();
+    for (let i = 20; i < 40; i++) {
+      ctx.messages.push({
+        role: 'assistant',
+        content: [{ type: 'tool_use', id: `use-${i}`, name: 'exec', input: { path: `${i}.ts` } }],
+      });
+      ctx.messages.push({
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: `use-${i}`, name: 'exec', content: `result ${i}` },
+        ],
+      });
+    }
+    ctx.messages.push({ role: 'assistant', content: [{ type: 'text', text: 'done again' }] });
+
+    ctx.meta['tokenCount'] = 10_000;
+    const belowInterval = JSON.stringify(ctx.messages);
+    await mw.handler()(ctx, async (c) => c);
+    expect(JSON.stringify(ctx.messages)).toBe(belowInterval);
+
+    ctx.meta['tokenCount'] = 11_500;
+    await mw.handler()(ctx, async (c) => c);
+    expect(JSON.stringify(ctx.messages)).not.toBe(belowInterval);
+    expect(JSON.stringify(ctx.messages)).toContain('tool_history_digest');
+  });
+
   it('keeps a useful raw investigation window and semantically receipts only the overflow', async () => {
     const mw = new AutoCompactionMiddleware(compactor, 200_000, simpleEstimator(115_000), {
       warn: 0.55,
@@ -370,6 +416,22 @@ describe('AutoCompactionMiddleware', () => {
         expect(compactor.compactCalls).toHaveLength(1);
         expect(compactor.compactCalls[0]?.aggressive).toBe(true); // hard → aggressive
       });
+  });
+
+  it('does not let a density estimate override an exact provider count under warn', async () => {
+    const ctx = mockContext(0);
+    ctx.provider = { id: 'anthropic' } as Context['provider'];
+    ctx.model = 'claude-sonnet';
+    ctx.messages = [{ role: 'user', content: '漢'.repeat(120_000) }];
+    ctx.lastRealInputTokens = 36_000;
+    ctx.meta['realAnchorMsgCount'] = 1;
+    const mw = new AutoCompactionMiddleware(compactor, 100_000, undefined, {
+      warn: 0.55,
+      soft: 0.7,
+      hard: 0.85,
+    });
+    await mw.handler()(ctx, async (c) => c);
+    expect(compactor.compactCalls).toHaveLength(0);
   });
 
   it('is a pass-through when disabled via setEnabled(false), even above hard threshold', async () => {
@@ -553,6 +615,35 @@ describe('AutoCompactionMiddleware', () => {
       }),
     ).rejects.toThrow(/Auto-compaction failed/);
 
+    expect(ran).toBe(false);
+  });
+
+  it('throws when a soft pass finishes above the hard threshold', async () => {
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact() {
+          return {
+            before: 7_500,
+            after: 9_500,
+            fullRequestTokensBefore: 7_500,
+            fullRequestTokensAfter: 9_500,
+            reductions: [],
+          };
+        },
+      },
+      10_000,
+      () => 7_500,
+      { warn: 0.5, soft: 0.75, hard: 0.9 },
+    );
+    const ctx = mockContext(0);
+    ctx.messages = [{ role: 'user', content: 'hi' }];
+    let ran = false;
+    await expect(
+      mw.handler()(ctx, async (c) => {
+        ran = true;
+        return c;
+      }),
+    ).rejects.toMatchObject({ code: 'AGENT_CONTEXT_OVERFLOW' });
     expect(ran).toBe(false);
   });
 
@@ -930,6 +1021,35 @@ describe('AutoCompactionMiddleware', () => {
     expect(tinyCompactor.calls).toBe(1);
   });
 
+  it('retries compaction after a no-op when the transcript shrinks materially', async () => {
+    const ctx = mockContext(0);
+    ctx.meta['tokens'] = 8_000;
+    const calls = { n: 0 };
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact() {
+          calls.n++;
+          return {
+            before: 8_000,
+            after: 8_000,
+            fullRequestTokensBefore: 8_000,
+            fullRequestTokensAfter: 8_000,
+            reductions: [],
+          };
+        },
+      },
+      10_000,
+      (active) => active.meta['tokens'] as number,
+      { warn: 0.5, soft: 0.75, hard: 0.95 },
+      { failureMode: 'continue' },
+    );
+    await mw.handler()(ctx, async (c) => c);
+    ctx.state.replaceMessages([{ role: 'user', content: 'rewound history' }]);
+    ctx.meta['tokens'] = 6_000;
+    await mw.handler()(ctx, async (c) => c);
+    expect(calls.n).toBe(2);
+  });
+
   it('retries compaction after a no-op when context grows materially', async () => {
     const ctx = mockContext(0);
     const noopCompactor: Compactor & { calls: number } = {
@@ -1095,6 +1215,149 @@ describe('AutoCompactionMiddleware', () => {
     expect(event.after).toBe(800);
     expect(event.level).toBe('hard');
     expect(typeof event.ts).toBe('string');
+  });
+
+  it('does not turn a session-log failure into a hard context overflow', async () => {
+    const events = new EventBus();
+    const failures: Array<{ fatal: boolean }> = [];
+    events.on('compaction.failed', (payload) => failures.push(payload));
+    const ctx = mockContext(0);
+    ctx.messages = [{ role: 'user', content: 'hello' }];
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact(active) {
+          active.state.replaceMessages([{ role: 'user', content: 'short note' }]);
+          return {
+            before: 20_000,
+            after: 100,
+            fullRequestTokensBefore: 20_000,
+            fullRequestTokensAfter: 100,
+            reductions: [],
+          };
+        },
+      },
+      10_000,
+      () => 9_500,
+      { warn: 0.5, soft: 0.75, hard: 0.9 },
+      {
+        events,
+        sessionBridge: {
+          level: 'standard',
+          allows: () => true,
+          append: async () => {
+            throw new Error('session log disk full');
+          },
+        },
+      },
+    );
+    let ran = false;
+    await mw.handler()(ctx, async (c) => {
+      ran = true;
+      return c;
+    });
+    expect(ran).toBe(true);
+    expect(ctx.messages).toEqual([{ role: 'user', content: 'short note' }]);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.fatal).toBe(false);
+  });
+
+  it('still trims an over-hard transcript when the session log write fails', async () => {
+    const ctx = mockContext(0);
+    ctx.messages = [{ role: 'user', content: 'x'.repeat(80_000) }];
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact() {
+          return {
+            before: 20_000,
+            after: 20_000,
+            fullRequestTokensBefore: 20_000,
+            fullRequestTokensAfter: 20_000,
+            reductions: [],
+          };
+        },
+      },
+      10_000,
+      () => 9_500,
+      { warn: 0.5, soft: 0.75, hard: 0.9 },
+      {
+        sessionBridge: {
+          level: 'standard',
+          allows: () => true,
+          append: async () => {
+            throw new Error('session log disk full');
+          },
+        },
+      },
+    );
+    let ran = false;
+    await mw.handler()(ctx, async (c) => {
+      ran = true;
+      return c;
+    });
+    expect(ran).toBe(true);
+    expect(JSON.stringify(ctx.messages).length).toBeLessThan(5_000);
+  });
+
+  it('trims a stale report when the current transcript is still over hard', async () => {
+    const ctx = mockContext(0);
+    ctx.messages = [{ role: 'user', content: 'x'.repeat(80_000) }];
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact(active) {
+          return markStaleCompactionReport(
+            stampCompactionReport(
+              {
+                before: 20_000,
+                after: 20_000,
+                fullRequestTokensBefore: 20_000,
+                fullRequestTokensAfter: 20_000,
+                reductions: [],
+              },
+              active,
+            ),
+          );
+        },
+      },
+      10_000,
+      undefined,
+      { warn: 0.5, soft: 0.75, hard: 0.9 },
+    );
+    let ran = false;
+    await mw.handler()(ctx, async (c) => {
+      ran = true;
+      return c;
+    });
+    expect(ran).toBe(true);
+    expect(JSON.stringify(ctx.messages).length).toBeLessThan(5_000);
+  });
+
+  it('leaves a short replacement alone when the compaction report is stale', async () => {
+    const ctx = mockContext(0);
+    ctx.messages = [{ role: 'user', content: 'x'.repeat(80_000) }];
+    const mw = new AutoCompactionMiddleware(
+      {
+        async compact(active) {
+          active.state.replaceMessages([{ role: 'user', content: 'short note' }]);
+          return markStaleCompactionReport(
+            stampCompactionReport(
+              {
+                before: 20_000,
+                after: 10,
+                fullRequestTokensBefore: 20_000,
+                fullRequestTokensAfter: 10,
+                reductions: [],
+              },
+              active,
+            ),
+          );
+        },
+      },
+      10_000,
+      undefined,
+      { warn: 0.5, soft: 0.75, hard: 0.9 },
+    );
+    await mw.handler()(ctx, async (c) => c);
+    expect(ctx.messages).toEqual([{ role: 'user', content: 'short note' }]);
   });
 
   it('calls the custom estimator on every invocation (no caching for custom estimators)', async () => {

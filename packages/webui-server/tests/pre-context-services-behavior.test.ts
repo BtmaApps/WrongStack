@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => {
     getAgentStatuses: vi.fn(),
     hydrateSessionKanban: vi.fn(),
     installCatalogModelOutputLimits: vi.fn(),
+    createMcpControlTool: vi.fn(() => ({ name: 'mcp_control' })),
+    createMcpUseTool: vi.fn(() => ({ name: 'mcp_use' })),
     registerCanonicalHostTools: vi.fn(),
     resolveProviderModelMetadata: vi.fn(),
     resolveSetupProvider: vi.fn(),
@@ -55,6 +57,7 @@ vi.mock('@wrongstack/core/coordination', () => ({
   makeMailboxTool: vi.fn(() => ({ name: 'mailbox' })),
   makeMailInboxTool: vi.fn(() => ({ name: 'mail_inbox' })),
   makeMailSendTool: vi.fn(() => ({ name: 'mail_send' })),
+  makeSessionNoteTool: vi.fn(() => ({ name: 'session_note' })),
 }));
 vi.mock('@wrongstack/core/execution', () => ({
   DefaultPromptLoader: class DefaultPromptLoaderMock {},
@@ -85,9 +88,16 @@ vi.mock('@wrongstack/core/registry', () => ({
   },
   ToolRegistry: class ToolRegistryMock {
     list = vi.fn(() => []);
+    listForProvider = vi.fn(() => []);
+    registerDefault = vi.fn();
+    exposeToProvider = vi.fn();
   },
 }));
 vi.mock('@wrongstack/core/skills', () => ({ SkillInstaller: class SkillInstallerMock {} }));
+vi.mock('@wrongstack/core/tools', () => ({
+  createMcpControlTool: mocks.createMcpControlTool,
+  createMcpUseTool: mocks.createMcpUseTool,
+}));
 vi.mock('@wrongstack/core/storage', () => ({
   AnnotationsStore: class AnnotationsStoreMock {},
   DefaultSessionReader: class DefaultSessionReaderMock {},
@@ -184,6 +194,8 @@ describe('createPreContextServices', () => {
     const toolRegistry = {
       list: vi.fn(() => [{ name: 'read_file' }]),
       listForProvider: vi.fn(() => [{ name: 'read_file' }]),
+      registerDefault: vi.fn(),
+      exposeToProvider: vi.fn(),
     };
     const session = { id: 'session-1' };
     const sessionStore = {
@@ -286,5 +298,65 @@ describe('createPreContextServices', () => {
       provider: { id: 'provider' },
       needsSetup: false,
     });
+  });
+
+  it('keeps the full mailbox capability set when it owns the tool registry', async () => {
+    await createPreContextServices({
+      config: {
+        provider: 'openai',
+        model: 'gpt-5.6',
+        providers: {},
+        features: {
+          memory: false,
+          mcp: false,
+          skills: false,
+          prompts: false,
+          tokenSavingMode: 'minimal',
+        },
+        tools: { exec: { danger: { enabled: false } } },
+        context: { mode: 'balanced' },
+      },
+      wpaths: {
+        modelsCache: 'D:/global/models.json',
+        modelsOverlayCache: 'D:/global/models-overlay.json',
+        cacheDir: 'D:/repo/.wstack/cache',
+        projectDir: 'D:/repo/.wstack',
+        projectRoot: 'D:/repo',
+        projectSessions: 'D:/repo/.wstack/sessions',
+        globalRoot: 'D:/global',
+        projectSlug: 'repo',
+        configDir: 'D:/repo/.wstack/config',
+        promptUsage: 'D:/repo/.wstack/prompts-usage.json',
+        globalInstructions: 'D:/global/instructions',
+        inProjectInstructions: 'D:/repo/.wstack/instructions',
+      },
+      logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+      opts: {
+        services: {
+          modelsRegistry: { refresh: vi.fn() },
+          events: { setLogger: vi.fn() },
+          configStore: mocks.configStore,
+          session: { create: vi.fn().mockResolvedValue({ id: 'session-2' }), prune: vi.fn() },
+        },
+      },
+      vault: {},
+      globalConfigPath: 'D:/global/config.json',
+      projectRoot: 'D:/repo',
+      workingDir: 'D:/repo',
+      needsProvider: false,
+      vectorMemoryStore: {} as never,
+      touchProject: vi.fn(),
+    } as never);
+
+    expect(mocks.registerCanonicalHostTools).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vectorMemory: { store: expect.anything() },
+        coordinationTools: expect.arrayContaining([
+          expect.objectContaining({ name: 'session_note' }),
+        ]),
+      }),
+    );
+    expect(mocks.createMcpControlTool).toHaveBeenCalledOnce();
+    expect(mocks.createMcpUseTool).toHaveBeenCalledOnce();
   });
 });

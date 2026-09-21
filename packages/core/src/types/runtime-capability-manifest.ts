@@ -174,6 +174,21 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     tools: ['remember', 'search_memory', 'find_related_memories', 'forget'],
   },
   {
+    // Optional local semantic memory. Hosts register this capability only
+    // when their VectorMemoryStore is available; keeping it distinct from
+    // SAGE's lexical memory lets a skill state its retrieval requirement
+    // without silently accepting a backend that cannot satisfy it.
+    id: 'memory.semantic',
+    pack: 'memory',
+    exposure: 'on-demand',
+    tools: [
+      'vector_memory_remember',
+      'vector_memory_search',
+      'vector_memory_stats',
+      'vector_memory_forget',
+    ],
+  },
+  {
     id: 'memory.curate',
     pack: 'memory',
     exposure: 'on-demand',
@@ -220,7 +235,11 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     id: 'mcp.dynamic',
     pack: 'mcp',
     exposure: 'on-demand',
-    tools: ['mcp_use'],
+    // `mcp_use` needs the exact server, tool name, and input schema;
+    // `mcp_control({ action: "list" | "tools" })` is the governed
+    // discovery route for those facts. Giving a role only mcp_use made the
+    // advertised dynamic-MCP capability non-self-sufficient.
+    tools: ['mcp_control', 'mcp_use'],
   },
   {
     id: 'automation.manage',
@@ -267,7 +286,7 @@ export const RUNTIME_CAPABILITY_MANIFEST = [
     id: 'runtime.admin',
     pack: 'admin',
     exposure: 'internal',
-    tools: ['context_manager', 'mode', 'skill', 'mcp_control'],
+    tools: ['context_manager', 'mode', 'skill'],
   },
 ] as const satisfies readonly RuntimeCapabilityDefinition[];
 

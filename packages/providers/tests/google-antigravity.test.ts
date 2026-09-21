@@ -360,6 +360,43 @@ describe('project bootstrap', () => {
     expect(result).toEqual({ ok: true, project: 'proj-late', tierId: 'legacy-tier' });
   });
 
+  it('settles immediately when aborted during a done:false poll delay', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(jsonRes({}))
+        .mockResolvedValueOnce(jsonRes({ done: false }))
+        .mockResolvedValue(jsonRes({ done: false }));
+      const controller = new AbortController();
+      const reason = new Error('caller stopped onboarding');
+      const pending = bootstrapAntigravityProject({
+        accessToken: 't',
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        signal: controller.signal,
+        pollMs: 60_000,
+      });
+      const outcome = pending.then(
+        (value) => ({ kind: 'resolved' as const, value }),
+        (error: unknown) => ({ kind: 'rejected' as const, error }),
+      );
+
+      for (let i = 0; i < 12; i += 1) await Promise.resolve();
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+      controller.abort(reason);
+      for (let i = 0; i < 12; i += 1) await Promise.resolve();
+
+      const immediate = await Promise.race([
+        outcome,
+        Promise.resolve({ kind: 'pending' as const }),
+      ]);
+      expect(immediate).toEqual({ kind: 'rejected', error: reason });
+    } finally {
+      await vi.runOnlyPendingTimersAsync();
+      vi.useRealTimers();
+    }
+  });
+
   it('calls a settled answer with no project BYOP, not a transient failure', async () => {
     // `done` absent entirely is Google's immediate "there is no project and I
     // will not make one". Retrying it spends requests to reach the same answer

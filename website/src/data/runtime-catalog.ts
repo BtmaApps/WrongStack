@@ -321,7 +321,7 @@ export const toolCatalog = [
     summary:
       'Run the project’s configured linter for a target path or working directory and return diagnostics. Use it after code edits to catch style and static-analysis issues.',
     permission: 'confirm',
-    mutating: false,
+    mutating: true,
     category: 'Quality & language',
   },
   {

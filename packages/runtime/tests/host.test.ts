@@ -1,7 +1,7 @@
 import { ExtensionRegistry } from '@wrongstack/core/extension';
 import { EventBus } from '@wrongstack/core/kernel';
 import { ProviderRegistry, SlashCommandRegistry, ToolRegistry } from '@wrongstack/core/registry';
-import type { Provider, Tool } from '@wrongstack/core/types';
+import type { PluginAPI, Provider, Tool } from '@wrongstack/core/types';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyWrongStackPack,
@@ -477,6 +477,69 @@ describe('runtime host composition', () => {
     expect(host.providers.has('noop')).toBe(false);
     expect(host.slashCommands.get('transactional:hello')).toBeUndefined();
     expect(host.extensions.list()).toEqual([]);
+  });
+
+  it('tears down resources from a partially completed setup before rolling back declarations', async () => {
+    const host = hostParts();
+    const api = {} as never;
+    const setupError = new Error('partial setup failed');
+    let resourceActive = false;
+    const teardown = vi.fn((received: PluginAPI) => {
+      expect(received).toBe(api);
+      // Teardown runs while declarative capabilities are still mounted.
+      expect(host.tools.get('noop')).toBe(noopTool);
+      resourceActive = false;
+    });
+
+    await expect(
+      applyWrongStackPack(
+        host,
+        {
+          name: 'partial-setup',
+          tools: [noopTool],
+          setup() {
+            resourceActive = true;
+            throw setupError;
+          },
+          teardown,
+        },
+        { api },
+      ),
+    ).rejects.toBe(setupError);
+
+    expect(resourceActive).toBe(false);
+    expect(teardown).toHaveBeenCalledTimes(1);
+    expect(host.tools.get('noop')).toBeUndefined();
+  });
+
+  it('does not mask a setup failure when partial-setup teardown also fails', async () => {
+    const host = hostParts();
+    const setupError = new Error('mount failure');
+    const originalEmit = process.emitWarning;
+    const warnings: string[] = [];
+    process.emitWarning = ((message: string) => {
+      warnings.push(String(message));
+    }) as typeof process.emitWarning;
+    try {
+      await expect(
+        applyWrongStackPack(
+          host,
+          {
+            name: 'double-failure',
+            setup() {
+              throw setupError;
+            },
+            teardown() {
+              throw new Error('cleanup failure');
+            },
+          },
+          { api: {} as never },
+        ),
+      ).rejects.toBe(setupError);
+    } finally {
+      process.emitWarning = originalEmit;
+    }
+    expect(warnings).toContainEqual(expect.stringContaining('cleanup failure'));
   });
 
   it('requires PluginAPI only when a declared teardown actually runs', async () => {

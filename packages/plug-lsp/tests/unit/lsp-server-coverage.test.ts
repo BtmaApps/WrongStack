@@ -97,9 +97,9 @@ describe('LSP server completion coverage', () => {
         new AbortController().signal,
       ),
     ).toEqual([]);
-    expect(await value.pullDiagnostics('file:///a.ts', 1, new AbortController().signal)).toEqual(
-      [],
-    );
+    await expect(
+      value.pullDiagnostics('file:///a.ts', 1, new AbortController().signal),
+    ).rejects.toThrow('invalid diagnostic report');
     value.notifyDidClose('file:///a.ts');
     expect(internal.connection.sendNotification).toHaveBeenCalled();
 

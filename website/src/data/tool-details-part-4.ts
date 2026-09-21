@@ -27,62 +27,78 @@ export const toolDetailsPart4: Record<string, ToolDetail> = {
       {
         name: 'question',
         type: 'string',
+        description: 'Question shown to the user.',
       },
       {
         name: 'context',
         type: 'string',
+        description: 'Optional decision context shown below the question.',
       },
       {
         name: 'type',
         type: "'single_select' | 'multi_select' | 'text'",
+        description: 'Input mode; defaults to single_select when options are present.',
       },
       {
         name: 'options',
         type: 'Array<string | object>',
+        description:
+          'Selectable string labels or labelled option objects for this legacy single question.',
       },
       {
         name: 'recommendedOption',
         type: 'string',
+        description: 'Recommended option id or label for one-choice questions.',
       },
       {
         name: 'recommendedOptions',
         type: 'string[]',
+        description: 'Recommended option ids or labels for multi-select questions.',
       },
       {
         name: 'recommendedText',
         type: 'string',
+        description: 'Suggested initial answer for a text question.',
       },
       {
         name: 'recommendationReason',
         type: 'string',
+        description: 'Brief rationale for the recommended answer.',
       },
       {
         name: 'isMultiSelect',
         type: 'boolean',
+        description: 'Legacy alias for type: multi_select.',
       },
       {
         name: 'is_multi_select',
         type: 'boolean',
+        description: 'Legacy snake_case alias for type: multi_select.',
       },
       {
         name: 'allowCustomResponse',
         type: 'boolean',
+        description: 'Allow a write-in answer in addition to listed options.',
       },
       {
         name: 'required',
         type: 'boolean',
+        description: 'Whether the user must answer before submitting the form.',
       },
       {
         name: 'placeholder',
         type: 'string',
+        description: 'Placeholder text for a text response.',
       },
       {
         name: 'questions',
         type: 'object[]',
+        description: 'Legacy flat list of questions; prefer tabs for grouped decisions.',
       },
       {
         name: 'tabs',
         type: 'object[]',
+        description: 'Preferred grouped form input; each tab contains one or more questions.',
       },
     ],
     notes: ['Use only for high-cost irreversible forks; adopt established defaults autonomously.'],

@@ -79,9 +79,9 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 281,
+      "files": 283,
       "typeOnly": 143,
-      "runtimeOrMixed": 150
+      "runtimeOrMixed": 152
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -166,7 +166,7 @@
     "@wrongstack/core/storage": {
       "files": 126,
       "typeOnly": 33,
-      "runtimeOrMixed": 123
+      "runtimeOrMixed": 125
     },
     "@wrongstack/core/tasking": {
       "files": 32,
@@ -174,13 +174,13 @@
       "runtimeOrMixed": 21
     },
     "@wrongstack/core/tools": {
-      "files": 7,
+      "files": 8,
       "typeOnly": 0,
-      "runtimeOrMixed": 8
+      "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1140,
-      "typeOnly": 1020,
+      "files": 1142,
+      "typeOnly": 1022,
       "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -216,7 +216,7 @@
     "@wrongstack/core/utils": {
       "files": 624,
       "typeOnly": 60,
-      "runtimeOrMixed": 596
+      "runtimeOrMixed": 595
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -6657,6 +6657,18 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/unit/diagnostics-lifecycle.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/plug-lsp/tests/unit/lsp-server-coverage.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10769,7 +10781,7 @@
       "specifier": "@wrongstack/core/storage",
       "file": "packages/tui/tests/use-input-history-persistence.test.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 4
     },
     {
       "specifier": "@wrongstack/core/storage",
@@ -11194,6 +11206,12 @@
     {
       "specifier": "@wrongstack/core/tools",
       "file": "packages/runtime/tests/tool-wire-budget.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/tools",
+      "file": "packages/webui-server/src/server/pre-context-services.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -13984,6 +14002,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plug-lsp/tests/integration/tools-e2e.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/unit/diagnostics-lifecycle.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plug-lsp/tests/unit/diagnostics-verification.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -21845,7 +21875,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/pre-context-services.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",

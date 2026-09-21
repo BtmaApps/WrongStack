@@ -276,6 +276,52 @@ describe('createRequirementIntakeMcpToolHost', () => {
     });
     expect(createIntake).not.toHaveBeenCalled();
   });
+
+  it('does not submit when cancellation wins during asynchronous creation', async () => {
+    const record = {
+      id: 'reqi_cancelled',
+      title: 'Cancelled intake',
+      requestType: 'feature',
+      status: 'draft',
+    };
+    let releaseCreate!: (result: {
+      record: typeof record;
+      created: boolean;
+      idempotent: boolean;
+    }) => void;
+    const creation = new Promise<{
+      record: typeof record;
+      created: boolean;
+      idempotent: boolean;
+    }>((resolve) => {
+      releaseCreate = resolve;
+    });
+    const createIntake = vi.fn(() => creation);
+    const submitIntake = vi.fn();
+    const controller = new AbortController();
+    const host = createRequirementIntakeMcpToolHost('C:/project', {
+      writable: true,
+      dependencies: {
+        service: { createIntake, submitIntake } as unknown as RequirementIntakeService,
+        resolveProjectId: async () => 'proj_alpha',
+      },
+    });
+
+    const pending = host.callTool(
+      'requirement_intake_submit',
+      { request: REQUEST_TEXT },
+      { signal: controller.signal },
+    );
+    await vi.waitFor(() => expect(createIntake).toHaveBeenCalledTimes(1));
+    controller.abort(new Error('cancelled during creation'));
+    releaseCreate({ record, created: true, idempotent: false });
+
+    await expect(pending).resolves.toEqual({
+      content: 'cancelled during creation',
+      isError: true,
+    });
+    expect(submitIntake).not.toHaveBeenCalled();
+  });
 });
 
 describe('createRequirementIntakeMcpToolHost — default project wiring', () => {

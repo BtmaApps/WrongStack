@@ -22,6 +22,9 @@ export interface WrongStackPack {
   extensions?: readonly AgentExtension[] | undefined;
   /** Optional imperative setup for packs that need host APIs. */
   setup?(api: PluginAPI): void | Promise<void>;
-  /** Optional best-effort teardown for resources started by setup(). */
+  /**
+   * Optional best-effort teardown for resources started by setup(). Called
+   * after a partially completed setup throws as well as during normal unload.
+   */
   teardown?(api: PluginAPI): void | Promise<void>;
 }

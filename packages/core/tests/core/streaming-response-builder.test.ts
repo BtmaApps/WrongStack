@@ -262,6 +262,49 @@ describe('per-event handlers', () => {
     expect(s.thinking[0]?.signature).toBe('sig-xyz');
   });
 
+  // MiniMax-M3 interleaves many reasoning blocks per turn on the
+  // Anthropic-compatible surface, so an out-of-order signature/start pair is
+  // routine rather than exotic. Opening a second block there split one piece
+  // of reasoning into two entries — the signature in an otherwise empty block,
+  // the text in the next — which reads on screen as repeated thinking.
+  it('handleThinkingStart reuses a block opened by an earlier signature', () => {
+    const s = createStreamingState('m');
+    handleThinkingSignature(s, 'sig-early');
+    handleThinkingStart(s, { providerMeta: { trace_id: 'abc' } });
+    handleThinkingDelta(s, 'reasoning');
+
+    expect(s.thinking).toHaveLength(1);
+    expect(s.blockOrder.filter((b) => b.kind === 'thinking')).toHaveLength(1);
+    expect(s.thinking[0]).toMatchObject({
+      textBuf: 'reasoning',
+      signature: 'sig-early',
+      providerMeta: { trace_id: 'abc' },
+    });
+  });
+
+  it('handleThinkingStart opens a distinct block once the previous one stopped', () => {
+    const s = createStreamingState('m');
+    handleThinkingStart(s, {});
+    handleThinkingDelta(s, 'first');
+    handleThinkingStop(s);
+    handleThinkingStart(s, {});
+    handleThinkingDelta(s, 'second');
+
+    expect(s.thinking.map((t) => t.textBuf)).toEqual(['first', 'second']);
+  });
+
+  it('handleContentBlockStart(thinking) follows the same reuse rule', () => {
+    const s = createStreamingState('m');
+    handleThinkingSignature(s, 'sig-early');
+    handleContentBlockStart(s, { kind: 'thinking', providerMeta: { trace_id: 'abc' } });
+
+    expect(s.thinking).toHaveLength(1);
+    expect(s.thinking[0]).toMatchObject({
+      signature: 'sig-early',
+      providerMeta: { trace_id: 'abc' },
+    });
+  });
+
   it('handleThinkingStop resets currentThinkingIndex', () => {
     const s = createStreamingState('m');
     handleThinkingStart(s, {});
