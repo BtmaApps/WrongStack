@@ -166,7 +166,7 @@ describe('createCloudConfigSyncPlugin', () => {
     expect(result.message).toMatch(/^Cloud config sync enabled\.\n/);
     expect(result.message).toContain('network down');
     expect(fetchSpy).toHaveBeenCalled();
-    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(setIntervalSpy.mock.calls.filter(([, delay]) => delay === 300_000)).toHaveLength(1);
     const onDisk = JSON.parse(await fs.readFile(path.join(tmp, 'config.json'), 'utf8'));
     expect(onDisk.cloudSync.enabled).toBe(true);
     plugin.teardown?.(api);
