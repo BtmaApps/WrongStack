@@ -34,6 +34,44 @@ describe('License Policy & Compliance', () => {
       }
     });
 
+    it('treats LGPL SPDX-suffixed and legacy spellings as weak copyleft', () => {
+      // The `-only` / `-or-later` variants and the pre-SPDX spellings used to
+      // reach the GPL fallback, whose `includes('gpl')` test matches the 'gpl'
+      // inside 'lgpl' — reporting file/module-level copyleft as viral.
+      for (const lic of [
+        'LGPL-2.1-only',
+        'LGPL-2.1-or-later',
+        'LGPL-3.0-only',
+        'LGPL-3.0-or-later',
+        'LGPLv2.1',
+      ]) {
+        const assessment = assessLicense(lic);
+        expect(assessment.category, lic).toBe('weak_copyleft');
+        expect(assessment.isCommercialSafe, lic).toBe(true);
+        expect(assessment.isCopyleft, lic).toBe(true);
+        expect(assessment.severity, lic).toBe('info');
+        // Weak copyleft is not actionable risk, so no compliance finding.
+        expect(createLicenseFinding('dep-lgpl', 'some-lib', lic), lic).toBeNull();
+      }
+    });
+
+    it('takes the shared category of a compound expression', () => {
+      // `normalizeLicenseId` folds `MIT OR Apache-2.0` into `mit/apache-2.0`,
+      // which matches no exact-id set. Agreeing branches define the category, so
+      // a fully permissive expression is permissive and creates no finding.
+      for (const expr of ['MIT OR Apache-2.0', '(MIT OR Apache-2.0)', 'MIT AND Apache-2.0']) {
+        expect(assessLicense(expr).category, expr).toBe('permissive');
+        expect(assessLicense(expr).isCommercialSafe, expr).toBe(true);
+        expect(createLicenseFinding('dep-compound', 'pkg', expr), expr).toBeNull();
+      }
+      // Agreeing weak-copyleft branches likewise stay out of findings …
+      expect(assessLicense('MPL-2.0 OR EPL-2.0').category).toBe('weak_copyleft');
+      expect(createLicenseFinding('dep-compound', 'pkg', 'MPL-2.0 OR EPL-2.0')).toBeNull();
+      // … while branches that disagree keep the conservative fallback.
+      expect(assessLicense('MIT OR GPL-3.0').category).toBe('strong_copyleft');
+      expect(createLicenseFinding('dep-compound', 'pkg', 'MIT OR GPL-3.0')).not.toBeNull();
+    });
+
     it('identifies strong copyleft licenses with high severity and copyleft flag', () => {
       for (const lic of ['GPL-2.0', 'GPL-3.0', 'GPL-3.0-only', 'EUPL-1.2']) {
         const assessment = assessLicense(lic);

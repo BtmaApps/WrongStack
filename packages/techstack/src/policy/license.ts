@@ -45,6 +45,16 @@ const WEAK_COPYLEFT_LICENSES = new Set([
   'lgpl-2.0',
   'lgpl-2.1',
   'lgpl-3.0',
+  // The SPDX suffixed forms. STRONG_COPYLEFT_LICENSES enumerates the `-only` /
+  // `-or-later` variants for GPL and NETWORK_COPYLEFT for AGPL, but the LGPL
+  // family was only listed bare — so `LGPL-3.0-or-later` missed this set and
+  // reached the GPL fallback below, which matched the 'gpl' inside 'lgpl'.
+  'lgpl-2.0-only',
+  'lgpl-2.0-or-later',
+  'lgpl-2.1-only',
+  'lgpl-2.1-or-later',
+  'lgpl-3.0-only',
+  'lgpl-3.0-or-later',
   'mpl-2.0',
   'cddl-1.0',
   'epl-1.0',
@@ -115,6 +125,32 @@ export function assessLicense(rawLicense: string | undefined): LicenseRiskAssess
     };
   }
 
+  // A compound expression matches none of the exact-id sets below: the
+  // normalizer encodes `MIT OR Apache-2.0` as `mit/apache-2.0` and
+  // `MIT AND Apache-2.0` as `mit+apache-2.0`. Every compound therefore fell
+  // through to the final "custom or non-standard license string" branch, and
+  // createLicenseFinding() — which returns null only for permissive /
+  // weak_copyleft — emitted a licence finding for a fully permissive dependency
+  // (this is the de-facto license of the Rust ecosystem). When every branch
+  // resolves to the SAME category the expression takes that category; branches
+  // that disagree keep the conservative fallbacks below, because the tool cannot
+  // know which branch the project relies on.
+  const branches = normalized
+    .split(/[/+]/)
+    .map((branch) => branch.trim())
+    .filter((branch) => branch !== '');
+  if (branches.length > 1) {
+    const branchAssessments = branches.map((branch) => assessLicense(branch));
+    const first = branchAssessments[0];
+    if (first && branchAssessments.every((assessment) => assessment.category === first.category)) {
+      return {
+        ...first,
+        license: rawLicense,
+        rationale: `${rawLicense} combines licenses of the same category (${first.category}). ${first.rationale}`,
+      };
+    }
+  }
+
   if (NETWORK_COPYLEFT_LICENSES.has(normalized)) {
     return {
       license: rawLicense,
@@ -167,6 +203,23 @@ export function assessLicense(rawLicense: string | undefined): LicenseRiskAssess
       isCopyleft: false,
       isCommercialSafe: true,
       rationale: `${rawLicense} is a standard permissive license. Safe for commercial and closed-source use.`,
+    };
+  }
+
+  // Weak-copyleft spellings that are not exact SPDX ids (`LGPLv2.1`, `LGPL-3.0+`)
+  // and compound expressions built from them. This branch MUST stay ahead of the
+  // GPL fallback: that test matches the 'gpl' INSIDE 'lgpl', so every LGPL form
+  // missing the exact-id set was reported as viral strong copyleft — a false
+  // "open source your entire codebase" compliance finding on a file/module-level
+  // license.
+  if (normalized.includes('lgpl')) {
+    return {
+      license: rawLicense,
+      category: 'weak_copyleft',
+      severity: 'info',
+      isCopyleft: true,
+      isCommercialSafe: true,
+      rationale: `${rawLicense} references LGPL (weak, file/module-level copyleft). Safe for proprietary projects when dynamically linked.`,
     };
   }
 

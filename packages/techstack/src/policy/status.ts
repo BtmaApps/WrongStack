@@ -135,9 +135,19 @@ function isBreakingUpgrade(locked: string, latestStable: string, constraint?: st
 
   if (!lockedMajor || !latestMajor) return true;
 
-  // `^` — compatible, only breaking if major changes
+  // `^` — compatible: the breaking axis is the leftmost NON-ZERO component.
+  // `^1.2.3` breaks on a major change, `^0.2.3` on a MINOR change and
+  // `^0.0.3` on a patch change. A major-only comparison reported
+  // 0.2.x → 0.3.0 as a SAFE upgrade even though the range excludes it (the
+  // same package's `caretUpper`/`satisfiesRange` encode the correct rule).
   if (constraintNorm.startsWith('^')) {
-    return lockedMajor !== latestMajor;
+    if (lockedMajor !== latestMajor) return true;
+    if (lockedMajor !== '0') return false;
+    const [, lockedMinor = '', lockedPatch = ''] = locked.split('.');
+    const [, latestMinor = '', latestPatch = ''] = latestStable.split('.');
+    if (lockedMinor !== latestMinor) return true;
+    if (lockedMinor !== '0') return false;
+    return lockedPatch !== latestPatch;
   }
 
   // `~` — approximately equivalent, breaking if minor changes (and we have it)

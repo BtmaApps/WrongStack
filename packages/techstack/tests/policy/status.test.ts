@@ -192,6 +192,28 @@ describe('classifyStatus — version comparison', () => {
     const dep = makeDep({ locked: '2.5.3', requested: '2.5.3' });
     expect(classifyStatus(dep, registryData)).toBe('update_available_breaking');
   });
+
+  // For `^0.y.z` the breaking axis is the MINOR, not the major: `^0.2.3` means
+  // `>=0.2.3 <0.3.0`, so 0.3.0 is outside the declared range. A major-only
+  // comparison called that a safe upgrade — advice the manifest forbids — which
+  // also contradicted this package's own caret semantics (`caretUpper`).
+  it('reports breaking when a ^0.y.z constraint excludes a minor bump', () => {
+    const registryData: RegistryStatusData = { latestStable: '0.3.0' };
+    const dep = makeDep({ locked: '0.2.5', requested: '^0.2.3' });
+    expect(classifyStatus(dep, registryData)).toBe('update_available_breaking');
+  });
+
+  it('reports breaking when a ^0.0.z constraint excludes a patch bump', () => {
+    const registryData: RegistryStatusData = { latestStable: '0.0.4' };
+    const dep = makeDep({ locked: '0.0.3', requested: '^0.0.3' });
+    expect(classifyStatus(dep, registryData)).toBe('update_available_breaking');
+  });
+
+  it('keeps an in-range ^0.y.z upgrade safe', () => {
+    const registryData: RegistryStatusData = { latestStable: '0.2.9' };
+    const dep = makeDep({ locked: '0.2.5', requested: '^0.2.3' });
+    expect(classifyStatus(dep, registryData)).toBe('update_available_safe');
+  });
 });
 
 // ── Helper factory tests ───────────────────────────────────────────────────
