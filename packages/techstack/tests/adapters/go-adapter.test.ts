@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GoAdapter } from '../../src/adapters/go.js';
 import { workspaceId } from '../../src/discovery/index.js';
+import { constructPurl, parsePurlEcosystem } from '../../src/registry/purl.js';
 import type { Workspace } from '../../src/types.js';
 
 const GOMOD = `module github.com/x\n\ngo 1.21\n\nrequire (\n    github.com/gorilla/mux v1.8.1\n    golang.org/x/net v0.30.0\n    github.com/google/uuid v1.6.0 // indirect\n)\n`;
@@ -55,6 +56,50 @@ describe('GoAdapter', () => {
     try {
       const deps = await new GoAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'github.com/gorilla/mux')?.locked).toBe('1.8.1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the required version when go.sum records an older one', async () => {
+    const gosum = [
+      'github.com/gorilla/mux v1.8.0 h1:old=',
+      'github.com/gorilla/mux v1.8.0/go.mod h1:old=',
+      'github.com/gorilla/mux v1.8.1 h1:abc=',
+      'github.com/gorilla/mux v1.8.1/go.mod h1:abc=',
+      '',
+    ].join('\n');
+    const { dir, ws } = mkWorkspace({ 'go.mod': GOMOD, 'go.sum': gosum });
+    try {
+      const deps = await new GoAdapter().inventory(ws, {});
+      const mux = deps.find((d) => d.name === 'github.com/gorilla/mux');
+      // go.sum is a checksum log written lowest-first, not a resolution list:
+      // taking its first entry reported 1.8.0 for a module required at 1.8.1, and
+      // the purl built from it sent every advisory query to the wrong component.
+      expect(mux?.requested).toBe('1.8.1');
+      expect(mux?.locked).toBe('1.8.1');
+      expect(mux?.purl?.endsWith('@1.8.1')).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('emits the canonical golang purl that the purl layer can resolve', async () => {
+    const { dir, ws } = mkWorkspace({ 'go.mod': GOMOD, 'go.sum': GOSUM });
+    try {
+      const deps = await new GoAdapter().inventory(ws, {});
+      const mux = deps.find((d) => d.name === 'github.com/gorilla/mux');
+      // The adapter used the low-level `buildPurl`, which emitted
+      // `pkg:go/github.com%2Fgorilla%2Fmux@1.8.1` — a purl whose type and
+      // encoding this package's own `parsePurlEcosystem` cannot resolve, so the
+      // SBOM identity and every per-purl advisory query were unrecognisable.
+      expect(mux?.purl).toBe(constructPurl('go', 'github.com/gorilla/mux', '1.8.1'));
+      expect(mux?.purl).toBe('pkg:golang/github.com/gorilla/mux@1.8.1');
+      expect(parsePurlEcosystem(mux?.purl ?? '')).toEqual({
+        ecosystem: 'go',
+        name: 'github.com/gorilla/mux',
+        version: '1.8.1',
+      });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

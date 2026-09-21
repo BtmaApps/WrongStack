@@ -8,7 +8,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -221,15 +221,28 @@ export class GoAdapter implements EcosystemAdapter {
       const scope: DependencyScope = req.indirect ? 'transitive' : 'runtime';
       const direct = !req.indirect;
 
-      // Resolve locked version
-      const locked = lockVersions.get(req.modulePath) || req.version;
+      // The version this module resolves to is the one go.mod's `require` states:
+      // Go records the selected version there (rewriting minimums to the build
+      // list on `go mod tidy`). go.sum is a CHECKSUM LOG, not a resolution list —
+      // it keeps one entry per (module, version) ever consulted, written
+      // lowest-first, so reading it back returned an OLDER version than the same
+      // manifest requires, and the purl built from it sent every OSV query to the
+      // wrong component.
+      const locked = req.version;
       const replacement = replacements.get(req.modulePath);
 
       // Go module paths work like: github.com/gorilla/mux
-      // Build PURL with full module path as name
-      const purl = replacement
-        ? undefined
-        : buildPurl({ type: 'go', name: req.modulePath, version: locked });
+      //
+      // `constructPurl` is the canonical constructor: it maps the ecosystem to
+      // the `golang` purl type and keeps module-path slashes LITERAL (the
+      // documented Go exception), so the component is
+      // `pkg:golang/github.com/gorilla/mux@1.8.1`. The low-level `buildPurl`
+      // treated the path as one name segment and emitted
+      // `pkg:go/github.com%2Fgorilla%2Fmux@1.8.1` — a purl whose type and
+      // encoding the package's own `parsePurlEcosystem` cannot resolve, so the
+      // identity handed to the SBOM and to every per-purl OSV query was
+      // unrecognisable.
+      const purl = replacement ? undefined : constructPurl('go', req.modulePath, locked);
 
       const evidence: Evidence[] = [manifestEv];
       if (lockEv && lockVersions.has(req.modulePath)) evidence.push(lockEv);
