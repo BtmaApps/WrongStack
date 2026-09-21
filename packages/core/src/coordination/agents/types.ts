@@ -219,3 +219,21 @@ export const SPECIALIST_TOOLS = {
   memory: toolsForRuntimeCapabilities(['memory.manage']),
   mcp: toolsForRuntimeCapabilities(['mcp.dynamic']),
 } as const satisfies Record<string, readonly string[]>;
+
+/**
+ * `mcp.dynamic` minus MCP lifecycle administration.
+ *
+ * The capability pack is self-sufficient on purpose — `mcp_control` carries the
+ * `list`/`tools` discovery a caller needs before `mcp_use`. But the same tool
+ * also carries `enable`/`restart`, which for the stdio presets run
+ * `npx -y <package>`; it is declared `riskTier: 'destructive'` with
+ * `CONFIG_MUTATE` for exactly that reason, and a subagent runs non-interactively
+ * under YOLO defaults. So a roster role gets the proxy by default and an
+ * operator grants the full pack deliberately.
+ *
+ * Capability inference reads tools, so a role holding only `mcp_use` still
+ * advertises `mcp.dynamic`.
+ */
+export const MCP_PROXY_ONLY_TOOLS: readonly string[] = SPECIALIST_TOOLS.mcp.filter(
+  (name) => name !== 'mcp_control',
+);

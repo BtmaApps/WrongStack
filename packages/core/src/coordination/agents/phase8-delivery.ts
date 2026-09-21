@@ -1,5 +1,5 @@
 import { applyLazyPrompts } from './agent-prompts.js';
-import { type AgentDefinition, MEDIUM_BUDGET, SPECIALIST_TOOLS, TOOLS } from './types.js';
+import { type AgentDefinition, MCP_PROXY_ONLY_TOOLS, MEDIUM_BUDGET, TOOLS } from './types.js';
 
 /** Phase 8 · Delivery & Ops — ship it, run it, keep it healthy. */
 export const DELIVERY_AGENTS: AgentDefinition[] = [
@@ -61,7 +61,7 @@ export const DELIVERY_AGENTS: AgentDefinition[] = [
       id: 'devops',
       name: 'DevOps',
       role: 'devops',
-      tools: [...TOOLS.build, ...SPECIALIST_TOOLS.mcp],
+      tools: [...TOOLS.build, ...MCP_PROXY_ONLY_TOOLS],
     },
     budget: MEDIUM_BUDGET,
     capability: {
