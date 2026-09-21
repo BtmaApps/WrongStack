@@ -227,6 +227,11 @@ const activeDispatches = new Set<Promise<unknown>>();
  * `server.close` fallback below.
  */
 const SHUTDOWN_DRAIN_GRACE_MS = 1_000;
+/**
+ * Bounded force-destroy for the graceful end() close in `stop()`: a client
+ * that stops reading must not hold shutdown open past this window.
+ */
+const SAGE_FORCE_DESTROY_MS = 500;
 function activeClientRequests(): number {
   let total = 0;
   for (const client of clients) total += client.active.size;
@@ -276,7 +281,11 @@ const ready = new Promise<void>((resolve, reject) => {
 const MAX_CLIENT_WRITE_BUFFER_BYTES = 8 * 1024 * 1024;
 
 function writeEncoded(state: ClientState, encoded: string): void {
-  if (state.socket.destroyed) return;
+  // `writableEnded` matters as much as `destroyed` here: after stop() has
+  // end()ed a socket, a dispatch completing during the drain would otherwise
+  // write-after-end (its bytes are dropped silently at best). The caller
+  // already holds the stopping rejection for that id.
+  if (state.socket.destroyed || state.socket.writableEnded) return;
   if (state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES) {
     state.socket.destroy(new Error('SAGE client fell too far behind on reads'));
     return;
@@ -793,7 +802,7 @@ async function stop(_reason: string): Promise<void> {
   // exist — and therefore none can have its metadata deleted by the
   // read-then-delete pid compare in `removeOwnedMetadata`.
   await removeOwnedMetadata();
-  // Destroy client sockets BEFORE awaiting close(): net.Server.close() only
+  // End client sockets BEFORE awaiting close(): net.Server.close() only
   // fires its callback once every connection has ended, so awaiting it with
   // live clients deadlocked this function forever — and with the metadata
   // already removed above, the zombie kept the endpoint bound while
@@ -803,7 +812,8 @@ async function stop(_reason: string): Promise<void> {
   // (packages/kanban/src/server/project-server.ts) is the reference
   // ordering, including the bounded close for Windows named-pipe handles
   // the kernel can retain.
-  for (const state of clients) {
+  const closing = [...clients];
+  for (const state of closing) {
     // Answer in-flight requests BEFORE the transport goes away: a caller with
     // a dispatch in flight would otherwise see nothing but a bare connection
     // close (its response can no longer be written once the socket is
@@ -821,16 +831,28 @@ async function stop(_reason: string): Promise<void> {
     for (const controller of state.active.values()) {
       controller.abort(new Error('SAGE project server stopping'));
     }
-    state.socket.destroy();
+    // end() — NOT destroy() — so the stopping rejections already queued are
+    // flushed before FIN: write()+destroy() in the same tick discards the
+    // pending userland write queue on Windows named pipes (observed in the
+    // round-29 proof: a congested client's parked in-flight request got a
+    // bare close instead of its SageServerStoppingError). A client that
+    // stops reading cannot hold shutdown open — the force-destroy below
+    // bounds the flush window.
+    state.socket.end();
   }
   clients.clear();
   await new Promise<void>((resolve) => {
     server.close(() => {
-      clearTimeout(timer);
+      clearTimeout(forceDestroyTimer);
       resolve();
     });
-    const timer = setTimeout(() => resolve(), 500);
-    timer.unref?.();
+    // Bounded force-destroy for the graceful close, mirroring the
+    // session-catalog/kanban/mailbox graceful-close pattern.
+    const forceDestroyTimer = setTimeout(() => {
+      for (const state of closing) state.socket.destroy();
+      resolve();
+    }, SAGE_FORCE_DESTROY_MS);
+    forceDestroyTimer.unref?.();
   });
   // Bounded drain: give in-flight dispatches a short grace window to finish
   // so `store.dispose()` does not close SQLite under a running operation (its

@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 623,
+      "files": 624,
       "typeOnly": 60,
-      "runtimeOrMixed": 595
+      "runtimeOrMixed": 596
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -20746,6 +20746,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/sage/tests/project-server-endpoint-length.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/sage/tests/project-server-stop-delivery.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

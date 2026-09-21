@@ -251,7 +251,7 @@
       "relativeImports": 1
     },
     "packages/sage/src/project-server.ts": {
-      "lines": 997,
+      "lines": 1019,
       "relativeImports": 7
     },
     "packages/sage/src/sqlite-store-hygiene.ts": {

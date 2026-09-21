@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-21T20:19:00.065Z
+**Generated:** 2026-09-21T20:47:35.019Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,8 +9,8 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3969 |
-| Production source lines | 954297 |
-| Test files | 3578 |
+| Production source lines | 954319 |
+| Test files | 3579 |
 | Workspace dependency edges | 129 |
 | Relative module edges | 12870 |
 | Non-command slash imports | 0 |
@@ -47,7 +47,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
 | @wrongstack/requirement-intake-mcp | 5 | 3 | @wrongstack/core, @wrongstack/mcp, @wrongstack/requirement-intake |
 | @wrongstack/runtime | 14 | 18 | @wrongstack/core, @wrongstack/governance, @wrongstack/kanban, @wrongstack/sage, @wrongstack/tools, @wrongstack/vector-memory |
-| @wrongstack/sage | 115 | 111 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
+| @wrongstack/sage | 115 | 112 | @wrongstack/core, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/sage-mcp | 5 | 5 | @wrongstack/core, @wrongstack/mcp, @wrongstack/sage |
 | @wrongstack/sdd | 38 | 39 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 18 | 27 | @wrongstack/core |
@@ -85,8 +85,8 @@ None.
 
 | Lines | File |
 |---:|---|
+| 1019 | `packages/sage/src/project-server.ts` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
-| 997 | `packages/sage/src/project-server.ts` |
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
 | 996 | `packages/mcp/src/client.ts` |
 | 994 | `packages/sage/src/sqlite-store.ts` |
