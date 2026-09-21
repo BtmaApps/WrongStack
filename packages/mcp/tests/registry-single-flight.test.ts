@@ -297,10 +297,14 @@ describe('MCPRegistry single-flight & cancellation', () => {
 
     const stopping = registry.stop('final-window');
     await registry.ensureConnected('final-window'); // wake 1 -> consumed by pass 2
-    releases[0]();
+    releases[0]?.();
     await new Promise((resolve) => setImmediate(resolve)); // pass 2 detaches, parks
     await registry.ensureConnected('final-window'); // wake 2 -> lands in final window
-    releases[1]();
+    releases[1]?.();
+    // Drain-until-empty semantics: stop() now also closes the wake-2 client,
+    // and it awaits that close before resolving — open its gate too. Under the
+    // old bounded loop this gate was never waited on (that was the bug).
+    releases[2]?.();
     await stopping;
 
     expect(wakes).toBe(2);

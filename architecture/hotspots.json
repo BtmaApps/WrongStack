@@ -195,7 +195,7 @@
       "relativeImports": 13
     },
     "packages/mcp/src/registry.ts": {
-      "lines": 879,
+      "lines": 883,
       "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {

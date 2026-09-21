@@ -79,8 +79,8 @@
       "runtimeOrMixed": 47
     },
     "@wrongstack/core/kernel": {
-      "files": 280,
-      "typeOnly": 142,
+      "files": 281,
+      "typeOnly": 143,
       "runtimeOrMixed": 150
     },
     "@wrongstack/core/kernel/events.js": {
@@ -124,8 +124,8 @@
       "runtimeOrMixed": 20
     },
     "@wrongstack/core/registry": {
-      "files": 132,
-      "typeOnly": 63,
+      "files": 133,
+      "typeOnly": 64,
       "runtimeOrMixed": 71
     },
     "@wrongstack/core/replay": {
@@ -179,8 +179,8 @@
       "runtimeOrMixed": 8
     },
     "@wrongstack/core/types": {
-      "files": 1139,
-      "typeOnly": 1019,
+      "files": 1140,
+      "typeOnly": 1020,
       "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -6567,6 +6567,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/mcp/tests/registry.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8578,6 +8584,12 @@
     {
       "specifier": "@wrongstack/core/registry",
       "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/registry",
+      "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -13768,6 +13780,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/mcp/tests/registry-stop-final-window.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/mcp/tests/registry-stop-inflight-connect-fence.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

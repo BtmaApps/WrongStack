@@ -361,20 +361,24 @@ export class MCPRegistry {
       slot.reconnectTimer = undefined;
     }
     slot.state = 'disconnected';
-    // Two passes, because a demand-wake can install a FRESH client while the
-    // `close()` below is pending — lazy tool calls resolve their client through
-    // `ensureConnected` (registry-connect-loop.ts:77), and while this await runs
-    // both single-flight guards are inert (`state` is not 'connected' and this
-    // method never sets `connecting`). Detaching `client`/`onDisconnect` BEFORE
-    // awaiting — the ordering `sleepIdleSlot` already uses — keeps that wake from
-    // reusing the closing client; the second pass then tears down whatever the
-    // wake installed, since `stop()` is the later intent. Clearing those fields
-    // only after the await instead would drop the replacement's only reference:
-    // a live client and its child process that no later stop(), idle sweep or
-    // disconnect can reach, with a disconnect listener nothing can detach.
-    for (let pass = 0; pass < 2; pass++) {
+    // Drain until the slot is EMPTY, because a demand-wake can install a FRESH
+    // client while every `close()` below is pending — lazy tool calls resolve
+    // their client through `ensureConnected` (registry-connect-loop.ts:77), and
+    // while this await runs both single-flight guards are inert (`state` is not
+    // 'connected' and this method never sets `connecting`). A bounded pass
+    // count only relocates the window: a wake landing in the LAST pass's close
+    // survives `stop()` with `slot.client` set and its client never closed —
+    // the single-flight and final-window suites pin exactly that postcondition.
+    // So the loop keeps closing whatever a wake installs — `stop()` is the
+    // later intent — until nothing is left to close. Detaching `client`/
+    // `onDisconnect` BEFORE awaiting — the ordering `sleepIdleSlot` already
+    // uses — keeps a wake from reusing the closing client; clearing those
+    // fields only after the await instead would drop the replacement's only
+    // reference: a live client and its child process that no later stop(),
+    // idle sweep or disconnect can reach, with a disconnect listener nothing
+    // can detach.
+    while (slot.client) {
       const client = slot.client;
-      if (!client) break;
       slot.client = undefined;
       const handler = slot.onDisconnect;
       slot.onDisconnect = undefined;
