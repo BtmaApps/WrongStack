@@ -1020,6 +1020,32 @@ describe('TechStack 100% Coverage Suite', () => {
       vi.restoreAllMocks();
     });
 
+    it('degrades snapshot coverage for partial (Tier B) workspaces', async () => {
+      const store = new TechStackStore({ projectSlug: 'test-proj', dbPath: ':memory:' });
+      const discoveryModule = await import('../src/discovery/workspace.js');
+      vi.spyOn(discoveryModule, 'discoverWorkspaces').mockResolvedValueOnce([
+        {
+          id: 'ws-ruby',
+          ecosystem: 'ruby',
+          relativeRoot: 'ruby-ws',
+          manifests: ['Gemfile'],
+          lockfiles: [],
+          confidence: 1,
+          coverage: 'partial',
+        } as never,
+      ]);
+      const rubyMod = await import('../src/adapters/ruby.js');
+      vi.spyOn(rubyMod.rubyAdapter, 'inventory').mockResolvedValueOnce([]);
+
+      const snap = await runInventoryPhase(store, 'proj-1', process.cwd());
+      // A Tier B workspace means the inventory is only partially supported; the
+      // snapshot must not claim 'full' over its own workspace classification.
+      expect(snap.workspaces[0]?.coverage).toBe('partial');
+      expect(snap.coverage).toBe('partial');
+
+      vi.restoreAllMocks();
+    });
+
     it('covers techstack engine error updateJob cancelled vs failed', async () => {
       const store = new TechStackStore({ projectSlug: 'test-proj', dbPath: ':memory:' });
       const engine = new TechStackEngine(store);

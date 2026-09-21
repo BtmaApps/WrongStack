@@ -40,6 +40,22 @@ export interface InventoryPhaseOptions extends InventoryOptions {
   readonly onProgress?: ((phase: string, completed: number, total: number) => void) | undefined;
 }
 
+/**
+ * Fold a workspace's coverage into the snapshot's.
+ *
+ * An inventory is only as deterministic as its least-supported ecosystem, so the
+ * weakest workspace wins: a Tier B workspace (`'partial'` — maven, gradle, ruby,
+ * swift, elixir, `ECOSYSTEM_TIER`) used to leave the snapshot claiming `'full'`
+ * even though every workspace it contained said `'partial'`. An `'unsupported'`
+ * workspace (Tier C) still degrades the snapshot to `'partial'`: a snapshot that
+ * inventoried something is never reported as fully unsupported.
+ */
+function aggregateCoverage(current: Coverage, workspace: Coverage): Coverage {
+  if (workspace === 'unsupported') return current === 'unsupported' ? current : 'partial';
+  if (workspace === 'partial') return current === 'full' ? 'partial' : current;
+  return current;
+}
+
 export async function runInventoryPhase(
   store: TechStackStore,
   projectId: string,
@@ -65,7 +81,7 @@ export async function runInventoryPhase(
     } catch {
       // One malformed workspace must not discard other ecosystem inventories.
     }
-    if (workspace.coverage === 'unsupported') coverage = 'partial';
+    coverage = aggregateCoverage(coverage, workspace.coverage);
     completed++;
     options.onProgress?.('inventorying', completed, workspaces.length);
   }

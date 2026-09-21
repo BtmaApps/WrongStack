@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { generateUpgradePlan, renderPlanMarkdown } from '../src/remediation.js';
+import {
+  generateUpgradePlan,
+  renderPlanMarkdown,
+  toLanguagePackageInput,
+} from '../src/remediation.js';
 import type { DependencyObservation, Finding, Snapshot } from '../src/types.js';
 
 const DEPS: readonly DependencyObservation[] = [
@@ -131,6 +135,25 @@ describe('generateUpgradePlan', () => {
     expect(npmItem?.suggestedCommand).toContain('npm install express');
     const pyItem = plan.items.find((i) => i.ecosystem === 'python');
     expect(pyItem?.suggestedCommand).toContain('pip install requests');
+  });
+
+  // pip joins a version with `==` (PEP 508); `requests@2.31.0` is npm syntax and
+  // pip rejects it. The displayed command must carry the package token the
+  // executable path builds, and must not invent a version when none is known.
+  it('suggests pip-syntax commands that match the executable package token', () => {
+    const plan = generateUpgradePlan(SNAPSHOT);
+    const pyItem = plan.items.find((i) => i.ecosystem === 'python');
+    expect(pyItem?.suggestedCommand).toBe('pip install requests==2.31.0');
+
+    const structured = toLanguagePackageInput({
+      ecosystem: 'python',
+      workspaceId: 'ws-1',
+      dependencyName: 'requests',
+      action: 'upgrade_patch',
+      targetVersion: '2.31.0',
+    });
+    const specifier = structured.names.at(0) ?? '';
+    expect(pyItem?.suggestedCommand?.split(/\s+/)).toContain(specifier);
   });
 
   it('summary counts match items', () => {

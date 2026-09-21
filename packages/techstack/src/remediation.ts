@@ -141,7 +141,11 @@ function suggestCommand(
       return `npm install ${name}${ver}`;
     case 'python':
       if (action === 'remove') return `pip uninstall ${name}`;
-      return `pip install ${name}${ver}`;
+      // pip joins a version with `==` (PEP 508) — `name@version` is npm syntax
+      // and pip rejects it. With no target version, name the package alone,
+      // which is the same shape `versionedPackageName` sends on the executable
+      // path (`toLanguagePackageInput`) instead of inventing `@latest`.
+      return targetVersion ? `pip install ${name}==${targetVersion}` : `pip install ${name}`;
     case 'rust':
       if (action === 'remove') return `cargo remove ${name}`;
       return `cargo add ${name}@${targetVersion ?? 'latest'}`;
