@@ -250,7 +250,7 @@ export class TechStackStore {
 
     const stmt = this.stmt(`
       UPDATE jobs
-      SET status = ?, progress_json = ?, completed_at = COALESCE(?, completed_at)
+      SET status = ?, progress_json = COALESCE(?, progress_json), completed_at = COALESCE(?, completed_at)
       WHERE id = ?
     `);
     stmt.run(status, progressJson, completedAt, id);

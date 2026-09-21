@@ -93,6 +93,25 @@ describe('DeliveryCoordinator', () => {
     expect(failed.some((e) => e.deliveryId === 'del-3')).toBe(true);
   });
 
+  it('records a thrown delivery as failed instead of stranding the claim', async () => {
+    store.createOutbox('del-throw', 'snap-1', 'session-1');
+
+    await expect(
+      attemptDelivery('del-throw', {
+        store,
+        isRunInProgress: () => false,
+        deliverToSession: async () => {
+          throw new Error('journal closed');
+        },
+      }),
+    ).rejects.toThrow('journal closed');
+
+    // The attempt is over, so its claim must be resolved. A row left 'claimed'
+    // is listed by no consumer query — never retried, never reported as failed.
+    expect(store.listOutboxByStatus('claimed')).toEqual([]);
+    expect(store.listOutboxByStatus('failed').map((e) => e.deliveryId)).toContain('del-throw');
+  });
+
   it('drainPendingDeliveries processes all pending for a session', async () => {
     store.createOutbox('del-a', 'snap-1', 'session-1');
     store.createOutbox('del-b', 'snap-1', 'session-1');

@@ -70,14 +70,25 @@ export async function attemptDelivery(
     return { deliveryId, sessionId: entry.sessionId, delivered: false };
   }
 
-  // Generate a summary from the snapshot
-  const snapshot = store.getSnapshotById(entry.reportId);
-  const summary = snapshot
-    ? buildSummary(snapshot)
-    : `TechStack report ${entry.reportId} is ready.`;
+  // Every exit after a successful claim must resolve it. A `deliverToSession`
+  // that REJECTS (journal/WS writer failure, caller abort) used to skip both
+  // `deliverOutbox` and `failOutbox`, stranding the row in 'claimed': invisible
+  // to the pending/failed/delivered listings, never retried on recovery, so the
+  // report silently vanished while `attempts` had already been incremented.
+  let success: boolean;
+  try {
+    // Generate a summary from the snapshot
+    const snapshot = store.getSnapshotById(entry.reportId);
+    const summary = snapshot
+      ? buildSummary(snapshot)
+      : `TechStack report ${entry.reportId} is ready.`;
 
-  // Deliver to session
-  const success = await deliverToSession(entry.sessionId, entry.reportId, summary);
+    // Deliver to session
+    success = await deliverToSession(entry.sessionId, entry.reportId, summary);
+  } catch (error) {
+    store.failOutbox(deliveryId);
+    throw error;
+  }
 
   if (success) {
     store.deliverOutbox(deliveryId);
