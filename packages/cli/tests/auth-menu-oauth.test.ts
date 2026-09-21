@@ -849,7 +849,7 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
         ...(opts.providerId ? { providerId: opts.providerId } : {}),
         ...(ac ? { signal: ac.signal } : {}),
       });
-      pending.push({ ac, flow });
+      pending.push({ ...(ac ? { ac } : {}), flow });
       return flow;
     }
 

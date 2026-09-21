@@ -278,10 +278,7 @@ describe('configCmd', () => {
     const code = await configCmd(['backup'], deps);
 
     expect(code).toBe(0);
-    expect(histMocks.backupCurrent).toHaveBeenCalledWith(
-      undefined,
-      deps.paths.profileConfig(deps.config.activeProfile ?? 'default'),
-    );
+    expect(histMocks.backupCurrent).toHaveBeenCalledWith(undefined, path.join(tmp, 'config.json'));
     expect(writes.join('')).toContain('config.json.last');
   });
 
