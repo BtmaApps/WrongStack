@@ -71,26 +71,42 @@ const FLAG_NAME = /^--[\w-]+|^-(?:password|p|a|t)|^[A-Za-z_]\w*/;
 const SEPARATOR = /^[=:,\s]$/;
 
 /**
- * Short-flag patterns, SHARED BY BOTH PROFILES.
+ * Short-flag patterns for the COMMAND profile (`tools` `/ps` output, crash
+ * dumps, `core` telemetry).
  *
- * They match the GLUED form as well as the separated one, and that is now
- * deliberate for the OUTBOUND profile too: it used to match only
- * `-t value` / `-a value`, so `curl -tSECRET` and `redis-cli -aSECRET` reached a
- * phone notification verbatim while the command profile redacted them — an
- * under-redaction on the highest-risk exfiltration surface.
- *
- * The cost is the false positive on ordinary words that begin with the same
- * letters (`clang -target=x86_64`, `-tries`, `-timeout`), which is why the `-t`
- * value must be token-like (>= 8 chars) and why combined flags such as
- * `tar -tf` / `ssh -tt` survive. A false positive is cosmetic noise; a false
- * negative is a credential in a notification, so the tradeoff is taken.
+ * They match the GLUED form as well as the separated one. The value class is
+ * narrow on purpose: `[^\s,-]` stops at a hyphen and `-t` additionally demands
+ * a token-like value (>= 8 chars), because this text is READ by a human
+ * debugging `/ps` output and `clang -target=x86_64`, `tar -tf`, `-tries` and
+ * `-timeout` are everyday noise there. A false positive is cosmetic; a false
+ * negative in a crash dump is still a leak, so this is a readability tradeoff,
+ * not a licence to under-redact — the OUTBOUND profile below deliberately does
+ * NOT copy the narrow class.
  *
  * Sharing the instances is safe: `applyProfile` is synchronous and
  * `String.prototype.replace` resets `lastIndex` on a global regex, so no
- * `lastIndex` state can leak between the two profiles.
+ * `lastIndex` state can leak between the profiles that use them.
  */
 const SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,-]{8,}/g;
 const SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,-]+/gi;
+/**
+ * Short-flag patterns for the OUTBOUND profile (`telegram` notifications).
+ *
+ * Same glued + separated shape as the command profile — that part IS shared
+ * deliberately, because matching only the separated form let
+ * `curl -tSECRET` / `redis-cli -aSECRET` reach a phone notification verbatim.
+ * The VALUE CLASS is not shared, and that is the point of these two: the
+ * command profile's `[^\s,-]` + `{8,}` is a readability tradeoff that
+ * TRUNCATES the value at the first hyphen, which on this surface prints the
+ * tail of a credential into a notification (`redis-cli -a s3cr3t-hunter2`
+ * rendered as `-a [REDACTED]-hunter2`, and a dashed token like
+ * `-t sk-live-…` was skipped altogether because `sk` is under the `-t`
+ * length floor). Secrets are routinely hyphenated, so outbound keeps the
+ * whole non-space token. The widened `-target`-style false positive is the
+ * accepted cost here; see the outbound tests.
+ */
+const OUTBOUND_SHORT_FLAG_TOKEN_PATTERN = /(?<![-\w])-t(?:[=\s]+)?[^\s,]+/g;
+const OUTBOUND_SHORT_FLAG_SECRET_PATTERN = /(?<![-\w])-(?:password|p|a)(?:[=\s]+)?[^\s,]+/gi;
 /** Shared: high-entropy value behind a secret-looking flag name. */
 const HIGH_ENTROPY_FLAG_PATTERN =
   /--\w*(?:token|key|secret|password|passwd|auth|credential)\w*[=\s,][A-Za-z0-9+/=]{32,}/g;
@@ -111,10 +127,12 @@ const OUTBOUND_PATTERNS: readonly RegExp[] = [
   // Same named long flags plus DATABASE_URL / CONNECTION_STRING spellings.
   /--(?:token|password|passwd|pwd|secret|api[-_]?key|api[-_]?secret|auth|credential|private[-_]?key|access[-_]?key|github[-_]?token|gh[-_]?token|bearer|jwt|oauth|pin|pincode|passphrase|access[-_]?token|database[-_]?url|connection[-_]?string)(?:[=\s,][^\s]*)?/gi,
   // Glued short forms match here too, closing the `curl -tSECRET` /
-  // `redis-cli -aSECRET` under-redaction. See SHORT_FLAG_* above for the
-  // accepted `-target`-style false-positive cost.
-  SHORT_FLAG_TOKEN_PATTERN,
-  SHORT_FLAG_SECRET_PATTERN,
+  // `redis-cli -aSECRET` under-redaction. The outbound value class is wider
+  // than the command profile's so a hyphenated secret is not truncated at its
+  // first hyphen — see OUTBOUND_SHORT_FLAG_* above for the accepted
+  // `-target`-style false-positive cost.
+  OUTBOUND_SHORT_FLAG_TOKEN_PATTERN,
+  OUTBOUND_SHORT_FLAG_SECRET_PATTERN,
   // env-var style, including DATABASE_URL / CONNECTION_STRING. PASSPHRASE is
   // part of the set because a short (<20-char) value is not caught by the
   // core scrubber's high_entropy_env pattern, so this is its only guard.

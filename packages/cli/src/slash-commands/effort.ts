@@ -1,15 +1,14 @@
-import { decryptConfigSecrets, encryptConfigSecrets, noOpVault } from '@wrongstack/core/security';
 import {
   isReasoningEffort,
   REASONING_EFFORT_LEVELS,
   type ReasoningEffort,
   type SlashCommand,
 } from '@wrongstack/core/types';
-import { atomicWrite, color } from '@wrongstack/core/utils';
-import { catalogProviderIdFor } from '@wrongstack/providers';
-import type { SlashCommandContext } from './command-context.js';
-import * as fs from 'node:fs/promises';
 import type { WstackPaths } from '@wrongstack/core/utils';
+import { color, updateJsonObjectFile } from '@wrongstack/core/utils';
+import { catalogProviderIdFor } from '@wrongstack/providers';
+import { backupCurrent } from '../config-history.js';
+import type { SlashCommandContext } from './command-context.js';
 
 // REASONING_EFFORT_LEVELS / isReasoningEffort come from
 // @wrongstack/core/types — the canonical single source of truth. The
@@ -287,27 +286,15 @@ export async function patchSessionEffort(
   activeProfile: string,
 ): Promise<void> {
   const targetPath = paths.profileConfig(activeProfile);
-  let raw = '{}';
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch {
-    // ENOENT — start from an empty config, same as /setmodel.
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    parsed = {};
-  }
-  const decrypted = decryptConfigSecrets(parsed, noOpVault) as Record<string, unknown>;
-  const mr = (decrypted.modelRuntime ?? {}) as {
-    reasoning?: { effort?: ReasoningEffort };
-  };
-  const reasoning = { ...(mr.reasoning ?? {}) };
-  if (effort === undefined) delete reasoning.effort;
-  else reasoning.effort = effort;
-  mr.reasoning = reasoning;
-  decrypted.modelRuntime = mr;
-  const encrypted = encryptConfigSecrets(decrypted, noOpVault);
-  await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  await updateJsonObjectFile(targetPath, async (config) => {
+    await backupCurrent(undefined, targetPath);
+    const mr = (config.modelRuntime ?? {}) as {
+      reasoning?: { effort?: ReasoningEffort };
+    };
+    const reasoning = { ...(mr.reasoning ?? {}) };
+    if (effort === undefined) delete reasoning.effort;
+    else reasoning.effort = effort;
+    mr.reasoning = reasoning;
+    config.modelRuntime = mr;
+  });
 }

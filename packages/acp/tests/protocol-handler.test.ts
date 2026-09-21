@@ -932,7 +932,11 @@ describe('ACPProtocolHandler', () => {
           expect.objectContaining({
             method: 'session/update',
             params: expect.objectContaining({
-              update: { sessionUpdate: 'current_mode_update', modeId: 'code' },
+              update: expect.objectContaining({
+                sessionUpdate: 'current_mode_update',
+                currentModeId: 'code',
+                modeId: 'code',
+              }),
             }),
           }),
         ]),

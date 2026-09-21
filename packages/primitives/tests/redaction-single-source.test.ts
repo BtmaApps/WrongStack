@@ -27,6 +27,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { redactCommand, redactSecrets } from '../src/redact-command.js';
 
 // Module-relative so the suite passes from any vitest root (the package test
 // script runs vitest with --root ../.. from this directory).
@@ -87,7 +88,7 @@ const SIGNATURES: ReadonlyArray<{ label: string; pattern: RegExp }> = [
   },
   {
     label: 'short-flag token alternation',
-    pattern: new RegExp(String.raw`-t\(\?:\[=\\s\]\+\)\?\[\^\\s,-\]\{8,\}`),
+    pattern: /-t\(\?:\[=\\s\]\+\)\?\[\^\\s,-\]\{8,\}/,
   },
 ];
 
@@ -138,9 +139,77 @@ describe('secret redaction is single-source', () => {
     // If the canonical module is renamed or its patterns are reformatted past
     // recognition, the guard above would pass for the wrong reason.
     expect(matched.length).toBeGreaterThanOrEqual(SIGNATURES.length - 1);
-    // Both profiles must be built from one shared set rather than re-declaring
-    // their own short-flag patterns (the exact divergence that leaked).
-    expect(source).toContain('SHORT_FLAG_TOKEN_PATTERN');
-    expect(source).toContain('SHORT_FLAG_SECRET_PATTERN');
+    // Each profile owns its short-flag constants (four distinct declarations),
+    // so a from-the-canopy rewrite cannot silently collapse them back into one
+    // pair: the OUTBOUND value class is deliberately wider than the command
+    // profile's, because `[^\s,-]` truncates a hyphenated secret at its first
+    // hyphen and prints the tail into a notification. See the OUTBOUND_SHORT_
+    // FLAG_* docblock in the canonical module.
+    for (const constant of [
+      'SHORT_FLAG_TOKEN_PATTERN',
+      'SHORT_FLAG_SECRET_PATTERN',
+      'OUTBOUND_SHORT_FLAG_TOKEN_PATTERN',
+      'OUTBOUND_SHORT_FLAG_SECRET_PATTERN',
+    ]) {
+      expect(source, `${constant} must stay declared`).toContain(constant);
+    }
+    // Both profiles must still match the GLUED form — the under-redaction this
+    // guard's docblock records. Each profile's -t pattern is spelled out in
+    // full here rather than assembled, so this is an independent restatement
+    // of the contract instead of a self-reference.
+    expect(source).toMatch(/-t\(\?:\[=\\s\]\+\)\?\[\^\\s,-\]\{8,\}/);
+    expect(source).toMatch(/-t\(\?:\[=\\s\]\+\)\?\[\^\\s,\]\+/);
+  });
+});
+
+/**
+ * Regression: the OUTBOUND profile used to inherit the COMMAND profile's
+ * SHORT_FLAG_* VALUE CLASS (`[^\s,-]+` / `{8,}`) — a readability tradeoff
+ * tuned for `/ps` output. On the notification surface it truncated the value
+ * at the first hyphen, so the tail of a hyphenated credential was printed
+ * (`redis-cli -a s3cr3t-hunter2` -> `-a [REDACTED]-hunter2`), and a dashed
+ * token under the `-t` length floor was skipped entirely (`curl -t sk-live-…`
+ * reached the phone verbatim through telegram/security/outbound.ts).
+ *
+ * NOTE the deliberate split asserted here: COMMAND KEEPS the narrow class (a
+ * human reads `/ps` output, where `-target`/`-tries` are everyday noise), so
+ * `redactCommand` still truncates at the hyphen. Only OUTBOUND is widened.
+ * Do not "unify" these — the two assertions differ on purpose.
+ */
+describe('hyphenated short-flag values: OUTBOUND widened, COMMAND unchanged', () => {
+  it.each([
+    ['redis-cli -a s3cr3t-hunter2 get key', 's3cr3t-hunter2'],
+    ['mysql -p p@ss-w0rd-123 -u root db', 'p@ss-w0rd-123'],
+  ])('removes the whole hyphenated value on OUTBOUND only: %j', (cmd, secret) => {
+    const out = redactSecrets(cmd);
+    // OUTBOUND: the tail after the first hyphen must not survive.
+    expect(out).not.toContain(secret);
+    expect(out).toBe(cmd.replace(secret, '[REDACTED]'));
+    // COMMAND keeps the narrow class deliberately — the prefix is still cut.
+    expect(redactCommand(cmd)).not.toContain(secret.split('-')[0]!);
+  });
+
+  it('redacts a dashed -t token on OUTBOUND, and skips it on COMMAND', () => {
+    const cmd = 'curl -t sk-live-abcdefghij https://api.example';
+    // OUTBOUND: whole token gone.
+    expect(redactSecrets(cmd)).toBe('curl -t [REDACTED] https://api.example');
+    // COMMAND: `sk` is under the -t length floor, so it stays readable there.
+    expect(redactCommand(cmd)).toBe(cmd);
+  });
+
+  it('redacts a short (<8 char) -t value on OUTBOUND', () => {
+    expect(redactSecrets('probe -t abc12345x --verbose')).toBe('probe -t [REDACTED] --verbose');
+  });
+
+  it('does not redact a NON-sensitive separated long flag', () => {
+    // The widened outbound value class must not spill onto long flags.
+    expect(redactSecrets('deploy --dry-run --color=always')).toBe(
+      'deploy --dry-run --color=always',
+    );
+  });
+
+  it('stays idempotent and never leaves the marker half-consumed', () => {
+    const once = redactSecrets('redis-cli -a s3cr3t-hunter2 get key');
+    expect(redactSecrets(once)).toBe(once);
   });
 });

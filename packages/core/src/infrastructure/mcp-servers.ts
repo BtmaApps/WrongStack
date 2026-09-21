@@ -299,7 +299,9 @@ export const zaiVisionServer = (): MCPServerConfig => ({
   env: { Z_AI_MODE: 'ZAI' },
   passthroughEnv: ['Z_AI_API_KEY'],
   allowedTools: [
+    'ui_to_artifact',
     'image_analysis',
+    'video_analysis',
     'extract_text_from_screenshot',
     'diagnose_error_screenshot',
     'understand_technical_diagram',
@@ -307,6 +309,28 @@ export const zaiVisionServer = (): MCPServerConfig => ({
     'ui_diff_check',
   ],
   permission: 'auto',
+});
+
+/** Z.AI Coding Plan Web Search — remote, read-only search capability. */
+export const zaiWebSearchServer = (): MCPServerConfig => ({
+  name: 'zai-web-search',
+  description: 'Z.AI Coding Plan Web Search — current web results via webSearchPrime',
+  transport: 'streamable-http',
+  url: 'https://api.z.ai/api/mcp/web_search_prime/mcp',
+  bearerTokenEnv: 'Z_AI_API_KEY',
+  allowedTools: ['webSearchPrime'],
+  permission: 'confirm',
+});
+
+/** Z.AI Coding Plan Web Reader — remote, read-only webpage extraction. */
+export const zaiWebReaderServer = (): MCPServerConfig => ({
+  name: 'zai-web-reader',
+  description: 'Z.AI Coding Plan Web Reader — webpage content and metadata extraction',
+  transport: 'streamable-http',
+  url: 'https://api.z.ai/api/mcp/web_reader/mcp',
+  bearerTokenEnv: 'Z_AI_API_KEY',
+  allowedTools: ['webReader'],
+  permission: 'confirm',
 });
 
 /**
@@ -487,6 +511,8 @@ export const allServers = (): Record<string, MCPServerConfig> => ({
   'google-maps': { ...googleMapsServer(), enabled: false },
   sentinel: { ...sentinelServer(), enabled: false },
   'zai-vision': { ...zaiVisionServer(), enabled: false },
+  'zai-web-search': { ...zaiWebSearchServer(), enabled: false },
+  'zai-web-reader': { ...zaiWebReaderServer(), enabled: false },
   'minimax-vision': { ...miniMaxVisionServer(), enabled: false },
   playwright: { ...playwrightServer(), enabled: false },
   ssh: { ...sshManagerServer(), enabled: false },

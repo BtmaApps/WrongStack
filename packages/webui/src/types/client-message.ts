@@ -894,5 +894,4 @@ export type WSClientMessageCore =
       };
     }
   | { type: 'webui.shutdown' };
-
 export type WSClientMessage = WSClientMessageCore;

@@ -64,6 +64,7 @@ export function createCatalogAwareProvider(
   }
   return new CatalogRoutedProvider({
     id: provider.id,
+    definitionId: config.type ?? provider.id,
     apiKey,
     defaultNpm: provider.npm as CatalogWireNpm,
     baseUrl: provider.apiBase,

@@ -94,10 +94,11 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
       'on top), or open the active profile config in $EDITOR for interactive ' +
       'edits. Also exposes a small audit log of recent config-history ' +
       'changes for diagnostics.',
-    usage: 'wstack config [show|edit|history|restore] [...]',
+    usage: 'wstack config [show|edit|backup|history|restore] [...]',
     subcommands: [
       { name: 'show', description: 'Print the resolved config to stdout (default).' },
       { name: 'edit', description: 'Open the active profile config in $EDITOR.' },
+      { name: 'backup', description: 'Create a recoverable snapshot of the active profile.' },
       { name: 'history', description: 'List recent config-history entries.' },
       { name: 'restore <id>', description: 'Restore a previous config-history entry.' },
     ],

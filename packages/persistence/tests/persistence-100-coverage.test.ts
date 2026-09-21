@@ -67,6 +67,7 @@ describe('persistence 100% coverage suite', () => {
       expect(unixSocketPathLimit('darwin')).toBe(103);
       expect(unixSocketPathLimit('freebsd')).toBe(103);
       expect(unixSocketPathLimit('openbsd')).toBe(103);
+      expect(unixSocketPathLimit('netbsd')).toBe(103);
       expect(unixSocketPathLimit('linux')).toBe(107);
       expect(unixSocketPathLimit('win32')).toBe(107);
     });

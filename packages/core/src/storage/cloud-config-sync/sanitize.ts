@@ -219,6 +219,7 @@ const MCP_SERVERS_TREE: ContractNode = {
       enabled: true,
       lazy: true,
       envVars: true,
+      bearerTokenEnv: true,
     },
   },
 };
@@ -319,6 +320,11 @@ const INBOUND_DENIED_PATHS: ReadonlyArray<{
     namespace: 'mcp.servers',
     path: 'mcpServers.*.envVars',
     reason: 'Names of environment variables forwarded to the server process.',
+  },
+  {
+    namespace: 'mcp.servers',
+    path: 'mcpServers.*.bearerTokenEnv',
+    reason: 'Chooses which local environment secret is sent to a remote MCP endpoint.',
   },
   // ── Operator-owned safety switches ──────────────────────────────────────
   {

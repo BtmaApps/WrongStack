@@ -27,7 +27,7 @@ export async function executeSettingsSubcommand(
     configStore: opts.configStore,
     profileConfigPath: opts.paths!.profileConfig(activeProfile),
     inProjectConfigPath: opts.paths!.inProjectConfig,
-    vault: noOpVault,
+    vault: opts.vault ?? noOpVault,
   };
 
   try {
@@ -68,6 +68,11 @@ export async function executeSettingsSubcommand(
     if (sub === 'hq-token') {
       const token = rest.join(' ').trim();
       if (!token) return { message: `${color.amber('Usage:')} /settings hq-token <client-token>` };
+      if (!opts.vault) {
+        return {
+          message: `${color.red('✗')} Secure credential storage is unavailable; HQ token was not saved.`,
+        };
+      }
       await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const hq = (cfg.hq as Record<string, unknown> | undefined) ?? {};
         hq.token = token;
@@ -121,7 +126,7 @@ export async function executeSettingsSubcommand(
       if (!modes.includes(raw)) {
         return { message: `${color.amber('Usage:')} /settings mode off|suggest|auto` };
       }
-      await persistAutonomySetting(persistDeps, (autonomy) => {
+      await persistAutonomySetting({ ...persistDeps, forceGlobal: true }, (autonomy) => {
         autonomy.defaultMode = raw as 'off' | 'suggest' | 'auto';
       });
       return { message: `${color.green('✓')} default autonomy → ${color.bold(raw)}` };
@@ -165,7 +170,7 @@ export async function executeSettingsSubcommand(
       }
       const restrict = raw === 'project';
       const fsAccess = deriveFsAccessPair({ restrictFsToRoot: restrict });
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown> | undefined) ?? {};
         tools.restrictToProjectRoot = fsAccess!.restrictToProjectRoot;
         cfg.tools = tools;
@@ -440,7 +445,7 @@ export async function executeSettingsSubcommand(
         return { message: 'Use `/tool autothin status` for the live read-out.' };
       }
       const on = raw === 'on';
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown>) ?? {};
         const existing = (tools.autoThin as Record<string, unknown> | undefined) ?? {};
         tools.autoThin = { ...existing, enabled: on };
@@ -456,7 +461,7 @@ export async function executeSettingsSubcommand(
       if (!Number.isFinite(n) || n < 0) {
         return { message: `${color.amber('Usage:')} /settings autothin-idle <days>` };
       }
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown>) ?? {};
         const existing = (tools.autoThin as Record<string, unknown> | undefined) ?? {};
         tools.autoThin = { ...existing, idleDays: n };
@@ -470,7 +475,7 @@ export async function executeSettingsSubcommand(
       if (!Number.isFinite(n) || n < 0) {
         return { message: `${color.amber('Usage:')} /settings autothin-min <count>` };
       }
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown>) ?? {};
         const existing = (tools.autoThin as Record<string, unknown> | undefined) ?? {};
         tools.autoThin = { ...existing, minInvocations: n };
@@ -487,7 +492,7 @@ export async function executeSettingsSubcommand(
         return { message: `${color.amber('Usage:')} /settings autothin-boot on|off` };
       }
       const on = raw === 'on';
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown>) ?? {};
         const existing = (tools.autoThin as Record<string, unknown> | undefined) ?? {};
         tools.autoThin = { ...existing, applyOnBoot: on };
@@ -802,7 +807,7 @@ export async function executeSettingsSubcommand(
         return {
           message: `${color.red('Invalid number')}: "${raw}". Enter a non-negative integer.`,
         };
-      await persistConfigSetting(persistDeps, (cfg) => {
+      await persistConfigSetting({ ...persistDeps, forceGlobal: true }, (cfg) => {
         const tools = (cfg.tools as Record<string, unknown>) ?? {};
         tools.maxIterations = n;
         cfg.tools = tools;

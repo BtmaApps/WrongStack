@@ -2,6 +2,7 @@ import type {
   HqClientCapability,
   HqClientCommandAckMessage,
   HqClientCommandPollMessage,
+  HqClientEventPollMessage,
   HqClientHelloPayload,
   HqClientIdentity,
   HqClientKind,
@@ -71,15 +72,40 @@ export type HqParseResult =
   | { ok: true; frame: HqClientMessage }
   | { ok: false; reason: 'invalid-json' | 'unknown-type' | 'malformed' };
 
-/** Known client → server frame `type` discriminators. */
-const KNOWN_HQ_CLIENT_FRAME_TYPES = new Set<HqClientMessage['type']>([
-  'client.hello',
-  'client.event',
-  'client.command_poll',
-  'client.command_ack',
-  'client.resume',
-  'client.event_poll',
-]);
+/**
+ * Known client → server frame `type` discriminators — the single source for the
+ * allow-list.
+ *
+ * A `Record<HqClientMessage['type'], true>` map is used rather than an array
+ * literal so BOTH drift directions fail the build: forgetting a member is a
+ * "missing property" error, and listing one that the union never had is an
+ * excess-property error. An `as const satisfies readonly …[]` list would only
+ * pin the second direction. `parseHqFrame`'s `default` keeps a real `never`
+ * check, which is the third tie (every listed member must also have a case).
+ *
+ * This set and that switch were two separate hand-written sources, and the drift
+ * between them was the `client.event_poll` bug: the type was allow-listed but had
+ * no case, so `parseHqFrame` handed consumers a raw string and both `ws.ts` call
+ * sites closed the socket with `invalid frame: undefined`.
+ *
+ * Exported so the parity test can iterate the real allow-list instead of a
+ * literal copy of it; a test that re-lists the types cannot see a new member.
+ */
+const HQ_CLIENT_FRAME_COVERAGE: Record<HqClientMessage['type'], true> = {
+  'client.hello': true,
+  'client.event': true,
+  'client.command_poll': true,
+  'client.command_ack': true,
+  'client.resume': true,
+  'client.event_poll': true,
+};
+
+export const KNOWN_HQ_CLIENT_FRAME_TYPES = new Set<HqClientMessage['type']>(
+  // `Object.keys` widens to `string[]`; the cast is safe because the `Record`
+  // annotation above already makes a missing key (TS2741) and an extra key
+  // (TS2353) compile errors, so these keys ARE exactly the union members.
+  Object.keys(HQ_CLIENT_FRAME_COVERAGE) as HqClientMessage['type'][],
+);
 
 const HQ_CLIENT_KINDS = new Set<HqClientKind>([
   'tui',
@@ -225,6 +251,20 @@ function isHqClientResumeMessage(x: unknown): x is HqClientResumeMessage {
   );
 }
 
+function isHqClientEventPollMessage(x: unknown): x is HqClientEventPollMessage {
+  if (typeof x !== 'object' || x === null) return false;
+  const v = x as Record<string, unknown>;
+  return (
+    typeof v.type === 'string' &&
+    v.type === 'client.event_poll' &&
+    typeof v.clientId === 'string' &&
+    typeof v.projectId === 'string' &&
+    Number.isSafeInteger(v.afterSeq) &&
+    (v.afterSeq as number) >= 0 &&
+    (v.limit === undefined || typeof v.limit === 'number')
+  );
+}
+
 /**
  * Strictly parse a raw client → server frame into a {@link HqParseResult}.
  *
@@ -251,11 +291,15 @@ export function parseHqFrame(raw: string | Buffer): HqParseResult {
   }
   const obj = parsed as { type: string } & Record<string, unknown>;
 
-  if (!KNOWN_HQ_CLIENT_FRAME_TYPES.has(obj.type as HqClientMessage['type'])) {
+  // Narrow the discriminator ONCE so the `default` clause below is a real
+  // compile-time exhaustiveness check over `HqClientMessage`.
+  const type = obj.type as HqClientMessage['type'];
+
+  if (!KNOWN_HQ_CLIENT_FRAME_TYPES.has(type)) {
     return { ok: false, reason: 'unknown-type' };
   }
 
-  switch (obj.type as HqClientMessage['type']) {
+  switch (type) {
     case 'client.hello':
       if (!isHqClientHelloPayload(obj.payload)) {
         return { ok: false, reason: 'malformed' };
@@ -308,13 +352,32 @@ export function parseHqFrame(raw: string | Buffer): HqParseResult {
           ...(typeof obj.projectId === 'string' ? { projectId: obj.projectId } : {}),
         },
       };
+    case 'client.event_poll':
+      if (!isHqClientEventPollMessage(obj)) {
+        return { ok: false, reason: 'malformed' };
+      }
+      return {
+        ok: true,
+        frame: {
+          type: 'client.event_poll',
+          clientId: obj.clientId,
+          projectId: obj.projectId,
+          afterSeq: obj.afterSeq,
+          ...(typeof obj.limit === 'number' ? { limit: obj.limit } : {}),
+        },
+      };
     default: {
-      // Unreachable: KNOWN_HQ_CLIENT_FRAME_TYPES membership guarantees
-      // `obj.type` is one of the cases above. Return `unknown-type` defensively
-      // to satisfy the return type if a future HqClientMessage union member
-      // is added without updating this switch.
-      const _exhaustive: never = obj.type as never;
-      return _exhaustive;
+      // Exhaustiveness guard. `type` narrows to `never` here ONLY while every
+      // `HqClientMessage` member has a case above, so adding a union member
+      // without a case is a COMPILE ERROR. It used to be `obj.type as never`,
+      // whose cast silenced that check and let an allow-listed type fall
+      // through to `return _exhaustive` — i.e. `parseHqFrame` handing back a
+      // raw string instead of an `HqParseResult`. The explicit rejection below
+      // keeps the declared return contract total even if a non-JSON boundary
+      // value reaches this point.
+      const _exhaustive: never = type;
+      void _exhaustive;
+      return { ok: false, reason: 'unknown-type' };
     }
   }
 }

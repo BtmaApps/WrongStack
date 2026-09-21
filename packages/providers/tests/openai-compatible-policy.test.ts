@@ -82,6 +82,44 @@ describe('OpenAI-compatible provider policy', () => {
     expect(body).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'high' });
   });
 
+  it('enforces the GLM-5.3 always-thinking contract and removes OpenAI cache routing', () => {
+    const body: Record<string, unknown> = {
+      prompt_cache_key: 'ws-prefix',
+      reasoning_effort: 'none',
+      thinking: { type: 'disabled' },
+    };
+    applyOpenAICompatiblePolicy(
+      body,
+      request('glm-5.3', { reasoning: { enabled: false, effort: 'none' } }),
+      'zai',
+    );
+    expect(body).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'low' });
+  });
+
+  it.each([
+    ['none', 'low'],
+    ['minimal', 'low'],
+    ['low', 'low'],
+    ['medium', 'high'],
+    ['high', 'high'],
+    ['xhigh', 'max'],
+    ['max', 'max'],
+  ] as const)('maps GLM-5.3 effort %s to %s', (effort, expected) => {
+    const body: Record<string, unknown> = {};
+    applyOpenAICompatiblePolicy(
+      body,
+      request('glm-5.3-flash', { reasoning: { enabled: true, effort } }),
+      'zai-coding-plan',
+    );
+    expect(body).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: expected });
+  });
+
+  it('uses the documented GLM-5.3 max default when no effort is selected', () => {
+    const body: Record<string, unknown> = {};
+    applyOpenAICompatiblePolicy(body, request('glm-5.3', {}), 'zai');
+    expect(body).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'max' });
+  });
+
   it('drops a leaked reasoning_effort when zai thinking is explicitly disabled', () => {
     // The base builder emits effort on value alone (shouldEmitReasoningEffort
     // ignores `enabled`), and the zai-glm quirk early-returns on

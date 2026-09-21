@@ -3,9 +3,15 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { SyncCategory, SyncConfig } from '../types/config.js';
 import { ERROR_CODES, FsError, WrongStackError } from '../types/errors.js';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
+import { backupConfigFile } from '../utils/config-backup.js';
 import { expectDefined } from '../utils/expect-defined.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
+import {
+  applyNamespacePayload,
+  buildNamespacePayloads,
+  CLOUD_SYNC_NAMESPACES,
+} from './cloud-config-sync/sanitize.js';
 export const ALL_SYNC_CATEGORIES: SyncCategory[] = [
   'settings',
   'skills',
@@ -13,6 +19,29 @@ export const ALL_SYNC_CATEGORIES: SyncCategory[] = [
   'memory',
   'history',
 ];
+
+function projectPortableSettings(config: Record<string, unknown>): Record<string, unknown> {
+  let portable: Record<string, unknown> = {};
+  const payloads = buildNamespacePayloads(config);
+  for (const namespace of CLOUD_SYNC_NAMESPACES) {
+    const payload = payloads[namespace];
+    if (payload) portable = applyNamespacePayload(portable, namespace, payload);
+  }
+  return portable;
+}
+
+function mergePortableSettings(
+  local: Record<string, unknown>,
+  remote: Record<string, unknown>,
+): Record<string, unknown> {
+  let merged = local;
+  const payloads = buildNamespacePayloads(remote);
+  for (const namespace of CLOUD_SYNC_NAMESPACES) {
+    const payload = payloads[namespace];
+    if (payload) merged = applyNamespacePayload(merged, namespace, payload);
+  }
+  return merged;
+}
 
 export interface SyncResult {
   ok: boolean;
@@ -216,7 +245,23 @@ export class CloudSync {
       // Atomic write: pulled blobs land on live files (config.json, memory,
       // history). A bare writeFile truncated by a crash/ENOSPC mid-write would
       // corrupt the live file; atomicWrite writes a temp + fsync + rename.
-      await atomicWrite(destPath, Buffer.from(blobData, 'base64'));
+      const content = Buffer.from(blobData, 'base64');
+      if (cat === 'settings') {
+        await withFileLock(destPath, async () => {
+          let local: Record<string, unknown> = {};
+          try {
+            local = JSON.parse(await fs.readFile(destPath, 'utf8')) as Record<string, unknown>;
+          } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+          }
+          const remote = JSON.parse(content.toString('utf8')) as Record<string, unknown>;
+          const merged = mergePortableSettings(local, remote);
+          await backupConfigFile(destPath, { globalRoot: this.paths.globalRoot });
+          await atomicWrite(destPath, `${JSON.stringify(merged, null, 2)}\n`, { mode: 0o600 });
+        });
+      } else {
+        await atomicWrite(destPath, content);
+      }
     }
 
     const localRev = await this.hashLocalCategories(cfg.categories);
@@ -455,7 +500,15 @@ export class CloudSync {
             hashes.push(`${cat}/${rel}\0${content}`);
           }
         } else {
-          const content = await fs.readFile(localPath, 'utf8');
+          const rawContent = await fs.readFile(localPath, 'utf8');
+          const content =
+            cat === 'settings'
+              ? `${JSON.stringify(
+                  projectPortableSettings(JSON.parse(rawContent) as Record<string, unknown>),
+                  null,
+                  2,
+                )}\n`
+              : rawContent;
           entries.push({ path: `data/${cat}`, content, mode: '100644' });
           hashes.push(`${cat}\0${content}`);
         }

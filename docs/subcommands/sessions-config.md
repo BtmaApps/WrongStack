@@ -42,12 +42,19 @@ The nested `fleet` handler lists persisted fleet runs or inspects one run. It is
 |---|---|
 | `wstack config` / `wstack config show` | Print the effective configuration as JSON with secret-like keys redacted. |
 | `wstack config edit` | Print the command/path to open the global config in `$EDITOR` (or `vi`). |
+| `wstack config backup` | Create `config.json.last` plus a timestamped full encrypted snapshot for the active profile. |
 | `wstack config history` | List configuration history entries. |
 | `wstack config history --id <id>` | Show one masked snapshot and diff summary. |
 | `wstack config restore <id>` | Restore a history snapshot and create a backup. |
 | `wstack config restore --latest` | Restore `config.json.last`. `-l` is also accepted. |
 
 The command reads the effective in-memory config for `show`; it does not print decrypted API-key values.
+
+History snapshots shown by `history` are masked views. Full encrypted pre-write
+snapshots are also kept for recovery. Secret arrays are restored by stable
+`label`/`id`, not by array position, so key reordering cannot attach a live
+credential to the wrong historical label. Interactive boot recovery applies to
+the selected named profile, not only `default`.
 
 ## Related checkpoint command
 

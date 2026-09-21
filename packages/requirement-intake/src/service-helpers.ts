@@ -379,6 +379,12 @@ export function applyAnswerUpdateToRecord(
     question.answer = newAnswer;
     question.status = 'answered';
   }
+  const mapping = ANSWER_FIELD_MAPPING[answer.field];
+  if (mapping) {
+    mapping.set(record, newAnswer);
+    const sourceKey = answer.field as keyof RequirementIntakeRecord['fieldSources'];
+    record.fieldSources[sourceKey] = 'user';
+  }
 }
 
 export function applyAttachmentToRecord(

@@ -708,7 +708,7 @@ function makeProvider(
         });
       }
       return new OpenAICompatibleProvider({
-        id: p.id,
+        ...{ id: p.id, definitionId: factoryType },
         apiKey: expectDefined(apiKey),
         baseUrl: resolvedBaseUrl,
         headers: cfg.headers,

@@ -294,7 +294,10 @@ export function validatePlanVersionV1(
   if (
     (plan.planVersion === 1 && plan.parentPlanVersion !== null) ||
     (plan.planVersion > 1 &&
-      (plan.parentPlanVersion === null || plan.parentPlanVersion >= plan.planVersion))
+      (plan.parentPlanVersion === null ||
+        !Number.isSafeInteger(plan.parentPlanVersion) ||
+        plan.parentPlanVersion < 1 ||
+        plan.parentPlanVersion >= plan.planVersion))
   ) {
     issues.push({
       code: 'invalid_parent_version',

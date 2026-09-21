@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { MCPClient, type MCPTool, quoteWindowsArg } from '../src/client.js';
+import { resolveHttpBearerHeaders } from '../src/client-process.js';
 
 describe('quoteWindowsArg', () => {
   it('leaves simple tokens untouched', () => {
@@ -20,6 +21,26 @@ describe('quoteWindowsArg', () => {
 });
 
 describe('MCPClient', () => {
+  it('resolves an HTTP bearer token from the environment without persisting it', () => {
+    const headers = resolveHttpBearerHeaders(
+      {
+        name: 'env-auth',
+        headers: { Authorization: 'Bearer stale', 'X-Test': 'yes' },
+        bearerTokenEnv: 'Z_AI_API_KEY',
+      },
+      { Z_AI_API_KEY: 'secret-token' },
+    );
+    expect(headers).toEqual({ 'X-Test': 'yes', Authorization: 'Bearer secret-token' });
+  });
+
+  it('fails closed when an environment-backed bearer token is unavailable', () => {
+    expect(() =>
+      resolveHttpBearerHeaders(
+        { name: 'env-auth', bearerTokenEnv: 'WRONGSTACK_TEST_MCP_MISSING_TOKEN' },
+        {},
+      ),
+    ).toThrow('requires environment variable WRONGSTACK_TEST_MCP_MISSING_TOKEN');
+  });
   it('starts in idle state', () => {
     const c = new MCPClient({ name: 'test', transport: 'stdio', command: 'noop' });
     expect(c.getState()).toBe('idle');

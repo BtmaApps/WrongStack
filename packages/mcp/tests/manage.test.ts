@@ -83,6 +83,23 @@ describe('addMcp', () => {
     expect(servers.context7?.transport).toBe('streamable-http');
   });
 
+  it('persists only the environment variable name for remote bearer auth', async () => {
+    const r = await addMcp(
+      {
+        name: 'zai-web-search',
+        transport: 'streamable-http',
+        url: 'https://api.z.ai/api/mcp/web_search_prime/mcp',
+        bearerTokenEnv: 'Z_AI_API_KEY',
+        enabled: false,
+      },
+      deps(makeRegistry()),
+    );
+    expect(r.ok).toBe(true);
+    const servers = await readServers();
+    expect(servers['zai-web-search']?.bearerTokenEnv).toBe('Z_AI_API_KEY');
+    expect(servers['zai-web-search']?.headers).toBeUndefined();
+  });
+
   it('persists the lazy flag', async () => {
     await addMcp(
       { name: 'github', enabled: false, lazy: true },

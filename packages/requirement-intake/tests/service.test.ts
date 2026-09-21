@@ -295,6 +295,8 @@ describe('RequirementIntakeService — answers', () => {
       ALICE,
     );
     expect(updated.answers[0]?.answer).toBe('Second version');
+    expect(updated.businessGoal).toBe('Second version');
+    expect(updated.fieldSources.business_goal).toBe('user');
   });
 
   it('rejects answers on submitted records', async () => {

@@ -1,8 +1,8 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { ToolRegistry } from '@wrongstack/core/registry';
 import type { Tool } from '@wrongstack/core/types';
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   createToolVisionAdapters,
@@ -901,6 +901,39 @@ describe('vision routing', () => {
       await expect(
         adapters[0]!.describe({ image, ctx, signal: new AbortController().signal }),
       ).rejects.toThrow(/does not expose a supported image input schema/);
+    });
+
+    it('blocks private image URLs on the adapter route before calling adapter', async () => {
+      let called = false;
+      await expect(
+        routeImagesForModel(
+          [
+            {
+              type: 'image',
+              source: {
+                type: 'url',
+                url: 'http://localhost:8080/test.png',
+                media_type: 'image/png',
+              },
+            },
+          ],
+          {
+            supportsVision: false,
+            ctx,
+            signal: new AbortController().signal,
+            adapters: [
+              {
+                name: 'mock',
+                async describe() {
+                  called = true;
+                  return 'should not be called';
+                },
+              },
+            ],
+          },
+        ),
+      ).rejects.toBeInstanceOf(VisionUrlBlockedError);
+      expect(called).toBe(false);
     });
   });
 });

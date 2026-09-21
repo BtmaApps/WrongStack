@@ -45,6 +45,8 @@ export function isCompatibilityQuirks(value: unknown): value is CompatibilityQui
 
 export interface OpenAICompatibleOptions {
   id: string;
+  /** Canonical product definition used for provider-specific request policy. */
+  definitionId?: string | undefined;
   apiKey: string;
   baseUrl: string;
   headers?: Record<string, string> | undefined;
@@ -64,6 +66,7 @@ export interface OpenAICompatibleOptions {
 export class OpenAICompatibleProvider extends OpenAIProvider {
   private readonly extraHeaders?: Record<string, string> | undefined;
   private readonly urlOverride?: ((baseUrl: string, req: Request) => string) | undefined;
+  private readonly definitionId: string;
 
   constructor(opts: OpenAICompatibleOptions) {
     super({
@@ -81,6 +84,10 @@ export class OpenAICompatibleProvider extends OpenAIProvider {
     });
     this.extraHeaders = opts.headers;
     this.urlOverride = opts.urlOverride;
+    // Runtime id remains the auth-profile alias. Policy lookup must use the
+    // canonical provider type or aliases such as `zai-work` silently lose the
+    // Z.AI wire contract while still appearing correctly in routing/UI.
+    this.definitionId = opts.definitionId ?? opts.id;
   }
 
   protected override buildUrl(req: Request): string {
@@ -110,7 +117,7 @@ export class OpenAICompatibleProvider extends OpenAIProvider {
     // Many OpenAI-compatible servers (Together, Fireworks, DeepSeek, etc.)
     // accept the `top_k` parameter even though real OpenAI rejects it.
     if (req.topK !== undefined) body['top_k'] = req.topK;
-    applyOpenAICompatiblePolicy(body, req, this.id);
+    applyOpenAICompatiblePolicy(body, req, this.definitionId);
     // Gateway guard, applied AFTER the generic fill so it suppresses
     // uniformly when it applies at all: only for a gateway that has already
     // rejected the field alongside tools (learned in `stream`) or one the user

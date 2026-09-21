@@ -476,7 +476,7 @@ export const execTool: Tool<ExecInput, ExecOutput> = {
     if (!sessionId) return;
     for (const entry of registry.bySession(sessionId)) {
       if (entry.name !== 'exec') continue;
-      if (entry.child && entry.child.exitCode !== null) continue;
+      if (entry.child && (entry.child.exitCode != null || entry.child.signalCode != null)) continue;
       if (entry.protected) continue;
       registry.kill(entry.pid, { force: true });
     }

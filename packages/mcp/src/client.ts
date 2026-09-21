@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import { MCPCapabilityClient } from './client-capabilities.js';
-import { forceKillTree } from './client-process.js';
+import { forceKillTree, resolveHttpBearerHeaders } from './client-process.js';
 import type {
   ExitListener,
   JsonRpcRequest,
@@ -343,7 +343,7 @@ export class MCPClient {
     const httpOpts: HttpTransportOptions = {
       name: this.opts.name,
       url: this.opts.url,
-      headers: this.opts.headers,
+      headers: resolveHttpBearerHeaders(this.opts),
       startupTimeoutMs: this.opts.startupTimeoutMs,
       requestTimeoutMs: this.opts.requestTimeoutMs,
       authorizationProvider: this.opts.authorizationProvider,
@@ -408,7 +408,7 @@ export class MCPClient {
     const httpOpts: HttpTransportOptions = {
       name: this.opts.name,
       url: this.opts.url,
-      headers: this.opts.headers,
+      headers: resolveHttpBearerHeaders(this.opts),
       startupTimeoutMs: this.opts.startupTimeoutMs,
       requestTimeoutMs: this.opts.requestTimeoutMs,
       authorizationProvider: this.opts.authorizationProvider,

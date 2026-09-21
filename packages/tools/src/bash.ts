@@ -839,7 +839,7 @@ export const bashTool: Tool<BashInput, BashOutput> = {
     if (!sessionId) return;
     for (const entry of registry.bySession(sessionId)) {
       if (entry.name !== 'bash') continue; // leave exec-spawned children alone
-      if (entry.child && entry.child.exitCode !== null) continue; // already reaped
+      if (entry.child && (entry.child.exitCode != null || entry.child.signalCode != null)) continue; // already reaped
       if (entry.background) continue; // detached jobs intentionally outlive the run/session
       if (entry.protected) continue; // intentionally-backgrounded infra
       registry.kill(entry.pid, { force: true });

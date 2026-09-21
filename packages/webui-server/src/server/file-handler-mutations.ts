@@ -404,9 +404,10 @@ export async function handleFilesMove(
     return;
   }
 
-  const baseName = path.basename(realSrc);
+  const baseName = path.basename(srcPath.trim().replace(/[/\\]+$/, ''));
+  const normalizedDestDir = destDir.trim().replace(/\\/g, '/').replace(/\/+$/, '');
   const destPath = path.join(realDestDir, baseName);
-  const relDestPath = destDir ? `${destDir}/${baseName}` : baseName;
+  const relDestPath = normalizedDestDir ? `${normalizedDestDir}/${baseName}` : baseName;
 
   // Destination file must NOT already exist.
   try {

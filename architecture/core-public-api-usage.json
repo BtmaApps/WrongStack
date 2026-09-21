@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 164,
+      "files": 161,
       "typeOnly": 27,
-      "runtimeOrMixed": 140
+      "runtimeOrMixed": 137
     },
     "@wrongstack/core/session-catalog": {
       "files": 12,
@@ -180,8 +180,8 @@
     },
     "@wrongstack/core/types": {
       "files": 1138,
-      "typeOnly": 1016,
-      "runtimeOrMixed": 333
+      "typeOnly": 1018,
+      "runtimeOrMixed": 330
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -214,8 +214,8 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 622,
-      "typeOnly": 59,
+      "files": 623,
+      "typeOnly": 60,
       "runtimeOrMixed": 595
     },
     "@wrongstack/core/utils/child-env": {
@@ -8967,12 +8967,6 @@
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/boot/tui-settings-adapter.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/cli-entry-point.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -8992,6 +8986,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/execution-kanban-dispatch.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/execution.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9099,7 +9099,7 @@
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/slash-commands/effort.ts",
+      "file": "packages/cli/src/slash-commands/context.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9111,37 +9111,13 @@
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/slash-commands/fallback.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/slash-commands/gitid.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/slash-commands/hq.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/slash-commands/models.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/slash-commands/refiner.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/security",
-      "file": "packages/cli/src/slash-commands/setmodel.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9412,6 +9388,12 @@
     {
       "specifier": "@wrongstack/core/security",
       "file": "packages/cli/tests/telegram-setup.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/tests/tui-settings-adapter.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -12052,8 +12034,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/fallback.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -12076,8 +12058,8 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/gitid.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -12395,7 +12377,7 @@
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/slash-commands/tier.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
@@ -18688,8 +18670,8 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/boot/tui-settings-adapter.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -20836,6 +20818,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/security-scanner/src/gitignore-updater.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/security-scanner/src/json-extractor.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

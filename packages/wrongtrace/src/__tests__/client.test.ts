@@ -126,7 +126,6 @@ describe('discover()', () => {
     },
   );
 });
-
 describe('createWrongTraceClient()', () => {
   let originalFetch: typeof fetch | undefined;
 
@@ -407,5 +406,52 @@ describe('createWrongTraceClient()', () => {
     });
     const wt = await createWrongTraceClient({ baseUrl: 'http://localhost:3444' });
     expect(await wt.getFrictionMatrix()).toEqual([]);
+  });
+
+  it("unlockFile surfaces the daemon's 409-conflict body instead of null", async () => {
+    globalThis.fetch = makeFetch(async (url) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return jsonResponse({ ok: true, socket_path: '' });
+      if (u.pathname === '/api/guardrail/unlock') {
+        return jsonResponse(
+          {
+            ok: false,
+            status: 'conflict',
+            error: 'lock held by another owner',
+            path: 'src/auth.ts',
+            owner: 'peer-agent',
+          },
+          409,
+        );
+      }
+      return jsonResponse({ ok: true });
+    });
+    const wt = await createWrongTraceClient({ baseUrl: 'http://localhost:3444' });
+    const res = await wt.unlockFile('src/auth.ts');
+    expect(res).not.toBeNull();
+    expect(res?.ok).toBe(false);
+    expect(res?.status).toBe('conflict');
+    expect(res?.owner).toBe('peer-agent');
+  });
+
+  it('getFrictionMatrix attaches total_collisions and events to returned rows', async () => {
+    const rawEvents = [{ file_path: 'src/foo.ts', action: 'MODIFIED' }];
+    globalThis.fetch = makeFetch(async (url) => {
+      const u = new URL(url);
+      if (u.pathname === '/api/health') return jsonResponse({ ok: true });
+      if (u.pathname === '/api/metrics/friction') {
+        return jsonResponse({
+          edges: [{ author_model: 'm1', overwriter_model: 'm2', conflict_count: 3 }],
+          total_collisions: 12,
+          events: rawEvents,
+        });
+      }
+      return jsonResponse({});
+    });
+    const wt = await createWrongTraceClient({ baseUrl: 'http://localhost:3444' });
+    const rows = (await wt.getFrictionMatrix()) as any;
+    expect(rows).toHaveLength(1);
+    expect(rows.total_collisions).toBe(12);
+    expect(rows.events).toEqual(rawEvents);
   });
 });

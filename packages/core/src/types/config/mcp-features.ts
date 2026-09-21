@@ -11,6 +11,12 @@ export interface MCPServerConfig {
   env?: Record<string, string>;
   url?: string | undefined;
   headers?: Record<string, string>;
+  /**
+   * Environment variable whose value is injected as an HTTP Bearer token at
+   * connection time. Only the variable name is persisted; the secret never
+   * enters config.json or WebUI payloads.
+   */
+  bearerTokenEnv?: string | undefined;
   enabled?: boolean | undefined;
   allowedTools?: string[] | undefined;
   permission?: Permission | undefined;

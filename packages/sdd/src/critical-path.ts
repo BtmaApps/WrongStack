@@ -236,7 +236,11 @@ function computeParallelGroups(
   blockedByMap: Map<string, Set<string>>,
 ): string[][] {
   const groups: string[][] = [];
-  const assigned = new Set<string>();
+  const assigned = new Set<string>(
+    Array.from(graph.nodes.values())
+      .filter((n) => n.status === 'completed')
+      .map((n) => n.id),
+  );
   const nodes = Array.from(graph.nodes.values()).filter((n) => n.status !== 'completed');
 
   // Topological levels

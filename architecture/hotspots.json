@@ -19,7 +19,7 @@
       "relativeImports": 1
     },
     "packages/cli/src/boot.ts": {
-      "lines": 924,
+      "lines": 925,
       "relativeImports": 19
     },
     "packages/cli/src/cli-main.ts": {
@@ -27,7 +27,7 @@
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 965,
+      "lines": 968,
       "relativeImports": 44
     },
     "packages/cli/src/fleet/host.ts": {
@@ -39,7 +39,7 @@
       "relativeImports": 1
     },
     "packages/cli/src/picker.ts": {
-      "lines": 834,
+      "lines": 837,
       "relativeImports": 11
     },
     "packages/cli/src/slash-commands/kanban-task-subcommands.ts": {
@@ -51,7 +51,7 @@
       "relativeImports": 13
     },
     "packages/cli/src/slash-commands/settings-mutations.ts": {
-      "lines": 950,
+      "lines": 955,
       "relativeImports": 6
     },
     "packages/cli/src/slash-commands/tool.ts": {
@@ -59,7 +59,7 @@
       "relativeImports": 5
     },
     "packages/cli/src/subcommands/handlers/providers-models.ts": {
-      "lines": 801,
+      "lines": 810,
       "relativeImports": 5
     },
     "packages/cli/src/webui-server.ts": {
@@ -103,7 +103,7 @@
       "relativeImports": 101
     },
     "packages/core/src/coordination/sqlite-mailbox.ts": {
-      "lines": 982,
+      "lines": 985,
       "relativeImports": 15
     },
     "packages/core/src/coordination/subagent-budget.ts": {
@@ -199,7 +199,7 @@
       "relativeImports": 19
     },
     "packages/mcp/src/server.ts": {
-      "lines": 874,
+      "lines": 887,
       "relativeImports": 2
     },
     "packages/plugins/src/duplicate-code-detector/index.ts": {
@@ -227,11 +227,11 @@
       "relativeImports": 1
     },
     "packages/primitives/src/regex-ambiguity.ts": {
-      "lines": 843,
+      "lines": 858,
       "relativeImports": 0
     },
     "packages/primitives/src/regex-guard.ts": {
-      "lines": 871,
+      "lines": 878,
       "relativeImports": 1
     },
     "packages/providers/src/index.ts": {
@@ -315,7 +315,7 @@
       "relativeImports": 7
     },
     "packages/tools/src/pwsh.ts": {
-      "lines": 834,
+      "lines": 835,
       "relativeImports": 8
     },
     "packages/tools/src/session-kanban.ts": {
@@ -451,7 +451,7 @@
       "relativeImports": 17
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 899,
+      "lines": 898,
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {

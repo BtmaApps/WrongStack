@@ -33,6 +33,18 @@ describe('validateMcpServerPayload', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('accepts an environment-backed bearer token name but not a secret object', () => {
+    expect(
+      ok({
+        name: 'zai-web-search',
+        transport: 'streamable-http',
+        url: 'https://api.z.ai/api/mcp/web_search_prime/mcp',
+        bearerTokenEnv: 'Z_AI_API_KEY',
+      }).ok,
+    ).toBe(true);
+    expect(ok({ name: 'remote', bearerTokenEnv: { value: 'secret' } }).ok).toBe(false);
+  });
+
   it('rejects a non-object payload', () => {
     for (const payload of [undefined, null, 'name', 42, []]) {
       expect(ok(payload).ok).toBe(false);

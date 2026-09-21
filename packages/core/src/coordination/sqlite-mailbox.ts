@@ -359,7 +359,10 @@ export class SqliteMailbox implements Mailbox {
         )`);
       }
     }
-    const canPreLimit = !query.incompleteOnly || query.unreadBy !== undefined;
+    const canPreLimit =
+      (!query.incompleteOnly || query.unreadBy !== undefined) &&
+      query.currentSessionId === undefined &&
+      query.sessionAffinityCtx === undefined;
     let sql = 'SELECT id, data, legacy_global_completion FROM messages';
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
     // `rowid DESC` breaks ties: two sends can land in the same millisecond and

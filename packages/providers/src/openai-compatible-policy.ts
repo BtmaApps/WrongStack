@@ -111,6 +111,21 @@ function applyKimi(body: Record<string, unknown>, req: Request): void {
 
 function applyZai(body: Record<string, unknown>, req: Request): void {
   const r = req.reasoning;
+  // Z.AI documents context caching as implicit prefix matching and does not
+  // document OpenAI's prompt_cache_key request field. The generic OpenAI body
+  // builder adds that field for every automatic-cache provider, so remove it
+  // here while retaining WrongStack's stable-prefix construction and usage
+  // accounting.
+  delete body['prompt_cache_key'];
+
+  if (req.model.toLowerCase().includes('glm-5.3')) {
+    // GLM-5.3 and GLM-5.3-Flash are always-thinking models. Z.AI's migration
+    // contract maps legacy disabled reasoning to enabled + low, which keeps a
+    // session usable when it switches from an older model with reasoning off.
+    body['thinking'] = { type: 'enabled' };
+    body['reasoning_effort'] = r?.enabled === false ? 'low' : mapZai53ReasoningEffort(r?.effort);
+    return;
+  }
   // Invariant: `reasoning_effort` may reach here from two sources — the base
   // builder (openai-shared.ts, value-gated only) or the `zai-glm` quirk
   // (applyThinkingParams → mapZaiReasoningEffort, Z.AI's documented contract
@@ -132,6 +147,12 @@ function applyZai(body: Record<string, unknown>, req: Request): void {
   ) {
     body['reasoning_effort'] = r.effort;
   }
+}
+
+function mapZai53ReasoningEffort(effort: ReasoningEffort | undefined): 'low' | 'high' | 'max' {
+  if (effort === undefined || effort === 'max' || effort === 'xhigh') return 'max';
+  if (effort === 'high' || effort === 'medium') return 'high';
+  return 'low';
 }
 
 function applyAlibaba(body: Record<string, unknown>, req: Request): void {

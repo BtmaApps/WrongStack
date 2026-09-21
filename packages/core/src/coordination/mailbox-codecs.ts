@@ -36,18 +36,19 @@
  */
 
 import { MAILBOX_MAX_QUERY_LIMIT } from './mailbox-constants.js';
+import { resolveSendTypeSafe } from './mailbox-message-codec.js';
+import type { MailboxTaskContext } from './mailbox-message-types.js';
+import type { MailboxActorContext, MailboxCapability } from './mailbox-types.js';
 import {
   hasMailboxCapability,
   MAILBOX_TYPE_PROPERTIES,
-  mailboxIdentityBase,
-  normalizeRecipient,
   type MailboxAckInput,
   type MailboxAudience,
   type MailboxMessageType,
   type MailboxQuery,
+  mailboxIdentityBase,
+  normalizeRecipient,
 } from './mailbox-types.js';
-import { resolveSendTypeSafe } from './mailbox-message-codec.js';
-import type { MailboxActorContext, MailboxCapability } from './mailbox-types.js';
 
 // ── Error class ──────────────────────────────────────────────────────
 
@@ -196,6 +197,8 @@ export interface ParsedSendInput {
   priority: 'low' | 'normal' | 'high';
   audience: MailboxAudience;
   replyTo: string | undefined;
+  ttlMs?: number | undefined;
+  taskContext?: MailboxTaskContext | undefined;
   // No `sessionAffinity`: see SEND_ALLOWED_FIELDS. The token is stamped only
   // by trusted internal callers, never carried across this boundary.
 }
@@ -267,6 +270,78 @@ export function parseMailboxSendInput(
   // Validate replyTo.
   const replyTo = optionalString(payload, 'replyTo', 'send');
 
+  // Validate optional ttlMs.
+  const rawTtlMs = payload['ttlMs'];
+  let ttlMs: number | undefined;
+  if (rawTtlMs !== undefined && rawTtlMs !== null) {
+    if (
+      typeof rawTtlMs !== 'number' ||
+      !Number.isFinite(rawTtlMs) ||
+      !Number.isInteger(rawTtlMs) ||
+      rawTtlMs < 1
+    ) {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'ttlMs',
+        'field "ttlMs" must be a positive integer',
+      );
+    }
+    ttlMs = rawTtlMs;
+  }
+
+  // Validate optional taskContext.
+  const rawTaskContext = payload['taskContext'];
+  let taskContext: MailboxTaskContext | undefined;
+  if (rawTaskContext !== undefined && rawTaskContext !== null) {
+    if (typeof rawTaskContext !== 'object' || Array.isArray(rawTaskContext)) {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'taskContext',
+        'field "taskContext" must be an object',
+      );
+    }
+    const tc = rawTaskContext as Record<string, unknown>;
+    const status = tc['status'];
+    const validStatuses = new Set(['pending', 'in_progress', 'completed', 'failed']);
+    if (status !== undefined && (typeof status !== 'string' || !validStatuses.has(status))) {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'taskContext',
+        'field "taskContext.status" is invalid',
+      );
+    }
+    const agentRole = tc['agentRole'];
+    if (agentRole !== undefined && typeof agentRole !== 'string') {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'taskContext',
+        'field "taskContext.agentRole" must be a string',
+      );
+    }
+    const agentName = tc['agentName'];
+    if (agentName !== undefined && typeof agentName !== 'string') {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'taskContext',
+        'field "taskContext.agentName" must be a string',
+      );
+    }
+    const taskId = tc['taskId'];
+    if (taskId !== undefined && typeof taskId !== 'string') {
+      throw new MailboxValidationError(
+        'VALIDATION_ERROR',
+        'taskContext',
+        'field "taskContext.taskId" must be a string',
+      );
+    }
+    taskContext = {
+      ...(typeof agentRole === 'string' ? { agentRole } : {}),
+      ...(typeof agentName === 'string' ? { agentName } : {}),
+      ...(typeof taskId === 'string' ? { taskId } : {}),
+      ...(typeof status === 'string' ? { status: status as MailboxTaskContext['status'] } : {}),
+    };
+  }
+
   return {
     to,
     type: typeResult.type,
@@ -275,6 +350,8 @@ export function parseMailboxSendInput(
     priority,
     audience,
     replyTo,
+    ...(ttlMs !== undefined ? { ttlMs } : {}),
+    ...(taskContext !== undefined ? { taskContext } : {}),
   };
 }
 

@@ -1,13 +1,12 @@
-import * as fs from 'node:fs/promises';
-import { decryptConfigSecrets, encryptConfigSecrets, noOpVault } from '@wrongstack/core/security';
-import { ConfigError, type SlashCommand } from '@wrongstack/core/types';
+import type { SlashCommand } from '@wrongstack/core/types';
 import {
-  atomicWrite,
   color,
   configureChildEnvGitIdentity,
   getChildEnvGitIdentity,
   toErrorMessage,
+  updateJsonObjectFile,
 } from '@wrongstack/core/utils';
+import { backupCurrent } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -26,32 +25,11 @@ async function patchGlobalConfig(
   globalConfigPath: string,
   mutate: (cfg: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
-  let raw = '{}';
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(globalConfigPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    fileExists = false;
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists)
-      throw new ConfigError({
-        message: `Config at ${globalConfigPath} is not valid JSON: ${(err as Error).message}`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: globalConfigPath },
-        cause: err,
-      });
-    parsed = {};
-  }
-  const decrypted = decryptConfigSecrets(parsed, noOpVault) as Record<string, unknown>;
-  mutate(decrypted);
-  const encrypted = encryptConfigSecrets(decrypted, noOpVault);
-  await atomicWrite(globalConfigPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
-  return decrypted;
+  return updateJsonObjectFile(globalConfigPath, async (config) => {
+    await backupCurrent(undefined, globalConfigPath);
+    mutate(config);
+    return config;
+  });
 }
 
 /**

@@ -1,4 +1,5 @@
 import { Send, Server } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
@@ -13,6 +14,18 @@ interface IntegrationsSectionProps {
 export function IntegrationsSection({ syncPref }: IntegrationsSectionProps) {
   const { t } = useAppTranslation();
   const localPrefs = useLocalPrefs();
+  const [hqUrlDraft, setHqUrlDraft] = useState(localPrefs.hqUrl);
+  const [hqTokenDraft, setHqTokenDraft] = useState(localPrefs.hqToken);
+
+  useEffect(() => setHqUrlDraft(localPrefs.hqUrl), [localPrefs.hqUrl]);
+  useEffect(() => setHqTokenDraft(localPrefs.hqToken), [localPrefs.hqToken]);
+
+  const commitHqUrl = () => {
+    if (hqUrlDraft !== localPrefs.hqUrl) syncPref('hqUrl', hqUrlDraft);
+  };
+  const commitHqToken = () => {
+    if (hqTokenDraft !== localPrefs.hqToken) syncPref('hqToken', hqTokenDraft);
+  };
 
   return (
     <div className="space-y-6">
@@ -74,9 +87,13 @@ export function IntegrationsSection({ syncPref }: IntegrationsSectionProps) {
           <div className="space-y-1">
             <span className="text-sm font-medium">{t('settings:integrations.hqUrlLabel')}</span>
             <Input
-              value={localPrefs.hqUrl}
+              value={hqUrlDraft}
               placeholder={t('activity:integrationsSection.httpHost3499')}
-              onChange={(e) => syncPref('hqUrl', e.target.value)}
+              onChange={(e) => setHqUrlDraft(e.target.value)}
+              onBlur={commitHqUrl}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+              }}
             />
             <p className="text-xs text-muted-foreground">{t('settings:integrations.hqUrlHint')}</p>
           </div>
@@ -84,9 +101,13 @@ export function IntegrationsSection({ syncPref }: IntegrationsSectionProps) {
             <span className="text-sm font-medium">{t('settings:integrations.hqTokenLabel')}</span>
             <Input
               type="password"
-              value={localPrefs.hqToken}
+              value={hqTokenDraft}
               placeholder={t('activity:integrationsSection.clientTokenFromWstackHq')}
-              onChange={(e) => syncPref('hqToken', e.target.value)}
+              onChange={(e) => setHqTokenDraft(e.target.value)}
+              onBlur={commitHqToken}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+              }}
             />
           </div>
           <PreferenceToggle

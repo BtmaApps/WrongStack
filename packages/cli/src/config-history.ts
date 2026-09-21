@@ -4,7 +4,13 @@ import os from 'node:os';
 import * as path from 'node:path';
 import { isSecretField } from '@wrongstack/core/security';
 import { ERROR_CODES, FsError } from '@wrongstack/core/types';
-import { atomicWrite, resolveWstackPaths, toErrorMessage, writeErr } from '@wrongstack/core/utils';
+import {
+  atomicWrite,
+  resolveWstackPaths,
+  toErrorMessage,
+  withFileLock,
+  writeErr,
+} from '@wrongstack/core/utils';
 
 // ── UID ownership ──────────────────────────────────────────────────────────
 
@@ -161,7 +167,23 @@ function maskConfigSecrets(cfg: Record<string, unknown>): Record<string, unknown
   if (typeof cfg !== 'object' || cfg === null) return {};
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(cfg)) {
-    if (isSecretField(k)) {
+    // `apiKeys` is a secret-named CONTAINER. Keep its non-secret identity
+    // fields (label/id/order) so restore can match credentials by stable key,
+    // while each nested scalar `apiKey` is still redacted below.
+    if (
+      k.toLowerCase() === 'apikeys' &&
+      Array.isArray(v) &&
+      v.every(
+        (entry) =>
+          entry !== null &&
+          typeof entry === 'object' &&
+          !Array.isArray(entry) &&
+          ('label' in entry || 'id' in entry) &&
+          'apiKey' in entry,
+      )
+    ) {
+      out[k] = maskValue(v);
+    } else if (isSecretField(k)) {
       out[k] = REDACTED;
     } else {
       out[k] = maskValue(v);
@@ -185,7 +207,28 @@ function reviveSecrets(masked: unknown, current: unknown): unknown {
   if (masked === REDACTED) return current;
   if (Array.isArray(masked)) {
     const cur = Array.isArray(current) ? current : [];
-    return masked.map((item, i) => reviveSecrets(item, cur[i]));
+    return masked.map((item, i) => {
+      const record =
+        item && typeof item === 'object' && !Array.isArray(item)
+          ? (item as Record<string, unknown>)
+          : undefined;
+      const identityKey =
+        typeof record?.['label'] === 'string'
+          ? 'label'
+          : typeof record?.['id'] === 'string'
+            ? 'id'
+            : undefined;
+      const matched = identityKey
+        ? cur.find(
+            (candidate) =>
+              candidate &&
+              typeof candidate === 'object' &&
+              !Array.isArray(candidate) &&
+              (candidate as Record<string, unknown>)[identityKey] === record?.[identityKey],
+          )
+        : cur[i];
+      return reviveSecrets(item, matched);
+    });
   }
   if (typeof masked !== 'object' || masked === null) return masked;
 
@@ -437,10 +480,12 @@ export async function appendHistory(
     });
   }
 
-  const idx = await readIndex(homeFn, targetConfigPath);
-  idx.entries.unshift({ id, timestamp, description });
-  await pruneHistoryEntries(idx, homeFn, targetConfigPath);
-  await writeIndex(idx, homeFn, targetConfigPath);
+  await withFileLock(historyIndexPath(homeFn, targetConfigPath), async () => {
+    const idx = await readIndex(homeFn, targetConfigPath);
+    idx.entries.unshift({ id, timestamp, description });
+    await pruneHistoryEntries(idx, homeFn, targetConfigPath);
+    await writeIndex(idx, homeFn, targetConfigPath);
+  });
 
   return id;
 }
@@ -497,37 +542,38 @@ export async function restoreFromHistory(
     };
   }
 
-  await backupCurrent(homeFn, targetConfigPath);
+  const cfg = configPath(homeFn, targetConfigPath);
+  return withFileLock(cfg, async () => {
+    await backupCurrent(homeFn, targetConfigPath);
 
-  let oldCfg: Record<string, unknown> = {};
-  try {
-    const raw = await fs.readFile(configPath(homeFn, targetConfigPath), 'utf8');
-    oldCfg = JSON.parse(raw);
-  } catch {
-    // No config to restore from
-  }
+    let oldCfg: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(cfg, 'utf8');
+      oldCfg = JSON.parse(raw);
+    } catch {
+      // No config to restore from
+    }
 
-  // Carry live credentials across the restore — see `reviveSecrets`. Written
-  // 0600 like every other config write: this file holds the revived secrets.
-  const restored = reviveSecrets(entry.snapshotMasked, oldCfg) as Record<string, unknown>;
+    // Carry live credentials across the restore — see `reviveSecrets`. Written
+    // 0600 like every other config write: this file holds the revived secrets.
+    const restored = reviveSecrets(entry.snapshotMasked, oldCfg) as Record<string, unknown>;
 
-  try {
-    await atomicWrite(configPath(homeFn, targetConfigPath), JSON.stringify(restored, null, 2), {
-      mode: 0o600,
-    });
-  } catch (err) {
-    return { ok: false, backupId: null, error: String(err) };
-  }
+    try {
+      await atomicWrite(cfg, JSON.stringify(restored, null, 2), { mode: 0o600 });
+    } catch (err) {
+      return { ok: false, backupId: null, error: String(err) };
+    }
 
-  const backupId = await appendHistory(
-    oldCfg,
-    restored,
-    `Restored from history ${id}`,
-    homeFn,
-    targetConfigPath,
-  );
+    const backupId = await appendHistory(
+      oldCfg,
+      restored,
+      `Restored from history ${id}`,
+      homeFn,
+      targetConfigPath,
+    );
 
-  return { ok: true, backupId };
+    return { ok: true, backupId };
+  });
 }
 
 /**
@@ -539,14 +585,6 @@ export async function restoreLast(
 ): Promise<{ ok: boolean; error?: string | undefined }> {
   const last = backupLastPath(homeFn, targetConfigPath);
   const cfg = configPath(homeFn, targetConfigPath);
-
-  let oldCfg: Record<string, unknown> = {};
-  try {
-    const raw = await fs.readFile(cfg, 'utf8');
-    oldCfg = JSON.parse(raw);
-  } catch {
-    // Ignore
-  }
 
   let lastCfg: Record<string, unknown> = {};
   try {
@@ -563,15 +601,31 @@ export async function restoreLast(
     return { ok: false, error: 'Operation denied: config file is not owned by current user' };
   }
 
-  await backupCurrent(homeFn, targetConfigPath);
+  return withFileLock(cfg, async () => {
+    let oldCfg: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(cfg, 'utf8');
+      oldCfg = JSON.parse(raw);
+    } catch {
+      // Ignore
+    }
 
-  try {
-    await atomicWrite(cfg, JSON.stringify(lastCfg, null, 2));
-  } catch (err) {
-    return { ok: false, error: String(err) };
-  }
+    await backupCurrent(homeFn, targetConfigPath);
 
-  await appendHistory(oldCfg, lastCfg, 'Restored from config.json.last', homeFn, targetConfigPath);
+    try {
+      await atomicWrite(cfg, JSON.stringify(lastCfg, null, 2), { mode: 0o600 });
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
 
-  return { ok: true };
+    await appendHistory(
+      oldCfg,
+      lastCfg,
+      'Restored from config.json.last',
+      homeFn,
+      targetConfigPath,
+    );
+
+    return { ok: true };
+  });
 }

@@ -121,6 +121,34 @@ describe('LLM JSON extraction', () => {
     const text = 'The config "{mode}" is parsed as: {"ok": true}';
     expect(extractJsonBlock(text, 'object')).toBe('{"ok": true}');
   });
+
+  it('skips bracketed preamble text and extracts the real findings array', () => {
+    const text = 'Findings based on [rule-1] and [CWE-89]: [{"file":"a.ts","title":"t"}]';
+    expect(extractJsonBlock(text, 'array')).toBe('[{"file":"a.ts","title":"t"}]');
+  });
+
+  it('prioritizes structured findings array over footnote numbers in prose', () => {
+    const text = 'See notes [1] and [2] for context: [{"file":"x.ts","title":"XSS"}]';
+    expect(extractJsonBlock(text, 'array')).toBe('[{"file":"x.ts","title":"XSS"}]');
+  });
+
+  it('handles unclosed quotes in prose across newlines and on the same line', () => {
+    const multiline = 'Security findings for "backend-service:\n[{"file":"a.ts","title":"t"}]';
+    expect(extractJsonBlock(multiline, 'array')).toBe('[{"file":"a.ts","title":"t"}]');
+
+    const singleLine = 'Findings for "target: [{"file":"x.ts"}]';
+    expect(extractJsonBlock(singleLine, 'array')).toBe('[{"file":"x.ts"}]');
+  });
+
+  it('extracts object when preamble contains placeholder braces', () => {
+    const text = 'Using pattern {pattern_id} for analysis:\n{"name":"sql-injection","patterns":[]}';
+    expect(extractJsonBlock(text, 'object')).toBe('{"name":"sql-injection","patterns":[]}');
+  });
+
+  it('extracts array from fenced block with bracketed comment', () => {
+    const text = '```json\n// Reference [CWE-89] check\n[{"file":"db.ts","title":"SQLi"}]\n```';
+    expect(extractJsonBlock(text, 'array')).toBe('[{"file":"db.ts","title":"SQLi"}]');
+  });
 });
 
 describe('Node manifest parsing', () => {

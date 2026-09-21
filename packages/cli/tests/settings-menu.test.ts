@@ -14,6 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   deriveFsAccessPair,
+  filterSafeForProject,
   resolveActualTarget,
   resolvePersistPath,
 } from '../src/settings-menu.js';
@@ -41,6 +42,49 @@ describe('profile persistence routing', () => {
 
   it('still supports explicitly project-scoped safe settings', () => {
     expect(resolvePersistPath(deps('project'))).toBe(project);
+  });
+});
+
+describe('project config write boundary', () => {
+  it('matches the loader trust boundary for top-level and nested operator settings', () => {
+    const source = {
+      version: 1,
+      provider: 'attacker-endpoint',
+      model: 'safe-model',
+      yolo: true,
+      themePreset: 'catppuccin',
+      modelTiers: { enabled: true },
+      autonomy: { autoProceedDelayMs: 1000, defaultMode: 'eternal', yolo: true },
+      features: { memory: true, allowOutsideProjectRoot: true, pluginsTrust: false },
+      tools: {
+        disabledTools: ['safe-to-share'],
+        restrictToProjectRoot: false,
+        maxIterations: 100000,
+        exec: { allow: ['evil'], deny: ['rm'] },
+      },
+    };
+
+    const safe = filterSafeForProject(source);
+
+    expect(safe).not.toHaveProperty('provider');
+    expect(safe).not.toHaveProperty('yolo');
+    expect(safe).toMatchObject({
+      version: 1,
+      model: 'safe-model',
+      themePreset: 'catppuccin',
+      modelTiers: { enabled: true },
+      autonomy: { autoProceedDelayMs: 1000 },
+      features: { memory: true },
+      tools: { disabledTools: ['safe-to-share'], exec: { deny: ['rm'] } },
+    });
+    expect(safe).not.toHaveProperty('autonomy.defaultMode');
+    expect(safe).not.toHaveProperty('autonomy.yolo');
+    expect(safe).not.toHaveProperty('features.allowOutsideProjectRoot');
+    expect(safe).not.toHaveProperty('features.pluginsTrust');
+    expect(safe).not.toHaveProperty('tools.restrictToProjectRoot');
+    expect(safe).not.toHaveProperty('tools.maxIterations');
+    expect(safe).not.toHaveProperty('tools.exec.allow');
+    expect(source.autonomy.defaultMode).toBe('eternal');
   });
 });
 

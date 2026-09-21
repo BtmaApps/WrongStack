@@ -12,8 +12,8 @@ export interface ClipboardImage {
   bytes: number;
 }
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_TEXT_BYTES = 4 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_TEXT_BYTES = 4 * 1024 * 1024;
 
 export async function readClipboardImage(): Promise<ClipboardImage | null> {
   const platform = process.platform;
@@ -32,6 +32,9 @@ export async function readClipboardImage(): Promise<ClipboardImage | null> {
  * terminals in raw mode never perform a native copy, so we do it ourselves.
  */
 export async function writeClipboardText(text: string): Promise<boolean> {
+  if (Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) {
+    return false;
+  }
   const platform = process.platform;
   if (platform === 'win32') {
     // Read the payload from stdin so arbitrary text (quotes, newlines,
@@ -147,11 +150,15 @@ async function readLinux(): Promise<ClipboardImage | null> {
     ['wl-paste', ['--type', 'image/png']],
     ['xclip', ['-selection', 'clipboard', '-t', 'image/png', '-o']],
   ];
-  for (const [cmd, args] of tries) {
-    const ok = await runCmdToFile(cmd, args, tmp).catch(() => false);
-    if (ok) return readPngFile(tmp);
+  try {
+    for (const [cmd, args] of tries) {
+      const ok = await runCmdToFile(cmd, args, tmp).catch(() => false);
+      if (ok) return await readPngFile(tmp);
+    }
+    return null;
+  } finally {
+    await fs.unlink(tmp).catch(() => undefined);
   }
-  return null;
 }
 
 async function readPngFile(p: string): Promise<ClipboardImage | null> {

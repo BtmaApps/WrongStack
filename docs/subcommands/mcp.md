@@ -109,6 +109,8 @@ All presets are available via `allServers()` and can be added with either
 | `sentry` | Sentry error and crash tracking (requires `SENTRY_AUTH_TOKEN`) | `confirm` |
 | `everart` | AI image generation (requires `EVERART_API_KEY`) | `confirm` |
 | `zai-vision` | Image analysis and screenshot understanding | `auto` |
+| `zai-web-search` | Z.AI Coding Plan web search (requires `Z_AI_API_KEY`) | `confirm` |
+| `zai-web-reader` | Z.AI Coding Plan webpage extraction (requires `Z_AI_API_KEY`) | `confirm` |
 | `minimax-vision` | MiniMax image understanding (read-only) | `auto` |
 | `ssh` | Remote SSH management — execute commands, transfer files, tunnels, health checks | `confirm` |
 

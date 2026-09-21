@@ -62,7 +62,7 @@ const REQUIRED_ROUTES = [
   "path === '/mailbox/heartbeat'",
   "path === '/mailbox/agents'",
   "path === '/mailbox/agents/online'",
-  "url === '/healthz'",
+  "pathname === '/healthz'",
 ];
 
 // Query-parameter literals introduced for the staleness filter. Both live
@@ -99,7 +99,7 @@ const REQUIRED_HEALTHZ_UNAUTHENTICATED = {
   // appear BEFORE any authorization step in that file so liveness probes
   // never require a token.
   file: 'packages/core/src/coordination/mailbox-http-router.ts',
-  marker: "url === '/healthz'",
+  marker: "pathname === '/healthz'",
   mustComeBefore: '.authorize(',
 };
 

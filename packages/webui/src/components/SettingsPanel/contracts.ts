@@ -25,6 +25,7 @@ export interface MCPServerConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  bearerTokenEnv?: string;
   allowedTools?: string[];
   url?: string;
   lazy?: boolean;

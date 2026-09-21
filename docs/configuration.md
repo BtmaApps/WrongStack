@@ -47,7 +47,17 @@ Two behaviours worth knowing:
 - **Env-sourced values are never persisted.** `ConfigStore.update` strips fields that came from environment variables before the write, so `ANTHROPIC_API_KEY` in your shell does not end up inside `config.json`.
 - **The target is re-resolved after the mutation.** If a settings edit changes `configScope` or `activeProfile`, `resolveActualTarget` recomputes the destination, so the write lands in the profile you just switched to rather than the one you started in.
 
-Writing to a project-scoped target strips credentials first: secrets are only written unredacted to the active profile config.
+Writing to a project-scoped target applies the same top-level and nested trust
+policy as the loader. Credentials, provider routing endpoints, startup autonomy,
+YOLO, filesystem-containment controls, proxy routing, and other operator-owned
+security settings remain in the active profile config. A TUI save that contains
+both project-safe and operator-owned fields splits those fields between the two
+targets; it never writes a value the next boot would intentionally discard.
+
+Every settings writer takes the config file lock before its read/modify/write,
+creates a recoverable pre-write snapshot, and finishes with an atomic `0600`
+replacement. Provider/auth writers use the same lock and full-file backup
+boundary while preserving encrypted credential material.
 
 ---
 
@@ -689,6 +699,7 @@ Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`)
 | `env` | `Record<string, string>` | — | Environment variables for the subprocess. API keys auto-encrypted. |
 | `url` | `string` | — | Server URL (sse/streamable-http transport). |
 | `headers` | `Record<string, string>` | — | Extra HTTP headers (sse/streamable-http transport). |
+| `bearerTokenEnv` | `string` | — | Environment variable resolved into an HTTP `Authorization: Bearer …` header at connection time. Only the variable name is persisted. |
 | `enabled` | `boolean` | `false` | Whether to connect at startup. |
 | `allowedTools` | `string[]` | all tools | Restrict which tools are registered. |
 | `permission` | `string` | `"confirm"` | Default permission for MCP tools: `auto`, `confirm`, `deny`. |
@@ -724,6 +735,8 @@ WrongStack ships with a set of built-in MCP server presets. Use
 | `sentry` | Sentry error and crash tracking (requires `SENTRY_AUTH_TOKEN`) | `confirm` | No |
 | `everart` | AI image generation | `confirm` | No |
 | `zai-vision` | Image analysis, screenshot understanding | `auto` | No |
+| `zai-web-search` | Z.AI Coding Plan web search (requires `Z_AI_API_KEY`) | `confirm` | No |
+| `zai-web-reader` | Z.AI Coding Plan webpage extraction (requires `Z_AI_API_KEY`) | `confirm` | No |
 | `minimax-vision` | MiniMax image understanding (read-only) | `auto` | No |
 | **`ssh`** | Remote SSH — execute commands, transfer files, tunnels, health checks | `confirm` | No |
 

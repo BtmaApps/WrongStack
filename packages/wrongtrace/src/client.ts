@@ -195,11 +195,23 @@ export async function createWrongTraceClient(
       // (getRecentActivity) don't lose the per-file collision history.
       if (Array.isArray(data)) return data as WrongTraceFrictionRow[];
       if (data && typeof data === 'object') {
-        const report = data as { edges?: unknown; recent_collisions?: unknown };
+        const report = data as {
+          edges?: unknown;
+          recent_collisions?: unknown;
+          total_collisions?: unknown;
+          events?: unknown;
+        };
         if (Array.isArray(report.edges)) {
-          const rows = report.edges as WrongTraceFrictionRow[] & { recent_collisions?: unknown };
+          const rows = report.edges as WrongTraceFrictionRow[] & {
+            recent_collisions?: unknown;
+            total_collisions?: unknown;
+            events?: unknown;
+          };
           if (Array.isArray(report.recent_collisions))
             rows.recent_collisions = report.recent_collisions;
+          if (typeof report.total_collisions === 'number')
+            rows.total_collisions = report.total_collisions;
+          if (Array.isArray(report.events)) rows.events = report.events;
           return rows;
         }
       }
@@ -311,6 +323,7 @@ export async function createWrongTraceClient(
       return httpJson<WrongTraceLockResult>(base, '/api/guardrail/unlock', {
         method: 'POST',
         body,
+        acceptStatus: [409],
       });
     },
 

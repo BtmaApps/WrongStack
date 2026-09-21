@@ -59,8 +59,8 @@ describe('redactSecrets', () => {
     it('redacts a glued -tVALUE flag (under-redaction closed; accepted FP cost)', () => {
       // The glued form used to be ignored here so that `-target`, `-tries`
       // and `-timeout` survived — which left `curl -tSECRET` reaching the
-      // phone verbatim. OUTBOUND now shares the command profile's short-flag
-      // patterns (packages/primitives/src/redact-command.ts, SHORT_FLAG_*),
+      // phone verbatim. OUTBOUND now matches the command profile's glued
+      // SHAPE (packages/primitives/src/redact-command.ts, OUTBOUND_SHORT_FLAG_*),
       // so a glued value is wiped whole.
       const input = `rsync -t${TOKEN_VALUE} user@host:/`;
       const out = redactSecrets(input);

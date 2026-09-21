@@ -8,9 +8,9 @@
  * This provides automatic backpressure without manual tuning.
  */
 
-import type { FleetBus, FleetEvent } from './fleet-bus.js';
 import type { AdaptiveConcurrencyConfig } from '../types/config.js';
 import type { Logger } from '../types/logger.js';
+import type { FleetBus, FleetEvent } from './fleet-bus.js';
 
 export interface AdaptiveConcurrencyState {
   current: number;
@@ -55,9 +55,10 @@ export class AdaptiveConcurrencyController {
   private readonly logger: Pick<Logger, 'warn'> | undefined;
   /** Epoch ms of the last increase/decrease — gates `recoveryIntervalMs`. */
   private lastAdjustmentAt = Date.now();
+  private disposed = false;
 
   constructor(
-    fleetBus: FleetBus,
+    private readonly fleetBus: FleetBus,
     private readonly setMaxConcurrent: (n: number) => void,
     config: Partial<AdaptiveConcurrencyConfig> = {},
     onStateChange?: (state: AdaptiveConcurrencyState) => void,
@@ -97,19 +98,19 @@ export class AdaptiveConcurrencyController {
     }
 
     // Subscribe to fleet events
-    this.setupEventHandlers(fleetBus, setMaxConcurrent);
+    this.setupEventHandlers();
   }
 
-  private setupEventHandlers(fleetBus: FleetBus, setMaxConcurrent: (n: number) => void): void {
-    if (!this.config.enabled) return;
+  private setupEventHandlers(): void {
+    if (!this.config.enabled || this.disposed || this.disposers.length > 0) return;
 
-    const off = fleetBus.onAny((event: FleetEvent) => {
+    const off = this.fleetBus.onAny((event: FleetEvent) => {
       if (!this.config.enabled) return;
 
       // A completed provider attempt is the success signal for recovery.
       // `provider-runner` emits exactly one per successful call.
       if (event.type === 'provider.attempt.completed') {
-        this.handleSuccess(setMaxConcurrent);
+        this.handleSuccess(this.setMaxConcurrent);
         return;
       }
 
@@ -125,7 +126,7 @@ export class AdaptiveConcurrencyController {
       if (event.type === 'provider.attempt.failed') {
         const payload = event.payload as { status?: number; failureKind?: string };
         if (payload?.status === 429 || payload?.failureKind === 'rate_limit') {
-          this.handleRateLimit(setMaxConcurrent);
+          this.handleRateLimit(this.setMaxConcurrent);
         }
         return;
       }
@@ -137,7 +138,7 @@ export class AdaptiveConcurrencyController {
           payload?.code === 'rate_limit_error' ||
           payload?.kind === 'rate_limit'
         ) {
-          this.handleRateLimit(setMaxConcurrent);
+          this.handleRateLimit(this.setMaxConcurrent);
         }
       }
     });
@@ -272,6 +273,9 @@ export class AdaptiveConcurrencyController {
    * Update configuration at runtime
    */
   updateConfig(config: Partial<AdaptiveConcurrencyConfig>): void {
+    const wasEnabled = this.config.enabled;
+    const previousCurrent = this.state.current;
+
     if (config.enabled !== undefined) {
       this.config.enabled = config.enabled;
     }
@@ -300,6 +304,15 @@ export class AdaptiveConcurrencyController {
     this.state.min = this.config.minConcurrent;
     this.state.max = this.config.maxConcurrent;
 
+    if (this.config.enabled && !this.disposed) {
+      if (!wasEnabled) {
+        this.setupEventHandlers();
+        this.setMaxConcurrent(this.state.current);
+      } else if (this.state.current !== previousCurrent) {
+        this.setMaxConcurrent(this.state.current);
+      }
+    }
+
     this.notifyStateChange();
   }
 
@@ -307,6 +320,7 @@ export class AdaptiveConcurrencyController {
    * Dispose of the controller and clean up event listeners
    */
   dispose(): void {
+    this.disposed = true;
     for (const dispose of this.disposers) {
       dispose();
     }

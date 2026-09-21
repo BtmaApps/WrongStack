@@ -1,6 +1,33 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { buildChildEnv } from '@wrongstack/core/utils';
 
+/** Resolve an HTTP Bearer token without ever persisting the secret itself. */
+export function resolveHttpBearerHeaders(
+  options: {
+    headers?: Record<string, string> | undefined;
+    bearerTokenEnv?: string | undefined;
+    name: string;
+  },
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, string> | undefined {
+  const envName = options.bearerTokenEnv?.trim();
+  if (!envName) return options.headers;
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(envName)) {
+    throw new Error(`MCP bearerTokenEnv "${envName}" is not a valid environment variable name`);
+  }
+  const token = env[envName];
+  if (!token) throw new Error(`MCP "${options.name}" requires environment variable ${envName}`);
+  if (token.length > 16_384 || /[\r\n]/.test(token)) {
+    throw new Error(`MCP "${options.name}" bearer token is oversized or contains newlines`);
+  }
+  const resolved = { ...options.headers };
+  for (const key of Object.keys(resolved)) {
+    if (key.toLowerCase() === 'authorization') delete resolved[key];
+  }
+  resolved.Authorization = `Bearer ${token}`;
+  return resolved;
+}
+
 /**
  * Force-kill a child and its descendants. On Windows a stdio server is launched
  * through a `.cmd` shim with `shell: true`, so `child` is the `cmd.exe` wrapper

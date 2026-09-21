@@ -75,10 +75,10 @@ describe('per-session runtime — preferences', () => {
     expect(h.rootMeta['yolo']).toBeUndefined();
   });
 
-  it('scopes autonomy.switch to the requesting tab', () => {
+  it('scopes autonomy.switch to the requesting tab', async () => {
     const h = prefsHarness();
 
-    handleAutonomySwitch(h.ctx as never, ws, 'eternal', 'sess_b');
+    await handleAutonomySwitch(h.ctx as never, ws, 'eternal', 'sess_b');
 
     expect(h.sessionMetas.get('sess_b')?.['autonomy']).toBe('eternal');
     expect(h.sessionMetas.get('sess_a')?.['autonomy']).toBeUndefined();

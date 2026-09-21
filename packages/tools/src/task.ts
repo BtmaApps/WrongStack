@@ -56,6 +56,29 @@ export type TaskAdditionItem = Omit<TaskItem, 'id' | 'createdAt' | 'updatedAt' |
 
 export type TaskAction = 'replace' | 'add' | 'status' | 'show' | 'promote' | 'planify';
 
+/**
+ * The single source for the `task` action list — see `plan.ts` for the same
+ * pattern. The union, the JSON-schema `enum` and the runtime allow-list were
+ * three hand-maintained copies of these six strings; the schema and the set are
+ * now derived, and the `Record<TaskAction, true>` map makes BOTH drift
+ * directions (a forgotten member, an unlisted extra) a compile error, while the
+ * reducer's `default` asserts every member has a case.
+ *
+ * Key order is load-bearing: it is the order the schema `enum` publishes.
+ */
+const TASK_ACTION_COVERAGE: Record<TaskAction, true> = {
+  replace: true,
+  add: true,
+  status: true,
+  show: true,
+  promote: true,
+  planify: true,
+};
+
+const TASK_ACTIONS = Object.keys(TASK_ACTION_COVERAGE) as TaskAction[];
+
+const VALID_ACTIONS: ReadonlySet<TaskAction> = new Set(TASK_ACTIONS);
+
 export interface TaskInput {
   /** Replace: set new task list. Add: append a task. Status: update task status. Promote: convert a task to todo items. */
   action: TaskAction;
@@ -124,7 +147,7 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
     properties: {
       action: {
         type: 'string',
-        enum: ['replace', 'add', 'status', 'show', 'promote', 'planify'],
+        enum: [...TASK_ACTIONS],
         description:
           'replace = set full list, add = append, status = update task status, show = view only, promote = convert task to todos, planify = convert task to plan item.',
       },
@@ -215,14 +238,6 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
     const signal = _opts?.signal ?? ctx?.signal;
     signal?.throwIfAborted();
 
-    const VALID_ACTIONS: ReadonlySet<string> = new Set([
-      'replace',
-      'add',
-      'status',
-      'show',
-      'promote',
-      'planify',
-    ]);
     if (!input?.action || !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
         message: `task: Unknown action "${(input as { action: string })?.action}". Use replace | add | status | show | promote | planify.`,
@@ -554,6 +569,10 @@ export const taskTool: Tool<TaskInput, TaskOutput> = {
           }
 
           default:
+            // Union → case tie: compiles only while every `TaskAction` member
+            // has a case above, so a future unhandled action fails the build
+            // instead of falling through to the runtime catch-all.
+            void (input.action satisfies never);
             refuse(
               `Unknown action "${(input as { action: string }).action}". Use replace | add | status | show | promote | planify.`,
               'action',

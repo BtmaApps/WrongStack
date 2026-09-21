@@ -44,13 +44,12 @@
  * @module task-auctioneer
  */
 import { randomUUID } from 'node:crypto';
-import type { GoalNode, GoalStatus, GoalPriority } from './knowledge-graph.js';
-import type { KnowledgeGraph } from './knowledge-graph.js';
-import type { FleetBus } from './fleet-bus.js';
-import type { Mailbox } from './mailbox-types.js';
 import { dispatchAgent } from './dispatcher.js';
+import type { FleetBus } from './fleet-bus.js';
+import type { GoalNode, GoalPriority, GoalStatus, KnowledgeGraph } from './knowledge-graph.js';
+import type { Mailbox } from './mailbox-types.js';
 
-export type { GoalStatus, GoalPriority };
+export type { GoalPriority, GoalStatus };
 
 // ── Task bid ─────────────────────────────────────────────────────────────
 
@@ -136,6 +135,13 @@ export class TaskAuctioneer {
     this.minConfidence = opts.minConfidence ?? 0.3;
     this.maxBidRetries = opts.maxBidRetries ?? 3;
 
+    // Initialize agent task counts from existing in-progress goals in the graph
+    for (const goal of this.graph.getGoals({ status: 'in_progress' })) {
+      if (goal.assignee) {
+        this.agentTaskCount(goal.assignee, +1);
+      }
+    }
+
     // Subscribe to fleet events for bid updates. Capture the disposers so a
     // coordinator stop/restart can detach them instead of leaking a handler
     // (and its captured `this`) on every cycle.
@@ -196,7 +202,7 @@ export class TaskAuctioneer {
       type: 'goal',
       title: input.title,
       description: input.description,
-      status: input.targetAgent ? 'in_progress' : hasOpenBlockers ? 'blocked' : 'pending',
+      status: hasOpenBlockers ? 'blocked' : input.targetAgent ? 'in_progress' : 'pending',
       priority: input.priority ?? 'medium',
       assignee: input.targetAgent,
       blockedBy,
@@ -228,8 +234,10 @@ export class TaskAuctioneer {
       }
     }
 
-    // If targeting a specific agent, assign directly
-    if (input.targetAgent) {
+    // If blocked, do not assign or auction yet — complete() will unblock and assign or auction
+    if (hasOpenBlockers) {
+      // Stays blocked until all blockers reach 'done'
+    } else if (input.targetAgent) {
       await this._assignDirect(goal.id, input.targetAgent);
     } else {
       // Broadcast to all agents via fleet + mailbox
@@ -406,15 +414,19 @@ export class TaskAuctioneer {
           return blocked?.status === 'done';
         });
         if (allUnblocked) {
-          await this.graph.update(childId, {
-            status: 'pending',
-            updatedAt: new Date().toISOString(),
-          });
-          // Broadcast the newly unblocked task so agents know it's available
-          const unblockedGoal = this.graph.get(childId) as GoalNode;
-          await this._broadcastTask(unblockedGoal);
-          // Start the bid window so _evaluateBids fires and awards the task to the best bidder
-          this._startBidWindow(childId);
+          if (child.assignee) {
+            await this._assignDirect(childId, child.assignee);
+          } else {
+            await this.graph.update(childId, {
+              status: 'pending',
+              updatedAt: new Date().toISOString(),
+            });
+            // Broadcast the newly unblocked task so agents know it's available
+            const unblockedGoal = this.graph.get(childId) as GoalNode;
+            await this._broadcastTask(unblockedGoal);
+            // Start the bid window so _evaluateBids fires and awards the task to the best bidder
+            this._startBidWindow(childId);
+          }
         }
       }
     }

@@ -225,6 +225,7 @@ export async function attemptConnectSlot(
         env: slot.cfg.env,
         url: slot.cfg.url,
         headers: slot.cfg.headers,
+        bearerTokenEnv: slot.cfg.bearerTokenEnv,
         startupTimeoutMs: slot.cfg.startupTimeoutMs,
         requestTimeoutMs: slot.cfg.requestTimeoutMs,
         cwd: ctx.cwd,

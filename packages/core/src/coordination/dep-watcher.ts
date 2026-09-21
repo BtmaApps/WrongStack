@@ -100,6 +100,8 @@ interface DependencyWatcherOptions {
   targetAgent?: string | undefined;
   /** Agent id of the watcher (sender). */
   watcherAgentId?: string | undefined;
+  /** Session ID of the watcher/session (used when targetAgent is '@session'). */
+  sessionId?: string | undefined;
   /** Debounce window in ms. Default: 3000 (3 seconds). */
   debounceMs?: number | undefined;
   /** Only watch these specific patterns. Defaults to DEPENDENCY_FILE_PATTERNS. */
@@ -125,6 +127,7 @@ export function makeDependencyWatcherConfig(
     mailbox,
     targetAgent = '*',
     watcherAgentId = 'dep-watcher',
+    sessionId,
     debounceMs = 3000,
     patterns = DEPENDENCY_FILE_PATTERNS as string[],
   } = opts;
@@ -160,7 +163,8 @@ export function makeDependencyWatcherConfig(
   // Deduplicate
   const unique = [...new Set(watchPaths)];
 
-  const isMultiRecipient = targetAgent === '*' || targetAgent.startsWith('@session:');
+  const isMultiRecipient =
+    targetAgent === '*' || targetAgent === '@session' || targetAgent.startsWith('@session:');
 
   // Globe matcher for wildcard patterns
   const globPatterns = patterns.filter((p) => p.includes('*'));
@@ -213,6 +217,7 @@ export function makeDependencyWatcherConfig(
             await mailbox.send({
               from: watcherAgentId,
               to: targetAgent,
+              ...(sessionId !== undefined ? { senderSessionId: sessionId } : {}),
               // `assign` requires a single recipient — the mailbox rejects it
               // for `*` / `@session:` because a task with several owners is
               // ambiguous. The default target IS `*`, so hard-coding `assign`

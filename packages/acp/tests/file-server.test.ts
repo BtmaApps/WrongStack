@@ -9,8 +9,9 @@
  *   - non-existent file rejected with ENOENT
  *   - timeout path (using a very short timeout)
  */
-import * as fsp from 'node:fs/promises';
+
 import { realpathSync } from 'node:fs';
+import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -49,7 +50,6 @@ beforeEach(async () => {
   projectRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-fs-'));
   server = new FileServer({ projectRoot });
 });
-
 afterEach(async () => {
   await fsp.rm(projectRoot, { recursive: true, force: true });
 });
@@ -365,5 +365,21 @@ describe('FileServer', () => {
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform });
     }
+  });
+
+  it('correctly handles root directories ending with a path separator', async () => {
+    const isWin = process.platform === 'win32';
+    const rootPath = isWin ? 'C:\\' : '/';
+    const filePath = isWin ? 'C:\\file.txt' : '/file.txt';
+    const server = new FileServer({
+      projectRoot: rootPath,
+      operations: fakeOperations({
+        realpath: async (f) => f,
+        readFile: async () => 'root content',
+      }),
+    });
+    await expect(server.readTextFile({ sessionId: 's1', path: filePath })).resolves.toEqual({
+      content: 'root content',
+    });
   });
 });

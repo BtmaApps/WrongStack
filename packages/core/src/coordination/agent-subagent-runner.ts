@@ -372,8 +372,12 @@ export function makeAgentSubagentRunner(opts: AgentRunnerOptions): SubagentRunne
     );
 
     // Forward the coordinator signal so stop() from outside also aborts.
-    const onParentAbort = () => aborter.abort();
-    ctx.signal.addEventListener('abort', onParentAbort);
+    const onParentAbort = () => aborter.abort(ctx.signal.reason);
+    if (ctx.signal.aborted) {
+      aborter.abort(ctx.signal.reason);
+    } else {
+      ctx.signal.addEventListener('abort', onParentAbort);
+    }
 
     // In-band graceful finish (see coordination/subagent-finish.ts). When the
     // watchdog's deadline crossing or an explicit leader request fires

@@ -97,6 +97,23 @@ describe('Critical Path Analysis', () => {
     expect(result.parallelGroups[1]).toContain('c');
   });
 
+  it('computes parallel groups for tasks whose dependencies are completed', () => {
+    const graph = makeGraph({
+      nodes: [
+        makeNode('setup', { status: 'completed' }),
+        makeNode('api', { status: 'pending' }),
+        makeNode('ui', { status: 'pending' }),
+      ],
+      edges: [
+        { from: 'api', to: 'setup' },
+        { from: 'ui', to: 'setup' },
+      ],
+    });
+    const result = analyzeCriticalPath(graph);
+    expect(result.parallelGroups).toHaveLength(1);
+    expect(result.parallelGroups[0]).toEqual(expect.arrayContaining(['api', 'ui']));
+  });
+
   it('skips completed tasks in ready list', () => {
     const graph = makeGraph({
       nodes: [makeNode('a', { status: 'completed' }), makeNode('b')],

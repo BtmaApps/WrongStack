@@ -8,13 +8,14 @@
  * with no side-channel state.
  */
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import {
   decryptConfigSecrets,
   decryptConfigSecretsForRewrite,
   encryptConfigSecrets,
 } from '@wrongstack/core/security';
 import { ConfigError, type ProviderConfig, type SecretVault } from '@wrongstack/core/types';
-import { atomicWrite, withFileLock } from '@wrongstack/core/utils';
+import { atomicWrite, backupConfigFile, withFileLock } from '@wrongstack/core/utils';
 import {
   clearStaleProviderDefaults,
   ProviderConfigSnapshots,
@@ -24,6 +25,12 @@ import {
 
 const snapshots = new ProviderConfigSnapshots();
 let writeChain: Promise<void> = Promise.resolve();
+
+function globalRootForConfigPath(configPath: string): string {
+  const configDir = path.dirname(configPath);
+  const profilesDir = path.dirname(configDir);
+  return path.basename(profilesDir) === 'profiles' ? path.dirname(profilesDir) : configDir;
+}
 
 /** Atomic credential/model updates share the provider CRUD writer queue and lock. */
 export async function mutateSavedProviders(
@@ -48,6 +55,7 @@ export async function mutateSavedProviders(
       mutate(providers);
       if (JSON.stringify(providers) === before) return;
       decrypted['providers'] = providers;
+      await backupConfigFile(configPath, { globalRoot: globalRootForConfigPath(configPath) });
       await atomicWrite(
         configPath,
         JSON.stringify(encryptConfigSecrets(decrypted, vault), null, 2),
@@ -183,6 +191,7 @@ export async function saveProviders(
       ]);
       clearStaleProviderDefaults(decrypted, { preservePrimary: primaryBefore === primaryAfter });
       const encrypted = encryptConfigSecrets(decrypted, vault);
+      await backupConfigFile(targetPath, { globalRoot: globalRootForConfigPath(targetPath) });
       await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
       for (const id of Object.keys(providers)) delete providers[id];
       Object.assign(providers, merged);

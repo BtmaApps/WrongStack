@@ -192,8 +192,15 @@ async function nudgeClaudeToPastePrompt(port: number): Promise<void> {
   await fireCallback(port, '/callback', 'code=x&state=WRONG');
 }
 
-/** Poll until `port` can actually be bound again, or the deadline passes. */
-async function waitForPortRelease(port: number, timeoutMs = 3000): Promise<void> {
+/**
+ * Poll until `port` can actually be bound again, or the deadline passes.
+ *
+ * Best-effort by design: the loopback server now sends `Connection: close` and
+ * drops lingering sockets on teardown, so the port comes back within a tick.
+ * Callers that actually depend on the bind (the 53692 group) assert it with
+ * {@link boundCallbackTarget} rather than trusting this to have succeeded.
+ */
+async function waitForPortRelease(port: number, timeoutMs = 5000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const free = await new Promise<boolean>((resolve) => {
@@ -204,6 +211,27 @@ async function waitForPortRelease(port: number, timeoutMs = 3000): Promise<void>
     if (free || Date.now() >= deadline) return;
     await new Promise((r) => setTimeout(r, 25));
   }
+}
+
+/**
+ * Like {@link callbackTarget}, but first assert the flow actually bound 53692.
+ *
+ * When it did not, the flow is sitting at the manual-paste prompt while the
+ * authorize URL still advertises 53692 (a registered constant, not the bound
+ * port). `fireCallback` then hits a dead port and the case fails on the flow's
+ * exit code ten lines later — a product bug by appearance only. Name the real
+ * cause here instead.
+ */
+function boundCallbackTarget(
+  logs: string[],
+  authorizeUrl: string,
+): { port: number; state: string } {
+  if (logs.some((l) => l.includes('Could not start the local callback listener'))) {
+    throw new Error(
+      'port 53692 was still held when the flow started — a previous loopback server leaked it',
+    );
+  }
+  return callbackTarget(authorizeUrl);
 }
 
 async function fireCallback(port: number, callbackPath: string, query: string): Promise<number> {
@@ -792,16 +820,55 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
   // the whole group — see `claudeLoopbackAvailable` for why a host can refuse
   // 53692 outright. Where the port is free (CI) the whole suite runs.
   describe.skipIf(!claudeLoopbackAvailable)('with a real callback delivered on 53692', () => {
+    /**
+     * 53692 is FIXED, so these cases all contend for the same port — including
+     * with the case just above, which deliberately squats on it. Two things go
+     * wrong without the hooks below, and they compound:
+     *
+     *  1. A flow that starts while the previous listener is still closing sees
+     *     `bound === false` and drops to the manual-paste prompt. The authorize
+     *     URL still says 53692 (it is a registered constant, not the bound
+     *     port), so `fireCallback` hits a dead port and the case fails with
+     *     ECONNREFUSED in tens of milliseconds — looking like a product bug.
+     *  2. That failed case abandons its flow mid-await, leaving a LIVE server
+     *     on 53692, so every later case in the group fails the same way. One
+     *     race turns into a run of failures.
+     *
+     * So: wait for the port before each case, and abort + settle whatever the
+     * case started before releasing it to the next one.
+     */
+    const pending: Array<{ ac?: AbortController; flow: Promise<number> }> = [];
+
+    /** Start a flow and register it for teardown. Omit `signal` to skip one. */
+    function startFlow(
+      deps: AuthMenuDeps,
+      opts: { providerId?: string; signal?: false } = {},
+    ): Promise<number> {
+      const ac = opts.signal === false ? undefined : new AbortController();
+      const flow = runClaudeOAuthLogin(deps, {
+        ...(opts.providerId ? { providerId: opts.providerId } : {}),
+        ...(ac ? { signal: ac.signal } : {}),
+      });
+      pending.push({ ac, flow });
+      return flow;
+    }
+
+    beforeEach(() => waitForPortRelease(53692));
+
+    afterEach(async () => {
+      for (const { ac, flow } of pending.splice(0)) {
+        ac?.abort();
+        await flow.catch(() => undefined);
+      }
+      await waitForPortRelease(53692);
+    });
+
     it('signs in via the real loopback callback and saves OAuth tokens', async () => {
       claudeRoutes();
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, {
-        providerId: 'claude-oauth-test',
-        signal: ac.signal,
-      });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps, { providerId: 'claude-oauth-test' });
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       expect(await fireCallback(port, '/callback', `code=cb&state=${state}`)).toBe(200);
       expect(await flow).toBe(0);
       const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
@@ -820,9 +887,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       claudeRoutes(new Response(null, { status: 500 }));
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, { signal: ac.signal });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps);
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(0);
       expect(logs.some((l) => l.includes('No model list was discovered'))).toBe(true);
@@ -832,8 +898,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       claudeRoutes();
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const flow = runClaudeOAuthLogin(deps); // no signal → own SIGINT handler
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps, { signal: false }); // no signal → own SIGINT handler
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(0);
     });
@@ -852,12 +918,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
         },
       });
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, {
-        providerId: 'claude-oauth-test',
-        signal: ac.signal,
-      });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps, { providerId: 'claude-oauth-test' });
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(0);
       const raw = JSON.parse(await fs.readFile(configPath, 'utf8')) as Record<string, unknown>;
@@ -872,9 +934,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       const configPath = path.join(tmpDir, 'not-a-file');
       await fs.mkdir(configPath, { recursive: true });
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, { signal: ac.signal });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps);
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(1);
       expect(logs.some((l) => l.includes('Failed to save tokens'))).toBe(true);
@@ -887,9 +948,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       route('/v1/models', () => jsonResponse({ data: [] }));
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, { signal: ac.signal });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps);
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(1);
       expect(logs.some((l) => l.includes('Login cancelled.'))).toBe(true);
@@ -902,9 +962,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       route('/v1/models', () => jsonResponse({ data: [] }));
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, { signal: ac.signal });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps);
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(1);
       expect(logs.some((l) => l.includes('Login failed: token endpoint down'))).toBe(true);
@@ -919,9 +978,8 @@ describe('anthropic-oauth.ts — runClaudeOAuthLogin flow', () => {
       });
       const { configPath, vault, registry } = await setup();
       const { deps, logs } = depsFor(configPath, vault, registry);
-      const ac = new AbortController();
-      const flow = runClaudeOAuthLogin(deps, { signal: ac.signal });
-      const { port, state } = callbackTarget(await waitForUrl(logs, 'claude.ai'));
+      const flow = startFlow(deps);
+      const { port, state } = boundCallbackTarget(logs, await waitForUrl(logs, 'claude.ai'));
       await fireCallback(port, '/callback', `code=cb&state=${state}`);
       expect(await flow).toBe(0);
       expect(logs.some((l) => l.includes('No model list was discovered'))).toBe(true);

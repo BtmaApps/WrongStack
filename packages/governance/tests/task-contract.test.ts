@@ -204,4 +204,37 @@ describe('TaskContract v1', () => {
       expect(result.issues).toContainEqual(expect.objectContaining({ code: 'path_scope_missing' }));
     }
   });
+
+  it('detects conflicting path scope across slash styles and relative prefixes', () => {
+    const base = contract();
+    const prefixResult = validateTaskContractV1({
+      ...base,
+      autonomy: {
+        ...base.autonomy,
+        allowedPaths: ['packages/governance/**'],
+        deniedPaths: ['./packages/governance/**'],
+      },
+    });
+    expect(prefixResult).toMatchObject({ valid: false });
+    if (!prefixResult.valid) {
+      expect(prefixResult.issues).toContainEqual(
+        expect.objectContaining({ code: 'path_scope_conflict' }),
+      );
+    }
+
+    const backslashResult = validateTaskContractV1({
+      ...base,
+      autonomy: {
+        ...base.autonomy,
+        allowedPaths: ['packages/governance/src/index.ts'],
+        deniedPaths: ['packages\\governance\\src\\index.ts'],
+      },
+    });
+    expect(backslashResult).toMatchObject({ valid: false });
+    if (!backslashResult.valid) {
+      expect(backslashResult.issues).toContainEqual(
+        expect.objectContaining({ code: 'path_scope_conflict' }),
+      );
+    }
+  });
 });

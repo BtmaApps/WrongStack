@@ -169,9 +169,19 @@ describe('pickShell — auto-detect (Codex-style commands)', () => {
     expect(pickShell(win, 'pnpm install', envFrom({}))).toBe('cmd');
     expect(pickShell(win, 'node script.js', envFrom({}))).toBe('cmd');
     expect(pickShell(win, 'git status', envFrom({}))).toBe('cmd');
+    expect(pickShell(win, 'git checkout -f main', envFrom({}))).toBe('cmd');
+    expect(pickShell(win, 'git push -f origin main', envFrom({}))).toBe('cmd');
+    expect(pickShell(win, 'rm -f node_modules', envFrom({}))).toBe('cmd');
+    expect(pickShell(win, 'curl -f https://example.com', envFrom({}))).toBe('cmd');
+    expect(pickShell(win, 'pnpm install -f', envFrom({}))).toBe('cmd');
     // Windows path that happens to contain `-eq` should NOT trip the detector
     // (path-component boundary required by the operator regex).
     expect(pickShell(win, 'type C:\\foo-eq\\bar.txt', envFrom({}))).toBe('cmd');
+  });
+
+  it('detects PowerShell string format operator with placeholders', () => {
+    expect(pickShell(win, '"{0} {1}" -f "hello", "world"', envFrom({}))).toBe('pwsh');
+    expect(pickShell(win, "'Value: {0}' -f 'ready'", envFrom({}))).toBe('pwsh');
   });
 
   it('does NOT match the standalone `where` (ambiguous between cmd and PS)', () => {

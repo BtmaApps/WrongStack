@@ -412,18 +412,31 @@ function renderPromptTemplate(template: string, args: Record<string, string>): s
 
 const METHOD_NOT_FOUND_SENTINEL = Symbol('method-not-found');
 
+function isMCPContentBlock(c: unknown): boolean {
+  if (!c || typeof c !== 'object') return false;
+  const type = (c as Record<string, unknown>)['type'];
+  return (
+    type === 'text' ||
+    type === 'image' ||
+    type === 'audio' ||
+    type === 'resource' ||
+    type === 'resource_link'
+  );
+}
+
 /** Normalize a host result's content into MCP content blocks. */
-export function toContentBlocks(content: unknown): Array<{ type: 'text'; text: string }> {
+export function toContentBlocks(content: unknown): Array<{ type: string; [key: string]: unknown }> {
   if (typeof content === 'string') return [{ type: 'text', text: content }];
   if (Array.isArray(content)) {
     // Already-shaped content blocks pass through; otherwise stringify each item.
-    const allBlocks = content.every(
-      (c) => c && typeof c === 'object' && (c as { type?: unknown | undefined }).type === 'text',
-    );
-    if (allBlocks) return content as Array<{ type: 'text'; text: string }>;
+    const allBlocks = content.every(isMCPContentBlock);
+    if (allBlocks) return content as Array<{ type: string; [key: string]: unknown }>;
     return [{ type: 'text', text: content.map((c) => stringifyItem(c)).join('\n') }];
   }
   if (content === undefined || content === null) return [{ type: 'text', text: '' }];
+  if (isMCPContentBlock(content)) {
+    return [content as { type: string; [key: string]: unknown }];
+  }
   return [{ type: 'text', text: stringifyItem(content) }];
 }
 

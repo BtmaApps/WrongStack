@@ -43,24 +43,11 @@ export function validateTransportUrl(rawUrl: string): void {
   const host =
     hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
 
-  // Block cloud metadata endpoints (IMDS) — these are never valid MCP servers
+  // Block cloud metadata endpoints (IMDS) and link-local addresses — these are never valid MCP servers
   const ipVersion = net.isIP(host);
-  if (ipVersion === 4) {
-    const parts = host.split('.').map(Number);
-    // 169.254.x.x (link-local / IMDS)
-    if (parts[0] === 169 && parts[1] === 254) {
-      throw new ConfigError({
-        message: `MCP transport: blocked link-local/IMDS address "${hostname}" — likely not a valid MCP server`,
-        code: 'CONFIG_INVALID',
-        context: { field: 'url', rawUrl, hostname },
-      });
-    }
-  } else if (ipVersion === 6) {
-    const lower = host.toLowerCase();
-    // fe80::/10 link-local (first hextet fe80–febf) and the AWS IPv6 IMDS
-    // address fd00:ec2::254 — the IPv6 counterparts of the IPv4 block above.
-    const linkLocal = /^fe[89ab]/.test(lower);
-    if (linkLocal || lower === 'fd00:ec2::254') {
+  if (ipVersion !== 0) {
+    const classification = classifyTransportAddress(host, ipVersion);
+    if (classification === 'blocked') {
       throw new ConfigError({
         message: `MCP transport: blocked link-local/IMDS address "${hostname}" — likely not a valid MCP server`,
         code: 'CONFIG_INVALID',
@@ -75,10 +62,8 @@ export function validateTransportUrl(rawUrl: string): void {
   // calls and responses.
   if (url.protocol === 'http:') {
     const isLoopback =
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1' ||
-      hostname === '[::1]';
+      host === 'localhost' ||
+      (ipVersion !== 0 && classifyTransportAddress(host, ipVersion) === 'loopback');
     if (!isLoopback) {
       throw new ConfigError({
         message: `MCP transport: http:// is only allowed for loopback addresses; use https:// for "${hostname}"`,

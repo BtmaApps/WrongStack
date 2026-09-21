@@ -271,7 +271,6 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   const mayOfferConfigRecovery =
     isStdinTTY() &&
     (positional.length === 0 || first === 'quick') &&
-    (!config.activeProfile || config.activeProfile === 'default') &&
     typeof flags['prompt'] !== 'string' &&
     !flags['webui'] &&
     !flags['no-interactive'] &&
@@ -279,9 +278,11 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
   const renderer = new TerminalRenderer();
   const reader = new ReadlineInputReader({ historyFile: paths.wpaths.historyFile });
   if (mayOfferConfigRecovery) {
+    const recoveryProfile = config.activeProfile ?? 'default';
     const restored = await maybeRestoreDefaultProfileFromBackup({
       globalRoot: paths.wpaths.globalRoot,
-      profilePath: paths.wpaths.profileConfig('default'),
+      profilePath: paths.wpaths.profileConfig(recoveryProfile),
+      profileName: recoveryProfile,
       renderer,
       reader,
     });

@@ -11,7 +11,7 @@ vi.mock('node:child_process', async (orig) => {
   };
 });
 
-import { writeClipboardText } from '../src/clipboard.js';
+import { MAX_TEXT_BYTES, writeClipboardText } from '../src/clipboard.js';
 
 /** Captures what was written to stdin and lets the test drive the exit event. */
 class FakeChild extends EventEmitter {
@@ -55,6 +55,13 @@ describe('writeClipboardText', () => {
   it('returns false on an unsupported platform without spawning', async () => {
     setPlatform('freebsd');
     expect(await writeClipboardText('hi')).toBe(false);
+    expect(spawnMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('returns false when text exceeds MAX_TEXT_BYTES without spawning', async () => {
+    setPlatform('win32');
+    const oversized = 'a'.repeat(MAX_TEXT_BYTES + 1);
+    expect(await writeClipboardText(oversized)).toBe(false);
     expect(spawnMock.spawn).not.toHaveBeenCalled();
   });
 

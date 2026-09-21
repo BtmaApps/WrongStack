@@ -98,7 +98,7 @@ function renderContentBlock(item: Record<string, unknown>): string {
   if (type === 'image' || type === 'audio') {
     const mime = typeof item['mimeType'] === 'string' ? item['mimeType'] : 'unknown type';
     const data = typeof item['data'] === 'string' ? item['data'] : '';
-    const kb = Math.max(1, Math.round((data.length * 3) / 4 / 1024));
+    const kb = data.length === 0 ? 0 : Math.max(1, Math.round((data.length * 3) / 4 / 1024));
     return `[${type} content: ${mime}, ~${kb} KB — binary payload not inlined]`;
   }
   if (type === 'resource' && item['resource'] && typeof item['resource'] === 'object') {
@@ -113,6 +113,9 @@ function renderContentBlock(item: Record<string, unknown>): string {
   }
   if (type === 'resource_link' && typeof item['uri'] === 'string') {
     return `[resource link: ${item['uri']}]`;
+  }
+  if ('text' in item) {
+    return String(item['text'] ?? '');
   }
   return JSON.stringify(item);
 }
@@ -130,10 +133,7 @@ function stringify(c: unknown): string {
       .join('\n');
   }
   if (c && typeof c === 'object') {
-    if ('text' in (c as Record<string, unknown>)) {
-      return String((c as Record<string, unknown>).text);
-    }
-    return JSON.stringify(c);
+    return renderContentBlock(c as Record<string, unknown>);
   }
   return String(c ?? '');
 }

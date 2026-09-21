@@ -54,6 +54,7 @@ export function manifestConfigHash(cfg: {
   url?: string | undefined;
   env?: Record<string, string> | undefined;
   headers?: Record<string, string> | undefined;
+  bearerTokenEnv?: string | undefined;
   passthroughEnv?: string[] | undefined;
 }): string {
   const basis = JSON.stringify({
@@ -63,6 +64,7 @@ export function manifestConfigHash(cfg: {
     url: cfg.url ?? null,
     env: sortedEntries(cfg.env),
     headers: sortedEntries(cfg.headers),
+    bearerTokenEnv: cfg.bearerTokenEnv ?? null,
     passthroughEnv: passthroughEntries(cfg.passthroughEnv),
   });
   return createHash('sha256').update(basis).digest('hex').slice(0, 16);

@@ -135,4 +135,17 @@ describe('SqliteSageStore findMemoriesForFile', () => {
     const result = await store.findMemoriesForFile('src/exc.ts');
     expect(result.totalCount).toBe(0);
   });
+
+  it('does not match trailing punctuation as a mention when querying root directory', async () => {
+    await store.rememberSage({
+      text: 'Memory with trailing period.',
+      scope: 'project',
+      kind: 'fact',
+      importance: 0.8,
+      confidence: 0.8,
+      anchors: [{ type: 'file', path: 'src/specific.ts' }],
+    });
+    const result = await store.findMemoriesForFile('.');
+    expect(result.relatedMatches.length).toBe(0);
+  });
 });

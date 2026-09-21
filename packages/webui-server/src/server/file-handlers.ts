@@ -165,7 +165,7 @@ export async function handleFilesTree(
         // when it is a symlink to a directory (readdir reports
         // isDirectory() === false for symlinks, which would otherwise let a
         // `node_modules/` rule miss a symlinked node_modules).
-        if (isGitignored(childRel, await isEntryDirectory(dir, e))) return null;
+        if (isGitignored(childPath, await isEntryDirectory(dir, e))) return null;
         if (e.isDirectory()) {
           if (SKIP_DIRS.has(e.name)) return null;
           // Reject symlinked directories whose real path escapes the
@@ -469,6 +469,11 @@ export async function handleFilesList(
     return;
   }
 
+  const pathPrefix =
+    listRoot === projectRoot
+      ? ''
+      : (path.relative(projectRoot, listRoot) + '/').replace(/\\/g, '/');
+
   const results: string[] = [];
 
   // Same project-root `.gitignore` rule as the file tree — see
@@ -487,11 +492,12 @@ export async function handleFilesList(
       if (results.length >= 600) return;
       if (isHiddenEntry(e.name)) continue;
       const childRel = rel ? `${rel}/${e.name}` : e.name;
+      const childPath = pathPrefix + childRel;
       // Same projectRoot .gitignore rule — pass isEntryDirectory() so a
       // trailing-slash rule like `node_modules/` prunes a directory by its
       // own name, including when it is a symlink to a directory. See
       // handleFilesTree above for the full rationale.
-      if (isGitignored(childRel, await isEntryDirectory(dir, e))) continue;
+      if (isGitignored(childPath, await isEntryDirectory(dir, e))) continue;
       if (e.isDirectory()) {
         if (SKIP_DIRS.has(e.name)) continue;
         // Reject symlinked directories whose real path escapes the
@@ -508,7 +514,7 @@ export async function handleFilesList(
         }
         await walk(realChild, childRel, depth + 1);
       } else if (e.isFile()) {
-        results.push(childRel);
+        results.push(childPath);
       }
     }
   }

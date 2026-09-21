@@ -17,6 +17,12 @@ function makeCtx(config: Record<string, unknown> = {}): {
   const ctx = {
     configStore: store,
     paths: { globalConfig, profileConfig: () => globalConfig, inProjectConfig },
+    vault: {
+      encrypt: (value: string) => `enc:test:${value}`,
+      decrypt: (value: string) => value.replace(/^enc:test:/, ''),
+      isEncrypted: (value: string) => value.startsWith('enc:test:'),
+      keyVersion: 1,
+    },
   } as never as SlashCommandContext;
   return { ctx, globalConfig };
 }
@@ -62,7 +68,7 @@ describe('/hq slash command', () => {
     const written = JSON.parse(readFileSync(globalConfig, 'utf8'));
     expect(written.hq.url).toBe('http://127.0.0.1:59999');
     expect(written.hq.enabled).toBe(true);
-    expect(written.hq.token).toBe('my-token');
+    expect(written.hq.token).toBe('enc:test:my-token');
   });
 
   it('set rejects a non-http URL without writing', async () => {

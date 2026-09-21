@@ -17,8 +17,8 @@
 | openrouter | OpenRouter (Metered) | openai-compatible | metered-api | https://openrouter.ai/api/v1 | OPENROUTER_API_KEY | openai/gpt-4o, openai/gpt-4o-mini, anthropic/claude-sonnet-4-20250514, google/gemini-2.0-flash-001, meta-llama/llama-4-scout, deepseek/deepseek-chat |
 | kimi-for-coding | Kimi Code (Subscription) | openai-compatible | subscription-interactive | https://api.kimi.com/coding/v1 | KIMI_API_KEY | kimi-for-coding, kimi-for-coding-highspeed |
 | moonshotai | Moonshot Platform (Metered) | openai-compatible | metered-api | https://api.moonshot.ai/v1 | MOONSHOT_API_KEY | kimi-k2.7-code, kimi-k2.7-code-highspeed |
-| zai-coding-plan | Z.AI Coding Plan (Subscription) | openai-compatible | subscription-interactive | https://api.z.ai/api/coding/paas/v4 | ZHIPU_API_KEY | glm-5.2, glm-5-turbo, glm-4.7 |
-| zai | Z.AI API (Metered) | openai-compatible | metered-api | https://api.z.ai/api/paas/v4 | ZHIPU_API_KEY | glm-4.7, glm-5-turbo, glm-5.2 |
+| zai-coding-plan | Z.AI Coding Plan (Subscription) | openai-compatible | subscription-interactive | https://api.z.ai/api/coding/paas/v4 | ZHIPU_API_KEY | glm-5.3, glm-5.3-flash, glm-5.2, glm-5-turbo, glm-4.7 |
+| zai | Z.AI API (Metered) | openai-compatible | metered-api | https://api.z.ai/api/paas/v4 | ZHIPU_API_KEY | glm-5.3, glm-5.3-flash, glm-5.2, glm-5-turbo, glm-4.7 |
 | minimax | MiniMax Token Plan (Subscription) | openai-compatible | subscription-interactive | https://api.minimax.io/v1 | MINIMAX_API_KEY | MiniMax-M3, MiniMax-M2.7, MiniMax-M2.5, MiniMax-M2 |
 | mistral | Mistral AI API (Metered) | openai-compatible | metered-api | https://api.mistral.ai/v1 | MISTRAL_API_KEY | mistral-large-latest, codestral-latest, ministral-8b-latest |
 | deepseek | DeepSeek API (Metered) | openai-compatible | metered-api | https://api.deepseek.com | DEEPSEEK_API_KEY | deepseek-v4-flash, deepseek-v4-pro |

@@ -182,4 +182,26 @@ describe('wrapMCPTool - extra coverage', () => {
     const out = await wrapped.execute({}, ctx, opts);
     expect(out).toBe('');
   });
+
+  it('renders single content block objects without base64 leakage', async () => {
+    const base64 = 'B'.repeat(8_000);
+    const wrapped = wrapMCPTool(
+      's',
+      { name: 'single-shot', inputSchema: { type: 'object' } },
+      mkClient(async () => ({ type: 'image', mimeType: 'image/png', data: base64 })),
+    );
+    const out = String(await wrapped.execute({}, ctx, opts));
+    expect(out).not.toContain(base64);
+    expect(out).toContain('[image content: image/png, ~6 KB — binary payload not inlined]');
+  });
+
+  it('reports ~0 KB for 0-byte image payload', async () => {
+    const wrapped = wrapMCPTool(
+      's',
+      { name: 'zero-shot', inputSchema: { type: 'object' } },
+      mkClient(async () => ({ type: 'image', mimeType: 'image/png', data: '' })),
+    );
+    const out = String(await wrapped.execute({}, ctx, opts));
+    expect(out).toContain('[image content: image/png, ~0 KB — binary payload not inlined]');
+  });
 });

@@ -1,5 +1,6 @@
 import { color, expectDefined } from '@wrongstack/core/utils';
 import {
+  backupCurrent,
   getHistoryEntry,
   listHistory,
   restoreFromHistory,
@@ -103,6 +104,12 @@ export const configCmd: SubcommandHandler = async (args, deps) => {
   if (sub === 'edit') {
     const editor = process.env['EDITOR'] ?? 'vi';
     deps.renderer.write(`Run: ${editor} ${activeProfileConfigPath(deps.paths, deps.config)}\n`);
+    return 0;
+  }
+  if (sub === 'backup') {
+    const profileConfigPath = activeProfileConfigPath(deps.paths, deps.config);
+    await backupCurrent(undefined, profileConfigPath);
+    deps.renderer.write(`Backed up active profile config: ${profileConfigPath}.last\n`);
     return 0;
   }
   if (sub === 'history') {

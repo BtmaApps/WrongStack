@@ -98,9 +98,18 @@ const WORD: CharSet = freezeSet([
   [97, 122],
 ]);
 const DIGIT: CharSet = freezeSet([[48, 57]]);
+/** Exact JS `\s` (ASCII + the Unicode spaces ECMAScript defines). */
 const SPACE: CharSet = freezeSet([
   [9, 13],
   [32, 32],
+  [0x00a0, 0x00a0],
+  [0x1680, 0x1680],
+  [0x2000, 0x200a],
+  [0x2028, 0x2029],
+  [0x202f, 0x202f],
+  [0x205f, 0x205f],
+  [0x3000, 0x3000],
+  [0xfeff, 0xfeff],
 ]);
 // Typed Readonly on top of Object.freeze, so a key write into this table is a
 // compile error (TS2542) and not merely a runtime TypeError.
@@ -414,17 +423,23 @@ function escapeAt(s: string, i: number): number | string | null {
   const simple: Record<string, number> = { n: 10, r: 13, t: 9, f: 12, v: 11 };
   if (simple[ch] !== undefined) return simple[ch]!;
   if (ch === 'x') {
-    const cp = Number.parseInt(s.slice(i + 2, i + 4), 16);
+    const chunk = s.slice(i + 2, i + 4);
+    if (!/^[0-9a-fA-F]{2}$/.test(chunk)) return null;
+    const cp = Number.parseInt(chunk, 16);
     return Number.isFinite(cp) ? cp : null;
   }
   if (ch === 'u') {
     if (s[i + 2] === '{') {
       const close = s.indexOf('}', i + 3);
       if (close === -1) return null;
-      const cp = Number.parseInt(s.slice(i + 3, close), 16);
+      const chunk = s.slice(i + 3, close);
+      if (!/^[0-9a-fA-F]+$/.test(chunk)) return null;
+      const cp = Number.parseInt(chunk, 16);
       return Number.isFinite(cp) && cp <= MAX_CP ? cp : null;
     }
-    const cp = Number.parseInt(s.slice(i + 2, i + 6), 16);
+    const chunk = s.slice(i + 2, i + 6);
+    if (!/^[0-9a-fA-F]{4}$/.test(chunk)) return null;
+    const cp = Number.parseInt(chunk, 16);
     return Number.isFinite(cp) ? cp : null;
   }
   if (/[A-Za-z0-9]/.test(ch)) return null; // \b \p \k \1 … — outside the subset

@@ -17,7 +17,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { Config, ConfigStore, ThemePresetId } from '@wrongstack/core/types';
 import { THEME_PRESET_IDS } from '@wrongstack/core/types';
-import { atomicWrite, type WstackPaths } from '@wrongstack/core/utils';
+import { updateJsonObjectFile, type WstackPaths } from '@wrongstack/core/utils';
+import { backupCurrent } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 
 /**
@@ -57,30 +58,16 @@ export function createThemeAdapter({ configStore, wpaths }: ThemeAdapterDeps): T
       if (!VALID_PRESETS.has(preset)) {
         throw new Error(`Unknown theme preset: ${preset}`);
       }
-      // Memory update first so any concurrent read sees the new value
-      // before the disk write completes (mirrors createSettingsAdapter).
-      configStore.update({ themePreset: preset });
-
-      // Then persist to disk. We read-modify-write the same JSON file the
+      // Persist to disk first. A failed write must not leave the running UI
+      // claiming a theme that will disappear on restart.
       // settings adapter targets so the source of truth stays single-file.
       const configPath = activeProfileConfigPath(wpaths, configStore.get());
-      let parsed: Record<string, unknown> = {};
-      try {
-        const raw = await fs.readFile(configPath, 'utf8');
-        parsed = JSON.parse(raw) as Record<string, unknown>;
-      } catch (err) {
-        const e = err as NodeJS.ErrnoException;
-        if (e.code !== 'ENOENT') {
-          // ENOENT = first-ever boot, the file just doesn't exist yet.
-          // Anything else (parse error, permission) surfaces to the caller
-          // so the UI can show an error rather than silently dropping the
-          // user's choice.
-          throw err;
-        }
-      }
-      parsed.themePreset = preset;
       await fs.mkdir(path.dirname(configPath), { recursive: true });
-      await atomicWrite(configPath, JSON.stringify(parsed, null, 2), { mode: 0o600 });
+      await updateJsonObjectFile(configPath, async (config) => {
+        await backupCurrent(undefined, configPath);
+        config.themePreset = preset;
+      });
+      configStore.update({ themePreset: preset });
     },
   };
 }

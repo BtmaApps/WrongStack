@@ -141,11 +141,20 @@ export function looksLikePowerShell(command: string): boolean {
   // pattern is rare in cmd.exe scripts (cmd.exe flags are usually `/x`),
   // so `-eq`, `-like`, etc. are reliable tells. We require a word boundary
   // on each side to avoid matching inside paths like `C:\foo-eq\bar`.
+  // Note: -f is excluded here because it is a universal CLI flag (`rm -f`,
+  // `git checkout -f`); the PowerShell string format operator is detected below.
   if (
-    /(?:^|[\s[({,;])(?:-eq|-ne|-lt|-gt|-le|-ge|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin|-and|-or|-not|-band|-bor|-bxor|-replace|-isplit|-csplit|-osplit|-join|-is|-as|-f)(?:$|[\s\])},;])/i.test(
+    /(?:^|[\s[({,;])(?:-eq|-ne|-lt|-gt|-le|-ge|-like|-notlike|-match|-notmatch|-contains|-notcontains|-in|-notin|-and|-or|-not|-band|-bor|-bxor|-replace|-isplit|-csplit|-osplit|-join|-is|-as)(?:$|[\s\])},;])/i.test(
       trimmed,
     )
   ) {
+    return true;
+  }
+
+  // PowerShell string format operator: `"{0}..." -f <args>`. Requires the
+  // preceding format string so CLI flags like `git checkout -f` or `rm -f`
+  // are never misclassified as PowerShell format operations.
+  if (/(?:'[^']*\{\d+\}[^']*'|"[^"]*\{\d+\}[^"]*")\s+-f(?:$|[\s\])},;])/i.test(trimmed)) {
     return true;
   }
 

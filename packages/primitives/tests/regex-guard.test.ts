@@ -94,6 +94,30 @@ describe('compileUserRegex — accepted patterns', () => {
     expect(compileUserRegex('(?:\\08|\\x008)+', '').ok).toBe(false);
   });
 
+  it('models ECMAScript whitespace: \\S is disjoint from Unicode spaces, \\s overlaps', () => {
+    for (const esc of [
+      '\\u00a0',
+      '\\u1680',
+      '\\u2000',
+      '\\u2028',
+      '\\u2029',
+      '\\u3000',
+      '\\ufeff',
+    ]) {
+      expect(compileUserRegex(`(?:\\S|${esc})+`, '').ok).toBe(true);
+      expect(compileUserRegex(`(?:\\s|${esc})+`, '').ok).toBe(false);
+    }
+  });
+
+  it('validates hex and unicode escapes strictly without partial-integer parsing', () => {
+    // \x1g is not a valid 2-digit hex escape (V8 treats \x as 'x' + '1g');
+    // it must not be partially parsed as codepoint 1 to falsely collide with \x01.
+    expect(compileUserRegex(String.raw`(?:\x1g|\x01)+`, '').ok).toBe(true);
+    expect(compileUserRegex(String.raw`(?:\u000z|\x00)+`, '').ok).toBe(true);
+    // True identical escapes still overlap.
+    expect(compileUserRegex(String.raw`(?:\x01|\x01)+`, '').ok).toBe(false);
+  });
+
   it('rejects case-folded branch overlap under the i flag', () => {
     // Without flag awareness the guard modeled 'ab' vs 'aB' as disjoint
     // (per-position 'a'∩'a' ok, 'b'∩'B'=∅) and compiled `(?:ab|aB)+` — but

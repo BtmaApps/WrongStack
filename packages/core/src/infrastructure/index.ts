@@ -27,9 +27,9 @@ export {
   everArtServer,
   fetchServer,
   filesystemServer,
-  gitServer,
   githubServer,
   gitlabServer,
+  gitServer,
   googleMapsServer,
   memoryServer,
   miniMaxVisionServer,
@@ -44,6 +44,8 @@ export {
   sqliteServer,
   sshManagerServer,
   zaiVisionServer,
+  zaiWebReaderServer,
+  zaiWebSearchServer,
 } from './mcp-servers.js';
 export { DefaultPathResolver } from './path-resolver.js';
 export { ProviderCacheLedger } from './provider-cache-ledger.js';

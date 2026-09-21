@@ -122,6 +122,13 @@ describe('formatters', () => {
         2,
       ),
     ).toContain('... truncated 1 more');
+    expect(formatLocations({ uri, range: range(0, 0) }, cwd)).toContain('a.ts:1:1');
+    expect(
+      formatLocations(
+        { targetUri: uri, targetSelectionRange: range(1, 2), targetRange: range(1, 2) },
+        cwd,
+      ),
+    ).toContain('a.ts:2:3');
   });
 
   it('summarizes workspace edits from both change shapes', () => {
@@ -148,6 +155,16 @@ describe('formatters', () => {
       ],
     } as never);
     expect([...mixed.values()][0]).toHaveLength(1);
+
+    const multiEditsSameDoc = editsByPath({
+      documentChanges: [
+        { textDocument: { uri, version: 1 }, edits: [{ range: range(0, 0), newText: 'first' }] },
+        { textDocument: { uri, version: 2 }, edits: [{ range: range(1, 0), newText: 'second' }] },
+      ],
+    });
+    const accumulated =
+      multiEditsSameDoc.get(`${cwd}\\a.ts`) ?? multiEditsSameDoc.get(`${cwd}/a.ts`);
+    expect(accumulated).toHaveLength(2);
   });
 });
 

@@ -61,8 +61,14 @@ function profileSnapshotTimestamp(fileName: string, fallback: number): number {
  */
 export async function findLatestProviderBackup(
   globalRoot: string,
+  profileName = 'default',
 ): Promise<ProviderConfigBackup | undefined> {
   const directory = path.join(globalRoot, 'config-history');
+  const escapedProfile = profileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const filePattern = new RegExp(
+    `^profiles-${escapedProfile}-config-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}\\.json$`,
+    'i',
+  );
   const candidates: Array<{ filePath: string; fileName: string; modifiedAtMs: number }> = [];
 
   let entries;
@@ -72,10 +78,7 @@ export async function findLatestProviderBackup(
     return undefined;
   }
   for (const entry of entries) {
-    if (
-      !entry.isFile() ||
-      !/^profiles-default-config-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}\.json$/i.test(entry.name)
-    ) {
+    if (!entry.isFile() || !filePattern.test(entry.name)) {
       continue;
     }
     const filePath = path.join(directory, entry.name);
@@ -120,19 +123,21 @@ async function restoreDefaultProfileBackup(opts: {
 export async function maybeRestoreDefaultProfileFromBackup(opts: {
   globalRoot: string;
   profilePath: string;
+  profileName?: string | undefined;
   renderer: TerminalRenderer;
   reader: ReadlineInputReader;
 }): Promise<boolean> {
   if (!(await defaultProfileProvidersAreEmpty(opts.profilePath))) return false;
 
-  const backup = await findLatestProviderBackup(opts.globalRoot);
+  const profileName = opts.profileName ?? 'default';
+  const backup = await findLatestProviderBackup(opts.globalRoot, profileName);
   if (!backup) return false;
 
   const shownProviders = backup.providerIds.slice(0, 5).join(', ');
   const remainder = backup.providerIds.length - 5;
   const providerSummary = remainder > 0 ? `${shownProviders} +${remainder}` : shownProviders;
   opts.renderer.write(
-    `\n  ${color.amber('○')} ${color.bold('default')} profile has no saved providers.\n` +
+    `\n  ${color.amber('○')} ${color.bold(profileName)} profile has no saved providers.\n` +
       `  ${color.dim('Latest usable backup:')} ${color.bold(backup.fileName)} ` +
       `${color.dim(`(${backup.providerIds.length} provider: ${providerSummary})`)}\n`,
   );

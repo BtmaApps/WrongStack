@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockDecrypt = vi.hoisted(() => vi.fn());
 const mockEncrypt = vi.hoisted(() => vi.fn());
 const mockAtomicWrite = vi.hoisted(() => vi.fn());
+const mockBackupConfigFile = vi.hoisted(() => vi.fn());
 const mockReadFile = vi.hoisted(() => vi.fn());
 
 vi.mock('@wrongstack/core/security', () => ({
@@ -22,6 +23,7 @@ vi.mock('@wrongstack/core/types', () => ({
 
 vi.mock('@wrongstack/core/utils', () => ({
   atomicWrite: mockAtomicWrite,
+  backupConfigFile: mockBackupConfigFile,
   withFileLock: (_path: string, run: () => Promise<unknown>) => run(),
 }));
 
@@ -85,6 +87,9 @@ describe('provider-config-io', () => {
       await saveProviders('/fake/config.json', vault, { test: { type: 'test' } });
 
       expect(mockEncrypt).toHaveBeenCalled();
+      expect(mockBackupConfigFile).toHaveBeenCalledWith('/fake/config.json', {
+        globalRoot: expect.any(String),
+      });
       expect(mockAtomicWrite).toHaveBeenCalledWith('/fake/config.json', expect.any(String), {
         mode: 0o600,
       });

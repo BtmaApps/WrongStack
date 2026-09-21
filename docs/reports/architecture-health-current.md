@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-20T19:17:04.223Z
+**Generated:** 2026-09-21T09:13:07.928Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 3969 |
-| Production source lines | 952874 |
-| Test files | 3574 |
+| Production source lines | 954130 |
+| Test files | 3575 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12854 |
+| Relative module edges | 12870 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -52,7 +52,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/sdd | 38 | 39 | @wrongstack/core, @wrongstack/kanban, @wrongstack/primitives, @wrongstack/requirement-intake |
 | @wrongstack/security-scanner | 18 | 27 | @wrongstack/core |
 | @wrongstack/simpleui | 102 | 75 | @wrongstack/kanban, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
-| @wrongstack/techstack | 50 | 37 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
+| @wrongstack/techstack | 50 | 38 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 36 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 224 | 268 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 412 | 374 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
@@ -93,8 +93,8 @@ None.
 | 989 | `packages/acp/src/client/acp-session.ts` |
 | 989 | `packages/webui/src/components/SettingsPanel/ProviderSection.tsx` |
 | 987 | `packages/core/src/core/system-prompt-builder.ts` |
+| 985 | `packages/core/src/coordination/sqlite-mailbox.ts` |
 | 983 | `packages/cli/src/webui-server.ts` |
-| 982 | `packages/core/src/coordination/sqlite-mailbox.ts` |
 | 981 | `packages/core/src/coordination/director.ts` |
 | 980 | `packages/webui/src/components/KanbanTaskInspector.tsx` |
 | 978 | `packages/core/src/execution/eternal-autonomy.ts` |
@@ -103,14 +103,14 @@ None.
 | 972 | `packages/providers/src/openai-codex.ts` |
 | 971 | `packages/core/src/coordination/fleet-supervisor.ts` |
 | 970 | `packages/webui-server/src/server/backend-services.ts` |
+| 968 | `packages/cli/src/execution.ts` |
 | 968 | `packages/core/src/security/yolo-risk.ts` |
-| 965 | `packages/cli/src/execution.ts` |
 | 965 | `packages/core/src/coordination/collab-debug.ts` |
 | 965 | `packages/webui/src/components/SidePanel/SessionList.tsx` |
 | 958 | `packages/core/src/coordination/director-tools.ts` |
 | 958 | `packages/plugins/src/prompt-firewall/index.ts` |
+| 955 | `packages/cli/src/slash-commands/settings-mutations.ts` |
 | 955 | `packages/webui/src/stores/local-prefs.ts` |
-| 950 | `packages/cli/src/slash-commands/settings-mutations.ts` |
 | 949 | `packages/webui/src/components/CodeMap.tsx` |
 | 947 | `packages/webui/src/components/SettingsPanel/MCPSection.tsx` |
 | 943 | `packages/core/src/chronicle/project-server.ts` |
@@ -127,10 +127,10 @@ None.
 | 930 | `packages/sdd/src/sdd-parallel-run.ts` |
 | 928 | `packages/webui/src/stores/session-tab-store.ts` |
 | 926 | `packages/mcp/src/authorization.ts` |
+| 925 | `packages/cli/src/boot.ts` |
 | 925 | `packages/core/src/utils/tool-output-serializer.ts` |
 | 925 | `packages/tools/src/codebase-index/project-server-client.ts` |
 | 925 | `packages/tui/src/submit-controller.ts` |
-| 924 | `packages/cli/src/boot.ts` |
 | 924 | `packages/core/src/plugin/api.ts` |
 | 924 | `packages/tui/src/input-validation.ts` |
 | 923 | `packages/tui/src/hooks/use-picker-keys-tools-settings.ts` |
@@ -138,7 +138,7 @@ None.
 
 ## Exports only tests reference
 
-- 941 runtime exports are referenced by tests and by no other production file.
+- 942 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 

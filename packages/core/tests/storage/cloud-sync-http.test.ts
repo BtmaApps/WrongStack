@@ -276,7 +276,10 @@ describe('CloudSync.push via real githubFetch', () => {
 });
 
 describe('CloudSync.pull via real githubFetch', () => {
-  function stubPull(treeEntries: Array<{ path: string; sha: string; type: string }>) {
+  function stubPull(
+    treeEntries: Array<{ path: string; sha: string; type: string }>,
+    blob: Record<string, unknown> = { pulled: true },
+  ) {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       const u = String(url);
       const m = init?.method;
@@ -288,7 +291,7 @@ describe('CloudSync.pull via real githubFetch', () => {
       if (u.includes('/git/trees/') && m === 'GET')
         return json({ tree: treeEntries, truncated: false });
       if (u.includes('/git/blobs/') && m === 'GET')
-        return json({ content: Buffer.from('{"pulled":true}').toString('base64') });
+        return json({ content: Buffer.from(JSON.stringify(blob)).toString('base64') });
       return json({}, 404);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -351,12 +354,16 @@ describe('CloudSync.pull via real githubFetch', () => {
     expect(res.ok).toBe(true);
   });
 
-  it('writes a file-backed category directly when the remote path has no subpath', async () => {
-    stubPull([{ path: 'data/settings', sha: 'b1', type: 'blob' }]);
+  it('merges a file-backed category through the portable settings contract', async () => {
+    stubPull([{ path: 'data/settings', sha: 'b1', type: 'blob' }], { hints: true });
+    const settingsPath = path.join(dir, 'profiles', 'default', 'config.json');
+    await fs.writeFile(settingsPath, JSON.stringify({ setting: true, apiKey: 'enc:v1:local' }));
     await make(cfg({ categories: ['settings'] })).pull('tok');
-    expect(
-      JSON.parse(await fs.readFile(path.join(dir, 'profiles', 'default', 'config.json'), 'utf8')),
-    ).toEqual({ pulled: true });
+    expect(JSON.parse(await fs.readFile(settingsPath, 'utf8'))).toEqual({
+      setting: true,
+      apiKey: 'enc:v1:local',
+      hints: true,
+    });
     expect(JSON.parse(await fs.readFile(path.join(dir, 'config.json'), 'utf8'))).toEqual({
       setting: true,
     });

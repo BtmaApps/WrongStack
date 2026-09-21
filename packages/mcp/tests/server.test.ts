@@ -509,6 +509,22 @@ describe('toContentBlocks', () => {
     expect(toContentBlocks(circular)).toEqual([{ type: 'text', text: '[object Object]' }]);
     expect(toContentBlocks([])).toEqual([]);
   });
+
+  it('preserves structured non-text content blocks in arrays', () => {
+    const mixedBlocks = [
+      { type: 'text', text: 'caption' },
+      { type: 'image', mimeType: 'image/png', data: 'abc' },
+      { type: 'audio', mimeType: 'audio/wav', data: 'def' },
+      { type: 'resource', resource: { uri: 'file:///tmp', text: 'data' } },
+      { type: 'resource_link', uri: 'file:///link' },
+    ];
+    expect(toContentBlocks(mixedBlocks)).toEqual(mixedBlocks);
+  });
+
+  it('preserves single content block objects', () => {
+    const imageBlock = { type: 'image', mimeType: 'image/jpeg', data: 'xyz' };
+    expect(toContentBlocks(imageBlock)).toEqual([imageBlock]);
+  });
 });
 
 describe('serveStdio', () => {

@@ -592,7 +592,8 @@ export interface AvailableCommandsUpdate {
 
 export interface CurrentModeUpdate {
   sessionUpdate: 'current_mode_update';
-  modeId: SessionModeId;
+  currentModeId: SessionModeId;
+  modeId?: SessionModeId;
 }
 
 export interface ConfigOptionUpdate {

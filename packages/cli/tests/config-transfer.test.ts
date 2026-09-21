@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { stripAnsi } from '@wrongstack/core/utils';
@@ -135,6 +135,8 @@ describe('wstack config-import', () => {
     expect(cfg.fallbackModels).toEqual(['p1/m1']);
     expect(cfg.providers.evil).toBeUndefined();
     expect(cfg.modelMatrix.git.fallbackProfile).toBe('balanced');
+    expect(existsSync(`${profilePath}.last`)).toBe(true);
+    expect(JSON.parse(readFileSync(`${profilePath}.last`, 'utf8')).yolo).toBe(false);
   });
 
   it('reports nothing-to-import for exports without known sections', async () => {

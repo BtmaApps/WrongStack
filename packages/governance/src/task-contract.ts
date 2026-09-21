@@ -222,6 +222,10 @@ function hasMutatingOperation(operations: readonly GovernedOperation[]): boolean
   return operations.some((operation) => operation !== 'repository_read');
 }
 
+function normalizePath(value: string): string {
+  return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
+}
+
 export function validateTaskContractV1(contract: TaskContractV1): ContractValidationResult {
   const issues: ContractValidationIssue[] = [];
 
@@ -327,10 +331,9 @@ export function validateTaskContractV1(contract: TaskContractV1): ContractValida
       message: 'Mutating operations require at least one allowed path.',
     });
   }
-
-  const allowedPaths = new Set(contract.autonomy.allowedPaths);
+  const allowedPaths = new Set(contract.autonomy.allowedPaths.map(normalizePath));
   for (const deniedPath of contract.autonomy.deniedPaths) {
-    if (allowedPaths.has(deniedPath)) {
+    if (allowedPaths.has(normalizePath(deniedPath))) {
       issues.push({
         code: 'path_scope_conflict',
         path: 'autonomy.deniedPaths',

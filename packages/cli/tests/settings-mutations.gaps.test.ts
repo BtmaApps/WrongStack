@@ -31,6 +31,12 @@ function makeCtx(config: Record<string, unknown> = {}, extra: Record<string, unk
   const ctx = {
     configStore: store,
     paths: { globalConfig, profileConfig: () => globalConfig, inProjectConfig },
+    vault: {
+      encrypt: (value: string) => `enc:test:${value}`,
+      decrypt: (value: string) => value.replace(/^enc:test:/, ''),
+      isEncrypted: (value: string) => value.startsWith('enc:test:'),
+      keyVersion: 1,
+    },
     ...extra,
   } as never as SlashCommandContext;
   return { ctx };
@@ -70,7 +76,13 @@ describe('executeSettingsSubcommand — toggles, enums, and numbers', () => {
       at: 'hq.url',
       want: 'http://localhost:3499',
     },
-    { sub: 'hq-token', args: 'tok-123', msg: 'HQ token saved', at: 'hq.token', want: 'tok-123' },
+    {
+      sub: 'hq-token',
+      args: 'tok-123',
+      msg: 'HQ token saved',
+      at: 'hq.token',
+      want: 'enc:test:tok-123',
+    },
     { sub: 'hq-raw', args: 'on', msg: 'HQ raw content → on', at: 'hq.rawContent', want: true },
     {
       sub: 'delay',

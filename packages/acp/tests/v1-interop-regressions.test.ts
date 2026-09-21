@@ -106,7 +106,7 @@ describe('official SDK v1 interoperability', () => {
   });
 
   it('returns SDK-compatible mode state for new, load, fork and resume', async () => {
-    const { agent } = connect();
+    const { agent, updates } = connect();
     await agent.request('initialize', { protocolVersion: 1, clientCapabilities: {} });
     const created = await agent.request('session/new', { cwd: process.cwd(), mcpServers: [] });
     expect(created.modes?.currentModeId).toBe('code');
@@ -118,6 +118,11 @@ describe('official SDK v1 interoperability', () => {
       });
       expect(result.modes?.currentModeId).toBe('code');
     }
+    const modeUpdates = updates.filter(
+      (u: any) => u?.update?.sessionUpdate === 'current_mode_update',
+    );
+    expect(modeUpdates.length).toBeGreaterThan(0);
+    expect(modeUpdates[0].update.currentModeId).toBe('code');
   });
 
   it('only advertises terminal login to capable clients and never promises a no-op logout', async () => {

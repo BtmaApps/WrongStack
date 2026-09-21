@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { decryptConfigSecretsForRewrite, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { ConfigStore } from '@wrongstack/core/types';
 import { ConfigError, ERROR_CODES, FsError, type SecretVault } from '@wrongstack/core/types';
-import { atomicWrite, deepMerge } from '@wrongstack/core/utils';
+import { atomicWrite, deepMerge, withFileLock } from '@wrongstack/core/utils';
+import { appendHistory, backupCurrent } from './config-history.js';
 
 /** Configuration and storage dependencies needed to persist a setting.
  *  This is safe to call from non-interactive surfaces such as the TUI,
@@ -27,6 +28,8 @@ interface PersistSettingDeps {
    * from landing in the wrong profile when the mutator changes activeProfile.
    */
   resolveProfilePath?: ((profileName: string) => string) | undefined;
+  /** Skip the live ConfigStore mirror when a caller is persisting a secondary split target. */
+  updateStore?: boolean | undefined;
 }
 
 export function resolvePersistPath(deps: PersistSettingDeps): string {
@@ -71,7 +74,10 @@ export function resolveActualTarget(
  * Returns false for project-scoped paths where credentials must be filtered.
  */
 function isProfileOrGlobalTarget(actualTarget: string, deps: PersistSettingDeps): boolean {
-  return actualTarget === deps.profileConfigPath;
+  return (
+    !deps.inProjectConfigPath ||
+    path.resolve(actualTarget) !== path.resolve(deps.inProjectConfigPath)
+  );
 }
 
 async function ensureProjectDir(filePath: string): Promise<void> {
@@ -84,55 +90,6 @@ async function ensureProjectDir(filePath: string): Promise<void> {
 }
 
 /**
- * When configScope changed mid-save, the write target differs from the file
- * that was read.  Read the *destination* file, decrypt it, and deep-merge the
- * mutated `source` on top (prefer-patch so the user's explicit changes win).
- * This prevents a sparse source (e.g. project config without credentials)
- * from clobbering credential-bearing fields in the destination (e.g. profile
- * config with apiKey / providers / mcpServers).
- *
- * Returns `source` unchanged when destination does not exist yet.
- */
-async function mergeWithDestinationIfExists(
-  destPath: string,
-  source: Record<string, unknown>,
-  vault: SecretVault,
-): Promise<Record<string, unknown>> {
-  let destRaw: string;
-  try {
-    destRaw = await fs.readFile(destPath, 'utf8');
-  } catch (err) {
-    // Only swallow ENOENT (destination doesn't exist yet).
-    // All other errors (EACCES, EIO, etc.) propagate as-is.
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return source;
-    }
-    throw err;
-  }
-  let destParsed: Record<string, unknown>;
-  try {
-    destParsed = JSON.parse(destRaw) as Record<string, unknown>;
-  } catch (err) {
-    // Corrupt destination — don't merge, just write our content.
-    process.stderr.write(
-      JSON.stringify({
-        level: 'warn',
-        event: 'settings_menu_merge_skipped',
-        message: `Skipping merge into corrupt destination file: ${destPath}`,
-        timestamp: new Date().toISOString(),
-      }) + '\n',
-    );
-    void err;
-    return source;
-  }
-  const destDecrypted = decryptConfigSecretsForRewrite(destParsed, vault) as Record<
-    string,
-    unknown
-  >;
-  return deepMerge(destDecrypted, source) as Record<string, unknown>;
-}
-
-/**
  * Fields that are safe to persist in a per-project `.wrongstack/config.json`.
  * Credential-bearing fields (apiKey, providers, sync) MUST NOT appear here —
  * they stay in the active profile config only. The active profile always gets the
@@ -142,8 +99,9 @@ async function mergeWithDestinationIfExists(
  * If the answer is no, it doesn't belong on this list.
  */
 const PROJECT_SAFE_FIELDS = new Set([
-  'provider',
+  'version',
   'model',
+  'cwd',
   'fallbackModels',
   'fallbackBridge',
   // Kept in sync with core's IN_PROJECT_ALLOWED_KEYS (config-loader.ts): these
@@ -152,19 +110,23 @@ const PROJECT_SAFE_FIELDS = new Set([
   // profile/fav write (or a TUI full-config write under project scope) would be
   // silently dropped while the loader would happily accept them on next boot.
   'fallbackProfiles',
+  'fallbackProfile',
   'favoriteModels',
+  'disabledModels',
   'favoriteModelsOnly',
   'modelAvailabilitySchedule',
   'fallbackAuto',
+  'fallbackStickiness',
+  'fallbackGateSeconds',
   'models',
   'modelMatrix',
+  'modelTiers',
   'maxConcurrent',
   'autonomy',
   'hints',
   'nextPrediction',
   'debugStream',
   'configScope',
-  'yolo',
   'features',
   'context',
   'log',
@@ -176,7 +138,53 @@ const PROJECT_SAFE_FIELDS = new Set([
   'adaptiveConcurrency',
   'modelRuntime',
   'Sage',
+  'skills',
+  'chronicle',
+  'uiLocale',
+  'themePreset',
 ]);
+
+// Must mirror Core's IN_PROJECT_DENIED_PATHS. Keeping the write boundary at
+// least as strict as the read boundary prevents a setting from reporting
+// success for a value the next boot will deliberately discard.
+const PROJECT_DENIED_PATHS = [
+  'tools.exec.allow',
+  'tools.exec.danger',
+  'tools.council',
+  'skills.extraDirs',
+  'skills.registryUrl',
+  'skills.suggest',
+  'Sage.storage.directory',
+  'autonomy.yolo',
+  'autonomy.defaultMode',
+  'autonomy.yoloConfirm',
+  'launch.autonomy',
+  'features.allowOutsideProjectRoot',
+  'tools.restrictToProjectRoot',
+  'tools.loopDetection',
+  'tools.maxIterations',
+  'tools.autoExtendLimit',
+  'tools.maxAutoExtensions',
+  'tools.kanbanGovernance',
+  'tools.autoThin',
+  'tools.disabledToolMeta',
+  'tools.wrongProxy',
+  'features.mailboxBridge',
+  'features.pluginsTrust',
+] as const;
+
+function deleteProjectDeniedPath(target: Record<string, unknown>, dotted: string): void {
+  const parts = dotted.split('.');
+  const leaf = parts.pop();
+  if (!leaf) return;
+  let cursor: Record<string, unknown> = target;
+  for (const part of parts) {
+    const next = cursor[part];
+    if (!next || typeof next !== 'object' || Array.isArray(next)) return;
+    cursor = next as Record<string, unknown>;
+  }
+  delete cursor[leaf];
+}
 
 /**
  * Strip credential-bearing and machine-specific fields from a config object
@@ -187,10 +195,115 @@ export function filterSafeForProject(cfg: Record<string, unknown>): Record<strin
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(cfg)) {
     if (PROJECT_SAFE_FIELDS.has(key)) {
-      out[key] = value;
+      out[key] = structuredClone(value);
     }
   }
+  for (const denied of PROJECT_DENIED_PATHS) deleteProjectDeniedPath(out, denied);
   return out;
+}
+
+async function readConfigForRewrite(
+  filePath: string,
+  vault: SecretVault,
+): Promise<Record<string, unknown>> {
+  let raw: string;
+  let fileExists = true;
+  try {
+    raw = await fs.readFile(filePath, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new FsError({
+        message: `Could not read ${filePath}`,
+        code: ERROR_CODES.FS_READ_FAILED,
+        path: filePath,
+        cause: err,
+      });
+    }
+    fileExists = false;
+    raw = '{}';
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
+  } catch (err) {
+    if (fileExists) {
+      throw new ConfigError({
+        message: `Config at ${filePath} is not valid JSON`,
+        code: ERROR_CODES.CONFIG_PARSE_FAILED,
+        context: { path: filePath },
+        cause: err,
+      });
+    }
+    return {};
+  }
+}
+
+async function writeConfigMutation(
+  deps: PersistSettingDeps,
+  mutator: (config: Record<string, unknown>) => void,
+): Promise<Record<string, unknown>> {
+  const sourcePath = resolvePersistPath(deps);
+  await ensureProjectDir(sourcePath);
+
+  let mutated: Record<string, unknown> = {};
+  let sourceBefore: Record<string, unknown> = {};
+  let actualTarget = sourcePath;
+  let wroteSource = false;
+
+  await withFileLock(sourcePath, async () => {
+    mutated = await readConfigForRewrite(sourcePath, deps.vault);
+    sourceBefore = structuredClone(mutated);
+    mutator(mutated);
+    actualTarget = resolveActualTarget(deps, mutated, sourcePath);
+    if (actualTarget !== sourcePath) return;
+
+    const toWrite = isProfileOrGlobalTarget(actualTarget, deps)
+      ? mutated
+      : filterSafeForProject(mutated);
+    await backupCurrent(undefined, actualTarget);
+    await atomicWrite(
+      actualTarget,
+      JSON.stringify(encryptConfigSecrets(toWrite, deps.vault), null, 2),
+      { mode: 0o600 },
+    );
+    try {
+      await appendHistory(sourceBefore, toWrite, 'Settings updated', undefined, actualTarget);
+    } catch {
+      // The config write is authoritative; history is best-effort.
+    }
+    wroteSource = true;
+  });
+
+  if (!wroteSource) {
+    await ensureProjectDir(actualTarget);
+    await withFileLock(actualTarget, async () => {
+      const destinationBefore = await readConfigForRewrite(actualTarget, deps.vault);
+      const effectiveConfig = deepMerge(destinationBefore, mutated) as Record<string, unknown>;
+      const toWrite = isProfileOrGlobalTarget(actualTarget, deps)
+        ? effectiveConfig
+        : filterSafeForProject(effectiveConfig);
+      await backupCurrent(undefined, actualTarget);
+      await atomicWrite(
+        actualTarget,
+        JSON.stringify(encryptConfigSecrets(toWrite, deps.vault), null, 2),
+        { mode: 0o600 },
+      );
+      try {
+        await appendHistory(
+          destinationBefore,
+          toWrite,
+          'Settings scope changed and settings were updated',
+          undefined,
+          actualTarget,
+        );
+      } catch {
+        // The config write is authoritative; history is best-effort.
+      }
+    });
+  }
+
+  return mutated;
 }
 
 /**
@@ -209,74 +322,20 @@ export async function persistAutonomySetting(
     enhanceLanguage?: string | undefined;
   }) => void,
 ): Promise<void> {
-  const targetPath = resolvePersistPath(deps);
-  await ensureProjectDir(targetPath);
-
-  let raw: string;
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new FsError({
-        message: `Could not read ${targetPath}`,
-        code: ERROR_CODES.FS_READ_FAILED,
-        path: targetPath,
-        cause: err,
-      });
-    }
-    fileExists = false;
-    raw = '{}';
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        message: `Config at ${targetPath} is not valid JSON`,
-        code: ERROR_CODES.CONFIG_PARSE_FAILED,
-        context: { path: targetPath },
-        cause: err,
-      });
-    }
-    parsed = {};
-  }
-
-  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
-  const autonomy = (decrypted.autonomy as Record<string, unknown>) ?? {};
-  mutator(
-    autonomy as { autoProceedDelayMs?: number | undefined; defaultMode?: string | undefined },
-  );
-  decrypted.autonomy = autonomy;
-
-  // Re-resolve path — the mutator might have changed configScope.
-  const actualTarget = resolveActualTarget(deps, decrypted as Record<string, unknown>, targetPath);
-  if (actualTarget !== targetPath) {
-    await ensureProjectDir(actualTarget);
-  }
-
-  // When configScope changed mid-save, merge into the destination file's
-  // existing content so credential-bearing fields are preserved.
-  const effectiveConfig =
-    actualTarget !== targetPath
-      ? await mergeWithDestinationIfExists(actualTarget, decrypted, deps.vault)
-      : decrypted;
-
-  // When writing to the project-local config, strip credentials so
-  // apiKey / providers / sync never leak into a per-project file.
-  const toWrite = isProfileOrGlobalTarget(actualTarget, deps)
-    ? effectiveConfig
-    : filterSafeForProject(effectiveConfig);
-
-  const encrypted = encryptConfigSecrets(toWrite, deps.vault);
-  await atomicWrite(actualTarget, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  const decrypted = await writeConfigMutation(deps, (config) => {
+    const autonomy = (config.autonomy as Record<string, unknown>) ?? {};
+    mutator(
+      autonomy as { autoProceedDelayMs?: number | undefined; defaultMode?: string | undefined },
+    );
+    config.autonomy = autonomy;
+  });
 
   // Also update the in-memory config store so changes are immediately visible
-  deps.configStore.update({
-    autonomy: decrypted.autonomy as Parameters<typeof deps.configStore.update>[0]['autonomy'],
-  });
+  if (deps.updateStore !== false) {
+    deps.configStore.update({
+      autonomy: decrypted.autonomy as Parameters<typeof deps.configStore.update>[0]['autonomy'],
+    });
+  }
 }
 
 /**
@@ -288,70 +347,10 @@ export async function persistConfigSetting(
   deps: PersistSettingDeps,
   mutator: (config: Record<string, unknown>) => void,
 ): Promise<void> {
-  const targetPath = resolvePersistPath(deps);
-  await ensureProjectDir(targetPath);
-
-  let raw: string;
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new FsError({
-        message: `Could not read ${targetPath}`,
-        code: ERROR_CODES.FS_READ_FAILED,
-        path: targetPath,
-        cause: err,
-      });
-    }
-    fileExists = false;
-    raw = '{}';
+  const decrypted = await writeConfigMutation(deps, mutator);
+  if (deps.updateStore !== false) {
+    deps.configStore.update(decrypted as Parameters<typeof deps.configStore.update>[0]);
   }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        message: `Config at ${targetPath} is not valid JSON`,
-        code: ERROR_CODES.CONFIG_PARSE_FAILED,
-        context: { path: targetPath },
-        cause: err,
-      });
-    }
-    parsed = {};
-  }
-
-  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
-  mutator(decrypted);
-
-  // If the mutator changed configScope, re-resolve the target path.
-  // Without this, a scope change from 'project' → 'global' would write
-  // to the old project path instead of the new global one.
-  const actualTarget = resolveActualTarget(deps, decrypted, targetPath);
-
-  // Ensure the directory exists if we're writing to a new path
-  if (actualTarget !== targetPath) {
-    await ensureProjectDir(actualTarget);
-  }
-
-  // When configScope changed mid-save, merge into the destination file's
-  // existing content so credential-bearing fields are preserved.
-  const effectiveConfig =
-    actualTarget !== targetPath
-      ? await mergeWithDestinationIfExists(actualTarget, decrypted, deps.vault)
-      : decrypted;
-
-  // When writing to the project-local config, strip credentials so
-  // apiKey / providers / sync never leak into a per-project file.
-  const toWrite = isProfileOrGlobalTarget(actualTarget, deps)
-    ? effectiveConfig
-    : filterSafeForProject(effectiveConfig);
-
-  const encrypted = encryptConfigSecrets(toWrite, deps.vault);
-  await atomicWrite(actualTarget, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
-  deps.configStore.update(decrypted as Parameters<typeof deps.configStore.update>[0]);
 }
 
 /**
@@ -363,49 +362,13 @@ export async function persistTelegramConfig(
   deps: PersistSettingDeps,
   mutator: (telegram: Record<string, unknown>) => void,
 ): Promise<void> {
-  const targetPath = deps.profileConfigPath;
-  let raw: string;
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new FsError({
-        message: `Could not read ${targetPath}: ${(err as Error).message}`,
-        code: 'FS_READ_FAILED',
-        path: targetPath,
-        context: { operation: 'readGlobalConfig', phase: 'read' },
-        cause: err,
-      });
-    }
-    fileExists = false;
-    raw = '{}';
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        message: `Config at ${targetPath} is not valid JSON: ${(err as Error).message}`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: targetPath, operation: 'readProfileConfig' },
-        cause: err,
-      });
-    }
-    parsed = {};
-  }
-
-  const decrypted = decryptConfigSecretsForRewrite(parsed, deps.vault) as Record<string, unknown>;
-  const extensions = (decrypted.extensions as Record<string, Record<string, unknown>>) ?? {};
-  const telegram = extensions.telegram ?? {};
-  mutator(telegram);
-  extensions.telegram = telegram;
-  decrypted.extensions = extensions;
-
-  const encrypted = encryptConfigSecrets(decrypted, deps.vault);
-  await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  const decrypted = await writeConfigMutation({ ...deps, forceGlobal: true }, (config) => {
+    const extensions = (config.extensions as Record<string, Record<string, unknown>>) ?? {};
+    const telegram = extensions.telegram ?? {};
+    mutator(telegram);
+    extensions.telegram = telegram;
+    config.extensions = extensions;
+  });
   // Encrypting a new secret can create the vault key and schedule Windows ACL
   // hardening. Do not let a short-lived setup command return while that work
   // (and any warning it emits) is still detached from the command lifecycle.
@@ -413,7 +376,7 @@ export async function persistTelegramConfig(
 
   // Also update the in-memory config store so changes are immediately visible
   deps.configStore.update({
-    extensions: extensions as NonNullable<
+    extensions: decrypted.extensions as NonNullable<
       Parameters<typeof deps.configStore.update>[0]['extensions']
     >,
   });

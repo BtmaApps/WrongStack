@@ -38,6 +38,7 @@ import type {
   PromptLoader,
   ProviderConfig,
   ResolvedProvider,
+  SecretVault,
   SessionEvent,
   SessionStore,
   SessionWriter,
@@ -119,6 +120,7 @@ interface CoreDeps {
   events: EventBus;
   config: Config;
   configStore: ConfigStore;
+  vault?: SecretVault | undefined;
   wpaths: WstackPaths;
   projectRoot: string;
   flags: Record<string, string | boolean>;

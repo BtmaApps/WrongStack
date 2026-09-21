@@ -70,6 +70,7 @@ export interface WsClientActionMethods {
     allowedTools?: string[];
     url?: string;
     headers?: Record<string, string>;
+    bearerTokenEnv?: string;
     lazy?: boolean;
   }): void;
   removeMcpServer(name: string): void;
@@ -84,6 +85,7 @@ export interface WsClientActionMethods {
     allowedTools?: string[];
     url?: string;
     headers?: Record<string, string>;
+    bearerTokenEnv?: string;
     lazy?: boolean;
   }): void;
   wakeMcpServer(name: string): void;

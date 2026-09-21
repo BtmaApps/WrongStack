@@ -239,4 +239,15 @@ describe('LSP server completion coverage', () => {
     value.notifyDidClose('file:///a.ts');
     expect(value.getDiagnostics('file:///a.ts')).toEqual([]);
   });
+
+  it('waitForDiagnostics returns immediately when signal is already aborted', async () => {
+    const value = server();
+    (value as unknown as { state: string }).state = 'ready';
+    const controller = new AbortController();
+    controller.abort();
+    const start = Date.now();
+    const diags = await value.waitForDiagnostics('file:///a.ts', 5_000, controller.signal);
+    expect(Date.now() - start).toBeLessThan(100);
+    expect(diags).toEqual([]);
+  });
 });

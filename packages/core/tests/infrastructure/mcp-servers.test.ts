@@ -29,6 +29,8 @@ import {
   sqliteServer,
   sshManagerServer,
   zaiVisionServer,
+  zaiWebReaderServer,
+  zaiWebSearchServer,
 } from '../../src/infrastructure/mcp-servers.js';
 import type { MCPServerConfig } from '../../src/types/config.js';
 
@@ -82,6 +84,8 @@ describe('built-in MCP server presets (V0-D)', () => {
     ['google-maps', googleMapsServer],
     ['sentinel', sentinelServer],
     ['zai-vision', zaiVisionServer],
+    ['zai-web-search', zaiWebSearchServer],
+    ['zai-web-reader', zaiWebReaderServer],
     ['minimax-vision', miniMaxVisionServer],
     ['playwright', playwrightServer],
     ['ssh', sshManagerServer],
@@ -111,6 +115,8 @@ describe('built-in MCP server presets (V0-D)', () => {
     expect(names).toContain('github');
     expect(names).toContain('context7');
     expect(names).toContain('zai-vision');
+    expect(names).toContain('zai-web-search');
+    expect(names).toContain('zai-web-reader');
     expect(names).toContain('minimax-vision');
     expect(names).toContain('playwright');
     expect(names).toContain('ssh');

@@ -144,19 +144,22 @@ export function wrapMemoryPortWithVectorRecall(
       return isSageVisibleForSearch(memory, searchOpts) ? memory : undefined;
     };
 
-  const fusionOptions = (searchOpts: SageSearchOptions | undefined) => ({
-    vectorRecall: recall,
-    materializeVectorOnly: materializeFor(searchOpts),
-    ...(options.weight !== undefined ? { vectorWeight: options.weight } : {}),
-    ...(options.threshold !== undefined ? { threshold: options.threshold } : {}),
-    ...(options.vectorOnlyThreshold !== undefined
-      ? { vectorOnlyThreshold: options.vectorOnlyThreshold }
-      : {}),
-    ...(options.maxMaterializations !== undefined
-      ? { maxMaterializations: options.maxMaterializations }
-      : {}),
-    ...(searchOpts?.limit !== undefined ? { limit: searchOpts.limit } : {}),
-  });
+  const fusionOptions = (searchOpts: SageSearchOptions | undefined) => {
+    const vectorWeight = searchOpts?.vectorRecallWeight ?? options.weight;
+    const threshold = searchOpts?.vectorRecallMinScore ?? options.threshold;
+    const vectorOnlyThreshold = searchOpts?.vectorRecallThreshold ?? options.vectorOnlyThreshold;
+    return {
+      vectorRecall: recall,
+      materializeVectorOnly: materializeFor(searchOpts),
+      ...(vectorWeight !== undefined ? { vectorWeight } : {}),
+      ...(threshold !== undefined ? { threshold } : {}),
+      ...(vectorOnlyThreshold !== undefined ? { vectorOnlyThreshold } : {}),
+      ...(options.maxMaterializations !== undefined
+        ? { maxMaterializations: options.maxMaterializations }
+        : {}),
+      ...(searchOpts?.limit !== undefined ? { limit: searchOpts.limit } : {}),
+    };
+  };
 
   /**
    * A caller that supplied its own `vectorRecall` has opted into the

@@ -19,6 +19,7 @@ import {
 } from './mailbox-http-auth.js';
 
 export type { MailboxHttpAccessDecision };
+
 import type { MailboxHttpRateLimiter } from './mailbox-http-rate-limit.js';
 import { createCredentialRevalidator, handleSse } from './mailbox-http-sse.js';
 import {
@@ -94,7 +95,10 @@ export function createMailboxHttpRouter(options: MailboxHttpRouterOptions): Mail
         const url = routePath ?? request.url ?? '/';
         const method = request.method ?? 'GET';
 
-        if (method === 'GET' && url === '/healthz') {
+        const queryIndex = url.indexOf('?');
+        const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex);
+
+        if (method === 'GET' && pathname === '/healthz') {
           writeJson(response, 200, { ok: true });
           return;
         }

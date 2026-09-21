@@ -8,7 +8,13 @@ import {
   type ProviderConfig,
   type WireFamily,
 } from '@wrongstack/core/types';
-import { atomicWrite, color, expectDefined } from '@wrongstack/core/utils';
+import {
+  atomicWrite,
+  backupConfigFile,
+  color,
+  expectDefined,
+  withFileLock,
+} from '@wrongstack/core/utils';
 import { activeProfileConfigPath } from '../../profile-config-path.js';
 import { mutateConfigProviders } from '../../provider-config-utils.js';
 import { visibleModelIds } from '../../provider-helpers.js';
@@ -611,34 +617,37 @@ async function mutateModelsConfig(
 ): Promise<void> {
   const vault = deps.vault;
   const configPath = activeProfileConfigPath(deps.paths, deps.config);
-  let fileExists = true;
-  let raw: string;
-  try {
-    raw = await fs.readFile(configPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    fileExists = false;
-    raw = '{}';
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        message: `Refusing to overwrite corrupt config at ${configPath} (${(err as Error).message}).`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: configPath, operation: 'mutateModelsConfig' },
-      });
+  await withFileLock(configPath, async () => {
+    let fileExists = true;
+    let raw: string;
+    try {
+      raw = await fs.readFile(configPath, 'utf8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      fileExists = false;
+      raw = '{}';
     }
-    parsed = {};
-  }
-  const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
-  const models = (decrypted.models as Record<string, CustomModelDefinition>) ?? {};
-  mutator(models);
-  decrypted.models = models;
-  const encrypted = encryptConfigSecrets(decrypted, vault);
-  await atomicWrite(configPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(raw) as Record<string, unknown>;
+    } catch (err) {
+      if (fileExists) {
+        throw new ConfigError({
+          message: `Refusing to overwrite corrupt config at ${configPath} (${(err as Error).message}).`,
+          code: 'CONFIG_PARSE_FAILED',
+          context: { filePath: configPath, operation: 'mutateModelsConfig' },
+        });
+      }
+      parsed = {};
+    }
+    const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
+    const models = (decrypted.models as Record<string, CustomModelDefinition>) ?? {};
+    mutator(models);
+    decrypted.models = models;
+    const encrypted = encryptConfigSecrets(decrypted, vault);
+    await backupConfigFile(configPath, { globalRoot: deps.paths.globalRoot });
+    await atomicWrite(configPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+  });
 }
 
 /** Parse a human-readable size like "128k", "1M", "200000" into a number. */

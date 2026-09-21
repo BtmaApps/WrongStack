@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { atomicWrite } from './atomic-write.js';
+import { atomicWrite, withFileLock } from './atomic-write.js';
 import { FORBIDDEN_PROTO_KEYS } from './deep-merge.js';
 
 export type JsonObject = Record<string, unknown>;
@@ -32,11 +32,30 @@ export async function updateJsonObjectFile(
   filePath: string,
   mutator: (config: JsonObject) => void | JsonObject | Promise<void | JsonObject>,
 ): Promise<JsonObject> {
-  const config = await readJsonObjectFile(filePath);
-  const maybeNext = await mutator(config);
-  const next = maybeNext && isJsonObject(maybeNext) ? maybeNext : config;
-  await writeJsonObjectFile(filePath, next);
-  return next;
+  return withFileLock(filePath, async () => {
+    let config: JsonObject = {};
+    try {
+      const parsed = JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown;
+      if (!isJsonObject(parsed)) {
+        throw new Error(`Refusing to overwrite non-object JSON at ${filePath}`);
+      }
+      config = parsed;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        if (err instanceof SyntaxError) {
+          throw new Error(
+            `Config at ${filePath} is not valid JSON. Refusing to overwrite corrupt JSON.`,
+            { cause: err },
+          );
+        }
+        throw err;
+      }
+    }
+    const maybeNext = await mutator(config);
+    const next = maybeNext && isJsonObject(maybeNext) ? maybeNext : config;
+    await writeJsonObjectFile(filePath, next);
+    return next;
+  });
 }
 
 /**

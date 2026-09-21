@@ -1,5 +1,5 @@
-import * as fs from 'node:fs/promises';
 import type { Context, SystemBlockSource } from '@wrongstack/core/agent';
+import { noOpVault } from '@wrongstack/core/security';
 import type { Config, ContextWindowPolicy, SlashCommand } from '@wrongstack/core/types';
 import {
   CONTEXT_WINDOW_MODE_PINNED_META_KEY,
@@ -8,13 +8,13 @@ import {
   resolveContextWindowPolicy,
 } from '@wrongstack/core/types';
 import {
-  atomicWrite,
   type ContextBreakdown,
   color,
   getContextBreakdown,
   repairToolUseAdjacency,
 } from '@wrongstack/core/utils';
 import { activeProfileConfigPath } from '../profile-config-path.js';
+import { persistConfigSetting } from '../settings-menu.js';
 import type { SlashCommandContext } from './command-context.js';
 import { countToolResults, countToolUses, countTurnPairs, estimateTokens } from './helpers.js';
 
@@ -488,32 +488,28 @@ async function persistContextConfig(
     return 'Cannot persist context settings: config store not available.';
 
   const configPath = activeProfileConfigPath(opts.paths, opts.configStore.get());
-
-  let raw = '{}';
+  let context: Config['context'] = opts.configStore.get().context;
   try {
-    raw = await fs.readFile(configPath, 'utf8');
+    await persistConfigSetting(
+      {
+        configStore: opts.configStore,
+        profileConfigPath: configPath,
+        inProjectConfigPath: opts.paths.inProjectConfig,
+        vault: opts.vault ?? noOpVault,
+        forceGlobal: true,
+      },
+      (config) => {
+        context = {
+          ...opts.configStore!.get().context,
+          ...((config.context as Partial<Config['context']> | undefined) ?? {}),
+          ...patch,
+        };
+        config.context = context;
+      },
+    );
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      return `Could not read ${configPath}: ${(err as Error).message}`;
-    }
+    return `Could not persist context settings to ${configPath}: ${(err as Error).message}`;
   }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    return `Config at ${configPath} is not valid JSON: ${(err as Error).message}`;
-  }
-
-  const current = opts.configStore.get();
-  const context = {
-    ...(current.context as Config['context']),
-    ...((parsed.context as Partial<Config['context']> | undefined) ?? {}),
-    ...patch,
-  };
-  parsed.context = context;
-  await atomicWrite(configPath, JSON.stringify(parsed, null, 2), { mode: 0o600 });
-  opts.configStore.update({ context });
   return null;
 }
 

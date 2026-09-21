@@ -36,6 +36,7 @@ export interface McpServerInput {
   env?: Record<string, string> | undefined;
   url?: string | undefined;
   headers?: Record<string, string> | undefined;
+  bearerTokenEnv?: string | undefined;
   allowedTools?: string[] | undefined;
   permission?: Permission | undefined;
   /** Lazy connect — spawn the process only on first tool call (see config). */
@@ -250,6 +251,8 @@ function buildConfig(input: McpServerInput, base?: MCPServerConfig | undefined):
   if (url !== undefined) cfg.url = url;
   const headers = input.headers ?? base?.headers;
   if (headers !== undefined) cfg.headers = headers;
+  const bearerTokenEnv = input.bearerTokenEnv ?? base?.bearerTokenEnv;
+  if (bearerTokenEnv !== undefined) cfg.bearerTokenEnv = bearerTokenEnv;
   const allowedTools = input.allowedTools ?? base?.allowedTools;
   if (allowedTools !== undefined) cfg.allowedTools = allowedTools;
   const permission = input.permission ?? base?.permission;

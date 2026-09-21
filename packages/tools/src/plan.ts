@@ -44,6 +44,38 @@ export type PlanAction =
   | 'clear'
   | 'taskify';
 
+/**
+ * The single source for the `plan` action list — the JSON-schema `enum` and the
+ * runtime allow-list are both derived from it. Previously the same ten strings
+ * were hand-maintained in three places (union, `enum`, `VALID_ACTIONS`) and any
+ * one of them could drift silently.
+ *
+ * A `Record<PlanAction, true>` map is used rather than a plain array so BOTH
+ * drift directions fail the build: forgetting a member is a "missing property"
+ * error, and adding one that is not in the union is an excess-property error.
+ * The reducer's `default` then asserts every member has a case, which is the
+ * third tie (see the same pattern in `packages/tui/src/reducers/*.ts`).
+ *
+ * Key order is load-bearing: it is the order the schema `enum` and the guard's
+ * error message publish.
+ */
+const PLAN_ACTION_COVERAGE: Record<PlanAction, true> = {
+  show: true,
+  add: true,
+  status: true,
+  start: true,
+  done: true,
+  remove: true,
+  promote: true,
+  template_use: true,
+  clear: true,
+  taskify: true,
+};
+
+const PLAN_ACTIONS = Object.keys(PLAN_ACTION_COVERAGE) as PlanAction[];
+
+const VALID_ACTIONS: ReadonlySet<PlanAction> = new Set(PLAN_ACTIONS);
+
 export interface PlanInput {
   action: PlanAction;
   /** Required for add. */
@@ -119,18 +151,7 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
     properties: {
       action: {
         type: 'string',
-        enum: [
-          'show',
-          'add',
-          'status',
-          'start',
-          'done',
-          'remove',
-          'promote',
-          'template_use',
-          'clear',
-          'taskify',
-        ],
+        enum: [...PLAN_ACTIONS],
         description: 'The operation to perform on the plan board.',
       },
       title: {
@@ -175,18 +196,6 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
     const signal = _opts?.signal ?? ctx?.signal;
     signal?.throwIfAborted();
 
-    const VALID_ACTIONS: ReadonlySet<string> = new Set([
-      'show',
-      'add',
-      'status',
-      'start',
-      'done',
-      'remove',
-      'promote',
-      'template_use',
-      'clear',
-      'taskify',
-    ]);
     if (!input?.action || !VALID_ACTIONS.has(input.action)) {
       throw new ToolValidationError({
         message: `plan: unknown or missing action "${input?.action}". Allowed actions: ${[...VALID_ACTIONS].join(', ')}`,
@@ -423,6 +432,11 @@ export const planTool: Tool<PlanInput, PlanOutput> = {
           }
 
           default:
+            // Union → case tie: this compiles only while every `PlanAction`
+            // member has a case above, so a future action added to the union
+            // without being handled fails the build instead of falling through
+            // to the runtime catch-all below.
+            void (input.action satisfies never);
             refuse(`Unknown action "${(input as { action: string }).action}".`, 'action');
             return p;
         }

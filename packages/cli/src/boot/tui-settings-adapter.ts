@@ -10,21 +10,13 @@
  * reverse: read → modify → encrypt → atomic-write for every section,
  * then syncs the in-memory store and applies live runtime effects.
  */
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import { decryptConfigSecrets, encryptConfigSecrets, noOpVault } from '@wrongstack/core/security';
-import type { Config, ConfigStore, FleetChatVerbosity } from '@wrongstack/core/types';
+import type { Config, ConfigStore, FleetChatVerbosity, SecretVault } from '@wrongstack/core/types';
 import { normalizeTokenSavingTier, resolveFleetChatVerbosity } from '@wrongstack/core/types';
-import { atomicWrite, deepMerge, type WstackPaths } from '@wrongstack/core/utils';
+import type { WstackPaths } from '@wrongstack/core/utils';
 import { getProcessRegistry } from '@wrongstack/tools';
 import type { LiveSettingsInput } from '../live-settings-input.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
-import {
-  deriveFsAccessPair,
-  filterSafeForProject,
-  resolveActualTarget,
-  resolvePersistPath,
-} from '../settings-menu.js';
+import { deriveFsAccessPair, persistConfigSetting } from '../settings-menu.js';
 import { normalizeTuiThinkingWord } from '../tui-thinking-word.js';
 
 /**
@@ -85,6 +77,7 @@ function coerceAgentSwarmMode(
 interface SettingsAdapterContext {
   configStore: ConfigStore;
   wpaths: WstackPaths;
+  vault: SecretVault;
   fleetStreamController: { setMode?: ((mode: FleetChatVerbosity) => void) | undefined } | undefined;
   applyLiveSettings: ((s: LiveSettingsInput) => void) | undefined;
 }
@@ -120,7 +113,7 @@ function normalizeAnimationStyle(raw: unknown): AnimationStyleValue {
  * syncs the in-memory store, and applies runtime effects immediately.
  */
 export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdapter {
-  const { configStore, wpaths, fleetStreamController, applyLiveSettings } = ctx;
+  const { configStore, wpaths, vault, fleetStreamController, applyLiveSettings } = ctx;
 
   // Filesystem-access pair derivation is shared with the slash command
   // and the cli-main live-apply path. See settings-menu.ts for the
@@ -381,245 +374,246 @@ export function createSettingsAdapter(ctx: SettingsAdapterContext): SettingsAdap
           // delegated; now it is.
           profileConfigPath: activeProfileConfigPath(wpaths, cfg),
           inProjectConfigPath: wpaths.inProjectConfig,
-          vault: noOpVault,
+          vault,
           resolveProfilePath: (name: string) => wpaths.profileConfig(name),
         };
-        const targetPath = resolvePersistPath(persistDeps);
-        let raw: string;
-        try {
-          raw = await fs.readFile(targetPath, 'utf8');
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-            throw new Error(
-              `Failed to read config at ${targetPath}: ${err instanceof Error ? err.message : String(err)}`,
-              { cause: err },
-            );
+        let fsAccess: ReturnType<typeof deriveFsAccess>;
+        let decrypted: Record<string, unknown> = {};
+        await persistConfigSetting(persistDeps, (nextConfig) => {
+          decrypted = nextConfig;
+          const autonomy = (decrypted.autonomy as Record<string, unknown>) ?? {};
+          if (s.mode !== undefined) autonomy.defaultMode = s.mode;
+          if (s.delayMs !== undefined) autonomy.autoProceedDelayMs = s.delayMs;
+          if (s.titleAnimation !== undefined) autonomy.terminalTitleAnimation = s.titleAnimation;
+          if (s.yolo !== undefined) autonomy.yolo = s.yolo;
+          if (s.fleetChatVerbosity !== undefined) {
+            autonomy.fleetChatVerbosity = s.fleetChatVerbosity;
           }
-          raw = '{}';
-        }
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const decrypted = decryptConfigSecrets(parsed, noOpVault) as Record<string, unknown>;
+          if (s.chime !== undefined) autonomy.chime = s.chime;
+          if (s.confirmExit !== undefined) autonomy.confirmExit = s.confirmExit;
+          if (s.mouseMode !== undefined) autonomy.mouseMode = s.mouseMode;
+          if (s.enhanceDelayMs !== undefined) autonomy.enhanceDelayMs = s.enhanceDelayMs;
+          if (s.enhanceEnabled !== undefined) autonomy.enhance = s.enhanceEnabled;
+          if (s.preRefineSeconds !== undefined) autonomy.preRefineSeconds = s.preRefineSeconds;
+          if (s.enhanceLanguage !== undefined) autonomy.enhanceLanguage = s.enhanceLanguage;
+          if (s.midRunSendPicker !== undefined) autonomy.midRunSendPicker = s.midRunSendPicker;
+          if (s.shellBangWarningDontShowAgain !== undefined)
+            autonomy.shellBangWarningDontShowAgain = s.shellBangWarningDontShowAgain;
+          if (s.statuslineMode !== undefined) autonomy.statuslineMode = s.statuslineMode;
+          if (s.thinkingWord !== undefined)
+            autonomy.thinkingWord = normalizeTuiThinkingWord(s.thinkingWord);
+          if (s.animationStyle !== undefined) autonomy.animationStyle = s.animationStyle;
+          if (s.showModelReasoning !== undefined)
+            autonomy.showModelReasoning = s.showModelReasoning;
+          if (s.toolResultViewMode !== undefined)
+            autonomy.toolResultViewMode = s.toolResultViewMode;
+          if (s.showAgentSwarmPanel !== undefined)
+            autonomy.showAgentSwarmPanel = s.showAgentSwarmPanel;
+          if (s.showSidebar !== undefined) autonomy.showSidebar = s.showSidebar;
+          if (s.panelPositions !== undefined) autonomy.panelPositions = s.panelPositions;
+          if (s.lastSettingsField !== undefined) autonomy.lastSettingsField = s.lastSettingsField;
+          if (s.showSageMemoryInject !== undefined)
+            autonomy.showSageMemoryInject = s.showSageMemoryInject;
+          if (s.readSymbols !== undefined) autonomy.readAdvancedMode = s.readSymbols;
+          if (s.autonomyNextPrompt !== undefined)
+            autonomy.autonomyNextPrompt = s.autonomyNextPrompt;
+          if (s.autoProceedMaxIterations !== undefined)
+            autonomy.autoProceedMaxIterations = s.autoProceedMaxIterations;
+          decrypted.autonomy = autonomy;
 
-        const autonomy = (decrypted.autonomy as Record<string, unknown>) ?? {};
-        if (s.mode !== undefined) autonomy.defaultMode = s.mode;
-        if (s.delayMs !== undefined) autonomy.autoProceedDelayMs = s.delayMs;
-        if (s.titleAnimation !== undefined) autonomy.terminalTitleAnimation = s.titleAnimation;
-        if (s.yolo !== undefined) autonomy.yolo = s.yolo;
-        if (s.fleetChatVerbosity !== undefined) {
-          autonomy.fleetChatVerbosity = s.fleetChatVerbosity;
-        }
-        if (s.chime !== undefined) autonomy.chime = s.chime;
-        if (s.confirmExit !== undefined) autonomy.confirmExit = s.confirmExit;
-        if (s.mouseMode !== undefined) autonomy.mouseMode = s.mouseMode;
-        if (s.enhanceDelayMs !== undefined) autonomy.enhanceDelayMs = s.enhanceDelayMs;
-        if (s.enhanceEnabled !== undefined) autonomy.enhance = s.enhanceEnabled;
-        if (s.preRefineSeconds !== undefined) autonomy.preRefineSeconds = s.preRefineSeconds;
-        if (s.enhanceLanguage !== undefined) autonomy.enhanceLanguage = s.enhanceLanguage;
-        if (s.midRunSendPicker !== undefined) autonomy.midRunSendPicker = s.midRunSendPicker;
-        if (s.shellBangWarningDontShowAgain !== undefined)
-          autonomy.shellBangWarningDontShowAgain = s.shellBangWarningDontShowAgain;
-        if (s.statuslineMode !== undefined) autonomy.statuslineMode = s.statuslineMode;
-        if (s.thinkingWord !== undefined)
-          autonomy.thinkingWord = normalizeTuiThinkingWord(s.thinkingWord);
-        if (s.animationStyle !== undefined) autonomy.animationStyle = s.animationStyle;
-        if (s.showModelReasoning !== undefined) autonomy.showModelReasoning = s.showModelReasoning;
-        if (s.toolResultViewMode !== undefined) autonomy.toolResultViewMode = s.toolResultViewMode;
-        if (s.showAgentSwarmPanel !== undefined)
-          autonomy.showAgentSwarmPanel = s.showAgentSwarmPanel;
-        if (s.showSidebar !== undefined) autonomy.showSidebar = s.showSidebar;
-        if (s.panelPositions !== undefined) autonomy.panelPositions = s.panelPositions;
-        if (s.lastSettingsField !== undefined) autonomy.lastSettingsField = s.lastSettingsField;
-        if (s.showSageMemoryInject !== undefined)
-          autonomy.showSageMemoryInject = s.showSageMemoryInject;
-        if (s.readSymbols !== undefined) autonomy.readAdvancedMode = s.readSymbols;
-        if (s.autonomyNextPrompt !== undefined) autonomy.autonomyNextPrompt = s.autonomyNextPrompt;
-        if (s.autoProceedMaxIterations !== undefined)
-          autonomy.autoProceedMaxIterations = s.autoProceedMaxIterations;
-        decrypted.autonomy = autonomy;
-
-        if (s.nextPrediction !== undefined) decrypted.nextPrediction = s.nextPrediction;
-        if (s.yolo !== undefined) decrypted.yolo = s.yolo;
-        // Derive the filesystem-access pair ONCE here, so both the
-        // `features.allowOutsideProjectRoot` and `tools.restrictToProjectRoot`
-        // writes below stay consistent. The previous implementation had three
-        // separate write sites that could disagree when both picker knobs
-        // were set in the same save.
-        const fsAccess = deriveFsAccess(s);
-        if (
-          s.featureMcp !== undefined ||
-          s.featurePlugins !== undefined ||
-          s.featureMemory !== undefined ||
-          s.featureSkills !== undefined ||
-          s.featureModelsRegistry !== undefined ||
-          s.featureTokenSaving !== undefined ||
-          fsAccess !== undefined
-        ) {
-          const feats = (decrypted.features as Record<string, unknown>) ?? {};
-          if (s.featureMcp !== undefined) feats.mcp = s.featureMcp;
-          if (s.featurePlugins !== undefined) feats.plugins = s.featurePlugins;
-          if (s.featureMemory !== undefined) feats.memory = s.featureMemory;
-          if (s.featureSkills !== undefined) feats.skills = s.featureSkills;
-          if (s.featureModelsRegistry !== undefined) feats.modelsRegistry = s.featureModelsRegistry;
-          if (s.featureTokenSaving !== undefined) feats.tokenSavingMode = s.featureTokenSaving;
-          if (fsAccess !== undefined)
-            feats.allowOutsideProjectRoot = fsAccess.allowOutsideProjectRoot;
-          decrypted.features = feats;
-        }
-        if (
-          s.contextAutoCompact !== undefined ||
-          s.contextStrategy !== undefined ||
-          s.contextMode !== undefined
-        ) {
-          const c = (decrypted.context as Record<string, unknown>) ?? {};
-          if (s.contextAutoCompact !== undefined) c.autoCompact = s.contextAutoCompact;
-          if (s.contextStrategy !== undefined) c.strategy = s.contextStrategy;
-          if (s.contextMode !== undefined) c.mode = s.contextMode;
-          decrypted.context = c;
-        }
-        if (s.maxConcurrent !== undefined) decrypted.maxConcurrent = s.maxConcurrent;
-        if (s.logLevel !== undefined) {
-          const log = (decrypted.log as Record<string, unknown>) ?? {};
-          log.level = s.logLevel;
-          decrypted.log = log;
-        }
-        if (s.auditLevel !== undefined) {
-          const sess = (decrypted.session as Record<string, unknown>) ?? {};
-          sess.auditLevel = s.auditLevel;
-          decrypted.session = sess;
-        }
-        if (s.indexOnStart !== undefined) {
-          const idx = (decrypted.indexing as Record<string, unknown>) ?? {};
-          idx.onSessionStart = s.indexOnStart;
-          decrypted.indexing = idx;
-        }
-        if (
-          s.maxIterations !== undefined ||
-          s.nextStepsTool !== undefined ||
-          fsAccess !== undefined ||
-          // WrongProxy / WrongTrace: include either key in the tools-section
-          // write guard so a picker toggle round-trip actually persists to
-          // `tools.wrongProxy.{enabled,url}`. Without this, the gate at
-          // line 279 would short-circuit and skip the whole section write.
-          s.wrongProxyEnabled !== undefined ||
-          s.wrongProxyUrl !== undefined
-        ) {
-          const tools = (decrypted.tools as Record<string, unknown>) ?? {};
-          if (s.maxIterations !== undefined) tools.maxIterations = s.maxIterations;
-          // Multi-diff summary threshold — persisted on the Tools section so
-          // it travels with `maxIterations` (both gate on the Tools write
-          // trigger and land under `decrypted.tools`). Mirrors the WebUI
-          // pref-helpers.ts setAutonomy('multiDiffSummaryThreshold', ...)
-          // path and the overlay-key-router.ts:331 read.
-          if (s.multiDiffSummaryThreshold !== undefined) {
-            tools.multiDiffSummaryThreshold = s.multiDiffSummaryThreshold;
+          if (s.nextPrediction !== undefined) decrypted.nextPrediction = s.nextPrediction;
+          if (s.yolo !== undefined) decrypted.yolo = s.yolo;
+          // Derive the filesystem-access pair ONCE here, so both the
+          // `features.allowOutsideProjectRoot` and `tools.restrictToProjectRoot`
+          // writes below stay consistent. The previous implementation had three
+          // separate write sites that could disagree when both picker knobs
+          // were set in the same save.
+          fsAccess = deriveFsAccess(s);
+          if (
+            s.featureMcp !== undefined ||
+            s.featurePlugins !== undefined ||
+            s.featureMemory !== undefined ||
+            s.featureSkills !== undefined ||
+            s.featureModelsRegistry !== undefined ||
+            s.featureTokenSaving !== undefined ||
+            fsAccess !== undefined
+          ) {
+            const feats = (decrypted.features as Record<string, unknown>) ?? {};
+            if (s.featureMcp !== undefined) feats.mcp = s.featureMcp;
+            if (s.featurePlugins !== undefined) feats.plugins = s.featurePlugins;
+            if (s.featureMemory !== undefined) feats.memory = s.featureMemory;
+            if (s.featureSkills !== undefined) feats.skills = s.featureSkills;
+            if (s.featureModelsRegistry !== undefined)
+              feats.modelsRegistry = s.featureModelsRegistry;
+            if (s.featureTokenSaving !== undefined) feats.tokenSavingMode = s.featureTokenSaving;
+            if (fsAccess !== undefined)
+              feats.allowOutsideProjectRoot = fsAccess.allowOutsideProjectRoot;
+            decrypted.features = feats;
           }
-          if (s.nextStepsTool !== undefined) tools.nextsteps = { enabled: s.nextStepsTool };
-          // Single source of truth for the inverse: deriveFsAccess above.
-          if (fsAccess !== undefined) tools.restrictToProjectRoot = fsAccess.restrictToProjectRoot;
-          // WrongProxy / WrongTrace: write to `tools.wrongProxy.{enabled,url}`
-          // as a single nested object (mirrors the WebUI `LocalPrefs`
-          // shape). Only assign when the key is present in the live
-          // patch so unset keys preserve their on-disk values.
-          if (s.wrongProxyEnabled !== undefined || s.wrongProxyUrl !== undefined) {
-            const wp = (tools.wrongProxy as Record<string, unknown>) ?? {};
-            if (s.wrongProxyEnabled !== undefined) wp.enabled = s.wrongProxyEnabled;
-            if (s.wrongProxyUrl !== undefined) wp.url = s.wrongProxyUrl;
-            tools.wrongProxy = wp;
+          if (
+            s.contextAutoCompact !== undefined ||
+            s.contextStrategy !== undefined ||
+            s.contextMode !== undefined
+          ) {
+            const c = (decrypted.context as Record<string, unknown>) ?? {};
+            if (s.contextAutoCompact !== undefined) c.autoCompact = s.contextAutoCompact;
+            if (s.contextStrategy !== undefined) c.strategy = s.contextStrategy;
+            if (s.contextMode !== undefined) c.mode = s.contextMode;
+            decrypted.context = c;
           }
-          decrypted.tools = tools;
-        }
-        if (s.debugStream !== undefined) {
-          decrypted.debugStream = s.debugStream;
-          const { setDebugStreamEnabled } = await import('@wrongstack/providers');
-          setDebugStreamEnabled(s.debugStream);
-        }
-        if (s.configScope !== undefined) decrypted.configScope = s.configScope;
-        if (
-          s.reasoningMode !== undefined ||
-          s.reasoningEffort !== undefined ||
-          s.reasoningPreserve !== undefined ||
-          s.cacheTtl !== undefined
-        ) {
-          const modelRuntime = (decrypted.modelRuntime as Record<string, unknown>) ?? {};
+          if (s.maxConcurrent !== undefined) decrypted.maxConcurrent = s.maxConcurrent;
+          if (s.logLevel !== undefined) {
+            const log = (decrypted.log as Record<string, unknown>) ?? {};
+            log.level = s.logLevel;
+            decrypted.log = log;
+          }
+          if (s.auditLevel !== undefined) {
+            const sess = (decrypted.session as Record<string, unknown>) ?? {};
+            sess.auditLevel = s.auditLevel;
+            decrypted.session = sess;
+          }
+          if (s.indexOnStart !== undefined) {
+            const idx = (decrypted.indexing as Record<string, unknown>) ?? {};
+            idx.onSessionStart = s.indexOnStart;
+            decrypted.indexing = idx;
+          }
+          if (
+            s.maxIterations !== undefined ||
+            s.nextStepsTool !== undefined ||
+            fsAccess !== undefined ||
+            // WrongProxy / WrongTrace: include either key in the tools-section
+            // write guard so a picker toggle round-trip actually persists to
+            // `tools.wrongProxy.{enabled,url}`. Without this, the gate at
+            // line 279 would short-circuit and skip the whole section write.
+            s.wrongProxyEnabled !== undefined ||
+            s.wrongProxyUrl !== undefined
+          ) {
+            const tools = (decrypted.tools as Record<string, unknown>) ?? {};
+            if (s.maxIterations !== undefined) tools.maxIterations = s.maxIterations;
+            // Multi-diff summary threshold — persisted on the Tools section so
+            // it travels with `maxIterations` (both gate on the Tools write
+            // trigger and land under `decrypted.tools`). Mirrors the WebUI
+            // pref-helpers.ts setAutonomy('multiDiffSummaryThreshold', ...)
+            // path and the overlay-key-router.ts:331 read.
+            if (s.multiDiffSummaryThreshold !== undefined) {
+              tools.multiDiffSummaryThreshold = s.multiDiffSummaryThreshold;
+            }
+            if (s.nextStepsTool !== undefined) tools.nextsteps = { enabled: s.nextStepsTool };
+            // Single source of truth for the inverse: deriveFsAccess above.
+            if (fsAccess !== undefined)
+              tools.restrictToProjectRoot = fsAccess.restrictToProjectRoot;
+            // WrongProxy / WrongTrace: write to `tools.wrongProxy.{enabled,url}`
+            // as a single nested object (mirrors the WebUI `LocalPrefs`
+            // shape). Only assign when the key is present in the live
+            // patch so unset keys preserve their on-disk values.
+            if (s.wrongProxyEnabled !== undefined || s.wrongProxyUrl !== undefined) {
+              const wp = (tools.wrongProxy as Record<string, unknown>) ?? {};
+              if (s.wrongProxyEnabled !== undefined) wp.enabled = s.wrongProxyEnabled;
+              if (s.wrongProxyUrl !== undefined) wp.url = s.wrongProxyUrl;
+              tools.wrongProxy = wp;
+            }
+            decrypted.tools = tools;
+          }
+          if (s.debugStream !== undefined) {
+            decrypted.debugStream = s.debugStream;
+          }
+          if (s.configScope !== undefined) decrypted.configScope = s.configScope;
           if (
             s.reasoningMode !== undefined ||
             s.reasoningEffort !== undefined ||
-            s.reasoningPreserve !== undefined
+            s.reasoningPreserve !== undefined ||
+            s.cacheTtl !== undefined
           ) {
-            const reasoning = (modelRuntime.reasoning as Record<string, unknown>) ?? {};
-            if (s.reasoningMode !== undefined) reasoning.mode = s.reasoningMode;
-            if (s.reasoningEffort !== undefined) reasoning.effort = s.reasoningEffort;
-            if (s.reasoningPreserve !== undefined) reasoning.preserve = s.reasoningPreserve;
-            modelRuntime.reasoning = reasoning;
-          }
-          if (s.cacheTtl !== undefined) {
-            const cache = (modelRuntime.cache as Record<string, unknown>) ?? {};
-            if (s.cacheTtl === 'default') {
-              delete cache.ttl;
-            } else {
-              cache.ttl = s.cacheTtl;
+            const modelRuntime = (decrypted.modelRuntime as Record<string, unknown>) ?? {};
+            if (
+              s.reasoningMode !== undefined ||
+              s.reasoningEffort !== undefined ||
+              s.reasoningPreserve !== undefined
+            ) {
+              const reasoning = (modelRuntime.reasoning as Record<string, unknown>) ?? {};
+              if (s.reasoningMode !== undefined) reasoning.mode = s.reasoningMode;
+              if (s.reasoningEffort !== undefined) reasoning.effort = s.reasoningEffort;
+              if (s.reasoningPreserve !== undefined) reasoning.preserve = s.reasoningPreserve;
+              modelRuntime.reasoning = reasoning;
             }
-            if (Object.keys(cache).length > 0) modelRuntime.cache = cache;
-            else delete modelRuntime.cache;
-          }
-          decrypted.modelRuntime = modelRuntime;
-        }
-        if (s.sageMemoryInjectThreshold !== undefined) {
-          const sageSec = (decrypted.Sage as Record<string, unknown>) ?? {};
-          const inject = (sageSec.inject as Record<string, unknown>) ?? {};
-          inject.relationFloor = s.sageMemoryInjectThreshold;
-          sageSec.inject = inject;
-          decrypted.Sage = sageSec;
-        }
-        if (s.breakerEnabled !== undefined || s.breakerAutoKillResetMs !== undefined) {
-          const cb = (decrypted.circuitBreaker as Record<string, unknown>) ?? {};
-          if (s.breakerEnabled !== undefined) cb.enabled = s.breakerEnabled;
-          if (s.breakerAutoKillResetMs !== undefined) cb.autoKillResetMs = s.breakerAutoKillResetMs;
-          decrypted.circuitBreaker = cb;
-        }
-        // Re-resolve the target path after the mutation block: the mutator
-        // may have changed configScope (or another field the canonical
-        // resolveActualTarget checks), so the pre-mutation snapshot is stale.
-        const actualTarget = resolveActualTarget(
-          persistDeps,
-          decrypted as Record<string, unknown>,
-          targetPath,
-        );
-        // When the scope switch moved the target away from the file we
-        // read at the top (targetPath → actualTarget), the decrypted
-        // object is a mutation of the SOURCE config. Writing it verbatim
-        // to the DESTINATION clobbers any keys that exist only in the
-        // destination (e.g. a profile config with autonomy options the
-        // project config doesn't have). Deep-merge the destination's
-        // existing keys under our mutated values so nothing is lost.
-        let mergedToWrite: Record<string, unknown> = decrypted;
-        if (actualTarget !== targetPath) {
-          try {
-            const destRaw = await fs.readFile(actualTarget, 'utf8');
-            const destParsed = JSON.parse(destRaw) as Record<string, unknown>;
-            const destDecrypted = decryptConfigSecrets(destParsed, noOpVault) as Record<
-              string,
-              unknown
-            >;
-            mergedToWrite = deepMerge(destDecrypted, decrypted);
-          } catch (err) {
-            if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-              throw new Error(
-                `Failed to read destination config at ${actualTarget}: ${err instanceof Error ? err.message : String(err)}`,
-                { cause: err },
-              );
+            if (s.cacheTtl !== undefined) {
+              const cache = (modelRuntime.cache as Record<string, unknown>) ?? {};
+              if (s.cacheTtl === 'default') {
+                delete cache.ttl;
+              } else {
+                cache.ttl = s.cacheTtl;
+              }
+              if (Object.keys(cache).length > 0) modelRuntime.cache = cache;
+              else delete modelRuntime.cache;
             }
-            // Destination doesn't exist yet — write the mutated config as-is.
+            decrypted.modelRuntime = modelRuntime;
           }
+          if (s.sageMemoryInjectThreshold !== undefined) {
+            const sageSec = (decrypted.Sage as Record<string, unknown>) ?? {};
+            const inject = (sageSec.inject as Record<string, unknown>) ?? {};
+            inject.relationFloor = s.sageMemoryInjectThreshold;
+            sageSec.inject = inject;
+            decrypted.Sage = sageSec;
+          }
+          if (s.breakerEnabled !== undefined || s.breakerAutoKillResetMs !== undefined) {
+            const cb = (decrypted.circuitBreaker as Record<string, unknown>) ?? {};
+            if (s.breakerEnabled !== undefined) cb.enabled = s.breakerEnabled;
+            if (s.breakerAutoKillResetMs !== undefined)
+              cb.autoKillResetMs = s.breakerAutoKillResetMs;
+            decrypted.circuitBreaker = cb;
+          }
+        });
+
+        const effectiveScope = s.configScope ?? cfg.configScope;
+        const hasProfileOnlySettings =
+          s.mode !== undefined ||
+          s.yolo !== undefined ||
+          fsAccess !== undefined ||
+          s.maxIterations !== undefined ||
+          s.wrongProxyEnabled !== undefined ||
+          s.wrongProxyUrl !== undefined;
+        if (effectiveScope === 'project' && hasProfileOnlySettings) {
+          await persistConfigSetting(
+            { ...persistDeps, forceGlobal: true, updateStore: false },
+            (profileConfig) => {
+              if (s.mode !== undefined || s.yolo !== undefined) {
+                const autonomy = (profileConfig.autonomy as Record<string, unknown>) ?? {};
+                if (s.mode !== undefined) autonomy.defaultMode = s.mode;
+                if (s.yolo !== undefined) autonomy.yolo = s.yolo;
+                profileConfig.autonomy = autonomy;
+              }
+              if (s.yolo !== undefined) profileConfig.yolo = s.yolo;
+              if (fsAccess !== undefined) {
+                const features = (profileConfig.features as Record<string, unknown>) ?? {};
+                features.allowOutsideProjectRoot = fsAccess.allowOutsideProjectRoot;
+                profileConfig.features = features;
+              }
+              if (
+                fsAccess !== undefined ||
+                s.maxIterations !== undefined ||
+                s.wrongProxyEnabled !== undefined ||
+                s.wrongProxyUrl !== undefined
+              ) {
+                const tools = (profileConfig.tools as Record<string, unknown>) ?? {};
+                if (fsAccess !== undefined)
+                  tools.restrictToProjectRoot = fsAccess.restrictToProjectRoot;
+                if (s.maxIterations !== undefined) tools.maxIterations = s.maxIterations;
+                if (s.wrongProxyEnabled !== undefined || s.wrongProxyUrl !== undefined) {
+                  const wrongProxy = (tools.wrongProxy as Record<string, unknown>) ?? {};
+                  if (s.wrongProxyEnabled !== undefined) wrongProxy.enabled = s.wrongProxyEnabled;
+                  if (s.wrongProxyUrl !== undefined) wrongProxy.url = s.wrongProxyUrl;
+                  tools.wrongProxy = wrongProxy;
+                }
+                profileConfig.tools = tools;
+              }
+            },
+          );
         }
-        // Only filter for project safety when writing to the in-project
-        // config (.wrongstack/config.json). The active profile config stores
-        // the full trusted user settings; the root bootstrap is never targeted.
-        const isProjectTarget = actualTarget === wpaths.inProjectConfig;
-        const toWrite = isProjectTarget ? filterSafeForProject(mergedToWrite) : mergedToWrite;
-        const encrypted = encryptConfigSecrets(toWrite, noOpVault);
-        await fs.mkdir(path.dirname(actualTarget), { recursive: true });
-        await atomicWrite(actualTarget, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
+
+        if (s.debugStream !== undefined) {
+          const { setDebugStreamEnabled } = await import('@wrongstack/providers');
+          setDebugStreamEnabled(s.debugStream);
+        }
 
         const currentConfig = configStore.get();
         const nextModelRuntime = {

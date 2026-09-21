@@ -92,14 +92,16 @@ describe('WebUI preference persistence helpers', () => {
   it('refuses to overwrite corrupt config JSON', async () => {
     await fs.writeFile(configPath, '{broken', 'utf8');
 
-    await updateGlobalConfig(
-      deps,
-      holder,
-      () => {
-        throw new Error('must not be reached');
-      },
-      'settings',
-    );
+    await expect(
+      updateGlobalConfig(
+        deps,
+        holder,
+        () => {
+          throw new Error('must not be reached');
+        },
+        'settings',
+      ),
+    ).rejects.toThrow('refusing to overwrite corrupt config');
 
     expect(await fs.readFile(configPath, 'utf8')).toBe('{broken');
     expect(warn).toHaveBeenCalledWith(
@@ -124,14 +126,16 @@ describe('WebUI preference persistence helpers', () => {
   it('logs mutation/write failures without poisoning later writes', async () => {
     await fs.writeFile(configPath, '{}', 'utf8');
 
-    await updateGlobalConfig(
-      deps,
-      holder,
-      () => {
-        throw new Error('mutation failed');
-      },
-      'settings',
-    );
+    await expect(
+      updateGlobalConfig(
+        deps,
+        holder,
+        () => {
+          throw new Error('mutation failed');
+        },
+        'settings',
+      ),
+    ).rejects.toThrow('mutation failed');
     await updateGlobalConfig(
       deps,
       holder,

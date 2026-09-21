@@ -13,6 +13,7 @@ describe('unixSocketPathLimit', () => {
     expect(unixSocketPathLimit('darwin')).toBe(103);
     expect(unixSocketPathLimit('freebsd')).toBe(103);
     expect(unixSocketPathLimit('openbsd')).toBe(103);
+    expect(unixSocketPathLimit('netbsd')).toBe(103);
   });
 
   it('returns the Linux-family limit otherwise', () => {

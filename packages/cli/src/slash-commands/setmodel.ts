@@ -1,4 +1,3 @@
-import * as fs from 'node:fs/promises';
 import { fallbackProfileChain, parseModelRef } from '@wrongstack/core/agent';
 import { AGENT_CATALOG, AGENTS_BY_PHASE, type AgentPhase } from '@wrongstack/core/agent-catalog';
 import {
@@ -8,18 +7,17 @@ import {
   resolveModelMatrix,
   resolveModelTargetFromEntry,
 } from '@wrongstack/core/coordination';
-import { decryptConfigSecrets, encryptConfigSecrets, noOpVault } from '@wrongstack/core/security';
 import {
-  ConfigError,
+  isReasoningEffort,
   type ModelMatrixEntry,
   type ProviderConfig,
   REASONING_EFFORT_LEVELS,
   type ReasoningEffort,
-  isReasoningEffort,
   type SlashCommand,
 } from '@wrongstack/core/types';
-import { atomicWrite, color, expectDefined, toErrorMessage } from '@wrongstack/core/utils';
+import { color, expectDefined, toErrorMessage, updateJsonObjectFile } from '@wrongstack/core/utils';
 import { catalogProviderIdFor } from '@wrongstack/providers';
+import { backupCurrent } from '../config-history.js';
 import { visibleModelIds } from '../provider-helpers.js';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -151,33 +149,11 @@ async function patchProfileConfig(
   mutate: (cfg: Record<string, unknown>) => void,
   profileConfigPath: string,
 ): Promise<Record<string, unknown>> {
-  const targetPath = profileConfigPath;
-  let raw = '{}';
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(targetPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    fileExists = false;
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists)
-      throw new ConfigError({
-        message: `Config at ${targetPath} is not valid JSON: ${(err as Error).message}`,
-        code: 'CONFIG_PARSE_FAILED',
-        context: { filePath: targetPath },
-        cause: err,
-      });
-    parsed = {};
-  }
-  const decrypted = decryptConfigSecrets(parsed, noOpVault) as Record<string, unknown>;
-  mutate(decrypted);
-  const encrypted = encryptConfigSecrets(decrypted, noOpVault);
-  await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
-  return decrypted;
+  return updateJsonObjectFile(profileConfigPath, async (config) => {
+    await backupCurrent(undefined, profileConfigPath);
+    mutate(config);
+    return config;
+  });
 }
 
 /**

@@ -226,6 +226,27 @@ describe('file handlers integration', () => {
       const tree = (ws.sent[0] as { payload: { tree: TreeNodeShape[] } }).payload.tree;
       expect(tree.map((n) => n.name)).toContain('kept-dir');
     });
+
+    it('applies project-root .gitignore rules when scoped to a subdirectory', async () => {
+      fsSync.writeFileSync(
+        path.join(tempDir, '.gitignore'),
+        '/packages/sub/dist/\npackages/sub/*.log\n',
+      );
+      fsSync.mkdirSync(path.join(tempDir, 'packages', 'sub', 'dist'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'dist', 'bundle.js'), 'x');
+      fsSync.mkdirSync(path.join(tempDir, 'packages', 'sub', 'src'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'src', 'app.ts'), 'x');
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'debug.log'), 'x');
+
+      const ws = createMockWs();
+      await handleFilesTree(ws, { type: 'files.tree', payload: { path: 'packages/sub' } }, tempDir);
+
+      const tree = (ws.sent[0] as { payload: { tree: TreeNodeShape[] } }).payload.tree;
+      const names = tree.map((n) => n.name);
+      expect(names).toContain('src');
+      expect(names).not.toContain('dist');
+      expect(names).not.toContain('debug.log');
+    });
   });
 
   describe('handleFilesRead', () => {
@@ -392,6 +413,26 @@ describe('file handlers integration', () => {
       const files = (ws.sent[0] as { payload: { files: string[] } }).payload.files;
       expect(files).toContain('kept.ts');
       expect(files).not.toContain('scratch/leaked.ts');
+    });
+
+    it('applies project-root .gitignore rules and prefixes paths when scoped to a subdirectory', async () => {
+      fsSync.writeFileSync(
+        path.join(tempDir, '.gitignore'),
+        '/packages/sub/ignored/\npackages/sub/*.log\n',
+      );
+      fsSync.mkdirSync(path.join(tempDir, 'packages', 'sub', 'ignored'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'ignored', 'bad.ts'), '');
+      fsSync.mkdirSync(path.join(tempDir, 'packages', 'sub', 'src'), { recursive: true });
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'src', 'app.ts'), '');
+      fsSync.writeFileSync(path.join(tempDir, 'packages', 'sub', 'debug.log'), '');
+
+      const ws = createMockWs();
+      await handleFilesList(ws, { type: 'files.list', payload: { path: 'packages/sub' } }, tempDir);
+
+      const files = (ws.sent[0] as { payload: { files: string[] } }).payload.files;
+      expect(files).toContain('packages/sub/src/app.ts');
+      expect(files.some((f) => f.includes('bad.ts'))).toBe(false);
+      expect(files.some((f) => f.includes('debug.log'))).toBe(false);
     });
   });
 
@@ -1147,6 +1188,28 @@ describe('file handlers integration', () => {
       };
       expect(response.payload.success).toBe(false);
       expect(response.payload.error).toMatch(/project root/i);
+    });
+
+    it('normalizes destDir with trailing slash', async () => {
+      fsSync.writeFileSync(path.join(tempDir, 'file.ts'), 'content');
+      fsSync.mkdirSync(path.join(tempDir, 'target-dir'));
+      const ws = createMockWs();
+      await handleFilesMove(
+        ws,
+        {
+          type: 'files.move',
+          payload: { srcPath: 'file.ts', destDir: 'target-dir/' },
+        },
+        tempDir,
+      );
+      const response = ws.sent[0] as {
+        type: string;
+        payload: { srcPath: string; destPath: string; success: boolean };
+      };
+      expect(response.type).toBe('files.moved');
+      expect(response.payload.success).toBe(true);
+      expect(response.payload.destPath).toBe('target-dir/file.ts');
+      expect(fsSync.existsSync(path.join(tempDir, 'target-dir', 'file.ts'))).toBe(true);
     });
   });
 

@@ -329,6 +329,57 @@ describe('OpenAICompatibleProvider', () => {
       { signal: new AbortController().signal },
     );
     expect(captured?.['thinking']).toEqual({ type: 'disabled' });
+
+    await p.complete(
+      {
+        model: 'glm-5.3',
+        messages: [{ role: 'user', content: 'hi' }],
+        maxTokens: 1,
+        cache: { key: 'ws-stable-prefix' },
+        reasoning: { enabled: false, effort: 'none' },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(captured?.['thinking']).toEqual({ type: 'enabled' });
+    expect(captured?.['reasoning_effort']).toBe('low');
+    expect(captured).not.toHaveProperty('prompt_cache_key');
+  });
+
+  it('keeps Z.AI request policy on an auth-profile alias', async () => {
+    let captured: Record<string, unknown> | undefined;
+    const spy = vi.fn(async (_url: unknown, init: { body?: string } = {}) => {
+      captured = JSON.parse(init.body ?? '{}');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ model: 'm', choices: [], usage: {} }),
+        text: async (): Promise<string> => '',
+      };
+    }) as never as typeof fetch;
+    const p = new OpenAICompatibleProvider({
+      id: 'zai-work',
+      definitionId: 'zai-coding-plan',
+      apiKey: 'k',
+      baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+      quirks: { thinkingParam: 'zai-glm' },
+      fetchImpl: spy,
+    });
+    await p.complete(
+      {
+        model: 'glm-5.3-flash',
+        messages: [{ role: 'user', content: 'hi' }],
+        maxTokens: 1,
+        cache: { key: 'ws-stable-prefix' },
+        reasoning: { enabled: false, effort: 'xhigh' },
+      },
+      { signal: new AbortController().signal },
+    );
+    expect(p.id).toBe('zai-work');
+    expect(captured).toMatchObject({
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'low',
+    });
+    expect(captured).not.toHaveProperty('prompt_cache_key');
   });
 
   it('does not send disabled thinking to always-on compatible models', async () => {

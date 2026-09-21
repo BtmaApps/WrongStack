@@ -55,11 +55,13 @@ describe('WebUI official MCP servers stay in step with the core presets', () => 
         command: webui.command,
         args: webui.args,
         url: webui.url,
+        bearerTokenEnv: webui.bearerTokenEnv,
       }).toEqual({
         transport: preset.transport,
         command: preset.command,
         args: preset.args,
         url: preset.url,
+        bearerTokenEnv: preset.bearerTokenEnv,
       });
     },
   );

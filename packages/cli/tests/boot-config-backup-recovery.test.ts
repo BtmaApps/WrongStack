@@ -58,6 +58,10 @@ describe('interactive config backup recovery', () => {
     const backup = await findLatestProviderBackup(globalRoot);
     expect(backup?.fileName).toBe('profiles-default-config-2026-07-19T12-00-00-000.json');
     expect(backup?.providerIds).toEqual(['newestUsable']);
+
+    const workBackup = await findLatestProviderBackup(globalRoot, 'work');
+    expect(workBackup?.fileName).toBe('profiles-work-config-2026-07-19T14-00-00-000.json');
+    expect(workBackup?.providerIds).toEqual(['wrongProfile']);
   });
 
   it('defaults to yes and restores the complete backup JSON', async () => {

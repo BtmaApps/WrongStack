@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { noOpVault } from '@wrongstack/core/security';
 import { DefaultConfigStore } from '@wrongstack/core/storage';
 import type { Config } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
@@ -75,6 +76,7 @@ function makeAdapter(initial = baseConfig()) {
   const adapter = createSettingsAdapter({
     configStore,
     wpaths: { globalConfig, profileConfig: () => globalConfig, inProjectConfig } as never,
+    vault: noOpVault,
     fleetStreamController: undefined,
     applyLiveSettings: (settings) => {
       applied.push(settings);
@@ -401,8 +403,8 @@ describe('TUI settings adapter', () => {
     expect(s['allowOutsideProjectRoot']).toBe(false);
   });
 
-  it('deep-merges an existing project config when config scope changes to project', async () => {
-    const { adapter, configStore, inProjectConfig } = makeAdapter();
+  it('deep-merges safe project settings while keeping operator-owned autonomy local', async () => {
+    const { adapter, configStore, globalConfig, inProjectConfig } = makeAdapter();
     mkdirSync(path.dirname(inProjectConfig), { recursive: true });
     writeFileSync(
       inProjectConfig,
@@ -424,7 +426,9 @@ describe('TUI settings adapter', () => {
     expect(err).toBeNull();
     const written = JSON.parse(readFileSync(inProjectConfig, 'utf8'));
     expect(written.configScope).toBe('project');
-    expect(written.autonomy.defaultMode).toBe('auto');
+    // Startup autonomy is operator-owned and the loader rejects it from a
+    // repo config; the writer must not claim to persist it there either.
+    expect(written.autonomy.defaultMode).toBeUndefined();
     expect(written.autonomy.confirmExit).toBe(false);
     expect(written.autonomy.autoProceedDelayMs).toBe(15_000);
     expect(written.autonomy.enhanceDelayMs).toBe(15_000);
@@ -433,6 +437,8 @@ describe('TUI settings adapter', () => {
     expect(written.features.chime).toBe(true);
     expect(written.modelRuntime.reasoning.mode).toBe('on');
     expect(written.modelRuntime.cache.ttl).toBe('5m');
+    const profileWritten = JSON.parse(readFileSync(globalConfig, 'utf8'));
+    expect(profileWritten.autonomy.defaultMode).toBe('auto');
     expect(configStore.get().configScope).toBe('project');
     expect(configStore.get().autonomy?.defaultMode).toBe('auto');
     expect(configStore.get().autonomy?.autoProceedDelayMs).toBe(15_000);

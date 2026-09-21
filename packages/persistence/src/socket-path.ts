@@ -18,7 +18,14 @@
 /** Usable `sun_path` bytes (capacity minus the terminating NUL) per platform. */
 export function unixSocketPathLimit(platform: NodeJS.Platform = process.platform): number {
   // macOS and the BSDs: sizeof(sun_path) == 104 including NUL.
-  if (platform === 'darwin' || platform === 'freebsd' || platform === 'openbsd') return 103;
+  if (
+    platform === 'darwin' ||
+    platform === 'freebsd' ||
+    platform === 'openbsd' ||
+    platform === 'netbsd'
+  ) {
+    return 103;
+  }
   // Linux and the rest of the POSIX family: 108 including NUL.
   return 107;
 }

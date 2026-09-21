@@ -548,7 +548,14 @@ export function validateMcpServerPayload(
     return { ok: false, message: `${label} payload.name must be a non-empty string` };
   }
 
-  for (const key of ['description', 'command', 'url', 'transport', 'permission'] as const) {
+  for (const key of [
+    'description',
+    'command',
+    'url',
+    'transport',
+    'permission',
+    'bearerTokenEnv',
+  ] as const) {
     const value = payload[key];
     if (value !== undefined && (typeof value !== 'string' || value.length > MCP_MAX_STRING)) {
       // `transport` also accepts an object form; only reject a bad primitive.

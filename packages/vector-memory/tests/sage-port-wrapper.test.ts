@@ -364,4 +364,40 @@ describe('wrapMemoryPortWithVectorRecall', () => {
       store.close();
     }
   });
+
+  it('honors per-query vector recall overrides (weight, minScore, threshold)', async () => {
+    const searchSage = vi.fn(async () => [makeSage('m1', 'lexical')]);
+    const port = makeFakePort({
+      retrieval: { searchSage } as unknown as SageRetrievalCapability,
+    });
+    const capturedOpts: Array<Record<string, unknown>> = [];
+    const vectorRecall = {
+      search: vi.fn(async (_query: string, opts: Record<string, unknown>) => {
+        capturedOpts.push(opts);
+        return [{ id: 'v1', score: 0.9, text: 'lexical', tags: [], metadata: { sageId: 'm1' } }];
+      }),
+    };
+    const wrapped = wrapMemoryPortWithVectorRecall(port, {
+      store: undefined as unknown as VectorMemoryStore,
+      vectorRecall,
+      weight: 0.2,
+      threshold: 0.1,
+      vectorOnlyThreshold: 0.5,
+    });
+    const cap = wrapped.getCapability<SageRetrievalCapability>(SAGE_RETRIEVAL_CAPABILITY)!;
+
+    // Per-query overrides
+    await cap.searchSage('test query', {
+      vectorRecallWeight: 0.7,
+      vectorRecallMinScore: 0.85,
+      vectorRecallThreshold: 0.95,
+    });
+
+    expect(vectorRecall.search).toHaveBeenCalledTimes(1);
+    expect(capturedOpts[0]!['threshold']).toBe(0.85);
+
+    // Omitted per-query options fall back to wrapper defaults
+    await cap.searchSage('test query 2');
+    expect(capturedOpts[1]!['threshold']).toBe(0.1);
+  });
 });

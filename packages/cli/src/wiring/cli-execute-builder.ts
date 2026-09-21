@@ -241,6 +241,7 @@ export async function runCliExecution(params: {
         activateSessionIdentity: activateSession,
         config,
         configStore,
+        vault,
         wpaths,
         projectRoot,
         flags,

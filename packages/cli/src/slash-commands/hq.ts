@@ -72,7 +72,7 @@ export function buildHqCommand(opts: SlashCommandContext): SlashCommand {
         configStore: opts.configStore,
         profileConfigPath: activeProfileConfigPath(opts.paths, opts.configStore.get()),
         inProjectConfigPath: opts.paths.inProjectConfig,
-        vault: noOpVault,
+        vault: opts.vault ?? noOpVault,
         forceGlobal: true as const,
       };
       const currentHq = (opts.configStore.get() as { hq?: HqClientConfig }).hq;
@@ -90,6 +90,11 @@ export function buildHqCommand(opts: SlashCommandContext): SlashCommand {
         } catch {
           return {
             message: `${color.red('Invalid URL:')} ${url} ${color.dim('(expected http://host:3499)')}`,
+          };
+        }
+        if (token && !opts.vault) {
+          return {
+            message: `${color.red('✗')} Secure credential storage is unavailable; HQ token was not saved.`,
           };
         }
         await persistConfigSetting(persistDeps, (cfg) => {
@@ -113,6 +118,11 @@ export function buildHqCommand(opts: SlashCommandContext): SlashCommand {
       if (sub === 'token') {
         const token = rest.join(' ').trim();
         if (!token) return { message: `${color.amber('Usage:')} /hq token <client-token>` };
+        if (!opts.vault) {
+          return {
+            message: `${color.red('✗')} Secure credential storage is unavailable; HQ token was not saved.`,
+          };
+        }
         await persistConfigSetting(persistDeps, (cfg) => {
           const hq = (cfg.hq as Record<string, unknown> | undefined) ?? {};
           hq.token = token;

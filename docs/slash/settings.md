@@ -31,8 +31,12 @@ command is argument-driven so it works in both the plain REPL and the Ink TUI.
 | `/settings plugin toggle <name>` | Toggle a single built-in audit-list plugin row; current bundled rows are all toggleable, including guard plugins such as [`secret-scanner`](../../packages/plugins/src/secret-scanner) and [`branch-guard`](../../packages/plugins/src/branch-guard) |
 | `/settings defaults` | Show built-in defaults |
 
-Settings are persisted to the active config scope: global
-the active `~/.wrongstack/profiles/<name>/config.json`, or project `<project>/.wrongstack/config.json`.
+Settings are persisted to the active config scope: global means the active
+`~/.wrongstack/profiles/<name>/config.json`; project means
+`<project>/.wrongstack/config.json`.
+Operator-owned security controls (for example startup autonomy, YOLO,
+filesystem containment, tool runaway limits, auto-thinning, and proxy routing)
+always stay in the active profile even while the general scope is `project`.
 
 The reasoning/cache rows are top-level defaults (`config.modelRuntime`) for the
 leader/default request path. Use `/setmodel reasoning ...` or WebUI Settings ->

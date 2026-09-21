@@ -10,13 +10,14 @@ export { expectDefined };
  * touches the config `providers` map.
  */
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import {
   decryptConfigSecrets,
   decryptConfigSecretsForRewrite,
   encryptConfigSecrets,
 } from '@wrongstack/core/security';
 import type { ProviderApiKey, ProviderConfig, SecretVault } from '@wrongstack/core/types';
-import { atomicWrite, color, withFileLock } from '@wrongstack/core/utils';
+import { atomicWrite, backupConfigFile, color, withFileLock } from '@wrongstack/core/utils';
 import {
   clearStaleProviderDefaults,
   removeProviderFallbackReferences,
@@ -152,6 +153,12 @@ export async function loadConfigProviders(
  */
 let configMutationChain: Promise<unknown> = Promise.resolve();
 
+function globalRootForConfigPath(configPath: string): string {
+  const configDir = path.dirname(configPath);
+  const profilesDir = path.dirname(configDir);
+  return path.basename(profilesDir) === 'profiles' ? path.dirname(profilesDir) : configDir;
+}
+
 function queueConfigMutation<T>(mutate: () => Promise<T>): Promise<T> {
   const run = configMutationChain.then(mutate, mutate);
   // Swallow the outcome into the chain so a failed mutation never stalls the
@@ -232,6 +239,7 @@ export async function mutateConfigProviders(
       ]);
       clearStaleProviderDefaults(decrypted, { preservePrimary: primaryBefore === primaryAfter });
       const encrypted = encryptConfigSecrets(decrypted, vault);
+      await backupConfigFile(targetPath, { globalRoot: globalRootForConfigPath(targetPath) });
       await atomicWrite(targetPath, JSON.stringify(encrypted, null, 2), { mode: 0o600 });
     }),
   );

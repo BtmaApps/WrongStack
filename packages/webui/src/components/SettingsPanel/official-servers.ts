@@ -8,6 +8,7 @@ export interface OfficialServer {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  bearerTokenEnv?: string;
   allowedTools?: string[];
   requiresEnvVars?: string[];
   badge?: string;
@@ -123,7 +124,9 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
     env: { Z_AI_MODE: 'ZAI' },
     requiresEnvVars: ['Z_AI_API_KEY'],
     allowedTools: [
+      'ui_to_artifact',
       'image_analysis',
+      'video_analysis',
       'extract_text_from_screenshot',
       'diagnose_error_screenshot',
       'understand_technical_diagram',
@@ -131,6 +134,26 @@ export const OFFICIAL_SERVERS: OfficialServer[] = [
       'ui_diff_check',
     ],
     badge: 'Vision',
+  },
+  {
+    name: 'zai-web-search',
+    description: 'Current web search through the official Z.AI Coding Plan MCP service.',
+    transport: 'streamable-http',
+    url: 'https://api.z.ai/api/mcp/web_search_prime/mcp',
+    bearerTokenEnv: 'Z_AI_API_KEY',
+    requiresEnvVars: ['Z_AI_API_KEY'],
+    allowedTools: ['webSearchPrime'],
+    badge: 'Search',
+  },
+  {
+    name: 'zai-web-reader',
+    description: 'Webpage content and metadata through the official Z.AI Coding Plan MCP service.',
+    transport: 'streamable-http',
+    url: 'https://api.z.ai/api/mcp/web_reader/mcp',
+    bearerTokenEnv: 'Z_AI_API_KEY',
+    requiresEnvVars: ['Z_AI_API_KEY'],
+    allowedTools: ['webReader'],
+    badge: 'Reader',
   },
   {
     name: 'minimax-vision',
@@ -171,6 +194,7 @@ export function toServerConfig(server: OfficialServer, enabled = false): MCPServ
     args: server.args,
     url: server.url,
     env: server.env,
+    bearerTokenEnv: server.bearerTokenEnv,
     allowedTools: server.allowedTools,
     enabled,
   };

@@ -65,7 +65,7 @@ export interface TrustedProviderPreset extends ProviderDefinition {
  * Canonical trusted presets.
  *
  * Sourced from each vendor's public API/CLI documentation current as of
- * 2026-07-15. Update only after re-verifying the URL, the model aliases,
+ * 2026-09-21. Update only after re-verifying the URL, the model aliases,
  * and the usage-class contract.
  */
 export const TRUSTED_PROVIDER_PRESETS: Readonly<Record<string, TrustedProviderPreset>> = {
@@ -185,7 +185,43 @@ export const TRUSTED_PROVIDER_PRESETS: Readonly<Record<string, TrustedProviderPr
     family: 'openai-compatible',
     baseUrl: 'https://api.z.ai/api/coding/paas/v4',
     envVars: ['ZHIPU_API_KEY'],
-    models: ['glm-5.2', 'glm-5-turbo', 'glm-4.7'],
+    models: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-5-turbo', 'glm-4.7'],
+    customModels: {
+      'glm-5.3': {
+        maxOutput: 128_000,
+        capabilities: {
+          tools: true,
+          parallelTools: true,
+          vision: false,
+          streaming: true,
+          promptCache: true,
+          systemPrompt: true,
+          jsonMode: true,
+          structuredOutput: true,
+          reasoning: true,
+          maxContext: 1_000_000,
+          maxOutput: 128_000,
+          cacheControl: 'auto',
+        },
+      },
+      'glm-5.3-flash': {
+        maxOutput: 128_000,
+        capabilities: {
+          tools: true,
+          parallelTools: true,
+          vision: true,
+          streaming: true,
+          promptCache: true,
+          systemPrompt: true,
+          jsonMode: true,
+          structuredOutput: true,
+          reasoning: true,
+          maxContext: 1_000_000,
+          maxOutput: 128_000,
+          cacheControl: 'auto',
+        },
+      },
+    },
     quirks: { thinkingParam: 'zai-glm' },
     usage: 'subscription-interactive',
     docsUrl: 'https://docs.z.ai/devpack/quick-start',
@@ -211,7 +247,43 @@ export const TRUSTED_PROVIDER_PRESETS: Readonly<Record<string, TrustedProviderPr
     family: 'openai-compatible',
     baseUrl: 'https://api.z.ai/api/paas/v4',
     envVars: ['ZHIPU_API_KEY'],
-    models: ['glm-4.7', 'glm-5-turbo', 'glm-5.2'],
+    models: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-5-turbo', 'glm-4.7'],
+    customModels: {
+      'glm-5.3': {
+        maxOutput: 128_000,
+        capabilities: {
+          tools: true,
+          parallelTools: true,
+          vision: false,
+          streaming: true,
+          promptCache: true,
+          systemPrompt: true,
+          jsonMode: true,
+          structuredOutput: true,
+          reasoning: true,
+          maxContext: 1_000_000,
+          maxOutput: 128_000,
+          cacheControl: 'auto',
+        },
+      },
+      'glm-5.3-flash': {
+        maxOutput: 128_000,
+        capabilities: {
+          tools: true,
+          parallelTools: true,
+          vision: true,
+          streaming: true,
+          promptCache: true,
+          systemPrompt: true,
+          jsonMode: true,
+          structuredOutput: true,
+          reasoning: true,
+          maxContext: 1_000_000,
+          maxOutput: 128_000,
+          cacheControl: 'auto',
+        },
+      },
+    },
     quirks: { thinkingParam: 'zai-glm' },
     usage: 'metered-api',
     docsUrl: 'https://docs.z.ai/guides/overview/quick-start',
@@ -620,7 +692,7 @@ export function buildProviderConfigFromPreset(preset: TrustedProviderPreset): Pr
   if (preset.customModels) {
     cfg.customModels = {};
     for (const [id, def] of Object.entries(preset.customModels)) {
-      cfg.customModels[id] = { ...def };
+      cfg.customModels[id] = structuredClone(def);
     }
   }
   if (preset.quirks) {
@@ -653,7 +725,12 @@ export function rehydrateCanonicalProviderConfig(
   if (dest.baseUrl === undefined) dest.baseUrl = template.baseUrl;
   if (!dest.envVars || dest.envVars.length === 0) dest.envVars = template.envVars;
 
-  if (protocolWasStale || !dest.models || dest.models.length === 0) {
+  if (
+    protocolWasStale ||
+    !dest.models ||
+    dest.models.length === 0 ||
+    isLegacyZaiDefaultModelList(providerId, dest.models)
+  ) {
     const customIds = Object.keys(dest.customModels ?? {});
     const presetModels = template.models ?? [];
     dest.models = [...presetModels, ...customIds.filter((id) => !presetModels.includes(id))];
@@ -672,6 +749,12 @@ export function rehydrateCanonicalProviderConfig(
     dest.quirks = { ...template.quirks, ...(dest.quirks ?? {}) };
   }
   return true;
+}
+
+function isLegacyZaiDefaultModelList(providerId: string, models: readonly string[]): boolean {
+  if (providerId !== 'zai' && providerId !== 'zai-coding-plan') return false;
+  const legacy = new Set(['glm-5.2', 'glm-5-turbo', 'glm-4.7']);
+  return models.length === legacy.size && models.every((model) => legacy.has(model));
 }
 
 /**

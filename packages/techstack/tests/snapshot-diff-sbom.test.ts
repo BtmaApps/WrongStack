@@ -166,6 +166,90 @@ describe('diffSnapshots', () => {
     const diff = diffSnapshots(snapA, snapB);
     expect(diff.changed).toHaveLength(0);
   });
+
+  it('correctly tracks distinct workspaces in monorepo snapshots', () => {
+    const snapA: Snapshot = {
+      ...BASE_SNAPSHOT,
+      dependencies: [
+        {
+          id: 'dep-fe',
+          workspaceId: 'frontend',
+          ecosystem: 'npm',
+          name: 'axios',
+          sourceType: 'registry',
+          direct: true,
+          scope: 'runtime',
+          locked: '1.5.0',
+          status: 'current',
+          evidence: [],
+        },
+        {
+          id: 'dep-be',
+          workspaceId: 'backend',
+          ecosystem: 'npm',
+          name: 'axios',
+          sourceType: 'registry',
+          direct: true,
+          scope: 'runtime',
+          locked: '1.6.0',
+          status: 'current',
+          evidence: [],
+        },
+      ],
+    };
+
+    const snapB: Snapshot = {
+      ...BASE_SNAPSHOT,
+      dependencies: [
+        {
+          id: 'dep-fe',
+          workspaceId: 'frontend',
+          ecosystem: 'npm',
+          name: 'axios',
+          sourceType: 'registry',
+          direct: true,
+          scope: 'runtime',
+          locked: '1.7.0',
+          status: 'update_available_safe',
+          evidence: [],
+        },
+        {
+          id: 'dep-be',
+          workspaceId: 'backend',
+          ecosystem: 'npm',
+          name: 'axios',
+          sourceType: 'registry',
+          direct: true,
+          scope: 'runtime',
+          locked: '1.6.0',
+          status: 'current',
+          evidence: [],
+        },
+      ],
+    };
+
+    const diff = diffSnapshots(snapA, snapB);
+    expect(diff.added).toHaveLength(0);
+    expect(diff.removed).toHaveLength(0);
+    expect(diff.changed).toEqual([
+      {
+        name: 'axios',
+        ecosystem: 'npm',
+        workspaceId: 'frontend',
+        field: 'locked',
+        from: '1.5.0',
+        to: '1.7.0',
+      },
+      {
+        name: 'axios',
+        ecosystem: 'npm',
+        workspaceId: 'frontend',
+        field: 'status',
+        from: 'current',
+        to: 'update_available_safe',
+      },
+    ]);
+  });
 });
 
 describe('SBOM export', () => {

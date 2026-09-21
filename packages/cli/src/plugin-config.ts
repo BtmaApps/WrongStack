@@ -2,7 +2,8 @@ import * as fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { PluginConfig } from '@wrongstack/core/types';
-import { atomicWrite } from '@wrongstack/core/utils';
+import { updateJsonObjectFile } from '@wrongstack/core/utils';
+import { backupCurrent } from './config-history.js';
 import type { PluginManagementDeps, PluginManagementResult } from './plugin-management-types.js';
 
 export async function readConfig(file: string): Promise<Record<string, unknown>> {
@@ -28,22 +29,25 @@ export async function upsertPlugin(
   deps: PluginManagementDeps,
   verb: string,
 ): Promise<PluginManagementResult> {
-  const existing = await readConfig(deps.configPath);
-  const plugins = Array.isArray(existing.plugins)
-    ? (existing.plugins as Array<string | PluginConfig>)
-    : [];
-  const idx = plugins.findIndex((p) => pluginName(p) === spec);
-  const nextEntry = pluginEntry(spec, opts.enabled, opts.path);
-  if (idx >= 0) plugins[idx] = nextEntry;
-  else plugins.push(nextEntry);
-  const features = {
-    ...(isRecord(deps.config.features) ? deps.config.features : {}),
-    ...(isRecord(existing.features) ? existing.features : {}),
-    plugins: true,
-  };
-  existing.plugins = plugins;
-  existing.features = features;
-  await atomicWrite(deps.configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+  let plugins: Array<string | PluginConfig> = [];
+  let features: Record<string, unknown> = {};
+  await updateJsonObjectFile(deps.configPath, async (existing) => {
+    await backupCurrent(undefined, deps.configPath);
+    plugins = Array.isArray(existing.plugins)
+      ? (existing.plugins as Array<string | PluginConfig>)
+      : [];
+    const idx = plugins.findIndex((p) => pluginName(p) === spec);
+    const nextEntry = pluginEntry(spec, opts.enabled, opts.path);
+    if (idx >= 0) plugins[idx] = nextEntry;
+    else plugins.push(nextEntry);
+    features = {
+      ...(isRecord(deps.config.features) ? deps.config.features : {}),
+      ...(isRecord(existing.features) ? existing.features : {}),
+      plugins: true,
+    };
+    existing.plugins = plugins;
+    existing.features = features;
+  });
   const restartRequired = spec === 'branch-guard' && !opts.enabled ? undefined : true;
   return {
     code: 0,

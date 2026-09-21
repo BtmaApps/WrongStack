@@ -24,6 +24,12 @@ The GitHub token is encrypted and written to `~/.wrongstack/profiles/<name>/sync
 `atomicWrite`; `/sync enable` refuses to persist a new token when secure vault storage is unavailable.
 The in-memory token stays decrypted for GitHub API calls.
 
+The `settings` category is a portable, secret-free projection rather than a raw
+copy of the profile file. API keys, OAuth tokens, provider endpoints, HQ/bot
+credentials, and other machine-owned trust settings never leave the machine.
+Pull merges only contract-approved settings into the local profile, preserves
+local credentials, creates a pre-write backup, and atomically replaces the file.
+
 The target repository must contain at least one commit (for example, initialize it with a README).
 `/sync push` can create a missing `main` branch when Git objects already exist, but GitHub's Git
 Data API cannot create the first commit in a completely empty repository.

@@ -20,13 +20,13 @@ function requestSessionId(msg: WSClientMessage): string | undefined {
 
 export function createAutonomyRouteHandlers(ctx: PrefsHandlerContext): AutonomyRouteHandlers {
   return {
-    switchMode: (ws, message) => {
+    switchMode: async (ws, message) => {
       const parsed = validateAutonomySwitchPayload(message.payload);
       if (!parsed.ok) {
         sendResult(ws, false, parsed.message);
         return;
       }
-      handleAutonomySwitch(ctx, ws, parsed.value.mode, requestSessionId(message));
+      await handleAutonomySwitch(ctx, ws, parsed.value.mode, requestSessionId(message));
     },
   };
 }

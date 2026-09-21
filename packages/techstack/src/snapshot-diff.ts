@@ -14,14 +14,20 @@ export interface SnapshotDiff {
   changed: Array<{
     name: string;
     ecosystem: string;
+    workspaceId?: string;
     field: string;
     from: string;
     to: string;
   }>;
 }
 
+const depKey = (dep: DependencyObservation): string =>
+  dep.workspaceId
+    ? `${dep.workspaceId}:${dep.ecosystem}:${dep.name}`
+    : `${dep.ecosystem}:${dep.name}`;
+
 /**
- * Compare two snapshots by dependency name + ecosystem.
+ * Compare two snapshots by dependency workspace, name, and ecosystem.
  *
  * Returns added (in new but not old), removed (in old but not new), and
  * changed (version/status differences for matching dependencies).
@@ -29,12 +35,12 @@ export interface SnapshotDiff {
 export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): SnapshotDiff {
   const oldByKey = new Map<string, DependencyObservation>();
   for (const dep of oldSnapshot.dependencies) {
-    oldByKey.set(`${dep.ecosystem}:${dep.name}`, dep);
+    oldByKey.set(depKey(dep), dep);
   }
 
   const newByKey = new Map<string, DependencyObservation>();
   for (const dep of newSnapshot.dependencies) {
-    newByKey.set(`${dep.ecosystem}:${dep.name}`, dep);
+    newByKey.set(depKey(dep), dep);
   }
 
   const added: DependencyObservation[] = [];
@@ -65,6 +71,7 @@ export function diffSnapshots(oldSnapshot: Snapshot, newSnapshot: Snapshot): Sna
       changed.push({
         name: newDep.name,
         ecosystem: newDep.ecosystem,
+        ...(newDep.workspaceId ? { workspaceId: newDep.workspaceId } : {}),
         field: String(field),
         from: oldVal,
         to: newVal,

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   getJsonPath,
   isJsonObject,
@@ -82,6 +82,16 @@ describe('file helpers', () => {
     await writeJsonObjectFile(f, { a: 1 });
     const next = await updateJsonObjectFile(f, () => 42 as never);
     expect(next).toEqual({ a: 1 });
+  });
+
+  it('updateJsonObjectFile refuses to replace an existing corrupt document', async () => {
+    const f = path.join(tmp, 'corrupt-update.json');
+    await fs.writeFile(f, '{broken');
+
+    await expect(
+      updateJsonObjectFile(f, (config) => ({ ...config, replaced: true })),
+    ).rejects.toThrow('Refusing to overwrite corrupt JSON');
+    expect(await fs.readFile(f, 'utf8')).toBe('{broken');
   });
 });
 

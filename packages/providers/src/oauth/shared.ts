@@ -53,10 +53,29 @@ export function parseAuthorizationInput(input: string): {
   if (!value) return {};
   try {
     const url = new URL(value);
-    return {
-      code: url.searchParams.get('code') ?? undefined,
-      state: url.searchParams.get('state') ?? undefined,
-    };
+    const code = url.searchParams.get('code') ?? undefined;
+    const state = url.searchParams.get('state') ?? undefined;
+    if (code) {
+      return { code, state };
+    }
+    if (url.hash) {
+      const hashContent = url.hash.slice(1);
+      if (hashContent.includes('code=')) {
+        const params = new URLSearchParams(hashContent);
+        return {
+          code: params.get('code') ?? undefined,
+          state: params.get('state') ?? state,
+        };
+      }
+      if (hashContent.includes('#')) {
+        const [hCode, hState] = hashContent.split('#', 2);
+        return { code: hCode, state: hState || state };
+      }
+      if (hashContent) {
+        return { code: hashContent, state };
+      }
+    }
+    return { code, state };
   } catch {
     /* not a URL */
   }
@@ -143,6 +162,15 @@ export function startLoopbackServer(opts: LoopbackOptions): Promise<LoopbackServ
   });
 
   const server: Server = createServer((req, res) => {
+    // One-shot server: every response is the last one this socket will carry.
+    // Without this the browser (and undici, in tests) holds the connection
+    // keep-alive for `server.keepAliveTimeout` (5s by default), and Node's
+    // `server.close()` refuses to release the listening socket while any
+    // connection is still open. The callback port is FIXED for several
+    // providers — Anthropic can only ever use 53692 — so a port held for
+    // seconds after a completed login makes the very next attempt fall back to
+    // the manual-paste prompt for no reason.
+    res.setHeader('connection', 'close');
     let url: URL;
     try {
       url = new URL(req.url ?? '', `http://${host}`);
@@ -193,13 +221,29 @@ export function startLoopbackServer(opts: LoopbackOptions): Promise<LoopbackServ
     server.close(() => resolveCode({ code, state: state ?? '' }));
   });
 
-  const onAbort = (): void => {
-    resolveCode(null);
+  /**
+   * Release the listening socket *now*. `server.close()` alone only stops
+   * accepting — it keeps the port bound until every established connection
+   * ends, so a browser tab left open on the callback page (or an abort that
+   * arrives mid-request) pins a fixed callback port indefinitely.
+   */
+  const teardown = (): void => {
     try {
+      // Stop accepting first, then drop whatever is still attached — Node's
+      // documented shutdown order. Forcing the second step is safe here: the
+      // only thing this server ever writes is the static confirmation page,
+      // already flushed (the handler sends `Connection: close`), and teardown
+      // only runs once the flow is finished or cancelled.
       server.close();
+      server.closeAllConnections?.();
     } catch {
       /* ignore */
     }
+  };
+
+  const onAbort = (): void => {
+    resolveCode(null);
+    teardown();
   };
   if (signal) {
     if (signal.aborted) onAbort();
@@ -215,11 +259,7 @@ export function startLoopbackServer(opts: LoopbackOptions): Promise<LoopbackServ
 
     const close = (): void => {
       resolveCode(null);
-      try {
-        server.close();
-      } catch {
-        /* ignore */
-      }
+      teardown();
     };
 
     const fail = (): void => {

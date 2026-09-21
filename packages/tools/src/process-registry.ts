@@ -10,15 +10,17 @@
  * Thread-safety: Node.js is single-threaded, but async callbacks can fire
  * in any order. All mutations go through synchronized Map methods.
  */
-import { spawn } from 'node:child_process';
+
 import type { ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import {
   CircuitBreaker,
-  type CircuitBreakerSnapshot,
   type CircuitBreakerConfig,
+  type CircuitBreakerSnapshot,
 } from './circuit-breaker.js';
-export type { CircuitBreakerSnapshot, CircuitBreakerConfig } from './circuit-breaker.js';
+
+export type { CircuitBreakerConfig, CircuitBreakerSnapshot } from './circuit-breaker.js';
 
 export interface TrackedProcess {
   pid: number;
@@ -490,9 +492,10 @@ export class ProcessRegistryImpl {
       // Persistent-registry mirror entries have no live handle — tree-kill by
       // PID is the only option (and also the correct one).
       const liveRealChild =
-        p.child === null || (p.child.exitCode === null && typeof p.child.pid === 'number');
+        p.child === null ||
+        (p.child.exitCode == null && p.child.signalCode == null && typeof p.child.pid === 'number');
       const directFallback = () => {
-        if (p.child && p.child.exitCode === null) {
+        if (p.child && p.child.exitCode == null && p.child.signalCode == null) {
           try {
             p.child.kill('SIGKILL');
           } catch {
@@ -528,8 +531,12 @@ export class ProcessRegistryImpl {
         // Schedule SIGKILL as backup.
         const timer = setTimeout(() => {
           // Re-check: process may have exited on its own. Null-child
-          // (persistent mirror) entries have no `.killed` latch — escalate.
-          if (this.processes.has(pid) && !p.child?.killed) {
+          // (persistent mirror) entries have no live handle — escalate if still tracked.
+          // For real children, check if actually terminated (exitCode or signalCode assigned);
+          // child.killed is synchronously set to true by child.kill('SIGTERM') so it cannot be used.
+          const childExited =
+            p.child !== null && (p.child.exitCode != null || p.child.signalCode != null);
+          if (this.processes.has(pid) && !childExited) {
             this._killPosix(p, 'SIGKILL');
           }
         }, graceMs);
@@ -606,7 +613,8 @@ export class ProcessRegistryImpl {
         return (err as NodeJS.ErrnoException).code !== 'EPERM';
       }
     }
-    return entry.child.exitCode !== null && Date.now() - entry.startedAt > 60_000;
+    const childExited = entry.child.exitCode != null || entry.child.signalCode != null;
+    return childExited && Date.now() - entry.startedAt > 60_000;
   }
 
   /**

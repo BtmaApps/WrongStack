@@ -5,6 +5,7 @@ import {
   HQ_PROTOCOL_VERSION,
   type HqMailboxSnapshotPayload,
   type HqSnapshot,
+  KNOWN_HQ_CLIENT_FRAME_TYPES,
   parseHqEventPayload,
   parseHqFrame,
 } from '../../src/hq/protocol.js';
@@ -185,6 +186,76 @@ describe('parseHqFrame', () => {
     expect(result.frame.payload.protocolVersion).toBe(HQ_PROTOCOL_VERSION);
     expect(result.frame.payload.client.clientId).toBe('cli_1');
     expect(result.frame.payload.capabilities).toEqual(['telemetry.publish']);
+  });
+
+  it('keeps every allow-listed frame type wired to a switch case', () => {
+    // Parity guard over two independent sources: the
+    // KNOWN_HQ_CLIENT_FRAME_TYPES allow-list and parseHqFrame's switch. They
+    // drifted once — `client.event_poll` was listed but unhandled, so its
+    // `default` returned the raw type string, and both ws.ts call sites read
+    // `!parsed.ok` on that string (undefined → falsy) and closed a legitimate
+    // gap-fill socket with `invalid frame: undefined`.
+    //
+    // Iterate the real set rather than a copy of it, so a future frame type
+    // added to the allow-list WITHOUT a case fails here instead of silently
+    // falling through. `unknown-type` is the exact signal: the set-membership
+    // guard that returns it runs before the switch, so for a listed type the
+    // only remaining source of that reason is the unhandled `default`.
+    expect(KNOWN_HQ_CLIENT_FRAME_TYPES.size).toBeGreaterThanOrEqual(6);
+    for (const type of KNOWN_HQ_CLIENT_FRAME_TYPES) {
+      const result = parseHqFrame(JSON.stringify({ type }));
+      // Never a bare string: a result object with `ok` is the whole contract
+      // the socket-closing call sites depend on.
+      expect(typeof result, `parseHqFrame(${type})`).toBe('object');
+      expect(result, `parseHqFrame(${type})`).toHaveProperty('ok');
+      if (!result.ok) {
+        expect(result.reason, `parseHqFrame(${type}) has no switch case`).not.toBe('unknown-type');
+      }
+    }
+  });
+
+  it('parses a valid client.event_poll gap-fill frame', () => {
+    const result = parseHqFrame(
+      JSON.stringify({
+        type: 'client.event_poll',
+        clientId: 'cli_1',
+        projectId: 'p_1',
+        afterSeq: 41,
+        limit: 200,
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.frame.type !== 'client.event_poll') return;
+    expect(result.frame.clientId).toBe('cli_1');
+    expect(result.frame.projectId).toBe('p_1');
+    expect(result.frame.afterSeq).toBe(41);
+    expect(result.frame.limit).toBe(200);
+  });
+
+  it('parses client.event_poll without the optional limit', () => {
+    const result = parseHqFrame(
+      JSON.stringify({
+        type: 'client.event_poll',
+        clientId: 'cli_1',
+        projectId: 'p_1',
+        afterSeq: 0,
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.frame.type !== 'client.event_poll') return;
+    expect(result.frame.afterSeq).toBe(0);
+    expect('limit' in result.frame).toBe(false);
+  });
+
+  it.each([
+    ['negative afterSeq', { afterSeq: -1 }],
+    ['fractional afterSeq', { afterSeq: 1.5 }],
+    ['missing afterSeq', {}],
+  ])('rejects a malformed client.event_poll frame (%s)', (_label, body) => {
+    const result = parseHqFrame(
+      JSON.stringify({ type: 'client.event_poll', clientId: 'c', projectId: 'p', ...body }),
+    );
+    expect(result).toEqual({ ok: false, reason: 'malformed' });
   });
 
   it('recognizes a mailbox-serve HQ client', () => {

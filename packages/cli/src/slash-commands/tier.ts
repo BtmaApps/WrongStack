@@ -8,11 +8,10 @@
  * the WebUI editor and this command all read and write one place.
  */
 
-import * as fs from 'node:fs/promises';
 import { leaderTierPolicy, listTierIds, resolveTier } from '@wrongstack/core/coordination';
 import type { Config, ModelTierLevel, SlashCommand } from '@wrongstack/core/types';
-import { ConfigError } from '@wrongstack/core/types';
-import { atomicWrite, color, toErrorMessage } from '@wrongstack/core/utils';
+import { color, toErrorMessage, updateJsonObjectFile } from '@wrongstack/core/utils';
+import { backupCurrent } from '../config-history.js';
 import { activeProfileConfigPath } from '../profile-config-path.js';
 import type { SlashCommandContext } from './command-context.js';
 
@@ -34,29 +33,11 @@ async function patchGlobalConfig(
   globalConfigPath: string,
   mutate: (cfg: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
-  let raw = '{}';
-  let fileExists = true;
-  try {
-    raw = await fs.readFile(globalConfigPath, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    fileExists = false;
-  }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>;
-  } catch (err) {
-    if (fileExists) {
-      throw new ConfigError({
-        code: 'CONFIG_PARSE_FAILED',
-        message: `Config at ${globalConfigPath} is not valid JSON: ${(err as Error).message}`,
-      });
-    }
-    parsed = {};
-  }
-  mutate(parsed);
-  await atomicWrite(globalConfigPath, `${JSON.stringify(parsed, null, 2)}\n`);
-  return parsed;
+  return updateJsonObjectFile(globalConfigPath, async (config) => {
+    await backupCurrent(undefined, globalConfigPath);
+    mutate(config);
+    return config;
+  });
 }
 
 /** Read the tiers object out of a raw config record, creating it if absent. */

@@ -2,17 +2,19 @@ import type { Location, LocationLink } from 'vscode-languageserver-protocol';
 import { displayPath, uriToPathOrUri } from '../utils/uri.js';
 
 export function formatLocations(
-  locations: Array<Location | LocationLink> | null,
+  locations: Location | LocationLink | Array<Location | LocationLink> | null,
   cwd: string,
   limit = 100,
 ): string {
-  if (!locations || locations.length === 0) return 'No locations found.';
-  const lines = locations.slice(0, limit).map((loc) => {
+  if (!locations) return 'No locations found.';
+  const list = Array.isArray(locations) ? locations : [locations];
+  if (list.length === 0) return 'No locations found.';
+  const lines = list.slice(0, limit).map((loc) => {
     const uri = 'uri' in loc ? loc.uri : loc.targetUri;
     const range = 'range' in loc ? loc.range : loc.targetSelectionRange;
     return `${displayUri(uri, cwd)}:${range.start.line + 1}:${range.start.character + 1}`;
   });
-  if (locations.length > limit) lines.push(`... truncated ${locations.length - limit} more`);
+  if (list.length > limit) lines.push(`... truncated ${list.length - limit} more`);
   return lines.join('\n');
 }
 

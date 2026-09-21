@@ -73,7 +73,25 @@ describe('TRUSTED_PROVIDER_PRESETS', () => {
     expect(preset).toBeDefined();
     expect(preset!.baseUrl).toBe('https://api.z.ai/api/paas/v4');
     expect(preset!.envVars).toEqual(['ZHIPU_API_KEY']);
-    expect(preset!.models).toEqual(['glm-4.7', 'glm-5-turbo', 'glm-5.2']);
+    expect(preset!.models).toEqual([
+      'glm-5.3',
+      'glm-5.3-flash',
+      'glm-5.2',
+      'glm-5-turbo',
+      'glm-4.7',
+    ]);
+    expect(preset!.customModels?.['glm-5.3']?.capabilities).toMatchObject({
+      maxContext: 1_000_000,
+      maxOutput: 128_000,
+      reasoning: true,
+      vision: false,
+    });
+    expect(preset!.customModels?.['glm-5.3-flash']?.capabilities).toMatchObject({
+      maxContext: 1_000_000,
+      maxOutput: 128_000,
+      reasoning: true,
+      vision: true,
+    });
     expect(preset!.quirks?.thinkingParam).toBe('zai-glm');
     expect(preset!.usage).toBe('metered-api');
   });
@@ -82,6 +100,7 @@ describe('TRUSTED_PROVIDER_PRESETS', () => {
     const preset = TRUSTED_PROVIDER_PRESETS['zai-coding-plan'];
     expect(preset).toBeDefined();
     expect(preset!.baseUrl).toBe('https://api.z.ai/api/coding/paas/v4');
+    expect(preset!.models.slice(0, 2)).toEqual(['glm-5.3', 'glm-5.3-flash']);
     expect(preset!.usage).toBe('subscription-interactive');
   });
 
@@ -218,6 +237,15 @@ describe('buildProviderConfigFromPreset', () => {
     expect(TRUSTED_PROVIDER_PRESETS.moonshotai!.envVars).toEqual(['MOONSHOT_API_KEY']);
   });
 
+  it('deep-clones per-model capabilities', () => {
+    const preset = TRUSTED_PROVIDER_PRESETS['zai-coding-plan']!;
+    const cfg = buildProviderConfigFromPreset(preset);
+    const capabilities = cfg.customModels?.['glm-5.3']?.capabilities;
+    expect(capabilities).toBeDefined();
+    if (capabilities) capabilities.maxContext = 42;
+    expect(preset.customModels?.['glm-5.3']?.capabilities?.maxContext).toBe(1_000_000);
+  });
+
   it('omits optional fields when the preset does not define them', () => {
     // Currently every preset has quirks/models — guard against future
     // presets that legitimately lack one.
@@ -291,6 +319,27 @@ describe('rehydrateCanonicalProviderConfig', () => {
     expect(dest.baseUrl).toBe(preset.baseUrl);
     expect(dest.envVars).toEqual(preset.envVars);
     expect(dest.models).toEqual(['custom-fine-tune']); // user allowlist preserved
+  });
+
+  it('refreshes the previous Z.AI default model list without replacing custom allowlists', () => {
+    const previousDefault: any = {
+      type: 'zai-coding-plan',
+      family: 'openai-compatible',
+      baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+      models: ['glm-5.2', 'glm-5-turbo', 'glm-4.7'],
+    };
+    rehydrateCanonicalProviderConfig('zai-coding-plan', previousDefault);
+    expect(previousDefault.models.slice(0, 2)).toEqual(['glm-5.3', 'glm-5.3-flash']);
+    expect(previousDefault.customModels['glm-5.3'].capabilities.maxContext).toBe(1_000_000);
+
+    const custom: any = {
+      type: 'zai-coding-plan',
+      family: 'openai-compatible',
+      baseUrl: 'https://api.z.ai/api/coding/paas/v4',
+      models: ['company-fine-tune'],
+    };
+    rehydrateCanonicalProviderConfig('zai-coding-plan', custom);
+    expect(custom.models).toEqual(['company-fine-tune']);
   });
 
   it('preserves user-owned fields when baseUrl diverges from the preset', () => {

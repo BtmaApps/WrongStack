@@ -99,6 +99,21 @@ describe('detectQuantifiedAmbiguity — precision pins (must stay allowed)', () 
     expect(detectQuantifiedAmbiguity(String.raw`\wa|ab`).verdict).toBe('unambiguous');
   });
 
+  it('correctly models ECMAScript Unicode whitespace in \\S and \\s', () => {
+    for (const esc of [
+      '\\u00a0',
+      '\\u1680',
+      '\\u2000',
+      '\\u2028',
+      '\\u2029',
+      '\\u3000',
+      '\\ufeff',
+    ]) {
+      expect(detectQuantifiedAmbiguity(`\\S|${esc}`).verdict).toBe('unambiguous');
+      expect(detectQuantifiedAmbiguity(`\\s|${esc}`).verdict).toBe('ambiguous');
+    }
+  });
+
   it('is permissive for out-of-subset content (under-reject only)', () => {
     const permissive = (v: string): boolean =>
       v === 'unambiguous' || v === 'unparsable' || v === 'budget';
@@ -148,7 +163,7 @@ describe('detectQuantifiedAmbiguity — dot models the real JS dot', () => {
     const r = detectQuantifiedAmbiguity('.|a');
     expect(r.verdict).toBe('ambiguous');
     expect(typeof r.witness === 'string' && r.witness.length > 0).toBe(true);
-    expect(new RegExp(`^(?:.|a)$`).test(r.witness ?? '')).toBe(true);
+    expect(/^(?:.|a)$/.test(r.witness ?? '')).toBe(true);
   });
 });
 

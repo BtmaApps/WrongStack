@@ -12,6 +12,8 @@ export interface MCPClientOptions {
   env?: Record<string, string> | undefined;
   url?: string | undefined;
   headers?: Record<string, string> | undefined;
+  /** Resolve an HTTP Bearer token from this environment variable at connect time. */
+  bearerTokenEnv?: string | undefined;
   startupTimeoutMs?: number | undefined;
   requestTimeoutMs?: number | undefined;
   /**

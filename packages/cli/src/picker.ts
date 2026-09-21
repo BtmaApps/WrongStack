@@ -7,6 +7,7 @@ import {
   setRawMode,
   stripAnsi,
   toErrorMessage,
+  withFileLock,
   writeOut,
 } from '@wrongstack/core/utils';
 import { LOCAL_LLM_PRESETS } from './auth-menu/local-presets.js';
@@ -209,51 +210,53 @@ export async function saveToGlobalConfig(
   homeFn: () => string = () => process.env.HOME ?? os.homedir(),
 ): Promise<boolean> {
   try {
-    const { atomicWrite } = await import('@wrongstack/core/utils');
-    const fs = await import('node:fs/promises');
+    return await withFileLock(configPath, async () => {
+      const { atomicWrite } = await import('@wrongstack/core/utils');
+      const fs = await import('node:fs/promises');
 
-    let existing: Record<string, unknown> = {};
-    try {
-      const raw = await fs.readFile(configPath, 'utf8');
-      existing = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      // No existing config
-    }
+      let existing: Record<string, unknown> = {};
+      try {
+        const raw = await fs.readFile(configPath, 'utf8');
+        existing = JSON.parse(raw) as Record<string, unknown>;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
 
-    const oldCfg = { ...existing };
-    existing.provider = provider;
-    existing.model = model;
+      const oldCfg = { ...existing };
+      existing.provider = provider;
+      existing.model = model;
 
-    // Backup before writing — best-effort (never blocks save)
-    try {
-      await backupCurrent(homeFn, configPath);
-    } catch (err) {
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          event: 'picker.backup_failed',
-          message: toErrorMessage(err),
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    }
+      // Backup before writing — best-effort (never blocks save)
+      try {
+        await backupCurrent(homeFn, configPath);
+      } catch (err) {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'picker.backup_failed',
+            message: toErrorMessage(err),
+            timestamp: new Date().toISOString(),
+          }),
+        );
+      }
 
-    await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+      await atomicWrite(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
 
-    // Record in history — best-effort (never blocks save)
-    try {
-      await appendHistory(
-        oldCfg,
-        existing,
-        `Provider/model changed: ${oldCfg.provider ?? '(none)'} → ${provider}, ${oldCfg.model ?? '(none)'} → ${model}`,
-        homeFn,
-        configPath,
-      );
-    } catch {
-      // best-effort
-    }
+      // Record in history — best-effort (never blocks save)
+      try {
+        await appendHistory(
+          oldCfg,
+          existing,
+          `Provider/model changed: ${oldCfg.provider ?? '(none)'} → ${provider}, ${oldCfg.model ?? '(none)'} → ${model}`,
+          homeFn,
+          configPath,
+        );
+      } catch {
+        // best-effort
+      }
 
-    return true;
+      return true;
+    });
   } catch (err) {
     console.warn(
       JSON.stringify({

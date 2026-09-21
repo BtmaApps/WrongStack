@@ -103,7 +103,7 @@ function matchMemory(
       return { via: 'anchor_directory', strength: 0.5 };
     }
   }
-  if (basename && memory.text.toLowerCase().includes(basename.toLowerCase())) {
+  if (basename && basename !== '.' && memory.text.toLowerCase().includes(basename.toLowerCase())) {
     return { via: 'mention', strength: 0.3 };
   }
   return null;
@@ -115,7 +115,7 @@ export async function findSqliteMemoriesForFile(
   options: FindMemoriesForFileOptions = {},
 ): Promise<FindMemoriesForFileResponse> {
   const target = normalizeProjectPath(ctx.projectRoot, filePath);
-  const basename = target.split('/').at(-1) ?? '';
+  const basename = target === '.' ? '' : (target.split('/').at(-1) ?? '');
   const includeSuperseded = options.includeSuperseded !== false;
   const includeDeleted = options.includeDeleted === true;
   const limit = Math.max(1, Math.min(250, Math.floor(options.limit ?? 50)));

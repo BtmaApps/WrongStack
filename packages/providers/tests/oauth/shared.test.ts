@@ -38,7 +38,6 @@ describe('generatePkce', () => {
     expect(result.challenge).not.toContain('/');
   });
 });
-
 describe('createState', () => {
   it('returns a non-empty hex-like string', () => {
     const state = createState();
@@ -103,5 +102,39 @@ describe('parseAuthorizationInput', () => {
     const result = parseAuthorizationInput('bare-code-value');
     expect(result.code).toBe('bare-code-value');
     expect(result.state).toBeUndefined();
+  });
+
+  it('extracts code and state from URL with hash fragment code#state', () => {
+    const result = parseAuthorizationInput('http://localhost:53692/callback#abc123#xyz789');
+    expect(result).toEqual({
+      code: 'abc123',
+      state: 'xyz789',
+    });
+  });
+
+  it('extracts code and state from URL with hash fragment code=...&state=...', () => {
+    const result = parseAuthorizationInput(
+      'https://claude.ai/oauth/callback#code=def456&state=state123',
+    );
+    expect(result).toEqual({
+      code: 'def456',
+      state: 'state123',
+    });
+  });
+
+  it('extracts code from URL with single code in hash fragment', () => {
+    const result = parseAuthorizationInput('http://localhost:53692/#justcode');
+    expect(result).toEqual({
+      code: 'justcode',
+      state: undefined,
+    });
+  });
+
+  it('extracts code from hash fragment while keeping state from search params', () => {
+    const result = parseAuthorizationInput('http://localhost:53692/callback?state=mystate#code123');
+    expect(result).toEqual({
+      code: 'code123',
+      state: 'mystate',
+    });
   });
 });

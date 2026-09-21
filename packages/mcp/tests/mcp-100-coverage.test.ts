@@ -215,6 +215,7 @@ describe('mcp 100% coverage suite', () => {
       transport: 'stdio',
       headers: { b: '2', a: '1' },
       env: { b: '2', a: '1' },
+      bearerTokenEnv: 'Z_AI_API_KEY',
       passthroughEnv: ['TEST_NONEXISTENT_VAR_XYZ_123'],
     });
     expect(hash).toBeDefined();

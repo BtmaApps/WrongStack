@@ -107,6 +107,25 @@ describe('canonical preference handlers', () => {
     });
   });
 
+  it('does not publish or apply a durable preference when the config write fails', async () => {
+    const state = makeContext();
+    state.persist.mockRejectedValueOnce(new Error('disk is read-only'));
+
+    await handlePrefsUpdate(state.context, ws, { yolo: true });
+
+    expect(state.meta).toEqual({});
+    expect(state.setYolo).not.toHaveBeenCalled();
+    expect(state.applyConfigPrefs).not.toHaveBeenCalled();
+    expect(state.broadcasts).toEqual([]);
+    expect(state.sent).toContainEqual({
+      type: 'key.operation_result',
+      payload: {
+        success: false,
+        message: 'Settings were not saved: disk is read-only',
+      },
+    });
+  });
+
   it('applies the session-only subagent policy without persisting a global default', async () => {
     const state = makeContext();
     const setSubagentsAllowed = vi.fn(async () => undefined);
@@ -140,10 +159,10 @@ describe('canonical preference handlers', () => {
     });
   });
 
-  it('switches real autonomy state, persists, and broadcasts', () => {
+  it('switches real autonomy state, persists, and broadcasts', async () => {
     const state = makeContext();
 
-    handleAutonomySwitch(state.context, ws, 'suggest');
+    await handleAutonomySwitch(state.context, ws, 'suggest');
 
     expect(state.meta['autonomy']).toBe('suggest');
     // Addressed, like `setYolo`: the runtime knob behind this seam is
@@ -157,13 +176,13 @@ describe('canonical preference handlers', () => {
     });
   });
 
-  it('tells the runtime WHICH tab switched autonomy', () => {
+  it('tells the runtime WHICH tab switched autonomy', async () => {
     // Without the id the CLI host cannot tell a background tab's change from
     // the leader's, and it moves the process-wide mode ref for both — which
     // put the eternal-autonomy block into every conversation's system prompt.
     const state = makeContext();
 
-    handleAutonomySwitch(state.context, ws, 'eternal', 'sess_2');
+    await handleAutonomySwitch(state.context, ws, 'eternal', 'sess_2');
 
     expect(state.setAutonomy).toHaveBeenCalledWith('eternal', 'sess_2');
   });

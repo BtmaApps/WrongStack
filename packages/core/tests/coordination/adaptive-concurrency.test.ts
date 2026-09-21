@@ -24,7 +24,6 @@ const ev = (type: string, payload: unknown): FleetEvent => ({
   type,
   payload,
 });
-
 describe('AdaptiveConcurrencyController', () => {
   it('applies the initial concurrency + subscribes when enabled', () => {
     const bus = makeFleetBus();
@@ -259,5 +258,50 @@ describe('AdaptiveConcurrencyController', () => {
     (bus as unknown as { emit: (e: FleetEvent) => void }).emit(ev('error', { status: 429 }));
     expect(c.getState().current).toBe(16);
     expect(c.getState().totalDecreases).toBe(0);
+  });
+
+  it('subscribes and applies initial concurrency when runtime-enabled via updateConfig', () => {
+    const bus = makeFleetBus();
+    const setMax = vi.fn();
+    const c = new AdaptiveConcurrencyController(bus, setMax, {
+      enabled: false,
+      maxConcurrent: 16,
+      minConcurrent: 1,
+      decreaseFactor: 0.5,
+    });
+
+    expect(setMax).not.toHaveBeenCalled();
+    expect(bus.onAny).not.toHaveBeenCalled();
+
+    c.updateConfig({ enabled: true });
+
+    expect(setMax).toHaveBeenCalledWith(16);
+    expect(bus.onAny).toHaveBeenCalledTimes(1);
+
+    // Fleet events are now handled
+    (bus as unknown as { emit: (e: FleetEvent) => void }).emit(ev('error', { status: 429 }));
+    expect(c.getState().current).toBe(8);
+    expect(setMax).toHaveBeenLastCalledWith(8);
+  });
+
+  it('updates coordinator concurrency when updateConfig clamps current bounds', () => {
+    const bus = makeFleetBus();
+    const setMax = vi.fn();
+    const c = new AdaptiveConcurrencyController(bus, setMax, {
+      enabled: true,
+      maxConcurrent: 16,
+      minConcurrent: 1,
+    });
+    setMax.mockClear();
+
+    // Clamp current from 16 to 6
+    c.updateConfig({ maxConcurrent: 6 });
+    expect(c.getState().current).toBe(6);
+    expect(setMax).toHaveBeenLastCalledWith(6);
+
+    // Clamp current from 6 to 8
+    c.updateConfig({ maxConcurrent: 10, minConcurrent: 8 });
+    expect(c.getState().current).toBe(8);
+    expect(setMax).toHaveBeenLastCalledWith(8);
   });
 });

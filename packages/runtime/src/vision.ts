@@ -81,22 +81,21 @@ export async function routeImagesForModel(
   if (images.length === 0) {
     return { blocks, route: 'none', convertedImages: 0 };
   }
-  if (opts.supportsVision) {
-    // Native vision providers typically fetch image URLs server-side, so
-    // enforce the same SSRF guard used for adapter routes.
-    for (const img of images) {
-      if (img.source.type === 'url' && img.source.url) {
-        try {
-          await assertNotPrivateHost(new URL(img.source.url).hostname);
-        } catch (err) {
-          const reason =
-            err instanceof Error && err.message.startsWith('fetch:')
-              ? err.message.slice('fetch:'.length).trim()
-              : 'unresolvable host';
-          throw new VisionUrlBlockedError({ url: img.source.url, reason });
-        }
+  for (const img of images) {
+    if (img.source.type === 'url' && img.source.url) {
+      try {
+        await assertNotPrivateHost(new URL(img.source.url).hostname);
+      } catch (err) {
+        const reason =
+          err instanceof Error && err.message.startsWith('fetch:')
+            ? err.message.slice('fetch:'.length).trim()
+            : 'unresolvable host';
+        throw new VisionUrlBlockedError({ url: img.source.url, reason });
       }
     }
+  }
+
+  if (opts.supportsVision) {
     return { blocks, route: 'native', convertedImages: 0 };
   }
 

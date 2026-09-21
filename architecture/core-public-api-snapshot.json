@@ -1044,7 +1044,7 @@
         "export { DefaultPathResolver } from './path-resolver.js';",
         "export { DefaultTokenCounter } from './token-counter.js';",
         "export { ProviderCacheLedger } from './provider-cache-ledger.js';",
-        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, dockerServer, everArtServer, fetchServer, filesystemServer, gitServer, githubServer, gitlabServer, googleMapsServer, memoryServer, miniMaxVisionServer, playwrightServer, postgresServer, puppeteerServer, resolveMcpServerConfig, sentinelServer, sentryServer, sequentialThinkingServer, slackServer, sqliteServer, sshManagerServer, zaiVisionServer, } from './mcp-servers.js';",
+        "export { allServers, awsServer, blockServer, braveSearchServer, context7Server, dockerServer, everArtServer, fetchServer, filesystemServer, githubServer, gitlabServer, gitServer, googleMapsServer, memoryServer, miniMaxVisionServer, playwrightServer, postgresServer, puppeteerServer, resolveMcpServerConfig, sentinelServer, sentryServer, sequentialThinkingServer, slackServer, sqliteServer, sshManagerServer, zaiVisionServer, zaiWebReaderServer, zaiWebSearchServer, } from './mcp-servers.js';",
         "export { assertProjectRootOutsideStateDir, type BootConfigOptions, type BootConfigResult, bootConfig, flagsToConfigPatch, } from '../boot.js';"
       ]
     },
@@ -1454,7 +1454,7 @@
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
       "sourceFiles": 202,
-      "sourceLines": 57276
+      "sourceLines": 57395
     },
     {
       "directory": "core",
@@ -1503,14 +1503,14 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 56,
-      "sourceLines": 11678
+      "sourceLines": 11770
     },
     {
       "directory": "infrastructure",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused infrastructure package",
       "sourceFiles": 7,
-      "sourceLines": 1966
+      "sourceLines": 1994
     },
     {
       "directory": "kernel",
@@ -1559,7 +1559,7 @@
       "classification": "product feature",
       "intendedOwner": "@wrongstack/plugins",
       "sourceFiles": 24,
-      "sourceLines": 9285
+      "sourceLines": 9291
     },
     {
       "directory": "prompts",
@@ -1622,7 +1622,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23569
+      "sourceLines": 23628
     },
     {
       "directory": "tasking",
@@ -1643,7 +1643,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 76,
-      "sourceLines": 14072
+      "sourceLines": 14078
     },
     {
       "directory": "typesafe",
@@ -1657,7 +1657,7 @@
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
       "sourceFiles": 72,
-      "sourceLines": 12854
+      "sourceLines": 12873
     },
     {
       "directory": "wiring",

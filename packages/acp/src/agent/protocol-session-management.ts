@@ -85,6 +85,7 @@ export async function handleSessionNewOp(
     sessionId,
     update: {
       sessionUpdate: 'current_mode_update',
+      currentModeId: ctx.modes[0]?.id ?? DEFAULT_MODE_ID,
       modeId: ctx.modes[0]?.id ?? DEFAULT_MODE_ID,
     },
   });
@@ -152,7 +153,11 @@ export async function handleSessionLoadOp(
       if (replayHistory)
         await ctx.sendNotification({
           sessionId,
-          update: { sessionUpdate: 'current_mode_update', modeId: restored.modeId },
+          update: {
+            sessionUpdate: 'current_mode_update',
+            currentModeId: restored.modeId,
+            modeId: restored.modeId,
+          },
         });
       await reportSkippedMcpServers(ctx, sessionId, loadSkipped);
       await ctx.sendResult(id, {
@@ -198,6 +203,7 @@ export async function handleSessionLoadOp(
         sessionId,
         update: {
           sessionUpdate: 'current_mode_update',
+          currentModeId: existing.modeId,
           modeId: existing.modeId,
         },
       });
@@ -273,8 +279,13 @@ export async function handleSessionForkOp(
 
   await ctx.sendNotification({
     sessionId,
-    update: { sessionUpdate: 'current_mode_update', modeId: forked.modeId },
+    update: {
+      sessionUpdate: 'current_mode_update',
+      currentModeId: forked.modeId,
+      modeId: forked.modeId,
+    },
   });
+
   await reportSkippedMcpServers(ctx, sessionId, forkSkipped);
   await ctx.sendResult(id, {
     sessionId,
@@ -390,9 +401,14 @@ export async function handleSetModeOp(
   session.updatedAt = new Date().toISOString();
   await ctx.sendNotification({
     sessionId,
-    update: { sessionUpdate: 'current_mode_update', modeId },
+    update: {
+      sessionUpdate: 'current_mode_update',
+      currentModeId: modeId,
+      modeId,
+    },
   });
   await ctx.sendResult(id, {});
+
   return false;
 }
 

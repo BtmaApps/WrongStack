@@ -330,7 +330,9 @@ const SIMPLE_ESCAPES: Record<string, number> = {
 
 function hexAt(s: string, start: number, len: number): number | null {
   if (start + len > s.length) return null;
-  const cp = Number.parseInt(s.slice(start, start + len), 16);
+  const chunk = s.slice(start, start + len);
+  if (!/^[0-9a-fA-F]+$/.test(chunk)) return null;
+  const cp = Number.parseInt(chunk, 16);
   return Number.isFinite(cp) ? cp : null;
 }
 
@@ -748,7 +750,12 @@ function hasAmbiguousQuantifiedAlternation(pattern: string, flags: string): bool
       const m = /^\{(\d+)(?:,(\d*))?\}/.exec(pattern.slice(j + 1));
       if (!m) continue; // non-quantifier brace literal (e.g. {foo}) — not a repetition
       const min = Number.parseInt(m[1]!, 10);
-      const max = m[2] === undefined ? min : m[2] === '' ? Number.POSITIVE_INFINITY : Number.parseInt(m[2]!, 10);
+      const max =
+        m[2] === undefined
+          ? min
+          : m[2] === ''
+            ? Number.POSITIVE_INFINITY
+            : Number.parseInt(m[2]!, 10);
       if (max < 2) continue; // {0}, {1}, {0,1} cannot cause catastrophic repetition
     }
     const inner = pattern.slice(i + 1, j);

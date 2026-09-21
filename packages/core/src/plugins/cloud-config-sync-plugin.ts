@@ -12,7 +12,8 @@ import type { CloudSyncConfig, ConfigStore } from '../types/config.js';
 import type { Plugin } from '../types/plugin.js';
 import type { SecretVault } from '../types/secret-vault.js';
 import type { SlashCommand } from '../types/slash-command.js';
-import { atomicWrite } from '../utils/atomic-write.js';
+import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
+import { backupConfigFile } from '../utils/config-backup.js';
 import { readJsonObjectFile } from '../utils/config-json.js';
 import { toErrorMessage } from '../utils/error.js';
 import type { WstackPaths } from '../utils/wstack-paths.js';
@@ -75,19 +76,24 @@ export function createCloudConfigSyncPlugin(opts?: CloudConfigSyncPluginOptions)
       const writeLocalConfig = async (
         mutator: (config: Record<string, unknown>) => Record<string, unknown>,
       ): Promise<void> => {
-        // Rewrite variant: a field this vault cannot decrypt keeps its
-        // ciphertext instead of being written back as ''.
-        const raw = await readJsonObjectFile(profileConfigPath).catch(() => ({}));
-        const current = decryptConfigSecretsForRewrite(raw as Record<string, unknown>, vault, {
-          warn,
+        await withFileLock(profileConfigPath, async () => {
+          // Rewrite variant: a field this vault cannot decrypt keeps its
+          // ciphertext instead of being written back as ''.
+          const raw = await readJsonObjectFile(profileConfigPath).catch(() => ({}));
+          const current = decryptConfigSecretsForRewrite(raw as Record<string, unknown>, vault, {
+            warn,
+          });
+          const next = mutator(current);
+          const encrypted = encryptConfigSecrets(next, vault);
+          await backupConfigFile(profileConfigPath, { globalRoot: paths.globalRoot });
+          await atomicWrite(profileConfigPath, `${JSON.stringify(encrypted, null, 2)}\n`, {
+            mode: 0o600,
+          });
+          // A successful pull becomes the live source of truth as well as the
+          // next-boot file. ConfigStore performs the same version guard and
+          // watcher notification used by local settings changes.
+          configStore.update(next as Parameters<ConfigStore['update']>[0]);
         });
-        const next = mutator(current);
-        const encrypted = encryptConfigSecrets(next, vault);
-        await atomicWrite(profileConfigPath, `${JSON.stringify(encrypted, null, 2)}\n`, {
-          mode: 0o600,
-        });
-        // Keep the in-memory store coherent for the parts it holds.
-        configStore.update({ cloudSync: next.cloudSync } as Parameters<ConfigStore['update']>[0]);
       };
 
       const getSettings = () => {

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { color, toErrorMessage } from '@wrongstack/core/utils';
+import { atomicWrite, color, toErrorMessage, withFileLock } from '@wrongstack/core/utils';
+import { appendHistory, backupCurrent } from '../../config-history.js';
 import {
   extractBehaviorSettings,
   mergeBehaviorSettings,
@@ -66,27 +67,46 @@ export const configImportCmd: SubcommandHandler = async (_args, deps) => {
     (deps.config as unknown as Record<string, unknown>)['activeProfile'] ?? 'default',
   );
   const profilePath = deps.paths.profileConfig(profile);
-  let disk: Record<string, unknown> = {};
+  let applied: string[] = [];
   try {
-    disk = JSON.parse(await fs.readFile(profilePath, 'utf8')) as Record<string, unknown>;
-  } catch {
-    // Fresh/missing profile: start empty — the loader re-materializes defaults.
-  }
+    await withFileLock(profilePath, async () => {
+      let disk: Record<string, unknown> = {};
+      try {
+        disk = JSON.parse(await fs.readFile(profilePath, 'utf8')) as Record<string, unknown>;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+        // Fresh/missing profile: start empty — the loader re-materializes defaults.
+      }
+      const before = structuredClone(disk);
 
-  // Only the known behavior sections are applied; anything else the export
-  // file may carry (providers, fallbacks, custom keys) is ignored by design.
-  const applied = mergeBehaviorSettings(disk, settings as Record<string, unknown>);
+      // Only the known behavior sections are applied; anything else the export
+      // file may carry (providers, fallbacks, custom keys) is ignored by design.
+      applied = mergeBehaviorSettings(disk, settings as Record<string, unknown>);
+      if (applied.length === 0) return;
+
+      await backupCurrent(undefined, profilePath);
+      await atomicWrite(profilePath, `${JSON.stringify(disk, null, 2)}\n`, { mode: 0o600 });
+      try {
+        await appendHistory(
+          before,
+          disk,
+          `Imported portable settings: ${applied.join(', ')}`,
+          undefined,
+          profilePath,
+        );
+      } catch {
+        // The imported config is durable; history remains best-effort.
+      }
+    });
+  } catch (err) {
+    deps.renderer.writeError(`Import failed while writing profile: ${toErrorMessage(err)}`);
+    return 1;
+  }
   if (applied.length === 0) {
     deps.renderer.write(
       `${color.amber('Nothing to import')} — the export carries none of the known behavior sections.\n`,
     );
     return 0;
-  }
-  try {
-    await fs.writeFile(profilePath, `${JSON.stringify(disk, null, 2)}\n`, 'utf8');
-  } catch (err) {
-    deps.renderer.writeError(`Import failed while writing profile: ${toErrorMessage(err)}`);
-    return 1;
   }
   deps.renderer.write(
     `${color.green('✓')} Imported ${applied.length} section(s) into profile ${color.cyan(profile)}: ${color.cyan(applied.join(', '))}\n`,

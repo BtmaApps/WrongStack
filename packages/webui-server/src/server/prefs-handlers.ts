@@ -231,10 +231,6 @@ export async function handlePrefsUpdate(
   // process-wide. Both still go to `persist`, which keeps the config file as
   // the default a newly opened tab starts from.
   const sessionMeta = ctx.metaFor?.(sessionId) ?? ctx.meta;
-  for (const [key, value] of Object.entries(payload)) {
-    if (SESSION_SCOPED_PREF_KEYS.has(key)) sessionMeta[key] = value;
-    else ctx.meta[key] = value;
-  }
   const {
     subagentsAllowed: _sessionPolicy,
     subagentsPolicyLocked: _locked,
@@ -243,7 +239,19 @@ export async function handlePrefsUpdate(
     subagentModelPlan: _plan,
     ...durablePayload
   } = payload;
-  if (Object.keys(durablePayload).length > 0) void ctx.persist(durablePayload);
+  if (Object.keys(durablePayload).length > 0) {
+    try {
+      await ctx.persist(durablePayload);
+    } catch (err) {
+      sendResult(ctx, ws, false, `Settings were not saved: ${toErrorMessage(err)}`);
+      handlePrefsGet(ctx, ws, sessionId);
+      return;
+    }
+  }
+  for (const [key, value] of Object.entries(payload)) {
+    if (SESSION_SCOPED_PREF_KEYS.has(key)) sessionMeta[key] = value;
+    else ctx.meta[key] = value;
+  }
 
   // Mirror `autonomy.switch`: an `autonomy` payload arriving through
   // `prefs.update` must drive `setAutonomy` so the runtime mode flips
@@ -367,12 +375,19 @@ export async function handlePrefsUpdate(
   }
 }
 
-export function handleAutonomySwitch(
+export async function handleAutonomySwitch(
   ctx: PrefsHandlerContext,
   ws: WebSocket,
   mode: string,
   sessionId?: string,
-): void {
+): Promise<void> {
+  try {
+    await ctx.persist({ autonomy: mode });
+  } catch (err) {
+    sendResult(ctx, ws, false, `Autonomy mode was not saved: ${toErrorMessage(err)}`);
+    handlePrefsGet(ctx, ws, sessionId);
+    return;
+  }
   // Autonomy is per-tab: a tab left running on `eternal` must not drag the
   // tab the user is typing in along with it.
   (ctx.metaFor?.(sessionId) ?? ctx.meta)['autonomy'] = mode;
@@ -382,5 +397,4 @@ export function handleAutonomySwitch(
     type: 'prefs.updated',
     payload: { autonomy: mode, ...(sessionId ? { sessionId } : {}) },
   });
-  void ctx.persist({ autonomy: mode });
 }

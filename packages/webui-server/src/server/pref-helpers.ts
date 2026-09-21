@@ -178,6 +178,12 @@ export interface ConfigWriteLockHolder {
   lock: Promise<void>;
 }
 
+function globalRootForConfigPath(filePath: string): string {
+  const configDir = path.dirname(filePath);
+  const profilesDir = path.dirname(configDir);
+  return path.basename(profilesDir) === 'profiles' ? path.dirname(profilesDir) : configDir;
+}
+
 /**
  * Write the mutated config to a single file path. Handles read/decrypt/mutate/encrypt/write.
  */
@@ -185,7 +191,6 @@ async function writeGlobalConfigFile(
   filePath: string,
   vault: SecretVault,
   mutate: (config: Record<string, unknown>) => void,
-  logger: { warn(msg: string): void },
   errorLabel: string,
 ): Promise<void> {
   // G6 (RACE-003): the previous read-modify-write cycle held no
@@ -200,7 +205,7 @@ async function writeGlobalConfigFile(
   // prevents the steal-back failure mode).
   await withFileLock(filePath, async () => {
     // Back up the current file before overwriting
-    const globalRoot = path.dirname(filePath);
+    const globalRoot = globalRootForConfigPath(filePath);
     await backupConfigFile(filePath, { globalRoot });
     let raw: string;
     try {
@@ -211,9 +216,10 @@ async function writeGlobalConfigFile(
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      logger.warn(`${errorLabel}: refusing to overwrite corrupt config at ${filePath}`);
-      return;
+    } catch (err) {
+      throw new Error(`${errorLabel}: refusing to overwrite corrupt config at ${filePath}`, {
+        cause: err,
+      });
     }
     const decrypted = decryptConfigSecretsForRewrite(parsed, vault) as Record<string, unknown>;
     mutate(decrypted);
@@ -237,7 +243,7 @@ export async function updateGlobalConfig(
 ): Promise<void> {
   const { profileConfigPath, vault, logger } = deps;
   const write = async (): Promise<void> => {
-    await writeGlobalConfigFile(profileConfigPath, vault, mutate, logger, errorLabel);
+    await writeGlobalConfigFile(profileConfigPath, vault, mutate, errorLabel);
   };
   const next = holder.lock.then(write);
   holder.lock = next.then(
@@ -248,6 +254,7 @@ export async function updateGlobalConfig(
     await next;
   } catch (err) {
     logger.warn(`${errorLabel}: failed to persist to config: ${errMessage(err)}`);
+    throw err;
   }
 }
 

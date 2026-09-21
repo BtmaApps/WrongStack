@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { effectiveFallbackChain, setQueuedMessagesSnapshot } from '@wrongstack/core/agent';
 import { type CoordinatorEvent, LeaderAutoWakeController } from '@wrongstack/core/coordination';
 import { updateReviewReportEvidence } from '@wrongstack/core/plugin';
+import { noOpVault } from '@wrongstack/core/security';
 import { attachTodosCheckpoint } from '@wrongstack/core/storage';
 import type { SessionLoadProgress } from '@wrongstack/core/types';
 import { normalizeTokenSavingTier } from '@wrongstack/core/types';
@@ -90,6 +91,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       events,
       config,
       configStore,
+      vault,
       wpaths: initialWpaths,
       projectRoot: initialProjectRoot,
       flags,
@@ -505,6 +507,7 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
           ...createSettingsAdapter({
             configStore,
             wpaths,
+            vault: vault ?? noOpVault,
             fleetStreamController,
             applyLiveSettings,
           }),

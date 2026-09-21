@@ -420,4 +420,35 @@ describe('PlanVersion v1', () => {
       );
     }
   });
+
+  it('validates parent plan version constraints correctly', () => {
+    const contract = taskContract();
+    expect(
+      validatePlanVersionV1(plan({ planVersion: 1, parentPlanVersion: 0 as any }), contract),
+    ).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'invalid_parent_version' })]),
+    });
+    expect(
+      validatePlanVersionV1(plan({ planVersion: 2, parentPlanVersion: 0 }), contract),
+    ).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'invalid_parent_version' })]),
+    });
+    expect(
+      validatePlanVersionV1(plan({ planVersion: 2, parentPlanVersion: -1 }), contract),
+    ).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'invalid_parent_version' })]),
+    });
+    expect(
+      validatePlanVersionV1(plan({ planVersion: 2, parentPlanVersion: 1.5 }), contract),
+    ).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'invalid_parent_version' })]),
+    });
+    expect(validatePlanVersionV1(plan({ planVersion: 2, parentPlanVersion: 1 }), contract)).toEqual(
+      { valid: true },
+    );
+  });
 });

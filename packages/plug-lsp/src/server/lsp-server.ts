@@ -338,7 +338,12 @@ export class LSPServer {
     signal?: AbortSignal | undefined,
   ): Promise<Diagnostic[]> {
     const key = uriKey(uri);
-    if (this.diagnosticsFresh.has(key) || timeoutMs <= 0 || this.state !== 'ready') {
+    if (
+      this.diagnosticsFresh.has(key) ||
+      timeoutMs <= 0 ||
+      this.state !== 'ready' ||
+      signal?.aborted
+    ) {
       return this.getDiagnostics(uri);
     }
     await new Promise<void>((resolve) => {
@@ -352,6 +357,10 @@ export class LSPServer {
         this.diagnosticsWaiters.get(key)?.delete(finish);
         resolve();
       };
+      if (signal?.aborted) {
+        finish();
+        return;
+      }
       const timer = setTimeout(finish, timeoutMs);
       /* v8 ignore next -- Node timers always expose unref; the guard is for non-Node hosts. */
       timer.unref?.();

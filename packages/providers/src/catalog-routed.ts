@@ -33,6 +33,7 @@ export function isCatalogWireNpm(value: string | undefined): value is CatalogWir
 
 export interface CatalogRoutedProviderOptions {
   id: string;
+  definitionId?: string | undefined;
   apiKey: string;
   defaultNpm: CatalogWireNpm;
   baseUrl?: string | undefined;
@@ -105,7 +106,11 @@ export class CatalogRoutedProvider implements Provider {
           ? new CatalogAnthropicProvider(common)
           : npm === '@ai-sdk/google'
             ? new CatalogGoogleProvider(common)
-            : new OpenAICompatibleProvider({ ...common, quirks: this.opts.quirks });
+            : new OpenAICompatibleProvider({
+                ...common,
+                definitionId: this.opts.definitionId,
+                quirks: this.opts.quirks,
+              });
     this.delegates.set(cacheKey, delegate);
     return delegate;
   }

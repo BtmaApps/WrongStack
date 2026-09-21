@@ -219,6 +219,10 @@
     "packages/cli/src/services/dispatch-classifier.ts": [
       "makeProviderClassifier"
     ],
+    "packages/cli/src/settings-menu.ts": [
+      "resolveActualTarget",
+      "resolvePersistPath"
+    ],
     "packages/cli/src/simpleui-dist.ts": [
       "resolveSimpleUiDistDir"
     ],
@@ -506,6 +510,9 @@
       "createMailboxSnapshotPayload",
       "mapMailboxAgentToHqSummary",
       "mapMailboxMessageToHqSummary"
+    ],
+    "packages/core/src/hq/protocol/core.ts": [
+      "KNOWN_HQ_CLIENT_FRAME_TYPES"
     ],
     "packages/core/src/hq/redaction.ts": [
       "redactHqValue"
@@ -941,6 +948,9 @@
     "packages/requirement-intake/src/service-helpers.ts": [
       "ANSWER_FIELD_MAPPING",
       "appendItems"
+    ],
+    "packages/runtime/src/clipboard.ts": [
+      "MAX_TEXT_BYTES"
     ],
     "packages/runtime/src/governance-bootstrap.ts": [
       "bootstrapGovernanceRuntimeWithFactory",

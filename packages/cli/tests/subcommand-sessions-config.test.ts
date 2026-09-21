@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const histMocks = vi.hoisted(() => ({
+  backupCurrent: vi.fn(),
   listHistory: vi.fn(),
   getHistoryEntry: vi.fn(),
   restoreFromHistory: vi.fn(),
@@ -44,6 +45,7 @@ beforeEach(async () => {
     writeError: (s: string) => errors.push(s),
   };
   histMocks.listHistory.mockReset();
+  histMocks.backupCurrent.mockReset();
   histMocks.getHistoryEntry.mockReset();
   histMocks.restoreFromHistory.mockReset();
   histMocks.restoreLast.mockReset();
@@ -267,6 +269,20 @@ describe('configCmd', () => {
     expect(code).toBe(0);
     expect(writes.join('')).toMatch(/Run: nvim/);
     delete process.env['EDITOR'];
+  });
+
+  it('backup snapshots the active profile without changing it', async () => {
+    histMocks.backupCurrent.mockResolvedValue(undefined);
+    const deps = mkDeps();
+
+    const code = await configCmd(['backup'], deps);
+
+    expect(code).toBe(0);
+    expect(histMocks.backupCurrent).toHaveBeenCalledWith(
+      undefined,
+      deps.paths.profileConfig(deps.config.activeProfile ?? 'default'),
+    );
+    expect(writes.join('')).toContain('config.json.last');
   });
 
   it('errors on unknown subcommand', async () => {

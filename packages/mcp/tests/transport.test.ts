@@ -686,12 +686,27 @@ describe('validateTransportUrl', () => {
     expect(() => validateTransportUrl('http://example.test')).toThrow(/only allowed for loopback/);
   });
 
-  it.each(['http://localhost', 'http://127.0.0.1', 'http://[::1]', 'https://example.test'])(
-    'allows safe transport URL %s',
-    (url) => {
-      expect(() => validateTransportUrl(url)).not.toThrow();
-    },
-  );
+  it.each([
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://127.0.0.2',
+    'http://[::1]',
+    'https://example.test',
+  ])('allows safe transport URL %s', (url) => {
+    expect(() => validateTransportUrl(url)).not.toThrow();
+  });
+
+  it('rejects link-local, IMDS, and IPv4-mapped IMDS addresses', () => {
+    expect(() => validateTransportUrl('http://169.254.169.254/')).toThrow(
+      /blocked link-local\/IMDS/,
+    );
+    expect(() => validateTransportUrl('https://[::ffff:169.254.169.254]/')).toThrow(
+      /blocked link-local\/IMDS/,
+    );
+    expect(() => validateTransportUrl('https://[fd00:ec2::254]/')).toThrow(
+      /blocked link-local\/IMDS/,
+    );
+  });
 });
 
 describe('SSETransport — mocked connect + callTool', () => {

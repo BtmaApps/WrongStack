@@ -277,7 +277,10 @@ export class FileServer {
         throw mapFsError(err, resolvedPath);
       }
       const normReal = isWindows ? real.toLowerCase() : real;
-      if (normReal === normRealRoot || normReal.startsWith(normRealRoot + path.sep)) return;
+      const realRootWithSep = normRealRoot.endsWith(path.sep)
+        ? normRealRoot
+        : normRealRoot + path.sep;
+      if (normReal === normRealRoot || normReal.startsWith(realRootWithSep)) return;
       throw new FsError(
         'OUTSIDE_ROOT',
         resolvedPath,

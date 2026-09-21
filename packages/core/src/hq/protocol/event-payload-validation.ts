@@ -42,7 +42,7 @@ import type {
 } from './tool.js';
 
 /** Known `client.event` envelope event types whose payload shape we validate. */
-const KNOWN_HQ_EVENT_PAYLOAD_TYPES = new Set<string>([
+const KNOWN_HQ_EVENT_PAYLOAD_TYPE_LIST = [
   'mailbox.snapshot',
   'mailbox.event',
   'kanban.snapshot',
@@ -66,7 +66,26 @@ const KNOWN_HQ_EVENT_PAYLOAD_TYPES = new Set<string>([
   'governance.snapshot',
   'peer.rehydrate',
   'peer.lost',
-]);
+] as const;
+
+/**
+ * The event types whose payload `parseHqEventPayload` validates, derived from
+ * the list above so the list, the runtime guard and the switch's exhaustiveness
+ * check all read one source instead of three hand-maintained copies.
+ */
+type ValidatedHqEventType = (typeof KNOWN_HQ_EVENT_PAYLOAD_TYPE_LIST)[number];
+
+const KNOWN_HQ_EVENT_PAYLOAD_TYPES = new Set<string>(KNOWN_HQ_EVENT_PAYLOAD_TYPE_LIST);
+
+/**
+ * Narrows `eventType` to {@link ValidatedHqEventType}. This is what makes the
+ * `default` clause a real compile-time check: `eventType` arrives as a bare
+ * `string`, over which `default` can never narrow to `never` — which is why the
+ * guard used to read `eventType as never` and silently swallowed drift.
+ */
+function isValidatedHqEventType(eventType: string): eventType is ValidatedHqEventType {
+  return KNOWN_HQ_EVENT_PAYLOAD_TYPES.has(eventType);
+}
 
 function isHqMcpLatencySummary(x: unknown): x is HqMcpLatencySummary {
   if (typeof x !== 'object' || x === null) return false;
@@ -567,7 +586,7 @@ export function parseHqEventPayload(
   eventType: string,
   payload: unknown,
 ): HqEventPayloadResult<unknown> {
-  if (!KNOWN_HQ_EVENT_PAYLOAD_TYPES.has(eventType)) {
+  if (!isValidatedHqEventType(eventType)) {
     // Server does not validate this event type yet — pass it through
     // untyped so the publish pipeline is not blocked. Future events
     // can opt-in by adding their type + guard here.
@@ -667,8 +686,18 @@ export function parseHqEventPayload(
         ? { ok: true, payload }
         : { ok: false, reason: 'malformed-payload' };
     default: {
-      const _exhaustive: never = eventType as never;
-      return _exhaustive;
+      // Real exhaustiveness check. `eventType` is narrowed to
+      // ValidatedHqEventType by the guard above, so this only compiles while
+      // EVERY entry of KNOWN_HQ_EVENT_PAYLOAD_TYPE_LIST has a case here — and
+      // a case label missing from the list is rejected too. Adding an event
+      // type to one place but not the other is now a build error, where the
+      // old `eventType as never` cast hid it and handed callers a raw string.
+      const _exhaustive: never = eventType;
+      void _exhaustive;
+      // Unreachable while the list and the switch agree. Keep the documented
+      // contract anyway: an event type this module does not validate is passed
+      // through untyped, never rejected.
+      return { ok: true, payload };
     }
   }
 }

@@ -333,4 +333,39 @@ describe('restoreFromHistory — credentials must survive', () => {
     const entry = await getHistoryEntry(id, homeFn);
     expect(JSON.stringify(entry)).not.toContain('sk-ant-LEAKED');
   });
+
+  it('restores array secrets by stable key label instead of current array position', async () => {
+    const historical = {
+      providers: {
+        openai: {
+          apiKeys: [
+            { label: 'work', apiKey: 'historical-work' },
+            { label: 'personal', apiKey: 'historical-personal' },
+          ],
+        },
+      },
+    };
+    const id = await appendHistory({}, historical, 'historical keys', homeFn);
+    await fs.writeFile(
+      cfgPath(),
+      JSON.stringify({
+        providers: {
+          openai: {
+            apiKeys: [
+              { label: 'personal', apiKey: 'live-personal' },
+              { label: 'work', apiKey: 'live-work' },
+            ],
+          },
+        },
+      }),
+    );
+
+    expect((await restoreFromHistory(id, homeFn)).ok).toBe(true);
+    const restored = await readJson(cfgPath());
+    const providers = restored['providers'] as Record<string, Record<string, unknown>>;
+    expect(providers['openai']?.['apiKeys']).toEqual([
+      { label: 'work', apiKey: 'live-work' },
+      { label: 'personal', apiKey: 'live-personal' },
+    ]);
+  });
 });

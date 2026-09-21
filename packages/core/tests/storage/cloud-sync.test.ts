@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
-import type { WstackPaths } from '../../src/utils/wstack-paths.js';
-import type { SyncCategory, SyncConfig } from '../../src/types/config.js';
+import * as path from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { CloudSync } from '../../src/storage/cloud-sync.js';
+import type { SyncCategory, SyncConfig } from '../../src/types/config.js';
+import type { WstackPaths } from '../../src/utils/wstack-paths.js';
 
 const mockSyncConfig: SyncConfig = {
   enabled: true,
@@ -62,7 +62,15 @@ describe('CloudSync', () => {
         const profilePath = path.join(dir, 'profiles', 'work', 'config.json');
         await fs.mkdir(path.dirname(profilePath), { recursive: true });
         await fs.writeFile(bootstrapPath, JSON.stringify({ version: 1, activeProfile: 'work' }));
-        await fs.writeFile(profilePath, JSON.stringify({ provider: 'anthropic' }));
+        await fs.writeFile(
+          profilePath,
+          JSON.stringify({
+            provider: 'anthropic',
+            apiKey: 'enc:v1:must-not-sync',
+            baseUrl: 'https://credential-endpoint.invalid',
+            providers: { anthropic: { apiKey: 'enc:v1:also-secret' } },
+          }),
+        );
         const paths = {
           ...mockPaths,
           globalRoot: dir,
@@ -84,13 +92,14 @@ describe('CloudSync', () => {
           }
         ).buildLocalTree(['settings']);
 
-        expect(tree.treeEntries).toEqual([
-          {
-            path: 'data/settings',
-            content: JSON.stringify({ provider: 'anthropic' }),
-            mode: '100644',
-          },
-        ]);
+        expect(tree.treeEntries).toHaveLength(1);
+        expect(tree.treeEntries[0]).toMatchObject({ path: 'data/settings', mode: '100644' });
+        expect(JSON.parse(tree.treeEntries[0]!.content)).toEqual({
+          provider: 'anthropic',
+          providers: { anthropic: {} },
+        });
+        expect(tree.treeEntries[0]!.content).not.toContain('must-not-sync');
+        expect(tree.treeEntries[0]!.content).not.toContain('credential-endpoint');
         expect(tree.treeEntries[0]?.content).not.toContain('activeProfile');
       });
     });
