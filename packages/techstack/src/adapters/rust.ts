@@ -8,6 +8,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { parseRange, satisfiesRange } from '../policy/resolver.js';
 import { buildPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
@@ -56,9 +57,70 @@ function parseTomlSections(content: string): TomlSection[] {
 }
 
 /**
+ * Net bracket depth of one TOML line: `{`/`[`/`(` minus `}`/`]`/`)`, ignoring
+ * bracketed text inside strings and anything after a `#` comment.
+ */
+function bracketDelta(line: string): number {
+  let delta = 0;
+  let quote: '"' | "'" | undefined;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (quote !== undefined) {
+      if (ch === '\\' && quote === '"') i += 1;
+      else if (ch === quote) quote = undefined;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === '#') break;
+    if (ch === '{' || ch === '[' || ch === '(') delta += 1;
+    else if (ch === '}' || ch === ']' || ch === ')') delta -= 1;
+  }
+  return delta;
+}
+
+/**
+ * Join physical lines into logical TOML entries.
+ *
+ * A valid Cargo.toml entry can span lines even as an inline table, because TOML
+ * permits newlines inside an array value:
+ *
+ * ```toml
+ * tokio = { version = "1.40", features = [
+ *     "rt-multi-thread",
+ * ] }
+ * ```
+ *
+ * Read line-by-line, that first line is `{ version = "1.40", features = [` —
+ * neither a complete inline table (no closing brace) nor a `key = "value"` pair
+ * — so the entry was dropped and the dependency vanished from the inventory.
+ */
+function joinLogicalEntries(sectionLines: readonly string[]): string[] {
+  const entries: string[] = [];
+  let buffer = '';
+  let depth = 0;
+  for (const raw of sectionLines) {
+    const line = raw.trim();
+    if (buffer === '' && (line === '' || line.startsWith('#'))) continue;
+    buffer = buffer === '' ? line : `${buffer} ${line}`;
+    depth += bracketDelta(line);
+    if (depth <= 0) {
+      entries.push(buffer);
+      buffer = '';
+      depth = 0;
+    }
+  }
+  if (buffer !== '') entries.push(buffer);
+  return entries;
+}
+
+/**
  * Extract simple string key-value pairs from a TOML section.
  * Returns { name, version } for entries like `serde = "1.0"` or `serde = { version = "1.0", ... }`.
- * Handles both simple and inline-table formats.
+ * Handles both simple and inline-table formats, including tables whose array
+ * value wraps onto later lines (joined by {@link joinLogicalEntries}).
  */
 function extractTomlDeps(sectionLines: string[]): Array<{
   name: string;
@@ -70,7 +132,7 @@ function extractTomlDeps(sectionLines: string[]): Array<{
     version: string | undefined;
     sourceType: 'registry' | 'path' | 'git';
   }> = [];
-  for (const raw of sectionLines) {
+  for (const raw of joinLogicalEntries(sectionLines)) {
     const line = raw.trim();
     if (line.startsWith('#') || line === '') continue;
     const entry = parseTomlKeyValue(line);
@@ -101,12 +163,29 @@ function extractTomlDeps(sectionLines: string[]): Array<{
   return deps;
 }
 
+/** Record one `[[package]]` entry, keeping every version of a repeated name. */
+function recordCargoPackage(
+  versions: Map<string, string[]>,
+  name: string | undefined,
+  version: string | undefined,
+): void {
+  if (!name || !version) return;
+  const existing = versions.get(name);
+  if (existing) existing.push(version);
+  else versions.set(name, [version]);
+}
+
 /**
  * Parse Cargo.lock format for package entries.
  * Cargo.lock uses TOML format with [[package]] array entries.
+ *
+ * A crate name may legitimately appear SEVERAL times — syn 1.x for one
+ * dependent and syn 2.x for another — and the file is written name-then-version
+ * ascending, so the last entry is the highest version. Every entry is kept here;
+ * {@link pickLockedVersion} decides which instance a manifest selects.
  */
-function parseCargoLock(content: string): Map<string, string> {
-  const versions = new Map<string, string>();
+function parseCargoLock(content: string): Map<string, string[]> {
+  const versions = new Map<string, string[]>();
   const lines = content.split('\n');
   let currentName: string | undefined;
   let currentVersion: string | undefined;
@@ -118,9 +197,7 @@ function parseCargoLock(content: string): Map<string, string> {
 
     if (line.startsWith('[[') && line.includes('package')) {
       // Save previous
-      if (inPackage && currentName && currentVersion) {
-        versions.set(currentName, currentVersion);
-      }
+      if (inPackage) recordCargoPackage(versions, currentName, currentVersion);
       currentName = undefined;
       currentVersion = undefined;
       inPackage = true;
@@ -139,11 +216,56 @@ function parseCargoLock(content: string): Map<string, string> {
   }
 
   // Save last
-  if (inPackage && currentName && currentVersion) {
-    versions.set(currentName, currentVersion);
-  }
+  if (inPackage) recordCargoPackage(versions, currentName, currentVersion);
 
   return versions;
+}
+
+/**
+ * Translate a Cargo version requirement into the semver-range grammar the engine
+ * already understands (`policy/resolver.ts`).
+ *
+ * Cargo's BARE form is a CARET requirement — `"1.0"` means `>=1.0.0, <2.0.0` —
+ * while that grammar reads a bare version as EXACT, so this translation is what
+ * makes the lock-entry selection below correct. Cargo joins conjunctions with
+ * commas, the grammar with whitespace.
+ *
+ * @returns undefined when the requirement carries no comparable constraint
+ *          (`""`, `"*"`), so the caller keeps its fallback behaviour.
+ */
+function cargoRequirementToRange(requirement: string): string | undefined {
+  const parts = requirement
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part !== '' && part !== '*');
+  if (parts.length === 0) return undefined;
+  return parts.map((part) => (/^\d/.test(part) ? `^${part}` : part)).join(' ');
+}
+
+/**
+ * Choose the lock entry a DIRECT dependency resolved to.
+ *
+ * Keeping only the last entry per crate name reported a version the manifest
+ * requirement cannot even select (`syn = "1.0"` → `syn 2.0.48`). Pick the lowest
+ * entry satisfying the requirement, which is what Cargo's minimal-version
+ * selection prefers; fall back to the historical last entry when the requirement
+ * is absent, unparseable, or satisfied by nothing in the lock.
+ */
+function pickLockedVersion(
+  candidates: readonly string[],
+  requirement: string | undefined,
+): string | undefined {
+  const fallback = candidates[candidates.length - 1];
+  if (!requirement || candidates.length < 2) return fallback;
+  const range = cargoRequirementToRange(requirement);
+  if (!range) return fallback;
+  try {
+    const parsed = parseRange(range);
+    return candidates.find((candidate) => satisfiesRange(candidate, parsed)) ?? fallback;
+  } catch {
+    // Not expressible in the engine's range grammar — keep the fallback.
+    return fallback;
+  }
 }
 
 // ── Scope mapping ─────────────────────────────────────────────────────────
@@ -171,6 +293,9 @@ export class RustAdapter implements EcosystemAdapter {
     const observations: DependencyObservation[] = [];
     const root = workspaceRoot(workspace, options);
     const seen = new Set<string>();
+    // Every lock INSTANCE already emitted (name@version), so the transitive pass
+    // can add exactly the instances the direct loop did not cover.
+    const seenInstances = new Set<string>();
 
     // Find manifests
     const cargoTomlPath =
@@ -191,7 +316,7 @@ export class RustAdapter implements EcosystemAdapter {
 
     // Find lockfile
     const cargoLockPath = resolveIn(root, 'Cargo.lock');
-    let lockVersions = new Map<string, string>();
+    let lockVersions = new Map<string, string[]>();
     let lockEv: Evidence | undefined;
     try {
       const lockContent = readFileSync(cargoLockPath, 'utf-8');
@@ -227,7 +352,11 @@ export class RustAdapter implements EcosystemAdapter {
         if (seen.has(dep.name)) continue;
         seen.add(dep.name);
 
-        const locked = lockVersions.get(dep.name) || dep.version;
+        // Cargo.lock can hold several instances of one crate name; pick the one
+        // this dependency's requirement actually selects, not the highest.
+        const candidates = lockVersions.get(dep.name) ?? [];
+        const locked = pickLockedVersion(candidates, dep.version) ?? dep.version;
+        if (locked) seenInstances.add(`${dep.name}@${locked}`);
         const isRegistry = dep.sourceType === 'registry';
 
         const purl =
@@ -238,7 +367,7 @@ export class RustAdapter implements EcosystemAdapter {
               : undefined;
 
         const evidence: Evidence[] = [manifestEv];
-        if (lockEv && locked && lockVersions.has(dep.name)) evidence.push(lockEv);
+        if (lockEv && locked && candidates.length > 0) evidence.push(lockEv);
 
         const status: DependencyObservation['status'] =
           dep.sourceType === 'git'
@@ -265,22 +394,33 @@ export class RustAdapter implements EcosystemAdapter {
     }
 
     if (options.includeTransitive && lockEv) {
-      for (const [name, locked] of lockVersions) {
-        if (seen.has(name)) continue;
-        seen.add(name);
-        observations.push({
-          id: `dep-${workspace.id}-${name}`,
-          workspaceId: workspace.id,
-          purl: buildPurl({ type: 'rust', name, version: locked }),
-          ecosystem: 'rust',
-          name,
-          sourceType: 'registry',
-          direct: false,
-          scope: 'transitive',
-          locked,
-          status: 'current',
-          evidence: [lockEv],
-        });
+      // One row per lock INSTANCE, not per crate name. A crate legitimately
+      // appears at several versions in Cargo.lock (syn 1.x for one dependent,
+      // 2.x for another); deduping by name reported only the highest and hid the
+      // others, so an omitted version reached neither the SBOM nor any advisory
+      // query (OSV is queried per purl) — a security false negative. The id
+      // carries the version only when the name holds several instances, so
+      // single-instance crates keep the historical `dep-<ws>-<name>` id.
+      for (const [name, versions] of lockVersions) {
+        const multiple = versions.length > 1;
+        for (const locked of versions) {
+          const instance = `${name}@${locked}`;
+          if (seenInstances.has(instance)) continue;
+          seenInstances.add(instance);
+          observations.push({
+            id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
+            workspaceId: workspace.id,
+            purl: buildPurl({ type: 'rust', name, version: locked }),
+            ecosystem: 'rust',
+            name,
+            sourceType: 'registry',
+            direct: false,
+            scope: 'transitive',
+            locked,
+            status: 'current',
+            evidence: [lockEv],
+          });
+        }
       }
     }
 

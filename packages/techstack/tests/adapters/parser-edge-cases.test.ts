@@ -84,6 +84,49 @@ describe('adapter parser edge cases', () => {
     expect(deps.find((dep) => dep.name === 'commitpkg')?.locked).toBe('1.0.1');
   });
 
+  it('maps npm lock package keys to package names, not install paths', async () => {
+    const deps = await inventory(
+      npmAdapter,
+      'npm',
+      {
+        'package.json': JSON.stringify({
+          name: 'website',
+          version: '1.0.24',
+          dependencies: { 'left-pad': '^1.0.0' },
+        }),
+        // Shape of a real npm v3 lock: the root project is keyed `""` and a
+        // deduped/conflicting transitive install is keyed by its nested install
+        // path (`node_modules/a/node_modules/b`). Both are paths, not names.
+        'package-lock.json': JSON.stringify({
+          name: 'website',
+          version: '1.0.24',
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'website', version: '1.0.24' },
+            'node_modules/left-pad': { version: '1.3.0' },
+            'node_modules/a': { version: '2.0.0' },
+            'node_modules/a/node_modules/b': { version: '1.0.0' },
+          },
+        }),
+      },
+      ['package.json'],
+      ['package-lock.json'],
+      { includeTransitive: true },
+    );
+
+    // The root entry must not become an empty-named dependency.
+    expect(deps.filter((dep) => !dep.name)).toEqual([]);
+    // An install path must not leak in as a package name.
+    expect(deps.filter((dep) => dep.name.includes('node_modules'))).toEqual([]);
+    // The nested install belongs to package `b`, at that instance's version.
+    expect(deps.find((dep) => dep.name === 'b')?.locked).toBe('1.0.0');
+    // Control: the direct dependency keeps its name, version and directness.
+    expect(deps.find((dep) => dep.name === 'left-pad')).toMatchObject({
+      locked: '1.3.0',
+      direct: true,
+    });
+  });
+
   it('parses Python multiline arrays, inline tables, and quoted keys', async () => {
     const deps = await inventory(
       pythonAdapter,

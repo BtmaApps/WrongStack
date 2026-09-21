@@ -58,6 +58,115 @@ describe('RustAdapter', () => {
     }
   });
 
+  // TOML permits newlines inside an array value, so a valid inline table can
+  // span physical lines; parsing line-by-line used to drop the whole entry.
+  const CARGO_WRAPPED = [
+    '[package]',
+    'name = "x"',
+    'version = "0.1.0"',
+    '',
+    '[dependencies]',
+    'serde = "1.0"',
+    'tokio = { version = "1.40", features = [',
+    '    "rt-multi-thread",',
+    '    "macros",',
+    '] }',
+    '',
+    '[dev-dependencies]',
+    'criterion = { version = "0.5", features = [',
+    '    "html_reports",',
+    '] }',
+    '',
+  ].join('\n');
+  const LOCK_WRAPPED = [
+    '[[package]]',
+    'name = "serde"',
+    'version = "1.0.215"',
+    '',
+    '[[package]]',
+    'name = "tokio"',
+    'version = "1.40.0"',
+    '',
+    '[[package]]',
+    'name = "criterion"',
+    'version = "0.5.1"',
+    '',
+  ].join('\n');
+
+  it('inventories inline tables whose array value wraps onto later lines', async () => {
+    const { dir, ws } = mkWorkspace({ 'Cargo.toml': CARGO_WRAPPED, 'Cargo.lock': LOCK_WRAPPED });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      expect(deps.map((d) => d.name).sort()).toEqual(['criterion', 'serde', 'tokio']);
+      expect(deps.find((d) => d.name === 'tokio')).toMatchObject({
+        requested: '1.40',
+        locked: '1.40.0',
+        scope: 'runtime',
+        purl: 'pkg:rust/tokio@1.40.0',
+      });
+      // The wrapped dev-dependency is inventoried in its own scope too.
+      expect(deps.find((d) => d.name === 'criterion')).toMatchObject({
+        requested: '0.5',
+        locked: '0.5.1',
+        scope: 'development',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Cargo.lock legitimately lists several instances of one crate; the last
+  // entry is the highest version, which the manifest requirement may not be
+  // able to select (`syn = "1.0"` is a caret requirement).
+  const CARGO_MULTI = [
+    '[package]',
+    'name = "x"',
+    'version = "0.1.0"',
+    '',
+    '[dependencies]',
+    'syn = "1.0"',
+    'serde = "1.0"',
+    'base64 = "=0.22.1"',
+    '',
+  ].join('\n');
+  const LOCK_MULTI = [
+    'version = 4',
+    '',
+    '[[package]]',
+    'name = "base64"',
+    'version = "0.22.1"',
+    '',
+    '[[package]]',
+    'name = "serde"',
+    'version = "1.0.215"',
+    '',
+    '[[package]]',
+    'name = "syn"',
+    'version = "1.0.109"',
+    '',
+    '[[package]]',
+    'name = "syn"',
+    'version = "2.0.48"',
+    '',
+  ].join('\n');
+
+  it('selects the lock entry the manifest requirement resolves to', async () => {
+    const { dir, ws } = mkWorkspace({ 'Cargo.toml': CARGO_MULTI, 'Cargo.lock': LOCK_MULTI });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      expect(deps.find((d) => d.name === 'syn')).toMatchObject({
+        requested: '1.0',
+        locked: '1.0.109',
+        purl: 'pkg:rust/syn@1.0.109',
+      });
+      // Single-version and exact-requirement crates are unchanged.
+      expect(deps.find((d) => d.name === 'serde')?.locked).toBe('1.0.215');
+      expect(deps.find((d) => d.name === 'base64')?.locked).toBe('0.22.1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('has manifest evidence on every dep', async () => {
     const { dir, ws } = mkWorkspace({ 'Cargo.toml': CARGO });
     try {

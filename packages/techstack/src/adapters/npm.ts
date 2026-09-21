@@ -181,8 +181,18 @@ function unquote(value: string): string {
 /**
  * Parse package-lock.json (npm) to extract resolved versions.
  */
-function parseNpmLockVersions(lockContent: string): Map<string, string> {
-  const versions = new Map<string, string>();
+function parseNpmLockVersions(lockContent: string): Map<string, string[]> {
+  const versions = new Map<string, string[]>();
+  /** Record one instance, ignoring duplicates of the same name+version. */
+  const record = (name: string, version: string): void => {
+    const existing = versions.get(name);
+    if (!existing) {
+      versions.set(name, [version]);
+      return;
+    }
+    if (!existing.includes(version)) existing.push(version);
+  };
+
   try {
     const lock = JSON.parse(lockContent);
     // npm v3: lock.dependencies
@@ -192,20 +202,24 @@ function parseNpmLockVersions(lockContent: string): Map<string, string> {
       if (depInfo.version) {
         // Strip version prefixes like ^, ~, >=
         const cleanVersion = depInfo.version.replace(/^[^0-9]+/, '');
-        versions.set(name, cleanVersion);
+        record(name, cleanVersion);
       }
     }
-    // npm v2 (lockfileVersion 2+): lock.packages
+    // npm v2 (lockfileVersion 2+): lock.packages. Its keys are INSTALL PATHS,
+    // not names: the root project is keyed "" and a deduped/conflicting
+    // transitive install is keyed "node_modules/a/node_modules/b" (this repo's
+    // own website/package-lock.json carries an empty root key and 18 such
+    // nested keys). Take the segment after the LAST node_modules/ and skip
+    // keys without one, so the root entry never becomes an empty-named
+    // dependency and an install path never becomes a package name.
     const packages = lock.packages ?? {};
     for (const key of Object.keys(packages)) {
       const pkgInfo = packages[key] as { version?: string };
-      if (pkgInfo.version) {
-        // Key format: "node_modules/package-name" or "node_modules/@scope/package-name"
-        const name = key.replace(/^node_modules\//, '');
-        if (!versions.has(name)) {
-          versions.set(name, pkgInfo.version);
-        }
-      }
+      const marker = key.lastIndexOf('node_modules/');
+      if (!pkgInfo.version || marker < 0) continue;
+      const name = key.slice(marker + 'node_modules/'.length);
+      if (!name) continue;
+      record(name, pkgInfo.version);
     }
   } catch {
     // Malformed lockfile — return empty map
@@ -213,8 +227,8 @@ function parseNpmLockVersions(lockContent: string): Map<string, string> {
   return versions;
 }
 
-function parsePnpmAllVersions(lockContent: string): Map<string, string> {
-  const versions = new Map<string, string>();
+function parsePnpmAllVersions(lockContent: string): Map<string, string[]> {
+  const versions = new Map<string, string[]>();
   let inPackages = false;
   for (const raw of lockContent.split(/\r?\n/)) {
     if (!/^\s/.test(raw)) {
@@ -233,7 +247,14 @@ function parsePnpmAllVersions(lockContent: string): Map<string, string> {
     if (splitAt <= 0) continue;
     const name = clean.slice(0, splitAt);
     const version = clean.slice(splitAt + 1);
-    if (name && /^\d/.test(version) && !versions.has(name)) versions.set(name, version);
+    if (!name || !/^\d/.test(version)) continue;
+    // A package legitimately appears at several versions — pnpm writes one
+    // `name@version` key per instance (this repo's own lock: fs-extra ×12,
+    // minimatch ×8). Keeping only the first per NAME hid every other instance
+    // from the inventory, and OSV is queried per purl.
+    const existing = versions.get(name);
+    if (!existing) versions.set(name, [version]);
+    else if (!existing.includes(version)) existing.push(version);
   }
   return versions;
 }
@@ -315,7 +336,7 @@ export class NpmAdapter implements EcosystemAdapter {
     // Read lockfile for resolved versions
     const lockInfo = await detectLockfile(root, options.projectRoot);
     const resolvedVersions = new Map<string, string>();
-    const allLockVersions = new Map<string, string>();
+    const allLockVersions = new Map<string, string[]>();
     let lockEv: Evidence | undefined;
     if (lockInfo.kind === 'pnpm') {
       try {
@@ -335,8 +356,13 @@ export class NpmAdapter implements EcosystemAdapter {
       try {
         const lockContent = await readFile(lockInfo.path, 'utf-8');
         const parsed = parseNpmLockVersions(lockContent);
-        for (const [k, v] of parsed) resolvedVersions.set(k, v);
-        for (const [k, v] of parsed) allLockVersions.set(k, v);
+        for (const [k, v] of parsed) {
+          // Direct rows report one resolved version; every instance is kept for
+          // the transitive pass below.
+          const first = v[0];
+          if (first) resolvedVersions.set(k, first);
+          allLockVersions.set(k, v);
+        }
         lockEv = lockfileEvidence(lockInfo.path);
       } catch {
         // ignore
@@ -397,22 +423,35 @@ export class NpmAdapter implements EcosystemAdapter {
     }
 
     if (options.includeTransitive && lockEv) {
-      for (const [name, locked] of allLockVersions) {
-        if (seen.has(name)) continue;
-        seen.add(name);
-        observations.push({
-          id: `dep-${workspace.id}-${name}`,
-          workspaceId: workspace.id,
-          purl: buildPurl({ type: 'npm', name, version: locked }),
-          ecosystem: 'npm',
-          name,
-          sourceType: 'registry',
-          direct: false,
-          scope: 'transitive',
-          locked,
-          status: 'current',
-          evidence: [lockEv],
-        });
+      // A lockfile lists every INSTANCE of a package — this repo's own pnpm lock
+      // holds fs-extra at 12 versions and minimatch at 8 — and OSV is queried per
+      // purl, so an omitted version is an advisory blind spot. Emit one row per
+      // instance the direct rows did not already cover; the id carries the
+      // version only when a name holds several instances, so single-instance
+      // packages keep the historical `dep-<ws>-<name>` id.
+      const emittedInstances = new Set(
+        observations.flatMap((dep) => (dep.locked ? [`${dep.name}@${dep.locked}`] : [])),
+      );
+      for (const [name, versions] of allLockVersions) {
+        const multiple = versions.length > 1;
+        for (const locked of versions) {
+          const instance = `${name}@${locked}`;
+          if (emittedInstances.has(instance)) continue;
+          emittedInstances.add(instance);
+          observations.push({
+            id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
+            workspaceId: workspace.id,
+            purl: buildPurl({ type: 'npm', name, version: locked }),
+            ecosystem: 'npm',
+            name,
+            sourceType: 'registry',
+            direct: false,
+            scope: 'transitive',
+            locked,
+            status: 'current',
+            evidence: [lockEv],
+          });
+        }
       }
     }
 

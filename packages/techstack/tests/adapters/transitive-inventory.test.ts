@@ -71,6 +71,96 @@ describe('includeTransitive', () => {
     });
   });
 
+  it('reports every Cargo.lock instance of a multi-version crate', async () => {
+    const deps = await run(
+      'rust',
+      rustAdapter,
+      {
+        'Cargo.toml': '[dependencies]\nsyn = "1.0"\n',
+        // syn is direct (requirement "1.0" selects 1.0.109) and also pulled in at
+        // 2.0.48; quote appears twice and is lock-only.
+        'Cargo.lock': [
+          '[[package]]',
+          'name = "quote"',
+          'version = "1.0.35"',
+          '[[package]]',
+          'name = "quote"',
+          'version = "1.0.36"',
+          '[[package]]',
+          'name = "syn"',
+          'version = "1.0.109"',
+          '[[package]]',
+          'name = "syn"',
+          'version = "2.0.48"',
+          '',
+        ].join('\n'),
+      },
+      'Cargo.toml',
+    );
+
+    // The requirement-selected instance stays on the direct row…
+    expect(deps.find((dep) => dep.name === 'syn' && dep.direct)).toMatchObject({
+      locked: '1.0.109',
+    });
+    // …and the other instances are still inventoried instead of being deduped
+    // away by crate name (an omitted version cannot be matched by any advisory).
+    expect(
+      deps
+        .filter((dep) => dep.name === 'syn')
+        .map((dep) => dep.locked)
+        .sort(),
+    ).toEqual(['1.0.109', '2.0.48']);
+    expect(
+      deps
+        .filter((dep) => dep.name === 'quote')
+        .map((dep) => dep.locked)
+        .sort(),
+    ).toEqual(['1.0.35', '1.0.36']);
+    const purls = deps.flatMap((dep) => (dep.purl ? [dep.purl] : []));
+    expect(new Set(purls).size).toBe(purls.length);
+  });
+
+  it('reports every pnpm lock instance of a multi-version package', async () => {
+    const deps = await run(
+      'npm',
+      npmAdapter,
+      {
+        'package.json': JSON.stringify({ dependencies: { direct: '^1.0.0' } }),
+        // pnpm writes one `name@version` key per instance; this repository's own
+        // lockfile holds fs-extra at 12 versions.
+        'pnpm-lock.yaml': [
+          "lockfileVersion: '9.0'",
+          'importers:',
+          '  .:',
+          '    dependencies:',
+          '      direct:',
+          '        specifier: ^1.0.0',
+          '        version: 1.1.0',
+          'packages:',
+          '  direct@1.1.0: {}',
+          '  fs-extra@11.2.0: {}',
+          '  fs-extra@9.1.0: {}',
+          '  jsonfile@6.1.0: {}',
+          '',
+        ].join('\n'),
+      },
+      'package.json',
+    );
+
+    expect(
+      deps
+        .filter((dep) => dep.name === 'fs-extra')
+        .map((dep) => dep.locked)
+        .sort(),
+    ).toEqual(['11.2.0', '9.1.0']);
+    // A single-instance package keeps the historical id shape.
+    const jsonfile = deps.filter((dep) => dep.name === 'jsonfile');
+    expect(jsonfile).toHaveLength(1);
+    expect(jsonfile[0]?.id).toBe('dep-ws-npm-jsonfile');
+    // The direct row stays authoritative (importer section).
+    expect(deps.find((dep) => dep.direct && dep.name === 'direct')?.locked).toBe('1.1.0');
+  });
+
   it('adds poetry.lock-only Python packages', async () => {
     const deps = await run(
       'python',
