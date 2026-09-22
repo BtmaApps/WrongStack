@@ -168,3 +168,27 @@ describe('bash-kill-guard — Windows (Git Bash / PowerShell) targets', () => {
     },
   );
 });
+
+describe('bash-kill-guard — launcher-wrapped verbs (win32)', () => {
+  // powershell.exe binds the first positional argument as -Command (documented
+  // default), so the kill verb hides behind the launcher head with no -Command
+  // flag. The guard must classify the effective command, not the head.
+  it.each([
+    `powershell Stop-Process -Id ${P}`,
+    `powershell -command stop-process -id ${P}`,
+    `powershell taskkill /F /PID ${P}`,
+  ])('blocks %j', async (command) => {
+    const { checkAndBlockKillCommand } = await loadGuard('win32');
+    const result = await checkAndBlockKillCommand(command);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toMatch(/protected WrongStack process/);
+  });
+
+  it.each(['powershell -File kill-things.ps1', `powershell Stop-Process -Id 111`])(
+    'does not block %j',
+    async (command) => {
+      const { checkAndBlockKillCommand } = await loadGuard('win32');
+      expect((await checkAndBlockKillCommand(command)).blocked).toBe(false);
+    },
+  );
+});

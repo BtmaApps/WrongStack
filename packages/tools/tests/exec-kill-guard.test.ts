@@ -120,6 +120,94 @@ describe('exec-kill-guard', () => {
       expect(result.reason).toMatch(/current WrongStack|protected WrongStack/i);
     });
 
+    it('blocks Stop-Process -id current PID (PowerShell params are case-insensitive)', async () => {
+      const result = await checkExecKillCommand('Stop-Process', ['-id', String(process.pid)]);
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/current WrongStack|protected WrongStack/i);
+    });
+
+    it('blocks Stop-Process -ID/-iD current PID (any case spelling)', async () => {
+      for (const flag of ['-ID', '-iD']) {
+        const result = await checkExecKillCommand('Stop-Process', [flag, String(process.pid)]);
+        expect(result.blocked).toBe(true);
+      }
+    });
+
+    it('blocks Stop-Process -name node (lowercase flag)', async () => {
+      const result = await checkExecKillCommand('Stop-Process', ['-name', 'node']);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('still allows Stop-Process -id on an unrelated PID', async () => {
+      const result = await checkExecKillCommand('Stop-Process', ['-id', '99999999']);
+      expect(result.blocked).toBe(false);
+    });
+
+    it('blocks Stop-Process -Id:<pid> colon-attached current PID', async () => {
+      const result = await checkExecKillCommand('Stop-Process', [`-Id:${process.pid}`]);
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/current WrongStack|protected WrongStack/i);
+    });
+
+    it('blocks Stop-Process -id:<pid> colon-attached lowercase', async () => {
+      const result = await checkExecKillCommand('Stop-Process', [`-id:${process.pid}`]);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('blocks Stop-Process -Name:node (colon-attached name)', async () => {
+      const result = await checkExecKillCommand('Stop-Process', ['-Name:node']);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('blocks powershell -Command with colon-attached Stop-Process -Id:<pid>', async () => {
+      const result = await checkExecKillCommand('powershell', [
+        '-Command',
+        `Stop-Process -Id:${process.pid}`,
+      ]);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('still allows Stop-Process -Id:<unrelated pid> colon-attached', async () => {
+      const result = await checkExecKillCommand('Stop-Process', ['-Id:99999999']);
+      expect(result.blocked).toBe(false);
+    });
+
+    it('blocks powershell with implicit -Command (no flag)', async () => {
+      const result = await checkExecKillCommand('powershell', [
+        'Stop-Process',
+        '-Id',
+        String(process.pid),
+      ]);
+      expect(result.blocked).toBe(true);
+      expect(result.reason).toMatch(/current WrongStack|protected WrongStack/i);
+    });
+
+    it('blocks powershell wrapper with launcher flags before the cmdlet', async () => {
+      const result = await checkExecKillCommand('powershell', [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        'Stop-Process',
+        '-Id',
+        String(process.pid),
+      ]);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('blocks pwsh wrapper with implicit command (lowercase -id)', async () => {
+      const result = await checkExecKillCommand('pwsh', [
+        'Stop-Process',
+        '-id',
+        String(process.pid),
+      ]);
+      expect(result.blocked).toBe(true);
+    });
+
+    it('still allows powershell -File (opaque script, not recursed)', async () => {
+      const result = await checkExecKillCommand('powershell', ['-File', 'script.ps1']);
+      expect(result.blocked).toBe(false);
+    });
+
     it('blocks Stop-Process alias kill with -PID flag', async () => {
       const result = await checkExecKillCommand('kill', ['-n', 'node']);
       expect(result.blocked).toBe(true);

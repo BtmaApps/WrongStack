@@ -121,6 +121,19 @@ export async function checkExecKillCommand(
           const result = await checkExecKillCommand(innerCommand, innerTokens.slice(1));
           if (result.blocked) return result;
         }
+      } else if (cmdLower.startsWith('powershell') || cmdLower.startsWith('pwsh')) {
+        // No explicit -Command/-c: PowerShell still binds the first positional
+        // argument as the -Command value (documented default), so the cmdlet
+        // hides behind the launcher flags — `powershell Stop-Process -Id 123`
+        // executes and killed a real process (live-verified). Recurse on the
+        // effective command; -File script mode is opaque and stays
+        // uninspected (argsAfterLauncherFlags returns [] for it).
+        const innerTokens = argsAfterLauncherFlags(args);
+        const innerCommand = innerTokens[0];
+        if (innerCommand) {
+          const result = await checkExecKillCommand(innerCommand, innerTokens.slice(1));
+          if (result.blocked) return result;
+        }
       }
     }
 
@@ -128,9 +141,22 @@ export async function checkExecKillCommand(
     if (cmdLower === 'stop-process' || cmdLower === 'kill') {
       for (let i = 0; i < args.length; i++) {
         const a = args[i]!;
-        // -Name "node" or -Name node
-        if (a === '-Name' || a === '-n') {
-          const nameArg = args[i + 1]?.replace(/^['"]|['"]$/g, '');
+        // PowerShell parameter names are case-insensitive (`-name`, `-ID`,
+        // `-iD` all bind exactly like the canonical spelling), so compare the
+        // flag lowercased — the way the taskkill branch above compares its
+        // flags. Exact-case matching let `Stop-Process -id <pid>` bypass the
+        // guard: the bare-name fallback then read the pid as a process NAME.
+        //
+        // PowerShell ALSO binds the colon-attached value form `-Param:value`
+        // (`Stop-Process -Id:12345`, `-name:node`) identically to the space
+        // form — live-verified kill via `Stop-Process -Id:<pid>` — so split
+        // the value off the flag token or the comparisons below never see it.
+        const colon = a.indexOf(':');
+        const attachedValue = colon > 1 ? a.slice(colon + 1) : undefined;
+        const flag = (attachedValue === undefined ? a : a.slice(0, colon)).toLowerCase();
+        // -Name "node", -Name node, or -Name:node
+        if (flag === '-name' || flag === '-n') {
+          const nameArg = (attachedValue ?? args[i + 1])?.replace(/^['"]|['"]$/g, '');
           if (nameArg) {
             const result = await checkKillTarget({
               name: nameArg,
@@ -140,9 +166,9 @@ export async function checkExecKillCommand(
             if (result.blocked) return result;
           }
         }
-        // -Id 1234 or -PID 1234
-        if (a === '-Id' || a === '-PID' || a === '-pid') {
-          const pidArg = args[i + 1];
+        // -Id 1234, -PID 1234, or -Id:1234
+        if (flag === '-id' || flag === '-pid') {
+          const pidArg = attachedValue ?? args[i + 1];
           if (pidArg && /^\d+$/.test(pidArg)) {
             const result = await checkKillTarget({
               pid: parseInt(pidArg, 10),
@@ -239,6 +265,44 @@ export async function checkExecKillCommand(
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
+
+/** PowerShell launcher flags that consume their own value (skipped with it). */
+const POWERSHELL_LAUNCHER_VALUE_FLAGS = new Set([
+  '-executionpolicy',
+  '-inputformat',
+  '-outputformat',
+  '-windowstyle',
+  '-version',
+  '-configurationname',
+  '-settings',
+]);
+
+/**
+ * Args after the PowerShell launcher's own flags: powershell/pwsh treat the
+ * first POSITIONAL argument as the -Command value (documented default), so
+ * `powershell Stop-Process -Id 123` runs the cmdlet with no -Command flag.
+ * Returns [] when there is no inspectable inner command — notably -File
+ * script mode, which executes an opaque file we cannot parse.
+ */
+function argsAfterLauncherFlags(args: readonly string[]): string[] {
+  let expectsValue = false;
+  for (let i = 0; i < args.length; i++) {
+    const token = args[i]!;
+    const lower = token.toLowerCase();
+    if (expectsValue) {
+      expectsValue = false;
+      continue;
+    }
+    if (lower === '-file' || lower.startsWith('-file:')) return [];
+    if (POWERSHELL_LAUNCHER_VALUE_FLAGS.has(lower)) {
+      expectsValue = true;
+      continue;
+    }
+    if (lower.startsWith('-')) continue;
+    return args.slice(i);
+  }
+  return [];
+}
 
 /** Split a shell payload into argv-like tokens while preserving quoted names. */
 function tokenizeShellCommand(command: string): string[] {

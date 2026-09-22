@@ -44,6 +44,77 @@ describe('parseKillCommand', () => {
     expect(result!.pid).toBe(1234);
   });
 
+  it('parses Stop-Process -Id:<pid> colon-attached', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('Stop-Process -Id:1234 -Force');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses kill -Id:<pid> colon-attached alias', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('kill -Id:1234');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses Stop-Process -id:<pid> colon-attached lowercase', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('Stop-Process -id:1234');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses Stop-Process -Name:<name> colon-attached', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('Stop-Process -Name:chrome -Force');
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('chrome');
+  });
+
+  it('parses powershell-wrapped Stop-Process -Id (implicit -Command)', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('powershell Stop-Process -Id 1234');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses powershell-wrapped Stop-Process with launcher flags', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand(
+      'powershell -NoProfile -ExecutionPolicy Bypass Stop-Process -Id 1234',
+    );
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses powershell -command with unquoted payload', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('powershell -command stop-process -id 1234');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses powershell -command with quoted payload', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('powershell -command "stop-process -id 1234"');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+  });
+
+  it('parses powershell taskkill wrapper', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    const result = parseKillCommand('powershell taskkill /F /PID 1234');
+    expect(result).not.toBeNull();
+    expect(result!.pid).toBe(1234);
+    expect(result!.signal).toBe('FORCE');
+  });
+
+  it('does not parse a powershell -File script as a kill command', () => {
+    if (!isWin) return; // Stop-Process is Windows-only
+    expect(parseKillCommand('powershell -File kill-things.ps1')).toBeNull();
+  });
+
   it('parses Stop-Process -Name with process name', () => {
     if (!isWin) return; // Stop-Process is Windows-only
     const result = parseKillCommand('Stop-Process -Name "chrome" -Force');

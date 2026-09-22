@@ -115,6 +115,59 @@ function extractKillCommand(command: string): string | null {
   return null;
 }
 
+/** PowerShell launcher flags that consume their own value (skipped with it). */
+const POWERSHELL_LAUNCHER_VALUE_FLAGS = new Set([
+  '-executionpolicy',
+  '-inputformat',
+  '-outputformat',
+  '-windowstyle',
+  '-version',
+  '-configurationname',
+  '-settings',
+]);
+
+/**
+ * PowerShell treats the first POSITIONAL argument as the -Command value
+ * (documented default), so `powershell Stop-Process -Id 123` runs the cmdlet
+ * with no -Command flag — and every verb-anchored test below only sees the
+ * `powershell` head. Returns the effective command with the launcher and its
+ * own flags removed, or null when there is no inspectable inner command
+ * (-File/-EncodedCommand payloads are opaque; nothing left but launcher flags).
+ */
+function stripPowerShellLauncherHead(normalized: string): string | null {
+  const head = normalized.match(/^(?:.*[\\/])?(?:powershell|pwsh)(?:\.exe)?\s+(.+)$/i);
+  if (!head?.[1]) return null;
+  const tokens = head[1].split(/\s+/);
+  let expectsValue = false;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i] ?? '';
+    const lower = token.toLowerCase();
+    if (expectsValue) {
+      expectsValue = false;
+      continue;
+    }
+    if (lower === '-file' || lower.startsWith('-file:')) return null;
+    if (lower === '-encodedcommand' || lower.startsWith('-encodedcommand:')) return null;
+    if (/^-[a-z0-9]+:\S+$/i.test(token)) continue;
+    if (POWERSHELL_LAUNCHER_VALUE_FLAGS.has(lower)) {
+      expectsValue = true;
+      continue;
+    }
+    if (lower === '-c' || lower === '-command') {
+      const payload = tokens
+        .slice(i + 1)
+        .join(' ')
+        .trim()
+        .replace(/^(['"])([\s\S]*)\1$/, '$2')
+        .trim();
+      return payload.length > 0 ? payload : null;
+    }
+    if (lower.startsWith('-')) continue;
+    return tokens.slice(i).join(' ').trim();
+  }
+  return null;
+}
+
 /**
  * Check if a command string is kill-related (for filtering).
  */
@@ -137,6 +190,22 @@ function isKillRelatedCommand(cmd: string): boolean {
     if (/^wmic\s+process\s/i.test(normalized) && /\bdelete\b/i.test(normalized)) return true;
     // Scripts named kill*, terminate*, stop* .ps1, .bat, .cmd, .sh (with or without args)
     if (SCRIPT_KILL_RE.test(normalized)) return true;
+
+    // Launcher-wrapped verbs: powershell/pwsh bind the first positional
+    // argument as -Command (documented default), so the kill verb hides
+    // behind the launcher head (`powershell Stop-Process -Id 123`). Gate on
+    // the effective command instead. -File/-EncodedCommand strip to null
+    // (opaque) and stay uninspected, matching the module's obfuscation scope.
+    const strippedLauncher = stripPowerShellLauncherHead(normalized);
+    if (strippedLauncher !== null) {
+      if (/^taskkill\s/i.test(strippedLauncher)) return true;
+      if (/^tskill\s/i.test(strippedLauncher)) return true;
+      if (/^(stop-process|kill|stop)\s/i.test(strippedLauncher)) return true;
+      if (/^wmic\s+process\s/i.test(strippedLauncher) && /\bdelete\b/i.test(strippedLauncher)) {
+        return true;
+      }
+      if (SCRIPT_KILL_RE.test(strippedLauncher)) return true;
+    }
     return false;
   }
 
@@ -204,12 +273,18 @@ function parsePosixKillTargets(normalized: string, command: string): KillCommand
 }
 
 export function parseKillCommand(command: string): KillCommand | null {
-  const normalized = command.replace(/\s+/g, ' ').trim();
+  let normalized = command.replace(/\s+/g, ' ').trim();
 
   // P3 #25 (before-release.md): skip platform-specific commands that cannot
   // run here. Windows still accepts the common POSIX `kill` forms because
   // Git Bash/WSL can invoke them; only pkill/killall/pgrep remain POSIX-only.
   if (isWin) {
+    // PowerShell binds the first positional argument as -Command (documented
+    // default), so `powershell Stop-Process -Id 123` hides the verb behind
+    // the launcher head. Rebind to the effective command for every
+    // verb-anchored branch below; null means opaque/no inner command.
+    const strippedLauncher = stripPowerShellLauncherHead(normalized);
+    if (strippedLauncher !== null) normalized = strippedLauncher;
     const hasTaskkillForce = /(?:^|\s)\/F(?=\s|$)/i.test(normalized);
 
     // ── taskkill /PID 1234 or taskkill /F /PID 1234 ──────────────────
@@ -273,13 +348,19 @@ export function parseKillCommand(command: string): KillCommand | null {
 
     // ── PowerShell Stop-Process -Id 1234 / kill -Id 1234 ─────────────
     // This must precede the POSIX signal form so `kill -Id` is not mistaken
-    // for a signal named ID.
+    // for a signal named ID. PowerShell also binds the colon-attached value
+    // form `-Id:1234` identically (live-verified kill, round
+    // r-20260922-exec-killguard-colon-attached), so both the shape and the
+    // value extraction accept `:<digits>` as well as the space form.
     const isStopProcIdCommand =
-      /^(?:stop-process|kill)(?:\s+-(?:id|pid)\s+\d+|\s+-[a-zA-Z]+)+$/i.test(normalized);
-    const stopProcIdMatch = normalized.match(/(?:^|\s)-(?:id|pid)\s+(\d+)(?=\s|$)/i);
-    if (isStopProcIdCommand && stopProcIdMatch?.[1]) {
+      /^(?:stop-process|kill)(?:\s+-(?:id|pid)(?:\s+\d+|:\d+)|\s+-[a-zA-Z]+(?::[^\s]+)?)+$/i.test(
+        normalized,
+      );
+    const stopProcIdMatch = normalized.match(/(?:^|\s)-(?:id|pid)(?::(\d+)|\s+(\d+))(?=\s|$)/i);
+    const stopProcId = stopProcIdMatch?.[1] ?? stopProcIdMatch?.[2];
+    if (isStopProcIdCommand && stopProcId) {
       return {
-        pid: parseInt(stopProcIdMatch[1], 10),
+        pid: parseInt(stopProcId, 10),
         signal: 'FORCE',
         isGroupKill: false,
         isAllKill: false,
@@ -293,11 +374,13 @@ export function parseKillCommand(command: string): KillCommand | null {
     if (gitBashKill) return gitBashKill;
 
     // ── PowerShell Stop-Process -Name "node" (multi-char name) ─────────
-    // Uses greedier capture with end anchor to grab the full name.
+    // Uses greedier capture with end anchor to grab the full name. Also
+    // accepts the colon-attached form `-Name:node`, which PowerShell binds
+    // identically to the space form.
     const stopProcNameMatch = normalized.match(
-      /^(?:stop-process|kill)\s+-(?:name|n)\s+(?:['"]([a-zA-Z0-9_.-]+)['"]|([a-zA-Z0-9_.-]+))(?:\s|$)/i,
+      /^(?:stop-process|kill)\s+-(?:name|n)(?::([a-zA-Z0-9_.-]+)|\s+(?:['"]([a-zA-Z0-9_.-]+)['"]|([a-zA-Z0-9_.-]+)))(?:\s|$)/i,
     );
-    const stopProcName = stopProcNameMatch?.[1] ?? stopProcNameMatch?.[2];
+    const stopProcName = stopProcNameMatch?.[1] ?? stopProcNameMatch?.[2] ?? stopProcNameMatch?.[3];
     if (stopProcName) {
       return {
         name: stopProcName,
