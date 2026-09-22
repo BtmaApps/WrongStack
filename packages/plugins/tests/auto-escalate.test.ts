@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const autoEscalatePlugin = (await import('../src/auto-escalate')).default;
 const { errorText, isRetryable } = await import('../src/auto-escalate');
@@ -35,6 +35,11 @@ interface MockApi {
   _ext?: Ext;
 }
 
+const hosts: MockApi[] = [];
+afterEach(async () => {
+  for (const api of hosts.splice(0)) await autoEscalatePlugin.teardown?.(api as never);
+});
+
 function setup(cfg: Record<string, unknown> = {}): MockApi {
   const tools: Record<string, Tool> = {};
   const api: MockApi = {
@@ -55,6 +60,7 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
     _tools: tools,
   };
   autoEscalatePlugin.setup(api as never);
+  hosts.push(api);
   api._tools = tools;
   return api;
 }

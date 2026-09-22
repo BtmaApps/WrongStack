@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const llmCachePlugin = (await import('../src/llm-cache')).default;
 const { fingerprintRequest, isDeterministic } = await import('../src/llm-cache');
@@ -32,6 +32,11 @@ interface MockApi {
   _wrap?: WrapFn;
 }
 
+const hosts: MockApi[] = [];
+afterEach(async () => {
+  for (const api of hosts.splice(0)) await llmCachePlugin.teardown?.(api as never);
+});
+
 function setup(cfg: Record<string, unknown> = {}): MockApi {
   const tools: Record<string, Tool> = {};
   const api: MockApi = {
@@ -52,6 +57,7 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
     _tools: tools,
   };
   llmCachePlugin.setup(api as never);
+  hosts.push(api);
   api._tools = tools;
   return api;
 }
@@ -75,6 +81,45 @@ beforeEach(() => {
 });
 
 describe('fingerprintRequest / isDeterministic', () => {
+  it('canonicalizes nested property order without losing schema content', () => {
+    const first = req({
+      tools: [
+        {
+          name: 'lookup',
+          inputSchema: {
+            type: 'object',
+            properties: { a: { type: 'string' }, b: { type: 'number' } },
+          },
+        },
+      ],
+    });
+    const second = req({
+      tools: [
+        {
+          inputSchema: {
+            properties: { b: { type: 'number' }, a: { type: 'string' } },
+            type: 'object',
+          },
+          name: 'lookup',
+        },
+      ],
+    });
+    expect(fingerprintRequest(first)).toBe(fingerprintRequest(second));
+  });
+  it('recomputes the key after the caller edits a reused request', () => {
+    const request = req();
+    const before = fingerprintRequest(request);
+    request.messages[0]!.content[0]!.text = 'different input';
+    expect(fingerprintRequest(request)).not.toBe(before);
+  });
+
+  it('includes full tool schemas and tool choice in the key', () => {
+    const base = req({ tools: [{ name: 'lookup', inputSchema: { type: 'string' } }] });
+    expect(fingerprintRequest(base)).not.toBe(
+      fingerprintRequest(req({ tools: [{ name: 'lookup', inputSchema: { type: 'number' } }] })),
+    );
+    expect(fingerprintRequest(base)).not.toBe(fingerprintRequest({ ...base, toolChoice: 'none' }));
+  });
   it('same inputs → same fingerprint, different → different', () => {
     expect(fingerprintRequest(req())).toBe(fingerprintRequest(req()));
     expect(fingerprintRequest(req())).not.toBe(fingerprintRequest(req({ model: 'other' })));
@@ -91,6 +136,34 @@ describe('fingerprintRequest / isDeterministic', () => {
 });
 
 describe('llm-cache plugin', () => {
+  it('keeps stored responses private from mutations of returned content', async () => {
+    const api = setup();
+    const inner = vi.fn(async () => response('original'));
+    const first = (await api._wrap!({}, req(), inner)) as ReturnType<typeof response>;
+    first.content[0]!.text = 'mutated by first consumer';
+    const hit = (await api._wrap!({}, req(), inner)) as ReturnType<typeof response>;
+    expect(hit.content[0]!.text).toBe('original');
+    hit.content[0]!.text = 'mutated by second consumer';
+    expect(await api._wrap!({}, req(), inner)).toEqual(response('original'));
+    expect(inner).toHaveBeenCalledOnce();
+  });
+
+  it('does not repopulate cleared cache with a request already in flight', async () => {
+    const api = setup();
+    let finish!: (value: ReturnType<typeof response>) => void;
+    const pending = api._wrap!(
+      {},
+      req(),
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await api._tools.llm_cache_clear!.execute({});
+    finish(response('older response'));
+    await pending;
+    expect(await api._tools.llm_cache_status!.execute({})).toMatchObject({ size: 0 });
+  });
   it('registers by default; enabled:false turns it off', () => {
     // The internal master switch now defaults ON. Opting in belongs to host
     // enablement (the catalog's defaultState), not to a second gate the user

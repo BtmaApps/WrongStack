@@ -374,6 +374,42 @@ describe('createSubmitController — slash commands', () => {
     expect(user?.entry?.text).toBe('/telegram-setup [token redacted]');
   });
 
+  it('drops a rejected slash command after clear replaces its session', async () => {
+    let rejectSlow!: (error: Error) => void;
+    const slow = new Promise<Record<string, unknown>>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    const h = makeHost();
+    h.slashRegistry.dispatch.mockImplementation(async (raw) =>
+      raw === '/slow' ? slow : { metadata: { cleared: true } },
+    );
+    const pending = h.submit('/slow');
+    await vi.waitFor(() => expect(h.slashRegistry.dispatch).toHaveBeenCalledWith('/slow', h.ctx));
+    await h.submit('/clear');
+    const count = h.actions.length;
+    rejectSlow(new Error('old session failed'));
+    await pending;
+    expect(h.actions.slice(count)).toEqual([]);
+  });
+
+  it('does not run a slash follow-up prepared before clear', async () => {
+    const h = makeHost({ slashResult: { runText: 'old follow-up' } });
+    let release!: () => void;
+    h.builder.submit.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve([] as never);
+        }),
+    );
+    const pending = h.submit('/steer old follow-up');
+    await vi.waitFor(() => expect(h.builder.submit).toHaveBeenCalled());
+    h.slashRegistry.dispatch.mockResolvedValueOnce({ metadata: { cleared: true } });
+    await h.submit('/clear');
+    release();
+    await pending;
+    expect(h.actionFns['runBlocks']).not.toHaveBeenCalled();
+  });
+
   it('emits goalRunInit when the command returns run metadata', async () => {
     const h = makeHost({ slashResult: { metadata: { goalRunInit: { title: 'Ship v2' } } } });
     await h.submit('/goal start');
@@ -489,6 +525,19 @@ describe('createSubmitController — /mouse metadata', () => {
 });
 
 describe('createSubmitController — /clear cascade', () => {
+  it('still reports a clear failure after the reset boundary was established', async () => {
+    const h = makeHost();
+    h.slashRegistry.dispatch.mockImplementation(async () => {
+      h.host.refs.sessionGeneration.current += 1;
+      throw new Error('could not reset persisted history');
+    });
+    await h.submit('/clear');
+    expect(h.actions).toContainEqual({
+      type: 'addEntry',
+      entry: { kind: 'error', text: 'could not reset persisted history' },
+    });
+  });
+
   it.each(['idle', 'running'] as const)(
     'finishes the screen reset after the clear command advances the session generation (%s)',
     async (status) => {

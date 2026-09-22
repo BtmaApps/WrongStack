@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T09:18:26.400Z
+**Generated:** 2026-09-22T09:36:19.433Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 4009 |
-| Production source lines | 958630 |
-| Test files | 3586 |
+| Production source files | 4010 |
+| Production source lines | 958748 |
+| Test files | 3587 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12956 |
+| Relative module edges | 12961 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -41,7 +41,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 119 | 115 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 120 | 116 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
 | @wrongstack/providers | 85 | 76 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
@@ -89,6 +89,7 @@ None.
 | 1019 | `packages/sage/src/project-server.ts` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
+| 996 | `packages/core/src/security/yolo-risk.ts` |
 | 996 | `packages/mcp/src/client.ts` |
 | 994 | `packages/sage/src/sqlite-store.ts` |
 | 992 | `packages/cli/src/execution.ts` |
@@ -105,19 +106,18 @@ None.
 | 972 | `packages/providers/src/openai-codex.ts` |
 | 971 | `packages/core/src/coordination/fleet-supervisor.ts` |
 | 970 | `packages/webui-server/src/server/backend-services.ts` |
-| 968 | `packages/core/src/security/yolo-risk.ts` |
 | 965 | `packages/core/src/coordination/collab-debug.ts` |
 | 965 | `packages/webui/src/components/SidePanel/SessionList.tsx` |
 | 958 | `packages/core/src/coordination/director-tools.ts` |
-| 958 | `packages/plugins/src/prompt-firewall/index.ts` |
 | 955 | `packages/cli/src/slash-commands/settings-mutations.ts` |
+| 955 | `packages/plugins/src/prompt-firewall/index.ts` |
 | 955 | `packages/webui/src/stores/local-prefs.ts` |
 | 949 | `packages/webui/src/components/CodeMap.tsx` |
+| 947 | `packages/tui/src/submit-controller.ts` |
 | 947 | `packages/webui/src/components/SettingsPanel/MCPSection.tsx` |
 | 943 | `packages/core/src/chronicle/project-server.ts` |
 | 942 | `packages/tools/src/codebase-index/background-indexer.ts` |
 | 939 | `packages/plugins/src/secret-scanner/index.ts` |
-| 937 | `packages/tui/src/submit-controller.ts` |
 | 936 | `packages/simpleui/src/use-simple-ui-session.tsx` |
 | 933 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 932 | `packages/tools/src/kanban-lifecycle-actions.ts` |

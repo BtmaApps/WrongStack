@@ -1594,7 +1594,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
       "sourceFiles": 22,
-      "sourceLines": 7940
+      "sourceLines": 7968
     },
     {
       "directory": "session-catalog",

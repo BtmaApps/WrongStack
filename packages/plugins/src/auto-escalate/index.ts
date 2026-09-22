@@ -15,8 +15,8 @@
  * (agent-loop.ts), so at most the first ~2 rungs of the ladder are used
  * before the loop fails. Order the ladder cheapest→most-capable.
  *
- * Safety posture: opt-in — loads inert until
- * `config.extensions['auto-escalate'].enabled = true`. It never forces a
+ * Safety posture: opt-in at host plugin loading; a configured escalation
+ * ladder is required before the plugin participates. It never forces a
  * `fail`; it only requests retries with a better model, and otherwise
  * defers to the default handler.
  *
@@ -24,7 +24,7 @@
  *
  * ```jsonc
  * {
- *   "enabled": false,
+ *   "enabled": true,
  *   "escalation": ["provider/model-standard", "provider/model-premium"],
  *   "retryablePatterns": ["overload", "rate.?limit", "429", "50[023]", "timeout", "ETIMEDOUT", "ECONNRESET"]
  * }
@@ -36,6 +36,7 @@
  * @public
  */
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { createHostStates, providerSignal } from '../runtime/host-state.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -108,6 +109,8 @@ function readConfig(raw: unknown): AutoEscalateConfig {
 // ---------------------------------------------------------------------------
 
 interface AutoEscalateState {
+  abort: AbortController;
+  runs: WeakMap<object, number>;
   errorsSeen: number;
   escalationsRequested: number;
   laddersExhausted: number;
@@ -117,14 +120,19 @@ interface AutoEscalateState {
   extensionUnregister: null | (() => void);
 }
 
-const state: AutoEscalateState = {
-  errorsSeen: 0,
-  escalationsRequested: 0,
-  laddersExhausted: 0,
-  runEscalations: 0,
-  lastEscalation: null,
-  extensionUnregister: null,
-};
+function createState(): AutoEscalateState {
+  return {
+    abort: new AbortController(),
+    runs: new WeakMap(),
+    errorsSeen: 0,
+    escalationsRequested: 0,
+    laddersExhausted: 0,
+    runEscalations: 0,
+    lastEscalation: null,
+    extensionUnregister: null,
+  };
+}
+const hosts = createHostStates(createState);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,21 +190,7 @@ const plugin: Plugin = {
   },
 
   setup(api: PluginAPI) {
-    // Idempotent re-init (H1 pattern).
-    state.errorsSeen = 0;
-    state.escalationsRequested = 0;
-    state.laddersExhausted = 0;
-    state.runEscalations = 0;
-    state.lastEscalation = null;
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
-
+    const state = hosts.reset(api);
     const cfg = readConfig(api.config.extensions?.['auto-escalate']);
 
     if (cfg.enabled && cfg.escalation.length > 0) {
@@ -204,20 +198,24 @@ const plugin: Plugin = {
         name: 'auto-escalate',
         owner: 'auto-escalate',
         // Fresh run → reset the ladder position.
-        beforeRun() {
-          state.runEscalations = 0;
+        beforeRun(ctx: unknown) {
+          if (ctx && typeof ctx === 'object') state.runs.set(ctx, 0);
+          else state.runEscalations = 0;
         },
         onError(_ctx: unknown, err: unknown, phase: unknown) {
-          if (phase !== 'provider') return;
+          if (phase !== 'provider' || providerSignal(state, _ctx).aborted) return;
           state.errorsSeen += 1;
           const text = errorText(err);
           if (!isRetryable(text, cfg.retryablePatterns)) return;
-          if (state.runEscalations >= cfg.escalation.length) {
+          const run = _ctx && typeof _ctx === 'object' ? _ctx : null;
+          const position = run ? (state.runs.get(run) ?? 0) : state.runEscalations;
+          if (position >= cfg.escalation.length) {
             state.laddersExhausted += 1;
             return; // ladder spent → let the default handler decide
           }
-          const nextModel = cfg.escalation[state.runEscalations] as string;
-          state.runEscalations += 1;
+          const nextModel = cfg.escalation[position] as string;
+          if (run) state.runs.set(run, position + 1);
+          else state.runEscalations = position + 1;
           state.escalationsRequested += 1;
           state.lastEscalation = {
             to: nextModel,
@@ -263,14 +261,8 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
+    const state = hosts.remove(api);
+    if (!state) return;
     const final = {
       errorsSeen: state.errorsSeen,
       escalationsRequested: state.escalationsRequested,
@@ -285,6 +277,12 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const state = createState();
+    for (const active of hosts.values()) {
+      state.errorsSeen += active.errorsSeen;
+      state.escalationsRequested += active.escalationsRequested;
+      state.laddersExhausted += active.laddersExhausted;
+    }
     return {
       ok: true,
       message: `auto-escalate: ${state.escalationsRequested} escalation(s) of ${state.errorsSeen} error(s), ${state.laddersExhausted} ladder(s) exhausted`,

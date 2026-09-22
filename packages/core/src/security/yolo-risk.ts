@@ -81,8 +81,36 @@ const PAYLOAD_DELETES =
  * and on `git commit -m "…shutdown…"` — so in any repo with "shutdown" in a
  * filename, YOLO asked about routine test and commit calls.
  */
-const SYSTEM_HALT_COMMAND =
-  /^\s*(?:sudo\s+|doas\s+)?(?:[\w.:\-\\/]*[\\/])?(?:shutdown|reboot)(?:\.exe)?(?:\s|$)/i;
+/**
+ * Launchers that run the halt command for you. Probe-verified gap (2026-09-22):
+ * the prefix alternation knew only `sudo` and `doas`, so `nohup shutdown -h
+ * now`, `timeout 5 shutdown -h now`, `nice`, `setsid`, `env`, `stdbuf`,
+ * `command` and `exec` all classified as NOT destructive -- and `system-halt`
+ * is gated by default while YOLO is on by default, so they ran unprompted.
+ *
+ * Each launcher may carry its own flags (`-o0`), env assignments (`FOO=1`) and
+ * a numeric operand (`timeout 5`, `nice -n 5`). The three inner alternatives
+ * are mutually exclusive by first character (`-`, a name followed by `=`, a
+ * digit) and none of them can start a launcher word, so the nesting cannot
+ * fork the parse; the outer run is bounded at 8 regardless.
+ */
+const HALT_LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env)\b(?:\s+(?:-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,8}`;
+
+/**
+ * Ways to power the machine down or restart it.
+ *
+ * `shutdown|reboot` alone missed the everyday synonyms -- `poweroff`, `halt`,
+ * `systemctl poweroff`, `init 0`, and PowerShell's `Stop-Computer` /
+ * `Restart-Computer`. All are command-position matches inside one segment, so
+ * prose still does not fire: `halt-on-error` fails the trailing boundary,
+ * `echo shutdown` does not start with a launcher or the verb, and `git init` /
+ * `npm init` never reach the `init` branch because it requires a `0`/`6`
+ * runlevel operand.
+ */
+const SYSTEM_HALT_COMMAND = new RegExp(
+  String.raw`^\s*${HALT_LAUNCHER_PREFIX}(?:[\w.:\-\\/]*[\\/])?(?:(?:shutdown|reboot|poweroff|halt)(?:\.exe)?|systemctl(?:\s+-[^\s]+)*\s+(?:poweroff|reboot|halt|kexec)|init\s+[06]|(?:Stop|Restart)-Computer)(?:\s|$)`,
+  'i',
+);
 
 // Top-level locations whose *recursive* deletion is catastrophic (the whole
 // filesystem, a system directory, or the user's home). Deleting a file or a

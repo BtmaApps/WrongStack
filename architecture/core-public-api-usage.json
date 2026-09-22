@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1148,
-      "typeOnly": 1027,
+      "files": 1150,
+      "typeOnly": 1029,
       "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -14325,6 +14325,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/runtime/host-state.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/schema-evolution-guard/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14446,6 +14452,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/path-guard.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/provider-plugin-host-isolation.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

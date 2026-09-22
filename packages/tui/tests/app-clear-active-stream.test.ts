@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { reducer } from '../src/app.js';
 import type { State } from '../src/app-state.js';
+import { createTestState } from './helpers/create-test-state.js';
 
 /**
  * Regression: an active TUI stream cleared via `/clear`.
@@ -87,6 +88,56 @@ function streamingState(): State {
 }
 
 describe('/clear during an active TUI stream', () => {
+  it('closes old work panels and discards the composer draft', () => {
+    const state = reducer(
+      createTestState({
+        buffer: 'draft typed while clear was draining',
+        cursor: 5,
+        hint: 'old activity hint',
+        sidebarScrollOffset: 40,
+        sidebarFocused: true,
+        queuePanelOpen: true,
+        planPanelOpen: true,
+        eternalStage: { phase: 'execute', task: 'Old task' },
+      }),
+      { type: 'goalRunInit', title: 'Old session goal' },
+    );
+
+    const out = reducer(state, { type: 'clearHistory' });
+
+    expect(out).toMatchObject({
+      buffer: '',
+      cursor: 0,
+      hint: '',
+      sidebarScrollOffset: 0,
+      sidebarFocused: false,
+      queuePanelOpen: false,
+      planPanelOpen: false,
+      goalRun: null,
+      sddBoard: null,
+      eternalStage: null,
+    });
+    expect(out.settingsPicker).toEqual(state.settingsPicker);
+  });
+
+  it('does not replay an in-flight resume into the cleared transcript', () => {
+    const loading = reducer(createTestState(), {
+      type: 'resumeLoadStart',
+      sessionId: 'old-session',
+      label: 'Old conversation',
+    });
+    const cleared = reducer(loading, { type: 'clearHistory' });
+    const late = reducer(cleared, {
+      type: 'resumeStreamChunk',
+      sessionId: 'old-session',
+      entries: [{ id: 90, kind: 'user', text: 'old restored message' }],
+      total: 1,
+      done: true,
+    });
+    expect(cleared.resumeLoad).toBeNull();
+    expect(late.entries).toEqual(cleared.entries);
+  });
+
   it('discards all in-flight stream/tool/queue state and refreshes the preserved banner model', () => {
     const out = reducer(streamingState(), {
       type: 'clearHistory',

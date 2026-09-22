@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const tokenThrottlePlugin = (await import('../src/token-throttle')).default;
 const { pruneWindow, windowSpend, computeThrottleDelay } = await import('../src/token-throttle');
@@ -31,6 +31,11 @@ interface MockApi {
   _wrap?: WrapFn;
 }
 
+const hosts: MockApi[] = [];
+afterEach(async () => {
+  for (const api of hosts.splice(0)) await tokenThrottlePlugin.teardown?.(api as never);
+});
+
 function setup(cfg: Record<string, unknown> = {}): MockApi {
   const tools: Record<string, Tool> = {};
   const api: MockApi = {
@@ -51,6 +56,7 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
     _tools: tools,
   };
   tokenThrottlePlugin.setup(api as never);
+  hosts.push(api);
   api._tools = tools;
   return api;
 }

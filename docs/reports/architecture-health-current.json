@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T09:18:26.400Z",
+  "generatedAt": "2026-09-22T09:36:19.433Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,11 +12,11 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 4009,
-    "testFiles": 3586,
-    "sourceLines": 958630,
+    "sourceFiles": 4010,
+    "testFiles": 3587,
+    "sourceLines": 958748,
     "workspaceEdges": 129,
-    "moduleEdges": 12956,
+    "moduleEdges": 12961,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
@@ -438,8 +438,8 @@
     {
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
-      "sourceFiles": 119,
-      "testFiles": 115,
+      "sourceFiles": 120,
+      "testFiles": 116,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/plugin-sdk",
@@ -455,7 +455,7 @@
         {
           "path": "packages/plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 115
+          "testFiles": 116
         }
       ]
     },
@@ -11612,6 +11612,12 @@
       },
       {
         "file": "packages/plugins/tests/prompt-firewall.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/provider-plugin-host-isolation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22885,7 +22891,7 @@
     },
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 968,
+      "lines": 996,
       "relativeImports": 1
     },
     {
@@ -22960,8 +22966,8 @@
     },
     {
       "file": "packages/plugins/src/prompt-firewall/index.ts",
-      "lines": 958,
-      "relativeImports": 2
+      "lines": 955,
+      "relativeImports": 3
     },
     {
       "file": "packages/plugins/src/secret-scanner/index.ts",
@@ -23145,7 +23151,7 @@
     },
     {
       "file": "packages/tui/src/submit-controller.ts",
-      "lines": 937,
+      "lines": 947,
       "relativeImports": 13
     },
     {
@@ -23321,6 +23327,11 @@
       "relativeImports": 24
     },
     {
+      "file": "packages/core/src/security/yolo-risk.ts",
+      "lines": 996,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/mcp/src/client.ts",
       "lines": 996,
       "relativeImports": 13
@@ -23401,11 +23412,6 @@
       "relativeImports": 14
     },
     {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 968,
-      "relativeImports": 1
-    },
-    {
       "file": "packages/core/src/coordination/collab-debug.ts",
       "lines": 965,
       "relativeImports": 10
@@ -23421,14 +23427,14 @@
       "relativeImports": 18
     },
     {
-      "file": "packages/plugins/src/prompt-firewall/index.ts",
-      "lines": 958,
-      "relativeImports": 2
-    },
-    {
       "file": "packages/cli/src/slash-commands/settings-mutations.ts",
       "lines": 955,
       "relativeImports": 6
+    },
+    {
+      "file": "packages/plugins/src/prompt-firewall/index.ts",
+      "lines": 955,
+      "relativeImports": 3
     },
     {
       "file": "packages/webui/src/stores/local-prefs.ts",
@@ -23439,6 +23445,11 @@
       "file": "packages/webui/src/components/CodeMap.tsx",
       "lines": 949,
       "relativeImports": 12
+    },
+    {
+      "file": "packages/tui/src/submit-controller.ts",
+      "lines": 947,
+      "relativeImports": 13
     },
     {
       "file": "packages/webui/src/components/SettingsPanel/MCPSection.tsx",
@@ -23459,11 +23470,6 @@
       "file": "packages/plugins/src/secret-scanner/index.ts",
       "lines": 939,
       "relativeImports": 2
-    },
-    {
-      "file": "packages/tui/src/submit-controller.ts",
-      "lines": 937,
-      "relativeImports": 13
     },
     {
       "file": "packages/simpleui/src/use-simple-ui-session.tsx",

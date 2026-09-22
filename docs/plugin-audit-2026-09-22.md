@@ -18,6 +18,19 @@ Source-level fixes focus on shared evidence/workflow runtimes and the individual
 - Host-focused run: 616/618 passed initially. LSP's obsolete list command assertion was corrected to lsp-list (2/2 then passed). The auto-review quiet-window test awaited real Git subprocess work beyond its original one-second polling timeout; added bounded wait and unconditional cleanup, then 37/37 passed in isolation.
 - Performance workload and before/after measurements: [PERF_LOG](../PERF_LOG.md). Median 1110.440 → 2.193 ms for a 973,200-character/200-finding log. This does not measure whole-agent latency.
 
+## Second pass: provider plugins and host isolation
+
+Source and behavioral review covered `llm-cache`, `model-router`, `token-throttle`, `prompt-firewall`, and `auto-escalate` individually.
+
+- **Shared lifecycle failure:** opening a second host unregistered the first host's extension and mixed counters. Eleven new tests failed before repair. Each API now owns fresh state and its own disposer/abort controller; reload/teardown only affects that host. Health totals aggregate active hosts. Tests also cover old extension references and late results after reload.
+- **llm-cache:** responses cannot cross host or provider-instance boundaries. Keys are recomputed for mutable requests and include tool schemas, tool choice and other request fields. Stored and replayed responses are cloned so caller mutations cannot poison subsequent hits. A cache-clear generation prevents older in-flight calls from repopulating the cache. Four additional cache regressions failed before repair.
+- **model-router:** malformed bounds, contradictory ranges, invalid hasTools and blank model names are discarded as invalid rules instead of silently becoming broad routes. Valid rules retain their ordering and dry-run behavior.
+- **token-throttle:** both caller cancellation and host reload/disposal cancel a pending wait and prevent a later provider dispatch; timer cleanup is asserted.
+- **prompt-firewall:** one host cannot unregister another host's protection or mix diagnostic state. Cancellation is checked before scanning and again after asynchronous detection, before provider dispatch. Existing real ExtensionRegistry firewall/cache composition tests also pass.
+- **auto-escalate:** overlapping agent contexts keep independent ladder positions; starting one run cannot reset another run's retry position. Disposed/cancelled contexts no longer request retries.
+- **Evidence:** eight additional provider-boundary/routing tests failed before repair. Final full package suite: **116 files, 2866 passed, 2 skipped**. CLI registration/wiring: **40 passed**. Production typecheck, manifest build/projection check, and the repository baseline gate passed with **0 new test-type diagnostics**. The type gate was rerun after declaration emission completed to exclude transient missing-dist diagnostics from the concurrent build.
+- No new end-to-end latency claim is made for this pass. External provider accounts were not called; tests exercise local provider stubs and the real wrapper composition.
+
 ## Individual official plugin ledger
 
 | Plugin | Verification | Improvement / disposition |
@@ -55,14 +68,14 @@ Source-level fixes focus on shared evidence/workflow runtimes and the individual
 | notify-hub | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
 | changelog-writer | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
 | injection-shield | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
-| prompt-firewall | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
-| llm-cache | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
-| model-router | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
+| prompt-firewall | Catalog, defaults, reload, teardown + package suite + second-pass host isolation | Per-host protection/disposal and counters; cancellation before dispatch; schema default aligned. |
+| llm-cache | Catalog, defaults, reload, teardown + package suite + second-pass host isolation | Host/provider isolation; complete mutable-request keys; response copy isolation; clear/reload races fixed. |
+| model-router | Catalog, defaults, reload, teardown + package suite + second-pass host isolation | Per-host routes/disposal; malformed and contradictory routing conditions no longer broaden rules. |
 | pr-drafter | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
-| auto-escalate | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
+| auto-escalate | Catalog, defaults, reload, teardown + package suite + second-pass host isolation | Per-host registrations and per-agent-run retry positions; cancelled/disposed retries suppressed. |
 | test-coverage-gate | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
 | type-gate | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
-| token-throttle | Catalog, defaults, reload, teardown + package suite | Enabled schema default matches actual loaded-plugin behavior. |
+| token-throttle | Catalog, defaults, reload, teardown + package suite + second-pass host isolation | Per-host budgets; cancellation/reload removes pending timers and prevents deferred provider dispatch. |
 | plugin-stack-observer | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
 | dependency-vulnerability-gate | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
 | migration-planner | Catalog, defaults, reload, teardown + package suite | Added per-plugin default/schema regression coverage; no production change in this pass. |
@@ -132,4 +145,4 @@ Source-level fixes focus on shared evidence/workflow runtimes and the individual
 - External provider calls, real Telegram account connectivity, cloud sync and private registries were not tested against live accounts.
 - Two existing package tests remain skipped. Existing baseline TypeScript diagnostics are separate from new-diagnostic gating.
 - Regex evidence analyzers remain scoped heuristics; an empty findings array is not proof of project-wide correctness.
-- Lifecycle and catalog success do not establish multi-host state isolation for every legacy plugin. The evidence analyzer family now has explicit isolation coverage; other legacy singleton state requires separate per-host investigation.
+- Lifecycle and catalog success do not establish multi-host state isolation for every legacy plugin. The evidence analyzer family and the five provider plugins above now have explicit isolation coverage; remaining legacy singleton state requires separate per-host investigation.

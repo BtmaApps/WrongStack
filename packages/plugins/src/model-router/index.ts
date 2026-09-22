@@ -15,8 +15,8 @@
  * provider doesn't recognize will fail at the provider — keep targets
  * within one provider's catalog.
  *
- * Safety posture: opt-in — loads inert until
- * `config.extensions['model-router'].enabled = true`. A `dryRun` mode
+ * Safety posture: opt-in at host plugin loading; configured routing rules
+ * are required before the plugin participates. A `dryRun` mode
  * (default) only records what it WOULD route without changing the model,
  * so you can observe the routing before trusting it.
  *
@@ -24,7 +24,7 @@
  *
  * ```jsonc
  * {
- *   "enabled": false,
+ *   "enabled": true,
  *   "dryRun": true,             // observe only; do not rewrite the model
  *   "rules": [
  *     { "maxChars": 2000, "hasTools": false, "model": "claude-haiku-4-5" },
@@ -43,6 +43,7 @@
  * @public
  */
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { createHostStates, providerSignal } from '../runtime/host-state.js';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -84,16 +85,30 @@ function readConfig(raw: unknown): ModelRouterConfig {
           (x): x is Record<string, unknown> =>
             !!x && typeof x === 'object' && typeof (x as { model?: unknown }).model === 'string',
         )
-        .map((x) => {
-          const rawMax = x['maxChars'] ?? x['max_chars'];
-          const rawMin = x['minChars'] ?? x['min_chars'];
-          const rawTools = x['hasTools'] ?? x['has_tools'];
-          return {
-            model: x['model'] as string,
-            ...(typeof rawMax === 'number' ? { maxChars: rawMax } : {}),
-            ...(typeof rawMin === 'number' ? { minChars: rawMin } : {}),
-            ...(typeof rawTools === 'boolean' ? { hasTools: rawTools } : {}),
-          };
+        .flatMap((x): RouteRule[] => {
+          const rawMax = x['maxChars'] !== undefined ? x['maxChars'] : x['max_chars'];
+          const rawMin = x['minChars'] !== undefined ? x['minChars'] : x['min_chars'];
+          const rawTools = x['hasTools'] !== undefined ? x['hasTools'] : x['has_tools'];
+          const model = (x['model'] as string).trim();
+          if (
+            !model ||
+            [rawMax, rawMin].some(
+              (value) =>
+                value !== undefined &&
+                (typeof value !== 'number' || !Number.isFinite(value) || value < 0),
+            ) ||
+            (typeof rawMax === 'number' && typeof rawMin === 'number' && rawMin > rawMax) ||
+            (rawTools !== undefined && typeof rawTools !== 'boolean')
+          )
+            return [];
+          return [
+            {
+              model,
+              ...(typeof rawMax === 'number' ? { maxChars: rawMax } : {}),
+              ...(typeof rawMin === 'number' ? { minChars: rawMin } : {}),
+              ...(typeof rawTools === 'boolean' ? { hasTools: rawTools } : {}),
+            },
+          ];
         })
     : [];
   const rawDryRun = r['dryRun'] ?? r['dry_run'];
@@ -109,6 +124,7 @@ function readConfig(raw: unknown): ModelRouterConfig {
 // ---------------------------------------------------------------------------
 
 interface ModelRouterState {
+  abort: AbortController;
   invocations: number;
   routed: number;
   passthrough: number;
@@ -117,13 +133,17 @@ interface ModelRouterState {
   extensionUnregister: null | (() => void);
 }
 
-const state: ModelRouterState = {
-  invocations: 0,
-  routed: 0,
-  passthrough: 0,
-  routes: new Map(),
-  extensionUnregister: null,
-};
+function createState(): ModelRouterState {
+  return {
+    abort: new AbortController(),
+    invocations: 0,
+    routed: 0,
+    passthrough: 0,
+    routes: new Map(),
+    extensionUnregister: null,
+  };
+}
+const hosts = createHostStates(createState);
 
 // ---------------------------------------------------------------------------
 // Matching
@@ -200,11 +220,20 @@ const plugin: Plugin = {
         items: {
           type: 'object',
           properties: {
-            maxChars: { type: 'number', description: 'Match when request char size <= this.' },
-            minChars: { type: 'number', description: 'Match when request char size >= this.' },
+            maxChars: {
+              type: 'number',
+              minimum: 0,
+              description: 'Match when request char size <= this.',
+            },
+            minChars: {
+              type: 'number',
+              minimum: 0,
+              description: 'Match when request char size >= this.',
+            },
             hasTools: { type: 'boolean', description: 'Match on tools present/absent.' },
             model: {
               type: 'string',
+              minLength: 1,
               description: 'Target model id (must be served by the active provider).',
             },
           },
@@ -215,20 +244,7 @@ const plugin: Plugin = {
   },
 
   setup(api: PluginAPI) {
-    // Idempotent re-init (H1 pattern).
-    state.invocations = 0;
-    state.routed = 0;
-    state.passthrough = 0;
-    state.routes.clear();
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
-
+    const state = hosts.reset(api);
     const cfg = readConfig(api.config.extensions?.['model-router']);
 
     if (cfg.enabled && cfg.rules.length > 0) {
@@ -247,6 +263,8 @@ const plugin: Plugin = {
           request: unknown,
           inner: (c: unknown, r: unknown) => Promise<unknown>,
         ) {
+          const signal = providerSignal(state, _ctx);
+          signal.throwIfAborted();
           const req = (request ?? {}) as Record<string, unknown>;
           state.invocations += 1;
           const size = requestCharSize(req);
@@ -316,14 +334,8 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
+    const state = hosts.remove(api);
+    if (!state) return;
     const final = {
       invocations: state.invocations,
       routed: state.routed,
@@ -337,6 +349,12 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const state = createState();
+    for (const active of hosts.values()) {
+      state.invocations += active.invocations;
+      state.routed += active.routed;
+      state.passthrough += active.passthrough;
+    }
     return {
       ok: true,
       message: `model-router: ${state.routed} routed / ${state.passthrough} passthrough of ${state.invocations} call(s)`,

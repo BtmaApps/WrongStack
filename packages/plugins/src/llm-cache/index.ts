@@ -13,8 +13,8 @@
  *
  * Safety posture: caching changes call semantics (a repeated request
  * returns the same answer instead of a fresh sample), so the plugin is
- * **opt-in** — it loads inert and does nothing until
- * `config.extensions['llm-cache'].enabled = true`. By default it only
+ * **opt-in** at host plugin loading. Once loaded, its internal switch is
+ * enabled by default. Set `extensions['llm-cache'].enabled = false` to disable it. It only
  * caches deterministic requests (`temperature` 0 or unset) so a
  * sampled generation is never silently frozen.
  *
@@ -22,7 +22,7 @@
  *
  * ```jsonc
  * {
- *   "enabled": false,           // master switch (default OFF)
+ *   "enabled": true,            // master switch after host loading
  *   "maxEntries": 256,          // LRU capacity
  *   "ttlMs": 0,                 // 0 = no expiry; else evict after N ms
  *   "onlyDeterministic": true,  // only cache temperature 0/unset requests
@@ -40,6 +40,7 @@
 
 import { createHash } from 'node:crypto';
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { createHostStates, providerSignal } from '../runtime/host-state.js';
 
 // ---------------------------------------------------------------------------
 // Minimal structural mirrors of the provider Request/Response. We keep these
@@ -65,6 +66,10 @@ interface CacheEntry {
 // ---------------------------------------------------------------------------
 
 interface LlmCacheState {
+  abort: AbortController;
+  generation: number;
+  providers: WeakMap<object, number>;
+  nextProviderId: number;
   /** LRU map: insertion order = recency; re-set on hit to bump. */
   cache: Map<string, CacheEntry>;
   hits: number;
@@ -77,16 +82,23 @@ interface LlmCacheState {
   extensionUnregister: null | (() => void);
 }
 
-const state: LlmCacheState = {
-  cache: new Map(),
-  hits: 0,
-  misses: 0,
-  skips: 0,
-  evictions: 0,
-  savedInputTokens: 0,
-  savedOutputTokens: 0,
-  extensionUnregister: null,
-};
+function createState(): LlmCacheState {
+  return {
+    abort: new AbortController(),
+    generation: 0,
+    providers: new WeakMap(),
+    nextProviderId: 0,
+    cache: new Map(),
+    hits: 0,
+    misses: 0,
+    skips: 0,
+    evictions: 0,
+    savedInputTokens: 0,
+    savedOutputTokens: 0,
+    extensionUnregister: null,
+  };
+}
+const hosts = createHostStates(createState);
 
 // ---------------------------------------------------------------------------
 // Config
@@ -143,36 +155,22 @@ export function isDeterministic(request: Record<string, unknown>): boolean {
 }
 
 /**
- * WeakMap cache for request fingerprints. Avoids re-hashing identical
- * request objects (common in retry loops and agent iterations).
- *
- * Performance: JSON.stringify + SHA-256 is expensive; caching the
- * fingerprint for the same object reference saves ~0.5ms per call.
- *
- * Note: WeakMap entries auto-evict when the key request object is GC'd,
- * so no manual reset is needed in setup() — unlike the LRU cache which
- * holds strong references and must be explicitly cleared.
- */
-const fingerprintCache = new WeakMap<Record<string, unknown>, string>();
-
-/**
  * Stable fingerprint of the request fields that affect the response.
- * Excludes anything cosmetic (user id, etc.). Same inputs → same key.
+ * Includes response-affecting fields and full tool definitions. Requests
+ * may be mutated by callers, so object identity alone cannot cache a key.
  *
  * Determinism: uses canonical JSON key ordering (alphabetical) so
  * identical semantic requests produce identical fingerprints regardless
  * of property insertion order.
  */
 export function fingerprintRequest(request: Record<string, unknown>): string {
-  const cached = fingerprintCache.get(request);
-  if (cached) return cached;
-
   const rawTools =
     request['tools'] ??
     request['tool_definitions'] ??
     request['toolDefinitions'] ??
     request['functions'];
   const subset = {
+    ...request,
     maxTokens: request['maxTokens'] ?? null,
     messages: request['messages'] ?? null,
     model: request['model'] ?? null,
@@ -181,22 +179,26 @@ export function fingerprintRequest(request: Record<string, unknown>): string {
     stopSequences: request['stopSequences'] ?? null,
     system: request['system'] ?? null,
     temperature: request['temperature'] ?? null,
-    tools: Array.isArray(rawTools)
-      ? (rawTools as Array<{ name?: unknown }>).map((t) => t?.name ?? t)
-      : null,
+    tools: rawTools ?? null,
     topK: request['topK'] ?? null,
     topP: request['topP'] ?? null,
   };
-  const fingerprint = createHash('sha256').update(JSON.stringify(subset)).digest('hex');
-  fingerprintCache.set(request, fingerprint);
-  return fingerprint;
+  const serialized = JSON.stringify(subset, (_key, value: unknown) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.fromEntries(
+        Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+      );
+    }
+    return value;
+  });
+  return createHash('sha256').update(serialized).digest('hex');
 }
 
 // ---------------------------------------------------------------------------
 // LRU helpers
 // ---------------------------------------------------------------------------
 
-function lruGet(key: string, ttlMs: number): CacheEntry | undefined {
+function lruGet(state: LlmCacheState, key: string, ttlMs: number): CacheEntry | undefined {
   const entry = state.cache.get(key);
   if (!entry) return undefined;
 
@@ -213,7 +215,12 @@ function lruGet(key: string, ttlMs: number): CacheEntry | undefined {
   return entry;
 }
 
-function lruSet(key: string, response: CachedResponse, maxEntries: number): void {
+function lruSet(
+  state: LlmCacheState,
+  key: string,
+  response: CachedResponse,
+  maxEntries: number,
+): void {
   // If key already exists, delete it first so re-insertion bumps it to the end.
   if (state.cache.has(key)) {
     state.cache.delete(key);
@@ -286,23 +293,7 @@ const plugin: Plugin = {
   },
 
   setup(api: PluginAPI) {
-    // Idempotent re-init (H1 pattern).
-    state.cache.clear();
-    state.hits = 0;
-    state.misses = 0;
-    state.skips = 0;
-    state.evictions = 0;
-    state.savedInputTokens = 0;
-    state.savedOutputTokens = 0;
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
-
+    const state = hosts.reset(api);
     const cfg = readConfig(api.config.extensions?.['llm-cache']);
 
     // ── The intervention: wrap every provider call ────────────────────
@@ -322,6 +313,8 @@ const plugin: Plugin = {
           request: unknown,
           inner: (c: unknown, r: unknown) => Promise<unknown>,
         ) {
+          const signal = providerSignal(state, _ctx);
+          signal.throwIfAborted();
           const req = (request ?? {}) as Record<string, unknown>;
           if (cfg.onlyDeterministic && !isDeterministic(req)) {
             state.skips += 1;
@@ -329,26 +322,35 @@ const plugin: Plugin = {
             return inner(_ctx, request);
           }
 
-          const key = fingerprintRequest(req);
-          const cached = lruGet(key, cfg.ttlMs);
+          const provider = (_ctx as { provider?: unknown } | null)?.provider;
+          let providerId = 0;
+          if (provider && typeof provider === 'object') {
+            providerId = state.providers.get(provider) ?? ++state.nextProviderId;
+            state.providers.set(provider, providerId);
+          }
+          const key = `${providerId}:${fingerprintRequest(req)}`;
+          const cached = lruGet(state, key, cfg.ttlMs);
           if (cached) {
             cached.hits += 1;
             state.hits += 1;
             state.savedInputTokens += cached.response.usage?.input ?? 0;
             state.savedOutputTokens += cached.response.usage?.output ?? 0;
             api.metrics.counter('hits');
+            const replay = structuredClone(cached.response);
             if (cfg.zeroUsageOnHit) {
               return {
-                ...cached.response,
-                usage: { ...cached.response.usage, input: 0, output: 0 },
+                ...replay,
+                usage: { ...replay.usage, input: 0, output: 0 },
               };
             }
-            return cached.response;
+            return replay;
           }
 
           state.misses += 1;
           api.metrics.counter('misses');
+          const generation = state.generation;
           const response = (await inner(_ctx, request)) as CachedResponse;
+          signal.throwIfAborted();
           // Only cache well-formed responses that ended cleanly — never
           // cache a truncated / refusal / error-shaped response.
           const sr = response && typeof response === 'object' ? response.stopReason : undefined;
@@ -361,8 +363,17 @@ const plugin: Plugin = {
             'function_call',
             'stop_sequence',
           ]);
-          if (response && typeof response === 'object' && validStopReasons.has(normSr)) {
-            lruSet(key, response, cfg.maxEntries);
+          if (
+            response &&
+            typeof response === 'object' &&
+            validStopReasons.has(normSr) &&
+            generation === state.generation
+          ) {
+            try {
+              lruSet(state, key, structuredClone(response), cfg.maxEntries);
+            } catch {
+              // An embedded provider may return non-cloneable metadata. Return it without caching.
+            }
           }
           return response;
         },
@@ -409,6 +420,7 @@ const plugin: Plugin = {
       mutating: true,
       async execute() {
         const cleared = state.cache.size;
+        state.generation++;
         state.cache.clear();
         return { ok: true, cleared };
       },
@@ -423,14 +435,8 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
+    const state = hosts.remove(api);
+    if (!state) return;
     const final = {
       hits: state.hits,
       misses: state.misses,
@@ -449,10 +455,20 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const state = createState();
+    for (const active of hosts.values()) {
+      state.hits += active.hits;
+      state.misses += active.misses;
+      state.skips += active.skips;
+      state.evictions += active.evictions;
+      state.savedInputTokens += active.savedInputTokens;
+      state.savedOutputTokens += active.savedOutputTokens;
+    }
+    const cacheSize = [...hosts.values()].reduce((sum, active) => sum + active.cache.size, 0);
     const total = state.hits + state.misses;
     return {
       ok: true,
-      message: `llm-cache: ${state.cache.size} entr(ies), ${state.hits} hit(s) / ${state.misses} miss(es) (${total > 0 ? Math.round((state.hits / total) * 100) : 0}% hit rate), ~${state.savedInputTokens + state.savedOutputTokens} tokens saved`,
+      message: `llm-cache: ${cacheSize} entr(ies), ${state.hits} hit(s) / ${state.misses} miss(es) (${total > 0 ? Math.round((state.hits / total) * 100) : 0}% hit rate), ~${state.savedInputTokens + state.savedOutputTokens} tokens saved`,
       counters: {
         hits: state.hits,
         misses: state.misses,

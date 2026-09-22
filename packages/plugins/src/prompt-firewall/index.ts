@@ -17,8 +17,8 @@
  *  - `block`  — throws before the request is sent (the agent's error
  *    path surfaces it), so the secret never reaches the provider
  *
- * Safety posture: opt-in — loads inert until
- * `config.extensions['prompt-firewall'].enabled = true`. `redact` is the
+ * Safety posture: opt-in at host plugin loading; once loaded, the internal
+ * enabled switch defaults to true. `redact` is the
  * default so secrets are automatically stripped; switch to `warn` only
  * for detection-mode diagnostics without data loss.
  *
@@ -26,7 +26,7 @@
  *
  * ```jsonc
  * {
- *   "enabled": false,
+ *   "enabled": true,
  *   "mode": "redact",        // "warn" | "redact" | "block"
  *   "scanResponse": true,     // redact secrets echoed back (redact mode)
  *   "allow": []               // regex source strings to exempt (false positives)
@@ -41,6 +41,7 @@
 import { performance } from 'node:perf_hooks';
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
 import { cloneCredentialPatterns } from '../runtime/credential-patterns.js';
+import { createHostStates, providerSignal } from '../runtime/host-state.js';
 import { withReDoSGuard } from '../runtime/redos-guard.js';
 
 // ---------------------------------------------------------------------------
@@ -623,6 +624,7 @@ export function readConfig(raw: unknown): PromptFirewallConfig {
 // ---------------------------------------------------------------------------
 
 interface PromptFirewallState {
+  abort: AbortController;
   invocations: number;
   requestsWithSecrets: number;
   requestRedactions: number;
@@ -638,26 +640,34 @@ interface PromptFirewallState {
   extensionUnregister: null | (() => void);
 }
 
-const state: PromptFirewallState = {
-  invocations: 0,
-  requestsWithSecrets: 0,
-  requestRedactions: 0,
-  responseRedactions: 0,
-  blocked: 0,
-  timeoutCount: 0,
-  skippedPatterns: [],
-  responseTruncated: false,
-  byKind: new Map(),
-  lastDetection: null,
-  extensionUnregister: null,
-};
+function createState(): PromptFirewallState {
+  return {
+    abort: new AbortController(),
+    invocations: 0,
+    requestsWithSecrets: 0,
+    requestRedactions: 0,
+    responseRedactions: 0,
+    blocked: 0,
+    timeoutCount: 0,
+    skippedPatterns: [],
+    responseTruncated: false,
+    byKind: new Map(),
+    lastDetection: null,
+    extensionUnregister: null,
+  };
+}
+const hosts = createHostStates(createState);
 
 /**
  * Surface kinds that crossed the cumulative scan-pass budget mid-pass
  * (issue #370): merge into the visible skip surface with the same
  * counter/log treatment as probe timeouts. One call per tripped walk.
  */
-function surfaceScanTrips(api: PluginAPI, tripped: ReadonlySet<string>): void {
+function surfaceScanTrips(
+  state: PromptFirewallState,
+  api: PluginAPI,
+  tripped: ReadonlySet<string>,
+): void {
   for (const kind of tripped) {
     if (!state.skippedPatterns.includes(kind)) state.skippedPatterns.push(kind);
   }
@@ -720,26 +730,7 @@ const plugin: Plugin = {
   },
 
   setup(api: PluginAPI) {
-    // Idempotent re-init (H1 pattern).
-    state.invocations = 0;
-    state.requestsWithSecrets = 0;
-    state.requestRedactions = 0;
-    state.responseRedactions = 0;
-    state.blocked = 0;
-    state.timeoutCount = 0;
-    state.skippedPatterns = [];
-    state.responseTruncated = false;
-    state.byKind.clear();
-    state.lastDetection = null;
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
-
+    const state = hosts.reset(api);
     const cfg = readConfig(api.config.extensions?.['prompt-firewall']);
 
     if (cfg.enabled) {
@@ -758,6 +749,8 @@ const plugin: Plugin = {
           request: unknown,
           inner: (c: unknown, r: unknown) => Promise<unknown>,
         ) {
+          const signal = providerSignal(state, _ctx);
+          signal.throwIfAborted();
           const req = (request ?? {}) as Record<string, unknown>;
           state.invocations += 1;
 
@@ -775,6 +768,7 @@ const plugin: Plugin = {
           // result now GATES the detection/redaction pass instead of being
           // discarded.
           const { detections, skipped } = await detectSecretsGuarded(requestText, cfg.allow);
+          signal.throwIfAborted();
           // Always refresh from THIS request's result — a stale skip set
           // from a previous timed-out request would silently skip patterns
           // forever (chimera review finding).
@@ -818,7 +812,7 @@ const plugin: Plugin = {
               ) as Record<string, unknown>;
               state.requestRedactions += counter.n;
               api.metrics.counter('request_redactions', counter.n);
-              if (deadline.tripped.size > 0) surfaceScanTrips(api, deadline.tripped);
+              if (deadline.tripped.size > 0) surfaceScanTrips(state, api, deadline.tripped);
               const response = await inner(_ctx, redactedReq);
               return cfg.scanResponse ? redactResponse(response, cfg.allow, skipSet) : response;
             }
@@ -848,7 +842,7 @@ const plugin: Plugin = {
       const budget: ScanBudget = { remaining: RESPONSE_SCAN_BUDGET, truncated: false };
       const deadline = createScanDeadline();
       const redacted = redactDeep(response, allow, counter, skip, budget, deadline);
-      if (deadline.tripped.size > 0) surfaceScanTrips(api, deadline.tripped);
+      if (deadline.tripped.size > 0) surfaceScanTrips(state, api, deadline.tripped);
       // Only a real skip (budget.truncated) latches the flag — an exact-fit
       // walk that legitimately drives `remaining` to 0 is not truncation.
       if (budget.truncated) {
@@ -910,14 +904,8 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
+    const state = hosts.remove(api);
+    if (!state) return;
     const final = {
       invocations: state.invocations,
       requestsWithSecrets: state.requestsWithSecrets,
@@ -940,6 +928,15 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const state = createState();
+    for (const active of hosts.values()) {
+      state.invocations += active.invocations;
+      state.requestsWithSecrets += active.requestsWithSecrets;
+      state.requestRedactions += active.requestRedactions;
+      state.responseRedactions += active.responseRedactions;
+      state.blocked += active.blocked;
+      state.timeoutCount += active.timeoutCount;
+    }
     return {
       ok: true,
       message: `prompt-firewall: ${state.requestsWithSecrets} request(s) with secrets, ${state.requestRedactions} request redaction(s), ${state.blocked} blocked`,

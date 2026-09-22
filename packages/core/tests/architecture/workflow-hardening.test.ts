@@ -154,16 +154,45 @@ describe('release workflow (WS-040)', () => {
     // filenames, so `sha256sum --check dist-bin/SHA256SUMS` resolved every
     // entry against the wrong directory and failed the job before it ever
     // created the release. Anchoring on the `cd` keeps that from coming back.
-    const checksumCheck = githubReleaseJob.indexOf(
-      '(cd dist-bin && sha256sum --check SHA256SUMS)',
-    );
+    const checksumCheck = githubReleaseJob.indexOf('(cd dist-bin && sha256sum --check SHA256SUMS)');
     const upload = githubReleaseJob.indexOf('gh release upload');
 
-    expect(githubReleaseJob).toContain("find dist-bin -maxdepth 1 -type f -name 'wstack-*'");
+    // The manifest must cover EVERY published asset, not just the binaries:
+    // the installers are uploaded from the same directory and are now
+    // checksummed alongside them (binaries.yml appends their digests), so the
+    // comparison set has to name them too or the two silently drift apart.
+    expect(githubReleaseJob).toContain('find dist-bin -maxdepth 1 -type f');
+    expect(githubReleaseJob).toContain("-name 'wstack-*'");
+    expect(githubReleaseJob).toContain("-name 'install.sh'");
+    expect(githubReleaseJob).toContain("-name 'install.ps1'");
     expect(githubReleaseJob).toContain("awk 'NF == 2");
     expect(coverageCheck).toBeGreaterThan(-1);
     expect(coverageCheck).toBeLessThan(checksumCheck);
     expect(checksumCheck).toBeLessThan(upload);
+  });
+
+  it('checksums the installers it publishes and attests what it built', () => {
+    const binaries = read('binaries.yml');
+
+    // The release gate refuses to upload an asset the manifest does not name,
+    // so these two halves have to move together: binaries.yml puts the
+    // installer digests IN the manifest, release.yml checks the whole set.
+    expect(binaries).toContain('sha256sum install.sh install.ps1 >> SHA256SUMS');
+    expect(binaries).toContain('(cd dist-bin && sha256sum --check SHA256SUMS)');
+
+    // Provenance: the npm half of the release publishes with OIDC provenance,
+    // and the standalone executables -- the primary distribution -- had only a
+    // checksum file fetched from the same release as the binary. The
+    // attestation has to be minted in the job that BUILT them, which is why
+    // the permissions live here and on release.yml's call site (a called
+    // workflow's permissions are capped by the caller's).
+    expect(binaries).toContain('actions/attest-build-provenance@');
+    expect(binaries).toContain('id-token: write');
+    expect(binaries).toContain('attestations: write');
+
+    const callSite = release().slice(release().indexOf('  binaries:'));
+    expect(callSite).toContain('id-token: write');
+    expect(callSite).toContain('attestations: write');
   });
 
   it('keeps the operator runbook on the tag-first automated release path', () => {

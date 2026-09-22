@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Fully inline stub — never spawns a real worker thread (chimera review:
 // wrapping the real implementation made every probe pay a worker spin,
@@ -46,6 +46,11 @@ interface MockApi {
   _wrap?: WrapFn;
 }
 
+const hosts: MockApi[] = [];
+afterEach(async () => {
+  for (const api of hosts.splice(0)) await promptFirewallPlugin.teardown?.(api as never);
+});
+
 function setup(cfg: Record<string, unknown> = {}): MockApi {
   const tools: Record<string, Tool> = {};
   const api: MockApi = {
@@ -67,6 +72,7 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
     _tools: tools,
   };
   promptFirewallPlugin.setup(api as never);
+  hosts.push(api);
   api._tools = tools;
   return api;
 }

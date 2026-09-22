@@ -10,8 +10,8 @@
  * the call it records the response's actual usage. This smooths bursty
  * agent loops under a provider's TPM limit instead of hitting 429s.
  *
- * Safety posture: opt-in — loads inert until
- * `config.extensions['token-throttle'].enabled = true`. Delay is bounded
+ * Safety posture: opt-in at host plugin loading; the loaded plugin's
+ * internal enabled switch defaults to true. Delay is bounded
  * by `maxDelayMs` so a mis-set budget can never hang the agent
  * indefinitely.
  *
@@ -19,7 +19,7 @@
  *
  * ```jsonc
  * {
- *   "enabled": false,
+ *   "enabled": true,
  *   "tokensPerMinute": 100000,  // rolling-window budget
  *   "maxDelayMs": 30000,        // hard cap on any single wait
  *   "charsPerToken": 4          // request-size → token estimate divisor
@@ -32,6 +32,7 @@
  * @public
  */
 import type { Plugin, PluginAPI } from '@wrongstack/core/types';
+import { createHostStates, providerSignal } from '../runtime/host-state.js';
 
 const WINDOW_MS = 60_000;
 
@@ -133,6 +134,7 @@ export function computeThrottleDelay(
 // ---------------------------------------------------------------------------
 
 interface TokenThrottleState {
+  abort: AbortController;
   window: SpendEntry[];
   invocations: number;
   throttled: number;
@@ -140,13 +142,17 @@ interface TokenThrottleState {
   extensionUnregister: null | (() => void);
 }
 
-const state: TokenThrottleState = {
-  window: [],
-  invocations: 0,
-  throttled: 0,
-  totalDelayMs: 0,
-  extensionUnregister: null,
-};
+function createState(): TokenThrottleState {
+  return {
+    abort: new AbortController(),
+    window: [],
+    invocations: 0,
+    throttled: 0,
+    totalDelayMs: 0,
+    extensionUnregister: null,
+  };
+}
+const hosts = createHostStates(createState);
 
 function estimateRequestTokens(request: Record<string, unknown>, charsPerToken: number): number {
   let chars = 0;
@@ -174,7 +180,7 @@ function estimateRequestTokens(request: Record<string, unknown>, charsPerToken: 
  * is never the reason the process stays alive.
  *
  * Resolves rather than rejects on abort — the caller re-checks the signal
- * and lets the provider layer own the cancellation error.
+ * before dispatching to the provider.
  */
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.resolve();
@@ -239,20 +245,7 @@ const plugin: Plugin = {
   },
 
   setup(api: PluginAPI) {
-    // Idempotent re-init (H1 pattern).
-    state.window = [];
-    state.invocations = 0;
-    state.throttled = 0;
-    state.totalDelayMs = 0;
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
-
+    const state = hosts.reset(api);
     const cfg = readConfig(api.config.extensions?.['token-throttle']);
 
     if (cfg.enabled) {
@@ -271,7 +264,8 @@ const plugin: Plugin = {
           request: unknown,
           inner: (c: unknown, r: unknown) => Promise<unknown>,
         ) {
-          const signal = (_ctx as { signal?: AbortSignal } | undefined)?.signal;
+          const signal = providerSignal(state, _ctx);
+          signal.throwIfAborted();
           const req = (request ?? {}) as Record<string, unknown>;
           state.invocations += 1;
           const now = Date.now();
@@ -288,9 +282,11 @@ const plugin: Plugin = {
             await sleep(delay, signal);
           }
 
+          signal.throwIfAborted();
           const response = (await inner(_ctx, request)) as {
             usage?: { input?: number; output?: number };
           };
+          signal.throwIfAborted();
           const rawUsage = response?.usage as Record<string, unknown> | undefined;
           // Provider usage is an untrusted response boundary. Non-finite
           // measurements would poison the rolling window and distort every
@@ -371,14 +367,8 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.extensionUnregister) {
-      try {
-        state.extensionUnregister();
-      } catch {
-        // best-effort
-      }
-      state.extensionUnregister = null;
-    }
+    const state = hosts.remove(api);
+    if (!state) return;
     const final = {
       invocations: state.invocations,
       throttled: state.throttled,
@@ -392,6 +382,12 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const state = createState();
+    for (const active of hosts.values()) {
+      state.invocations += active.invocations;
+      state.throttled += active.throttled;
+      state.totalDelayMs += active.totalDelayMs;
+    }
     return {
       ok: true,
       message: `token-throttle: ${state.throttled} throttle(s) of ${state.invocations} call(s), ${state.totalDelayMs}ms total delay`,

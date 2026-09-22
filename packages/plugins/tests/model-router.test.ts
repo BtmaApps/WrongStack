@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const modelRouterPlugin = (await import('../src/model-router')).default;
 const { requestCharSize, pickRule } = await import('../src/model-router');
@@ -31,6 +31,11 @@ interface MockApi {
   _wrap?: WrapFn;
 }
 
+const hosts: MockApi[] = [];
+afterEach(async () => {
+  for (const api of hosts.splice(0)) await modelRouterPlugin.teardown?.(api as never);
+});
+
 function setup(cfg: Record<string, unknown> = {}): MockApi {
   const tools: Record<string, Tool> = {};
   const api: MockApi = {
@@ -51,6 +56,7 @@ function setup(cfg: Record<string, unknown> = {}): MockApi {
     _tools: tools,
   };
   modelRouterPlugin.setup(api as never);
+  hosts.push(api);
   api._tools = tools;
   return api;
 }
@@ -85,6 +91,19 @@ describe('requestCharSize / pickRule', () => {
 });
 
 describe('model-router plugin', () => {
+  it.each([
+    { model: ' ' },
+    { model: 'small', maxChars: 'invalid' },
+    { model: 'small', minChars: Number.NaN },
+    { model: 'small', maxChars: Number.POSITIVE_INFINITY },
+    { model: 'small', minChars: 100, maxChars: 10 },
+    { model: 'small', hasTools: 'false' },
+    { model: 'small', maxChars: null },
+    { model: 'small', minChars: -1 },
+    { model: 'small', hasTools: null },
+  ])('does not silently broaden malformed routing rules: %j', (rule) => {
+    expect(setup({ rules: [rule], dryRun: false }).extensions.register).not.toHaveBeenCalled();
+  });
   it('is inert when disabled or ruleless', () => {
     expect(setup().extensions.register).not.toHaveBeenCalled();
     expect(setup({ enabled: true }).extensions.register).not.toHaveBeenCalled(); // no rules

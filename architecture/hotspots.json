@@ -151,7 +151,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 968,
+      "lines": 996,
       "relativeImports": 1
     },
     "packages/core/src/storage/session-store.ts": {
@@ -211,8 +211,8 @@
       "relativeImports": 0
     },
     "packages/plugins/src/prompt-firewall/index.ts": {
-      "lines": 958,
-      "relativeImports": 2
+      "lines": 955,
+      "relativeImports": 3
     },
     "packages/plugins/src/secret-scanner/index.ts": {
       "lines": 939,
@@ -359,7 +359,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/submit-controller.ts": {
-      "lines": 937,
+      "lines": 947,
       "relativeImports": 13
     },
     "packages/tui/src/use-app-controller.tsx": {

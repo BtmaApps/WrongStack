@@ -3,6 +3,7 @@ import type { State } from '../app-state.js';
 import type { HistoryEntry } from '../history-entry.js';
 import { retainTuiHistory } from '../history-retention.js';
 import {
+  closePanels,
   MAX_ASSISTANT_STREAM_RETAINED_CHARS,
   pruneToolInput,
   retainStreamTail,
@@ -177,7 +178,20 @@ export function reduceConversation(state: State, action: ConversationAction): St
         : state.nextId;
       return {
         ...state,
+        ...closePanels(state),
         entries: refreshedBanner ? [refreshedBanner] : [],
+        // Invalidate stamped replay chunks still arriving from an old resume.
+        resumeLoad: null,
+        buffer: '',
+        cursor: 0,
+        hint: '',
+        picker: { open: false, query: '', matches: [], selected: 0 },
+        slashPicker: { open: false, query: '', matches: [], selected: 0 },
+        sidebarScrollOffset: 0,
+        goalRun: null,
+        sddBoard: null,
+        eternalStage: null,
+        fallbackOverlay: null,
         archiveLoading: false,
         queue: [],
         nextQueueId: 1,

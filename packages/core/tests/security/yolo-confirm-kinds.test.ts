@@ -12,6 +12,74 @@ import {
 const ROOT = process.platform === 'win32' ? 'C:\\proj' : '/proj';
 const OUTSIDE = process.platform === 'win32' ? 'C:\\other\\x' : '/other/x';
 
+describe('system-halt reaches past launchers and synonyms', () => {
+  // Probe-verified gap (2026-09-22): the halt rule allowed only `sudo`/`doas`
+  // before the verb and knew only `shutdown|reboot`. 15 of 21 halt shapes
+  // classified as NOT destructive -- and `system-halt` is gated by default
+  // while YOLO is on by default, so each one powered the machine down with no
+  // confirmation.
+  it.each([
+    'shutdown -h now',
+    'sudo shutdown -h now',
+    'doas reboot',
+    '/sbin/shutdown -h now',
+    'echo hi; shutdown -h now',
+    'shutdown.exe /s /t 0',
+    // Launcher prefixes.
+    'nohup shutdown -h now',
+    'timeout 5 shutdown -h now',
+    'nice shutdown -h now',
+    'nice -n 5 reboot',
+    'setsid reboot',
+    'env shutdown -h now',
+    'env FOO=1 reboot',
+    'stdbuf -o0 reboot',
+    'command shutdown -h now',
+    'exec reboot',
+    'sudo nohup shutdown -h now',
+    // Synonyms that were not recognised at all.
+    'poweroff',
+    'halt',
+    'systemctl poweroff',
+    'systemctl reboot',
+    'systemctl --force halt',
+    'init 0',
+    'init 6',
+    'Stop-Computer -Force',
+    'Restart-Computer',
+  ])('classifies %s as system-halt', (command) => {
+    expect(classifyDestructiveCommand(command, ROOT)).toBe('system-halt');
+  });
+
+  // The rule this widens previously fired on PROSE -- on a test-file path with
+  // "shutdown" in it, and on `git commit -m "...shutdown..."`. Every added
+  // alternative needs its own negative or that regression comes back.
+  it.each([
+    'echo shutdown',
+    'echo "reboot the box"',
+    'git init',
+    'npm init -y',
+    'pnpm init',
+    'init',
+    'init 3',
+    'git commit -m "fix shutdown handling"',
+    'vitest run packages/cli/tests/start-webui-shutdown.test.ts',
+    'git add packages/core/src/shutdown.ts',
+    'npm run halt-on-error',
+    'cat haltings.txt',
+    'grep -r poweroff docs/',
+    'node scripts/reboot-helper.mjs',
+    'systemctl status nginx',
+    'systemctl start docker',
+    'timeout 5 pnpm build',
+    'nice -n 10 pnpm test',
+    'env FOO=1 pnpm build',
+    'nohup pnpm dev',
+  ])('does not classify %s as a halt', (command) => {
+    expect(classifyDestructiveCommand(command, ROOT)).not.toBe('system-halt');
+  });
+});
+
 describe('classifyDestructiveCommand — which kind, not just whether', () => {
   it.each<[string, DestructiveKind | undefined]>([
     ['mkfs.ext4 /dev/sda1', 'disk-wipe'],

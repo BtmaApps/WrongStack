@@ -349,9 +349,9 @@ export function createSubmitController(host: SubmitControllerHost) {
       }
       pushSubmittedHistory();
       clearDraft();
+      const cmd = trimmed.slice(1).split(/\s+/, 1)[0];
       try {
         const res = await slashRegistry.dispatch(resolvedForDispatch, agent.ctx);
-        const cmd = trimmed.slice(1).split(/\s+/, 1)[0];
         const cleared = cmd === 'clear' && res?.metadata?.cleared === true;
         // /clear itself advances the generation via resetSession before it
         // returns. Its own successful result must still wipe the UI. Other
@@ -484,10 +484,12 @@ export function createSubmitController(host: SubmitControllerHost) {
           if (b) {
             b.appendText(res.runText);
             const blocks = await b.submit();
+            if (slashGeneration !== sessionGenerationRef.current) return;
             // Wait briefly for any in-flight abort to settle into
             // 'idle' before kicking the next iteration — otherwise
             // runBlocks would early-return on the busy guard.
             await waitForIdleSettle(() => stateRef.current.status === 'idle', 1500);
+            if (slashGeneration !== sessionGenerationRef.current) return;
             // Submit directly without placing the text into the input field.
             // The draft was already cleared above (clearDraft before dispatch),
             // and runBlocks will handle the execution. The finally block
@@ -495,7 +497,7 @@ export function createSubmitController(host: SubmitControllerHost) {
             try {
               await runBlocks(blocks);
             } finally {
-              clearDraft();
+              if (slashGeneration === sessionGenerationRef.current) clearDraft();
             }
           }
         }
@@ -556,6 +558,14 @@ export function createSubmitController(host: SubmitControllerHost) {
           onAfterClear?.();
         }
       } catch (err) {
+        // Old command failures are as stale as old successful results. Keep
+        // failures of /clear itself visible when its reset already advanced
+        // the generation, so persistence/teardown errors are not hidden.
+        if (
+          slashGeneration !== sessionGenerationRef.current &&
+          !(cmd === 'clear' && sessionGenerationRef.current === slashGeneration + 1)
+        )
+          return;
         dispatch({
           type: 'addEntry',
           entry: { kind: 'error', text: toErrorMessage(err) },
