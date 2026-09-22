@@ -39,6 +39,11 @@ const CATASTROPHIC_PATTERNS: RegExp[] = [
 const HIGH_IMPACT_PATTERNS: RegExp[] = [
   /\b(?:curl|wget|fetch|httpie|http|irm|iwr|Invoke-WebRequest|Invoke-RestMethod)\b[\s\S]{0,300}\|\s*(?:sudo\s+)?(?:sh|bash|zsh|fish|pwsh|powershell|iex|Invoke-Expression)\b/i,
   /\b(?:powershell|pwsh)(?:\.exe)?\b[\s\S]{0,120}-(?:enc|encodedcommand)\b/i,
+  // Process substitution: `bash <(curl -s URL)` is the same download-and-run as
+  // `curl URL | sh`, and a documented install idiom rather than obfuscation —
+  // but the pipe pattern above needs a literal `|` and the inline-payload
+  // interpreters need a `-c`, so it matched neither (probe-verified 2026-09-22).
+  /\b(?:sh|bash|zsh|ksh|fish|pwsh|powershell)(?:\.exe)?\b\s*<\(\s*(?:sudo\s+)?(?:curl|wget|fetch|httpie|http)\b/i,
 ];
 
 // B2 (AT-08 / CMDI-004): the literal `curl … | sh` shape was the only
@@ -95,8 +100,21 @@ const PAYLOAD_DELETES =
  * are mutually exclusive by first character (`-`, a name followed by `=`, a
  * digit) and none of them can start a launcher word, so the nesting cannot
  * fork the parse; the outer run is bounded at 8 regardless.
+ *
+ * A flag that takes a SEPARATED value needs its own alternative. Probe-verified
+ * 2026-09-22: `sudo -u root shutdown -h now` classified as NOT destructive while
+ * the glued spelling `sudo --user=root shutdown -h now` was gated — the value
+ * word `root` matches none of the three alternatives above, so the run ended
+ * there and the verb was never in command position. The numeric-operand
+ * alternative is why `nice -n 5` and `timeout -k 5 10` happened to survive: their
+ * values are digits. Listing the value-taking flags explicitly (rather than
+ * accepting "any flag plus any word") keeps a flag that takes NO value from
+ * swallowing the command itself — and regex backtracking recovers anyway, since
+ * consuming `-i shutdown` only to fail the verb match falls back to consuming
+ * `-i` alone. Mirrors `ARGV_LAUNCHERS`' `valueFlags` on the tools side.
  */
-const HALT_LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env)\b(?:\s+(?:-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,8}`;
+const HALT_LAUNCHER_VALUE_FLAG = String.raw`(?:-[ugCncpskioe]|--(?:user|group|unset|chdir|adjustment|signal|kill-after))\s+[^\s-][^\s]*`;
+const HALT_LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env)\b(?:\s+(?:${HALT_LAUNCHER_VALUE_FLAG}|-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,8}`;
 
 /**
  * Ways to power the machine down or restart it.
@@ -172,6 +190,14 @@ export function pathLooksInsideProject(rawPath: string, projectRoot: string | un
   // path.resolve() treats "~/cache" as a relative path *inside* the project
   // (there is no shell tilde-expansion here), masking an escape like `rm -rf ~/cache`.
   if (rawPath === '~' || rawPath.startsWith('~/') || rawPath.startsWith('~\\')) return false;
+  // An UNEXPANDED variable in the leading segment, for exactly the same reason:
+  // there is no shell expansion here, so `path.resolve()` reads `$HOME/cache` as
+  // a literal directory named `$HOME` *inside* the project. Probe-verified
+  // 2026-09-22: `rm -rf ~/cache` was gated as an escape while `rm -rf $HOME/cache`
+  // and `rm -rf ${HOME}/data` were classified in-project — the same delete in
+  // three spellings. What the variable holds is unknowable statically, so the
+  // honest answer is "not provably inside", which only makes the gates stricter.
+  if (/^(?:\$|%[A-Za-z_])/.test(rawPath)) return false;
   // Backslash-separated traversal, for the same reason as the drive-letter
   // branch above: `\` is a legal filename character on POSIX, so path.resolve()
   // reads `..\..\shared-secrets` as ONE filename inside the root and the escape
@@ -193,10 +219,189 @@ export function pathLooksInsideProject(rawPath: string, projectRoot: string | un
   );
 }
 
-function tokenizeShell(command: string): string[] {
+/**
+ * Shell quote/escape state for a character-by-character scan.
+ *
+ * Both scanners in this module walk a command line and must agree on what a
+ * shell treats as quoted, because a separator inside quotes is prose, not a
+ * separator. The rules live here once: outside single quotes a backslash
+ * escapes the NEXT character, and single quotes are literal (no escapes).
+ * Without the escape rule a backslash-escaped quote flipped quote parity —
+ * `echo \" ; shutdown now` runs `shutdown now` in every real shell, while the
+ * classifier read the rest of the line as quoted prose and gated nothing.
+ */
+interface ShellScanState {
+  quote: string | undefined;
+  escaped: boolean;
+}
+
+/**
+ * Advance `state` over `ch`; true when `ch` is INERT (quoted or escaped) and
+ * therefore must never be read as a separator.
+ */
+function advanceShellScan(state: ShellScanState, ch: string): boolean {
+  if (state.escaped) {
+    state.escaped = false;
+    return true;
+  }
+  if (state.quote === "'") {
+    if (ch === "'") state.quote = undefined;
+    return true;
+  }
+  if (ch === '\\') {
+    state.escaped = true;
+    return true;
+  }
+  if (state.quote !== undefined) {
+    if (ch === state.quote) state.quote = undefined;
+    return true;
+  }
+  if (ch === '"' || ch === "'") {
+    state.quote = ch;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Put whitespace around every UNQUOTED command separator.
+ *
+ * `\S+` tokenization keeps a separator glued to the previous word inside that
+ * word (`echo hi;rm -rf ~/data` becomes the single token `hi;rm`), so every
+ * rule that finds a command by EXACT token match (`token === 'rm'`,
+ * `tokens[i] !== 'git'`, the `del`/`erase`/`rd` branches, the agent-state
+ * writers, the publish verbs) never saw the command that followed — while the
+ * identical line with a space before the separator was gated. A shell reads
+ * `;`, `&` and `|` as separators whatever the surrounding whitespace, and this
+ * module's own `splitShellSegments` already reads them that way; the tokens
+ * have to agree. Runs stay together so `&&` / `||` remain single tokens for
+ * `commandSegment`'s `SHELL_OPERATORS` check.
+ *
+ * Redirection characters are deliberately NOT spaced out: `>`, `>>` and `2>`
+ * are already operators, and splitting `2>&1` would reshape tokens for no
+ * detection gain (glued redirect targets are scanned against the raw string).
+ */
+function spaceOutUnquotedSeparators(command: string): string {
+  const separators = ';&|';
+  let out = '';
+  const state: ShellScanState = { quote: undefined, escaped: false };
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+    if (ch === undefined) continue;
+    if (advanceShellScan(state, ch) || !separators.includes(ch)) {
+      out += ch;
+      continue;
+    }
+    let run = ch;
+    let next = command[i + 1];
+    while (next !== undefined && separators.includes(next)) {
+      run += next;
+      i += 1;
+      next = command[i + 1];
+    }
+    out += ` ${run} `;
+  }
+  return out;
+}
+
+/**
+ * Commands whose flag takes a COMMAND LINE as its value.
+ *
+ * Every rule in this module finds a command by EXACT token equality, so a value
+ * that is itself a command line (`env -S "rm -rf ~/data"`, `sh -c "git push
+ * --force"`) left the wrapped command invisible in ONE token — while the same
+ * line written directly was gated. Keyed PER COMMAND because the letters are
+ * overloaded: `-c` is also `grep -c` / `tar -c`, and `/c` is a path separator
+ * everywhere else. Values are stored lowercased; argument matching compares
+ * lowercased, which is right for PowerShell and cmd (/c and -Command are
+ * case-insensitive there) and merely fail-safe for the POSIX shells.
+ */
+const COMMAND_STRING_FLAGS: ReadonlyMap<string, readonly string[]> = new Map([
+  ['env', ['-s', '--split-string']],
+  ['sh', ['-c']],
+  ['bash', ['-c']],
+  ['zsh', ['-c']],
+  ['dash', ['-c']],
+  ['ksh', ['-c']],
+  ['ash', ['-c']],
+  ['fish', ['-c']],
+  ['pwsh', ['-command', '-c']],
+  ['powershell', ['-command', '-c']],
+  ['cmd', ['/c', '/k']],
+]);
+
+/** Bound on nested command-string values (`sh -c "env -S 'x'"`). */
+const MAX_COMMAND_STRING_DEPTH = 4;
+
+/** Command name without a directory or `.exe`, lowercased. */
+function normalizeCommandToken(token: string): string {
+  return token
+    .toLowerCase()
+    .replace(/^.*[\\/]/, '')
+    .replace(/\.exe$/, '');
+}
+
+/**
+ * Quote-aware whitespace split, before any command-string expansion.
+ *
+ * Kept separate from {@link tokenizeShell} so the expansion can recurse into a
+ * value it has already split without re-entering itself unbounded.
+ */
+function flatShellTokens(command: string): string[] {
   return (
-    command.match(/"[^"]*"|'[^']*'|\S+/g)?.map((token) => token.replace(/^['"]|['"]$/g, '')) ?? []
+    spaceOutUnquotedSeparators(command)
+      .match(/"[^"]*"|'[^']*'|\S+/g)
+      ?.map((token) => token.replace(/^['"]|['"]$/g, '')) ?? []
   );
+}
+
+/**
+ * Splice the words of each command-string flag's value into the token stream.
+ *
+ * `env -S "<cmd>"`, `sh -c "<cmd>"`, `cmd /c "<cmd>"` and PowerShell's
+ * `-Command` all pass a WHOLE command line as one argv token that the launcher
+ * then splits and runs. Left as one token, no `cmd`-keyed rule could see it:
+ * `env -S 'rm -rf ~/data'` assessed as not destructive while the identical
+ * `env rm -rf ~/data` returned 'delete-outside'. The value is therefore
+ * tokenized as the command line it is, behind a `;` boundary that
+ * `commandSegment` already stops at, so the spliced words cannot leak into the
+ * outer command's arguments.
+ */
+function expandCommandStrings(tokens: readonly string[], depth: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i] ?? '';
+    out.push(token);
+    const flags = COMMAND_STRING_FLAGS.get(normalizeCommandToken(token));
+    if (flags === undefined) continue;
+    const flagToken = tokens[i + 1];
+    if (flagToken === undefined || SHELL_OPERATORS.has(flagToken)) continue;
+    const lower = flagToken.toLowerCase();
+    const flag = flags.find((candidate) => lower === candidate || lower.startsWith(candidate));
+    if (flag === undefined) continue;
+    let value: string | undefined;
+    let consumed = 1;
+    if (lower.length > flag.length) {
+      // `-c<cmd>` / `--split-string=<cmd>`: the value rides the flag token.
+      value = flagToken.slice(flag.length + (flagToken.charAt(flag.length) === '=' ? 1 : 0));
+    } else {
+      value = tokens[i + 2];
+      consumed = 2;
+    }
+    if (value === undefined || value.length === 0) continue;
+    i += consumed;
+    out.push(';');
+    const inner = flatShellTokens(value);
+    // Past the bound the words still become visible; only deeper nesting stops.
+    out.push(
+      ...(depth + 1 >= MAX_COMMAND_STRING_DEPTH ? inner : expandCommandStrings(inner, depth + 1)),
+    );
+  }
+  return out;
+}
+
+function tokenizeShell(command: string): string[] {
+  return expandCommandStrings(flatShellTokens(command), 0);
 }
 
 function commandSegment(tokens: string[], start: number): string[] {
@@ -450,7 +655,10 @@ function isCatastrophicDeleteTarget(rawTarget: string): boolean {
   // target ("/", "/*") collapses to '' → the filesystem root.
   const s = t.replace(/[\\/]\*+$/, '').replace(/[\\/]+$/, '');
   if (s === '') return true; // "/", "/*" → filesystem root
-  if (s === '~' || /^\$HOME$/i.test(s) || /^%USERPROFILE%$/i.test(s)) return true; // home
+  // Home, in every spelling the shell expands to it. `${HOME}` is the same
+  // variable as `$HOME` — probe-verified 2026-09-22: `rm -rf ${HOME}` classified
+  // as not destructive while `rm -rf $HOME` was gated.
+  if (s === '~' || /^\$(?:HOME|\{HOME\})$/i.test(s) || /^%USERPROFILE%$/i.test(s)) return true;
   if (/^[A-Za-z]:$/.test(s)) return true; // Windows drive root: C:, C:\, C:\*
   const norm = s.toLowerCase().replace(/\\/g, '/');
   if (CATASTROPHIC_POSIX_ROOTS.has(norm)) return true; // /etc, /usr, /home, …
@@ -649,14 +857,18 @@ function hasWriteToAgentStateRoot(command: string): boolean {
     if (base !== 'tar' && base !== 'unzip' && base !== '7z') continue;
     for (const arg of commandSegment(tokens, i + 1)) {
       if (SHELL_OPERATORS.has(arg)) break;
-      // The extraction directory is spelled `-C DIR` or `--directory=DIR` by
-      // GNU tar (`-d` is unzip's spelling; 7z uses `-o`). Matching only the
-      // short letters left the long spelling ungated, so
-      // `tar --directory=~/.wrongstack -xf payload.tar` extracted into the
-      // trust anchor while the identical `-C` form was classified
-      // 'agent-state'.
+      // The extraction directory per verb: GNU tar spells it `-C DIR` or
+      // `--directory=DIR` (and GNU unzip spells `-d DIR`, space or glued).
+      // 7-Zip has no long form: its output directory is `-o{Directory}` —
+      // always GLUED, as `-o DIR` is not accepted. Matching only the short
+      // letters left the long tar spelling ungated (fixed earlier), and
+      // omitting `o` left 7z's only spelling ungated, so
+      // `7z x a.7z -o~/.wrongstack` extracted into the trust anchor while the
+      // identical tar/unzip forms were classified 'agent-state'. `o` is safe
+      // to accept because the value must still resolve inside the state root.
       const value =
-        /^(?:-(?:C|d)|--directory=)(.+)$/.exec(arg)?.[1] ?? (arg.startsWith('-') ? undefined : arg);
+        /^(?:-(?:C|d|o)|--directory=)(.+)$/.exec(arg)?.[1] ??
+        (arg.startsWith('-') ? undefined : arg);
       if (value && resolvesInsideAgentStateRoot(value)) return true;
     }
     const dashC = commandSegment(tokens, i + 1);
@@ -665,7 +877,7 @@ function hasWriteToAgentStateRoot(command: string): boolean {
       // also happens to catch this form, but stating it here keeps the rule
       // independent of that over-inclusive fallback.
       if (
-        /^(?:-(?:C|d)|--directory)$/.test(dashC[j] ?? '') &&
+        /^(?:-(?:C|d|o)|--directory)$/.test(dashC[j] ?? '') &&
         resolvesInsideAgentStateRoot(dashC[j + 1] ?? '')
       ) {
         return true;
@@ -758,11 +970,15 @@ function looksLikeAgentStateTarget(rawPath: string): boolean {
 }
 
 /**
- * Split a command line into shell segments, ignoring separators inside quotes.
+ * Split a command line into shell segments, ignoring separators inside quotes
+ * and separators that a backslash escapes.
  *
  * Quote-awareness is the whole point: `git commit -m "…; shutdown now"` must
  * stay ONE segment whose head is `git`. The classifier has to read the command
- * being run, never the prose it carries as an argument.
+ * being run, never the prose it carries as an argument. Escapes belong to the
+ * same question — `echo \" ; shutdown now` runs `shutdown now` in every real
+ * shell, and reading that `\"` as an opener kept the segment as one quoted
+ * blob, so the halt was never seen.
  *
  * `|` splits here even though `curl … | sh` is a real risk shape — that shape
  * is matched against the WHOLE command by HIGH_IMPACT_PATTERNS[0], which never
@@ -771,20 +987,11 @@ function looksLikeAgentStateTarget(rawPath: string): boolean {
 function splitShellSegments(command: string): string[] {
   const segments: string[] = [];
   let current = '';
-  let quote: string | undefined;
+  const state: ShellScanState = { quote: undefined, escaped: false };
   for (let i = 0; i < command.length; i++) {
     const ch = command[i] as string;
-    if (quote !== undefined) {
-      if (ch === quote) quote = undefined;
-      current += ch;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-      current += ch;
-      continue;
-    }
-    if (ch === ';' || ch === '\n' || ch === '&' || ch === '|') {
+    const inert = advanceShellScan(state, ch);
+    if (!inert && (ch === ';' || ch === '\n' || ch === '&' || ch === '|')) {
       if (command[i + 1] === ch) i++; // consume the second half of && / ||
       segments.push(current);
       current = '';
@@ -812,9 +1019,47 @@ function hasRiskyInlinePayload(command: string): boolean {
   return false;
 }
 
-/** `shutdown` / `reboot` in command position in any segment of the line. */
+/**
+ * The program an interpreter runs INLINE, with the `-c` / `-e` / `-Command` flag
+ * and any wrapping quote stripped — so the payload can be asked the same
+ * question as a bare command line.
+ *
+ * Needed because a quoted payload survives `tokenizeShell` as one token and,
+ * more importantly, `SYSTEM_HALT_COMMAND` anchors at the START of a segment: the
+ * segment head of `bash -c "shutdown -h now"` is `bash`, so the halt verb is
+ * never in command position and the check declined it.
+ */
+const INLINE_PAYLOAD_AFTER_EVAL_FLAG =
+  /\b(?:bash|sh|zsh|ksh|fish|pwsh|powershell|node|python[0-9.]*|perl|ruby)(?:\.exe)?\b[^\n]{0,200}?\s-(?:c|e|E|-eval|Command|command)\s+(.+)$/i;
+
+function inlineEvalPayload(segment: string): string | undefined {
+  const payload = INLINE_PAYLOAD_AFTER_EVAL_FLAG.exec(segment)?.[1];
+  return payload?.replace(/^(['"])([\s\S]*)\1$/, '$2').trim() || undefined;
+}
+
+/**
+ * `shutdown` / `reboot` in command position — in any segment of the line, or as
+ * the program an interpreter was handed inline.
+ *
+ * Probe-verified gap (2026-09-22): `bash -c "shutdown -h now"` classified as NOT
+ * destructive while `bash -c "rm -rf /"` was gated, because `PAYLOAD_DELETES`
+ * reads inside an inline payload and nothing asked the same question about
+ * halting. `system-halt` is gated by default and YOLO is on by default, so the
+ * one shape that powers the user's machine down ran unprompted.
+ *
+ * The payload is matched with the SAME anchored `SYSTEM_HALT_COMMAND`, which is
+ * what keeps prose out: the payload `echo shutdown` does not start with the verb.
+ * A halt buried deeper still (`python -c "os.system('poweroff')"`) stays
+ * unclassified on purpose — that is obfuscation, which this module's header
+ * documents as out of scope rather than something to chase with more regex.
+ */
 function haltsTheMachine(command: string): boolean {
-  return splitShellSegments(command).some((segment) => SYSTEM_HALT_COMMAND.test(segment));
+  return splitShellSegments(command).some((segment) => {
+    if (SYSTEM_HALT_COMMAND.test(segment)) return true;
+    const payload = inlineEvalPayload(segment);
+    if (payload === undefined) return false;
+    return splitShellSegments(payload).some((inner) => SYSTEM_HALT_COMMAND.test(inner));
+  });
 }
 
 /**

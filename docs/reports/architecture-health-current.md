@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T15:36:28.474Z
+**Generated:** 2026-09-22T16:12:10.227Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,7 +9,7 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 4075 |
-| Production source lines | 964017 |
+| Production source lines | 964494 |
 | Test files | 3595 |
 | Workspace dependency edges | 129 |
 | Relative module edges | 13259 |
@@ -21,7 +21,7 @@
 
 ## Verification result
 
-- packages/core/src/security/yolo-risk.ts: hotspot grew from 996 to 1049 lines; review and update the ratchet in the same change
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
@@ -85,7 +85,8 @@ None.
 
 | Lines | File |
 |---:|---|
-| 1049 | `packages/core/src/security/yolo-risk.ts` |
+| 1241 | `packages/core/src/security/yolo-risk.ts` |
+| 999 | `packages/tools/src/_danger-detect.ts` |
 | 981 | `packages/sage/src/sqlite-store.ts` |
 | 969 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 968 | `packages/core/src/coordination/director.ts` |
@@ -134,7 +135,6 @@ None.
 | 875 | `packages/cli/src/fleet/host.ts` |
 | 874 | `packages/simpleui/src/use-simple-ui-session.tsx` |
 | 873 | `packages/sage/src/domain-term-extractor.ts` |
-| 873 | `packages/webui/src/lib/fonts.ts` |
 
 ## Exports only tests reference
 

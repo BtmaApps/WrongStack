@@ -33,10 +33,13 @@ describe('transparent launchers do not hide the real command', () => {
     expect(detectDanger('nohup', ['git', 'push', '--force']).matchedRule).toBe('git-push-force');
   });
 
-  // `timeout`'s own positional is a DURATION, and coreutils documents it as "a
-  // floating point number with an optional suffix" — so `0.5s`, `1.5` and
-  // `2.5m` are the same shape as `5`. Matching only the integer spelling did
-  // not merely skip the unwrap: the duration was taken FOR the command
+  // `timeout`'s own positional is a DURATION: coreutils defines it as "a
+  // floating point number in either the current or the C locale … followed by
+  // an optional unit", parsed with strtod/strtold — so `0.5s`, `1.5` and `2.5m`
+  // are the same shape as `5`, and the manual's `Floating point` node adds
+  // scientific notation (`1.0e-34`, `-10e100`) and hexadecimal floating point
+  // (`-0x.ep-3`). Matching only the integer spelling did not merely skip the
+  // unwrap: the duration was taken FOR the command
   // (`{ cmd: '0.5s', args: ['rm', …] }`), so the wrapped `rm -rf` never reached
   // the cmd-keyed rules and this identical delete reported `safe` while
   // `timeout 5 rm -rf ./build` reported `destructive`.
@@ -44,6 +47,11 @@ describe('transparent launchers do not hide the real command', () => {
     ['fractional seconds', '0.5s'],
     ['fractional, no suffix', '1.5'],
     ['fractional minutes', '2.5m'],
+    ['scientific notation', '1e3'],
+    ['scientific notation, signed exponent', '1e+3'],
+    ['negative exponent', '1.5e-2'],
+    ['uppercase exponent', '2E4'],
+    ['hexadecimal float', '0x1p3'],
   ])('unwraps a %s duration to the real command', (_name, duration) => {
     expect(unwrapArgvLaunchers('timeout', [duration, 'rm', '-rf', './build'])).toEqual({
       cmd: 'rm',
@@ -56,8 +64,115 @@ describe('transparent launchers do not hide the real command', () => {
     ['1.5', ['1.5', 'rm', '-rf', './build']],
     ['2.5m', ['2.5m', 'rm', '-rf', '/']],
     ['0.5s after an option', ['--foreground', '0.5s', 'rm', '-rf', './build']],
+    ['1e3', ['1e3', 'rm', '-rf', '/']],
+    ['2E4', ['2E4', 'rm', '-rf', './build']],
+    ['0x1p3', ['0x1p3', 'rm', '-rf', './build']],
   ])('sees the destructive command behind a %s duration', (_name, args) => {
     expect(detectDanger('timeout', args).level).toBe('destructive');
+  });
+
+  // A launcher's own OPERANDS are not the command. sudo(8) documents -p, -h,
+  // -r, -t, -D, -R, -T and -U as value-taking, so their value must be skipped:
+  // `sudo -p pw rm -rf ./build` unwrapped to cmd `pw` and reported only
+  // 'caution' (the bare-`sudo` rule) instead of 'destructive'. `env -S
+  // "<command line>"` is stronger still — its VALUE is a command line env
+  // splits and RUNS, so the whole command had to be expanded before any
+  // `cmd`-keyed rule could see it.
+  it.each([
+    ['sudo -p (prompt)', ['-p', 'pw']],
+    ['sudo -h (host)', ['-h', 'host.example']],
+    ['sudo -r (role)', ['-r', 'sysadm_r']],
+    ['sudo -t (type)', ['-t', 'sysadm_t']],
+    ['sudo -D (chdir)', ['-D', '/srv']],
+    ['sudo -R (chroot)', ['-R', '/jail']],
+    ['sudo -T (command-timeout)', ['-T', '30']],
+    ['sudo -U (other-user)', ['-U', 'bob']],
+  ])('unwraps through %s to the command it runs', (_name, flagAndValue) => {
+    expect(unwrapArgvLaunchers('sudo', [...flagAndValue, 'rm', '-rf', './build'])).toEqual({
+      cmd: 'rm',
+      args: ['-rf', './build'],
+    });
+  });
+
+  // Control pair: every value-taking spelling must classify exactly like the
+  // canonical form, and a NO-VALUE sudo flag (-n) is pinned too so a future
+  // widening cannot start swallowing the command for those.
+  it.each([
+    ['canonical', []],
+    ['-p', ['-p', 'pw']],
+    ['-h', ['-h', 'host.example']],
+    ['-r', ['-r', 'sysadm_r']],
+    ['-t', ['-t', 'sysadm_t']],
+    ['-D', ['-D', '/srv']],
+    ['-R', ['-R', '/jail']],
+    ['-T', ['-T', '30']],
+    ['-U', ['-U', 'bob']],
+    ['-n (no value)', ['-n']],
+  ])('sees the destructive command behind sudo %s', (_name, flagAndValue) => {
+    expect(detectDanger('sudo', [...flagAndValue, 'rm', '-rf', './build']).level).toBe(
+      'destructive',
+    );
+  });
+
+  it.each([
+    ['separated', ['-S', 'rm -rf ./build']],
+    ['glued short', ['-Srm -rf ./build']],
+    ['long with equals', ['--split-string=rm -rf ./build']],
+    ['after another env flag', ['-i', '-S', 'rm -rf ./build']],
+  ])('unwraps env %s split-string to the command it runs', (_name, args) => {
+    expect(unwrapArgvLaunchers('env', args)).toEqual({ cmd: 'rm', args: ['-rf', './build'] });
+  });
+
+  it.each([
+    ['separated', ['-S', 'rm -rf ./build']],
+    ['glued short', ['-Srm -rf ./build']],
+    ['long with equals', ['--split-string=rm -rf ./build']],
+  ])('sees the destructive command behind env %s split-string', (_name, args) => {
+    expect(detectDanger('env', args).level).toBe('destructive');
+  });
+
+  it.each([
+    ['env -S with a benign command', 'env', ['-S', 'pnpm build'], 'safe'],
+    ['env -i with a benign command', 'env', ['-i', 'pnpm', 'build'], 'safe'],
+    ['sudo -p with a benign command', 'sudo', ['-p', 'pw', 'pnpm', 'build'], 'caution'],
+  ])('keeps %s at its canonical level', (_name, cmd, args, expected) => {
+    expect(detectDanger(cmd, args).level).toBe(expected);
+  });
+
+  // doas(1) is short-option-only and takes a value for -a (authentication
+  // style), -C (config file) and -u (user). Modelling only -u/-C made
+  // `doas -a pass rm -rf ./build` unwrap to cmd `pass`, hiding the delete; -n,
+  // -s and -L take no value, so they must keep unwrapping — a token skipped for
+  // one of those would swallow the command itself.
+  it.each([
+    ['doas -a (authentication style)', ['-a', 'pass']],
+    ['doas -C (config file)', ['-C', '/etc/doas.conf']],
+    ['doas -u (user)', ['-u', 'root']],
+  ])('unwraps through %s to the command it runs', (_name, flagAndValue) => {
+    expect(unwrapArgvLaunchers('doas', [...flagAndValue, 'rm', '-rf', './build'])).toEqual({
+      cmd: 'rm',
+      args: ['-rf', './build'],
+    });
+  });
+
+  // Control pair: every value-taking spelling classifies exactly like the
+  // canonical form, and the no-value flags keep unwrapping.
+  it.each([
+    ['canonical', []],
+    ['-a', ['-a', 'pass']],
+    ['-C', ['-C', '/etc/doas.conf']],
+    ['-u', ['-u', 'root']],
+    ['-n (no value)', ['-n']],
+    ['-s (no value)', ['-s']],
+    ['-L (no value)', ['-L']],
+  ])('sees the destructive command behind doas %s', (_name, flagAndValue) => {
+    expect(detectDanger('doas', [...flagAndValue, 'rm', '-rf', './build']).level).toBe(
+      'destructive',
+    );
+  });
+
+  it('keeps a doas -a invocation with a benign command at its canonical caution', () => {
+    expect(detectDanger('doas', ['-a', 'pass', 'pnpm', 'build']).level).toBe('caution');
   });
 
   // Unwrapping must not invent danger: a launcher in front of ordinary work
@@ -66,6 +181,7 @@ describe('transparent launchers do not hide the real command', () => {
     ['nohup', ['pnpm', 'build']],
     ['nice', ['-n', '10', 'pnpm', 'test']],
     ['timeout', ['60', 'vitest', 'run']],
+    ['timeout', ['1e3', 'vitest', 'run']],
     ['nohup', []],
     ['env', ['-i']],
   ])('stays safe for %s %j', (cmd, args) => {
@@ -85,6 +201,80 @@ describe('transparent launchers do not hide the real command', () => {
 
   it('leaves a non-launcher argv untouched', () => {
     expect(unwrapArgvLaunchers('pnpm', ['build'])).toEqual({ cmd: 'pnpm', args: ['build'] });
+  });
+});
+
+// Probe-verified gap (2026-09-22): a real invocation ships an interpreter's
+// payload as ONE argv string. Every rule matches its flags per-ARG and anchored,
+// so nothing inside that string matched and the assessment came back `safe` —
+// while the artificially pre-split spelling the tests above used WAS flagged.
+// That split shape is not what `exec` receives: a model writing
+// `powershell -Command "Remove-Item -Recurse -Force C:\Users\x"` produces
+// `['-Command', 'Remove-Item -Recurse -Force C:\\Users\\x']`.
+//
+// Scope, honestly: the core-side permission gate joins cmd+args into a shell
+// line and classified these correctly, so the confirmation still happened — the
+// banner that explains WHY did not.
+describe('an inline interpreter payload is read as the command it is', () => {
+  it.each([
+    ['powershell', ['-Command', 'Remove-Item -Recurse -Force C:\\Users\\victim\\Documents']],
+    ['pwsh', ['-Command', 'Remove-Item -Recurse -Force ./build']],
+    ['powershell', ['-c', 'Remove-Item -Recurse -Force ./build']],
+    ['powershell.exe', ['-Command', 'Remove-Item -Recurse -Force ./build']],
+    ['pwsh', ['-command', 'remove-item -recurse -force ./build']],
+  ])('%s %j → destructive', (cmd, args) => {
+    expect(detectDanger(cmd, args).level).toBe('destructive');
+  });
+
+  it('reads a POSIX delete out of a bash -c payload', () => {
+    const r = detectDanger('bash', ['-c', 'rm -rf /']);
+    expect(r.level).toBe('destructive');
+    expect(r.reasons).toContain('recursive force-delete');
+  });
+
+  it.each([
+    ['bash', ['-c', 'git push --force origin main'], 'git-push-force'],
+    ['sh', ['-c', 'git clean -xdf'], 'git-clean-force'],
+    ['bash', ['-c', 'npm publish'], 'npm-publish'],
+    ['bash', ['-c', 'kubectl delete namespace prod'], 'kubectl-delete-namespace'],
+  ])('%s %j exposes rule %s', (cmd, args, rule) => {
+    const r = detectDanger(cmd, args);
+    expect(r.level).toBe('destructive');
+    expect(r.reasons.length).toBeGreaterThan(0);
+    expect(r.matchedRule === rule || r.reasons.length > 1).toBe(true);
+  });
+
+  // The payload's HEAD is the command, so a dangerous-looking string that is
+  // merely an argument to something harmless must not be promoted.
+  it.each([
+    ['bash', ['-c', 'echo rm -rf /']],
+    ['bash', ['-c', 'grep -r "rm -rf" src/']],
+    ['bash', ['-c', 'echo "git push --force"']],
+  ])('%s %j stays at caution (payload head is harmless)', (cmd, args) => {
+    // `caution`, not `safe`, because the interpreter's own `inline-eval` rule
+    // still fires — the payload just adds nothing above it.
+    expect(detectDanger(cmd, args).level).toBe('caution');
+  });
+
+  // `inline-eval` deliberately lists only POSIX shells and script interpreters,
+  // not `powershell`/`pwsh`, so a harmless PowerShell payload has no rule to
+  // fire at all. Pinned so the difference is a known asymmetry rather than a
+  // surprise: reading the payload must not invent danger where its head is inert.
+  it('leaves a harmless PowerShell payload at safe', () => {
+    expect(
+      detectDanger('powershell', ['-Command', 'Write-Output "Remove-Item -Recurse -Force"']).level,
+    ).toBe('safe');
+  });
+
+  // A bare single-token payload is already visible to every rule, and the
+  // interpreter's own `inline-eval` caution still applies.
+  it('keeps the interpreter rule firing alongside the payload rule', () => {
+    const r = detectDanger('bash', ['-c', 'rm -rf /']);
+    expect(r.reasons).toContain('inline script evaluation (-c / -e / --eval)');
+  });
+
+  it('does not treat a non-interpreter -c flag as a payload', () => {
+    expect(detectDanger('gcc', ['-c', 'rm -rf /']).level).toBe('safe');
   });
 });
 

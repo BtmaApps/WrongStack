@@ -157,6 +157,32 @@ describe('isClearlyDestructiveBashCommand — state-root write detection', () =>
     );
   });
 
+  // 7-Zip has no long directory option: its output directory is
+  // `-o{Directory}` — GLUED, never space-separated. Omitting that letter from
+  // the recognizer left 7z's only spelling ungated, so
+  // `7z x a.7z -o~/.wrongstack` unpacked `config.json` / a plugin closure
+  // straight into the trust anchor while the equivalent tar/unzip forms were
+  // classified 'agent-state'. Control pair: the in-project output directory
+  // must stay frictionless.
+  describe('7z -o{Directory} into the state root is destructive', () => {
+    it.each([
+      [`7z x a.7z -o${stateRoot}`],
+      [`7z x -o${stateRoot} a.7z`],
+      [`7z e a.7z -o${stateRoot}`],
+      [`7z x a.7z -o${path.join(stateRoot, 'plugins')}`],
+      ['7z x a.7z -o~/.wrongstack'],
+    ])('%j → destructive=true', (cmd) => {
+      expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(true);
+    });
+
+    it.each([['7z x a.7z -o./dist'], ['7z x a.7z'], ['7z x a.7z -o/tmp/unpack']])(
+      '%j → destructive=false',
+      (cmd) => {
+        expect(isClearlyDestructiveBashCommand(cmd, ROOT)).toBe(false);
+      },
+    );
+  });
+
   describe('non-state-root paths are NOT flagged by this detector', () => {
     it.each([
       ['echo "x" > src/output.txt'],

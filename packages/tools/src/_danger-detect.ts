@@ -240,7 +240,11 @@ const RULES: readonly DangerRule[] = [
   {
     id: 'mkfs',
     level: 'destructive',
-    test: (cmd) => /^mkfs(\.[a-z0-9]+)?$/.test(cmd) || cmd === 'mkswap',
+    // Case-insensitive like every sibling rule: an argv reaching this module is
+    // whatever the model wrote, and on a case-insensitive filesystem `MKFS.EXT4`
+    // runs the same binary. Case-sensitive matching here made the one spelling
+    // difference the whole classification (probe-verified 2026-09-22).
+    test: (cmd) => /^mkfs(\.[a-z0-9]+)?$/i.test(cmd) || /^mkswap$/i.test(cmd),
     reason: 'mkfs (filesystem creation — destroys existing data)',
   },
   // ----- dd writing to a block device -----
@@ -361,8 +365,35 @@ const RULES: readonly DangerRule[] = [
       // For cargo: subcommand is "publish" OR "yank" (both touch the
       // public registry; yank is reversible, publish is not, but yank
       // is rare enough we treat it the same).
-      // Find the first positional subcommand (skip option flags).
-      const firstPositional = args.find((a) => !a.startsWith('-'));
+      // Find the first positional subcommand (skip option flags — and the VALUE
+      // of a flag that takes one: npm accepts its global options before the
+      // subcommand, so `npm --access public publish` put `public` in the
+      // subcommand slot and the same publish classified as safe
+      // (probe-verified 2026-09-22).
+      const VALUE_FLAGS = new Set([
+        '--access',
+        '--tag',
+        '--otp',
+        '--registry',
+        '--workspace',
+        '-w',
+        '--userconfig',
+        '--prefix',
+        '--cache',
+        '--loglevel',
+        '--index',
+        '--token',
+      ]);
+      let firstPositional: string | undefined;
+      for (let i = 0; i < args.length; i += 1) {
+        const a = args[i] ?? '';
+        if (a.startsWith('-')) {
+          if (VALUE_FLAGS.has(a) && !a.includes('=')) i += 1;
+          continue;
+        }
+        firstPositional = a;
+        break;
+      }
       if (!firstPositional) return false;
       if (cmd === 'cargo') {
         return firstPositional === 'publish' || firstPositional === 'yank';
@@ -381,8 +412,46 @@ const RULES: readonly DangerRule[] = [
       if (delIdx < 0) return false;
       // Match `kubectl delete namespace <name>` or `kubectl delete ns <name>`.
       // Generic `kubectl delete pod foo` is left out — too common.
+      //
+      // The resource is the first POSITIONAL after `delete`, not literally the
+      // next token: kubectl accepts its flags anywhere, so
+      // `kubectl delete -n x namespace y` put `-n` in that slot and the rule
+      // declined the same cluster-wide delete it flags in canonical order. It
+      // also accepts the plural resource name (`namespaces`), which is the
+      // spelling `kubectl api-resources` prints (probe-verified 2026-09-22).
+      // A flag's VALUE is not a positional: without skipping it, `-n x` put `x`
+      // in the resource slot. Only the value-taking flags are skipped, so a
+      // boolean flag (`--force`) does not swallow the resource that follows it.
+      const KUBECTL_VALUE_FLAGS = new Set([
+        '-n',
+        '--namespace',
+        '-f',
+        '--filename',
+        '-l',
+        '--selector',
+        '-o',
+        '--output',
+        '--context',
+        '--cluster',
+        '--user',
+        '--kubeconfig',
+        '--grace-period',
+        '--timeout',
+        '-k',
+        '--kustomize',
+      ]);
       const after = args.slice(delIdx + 1);
-      return after[0] === 'namespace' || after[0] === 'ns';
+      let resource: string | undefined;
+      for (let i = 0; i < after.length; i += 1) {
+        const a = after[i] ?? '';
+        if (a.startsWith('-')) {
+          if (KUBECTL_VALUE_FLAGS.has(a) && !a.includes('=')) i += 1;
+          continue;
+        }
+        resource = a;
+        break;
+      }
+      return resource === 'namespace' || resource === 'namespaces' || resource === 'ns';
     },
     reason: 'kubectl delete namespace (deletes all resources in the namespace)',
   },
@@ -583,25 +652,49 @@ const RULES: readonly DangerRule[] = [
  * own before the command (`timeout 5 rm …`).
  */
 /**
- * GNU coreutils `timeout` DURATION: "a floating point number with an optional
- * suffix" ('s' seconds, 'm' minutes, 'h' hours, 'd' days).
+ * GNU coreutils `timeout` DURATION.
  *
- * Matching only the integer spelling mis-parsed every decimal form, and a
+ * The `timeout` manual defines it as "a floating point number in either the
+ * current or the C locale (see Floating point numbers) followed by an optional
+ * unit" ('s' seconds, 'm' minutes, 'h' hours, 'd' days) — and the manual's
+ * `Floating point` node states those numbers are parsed with `strtod`/`strtold`
+ * and "therefore can use scientific notation like 1.0e-34 and -10e100", plus
+ * hexadecimal floating point such as `-0x.ep-3`. So `1e3`, `2E4` and `0x1p3`
+ * are all valid durations, not exotic typos.
+ *
+ * Matching only the integer spelling mis-parsed every other form, and a
  * mis-parsed operand does not merely fail to unwrap — it is taken FOR the
  * command, so the wrapped command disappears from the cmd-keyed rules.
  */
-const TIMEOUT_DURATION = /^(?:\d+(?:\.\d*)?|\.\d+)[smhd]?$/;
+const TIMEOUT_DURATION =
+  /^(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|0[xX][0-9a-fA-F]*(?:\.[0-9a-fA-F]*)?[pP][-+]?\d+)[smhd]?$/;
 
 const ARGV_LAUNCHERS: ReadonlyMap<
   string,
-  { valueFlags: ReadonlySet<string>; numericOperand: boolean }
+  {
+    valueFlags: ReadonlySet<string>;
+    numericOperand: boolean;
+    /**
+     * Flags whose VALUE is itself a command line the launcher splits and runs
+     * (`env -S "cmd args"`). Left out, those words stay invisible to every
+     * `cmd`-keyed rule and the launcher itself is classified instead.
+     */
+    splitStringFlags?: ReadonlySet<string> | undefined;
+  }
 > = new Map([
   ['nohup', { valueFlags: new Set<string>(), numericOperand: false }],
   ['setsid', { valueFlags: new Set<string>(), numericOperand: false }],
   ['unbuffer', { valueFlags: new Set<string>(), numericOperand: false }],
   ['command', { valueFlags: new Set<string>(), numericOperand: false }],
   ['exec', { valueFlags: new Set(['-a']), numericOperand: false }],
-  ['env', { valueFlags: new Set(['-u', '-C', '--unset', '--chdir']), numericOperand: false }],
+  [
+    'env',
+    {
+      valueFlags: new Set(['-u', '-C', '--unset', '--chdir']),
+      numericOperand: false,
+      splitStringFlags: new Set(['-S', '--split-string']),
+    },
+  ],
   ['nice', { valueFlags: new Set(['-n', '--adjustment']), numericOperand: false }],
   ['ionice', { valueFlags: new Set(['-c', '-n', '-p']), numericOperand: false }],
   ['stdbuf', { valueFlags: new Set(['-i', '-o', '-e']), numericOperand: false }],
@@ -609,9 +702,104 @@ const ARGV_LAUNCHERS: ReadonlyMap<
     'timeout',
     { valueFlags: new Set(['-s', '-k', '--signal', '--kill-after']), numericOperand: true },
   ],
-  ['sudo', { valueFlags: new Set(['-u', '-g', '-C', '--user', '--group']), numericOperand: false }],
-  ['doas', { valueFlags: new Set(['-u', '-C']), numericOperand: false }],
+  [
+    'sudo',
+    {
+      // sudo(8)'s value-taking options: user, group, close-from, prompt (the
+      // -p prompt is the one a wrapper sets), host, role, type, chdir, chroot,
+      // command-timeout, other-user. Every one is documented as taking a value,
+      // so that value must never be mistaken for the command being run —
+      // `sudo -p pw rm -rf x` read the prompt as the command and reported
+      // 'caution' (the bare-`sudo` rule) instead of 'destructive'.
+      //
+      // Options with NO value are deliberately absent (-n, -b, -E, -H, -k, -A,
+      // -S, -v): skipping a token for one of those would swallow the command
+      // itself, which is strictly worse than leaving its name visible.
+      valueFlags: new Set([
+        '-u',
+        '-g',
+        '-C',
+        '-p',
+        '-h',
+        '-r',
+        '-t',
+        '-D',
+        '-R',
+        '-T',
+        '-U',
+        '--user',
+        '--group',
+        '--close-from',
+        '--prompt',
+        '--host',
+        '--role',
+        '--type',
+        '--chdir',
+        '--chroot',
+        '--command-timeout',
+        '--other-user',
+      ]),
+      numericOperand: false,
+    },
+  ],
+  [
+    'doas',
+    {
+      // doas(1) (man.openbsd.org) is short-option-only. Its VALUE-taking options
+      // are -a (authentication style), -C (config file) and -u (user); -n, -s and
+      // -L take none, so they stay out of this list for the same reason sudo's
+      // no-value options do — skipping a token for one would swallow the command
+      // itself, which is strictly worse than leaving its name visible.
+      valueFlags: new Set(['-u', '-C', '-a']),
+      numericOperand: false,
+    },
+  ],
 ]);
+
+/**
+ * Words a launcher's split-string flag expands to, or undefined when the
+ * leading flag prefix carries none.
+ *
+ * `env -S "<command line>"` passes a WHOLE command line as one argv token and
+ * env splits it before exec'ing the words, so the generic scan inside
+ * `unwrapArgvLaunchers` would stop at the flag and keep reporting `env` itself —
+ * everything the launcher actually runs stays invisible. Every documented
+ * spelling is expanded: `-S <cmd>`, `-S<cmd>`, `--split-string <cmd>` and
+ * `--split-string=<cmd>`. Only the LEADING flag prefix is searched: a `-S` that
+ * appears after the command name belongs to that command, not to the launcher.
+ */
+function expandSplitStringWords(
+  args: readonly string[],
+  splitFlags: ReadonlySet<string>,
+  valueFlags: ReadonlySet<string>,
+): string[] | undefined {
+  for (let i = 0; i < args.length; i += 1) {
+    const token = args[i] ?? '';
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) continue; // VAR=value
+    if (token === '--') break;
+    if (!token.startsWith('-') || token === '-') break; // the command itself
+    const eq = token.indexOf('=');
+    const name = eq === -1 ? token : token.slice(0, eq);
+    // `-Svalue`: GNU getopt lets a short option's value ride the same token, so
+    // `env -S'rm -rf x'` arrives as a single argv entry.
+    const glued = [...splitFlags].find(
+      (flag) => flag.length === 2 && token.length > flag.length && token.startsWith(flag),
+    );
+    if (splitFlags.has(name) || glued !== undefined) {
+      let inline: string | undefined;
+      if (glued !== undefined) inline = token.slice(glued.length);
+      else if (eq !== -1) inline = token.slice(eq + 1);
+      const value = inline ?? args[i + 1];
+      if (value === undefined) return undefined;
+      const words = value.split(/\s+/).filter((word) => word.length > 0);
+      if (words.length === 0) return undefined;
+      // The separated spellings consume the value token as well.
+      return [...words, ...args.slice(i + (inline === undefined ? 2 : 1))];
+    }
+    if (valueFlags.has(name) && eq === -1) i += 1;
+  }
+  return undefined;
+}
 
 /**
  * Peel transparent launchers off an argv pair so the rules see the real
@@ -631,6 +819,18 @@ export function unwrapArgvLaunchers(
       .replace(/\.(?:exe|cmd|bat|com)$/, '');
     const spec = ARGV_LAUNCHERS.get(base);
     if (!spec) break;
+    // A flag whose VALUE is itself a command line (`env -S "rm -rf x"`): env
+    // splits it and runs the words, so expand it before the generic scan.
+    if (spec.splitStringFlags !== undefined) {
+      const words = expandSplitStringWords(currentArgs, spec.splitStringFlags, spec.valueFlags);
+      if (words !== undefined) {
+        const command = words[0];
+        if (command === undefined) break;
+        currentCmd = command;
+        currentArgs = words.slice(1);
+        continue;
+      }
+    }
     let i = 0;
     while (i < currentArgs.length) {
       const token = currentArgs[i] ?? '';
@@ -663,6 +863,83 @@ export function unwrapArgvLaunchers(
   return { cmd: currentCmd, args: currentArgs };
 }
 
+/** Interpreters whose `-c` / `-e` / `-Command` operand is a command LINE. */
+const INLINE_PAYLOAD_FLAGS = new Set([
+  '-c',
+  '-e',
+  '-E',
+  '--eval',
+  '-eval',
+  '-command',
+  '--command',
+  '-commandwithargs',
+]);
+
+const INLINE_PAYLOAD_HOSTS = new Set([
+  'bash',
+  'sh',
+  'zsh',
+  'ksh',
+  'fish',
+  'pwsh',
+  'powershell',
+  'node',
+  'python',
+  'python2',
+  'python3',
+  'perl',
+  'ruby',
+]);
+
+/** Split a command line into argv, keeping a quoted run as one token. */
+function splitPayload(payload: string): string[] {
+  return (
+    payload
+      .match(/"[^"]*"|'[^']*'|\S+/g)
+      ?.map((token) => token.replace(/^(['"])([\s\S]*)\1$/, '$2')) ?? []
+  );
+}
+
+/**
+ * The (cmd, args) pair hiding inside an inline interpreter payload.
+ *
+ * A real invocation ships the payload as ONE argv string —
+ * `powershell -Command "Remove-Item -Recurse -Force C:\Users\x"` arrives as
+ * `['-Command', 'Remove-Item -Recurse -Force C:\Users\x']`. Every rule here
+ * matches its flags per-ARG and anchored, so nothing in that single string
+ * matched and the assessment came back `safe` (probe-verified 2026-09-22) — while
+ * the artificially pre-split spelling the tests used was flagged. The core-side
+ * permission gate joins cmd+args into a line and classified these correctly, so
+ * the confirmation still happened; the banner that explains WHY did not.
+ *
+ * Returned as an extra pair rather than by rewriting the input, reusing the same
+ * mechanism the launcher unwrapping already uses — so a rule keyed on the
+ * interpreter itself (`inline-eval`, `pipe-to-shell`) keeps firing too.
+ */
+function inlinePayloadPair(
+  cmd: string,
+  args: readonly string[],
+): { cmd: string; args: readonly string[] } | undefined {
+  const base = cmd
+    .toLowerCase()
+    .replace(/^.*[\\/]/, '')
+    .replace(/\.(?:exe|cmd|bat|com)$/, '');
+  if (!INLINE_PAYLOAD_HOSTS.has(base)) return undefined;
+  for (let i = 0; i < args.length; i += 1) {
+    const flag = args[i]?.toLowerCase();
+    if (flag === undefined || !INLINE_PAYLOAD_FLAGS.has(flag)) continue;
+    const payload = args[i + 1];
+    // Only a payload that actually looks like a command LINE is worth
+    // re-reading: a single bare token is already visible to every rule.
+    if (payload === undefined || !/\s/.test(payload.trim())) return undefined;
+    const tokens = splitPayload(payload);
+    const head = tokens[0];
+    if (head === undefined) return undefined;
+    return { cmd: head, args: tokens.slice(1) };
+  }
+  return undefined;
+}
+
 export function detectDanger(
   cmd: string,
   args: readonly string[],
@@ -680,6 +957,14 @@ export function detectDanger(
   const unwrapped = unwrapArgvLaunchers(cmd, safeArgs);
   const pairs: Array<{ cmd: string; args: readonly string[] }> =
     unwrapped.cmd === cmd ? [{ cmd, args: safeArgs }] : [{ cmd, args: safeArgs }, unwrapped];
+
+  // …and against the command LINE an interpreter was handed inline. A real
+  // `powershell -Command "Remove-Item -Recurse -Force x"` arrives with the whole
+  // payload as ONE argv string, which no per-arg anchored flag test can see.
+  for (const pair of [...pairs]) {
+    const inline = inlinePayloadPair(pair.cmd, pair.args);
+    if (inline) pairs.push(inline);
+  }
 
   for (const rule of RULES) {
     if (bypass?.has(rule.id)) continue;
