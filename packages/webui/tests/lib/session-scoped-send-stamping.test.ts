@@ -131,9 +131,10 @@ describe('session-scoped requests name the tab that sent them', () => {
     ]) {
       expect([...scoped], `${type} must be declared session-scoped`).toContain(type);
     }
-    expect([...scoped], 'project-wide goal.get must not inherit the next goal-state payload').not.toContain(
-      'goal.get',
-    );
+    expect(
+      [...scoped],
+      'project-wide goal.get must not inherit the next goal-state payload',
+    ).not.toContain('goal.get');
   });
 
   it('sees the send sites it is meant to police', () => {
