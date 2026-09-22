@@ -25,7 +25,15 @@ export interface ResumeReservation {
 
 export interface MaintenanceLease {
   sessionId: string;
-  operation: 'delete' | 'prune' | 'clear' | 'truncate' | 'rewind' | 'repair' | 'archive' | 'rehydrate';
+  operation:
+    | 'delete'
+    | 'prune'
+    | 'clear'
+    | 'truncate'
+    | 'rewind'
+    | 'repair'
+    | 'archive'
+    | 'rehydrate';
   holderId: string;
   leaseId: string;
   expiresAt: number;

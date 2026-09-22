@@ -1,3 +1,4 @@
+import { validateDisplayAction } from './input-validation-display.js';
 /**
  * Central input validation for the TUI.
  *
@@ -51,12 +52,10 @@
  *   ONE place so the allowed set is auditable.
  */
 
-import { TUI_CHECKPOINTS_MAX_ENTRIES } from './checkpoint-retention.js';
 import { measureDepth, normalizeActionType } from './input-validation/action-helpers.js';
 import { ALLOWED_ACTION_TYPES } from './input-validation/action-types.js';
 import {
   ALLOWED_AUTONOMY_MODES,
-  ALLOWED_CAPABILITY_FIELDS,
   ALLOWED_ENTRY_KINDS,
   ALLOWED_FLEET_CHAT_MODES,
   ALLOWED_SEND_MODES,
@@ -74,8 +73,6 @@ import {
   MAX_PICKER_MATCHES,
 } from './input-validation/limits.js';
 import type { ValidationResult } from './input-validation/result.js';
-import { validateCoordinationAction } from './input-validation-coordination.js';
-import { MAX_TOOL_STREAM_RETAINED_CHARS } from './reducers/helpers.js';
 
 export { ALLOWED_ACTION_TYPES } from './input-validation/action-types.js';
 export {
@@ -447,162 +444,24 @@ export function validateAction(action: {
       }
       return { valid: true, value: payload };
     }
-
-    case 'setEffectiveMaxContext': {
-      const ctx = Number(action.value);
-      if (!Number.isInteger(ctx) || ctx < 0 || ctx > 10_000_000) {
-        return {
-          valid: false,
-          error: `setEffectiveMaxContext.value: ${action.value} out of range [0, 10_000_000].`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'setStreamingText': {
-      const text = String(action.text ?? '');
-      if (text.length > MAX_ENTRY_TEXT_CHARS) {
-        return {
-          valid: false,
-          error: `setStreamingText.text: exceeds ${MAX_ENTRY_TEXT_CHARS.toLocaleString()} chars.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'setToolStream': {
-      const text = String(action.text ?? '');
-      if (text.length > MAX_TOOL_STREAM_RETAINED_CHARS) {
-        return {
-          valid: false,
-          error: `setToolStream.text: exceeds ${MAX_TOOL_STREAM_RETAINED_CHARS.toLocaleString()} chars.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'setThinkingWord': {
-      const word = String(action.word ?? '');
-      if (word.length > 16) {
-        return { valid: false, error: `setThinkingWord.word: "${word}" exceeds 16 chars.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'setAnimationStyle': {
-      const style = String(action.style ?? '');
-      if (style.length > 50) {
-        return {
-          valid: false,
-          error: `setAnimationStyle.style: length ${style.length} exceeds 50.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'setCapability': {
-      const cap = action.capability;
-      if (!cap || typeof cap !== 'object') {
-        return { valid: false, error: 'setCapability.capability: missing or non-object.' };
-      }
-      // Verify known fields only
-      for (const k of Object.keys(cap as Record<string, unknown>)) {
-        if (!ALLOWED_CAPABILITY_FIELDS.has(k)) {
-          return { valid: false, error: `setCapability.capability.${k}: unknown field.` };
-        }
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Confirm panels ──────────────────────────────────────────────
+    case 'setEffectiveMaxContext':
+    case 'setStreamingText':
+    case 'setToolStream':
+    case 'setThinkingWord':
+    case 'setAnimationStyle':
+    case 'setCapability':
     case 'clearConfirmOpen':
     case 'exitConfirmOpen':
     case 'slashConfirmOpen':
     case 'escConfirmOpen':
     case 'enhanceConfirmOpen':
-    case 'fallbackOverlayOpen': {
-      const info = action.info;
-      if (!info || typeof info !== 'object') {
-        return { valid: false, error: `${type}.info: missing or non-object.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'inspectOverlayOpen': {
-      const entryId = Number(action.entryId);
-      if (!Number.isInteger(entryId)) {
-        return { valid: false, error: `${type}.entryId: not an integer.` };
-      }
-      const ids = action.entryIds;
-      if (ids !== undefined) {
-        if (!Array.isArray(ids) || ids.length > 64) {
-          return { valid: false, error: `${type}.entryIds: invalid list.` };
-        }
-        if (ids.some((id) => !Number.isInteger(id))) {
-          return { valid: false, error: `${type}.entryIds: every id must be an integer.` };
-        }
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'inspectOverlayScroll': {
-      const delta = Number(action.delta);
-      if (!Number.isInteger(delta) || delta < -10_000 || delta > 10_000) {
-        return { valid: false, error: `${type}.delta: not a bounded integer.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    case 'clearConfirmSetValue': {
-      const value = String(action.value ?? '');
-      if (value.length > 100) {
-        return { valid: false, error: `clearConfirmSetValue.value: exceeds 100 chars.` };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Checkpoints ─────────────────────────────────────────────────
-    case 'checkpointReceived': {
-      const cp = action.cp;
-      if (!cp || typeof cp !== 'object') {
-        return { valid: false, error: 'checkpointReceived.cp: missing or non-object.' };
-      }
-      const promptIndex = Number((cp as Record<string, unknown>).promptIndex);
-      if (!Number.isInteger(promptIndex) || promptIndex < 0) {
-        return {
-          valid: false,
-          error: `checkpointReceived.cp.promptIndex: ${promptIndex} is not a non-negative integer.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Rewind ──────────────────────────────────────────────────────
-    case 'rewindOverlayOpen': {
-      const checkpoints = action.checkpoints;
-      if (!Array.isArray(checkpoints)) {
-        return { valid: false, error: 'rewindOverlayOpen.checkpoints: not an array.' };
-      }
-      if (checkpoints.length > TUI_CHECKPOINTS_MAX_ENTRIES) {
-        return {
-          valid: false,
-          error: `rewindOverlayOpen.checkpoints: ${checkpoints.length} exceeds max ${TUI_CHECKPOINTS_MAX_ENTRIES}.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Steering ────────────────────────────────────────────────────
-    case 'setSteering': {
-      const text = String(action.text ?? '');
-      if (text.length > MAX_INPUT_BUFFER_CHARS) {
-        return {
-          valid: false,
-          error: `setSteering.text: exceeds ${MAX_INPUT_BUFFER_CHARS.toLocaleString()} chars.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
+    case 'fallbackOverlayOpen':
+    case 'inspectOverlayOpen':
+    case 'inspectOverlayScroll':
+    case 'clearConfirmSetValue':
+    case 'checkpointReceived':
+    case 'rewindOverlayOpen':
+    case 'setSteering':
     case 'goalRunInit':
     case 'goalRunPhaseUpdate':
     case 'goalRunRunningPhases':
@@ -616,45 +475,9 @@ export function validateAction(action: {
     case 'collabBugFound':
     case 'collabSessionDone':
     case 'collabSubagentSpawned':
-      return validateCoordinationAction(action, payload);
-
-    // ── Debug stream ────────────────────────────────────────────────
-    case 'debugStreamStats': {
-      const chunkCount = Number(action.chunkCount);
-      if (!Number.isInteger(chunkCount) || chunkCount < 0) {
-        return {
-          valid: false,
-          error: `debugStreamStats.chunkCount: ${chunkCount} is not a non-negative integer.`,
-        };
-      }
-      const lastChunkSize = Number(action.lastChunkSize);
-      if (!Number.isInteger(lastChunkSize) || lastChunkSize < 0) {
-        return {
-          valid: false,
-          error: `debugStreamStats.lastChunkSize: ${lastChunkSize} is not a non-negative integer.`,
-        };
-      }
-      const totalBytes = Number(action.totalBytes);
-      if (!Number.isInteger(totalBytes) || totalBytes < 0) {
-        return {
-          valid: false,
-          error: `debugStreamStats.totalBytes: ${totalBytes} is not a non-negative integer.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
-
-    // ── Countdown ───────────────────────────────────────────────────
-    case 'countdownTick': {
-      const remaining = Number(action.remainingSeconds);
-      if (!Number.isFinite(remaining) || remaining < 0) {
-        return {
-          valid: false,
-          error: `countdownTick.remainingSeconds: ${remaining} is not a non-negative number.`,
-        };
-      }
-      return { valid: true, value: payload };
-    }
+    case 'debugStreamStats':
+    case 'countdownTick':
+      return validateDisplayAction(action, type, normalized, payload);
 
     // ── Coordinator ─────────────────────────────────────────────────
     case 'coordinatorEvent': {

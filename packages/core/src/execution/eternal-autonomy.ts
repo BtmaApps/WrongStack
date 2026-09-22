@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { TodoItem } from '../core/context.js';
 import { coordinateGoalIteration } from '../storage/goal-coordination.js';
 import {
@@ -15,8 +13,14 @@ import {
 import { toErrorMessage } from '../utils/error.js';
 import { sleep } from '../utils/sleep.js';
 import { formatDecisionSummary } from './autonomy-brain.js';
-
-const execFileP = promisify(execFile);
+import {
+  brainstormTask as delegateBrainstormTask,
+  buildDirective as delegateBuildDirective,
+  pickGitTask as delegatePickGitTask,
+  readGitStatus as delegateReadGitStatus,
+  type EternalAutonomyDirectivesHost,
+} from './eternal-autonomy-directives.js';
+import { BRAINSTORM_DONE } from './eternal-autonomy-directives-types.js';
 
 /**
  * Sense-decide-execute-reflect loop on top of a long-running Goal.
@@ -52,14 +56,6 @@ interface DecidedAction {
   /** Set when source === 'todo' so the engine can attribute failures. */
   todoId?: string | undefined;
 }
-
-/**
- * Sentinel returned by `brainstormTask` when the LLM declares the goal
- * fully accomplished. Distinct from `null` (which means "brainstorm
- * failed / no actionable task right now") so the engine can count
- * consecutive DONE answers toward a real stop.
- */
-const BRAINSTORM_DONE = Symbol('brainstorm-done');
 
 /**
  * Free-text marker the model can emit (on its own line) to declare the
@@ -619,141 +615,19 @@ export class EternalAutonomyEngine {
   }
 
   private async pickGitTask(): Promise<string | null> {
-    let out: string;
-    try {
-      out = await (this.opts.gitStatusReader?.() ?? this.readGitStatus());
-    } catch {
-      return null;
-    }
-    const dirty = out.trim();
-    if (!dirty) return null;
-    // Surface a concise prompt — the agent will look at the diff itself.
-    const lines = dirty.split('\n').slice(0, 8);
-    const preview = lines.join(', ');
-    return `Inspect the dirty working tree and either finish the in-progress work or revert it. Files: ${preview}`;
+    return delegatePickGitTask(this.eternalAutonomyDirectivesHost());
   }
 
   private async readGitStatus(): Promise<string> {
-    const { stdout } = await execFileP('git', ['status', '--porcelain'], {
-      cwd: this.opts.projectRoot,
-      timeout: 5_000,
-    });
-    return stdout;
+    return delegateReadGitStatus(this.eternalAutonomyDirectivesHost());
   }
 
   private async brainstormTask(goal: GoalFile): Promise<string | null | typeof BRAINSTORM_DONE> {
-    const lastFew = goal.journal
-      .slice(-5)
-      .map((e) => `  - [${e.status}] ${e.task}`)
-      .join('\n');
-    const directive = [
-      'You are deciding the next action in an autonomous loop pursuing a long-running goal.',
-      '',
-      `Goal: ${goal.goal}`,
-      '',
-      lastFew ? `Recent iterations:\n${lastFew}` : 'No prior iterations yet.',
-      '',
-      'Output ONE concrete, immediately-actionable task that advances the goal.',
-      'Constraints:',
-      '- One sentence, imperative form, under 200 chars.',
-      '- No preamble, no explanation, no markdown — just the task line.',
-      '- If recent iterations show repeated failures on the same target, pivot.',
-      '- If the goal appears fully accomplished AND you can name a concrete',
-      '  artifact / test / output that proves it, output exactly: DONE',
-      '- Be conservative with DONE: if the recent journal contains failures',
-      '  or aborted entries, the goal is almost certainly NOT done.',
-    ].join('\n');
-
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 60_000);
-      try {
-        const result = await this.opts.agent.run([{ type: 'text' as const, text: directive }], {
-          signal: ctrl.signal,
-          maxIterations: 1,
-        });
-        if (result.status !== 'done') return null;
-        const text = (result.finalText ?? '').trim();
-        if (!text) return null;
-        // Distinct sentinel for DONE so the caller can count consecutive
-        // DONE answers toward a real stop. The old `return null` path
-        // conflated "no work" with "engine failure" and looped forever.
-        if (/^DONE\.?$/i.test(text)) return BRAINSTORM_DONE;
-        // Take the first non-empty line and clip to 240 chars.
-        const firstLine = text
-          .split('\n')
-          .find((l) => l.trim().length > 0)
-          ?.trim();
-        if (!firstLine) return null;
-        if (/^DONE\.?$/i.test(firstLine)) return BRAINSTORM_DONE;
-        return firstLine.slice(0, 240);
-      } finally {
-        clearTimeout(timer);
-      }
-    } catch (err) {
-      this.logError('Brainstorm failed', {
-        event: 'autonomy.brainstorm_failed',
-        message: toErrorMessage(err),
-        context: { goal: goal.goal.slice(0, 100) },
-      });
-      return null;
-    }
+    return delegateBrainstormTask(this.eternalAutonomyDirectivesHost(), goal);
   }
 
   private buildDirective(goal: GoalFile, source: JournalEntry['source'], task: string): string {
-    const recentJournal = goal.journal
-      .slice(-5)
-      .map(
-        (e) =>
-          `  #${e.iteration} [${e.status}] ${e.task}${e.note ? ` — ${e.note.slice(0, 80)}` : ''}`,
-      )
-      .join('\n');
-    return [
-      '═══ ETERNAL AUTONOMY — iteration directive ═══',
-      '',
-      `Mission: ${goal.goal}`,
-      `Iteration: #${goal.iterations + 1}`,
-      `Source: ${source}`,
-      `Task: ${task}`,
-      '',
-      recentJournal ? `Recent journal (last 5):\n${recentJournal}` : 'No prior iterations.',
-      '',
-      '── EXECUTION PROTOCOL ──',
-      'You are inside a long-running autonomous loop. Each iteration you',
-      'execute ONE concrete task that advances the Mission. No user is',
-      'available to clarify — make defensible decisions and move forward.',
-      '',
-      '1. EXECUTE END-TO-END',
-      '   • Use multiple tool calls freely. Emit `[continue]` on its own line',
-      '     to chain to the next internal step without returning.',
-      "   • When this iteration's Task is finished (real artifact / passing",
-      '     test / applied diff / clean output), emit `[done]` on its own line.',
-      '   • Do not stop on the first obstacle — try at least 3 distinct',
-      '     approaches before giving up. YOLO is active unless an explicit',
-      '     deny rule blocks the call.',
-      '',
-      '2. UPDATE TODO STATE (when Source is `todo`)',
-      '   • Mark this todo `in_progress` via the todos tool before tool work.',
-      '   • Mark it `completed` on success, with a one-line outcome note.',
-      '   • If you cannot make progress after 2 distinct attempts, mark it',
-      '     `cancelled` with the obstacle. The loop will skip it next time.',
-      '',
-      '3. MISSION-COMPLETE PROTOCOL',
-      '   • If — and ONLY if — the OVERALL Mission (not just this Task) is',
-      '     verifiably accomplished, emit on its own line:',
-      '         [GOAL_COMPLETE]',
-      '     followed by a one-paragraph verification recipe (artifact path,',
-      '     test command, or 10-second reproduction). This halts the loop.',
-      '   • NEVER emit [GOAL_COMPLETE] on optimism, partial progress, or',
-      '     "looks fine". Required: a concrete artifact that proves it AND',
-      '     no recent journal failures contradicting completion.',
-      '   • If unsure, emit `[done]` instead and let the next iteration',
-      '     decide. The loop is patient; false completion is not.',
-      '',
-      '4. NO INTERACTIVITY',
-      '   • Do not ask questions, do not request confirmation, do not propose',
-      '     options. Pick the best path and execute. The user is asleep.',
-    ].join('\n');
+    return delegateBuildDirective(this.eternalAutonomyDirectivesHost(), goal, source, task);
   }
 
   /**
@@ -973,5 +847,16 @@ export class EternalAutonomyEngine {
     if (!current) return;
     if (current.engineState === state) return;
     await saveGoal(this.goalPath, { ...current, engineState: state }, this.opts.events);
+  }
+
+  private eternalAutonomyDirectivesHost(): EternalAutonomyDirectivesHost {
+    const self = this;
+    return {
+      get opts() {
+        return self.opts;
+      },
+      readGitStatus: (...args) => this.readGitStatus(...args),
+      logError: (...args) => this.logError(...args),
+    };
   }
 }

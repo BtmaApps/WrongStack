@@ -176,10 +176,7 @@ async function listTranscripts(storeDir: string): Promise<string[]> {
   return found;
 }
 
-async function readManifestBlobHashes(
-  file: string,
-  result: CheckpointGcResult,
-): Promise<string[]> {
+async function readManifestBlobHashes(file: string, result: CheckpointGcResult): Promise<string[]> {
   try {
     const parsed = JSON.parse(await fsp.readFile(file, 'utf8')) as {
       entries?: Array<{ blobHash?: unknown }>;

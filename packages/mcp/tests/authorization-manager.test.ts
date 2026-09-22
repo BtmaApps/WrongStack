@@ -348,3 +348,141 @@ function discovery(resource: string) {
     },
   };
 }
+
+describe('MCPAuthorizationManager client identity', () => {
+  const resource = 'https://mcp.example.com/team';
+
+  function tokenSet(overrides: Record<string, unknown> = {}) {
+    return {
+      accessToken: 'access-secret',
+      refreshToken: 'refresh-secret',
+      tokenType: 'Bearer',
+      resource,
+      expiresAt: Date.now() + 3_600_000,
+      scopes: ['tools:read'],
+      ...overrides,
+    };
+  }
+
+  it('dynamically registers a client when none was supplied', async () => {
+    const fixture = await createFixture();
+    const register = vi.fn(async () => ({
+      clientId: 'dcr-client',
+      issuer: 'https://auth.example.com',
+      registeredAt: new Date().toISOString(),
+    }));
+    const manager = new MCPAuthorizationManager({
+      store: fixture.store,
+      discover: async () => registrableDiscovery(resource),
+      register,
+      exchange: async () => tokenSet(),
+    });
+
+    const started = await manager.begin({
+      serverName: 'team',
+      resource,
+      redirectUri: 'http://127.0.0.1:43123/callback',
+    });
+
+    expect(started.clientIdSource).toBe('registered');
+    expect(new URL(started.authorizationUrl).searchParams.get('client_id')).toBe('dcr-client');
+    expect(register).toHaveBeenCalledTimes(1);
+    expect(register.mock.calls[0]![0]).toMatchObject({
+      redirectUris: ['http://127.0.0.1:43123/callback'],
+    });
+  });
+
+  it('reuses the stored client id instead of registering again', async () => {
+    const fixture = await createFixture();
+    const register = vi.fn();
+    await fixture.store.save({
+      serverName: 'team',
+      resource,
+      clientId: 'already-known',
+      authorizationServer: registrableDiscovery(resource).authorizationServer,
+      tokenSet: tokenSet(),
+      updatedAt: new Date().toISOString(),
+    });
+    const manager = new MCPAuthorizationManager({
+      store: fixture.store,
+      discover: async () => registrableDiscovery(resource),
+      register,
+      exchange: async () => tokenSet(),
+    });
+
+    const started = await manager.begin({
+      serverName: 'team',
+      resource,
+      redirectUri: 'http://127.0.0.1:43123/callback',
+    });
+
+    expect(started.clientIdSource).toBe('stored');
+    expect(new URL(started.authorizationUrl).searchParams.get('client_id')).toBe('already-known');
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it('carries a registered client secret into the exchange and the vault', async () => {
+    const fixture = await createFixture();
+    const exchange = vi.fn(async (input: { clientSecret?: string | undefined }) => {
+      expect(input.clientSecret).toBe('registered-secret');
+      return tokenSet();
+    });
+    const manager = new MCPAuthorizationManager({
+      store: fixture.store,
+      discover: async () => registrableDiscovery(resource),
+      register: async () => ({
+        clientId: 'confidential-client',
+        clientSecret: 'registered-secret',
+        issuer: 'https://auth.example.com',
+        registeredAt: new Date().toISOString(),
+      }),
+      exchange: exchange as never,
+    });
+
+    const started = await manager.begin({
+      serverName: 'team',
+      resource,
+      redirectUri: 'http://127.0.0.1:43123/callback',
+    });
+    const state = new URL(started.authorizationUrl).searchParams.get('state')!;
+    await manager.complete({
+      serverName: 'team',
+      resource,
+      callbackUrl: `http://127.0.0.1:43123/callback?code=one-time-code&state=${encodeURIComponent(state)}`,
+    });
+
+    expect(exchange).toHaveBeenCalledTimes(1);
+    const stored = await fixture.store.load('team', resource);
+    expect(stored?.clientSecret).toBe('registered-secret');
+    // The secret must be ciphertext at rest, like the tokens beside it.
+    const raw = await fs.readFile(fixture.storePath, 'utf8');
+    expect(raw).not.toContain('registered-secret');
+  });
+
+  it('explains itself when the server supports neither a stored nor a registered client', async () => {
+    const fixture = await createFixture();
+    const manager = new MCPAuthorizationManager({
+      store: fixture.store,
+      discover: async () => discovery(resource),
+    });
+
+    await expect(
+      manager.begin({
+        serverName: 'team',
+        resource,
+        redirectUri: 'http://127.0.0.1:43123/callback',
+      }),
+    ).rejects.toThrow(/does not support dynamic client registration/);
+  });
+});
+
+function registrableDiscovery(resource: string) {
+  const base = discovery(resource);
+  return {
+    ...base,
+    authorizationServer: {
+      ...base.authorizationServer,
+      registrationEndpoint: 'https://auth.example.com/register',
+    },
+  };
+}

@@ -1,3 +1,4 @@
+import { randomBytes, scrypt } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -6,11 +7,11 @@ import {
   defaultHqDataDir,
   emptyHqAuthFile,
   ensureHqFirstRunAuthFile,
+  hashHqPassword,
   HQ_AUTH_FILE_VERSION,
   type HqAuthFile,
-  hqPasswordNeedsUpgrade,
-  hashHqPassword,
   hqAuthFilePath,
+  hqPasswordNeedsUpgrade,
   hqRuntimeFilePath,
   hqTokenKey,
   hqTokenVerifier,
@@ -27,7 +28,6 @@ import {
   writeHqRuntimeFile,
 } from '../../src/hq/auth-store.js';
 import { wstackGlobalRoot } from '../../src/utils/wstack-paths.js';
-import { randomBytes, scrypt } from 'node:crypto';
 
 async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'hq-auth-'));
@@ -656,7 +656,12 @@ describe('HQ password KDF versioning', () => {
   });
 
   it('rejects malformed payloads instead of throwing', async () => {
-    for (const bad of ['nonsense', 'scrypt$only-two', 'scrypt$a$b$c$d', 'bcrypt$N=16,r=8,p=1$a$b']) {
+    for (const bad of [
+      'nonsense',
+      'scrypt$only-two',
+      'scrypt$a$b$c$d',
+      'bcrypt$N=16,r=8,p=1$a$b',
+    ]) {
       expect(await verifyHqPassword(PASSWORD, bad)).toBe(false);
     }
   });

@@ -90,7 +90,11 @@ describe('VIBE pipeline wiring', () => {
 
     // non-empty response that violates scope
     // We add an excluded item to the active spec so it fails
-    const activeSpec = (ctx.meta[VIBE_PROTOCOL_META_KEY] as { synthesizer: { scopeBoundaries: { excluded: string[] } } }).synthesizer;
+    const activeSpec = (
+      ctx.meta[VIBE_PROTOCOL_META_KEY] as {
+        synthesizer: { scopeBoundaries: { excluded: string[] } };
+      }
+    ).synthesizer;
     activeSpec.scopeBoundaries.excluded.push('forbidden-lib');
 
     const rejectResp = await pipelines.response.run(

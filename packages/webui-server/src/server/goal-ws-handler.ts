@@ -3,7 +3,6 @@ import { assignNickname } from '@wrongstack/core/coordination';
 import {
   GoalAssessor,
   type GoalAssessResult,
-  GoalPlanner,
   type PhaseExecutionContext,
   type PhaseGraph,
   PhaseGraphBuilder,
@@ -18,6 +17,12 @@ import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wro
 import { WorktreeManager } from '@wrongstack/core/worktree';
 import type { WebSocket } from 'ws';
 import { gitStdout, isGitWorkTree } from './git-process.js';
+import {
+  defaultPhases as delegateDefaultPhases,
+  planPhases as delegatePlanPhases,
+  runChimeraReview as delegateRunChimeraReview,
+  type GoalPhasePlanningHost,
+} from './goal-phase-planning.js';
 import { buildGoalState } from './goal-state.js';
 import { errMessage, sendSerialized } from './ws-utils.js';
 
@@ -644,43 +649,7 @@ export class GoalWebSocketHandler {
 
   /** Generic fallback phases when the LLM planner produces nothing usable. */
   private defaultPhases(): PhaseTemplate[] {
-    return [
-      {
-        name: 'Discovery',
-        description: 'Requirements gathering',
-        priority: 'high',
-        estimateHours: 2,
-        parallelizable: false,
-      },
-      {
-        name: 'Design',
-        description: 'Architecture and design',
-        priority: 'critical',
-        estimateHours: 4,
-        parallelizable: false,
-      },
-      {
-        name: 'Implementation',
-        description: 'Core development',
-        priority: 'critical',
-        estimateHours: 12,
-        parallelizable: false,
-      },
-      {
-        name: 'Testing',
-        description: 'Unit and integration tests',
-        priority: 'high',
-        estimateHours: 6,
-        parallelizable: true,
-      },
-      {
-        name: 'Deployment',
-        description: 'Deploy to production',
-        priority: 'medium',
-        estimateHours: 2,
-        parallelizable: false,
-      },
-    ];
+    return delegateDefaultPhases(this.goalPhasePlanningHost());
   }
 
   /** Plan phases+todos for the goal via the LLM; fall back to defaults on failure.
@@ -688,30 +657,7 @@ export class GoalWebSocketHandler {
    *  the LLM turn (the previous fresh, never-aborted controller made planning
    *  uninterruptible). */
   private async planPhases(goal: string, signal?: AbortSignal): Promise<PhaseTemplate[]> {
-    try {
-      const planner = new GoalPlanner({
-        goal,
-        runOnce: async (prompt) => {
-          const result = (await this.agent.run(prompt, {
-            signal: signal ?? new AbortController().signal,
-          })) as {
-            status: string;
-            finalText?: string | undefined;
-          };
-          return result.status === 'done' ? (result.finalText ?? '') : '';
-        },
-      });
-      const { phases, parseFailed } = await planner.plan();
-      if (!parseFailed && phases.length > 0) {
-        const todos = phases.reduce((n, p) => n + (p.taskTemplates?.length ?? 0), 0);
-        this.logger.info(`[Goal] Planned ${phases.length} phases / ${todos} todos for: ${goal}`);
-        return phases;
-      }
-      this.logger.info(`[Goal] Planner produced no phases; using defaults for: ${goal}`);
-    } catch (err) {
-      this.logger.error(`[Goal] Planning failed, using defaults: ${toErrorMessage(err)}`);
-    }
-    return this.defaultPhases();
+    return delegatePlanPhases(this.goalPhasePlanningHost(), goal, signal);
   }
 
   private async executeTaskWithAgent(
@@ -761,42 +707,7 @@ export class GoalWebSocketHandler {
     result: unknown,
     cwd?: string | undefined,
   ): Promise<void> {
-    const output = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-    void cwd; // reserved for future worktree-scoped review
-    const reviewPrompt = [
-      'You are a code review agent. Review the following completed task and its output.',
-      '',
-      `Task: ${task.title}`,
-      task.description ? `Description: ${task.description}` : '',
-      `Phase: ${phaseId}`,
-      `Priority: ${task.priority}`,
-      '',
-      '--- Task Output ---',
-      output.slice(0, 8000),
-      '',
-      '---',
-      '',
-      'Provide a brief review (2-5 sentences) covering:',
-      '1. Does the output satisfy the task requirements? (yes/no/partial)',
-      '2. Any correctness, security, or quality concerns.',
-      '3. A confidence score (low/medium/high).',
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    try {
-      const result_ = (await this.agent.run(reviewPrompt)) as {
-        status: string;
-        finalText?: string | undefined;
-      };
-      if (result_.status === 'done' && result_.finalText) {
-        this.logger.info(
-          `[Goal] Chimera review for "${task.title}":\n${result_.finalText.slice(0, 2000)}`,
-        );
-      }
-    } catch (err: unknown) {
-      this.logger.warn(`[Goal] Chimera review failed for "${task.title}": ${toErrorMessage(err)}`);
-    }
+    return delegateRunChimeraReview(this.goalPhasePlanningHost(), task, phaseId, result, cwd);
   }
 
   /**
@@ -928,5 +839,18 @@ export class GoalWebSocketHandler {
 
   private send(client: WSClient, msg: { type: string; payload: unknown }): void {
     sendSerialized(client.ws, JSON.stringify(msg));
+  }
+
+  private goalPhasePlanningHost(): GoalPhasePlanningHost {
+    const self = this;
+    return {
+      get agent() {
+        return self.agent;
+      },
+      get logger() {
+        return self.logger;
+      },
+      defaultPhases: (...args) => this.defaultPhases(...args),
+    };
   }
 }

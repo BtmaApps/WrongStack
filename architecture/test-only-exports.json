@@ -93,11 +93,6 @@
     "packages/cli/src/auth-menu/panel-service.ts": [
       "plainMaskedKey"
     ],
-    "packages/cli/src/boot.ts": [
-      "autoSelectSavedProvider",
-      "isHomeDirectory",
-      "shouldPrintYoloNotice"
-    ],
     "packages/cli/src/boot/config-backup-recovery.ts": [
       "defaultProfileProvidersAreEmpty",
       "findLatestProviderBackup"
@@ -153,10 +148,6 @@
     "packages/cli/src/fleet/host-helpers.ts": [
       "DEFAULT_SUBAGENT_HIDDEN_TOOLS",
       "NEVER_SUBAGENT_TOOLS"
-    ],
-    "packages/cli/src/goal-host.ts": [
-      "isGoalCommandAllowed",
-      "resetGoalPolicy"
     ],
     "packages/cli/src/governance-hq-telemetry.ts": [
       "projectGovernanceHqSnapshot"
@@ -644,6 +635,10 @@
     "packages/core/src/utils/project-identity.ts": [
       "isProjectId"
     ],
+    "packages/core/src/utils/tool-output-renderers.ts": [
+      "inputListSummary",
+      "numberFromInput"
+    ],
     "packages/core/src/utils/tool-subject.ts": [
       "escapeGlobSubject",
       "isPathSubjectKey",
@@ -906,10 +901,7 @@
       "parseAutocommitResult"
     ],
     "packages/plugins/src/prompt-firewall/index.ts": [
-      "detectSecrets",
-      "detectSecretsGuarded",
-      "KIND_ALIASES",
-      "SCAN_WINDOW_LIMIT"
+      "detectSecrets"
     ],
     "packages/plugins/src/semver-bump/index.ts": [
       "determineBump",
@@ -930,9 +922,6 @@
     ],
     "packages/providers/src/oauth-refresh-coordinator.ts": [
       "resetSharedOAuthRefreshState"
-    ],
-    "packages/providers/src/openai-codex.ts": [
-      "codexCacheSessionId"
     ],
     "packages/providers/src/openai-shared.ts": [
       "OPENAI_EFFORT_ACCEPT"
@@ -1729,12 +1718,6 @@
     "packages/webui/src/components/SettingsPanel/YoloConfirmList.tsx": [
       "LOCKED_YOLO_CONFIRM_KINDS",
       "YOLO_CONFIRM_KINDS"
-    ],
-    "packages/webui/src/components/SidePanel/SessionList.tsx": [
-      "filterAndSortSessions",
-      "getEmptySessionIds",
-      "getSessionHistoryStats",
-      "groupSessionHistory"
     ],
     "packages/webui/src/components/TaskActivityTimeline.tsx": [
       "buildTaskActivityExport",

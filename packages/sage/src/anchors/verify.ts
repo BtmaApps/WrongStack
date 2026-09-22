@@ -1,9 +1,9 @@
+import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
-import { assertProjectAgentRole, FLEET_ROSTER } from '@wrongstack/core/coordination';
 import type {
   AnchorVerificationResult,
   MemoryAnchor,
@@ -191,7 +191,6 @@ function firstTokenInfo(input: string): TokenInfo | undefined {
   return { token, raw: match[0] };
 }
 
-
 function resolveCommandExecutable(command: string): ResolvedExecutable {
   const trimmed = command.trim();
   if (!trimmed) {
@@ -211,7 +210,8 @@ function resolveCommandExecutable(command: string): ResolvedExecutable {
   let skippedFlag = false;
   for (let i = 0; i < 8; i++) {
     const tokenInfo = firstTokenInfo(cursor);
-    if (!tokenInfo) return { executable: undefined, skippedFlag, demandFetch, wrapper: first.token };
+    if (!tokenInfo)
+      return { executable: undefined, skippedFlag, demandFetch, wrapper: first.token };
     const { token, raw } = tokenInfo;
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) {
       // env-style assignment (`env FOO=bar node`) — unambiguous, not a flag.

@@ -507,6 +507,7 @@
   "execution": {
     "heading": "Ejecución",
     "maxIterationsLabel": "Iteraciones máx por run",
+    "unlimitedLabel": "Sin límite",
     "maxIterationsHint": "Tope estricto de turnos LLM por agent.run().",
     "autoProceedMaxIterationsLabel": "Iteraciones máx de auto-progreso",
     "autoProceedMaxIterationsHint": "Detiene el auto-progreso tras N iteraciones. 0 = ilimitado.",

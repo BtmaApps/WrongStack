@@ -57,6 +57,9 @@ import type { KanbanHostRouteHandlers } from './kanban-host-routes.js';
 import type { MailboxRouteHandlers } from './mailbox-routes.js';
 import {
   handleMcpAdd,
+  handleMcpAuthLogin,
+  handleMcpAuthLogout,
+  handleMcpAuthStatus,
   handleMcpDisable,
   handleMcpDiscover,
   handleMcpEnable,
@@ -361,6 +364,13 @@ export function createEmbeddedMessageRouter(
     resourceRead: (ws, msg) =>
       handleMcpResourceRead(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
     promptGet: (ws, msg) => handleMcpPromptGet(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
+    authStatus: (ws, msg) => handleMcpAuthStatus(ws, msg, opts.profileConfigPath, opts.mcpRegistry),
+    // Binds a loopback port on this host and can mint a credential — same
+    // boundary the spawn-capable mutations go through.
+    authLogin: (ws, msg) =>
+      handleMcpAuthLogin(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
+    authLogout: (ws, msg) =>
+      handleMcpAuthLogout(ws, msg, opts.profileConfigPath, opts.mcpRegistry, deps.trustBoundary),
   };
 
   const shellGit: ShellGitRouteHandlers = {

@@ -3,9 +3,9 @@ import { createHqEventEnvelope } from '../../src/hq/protocol.js';
 import {
   redactHqEvent,
   redactHqValue,
+  resolveHqRedactionPolicy,
   scrubAndTruncateHqPreview,
   summarizeHqToolArgs,
-  resolveHqRedactionPolicy,
   tightenHqRedactionPolicy,
 } from '../../src/hq/redaction.js';
 
@@ -290,10 +290,7 @@ describe('HQ redaction covers built-in tool input fields', () => {
 
   it('still passes them through when the operator opts into rawContent', () => {
     // The operator's explicit choice must not be overridden by this change.
-    const result = redactHqValue(
-      { command: SECRET_TEXT },
-      { policy: { rawContent: true } },
-    );
+    const result = redactHqValue({ command: SECRET_TEXT }, { policy: { rawContent: true } });
     expect(JSON.stringify(result.value)).toContain(SECRET_TEXT);
   });
 

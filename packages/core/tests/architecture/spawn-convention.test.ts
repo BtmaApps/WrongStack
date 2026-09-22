@@ -91,7 +91,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'core/src/types/multi-agent.ts': REASON_AGENT_CHILD,
   'sdd/src/verify-task.ts': REASON_AGENT_CHILD,
   // ── CLI self-relaunch / bundled UI ──
-  'cli/src/boot.ts': REASON_SELF_RELAUNCH,
+  'cli/src/boot-provider-selection.ts': REASON_SELF_RELAUNCH,
   'cli/src/boot/tui-project-spawn.ts': REASON_SELF_RELAUNCH,
   'cli/src/boot/short-circuit-desktop.ts': REASON_SELF_RELAUNCH,
   'cli/src/simpleui-dist.ts': REASON_SELF_RELAUNCH,
@@ -119,7 +119,7 @@ const CHILD_ENV_EXEMPT: Record<string, string> = {
   'kanban/src/server/client.ts': REASON_TRUSTED_DAEMON,
   'kanban/src/verification/verification-context.ts': REASON_TRUSTED_DAEMON,
   'governance/src/daemon-launcher.ts': REASON_TRUSTED_DAEMON,
-  'tools/src/codebase-index/project-server-client.ts': REASON_TRUSTED_DAEMON,
+  'tools/src/codebase-index/project-server-launch.ts': REASON_TRUSTED_DAEMON,
   'tools/src/process-registry.ts': REASON_TRUSTED_DAEMON,
   'core/src/skills/skill-generator.ts': REASON_TRUSTED_DAEMON,
   // ── Internal parser/toolchain workers ──

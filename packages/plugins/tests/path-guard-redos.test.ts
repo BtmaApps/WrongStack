@@ -25,9 +25,13 @@ function timed(command: string): number {
 describe('xargs option scanning is not exponential', () => {
   // 134 characters cost ~52 SECONDS before the fix. A generous budget still
   // fails loudly if the ambiguity is ever reintroduced.
-  it.each([40, 42, 48, 64])('stays fast for %i repeated option tokens', (n) => {
-    expect(timed(`xargs${' -I'.repeat(n)} rm`)).toBeLessThan(BUDGET_MS);
-  }, 20_000);
+  it.each([40, 42, 48, 64])(
+    'stays fast for %i repeated option tokens',
+    (n) => {
+      expect(timed(`xargs${' -I'.repeat(n)} rm`)).toBeLessThan(BUDGET_MS);
+    },
+    20_000,
+  );
 
   // Wall-clock-sensitive sweep: the vitest default timeout (5s) breached under
   // 16-worker suite contention (flake hunt 2026-09-08, concurrent-run-4). The

@@ -13,6 +13,7 @@
  */
 
 import type { Context } from '@wrongstack/core/agent';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   addContractEdge,
   configureContractGraph,
@@ -27,7 +28,6 @@ import {
   removeContractNode,
   upsertContractNode,
 } from '@wrongstack/kanban';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
 import { publishKanbanBoard } from './kanban-broadcast.js';
 import { activityContext, fail, ok } from './kanban-route-helpers.js';

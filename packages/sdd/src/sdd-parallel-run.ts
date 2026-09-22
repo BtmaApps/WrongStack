@@ -1,3 +1,12 @@
+import {
+  computeDeadlockChains as delegateComputeDeadlockChains,
+  recoverFailedBlockers as delegateRecoverFailedBlockers,
+  requeueFailedTasks as delegateRequeueFailedTasks,
+  resetOrphans as delegateResetOrphans,
+  restoreRetryMap as delegateRestoreRetryMap,
+  type SddTaskRecoveryHost,
+} from './sdd-task-recovery.js';
+
 /**
  * SddParallelRun
  *
@@ -152,10 +161,10 @@ export class SddParallelRun {
     payload: import('@wrongstack/core/kernel').EventMap[K],
   ): void {
     const sessionId = this.currentSessionId();
-    this.events?.emit(
-      event,
-      { ...payload, sessionId } as import('@wrongstack/core/kernel').EventMap[K],
-    );
+    this.events?.emit(event, {
+      ...payload,
+      sessionId,
+    } as import('@wrongstack/core/kernel').EventMap[K]);
   }
 
   private currentSessionId(): string {
@@ -551,35 +560,12 @@ export class SddParallelRun {
    * included since they're the usual deadlock cause once retries are exhausted.
    */
   private computeDeadlockChains(): Array<{ blocked: string; blockedBy: string[] }> {
-    const tracker = this.opts.tracker;
-    const chains: Array<{ blocked: string; blockedBy: string[] }> = [];
-    for (const node of tracker.getAllNodes()) {
-      if (node.status === 'completed' || node.status === 'failed') continue;
-      const blockedBy = tracker
-        .getBlockers(node.id)
-        .filter((id) => tracker.getNode(id)?.status !== 'completed');
-      if (blockedBy.length > 0) chains.push({ blocked: node.id, blockedBy });
-    }
-    return chains;
+    return delegateComputeDeadlockChains(this.sddTaskRecoveryHost());
   }
 
   /** Requeue failed tasks that block an incomplete dependent. Returns true if any. */
   private recoverFailedBlockers(): boolean {
-    const tracker = this.opts.tracker;
-    let recovered = false;
-    for (const node of tracker.getAllNodes({ status: ['failed'] })) {
-      const blocksIncomplete = tracker.getDependents(node.id).some((d) => {
-        const s = tracker.getNode(d)?.status;
-        return s !== 'completed' && s !== 'failed';
-      });
-      if (blocksIncomplete) {
-        this.retryMap.delete(node.id);
-        this.persistRetries(node.id, 0);
-        tracker.updateNodeStatus(node.id, 'pending', 'deadlock recovery');
-        recovered = true;
-      }
-    }
-    return recovered;
+    return delegateRecoverFailedBlockers(this.sddTaskRecoveryHost());
   }
 
   /**
@@ -588,22 +574,7 @@ export class SddParallelRun {
    * the manual "retry all failed" control. Returns the number requeued.
    */
   private requeueFailedTasks(reason = 'retry failed sweep'): number {
-    const tracker = this.opts.tracker;
-    let n = 0;
-    for (const node of tracker.getAllNodes({ status: ['failed'] })) {
-      if (this.cancelledTasks.has(node.id) || node.metadata?.cancelled) continue;
-      this.retryMap.delete(node.id);
-      this.persistRetries(node.id, 0);
-      tracker.updateNodeStatus(node.id, 'pending', reason);
-      this.emit('sdd.task.retrying', {
-        runId: this.runId,
-        taskId: node.id,
-        attempt: 0,
-        maxRetries: this.maxRetries,
-      });
-      n++;
-    }
-    return n;
+    return delegateRequeueFailedTasks(this.sddTaskRecoveryHost(), reason);
   }
 
   /**
@@ -624,11 +595,7 @@ export class SddParallelRun {
 
   /** Restore per-task retry counts persisted in node metadata (resume support). */
   private restoreRetryMap(): void {
-    this.retryMap.clear();
-    for (const node of this.opts.tracker.getAllNodes()) {
-      const r = (node.metadata as { retries?: unknown } | undefined)?.retries;
-      if (typeof r === 'number' && r > 0) this.retryMap.set(node.id, r);
-    }
+    delegateRestoreRetryMap(this.sddTaskRecoveryHost());
   }
 
   /**
@@ -637,12 +604,7 @@ export class SddParallelRun {
    * from a reloaded graph. Static so callers don't need a run instance.
    */
   static resetOrphans(tracker: TaskTracker): number {
-    let n = 0;
-    for (const node of tracker.getAllNodes({ status: ['in_progress'] })) {
-      tracker.updateNodeStatus(node.id, 'pending', 'resume: orphaned in_progress');
-      n++;
-    }
-    return n;
+    return delegateResetOrphans(tracker);
   }
 
   /** Clean teardown after a stop: reset interrupted tasks + release worktrees. */
@@ -924,6 +886,25 @@ export class SddParallelRun {
       pending: gp.pending,
       percent: gp.percentComplete,
       deadlocked: isDeadlocked,
+    };
+  }
+
+  private sddTaskRecoveryHost(): SddTaskRecoveryHost {
+    const self = this;
+    return {
+      get opts() {
+        return self.opts;
+      },
+      get retryMap() {
+        return self.retryMap;
+      },
+      persistRetries: (...args) => this.persistRetries(...args),
+      get cancelledTasks() {
+        return self.cancelledTasks;
+      },
+      emit: (...args) => this.emit(...args),
+      runId: this.runId,
+      maxRetries: this.maxRetries,
     };
   }
 }

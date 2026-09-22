@@ -1,10 +1,10 @@
 /** Persistent provider/model waiting-room state for the CLI runtime. */
-import * as fs from 'node:fs/promises';
 import type { FallbackProfileManager } from '@wrongstack/core/agent';
 import { ProviderModelStatusTracker } from '@wrongstack/core/coordination';
 import type { EventBus } from '@wrongstack/core/kernel';
 import type { WstackPaths } from '@wrongstack/core/utils';
 import { atomicWrite, toErrorMessage, withFileLock } from '@wrongstack/core/utils';
+import * as fs from 'node:fs/promises';
 
 interface ProviderStatusInput {
   events: EventBus;
@@ -84,9 +84,7 @@ export async function setupProviderStatus(input: ProviderStatusInput) {
       });
     } catch (error) {
       // The audit trail must never break the runtime.
-      input.logger.warn(
-        `Could not append provider audit log: ${toErrorMessage(error)}`,
-      );
+      input.logger.warn(`Could not append provider audit log: ${toErrorMessage(error)}`);
     }
   };
 
@@ -163,9 +161,7 @@ export async function setupProviderStatus(input: ProviderStatusInput) {
             });
           }
           void persist().catch((error: unknown) =>
-            input.logger.warn(
-              `Could not persist provider waiting room: ${toErrorMessage(error)}`,
-            ),
+            input.logger.warn(`Could not persist provider waiting room: ${toErrorMessage(error)}`),
           );
         }
       })
@@ -247,9 +243,7 @@ export async function setupProviderStatus(input: ProviderStatusInput) {
     saveTimer = setTimeout(() => {
       saveTimer = undefined;
       void persist().catch((error: unknown) =>
-        input.logger.warn(
-          `Could not persist provider waiting room: ${toErrorMessage(error)}`,
-        ),
+        input.logger.warn(`Could not persist provider waiting room: ${toErrorMessage(error)}`),
       );
     }, 100);
     saveTimer.unref();
@@ -269,8 +263,6 @@ function warnUnlessMissing(
   error: unknown,
 ): void {
   if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-    logger.warn(
-      `Could not ${operation} provider waiting room: ${toErrorMessage(error)}`,
-    );
+    logger.warn(`Could not ${operation} provider waiting room: ${toErrorMessage(error)}`);
   }
 }

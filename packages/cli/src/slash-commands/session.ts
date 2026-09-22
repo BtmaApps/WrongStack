@@ -187,7 +187,9 @@ export function buildLoadCommand(opts: SlashCommandContext): SlashCommand {
                   ? color.green(
                       `Archived ${targetId} (${formatBytes(result.uncompressedBytes)} → ${formatBytes(result.compressedBytes)})`,
                     )
-                  : color.dim(`Archive ${result.action}: ${targetId}${result.reason ? ` (${result.reason})` : ''}`),
+                  : color.dim(
+                      `Archive ${result.action}: ${targetId}${result.reason ? ` (${result.reason})` : ''}`,
+                    ),
             };
           } catch (err) {
             return { message: color.red(`Archive failed: ${toErrorMessage(err)}`) };
@@ -197,11 +199,17 @@ export function buildLoadCommand(opts: SlashCommandContext): SlashCommand {
           const preview = await opts.sessionStore.list(1000);
           return {
             message: [
-              color.bold('Dry run — gzip existing closed session logs (JSONL stays the resume authority).'),
-              color.dim('Last 20 stay hot; everything else is gzipped immediately. /prune still deletes.'),
+              color.bold(
+                'Dry run — gzip existing closed session logs (JSONL stays the resume authority).',
+              ),
+              color.dim(
+                'Last 20 stay hot; everything else is gzipped immediately. /prune still deletes.',
+              ),
               color.dim(`Currently listed: ${preview.length} session(s).`),
               '',
-              color.dim('Run /sessions archive --apply to compress, or /sessions archive <id> for one session.'),
+              color.dim(
+                'Run /sessions archive --apply to compress, or /sessions archive <id> for one session.',
+              ),
             ].join('\n'),
           };
         }

@@ -14,7 +14,10 @@
  * them stays fast enough that a hostile payload cannot wedge the UI.
  */
 import { describe, expect, it } from 'vitest';
-import { sanitizeTerminalPreview, sanitizeTerminalText } from '../../src/utils/terminal-sanitize.js';
+import {
+  sanitizeTerminalPreview,
+  sanitizeTerminalText,
+} from '../../src/utils/terminal-sanitize.js';
 
 const ESC = String.fromCharCode(27);
 const BEL = String.fromCharCode(7);

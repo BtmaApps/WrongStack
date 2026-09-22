@@ -35,6 +35,7 @@ import type {
 import {
   beginRegistryAuthorization,
   completeRegistryAuthorization,
+  loginRegistryAuthorization,
   requireAuthorizationManager,
   requireHttpServerConfig,
 } from './registry-authorization.js';
@@ -98,10 +99,21 @@ export class MCPRegistry {
     return slot;
   }
 
+  async loginAuthorization(
+    name: string,
+    input: Omit<
+      import('./authorization-manager.js').MCPAuthorizationLoginInput,
+      'serverName' | 'resource'
+    >,
+  ): Promise<import('./authorization-manager.js').MCPAuthorizationLoginHandle> {
+    const cfg = this.requireHttpServerConfig(name);
+    return loginRegistryAuthorization(this.authorizationManager, cfg, name, input);
+  }
+
   async beginAuthorization(
     name: string,
     input: {
-      clientId: string;
+      clientId?: string | undefined;
       redirectUri: string;
       scopes?: readonly string[] | undefined;
       challengeHeader?: string | null | undefined;

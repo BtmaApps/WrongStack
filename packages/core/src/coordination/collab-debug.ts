@@ -1,3 +1,9 @@
+import {
+  type CollabDebugReportHost,
+  assembleReport as delegateAssembleReport,
+  buildMarkdownSummary as delegateBuildMarkdownSummary,
+  checkSnapshotFreshness as delegateCheckSnapshotFreshness,
+} from './collab-debug-report.js';
 /**
  * Collaborative Debugging Session — parallel multi-agent debugging on the same problem.
  *
@@ -815,66 +821,11 @@ export class CollabSession extends EventEmitter {
   }
 
   private assembleReport(): CollabDebugReport {
-    const bugList = Array.from(this.bugs.values());
-    const planList = Array.from(this.plans.values());
-    const evalList = Array.from(this.evaluations.values());
-
-    let disposition: CollabDebugReport['disposition'] = 'completed';
-    if (this.cancelled) disposition = 'cancelled';
-
-    const verdictOrder: Record<CollabDebugReport['overallVerdict'], number> = {
-      approve: 0,
-      needs_revision: 1,
-      reject: 2,
-    };
-    const overallVerdict = evalList.reduce<CollabDebugReport['overallVerdict']>((worst, eval_) => {
-      const w = verdictOrder[worst];
-      const c = verdictOrder[eval_.verdict];
-      return c > w ? eval_.verdict : worst;
-    }, 'approve');
-
-    const summary = this.buildMarkdownSummary(
-      bugList,
-      planList,
-      evalList,
-      overallVerdict,
-      disposition,
-    );
-
-    return {
-      sessionId: this.sessionId,
-      startedAt: this.snapshot.createdAt,
-      completedAt: new Date().toISOString(),
-      targetPaths: this.options.targetPaths,
-      disposition,
-      bugs: bugList,
-      refactorPlans: planList,
-      evaluations: evalList,
-      alerts: [...this.alerts],
-      ...(this.snapshotWarnings.length > 0 ? { snapshotWarnings: this.snapshotWarnings } : {}),
-      overallVerdict,
-      summary,
-    };
+    return delegateAssembleReport(this.collabDebugReportHost());
   }
 
   private async checkSnapshotFreshness(): Promise<string[]> {
-    const warnings: string[] = [];
-    for (const file of this.snapshot.files) {
-      if (file.snapshotMtimeMs === undefined && file.snapshotSizeBytes === undefined) continue;
-      try {
-        const stat = await fsp.stat(file.path);
-        const mtimeChanged =
-          file.snapshotMtimeMs !== undefined && stat.mtimeMs > file.snapshotMtimeMs + 1;
-        const sizeChanged =
-          file.snapshotSizeBytes !== undefined && stat.size !== file.snapshotSizeBytes;
-        if (mtimeChanged || sizeChanged) {
-          warnings.push(`${file.path} changed after the collab snapshot was captured.`);
-        }
-      } catch {
-        warnings.push(`${file.path} could not be checked after the collab snapshot was captured.`);
-      }
-    }
-    return warnings;
+    return delegateCheckSnapshotFreshness(this.collabDebugReportHost());
   }
 
   private buildMarkdownSummary(
@@ -884,64 +835,14 @@ export class CollabSession extends EventEmitter {
     overallVerdict: CollabDebugReport['overallVerdict'],
     disposition: CollabDebugReport['disposition'],
   ): string {
-    const lines: string[] = [
-      `## Collaborative Debugging Report — ${this.sessionId}`,
-      '',
-      `**Target:** ${this.options.targetPaths.join(', ')}`,
-      `**Disposition:** ${disposition.toUpperCase()}`,
-      `**Overall Verdict:** **${overallVerdict.toUpperCase()}**`,
-      '',
-    ];
-
-    if (this.alerts.length > 0) {
-      lines.push('### Alerts', '');
-      for (const alert of this.alerts) {
-        lines.push(`- **[${alert.level.toUpperCase()}]** ${alert.role}: ${alert.message}`);
-      }
-      lines.push('');
-    }
-
-    if (this.snapshotWarnings.length > 0) {
-      lines.push('### Snapshot Warnings', '');
-      for (const warning of this.snapshotWarnings) {
-        lines.push(`- ${warning}`);
-      }
-      lines.push('');
-    }
-
-    if (bugs.length > 0) {
-      lines.push('### Bugs Found', '');
-      for (const b of bugs) {
-        lines.push(
-          `- **[${b.severity.toUpperCase()}]** \`${b.location.file}:${b.location.line}\` — ${b.description}`,
-        );
-      }
-      lines.push('');
-    }
-
-    if (plans.length > 0) {
-      lines.push('### Refactor Plans', '');
-      for (const p of plans) {
-        lines.push(`- **Phase plan** (risk: ${p.riskScore}, ~${p.estimatedChangeCount} changes)`);
-        for (const phase of p.phases) {
-          lines.push(`  - Phase ${phase.number}: ${phase.title} [${phase.risk}]`);
-        }
-      }
-      lines.push('');
-    }
-
-    if (evals.length > 0) {
-      lines.push('### Critic Evaluations', '');
-      for (const e of evals) {
-        lines.push(`- [${e.subjectType}] score=${e.score}/10 — **${e.verdict.toUpperCase()}**`);
-        for (const c of e.concerns) {
-          if (c.severity === 'blocking') lines.push(`  - ${c.description}`);
-        }
-      }
-      lines.push('');
-    }
-
-    return lines.join('\n');
+    return delegateBuildMarkdownSummary(
+      this.collabDebugReportHost(),
+      bugs,
+      plans,
+      evals,
+      overallVerdict,
+      disposition,
+    );
   }
 
   private cleanup(): void {
@@ -960,5 +861,25 @@ export class CollabSession extends EventEmitter {
     // Release snapshot file contents to free memory; keep the snapshot object
     // itself so the report (already assembled) remains valid.
     this.snapshot.files.length = 0;
+  }
+
+  private collabDebugReportHost(): CollabDebugReportHost {
+    const self = this;
+    return {
+      bugs: this.bugs,
+      plans: this.plans,
+      evaluations: this.evaluations,
+      get cancelled() {
+        return self.cancelled;
+      },
+      buildMarkdownSummary: (...args) => this.buildMarkdownSummary(...args),
+      sessionId: this.sessionId,
+      snapshot: this.snapshot,
+      options: this.options,
+      alerts: this.alerts,
+      get snapshotWarnings() {
+        return self.snapshotWarnings;
+      },
+    };
   }
 }

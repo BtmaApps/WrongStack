@@ -1,3 +1,8 @@
+import { useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
+import { getWSClient } from '@/lib/ws-client';
+import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
+import { useChimeraHubStore } from '@/stores/chimera-hub-store';
 import {
   AlertCircle,
   AlertTriangle,
@@ -17,13 +22,6 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useAppTranslation } from '@/i18n';
-import { cn } from '@/lib/utils';
-import { getWSClient } from '@/lib/ws-client';
-import { chatLane, DEFAULT_LANE_ID } from '@/stores/chat-lanes';
-import {
-  useChimeraHubStore,
-} from '@/stores/chimera-hub-store';
 import { EmptyState } from './ui/empty-state';
 
 function fmtTime(iso: string): string {

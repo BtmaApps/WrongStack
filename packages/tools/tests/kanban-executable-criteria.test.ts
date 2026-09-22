@@ -1,12 +1,12 @@
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
 import { createBoard, createDefaultRegistry, getBoard } from '@wrongstack/kanban';
 import { addTask } from '@wrongstack/kanban/test-support';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { kanbanTool } from '../src/kanban.js';
 import { KANBAN_INPUT_SCHEMA } from '../src/kanban-tool-schema.js';
+import { kanbanTool } from '../src/kanban.js';
 import { newSignal } from './fixtures.js';
 
 describe('kanban tool — every offered checkType has a verifier', () => {
@@ -23,9 +23,7 @@ describe('kanban tool — every offered checkType has a verifier', () => {
       []
     ).filter((type) => type !== 'manual');
     const registry = createDefaultRegistry();
-    const deterministic = registry
-      .list()
-      .filter((id) => registry.get(id)?.kind !== 'escalation');
+    const deterministic = registry.list().filter((id) => registry.get(id)?.kind !== 'escalation');
     expect([...offered].sort()).toEqual([...deterministic].sort());
   });
 });

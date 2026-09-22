@@ -1,3 +1,5 @@
+import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
+import { Link } from '@/lib/router';
 import {
   ArrowDown,
   Check,
@@ -8,8 +10,6 @@ import {
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
-import { ExternalDoc, PageHero, PageNext, SectionIntro } from '@/components/site/primitives';
-import { Link } from '@/lib/router';
 
 export function McpPage() {
   return (
@@ -125,7 +125,11 @@ export function McpPage() {
           <div className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2">
             {[
               [Filter, 'Tool filtering', 'allowedTools limits what is registered from one server.'],
-              [ShieldCheck, 'Permission', 'MCP wrappers resolve auto, confirm or deny. Memory, sequential-thinking and fetch presets default to confirm; Playwright and Z.AI Vision package versions are pinned.'],
+              [
+                ShieldCheck,
+                'Permission',
+                'MCP wrappers resolve auto, confirm or deny. Memory, sequential-thinking and fetch presets default to confirm; Playwright and Z.AI Vision package versions are pinned.',
+              ],
               [Power, 'Cancellation', 'Dropped calls also send notifications/cancelled upstream.'],
               [Network, 'Namespacing', 'mcp__<server>__<tool> prevents collisions.'],
             ].map(([Icon, title, body]) => {

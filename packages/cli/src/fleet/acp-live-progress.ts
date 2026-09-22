@@ -80,9 +80,7 @@ export function publishAcpLiveProgress(opts: PublishAcpLiveProgressOpts): void {
       const id = event.toolCall.toolCallId;
       const ok = status === 'completed';
       const output =
-        event.toolCall.rawOutput !== undefined
-          ? safeJson(event.toolCall.rawOutput)
-          : undefined;
+        event.toolCall.rawOutput !== undefined ? safeJson(event.toolCall.rawOutput) : undefined;
       fleet?.emit({
         subagentId,
         taskId,

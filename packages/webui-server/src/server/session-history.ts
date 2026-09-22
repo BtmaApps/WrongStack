@@ -1,5 +1,5 @@
-import type { ContentBlock, SessionEvent, SessionSummary } from '@wrongstack/core/types';
 import { normalizeSubagentModelPlan } from '@wrongstack/core/coordination';
+import type { ContentBlock, SessionEvent, SessionSummary } from '@wrongstack/core/types';
 
 /**
  * Stable WebSocket projection for the WebUI history surfaces.

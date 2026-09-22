@@ -1,5 +1,7 @@
 import type { MCPServerConfig } from '@wrongstack/core/types';
 import type {
+  MCPAuthorizationLoginHandle,
+  MCPAuthorizationLoginInput,
   MCPAuthorizationManager,
   MCPAuthorizationStartResult,
   MCPAuthorizationStatus,
@@ -28,12 +30,25 @@ export function requireHttpServerConfig(
   return cfg;
 }
 
+export async function loginRegistryAuthorization(
+  manager: MCPAuthorizationManager | undefined,
+  cfg: MCPServerConfig,
+  name: string,
+  input: Omit<MCPAuthorizationLoginInput, 'serverName' | 'resource'>,
+): Promise<MCPAuthorizationLoginHandle> {
+  return requireAuthorizationManager(manager).beginLogin({
+    serverName: name,
+    resource: cfg.url!,
+    ...input,
+  });
+}
+
 export async function beginRegistryAuthorization(
   manager: MCPAuthorizationManager | undefined,
   cfg: MCPServerConfig,
   name: string,
   input: {
-    clientId: string;
+    clientId?: string | undefined;
     redirectUri: string;
     scopes?: readonly string[] | undefined;
     challengeHeader?: string | null | undefined;

@@ -723,4 +723,3 @@ describe('createBrainRuntime — config round-trip (brain-config-roundtrip)', ()
     expect(rt.getSnapshot().tierStats).toEqual(stats);
   });
 });
-

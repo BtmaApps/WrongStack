@@ -7,10 +7,10 @@
  * closure (sorted `relpath\0size\0sha256` triple, then SHA-256 the
  * manifest), so any sibling change moves the pin.
  */
-import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { hashPluginClosure } from '../src/wiring/external-plugins.js';
 
 describe('I3 / hashPluginClosure — directory-level integrity', () => {
@@ -20,7 +20,7 @@ describe('I3 / hashPluginClosure — directory-level integrity', () => {
       const entry = path.join(tmp, 'plugin.mjs');
       const sibling = path.join(tmp, 'impl.mjs');
       // First snapshot: entry imports a benign sibling.
-      await fs.writeFile(entry, "export const x = 1;\n");
+      await fs.writeFile(entry, 'export const x = 1;\n');
       await fs.writeFile(sibling, "export const y = 'safe';\n");
       const before = await hashPluginClosure(entry);
       expect(before).toMatch(/^[a-f0-9]{64}$/);

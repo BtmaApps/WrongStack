@@ -868,6 +868,9 @@ export type WSClientMessageCore =
       type: 'mcp.prompt.get';
       payload: { name: string; prompt: string; arguments?: Record<string, string> };
     }
+  | { type: 'mcp.auth.status'; payload: { name: string } }
+  | { type: 'mcp.auth.login'; payload: { name: string; clientId?: string; scopes?: string[] } }
+  | { type: 'mcp.auth.logout'; payload: { name: string } }
   // ── Integrated terminal (node-pty) client messages ───────────────────────────
   | {
       type: 'terminal.create';

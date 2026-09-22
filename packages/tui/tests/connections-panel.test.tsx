@@ -67,9 +67,7 @@ describe('ConnectionsPanel component', () => {
 
   it('renders all services with navigation cursor', async () => {
     const onClose = vi.fn();
-    const { lastFrame } = render(
-      <ConnectionsPanel projectRoot="C:/repo" onClose={onClose} />,
-    );
+    const { lastFrame } = render(<ConnectionsPanel projectRoot="C:/repo" onClose={onClose} />);
 
     // Wait for async fetch to complete and component to re-render
     await vi.waitFor(() => {
@@ -247,4 +245,3 @@ describe('ConnectionsPanel component', () => {
     });
   });
 });
-

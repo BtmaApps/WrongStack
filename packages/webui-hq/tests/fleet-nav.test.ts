@@ -136,10 +136,60 @@ describe('buildNav', () => {
 
   it('populates client version from session/client record', () => {
     const snap = snapshot({
-      machines: [{ machineId: 'm1', hostname: 'devbox', clientCount: 1, sessionCount: 1, agentCount: 0, projectIds: ['p1'], lastActivityAt: '2026-07-10T00:00:00.000Z' }],
-      projects: [{ projectId: 'p1', projectName: 'WrongStack', projectRootDisplay: '/p1', machineIds: ['m1'], activeClients: 1, activeSessions: 1, activeSubagents: 0, totalCostUsd: 0, lastActivityAt: '2026-07-10T00:00:00.000Z', status: 'active' as const }],
-      clients: [{ clientId: 'c1', kind: 'tui' as const, version: '1.0.16', machineId: 'm1', connected: true, lastSeenAt: '2026-07-10T00:00:00.000Z', projectId: 'p1', capabilities: ['session.summary'] }],
-      liveSessions: [{ sessionId: 's1', clientId: 'c1', clientKind: 'tui', clientVersion: '1.0.16', machineId: 'm1', projectId: 'p1', projectName: 'WrongStack', projectRoot: '/p1', status: 'active', startedAt: '2026-07-10T00:00:00.000Z', lastActivityAt: '2026-07-10T00:00:00.000Z', agentCount: 0, agents: [] }],
+      machines: [
+        {
+          machineId: 'm1',
+          hostname: 'devbox',
+          clientCount: 1,
+          sessionCount: 1,
+          agentCount: 0,
+          projectIds: ['p1'],
+          lastActivityAt: '2026-07-10T00:00:00.000Z',
+        },
+      ],
+      projects: [
+        {
+          projectId: 'p1',
+          projectName: 'WrongStack',
+          projectRootDisplay: '/p1',
+          machineIds: ['m1'],
+          activeClients: 1,
+          activeSessions: 1,
+          activeSubagents: 0,
+          totalCostUsd: 0,
+          lastActivityAt: '2026-07-10T00:00:00.000Z',
+          status: 'active' as const,
+        },
+      ],
+      clients: [
+        {
+          clientId: 'c1',
+          kind: 'tui' as const,
+          version: '1.0.16',
+          machineId: 'm1',
+          connected: true,
+          lastSeenAt: '2026-07-10T00:00:00.000Z',
+          projectId: 'p1',
+          capabilities: ['session.summary'],
+        },
+      ],
+      liveSessions: [
+        {
+          sessionId: 's1',
+          clientId: 'c1',
+          clientKind: 'tui',
+          clientVersion: '1.0.16',
+          machineId: 'm1',
+          projectId: 'p1',
+          projectName: 'WrongStack',
+          projectRoot: '/p1',
+          status: 'active',
+          startedAt: '2026-07-10T00:00:00.000Z',
+          lastActivityAt: '2026-07-10T00:00:00.000Z',
+          agentCount: 0,
+          agents: [],
+        },
+      ],
     });
     const nav = buildNav(snap);
     const client = nav[0]!.projects[0]!.clients[0]!;

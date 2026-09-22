@@ -507,7 +507,8 @@
   "execution": {
     "heading": "Execution",
     "maxIterationsLabel": "Max iterations per run",
-    "maxIterationsHint": "Hard cap on LLM turns per agent.run().",
+    "unlimitedLabel": "Unlimited",
+    "maxIterationsHint": "Maximum LLM turns per run. 0 = unlimited.",
     "autoProceedMaxIterationsLabel": "Auto-proceed max iterations",
     "autoProceedMaxIterationsHint": "Stop auto-proceed after N iterations. 0 = unlimited.",
     "confirmExitLabel": "Confirm before exit",

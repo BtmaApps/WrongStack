@@ -1,4 +1,4 @@
-import type { MemoryEntry, MemoryScope, MemoryType, MemoryPriority } from '@wrongstack/core/types';
+import type { MemoryEntry, MemoryPriority, MemoryScope, MemoryType } from '@wrongstack/core/types';
 import { MEMORY_TYPE_LABELS } from '@wrongstack/core/types';
 import {
   daysAgo,
@@ -232,11 +232,7 @@ export function renderSageEntries(
           : '—';
       // Escape pipes so preview text (memory text often contains '|' in
       // commands or type notations) cannot terminate the cell early.
-      const preview = mem.text
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 60)
-        .replaceAll('|', '\\|');
+      const preview = mem.text.replace(/\s+/g, ' ').trim().slice(0, 60).replaceAll('|', '\\|');
       lines.push(
         `| ${idx} | \`${mem.id.slice(0, 16)}…\` | ${mem.kind} | ${mem.status} | ${tags.replaceAll('|', '\\|')} | ${preview} |`,
       );

@@ -243,10 +243,7 @@ export function createHqPublisherFromEnv(
   const projectName =
     projectAlias ?? options.projectName ?? (basename(options.projectRoot) || 'unknown');
   const version =
-    options.clientVersion ??
-    options.version ??
-    process.env['WRONGSTACK_VERSION'] ??
-    CORE_VERSION;
+    options.clientVersion ?? options.version ?? process.env['WRONGSTACK_VERSION'] ?? CORE_VERSION;
 
   const client: HqClientIdentity = {
     clientId: `${machineId}:${options.clientKind}:${process.pid}:${randomUUID().slice(0, 8)}`,

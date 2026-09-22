@@ -2,11 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  closeDaemonLogFd,
-  openDaemonLogFd,
-  SAGE_DAEMON_LOG_MAX_BYTES,
-} from '../src/daemon-log.js';
+import { closeDaemonLogFd, openDaemonLogFd, SAGE_DAEMON_LOG_MAX_BYTES } from '../src/daemon-log.js';
 
 describe('openDaemonLogFd', () => {
   it('creates the store directory, writes the header, and accepts daemon output', () => {

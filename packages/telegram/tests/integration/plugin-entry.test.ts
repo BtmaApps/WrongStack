@@ -1,7 +1,7 @@
-import { existsSync } from 'node:fs';
 import { Container, EventBus } from '@wrongstack/core/kernel';
 import type { PluginAPI } from '@wrongstack/core/plugin';
 import type { Logger, SlashCommand, Tool } from '@wrongstack/core/types';
+import { existsSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PLUGIN_NAME } from '../../src/config.js';
 import plugin, { teardownState as _teardownState } from '../../src/index.js';
@@ -228,13 +228,21 @@ describe('plugin entry', () => {
       sendTool.execute({ chat_id: '222', message: 'blocked tool target' }, TOOL_CTX, toolOpts()),
     ).rejects.toThrow('not paired or included in allowedOutboundChats');
     await expect(
-      approveTool.execute({ chat_id: '222', prompt: 'blocked approval target' }, TOOL_CTX, toolOpts()),
+      approveTool.execute(
+        { chat_id: '222', prompt: 'blocked approval target' },
+        TOOL_CTX,
+        toolOpts(),
+      ),
     ).rejects.toThrow('not paired or included in allowedOutboundChats');
     const blockedSlash = await slashSend.run('222 blocked slash target', null as never);
     expect(blockedSlash?.message).toContain('not paired or included in allowedOutboundChats');
     expect(fetchMock.mock.calls).toHaveLength(callsBefore);
 
-    await sendTool.execute({ chat_id: '111', message: 'allowed tool target' }, TOOL_CTX, toolOpts());
+    await sendTool.execute(
+      { chat_id: '111', message: 'allowed tool target' },
+      TOOL_CTX,
+      toolOpts(),
+    );
     const allowedSlash = await slashSend.run('111 allowed slash target', null as never);
     expect(allowedSlash?.message).toContain('✅');
     expect(fetchMock.mock.calls.length).toBe(callsBefore + 2);

@@ -215,10 +215,14 @@ describe('WrongStackWebSocketClient echo-suppression sweep (RAM-leak audit 2026-
     // the state on its OWNER, `WsClientEchoSuppression`, rather than through
     // forwarding accessors on the client: those accessors exist for nothing
     // else, so they read as dead code to every unused-symbol check.
-    const internals = (client as unknown as { echoSuppression: {
-      suppressedChatEchoes: Map<string, number>;
-      echoSweepTimer: ReturnType<typeof setInterval> | null;
-    } }).echoSuppression;
+    const internals = (
+      client as unknown as {
+        echoSuppression: {
+          suppressedChatEchoes: Map<string, number>;
+          echoSweepTimer: ReturnType<typeof setInterval> | null;
+        };
+      }
+    ).echoSuppression;
 
     client.listTools({ echoToChat: false, requestId: 'rid-1' });
     client.listTools({ echoToChat: false, requestId: 'rid-2' });

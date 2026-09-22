@@ -1,3 +1,5 @@
+import { useCodeMapFlow } from './use-code-map-flow.js';
+
 /**
  * Code Atlas — persistent code tree, dependency canvas, and relation inspector.
  *
@@ -11,20 +13,15 @@
  * - SMART mode caps canvas nodes; MiniMap is gated by node count.
  */
 
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   type Edge,
-  MarkerType,
   type Node,
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
   useReactFlow,
 } from '@xyflow/react';
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import '@xyflow/react/dist/style.css';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useShallow } from 'zustand/react/shallow';
-import { scaledPx } from '@/lib/fonts';
 import {
   activityAgentKey,
   type FileActivity,
@@ -32,12 +29,14 @@ import {
   useCodemapActivityStore,
 } from '@/stores/codemap-activity-store';
 import { useCodemapIndexStore } from '@/stores/codemap-index-store';
+import '@xyflow/react/dist/style.css';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { CodeMapActivityDrawer } from './CodeMapActivityDrawer';
 import {
   activityFingerprint,
   activityMatchesNode,
   hashGraphStructure,
-  indexActivitiesByNode,
   packageForFile,
   resolveSymbolForActivity,
   sameFile,
@@ -47,21 +46,16 @@ import { CodeMapCanvasSurface } from './CodeMapCanvasSurface';
 import { CodeMapCanvasToolbar } from './CodeMapCanvasToolbar';
 import {
   EMPTY_GRAPH,
-  FLOW_ACTIVITY_THROTTLE_MS,
-  MAX_ANIMATED_EDGES,
   MAX_CLIENT_GRAPH_CACHE,
   MAX_SYMBOL_RESOLVE_INFLIGHT,
-  MAX_TRAIL_AGENTS,
-  MAX_TRAIL_HOPS,
   SEARCH_DEBOUNCE_MS,
   SEARCH_VIRTUALIZE_THRESHOLD,
 } from './CodeMapConfig';
-import { preserveFlowEdges, preserveFlowNodes } from './CodeMapFlowState';
 import { CodeMapHeader } from './CodeMapHeader';
 import { LiveAgentsHud, LiveControlBar } from './CodeMapLiveOverlay';
 import { CodeMapRelationInspector } from './CodeMapRelationInspector';
 import { CodeMapTreeSidebar } from './CodeMapTreeSidebar';
-import { agentInitials, agentTrailColor, type CodeMapNodeData, EDGE_COLOR } from './CodeMapVisuals';
+import type { CodeMapNodeData } from './CodeMapVisuals';
 import {
   buildDirectoryTree,
   type CodeMapGraphResponse,
@@ -422,202 +416,29 @@ function CodeMapInner(): React.ReactElement {
     return ids;
   }, [displayedActiveOperations]);
 
-  useEffect(() => {
-    const rebuildFlow = (): void => {
-      const nodes = positionedNodes.map(({ node }) => node);
-      const activeByNode = indexActivitiesByNode(nodes, deferredActiveOperations);
-      const pulseByNode = indexActivitiesByNode(nodes, deferredPulseActivities);
-      const activeNodeIds = new Set(activeByNode.keys());
-
-      const nextFlowNodes = positionedNodes.map(({ node, position }) => {
-        const matchingActive = activeByNode.get(node.id) ?? [];
-        const pulse = matchingActive[0] ?? pulseByNode.get(node.id)?.[0];
-        return {
-          id: node.id,
-          type: 'codemap',
-          position,
-          style: { pointerEvents: 'all' as const },
-          data: {
-            graphNode: node,
-            selected: node.id === selectedId,
-            dimmed: Boolean(selectedId) && !connected.has(node.id),
-            incoming: incomingCounts.get(node.id) ?? 0,
-            outgoing: outgoingCounts.get(node.id) ?? 0,
-            isActive: Boolean(pulse),
-            ...(pulse ? { activityType: pulse.type } : {}),
-            activeOperations: matchingActive,
-            onSelect: handleSelectNode,
-            onOpen: handleOpenNode,
-            onShowHistory: setHistoryFile,
-          } satisfies CodeMapNodeData,
-        };
-      });
-      setFlowNodes((current) => preserveFlowNodes(current, nextFlowNodes));
-
-      let animatedBudget = MAX_ANIMATED_EDGES;
-      const codeEdges = canvasGraph.edges.map((edge, index) => {
-        const focused =
-          Boolean(selectedId) && (edge.source === selectedId || edge.target === selectedId);
-        const live = activeNodeIds.has(edge.source) || activeNodeIds.has(edge.target);
-        // Prefer animating focused live edges; otherwise spend a small budget.
-        const animate = live && (focused || animatedBudget > 0);
-        if (animate) animatedBudget -= 1;
-        const color = EDGE_COLOR[edge.refType] ?? 'hsl(var(--muted-foreground))';
-        // Dimmed edges use cheaper bezier; focused/live keep smoothstep readability.
-        const edgeType = focused || live ? 'smoothstep' : 'default';
-        return {
-          id: `edge:${edge.source}:${edge.target}:${index}`,
-          source: edge.source,
-          target: edge.target,
-          type: edgeType,
-          animated: animate,
-          label: focused
-            ? `${edge.refType}${edge.weight > 1 ? ` ×${edge.weight}` : ''}`
-            : undefined,
-          markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
-          style: {
-            stroke: color,
-            strokeWidth: live
-              ? Math.min(2.5 + Math.log2(edge.weight + 1) * 0.65, 5)
-              : focused
-                ? Math.min(1.25 + Math.log2(edge.weight + 1) * 0.65, 4)
-                : 1,
-            opacity: live ? 1 : selectedId ? (focused ? 0.88 : 0.08) : 0.52,
-          },
-          labelStyle: {
-            fontSize: scaledPx(9),
-            fontFamily: 'var(--font-mono)',
-            fill: 'hsl(var(--muted-foreground))',
-          },
-          labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.92 },
-          labelBgPadding: [4, 2] as [number, number],
-          zIndex: live ? 4 : focused ? 2 : 0,
-          data: {
-            renderKey: `${edge.refType}:${edge.weight}:${selectedId ? (focused ? 'focused' : 'dimmed') : 'idle'}:${live ? 'live' : 'still'}:${animate ? 'anim' : 'still'}:${edgeType}`,
-          },
-        } satisfies Edge;
-      });
-
-      const recentByAgent = new Map<string, FileActivity[]>();
-      const liveAgentKeys = new Set(deferredActiveOperations.map(activityAgentKey));
-      for (const activity of [...deferredRecentActivities].sort(
-        (left, right) => left.timestamp - right.timestamp,
-      )) {
-        const key = activityAgentKey(activity);
-        const list = recentByAgent.get(key);
-        if (list) list.push(activity);
-        else recentByAgent.set(key, [activity]);
-      }
-      // Prefer live agents, then newest, then cap — trails are visual sugar.
-      const rankedAgents = [...recentByAgent.entries()]
-        .map(([agentKey, activities]) => ({
-          agentKey,
-          activities,
-          live: liveAgentKeys.has(agentKey),
-          latest: activities[activities.length - 1]?.timestamp ?? 0,
-        }))
-        .sort((left, right) => Number(right.live) - Number(left.live) || right.latest - left.latest)
-        .slice(0, MAX_TRAIL_AGENTS);
-
-      const trailEdges: Edge[] = [];
-      for (const { agentKey, activities, live: trailIsLive } of rankedAgents) {
-        // Keep the newest hops only so long agent sessions don't spam edges.
-        const recentSlice = activities.slice(-(MAX_TRAIL_HOPS + 1));
-        const nodeTrail = recentSlice
-          .map((activity) => ({
-            activity,
-            node: canvasGraph.nodes.find((node) => activityMatchesNode(activity, node)),
-          }))
-          .filter((entry): entry is { activity: FileActivity; node: GraphNodeData } =>
-            Boolean(entry.node),
-          )
-          .filter((entry, index, all) => index === 0 || entry.node.id !== all[index - 1]?.node.id);
-        const color = agentTrailColor(agentKey);
-        for (let index = 1; index < nodeTrail.length; index++) {
-          const previous = nodeTrail[index - 1]!;
-          const current = nodeTrail[index]!;
-          const animateTrail = trailIsLive && animatedBudget > 0;
-          if (animateTrail) animatedBudget -= 1;
-          trailEdges.push({
-            id: `trail:${agentKey}:${previous.activity.timestamp}:${current.activity.timestamp}`,
-            source: previous.node.id,
-            target: current.node.id,
-            type: 'smoothstep',
-            animated: animateTrail,
-            label:
-              index === nodeTrail.length - 1
-                ? `${agentInitials(current.activity.agentName ?? current.activity.agent ?? 'agent')} TRAIL`
-                : undefined,
-            markerEnd: { type: MarkerType.ArrowClosed, color, width: 13, height: 13 },
-            style: { stroke: color, strokeWidth: 2.5, strokeDasharray: '7 5', opacity: 0.9 },
-            labelStyle: { fontSize: scaledPx(8), fontWeight: 700, fill: color },
-            labelBgStyle: { fill: 'hsl(var(--card))', fillOpacity: 0.94 },
-            labelBgPadding: [4, 2] as [number, number],
-            zIndex: 6,
-            data: {
-              renderKey: `${color}:${index === nodeTrail.length - 1 ? 'label' : 'plain'}:${trailIsLive ? 'live' : 'still'}:${animateTrail ? 'anim' : 'still'}`,
-            },
-          });
-        }
-      }
-      setAgentTrailCount(trailEdges.length);
-      setFlowEdges((current) => preserveFlowEdges(current, [...codeEdges, ...trailEdges]));
-    };
-
-    const structuralKey = fitSignature;
-    const structuralChanged = lastFlowStructuralKey.current !== structuralKey;
-    lastFlowStructuralKey.current = structuralKey;
-
-    if (flowRebuildTimer.current !== null) {
-      window.clearTimeout(flowRebuildTimer.current);
-      flowRebuildTimer.current = null;
-    }
-
-    if (structuralChanged) {
-      rebuildFlow();
-    } else {
-      // Telemetry-only: coalesce rapid tool/watcher pulses.
-      flowRebuildTimer.current = window.setTimeout(() => {
-        flowRebuildTimer.current = null;
-        rebuildFlow();
-      }, FLOW_ACTIVITY_THROTTLE_MS);
-    }
-
-    let fitTimer: number | undefined;
-    if (lastFitSignature.current !== fitSignature) {
-      fitTimer = window.setTimeout(() => {
-        lastFitSignature.current = fitSignature;
-        // Dense canvases skip animated fit — less main-thread work mid-session.
-        const duration = canvasGraph.nodes.length > 48 ? 0 : 240;
-        void fitView({ padding: 0.2, duration, maxZoom: 1.25 });
-      }, 20);
-    }
-
-    return () => {
-      if (flowRebuildTimer.current !== null) {
-        window.clearTimeout(flowRebuildTimer.current);
-        flowRebuildTimer.current = null;
-      }
-      if (fitTimer !== undefined) window.clearTimeout(fitTimer);
-    };
-  }, [
-    activityFlowKey,
-    canvasGraph,
-    selectedId,
+  useCodeMapFlow({
+    positionedNodes,
     deferredActiveOperations,
-    deferredRecentActivities,
     deferredPulseActivities,
-    fitSignature,
+    selectedId,
     connected,
-    fitView,
-    handleOpenNode,
-    handleSelectNode,
     incomingCounts,
     outgoingCounts,
-    positionedNodes,
-    setFlowEdges,
+    handleSelectNode,
+    handleOpenNode,
+    setHistoryFile,
     setFlowNodes,
-  ]);
+    canvasGraph,
+    deferredRecentActivities,
+    setAgentTrailCount,
+    setFlowEdges,
+    fitSignature,
+    lastFlowStructuralKey,
+    flowRebuildTimer,
+    lastFitSignature,
+    fitView,
+    activityFlowKey,
+  });
 
   // Expire activity pulses without requiring another WebSocket event.
   useEffect(() => {

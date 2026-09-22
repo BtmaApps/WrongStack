@@ -18,7 +18,9 @@ import {
 
 /** A delimiter is neutralized when it no longer looks like a tag. */
 function neutralized(text: string): boolean {
-  return !/<[ \t\r\n]*\/?[ \t\r\n]*project-supplied\b[^>]*>/i.test(sanitizeProjectSuppliedBody(text));
+  return !/<[ \t\r\n]*\/?[ \t\r\n]*project-supplied\b[^>]*>/i.test(
+    sanitizeProjectSuppliedBody(text),
+  );
 }
 
 describe('sanitizeProjectSuppliedBody', () => {
@@ -48,7 +50,11 @@ describe('sanitizeProjectSuppliedBody', () => {
   });
 
   it('is length-preserving, so a caller budget cannot shift', () => {
-    for (const delimiter of ['</project-supplied>', '</project-supplied\n>', '< / project-supplied >']) {
+    for (const delimiter of [
+      '</project-supplied>',
+      '</project-supplied\n>',
+      '< / project-supplied >',
+    ]) {
       expect(sanitizeProjectSuppliedBody(delimiter)).toHaveLength(delimiter.length);
     }
   });

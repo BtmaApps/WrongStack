@@ -1,3 +1,5 @@
+import { runWebuiServerLifecycle } from './webui-server-lifecycle.js';
+
 /**
  * CLI embedded WebUI server — the backend behind `wrongstack --webui`.
  *
@@ -22,7 +24,6 @@ import {
   startSharedHeapWatchdog,
   wstackGlobalRoot,
 } from '@wrongstack/core/utils';
-import { toErrorMessage } from '@wrongstack/core/utils/error';
 import {
   buildWebUIAccessUrl,
   type CustomModeStore,
@@ -55,10 +56,7 @@ import {
   createEmbeddedClientRegistration,
   startEmbeddedLiveStatusLogger,
 } from './webui-client-observability.js';
-import {
-  type ConnectedClient,
-  createConnectionHandler,
-} from './webui-server/connection-handler.js';
+import type { ConnectedClient } from './webui-server/connection-handler.js';
 import type {
   WSClientMessage as EmbeddedWSClientMessage,
   WSServerMessage as EmbeddedWSServerMessage,
@@ -68,12 +66,7 @@ import { createWebuiDomainHandlers } from './webui-server/domain-handlers.js';
 import { createCliKanbanHostRoutes } from './webui-server/kanban-host-adapter.js';
 import { createKanbanRunMirror } from './webui-server/kanban-run-mirror.js';
 import { createKanbanSupervisor } from './webui-server/kanban-supervisor.js';
-import {
-  announceWebuiReady,
-  createWebuiShutdown,
-  registerWebuiInstance,
-  registerWebuiSignalHandlers,
-} from './webui-server/lifecycle.js';
+import { announceWebuiReady, registerWebuiInstance } from './webui-server/lifecycle.js';
 import { startDeferredHttpListen, startIpv6LoopbackProxy } from './webui-server/listen-helpers.js';
 import { consoleLogger } from './webui-server/logger-shim.js';
 import { createPrefsSeeding, seedConfigToMeta } from './webui-server/prefs-seeding.js';
@@ -505,7 +498,7 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
   };
   const embeddedProviderOperations = createEmbeddedProviderOperations(wsHandlerCtx);
 
-  let credentialWatcherClose: (() => void) | undefined = startWebuiCredentialWatcher({
+  const credentialWatcherClose: (() => void) | undefined = startWebuiCredentialWatcher({
     opts,
     profileConfigPath,
     broadcast,
@@ -775,162 +768,64 @@ export async function runWebUI(opts: CliWebUIOptions): Promise<void> {
     statusTracker: opts.statusTracker,
   });
 
-  const stopped = new Promise<void>((resolve) => {
-    let listeningAnnounced = false;
-    const announceListening = () => {
-      if (listeningAnnounced) return;
-      listeningAnnounced = true;
-      console.log(`[WebUI] WebSocket server running on ws://${host}:${httpPort}`);
-      try {
-        setupEvents();
-        opts.onListening?.({
-          httpPort,
-          wsPort,
-          host,
-          url: accessUrl,
-          authToken: wsToken,
-          webuiInstanceRegistered,
-        });
-      } catch (err) {
-        consoleLogger.error('setup_events_failed', { message: toErrorMessage(err) });
-      }
-    };
-    wss.on('listening', announceListening);
-    if (httpServer?.server.listening || wss.address()) queueMicrotask(announceListening);
-
-    wss.on(
-      'connection',
-      createConnectionHandler({
-        host,
-        wsToken,
-        requireToken,
-        publicHostnames,
-        publicWsUrl,
-        clients,
-        currentSessionId,
-        goalHandler,
-        specsHandler,
-        sddBoardHandler,
-        sddWizardHandler,
-        worktreeHandler,
-        terminalHandler,
-        rateLimitMax,
-        send,
-        sessionPayload,
-        handleMessage,
-        pendingConfirms,
-        buildSessionStartPayload,
-        loadReplay: async () => {
-          const activeSession = opts.agent.ctx.session ?? opts.session;
-          await activeSession.flush();
-          if (opts.sessionStore) {
-            const data = await opts.sessionStore.load(activeSession.id);
-            return { messages: data.messages, events: data.events, usage: data.usage };
-          }
-          const usage = opts.agent.ctx.tokenCounter.total();
-          return { messages: opts.agent.ctx.messages, usage };
-        },
-        loadAgentSessions: async (subagentIds) =>
-          (await opts.agentTranscripts?.loadSessionsFromDisk(subagentIds)) ?? [],
-        // What this process is actually holding right now. The browser
-        // reconciles its persisted tab strip against it, so a restarted server
-        // is not dressed in the previous run's tabs.
-        openSessionIds: () => sessionAgents.ids(),
-        needsSetup: opts.needsSetup ?? false,
-      }),
-    );
-
-    signalShutdown = createWebuiShutdown({
-      abortInFlight: () => {
-        // First teardown step: stop the auto-heal watchdog's interval NOW so
-        // no new daemon restart begins while the shutdown sequence runs its
-        // child-kill sweep. dispose() stops the timer synchronously on its
-        // first line and is idempotent — disposeResources still awaits it to
-        // drain any restart already in flight.
-        void embeddedAutoHealDispose?.();
-        for (const c of abortControllers.values()) c.abort();
-        abortControllers.clear();
+  const { stopped } = runWebuiServerLifecycle({
+    host,
+    httpPort,
+    setupEvents,
+    opts,
+    wsPort,
+    accessUrl,
+    wsToken,
+    webuiInstanceRegistered,
+    wss,
+    httpServer,
+    requireToken,
+    publicHostnames,
+    publicWsUrl,
+    clients,
+    currentSessionId,
+    goalHandler,
+    specsHandler,
+    sddBoardHandler,
+    sddWizardHandler,
+    worktreeHandler,
+    terminalHandler,
+    rateLimitMax,
+    send,
+    sessionPayload,
+    handleMessage,
+    pendingConfirms,
+    buildSessionStartPayload,
+    sessionAgents,
+    lifecycleState: {
+      get signalShutdown() {
+        return signalShutdown;
       },
-      unsubscribeEvents: () => {
-        flushAllStreamBuffers();
-        for (const unsub of eventUnsubscribers) unsub();
+      set signalShutdown(value) {
+        signalShutdown = value;
       },
-      stopOwnedChildren: async () => {
-        try {
-          const { getProcessRegistry } = await import('@wrongstack/tools');
-          getProcessRegistry().killAll({ force: true, includeProtected: true });
-        } catch (err) {
-          console.debug(
-            `[webui-server] process-registry killAll failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
-        }
-        if (opts.mcpRegistry) {
-          try {
-            await opts.mcpRegistry.stopAll();
-          } catch (err) {
-            console.debug(
-              `[webui-server] mcpRegistry.stopAll failed: ${err instanceof Error ? err.message : String(err)}`,
-            );
-          }
-        }
+      get embeddedAutoHealDispose() {
+        return embeddedAutoHealDispose;
       },
-      disposeResources: async () => {
-        releaseSessionSalvage();
-        // Unbind the auto-wake port first: no woken turn may start while the
-        // tabs' journals are being closed. The controller itself belongs to
-        // the CLI, which disposes it after this server has stopped.
-        autoWakeHost?.dispose();
-        await stopEmptySessionCleanup?.dispose();
-        // End the journals of every tab that is not the leader's. `close()`
-        // alone would flush them, but a journal with no trailing
-        // `session_end` is indistinguishable from one a crash left hanging —
-        // so a clean quit with three background tabs used to hand the next
-        // launch three sessions to "recover". The leader's own journal is
-        // finalized by the CLI's execution teardown, which runs after this.
-        await sessionAgents.closeAll().catch(() => undefined);
-        credentialWatcherClose?.();
-        credentialWatcherClose = undefined;
-        goalHandler.dispose();
-        sddBoardHandler.dispose();
-        worktreeHandler.dispose();
-        terminalHandler.dispose();
-        kanbanRunMirror?.dispose();
-        kanbanSupervisor?.dispose();
-        void stopKanbanSupervisorMemoryStats?.();
-        // Drain an in-flight auto-heal restart before the host exits
-        // (createWebuiShutdown awaits this, bounded by its dispose timeout).
-        await embeddedAutoHealDispose?.();
-        embeddedAutoHealDispose = null;
-        unregisterWebuiClient();
+      set embeddedAutoHealDispose(value) {
+        embeddedAutoHealDispose = value;
       },
-      closeClients: () => {
-        for (const [ws] of clients) ws.close();
-        clients.clear();
-      },
-      closeHttpServer: () => {
-        ipv6LoopbackServer?.close();
-        httpServer?.server.close();
-      },
-      wss,
-      pid: process.pid,
-      registryBaseDir,
-      onStopped: () => {
-        // Unsubscribe the panel from the event bus FIRST, then erase it and
-        // restore the raw console so the teardown lines print plainly.
-        stopLiveStatusLogger();
-        const muted = terminalLogView.mutedCount;
-        terminalLogView.stop();
-        if (muted > 0) {
-          console.log(
-            `[WebUI] ${muted} progress line(s) kept out of this terminal — set WEBUI_LOGS=1 to stream them.`,
-          );
-        }
-        opts.onExit?.();
-        resolve();
-      },
-    });
-
-    registerWebuiSignalHandlers(signalShutdown);
+    },
+    abortControllers,
+    flushAllStreamBuffers,
+    eventUnsubscribers,
+    releaseSessionSalvage,
+    autoWakeHost,
+    stopEmptySessionCleanup,
+    credentialWatcherClose,
+    kanbanRunMirror,
+    kanbanSupervisor,
+    stopKanbanSupervisorMemoryStats,
+    unregisterWebuiClient,
+    ipv6LoopbackServer,
+    registryBaseDir,
+    stopLiveStatusLogger,
+    terminalLogView,
   });
 
   function send(ws: WebSocket, msg: WSServerMessage): void {

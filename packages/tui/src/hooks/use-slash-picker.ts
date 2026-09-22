@@ -1,6 +1,6 @@
 import { type Dispatch, useCallback, useEffect } from 'react';
-import type { AppProps } from '../app-props.js';
 import type { Action } from '../app-action-type.js';
+import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
 import { buildSlashCommandMatches } from '../slash-command-search.js';
 
@@ -35,7 +35,14 @@ export function useSlashPicker({
     if (!state.slashPicker.open || state.slashPicker.query !== query) {
       dispatch({ type: 'slashPickerOpen', query, matches });
     }
-  }, [state.buffer, state.bashMode, state.slashPicker.open, state.slashPicker.query, slashRegistry, dispatch]);
+  }, [
+    state.buffer,
+    state.bashMode,
+    state.slashPicker.open,
+    state.slashPicker.query,
+    slashRegistry,
+    dispatch,
+  ]);
 
   return useCallback(() => {
     const { open, matches, selected } = state.slashPicker;

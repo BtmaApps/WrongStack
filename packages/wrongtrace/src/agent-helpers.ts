@@ -239,10 +239,9 @@ export function summarizeFriction(friction: unknown): FrictionSummary {
   // correct unit. Percentages are clamped to [0,100] so a self-thrash
   // collision sum bigger than the daemon's windowed total renders 100%,
   // never 1433%.
-  const collisionUnits =
-    typeof rawTotal === 'number' || typeof r.total_collisions === 'number';
+  const collisionUnits = typeof rawTotal === 'number' || typeof r.total_collisions === 'number';
   const selfThrash = edges.reduce((acc, e) => {
-    const isSelf = e.is_self_thrash ?? (e.author_model === e.overwriter_model);
+    const isSelf = e.is_self_thrash ?? e.author_model === e.overwriter_model;
     if (!isSelf) return acc;
     if (!collisionUnits) return acc + 1;
     const raw = (e as { conflict_count?: unknown }).conflict_count;

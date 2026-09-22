@@ -1,6 +1,7 @@
 {
   "enabled": true,
-  "lifetimeCaptureCount": 13,
-  "lastCaptureAt": "2026-09-10T18:57:12.137Z",
-  "lastCaptureSource": "automatic"
+  "lifetimeCaptureCount": 15,
+  "lastCaptureAt": "2026-09-22T11:09:28.686Z",
+  "lastCaptureSource": "automatic",
+  "lastOptimizeAt": "2026-09-22T11:09:59.241Z"
 }

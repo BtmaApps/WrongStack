@@ -15,17 +15,14 @@
  *   4. The pre-check is in `isAllowedUrl` (lines 25-41) — the
  *      fetch call must reuse the same gate.
  */
-import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(__dirname, '../../../..');
-const source = readFileSync(
-  resolve(repoRoot, 'packages/core/src/hooks/http-executor.ts'),
-  'utf8',
-);
+const source = readFileSync(resolve(repoRoot, 'packages/core/src/hooks/http-executor.ts'), 'utf8');
 
 describe('J4 / HTTP hook executor — SSRF guard rail is wired', () => {
   it('rejects non-https for non-loopback hosts', () => {

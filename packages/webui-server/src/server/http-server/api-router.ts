@@ -2,6 +2,7 @@ import type * as http from 'node:http';
 import * as v8 from 'node:v8';
 import { sanitizeApiError } from '@wrongstack/core/security';
 import { getIndexState } from '@wrongstack/tools';
+import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import {
   handleCodemapFiles,
   handleCodemapPackages,
@@ -49,7 +50,6 @@ import {
   handleApiSessions,
 } from './api-handlers.js';
 import { decodeSessionId, strictDecodeParam } from './security-helpers.js';
-import type { VectorMemoryStore } from '@wrongstack/vector-memory';
 import {
   handleMemorySearch,
   handleVectorMemoryForget,

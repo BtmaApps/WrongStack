@@ -23,6 +23,8 @@ export interface MCPStoredAuthorization {
   serverName: string;
   resource: string;
   clientId: string;
+  /** Present only for a confidential client issued by dynamic registration. */
+  clientSecret?: string | undefined;
   authorizationServer: MCPAuthorizationServerMetadata;
   tokenSet: MCPTokenSet;
   updatedAt: string;
@@ -32,6 +34,8 @@ interface EncryptedAuthorizationEntry {
   serverName: string;
   resource: string;
   clientId: string;
+  /** Vault ciphertext, like the tokens — a client secret is a credential. */
+  clientSecret?: string | undefined;
   authorizationServer: MCPAuthorizationServerMetadata;
   accessToken: string;
   refreshToken?: string | undefined;
@@ -49,10 +53,12 @@ interface TokenStoreFile {
 
 export interface MCPAuthorizationStateEvent {
   serverName: string;
-  state: 'authorized' | 'refreshed' | 'reauth_required' | 'removed';
+  state: 'authorized' | 'refreshed' | 'reauth_required' | 'removed' | 'failed';
   resource: string;
   expiresAt?: number | undefined;
   scopes?: string[] | undefined;
+  /** Non-secret reason, set for `failed`. Never contains a token or code. */
+  message?: string | undefined;
 }
 
 export interface MCPRefreshingAuthorizationProviderOptions {
@@ -148,9 +154,11 @@ export class MCPVaultTokenStore {
     const refreshToken = value.tokenSet.refreshToken
       ? this.vault.encrypt(value.tokenSet.refreshToken)
       : undefined;
+    const clientSecret = value.clientSecret ? this.vault.encrypt(value.clientSecret) : undefined;
     if (
       !this.vault.isEncrypted(accessToken) ||
-      (refreshToken && !this.vault.isEncrypted(refreshToken))
+      (refreshToken && !this.vault.isEncrypted(refreshToken)) ||
+      (clientSecret && !this.vault.isEncrypted(clientSecret))
     ) {
       throw new Error('MCP token store requires an encrypting SecretVault');
     }
@@ -158,6 +166,7 @@ export class MCPVaultTokenStore {
       serverName: value.serverName,
       resource: value.resource,
       clientId: value.clientId,
+      clientSecret,
       authorizationServer: value.authorizationServer,
       accessToken,
       refreshToken,
@@ -171,7 +180,8 @@ export class MCPVaultTokenStore {
   private decryptEntry(entry: EncryptedAuthorizationEntry): MCPStoredAuthorization {
     if (
       !this.vault.isEncrypted(entry.accessToken) ||
-      (entry.refreshToken !== undefined && !this.vault.isEncrypted(entry.refreshToken))
+      (entry.refreshToken !== undefined && !this.vault.isEncrypted(entry.refreshToken)) ||
+      (entry.clientSecret !== undefined && !this.vault.isEncrypted(entry.clientSecret))
     ) {
       throw new Error('MCP token store contains an unencrypted token');
     }
@@ -179,6 +189,9 @@ export class MCPVaultTokenStore {
       serverName: entry.serverName,
       resource: entry.resource,
       clientId: entry.clientId,
+      ...(entry.clientSecret !== undefined
+        ? { clientSecret: this.vault.decrypt(entry.clientSecret) }
+        : {}),
       authorizationServer: entry.authorizationServer,
       tokenSet: {
         accessToken: this.vault.decrypt(entry.accessToken),
@@ -269,6 +282,7 @@ export class MCPRefreshingAuthorizationProvider implements MCPAuthorizationProvi
       tokenSet = await refreshMcpAccessToken({
         authorizationServer: state.authorizationServer,
         clientId: state.clientId,
+        clientSecret: state.clientSecret,
         resource: state.resource,
         refreshToken,
       });
@@ -389,6 +403,10 @@ function validateEncryptedEntry(value: unknown): EncryptedAuthorizationEntry {
     serverName: boundedString(value['serverName'], 'serverName', 256),
     resource,
     clientId: boundedString(value['clientId'], 'clientId', 4_096),
+    clientSecret:
+      value['clientSecret'] === undefined
+        ? undefined
+        : boundedString(value['clientSecret'], 'clientSecret', 32_768),
     authorizationServer,
     accessToken: boundedString(value['accessToken'], 'accessToken', 32_768),
     refreshToken:
@@ -419,6 +437,9 @@ function normalizeStoredAuthorization(value: MCPStoredAuthorization): MCPStoredA
     serverName,
     resource,
     clientId: boundedString(value.clientId, 'clientId', 4_096),
+    ...(value.clientSecret
+      ? { clientSecret: boundedString(value.clientSecret, 'clientSecret', 4_096) }
+      : {}),
     authorizationServer,
     tokenSet,
     updatedAt: boundedString(value.updatedAt, 'updatedAt', 128),

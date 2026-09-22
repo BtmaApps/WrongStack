@@ -1,15 +1,15 @@
-import type { StateCreator } from 'zustand/vanilla';
-import { createSessionScopedStore } from './session-scoped-store';
 import type {
+  ContextEditorConflict,
+  ContextEditorDiagnostics,
   ContextEditorMessage,
   ContextEditorMetrics,
   ContextEditorRemoval,
   ContextEditorRepairPreview,
   ContextEditorValidationError,
   ContextEditorWarning,
-  ContextEditorConflict,
-  ContextEditorDiagnostics,
 } from '@/types/runtime';
+import type { StateCreator } from 'zustand/vanilla';
+import { createSessionScopedStore } from './session-scoped-store';
 
 type ContextEditorPhase =
   | 'closed'
@@ -219,9 +219,8 @@ const initialState: ContextEditorState = {
   errorMessage: null,
 };
 
-export const useContextEditorStore = createSessionScopedStore<ContextEditorStore>(
-  ((set, get) => ({
-    ...initialState,
+export const useContextEditorStore = createSessionScopedStore<ContextEditorStore>(((set, get) => ({
+  ...initialState,
 
   open: () =>
     set({
@@ -383,5 +382,4 @@ export const useContextEditorStore = createSessionScopedStore<ContextEditorStore
     }
     return messages.filter((_, i) => !state.removeMessages.has(i));
   },
-  })) as StateCreator<ContextEditorStore>,
-);
+})) as StateCreator<ContextEditorStore>);

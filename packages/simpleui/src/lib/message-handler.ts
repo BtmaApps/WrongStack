@@ -1,3 +1,8 @@
+import { finiteNumber } from './context-load.js';
+import { handleContextMessage } from './context-message-handler.js';
+
+export { normalizeContextLoad } from './context-load.js';
+
 /**
  * WebSocket message handler for SimpleUI.
  *
@@ -58,7 +63,6 @@ import type { RefineResultPayload } from './refine-model.js';
 import { projectRefineResult } from './refine-model.js';
 import { parseSessionSummaries } from './session-model.js';
 import { projectStatusNotice } from './status-notice.js';
-import { enqueuePendingUserInput, resolvePendingUserInput } from './user-input-queue.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -91,32 +95,6 @@ export function delegationNoticeText(
     return formatAutoWakeSuppressedNotice(finiteNumber(payload['pending'], 1));
   }
   return null;
-}
-
-function finiteNumber(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-/**
- * Normalize a `ctx.pct` `load` into a 0-1 context-fill fraction.
- *
- * The wire unit is a fraction of the context budget, NOT a percentage:
- * core computes `rawLoad = tokens / maxContext` and emits it as
- * `load = Math.max(0, Math.min(1, rawLoad))` — already clamped to [0, 1]
- * (see `emitContextPct` in core `agent-loop.ts`; the un-clamped value is
- * carried separately as `rawLoad`). So `load: 0.68` means 68% full and a
- * full budget is exactly `1`. The previous `load > 1 ? load / 100`
- * heuristic silently corrupted any value it mistook for a percentage and
- * could never distinguish "1% as a percent" from "100% as a fraction".
- *
- * Deterministic rule: trust the fraction and pass it through. The only
- * adjustment is a defensive clamp of non-finite/negative inputs to 0 (the
- * producer already clamps, so this is just belt-and-suspenders against a
- * malformed frame — we do NOT divide or magnitude-sniff).
- */
-export function normalizeContextLoad(value: unknown): number {
-  const load = finiteNumber(value);
-  return load > 0 ? load : 0;
 }
 
 function messageId(prefix: string): string {
@@ -156,9 +134,7 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
     setToolCalls,
     setSubagents,
     setAgentTranscripts,
-    setSession,
     setSessions,
-    setContext,
     setModels,
     setModes,
     setActiveModeId,
@@ -166,8 +142,6 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
     setNotice,
     setQueue,
     setRefineState,
-    setPendingConfirm,
-    setUserInputRequests,
     setFileMatches,
     setFilePickerIndex,
     setFileSearching,
@@ -516,47 +490,10 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         }
         break;
       }
-      case 'stats.get': {
-        // Server-side session stats carry both the cumulative prompt-cache
-        // figures and the per-request `currentRequest.cacheRead` snapshot.
-        // Coverage must come from the per-request figure — `usage.cacheRead`
-        // is cumulative across the whole session and would mislead the
-        // "cache covers the first N tokens of THIS prompt" indicator.
-        // Defensive parse: the reply arrives as `Record<string, unknown>`,
-        // so every field is coerced through a finite-number guard rather
-        // than cast.
-        const payload = message.payload;
-        const usage = payload['usage'];
-        const cache = payload['cache'];
-        const currentRequest = payload['currentRequest'];
-        if (usage && typeof usage === 'object' && cache && typeof cache === 'object') {
-          const c = cache as Record<string, unknown>;
-          const currentRequestCacheRead =
-            currentRequest && typeof currentRequest === 'object'
-              ? finiteNumber((currentRequest as Record<string, unknown>)['cacheRead'])
-              : 0;
-          const readTokens = finiteNumber(c['readTokens']);
-          const writeTokens = finiteNumber(c['writeTokens']);
-          const hitRatioRaw = c['hitRatio'];
-          const hitRatio =
-            typeof hitRatioRaw === 'number' && Number.isFinite(hitRatioRaw) ? hitRatioRaw : 0;
-          setContext((current) => ({
-            ...current,
-            // Coverage is the per-request snapshot, capped at the live
-            // request size so the figure never overshoots what is
-            // actually being sent. Falls back to 0 when the server
-            // omits `currentRequest` (older clients, or before the
-            // server-side addition in `introspection-routes.ts`).
-            cache: {
-              readTokens,
-              writeTokens,
-              hitRatio,
-              coverageTokens: Math.max(0, Math.min(current.tokens, currentRequestCacheRead)),
-            },
-          }));
-        }
+      case 'stats.get':
+        handleContextMessage(message, deps);
         break;
-      }
+
       case 'context.compacted':
         setActivity('Context compacted');
         break;
@@ -771,70 +708,30 @@ export function createMessageHandler(deps: MessageHandlerDeps): ServerMessageHan
         drainQueue();
         break;
       }
-      case 'ctx.pct': {
-        setContext((prev) => ({
-          // `load` is emitted as a 0-1 fraction of the context budget
-          // (e.g. 0.68 = 68%); values > 1 mean the budget is overflowed
-          // (e.g. 1.35 = 135%). See core `ctx.pct` emit + agent-status
-          // tracker. Never magnitude-sniff/divide — that corrupted genuine
-          // overflow values (1.35 -> 0.0135). Just clamp negatives to 0.
-          load: normalizeContextLoad(payload['load']),
-          tokens: finiteNumber(payload['tokens']),
-          maxContext: finiteNumber(payload['maxContext']),
-          // `ctx.pct` does not carry cache stats — keep whatever the
-          // `stats.get` handler most recently wrote. Going `null` here
-          // would erase a valid reading on every per-request tick.
-          cache: prev.cache,
-        }));
+      case 'ctx.pct':
+        handleContextMessage(message, deps);
         break;
-      }
-      case 'ctx.max_context': {
-        const maxContext = finiteNumber(payload['maxContext']);
-        setContext((current) => ({ ...current, maxContext }));
-        setSession((current) => (current ? { ...current, maxContext } : current));
+
+      case 'ctx.max_context':
+        handleContextMessage(message, deps);
         break;
-      }
+
       case 'tool.confirm_needed':
-        if (typeof payload['id'] === 'string') {
-          setPendingConfirm({
-            id: payload['id'],
-            toolName: typeof payload['toolName'] === 'string' ? payload['toolName'] : 'tool',
-            input: payload['input'],
-            riskTier: typeof payload['riskTier'] === 'string' ? payload['riskTier'] : undefined,
-            deadlineAt:
-              typeof payload['deadlineAt'] === 'number' ? payload['deadlineAt'] : undefined,
-          });
-        }
+        handleContextMessage(message, deps);
         break;
+
       case 'tool.confirm_resolved':
-        if (typeof payload['id'] === 'string') {
-          setPendingConfirm((current) => (current?.id === payload['id'] ? null : current));
-        }
+        handleContextMessage(message, deps);
         break;
-      case 'user.input_requested': {
-        const request = payload['request'];
-        if (
-          request &&
-          typeof request === 'object' &&
-          typeof (request as { id?: unknown }).id === 'string'
-        ) {
-          const entry = {
-            request: request as import('../types.js').UserInputRequest,
-            ...(typeof payload['sessionId'] === 'string'
-              ? { sessionId: payload['sessionId'] }
-              : {}),
-          };
-          setUserInputRequests?.((current) => enqueuePendingUserInput(current, entry));
-        }
+
+      case 'user.input_requested':
+        handleContextMessage(message, deps);
         break;
-      }
-      case 'user.input_resolved': {
-        const requestId = payload['requestId'];
-        if (typeof requestId === 'string') {
-          setUserInputRequests?.((current) => resolvePendingUserInput(current, requestId));
-        }
+
+      case 'user.input_resolved':
+        handleContextMessage(message, deps);
         break;
-      }
+
       case 'coordinator.stats': {
         const fleet = projectFleetMessage(message);
         const statuses = fleet?.kind === 'coordinator' ? fleet.agents : [];

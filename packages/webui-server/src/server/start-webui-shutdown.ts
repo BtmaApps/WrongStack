@@ -8,7 +8,7 @@ import type { MCPRegistry } from '@wrongstack/mcp';
 import type { WebSocket, WebSocketServer } from 'ws';
 import type { createAgentServices } from './backend-services.js';
 import { unregisterInstance } from './instance-registry.js';
-import { registerShutdown, type armEvents } from './server-runtime.js';
+import { type armEvents, registerShutdown } from './server-runtime.js';
 import type { StandaloneSessionIdentityLifecycle } from './standalone-session-identity.js';
 import type { ConnectedClient } from './types.js';
 

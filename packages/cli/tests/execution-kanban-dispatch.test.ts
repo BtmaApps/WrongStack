@@ -32,12 +32,10 @@ describe('createKanbanDispatchHandler', () => {
   it('reports a completion callback error without invoking that callback a second time', async () => {
     const onDone = vi.fn().mockRejectedValue(new Error('IPC unavailable'));
     const dispose = vi.fn();
-    const factory = vi
-      .fn()
-      .mockResolvedValue({
-        agent: { run: vi.fn().mockResolvedValue({ status: 'done', finalText: 'Reviewed' }) },
-        dispose,
-      });
+    const factory = vi.fn().mockResolvedValue({
+      agent: { run: vi.fn().mockResolvedValue({ status: 'done', finalText: 'Reviewed' }) },
+      dispose,
+    });
     const events = { emit: vi.fn() };
     const dispatch = createKanbanDispatchHandler({
       config: {} as never,

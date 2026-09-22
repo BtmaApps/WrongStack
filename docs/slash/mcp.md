@@ -16,7 +16,8 @@ used by the CLI subcommand.
 | `/mcp enable <name>` | Enable a configured server and start it |
 | `/mcp disable <name>` | Disable a configured server and stop it |
 | `/mcp restart <name>` | Restart a running server in the current REPL session |
-| `/mcp auth start <name> <client-id> <redirect-uri> [scopes...]` | Discover OAuth metadata and begin a bounded PKCE authorization |
+| `/mcp auth login <name> [--client-id <id>] [--port <n>] [scopes...]` | One-step OAuth: registers a client if needed, hosts the loopback redirect |
+| `/mcp auth start <name> --redirect-uri <url> [--client-id <id>] [scopes...]` | Manual PKCE authorization for surfaces that host their own redirect |
 | `/mcp auth complete <name> <callback-url>` | Exchange the one-time callback and save encrypted credentials |
 | `/mcp auth status <name>` | Show non-secret authorization state, scopes, and expiry |
 | `/mcp auth logout <name>` | Remove the server/resource credential binding |
@@ -65,20 +66,40 @@ or tokens.
 
 ## OAuth for remote HTTP servers
 
-Registered SSE and streamable-HTTP servers can use the manual/headless OAuth flow:
+Registered SSE and streamable-HTTP servers sign in with a single command:
 
 ```text
-/mcp auth start private-api wrongstack http://127.0.0.1:43123/callback tools:read
-# Open the returned authorization URL, then paste its final callback URL:
-/mcp auth complete private-api http://127.0.0.1:43123/callback?code=...&state=...
+/mcp auth login private-api
+# Open the returned URL; the redirect lands on a loopback listener we host.
 /mcp auth status private-api
 ```
 
+`login` needs no client ID. It reuses the identity already stored for that server, and otherwise
+registers one through RFC 7591 dynamic client registration — which is how most hosted MCP servers
+(Notion, Linear, Sentry, …) expect a native client to identify itself. Pass `--client-id` when the
+server issues preregistered IDs instead, and `--port` when it only accepts one fixed loopback
+redirect URI. The command returns as soon as the URL exists, so the REPL stays usable while you
+approve access in the browser; the outcome arrives as an `mcp.server.auth_state` event.
+
+Use `start` + `complete` when a surface hosts its own redirect, or when no loopback port can be
+bound:
+
+```text
+/mcp auth start private-api --redirect-uri http://127.0.0.1:43123/callback tools:read
+/mcp auth complete private-api http://127.0.0.1:43123/callback?code=...&state=...
+```
+
 The pending PKCE verifier and state are memory-only, bounded, and expire after ten minutes. The
-authorization code is consumed once. Access and refresh tokens are resource-bound and encrypted in
-the non-repository project state; they never enter `config.json` or MCP capability manifests.
-`/mcp auth logout` removes that exact server/resource binding. This is currently the headless/manual
-CLI flow; a managed loopback listener and WebUI controls remain planned.
+authorization code is consumed once. The loopback listener binds `127.0.0.1` only, answers exactly
+one path, and closes as soon as the redirect arrives. Access and refresh tokens — and a client
+secret, if the server issued a confidential client despite our public-client request — are
+resource-bound and encrypted in the non-repository project state; they never enter `config.json` or
+MCP capability manifests. `/mcp auth logout` removes that exact server/resource binding locally
+(token revocation at the provider is not yet implemented).
+
+When a stored credential expires and cannot be refreshed, the server emits
+`mcp.server.auth_state: reauth_required`: the CLI logs it and the WebUI MCP panel badges the server,
+instead of every call failing with an opaque 401.
 
 ## Examples
 

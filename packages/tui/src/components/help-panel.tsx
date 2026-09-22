@@ -1,6 +1,6 @@
+import type React from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, Text } from '../ink.js';
-import type React from 'react';
 
 export interface HelpEntry {
   name: string;
@@ -24,9 +24,7 @@ const CATEGORY_ORDER = ['Run', 'Session', 'Inspect', 'Agent', 'Config', 'App'];
 const MAX_PANEL_HEIGHT = 26;
 const MIN_PANEL_HEIGHT = 8;
 
-type Row =
-  | { type: 'header'; category: string }
-  | { type: 'item'; entry: HelpEntry; index: number };
+type Row = { type: 'header'; category: string } | { type: 'item'; entry: HelpEntry; index: number };
 
 function normalizeQuery(raw: string): string {
   return raw.trim().toLowerCase();

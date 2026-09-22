@@ -87,7 +87,7 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
       // the old literal-only grep could not see a shorthand or a computed
       // value. They are recorded rather than swept in one commit — but they
       // are now visible, which they were not before.
-      'packages/cli/src/goal-host.ts', // shorthand `shell,` — caller-supplied
+      'packages/cli/src/goal-commands.ts', // shorthand `shell,` — caller-supplied
       'packages/cli/src/simpleui-dist.ts',
       'packages/techstack/src/advisory/native-audit.ts',
       'packages/webui-server/src/server/frontend-static-serve.ts',
@@ -109,11 +109,15 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
     // spellings: `shell:` with any value, and object shorthand on its own line.
     let output = '';
     try {
-      output = execFileSync('git', ['grep', '-nE', '--', '(shell:|^[[:space:]]*shell,$)'], {
-        cwd: REPO_ROOT,
-        encoding: 'utf8',
-        maxBuffer: 1 << 26,
-      });
+      output = execFileSync(
+        'git',
+        ['grep', '--untracked', '-nE', '--', '(shell:|^[[:space:]]*shell,$)'],
+        {
+          cwd: REPO_ROOT,
+          encoding: 'utf8',
+          maxBuffer: 1 << 26,
+        },
+      );
     } catch (err) {
       // git grep exits 1 when no matches — that is the success path for "no
       // new sites" once the allow-list is empty.
@@ -178,14 +182,18 @@ describe('S4: every shell-enabling spawn site is paired with the cmd-shim helper
    * was written to fix. Assert the scan still sees the known sites.
    */
   it('still scans a non-empty set of spawn sites', () => {
-    const output = execFileSync('git', ['grep', '-lE', '--', '(shell:|^[[:space:]]*shell,$)'], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-      maxBuffer: 1 << 26,
-    });
+    const output = execFileSync(
+      'git',
+      ['grep', '--untracked', '-lE', '--', '(shell:|^[[:space:]]*shell,$)'],
+      {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        maxBuffer: 1 << 26,
+      },
+    );
     const files = output.split('\n').filter(Boolean).map(toPosix);
     expect(files.length).toBeGreaterThan(20);
     // A canonical shorthand site the old literal-only pattern could not see.
-    expect(files).toContain('packages/cli/src/goal-host.ts');
+    expect(files).toContain('packages/cli/src/goal-commands.ts');
   });
 });

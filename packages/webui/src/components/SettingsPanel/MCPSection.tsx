@@ -1,557 +1,26 @@
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Edit3,
-  Loader2,
-  Moon,
-  Plus,
-  Search,
-  Server,
-  Star,
-  Sun,
-  Trash2,
-} from 'lucide-react';
+import { Loader2, Plus, Server, Star } from 'lucide-react';
 import { type ReactElement, useCallback, useEffect, useState } from 'react';
 import { toast } from '@/components/Toaster';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { i18n, useAppTranslation } from '@/i18n';
 import type { WSServerMessage } from '@/types';
 import { confirmModal } from '../ConfirmModal';
-import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import {
+  type MCPAuthState,
+  type MCPServer,
+  OfficialServerCard,
+  ServerCard,
+} from './MCPServerCards.js';
+import { ServerDialog } from './MCPServerDialog.js';
 import { OFFICIAL_SERVERS, type OfficialServer, toServerConfig } from './official-servers';
 
-export interface MCPServer {
-  name: string;
-  transport: string;
-  status: 'stopped' | 'connecting' | 'connected' | 'sleeping' | 'discovering' | 'error';
-  enabled: boolean;
-  description?: string;
-  tools?: string[];
-  error?: string;
-  lastError?: string;
-  pid?: number;
-  lazy?: boolean;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  health?: {
-    healthState: 'disabled' | 'dormant' | 'connecting' | 'healthy' | 'degraded' | 'failed';
-    consecutiveFailures: number;
-    failures: { transport: number; protocol: number; tool: number };
-    reconnectCount: number;
-    wakeCount: number;
-    sleepCount: number;
-    restartCount: number;
-    inFlightCalls: number;
-    peakInFlightCalls: number;
-    callLatency: { count: number; lastMs?: number; p50Ms?: number; p95Ms?: number };
-  };
-}
+export type { MCPServer } from './MCPServerCards.js';
 
 import type { MCPServerConfig } from './contracts.js';
 
 export type { MCPServerConfig };
-
-/** Map server status to a human-readable label and color */
-function statusInfo(status: MCPServer['status']): { color: string } {
-  switch (status) {
-    case 'connected':
-      return { color: 'bg-success' };
-    case 'connecting':
-      return { color: 'bg-warning animate-pulse' };
-    case 'sleeping':
-      return { color: 'bg-info' };
-    case 'discovering':
-      return { color: 'bg-primary animate-pulse' };
-    case 'error':
-      return { color: 'bg-destructive' };
-    case 'stopped':
-      return { color: 'bg-muted-foreground' };
-    default:
-      return { color: 'bg-muted-foreground/70' };
-  }
-}
-
-/** Small colored dot for status indication */
-function StatusDot({ status }: { status: MCPServer['status'] }) {
-  const { color } = statusInfo(status);
-  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
-}
-
-/** Expandable server card */
-function ServerCard({
-  server,
-  onWake,
-  onSleep,
-  onDiscover,
-  onEdit,
-  onRemove,
-}: {
-  server: MCPServer;
-  onWake: () => void;
-  onSleep: () => void;
-  onDiscover: () => void;
-  onEdit: () => void;
-  onRemove: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const { color } = statusInfo(server.status);
-  const { t } = useAppTranslation();
-
-  return (
-    <div className="rounded-md border border-border/70 bg-card/70 p-3 transition-colors hover:bg-card">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-          <StatusDot status={server.status} />
-          <span className="min-w-0 truncate font-medium">{server.name}</span>
-          <span className="rounded bg-muted/60 px-1.5 py-0.5 text-xs text-muted-foreground">
-            {server.transport}
-          </span>
-          {!server.enabled && (
-            <Badge variant="outline" className="text-xs">
-              {t('settings:mcp.disabled')}
-            </Badge>
-          )}
-        </button>
-        <div className="flex items-center gap-1">
-          {server.status === 'sleeping' && (
-            <Button variant="ghost" size="sm" onClick={onWake} title={t('settings:mcp.wakeTitle')}>
-              <Sun className="w-4 h-4" />
-            </Button>
-          )}
-          {(server.status === 'connected' || server.status === 'connecting') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onSleep}
-              title={t('settings:mcp.sleepTitle')}
-            >
-              <Moon className="w-4 h-4" />
-            </Button>
-          )}
-          {(server.status === 'stopped' || server.status === 'sleeping') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDiscover}
-              title={t('settings:mcp.discoverTitle')}
-            >
-              <Search className="w-4 h-4" />
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={onEdit} title={t('settings:mcp.editTitle')}>
-            <Edit3 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            title={t('settings:mcp.removeTitle')}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="mt-3 space-y-2 border-t border-border/60 pl-6 pt-3 text-sm">
-          <div className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
-            <span className="text-muted-foreground">{t('settings:mcp.statusLabel')}</span>
-            <span className="flex items-center gap-1">
-              <span className={`inline-block w-2 h-2 rounded-full ${color}`} />
-              {t(`settings:mcp.status.${server.status}`, { defaultValue: server.status })}
-            </span>
-            <span className="text-muted-foreground">{t('settings:mcp.enabledLabel')}</span>
-            <span>{server.enabled ? t('settings:mcp.yes') : t('settings:mcp.no')}</span>
-            {server.description && (
-              <>
-                <span className="text-muted-foreground">{t('settings:mcp.descriptionLabel')}</span>
-                <span>{server.description}</span>
-              </>
-            )}
-            {server.pid && (
-              <>
-                <span className="text-muted-foreground">{t('settings:mcp.pidLabel')}</span>
-                <span>{server.pid}</span>
-              </>
-            )}
-            {server.error && (
-              <>
-                <span className="text-muted-foreground">{t('settings:mcp.errorLabel')}</span>
-                <span className="text-destructive">{server.error}</span>
-              </>
-            )}
-            {server.health && (
-              <>
-                <span className="text-muted-foreground">
-                  {t('activity:mCPSection.operationalHealth')}
-                </span>
-                <span>{server.health.healthState}</span>
-                <span className="text-muted-foreground">
-                  {t('activity:mCPSection.failuresTransportProtocolTool')}
-                </span>
-                <span>
-                  {server.health.failures.transport}/{server.health.failures.protocol}/
-                  {server.health.failures.tool}
-                </span>
-                <span className="text-muted-foreground">
-                  {t('activity:mCPSection.callLatencyP50P95')}
-                </span>
-                <span>
-                  {server.health.callLatency.p50Ms ?? '-'}ms /{' '}
-                  {server.health.callLatency.p95Ms ?? '-'}ms
-                </span>
-                <span className="text-muted-foreground">
-                  {t('activity:mCPSection.reconnectWakeSleep')}
-                </span>
-                <span>
-                  {server.health.reconnectCount} / {server.health.wakeCount} /{' '}
-                  {server.health.sleepCount}
-                </span>
-                <span className="text-muted-foreground">
-                  {t('activity:mCPSection.callsInFlightPeak')}
-                </span>
-                <span>
-                  {server.health.inFlightCalls} / {server.health.peakInFlightCalls}
-                </span>
-              </>
-            )}
-          </div>
-          {server.tools && server.tools.length > 0 && (
-            <div>
-              <span className="text-muted-foreground">
-                {t('settings:mcp.toolsLabel', { count: server.tools.length })}
-              </span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {server.tools.map((tool) => (
-                  <Badge key={tool} variant="secondary" className="text-xs">
-                    {tool}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          {(!server.tools || server.tools.length === 0) && server.status === 'connected' && (
-            <span className="text-muted-foreground">{t('settings:mcp.noTools')}</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Edit/Add Server Dialog */
-function ServerDialog({
-  open,
-  onOpenChange,
-  server,
-  onSave,
-  prefillConfig,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  server?: MCPServer;
-  prefillConfig?: MCPServerConfig;
-  onSave: (config: MCPServerConfig) => void;
-}) {
-  const { t } = useAppTranslation();
-  const [name, setName] = useState(server?.name ?? prefillConfig?.name ?? '');
-  const [transport, setTransport] = useState(
-    server?.transport ?? prefillConfig?.transport ?? 'stdio',
-  );
-  const [description, setDescription] = useState(
-    server?.description ?? prefillConfig?.description ?? '',
-  );
-  const [command, setCommand] = useState(prefillConfig?.command ?? '');
-  const [args, setArgs] = useState(prefillConfig?.args?.join(' ') ?? '');
-  const [env, setEnv] = useState('');
-  const [url, setUrl] = useState(prefillConfig?.url ?? '');
-  const [enabled, setEnabled] = useState(server?.enabled ?? true);
-  const [lazy, setLazy] = useState(server?.lazy ?? prefillConfig?.lazy ?? false);
-
-  // Reset form when dialog opens with new prefill data
-  useEffect(() => {
-    if (open) {
-      if (server) {
-        setName(server.name);
-        setTransport(server.transport);
-        setDescription(server.description ?? '');
-        setEnabled(server.enabled);
-        setLazy(server.lazy ?? false);
-        setCommand(server.command ?? '');
-        setArgs(server.args?.join(' ') ?? '');
-        setEnv(
-          server.env
-            ? Object.entries(server.env)
-                .map(([k, v]) => `${k}=${v}`)
-                .join('\n')
-            : '',
-        );
-        setUrl(server.url ?? '');
-      } else if (prefillConfig) {
-        setName(prefillConfig.name);
-        setTransport(prefillConfig.transport);
-        setDescription(prefillConfig.description ?? '');
-        setEnabled(true);
-        setLazy(prefillConfig.lazy ?? false);
-        setCommand(prefillConfig.command ?? '');
-        setArgs(prefillConfig.args?.join(' ') ?? '');
-        setEnv(
-          prefillConfig.env
-            ? Object.entries(prefillConfig.env)
-                .map(([k, v]) => `${k}=${v}`)
-                .join('\n')
-            : '',
-        );
-        setUrl(prefillConfig.url ?? '');
-      } else {
-        setName('');
-        setTransport('stdio');
-        setDescription('');
-        setEnabled(true);
-        setLazy(false);
-        setCommand('');
-        setArgs('');
-        setEnv('');
-        setUrl('');
-      }
-    }
-  }, [server, prefillConfig, open]);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      toast.error(t('settings:mcp.serverNameRequired'));
-      return;
-    }
-    const parsedEnv: Record<string, string> = {};
-    if (env.trim()) {
-      for (const line of env.trim().split('\n')) {
-        const idx = line.indexOf('=');
-        if (idx > 0) {
-          parsedEnv[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
-        }
-      }
-    }
-    onSave({
-      name: name.trim(),
-      transport,
-      description: description.trim() || undefined,
-      enabled,
-      command: command.trim() || undefined,
-      args: args.trim() ? args.trim().split(/\s+/) : undefined,
-      env: Object.keys(parsedEnv).length > 0 ? parsedEnv : undefined,
-      url: url.trim() || undefined,
-      lazy,
-    });
-    onOpenChange(false);
-  };
-
-  const isEdit = !!server;
-  const isPrefill = !!prefillConfig;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit
-              ? t('settings:mcp.dialogTitleEdit')
-              : isPrefill
-                ? t('settings:mcp.dialogTitleAdd')
-                : t('settings:mcp.dialogTitleAddCustom')}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <span className="text-sm font-medium">{t('settings:mcp.fieldName')}</span>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('settings:mcp.fieldNamePlaceholder')}
-              disabled={isEdit || isPrefill}
-            />
-          </div>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">{t('settings:mcp.fieldTransport')}</span>
-            <select
-              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              value={transport}
-              onChange={(e) => setTransport(e.target.value)}
-              disabled={isPrefill}
-            >
-              <option value="stdio">stdio</option>
-              <option value="sse">sse</option>
-              <option value="streamable-http">streamable-http</option>
-              <option value="http">http</option>
-            </select>
-          </div>
-          {(transport === 'streamable-http' || transport === 'sse' || transport === 'http') && (
-            <div className="space-y-2">
-              <span className="text-sm font-medium">{t('settings:mcp.fieldUrl')}</span>
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder={t('activity:mCPSection.httpsMcpExampleComMcp')}
-                disabled={isPrefill}
-              />
-            </div>
-          )}
-          {transport === 'stdio' && (
-            <>
-              <div className="space-y-2">
-                <span className="text-sm font-medium">{t('settings:mcp.fieldCommand')}</span>
-                <Input
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  placeholder={t('settings:mcp.fieldCommandPlaceholder')}
-                  disabled={isPrefill}
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-sm font-medium">
-                  {t('settings:mcp.fieldArgs')}{' '}
-                  <span className="text-muted-foreground font-normal">
-                    {t('settings:mcp.fieldArgsHint')}
-                  </span>
-                </span>
-                <Input
-                  value={args}
-                  onChange={(e) => setArgs(e.target.value)}
-                  placeholder={t('settings:mcp.fieldArgsPlaceholder')}
-                  disabled={isPrefill}
-                />
-              </div>
-            </>
-          )}
-          <div className="space-y-2">
-            <span className="text-sm font-medium">
-              {t('settings:mcp.fieldEnv')}{' '}
-              <span className="text-muted-foreground font-normal">
-                {t('settings:mcp.fieldEnvHint')}
-              </span>
-            </span>
-            <textarea
-              className="w-full h-20 px-3 py-2 rounded-md border border-input bg-background text-sm font-mono resize-none"
-              value={env}
-              onChange={(e) => setEnv(e.target.value)}
-              placeholder={`GITHUB_TOKEN=ghp_...\nAWS_REGION=us-east-1`}
-              // Env stays editable even for a prefilled official server — this is
-              // where the user pastes the credentials it requires before enabling.
-            />
-          </div>
-          <div className="space-y-2">
-            <span className="text-sm font-medium">{t('settings:mcp.fieldDescription')}</span>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('settings:mcp.fieldDescriptionPlaceholder')}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="server-enabled"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              className="rounded"
-            />
-            <label htmlFor="server-enabled" className="text-sm">
-              {t('settings:mcp.enableServer')}
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="server-lazy"
-              checked={lazy}
-              onChange={(e) => setLazy(e.target.checked)}
-              className="rounded"
-            />
-            <label htmlFor="server-lazy" className="text-sm">
-              {t('settings:mcp.lazyConnect')}{' '}
-              <span className="text-muted-foreground font-normal">
-                {t('settings:mcp.lazyConnectHint')}
-              </span>
-            </label>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('common:action.cancel')}
-          </Button>
-          <Button onClick={handleSave}>
-            {isEdit ? t('settings:mcp.saveChanges') : t('settings:mcp.addServer')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Official/recommended server card */
-function OfficialServerCard({
-  server,
-  isAdded,
-  onAdd,
-}: {
-  server: OfficialServer;
-  isAdded: boolean;
-  onAdd: () => void;
-}) {
-  const { t } = useAppTranslation();
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-md border border-border/70 bg-card/70 p-3 transition-colors hover:bg-card">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{server.name}</span>
-          {server.badge && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              {server.badge}
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-xs shrink-0">
-            {server.transport}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">{server.description}</p>
-        {server.requiresEnvVars && server.requiresEnvVars.length > 0 && (
-          <p className="mt-1 text-xs text-warning">
-            {t('settings:mcp.requires', { vars: server.requiresEnvVars.join(', ') })}
-          </p>
-        )}
-      </div>
-      <div className="shrink-0">
-        {isAdded ? (
-          <Button variant="ghost" size="sm" disabled>
-            <Check className="w-4 h-4 mr-1" />
-            {t('settings:mcp.added')}
-          </Button>
-        ) : (
-          <Button size="sm" variant="outline" onClick={onAdd}>
-            <Plus className="w-4 h-4 mr-1" />
-            {t('common:action.add')}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function MCPSection(): ReactElement {
   const ws = useWebSocket();
@@ -564,6 +33,9 @@ export function MCPSection(): ReactElement {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [prefillConfig, setPrefillConfig] = useState<MCPServerConfig | undefined>();
   const [_pendingOp, setPendingOp] = useState<string | null>(null);
+  const [authStates, setAuthStates] = useState<Record<string, MCPAuthState>>({});
+  /** Authorization URL awaiting the user's click, keyed by server name. */
+  const [authPrompt, setAuthPrompt] = useState<{ name: string; url: string } | null>(null);
 
   // Load server list on mount and when MCP events come in
   useEffect(() => {
@@ -713,6 +185,59 @@ export function MCPSection(): ReactElement {
       }
     };
 
+    const handleMcpAuthStatus = (msg: WSServerMessage) => {
+      if (msg.type === 'mcp.auth.status') {
+        const p = msg.payload as { serverName: string; state: MCPAuthState };
+        setAuthStates((prev) => ({ ...prev, [p.serverName]: p.state }));
+      }
+    };
+
+    const handleMcpAuthPending = (msg: WSServerMessage) => {
+      if (msg.type === 'mcp.auth.pending') {
+        const p = msg.payload as { name: string; authorizationUrl: string };
+        setAuthStates((prev) => ({ ...prev, [p.name]: 'pending' }));
+        // The URL arrives on a WS round-trip, not inside the click handler, so
+        // a popup blocker would eat window.open(). Render a link instead and
+        // let the user's own click open it.
+        setAuthPrompt({ name: p.name, url: p.authorizationUrl });
+      }
+    };
+
+    const handleMcpAuthState = (msg: WSServerMessage) => {
+      if (msg.type === 'mcp.server.auth_state') {
+        const p = msg.payload as {
+          name: string;
+          state: 'authorized' | 'refreshed' | 'reauth_required' | 'removed' | 'failed';
+          message?: string;
+        };
+        setAuthStates((prev) => {
+          const next = { ...prev };
+          if (p.state === 'removed') delete next[p.name];
+          else if (p.state === 'refreshed') next[p.name] = 'authorized';
+          else next[p.name] = p.state;
+          return next;
+        });
+        if (p.state === 'authorized') {
+          setAuthPrompt((prev) => (prev?.name === p.name ? null : prev));
+          toast.success(
+            i18n.t('settings:mcp.toastAuthorized', {
+              name: p.name,
+              defaultValue: `Authorized "${p.name}"`,
+            }),
+          );
+        }
+        if (p.state === 'reauth_required' || p.state === 'failed') {
+          setAuthPrompt((prev) => (prev?.name === p.name ? null : prev));
+          toast.error(
+            i18n.t('settings:mcp.toastAuthFailed', {
+              name: p.name,
+              defaultValue: `"${p.name}" needs authorization${p.message ? `: ${p.message}` : ''}`,
+            }),
+          );
+        }
+      }
+    };
+
     const off1 = ws.client.on('mcp.list', handleMcpList);
     const off2 = ws.client.on('mcp.server.added', handleMcpServerAdded);
     const off3 = ws.client.on('mcp.server.removed', handleMcpServerRemoved);
@@ -725,6 +250,9 @@ export function MCPSection(): ReactElement {
     const off10 = ws.client.on('mcp.operation_result', handleMcpOperationResult);
     const off11 = ws.client.on('mcp.server.reconnected', handleMcpServerReconnected);
     const off12 = ws.client.on('mcp.server.disconnected', handleMcpServerDisconnected);
+    const off13 = ws.client.on('mcp.auth.status', handleMcpAuthStatus);
+    const off14 = ws.client.on('mcp.auth.pending', handleMcpAuthPending);
+    const off15 = ws.client.on('mcp.server.auth_state', handleMcpAuthState);
 
     setLoading(true);
     ws.client?.listMcpServers();
@@ -742,8 +270,46 @@ export function MCPSection(): ReactElement {
       off10?.();
       off11?.();
       off12?.();
+      off13?.();
+      off14?.();
+      off15?.();
     };
   }, [ws.client]);
+
+  // Ask for status once the list arrives, so an already-authorized server is
+  // badged without the user clicking anything.
+  useEffect(() => {
+    if (!ws.client) return;
+    for (const server of servers) {
+      if (server.transport !== 'stdio' && server.url) {
+        ws.client.send({ type: 'mcp.auth.status', payload: { name: server.name } });
+      }
+    }
+  }, [ws.client, servers]);
+
+  const handleAuthorize = useCallback(
+    (name: string) => {
+      ws.client?.send({ type: 'mcp.auth.login', payload: { name } });
+    },
+    [ws.client],
+  );
+
+  const handleSignOut = useCallback(
+    async (name: string) => {
+      const confirmed = await confirmModal({
+        title: i18n.t('settings:mcp.authSignOutTitle', {
+          defaultValue: 'Remove OAuth credentials',
+        }),
+        message: i18n.t('settings:mcp.authSignOutBody', {
+          name,
+          defaultValue: `Remove the stored OAuth credentials for "${name}"? You will need to authorize again.`,
+        }),
+      });
+      if (!confirmed) return;
+      ws.client?.send({ type: 'mcp.auth.logout', payload: { name } });
+    },
+    [ws.client],
+  );
 
   const handleAddCustom = useCallback(
     (config: MCPServerConfig) => {
@@ -857,6 +423,38 @@ export function MCPSection(): ReactElement {
         </div>
       </div>
 
+      {authPrompt && (
+        <div className="mb-3 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+          <p className="font-medium">
+            {t('settings:mcp.authPromptTitle', {
+              name: authPrompt.name,
+              defaultValue: `Finish signing in to "${authPrompt.name}"`,
+            })}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {t('settings:mcp.authPromptBody', {
+              defaultValue:
+                'Open the authorization page and approve access. This panel updates when the provider redirects back.',
+            })}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            {/* The URL comes from validated discovery metadata (HTTPS-only,
+                origin-bound), never from free-form user input. */}
+            <a
+              href={authPrompt.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
+              {t('settings:mcp.authPromptOpen', { defaultValue: 'Open authorization page' })}
+            </a>
+            <Button variant="ghost" size="sm" onClick={() => setAuthPrompt(null)}>
+              {t('common:action.dismiss', { defaultValue: 'Dismiss' })}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="recommended">
@@ -905,6 +503,9 @@ export function MCPSection(): ReactElement {
                 onDiscover={() => handleDiscover(server.name)}
                 onEdit={() => handleEdit(server)}
                 onRemove={() => handleRemove(server.name)}
+                authState={authStates[server.name]}
+                onAuthorize={() => handleAuthorize(server.name)}
+                onSignOut={() => void handleSignOut(server.name)}
               />
             ))
           )}

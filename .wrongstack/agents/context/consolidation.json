@@ -7,8 +7,5 @@
   "model": "glm-5.3-flash",
   "pruned": true,
   "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\context\\archive\\learned-2026-09-07T21-59-55-226Z.md",
-  "skills": [
-    "output-standards",
-    "audit-log"
-  ]
+  "skills": ["output-standards", "audit-log"]
 }

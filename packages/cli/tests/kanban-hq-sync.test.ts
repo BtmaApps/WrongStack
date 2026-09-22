@@ -1,11 +1,11 @@
-import { createHash } from 'node:crypto';
-import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import type { HqKanbanSnapshotPayload, HqPublisher } from '@wrongstack/core/hq';
 import { isHqKanbanSnapshotPayload, MAX_HQ_KANBAN_BOARDS } from '@wrongstack/core/hq';
 import { readBoard, readKanbanMetadata, writeBoard, writeKanbanMetadata } from '@wrongstack/kanban';
 import { createBoardObject } from '@wrongstack/kanban/test-support';
+import { createHash } from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createKanbanHqSync } from '../src/kanban-hq-sync.js';
 
@@ -366,8 +366,7 @@ describe('CLI Kanban HQ synchronization', () => {
     const deletedAt = new Date().toISOString();
     const count = MAX_HQ_KANBAN_BOARDS * 2 + 100;
     const boards: Record<string, { revision: number; updatedAt: string }> = {};
-    const tombstones: Record<string, { boardId: string; revision: number; deletedAt: string }> =
-      {};
+    const tombstones: Record<string, { boardId: string; revision: number; deletedAt: string }> = {};
     for (let index = 0; index < count; index++) {
       const boardId = `gone-${index}`;
       boards[boardId] = { revision: 1, updatedAt: deletedAt };

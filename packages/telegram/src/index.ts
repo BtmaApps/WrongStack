@@ -1,8 +1,10 @@
 import type { PluginAPI } from '@wrongstack/core/plugin';
 import type { Config, Logger, Plugin, SlashCommand } from '@wrongstack/core/types';
 import { expectDefined } from '@wrongstack/core/utils';
+import { TelegramBotOutbound } from './bot-queue.js';
 import type { TelegramIncomingMessage } from './bot.js';
 import { TelegramBot } from './bot.js';
+import { diffConfigKeys } from './config-classifier.js';
 import {
   DEFAULT_CONFIG,
   PLUGIN_CONFIG_ALIASES,
@@ -15,17 +17,15 @@ import {
 } from './config.js';
 import type { SessionEndedLike, ToolExecutedLike } from './format.js';
 import { formatDelegateCompleted, formatSessionEnded, formatToolExecuted } from './format.js';
-import { lockPathForToken, PollLock } from './poll-lock.js';
+import { TelegramNotificationChannel } from './notification-channel.js';
 import { OffsetStore } from './offset-store.js';
+import { lockPathForToken, PollLock } from './poll-lock.js';
 import { fenceTelegramInboundText } from './security/inbound.js';
 import { scrubTelegramOutboundText } from './security/outbound.js';
 import { tgChatIdCommand, tgHealthCommand, tgSendCommand } from './slash-commands/index.js';
 import { makeTelegramApproveTool } from './tools/telegram-approve.js';
-import { TelegramBotOutbound } from './bot-queue.js';
-import { TelegramNotificationChannel } from './notification-channel.js';
 import { makeTelegramReadTool } from './tools/telegram-read.js';
 import { makeTelegramSendTool } from './tools/telegram-send.js';
-import { diffConfigKeys } from './config-classifier.js';
 
 // ---------------------------------------------------------------------------
 // Teardown state
@@ -613,11 +613,7 @@ const plugin: Plugin = {
         // immediately. Without this, the classifier reports the change as
         // hotApplied while the inbox gate (built once at setup) keeps
         // admitting removed senders until a plugin restart.
-        if (
-          hotSet.has('inboundMode') ||
-          hotSet.has('allowedUsers') ||
-          hotSet.has('allowedChats')
-        ) {
+        if (hotSet.has('inboundMode') || hotSet.has('allowedUsers') || hotSet.has('allowedChats')) {
           const sets = inboundAllowlist(nextTg);
           bot.inbox.updateAllowlist(sets.allowedUsers, sets.allowedChats);
         }

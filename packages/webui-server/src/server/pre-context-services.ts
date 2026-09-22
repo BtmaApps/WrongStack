@@ -69,6 +69,7 @@ import {
 import {
   createVaultBackedMcpAuthorizationProviderFactory,
   MCPAuthorizationManager,
+  type MCPAuthorizationStateEvent,
   MCPRegistry,
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
@@ -316,7 +317,18 @@ export async function createPreContextServices(
     path.join(wpaths.projectDir, 'mcp-auth.json'),
     vault,
   );
-  const mcpAuthorizationManager = new MCPAuthorizationManager({ store: mcpTokenStore });
+  // Same listener the CLI host installs: the WebUI forwards this event to the
+  // MCP settings panel so an expired server is visible instead of silent.
+  const onMcpAuthorizationState = (event: MCPAuthorizationStateEvent): void => {
+    events.emit('mcp.server.auth_state', event);
+    if (event.state === 'reauth_required') {
+      logger.warn(`MCP server "${event.serverName}" needs reauthorization`);
+    }
+  };
+  const mcpAuthorizationManager = new MCPAuthorizationManager({
+    store: mcpTokenStore,
+    onStateChange: onMcpAuthorizationState,
+  });
   const mcpRegistry = new MCPRegistry({
     toolRegistry,
     events,
@@ -327,6 +339,7 @@ export async function createPreContextServices(
     cwd: wpaths.projectRoot,
     authorizationProviderFactory: createVaultBackedMcpAuthorizationProviderFactory({
       store: mcpTokenStore,
+      onStateChange: onMcpAuthorizationState,
     }),
     authorizationManager: mcpAuthorizationManager,
   });

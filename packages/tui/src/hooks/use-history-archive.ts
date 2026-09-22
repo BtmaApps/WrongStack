@@ -133,8 +133,7 @@ export function useHistoryArchive({
       // and the newest omitted entries become unreachable.
       const rows = entriesRef.current;
       const markers = rows.filter((entry) => entry.id < 0).length;
-      const bannerOffTail =
-        markers > 0 && rows.some((entry) => entry.kind === 'banner') ? 1 : 0;
+      const bannerOffTail = markers > 0 && rows.some((entry) => entry.kind === 'banner') ? 1 : 0;
       nextLoadEndRef.current = Math.max(
         0,
         appendedCountRef.current - (rows.length - markers - bannerOffTail),

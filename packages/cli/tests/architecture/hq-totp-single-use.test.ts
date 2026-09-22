@@ -26,13 +26,13 @@
  * shell and matched zero lines for its entire life. A guard you have only
  * watched pass is not evidence.
  */
+import { generateTotp, generateTotpSecret } from '@wrongstack/core/security';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { generateTotp, generateTotpSecret } from '@wrongstack/core/security';
 import { consumeTotpCode } from '../../src/hq-server/routes/auth/common.js';
 import type { HqRouterMutableAuth } from '../../src/hq-server/types.js';
 
@@ -127,7 +127,9 @@ describe('HQ TOTP codes are single-use at every verification site', () => {
     const offenders = injected.filter(
       (call) =>
         call.file !== AUTHORITY &&
-        !(call.file === ENROLMENT_EXCEPTION.file && call.args.includes(ENROLMENT_EXCEPTION.argument)),
+        !(
+          call.file === ENROLMENT_EXCEPTION.file && call.args.includes(ENROLMENT_EXCEPTION.argument)
+        ),
     );
     expect(offenders).toHaveLength(1);
     expect(offenders[0]?.args).toBe('body.code, mutableAuth.totpSecret');
@@ -193,8 +195,9 @@ describe('consumeTotpCode', () => {
     const auth = mutableAuthWith(secret);
     const applied: unknown[] = [];
 
-    expect(await consumeTotpCode(generateTotp(secret), auth, dataDir, (next) => applied.push(next)))
-      .toBe('ok');
+    expect(
+      await consumeTotpCode(generateTotp(secret), auth, dataDir, (next) => applied.push(next)),
+    ).toBe('ok');
 
     const onDisk = JSON.parse(readFileSync(path.join(dataDir, 'auth.json'), 'utf8'));
     expect(onDisk.totpLastUsedCounter).toBe(auth.totpLastUsedCounter);

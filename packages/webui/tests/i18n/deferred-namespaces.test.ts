@@ -26,10 +26,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { i18n } from '../../src/i18n';
 
-const I18N_INDEX_SOURCE = readFileSync(
-  resolve(__dirname, '../../src/i18n/index.ts'),
-  'utf8',
-);
+const I18N_INDEX_SOURCE = readFileSync(resolve(__dirname, '../../src/i18n/index.ts'), 'utf8');
 
 describe('B-13 — deferred i18n namespaces are NOT inlined', () => {
   it('does not import the activity locale JSON inline', () => {
@@ -44,9 +41,7 @@ describe('B-13 — deferred i18n namespaces are NOT inlined', () => {
     // A regression here would re-add ~200 KB of JSON to the entry chunk.
     expect(I18N_INDEX_SOURCE).toMatch(/from\s+['"]\.\/locales\/en\/common\.json['"]/);
     expect(I18N_INDEX_SOURCE).toMatch(/from\s+['"]\.\/locales\/en\/chat\.json['"]/);
-    expect(I18N_INDEX_SOURCE).toMatch(
-      /from\s+['"]\.\/locales\/en\/commandPalette\.json['"]/,
-    );
+    expect(I18N_INDEX_SOURCE).toMatch(/from\s+['"]\.\/locales\/en\/commandPalette\.json['"]/);
     expect(I18N_INDEX_SOURCE).toMatch(/from\s+['"]\.\/locales\/en\/setup\.json['"]/);
     expect(I18N_INDEX_SOURCE).toMatch(/from\s+['"]\.\/locales\/en\/toasts\.json['"]/);
   });

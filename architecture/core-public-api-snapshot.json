@@ -1446,22 +1446,22 @@
       "directory": "chronicle",
       "classification": "storage/repository implementation",
       "intendedOwner": "focused repository or runtime subsystem",
-      "sourceFiles": 41,
-      "sourceLines": 11863
+      "sourceFiles": 42,
+      "sourceLines": 11885
     },
     {
       "directory": "coordination",
       "classification": "coordination implementation",
       "intendedOwner": "Core subpath until physical extraction is justified",
-      "sourceFiles": 202,
-      "sourceLines": 57423
+      "sourceFiles": 208,
+      "sourceLines": 57738
     },
     {
       "directory": "core",
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
-      "sourceFiles": 58,
-      "sourceLines": 13408
+      "sourceFiles": 59,
+      "sourceLines": 13465
     },
     {
       "directory": "design",
@@ -1474,8 +1474,8 @@
       "directory": "execution",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
-      "sourceFiles": 64,
-      "sourceLines": 19998
+      "sourceFiles": 69,
+      "sourceLines": 20101
     },
     {
       "directory": "extension",
@@ -1503,7 +1503,7 @@
       "classification": "host/application concern",
       "intendedOwner": "protocol DTOs only in Core; runtime elsewhere",
       "sourceFiles": 56,
-      "sourceLines": 11789
+      "sourceLines": 11786
     },
     {
       "directory": "infrastructure",
@@ -1551,8 +1551,8 @@
       "directory": "plugin",
       "classification": "agent-domain contract",
       "intendedOwner": "Core plugin API",
-      "sourceFiles": 6,
-      "sourceLines": 2481
+      "sourceFiles": 7,
+      "sourceLines": 2499
     },
     {
       "directory": "plugins",
@@ -1593,7 +1593,7 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 22,
+      "sourceFiles": 23,
       "sourceLines": 8092
     },
     {
@@ -1601,7 +1601,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5090
+      "sourceLines": 5098
     },
     {
       "directory": "skills",
@@ -1622,7 +1622,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23628
+      "sourceLines": 23625
     },
     {
       "directory": "tasking",
@@ -1656,8 +1656,8 @@
       "directory": "utils",
       "classification": "kernel primitive",
       "intendedOwner": "split dependency-free primitives from concrete helpers",
-      "sourceFiles": 72,
-      "sourceLines": 12879
+      "sourceFiles": 73,
+      "sourceLines": 12917
     },
     {
       "directory": "wiring",

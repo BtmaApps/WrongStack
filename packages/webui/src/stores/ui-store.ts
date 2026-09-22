@@ -1,52 +1,58 @@
+export {
+  ACTIVITIES,
+  DOCK_SECTIONS,
+  SETTINGS_TABS,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  VIEWS,
+  coerceActivity,
+  coerceDockSection,
+  coerceSettingsTab,
+  coerceView,
+} from './ui-store-types.js';
 export type {
   Activity,
-  View,
   DockSection,
-  WorkDashboardTab,
   InspectorTab,
   InspectorTarget,
   SessionChromeState,
   UIState,
-} from "./ui-store-types.js";
-export {
-  ACTIVITIES,
-  coerceActivity,
-  VIEWS,
-  coerceView,
-  DOCK_SECTIONS,
-  coerceDockSection,
-  SETTINGS_TABS,
-  coerceSettingsTab,
-  SIDEBAR_MIN_WIDTH,
-  SIDEBAR_MAX_WIDTH,
-  SIDEBAR_DEFAULT_WIDTH,
-} from "./ui-store-types.js";
+  View,
+  WorkDashboardTab,
+} from './ui-store-types.js';
 
 // Re-export chrome helpers
 export {
+  defaultSessionChrome,
+  defaultSkillsState,
+  homeNavigationStatePatch,
   isDesktopShellStorageContext,
-  homeNavigationStatePatch,
-  defaultSkillsState,
-  defaultSessionChrome,
-  readSessionChrome,
   parkChrome,
-} from "./ui-store-chrome.js";
+  readSessionChrome,
+} from './ui-store-chrome.js';
 
-export { uiPersistOptions } from "./ui-store-persist.js";
+export { uiPersistOptions } from './ui-store-persist.js';
 
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { MAX_ATTACHED_IMAGES } from "../components/ChatInput/image-attachments.js";
-import type { UIState, View, InspectorTab, InspectorTarget } from "./ui-store-types.js";
-import { SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH, coerceView, coerceSettingsTab } from "./ui-store-types.js";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { MAX_ATTACHED_IMAGES } from '../components/ChatInput/image-attachments.js';
 import {
-  homeNavigationStatePatch,
-  defaultSkillsState,
   defaultSessionChrome,
-  readSessionChrome,
+  defaultSkillsState,
+  homeNavigationStatePatch,
   parkChrome,
-} from "./ui-store-chrome.js";
-import { uiPersistOptions } from "./ui-store-persist.js";
+  readSessionChrome,
+} from './ui-store-chrome.js';
+import { uiPersistOptions } from './ui-store-persist.js';
+import type { InspectorTab, InspectorTarget, UIState, View } from './ui-store-types.js';
+import {
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  coerceSettingsTab,
+  coerceView,
+} from './ui-store-types.js';
 
 export const useUIStore = create<UIState>()(
   persist(
@@ -521,8 +527,7 @@ export const useUIStore = create<UIState>()(
       // User-customized ActivityBar icon order. Global UI preference (lives
       // across tabs and new sessions, like sidebarWidth/hiddenChips) — plain
       // set, no per-session chrome parking.
-      setActivityBarOrder: (activityBarOrder) =>
-        set({ activityBarOrder }),
+      setActivityBarOrder: (activityBarOrder) => set({ activityBarOrder }),
       setDraftInput: (text: string) =>
         set((state) => ({
           draftInput: text,

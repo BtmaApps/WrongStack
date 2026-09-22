@@ -194,3 +194,98 @@ describe('buildMcpSlashCommand', () => {
     expect(logout?.message).toContain('credentials removed');
   });
 });
+
+describe('/mcp auth argument forms', () => {
+  function loginRegistry(overrides: Record<string, unknown> = {}) {
+    return {
+      loginAuthorization: vi.fn().mockResolvedValue({
+        started: {
+          serverName: 'notion',
+          resource: 'https://mcp.notion.com/mcp',
+          authorizationUrl: 'https://auth.notion.com/authorize?client_id=dcr',
+          redirectUri: 'http://127.0.0.1:51234/callback',
+          scopes: ['tools:read'],
+          expiresAt: Date.now() + 600_000,
+          clientIdSource: 'registered',
+        },
+        completion: new Promise(() => undefined),
+        cancel: vi.fn(),
+      }),
+      ...overrides,
+    };
+  }
+
+  const events = { emit: vi.fn() };
+
+  it('signs in with no client id and shows the URL without blocking', async () => {
+    const mcpRegistry = loginRegistry();
+    const cmd = buildMcpSlashCommand({ mcpRegistry, events } as never);
+
+    const res = await cmd.run('auth login notion');
+
+    expect(mcpRegistry.loginAuthorization).toHaveBeenCalledWith('notion', {
+      clientId: undefined,
+      port: undefined,
+    });
+    expect(res?.message).toContain('registered a new OAuth client');
+    expect(res?.message).toContain('https://auth.notion.com/authorize?client_id=dcr');
+  });
+
+  it('passes an explicit client id, port and scopes through', async () => {
+    const mcpRegistry = loginRegistry();
+    const cmd = buildMcpSlashCommand({ mcpRegistry, events } as never);
+
+    await cmd.run('auth login notion --client-id abc --port 43123 tools:read tools:write');
+
+    expect(mcpRegistry.loginAuthorization).toHaveBeenCalledWith('notion', {
+      clientId: 'abc',
+      port: 43123,
+      scopes: ['tools:read', 'tools:write'],
+    });
+  });
+
+  it('still accepts the legacy positional start form', async () => {
+    const mcpRegistry = {
+      beginAuthorization: vi.fn().mockResolvedValue({
+        authorizationUrl: 'https://auth.example.com/authorize',
+        expiresAt: Date.now() + 600_000,
+        clientIdSource: 'explicit',
+      }),
+    };
+    const cmd = buildMcpSlashCommand({ mcpRegistry, events } as never);
+
+    await cmd.run('auth start remote my-client http://127.0.0.1:43123/callback tools:read');
+
+    expect(mcpRegistry.beginAuthorization).toHaveBeenCalledWith('remote', {
+      clientId: 'my-client',
+      redirectUri: 'http://127.0.0.1:43123/callback',
+      scopes: ['tools:read'],
+    });
+  });
+
+  it('allows start without a client id so registration can supply one', async () => {
+    const mcpRegistry = {
+      beginAuthorization: vi.fn().mockResolvedValue({
+        authorizationUrl: 'https://auth.example.com/authorize',
+        expiresAt: Date.now() + 600_000,
+        clientIdSource: 'registered',
+      }),
+    };
+    const cmd = buildMcpSlashCommand({ mcpRegistry, events } as never);
+
+    await cmd.run('auth start remote --redirect-uri http://127.0.0.1:43123/callback');
+
+    expect(mcpRegistry.beginAuthorization).toHaveBeenCalledWith('remote', {
+      clientId: undefined,
+      redirectUri: 'http://127.0.0.1:43123/callback',
+    });
+  });
+
+  it('rejects an unknown auth option instead of treating it as a scope', async () => {
+    const cmd = buildMcpSlashCommand({ mcpRegistry: loginRegistry(), events } as never);
+
+    const res = await cmd.run('auth login notion --oops');
+
+    expect(res?.message).toContain('Unknown MCP auth option "--oops"');
+  });
+});

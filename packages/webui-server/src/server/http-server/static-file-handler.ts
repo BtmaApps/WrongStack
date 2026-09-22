@@ -59,7 +59,10 @@ export async function handleStaticFileRequest(
 
   if (ext === '.html') {
     if (!shouldSetAuthCookie) res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Content-Security-Policy', buildCspHeader(opts.publicWsUrl, opts.host, port, extraConnectSrc(opts)));
+    res.setHeader(
+      'Content-Security-Policy',
+      buildCspHeader(opts.publicWsUrl, opts.host, port, extraConnectSrc(opts)),
+    );
     const html = await fs.readFile(resolvedPath, 'utf8');
     res.writeHead(200);
     res.end(injectWsConfig(html, { publicWsUrl: opts.publicWsUrl }));
@@ -94,7 +97,12 @@ export async function handleSpaFallback(
     setStaticSecurityHeaders(res);
     res.writeHead(200, {
       'Content-Type': 'text/html',
-      'Content-Security-Policy': buildCspHeader(opts.publicWsUrl, opts.host, port, extraConnectSrc(opts)),
+      'Content-Security-Policy': buildCspHeader(
+        opts.publicWsUrl,
+        opts.host,
+        port,
+        extraConnectSrc(opts),
+      ),
     });
     res.end(injectWsConfig(html, { publicWsUrl: opts.publicWsUrl }));
   } catch {

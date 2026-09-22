@@ -9,12 +9,18 @@
  * bus (subagent tool events, file activity) — so background ACP subagents are
  * watched exactly like native workers.
  */
-import { describe, expect, it } from 'vitest';
 import type { ACPProgressEvent } from '@wrongstack/acp';
+import { describe, expect, it } from 'vitest';
 import { publishAcpLiveProgress } from '../src/fleet/acp-live-progress.js';
 
 interface CapturedBus {
-  events: Array<{ subagentId: string; taskId?: string; ts: number; type: string; payload: unknown }>;
+  events: Array<{
+    subagentId: string;
+    taskId?: string;
+    ts: number;
+    type: string;
+    payload: unknown;
+  }>;
   emit: (e: {
     subagentId: string;
     taskId?: string;
@@ -34,7 +40,10 @@ function fakeFleet(): CapturedBus {
   };
 }
 
-function fakeHostEvents(): { emits: Array<{ event: string; payload: Record<string, unknown> }>; emit: (event: string, payload: unknown) => void } {
+function fakeHostEvents(): {
+  emits: Array<{ event: string; payload: Record<string, unknown> }>;
+  emit: (event: string, payload: unknown) => void;
+} {
   const emits: Array<{ event: string; payload: Record<string, unknown> }> = [];
   return {
     emits,
@@ -187,8 +196,10 @@ describe('publishAcpLiveProgress', () => {
   });
 
   it('maps a new-file diff onto file.activity write and an edit onto edit', () => {
-    const created = publish({ type: 'diff', diff: { path: 'src/new.ts', oldText: null, newText: 'x' } })
-      .hostEvents.emits.find((e) => e.event === 'file.activity');
+    const created = publish({
+      type: 'diff',
+      diff: { path: 'src/new.ts', oldText: null, newText: 'x' },
+    }).hostEvents.emits.find((e) => e.event === 'file.activity');
     expect(created?.payload).toMatchObject({
       filePath: 'src/new.ts',
       operation: 'write',
@@ -207,7 +218,10 @@ describe('publishAcpLiveProgress', () => {
   });
 
   it('drops diffs without a path and plan/usage events entirely', () => {
-    const noPath = publish({ type: 'diff', diff: { path: '', oldText: null, newText: '' } }).hostEvents;
+    const noPath = publish({
+      type: 'diff',
+      diff: { path: '', oldText: null, newText: '' },
+    }).hostEvents;
     expect(noPath.emits).toHaveLength(0);
 
     const { fleet, hostEvents } = publish({

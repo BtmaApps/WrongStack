@@ -1,18 +1,13 @@
-import { Text } from "../ink.js";
-import { theme } from "../theme.js";
-import { glyphs } from "../ui-glyphs.js";
-import type { RailSpanEntry } from "./powerline-rail.js";
-import { BrainChip } from "./status-bar-chips.js";
-import { fmtDebugBytes, fmtElapsed, truncateChip } from "./status-bar-format.js";
-import { countdownColor, formatSuggestionLabel } from "./status-bar-helpers.js";
-import { chipColor, STATUSLINE_ICONS } from "./status-bar-icons.js";
-import type { FleetAgentDetail, MailboxStatus } from "./status-bar-types.js";
-import {
-  type StatusBarRailBuildParams,
-  entry,
-  compact,
-  icon,
-} from "./status-bar-rails-common.js";
+import { Text } from '../ink.js';
+import { theme } from '../theme.js';
+import { glyphs } from '../ui-glyphs.js';
+import type { RailSpanEntry } from './powerline-rail.js';
+import { BrainChip } from './status-bar-chips.js';
+import { fmtDebugBytes, fmtElapsed, truncateChip } from './status-bar-format.js';
+import { countdownColor, formatSuggestionLabel } from './status-bar-helpers.js';
+import { chipColor, STATUSLINE_ICONS } from './status-bar-icons.js';
+import { type StatusBarRailBuildParams, compact, entry, icon } from './status-bar-rails-common.js';
+import type { FleetAgentDetail, MailboxStatus } from './status-bar-types.js';
 
 function buildMailboxDetailEntries(
   p: StatusBarRailBuildParams,

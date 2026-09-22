@@ -1,8 +1,8 @@
 import {
   type ACPProgressEvent,
   type AcpAgentCommandOverrides,
-  defaultPermissionPolicy,
   EnsembleRegistry,
+  defaultPermissionPolicy,
   probeAcpAgents,
   renderAcpBenchText,
   renderEnsembleText,
@@ -299,7 +299,9 @@ async function parallelAgents(
         `Skipped ${skipped.length}: ${skipped.map((s) => `${s.id} (${s.reason})`).join(', ')}`,
       );
     }
-    lines.push('Live progress is visible in /agents, the TUI fleet panel and the WebUI Agents panel.');
+    lines.push(
+      'Live progress is visible in /agents, the TUI fleet panel and the WebUI Agents panel.',
+    );
     return { message: lines.join('\n') };
   }
 

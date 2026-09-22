@@ -1,10 +1,10 @@
+import type { Config } from '@wrongstack/core/types';
+import { builtinToolsPack, TIER1_TOOLS } from '@wrongstack/tools';
+import { selectBuiltinToolsForTier } from '@wrongstack/tools/tool-tier';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Config } from '@wrongstack/core/types';
-import { builtinToolsPack, TIER1_TOOLS } from '@wrongstack/tools';
-import { selectBuiltinToolsForTier } from '@wrongstack/tools/tool-tier';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { getWrongTrace } from '../src/wiring/wrongtrace-gate.js';
 import { buildCliToolSurface } from './cli-tool-surface.js';

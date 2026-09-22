@@ -507,6 +507,7 @@
   "execution": {
     "heading": "Ausführung",
     "maxIterationsLabel": "Max. Iterationen pro Run",
+    "unlimitedLabel": "Unbegrenzt",
     "maxIterationsHint": "Feste Obergrenze für LLM-Züge pro agent.run().",
     "autoProceedMaxIterationsLabel": "Auto-Fortsetzen max. Iterationen",
     "autoProceedMaxIterationsHint": "Auto-Fortsetzen nach N Iterationen stoppen. 0 = unbegrenzt.",

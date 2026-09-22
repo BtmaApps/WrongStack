@@ -317,6 +317,9 @@ export {
 } from './mailbox-routes.js';
 export {
   handleMcpAdd,
+  handleMcpAuthLogin,
+  handleMcpAuthLogout,
+  handleMcpAuthStatus,
   handleMcpDisable,
   handleMcpDiscover,
   handleMcpEnable,

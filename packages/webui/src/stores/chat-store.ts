@@ -21,13 +21,13 @@ import { useStore } from 'zustand';
 import {
   activeChatLane,
   activeLaneId,
-  type ChatLaneData,
   chatLane,
   DEFAULT_LANE_ID,
   EMPTY_LANE,
   overrideLaneActions,
   setActiveLane,
   useChatLanes,
+  type ChatLaneData,
 } from './chat-lanes';
 import type { ChatState } from './chat-store-types';
 
@@ -38,8 +38,6 @@ export {
   activeChatLane,
   activeLaneId,
   adoptDefaultLane,
-  type ChatLaneActions,
-  type ChatLaneData,
   chatLane,
   DEFAULT_LANE_ID,
   disposeLane,
@@ -50,6 +48,8 @@ export {
   readLane,
   setActiveLane,
   useChatLanes,
+  type ChatLaneActions,
+  type ChatLaneData,
 } from './chat-lanes';
 export { BTW_DISPATCH_GRACE_MS } from './chat-queue-helpers';
 export {
@@ -218,4 +218,3 @@ export const useChatStore: ChatStoreFacade = Object.assign(
   },
   { getState, getInitialState: getState, setState, subscribe, persist: useChatLanes.persist },
 );
-

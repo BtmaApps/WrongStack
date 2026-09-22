@@ -208,4 +208,3 @@ function windowsAccountName(): string | undefined {
   }
   return username;
 }
-

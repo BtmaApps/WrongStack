@@ -36,6 +36,9 @@ export interface McpRouteHandlers {
   prompts: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   resourceRead: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
   promptGet: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  authStatus: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  authLogin: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
+  authLogout: (ws: WebSocket, msg: WSClientMessage) => Promise<void>;
 }
 
 /**
@@ -56,6 +59,7 @@ export interface McpRouteHandlers {
  *   - mcp.wake
  *   - mcp.restart
  *   - mcp.discover
+ *   - mcp.auth.status / mcp.auth.login / mcp.auth.logout
  *
  * Regression-tested by packages/webui/tests/server/dispatcher-routing.test.ts.
  */
@@ -106,6 +110,15 @@ export async function handleMcpRoute(
       return true;
     case 'mcp.prompt.get':
       await handlers.promptGet(ws, msg);
+      return true;
+    case 'mcp.auth.status':
+      await handlers.authStatus(ws, msg);
+      return true;
+    case 'mcp.auth.login':
+      await handlers.authLogin(ws, msg);
+      return true;
+    case 'mcp.auth.logout':
+      await handlers.authLogout(ws, msg);
       return true;
     default:
       return false;

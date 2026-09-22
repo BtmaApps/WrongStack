@@ -40,7 +40,11 @@ vi.mock('../../../src/components/ChatInput/subagent-model-picker-dialog', () => 
       data-current-tier={props.currentLane.tier ?? ''}
       data-current-profile={props.currentLane.fallbackProfile ?? ''}
     >
-      <button type="button" data-testid="lane-picker-pick" onClick={() => props.onPick({ provider: 'openai', model: 'gpt-5' })}>
+      <button
+        type="button"
+        data-testid="lane-picker-pick"
+        onClick={() => props.onPick({ provider: 'openai', model: 'gpt-5' })}
+      >
         pick
       </button>
       <button type="button" data-testid="lane-picker-clear" onClick={() => props.onPick(null)}>
@@ -192,7 +196,9 @@ describe('SubagentModelsButton', () => {
     openPopover();
     fireEvent.click(screen.getByRole('button', { name: /Lane 1 model/i }));
     // The stub dialog renders the tier on a data attribute for the test to read.
-    expect(screen.getByTestId('lane-picker-dialog').getAttribute('data-current-tier')).toBe('budget');
+    expect(screen.getByTestId('lane-picker-dialog').getAttribute('data-current-tier')).toBe(
+      'budget',
+    );
     expect(screen.getByTestId('lane-picker-dialog').getAttribute('data-current-provider')).toBe('');
   });
 

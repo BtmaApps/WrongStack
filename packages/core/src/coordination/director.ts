@@ -33,6 +33,12 @@ import { FleetSpawnBudgetError } from './director/director-errors.js';
 import { DirectorTaskRegistry } from './director/director-task-registry.js';
 import { buildDirectorToolset } from './director/director-toolset.js';
 import { DirectorIdleRetirement } from './director-idle-retirement.js';
+import {
+  type DirectorModelRoutingHost,
+  hasExplicitMatrixRoute as delegateHasExplicitMatrixRoute,
+  resolvedModelFor as delegateResolvedModelFor,
+  resolveSpawnModel as delegateResolveSpawnModel,
+} from './director-model-routing.js';
 import type { DirectorOptions } from './director-options.js';
 import {
   composeDirectorPrompt,
@@ -45,7 +51,7 @@ import {
   type DirectorSubagentSessionSummary,
   readDirectorSubagentSession,
 } from './director-session.js';
-import { isHumanPinnedSpawn, resolveDirectorSpawnModel } from './director-spawn-model.js';
+import { isHumanPinnedSpawn } from './director-spawn-model.js';
 import { completeDirectorTask } from './director-task-completion.js';
 import { FleetBus, type FleetUsage, FleetUsageAggregator } from './fleet-bus.js';
 import type { FleetManager } from './fleet-manager.js';
@@ -53,7 +59,7 @@ import { type DirectorFleetHost, spawn as fleetSpawn, type ManifestEntry } from 
 import type { ICoordinator } from './icoordinator.js';
 import { InMemoryBridgeTransport } from './in-memory-transport.js';
 import { LargeAnswerStore } from './large-answer-store.js';
-import { type ModelMatrixSource, resolveModelMatrixResolution } from './model-matrix.js';
+import type { ModelMatrixSource } from './model-matrix.js';
 import { DefaultMultiAgentCoordinator } from './multi-agent-coordinator.js';
 import type { ProviderModelStatusTracker } from './provider-status-tracker.js';
 import {
@@ -544,9 +550,7 @@ export class Director implements DirectorFleetHost, ICoordinator {
    * decision about this spawn, so a session lane may still take it.
    */
   private hasExplicitMatrixRoute(role: string | undefined): boolean {
-    const matrix = typeof this.modelMatrix === 'function' ? this.modelMatrix() : this.modelMatrix;
-    const source = resolveModelMatrixResolution(matrix, role)?.source;
-    return source === 'role' || source === 'phase';
+    return delegateHasExplicitMatrixRoute(this.directorModelRoutingHost(), role);
   }
 
   /**
@@ -557,44 +561,14 @@ export class Director implements DirectorFleetHost, ICoordinator {
   resolvedModelFor(
     subagentId: string,
   ): { provider?: string | undefined; model?: string | undefined } | undefined {
-    // Two homes for the same fact: `fleet-spawn` records into the FleetManager
-    // when one is injected (the CLI/WebUI path) and into the Director's own map
-    // otherwise (embedded + tests). Read both so the answer does not depend on
-    // which host built the fleet.
-    return this.fleetManager?.getSubagentMeta(subagentId) ?? this.subagentMeta.get(subagentId);
+    return delegateResolvedModelFor(this.directorModelRoutingHost(), subagentId);
   }
 
   private resolveSpawnModel(
     config: SubagentConfig,
     slotClaim?: SubagentSlotClaim | undefined,
   ): void {
-    const appConfig = typeof this.appConfig === 'function' ? this.appConfig() : this.appConfig;
-    resolveDirectorSpawnModel(config, {
-      modelMatrix: this.modelMatrix,
-      ...(slotClaim
-        ? {
-            sessionPlan: {
-              kind: slotClaim.kind,
-              target: slotClaim.target,
-              lock: slotClaim.lock,
-              slotIndex: slotClaim.slotIndex,
-            },
-          }
-        : {}),
-      ...(appConfig ? { config: appConfig } : {}),
-      ...(config.tier ? { tier: config.tier } : {}),
-      onTierResolved: (resolved) => {
-        // Record the tier that actually applied so the fleet manifest and the
-        // office map show the level a worker is running at, not just its model.
-        config.tier = resolved.tier;
-      },
-      sessionProvider:
-        typeof this.sessionProvider === 'function' ? this.sessionProvider() : this.sessionProvider,
-      sessionModel:
-        typeof this.sessionModel === 'function' ? this.sessionModel() : this.sessionModel,
-      statusTracker: this.statusTracker,
-      logger: this.logger,
-    });
+    delegateResolveSpawnModel(this.directorModelRoutingHost(), config, slotClaim);
   }
 
   async ask<T = unknown>(subagentId: string, payload: unknown, timeoutMs?: number): Promise<T> {
@@ -976,5 +950,18 @@ export class Director implements DirectorFleetHost, ICoordinator {
     this.stateCheckpoint?.applyLiveMaxSpawns(
       Number.isFinite(this.maxSpawns) ? this.maxSpawns : undefined,
     );
+  }
+
+  private directorModelRoutingHost(): DirectorModelRoutingHost {
+    return {
+      modelMatrix: this.modelMatrix,
+      fleetManager: this.fleetManager,
+      subagentMeta: this.subagentMeta,
+      appConfig: this.appConfig,
+      sessionProvider: this.sessionProvider,
+      sessionModel: this.sessionModel,
+      statusTracker: this.statusTracker,
+      logger: this.logger,
+    };
   }
 }

@@ -106,4 +106,3 @@ export async function forgetVectorMemory(
   }
   return (await response.json()) as { removed: boolean };
 }
-

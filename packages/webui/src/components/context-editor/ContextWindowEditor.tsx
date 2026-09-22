@@ -1,15 +1,14 @@
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useServerMessage } from '@/hooks/useServerMessage';
+import { i18n, useAppTranslation } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 import { foregroundSessionId } from '@/lib/ws-client-utils';
-import type { ContextEditorContentBlock } from '@/types/runtime';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useContextEditorStore } from '@/stores/context-editor-store';
 import { useChatStore } from '@/stores';
+import { useContextEditorStore } from '@/stores/context-editor-store';
 import { useActiveSessionId } from '@/stores/session-lanes';
-import { useServerMessage } from '@/hooks/useServerMessage';
 import { useSessionStore } from '@/stores/session-store';
-import { useAppTranslation, i18n } from '@/i18n';
-import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import type { ContextEditorContentBlock } from '@/types/runtime';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -23,6 +22,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function fmtTok(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -332,9 +332,9 @@ export function ContextWindowEditor({
       const p = msg.payload;
       if (!p || typeof (p as { revision?: unknown }).revision !== 'string') return;
       if (!Array.isArray((p as { messages?: unknown }).messages)) return;
-      store.getState().loadSnapshot(
-        p as Parameters<ReturnType<typeof store.getState>['loadSnapshot']>[0],
-      );
+      store
+        .getState()
+        .loadSnapshot(p as Parameters<ReturnType<typeof store.getState>['loadSnapshot']>[0]);
     },
     { sessionId: askedFor, deps: [open, store, askedFor] },
   );
@@ -342,9 +342,11 @@ export function ContextWindowEditor({
   useServerMessage(
     'context.editor.validation',
     (msg) => {
-      store.getState().setValidation(
-        msg.payload as Parameters<ReturnType<typeof store.getState>['setValidation']>[0],
-      );
+      store
+        .getState()
+        .setValidation(
+          msg.payload as Parameters<ReturnType<typeof store.getState>['setValidation']>[0],
+        );
     },
     { sessionId: askedFor, deps: [open, store, askedFor] },
   );
@@ -352,9 +354,9 @@ export function ContextWindowEditor({
   useServerMessage(
     'context.editor.applied',
     (msg) => {
-      store.getState().setApplied(
-        msg.payload as Parameters<ReturnType<typeof store.getState>['setApplied']>[0],
-      );
+      store
+        .getState()
+        .setApplied(msg.payload as Parameters<ReturnType<typeof store.getState>['setApplied']>[0]);
       const ws = getWSClient();
       if (typeof ws?.openContextEditor === 'function') ws.openContextEditor();
     },

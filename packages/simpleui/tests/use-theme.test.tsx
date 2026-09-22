@@ -13,7 +13,6 @@ import { useTheme } from '../src/hooks/use-theme.js';
  * must degrade to 'dark' when even that API is missing.
  */
 
-
 const roots: Root[] = [];
 const hosts: HTMLElement[] = [];
 

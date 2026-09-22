@@ -116,7 +116,13 @@ export function unifiedDiff(
   const edits = myersDiff(a, b);
   if (edits.every((e) => e.op === 'equal')) return '';
 
-  const hunks: { aStart: number; aCount: number; bStart: number; bCount: number; lines: string[] }[] = [];
+  const hunks: {
+    aStart: number;
+    aCount: number;
+    bStart: number;
+    bCount: number;
+    lines: string[];
+  }[] = [];
   let i = 0;
   while (i < edits.length) {
     while (i < edits.length && edits[i]?.op === 'equal') i++;

@@ -40,8 +40,8 @@ import { outdatedTool } from './outdated.js';
 import { patchTool } from './patch.js';
 import { planTool } from './plan.js';
 import { pwshTool } from './pwsh.js';
-import { readTool } from './read.js';
 import { readUrlContentTool } from './read-url-content.js';
+import { readTool } from './read.js';
 import { replaceTool } from './replace.js';
 import { searchTool } from './search.js';
 import { securityAstScanTool } from './security-ast-scan-tool.js';
@@ -303,11 +303,7 @@ export const TIER2_TOOLS: Tool[] = [
  * registered and executable, and the model reaches them through `tool_search`
  * / `tool_use` — which is why that pair lives in TIER1 rather than here.
  */
-export const TIER3_TOOLS: Tool[] = [
-  outdatedTool,
-  logsTool,
-  deadCodeScanTool,
-];
+export const TIER3_TOOLS: Tool[] = [outdatedTool, logsTool, deadCodeScanTool];
 
 const rawBuiltinTools: Tool[] = [
   ...browserTools,

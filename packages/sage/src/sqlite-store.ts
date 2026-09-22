@@ -1,3 +1,10 @@
+import {
+  addGraphEdge as delegateAddGraphEdge,
+  graphFor as delegateGraphFor,
+  syncAnchorEdges as delegateSyncAnchorEdges,
+  type SqliteStoreGraphHost,
+} from './sqlite-store-graph.js';
+
 /**
  * SQLite-backed SAGE store.
  *
@@ -16,21 +23,11 @@
 import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryEntry, MemoryScope, MemoryStore } from '@wrongstack/core/types';
-import { ulid } from '@wrongstack/core/utils';
 import { resolveSagePaths } from './paths.js';
 import type { VectorAugmentHit } from './retrieval/vector-augment.js';
 import type { SearchOptions, SearchQuery, SearchResult } from './service-contract.js';
-import { syncSqliteAnchorEdges } from './sqlite-store-anchor-sync.js';
 import { pruneSqliteAuditLog, readSqliteAudit, writeSqliteAudit } from './sqlite-store-audit.js';
-import {
-  acceptCandidateOp,
-  addCandidateOp,
-  createCandidateOp,
-  listCandidatesOp,
-  rejectCandidateOp,
-  resolveCandidateOp,
-  type SqliteCandidateHost,
-} from './sqlite-store-candidate-ops.js';
+import type { SqliteCandidateHost } from './sqlite-store-candidate-ops.js';
 import { reconcileAcceptedCandidates } from './sqlite-store-candidates.js';
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { getCompatSage, listCompatSage } from './sqlite-store-compat.js';
@@ -40,7 +37,6 @@ import {
   findRelatedSqliteSage,
   type SqliteFindRelatedOptions,
 } from './sqlite-store-find-related.js';
-import { graphSqliteSageFor } from './sqlite-store-graph-for.js';
 import { traverseSqliteGraph } from './sqlite-store-graph-traverse.js';
 import { runSqliteSageHygiene } from './sqlite-store-hygiene.js';
 import { initializeSqliteSageStore } from './sqlite-store-initialize.js';
@@ -74,7 +70,6 @@ import {
   retrieveSageAudienceWithAudit,
   searchSqliteSageWithRecall,
 } from './sqlite-store-recall.js';
-import { syncSqliteRelationshipEdges } from './sqlite-store-relationship-sync.js';
 import { rememberSqliteSage } from './sqlite-store-remember.js';
 import { retrieveSqliteSageForPath } from './sqlite-store-retrieve-path.js';
 import { executeUnifiedSearch } from './sqlite-store-search.js';
@@ -477,12 +472,7 @@ export class SqliteSageStore implements MemoryStore {
    *   refreshed confidence and re-sync converges to the newer memory.
    */
   private syncAnchorEdges(memory: Sage): void {
-    const deps = { stmt: (sql: string) => this.stmt(sql), nowIso: () => this.nowIso() };
-    syncSqliteAnchorEdges(deps, memory);
-    // Same hook, so every writer that refreshes a memory's graph projection
-    // (remember, update, hygiene, admin) also materializes its relationship
-    // assertions. Insert-only — see syncSqliteRelationshipEdges.
-    syncSqliteRelationshipEdges(deps, memory);
+    delegateSyncAnchorEdges(this.sqliteStoreGraphHost(), memory);
   }
 
   async updateSage(id: string, input: UpdateSageInput): Promise<Sage> {
@@ -669,21 +659,7 @@ export class SqliteSageStore implements MemoryStore {
     relation: MemoryGraphRelation,
     weight = 1,
   ): Promise<void> {
-    await this.initialize();
-    const edgeId = `edge_${ulid()}`;
-    // Monotone merge policy (unified 2026-08-02): `MAX(weight, excluded.weight)`
-    // — concurrent writers can never erode an edge and repeated identical
-    // assertions are idempotent instead of inflating strength. See the policy
-    // note beside the `edges` table in sqlite-store-schema.ts.
-    this.stmt(
-      `INSERT INTO edges (from_node, to_node, relation, weight, created_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(from_node, to_node, relation) DO UPDATE SET weight = MAX(weight, excluded.weight)`,
-    ).run(from, to, relation, weight, this.nowIso());
-    this.events?.emit(
-      'memory.graph_edge_added',
-      this.eventPayload({ edgeId, from, to, relation, weight }),
-    );
+    return delegateAddGraphEdge(this.sqliteStoreGraphHost(), from, to, relation, weight);
   }
 
   async traverseGraph(
@@ -701,18 +677,7 @@ export class SqliteSageStore implements MemoryStore {
    * `/memory graph` command and the webui graph handler still call.
    */
   async graphFor(query: string, maxDepth = 2, limit = 100): Promise<MemoryGraphEdge[]> {
-    await this.initialize();
-    return graphSqliteSageFor(
-      {
-        projectRoot: this.projectRoot,
-        stmt: (sql) => this.stmt(sql),
-        searchSage: (targetQuery, opts) => this.searchSage(targetQuery, opts),
-        traverseGraph: (starts, opts) => this.traverseGraph(starts, opts),
-      },
-      query,
-      maxDepth,
-      limit,
-    );
+    return delegateGraphFor(this.sqliteStoreGraphHost(), query, maxDepth, limit);
   }
 
   /**
@@ -990,4 +955,26 @@ export class SqliteSageStore implements MemoryStore {
   close(): void {
     closeSqliteStore(this.stmtCache, this.db);
   }
+
+  private sqliteStoreGraphHost(): SqliteStoreGraphHost {
+    return {
+      stmt: (...args) => this.stmt(...args),
+      nowIso: (...args) => this.nowIso(...args),
+      initialize: (...args) => this.initialize(...args),
+      events: this.events,
+      eventPayload: (...args) => this.eventPayload(...args),
+      projectRoot: this.projectRoot,
+      searchSage: (...args) => this.searchSage(...args),
+      traverseGraph: (...args) => this.traverseGraph(...args),
+    };
+  }
 }
+
+import {
+  acceptCandidateOp,
+  addCandidateOp,
+  createCandidateOp,
+  listCandidatesOp,
+  rejectCandidateOp,
+  resolveCandidateOp,
+} from './sqlite-store-candidate-ops.js';

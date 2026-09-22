@@ -1,7 +1,7 @@
+import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 import { open, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
-import { DEFAULT_WALK_IGNORE_DIRS } from '@wrongstack/core/utils';
 
 export const DEFAULT_EXCLUDE_PATTERNS = [...DEFAULT_WALK_IGNORE_DIRS];
 
@@ -79,7 +79,10 @@ function escapeRegex(value: string): string {
 }
 
 function globToRegex(pattern: string): RegExp {
-  const normalized = pattern.replace(/\\/g, '/').replace(/^(\.\/|\/)+/, '').replace(/\/+$/, '');
+  const normalized = pattern
+    .replace(/\\/g, '/')
+    .replace(/^(\.\/|\/)+/, '')
+    .replace(/\/+$/, '');
   let source = '';
   for (let index = 0; index < normalized.length; index++) {
     const char = normalized[index];
@@ -132,9 +135,17 @@ export function shouldExcludeDir(
       rawPattern.startsWith('\\') ||
       rawPattern.startsWith('./') ||
       rawPattern.startsWith('.\\');
-    const pattern = rawPattern.replace(/\\/g, '/').replace(/^(\.\/|\/)+/, '').replace(/\/+$/, '');
+    const pattern = rawPattern
+      .replace(/\\/g, '/')
+      .replace(/^(\.\/|\/)+/, '')
+      .replace(/\/+$/, '');
     if (!pattern) return false;
-    if (!hasLeadingSlash && !pattern.includes('*') && !pattern.includes('?') && !pattern.includes('/')) {
+    if (
+      !hasLeadingSlash &&
+      !pattern.includes('*') &&
+      !pattern.includes('?') &&
+      !pattern.includes('/')
+    ) {
       return name === pattern;
     }
     const matcher = getGlobRegex(pattern);
@@ -159,9 +170,17 @@ export function shouldExcludeFile(
       rawPattern.startsWith('\\') ||
       rawPattern.startsWith('./') ||
       rawPattern.startsWith('.\\');
-    const pattern = rawPattern.replace(/\\/g, '/').replace(/^(\.\/|\/)+/, '').replace(/\/+$/, '');
+    const pattern = rawPattern
+      .replace(/\\/g, '/')
+      .replace(/^(\.\/|\/)+/, '')
+      .replace(/\/+$/, '');
     if (!pattern) return false;
-    if (!hasLeadingSlash && !pattern.includes('*') && !pattern.includes('?') && !pattern.includes('/')) {
+    if (
+      !hasLeadingSlash &&
+      !pattern.includes('*') &&
+      !pattern.includes('?') &&
+      !pattern.includes('/')
+    ) {
       return name === pattern;
     }
     const matcher = getGlobRegex(pattern);

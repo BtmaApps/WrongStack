@@ -25,6 +25,13 @@ import { cancelLateAcpSession } from './acp-late-session.js';
 import { isBestEffortAckMethod } from './acp-message-routing.js';
 import type { PendingRequest, State } from './acp-request-state.js';
 import {
+  type AcpSessionAuthHost,
+  authenticate as delegateAuthenticate,
+  createSessionWithAuth as delegateCreateSessionWithAuth,
+  ensureAuthenticated as delegateEnsureAuthenticated,
+  logout as delegateLogout,
+} from './acp-session-auth.js';
+import {
   type ACPCallbackOptions,
   type ACPResponseSender,
   handleAcpFsRequest,
@@ -32,10 +39,9 @@ import {
   handleAcpTerminalRequest,
 } from './acp-session-callbacks.js';
 import { emptyRunResult } from './acp-session-content.js';
-import { ACPSessionError, isAuthRequiredError, isJsonRpcError } from './acp-session-errors.js';
+import { ACPSessionError, isJsonRpcError } from './acp-session-errors.js';
 import {
   type ACPSessionOpContext,
-  executeCreateSession,
   executeDeleteSession,
   executeDisableProvider,
   executeForkSession,
@@ -315,35 +321,7 @@ export class ACPSession {
    * Call this AFTER start() and BEFORE any session/new call.
    */
   async authenticate(methodId: string): Promise<void> {
-    if (this.state === 'closed') {
-      throw new ACPSessionError('closed', 'session is closed');
-    }
-    if (this.state !== 'ready' && this.state !== 'authenticated') {
-      throw new ACPSessionError(
-        'protocol_error',
-        `authenticate called in state=${this.state} (expected 'ready')`,
-      );
-    }
-    if (this.state === 'authenticated') return;
-    if (!this.authMethods.some((m) => m.id === methodId)) {
-      throw new ACPSessionError(
-        'auth_failed',
-        `auth method "${methodId}" not in advertised methods: ${this.authMethods.map((m) => m.id).join(', ')}`,
-      );
-    }
-    if (this.authMethods.find((m) => m.id === methodId)?.type === 'terminal') {
-      throw new ACPSessionError(
-        'auth_failed',
-        'Terminal authentication requires interactive login followed by reconnect; it cannot use authenticate',
-      );
-    }
-
-    const id = this.allocId();
-    const result = await this.sendRequest(id, 'authenticate', { methodId });
-    if (isJsonRpcError(result)) {
-      throw new ACPSessionError('auth_failed', `authenticate failed: ${result.message}`, result);
-    }
-    this.state = 'authenticated';
+    return delegateAuthenticate(this.acpSessionAuthHost(), methodId);
   }
 
   /**
@@ -351,22 +329,7 @@ export class ACPSession {
    * Only callable if the agent advertises `auth.logout` capability.
    */
   async logout(): Promise<void> {
-    if (this.state === 'closed') {
-      throw new ACPSessionError('closed', 'session is closed');
-    }
-    if (!this.agentCapabilities.auth?.logout) {
-      throw new ACPSessionError(
-        'unsupported_capability',
-        'agent does not support logout (auth.logout capability not advertised)',
-      );
-    }
-
-    const id = this.allocId();
-    const result = await this.sendRequest(id, 'logout', {});
-    if (isJsonRpcError(result)) {
-      throw new ACPSessionError('logout_failed', `logout failed: ${result.message}`, result);
-    }
-    this.state = 'ready';
+    return delegateLogout(this.acpSessionAuthHost());
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -804,21 +767,7 @@ export class ACPSession {
    * `authMethods`; we do not pop OAuth on every spawn.
    */
   private async createSessionWithAuth(): Promise<SessionId> {
-    try {
-      return await executeCreateSession(this.opContext());
-    } catch (err) {
-      if (this.state === 'authenticated' || !isAuthRequiredError(err)) {
-        throw err instanceof ACPSessionError
-          ? err
-          : new ACPSessionError(
-              'session_create_failed',
-              err instanceof Error ? err.message : String(err),
-              err,
-            );
-      }
-      await this.ensureAuthenticated();
-      return executeCreateSession(this.opContext());
-    }
+    return delegateCreateSessionWithAuth(this.acpSessionAuthHost());
   }
 
   /**
@@ -827,30 +776,7 @@ export class ACPSession {
    * we refuse rather than hang a TUI inside the JSON-RPC child.
    */
   private async ensureAuthenticated(): Promise<void> {
-    if (this.state === 'authenticated') return;
-    if (this.authMethods.length === 0) {
-      throw new ACPSessionError(
-        'auth_failed',
-        'This agent requires authentication before a session can start, but advertised no authMethods. Log into the CLI, then retry.',
-      );
-    }
-    const inProcess = this.authMethods.find(
-      (m) => m.type === undefined || m.type === 'agent' || m.type === 'oauth' || m.type === 'http',
-    );
-    if (inProcess) {
-      await this.authenticate(inProcess.id);
-      return;
-    }
-    const terminal = this.authMethods.find((m) => m.type === 'terminal');
-    const setupArgs = terminal?.args?.length ? terminal.args.join(' ') : undefined;
-    const setup =
-      setupArgs !== undefined
-        ? `${this.opts.command}${this.opts.args?.length ? ` ${this.opts.args.join(' ')}` : ''} ${setupArgs}`
-        : `${this.opts.command}${this.opts.args?.length ? ` ${this.opts.args.join(' ')}` : ''}`;
-    throw new ACPSessionError(
-      'auth_failed',
-      `This agent requires a terminal login before ACP can start. Run \`${setup}\` (or the CLI's /login), then retry.`,
-    );
+    return delegateEnsureAuthenticated(this.acpSessionAuthHost());
   }
 
   private sendResult(id: string | number, result: unknown): Promise<void> {
@@ -984,5 +910,29 @@ export class ACPSession {
 
   private resetScratch(): void {
     this.scratch = createSessionScratch();
+  }
+
+  private acpSessionAuthHost(): AcpSessionAuthHost {
+    const self = this;
+    return {
+      get state() {
+        return self.state;
+      },
+      set state(value) {
+        self.state = value;
+      },
+      get authMethods() {
+        return self.authMethods;
+      },
+      allocId: (...args) => this.allocId(...args),
+      sendRequest: (...args) => this.sendRequest(...args),
+      get agentCapabilities() {
+        return self.agentCapabilities;
+      },
+      opContext: (...args) => this.opContext(...args),
+      ensureAuthenticated: (...args) => this.ensureAuthenticated(...args),
+      authenticate: (...args) => this.authenticate(...args),
+      opts: this.opts,
+    };
   }
 }

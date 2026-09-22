@@ -1,8 +1,4 @@
 import { type Context, resolveEventSessionId } from '../core/context.js';
-import {
-  readRealAnchoredContextTokens,
-  requestTokenBasisStillCurrent,
-} from '../core/context-usage-anchor.js';
 import type { EventBus } from '../kernel/events.js';
 import type { MiddlewareHandler } from '../kernel/pipeline.js';
 import type { SessionEventBridge } from '../storage/session-event-bridge.js';
@@ -20,12 +16,12 @@ import {
   MIN_CALIBRATION_MULTIPLIER,
   MIN_UNCALIBRATED_MULTIPLIER,
 } from '../utils/token-estimate.js';
+import { AutoCompactionState } from './auto-compaction-state.js';
 import {
   collapseAcknowledgedToolReceipts,
   eliseAcknowledgedToolResults,
-  enforceHardBudget,
-  estimateMessages,
 } from './compaction-core.js';
+import { emergencyTrim } from './compaction-emergency-trim.js';
 import { compactionReportStillCurrent } from './compaction-result-state.js';
 import type { PressureLevel } from './compaction-thresholds.js';
 import {
@@ -37,6 +33,10 @@ import {
   pressureLevelFor,
   sanitizeThresholds,
 } from './compaction-thresholds.js';
+import {
+  type CompactionTokenEstimationHost,
+  estimateContextTokens as delegateEstimateContextTokens,
+} from './compaction-token-estimation.js';
 
 export type { ContextWindowBudgetSnapshot } from '../utils/context-budget.js';
 
@@ -65,21 +65,6 @@ interface AutoCompactionOptions {
    * to memory consolidation, logging, or other side effects.
    */
   onCompact?: ((report: CompactReport) => void) | undefined;
-}
-
-/** Mutable bookkeeping for one conversation only. */
-class AutoCompactionState {
-  lastNoopAttempt: { level: PressureLevel; tokens: number } | null = null;
-  lastHygieneTokens: number | null = null;
-  _cachedCalibrationKey = '';
-  _cachedCalibrationRatio = -1;
-  _cachedCalibrated = false;
-  _cachedTokens = -1;
-  _cachedMsgCount = -1;
-  _cachedToolCount = -1;
-  _cachedRevision = -1;
-  _cachedSystemRef: unknown = null;
-  _cachedToolsRef: unknown = null;
 }
 
 /**
@@ -377,98 +362,7 @@ export class AutoCompactionMiddleware {
    * result across calls.
    */
   private estimateContextTokens(ctx: Context): { tokens: number; exact: boolean } {
-    const state = this.stateFor(ctx);
-    const msgCount = ctx.messages.length;
-    const toolCount = (ctx.tools ?? []).length;
-    const revision = ctx.state?.revision ?? -1;
-
-    // Prefer the REAL usage anchor: compaction decisions run against the
-    // provider's authoritative prompt-token count (+ the delta of unsent
-    // messages), not a scaled estimate. Only the newest turn is estimated;
-    // everything else is exact. Falls through to the estimate paths before
-    // the first response or right after compaction shrank the array.
-    const anchored = readRealAnchoredContextTokens(ctx);
-    if (anchored !== null) {
-      // The provider count is real. Do not replace it with a density estimate
-      // of history the provider already billed. Only an unsent suffix is still
-      // an estimate, and only that suffix gets the upper bound.
-      return { tokens: this.tokensFromAnchor(ctx, anchored), exact: true };
-    }
-    // Custom estimator — never cache; call fresh every invocation.
-    if (this._estimator) return { tokens: this._estimator(ctx), exact: false };
-    const calibrationKey = `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`;
-    const cal = getCalibrationState(calibrationKey);
-    if (
-      calibrationKey === state._cachedCalibrationKey &&
-      cal.ratio === state._cachedCalibrationRatio &&
-      cal.calibrated === state._cachedCalibrated &&
-      msgCount === state._cachedMsgCount &&
-      toolCount === state._cachedToolCount &&
-      revision === state._cachedRevision &&
-      ctx.systemPrompt === state._cachedSystemRef &&
-      ctx.tools === state._cachedToolsRef &&
-      state._cachedTokens >= 0
-    ) {
-      // Default estimator, context unchanged — reuse cached value.
-      return { tokens: state._cachedTokens, exact: false };
-    }
-
-    const stashed = this.tryStashedTokens(ctx, msgCount, toolCount, revision);
-    let tokens: number;
-    if (stashed !== null) {
-      // H1: the agent loop's pre-flight (or its restash in emitContextPct)
-      // populated `ctx.lastRequestTokens` this iteration. Apply the
-      // per-(provider,model) calibration ratio and use it. This avoids
-      // a third redundant O(n) walk per iteration.
-      tokens = cal.calibrated
-        ? Math.round(stashed * Math.min(1.5, Math.max(0.5, cal.ratio)))
-        : stashed;
-    } else {
-      // Default estimator, context changed and no stash — compute fresh
-      // and cache. Cold-start path: very first iteration, or the
-      // middleware is being driven from somewhere that didn't run the
-      // agent loop's pre-flight (tests, manual compaction trigger).
-      tokens = estimateRequestTokensCalibrated(
-        ctx.messages,
-        ctx.systemPrompt,
-        ctx.tools ?? [],
-        `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
-      ).total;
-    }
-    state._cachedCalibrationKey = calibrationKey;
-    state._cachedCalibrationRatio = cal.ratio;
-    state._cachedCalibrated = cal.calibrated;
-    state._cachedTokens = tokens;
-    state._cachedMsgCount = msgCount;
-    state._cachedToolCount = toolCount;
-    state._cachedRevision = revision;
-    state._cachedSystemRef = ctx.systemPrompt;
-    state._cachedToolsRef = ctx.tools;
-    return { tokens, exact: false };
-  }
-
-  /**
-   * Real prefix plus a never-undercount estimate of messages appended since
-   * the provider usage was recorded. With no suffix the provider count stands.
-   */
-  private tokensFromAnchor(ctx: Context, anchored: number): number {
-    const covered = ctx.meta?.['realAnchorMsgCount'];
-    const prefix = ctx.lastRealInputTokens;
-    if (
-      typeof covered !== 'number' ||
-      typeof prefix !== 'number' ||
-      covered < 0 ||
-      covered >= ctx.messages.length
-    ) {
-      return anchored;
-    }
-    const suffixUpper = estimateRequestTokensUpperBound(
-      ctx.messages.slice(covered),
-      [],
-      [],
-      `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
-    ).total;
-    return prefix + suffixUpper;
+    return delegateEstimateContextTokens(this.compactionTokenEstimationHost(), ctx);
   }
 
   /**
@@ -651,41 +545,6 @@ export class AutoCompactionMiddleware {
       return Math.max(AutoCompactionMiddleware.HYGIENE_MIN_GROWTH_TOKENS, fractional);
     }
     return fractional;
-  }
-
-  /**
-   * H1: try to read a pre-computed token total from `ctx.lastRequestTokens`
-   * (set by the agent loop's pre-flight or its restash in emitContextPct).
-   * Returns the uncalibrated total when the stash is valid for the current
-   * context shape (positive number, and the message count it was computed
-   * at matches the current one — otherwise tool results have been appended
-   * since and the value is stale). Returns null when missing or stale so
-   * the caller falls back to a fresh walk.
-   */
-  private tryStashedTokens(
-    ctx: Context,
-    msgCount: number,
-    toolCount: number,
-    revision: number,
-  ): number | null {
-    if (!requestTokenBasisStillCurrent(ctx)) return null;
-    const stashed = ctx.lastRequestTokens;
-    if (typeof stashed !== 'number' || stashed <= 0) return null;
-    // The agent loop writes the (msg, tool) count it computed the stash at
-    // into ctx.meta['lastRequestTokensAt']. When the counts disagree the
-    // caller has already recomputed and refreshed the stash, but we verify
-    // the meta key exists for safety — older code paths and tests may set
-    // lastRequestTokens without the companion entry.
-    const stashedAt = ctx.meta?.['lastRequestTokensAt'];
-    if (typeof stashedAt !== 'object' || stashedAt === null) return null;
-    const meta = stashedAt as { msgCount?: unknown; toolCount?: unknown; revision?: unknown };
-    if (meta.msgCount !== msgCount) return null;
-    if (typeof meta.toolCount === 'number' && meta.toolCount !== toolCount) return null;
-    // A same-length replaceMessages() rewrite is invisible to count-only
-    // stamps. Require the ConversationState revision that produced the stash;
-    // legacy stamps without it are treated as untrusted and recomputed once.
-    if (meta.revision !== revision) return null;
-    return stashed;
   }
 
   /** Invalidate every token view derived from the pre-rewrite conversation. */
@@ -1050,35 +909,9 @@ export class AutoCompactionMiddleware {
     droppedMessages: number;
     withinBudget: boolean;
   } | null {
-    const rawMessageTokens = estimateMessages(ctx.messages);
-    const rawFull = estimateRequestTokens(ctx.messages, ctx.systemPrompt, ctx.tools ?? []).total;
-    const rawOverhead = Math.max(0, rawFull - rawMessageTokens);
-    // Target 95% of the hard line, expressed in the estimator's raw scale.
-    const targetGuardFull = Math.floor(hardThreshold * budget.availableInputTokens * 0.95);
-    // `enforceHardBudget` counts raw tokens, but the request is measured by the
-    // upper-bound guard. Deflate the raw message budget by the current density
-    // inflation so the trimmed request fits the guard, not just the raw
-    // estimate — over-trimming slightly is the safe direction here.
-    const guardFull = estimateRequestTokensUpperBound(
-      ctx.messages,
-      ctx.systemPrompt,
-      ctx.tools ?? [],
-      `${ctx.provider?.id ?? 'unknown'}/${ctx.model}`,
-    ).total;
-    const inflation = rawFull > 0 ? Math.max(1, guardFull / rawFull) : 1;
-    const messageBudget = Math.max(1, Math.floor(targetGuardFull / inflation) - rawOverhead);
-    const result = enforceHardBudget(ctx.messages, messageBudget, {
-      preserveK: this.resolvePreserveK(ctx),
-    });
-    if (!result.changed) return null;
-    ctx.state.replaceMessages(result.messages);
-    this.invalidateTokenCaches(ctx);
-    return {
-      saved: result.saved,
-      trimmedBlocks: result.trimmedBlocks,
-      droppedMessages: result.droppedMessages,
-      withinBudget: result.withinBudget,
-    };
+    return emergencyTrim(ctx, budget, hardThreshold, this.resolvePreserveK(ctx), (ctx) =>
+      this.invalidateTokenCaches(ctx),
+    );
   }
 
   /** Preserve-window size from the active policy, defaulting to 6 recent pairs. */
@@ -1124,5 +957,12 @@ export class AutoCompactionMiddleware {
    */
   private resolveToolReceiptRetention(ctx: Context): number {
     return Math.min(96, Math.max(16, this.resolvePreserveK(ctx) * 4));
+  }
+
+  private compactionTokenEstimationHost(): CompactionTokenEstimationHost {
+    return {
+      stateFor: (...args) => this.stateFor(...args),
+      _estimator: this._estimator,
+    };
   }
 }

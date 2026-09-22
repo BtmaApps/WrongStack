@@ -1,6 +1,6 @@
+import { color } from '@wrongstack/core/utils';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { color } from '@wrongstack/core/utils';
 import type { SubcommandHandler } from '../contracts.js';
 
 interface ProjectManifestEntry {
@@ -46,10 +46,7 @@ export const projectsCmd: SubcommandHandler = async (_args, deps) => {
   // Most recently used first: the answer to "where was I working" is almost
   // always at the top, and the tail is history.
   const sorted = [...entries].sort((a, b) => (b.lastSeen ?? '').localeCompare(a.lastSeen ?? ''));
-  const slugWidth = Math.min(
-    Math.max(...sorted.map((entry) => (entry.slug ?? '').length), 4),
-    40,
-  );
+  const slugWidth = Math.min(Math.max(...sorted.map((entry) => (entry.slug ?? '').length), 4), 40);
 
   for (const entry of sorted) {
     const slug = (entry.slug ?? '?').padEnd(slugWidth);

@@ -19,11 +19,7 @@ export default defineConfig({
       reporter: ['text', 'json', 'json-summary'],
       reportOnFailure: true,
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/index.ts',
-        'src/server/index.ts',
-        'src/server/entry.ts',
-      ],
+      exclude: ['src/index.ts', 'src/server/index.ts', 'src/server/entry.ts'],
       thresholds: {
         lines: 78,
         statements: 76,

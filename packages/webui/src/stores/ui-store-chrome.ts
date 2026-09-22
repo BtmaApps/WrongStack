@@ -1,4 +1,4 @@
-import type { UIState, SessionChromeState } from "./ui-store-types.js";
+import type { SessionChromeState, UIState } from './ui-store-types.js';
 
 export function isDesktopShellStorageContext(): boolean {
   if (typeof window === 'undefined') return false;

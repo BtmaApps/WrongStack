@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 /**
  * Post-context backend service construction for the standalone WebUI server.
  *
@@ -20,8 +21,11 @@
  * closure (which needs the live `context`, `autoCompactor`, and
  * `modelCapabilitiesRef` it just built).
  */
-import { join } from 'node:path';
-import { type AgentPipelines, Context, createEventUserInputAwaiter } from '@wrongstack/core/agent';
+import {
+  type AgentPipelines,
+  type Context,
+  createEventUserInputAwaiter,
+} from '@wrongstack/core/agent';
 import type { CollaborationBus, ObservableBrainArbiter } from '@wrongstack/core/coordination';
 import type {
   AutoCompactionMiddleware,
@@ -50,6 +54,7 @@ import type {
   SkillLoader,
 } from '@wrongstack/core/types';
 import { resolveTypeSafeJudge } from '@wrongstack/core/typesafe';
+import { createSessionAgentManager } from './create-session-agent-manager.js';
 
 /** Session shape returned by `SessionStore.create()`. */
 type Session = Awaited<ReturnType<SessionStore['create']>>;
@@ -108,7 +113,6 @@ import { resolveProviderModelMetadata } from './model-catalog.js';
 import { SddBoardWebSocketHandler } from './sdd-board-ws-handler.js';
 import { buildSddWizardDeps } from './sdd-wizard-wiring.js';
 import { SddWizardWebSocketHandler } from './sdd-wizard-ws-handler.js';
-import { createSessionAgentRegistry, createSessionTokenCounter } from './session-agent-registry.js';
 import { SpecsWebSocketHandler } from './specs-ws-handler.js';
 import { TerminalWebSocketHandler } from './terminal-ws-handler.js';
 import { WorktreeWebSocketHandler } from './worktree-ws-handler.js';
@@ -869,58 +873,21 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
    * standalone session agent inherits this host's tool/iteration config rather
    * than cloning a template agent's.
    */
-  const sessionAgents = createSessionAgentRegistry({
-    template: agent,
-    maxAgents: MAX_CONCURRENT_SESSION_AGENTS,
-    ...(input.isRunActive ? { isRunActive: input.isRunActive } : {}),
-    ...(input.isDisplayed ? { isDisplayed: input.isDisplayed } : {}),
-    createAgent: (sessionId) => {
-      const sessionCtx = new Context({
-        projectRoot,
-        cwd: workingDir,
-        model: context.model,
-        provider: context.provider,
-        // A placeholder writer: the real one is installed by the session
-        // transition (`session.new` / `session.resume`) that owns this id.
-        session: { id: sessionId, traceId: context.traceId } as Session,
-        traceId: context.traceId,
-        systemPrompt: context.systemPrompt,
-        agentId: 'leader',
-        agentName: 'Leader Agent',
-        allowOutsideProjectRoot: context.allowOutsideProjectRoot,
-        signal: context.signal,
-        userInputAwaiter: context.userInputAwaiter,
-        // The session's own counter (see createSessionTokenCounter): reads are
-        // this tab's, writes still reach the process-wide one.
-        tokenCounter: createSessionTokenCounter({
-          root: input.tokenCounter,
-          sessionId,
-          registry: modelsRegistry,
-          providerId: () => context.provider?.id,
-        }),
-      });
-      Object.assign(sessionCtx.meta, context.meta);
-      return new Agent({
-        container,
-        tools: toolRegistry,
-        providers: providerRegistry,
-        events,
-        pipelines,
-        refreshSystemPrompt: true,
-        context: sessionCtx,
-        maxIterations: config.tools?.maxIterations ?? DEFAULT_TOOLS_CONFIG.maxIterations,
-        iterationTimeoutMs:
-          config.tools?.iterationTimeoutMs ?? DEFAULT_TOOLS_CONFIG.iterationTimeoutMs,
-        executionStrategy:
-          config.tools?.defaultExecutionStrategy ?? DEFAULT_TOOLS_CONFIG.defaultExecutionStrategy,
-        perIterationOutputCapBytes:
-          config.tools?.perIterationOutputCapBytes ??
-          DEFAULT_TOOLS_CONFIG.perIterationOutputCapBytes,
-        loopDetection: config.tools?.loopDetection ?? DEFAULT_TOOLS_CONFIG.loopDetection,
-        confirmAwaiter: undefined,
-        toolExecutor,
-      });
-    },
+  const { sessionAgents } = createSessionAgentManager({
+    agent,
+    MAX_CONCURRENT_SESSION_AGENTS,
+    input,
+    projectRoot,
+    workingDir,
+    context,
+    modelsRegistry,
+    container,
+    toolRegistry,
+    providerRegistry,
+    events,
+    pipelines,
+    config,
+    toolExecutor,
   });
   const getAgentForSession = (sessionId?: string): Agent => sessionAgents.get(sessionId);
 

@@ -54,11 +54,7 @@ const TIER2_NAMES = [
   'design',
 ];
 
-const TIER3_NAMES = [
-  'outdated',
-  'logs',
-  'dead-code-scan',
-];
+const TIER3_NAMES = ['outdated', 'logs', 'dead-code-scan'];
 
 const makeTool = (name: string): Tool =>
   ({ name, description: `tool-${name}`, execute: async () => ({}) }) as unknown as Tool;

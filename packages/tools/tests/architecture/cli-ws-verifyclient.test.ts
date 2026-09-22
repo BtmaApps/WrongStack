@@ -11,17 +11,14 @@
  * "let's just call `new WebSocketServer({})` directly" refactor
  * breaks the build.
  */
-import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(__dirname, '../../../..');
-const source = readFileSync(
-  resolve(repoRoot, 'packages/cli/src/webui-server.ts'),
-  'utf8',
-);
+const source = readFileSync(resolve(repoRoot, 'packages/cli/src/webui-server.ts'), 'utf8');
 
 describe('E5 / CLI webui WS verifyClient is wired', () => {
   it('the CLI WebSocketServer construction passes a verifyClient', () => {

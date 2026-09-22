@@ -11,7 +11,10 @@ describe('registerSetupEventsProviderHandlers', () => {
     const clients = new Map();
     const flushAllStreamBuffers = vi.fn();
     const projection = { flushAllStreamBuffers };
-    const sessionPayload = vi.fn((payload) => ({ ...payload, sessionId: payload.sessionId ?? 'default' }));
+    const sessionPayload = vi.fn((payload) => ({
+      ...payload,
+      sessionId: payload.sessionId ?? 'default',
+    }));
 
     registerSetupEventsProviderHandlers({
       on: on as never,

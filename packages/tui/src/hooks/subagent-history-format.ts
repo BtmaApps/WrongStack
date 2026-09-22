@@ -8,10 +8,7 @@
  */
 
 /** `provider / model` for history chips. Empty parts are dropped. */
-export function formatModelRef(
-  provider: string | undefined,
-  model: string | undefined,
-): string {
+export function formatModelRef(provider: string | undefined, model: string | undefined): string {
   if (provider && model) return `${provider} / ${model}`;
   return provider || model || '';
 }

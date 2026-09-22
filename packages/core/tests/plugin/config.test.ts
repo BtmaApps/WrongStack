@@ -230,9 +230,10 @@ describe('resolvePluginConfig prototype-key filtering', () => {
   });
 
   it('drops constructor and prototype keys too', () => {
-    const hostile = JSON.parse(
-      '{"keep":1,"constructor":{"x":1},"prototype":{"y":2}}',
-    ) as Record<string, unknown>;
+    const hostile = JSON.parse('{"keep":1,"constructor":{"x":1},"prototype":{"y":2}}') as Record<
+      string,
+      unknown
+    >;
     const resolved = resolvePluginConfig({
       name: 'demo',
       config: { plugins: { demo: hostile } as never },

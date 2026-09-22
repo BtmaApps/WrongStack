@@ -58,6 +58,9 @@ import type { GoalRouteHandlers } from './goal-routes.js';
 import { createMailboxRouteHandlers } from './mailbox-routes.js';
 import {
   handleMcpAdd,
+  handleMcpAuthLogin,
+  handleMcpAuthLogout,
+  handleMcpAuthStatus,
   handleMcpDisable,
   handleMcpDiscover,
   handleMcpEnable,
@@ -690,6 +693,13 @@ export function buildRoutes(
     resourceRead: (ws, msg) =>
       handleMcpResourceRead(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
     promptGet: (ws, msg) => handleMcpPromptGet(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
+    authStatus: (ws, msg) => handleMcpAuthStatus(ws, msg, deps.profileConfigPath, deps.mcpRegistry),
+    // Binds a loopback port on this host and can mint a credential — same
+    // boundary the spawn-capable mutations go through.
+    authLogin: (ws, msg) =>
+      handleMcpAuthLogin(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
+    authLogout: (ws, msg) =>
+      handleMcpAuthLogout(ws, msg, deps.profileConfigPath, deps.mcpRegistry, deps.trustBoundary),
   };
 
   const brainContext: BrainHandlerContext = {

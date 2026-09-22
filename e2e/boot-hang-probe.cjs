@@ -45,9 +45,7 @@ const report = (label, code) => {
   const repoFrames = (stack) =>
     String(stack)
       .split('\n')
-      .filter(
-        (line) => /WrongStack|wrongstack/.test(line) && !line.includes('boot-hang-probe'),
-      );
+      .filter((line) => /WrongStack|wrongstack/.test(line) && !line.includes('boot-hang-probe'));
   const own = [...pending.values()].filter((stack) => repoFrames(stack).length > 0);
   write(`${pending.size} unresolved promises, ${own.length} with repo frames`);
   for (const stack of own.slice(-15)) {

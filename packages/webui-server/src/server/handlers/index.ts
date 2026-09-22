@@ -9,15 +9,15 @@
  * agent state, broadcasting, and socket sending.
  */
 export {
-  handleTodosGet,
-  handleTodosClear,
-  handleTodosRemove,
-  handleTodoUpdate,
+  handlePlanGet,
+  handlePlanItemUpdate,
+  handlePlanTemplateUse,
   handleTasksGet,
   handleTaskUpdate,
-  handlePlanGet,
-  handlePlanTemplateUse,
-  handlePlanItemUpdate,
+  handleTodosClear,
+  handleTodosGet,
+  handleTodosRemove,
+  handleTodoUpdate,
   handleWorklistMessage,
   type WorklistContext,
   type WorklistMessage,

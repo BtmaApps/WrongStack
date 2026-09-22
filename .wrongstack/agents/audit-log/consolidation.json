@@ -7,7 +7,5 @@
   "model": "qwen3.8-flash",
   "pruned": true,
   "archivePath": "D:\\Codebox\\PROJECTS\\WrongStack\\.wrongstack\\agents\\audit-log\\archive\\learned-2026-09-09T09-34-54-191Z.md",
-  "skills": [
-    "bug-hunter"
-  ]
+  "skills": ["bug-hunter"]
 }

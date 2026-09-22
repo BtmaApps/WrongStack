@@ -4,11 +4,12 @@ import type { WebuiMutableState } from './routes.js';
 import { createSessionStartPayload } from './server-runtime.js';
 
 /** The per-session context shape `createSessionStartPayload` reads. */
-type SessionStartContext = NonNullable<
-  Parameters<typeof createSessionStartPayload>[0]['getSessionContext']
-> extends (sessionId: string) => infer R
-  ? NonNullable<R>
-  : never;
+type SessionStartContext =
+  NonNullable<Parameters<typeof createSessionStartPayload>[0]['getSessionContext']> extends (
+    sessionId: string,
+  ) => infer R
+    ? NonNullable<R>
+    : never;
 
 export function createStartWebuiSessionPayloadHelper(params: {
   getConfig: () => Config;
@@ -25,9 +26,7 @@ export function createStartWebuiSessionPayloadHelper(params: {
    * per-session context), so the parameter is typed by what the payload
    * builder accepts rather than by the full Agent surface.
    */
-  peekAgent?:
-    | ((sessionId: string) => { ctx?: SessionStartContext } | undefined)
-    | undefined;
+  peekAgent?: ((sessionId: string) => { ctx?: SessionStartContext } | undefined) | undefined;
 }) {
   const {
     getConfig,

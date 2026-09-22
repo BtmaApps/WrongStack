@@ -517,7 +517,9 @@ describe('TaskDAG', () => {
       dag.fail('root', 'Root failed');
 
       expect(dag.hasDeadlock()).toBe(true);
-      expect(events).toContainEqual(expect.objectContaining({ type: 'deadlock', blocked: ['child'] }));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: 'deadlock', blocked: ['child'] }),
+      );
     });
 
     it('emits node:ready on addNode for root tasks and suppresses premature graph:done', () => {
@@ -527,10 +529,11 @@ describe('TaskDAG', () => {
 
       dag.addNode('task-1', 'Initial task');
 
-      expect(events).toContainEqual(expect.objectContaining({ type: 'node:ready', nodeId: 'task-1' }));
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: 'node:ready', nodeId: 'task-1' }),
+      );
       expect(events.filter((e) => e.type === 'graph:done')).toHaveLength(0);
       expect(dag.isDone()).toBe(false);
     });
   });
 });
-

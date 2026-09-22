@@ -53,12 +53,12 @@ import { useHqStore } from '../../data/store/index.js';
 import { chatTargetFromNode, type FleetChatTarget } from '../../domain/fleet-chat-target.js';
 import {
   buildFleetTopology,
-  type FleetTopology,
-  type FleetTopologyNode,
-  type FleetTopologyScope,
   filterFleetTopology,
   filterFleetTopologyByQuery,
   fleetColumnFor,
+  type FleetTopology,
+  type FleetTopologyNode,
+  type FleetTopologyScope,
   layoutFleetTopology,
   orderFleetTopologyNodes,
 } from '../../domain/fleet-topology.js';
@@ -345,7 +345,10 @@ function FleetCompactList({ topology }: { topology: FleetTopology }): React.Reac
                       <span className="flex items-center gap-1.5 truncate">
                         <strong className="truncate">{node.label}</strong>
                         {node.version && (
-                          <Badge tone="idle" className="px-1 py-0 text-[9px] font-mono leading-none shrink-0">
+                          <Badge
+                            tone="idle"
+                            className="px-1 py-0 text-[9px] font-mono leading-none shrink-0"
+                          >
                             v{node.version.replace(/^v/, '')}
                           </Badge>
                         )}

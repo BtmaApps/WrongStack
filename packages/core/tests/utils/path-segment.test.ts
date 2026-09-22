@@ -8,7 +8,13 @@
  */
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MAX_PATH_SEGMENT_LENGTH, decodeSessionIdStrict, isSafePathSegment, isSafeSessionId, resolveContainedPath } from '../../src/utils/path-segment.js';
+import {
+  MAX_PATH_SEGMENT_LENGTH,
+  decodeSessionIdStrict,
+  isSafePathSegment,
+  isSafeSessionId,
+  resolveContainedPath,
+} from '../../src/utils/path-segment.js';
 
 describe('isSafePathSegment', () => {
   it('rejects the traversal segments', () => {

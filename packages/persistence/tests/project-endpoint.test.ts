@@ -20,7 +20,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { bindProjectEndpoint, _projectEndpointOps, isProjectEndpointLive } from '../src/project-endpoint.js';
+import {
+  _projectEndpointOps,
+  bindProjectEndpoint,
+  isProjectEndpointLive,
+} from '../src/project-endpoint.js';
 
 const isWindows = process.platform === 'win32';
 const describeUnix = isWindows ? describe.skip : describe;

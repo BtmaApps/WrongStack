@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
-import type { StandaloneSessionIdentityLifecycle } from './standalone-session-identity.js';
 import type { WebuiCallbacks, WebuiDeps } from './routes.js';
+import type { StandaloneSessionIdentityLifecycle } from './standalone-session-identity.js';
 import type { createStandaloneTodosCheckpointLifecycle } from './start-webui-todos.js';
 import type { ConnectedClient } from './types.js';
 

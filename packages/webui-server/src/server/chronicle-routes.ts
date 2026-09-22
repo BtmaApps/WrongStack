@@ -7,8 +7,8 @@ import {
 } from '@wrongstack/core/chronicle';
 import { toErrorMessage } from '@wrongstack/core/utils';
 import type { WebSocket } from 'ws';
-import { clampLimit } from './ws-payload-validation.js';
 import type { WSClientMessage, WSServerMessage } from './types.js';
+import { clampLimit } from './ws-payload-validation.js';
 
 export interface ChronicleRouteContext {
   getProjectRoot: () => string;

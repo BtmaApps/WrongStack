@@ -65,13 +65,13 @@ vi.mock('@wrongstack/tools', () => ({
   getIndexState: vi.fn(() => ({ server: 'running' })),
 }));
 
-import { handleApiRoutes } from '../src/server/http-server/api-router.js';
-import * as apiHandlers from '../src/server/http-server/api-handlers.js';
-import * as analyticsHandlers from '../src/server/http-server/analytics-handler.js';
-import * as vectorHandlers from '../src/server/http-server/vector-memory-handlers.js';
-import * as intakeHandlers from '../src/server/requirement-intake-handlers.js';
 import * as codemapHandlers from '../src/server/codemap-handlers.js';
 import * as deadcodeHandlers from '../src/server/deadcode-handlers.js';
+import * as analyticsHandlers from '../src/server/http-server/analytics-handler.js';
+import * as apiHandlers from '../src/server/http-server/api-handlers.js';
+import { handleApiRoutes } from '../src/server/http-server/api-router.js';
+import * as vectorHandlers from '../src/server/http-server/vector-memory-handlers.js';
+import * as intakeHandlers from '../src/server/requirement-intake-handlers.js';
 import * as techstackHandlers from '../src/server/techstack-handlers.js';
 
 const api = apiHandlers as unknown as Record<string, ReturnType<typeof vi.fn>>;
@@ -304,9 +304,7 @@ describe('handleApiRoutes — requirement intake routes', () => {
       const out = await route(method, '/api/projects/%zz/requirement-intakes');
       expect(out.handled, method).toBe(true);
       expect(out.res.statusCode, method).toBe(400);
-      expect(JSON.parse(out.res.body).error, method).toBe(
-        'Invalid URI encoding in path parameter',
-      );
+      expect(JSON.parse(out.res.body).error, method).toBe('Invalid URI encoding in path parameter');
       expect(intake[handler], method).not.toHaveBeenCalled();
     }
   });

@@ -1,11 +1,11 @@
-import { execSync, spawn } from 'node:child_process';
+import type { Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Server } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
-import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
 // Use workspace package exports so the spec does not depend on untracked dist files.
 import { DefaultSessionStore } from '@wrongstack/core/storage';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
@@ -393,7 +393,7 @@ async function restartStandaloneServer(baseURL: string, token: string): Promise<
   // backend" failure undiagnosable — the page's sends were being dropped
   // and nothing on the server side was inspectable after the fact.
   fs.mkdirSync(path.join(cwd, '.temp_files'), { recursive: true });
-    const outFd = fs.openSync(path.join(cwd, '.temp_files', 'e2elr-standalone.out.log'), 'a');
+  const outFd = fs.openSync(path.join(cwd, '.temp_files', 'e2elr-standalone.out.log'), 'a');
   const errFd = fs.openSync(path.join(cwd, '.temp_files', 'e2elr-standalone.err.log'), 'a');
   const child = spawn(process.execPath, ['packages/webui-server/dist/server/entry.js'], {
     cwd,

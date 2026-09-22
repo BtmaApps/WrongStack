@@ -31,17 +31,17 @@ import {
 } from './instruction-bundle.js';
 import { type InstructionTemplateContext, renderInstructionLayer } from './instruction-template.js';
 import { PROMPT as DEFAULT_PROMPT, LEADER_AFTER_TASK_PROMPT } from './modes/default.js';
-import {
-  instructionSection,
-  renderToolSelectionBoundary,
-  tagBlock,
-} from './system-prompt-blocks.js';
+import { tagBlock } from './system-prompt-blocks.js';
 import { buildEnvironment } from './system-prompt-environment.js';
 import { renderDomainGlossary } from './system-prompt-glossary.js';
 import { buildMemoryAndSkills, renderOnlineAgents } from './system-prompt-memory-skills.js';
 import { type ActivePlanCache, readActivePlanBlock } from './system-prompt-plan.js';
 import { isSkillHiddenFromPrompt } from './system-prompt-skill-bodies.js';
 import { compactTrigger } from './system-prompt-skill-text.js';
+import {
+  buildToolUsage as delegateBuildToolUsage,
+  type SystemPromptToolUsageHost,
+} from './system-prompt-tool-usage.js';
 
 export { effectiveShell, shellGuidanceBlock } from './system-prompt-shell.js';
 
@@ -92,9 +92,9 @@ export function buildIdentityLayer(
   return [render(LAYER_1_IDENTITY), '', fenced].join('\n');
 }
 
+export type { SystemBlockSource } from './system-prompt-blocks.js';
 // Provenance side-table and the stateless render helpers now live in their own
 // module; re-exported here so this file stays the public import site.
-export type { SystemBlockSource } from './system-prompt-blocks.js';
 export { SYSTEM_BLOCK_SOURCE } from './system-prompt-blocks.js';
 
 export interface DefaultSystemPromptBuilderOptions {
@@ -661,275 +661,7 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
     ctx: BuildContext,
     tplCtx?: InstructionTemplateContext | undefined,
   ): Promise<string> {
-    if (tools.length === 0) return '## Tool usage\n\nNo tools registered.';
-    const instructions = await this.instructions(ctx.systemVariant);
-    // Sections get the same conditional-block treatment as the identity layer,
-    // so a `sections/*.md` override can gate on the live tool set too.
-    const tpl = tplCtx ?? this.templateContext(ctx);
-    const section = (key: string, vars: Record<string, string | number> = {}): string =>
-      instructionSection(instructions, key, vars, tpl);
-
-    // Cache: tools array is stable (same reference) until a registry mutation
-    // thanks to B2 (ToolRegistry snapshot). When both keys match the previous
-    // build, the full output is identical — return the cached string.
-    // Including `tier` in the key ensures that mutating
-    // `opts.tokenSavingMode` between builds (rare but supported via the
-    // `private readonly opts` design) recomputes the prompt with the
-    // new tier's truncation limits and tier-gated content. The live
-    // online-agents snapshot is deliberately NOT an input here — it lives in
-    // the `peers` volatile block so this layer stays provider-cache-stable.
-    const tier = this.tier;
-    const subagent = ctx.subagent === true;
-    const maxContextTokens = this.modelCapabilities()?.maxContextTokens ?? 0;
-    if (
-      this._toolsUsageCache?.toolsRef === tools &&
-      this._toolsUsageCache?.instructions === instructions &&
-      this._toolsUsageCache?.tier === tier &&
-      this._toolsUsageCache?.subagent === subagent &&
-      this._toolsUsageCache?.maxContextTokens === maxContextTokens
-    ) {
-      return this._toolsUsageCache.text;
-    }
-
-    // Group tools by category for a cleaner listing when categories are used.
-    const byCat = new Map<string, Tool[]>();
-    const uncategorized: Tool[] = [];
-    for (const t of tools) {
-      if (t.category) {
-        let group = byCat.get(t.category);
-        if (!group) {
-          group = [];
-          byCat.set(t.category, group);
-        }
-        group.push(t);
-      } else {
-        uncategorized.push(t);
-      }
-    }
-
-    const lines = ['## Tool usage'];
-    const descLimit = this.toolDescLimit();
-
-    // Categorized tools
-    for (const [cat, catTools] of byCat) {
-      lines.push(`\n### ${cat}`);
-      for (const t of catTools) {
-        const hint = t.usageHint ?? t.description;
-        // Trim to the tier-specific limit, preferring sentence boundaries.
-        const desc =
-          hint.length > descLimit
-            ? hint.slice(0, hint.indexOf('.', 20) + 1 || descLimit) +
-              (hint.length > descLimit ? '…' : '')
-            : hint.trim();
-        lines.push(`- **${t.name}** — ${desc}`);
-        const boundary = renderToolSelectionBoundary(t);
-        if (boundary) lines.push(`  ${boundary}`);
-      }
-    }
-
-    // Uncategorized tools
-    if (uncategorized.length > 0) {
-      if (byCat.size > 0) lines.push('');
-      for (const t of uncategorized) {
-        const hint = t.usageHint ?? t.description;
-        lines.push(`\n### ${t.name}\n${hint.trim()}`);
-        const boundary = renderToolSelectionBoundary(t);
-        if (boundary) lines.push(boundary);
-      }
-    }
-
-    // Common tool chain patterns — teaches model how to compose tools effectively.
-    // Skipped in minimal and aggressive tiers — model already knows these patterns
-    // and aggressive users are under context pressure.
-    if (this.tier !== 'minimal' && this.tier !== 'aggressive') {
-      const commonPatterns = section('tool.common.patterns');
-      if (commonPatterns) {
-        lines.push(
-          renderInstructionLayer(commonPatterns, {
-            toolNames: new Set(tools.map((tool) => tool.name)),
-            tier: this.tier,
-            subagent: ctx.subagent === true,
-          }),
-        );
-      }
-    }
-
-    // Delegation guidance — included when the `delegate` tool is present.
-    // Without this block the model doesn't know that multi-agent work is
-    // even an option, and `delegate` sits unused while the host agent
-    // tries to do everything in one expensive context.
-    // Tier behaviour:
-    // - 'off' → full block
-    // - 'light' / 'medium' → minimal one-liner
-    // - 'minimal' / 'aggressive' → skipped
-    const hasDelegate = tools.some((t) => t.name === 'delegate');
-    if (hasDelegate) {
-      const delegateTool = tools.find((t) => t.name === 'delegate');
-      const enumValues = (() => {
-        const role = (
-          delegateTool?.inputSchema as
-            | { properties?: { role?: { enum?: unknown | undefined } } }
-            | undefined
-        )?.properties?.role?.enum;
-        return Array.isArray(role) ? (role.filter((r) => typeof r === 'string') as string[]) : [];
-      })();
-      const roleList = enumValues.length > 0 ? enumValues.join(', ') : '(no roster configured)';
-      if (this.tier === 'minimal' || this.tier === 'aggressive') {
-        // Skip — don't emit any delegation guidance
-      } else if (this.tier === 'light' || this.tier === 'medium') {
-        // Balanced token-saving tiers get the compact one-liner instead of
-        // the full multi-paragraph guidance.
-        const delegation = section('tool.delegation.compact', {
-          roleList,
-        });
-        if (delegation) lines.push(delegation);
-      } else {
-        const delegation = section('tool.delegation.full', {
-          roleList,
-        });
-        if (delegation) lines.push(delegation);
-      }
-    }
-
-    // Mailbox guidance — included when any mailbox tool is present.
-    // Tier behaviour:
-    // - 'off' → full block
-    // - every token-saving tier → compact project-wide contract
-    //
-    // Note: 'aggressive' was previously listed with 'off' for the
-    // full block, but per the parallel-session decision (Option H,
-    // `leader@1b68eb14`): at aggressive, the 400-token mailbox essay
-    // is the largest single guidance section and users under context
-    // pressure don't need it. The compact one-liner is enough.
-    const hasMailbox = tools.some(
-      (t) => t.name === 'mailbox' || t.name === 'mail_send' || t.name === 'mail_inbox',
-    );
-    if (hasMailbox) {
-      // The live online-agents snapshot intentionally does NOT render here
-      // anymore: status/task/tool churn in this layer invalidated the core
-      // provider-cache prefix on every fleet status change. The snapshot now
-      // lives in the `peers` volatile block (see buildRegions), which the
-      // request composer re-homes after the deep cache boundary.
-      const onlineAgentsInfo = '';
-      const hasMailboxPowerTool = tools.some((t) => t.name === 'mailbox');
-      const mailStatusCommand = tools.some((t) => t.name === 'fleet_status')
-        ? '`fleet_status`'
-        : hasMailboxPowerTool
-          ? '`mailbox action=status` or `mailbox action=online`'
-          : 'the online-agent list above';
-      const mailInboxCommand = tools.some((t) => t.name === 'mail_inbox')
-        ? '`mail_inbox`'
-        : '`mailbox action=check`';
-      const mailSendCommand = tools.some((t) => t.name === 'mail_send')
-        ? '`mail_send`'
-        : '`mailbox action=send`';
-      const mailboxVars = {
-        onlineAgentsInfo,
-        mailStatusCommand,
-        mailInboxCommand,
-        mailSendCommand,
-      };
-      if (this.tier !== 'off') {
-        // Minimal: keep just the header and agent count.
-        // `aggressive` joins `light`/`medium` — the 400-token mailbox essay
-        // is the largest single guidance section; users under context pressure
-        // don't need it.
-        const mailbox = section('tool.mailbox.compact', mailboxVars);
-        if (mailbox) lines.push(mailbox);
-      } else {
-        const mailbox = section('tool.mailbox.full', mailboxVars);
-        if (mailbox) lines.push(mailbox);
-      }
-    }
-
-    // Same-session talk — in-process notes, not mailbox. Compact on every
-    // token-saving tier; full block only when the prompt is unconstrained.
-    if (tools.some((t) => t.name === 'session_note')) {
-      const sessionNote = section(
-        this.tier === 'off' ? 'tool.session.note.full' : 'tool.session.note.compact',
-      );
-      if (sessionNote) lines.push(sessionNote);
-    }
-
-    // Commit hygiene — shown whenever the structured `git` tool is available.
-    // Other agents (or a separate wrongstack process, or a human) may be
-    // editing the SAME working tree at the same time; a blanket commit captures
-    // their half-done work and there is no clean way to undo a shared commit.
-    const hasGitTool = tools.some((t) => t.name === 'git');
-    if (
-      hasGitTool &&
-      this.tier !== 'minimal' &&
-      this.tier !== 'light' &&
-      this.tier !== 'aggressive'
-    ) {
-      const commitHygiene = section('tool.commit.hygiene');
-      if (commitHygiene) lines.push(commitHygiene);
-    }
-
-    // MCP lazy-loading guidance — shown whenever mcp_control is registered.
-    // Tier behaviour:
-    // - 'off' / 'medium' → full guidance block
-    // - 'minimal' / 'light' / 'aggressive' → minimal one-liner
-    //
-    // Note: 'aggressive' was previously listed with 'off' for the
-    // full block, but per the parallel-session decision (Option H):
-    // at aggressive, the full MCP workflow (activate → use →
-    // deactivate) is documented elsewhere and the meta-tool
-    // `mcp_use` is sufficient. The one-liner is enough.
-    const hasMcpControl = tools.some((t) => t.name === 'mcp_control');
-    const hasMcpUse = tools.some((t) => t.name === 'mcp_use');
-    if (hasMcpControl) {
-      if (this.tier === 'minimal' || this.tier === 'light' || this.tier === 'aggressive') {
-        // Minimal one-liner — `aggressive` joins `minimal`/`light`. The full
-        // MCP workflow (activate → use → deactivate) is documented elsewhere
-        // and the meta-tool `mcp_use` is sufficient at any tier that has it.
-        const mcp = section(hasMcpUse ? 'tool.mcp.compact.use' : 'tool.mcp.compact.control');
-        if (mcp) lines.push(mcp);
-      } else {
-        // Full block
-        const mcp = section(hasMcpUse ? 'tool.mcp.full.use' : 'tool.mcp.full.control');
-        if (mcp) lines.push(mcp);
-      }
-    }
-
-    // Context management guidance — shown when context_manager is registered.
-    // Tier behaviour:
-    // - 'off' → full block
-    // - 'medium' → minimal one-liner
-    // - 'minimal' / 'light' → skipped
-    const hasContextManager = tools.some((t) => t.name === 'context_manager');
-    if (hasContextManager) {
-      if (this.tier === 'minimal' || this.tier === 'light' || this.tier === 'aggressive') {
-        // Skip
-      } else if (this.tier === 'medium') {
-        const contextManagement = section('tool.context.management.compact');
-        if (contextManagement) lines.push(contextManagement);
-      } else {
-        // Adaptive threshold based on model context window size.
-        // Small context (<=32k) → trigger earlier; large context (>32k) → more relaxed.
-        // Fallback to 0 when unknown → conservative compaction (50 % threshold).
-        const maxCtx = this.modelCapabilities()?.maxContextTokens ?? 0;
-        const threshold = maxCtx <= 32000 ? '50' : '70';
-        const contextManagement = section('tool.context.management.full', { threshold });
-        if (contextManagement) lines.push(contextManagement);
-      }
-    }
-
-    // Store cache — keyed by tools reference (B2 snapshot) + tier + subagent +
-    // maxContextTokens + instruction bundle, so it auto-invalidates on a variant
-    // switch, when tools change, the token-saving
-    // tier changes, the prompt is for a different audience (host vs subagent),
-    // or a /model switch changes the context-management threshold.
-    const text = lines.join('\n');
-    this._toolsUsageCache = {
-      toolsRef: tools,
-      tier,
-      subagent,
-      maxContextTokens,
-      instructions,
-      text,
-    };
-    return text;
+    return delegateBuildToolUsage(this.systemPromptToolUsageHost(), tools, ctx, tplCtx);
   }
 
   private renderOnlineAgents(agents: readonly MailboxAgentStatus[] | undefined): string {
@@ -982,5 +714,24 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
       if (mode?.prompt) return mode.prompt;
     }
     return this.opts.modePrompt ?? '';
+  }
+
+  private systemPromptToolUsageHost(): SystemPromptToolUsageHost {
+    const self = this;
+    return {
+      instructions: (...args) => this.instructions(...args),
+      templateContext: (...args) => this.templateContext(...args),
+      get tier() {
+        return self.tier;
+      },
+      modelCapabilities: (...args) => this.modelCapabilities(...args),
+      get _toolsUsageCache() {
+        return self._toolsUsageCache;
+      },
+      set _toolsUsageCache(value) {
+        self._toolsUsageCache = value;
+      },
+      toolDescLimit: (...args) => this.toolDescLimit(...args),
+    };
   }
 }

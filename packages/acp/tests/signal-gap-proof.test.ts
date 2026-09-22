@@ -14,16 +14,19 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ACPSession } from '../src/client/acp-session.js';
 import type { ACPSessionOptions } from '../src/client/acp-session-types.js';
+import { ACPSession } from '../src/client/acp-session.js';
 
 const PROJECT_ROOT = path.resolve(os.tmpdir(), 'wstack-acp-signal-gap-test-' + process.pid);
 
 vi.mock('../src/client/acp-session-ops.js', () => ({
-  executeCreateSession: vi.fn().mockImplementation(() => new Promise<string>((resolve) => {
-    // Stall indefinitely — we will abort before it resolves
-    setTimeout(() => resolve('stub-session-id'), 10_000);
-  })),
+  executeCreateSession: vi.fn().mockImplementation(
+    () =>
+      new Promise<string>((resolve) => {
+        // Stall indefinitely — we will abort before it resolves
+        setTimeout(() => resolve('stub-session-id'), 10_000);
+      }),
+  ),
 }));
 
 beforeEach(async () => {
@@ -33,7 +36,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   const { rm } = await import('node:fs/promises');
-  try { await rm(PROJECT_ROOT, { recursive: true, force: true }); } catch {}
+  try {
+    await rm(PROJECT_ROOT, { recursive: true, force: true });
+  } catch {}
 });
 
 function makeSessionInReadyState(): ACPSession {
@@ -77,10 +82,7 @@ describe('AbortSignal cancellation during session creation', () => {
     // Abort immediately, before prompt() is even called
     controller.abort();
 
-    const result = await session.prompt(
-      [{ type: 'text', text: 'hello' }],
-      controller.signal,
-    );
+    const result = await session.prompt([{ type: 'text', text: 'hello' }], controller.signal);
 
     // Pre-aborted signal: early guard at line 465 returns emptyRunResult('cancelled')
     // without calling createSessionWithAuth — no wire activity.

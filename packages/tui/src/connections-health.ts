@@ -54,11 +54,13 @@ export interface ConnectionHealthService {
   watcher?: { active: boolean; watchedFiles?: number | undefined } | undefined;
   lastError?: string | undefined;
   control?: 'restart' | 'none' | undefined;
-  advisory?: {
-    code: string;
-    operatorAction: string;
-    executionDisposition: string;
-  } | undefined;
+  advisory?:
+    | {
+        code: string;
+        operatorAction: string;
+        executionDisposition: string;
+      }
+    | undefined;
 }
 
 export interface ConnectionsHealthReport {

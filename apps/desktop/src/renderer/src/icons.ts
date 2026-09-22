@@ -142,4 +142,3 @@ const ICON_PATHS: Record<IconName, string> = {
 export function iconMarkup(name: IconName): string {
   return ICON_PATHS[name];
 }
-

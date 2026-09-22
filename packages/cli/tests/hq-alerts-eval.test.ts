@@ -15,7 +15,10 @@ import type { SubcommandDeps } from '../src/subcommands/contracts.js';
  */
 import { hqCmd } from '../src/subcommands/handlers/hq.js';
 
-function makeDeps(dataDir: string, snapshotPath?: string): SubcommandDeps & {
+function makeDeps(
+  dataDir: string,
+  snapshotPath?: string,
+): SubcommandDeps & {
   stdout: string[];
   stderr: string[];
 } {

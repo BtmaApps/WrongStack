@@ -1,5 +1,5 @@
-import type { DatabaseSync } from 'node:sqlite';
 import type { MemoryScope } from '@wrongstack/core/types';
+import type { DatabaseSync } from 'node:sqlite';
 
 import { sqliteRowToMemory } from './sqlite-store-codec.js';
 import { legacyScopeFilterClause, normalizeTextKey } from './store-helpers.js';
@@ -63,9 +63,7 @@ export function consolidateLegacySqliteMemory(
         ).values(),
       ],
       sources: [
-        ...new Map(
-          mutable.flatMap((m) => m.sources).map((s) => [JSON.stringify(s), s]),
-        ).values(),
+        ...new Map(mutable.flatMap((m) => m.sources).map((s) => [JSON.stringify(s), s])).values(),
       ],
       supersedes: [
         ...new Set([

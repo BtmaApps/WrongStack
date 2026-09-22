@@ -1,3 +1,8 @@
+import { useHqStatus, useWrongProxyStatus } from '@/hooks/useIntegrationStatus';
+import { useAppTranslation } from '@/i18n';
+import { getPalette, PALETTES } from '@/lib/palettes';
+import { cn } from '@/lib/utils';
+import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import {
   Bot,
   Building2,
@@ -16,11 +21,6 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { useHqStatus, useWrongProxyStatus } from '@/hooks/useIntegrationStatus';
-import { useAppTranslation } from '@/i18n';
-import { getPalette, PALETTES } from '@/lib/palettes';
-import { cn } from '@/lib/utils';
-import { useConfigStore, useSessionStore, useUIStore } from '@/stores';
 import { openMainView } from './activity-bar/nav';
 import { CronTrigger } from './CronTrigger';
 import { InspectorTrigger } from './InspectorPanel';
@@ -371,7 +371,9 @@ export function WorkbenchTopbar({
                   ) : (
                     <Sparkles className="h-3 w-3" />
                   )}
-                  {isLoading ? t('activity:topbar.statusRunning') : t('activity:topbar.statusReady')}
+                  {isLoading
+                    ? t('activity:topbar.statusRunning')
+                    : t('activity:topbar.statusReady')}
                   {iteration ? (
                     <span className="tabular">
                       {iteration.index}

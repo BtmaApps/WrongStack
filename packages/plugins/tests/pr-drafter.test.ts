@@ -169,11 +169,9 @@ describe('pr-drafter plugin', () => {
   it('health().counters reports totalInputTokens and totalOutputTokens', async () => {
     const api = makeApi();
     prDrafterPlugin.setup(api as never);
-    const handler = (
-      api.onEvent.mock.calls.find(([event]: unknown[]) => event === 'provider.response')![1] as (
-        payload: { model?: string; usage?: Record<string, unknown> },
-      ) => void
-    );
+    const handler = api.onEvent.mock.calls.find(
+      ([event]: unknown[]) => event === 'provider.response',
+    )![1] as (payload: { model?: string; usage?: Record<string, unknown> }) => void;
     handler({ model: 'claude-3-5-sonnet', usage: { input: 250, output: 75 } });
     const health = (await prDrafterPlugin.health!()) as {
       counters: Record<string, number>;

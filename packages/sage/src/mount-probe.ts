@@ -9,11 +9,7 @@ import { posix } from 'node:path';
  * Windows process fails `PRAGMA journal_mode = WAL` with SQLITE_IOERR_SHMOPEN
  * (observed 2026-09-13: errcode 4618).
  */
-export const NINEP_STORE_MOUNT_FS_TYPES: ReadonlySet<string> = new Set([
-  '9p',
-  'drvfs',
-  'wslfs',
-]);
+export const NINEP_STORE_MOUNT_FS_TYPES: ReadonlySet<string> = new Set(['9p', 'drvfs', 'wslfs']);
 
 export const SELF_MOUNTS_PATH = '/proc/self/mounts';
 

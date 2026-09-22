@@ -20,9 +20,9 @@
 import type * as http from 'node:http';
 import { readProjectIdentity } from '@wrongstack/core/utils';
 import {
+  type IntakeContext,
   IntakeError,
   IntakeValidationError,
-  type IntakeContext,
   type RequirementIntakeRecord,
   type RequirementIntakeService,
 } from '@wrongstack/requirement-intake';

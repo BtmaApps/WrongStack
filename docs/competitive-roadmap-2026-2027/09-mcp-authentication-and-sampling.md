@@ -92,10 +92,40 @@ investment in this plan is OAuth authorization for HTTP transports.
   tokens.
 - HTTP requests after initialize now carry the negotiated `MCP-Protocol-Version` header.
 
-Remaining work: client-metadata/DCR identity selection beyond explicit preregistered client IDs, a
-managed loopback callback listener, revocation and invalid-grant recovery, public per-server auth
-state/events, SecretVault key-rotation migration for the token file, and dedicated WebUI/Desktop
-controls.
+### 2026-09-22 — Identity, managed redirect, auth state, and WebUI controls
+
+The 2026-07-13 slice was standards-complete but unusable against a real hosted server: it demanded a
+preregistered client ID that those servers do not issue, required copying the callback URL out of
+the address bar by hand, had no WebUI surface at all, and dropped its own `reauth_required` signal
+on the floor.
+
+- Added RFC 7591 dynamic client registration. The discovered `registration_endpoint` was validated
+  and persisted but never called; a client is now registered as a public client
+  (`token_endpoint_auth_method: "none"`) when no identity is available. A server that answers with a
+  confidential client is honored — the secret is vault ciphertext at rest and is sent with the code
+  and refresh exchanges — and an already-expired secret is refused.
+- Identity precedence is explicit id → the id already stored for that server → per-issuer cache →
+  fresh registration. Issuers are compared as URLs, not strings: an origin-only issuer round-trips
+  through the store as `https://host/` and the raw comparison silently re-registered every login.
+  The registration cache is keyed by redirect URI as well, because RFC 8252 §7.3 port flexibility is
+  not universally honored.
+- Added a managed loopback callback listener bound to `127.0.0.1` only, answering exactly one path,
+  with a bounded request count, a timeout, and abort support. `beginLogin` returns as soon as the
+  authorization URL exists so a surface can show it without blocking, and settles separately.
+- Wired `onStateChange` in both hosts onto the `mcp.server.auth_state` event. The refresh provider
+  already detected a permanently rejected grant and emitted `reauth_required`; nothing listened, so
+  an expired server just failed every call with an opaque 401. The CLI logs it with the command to
+  run; the WebUI forwards it to the MCP panel.
+- Added WebUI controls: `mcp.auth.status`, `mcp.auth.login` and `mcp.auth.logout` over the same
+  surface-neutral manager the REPL uses, with the panel badging authorization state. `login` and
+  `logout` go through the trust boundary like the spawn-capable mutations — the listener binds a
+  port on the host, not in the browser.
+- `/mcp auth login` in the REPL/TUI, with `--client-id`, `--port` and scopes. The legacy positional
+  `start <server> <client-id> <redirect-uri>` form still parses.
+
+Remaining work: token revocation (RFC 7009) at logout, SecretVault key-rotation migration for the
+token file, re-registration when a cached client is rejected mid-flow, and Desktop-specific
+controls beyond the inherited WebUI backend.
 
 ## Acceptance criteria
 

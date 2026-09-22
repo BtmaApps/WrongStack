@@ -1,3 +1,23 @@
+import {
+  engageBacklog as delegateEngageBacklog,
+  engageRebalance as delegateEngageRebalance,
+  type FleetSupervisorRebalanceHost,
+} from './fleet-supervisor-rebalance.js';
+import type {
+  FleetSupervisorOptions,
+  ResolvedSupervisorConfig,
+  SupervisedSubagent,
+  SupervisorLogEntry,
+} from './fleet-supervisor-rebalance-types.js';
+
+export type {
+  FleetSupervisorActions,
+  FleetSupervisorOptions,
+  FleetSupervisorSource,
+  SupervisedSubagent,
+  SupervisorLogEntry,
+} from './fleet-supervisor-rebalance-types.js';
+
 /**
  * FleetSupervisor — brain-gated shadow watcher over the generic fleet.
  *
@@ -27,82 +47,10 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { EventBus } from '../kernel/events.js';
-import type { FleetSupervisorConfig } from '../types/config.js';
 import type { TaskSpec } from '../types/multi-agent.js';
-import type {
-  BrainArbiter,
-  BrainDecision,
-  BrainDecisionOption,
-  BrainDecisionRequest,
-} from './brain.js';
-import type { FleetBus } from './fleet-bus.js';
+import type { BrainDecision, BrainDecisionOption, BrainDecisionRequest } from './brain.js';
 
 export type { FleetSupervisorConfig } from '../types/config.js';
-
-/** One subagent row of the snapshot the supervisor reasons over. */
-export interface SupervisedSubagent {
-  id: string;
-  name: string;
-  status: 'running' | 'idle' | 'stopped' | 'error';
-  currentTask?: string | undefined;
-}
-
-/** Read port — implemented over Director/coordinator state by the host. */
-export interface FleetSupervisorSource {
-  subagents(): SupervisedSubagent[];
-  listPendingTasks(): readonly TaskSpec[];
-  isWorkComplete(): boolean;
-}
-
-/** Action port — every mutation the supervisor may perform, brain-gated. */
-export interface FleetSupervisorActions {
-  /** Move a still-pending task to another (or any idle) worker. */
-  retargetPendingTask(taskId: string, subagentId: string | undefined): boolean | Promise<boolean>;
-  /** Spawn an additional helper worker. Return {error} to degrade gracefully. */
-  spawnHelper(input: {
-    reason: string;
-    /** Oldest queued task used to route the helper's role/tool profile. */
-    task?: TaskSpec | undefined;
-  }): Promise<{ subagentId: string } | { error: string }>;
-  /** High-priority steer mail to one agent. */
-  steerAgent(subagentId: string, subject: string, body: string): Promise<void>;
-  /**
-   * Status note to the session leader.
-   *
-   * `subagentId` names the worker the note is ABOUT, when there is one. The
-   * host resolves the conversation from it: with several tabs sharing this
-   * fleet, "the session leader" is not one address, and a note about tab 3's
-   * worker sent to the boot tab's leader reaches nobody who can act on it.
-   * Omitted for fleet-wide observations, which fall back to the host session.
-   */
-  notifyLeader(subject: string, body: string, subagentId?: string): Promise<void>;
-  /** Abort a subagent (only used when config.allowTerminate). */
-  terminate(subagentId: string): Promise<void>;
-}
-
-export interface FleetSupervisorOptions {
-  events: EventBus;
-  fleet: FleetBus;
-  brain: BrainArbiter;
-  source: FleetSupervisorSource;
-  actions: FleetSupervisorActions;
-  /** Active host session id, read lazily (resume/session-swap safe). */
-  sessionId?: (() => string | undefined) | undefined;
-  config?: FleetSupervisorConfig | undefined;
-  /** Injectable clock for tests. Default Date.now. */
-  now?: (() => number) | undefined;
-}
-
-export interface SupervisorLogEntry {
-  at: number;
-  kind: string;
-  subagentId?: string | undefined;
-  taskId?: string | undefined;
-  proposedAction: string;
-  outcome: 'approved' | 'denied' | 'escalated' | 'skipped' | 'error';
-  detail: string;
-}
 
 /** Collab subagents (spawned by /collab review flows) are never supervised —
  *  same exclusion the Director's budget filter applies. */
@@ -121,21 +69,6 @@ const DEFAULTS = {
 } as const;
 
 const HISTORY_MAX = 100;
-
-interface ResolvedSupervisorConfig {
-  enabled: boolean;
-  intervalMs: number;
-  cooldownMs: number;
-  maxInterventionsPerSubagent: number;
-  pinnedWaitMs: number;
-  overloadPinnedThreshold: number;
-  backlogFactor: number;
-  stuckMs: number;
-  failureStreak: number;
-  loopStreak: number;
-  allowSpawn: boolean;
-  allowTerminate: boolean;
-}
 
 export class FleetSupervisor {
   private readonly cfg: ResolvedSupervisorConfig;
@@ -534,160 +467,17 @@ export class FleetSupervisor {
     tasks: TaskSpec[],
     idleWorkerIds: string[],
   ): Promise<void> {
-    if (!this.cooldownOk(kind, fromWorkerId) || !this.interventionBudgetOk(fromWorkerId)) return;
-    this.engaging = true;
-    try {
-      const taskList = tasks.map((t) => `- ${t.id}: ${t.description.slice(0, 80)}`).join('\n');
-      this.emitSignal(
-        kind,
-        `${tasks.length} pending task(s) pinned to busy worker ${fromWorkerId} while ${idleWorkerIds.length} worker(s) idle`,
-        fromWorkerId,
-        tasks[0]?.id,
-      );
-      const { choice, decision } = await this.decide(
-        `Worker ${fromWorkerId} is busy with ${tasks.length} more task(s) queued behind it while ${idleWorkerIds.length} sibling worker(s) sit idle. Rebalance the queued tasks to the idle workers?`,
-        `Queued behind ${fromWorkerId}:\n${taskList}\nIdle workers: ${idleWorkerIds.join(', ')}`,
-        [
-          {
-            id: 'rebalance',
-            label: 'Move the queued task(s) to idle worker(s)',
-            consequence: 'Only unstarted tasks move; the running task is untouched.',
-            risk: 'low',
-            recommended: true,
-          },
-          { id: 'wait', label: 'Leave the queue as is', risk: 'low' },
-        ],
-        'low',
-      );
-      if (choice !== 'rebalance') {
-        this.record({
-          kind,
-          subagentId: fromWorkerId,
-          proposedAction: 'retarget',
-          outcome: decision.type === 'answer' ? 'denied' : 'escalated',
-          detail:
-            decision.type === 'answer' ? (decision.rationale ?? decision.text) : decision.type,
-        });
-        return;
-      }
-      this.recordIntervention(fromWorkerId);
-      const moved: string[] = [];
-      for (let i = 0; i < tasks.length; i++) {
-        const task = tasks[i];
-        const target = idleWorkerIds[i % idleWorkerIds.length];
-        if (!task || !target) continue;
-        const ok = await this.opts.actions.retargetPendingTask(task.id, target);
-        this.emitAction('retarget', ok, `→ ${target}`, fromWorkerId, task.id);
-        if (ok) {
-          this.retargetedTasks.add(task.id);
-          moved.push(`${task.id} → ${target}`);
-        }
-      }
-      this.record({
-        kind,
-        subagentId: fromWorkerId,
-        taskId: tasks[0]?.id,
-        proposedAction: 'retarget',
-        outcome: 'approved',
-        detail:
-          moved.length > 0 ? `moved ${moved.join(', ')}` : 'nothing movable (already dispatched)',
-      });
-      if (moved.length > 0) {
-        await this.opts.actions
-          .steerAgent(
-            fromWorkerId,
-            'Workload reduced by fleet supervisor',
-            `The fleet supervisor moved ${moved.length} of your queued task(s) to idle workers: ${moved.join(
-              ', ',
-            )}. Do not start them — focus on your current task.`,
-          )
-          .catch(() => {});
-        await this.opts.actions
-          .notifyLeader(
-            'Fleet rebalanced',
-            `Supervisor moved ${moved.length} queued task(s) off busy worker ${fromWorkerId}: ${moved.join(', ')}.`,
-            fromWorkerId,
-          )
-          .catch(() => {});
-      }
-    } catch {
-      // The supervisor must never destabilize the fleet it protects.
-    } finally {
-      this.engaging = false;
-    }
+    return delegateEngageRebalance(
+      this.fleetSupervisorRebalanceHost(),
+      kind,
+      fromWorkerId,
+      tasks,
+      idleWorkerIds,
+    );
   }
 
   private async engageBacklog(pending: readonly TaskSpec[], liveWorkers: number): Promise<void> {
-    if (!this.cooldownOk('backlog', 'fleet')) return;
-    this.engaging = true;
-    try {
-      const pendingCount = pending.length;
-      this.emitSignal('backlog', `${pendingCount} pending tasks vs ${liveWorkers} live worker(s)`);
-      const { choice, decision } = await this.decide(
-        `The task queue is deep: ${pendingCount} pending tasks for ${liveWorkers} live worker(s). Spawn one additional helper worker to drain it?`,
-        `Pending: ${pendingCount}, live workers: ${liveWorkers}, factor threshold: ${this.cfg.backlogFactor}x`,
-        [
-          {
-            id: 'spawn',
-            label: 'Spawn one helper worker',
-            consequence: 'One more subagent joins the fleet and takes queued work.',
-            risk: 'medium',
-            recommended: true,
-          },
-          { id: 'wait', label: 'Let the current fleet drain the queue', risk: 'low' },
-        ],
-        'medium',
-      );
-      if (choice !== 'spawn') {
-        this.record({
-          kind: 'backlog',
-          proposedAction: 'spawn_helper',
-          outcome: decision.type === 'answer' ? 'denied' : 'escalated',
-          detail:
-            decision.type === 'answer' ? (decision.rationale ?? decision.text) : decision.type,
-        });
-        return;
-      }
-      const res = await this.opts.actions.spawnHelper({
-        reason: `queue backlog: ${pendingCount} pending / ${liveWorkers} workers`,
-        task: pending[0],
-      });
-      if ('subagentId' in res) {
-        this.emitAction('spawn_helper', true, res.subagentId, res.subagentId);
-        this.record({
-          kind: 'backlog',
-          subagentId: res.subagentId,
-          proposedAction: 'spawn_helper',
-          outcome: 'approved',
-          detail: `spawned ${res.subagentId}`,
-        });
-        await this.opts.actions
-          .notifyLeader(
-            'Fleet helper spawned',
-            `Supervisor spawned helper ${res.subagentId} to drain a ${pendingCount}-task backlog.`,
-            res.subagentId,
-          )
-          .catch(() => {});
-      } else {
-        this.emitAction('spawn_helper', false, res.error);
-        this.record({
-          kind: 'backlog',
-          proposedAction: 'spawn_helper',
-          outcome: 'error',
-          detail: res.error,
-        });
-        await this.opts.actions
-          .notifyLeader(
-            'Fleet backlog needs attention',
-            `Queue is ${pendingCount} deep for ${liveWorkers} worker(s); supervisor could not spawn a helper (${res.error}). Consider rebalancing or finishing tasks before assigning more.`,
-          )
-          .catch(() => {});
-      }
-    } catch {
-      /* never destabilize the fleet */
-    } finally {
-      this.engaging = false;
-    }
+    return delegateEngageBacklog(this.fleetSupervisorRebalanceHost(), pending, liveWorkers);
   }
 
   /**
@@ -966,5 +756,29 @@ export class FleetSupervisor {
     } finally {
       this.engaging = false;
     }
+  }
+
+  private fleetSupervisorRebalanceHost(): FleetSupervisorRebalanceHost {
+    const self = this;
+    return {
+      cooldownOk: (...args) => this.cooldownOk(...args),
+      interventionBudgetOk: (...args) => this.interventionBudgetOk(...args),
+      get engaging() {
+        return self.engaging;
+      },
+      set engaging(value) {
+        self.engaging = value;
+      },
+      emitSignal: (...args) => this.emitSignal(...args),
+      decide: (...args) => this.decide(...args),
+      record: (...args) => this.record(...args),
+      recordIntervention: (...args) => this.recordIntervention(...args),
+      get opts() {
+        return self.opts;
+      },
+      emitAction: (...args) => this.emitAction(...args),
+      retargetedTasks: this.retargetedTasks,
+      cfg: this.cfg,
+    };
   }
 }

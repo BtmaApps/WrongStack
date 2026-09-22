@@ -32,6 +32,7 @@ const HOSTS = [
   'cli/wiring/pipeline.ts',
   'runtime/fleet/light-subagent-factory.ts',
   'webui-server/server/backend-services.ts',
+  'webui-server/server/create-session-agent-manager.ts',
   'webui-server/server/session-agent-registry.ts',
 ] as const;
 

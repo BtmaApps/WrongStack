@@ -200,10 +200,7 @@ describe('/acp dispatch', () => {
     const onSpawn = vi.fn(async () => 'ok');
     const opts = fakeOpts();
     (opts as { onSpawn: unknown }).onSpawn = onSpawn;
-    const res = await cmd(opts).run(
-      'parallel gemini-cli,made-up --bg "task"',
-      {} as never,
-    );
+    const res = await cmd(opts).run('parallel gemini-cli,made-up --bg "task"', {} as never);
     expect(onSpawn).toHaveBeenCalledTimes(1);
     expect(onSpawn).toHaveBeenCalledWith('task', { provider: 'acp', name: 'gemini-cli' });
     const message = (res as { message?: string })?.message ?? '';
@@ -315,7 +312,9 @@ describe('/acp dispatch', () => {
     const res = await cmd().run('', {} as never);
     expect((res as { message?: string })?.message).toContain('Official ACP registry — 2 agents');
     expect((res as { message?: string })?.message).toContain('factory-droid');
-    expect((res as { message?: string })?.message).not.toContain('bundled agents installed locally');
+    expect((res as { message?: string })?.message).not.toContain(
+      'bundled agents installed locally',
+    );
   });
 
   it('resolves a single run through the live registry byId map', async () => {

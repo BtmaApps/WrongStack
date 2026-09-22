@@ -7,9 +7,6 @@ import { leaderTimelineFromEntries } from './components/agents-monitor.js';
 import type { StatuslineItem } from './components/statusline-picker.js';
 import { usePendingUserInput } from './components/user-input-prompt.js';
 import { useAppEnvironment } from './hooks/use-app-environment.js';
-import { useAppExecutionPipeline } from './hooks/use-app-execution-pipeline.js';
-import { useAppPickerKeys } from './hooks/use-app-picker-keys.js';
-import { buildAppPipelineArgs } from './hooks/use-app-pipeline-builders.js';
 import { useAppRefSpine } from './hooks/use-app-ref-spine.js';
 import { useAppState } from './hooks/use-app-state.js';
 import { useAuthPanel } from './hooks/use-auth-panel.js';
@@ -28,7 +25,6 @@ import { useHistoryAutoScroll } from './hooks/use-history-auto-scroll.js';
 import { useHistoryCopyNotice } from './hooks/use-history-copy-notice.js';
 import { useInitialPrompt } from './hooks/use-initial-prompt.js';
 import { useInputHistoryPersistence } from './hooks/use-input-history-persistence.js';
-import { useInterruptLadder } from './hooks/use-interrupt-ladder.js';
 import { useKanbanBoardFocus } from './hooks/use-kanban-board-focus.js';
 import { useLeaderAutoWake } from './hooks/use-leader-auto-wake.js';
 import { useMailboxViewModel } from './hooks/use-mailbox-view-model.js';
@@ -53,6 +49,7 @@ import { useTuiControllers } from './hooks/use-tui-controllers.js';
 import { useTuiEventBridge } from './hooks/use-tui-event-bridge.js';
 import { useTuiSlashCommands } from './hooks/use-tui-slash-commands.js';
 import { useApp, useStdout } from './ink.js';
+import { useControllerKeyPipeline } from './use-controller-key-pipeline.js';
 
 export function useAppController(props: AppProps) {
   const {
@@ -746,16 +743,16 @@ export function useAppController(props: AppProps) {
     selectedIndex: state.themePicker.selected,
   });
 
-  const tryPickerKey = useAppPickerKeys({
+  const { runInterruptLadder, stableOnKey } = useControllerKeyPipeline({
     sessionGenerationRef,
-    host: props,
+    props,
     state,
     dispatch,
     environment,
     statusbar,
     panelControllers,
     authPanelController,
-    brainController: brainCtl,
+    brainCtl,
     lastEnterAtRef,
     inputGateRef,
     submitRef,
@@ -766,21 +763,17 @@ export function useAppController(props: AppProps) {
     handleModelPicked,
     handleShadowStart,
     handleShadowStop,
-    subagentModelsController: subagentModelsCtl,
+    subagentModelsCtl,
     statuslineHiddenForPicker,
     onPickerEnter,
     onThemePickerEnter,
     setPromptFavorite,
-  });
-
-  const { interruptsSyncRef, runInterruptLadder } = useInterruptLadder({
     stateRef,
     exitRequestedRef,
     agent,
     liveDirector,
     onExit,
     exit,
-    dispatch,
     activeCtrlRef,
     clearPendingConfirms,
     getEternalEngine,
@@ -790,52 +783,33 @@ export function useAppController(props: AppProps) {
     switchAutonomy,
     getSddRun,
     confirmExitRef,
-  });
-
-  const pipelineArgs = buildAppPipelineArgs({
-    props,
-    state,
-    dispatch,
     historyScrollRef,
     onHistoryScrollActivity,
-    runInterruptLadder,
     enhanceCancelledRef,
     enhanceAbortRef,
     enhanceOriginalRef,
     enhanceEnabledRef,
-    inputGateRef,
     lastEscAtRef,
     dismissedEscAtRef,
     streamingTextRef,
     streamSegmentsRef,
     pendingDeltaRef,
     flushTimerRef,
-    sessionGenerationRef,
     activeRunGenerationRef,
     activeRunSettledRef,
     assistantCommittedThisRunRef,
-    confirmExitRef,
     chimeRef,
-    activeCtrlRef,
-    clearPendingConfirms,
-    liveDirector,
     openProjectPicker,
     loadLiveSessions,
     openStatuslinePicker,
     statuslineHiddenItems,
-    lastEnterAtRef,
     draftRef,
-    setDraft,
     clearDraft,
     mouseMode,
     nativeMouse,
     termRows,
-    terminalColumns: stdout?.columns ?? 80,
-    terminalRows: stdout?.rows ?? 24,
-    mainColumnWidth: sidebarLayout.mainColumnWidth,
-    overlayOpen: sidebarLayout.overlayOpen,
-    effectiveSwarmOnSidebar: sidebarLayout.effectiveSwarmOnSidebar,
-    sidebarTwinRowCount: sidebarLayout.sidebarTwinRowCount,
+    stdout,
+    sidebarLayout,
     statusBarWrapRef,
     belowStatusBarRef,
     statusBarClickMapRef,
@@ -850,16 +824,12 @@ export function useAppController(props: AppProps) {
     pasteClipboardText,
     pasteClipboardImage,
     onHistoryCopy,
-    tryPickerKey,
     pasteAccumRef,
     pasteFlushTimerRef,
     commitPaste,
     builderRef,
     tokenPreviewsRef,
-    interruptsSyncRef,
-    stateRef,
     runBlocksRef,
-    submitRef,
     liveModel,
     liveProvider,
     activeMaxContext,
@@ -883,20 +853,14 @@ export function useAppController(props: AppProps) {
     midRunSendPickerRef,
     openPromptPicker,
     refreshGoalSummary,
-    exit,
     setMemoryContextMonitor,
     runSteerSequence,
     setEnhanceStartedAt,
     setEnhanceDurationMs,
     setRefineProviderId,
     setRefineModel,
-    onBugHuntStarted: bugHuntLoop.onBugHuntStarted,
-    consumeBugHuntReplay: bugHuntLoop.consumeReplay,
-    onBugHuntRunFinished: bugHuntLoop.onRunFinished,
-    shouldSuppressBugHuntNextSteps: bugHuntLoop.shouldSuppressNextSteps,
+    bugHuntLoop,
   });
-
-  const { stableOnKey } = useAppExecutionPipeline(pipelineArgs);
 
   useLeaderAutoWake({
     leaderAutoWake: props.leaderAutoWake,

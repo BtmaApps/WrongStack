@@ -52,10 +52,11 @@ describe('provider.addApiKey label (redaction-marker regression)', () => {
   });
 
   it('keeps account creation and within-profile key controls wired to human labels', () => {
-    const source = readFileSync(
-      resolve(process.cwd(), 'src/components/SettingsPanel/ProviderSection.tsx'),
-      'utf8',
-    );
+    const source = ['ProviderSection.tsx', 'ProviderSavedProfiles.tsx']
+      .map((file) =>
+        readFileSync(resolve(process.cwd(), 'src/components/SettingsPanel', file), 'utf8'),
+      )
+      .join('\n');
     expect(source).toContain("t('settings:provider.addProfile')");
     expect(source).toContain("t('settings:provider.addKey')");
     for (const locale of LOCALES) {

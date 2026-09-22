@@ -5,8 +5,9 @@
  * board reloads travel through IPC. Keep this export for downstream callers
  * without allowing a filesystem watcher to reintroduce a second data path.
  */
-import type { WSServerMessage } from './types.js';
+
 import { subscribeKanbanDaemonEvents } from './kanban-daemon-subscriber.js';
+import type { WSServerMessage } from './types.js';
 
 export function watchKanbanBoards(
   projectRoot: string,

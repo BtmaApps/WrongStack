@@ -98,6 +98,8 @@ export async function pruneSessionFiles(
 function isDisposableLeftover(name: string): boolean {
   if (name === '_manifest.json') return true;
   const lower = name.toLowerCase();
-  return SESSION_SIDECAR_SUFFIXES.some((suffix) => lower.endsWith(suffix)) ||
-    lower.endsWith('.summary.json');
+  return (
+    SESSION_SIDECAR_SUFFIXES.some((suffix) => lower.endsWith(suffix)) ||
+    lower.endsWith('.summary.json')
+  );
 }

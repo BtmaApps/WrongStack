@@ -3,6 +3,18 @@ import * as path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { type Bm25Index, buildBm25Index } from './bm25.js';
 import type { FileRankRow, SymbolRankRow } from './graph-rank.js';
+import {
+  commitBatch,
+  type IndexStoreBatchesHost,
+  replaceEmptyFile,
+} from './index-store-batches.js';
+import {
+  checkpointWal as delegateCheckpointWal,
+  compactIfNeeded as delegateCompactIfNeeded,
+  optimizeFtsIfNeeded as delegateOptimizeFtsIfNeeded,
+  recordFtsChurn as delegateRecordFtsChurn,
+  type IndexStoreMaintenanceHost,
+} from './index-store-maintenance.js';
 import type {
   CallSite,
   CodeMapGraph,
@@ -55,15 +67,8 @@ import {
 } from './writer-graph-reader.js';
 import { inListChunks, padToInBucket, placeholders, resolveIndexDir } from './writer-helpers.js';
 import { allocateSymbolIds, initIndexSchema, NEXT_SYMBOL_ID_KEY } from './writer-init.js';
+import { optimizeStore } from './writer-maintenance.js';
 import {
-  checkpointWal,
-  compactIfNeeded,
-  optimizeFtsIfNeeded,
-  optimizeStore,
-  recordFtsChurn,
-} from './writer-maintenance.js';
-import {
-  commitBatchWithStatement,
   insertSymbolsWithStatement,
   setFilePackagesWithStatement,
   upsertFileWithStatement,
@@ -563,38 +568,7 @@ export class IndexStore {
     }>,
     options: { deleteForFiles?: string[] | undefined } = {},
   ): IndexSymbol[] {
-    this.invalidateBm25();
-    return this.runWriteTransaction(() => {
-      const owned = options.deleteForFiles?.length ?? 0;
-      let churnRows = entries.reduce((sum, e) => sum + e.symbols.length, 0);
-      // P2 review fix: deleteForFiles removes FTS rows too. Count those
-      // pre-existing rows (pre-DELETE, inside this transaction) so
-      // delete-only batches can also cross the maintenance gate.
-      if (owned > 0) {
-        let cursor = 0;
-        for (const take of inListChunks(owned, Math.floor(IndexStore.MAX_SQL_VARS / 4))) {
-          const bucket = options.deleteForFiles!.slice(cursor, cursor + take);
-          cursor += take;
-          const row = this.stmt(
-            `SELECT COUNT(*) AS n FROM symbols WHERE file IN (${placeholders(bucket.length)})`,
-          ).get(...bucket) as { n?: number } | undefined;
-          churnRows += Number(row?.n ?? 0);
-        }
-      }
-      const result = commitBatchWithStatement(
-        (sql) => this.stmt(sql),
-        IndexStore.MAX_SQL_VARS,
-        this.ftsAvailable,
-        this.vectorsAvailable,
-        this.allocateSymbolIds.bind(this),
-        this.invalidateIncomingRefsForFiles.bind(this),
-        this.resolveRefsForNamesUnsafe.bind(this),
-        entries,
-        options,
-      );
-      this.recordFtsChurn(churnRows);
-      return result;
-    });
+    return commitBatch(this.indexStoreBatchesHost(), entries, options);
   }
 
   deleteRefsForFile(file: string): void {
@@ -614,48 +588,7 @@ export class IndexStore {
   }
 
   replaceEmptyFile(meta: FileMeta): void {
-    this.invalidateBm25();
-    this.runWriteTransaction(() => {
-      const affectedNames = this.invalidateIncomingRefsForFiles([meta.file]);
-      if (this.ftsAvailable) {
-        this.stmt(
-          'DELETE FROM symbols_fts WHERE rowid IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(meta.file);
-      }
-      if (this.vectorsAvailable) {
-        this.stmt(
-          'DELETE FROM symbol_vectors WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-        ).run(meta.file);
-      }
-      this.stmt('DELETE FROM refs WHERE from_id IN (SELECT id FROM symbols WHERE file = ?)').run(
-        meta.file,
-      );
-      this.stmt(
-        'DELETE FROM symbol_rank WHERE symbol_id IN (SELECT id FROM symbols WHERE file = ?)',
-      ).run(meta.file);
-      const deletedChanges = Number(
-        this.stmt('DELETE FROM symbols WHERE file = ?').run(meta.file).changes,
-      );
-      this.recordFtsChurn(deletedChanges);
-      this.stmt(
-        `INSERT INTO files(file, lang, mtime_ms, content_hash, symbol_count, last_indexed)
-           VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT(file) DO UPDATE SET
-             lang = excluded.lang,
-             mtime_ms = excluded.mtime_ms,
-             content_hash = excluded.content_hash,
-             symbol_count = excluded.symbol_count,
-             last_indexed = excluded.last_indexed`,
-      ).run(
-        meta.file,
-        meta.lang,
-        meta.mtimeMs,
-        meta.contentHash ?? '',
-        meta.symbolCount,
-        meta.lastIndexed,
-      );
-      this.resolveRefsForNamesUnsafe(affectedNames);
-    });
+    replaceEmptyFile(this.indexStoreBatchesHost(), meta);
   }
 
   optimize(): void {
@@ -678,14 +611,7 @@ export class IndexStore {
    * it ran, safe to call from the daemon's single-threaded idle path.
    */
   optimizeFtsIfNeeded(options: { minChurnRatio?: number; minChurnRows?: number } = {}): boolean {
-    return optimizeFtsIfNeeded(
-      (sql) => this.stmt(sql),
-      this.ftsAvailable,
-      (key) => this.getMetadata(key),
-      (key, value) => this.setMetadata(key, value),
-      (fn) => this.runWithRetry(fn),
-      options,
-    );
+    return delegateOptimizeFtsIfNeeded(this.indexStoreMaintenanceHost(), options);
   }
 
   /**
@@ -695,12 +621,7 @@ export class IndexStore {
    * survives store open/close cycles in the daemon pool.
    */
   private recordFtsChurn(rows: number): void {
-    recordFtsChurn(
-      this.ftsAvailable,
-      (key) => this.getMetadata(key),
-      (key, value) => this.setMetadata(key, value),
-      rows,
-    );
+    delegateRecordFtsChurn(this.indexStoreMaintenanceHost(), rows);
   }
 
   /**
@@ -715,16 +636,11 @@ export class IndexStore {
    * never wait on readers here: busy means "retry at the next idle window".
    */
   checkpointWal(): boolean {
-    return checkpointWal(this.db);
+    return delegateCheckpointWal(this.indexStoreMaintenanceHost());
   }
 
   compactIfNeeded(options: { minBytes?: number; minFreeRatio?: number } = {}): boolean {
-    return compactIfNeeded(
-      this.db,
-      (sql) => this.stmt(sql),
-      (fn) => this.runWithRetry(fn),
-      options,
-    );
+    return delegateCompactIfNeeded(this.indexStoreMaintenanceHost(), options);
   }
 
   findIncomingCallsByName(
@@ -987,6 +903,48 @@ export class IndexStore {
     } catch {
       /* already closed */
     }
+  }
+
+  private indexStoreMaintenanceHost(): IndexStoreMaintenanceHost {
+    const self = this;
+    return {
+      stmt: (...args) => this.stmt(...args),
+      get ftsAvailable() {
+        return self.ftsAvailable;
+      },
+      getMetadata: (...args) => this.getMetadata(...args),
+      setMetadata: (...args) => this.setMetadata(...args),
+      runWithRetry: (...args) => this.runWithRetry(...args),
+      get db() {
+        return self.db;
+      },
+    };
+  }
+
+  private indexStoreBatchesHost(): IndexStoreBatchesHost {
+    const self = this;
+    return {
+      maxSqlVars: IndexStore.MAX_SQL_VARS,
+      invalidateBm25: (...args) => this.invalidateBm25(...args),
+      runWriteTransaction: (...args) => this.runWriteTransaction(...args),
+      stmt: (...args) => this.stmt(...args),
+      get ftsAvailable() {
+        return self.ftsAvailable;
+      },
+      set ftsAvailable(value) {
+        self.ftsAvailable = value;
+      },
+      get vectorsAvailable() {
+        return self.vectorsAvailable;
+      },
+      set vectorsAvailable(value) {
+        self.vectorsAvailable = value;
+      },
+      allocateSymbolIds: (...args) => this.allocateSymbolIds(...args),
+      invalidateIncomingRefsForFiles: (...args) => this.invalidateIncomingRefsForFiles(...args),
+      resolveRefsForNamesUnsafe: (...args) => this.resolveRefsForNamesUnsafe(...args),
+      recordFtsChurn: (...args) => this.recordFtsChurn(...args),
+    };
   }
 }
 

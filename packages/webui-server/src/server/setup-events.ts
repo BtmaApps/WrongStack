@@ -503,6 +503,22 @@ export function setupEvents(deps: SetupEventsDeps): () => void {
     });
   });
 
+  on('mcp.server.auth_state', (e) => {
+    // Non-secret projection only: the event carries no token, code or verifier,
+    // and the MCP panel needs the state to badge a server as needing sign-in.
+    broadcast(clients, {
+      type: 'mcp.server.auth_state',
+      payload: {
+        name: e.serverName,
+        state: e.state,
+        resource: e.resource,
+        expiresAt: e.expiresAt,
+        scopes: e.scopes,
+        message: e.message,
+      },
+    });
+  });
+
   on('coordinator.stats', (e) => {
     broadcast(clients, {
       type: 'coordinator.stats',

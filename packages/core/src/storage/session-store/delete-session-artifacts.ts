@@ -44,9 +44,7 @@ export async function deleteSessionArtifacts({
     // missing here does not fail loudly — it just outlives the session it
     // belongs to, keeps its date directory from ever being removed, and
     // accumulates. `.completed-work.json` did exactly that.
-    ...SESSION_SIDECAR_SUFFIXES.map((suffix) =>
-      fsp.unlink(sessionStorePath(rootDir, id, suffix)),
-    ),
+    ...SESSION_SIDECAR_SUFFIXES.map((suffix) => fsp.unlink(sessionStorePath(rootDir, id, suffix))),
     fsp.unlink(shardManifestPath(rootDir, path.dirname(id) === '.' ? '' : path.dirname(id))),
   ];
 

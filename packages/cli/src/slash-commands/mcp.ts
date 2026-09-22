@@ -21,7 +21,8 @@ export { parseMcpArgs, runMcpManagementCommand } from '../services/mcp-managemen
  *   /mcp prompts <name> — discover cached/live prompts
  *   /mcp read <name> <uri> — explicitly insert a selected resource
  *   /mcp get <name> <prompt> [key=value...] — explicitly insert a selected prompt
- *   /mcp auth start <name> <client-id> <redirect-uri> [scopes...] — begin OAuth
+ *   /mcp auth login <name> [--client-id <id>] [--port <n>] [scopes...] — one-step OAuth
+ *   /mcp auth start <name> --redirect-uri <url> [--client-id <id>] [scopes...] — manual OAuth
  *   /mcp auth complete <name> <callback-url> — finish OAuth from a callback URL
  *   /mcp auth status <name> — show non-secret authorization state
  *   /mcp auth logout <name> — remove stored OAuth credentials
@@ -47,7 +48,8 @@ export function buildMcpSlashCommand(opts: SlashCommandContext): SlashCommand {
       '  /mcp prompts <name> [--refresh]    List prompts and arguments.',
       '  /mcp read <name> <uri>              Insert one selected resource as untrusted content.',
       '  /mcp get <name> <prompt> [key=value...]  Insert one selected prompt.',
-      '  /mcp auth start <name> <client-id> <redirect-uri> [scopes...]  Begin OAuth.',
+      '  /mcp auth login <name> [--client-id <id>] [--port <n>] [scopes...]  One-step OAuth.',
+      '  /mcp auth start <name> --redirect-uri <url> [--client-id <id>] [scopes...]  Manual OAuth.',
       '  /mcp auth complete <name> <callback-url>  Complete the pending OAuth flow.',
       '  /mcp auth status <name>                  Show OAuth status without tokens.',
       '  /mcp auth logout <name>                  Remove stored OAuth credentials.',
@@ -60,7 +62,8 @@ export function buildMcpSlashCommand(opts: SlashCommandContext): SlashCommand {
       '  /mcp resources filesystem',
       '  /mcp read filesystem file:///project/README.md',
       '  /mcp get github summarize owner=WrongStack repo=WrongStack',
-      '  /mcp auth start remote-mcp wrongstack http://127.0.0.1:43123/callback tools:read',
+      '  /mcp auth login notion',
+      '  /mcp auth start remote-mcp --redirect-uri http://127.0.0.1:43123/callback tools:read',
     ].join('\n'),
     async run(args) {
       // TUI mode: bare /mcp or /mcp list opens the interactive picker.
@@ -78,7 +81,7 @@ export function buildMcpSlashCommand(opts: SlashCommandContext): SlashCommand {
           return { message: 'MCP authorization is not available in this session.' };
         }
         try {
-          return await runAuthorizationCommand(opts.mcpRegistry, authorization);
+          return await runAuthorizationCommand(opts.mcpRegistry, authorization, opts.events);
         } catch (err) {
           return { message: `MCP auth ${authorization.action} failed: ${errorMessage(err)}` };
         }
@@ -115,9 +118,16 @@ type DiscoveryCommand =
 
 type AuthorizationCommand =
   | {
+      action: 'login';
+      server: string;
+      clientId?: string | undefined;
+      port?: number | undefined;
+      scopes: string[];
+    }
+  | {
       action: 'start';
       server: string;
-      clientId: string;
+      clientId?: string | undefined;
       redirectUri: string;
       scopes: string[];
     }
@@ -125,19 +135,92 @@ type AuthorizationCommand =
   | { action: 'status'; server: string }
   | { action: 'logout'; server: string };
 
+interface ParsedAuthFlags {
+  clientId?: string | undefined;
+  redirectUri?: string | undefined;
+  port?: number | undefined;
+  rest: string[];
+}
+
+/** Pull `--client-id`/`--redirect-uri`/`--port` out, leaving positionals. */
+function parseAuthFlags(parts: readonly string[]): ParsedAuthFlags {
+  const rest: string[] = [];
+  let clientId: string | undefined;
+  let redirectUri: string | undefined;
+  let port: number | undefined;
+  for (let index = 0; index < parts.length; index++) {
+    const token = parts[index]!;
+    const eq = token.indexOf('=');
+    const [flag, inlineValue] =
+      token.startsWith('--') && eq > 0
+        ? [token.slice(0, eq), token.slice(eq + 1)]
+        : [token, undefined];
+    const takeValue = (label: string): string => {
+      const value = inlineValue ?? parts[++index];
+      if (!value) throw new Error(`${label} requires a value`);
+      return value;
+    };
+    if (flag === '--client-id') clientId = takeValue('--client-id');
+    else if (flag === '--redirect-uri') redirectUri = takeValue('--redirect-uri');
+    else if (flag === '--port') {
+      const value = Number(takeValue('--port'));
+      if (!Number.isInteger(value) || value < 1 || value > 65_535) {
+        throw new Error('--port must be a TCP port between 1 and 65535');
+      }
+      port = value;
+    } else if (flag.startsWith('--')) throw new Error(`Unknown MCP auth option "${flag}"`);
+    else rest.push(token);
+  }
+  return { clientId, redirectUri, port, rest };
+}
+
+function isAbsoluteUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function parseAuthorizationCommand(args: string): AuthorizationCommand | null {
   const parts = args.split(/\s+/).filter(Boolean);
   if (parts[0] !== 'auth') return null;
   const action = parts[1];
   const server = parts[2];
-  if (!server) throw new Error('Expected /mcp auth <start|complete|status|logout> <server>');
-  if (action === 'start') {
-    const clientId = parts[3];
-    const redirectUri = parts[4];
-    if (!clientId || !redirectUri) {
-      throw new Error('/mcp auth start requires <server> <client-id> <redirect-uri>');
+  if (!server) throw new Error('Expected /mcp auth <login|complete|status|logout> <server>');
+  if (action === 'login') {
+    const flags = parseAuthFlags(parts.slice(3));
+    if (flags.redirectUri) {
+      throw new Error('/mcp auth login manages its own redirect URI; use /mcp auth start instead');
     }
-    return { action, server, clientId, redirectUri, scopes: parts.slice(5) };
+    return {
+      action,
+      server,
+      clientId: flags.clientId,
+      port: flags.port,
+      scopes: flags.rest,
+    };
+  }
+  if (action === 'start') {
+    const flags = parseAuthFlags(parts.slice(3));
+    let { clientId, redirectUri } = flags;
+    let scopes = flags.rest;
+    if (!redirectUri) {
+      // Legacy positional form is `<client-id> <redirect-uri> [scopes...]`; the
+      // redirect URI is the only positional that must be a URL, so it anchors
+      // the parse and the id before it stays optional.
+      const urlIndex = flags.rest.findIndex(isAbsoluteUrl);
+      if (urlIndex < 0) {
+        throw new Error(
+          '/mcp auth start requires a redirect URI (--redirect-uri <url>); /mcp auth login needs none',
+        );
+      }
+      redirectUri = flags.rest[urlIndex]!;
+      clientId ??= urlIndex > 0 ? flags.rest[urlIndex - 1] : undefined;
+      scopes = flags.rest.slice(urlIndex + 1);
+    }
+    return { action, server, clientId, redirectUri, scopes };
   }
   if (action === 'complete') {
     const callbackUrl = parts[3];
@@ -234,12 +317,49 @@ async function runDiscoveryCommand(
 async function runAuthorizationCommand(
   registry: import('@wrongstack/mcp').MCPRegistry,
   command: AuthorizationCommand,
+  events: SlashCommandContext['events'],
 ): Promise<{ message: string }> {
+  if (command.action === 'login') {
+    const handle = await registry.loginAuthorization(command.server, {
+      clientId: command.clientId,
+      port: command.port,
+      ...(command.scopes.length > 0 ? { scopes: command.scopes } : {}),
+    });
+    // The redirect can take as long as the user takes. Returning now keeps the
+    // REPL usable; the outcome arrives as an `mcp.server.auth_state` event,
+    // which the host logs and the WebUI renders.
+    void handle.completion.catch((err: unknown) => {
+      events.emit('mcp.server.auth_state', {
+        serverName: command.server,
+        state: 'failed',
+        resource: handle.started.resource,
+        message: errorMessage(err),
+      });
+    });
+    const identity =
+      handle.started.clientIdSource === 'registered'
+        ? 'registered a new OAuth client'
+        : handle.started.clientIdSource === 'stored'
+          ? 'reused the stored OAuth client'
+          : 'used the supplied client id';
+    return {
+      message: [
+        `MCP OAuth sign-in started for "${command.server}" (${identity}).`,
+        `Open this URL in your browser:\n${handle.started.authorizationUrl}`,
+        `Waiting for the redirect on ${handle.started.redirectUri} — this window stays usable.`,
+        handle.started.scopes.length > 0
+          ? `Requested scopes: ${handle.started.scopes.join(', ')}`
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    };
+  }
   if (command.action === 'start') {
     const result = await registry.beginAuthorization(command.server, {
       clientId: command.clientId,
       redirectUri: command.redirectUri,
-      scopes: command.scopes,
+      ...(command.scopes.length > 0 ? { scopes: command.scopes } : {}),
     });
     return {
       message: [

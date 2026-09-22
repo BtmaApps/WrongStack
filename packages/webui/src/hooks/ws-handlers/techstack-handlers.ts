@@ -1,7 +1,6 @@
 import { useTechStackStore } from '@/stores/techstack-store';
 import type { WSServerMessage } from '@/types';
 
-
 export function handleTechStackJobStarted(msg: WSServerMessage): void {
   const payload = msg.payload as { jobId?: string; kind?: 'inventory' | 'analyze' };
   if (!payload.jobId || !payload.kind) return;

@@ -321,6 +321,19 @@ export interface ToolEventMap {
   'mcp.server.reconnected': { name: string; toolCount: number };
   'mcp.server.disconnected': { name: string; reason: string };
   /**
+   * OAuth state for one HTTP MCP server. Emitted by the host that owns the
+   * token vault, so an expired or rejected credential is visible instead of
+   * failing every call with an opaque 401. Carries no token or code.
+   */
+  'mcp.server.auth_state': {
+    serverName: string;
+    state: 'authorized' | 'refreshed' | 'reauth_required' | 'removed' | 'failed';
+    resource: string;
+    expiresAt?: number | undefined;
+    scopes?: string[] | undefined;
+    message?: string | undefined;
+  };
+  /**
    * Fired by `ToolRegistry.thinUnderused()` after auto-thinning disables
    * one or more tools. The names are the tools that actually flipped
    * (registered + not already disabled). `reason` is the human-readable

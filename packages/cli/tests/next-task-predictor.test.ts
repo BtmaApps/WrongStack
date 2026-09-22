@@ -2,9 +2,9 @@ import type { TodoItem } from '@wrongstack/core/agent';
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildPredictionPrompt,
-  type PredictLLMProvider,
   parsePredictions,
   predictNextTasks,
+  type PredictLLMProvider,
 } from '../src/next-task-predictor.js';
 
 const todo = (content: string, status: TodoItem['status'] = 'pending'): TodoItem => ({
@@ -34,9 +34,9 @@ describe('parsePredictions', () => {
   });
 
   it('keeps a valid prediction that begins with the sentinel words', () => {
-    expect(parsePredictions('No further steps are needed from you; run the focused test suite.')).toEqual([
-      'No further steps are needed from you; run the focused test suite.',
-    ]);
+    expect(
+      parsePredictions('No further steps are needed from you; run the focused test suite.'),
+    ).toEqual(['No further steps are needed from you; run the focused test suite.']);
   });
 
   it('returns [] for empty input', () => {

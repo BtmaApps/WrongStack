@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
 import * as fsPromises from 'node:fs/promises';
@@ -23,6 +22,7 @@ import {
   sageProjectServerEndpoint,
   sageProjectServerMetadataPath,
 } from './project-server-endpoint.js';
+import { type ClientState, type CompleteSageStore, parseArgs } from './project-server-options.js';
 import {
   encodeSageProjectServerMessage,
   SAGE_PROJECT_SERVER_PROTOCOL_VERSION,
@@ -36,13 +36,6 @@ import {
   type SageServerOperations,
   validateDispatchArgs,
 } from './project-server-protocol.js';
-import type { SageServiceLike } from './service-contract.js';
-import type {
-  FindMemoriesForFileOptions,
-  FindMemoriesForFileResponse,
-  SageBackfillOptions,
-  SageBackfillReport,
-} from './types.js';
 
 const DEFAULT_IDLE_MS = 5 * 60_000;
 const AUTO_HYGIENE_INTERVAL_MS = 60 * 60_000;
@@ -82,60 +75,6 @@ function reportSlowOperation(op: SageServerOperationName, durationMs: number): v
   );
 }
 const MAX_LEGACY_IMPORT_BYTES = 5 * 1024 * 1024;
-
-interface ParsedArgs {
-  projectRoot: string;
-  directory?: string | undefined;
-}
-
-interface ClientState {
-  socket: net.Socket;
-  buffer: string;
-  active: Map<number, AbortController>;
-  /** Wall clock at accept, so the silent-client sweep can age this socket. */
-  connectedAt: number;
-  /** Set on the first inbound byte. A socket that never speaks is reaped. */
-  spoken: boolean;
-  /**
-   * Request ids whose dispatch has not produced a response yet. `stop()`
-   * answers each of these with a clean stopping rejection BEFORE the socket
-   * is destroyed — otherwise an in-flight caller sees nothing but a bare
-   * connection close and can only give up via its own call timeout.
-   */
-  unsettled: Set<number>;
-  /**
-   * Server-assigned per-connection nonce. The server stamps this on
-   * every request's `meta.clientId` and never honours the client-supplied
-   * value, so two different connections can never claim the same
-   * `clientId` in the audit log.
-   */
-  clientId: string;
-}
-
-type CompleteSageStore = SqliteMemoryPort &
-  SageServiceLike & {
-    recoverSage(id: string, reason?: string): Promise<import('./types.js').Sage>;
-    backfillRecoverable(options?: SageBackfillOptions): Promise<SageBackfillReport>;
-    findMemoriesForFile(
-      filePath: string,
-      options?: FindMemoriesForFileOptions,
-    ): Promise<FindMemoriesForFileResponse>;
-  };
-
-function parseArgs(argv: string[]): ParsedArgs {
-  let projectRoot: string | undefined;
-  let directory: string | undefined;
-  for (let index = 0; index < argv.length; index++) {
-    const arg = argv[index];
-    if (arg === '--project-root') projectRoot = argv[++index];
-    else if (arg === '--directory') directory = argv[++index];
-  }
-  if (!projectRoot) throw new Error('SAGE project server requires --project-root');
-  return {
-    projectRoot: path.resolve(projectRoot),
-    ...(directory ? { directory } : {}),
-  };
-}
 
 // Long-lived daemon: lean SQLite residency unless the operator says
 // otherwise. Must run before any store opens.

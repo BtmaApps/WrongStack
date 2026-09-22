@@ -109,7 +109,12 @@ describe('SddBoardStore — snapshot CRUD (real fs)', () => {
       { label: 'To Do', taskIds: ['a', 'b', 'c'] },
       { label: 'Done', taskIds: ['x'] },
     ];
-    snapshot.tasks = [makeTask('a', 'A'), makeTask('b', 'B'), makeTask('c', 'C'), makeTask('x', 'X')];
+    snapshot.tasks = [
+      makeTask('a', 'A'),
+      makeTask('b', 'B'),
+      makeTask('c', 'C'),
+      makeTask('x', 'X'),
+    ];
 
     await store.saveSnapshot(snapshot);
     const loaded = await loadOrFail(store, 'run-cols');

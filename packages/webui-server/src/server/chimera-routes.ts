@@ -15,21 +15,21 @@
  *   server → `chimera.finding.updated`    { findingId, status, success: boolean, error?: string }
  */
 import {
-  JsonlFindingStore,
-  JsonlReportStore,
-  syncReportCompletion,
-  syncReportReopen,
   type ChimeraFinding,
   type FindingLifecycleEvent,
   type FindingStatus,
+  JsonlFindingStore,
+  JsonlReportStore,
   type ReportLifecycleStatus,
   type ResolutionOutcome,
   type ReviewReport,
   type ReviewReportCounts,
   type ReviewReportEvent,
+  syncReportCompletion,
+  syncReportReopen,
 } from '@wrongstack/core/plugin';
-import type { WebSocket } from 'ws';
 import { toErrorMessage } from '@wrongstack/core/utils';
+import type { WebSocket } from 'ws';
 import type { WSClientMessage } from './types.js';
 
 export interface ChimeraRouteHandlers {
@@ -241,9 +241,7 @@ export function createChimeraRouteHandlers(deps: {
           deps.send(ws, { type: 'chimera.reports', payload: { sessionId: rawSessionId, reports } });
         }
       } catch (err) {
-        deps.log?.(
-          `chimera.reports.list failed: ${toErrorMessage(err)}`,
-        );
+        deps.log?.(`chimera.reports.list failed: ${toErrorMessage(err)}`);
         deps.send(ws, {
           type: 'chimera.reports',
           payload: { sessionId: rawSessionId, reports: [] },

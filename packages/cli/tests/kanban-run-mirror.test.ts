@@ -1,14 +1,13 @@
+import { listBoards } from '@wrongstack/kanban';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { listBoards } from '@wrongstack/kanban';
 import { describe, expect, it } from 'vitest';
 import {
   buildTaskGraphFromGoalPhase,
   buildTaskGraphFromSddSnapshot,
   createKanbanRunMirror,
 } from '../src/webui-server/kanban-run-mirror.js';
-
 
 function goalState(over: { statusA?: string } = {}) {
   return {

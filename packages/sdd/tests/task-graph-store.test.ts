@@ -1,8 +1,8 @@
+import { TaskTracker } from '@wrongstack/core/tasking';
+import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { TaskTracker } from '@wrongstack/core/tasking';
-import type { TaskGraph, TaskNode } from '@wrongstack/core/types/task-graph.js';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TaskGraphStore } from '../src/task-graph-store.js';
 
@@ -178,9 +178,17 @@ describe('TaskGraphStore', () => {
   it('rejects invalid or path-traversal graph IDs on save', async () => {
     const store = new TaskGraphStore({ baseDir: dir });
     await expect(store.save(makeGraph({ id: '' }))).rejects.toThrow('Invalid task-graph id');
-    await expect(store.save(makeGraph({ id: 'a'.repeat(201) }))).rejects.toThrow('Invalid task-graph id');
-    await expect(store.save(makeGraph({ id: 'test\0bad' }))).rejects.toThrow('Invalid task-graph id');
-    await expect(store.save(makeGraph({ id: '../escaped' }))).rejects.toThrow('Invalid task-graph id');
-    await expect(store.save(makeGraph({ id: 'sub/nested' }))).rejects.toThrow('Invalid task-graph id');
+    await expect(store.save(makeGraph({ id: 'a'.repeat(201) }))).rejects.toThrow(
+      'Invalid task-graph id',
+    );
+    await expect(store.save(makeGraph({ id: 'test\0bad' }))).rejects.toThrow(
+      'Invalid task-graph id',
+    );
+    await expect(store.save(makeGraph({ id: '../escaped' }))).rejects.toThrow(
+      'Invalid task-graph id',
+    );
+    await expect(store.save(makeGraph({ id: 'sub/nested' }))).rejects.toThrow(
+      'Invalid task-graph id',
+    );
   });
 });

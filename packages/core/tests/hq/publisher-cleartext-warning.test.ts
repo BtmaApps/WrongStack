@@ -68,9 +68,7 @@ afterEach(() => vi.useRealTimers());
 /** Connect a publisher to `url` and return every warn line it emitted. */
 function warningsForEndpoint(
   url: string,
-  redactionPolicy?: NonNullable<
-    ConstructorParameters<typeof HqPublisher>[0]['redactionPolicy']
-  >,
+  redactionPolicy?: NonNullable<ConstructorParameters<typeof HqPublisher>[0]['redactionPolicy']>,
 ): string[] {
   const warnings: string[] = [];
   const socket = new FakeSocket();

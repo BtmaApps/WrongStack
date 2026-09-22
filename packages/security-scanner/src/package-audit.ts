@@ -1,7 +1,7 @@
+import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildWin32CmdShimInvocation } from '@wrongstack/core/utils';
 
 export type AuditablePackageManager = 'npm' | 'pnpm';
 export type PackageAuditSeverity = 'critical' | 'high' | 'moderate' | 'low' | 'info' | 'unknown';
@@ -112,7 +112,8 @@ const defaultExecutor: PackageAuditExecutor = (command, args, cwd) =>
           resolve({
             stdout: stdout ?? '',
             stderr: stderr ?? '',
-            exitCode: typeof errorWithCode?.code === 'number' ? errorWithCode.code : error ? null : 0,
+            exitCode:
+              typeof errorWithCode?.code === 'number' ? errorWithCode.code : error ? null : 0,
             error: error ?? undefined,
           });
         },

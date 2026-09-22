@@ -7,13 +7,14 @@
  * POST /api/deadcode/action-plan — converts scan results into an ordered
  *   action plan with priority-sorted file groups for LLM execution.
  */
-import * as path from 'node:path';
+
 import type * as http from 'node:http';
+import * as path from 'node:path';
 // Import from the subpath barrel so consuming packages resolve against
 // the already-built dist/codebase-index/index.js without rebuilding @wrongstack/tools.
 import { sanitizeApiError } from '@wrongstack/core/security';
-import { runDeadCodeScan } from '@wrongstack/tools/codebase-index';
 import type { DeadCodeScanOutput } from '@wrongstack/tools/codebase-index';
+import { runDeadCodeScan } from '@wrongstack/tools/codebase-index';
 import { errMessage } from './ws-utils.js';
 
 interface DeadCodeHandlerDeps {

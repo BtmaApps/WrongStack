@@ -2,6 +2,15 @@ import { stripNextStepsBlock } from '@wrongstack/tools/next-steps';
 import { create } from 'zustand';
 import { agentBelongsToSession } from '@/lib/agent-session';
 import { compareAgentsByActivity } from '@/lib/agent-status';
+import {
+  appendTranscriptEntry,
+  blankAgent,
+  bumpSparkline,
+  clampContextPct,
+  MAX_AGENT_TRANSCRIPT,
+  pushTimeline,
+  SPARKLINE_BINS,
+} from './fleet-transcript.js';
 import { useActiveSessionId } from './session-lanes.js';
 import type {
   AgentTranscriptEntry,
@@ -11,12 +20,7 @@ import type {
   SubagentView,
 } from './types.js';
 
-// ── Fleet store (live subagent roster; not persisted) ───────────────────────
-
-const SPARKLINE_BINS = 12;
-const MAX_TIMELINE = 20;
 const MAX_AGENT_TIMELINE = 500;
-const MAX_AGENT_TRANSCRIPT = 1000;
 /** Roster cap — far above any real fleet; evicts terminal agents first. */
 const MAX_FLEET_AGENTS = 200;
 
@@ -77,35 +81,9 @@ export interface FleetState {
   removeAgent: (subagentId: string) => void;
 }
 
-function blankAgent(id: string, name?: string, sessionId?: string): SubagentView {
-  return {
-    id,
-    name: name?.trim() || id,
-    sessionId,
-    status: 'running',
-    iteration: 0,
-    toolCalls: 0,
-    costUsd: 0,
-    ctxPct: 0,
-    ctxTokens: 0,
-    maxContext: 0,
-    extensions: 0,
-    startedAt: Date.now(),
-    toolLog: [],
-    sparklineBins: Array(SPARKLINE_BINS).fill(0),
-  };
-}
-
 let _timelineSeq = 0;
 function makeTimelineId(): string {
   return `tl_${Date.now()}_${++_timelineSeq}`;
-}
-
-function pushTimeline(
-  timeline: FleetTimelineEvent[],
-  event: FleetTimelineEvent,
-): FleetTimelineEvent[] {
-  return [event, ...timeline].slice(0, MAX_TIMELINE);
 }
 
 function normalizeTranscriptKind(kind: string): AgentTranscriptKind {
@@ -121,45 +99,6 @@ function normalizeTranscriptKind(kind: string): AgentTranscriptKind {
     default:
       return 'status';
   }
-}
-
-function canMergeTranscriptEntry(a: AgentTranscriptEntry, b: AgentTranscriptEntry): boolean {
-  if (a.subagentId !== b.subagentId) return false;
-  if (a.kind !== b.kind) return false;
-  if (a.iteration !== b.iteration) return false;
-  if (a.toolName !== b.toolName) return false;
-  if (a.toolOk !== b.toolOk) return false;
-  return a.kind === 'text' || a.kind === 'thinking';
-}
-
-function appendTranscriptEntry(
-  entries: AgentTranscriptEntry[],
-  entry: AgentTranscriptEntry,
-): AgentTranscriptEntry[] {
-  const last = entries[entries.length - 1];
-  if (last && canMergeTranscriptEntry(last, entry)) {
-    return [
-      ...entries.slice(0, -1),
-      { ...last, content: `${last.content}${entry.content}`, ts: entry.ts },
-    ].slice(-MAX_AGENT_TRANSCRIPT);
-  }
-  return [...entries, entry].slice(-MAX_AGENT_TRANSCRIPT);
-}
-
-/** Update sparkline bins for an agent — bump bin 0 and shift left.
- *  The bins array has index 0 as the most recent bucket.
- *  Each event bumps bin 0, then the array is truncated to SPARKLINE_BINS. */
-function bumpSparkline(bins: number[]): number[] {
-  // `?? 0`: an agent whose bins never got seeded (rehydrated state, or a
-  // tool/iteration event arriving before 'spawned') made this `undefined + 1`
-  // = NaN — and the shift below then carries that NaN through every later
-  // bump, so the sparkline stays broken for the life of the agent.
-  return [(bins[0] ?? 0) + 1, ...bins.slice(0, SPARKLINE_BINS - 1)];
-}
-
-function clampContextPct(pct: number): number {
-  if (!Number.isFinite(pct)) return 0;
-  return Math.max(0, Math.min(100, pct));
 }
 
 export const useFleetStore = create<FleetState>()((set, get) => ({

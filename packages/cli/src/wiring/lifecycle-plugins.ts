@@ -35,6 +35,7 @@ import type { WstackPaths } from '@wrongstack/core/utils';
 import {
   createVaultBackedMcpAuthorizationProviderFactory,
   MCPAuthorizationManager,
+  type MCPAuthorizationStateEvent,
   MCPRegistry,
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
@@ -405,7 +406,20 @@ export async function setupLifecycleAndPlugins(
     path.join(wpaths.projectDir, 'mcp-auth.json'),
     vault,
   );
-  const mcpAuthorizationManager = new MCPAuthorizationManager({ store: mcpTokenStore });
+  // Without a listener the refresh provider's `reauth_required` went nowhere
+  // and an expired server just failed every call with an opaque 401.
+  const onMcpAuthorizationState = (event: MCPAuthorizationStateEvent): void => {
+    events.emit('mcp.server.auth_state', event);
+    if (event.state === 'reauth_required') {
+      logger.warn(
+        `MCP server "${event.serverName}" needs reauthorization — run: /mcp auth login ${event.serverName}`,
+      );
+    }
+  };
+  const mcpAuthorizationManager = new MCPAuthorizationManager({
+    store: mcpTokenStore,
+    onStateChange: onMcpAuthorizationState,
+  });
   const mcpRegistry = new MCPRegistry({
     toolRegistry,
     events,
@@ -417,6 +431,7 @@ export async function setupLifecycleAndPlugins(
     cwd: wpaths.projectRoot,
     authorizationProviderFactory: createVaultBackedMcpAuthorizationProviderFactory({
       store: mcpTokenStore,
+      onStateChange: onMcpAuthorizationState,
     }),
     authorizationManager: mcpAuthorizationManager,
   });

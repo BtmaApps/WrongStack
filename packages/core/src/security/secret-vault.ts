@@ -276,10 +276,7 @@ function renameWithRetrySync(tmp: string, dest: string): void {
       return;
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (
-        (code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') ||
-        Date.now() >= deadline
-      ) {
+      if ((code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') || Date.now() >= deadline) {
         throw err;
       }
       // Sync path: no event loop to yield to, so spin briefly.

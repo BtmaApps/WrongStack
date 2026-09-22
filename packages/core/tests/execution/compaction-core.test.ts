@@ -957,7 +957,9 @@ describe('dedupStaleReads', () => {
     const msgs: Message[] = [
       {
         role: 'assistant',
-        content: [{ type: 'tool_use', id: 'u1', name: 'read_file', input: { path: 'src/config.ts' } }],
+        content: [
+          { type: 'tool_use', id: 'u1', name: 'read_file', input: { path: 'src/config.ts' } },
+        ],
       } as Message,
       readResult('u1', 'OLD config '.repeat(200)),
       text('user', 'turn 1'),
@@ -966,7 +968,9 @@ describe('dedupStaleReads', () => {
       text('assistant', 'turn 4'),
       {
         role: 'assistant',
-        content: [{ type: 'tool_use', id: 'u2', name: 'view_file', input: { path: 'src/config.ts' } }],
+        content: [
+          { type: 'tool_use', id: 'u2', name: 'view_file', input: { path: 'src/config.ts' } },
+        ],
       } as Message,
       readResult('u2', 'NEW config '.repeat(200)),
       text('user', 'turn 5'),

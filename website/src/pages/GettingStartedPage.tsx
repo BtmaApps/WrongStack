@@ -1,4 +1,13 @@
 import {
+  CopyCommand,
+  ExternalDoc,
+  PageHero,
+  PageNext,
+  SectionIntro,
+} from '@/components/site/primitives';
+import { installCommand, installCommandWindows, releasesUrl } from '@/data/content';
+import { Link } from '@/lib/router';
+import {
   ArrowRight,
   KeyRound,
   Laptop,
@@ -9,15 +18,6 @@ import {
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
-import {
-  CopyCommand,
-  ExternalDoc,
-  PageHero,
-  PageNext,
-  SectionIntro,
-} from '@/components/site/primitives';
-import { installCommand, installCommandWindows, releasesUrl } from '@/data/content';
-import { Link } from '@/lib/router';
 
 const setupSteps = [
   [
@@ -75,9 +75,7 @@ export function GettingStartedPage() {
               <p className="text-sm leading-7 text-muted">{body}</p>
               <div className="flex flex-col items-start gap-2">
                 <CopyCommand command={command} />
-                {number === '01' && (
-                  <CopyCommand label="Windows" command={installCommandWindows} />
-                )}
+                {number === '01' && <CopyCommand label="Windows" command={installCommandWindows} />}
               </div>
             </article>
           ))}
@@ -89,9 +87,14 @@ export function GettingStartedPage() {
             <code className="mx-1 font-mono text-fg">wrongstack</code>/
             <code className="mx-1 font-mono text-fg">@wrongstack/cli</code>
             globals from npm, pnpm, yarn or bun and uninstalls them so they cannot shadow the
-            binary. From then on, <code className="font-mono text-fg">wstack update</code> pulls
-            new versions straight from{' '}
-            <a href={releasesUrl} target="_blank" rel="noreferrer" className="font-bold text-fg underline hover:text-brand">
+            binary. From then on, <code className="font-mono text-fg">wstack update</code> pulls new
+            versions straight from{' '}
+            <a
+              href={releasesUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold text-fg underline hover:text-brand"
+            >
               GitHub Releases
             </a>
             .

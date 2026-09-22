@@ -235,9 +235,7 @@ export function resolvePnpmInvocation(pnpmTarget, execPath = process.execPath) {
   const isExecutable = !/\.[cm]?js$/i.test(pnpmTarget.script);
   return {
     command: isExecutable ? pnpmTarget.script : execPath,
-    args: isExecutable
-      ? [...pnpmTarget.prefix]
-      : [pnpmTarget.script, ...pnpmTarget.prefix],
+    args: isExecutable ? [...pnpmTarget.prefix] : [pnpmTarget.script, ...pnpmTarget.prefix],
     options: isBatch ? { shell: true } : {},
   };
 }

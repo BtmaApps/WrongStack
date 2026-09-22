@@ -6,11 +6,10 @@
  * hosts (e.g. a headless fleet dashboard) are unaffected.
  */
 import type * as http from 'node:http';
+import { sanitizeApiError } from '@wrongstack/core/security';
+import type { MemoryPort } from '@wrongstack/core/types';
 import { cosineSimilarity, getSageSurface, type Sage } from '@wrongstack/sage';
 import type { VectorMemoryStore, VectorSearchHit } from '@wrongstack/vector-memory';
-import type { MemoryPort } from '@wrongstack/core/types';
-
-import { sanitizeApiError } from '@wrongstack/core/security';
 import { decodeSessionId } from './security-helpers.js';
 
 interface VectorMemoryStatusResponse {

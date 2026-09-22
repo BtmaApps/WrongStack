@@ -129,8 +129,7 @@ export function feedPaste(accum: PasteAccumState, input: string): PasteFeedResul
   // `[201~` is not truncated at the first occurrence; the terminal places
   // the real closer at the end of the wrapped paste.
   const combined = `${accum ?? ''}${input}`;
-  const stripOpeningBegin =
-    accum === null || (typeof accum === 'string' && isMarkerPrefix(accum));
+  const stripOpeningBegin = accum === null || (typeof accum === 'string' && isMarkerPrefix(accum));
   let working = stripOpeningBegin ? combined.replace(BEGIN_RE, '') : combined;
   const endMatches = [...working.matchAll(new RegExp(END_RE, 'g'))];
   const closed = endMatches.length > 0;

@@ -27,70 +27,23 @@
  * pipeline.
  */
 import { type Plugin, type PluginAPI, ToolValidationError } from '@wrongstack/core/types';
-import { cloneCredentialPatterns } from '../runtime/credential-patterns.js';
 import { releaseHandle } from '../runtime/index.js';
-
-// ---------------------------------------------------------------------------
-// Pattern set
-// ---------------------------------------------------------------------------
-//
-// Mirrors the simple patterns in `core/src/security/secret-scrubber.ts`,
-// minus the high-entropy-env detector (which is too slow + too
-// false-positive prone for a synchronous pre-tool gate). Adding a new
-// pattern here is cheap: each entry is a tuple of (id, regex). The
-// combined regex folds every pattern into one pass, with the matched
-// group's position used to index into the id list.
-
-interface Pattern {
-  type: string;
-  regex: RegExp;
-}
-
-/**
- * Base patterns — always present, never removed by custom config.
- * Custom patterns from config are APPENDED at setup() time.
- *
- * The table itself lives in `runtime/credential-patterns` so that
- * `prompt-firewall` (which inspects outgoing provider requests) matches
- * exactly the same credential shapes. The two lists used to be maintained
- * separately and had drifted, so whether a credential was caught depended
- * on which side of the pipeline it crossed.
- */
-const BASE_PATTERNS: Pattern[] = cloneCredentialPatterns();
-
-/**
- * Active pattern set. Starts as a clone of BASE_PATTERNS; setup()
- * appends user-supplied custom patterns from config and rebuilds
- * COMBINED_REGEX. Each live PluginAPI captures its own projection.
- *
- * @internal
- */
-let PATTERNS: Pattern[] = [...BASE_PATTERNS];
-
-/**
- * Which capture-group index belongs to which pattern.
- *
- * `PATTERNS[i]` does NOT necessarily own group `i + 1`: a pattern whose
- * own source contains a capturing group consumes extra slots and shifts
- * every pattern after it. That is not hypothetical — user-supplied
- * `customPatterns` are appended verbatim, so a single custom pattern
- * spelled `(foo|bar)_[0-9]{10}` silently mis-attributed every later
- * pattern's matches (wrong `[REDACTED:<type>]` label, wrong reported
- * type). This table is rebuilt alongside the regex and consulted instead
- * of assuming a 1:1 mapping.
- *
- * @internal
- */
-let GROUP_INDEX_OF_PATTERN: number[] = [];
+import {
+  BASE_PATTERNS,
+  buildCombinedRegex,
+  type Pattern,
+  patternTypeForGroups,
+  scannerPatterns,
+} from './scanner-patterns.js';
 
 /**
  * Combined single-pass regex. Each alternative is a capturing group so
  * the matcher callback can identify which pattern fired (only one group
- * is non-undefined at match time). Rebuilt whenever PATTERNS changes.
+ * is non-undefined at match time). Rebuilt whenever scannerPatterns.patterns changes.
  *
  * @internal
  */
-let COMBINED_REGEX = buildCombinedRegex(PATTERNS);
+let COMBINED_REGEX = buildCombinedRegex(scannerPatterns.patterns);
 
 // ---------------------------------------------------------------------------
 // ReDoS protection
@@ -145,54 +98,6 @@ const TOO_LARGE_MARKER = 'unscannable_oversized_input';
  * protected by the length guard above.
  */
 const RE_DOS_TIMEOUT_MS = 100;
-
-/**
- * Rebuild the combined regex from a pattern array. Each pattern's
- * source is wrapped in a capturing group so findMatches/redactInput
- * can identify which one fired.
- *
- * Performance: only rebuilds when the pattern set has actually changed
- * (detected via patternCacheKey comparison). Avoids expensive regex
- * compilation on every setup() reload when patterns are unchanged.
- *
- * @internal
- */
-/**
- * Count the capturing groups in a regex source. Appending `|` makes the
- * whole pattern optional, so `exec('')` always matches and its result
- * length reveals the group count without needing to parse the source.
- */
-function countCaptureGroups(source: string): number {
-  try {
-    return new RegExp(`${source}|`).exec('')!.length - 1;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Map a match's capture groups back to the pattern that fired.
- * `groups` is 0-indexed from the first capture group (i.e. `m[1]`).
- */
-function patternTypeForGroups(groups: readonly unknown[]): string | undefined {
-  for (let i = 0; i < PATTERNS.length; i++) {
-    const at = GROUP_INDEX_OF_PATTERN[i];
-    if (at !== undefined && groups[at] !== undefined) return PATTERNS[i]!.type;
-  }
-  return undefined;
-}
-
-function buildCombinedRegex(patterns: Pattern[]): RegExp {
-  // Record each pattern's outer-group offset before its own inner groups.
-  const offsets: number[] = [];
-  let cursor = 0;
-  for (const p of patterns) {
-    offsets.push(cursor);
-    cursor += 1 + countCaptureGroups(p.regex.source);
-  }
-  GROUP_INDEX_OF_PATTERN = offsets;
-  return new RegExp(patterns.map((p) => `(${p.regex.source})`).join('|'), 'g');
-}
 
 // ---------------------------------------------------------------------------
 // Per-host lifecycle state
@@ -249,9 +154,9 @@ let latestRuntime: SecretScannerRuntime | undefined;
 
 /** Select the immutable pattern projection captured by one plugin host. */
 function activateRuntime(runtime: SecretScannerRuntime): void {
-  PATTERNS = runtime.patterns;
+  scannerPatterns.patterns = runtime.patterns;
   COMBINED_REGEX = runtime.combinedRegex;
-  GROUP_INDEX_OF_PATTERN = runtime.groupIndexes;
+  scannerPatterns.groupIndexes = runtime.groupIndexes;
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +166,7 @@ function activateRuntime(runtime: SecretScannerRuntime): void {
 /**
  * Find every pattern that fires on `text`. Returns the list of matched
  * `type` ids (deduped). The combined regex is one pass; the capture
- * group index maps back to the pattern via the parallel PATTERNS array.
+ * group index maps back to the pattern via the parallel scannerPatterns.patterns array.
  *
  * Determinism: returns matched types in sorted order so scan results
  * are reproducible across runs.
@@ -754,20 +659,20 @@ const plugin: Plugin = {
     // append user-supplied custom patterns. This is idempotent —
     // every setup() call resets to base first, so a reload never
     // accumulates duplicate custom entries.
-    PATTERNS = [...BASE_PATTERNS];
+    scannerPatterns.patterns = [...BASE_PATTERNS];
     for (const cp of cfg.customPatterns) {
       try {
-        PATTERNS.push({ type: cp.type, regex: new RegExp(cp.regex, 'g') });
+        scannerPatterns.patterns.push({ type: cp.type, regex: new RegExp(cp.regex, 'g') });
       } catch {
         // readConfig already validated; this catch is defensive.
       }
     }
-    COMBINED_REGEX = buildCombinedRegex(PATTERNS);
+    COMBINED_REGEX = buildCombinedRegex(scannerPatterns.patterns);
     const runtime: SecretScannerRuntime = {
       state: createState(),
-      patterns: PATTERNS,
+      patterns: scannerPatterns.patterns,
       combinedRegex: COMBINED_REGEX,
-      groupIndexes: [...GROUP_INDEX_OF_PATTERN],
+      groupIndexes: [...scannerPatterns.groupIndexes],
     };
     runtimes.set(api, runtime);
     latestRuntime = runtime;
@@ -811,8 +716,8 @@ const plugin: Plugin = {
           mode: cfg.mode,
           matcher: cfg.matcher,
           postToolUseMatcher: cfg.postToolUseMatcher,
-          patternCount: PATTERNS.length,
-          patternTypes: PATTERNS.map((p) => p.type),
+          patternCount: scannerPatterns.patterns.length,
+          patternTypes: scannerPatterns.patterns.map((p) => p.type),
           counters: {
             block: state.blockCount,
             redact: state.redactCount,
@@ -869,7 +774,7 @@ const plugin: Plugin = {
       version: '0.1.0',
       mode: cfg.mode,
       matcher: cfg.matcher,
-      patterns: PATTERNS.length,
+      patterns: scannerPatterns.patterns.length,
     });
   },
 

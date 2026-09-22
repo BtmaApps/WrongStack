@@ -160,9 +160,7 @@ describe('collab_debug honours project-root confinement', () => {
       expect(tool.capabilities).toContain('fs.read');
       // Composes with the plural-key fix: the gate now inspects `targetPaths`
       // AND recognises the tool as a reader, so a credential target prompts.
-      expect(
-        isSensitiveReadCall(tool, { targetPaths: ['/home/me/.aws/credentials'] }),
-      ).toBe(true);
+      expect(isSensitiveReadCall(tool, { targetPaths: ['/home/me/.aws/credentials'] })).toBe(true);
       expect(isSensitiveReadCall(tool, { targetPaths: ['src/index.ts'] })).toBe(false);
     });
   });

@@ -135,4 +135,3 @@ describe('file-permissions', () => {
     expect(stdout).toContain(':(F)');
   });
 });
-

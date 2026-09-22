@@ -1,7 +1,7 @@
+import type { Config, MCPServerConfig } from '@wrongstack/core/types';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Config, MCPServerConfig } from '@wrongstack/core/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseMcpArgs, runMcpManagementCommand } from '../src/slash-commands/mcp-utils.js';
 
@@ -325,9 +325,9 @@ describe('runMcpManagementCommand — enable', () => {
   it('uses restart path on already-enabled server', async () => {
     // Registered (live) server → the restart path with the resolved config.
     const registry = makeRegistry({
-      list: vi.fn().mockReturnValue([
-        { name: 'github', state: 'connected', toolCount: 2, tools: [] },
-      ]),
+      list: vi
+        .fn()
+        .mockReturnValue([{ name: 'github', state: 'connected', toolCount: 2, tools: [] }]),
     });
     const out = await runMcpManagementCommand(
       { action: 'enable', name: 'github' },
@@ -348,9 +348,9 @@ describe('runMcpManagementCommand — enable', () => {
   it('propagates a failed restart on an already-enabled registered server', async () => {
     // The enable-flow redesign removed the silent restart→start fallback.
     const registry = makeRegistry({
-      list: vi.fn().mockReturnValue([
-        { name: 'github', state: 'connected', toolCount: 2, tools: [] },
-      ]),
+      list: vi
+        .fn()
+        .mockReturnValue([{ name: 'github', state: 'connected', toolCount: 2, tools: [] }]),
       restart: vi.fn().mockRejectedValue(new Error('not running')),
     });
     await expect(

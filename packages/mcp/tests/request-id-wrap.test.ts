@@ -63,7 +63,9 @@ describe('MCP JSON-RPC request ID rollover', () => {
     const second = internals.request('resources/list', {});
     expect(sent).toEqual([MAX_SAFE_ID, 1]);
 
-    internals.onLine(JSON.stringify({ jsonrpc: '2.0', id: MAX_SAFE_ID, result: { request: 'first' } }));
+    internals.onLine(
+      JSON.stringify({ jsonrpc: '2.0', id: MAX_SAFE_ID, result: { request: 'first' } }),
+    );
     internals.onLine(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { request: 'second' } }));
     await expect(first).resolves.toMatchObject({ result: { request: 'first' } });
     await expect(second).resolves.toMatchObject({ result: { request: 'second' } });

@@ -160,9 +160,7 @@ describe('findCopyHit', () => {
 
 describe('findInspectHit', () => {
   it('matches the inspect column on a tool hit and ignores the copy column', () => {
-    const hits: CopyHit[] = [
-      { entryId: 7, startRow: 1, endRow: 2, iconCol: 40, inspectCol: 42 },
-    ];
+    const hits: CopyHit[] = [{ entryId: 7, startRow: 1, endRow: 2, iconCol: 40, inspectCol: 42 }];
     expect(findInspectHit(hits, 1, 42)?.entryId).toBe(7);
     expect(findInspectHit(hits, 1, 41)).toBeNull();
     expect(findInspectHit(hits, 1, 40)).toBeNull();

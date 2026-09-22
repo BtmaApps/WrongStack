@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { type ClientState, encodeResponse, parseArgs } from './project-server-options.js';
+
 /**
  * One detached Chronicle owner per local project.
  *
@@ -39,7 +41,6 @@ import {
   type ChronicleProjectServerMetadata,
   type ChronicleServerOperationName,
   type ChronicleServerOperations,
-  encodeChronicleProjectServerMessage,
 } from './project-server-protocol.js';
 import { type ChronicleQuery, ChronicleQueryEngine } from './query.js';
 import type { ChronicleEventSink } from './sink.js';
@@ -50,92 +51,6 @@ import type { ChronicleEvent, ChronicleEventInput } from './types.js';
 const DEFAULT_IDLE_MS = 5 * 60_000;
 /** Re-exported name kept local for readability; the bound is the protocol's. */
 const MAX_APPEND_BATCH = CHRONICLE_MAX_APPEND_BATCH;
-/** Outbound bytes queued for one client before it is dropped as unresponsive. */
-const MAX_CLIENT_WRITE_BUFFER_BYTES = 8 * 1024 * 1024;
-
-interface ParsedArgs {
-  projectRoot: string;
-  globalRoot: string;
-  projectId: string;
-  projectDir: string;
-  workspaceId: string;
-  retentionDays: number;
-  maxEvents: number;
-  maxBytes: number;
-  metricsRowRetentionDays: number | undefined;
-  durability: 'normal' | 'full';
-}
-
-/**
- * Storage ceilings applied when the client does not pass its own.
- *
- * Bound burst growth independently of age retention: a single busy day can
- * outrun any `retentionDays` setting, and prefix eviction keeps the chain
- * verifiable via retention checkpoints where a plain delete would not.
- */
-const DEFAULT_MAX_EVENTS = 100_000;
-const DEFAULT_MAX_BYTES = 512 * 1024 * 1024;
-
-interface ClientState {
-  socket: net.Socket;
-  buffer: string;
-  /** Wall clock at accept, so the silent-client sweep can age this socket. */
-  connectedAt: number;
-  /** Set on the first inbound byte. A socket that never speaks is reaped. */
-  spoken: boolean;
-  /**
-   * Request ids whose dispatch has not produced a response yet. `stop()`
-   * answers each of these with a clean stopping rejection BEFORE the socket
-   * is destroyed — otherwise an in-flight caller sees nothing but a bare
-   * connection close and can only give up via its own call timeout.
-   */
-  unsettled: Set<number>;
-}
-
-function parseArgs(argv: string[]): ParsedArgs {
-  const values = new Map<string, string>();
-  for (let index = 0; index < argv.length; index++) {
-    const key = argv[index];
-    if (key?.startsWith('--') && argv[index + 1] !== undefined) {
-      values.set(key, argv[++index]!);
-    }
-  }
-  const required = [
-    '--project-root',
-    '--global-root',
-    '--project-id',
-    '--project-dir',
-    '--workspace-id',
-  ] as const;
-  for (const key of required) {
-    if (!values.get(key)) throw new Error(`Chronicle project server requires ${key}`);
-  }
-  const retentionInput = Number(values.get('--retention-days'));
-  const metricsRowsInput = Number(values.get('--metrics-row-retention-days'));
-  const positive = (flag: string, fallback: number): number => {
-    const value = Number(values.get(flag));
-    return Number.isFinite(value) && value > 0 ? value : fallback;
-  };
-  // Durability is an operator escape hatch rather than per-session config, so
-  // it is read from the environment the daemon already inherits instead of
-  // being threaded through the client's spawn arguments. Anything other than
-  // an explicit 'full' keeps the WAL default of NORMAL.
-  const durabilityInput =
-    values.get('--durability') ?? process.env['WRONGSTACK_CHRONICLE_DURABILITY'] ?? '';
-  return {
-    projectRoot: path.resolve(values.get('--project-root')!),
-    globalRoot: path.resolve(values.get('--global-root')!),
-    projectId: values.get('--project-id')!,
-    projectDir: path.resolve(values.get('--project-dir')!),
-    workspaceId: values.get('--workspace-id')!,
-    retentionDays: Number.isFinite(retentionInput) && retentionInput > 0 ? retentionInput : 30,
-    maxEvents: Math.floor(positive('--max-events', DEFAULT_MAX_EVENTS)),
-    maxBytes: Math.floor(positive('--max-bytes', DEFAULT_MAX_BYTES)),
-    metricsRowRetentionDays:
-      Number.isFinite(metricsRowsInput) && metricsRowsInput > 0 ? metricsRowsInput : undefined,
-    durability: durabilityInput.trim().toLowerCase() === 'full' ? 'full' : 'normal',
-  };
-}
 
 // Long-lived daemon: lean SQLite residency unless the operator says
 // otherwise. Must run before any store opens.
@@ -573,27 +488,6 @@ async function dispatch<O extends ChronicleServerOperationName>(
       return { refreshed, data } as ChronicleServerOperations[O]['result'];
     }
   }
-}
-
-function encodeResponse(
-  state: ClientState,
-  message: ChronicleProjectServerMessage,
-): string | undefined {
-  if (state.socket.destroyed || state.socket.writableEnded) return undefined;
-  const encoded = encodeChronicleProjectServerMessage(message);
-  if (encoded.length > CHRONICLE_PROJECT_SERVER_MAX_FRAME_CHARS) {
-    state.socket.destroy(new Error('Chronicle project server response exceeded frame limit'));
-    return undefined;
-  }
-  // The frame cap above bounds one message; this bounds the queue. Ignoring
-  // `socket.write()`'s `false` return lets a client that stopped reading grow
-  // the owner's heap without limit — see the identical guard in the mailbox,
-  // kanban, SAGE and index owners.
-  if (state.socket.writableLength > MAX_CLIENT_WRITE_BUFFER_BYTES) {
-    state.socket.destroy(new Error('Chronicle client fell too far behind on reads'));
-    return undefined;
-  }
-  return encoded;
 }
 
 function send(state: ClientState, message: ChronicleProjectServerMessage): void {

@@ -89,6 +89,39 @@ export type WSMcpServerMessage =
   | { type: 'mcp.server.error'; payload: { name: string; error: string } }
   | { type: 'mcp.operation_result'; payload: { success: boolean; message: string } }
   | {
+      type: 'mcp.auth.status';
+      payload: {
+        serverName: string;
+        resource: string;
+        state: 'not_authorized' | 'pending' | 'authorized' | 'expired';
+        expiresAt?: number;
+        scopes: string[];
+        canRefresh: boolean;
+      };
+    }
+  | {
+      type: 'mcp.auth.pending';
+      payload: {
+        name: string;
+        authorizationUrl: string;
+        redirectUri: string;
+        scopes: string[];
+        expiresAt: number;
+        clientIdSource: 'explicit' | 'stored' | 'registered';
+      };
+    }
+  | {
+      type: 'mcp.server.auth_state';
+      payload: {
+        name: string;
+        state: 'authorized' | 'refreshed' | 'reauth_required' | 'removed' | 'failed';
+        resource: string;
+        expiresAt?: number;
+        scopes?: string[];
+        message?: string;
+      };
+    }
+  | {
       type: 'mcp.resources';
       payload: {
         name: string;

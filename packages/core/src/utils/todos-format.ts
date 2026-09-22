@@ -62,7 +62,9 @@ export function formatTodosForModel(
   todos: readonly TodoItem[],
   emptyLine = '- No active todos remain.',
 ): string {
-  return Array.isArray(todos) && todos.length ? todos.map(formatTodoForModel).join('\n') : emptyLine;
+  return Array.isArray(todos) && todos.length
+    ? todos.map(formatTodoForModel).join('\n')
+    : emptyLine;
 }
 
 /**

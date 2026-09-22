@@ -22,7 +22,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { SessionRegistryEntry, SessionLiveStatus } from '@wrongstack/core/storage';
+import type { SessionLiveStatus, SessionRegistryEntry } from '@wrongstack/core/storage';
 import { atomicWrite } from '@wrongstack/core/utils';
 
 export type WebUIInstanceRole = 'standalone' | 'parent-shell' | 'session-child';

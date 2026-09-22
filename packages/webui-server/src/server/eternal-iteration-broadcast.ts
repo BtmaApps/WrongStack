@@ -15,9 +15,9 @@
 // Both the disposer and the `JournalEntry` are projected by the caller
 // — this module intentionally knows nothing about the engine itself.
 
+import type { JournalEntry } from '@wrongstack/core/storage';
 import type { WebSocket } from 'ws';
 import type { WSServerMessage } from './types.js';
-import type { JournalEntry } from '@wrongstack/core/storage';
 
 export type EternalSubscribe = (fn: (entry: JournalEntry) => void) => () => void;
 

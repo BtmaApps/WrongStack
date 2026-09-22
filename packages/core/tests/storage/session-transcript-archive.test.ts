@@ -2,8 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import { SessionCatalogStore } from '../../src/session-catalog/store.js';
+import { DefaultSessionStore } from '../../src/storage/session-store.js';
 import type { SessionEvent } from '../../src/types/session.js';
 
 let tmp: string;
@@ -13,7 +13,12 @@ beforeEach(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-sess-archive-'));
   store = new DefaultSessionStore({
     dir: tmp,
-    storage: { hotKeepSessions: 1, archiveAfterDays: 0, autoArchive: false, includeSubagents: true },
+    storage: {
+      hotKeepSessions: 1,
+      archiveAfterDays: 0,
+      autoArchive: false,
+      includeSubagents: true,
+    },
   });
 });
 
@@ -55,12 +60,15 @@ describe('session transcript archive', () => {
     expect(archived.action).toBe('archived');
     expect(archived.compressedBytes).toBeGreaterThan(0);
     await expect(fs.stat(path.join(tmp, `${id}.jsonl`))).rejects.toBeDefined();
-    await expect(fs.stat(path.join(tmp, `${id}.jsonl.gz`))).resolves.toMatchObject({ size: expect.any(Number) });
+    await expect(fs.stat(path.join(tmp, `${id}.jsonl.gz`))).resolves.toMatchObject({
+      size: expect.any(Number),
+    });
 
     const data = await store.load(id);
     expect(
       data.events.some(
-        (event) => event.type === 'user_input' && String(event.content).includes('remember this prompt'),
+        (event) =>
+          event.type === 'user_input' && String(event.content).includes('remember this prompt'),
       ),
     ).toBe(true);
     await expect(fs.stat(path.join(tmp, `${id}.jsonl.gz`))).resolves.toBeDefined();
@@ -140,7 +148,12 @@ describe('session transcript archive', () => {
   it('backfill gzips existing logs immediately, ignoring the 7-day window', async () => {
     const delayed = new DefaultSessionStore({
       dir: tmp,
-      storage: { hotKeepSessions: 1, archiveAfterDays: 7, autoArchive: false, includeSubagents: true },
+      storage: {
+        hotKeepSessions: 1,
+        archiveAfterDays: 7,
+        autoArchive: false,
+        includeSubagents: true,
+      },
     });
     await writeClosedSession('recent-a', new Date().toISOString(), 'recent a');
     await writeClosedSession('recent-b', new Date().toISOString(), 'recent b');
@@ -184,10 +197,7 @@ describe('session transcript archive', () => {
     const nested = path.join(sessionsDir, '2020-01-01');
     await fs.mkdir(nested, { recursive: true });
     const jsonl = path.join(nested, 'catalog-gz.jsonl');
-    await fs.writeFile(
-      jsonl,
-      `${JSON.stringify(startEvent(id, '2020-01-01T00:00:00.000Z'))}\n`,
-    );
+    await fs.writeFile(jsonl, `${JSON.stringify(startEvent(id, '2020-01-01T00:00:00.000Z'))}\n`);
     await fs.writeFile(
       path.join(nested, 'catalog-gz.summary.json'),
       JSON.stringify({

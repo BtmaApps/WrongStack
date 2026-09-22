@@ -22,7 +22,6 @@ import { resetAgentNameCache } from './lib/agent-model.js';
 import { retainSimpleChatMessages } from './lib/chat-model.js';
 import { playChime } from './lib/chime.js';
 import { copyText } from './lib/clipboard.js';
-import type { CommandPaletteAction } from './lib/command-palette-model.js';
 import {
   clearComposerDraft,
   pruneStaleComposerDrafts,
@@ -33,7 +32,7 @@ import { removeFileMention } from './lib/file-mention.js';
 import type { MessageHandlerDeps } from './lib/message-handler.js';
 import { createMessageHandler } from './lib/message-handler.js';
 import { isVisionModel } from './lib/model-capabilities.js';
-import { dispatchSimplePanel, onPanelActivation } from './lib/panel-events.js';
+import { onPanelActivation } from './lib/panel-events.js';
 import { onPersistedWriteFailure } from './lib/persisted.js';
 import type { QueuedItem } from './lib/queue-model.js';
 import type { RefineState } from './lib/refine-model.js';
@@ -41,7 +40,6 @@ import { restoreRefineToComposer } from './lib/refine-restore.js';
 import { messageId } from './lib/session-helpers.js';
 import { aggregateFileEdits } from './lib/timeline-model.js';
 import { agentTranscriptToToolCalls } from './lib/tool-model.js';
-import { buildTranscriptMarkdown } from './lib/transcript-export.js';
 import type { PendingUserInputRequest } from './lib/user-input-queue.js';
 import type { SimpleSocket } from './lib/ws.js';
 import type {
@@ -52,6 +50,7 @@ import type {
   ResumeProgressInfo,
   ToolCallInfo,
 } from './types.js';
+import { useSessionCommandPalette } from './use-session-command-palette.js';
 
 export function useSimpleUiSession() {
   const { theme, resolvedTheme, toggleTheme } = useTheme();
@@ -716,82 +715,21 @@ export function useSimpleUiSession() {
     socketRef.current?.send('mode.switch', { id });
   };
 
-  const runCommandPaletteAction = useCallback(
-    (action: CommandPaletteAction) => {
-      switch (action) {
-        case 'new-session':
-          createSession();
-          return;
-        case 'focus-composer':
-          textareaRef.current?.focus();
-          return;
-        case 'copy-transcript': {
-          const markdown = buildTranscriptMarkdown(messagesRef.current, {
-            title: session?.projectName,
-          });
-          void copyText(markdown).then((copied) => {
-            setNotice({
-              id: messageId('notice'),
-              text: copied ? 'Transcript copied to clipboard' : 'Could not copy transcript',
-              tone: copied ? 'info' : 'error',
-            });
-          });
-          return;
-        }
-        case 'toggle-theme':
-          toggleTheme();
-          return;
-        case 'open-settings':
-          dispatchSimplePanel('open-settings');
-          setSettingsOpen(true);
-          return;
-        case 'open-tools':
-          openWorkspacePanel('tools');
-          return;
-        case 'open-todos':
-          openWorkspacePanel('todos');
-          return;
-        case 'open-tasks':
-          openWorkspacePanel('tasks');
-          return;
-        case 'open-plan':
-          openWorkspacePanel('plan');
-          return;
-        case 'open-memory':
-          dispatchSimplePanel('open-memory-drawer');
-          return;
-        case 'open-vector-memory':
-          dispatchSimplePanel('open-vector-memory-panel');
-          return;
-        case 'open-files':
-          dispatchSimplePanel('open-file-explorer');
-          return;
-        case 'open-prompts':
-          dispatchSimplePanel('open-prompt-library');
-          return;
-        case 'open-brain':
-          dispatchSimplePanel('open-brain-panel');
-          return;
-        case 'open-health':
-          dispatchSimplePanel('open-session-health');
-          return;
-        case 'open-context-breakdown':
-          dispatchSimplePanel('open-context-breakdown');
-          setContextBreakdownOpen(true);
-          return;
-        case 'compact-context':
-          if (sessionIdRef.current && !runningRef.current) {
-            socketRef.current?.send('context.compact', {
-              sessionId: sessionIdRef.current,
-              aggressive: false,
-            });
-            setActivity('Compacting context');
-          }
-          return;
-      }
-    },
-    [createSession, openWorkspacePanel, toggleTheme, session],
-  );
+  const { runCommandPaletteAction } = useSessionCommandPalette({
+    createSession,
+    textareaRef,
+    messagesRef,
+    session,
+    setNotice,
+    toggleTheme,
+    setSettingsOpen,
+    openWorkspacePanel,
+    setContextBreakdownOpen,
+    sessionIdRef,
+    runningRef,
+    socketRef,
+    setActivity,
+  });
 
   // Single source of truth for "a genuine newer version is available" — the
   // version chip (class / title / suffix) and the update banner all gate on

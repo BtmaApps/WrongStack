@@ -2,7 +2,12 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { buildChildEnv, buildWin32CmdShimInvocation, toErrorMessage } from '@wrongstack/core/utils';
 import { MCPCapabilityClient } from './client-capabilities.js';
-import { forceKillTree, resolveHttpBearerHeaders } from './client-process.js';
+import {
+  type ClientHttpConnectionHost,
+  connectSSE as delegateConnectSSE,
+  connectStreamableHTTP as delegateConnectStreamableHTTP,
+} from './client-http-connection.js';
+import { forceKillTree } from './client-process.js';
 import type {
   ExitListener,
   JsonRpcRequest,
@@ -25,7 +30,7 @@ import {
   parseServerMetadata,
 } from './protocol.js';
 import { listAllTools } from './tool-schema.js';
-import { type HttpTransportOptions, SSETransport, StreamableHTTPTransport } from './transport.js';
+import type { SSETransport, StreamableHTTPTransport } from './transport.js';
 import { nextJsonRpcId } from './transport-base.js';
 import { isJsonRpcResult } from './transport-jsonrpc.js';
 
@@ -336,130 +341,11 @@ export class MCPClient {
   }
 
   private async connectSSE(): Promise<void> {
-    if (!this.opts.url) {
-      this.state = 'failed';
-      throw new Error('MCP SSE transport requires "url"');
-    }
-    const httpOpts: HttpTransportOptions = {
-      name: this.opts.name,
-      url: this.opts.url,
-      headers: resolveHttpBearerHeaders(this.opts),
-      startupTimeoutMs: this.opts.startupTimeoutMs,
-      requestTimeoutMs: this.opts.requestTimeoutMs,
-      authorizationProvider: this.opts.authorizationProvider,
-      allowPrivateNetworks: this.opts.allowPrivateNetworks,
-    };
-    this.sseTransport = new SSETransport(httpOpts);
-    this.sseTransport.onDisconnect(() => {
-      this.state = 'disconnected';
-      for (const cb of this.disconnectListeners) {
-        try {
-          cb();
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    this.sseTransport.onToolsChanged((tools) => {
-      this._tools = tools;
-      // Keep the reconnect-recovery cache in sync. Without this, an empty
-      // tools update would leave `_toolsCache` pointing at the previous
-      // non-empty list, and `listTools()` would serve the stale cache
-      // (since it falls back to the cache when `_tools` is empty).
-      this._toolsCache = tools;
-      for (const cb of this.toolsChangedListeners) {
-        try {
-          cb(this.opts.name, tools);
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    this.sseTransport.onResourcesChanged(() => this.emitCapabilityChanged('resources'));
-    this.sseTransport.onPromptsChanged(() => this.emitCapabilityChanged('prompts'));
-    try {
-      await this.sseTransport.connect();
-    } catch (err) {
-      // Tear down the partial transport deterministically: its SSE read
-      // loop is async-running on a `ReadableStreamDefaultReader`, and its
-      // `AbortController` is wired into the connect-time startup timer.
-      // Without this close(), the reader can keep the response body alive
-      // until GC. The transport is fresh (never reached the success
-      // path), so close() is safe and idempotent.
-      const t = this.sseTransport;
-      this.sseTransport = undefined;
-      await t.close().catch(() => {
-        /* best-effort cleanup */
-      });
-      this.state = 'failed';
-      throw err;
-    }
-    this._tools = this.sseTransport.listTools();
-    this._toolsCache = this._tools;
-    this._serverMetadata = this.sseTransport.getServerMetadata();
-    this.state = 'connected';
+    return delegateConnectSSE(this.clientHttpConnectionHost());
   }
 
   private async connectStreamableHTTP(): Promise<void> {
-    if (!this.opts.url) {
-      this.state = 'failed';
-      throw new Error('MCP streamable-http transport requires "url"');
-    }
-    const httpOpts: HttpTransportOptions = {
-      name: this.opts.name,
-      url: this.opts.url,
-      headers: resolveHttpBearerHeaders(this.opts),
-      startupTimeoutMs: this.opts.startupTimeoutMs,
-      requestTimeoutMs: this.opts.requestTimeoutMs,
-      authorizationProvider: this.opts.authorizationProvider,
-      allowPrivateNetworks: this.opts.allowPrivateNetworks,
-    };
-    this.httpTransport = new StreamableHTTPTransport(httpOpts);
-    this.httpTransport.onDisconnect(() => {
-      this.state = 'disconnected';
-      for (const cb of this.disconnectListeners) {
-        try {
-          cb();
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    this.httpTransport.onToolsChanged((tools) => {
-      this._tools = tools;
-      // Same cache-sync reasoning as the SSE branch above — keep
-      // `_toolsCache` in lockstep with `_tools` on every transport
-      // update so the empty-list fallback in `listTools()` never serves
-      // stale data.
-      this._toolsCache = tools;
-      for (const cb of this.toolsChangedListeners) {
-        try {
-          cb(this.opts.name, tools);
-        } catch {
-          /* ignore */
-        }
-      }
-    });
-    this.httpTransport.onResourcesChanged(() => this.emitCapabilityChanged('resources'));
-    this.httpTransport.onPromptsChanged(() => this.emitCapabilityChanged('prompts'));
-    try {
-      await this.httpTransport.connect();
-    } catch (err) {
-      // Same teardown reasoning as the SSE branch — the partial transport's
-      // `AbortController` and any in-flight header/state would otherwise
-      // outlive this client instance until GC.
-      const t = this.httpTransport;
-      this.httpTransport = undefined;
-      await t.close().catch(() => {
-        /* best-effort cleanup */
-      });
-      this.state = 'failed';
-      throw err;
-    }
-    this._tools = this.httpTransport.listTools();
-    this._toolsCache = this._tools;
-    this._serverMetadata = this.httpTransport.getServerMetadata();
-    this.state = 'connected';
+    return delegateConnectStreamableHTTP(this.clientHttpConnectionHost());
   }
 
   async callTool(
@@ -984,6 +870,54 @@ export class MCPClient {
         /* listeners are best-effort */
       }
     }
+  }
+
+  private clientHttpConnectionHost(): ClientHttpConnectionHost {
+    const self = this;
+    return {
+      get opts() {
+        return self.opts;
+      },
+      get state() {
+        return self.state;
+      },
+      set state(value) {
+        self.state = value;
+      },
+      get sseTransport() {
+        return self.sseTransport;
+      },
+      set sseTransport(value) {
+        self.sseTransport = value;
+      },
+      disconnectListeners: this.disconnectListeners,
+      get _tools() {
+        return self._tools;
+      },
+      set _tools(value) {
+        self._tools = value;
+      },
+      get _toolsCache() {
+        return self._toolsCache;
+      },
+      set _toolsCache(value) {
+        self._toolsCache = value;
+      },
+      toolsChangedListeners: this.toolsChangedListeners,
+      emitCapabilityChanged: (...args) => this.emitCapabilityChanged(...args),
+      get _serverMetadata() {
+        return self._serverMetadata;
+      },
+      set _serverMetadata(value) {
+        self._serverMetadata = value;
+      },
+      get httpTransport() {
+        return self.httpTransport;
+      },
+      set httpTransport(value) {
+        self.httpTransport = value;
+      },
+    };
   }
 }
 export type {

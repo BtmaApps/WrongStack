@@ -1,13 +1,13 @@
-import { expectDefined } from '@wrongstack/core/utils';
 import * as fs from 'node:fs/promises';
-import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
-import { atomicWrite } from '@wrongstack/core/utils';
 import type { DefaultSecretVault } from '@wrongstack/core/security';
+import { decryptConfigSecrets, encryptConfigSecrets } from '@wrongstack/core/security';
 import type { ProviderApiKey, ProviderConfig } from '@wrongstack/core/types';
+import { atomicWrite, expectDefined } from '@wrongstack/core/utils';
 // One masking policy per package. This file used to carry a byte-identical
 // private copy of `maskedKey`, so a change to how much of a secret is shown
 // had to be made twice to take effect on every surface.
 import { maskedKey } from './provider-keys.js';
+
 interface ProviderStoreDeps {
   /** Active profile config path. */
   profileConfigPath: string;

@@ -3,7 +3,7 @@ import type { ModelCandidate } from '@/hooks/useProviderModels';
 import { useAppTranslation } from '@/i18n';
 import { useLocalPrefs } from '@/stores/local-prefs';
 import { AvailabilityCalendarEditor } from '../AvailabilityCalendarEditor';
-import { PreferenceSlider } from './PreferenceControls';
+import { PreferenceLimit, PreferenceSlider } from './PreferenceControls';
 import { PreferenceToggle } from './PreferenceToggle';
 
 export function ExecutionSettingsTab({
@@ -27,22 +27,18 @@ export function ExecutionSettingsTab({
             <h3 className="text-sm font-semibold">{t('settings:execution.heading')}</h3>
           </div>
         </div>
-        <PreferenceSlider
+        <PreferenceLimit
           label={t('settings:execution.maxIterationsLabel')}
           hint={t('settings:execution.maxIterationsHint')}
           value={localPrefs.maxIterations}
-          min={10}
-          max={2000}
-          step={10}
+          unlimitedLabel={t('settings:execution.unlimitedLabel')}
           onChange={(v) => syncPref('maxIterations', v)}
         />
-        <PreferenceSlider
+        <PreferenceLimit
           label={t('settings:execution.autoProceedMaxIterationsLabel')}
           hint={t('settings:execution.autoProceedMaxIterationsHint')}
           value={localPrefs.autoProceedMaxIterations}
-          min={0}
-          max={250}
-          step={5}
+          unlimitedLabel={t('settings:execution.unlimitedLabel')}
           onChange={(v) => syncPref('autoProceedMaxIterations', v)}
         />
         <PreferenceToggle

@@ -1,9 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 // We'll test with a real net.Server since mocking it is fragile
 // The module is simple enough that real port-binding tests are more reliable
 
-import { isPortFree, findFreePort, listenWithRetry } from '../src/server/port-utils.js';
+import { findFreePort, isPortFree, listenWithRetry } from '../src/server/port-utils.js';
 
 describe('port-utils', () => {
   // Use a high port range to avoid conflicts
@@ -262,9 +262,7 @@ describe('findFreePort (webui variant — ephemeral-port discovery)', () => {
   }
 
   afterEach(async () => {
-    await Promise.all(
-      servers.splice(0).map((s) => new Promise<void>((r) => s.close(() => r()))),
-    );
+    await Promise.all(servers.splice(0).map((s) => new Promise<void>((r) => s.close(() => r()))));
   });
 
   it('returns the start port when it is free', async () => {

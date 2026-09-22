@@ -48,16 +48,12 @@ describe('withRequestId (B-04 requestId echo)', () => {
 
   it('drops empty-string requestIds (treated as absent)', () => {
     expect(withRequestId({ requestId: '' }, { foo: 1 })).toEqual({ foo: 1 });
-    expect(
-      withRequestId({ payload: { requestId: '' } }, { foo: 1 }),
-    ).toEqual({ foo: 1 });
+    expect(withRequestId({ payload: { requestId: '' } }, { foo: 1 })).toEqual({ foo: 1 });
   });
 
   it('drops non-string requestIds (treated as absent)', () => {
     expect(withRequestId({ requestId: 42 }, { foo: 1 })).toEqual({ foo: 1 });
-    expect(
-      withRequestId({ payload: { requestId: null } }, { foo: 1 }),
-    ).toEqual({ foo: 1 });
+    expect(withRequestId({ payload: { requestId: null } }, { foo: 1 })).toEqual({ foo: 1 });
   });
 
   it('does not mutate the response payload object', () => {

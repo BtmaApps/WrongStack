@@ -99,7 +99,10 @@ describe('in-project policy: tools.loopDetection', () => {
    * Same operator-owned class as `tools.autoThin` above.
    */
   const strip = (tools: Record<string, unknown>): Record<string, unknown> | undefined => {
-    const stripped = stripUnsafeInProjectFields({ tools } as never, '/repo/.wrongstack/config.json');
+    const stripped = stripUnsafeInProjectFields(
+      { tools } as never,
+      '/repo/.wrongstack/config.json',
+    );
     return (stripped as unknown as { tools?: Record<string, unknown> }).tools;
   };
 

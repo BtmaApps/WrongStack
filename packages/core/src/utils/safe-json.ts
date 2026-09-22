@@ -109,7 +109,10 @@ export function stripCodeFences(s: string): string | null {
   // Whole-payload fence: ```lang? … ```? (closer optional for truncation)
   const opener = /^```[\w+-]*[ \t]*\r?\n?/.exec(trimmed);
   if (opener) {
-    const inner = trimmed.slice(opener[0].length).replace(/(\r?\n)?[ \t]*```[ \t]*$/, '').trim();
+    const inner = trimmed
+      .slice(opener[0].length)
+      .replace(/(\r?\n)?[ \t]*```[ \t]*$/, '')
+      .trim();
     return inner.length > 0 ? inner : null;
   }
   // Fence embedded in prose: extract the first complete fenced block.
@@ -217,7 +220,10 @@ function stripTrailingCommas(s: string): string {
       let j = i + 1;
       while (
         j < s.length &&
-        (s.charAt(j) === ' ' || s.charAt(j) === '\t' || s.charAt(j) === '\n' || s.charAt(j) === '\r')
+        (s.charAt(j) === ' ' ||
+          s.charAt(j) === '\t' ||
+          s.charAt(j) === '\n' ||
+          s.charAt(j) === '\r')
       ) {
         j++;
       }

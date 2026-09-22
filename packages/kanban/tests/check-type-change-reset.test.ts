@@ -10,7 +10,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { KanbanTask } from '../src/types.js';
-import { addCheckToTask, addTask, createBoard, getBoard, updateCheckOnTask } from './helpers/session-manager.js';
+import {
+  addCheckToTask,
+  addTask,
+  createBoard,
+  getBoard,
+  updateCheckOnTask,
+} from './helpers/session-manager.js';
 
 let tmpDir: string;
 
@@ -35,7 +41,10 @@ async function failedCommandCheck() {
     notes: 'tsc --noEmit',
   });
   const first = (await taskOf(board.id, taskId)).successCriteria![0]!;
-  await updateCheckOnTask(tmpDir, board.id, taskId, first.id, { status: 'failed', checkedBy: 'system' });
+  await updateCheckOnTask(tmpDir, board.id, taskId, first.id, {
+    status: 'failed',
+    checkedBy: 'system',
+  });
   return { boardId: board.id, taskId, checkId: first.id };
 }
 
@@ -65,7 +74,9 @@ describe('updateCheckOnTask type-change status reset', () => {
 
   it('keeps the persisted status when the type does not change', async () => {
     const { boardId, taskId, checkId } = await failedCommandCheck();
-    await updateCheckOnTask(tmpDir, boardId, taskId, checkId, { description: 'Runs the full typecheck' });
+    await updateCheckOnTask(tmpDir, boardId, taskId, checkId, {
+      description: 'Runs the full typecheck',
+    });
     const check = (await taskOf(boardId, taskId)).successCriteria!.find((c) => c.id === checkId)!;
     expect(check.status).toBe('failed');
     expect(check.checkedAt).toBeDefined();

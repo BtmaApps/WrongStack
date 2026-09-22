@@ -1,4 +1,5 @@
 import type { Context } from '@wrongstack/core/agent';
+import { toErrorMessage } from '@wrongstack/core/utils';
 import {
   type KanbanDecompositionSubtask,
   listBoards,
@@ -6,7 +7,6 @@ import {
   updateTask,
   verifyTaskCompletion,
 } from '@wrongstack/kanban';
-import { toErrorMessage } from '@wrongstack/core/utils';
 import { recordKanbanVerificationEvidence } from '@wrongstack/tools';
 import type { WebSocket } from 'ws';
 import { kanbanBoardMessage, publishKanbanBoard } from './kanban-broadcast.js';

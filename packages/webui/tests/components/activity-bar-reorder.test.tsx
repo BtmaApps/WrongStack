@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
 import {
   ActivityBar,
   applyLockedAnchors,
@@ -9,16 +7,13 @@ import {
 } from '@/components/activity-bar';
 import { useUIStore } from '@/stores';
 import type { ActivityBarOrder } from '@/stores/ui-store-types';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // Pure helpers ─────────────────────────────────────────────────────────
 
 describe('activity-bar · reorder · pure helpers', () => {
-  const defaults = [
-    { id: 'a' },
-    { id: 'b' },
-    { id: 'c' },
-    { id: 'd' },
-  ];
+  const defaults = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
 
   describe('resolveActivityOrder', () => {
     it('returns defaults when no custom order is provided', () => {
@@ -37,9 +32,7 @@ describe('activity-bar · reorder · pure helpers', () => {
     });
 
     it('drops unknown ids, dedupes, and appends missing defaults', () => {
-      expect(
-        resolveActivityOrder(defaults, ['x', 'c', 'a', 'a', 'y', 'c']),
-      ).toEqual([
+      expect(resolveActivityOrder(defaults, ['x', 'c', 'a', 'a', 'y', 'c'])).toEqual([
         { id: 'c' },
         { id: 'a' },
         { id: 'b' },
@@ -61,11 +54,7 @@ describe('activity-bar · reorder · pure helpers', () => {
     it('permutes only the movable subset', () => {
       // Drop `d` to second slot; locked `a`/`b` keep their positions; `c`
       // moves to the end.
-      const reordered = applyLockedAnchors(
-        defaults,
-        ['b', 'd', 'a'],
-        locked,
-      );
+      const reordered = applyLockedAnchors(defaults, ['b', 'd', 'a'], locked);
       expect(reordered.map((d) => d.id)).toEqual(['a', 'b', 'd', 'c']);
     });
 
@@ -77,12 +66,7 @@ describe('activity-bar · reorder · pure helpers', () => {
 
   describe('moveItemId', () => {
     it('moves an id into another id slot, shifting intermediates', () => {
-      expect(moveItemId(['a', 'b', 'c', 'd'], 'd', 'b')).toEqual([
-        'a',
-        'd',
-        'b',
-        'c',
-      ]);
+      expect(moveItemId(['a', 'b', 'c', 'd'], 'd', 'b')).toEqual(['a', 'd', 'b', 'c']);
     });
 
     it('is a no-op when from === to or ids are missing', () => {
@@ -129,12 +113,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
       'design',
     ]);
     // First four views by default order.
-    expect(split.visibleViewIds.slice(0, 4)).toEqual([
-      'sddhub',
-      'goal',
-      'kanban',
-      'roster',
-    ]);
+    expect(split.visibleViewIds.slice(0, 4)).toEqual(['sddhub', 'goal', 'kanban', 'roster']);
   });
 
   it('honors a user-customized panel order with locked anchors', () => {
@@ -146,12 +125,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
       new Set(['chat', 'files', 'changes', 'mailbox']),
     );
     const split = splitDesktopActivityBarItems(20, customPanels, VIEWS);
-    expect(split.visiblePanelIds.slice(0, 4)).toEqual([
-      'chat',
-      'files',
-      'changes',
-      'mailbox',
-    ]);
+    expect(split.visiblePanelIds.slice(0, 4)).toEqual(['chat', 'files', 'changes', 'mailbox']);
     expect(split.visiblePanelIds).toContain('skills');
     expect(split.visiblePanelIds).toContain('design');
   });
@@ -176,12 +150,7 @@ describe('activity-bar · splitDesktopActivityBarItems', () => {
     // order, which now leads with `roster`.
     const split = splitDesktopActivityBarItems(10, PANELS, customViews);
     expect(split.visiblePanelIds.length).toBe(6);
-    expect(split.visibleViewIds.slice(0, 4)).toEqual([
-      'roster',
-      'goal',
-      'provider-test',
-      'sddhub',
-    ]);
+    expect(split.visibleViewIds.slice(0, 4)).toEqual(['roster', 'goal', 'provider-test', 'sddhub']);
   });
 });
 
@@ -217,9 +186,11 @@ describe('activity-bar · store wiring (setActivityBarOrder + persist v8)', () =
   it('partialize includes activityBarOrder so it survives localStorage', () => {
     // Use zustand persist's getOptions() instead of importing the
     // persist module directly (which is internal scaffolding).
-    const persist = (useUIStore as unknown as {
-      persist: { getOptions: () => Record<string, unknown> };
-    }).persist;
+    const persist = (
+      useUIStore as unknown as {
+        persist: { getOptions: () => Record<string, unknown> };
+      }
+    ).persist;
     const opts = persist.getOptions() as {
       version?: number;
       partialize?: (s: Record<string, unknown>) => Record<string, unknown>;
@@ -231,19 +202,18 @@ describe('activity-bar · store wiring (setActivityBarOrder + persist v8)', () =
   });
 
   it('migrate (v8) defensively coerces a hand-edited order payload', () => {
-    const persist = (useUIStore as unknown as {
-      persist: {
-        getOptions: () => {
-          migrate?: (p: Record<string, unknown>, version: number) => Record<string, unknown>;
+    const persist = (
+      useUIStore as unknown as {
+        persist: {
+          getOptions: () => {
+            migrate?: (p: Record<string, unknown>, version: number) => Record<string, unknown>;
+          };
         };
-      };
-    }).persist;
+      }
+    ).persist;
     const migrate = persist.getOptions().migrate;
     expect(typeof migrate).toBe('function');
-    const out = migrate!(
-      { activityBarOrder: { panels: ['invalid'], views: ['chat'] } },
-      7,
-    );
+    const out = migrate!({ activityBarOrder: { panels: ['invalid'], views: ['chat'] } }, 7);
     // 'invalid' is not in `ACTIVITIES` → dropped; 'chat' is a valid view
     // and survives `coerceView`, so the migrate keeps a valid (though
     // bizarre) user-visible object instead of nulling it outright.
@@ -251,10 +221,7 @@ describe('activity-bar · store wiring (setActivityBarOrder + persist v8)', () =
     expect(out.activityBarOrder).toEqual({ panels: [], views: ['chat'] });
     // Fully-bogus payloads (non-objects) are normalized to null so the
     // component's `customOrder?.[group]` access never reads a string.
-    const fullyBogus = migrate!(
-      { activityBarOrder: 'not-an-object' },
-      7,
-    );
+    const fullyBogus = migrate!({ activityBarOrder: 'not-an-object' }, 7);
     expect(fullyBogus.activityBarOrder).toBeNull();
   });
 });

@@ -28,13 +28,25 @@ export {
   validateMcpAuthorizationServerMetadata,
 } from './authorization.js';
 export {
+  type MCPOAuthCallbackServer,
+  type MCPOAuthCallbackServerOptions,
+  startMcpOAuthCallbackServer,
+} from './authorization-callback-server.js';
+export {
   type MCPAuthorizationCompleteInput,
+  type MCPAuthorizationLoginHandle,
+  type MCPAuthorizationLoginInput,
   MCPAuthorizationManager,
   type MCPAuthorizationManagerOptions,
   type MCPAuthorizationStartInput,
   type MCPAuthorizationStartResult,
   type MCPAuthorizationStatus,
 } from './authorization-manager.js';
+export {
+  type MCPClientRegistration,
+  type MCPClientRegistrationOptions,
+  registerMcpOAuthClient,
+} from './authorization-registration.js';
 export {
   MCPClient,
   type MCPClientOptions,

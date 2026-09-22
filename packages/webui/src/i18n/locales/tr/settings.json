@@ -507,7 +507,8 @@
   "execution": {
     "heading": "Yürütme",
     "maxIterationsLabel": "Çalışma başına maks iterasyon",
-    "maxIterationsHint": "agent.run() başına LLM turu için sabit sınır.",
+    "unlimitedLabel": "Limitsiz",
+    "maxIterationsHint": "Çalıştırma başına maksimum LLM turu. 0 = limitsiz.",
     "autoProceedMaxIterationsLabel": "Otomatik ilerleme maks iterasyon",
     "autoProceedMaxIterationsHint": "N iterasyondan sonra otomatik ilerlemeyi durdur. 0 = sınırsız.",
     "confirmExitLabel": "Çıkıştan önce onayla",

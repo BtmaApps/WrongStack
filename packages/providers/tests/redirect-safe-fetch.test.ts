@@ -253,7 +253,9 @@ describe('redirectSafeFetch', () => {
       // `isPrivateIPv6` returns true for anything that fails v6 expansion, so
       // a naive unbracket-and-check would classify every hostname as private.
       const impl = vi.fn(async (_url: string) =>
-        _url === 'https://api.example/v1' ? response(307, 'https://cdn.example.net/v2') : response(200),
+        _url === 'https://api.example/v1'
+          ? response(307, 'https://cdn.example.net/v2')
+          : response(200),
       );
       const res = await redirectSafeFetch(
         impl as unknown as typeof fetch,
