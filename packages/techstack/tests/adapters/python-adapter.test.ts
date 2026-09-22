@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PythonAdapter, parsePoetryLock } from '../../src/adapters/python.js';
 import { workspaceId } from '../../src/discovery/index.js';
+import { parsePurlEcosystem } from '../../src/registry/purl.js';
 import type { Workspace } from '../../src/types.js';
 
 const PYPROJECT = `[project]
@@ -160,7 +161,46 @@ describe('PythonAdapter', () => {
       const django = deps.find((d) => d.name === 'django');
       expect(django).toBeDefined();
       expect(django!.locked).toBe('5.2.1');
-      expect(django!.purl).toBe('pkg:python/django@5.2.1');
+      expect(django!.purl).toBe('pkg:pypi/django@5.2.1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('emits purls with the canonical pypi type that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace({
+      'pyproject.toml': POETRY_PYPROJECT,
+      'poetry.lock': POETRY_LOCK,
+    });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const django = deps.find((d) => d.name === 'django');
+      expect(django!.purl).toMatch(/^pkg:pypi\//);
+      // Regression (round r20): the adapter used to emit `pkg:python/…` — a
+      // purl type this package's own identity resolver cannot resolve, so
+      // SBOM identities and OSV advisory queries silently failed.
+      const parsed = parsePurlEcosystem(django!.purl!);
+      expect(parsed).toEqual({ ecosystem: 'python', name: 'django', version: '5.2.1' });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('normalizes raw-spelling names in the purl while keeping the raw row name', async () => {
+    const { dir, ws } = mkWorkspace({ 'requirements.txt': 'Django==5.2.1\n' });
+    try {
+      const deps = await new PythonAdapter().inventory(ws, {});
+      const django = deps.find((d) => d.name === 'Django');
+      expect(django).toBeDefined();
+      // Regression (round r24): the purl used to carry the raw spelling
+      // (`pkg:pypi/Django@5.2.1`) — an identity OSV can never match.
+      expect(django!.purl).toBe('pkg:pypi/django@5.2.1');
+      expect(django!.name).toBe('Django');
+      expect(parsePurlEcosystem(django!.purl!)).toEqual({
+        ecosystem: 'python',
+        name: 'django',
+        version: '5.2.1',
+      });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

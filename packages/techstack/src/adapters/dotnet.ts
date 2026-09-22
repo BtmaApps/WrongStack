@@ -9,7 +9,7 @@
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, EcosystemId, Evidence, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
 import { parseXmlAttributes, xmlTagValue } from './parse-utils.js';
@@ -149,9 +149,12 @@ export class DotNetAdapter implements EcosystemAdapter {
       const locked = lockVersions.get(ref.name) || ref.version;
 
       // .NET PackageReferences are always registry (NuGet)
+      // constructPurl maps the ecosystem id to the canonical PURL type
+      // (`pkg:nuget/…`); the raw id (`pkg:dotnet/…`) is unresolvable by this
+      // package's own parsePurlEcosystem and by OSV advisory queries.
       const purl = locked
-        ? buildPurl({ type: 'dotnet', name: ref.name, version: locked })
-        : buildPurl({ type: 'dotnet', name: ref.name });
+        ? constructPurl('dotnet', ref.name, locked)
+        : constructPurl('dotnet', ref.name);
 
       const evidence: Evidence[] = [manifestEv];
       if (lockEv && lockVersions.has(ref.name)) evidence.push(lockEv);

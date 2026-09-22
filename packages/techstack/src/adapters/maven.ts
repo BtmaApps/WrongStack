@@ -9,7 +9,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type { DependencyObservation, DependencyScope, EcosystemId, Workspace } from '../types.js';
 import type { EcosystemAdapter, InventoryOptions } from './interface.js';
 import { xmlTagValue } from './parse-utils.js';
@@ -126,9 +126,13 @@ export class MavenAdapter implements EcosystemAdapter {
       if (seen.has(name)) continue;
       seen.add(name);
 
+      // constructPurl splits the native groupId:artifactId coordinate into the
+      // canonical purl namespace/name form (`pkg:maven/group/artifact`); the
+      // raw coordinate as one name segment produced `pkg:maven/group:artifact`,
+      // which spec-conformant consumers (OSV) can never match.
       const purl = dep.version
-        ? buildPurl({ type: 'maven', name, version: dep.version })
-        : buildPurl({ type: 'maven', name });
+        ? constructPurl('maven', name, dep.version)
+        : constructPurl('maven', name);
 
       observations.push({
         id: `dep-${workspace.id}-${name}`,

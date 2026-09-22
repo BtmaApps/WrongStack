@@ -80,6 +80,13 @@ describe('fixture-parity — PURL construction per ecosystem', () => {
     expect(constructPurl('python', 'requests', '2.32.3')).toBe('pkg:pypi/requests@2.32.3');
   });
 
+  it('pypi — raw-spelling names are PEP 503 normalized', () => {
+    // Regression (round r24): raw manifest spellings produced `pkg:pypi/Django`
+    // — an identity OSV can never match to the canonical lowercased component.
+    expect(constructPurl('python', 'Django', '5.2')).toBe('pkg:pypi/django@5.2');
+    expect(constructPurl('python', 'Flask_Admin', '1.0')).toBe('pkg:pypi/flask-admin@1.0');
+  });
+
   it('cargo — produces `pkg:cargo/<name>@<version>`', () => {
     expect(constructPurl('rust', 'serde', '1.0.215')).toBe('pkg:cargo/serde@1.0.215');
   });
@@ -94,6 +101,16 @@ describe('fixture-parity — PURL construction per ecosystem', () => {
     expect(constructPurl('maven', 'org.springframework/spring-core', '6.2.7')).toBe(
       'pkg:maven/org.springframework/spring-core@6.2.7',
     );
+  });
+
+  it('maven — native groupId:artifactId coordinates split into namespace/name', () => {
+    // Regression (round r22): the native coordinate spelling must produce the
+    // same canonical purl as the slash pair — the raw colon form as one name
+    // segment is non-canonical and unmatchable for spec-conformant consumers.
+    expect(constructPurl('maven', 'org.springframework:spring-core', '6.2.7')).toBe(
+      'pkg:maven/org.springframework/spring-core@6.2.7',
+    );
+    expect(constructPurl('gradle', 'com.example:baz')).toBe('pkg:maven/com.example/baz');
   });
 
   it('nuget — produces `pkg:nuget/<name>@<version>`', () => {

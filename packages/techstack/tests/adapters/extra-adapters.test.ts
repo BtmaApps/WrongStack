@@ -10,6 +10,7 @@ import { MavenAdapter } from '../../src/adapters/maven.js';
 import { PhpAdapter } from '../../src/adapters/php.js';
 import { RubyAdapter } from '../../src/adapters/ruby.js';
 import { workspaceId } from '../../src/discovery/index.js';
+import { parsePurlEcosystem } from '../../src/registry/purl.js';
 import type { Workspace } from '../../src/types.js';
 
 function mkWorkspace(
@@ -101,6 +102,26 @@ describe('DartAdapter', () => {
     await withCleanup(async () => {
       const deps = await new DartAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'flutter')).toBeUndefined();
+    }, dir);
+  });
+
+  it('emits purls with the canonical pub type that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace('dart', {
+      'pubspec.yaml': PUBSPEC,
+      'pubspec.lock': PUBSPEC_LOCK,
+    });
+    await withCleanup(async () => {
+      const deps = await new DartAdapter().inventory(ws, {});
+      const http = deps.find((d) => d.name === 'http');
+      expect(http!.purl).toMatch(/^pkg:pub\//);
+      // Regression (round r20): the adapter used to emit `pkg:dart/…` — a
+      // purl type this package's own identity resolver cannot resolve, so
+      // SBOM identities and OSV advisory queries silently failed.
+      expect(parsePurlEcosystem(http!.purl!)).toEqual({
+        ecosystem: 'dart',
+        name: 'http',
+        version: '1.2.2',
+      });
     }, dir);
   });
 
@@ -220,6 +241,27 @@ describe('PhpAdapter', () => {
     await withCleanup(async () => {
       const deps = await new PhpAdapter().inventory(ws, {});
       expect(deps.find((d) => d.name === 'monolog/monolog')?.locked).toBe('3.5.0');
+    }, dir);
+  });
+
+  it('emits purls with the canonical composer type that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace('php', {
+      'composer.json': COMPOSER_JSON,
+      'composer.lock': COMPOSER_LOCK,
+    });
+    await withCleanup(async () => {
+      const deps = await new PhpAdapter().inventory(ws, {});
+      const monolog = deps.find((d) => d.name === 'monolog/monolog');
+      expect(monolog!.purl).toMatch(/^pkg:composer\//);
+      // Regression (round r20): the adapter used to emit
+      // `pkg:php/monolog%2Fmonolog@3.5.0` — a purl type this package's own
+      // identity resolver cannot resolve. The canonical form splits the
+      // composer vendor/package into namespace/name.
+      expect(parsePurlEcosystem(monolog!.purl!)).toEqual({
+        ecosystem: 'php',
+        name: 'monolog/monolog',
+        version: '3.5.0',
+      });
     }, dir);
   });
 
@@ -363,7 +405,7 @@ describe('DotNetAdapter', () => {
       expect(dep).toMatchObject({
         requested: '13.0.3',
         locked: '13.0.3',
-        purl: 'pkg:dotnet/Newtonsoft.Json@13.0.3',
+        purl: 'pkg:nuget/Newtonsoft.Json@13.0.3',
       });
       expect(dep?.evidence.some((e) => e.kind === 'lockfile')).toBe(true);
     }, dir);
@@ -379,7 +421,7 @@ describe('DotNetAdapter', () => {
       expect(dep).toMatchObject({
         requested: '13.*',
         locked: '13.0.3',
-        purl: 'pkg:dotnet/Newtonsoft.Json@13.0.3',
+        purl: 'pkg:nuget/Newtonsoft.Json@13.0.3',
       });
     }, dir);
   });
@@ -388,6 +430,23 @@ describe('DotNetAdapter', () => {
     const { dir, ws } = mkWorkspace('dotnet', {});
     await withCleanup(async () => {
       expect(await new DotNetAdapter().inventory(ws, {})).toEqual([]);
+    }, dir);
+  });
+
+  it('emits purls with the canonical nuget type that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace('dotnet', { 'App.csproj': CSPROJ });
+    await withCleanup(async () => {
+      const deps = await new DotNetAdapter().inventory(ws, {});
+      const dep = deps.find((d) => d.name === 'Newtonsoft.Json');
+      expect(dep!.purl).toMatch(/^pkg:nuget\//);
+      // Regression (round r20): the adapter used to emit `pkg:dotnet/…` — a
+      // purl type this package's own identity resolver cannot resolve, so
+      // SBOM identities and OSV advisory queries silently failed.
+      expect(parsePurlEcosystem(dep!.purl!)).toEqual({
+        ecosystem: 'dotnet',
+        name: 'Newtonsoft.Json',
+        version: '13.0.3',
+      });
     }, dir);
   });
 });
@@ -689,6 +748,23 @@ describe('MavenAdapter', () => {
       expect(deps.find((d) => d.name === 'org.springframework:spring-core')?.requested).toBe(
         '6.1.0',
       );
+    }, dir);
+  });
+
+  it('emits purls with the canonical maven namespace that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace('maven', { 'pom.xml': POM_XML });
+    await withCleanup(async () => {
+      const deps = await new MavenAdapter().inventory(ws, {});
+      const spring = deps.find((d) => d.name === 'org.springframework:spring-core');
+      expect(spring!.purl).toBe('pkg:maven/org.springframework/spring-core@6.1.0');
+      // Regression (round r22): the adapter used to emit the raw coordinate as
+      // one name segment (`pkg:maven/org.springframework:spring-core@6.1.0`) —
+      // a non-canonical purl that spec-conformant consumers (OSV) cannot match.
+      expect(parsePurlEcosystem(spring!.purl!)).toEqual({
+        ecosystem: 'maven',
+        name: 'org.springframework/spring-core',
+        version: '6.1.0',
+      });
     }, dir);
   });
 

@@ -9,7 +9,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -364,11 +364,16 @@ export class PythonAdapter implements EcosystemAdapter {
           !dep.constraint.startsWith('git+') &&
           !dep.constraint.startsWith('-e'));
 
+      // constructPurl maps the ecosystem id to the canonical PURL type
+      // (`pkg:pypi/…`). The low-level buildPurl with the raw id emitted
+      // `pkg:python/…` — a type this package's own parsePurlEcosystem (and
+      // OSV) cannot resolve, so every Python component identity was
+      // unresolvable downstream.
       const purl =
         isRegistry && locked
-          ? buildPurl({ type: 'python', name: dep.name, version: locked })
+          ? constructPurl('python', dep.name, locked)
           : isRegistry
-            ? buildPurl({ type: 'python', name: dep.name })
+            ? constructPurl('python', dep.name)
             : undefined;
 
       const evidence: Evidence[] = [];
@@ -405,7 +410,8 @@ export class PythonAdapter implements EcosystemAdapter {
         observations.push({
           id: `dep-${workspace.id}-${name}`,
           workspaceId: workspace.id,
-          purl: buildPurl({ type: 'python', name, version: locked }),
+          // Canonical pypi type — see the direct-deps pass above.
+          purl: constructPurl('python', name, locked),
           ecosystem: 'python',
           name,
           sourceType: 'registry',

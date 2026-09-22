@@ -9,7 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 import { parseRange, satisfiesRange } from '../policy/resolver.js';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -359,11 +359,14 @@ export class RustAdapter implements EcosystemAdapter {
         if (locked) seenInstances.add(`${dep.name}@${locked}`);
         const isRegistry = dep.sourceType === 'registry';
 
+        // constructPurl maps the ecosystem id to the canonical PURL type
+        // (`pkg:cargo/…`); the raw id (`pkg:rust/…`) is unresolvable by this
+        // package's own parsePurlEcosystem and by OSV advisory queries.
         const purl =
           isRegistry && locked
-            ? buildPurl({ type: 'rust', name: dep.name, version: locked })
+            ? constructPurl('rust', dep.name, locked)
             : isRegistry
-              ? buildPurl({ type: 'rust', name: dep.name })
+              ? constructPurl('rust', dep.name)
               : undefined;
 
         const evidence: Evidence[] = [manifestEv];
@@ -410,7 +413,8 @@ export class RustAdapter implements EcosystemAdapter {
           observations.push({
             id: multiple ? `dep-${workspace.id}-${name}@${locked}` : `dep-${workspace.id}-${name}`,
             workspaceId: workspace.id,
-            purl: buildPurl({ type: 'rust', name, version: locked }),
+            // Canonical cargo type — see the direct-deps pass above.
+            purl: constructPurl('rust', name, locked),
             ecosystem: 'rust',
             name,
             sourceType: 'registry',

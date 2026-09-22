@@ -9,7 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -172,11 +172,16 @@ export class PhpAdapter implements EcosystemAdapter {
         const sourceType = sourceTypeForComposerSpec(constraint);
         const isRegistry = sourceType === 'registry';
 
+        // constructPurl maps the ecosystem id to the canonical PURL type and
+        // splits composer vendor/package into namespace/name
+        // (`pkg:composer/monolog/monolog`); the raw id built
+        // `pkg:php/monolog%2Fmonolog`, a type this package's own
+        // parsePurlEcosystem (and OSV) cannot resolve.
         const purl =
           isRegistry && locked
-            ? buildPurl({ type: 'php', name, version: locked })
+            ? constructPurl('php', name, locked)
             : isRegistry
-              ? buildPurl({ type: 'php', name })
+              ? constructPurl('php', name)
               : undefined;
 
         const evidence: Evidence[] = [manifestEv];

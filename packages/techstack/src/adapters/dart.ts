@@ -9,7 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -227,15 +227,14 @@ export class DartAdapter implements EcosystemAdapter {
         // it must not leak into the purl as `@*`.
         const declared = constraint === '*' ? undefined : constraint;
         // Strip caret/tilde/>= for PURL — use locked if available
+        // constructPurl maps the ecosystem id to the canonical PURL type
+        // (`pkg:pub/…`); the raw id (`pkg:dart/…`) is unresolvable by this
+        // package's own parsePurlEcosystem and by OSV advisory queries.
         const purl =
           isRegistry && (locked || declared)
-            ? buildPurl({
-                type: 'dart',
-                name,
-                version: locked || declared!.replace(/^[\^~>=<\s]+/, ''),
-              })
+            ? constructPurl('dart', name, locked || declared!.replace(/^[\^~>=<\s]+/, ''))
             : isRegistry
-              ? buildPurl({ type: 'dart', name })
+              ? constructPurl('dart', name)
               : undefined;
 
         const evidence: Evidence[] = [manifestEv];

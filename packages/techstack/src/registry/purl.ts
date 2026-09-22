@@ -221,7 +221,7 @@ export function ecosystemForPurlType(type: string): EcosystemId | undefined {
  * @example
  * constructPurl('npm', 'react', '19.1.0')          // → 'pkg:npm/react@19.1.0'
  * constructPurl('npm', '@types/node', '22.0.0')   // → 'pkg:npm/%40types/node@22.0.0'
- * constructPurl('pypi', 'django', '5.2')           // → 'pkg:pypi/django@5.2'
+ * constructPurl('python', 'Django', '5.2')           // → 'pkg:pypi/django@5.2'
  * constructPurl('maven', 'org.springframework/spring-core', '6.2.7')
  *                                                // → 'pkg:maven/org.springframework/spring-core@6.2.7'
  * constructPurl('go', 'github.com/gorilla/mux', '1.8.1')
@@ -238,9 +238,39 @@ export function constructPurl(ecosystem: EcosystemId, name: string, version?: st
     const versionSuffix = version !== undefined ? `@${encodePurlSegment(version)}` : '';
     return `pkg:${type}/${name}${versionSuffix}`;
   }
+  // PyPI names reach the purl in their canonical PEP 503 form (lowercase,
+  // `_` → `-`; mirrors python.ts#normalizePkgName). Raw manifest spellings
+  // (`Django`, `Flask_Admin`) produced purls OSV can never match to the
+  // canonical lowercased component.
+  if (ecosystem === 'python') {
+    name = normalizePypiName(name);
+  }
+  // Maven coordinates are natively 'groupId:artifactId' (pom.xml <dependency>
+  // entries, Gradle GAV notation) — the ecosystem-native spelling of the
+  // slash pair handled below. Split the FIRST ':' into namespace/name when
+  // the remainder is a bare artifactId (no further ':'); anything else passes
+  // through unmodified rather than being mangled. Emitting the raw coordinate
+  // as one name segment produced `pkg:maven/group:artifact`, a non-canonical
+  // purl that spec-conformant consumers (OSV) can never match.
+  if (ecosystem === 'maven' || ecosystem === 'gradle') {
+    const colonIdx = name.indexOf(':');
+    if (colonIdx > 0) {
+      const namespace = name.slice(0, colonIdx);
+      const artifactId = name.slice(colonIdx + 1);
+      if (artifactId.length > 0 && !artifactId.includes(':')) {
+        return buildPurl({
+          type,
+          namespace,
+          name: artifactId,
+          ...(version !== undefined ? { version } : {}),
+        });
+      }
+    }
+  }
   const slashIdx = name.indexOf('/');
   // npm scoped packages: '@scope/name' → namespace='@scope', name='name'.
-  // Maven coordinates: 'groupId/artifactId' → namespace=groupId, name=artifactId.
+  // Maven coordinates: 'groupId/artifactId' (or the native
+  // 'groupId:artifactId' handled above) → namespace=groupId, name=artifactId.
   if (slashIdx > 0) {
     const namespace = name.slice(0, slashIdx);
     const pkgName = name.slice(slashIdx + 1);
@@ -294,6 +324,15 @@ export function parsePurlEcosystem(purl: string): ParsedEcosystemPurl | undefine
     name,
     ...(parts.version !== undefined ? { version: parts.version } : {}),
   };
+}
+
+/**
+ * Canonical PyPI name per PEP 503 as used across this package
+ * (python.ts#normalizePkgName): lowercase, `_` → `-`. Raw manifest spellings
+ * must never leak into purl identities — OSV matches the canonical form.
+ */
+function normalizePypiName(name: string): string {
+  return name.replace(/_/g, '-').toLowerCase();
 }
 
 /**

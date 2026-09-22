@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildPurl } from '../registry/purl.js';
+import { constructPurl } from '../registry/purl.js';
 import type {
   DependencyObservation,
   DependencyScope,
@@ -170,7 +170,9 @@ export class GradleAdapter implements EcosystemAdapter {
       observations.push({
         id: `dep-${workspace.id}-${name}`,
         workspaceId: workspace.id,
-        purl: buildPurl({ type: 'maven', name, ...(version ? { version } : {}) }),
+        // constructPurl splits the native groupId:artifactId coordinate into
+        // the canonical purl namespace/name form (see purl.ts).
+        purl: constructPurl('maven', name, version || undefined),
         ecosystem: 'gradle',
         name,
         sourceType: 'registry',

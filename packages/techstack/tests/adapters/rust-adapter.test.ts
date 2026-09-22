@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { RustAdapter } from '../../src/adapters/rust.js';
 import { workspaceId } from '../../src/discovery/index.js';
+import { parsePurlEcosystem } from '../../src/registry/purl.js';
 import type { Workspace } from '../../src/types.js';
 
 const CARGO = `[package]\nname="x"\nversion="0.1.0"\n[dependencies]\nserde="1.0"\ntokio={version="1.40"}\n[dev-dependencies]\ncriterion="0.5"\n`;
@@ -102,7 +103,7 @@ describe('RustAdapter', () => {
         requested: '1.40',
         locked: '1.40.0',
         scope: 'runtime',
-        purl: 'pkg:rust/tokio@1.40.0',
+        purl: 'pkg:cargo/tokio@1.40.0',
       });
       // The wrapped dev-dependency is inventoried in its own scope too.
       expect(deps.find((d) => d.name === 'criterion')).toMatchObject({
@@ -157,11 +158,27 @@ describe('RustAdapter', () => {
       expect(deps.find((d) => d.name === 'syn')).toMatchObject({
         requested: '1.0',
         locked: '1.0.109',
-        purl: 'pkg:rust/syn@1.0.109',
+        purl: 'pkg:cargo/syn@1.0.109',
       });
       // Single-version and exact-requirement crates are unchanged.
       expect(deps.find((d) => d.name === 'serde')?.locked).toBe('1.0.215');
       expect(deps.find((d) => d.name === 'base64')?.locked).toBe('0.22.1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('emits purls with the canonical cargo type that parsePurlEcosystem resolves', async () => {
+    const { dir, ws } = mkWorkspace({ 'Cargo.toml': CARGO, 'Cargo.lock': LOCK });
+    try {
+      const deps = await new RustAdapter().inventory(ws, {});
+      const serde = deps.find((d) => d.name === 'serde');
+      expect(serde!.purl).toMatch(/^pkg:cargo\//);
+      // Regression (round r20): the adapter used to emit `pkg:rust/…` — a
+      // purl type this package's own identity resolver cannot resolve, so
+      // SBOM identities and OSV advisory queries silently failed.
+      const parsed = parsePurlEcosystem(serde!.purl!);
+      expect(parsed).toEqual({ ecosystem: 'rust', name: 'serde', version: '1.0.215' });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { gradleAdapter } from '../../src/adapters/gradle.js';
 import { swiftAdapter } from '../../src/adapters/swift.js';
+import { parsePurlEcosystem } from '../../src/registry/purl.js';
 import type { EcosystemId, Workspace } from '../../src/types.js';
 
 const roots: string[] = [];
@@ -60,6 +61,27 @@ describe('GradleAdapter', () => {
       'development',
     );
     expect(deps.find((dep) => dep.name === 'com.google.guava:guava')?.direct).toBe(false);
+  });
+
+  it('emits purls with the canonical maven namespace that parsePurlEcosystem resolves', async () => {
+    const { root, workspace } = fixture(
+      'gradle',
+      {
+        'build.gradle.kts': 'dependencies { implementation("org.slf4j:slf4j-api:2.0.12") }',
+      },
+      ['build.gradle.kts'],
+    );
+    const deps = await gradleAdapter.inventory(workspace, { projectRoot: root });
+    const slf4j = deps.find((dep) => dep.name === 'org.slf4j:slf4j-api');
+    expect(slf4j!.purl).toBe('pkg:maven/org.slf4j/slf4j-api@2.0.12');
+    // Regression (round r22): the adapter used to emit
+    // `pkg:maven/org.slf4j:slf4j-api@2.0.12` — a non-canonical purl that
+    // spec-conformant consumers (OSV) cannot match.
+    expect(parsePurlEcosystem(slf4j!.purl!)).toEqual({
+      ecosystem: 'maven',
+      name: 'org.slf4j/slf4j-api',
+      version: '2.0.12',
+    });
   });
 });
 
