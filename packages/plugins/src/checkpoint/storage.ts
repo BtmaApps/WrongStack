@@ -2,7 +2,7 @@ import { isUtf8 } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import type { Snapshot } from './index.js';
+import type { Snapshot } from './snapshot.js';
 
 function inside(root: string, target: string): boolean {
   const path = relative(root, target);

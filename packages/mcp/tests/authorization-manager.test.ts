@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { DefaultSecretVault } from '@wrongstack/core/security';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MCPAuthorizationManager } from '../src/authorization-manager.js';
+import type { MCPClientRegistrationOptions } from '../src/authorization-registration.js';
 import { MCPVaultTokenStore } from '../src/token-store.js';
 
 const temporaryDirectories: string[] = [];
@@ -366,7 +367,7 @@ describe('MCPAuthorizationManager client identity', () => {
 
   it('dynamically registers a client when none was supplied', async () => {
     const fixture = await createFixture();
-    const register = vi.fn(async () => ({
+    const register = vi.fn(async (_options: MCPClientRegistrationOptions) => ({
       clientId: 'dcr-client',
       issuer: 'https://auth.example.com',
       registeredAt: new Date().toISOString(),

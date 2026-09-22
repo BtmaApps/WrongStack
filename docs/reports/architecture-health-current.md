@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T12:24:36.991Z
+**Generated:** 2026-09-22T14:49:21.036Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,20 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 4074 |
-| Production source lines | 963907 |
+| Production source files | 4075 |
+| Production source lines | 963932 |
 | Test files | 3595 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 13256 |
+| Relative module edges | 13259 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 9 |
+| Type-inclusive module cycles | 8 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-- 1 unexcepted module cycle(s)
+PASS — no blocking architecture-health errors.
 
 ## Workspace packages
 
@@ -41,7 +41,7 @@
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 124 | 120 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 125 | 120 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
 | @wrongstack/providers | 86 | 76 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
@@ -79,7 +79,6 @@ None.
 - packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/types/plugin.ts
 - packages/core/src/index.ts ↔ packages/core/src/plugins/prompts-plugin.ts ↔ packages/core/src/plugins/skills-plugin.ts ↔ packages/core/src/plugins/sync-plugin.ts ↔ packages/core/src/tools/mcp-control.ts ↔ packages/core/src/tools/mcp-use.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session-events.ts ↔ packages/core/src/types/session-storage.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
-- packages/plugins/src/checkpoint/index.ts ↔ packages/plugins/src/checkpoint/state.ts ↔ packages/plugins/src/checkpoint/storage.ts
 - packages/sage/src/middleware/tool-call-memory-retrieval.ts ↔ packages/sage/src/middleware/tool-call-memory-trace.ts ↔ packages/sage/src/middleware/tool-call-memory.ts
 
 ## Largest production files

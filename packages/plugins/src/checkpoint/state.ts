@@ -1,7 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHostStates } from '../runtime/host-state.js';
-import type { Snapshot } from './index.js';
+import type { Snapshot } from './snapshot.js';
 
 export interface CheckpointState {
   root: string;

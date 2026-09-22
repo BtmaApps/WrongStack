@@ -157,22 +157,31 @@ describe('slash commands', () => {
 
   it('registers command set and returns bare names', () => {
     const registered: string[] = [];
-    const options = new Map<string, { bare?: boolean } | undefined>();
+    const aliases = new Map<string, readonly string[] | undefined>();
     const names = registerSlashCommands(
       {
         slashCommands: {
-          register: (cmd: { name: string }, opts?: { bare?: boolean }) => {
+          register: (cmd: { name: string; aliases?: readonly string[] }) => {
             registered.push(cmd.name);
-            options.set(cmd.name, opts);
+            aliases.set(cmd.name, cmd.aliases);
           },
         },
       } as never,
       { list: () => [] } as never,
     );
-    expect(names).toEqual(['lsp', 'list', 'start', 'stop', 'restart', 'diagnostics']);
+    expect(names).toEqual([
+      'lsp',
+      'lsp-list',
+      'lsp-start',
+      'lsp-stop',
+      'lsp-restart',
+      'lsp-diagnostics',
+    ]);
     expect(registered).toEqual(names);
-    expect(options.get('stop')).toEqual({ bare: false });
-    expect(options.get('lsp')).toBeUndefined();
+    // Legacy bare names survive only as aliases; `stop` is reserved by core's
+    // `/interrupt`, so the alias write is refused while `lsp-stop` stays bare.
+    expect(aliases.get('lsp-stop')).toEqual(['stop']);
+    expect(aliases.get('lsp-list')).toEqual(['list']);
   });
 });
 

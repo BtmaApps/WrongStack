@@ -2,6 +2,7 @@ import type React from 'react';
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { useWindowedPicker } from '../hooks/use-windowed-picker.js';
 import { Box, Text } from '../ink.js';
+import { displayWidth } from '../terminal-width.js';
 
 export interface PluginPickerItem {
   name: string;
@@ -40,6 +41,8 @@ const LIST_NAME_CHROME = 6;
 /** Border/padding around the longest name rendered as the detail heading. */
 const DETAIL_NAME_CHROME = 4;
 const PANE_GAP_COLUMNS = 1;
+/** Round border (2) + horizontal padding (2) consumed by every pane row. */
+const PANE_CHROME_COLUMNS = 4;
 const MIN_LIST_COLUMN_WIDTH = 34;
 const MIN_DETAIL_COLUMN_WIDTH = 40;
 const DETAIL_MIN_ROWS = 12;
@@ -108,10 +111,23 @@ export function PluginPicker({
   // row still carries the per-row `🔒` marker so per-row lock-marker
   // assertions remain green.
   const hasRoomForFullHint = (columns ?? size.columns) >= 70 && !split;
-  const subheaderText = hasRoomForFullHint && hasLockedRows
-    ? '↑/↓ select · Enter/←/→ toggle · 🔒 = locked · Esc close'
-    : '↑/↓ select · Enter/←/→ toggle · Esc close';
-  const showInlineLockedHint = hasRoomForFullHint && hasLockedRows;
+  // The subheader renders with `truncate-end`, so on a narrow pane (the 32-col
+  // list column of the split layout) the long form loses its tail — including
+  // the only `Esc` affordance. Step down through shorter forms and pick the
+  // first that fits the pane's content width; the shortest still names Esc.
+  const subheaderWidth = (split ? listColumnWidth : (columns ?? size.columns)) - PANE_CHROME_COLUMNS;
+  const subheaderCandidates = [
+    ...(hasRoomForFullHint && hasLockedRows
+      ? ['↑/↓ select · Enter/←/→ toggle · 🔒 = locked · Esc close']
+      : []),
+    '↑/↓ select · Enter/←/→ toggle · Esc close',
+    '↑/↓ select · Enter toggle · Esc close',
+    '↑/↓ · Enter toggle · Esc',
+  ];
+  const shortestSubheader = '↑/↓ · Enter · Esc';
+  const subheaderText =
+    subheaderCandidates.find((text) => displayWidth(text) <= subheaderWidth) ?? shortestSubheader;
+  const showInlineLockedHint = hasRoomForFullHint && hasLockedRows && subheaderText.includes('🔒');
 
   const list = (
     <Box

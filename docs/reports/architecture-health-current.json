@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T12:24:36.991Z",
+  "generatedAt": "2026-09-22T14:49:21.036Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,21 +12,19 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 4074,
+    "sourceFiles": 4075,
     "testFiles": 3595,
-    "sourceLines": 963907,
+    "sourceLines": 963932,
     "workspaceEdges": 129,
-    "moduleEdges": 13256,
+    "moduleEdges": 13259,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 9,
+    "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 934
   },
-  "errors": [
-    "1 unexcepted module cycle(s)"
-  ],
+  "errors": [],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -440,7 +438,7 @@
     {
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
-      "sourceFiles": 124,
+      "sourceFiles": 125,
       "testFiles": 120,
       "workspaceDependencies": [
         "@wrongstack/core",
@@ -1074,14 +1072,6 @@
       {
         "kind": "type-module-cycle",
         "members": [
-          "packages/plugins/src/checkpoint/index.ts",
-          "packages/plugins/src/checkpoint/state.ts",
-          "packages/plugins/src/checkpoint/storage.ts"
-        ]
-      },
-      {
-        "kind": "type-module-cycle",
-        "members": [
           "packages/sage/src/middleware/tool-call-memory-retrieval.ts",
           "packages/sage/src/middleware/tool-call-memory-trace.ts",
           "packages/sage/src/middleware/tool-call-memory.ts"
@@ -1098,16 +1088,7 @@
       "ARCH-CYCLE-TYPE-30",
       "ARCH-CYCLE-TYPE-31"
     ],
-    "unexcepted": [
-      {
-        "kind": "type-module-cycle",
-        "members": [
-          "packages/plugins/src/checkpoint/index.ts",
-          "packages/plugins/src/checkpoint/state.ts",
-          "packages/plugins/src/checkpoint/storage.ts"
-        ]
-      }
-    ]
+    "unexcepted": []
   },
   "testOwnership": {
     "runtimeAssignments": [

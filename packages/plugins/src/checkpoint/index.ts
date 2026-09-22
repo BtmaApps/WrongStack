@@ -38,6 +38,7 @@
  */
 
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import type { Snapshot } from './snapshot.js';
 import {
   type CheckpointHost,
   type CheckpointState,
@@ -51,26 +52,7 @@ import {
 } from './state.js';
 import { captureFile, resolveProjectPath, restoreFile } from './storage.js';
 
-// ---------------------------------------------------------------------------
-// Snapshot representation
-// ---------------------------------------------------------------------------
-
-export interface Snapshot {
-  id: string;
-  createdAt: string;
-  /** What triggered the capture: 'auto:write', 'auto:edit', or 'manual'. */
-  origin: string;
-  files: Array<{
-    path: string;
-    /** null = file did not exist at capture time. */
-    content: string | null;
-    /** Binary data is retained losslessly as base64. Text remains UTF-8. */
-    encoding?: 'base64' | undefined;
-    /** Permission bits used when recreating a captured file that has since been deleted. */
-    mode?: number | undefined;
-    bytes: number;
-  }>;
-}
+export type { Snapshot } from './snapshot.js';
 
 // ---------------------------------------------------------------------------
 // Config
