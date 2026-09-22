@@ -41,11 +41,21 @@ const exists = (file: string) =>
     () => false,
   );
 
-/** The sweep is fire-and-forget; poll for its effect. */
-async function settle(): Promise<void> {
-  for (let attempt = 0; attempt < 50; attempt++) {
+/**
+ * The sweep is fire-and-forget, so its effect has to be waited for.
+ *
+ * With a predicate this polls until the effect lands, which returns in a few
+ * milliseconds normally and still tolerates a runner under load — a flat sleep
+ * asserts at a fixed instant and fails whenever the sweep needs one tick more.
+ * Without one (asserting a sweep did *not* happen) a quiet window is the only
+ * thing that can be waited for, so that case keeps the fixed delay.
+ */
+async function settle(until?: () => Promise<boolean>): Promise<void> {
+  const deadline = Date.now() + (until ? 10_000 : 500);
+  do {
+    if (until && (await until())) return;
     await new Promise((resolve) => setTimeout(resolve, 10));
-  }
+  } while (Date.now() < deadline);
 }
 
 describe('browser artifact retention', () => {
@@ -55,7 +65,7 @@ describe('browser artifact retention', () => {
     const fresh = await seed('sess-a', 'new.png', 1);
 
     new BrowserArtifactStore(root);
-    await settle();
+    await settle(async () => !(await exists(stale)) && !(await exists(staleMeta)));
 
     expect(await exists(stale)).toBe(false);
     expect(await exists(staleMeta)).toBe(false);
@@ -68,7 +78,7 @@ describe('browser artifact retention', () => {
     await seed('sess-keep', 'c.png', 1);
 
     new BrowserArtifactStore(root);
-    await settle();
+    await settle(async () => !(await exists(path.join(root, 'sess-empty'))));
 
     expect(await exists(path.join(root, 'sess-empty'))).toBe(false);
     expect(await exists(path.join(root, 'sess-keep'))).toBe(true);
@@ -77,7 +87,7 @@ describe('browser artifact retention', () => {
   it('sweeps a root only once per process', async () => {
     const stale = await seed('sess-a', 'old.png', 30);
     new BrowserArtifactStore(root);
-    await settle();
+    await settle(async () => !(await exists(stale)));
     expect(await exists(stale)).toBe(false);
 
     // A second store for the same root must not re-walk the tree.
@@ -90,7 +100,7 @@ describe('browser artifact retention', () => {
   it('bounds the per-process swept-root memo and permits an evicted root to sweep again', async () => {
     const stale = await seed('sess-a', 'old.png', 30);
     new BrowserArtifactStore(root);
-    await settle();
+    await settle(async () => !(await exists(stale)));
     expect(await exists(stale)).toBe(false);
 
     for (let index = 0; index < 128; index++) {
@@ -100,7 +110,7 @@ describe('browser artifact retention', () => {
 
     const reintroduced = await seed('sess-a', 'old.png', 30);
     new BrowserArtifactStore(root);
-    await settle();
+    await settle(async () => !(await exists(reintroduced)));
     expect(await exists(reintroduced)).toBe(false);
   });
 

@@ -1,13 +1,34 @@
+import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SddInterviewDriver } from '../src/sdd-interview-driver.js';
 import { SpecStore } from '../src/spec-store.js';
 import { TaskGraphStore } from '../src/task-graph-store.js';
 
+/**
+ * Temp roots created by the tests, removed after each one. Without this every
+ * run left a directory per test behind in the system temp dir for good, and a
+ * temp dir with that many stale entries slows every later fs call in it.
+ */
+const tempRoots: string[] = [];
+
 function tmp(prefix: string): string {
-  return path.join(os.tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = path.join(
+    os.tmpdir(),
+    `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+  tempRoots.push(dir);
+  return dir;
 }
+
+afterEach(async () => {
+  await Promise.all(
+    tempRoots
+      .splice(0)
+      .map((dir) => fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })),
+  );
+});
 
 function makeDriver(over?: { sessionPath?: string }) {
   const dir = tmp('sdd-interview');

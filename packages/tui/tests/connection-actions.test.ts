@@ -216,7 +216,13 @@ describe('connection-actions', () => {
   });
 
   it('restarts all restartable services via restartAllConnectionServices', async () => {
-    mocks.sessionCatalogCallExisting.mockResolvedValue({ pid: 100 });
+    // First call reads the pre-restart PID; every later call is the shutdown
+    // probe. A probe that keeps reporting "up" makes waitForShutdown spin its
+    // full 3s deadline, so the service must be seen going down — same shape as
+    // the single-service tests above.
+    mocks.sessionCatalogCallExisting
+      .mockResolvedValueOnce({ pid: 100 })
+      .mockRejectedValue(new Error('offline'));
     mocks.sessionCatalogShutdown.mockResolvedValue({ stopped: true });
     mocks.sessionCatalogPing.mockResolvedValue({ pid: 101 });
     mocks.sessionCatalogClose.mockResolvedValue(undefined);
@@ -241,7 +247,10 @@ describe('connection-actions', () => {
 
     mocks.shutdownCodebaseIndexServer.mockResolvedValue({ stopped: true });
     mocks.ensureCodebaseIndexServer.mockResolvedValue(undefined);
-    mocks.checkCodebaseIndexServerHealth.mockResolvedValue({ status: 'healthy' });
+    // Down for the shutdown probe, healthy for the post-restart verification.
+    mocks.checkCodebaseIndexServerHealth
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ status: 'healthy' });
 
     mocks.isMailboxProjectServerAvailable.mockReturnValue(true);
     mocks.mailboxShutdown.mockResolvedValue({ stopped: true });
