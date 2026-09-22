@@ -4,6 +4,7 @@ import { ToolExecutor } from '../../src/execution/tool-executor.js';
 import { HookRegistry } from '../../src/hooks/registry.js';
 import { HookRunner } from '../../src/hooks/runner.js';
 import type { ToolResultBlock, ToolUseBlock } from '../../src/types/blocks.js';
+import type { HookInput } from '../../src/types/hooks.js';
 import type { Tool } from '../../src/types/tool.js';
 
 function makeCtx(): Context {
@@ -334,8 +335,8 @@ describe('ToolExecutor — PostToolUse when the tool never runs', () => {
   // PostToolUse hooks still only see tools that ran.
   function hooks() {
     const reg = new HookRegistry();
-    const release = vi.fn(async () => undefined);
-    const ordinary = vi.fn(async () => undefined);
+    const release = vi.fn(async (_input: HookInput) => undefined);
+    const ordinary = vi.fn(async (_input: HookInput) => undefined);
     reg.registerInProcess('PostToolUse', '*', release, 'lock', { runWhenToolSkipped: true });
     reg.registerInProcess('PostToolUse', '*', ordinary, 'plain');
     return { runner: new HookRunner({ registry: reg }), release, ordinary };

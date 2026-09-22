@@ -727,7 +727,7 @@ describe('GET /api/sessions/:id/events (watch stream)', () => {
       workingDir: projectRoot,
       status: 'active',
       clientType: 'tui',
-      pid: 1234,
+      pid: process.pid,
       startedAt: new Date().toISOString(),
       lastHeartbeatAt: new Date().toISOString(),
       agentCount: 0,

@@ -47,6 +47,16 @@
       "fingerprint": "397436c28fb32ffa"
     },
     {
+      "file": "packages/cli/tests/slash-commands/dev.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "43b47e424adaf86b"
+    },
+    {
+      "file": "packages/cli/tests/slash-commands/dev.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "f19ddd1600ea43b6"
+    },
+    {
       "file": "packages/cli/tests/subagent-models-tui-e2e.test.ts",
       "kind": "skipIf",
       "fingerprint": "07183e30819b9cfe"
@@ -70,6 +80,16 @@
       "file": "packages/core/tests/chronicle/project-server-auth-gate.test.ts",
       "kind": "skipIf",
       "fingerprint": "b6bed90afffce85b"
+    },
+    {
+      "file": "packages/core/tests/coordination/coordinator-integration-coverage.test.ts",
+      "kind": "todo",
+      "fingerprint": "1b3cd7293e3e53b8"
+    },
+    {
+      "file": "packages/core/tests/coordination/coordinator-integration-coverage.test.ts",
+      "kind": "todo",
+      "fingerprint": "598f7328e65776de"
     },
     {
       "file": "packages/core/tests/coordination/mailbox-project-server-auth-gate.test.ts",
@@ -112,6 +132,16 @@
       "fingerprint": "a75af38dbbc13e19"
     },
     {
+      "file": "packages/core/tests/utils/atomic-write.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "091048613cb7f1d9"
+    },
+    {
+      "file": "packages/core/tests/utils/atomic-write.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "4e9fc94cfd45f795"
+    },
+    {
       "file": "packages/core/tests/utils/win32-exe-search.test.ts",
       "kind": "runIf",
       "fingerprint": "b0cd19c2059fe839"
@@ -150,6 +180,41 @@
       "file": "packages/mcp/tests/client-windows-lifecycle.test.ts",
       "kind": "runIf",
       "fingerprint": "5760e7fd5b745740"
+    },
+    {
+      "file": "packages/persistence/tests/adapter-conformance.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "7eabc7f78d8712ee"
+    },
+    {
+      "file": "packages/persistence/tests/adapter-conformance.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "d083cf1ffec601cc"
+    },
+    {
+      "file": "packages/persistence/tests/adapter-conformance.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "ecb7c0d0b4016b91"
+    },
+    {
+      "file": "packages/persistence/tests/file-permissions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "35378ee18e9875c7"
+    },
+    {
+      "file": "packages/persistence/tests/file-permissions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "b675ca61778f6368"
+    },
+    {
+      "file": "packages/persistence/tests/file-permissions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "c993cae80eb88e0c"
+    },
+    {
+      "file": "packages/persistence/tests/file-permissions.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "f613828b68af42bb"
     },
     {
       "file": "packages/persistence/tests/project-endpoint.test.ts",
@@ -299,6 +364,16 @@
     {
       "file": "packages/tools/tests/_win32-resolve.test.ts",
       "kind": "skipIf",
+      "fingerprint": "6b7da611a0c6935e"
+    },
+    {
+      "file": "packages/tools/tests/_win32-resolve.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "bd2f4c044c206a63"
+    },
+    {
+      "file": "packages/tools/tests/_win32-resolve.test.ts",
+      "kind": "skipIf",
       "fingerprint": "d191ac8ee9dbc9ac"
     },
     {
@@ -312,6 +387,121 @@
       "fingerprint": "fabe0658019e72c5"
     },
     {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "12b19d897b0858fa"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "156fc9f22d3701f1"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "166fc144e1fc2f1f"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "30f5de99497ad097"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "311453f4bd82d318"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "5f78ed6fd8640967"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "60a3b09583259b91"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "6cb11ced0632d324"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "74bbd54ff4657b7d"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "86e601bae001d5ea"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "8742dcb1da7e0f0c"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "88a127a2083d4525"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "941f8a3052885ef4"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "9527c49b6d9596a1"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "b0d90c7551488b82"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "ba54c2b91d80eeff"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "debf82a655d5948f"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "e1cdb58ed0bf13ec"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "ea99f040339e065d"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "f424c01029b3ff82"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "runIf",
+      "fingerprint": "fe9587842e8f6e7e"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "05c6ca81433586d7"
+    },
+    {
+      "file": "packages/tools/tests/bash-kill-guard-parse.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "84f7102612ddd0be"
+    },
+    {
       "file": "packages/tools/tests/bash-kill-guard-paths.test.ts",
       "kind": "runIf",
       "fingerprint": "8da6adbe04ea2901"
@@ -320,6 +510,26 @@
       "file": "packages/tools/tests/bash-treekill-win32.test.ts",
       "kind": "runIf",
       "fingerprint": "c0819fc3befcf009"
+    },
+    {
+      "file": "packages/tools/tests/bash.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "5d40553428d88965"
+    },
+    {
+      "file": "packages/tools/tests/bash.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "70364a09b0297a64"
+    },
+    {
+      "file": "packages/tools/tests/bash.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "bae6391e7708dd38"
+    },
+    {
+      "file": "packages/tools/tests/bash.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "db0bf68ab1a2242a"
     },
     {
       "file": "packages/tools/tests/browser-manager-guard-regressions.test.ts",
@@ -570,6 +780,16 @@
       "file": "packages/vector-memory/tests/search-race.test.ts",
       "kind": "skip",
       "fingerprint": "39bbb4246f5caff0"
+    },
+    {
+      "file": "packages/webui-server/tests/path-containment.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "8ab4fe29def64948"
+    },
+    {
+      "file": "packages/webui-server/tests/terminal-ws-handler.test.ts",
+      "kind": "skipIf",
+      "fingerprint": "95af6b679e2ca767"
     },
     {
       "file": "packages/wrongtrace/src/__tests__/client.test.ts",

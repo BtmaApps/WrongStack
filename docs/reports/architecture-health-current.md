@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T21:52:25.184Z
+**Generated:** 2026-09-22T22:05:49.855Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -17,7 +17,7 @@
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
 | Tests without TypeScript test-project coverage | 0 |
-| Tests in multiple TypeScript projects | 1 |
+| Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
@@ -145,6 +145,6 @@ None.
 ## TypeScript test coverage debt
 
 - 0 test files are not included in a package TypeScript test project.
-- 1 test files are included in more than one package TypeScript project.
+- 0 test files are included in more than one package TypeScript project.
 
 > This report is generated. Change architecture registry inputs or source code, then regenerate it; do not hand-edit measurements.

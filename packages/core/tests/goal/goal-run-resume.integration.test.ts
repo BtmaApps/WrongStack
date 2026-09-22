@@ -98,11 +98,17 @@ it('resumes stopped work in its original checkout and verifies the merged result
     expect(phase.metadata?.['worktreeResume']).toMatchObject({ dir: originalCwd });
     const secondManager = new WorktreeManager({ projectRoot });
     await prepareGoalGraphForResume(loaded!, secondManager);
-    const resumedTask = vi.fn(async (_task: unknown, _phaseId: string, env?: { cwd?: string }) => {
-      expect(env?.cwd).toBe(originalCwd);
-      expect(await fs.readFile(path.join(originalCwd, 'feature.txt'), 'utf8')).toBe('part one\n');
-      await fs.appendFile(path.join(originalCwd, 'feature.txt'), 'part two\n');
-    });
+    const resumedTask = vi.fn(
+      async (
+        _task: unknown,
+        _phaseId: string,
+        env?: { cwd?: string | undefined; branch?: string | undefined },
+      ) => {
+        expect(env?.cwd).toBe(originalCwd);
+        expect(await fs.readFile(path.join(originalCwd, 'feature.txt'), 'utf8')).toBe('part one\n');
+        await fs.appendFile(path.join(originalCwd, 'feature.txt'), 'part two\n');
+      },
+    );
     const second = new PhaseOrchestrator({
       graph: loaded!,
       worktrees: secondManager,

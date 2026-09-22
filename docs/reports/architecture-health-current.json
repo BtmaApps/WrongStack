@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T21:52:25.184Z",
+  "generatedAt": "2026-09-22T22:05:49.855Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -21,7 +21,7 @@
     "runtimeModuleCycles": 0,
     "typeModuleCycles": 8,
     "testsWithoutTypecheck": 0,
-    "testsWithMultipleTypechecks": 1,
+    "testsWithMultipleTypechecks": 0,
     "testOnlyExports": 940
   },
   "errors": [],
@@ -749,7 +749,7 @@
         {
           "path": "packages/tools/tsconfig.json",
           "error": null,
-          "testFiles": 1
+          "testFiles": 0
         },
         {
           "path": "packages/tools/tsconfig.test.json",
@@ -14647,12 +14647,6 @@
         ]
       },
       {
-        "file": "packages/tools/src/codebase-index/index-source-files.test.ts",
-        "projects": [
-          "root-node"
-        ]
-      },
-      {
         "file": "packages/tools/tests/_concurrency.test.ts",
         "projects": [
           "root-node"
@@ -15152,6 +15146,12 @@
       },
       {
         "file": "packages/tools/tests/codebase-index-search-scan-bounds.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/tools/tests/codebase-index-source-files.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22833,18 +22833,7 @@
     ],
     "invalidRuntime": [],
     "withoutTypecheck": [],
-    "multipleTypechecks": [
-      {
-        "file": "packages/tools/src/codebase-index/index-source-files.test.ts",
-        "runtimeProjects": [
-          "root-node"
-        ],
-        "typecheckProjects": [
-          "packages/tools/tsconfig.json",
-          "packages/tools/tsconfig.test.json"
-        ]
-      }
-    ]
+    "multipleTypechecks": []
   },
   "unresolvedRelativeImports": [
     {

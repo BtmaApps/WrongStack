@@ -40,8 +40,12 @@ describe('process lockdown', () => {
       expect(policy.getYolo()).toBe(false);
       expect((await policy.evaluate(write, input, ctx)).permission).toBe('confirm');
       expect(
-        (await policy.evaluate(write, input, { ...ctx, meta: { yolo: true } } as Context))
-          .permission,
+        (
+          await policy.evaluate(write, input, {
+            ...ctx,
+            meta: { yolo: true },
+          } as unknown as Context)
+        ).permission,
       ).toBe('confirm');
     } finally {
       await fs.rm(root, { recursive: true, force: true });

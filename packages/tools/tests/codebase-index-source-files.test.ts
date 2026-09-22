@@ -3,8 +3,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, test } from 'vitest';
-import { loadGitignoreMatcher } from './gitignore.js';
-import { findSourceFiles } from './index-source-files.js';
+import { loadGitignoreMatcher } from '../src/codebase-index/gitignore.js';
+import { findSourceFiles } from '../src/codebase-index/index-source-files.js';
 
 test('Git discovery excludes tracked ignored source while keeping normal source', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ws-index-gitignore-'));

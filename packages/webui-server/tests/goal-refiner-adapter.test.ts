@@ -22,7 +22,7 @@ describe('Goal WebUI refiner adapter', () => {
       autonomy: { refinerFallbackProfile: 'goal-refiner' },
       fallbackProfiles: { 'goal-refiner': ['dedicated/refiner-model'] },
       favoriteModels: ['refiner-model'],
-    } as Config;
+    } as unknown as Config;
     const refine = createGoalRefinerAdapter({
       config,
       primaryProvider: primary,
@@ -47,7 +47,7 @@ describe('Goal WebUI refiner adapter', () => {
         provider: 'primary',
         autonomy: { refinerProvider: 'dedicated', refinerModel: 'small-model' },
         favoriteModels: ['small-model'],
-      } as Config,
+      } as unknown as Config,
       primaryProvider: primary,
       primaryModel: 'active-model',
       createProvider: (id) => (id === 'dedicated' ? dedicated : primary),
@@ -70,7 +70,7 @@ describe('Goal WebUI refiner adapter', () => {
         provider: 'boot-profile',
         autonomy: { refinerModel: 'small-model' },
         favoriteModels: ['small-model'],
-      } as Config,
+      } as unknown as Config,
       primaryProvider: tabProvider,
       primaryModel: 'active-model',
       activeProviderId: 'tab-profile',
