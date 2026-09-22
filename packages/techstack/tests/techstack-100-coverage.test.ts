@@ -207,7 +207,13 @@ describe('TechStack 100% Coverage Suite', () => {
         }),
       });
 
-      const res = await queryOsvBatch(['pkg:npm/test-osv-batch@1.0.0']);
+      // Hydration is disabled: this test classifies stub-level severity
+      // fields via mapSeverity (r26 hydration would otherwise issue live
+      // GET /v1/vulns/{id} calls from the spy's real-requestWithRetry
+      // fallback).
+      const res = await queryOsvBatch(['pkg:npm/test-osv-batch@1.0.0'], {
+        maxSeverityLookups: 0,
+      });
       const advs = res.advisories.get('pkg:npm/test-osv-batch@1.0.0');
       expect(advs).toHaveLength(9);
       expect(advs?.[0]?.severity).toBe('critical');
@@ -1979,7 +1985,11 @@ describe('TechStack 100% Coverage Suite', () => {
         }),
       });
 
-      const res = await queryOsvBatch(['pkg:npm/test-v2@1.0.0']);
+      // Hydration is disabled: this test classifies stub-level severity
+      // fields via mapSeverity (see the r26 note above).
+      const res = await queryOsvBatch(['pkg:npm/test-v2@1.0.0'], {
+        maxSeverityLookups: 0,
+      });
       const advs = res.advisories.get('pkg:npm/test-v2@1.0.0');
       expect(advs?.[0]?.severity).toBe('high');
       expect(advs?.[1]?.severity).toBe('low');
