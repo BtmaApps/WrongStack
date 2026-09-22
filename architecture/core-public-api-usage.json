@@ -216,7 +216,7 @@
     "@wrongstack/core/utils": {
       "files": 630,
       "typeOnly": 60,
-      "runtimeOrMixed": 601
+      "runtimeOrMixed": 599
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -22025,7 +22025,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/discover-mailbox-bridge.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -22211,7 +22211,7 @@
       "specifier": "@wrongstack/core/utils",
       "file": "packages/webui-server/src/server/provider-store.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 2
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
