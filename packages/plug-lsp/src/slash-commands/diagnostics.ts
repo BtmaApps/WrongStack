@@ -4,7 +4,10 @@ import type { LSPRegistry } from '../registry.js';
 
 export function diagnosticsCommand(registry: LSPRegistry): SlashCommand {
   return {
-    name: 'diagnostics',
+    name: 'lsp-diagnostics',
+    // Kept as a deprecated alias for one release so existing muscle memory
+    // (`/diagnostics`) still resolves.
+    aliases: ['diagnostics'],
     description: 'Print buffered LSP diagnostics.',
     async run(_args, ctx) {
       const byFile = new Map<string, import('vscode-languageserver-protocol').Diagnostic[]>();

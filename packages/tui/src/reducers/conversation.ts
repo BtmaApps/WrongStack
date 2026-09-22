@@ -144,6 +144,37 @@ export function reduceConversation(state: State, action: ConversationAction): St
               ...(action.sessionId !== undefined ? { sessionId: action.sessionId } : {}),
             }
           : banner;
+      // `/clear` (vs. `session.rewound` / `project.switched`) supplies all
+      // three boot-resume sources as explicit `null` to signal "the boot-time
+      // restored transcript is gone, treat this as a fresh launch." In that
+      // case the reducer must also reset the slice of state that
+      // `createInitialState` derives from those props:
+      //   - historyBudget: a resume widens it; the widened budget would
+      //     otherwise persist into the cleared session and let a stale tail
+      //     of restored entries slip back through `retainTuiHistory`.
+      //   - autoProceedHold: a resumed todo board sets the hold so the user
+      //     sees the transcript before auto-proceed kicks in; clearing must
+      //     release it (the cleared session has no resumed board to honour).
+      //   - nextId: seeded from the highest restored id + 1; the surviving
+      //     banner is id 0, so re-seeding from the post-wipe entries
+      //     prevents id collisions on the first post-clear `addEntry`.
+      // `undefined` (omitted) preserves the existing behavior used by
+      // rewound/switched, where the resume slice is intentionally kept.
+      const resumeDiscarded =
+        action.restoredMessages === null &&
+        action.restoredToolCalls === null &&
+        action.restoredEvents === null;
+      const survivingEntries = refreshedBanner ? [refreshedBanner] : [];
+      // Default values match the `restoredEntries.length === 0` branch in
+      // `createInitialState` (app-initial-state.ts:202–203, 169): a fresh
+      // session gets the live default budget (undefined), no auto-proceed
+      // hold, and `nextId` of 1 (the banner sits at id 0). Re-seeding
+      // `nextId` from `survivingEntries` covers the edge case where the
+      // banner was already missing — it matches the same arithmetic
+      // `createInitialState` runs.
+      const initialNextId = resumeDiscarded
+        ? survivingEntries.reduce((next, entry) => Math.max(next, entry.id + 1), 1)
+        : state.nextId;
       return {
         ...state,
         entries: refreshedBanner ? [refreshedBanner] : [],
@@ -164,6 +195,17 @@ export function reduceConversation(state: State, action: ConversationAction): St
         brainPrompt: null,
         debugStreamStats: null,
         historyScrolled: false,
+        // Resume-derived slice — only reset when `/clear` explicitly signals
+        // the boot-time restored transcript is gone (all three props === null).
+        // `session.rewound` / `project.switched` omit them, preserving the
+        // existing resume-budget behavior.
+        ...(resumeDiscarded
+          ? {
+              historyBudget: undefined,
+              autoProceedHold: false,
+              nextId: initialNextId,
+            }
+          : {}),
         // Drop any transient copy highlight: its target entry is being
         // discarded, so a stale copiedEntryId could otherwise flash a
         // surviving card (the banner) or dangle until the 2s host timer fires.

@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1142,
-      "typeOnly": 1022,
-      "runtimeOrMixed": 330
+      "files": 1145,
+      "typeOnly": 1024,
+      "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 624,
+      "files": 625,
       "typeOnly": 60,
-      "runtimeOrMixed": 595
+      "runtimeOrMixed": 596
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -14181,6 +14181,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/evidence-analyzer/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/factories/index.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14409,6 +14415,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/src/workflow-runtime/index.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/loaded-plugin-tools-are-enabled.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -14416,6 +14428,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/path-guard.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/workflow-plugins.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -20512,6 +20530,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/plugins/src/test-flake-detector/index.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/plugins/src/workflow-runtime/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

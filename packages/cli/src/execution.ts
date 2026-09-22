@@ -541,6 +541,18 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
                     type: 'clearHistory';
                     model?: string | undefined;
                     provider?: string | undefined;
+                    /**
+                     * Explicit `null` tells the reducer the boot-time restored
+                     * transcript source has been discarded by `/clear`. The
+                     * reducer resets `historyBudget`, `autoProceedHold`, and
+                     * `nextId` to the fresh-boot values when all three are
+                     * `null`; omitting them preserves the existing
+                     * resume-derived behavior used by `session.rewound` /
+                     * `project.switched`.
+                     */
+                    restoredMessages?: readonly unknown[] | null | undefined;
+                    restoredToolCalls?: readonly unknown[] | null | undefined;
+                    restoredEvents?: readonly unknown[] | null | undefined;
                   }
                 | { type: 'resetContextChip' }
                 | { type: 'streamReset' }
@@ -548,7 +560,19 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
             ) => void,
           ) => {
             void attachments.clear().catch(() => {});
-            dispatch({ type: 'clearHistory', model: context.model, provider: context.provider.id });
+            // `/clear` from the slash command lands here. Pass the three
+            // boot-resume sources as explicit `null` so the reducer also
+            // resets `historyBudget`, `autoProceedHold`, and `nextId` —
+            // otherwise the boot-time restored transcript (set by
+            // `wstack --resume <id>`) leaks back into the fresh session.
+            dispatch({
+              type: 'clearHistory',
+              model: context.model,
+              provider: context.provider.id,
+              restoredMessages: null,
+              restoredToolCalls: null,
+              restoredEvents: null,
+            });
             dispatch({ type: 'resetContextChip' });
             dispatch({ type: 'streamReset' });
             dispatch({ type: 'toolStreamClear' });

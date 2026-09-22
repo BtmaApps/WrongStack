@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T07:44:40.578Z
+**Generated:** 2026-09-22T08:29:23.235Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,11 +8,11 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 3969 |
-| Production source lines | 955100 |
-| Test files | 3583 |
+| Production source files | 4009 |
+| Production source lines | 958349 |
+| Test files | 3586 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12871 |
+| Relative module edges | 12955 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -41,7 +41,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 79 | 113 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 119 | 115 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
 | @wrongstack/providers | 85 | 76 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
@@ -55,7 +55,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/techstack | 50 | 38 | @wrongstack/core, @wrongstack/persistence, @wrongstack/tools |
 | @wrongstack/telegram | 27 | 36 | @wrongstack/core, @wrongstack/primitives |
 | @wrongstack/tools | 224 | 269 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
-| @wrongstack/tui | 412 | 374 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
+| @wrongstack/tui | 412 | 375 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 20 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
 | @wrongstack/webui | 564 | 397 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 46 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
@@ -91,6 +91,7 @@ None.
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
 | 996 | `packages/mcp/src/client.ts` |
 | 994 | `packages/sage/src/sqlite-store.ts` |
+| 992 | `packages/cli/src/execution.ts` |
 | 989 | `packages/acp/src/client/acp-session.ts` |
 | 989 | `packages/webui/src/components/SettingsPanel/ProviderSection.tsx` |
 | 987 | `packages/core/src/core/system-prompt-builder.ts` |
@@ -104,7 +105,6 @@ None.
 | 972 | `packages/providers/src/openai-codex.ts` |
 | 971 | `packages/core/src/coordination/fleet-supervisor.ts` |
 | 970 | `packages/webui-server/src/server/backend-services.ts` |
-| 968 | `packages/cli/src/execution.ts` |
 | 968 | `packages/core/src/security/yolo-risk.ts` |
 | 965 | `packages/core/src/coordination/collab-debug.ts` |
 | 965 | `packages/webui/src/components/SidePanel/SessionList.tsx` |

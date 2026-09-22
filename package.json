@@ -56,7 +56,7 @@
     "website:tools:write": "pnpm --filter @wrongstack/tools build && tsx scripts/generate-website-tool-catalog.ts --write && biome format --write website/src/data/runtime-catalog.ts website/src/data/tool-details-part-1.ts website/src/data/tool-details-part-2.ts website/src/data/tool-details-part-3.ts website/src/data/tool-details-part-4.ts",
     "plugins:manifest:check": "pnpm --filter @wrongstack/plugins build && node scripts/generate-plugin-projections.mjs",
     "plugins:manifest:generate": "node scripts/generate-plugin-projections.mjs --write",
-    "plugins:manifest:write": "pnpm --filter @wrongstack/plugins build && node scripts/generate-plugin-projections.mjs --write && pnpm --filter @wrongstack/plugins build",
+    "plugins:manifest:write": "node scripts/generate-plugin-projections.mjs --bootstrap && pnpm --filter @wrongstack/plugins build && node scripts/generate-plugin-projections.mjs --write && pnpm --filter @wrongstack/plugins build",
     "lint:scripts": "bash -n scripts/install-mailbox-bridge-skills.sh",
     "check:browser": "node scripts/check-browser-runtime.mjs",
     "check:browser:smoke": "node scripts/check-browser-runtime.mjs --smoke",

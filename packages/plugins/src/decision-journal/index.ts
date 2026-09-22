@@ -1,0 +1,83 @@
+import { appendFile, mkdir } from 'node:fs/promises';
+import { dirname, relative } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import {
+  filesField,
+  projectPath,
+  read,
+  str,
+  stringField,
+  strings,
+  workflowPlugin,
+} from '../workflow-runtime/index.js';
+export default workflowPlugin({
+  name: 'decision-journal',
+  description:
+    'Appends explicit architectural decisions and rationales to a project JSONL journal and retrieves decisions linked to changed files',
+  tools: [
+    {
+      name: 'decision_record',
+      mutating: true,
+      capabilities: ['fs.write'],
+      description:
+        'Append {title,rationale,files} to an explicit project-contained JSONL journal. Each record has an id and timestamp. Does not inject decisions into prompts automatically.',
+      properties: {
+        journal: stringField,
+        title: stringField,
+        rationale: stringField,
+        files: filesField,
+        supersedes: stringField,
+      },
+      required: ['journal', 'title', 'rationale', 'files'],
+      async run(input, context) {
+        const path = projectPath(context.root, input.journal);
+        const title = str(input.title);
+        const rationale = str(input.rationale);
+        if (title.length > 300 || rationale.length > 10000)
+          throw new Error('Decision title/rationale exceeds limits');
+        const record = {
+          id: randomUUID(),
+          createdAt: new Date().toISOString(),
+          title,
+          rationale,
+          files: strings(input.files).map((file) =>
+            relative(context.root, projectPath(context.root, file)).replaceAll('\\', '/'),
+          ),
+          supersedes: input.supersedes === undefined ? null : str(input.supersedes),
+        };
+        await mkdir(dirname(path), { recursive: true });
+        await appendFile(path, `${JSON.stringify(record)}\n`, { encoding: 'utf8', mode: 0o600 });
+        return record;
+      },
+    },
+    {
+      name: 'decision_lookup',
+      description:
+        'Read a JSONL decision journal; return decisions associated with supplied paths, along with explicit supersession links.',
+      properties: { journal: stringField, files: filesField },
+      required: ['journal', 'files'],
+      async run(input, context) {
+        const files = strings(input.files).map((file) =>
+          relative(context.root, projectPath(context.root, file)).replaceAll('\\', '/'),
+        );
+        const records = (await read(context.root, input.journal))
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map(
+            (line) =>
+              JSON.parse(line) as { id: string; files: string[]; supersedes: string | null },
+          );
+        const superseded = new Set(records.map((record) => record.supersedes).filter(Boolean));
+        return {
+          decisions: records
+            .filter((record) =>
+              record.files.some((path) =>
+                files.some((file) => file === path || file.startsWith(`${path}/`)),
+              ),
+            )
+            .map((record) => ({ ...record, superseded: superseded.has(record.id) })),
+        };
+      },
+    },
+  ],
+});

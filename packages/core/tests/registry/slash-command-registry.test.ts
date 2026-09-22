@@ -343,7 +343,7 @@ describe('SlashCommandRegistry', () => {
       let pluginRan = false;
       r.register(
         {
-          name: 'stop',
+          name: 'lsp-stop',
           description: '',
           async run() {
             pluginRan = true;
@@ -364,7 +364,7 @@ describe('SlashCommandRegistry', () => {
       await r.dispatch('/stop', {} as Context);
       expect(builtinRan).toBe(true);
       expect(pluginRan).toBe(false);
-      await r.dispatch('/@wrongstack/plug-lsp:stop', {} as Context);
+      await r.dispatch('/@wrongstack/plug-lsp:lsp-stop', {} as Context);
       expect(pluginRan).toBe(true);
       expect(warn).not.toHaveBeenCalled();
     } finally {
@@ -478,9 +478,14 @@ describe('SlashCommandRegistry', () => {
         builtinRan = true;
       },
     });
-    // plug-lsp is an official first-party plugin that registers a BARE command
-    // literally named `stop`, so the two collide on the `stop` key. The
-    // built-in alias must survive the plugin's registration.
+    // Alias-reservation invariant pin: when an official plugin's bare `stop`
+    // collides with core's `/interrupt` alias, the built-in alias must
+    // survive the plugin's registration. Production now uses `name: 'lsp-stop'`
+    // (a fresh bare name with no holder) plus `aliases: ['stop']`; the alias
+    // write is refused by `isAliasReservedKey` at register time, which is
+    // exactly the contract this test pins. The fixture here uses the OLD
+    // bare-name shape directly because it tests the registry invariant
+    // without any view-layer passthrough.
     r.register({ name: 'stop', description: '', async run() {} }, '@wrongstack/plug-lsp', {
       official: true,
     });
@@ -506,10 +511,14 @@ describe('SlashCommandRegistry', () => {
     r.register({ name: 'stop', description: '', async run() {} }, '@wrongstack/plug-lsp', {
       official: true,
     });
-    // This is what plug-lsp's teardown actually calls
-    // (`plug-lsp/src/index.ts:148`): the namespaced key DOES exist — register
-    // refuses the plugin only the colliding bare name — so the removal is
-    // allowed. What it must not do is take the built-in's keys with it.
+    // This is what plug-lsp's teardown actually calls (any of the renamed
+    // wrapper's namespaced key, e.g. `@wrongstack/plug-lsp:lsp-stop`). The
+    // namespaced key DOES exist — register refuses the plugin only the
+    // colliding bare name (or alias write) — so the removal is allowed.
+    // What it must not do is take the built-in's keys with it. The fixture
+    // uses the OLD bare-name shape here to exercise the invariant pin via
+    // the legacy `/stop` ↔ `/interrupt` collision tuple; the post-rename
+    // production alias write produces the same namespaced-key reachability.
     expect(r.unregister('@wrongstack/plug-lsp:stop', '@wrongstack/plug-lsp')).toBe(true);
     await r.dispatch('/stop', {} as Context);
     await r.dispatch('/interrupt', {} as Context);

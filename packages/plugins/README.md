@@ -30,6 +30,11 @@ list an inactive plugin with
 
 Plugin identity, import paths, versions, API ranges, and descriptions are generated from the typed manifest in [`PLUGIN_CATALOG.md`](./PLUGIN_CATALOG.md). Run `pnpm plugins:manifest:write` after changing the manifest.
 
+The [24 deterministic workflow plugins](./WORKFLOWS.md) cover reproduction,
+verification evidence, runtime and UI checks, isolated rehearsals, and plugin
+lifecycle inspection. Their inputs, prerequisites, optional One Shot/Council
+advice and implementation boundaries are documented individually.
+
 ### Removed plugins (use built-in tools instead)
 
 | Removed | Replacement | Why |

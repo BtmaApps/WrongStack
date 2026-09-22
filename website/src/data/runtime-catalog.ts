@@ -582,13 +582,6 @@ export const pluginCatalog = [
     source: 'Core',
   },
   {
-    name: 'wstack-skills',
-    risk: 'medium',
-    summary: 'Skill library, authoring, install, update, and uninstall commands.',
-    defaultState: 'active',
-    source: 'Core',
-  },
-  {
     name: 'wstack-auto-review',
     risk: 'medium',
     summary: 'Tracks changed files and requests bounded mid-session Chimera reviews.',
@@ -603,408 +596,18 @@ export const pluginCatalog = [
     source: 'Core',
   },
   {
-    name: 'agent-handoff',
+    name: 'wstack-skills',
     risk: 'medium',
-    summary: 'Automatically posts subagent results to the mailbox when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'auto-doc',
-    risk: 'medium',
-    summary: 'Generates JSDoc/TSDoc comments for source files.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'auto-i18n-extractor',
-    risk: 'low',
-    summary:
-      'Finds hardcoded user-facing UI strings and suggests i18n keys when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'accessibility-auditor',
-    risk: 'medium',
-    summary: 'Scans UI files for common accessibility issues when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'git-autocommit',
-    risk: 'high',
-    summary: 'Stages files and creates AI-generated conventional commits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'shell-check',
-    risk: 'low',
-    summary: 'Runs shellcheck on shell scripts.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'cost-tracker',
-    risk: 'low',
-    summary: 'Tracks token usage and estimated session cost.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'file-watcher',
-    risk: 'medium',
-    summary: 'Watches project files and emits change events.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'cron',
-    risk: 'medium',
-    summary: 'Schedules recurring in-session tasks.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'template-engine',
-    risk: 'medium',
-    summary: 'Expands and writes file templates.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'semver-bump',
-    risk: 'high',
-    summary: 'Computes version bumps, changelogs, and tags.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'secret-scanner',
-    risk: 'high',
-    summary: 'Blocks or redacts credential leaks in tool input and output.',
+    summary: 'Skill library, authoring, install, update, and uninstall commands.',
     defaultState: 'active',
-    source: 'Suite',
-  },
-  {
-    name: 'token-budget',
-    risk: 'medium',
-    summary: 'Warns or stops when token budgets are exceeded.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'lint-gate',
-    risk: 'medium',
-    summary: 'Runs lint checks before write/edit commits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'branch-guard',
-    risk: 'high',
-    summary: 'Enforces project-specific protected-branch policy when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'diff-summary',
-    risk: 'low',
-    summary: 'Injects compact git diff context after edits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'commit-validator',
-    risk: 'medium',
-    summary: 'Enforces conventional-commit policy when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'format-on-save',
-    risk: 'medium',
-    summary: 'Runs formatter after write/edit tool calls.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'test-runner-gate',
-    risk: 'medium',
-    summary: 'Runs relevant tests after source edits when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'import-organizer',
-    risk: 'medium',
-    summary: 'Sorts imports and applies safe linter fixes after edits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'todo-listener',
-    risk: 'low',
-    summary: 'Broadcasts todo tool updates to the project mailbox when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'session-recap',
-    risk: 'low',
-    summary: 'Posts a session recap to the project mailbox on stop.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'spec-linker',
-    risk: 'low',
-    summary: 'Finds unlinked plugin references in markdown edits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'doc-sync-guard',
-    risk: 'low',
-    summary:
-      'Warns when docs drift from recently changed public source files when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'loop-breaker',
-    risk: 'low',
-    summary: 'Detects runaway tool-call loops; warns, then blocks repeats.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'gitignore-guard',
-    risk: 'medium',
-    summary: 'Suggests or appends ignore rules for generated artifacts after writes and edits.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'path-guard',
-    risk: 'medium',
-    summary: 'Enforces project-specific protected-path policy when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'context-pins',
-    risk: 'low',
-    summary: 'Pins durable facts into the system prompt across compactions.',
-    defaultState: 'active',
-    source: 'Suite',
-  },
-  {
-    name: 'checkpoint',
-    risk: 'medium',
-    summary: 'Retains pre-edit file contents in memory when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'error-lens',
-    risk: 'low',
-    summary: 'Distills failed command output into compact error digests.',
-    defaultState: 'active',
-    source: 'Suite',
-  },
-  {
-    name: 'dep-guard',
-    risk: 'medium',
-    summary: 'Supervises dependency installs: deny list and typosquat warnings.',
-    defaultState: 'active',
-    source: 'Suite',
-  },
-  {
-    name: 'dependency-vulnerability-gate',
-    risk: 'high',
-    summary: 'Runs a blocking dependency audit after installs when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'license-audit-gate',
-    risk: 'high',
-    summary: 'Audits dependency licenses after package installs.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'security-hotspot-scanner',
-    risk: 'high',
-    summary:
-      'Scans source files for common security anti-patterns on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'api-compatibility-gate',
-    risk: 'medium',
-    summary: 'Warns when public entry-point exports are removed when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'migration-planner',
-    risk: 'low',
-    summary: 'Builds evidence-backed migration checklists with optional LLM risk analysis.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'schema-evolution-guard',
-    risk: 'high',
-    summary: 'Warns on destructive database or API schema changes.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'config-validator',
-    risk: 'low',
-    summary: 'Validates JSON/YAML/TOML files right after write/edit.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'notify-hub',
-    risk: 'medium',
-    summary: 'Sends session events and ad-hoc notifications to a webhook.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'changelog-writer',
-    risk: 'low',
-    summary: 'Collects session work and writes Keep-a-Changelog entries.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'injection-shield',
-    risk: 'low',
-    summary: 'Flags prompt-injection patterns in tool output.',
-    defaultState: 'active',
-    source: 'Suite',
-  },
-  {
-    name: 'llm-cache',
-    risk: 'medium',
-    summary: 'Caches identical provider requests (opt-in; wraps every LLM call).',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'model-router',
-    risk: 'medium',
-    summary: 'Routes each LLM call to a different model by size/tool rules (opt-in).',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'pr-drafter',
-    risk: 'low',
-    summary: 'Generates session pull request draft markdown.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'prompt-firewall',
-    risk: 'high',
-    summary: 'Detects/redacts credential leaks on the provider wire (opt-in).',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'auto-escalate',
-    risk: 'medium',
-    summary: 'Retries with an escalated model on transient provider errors (opt-in).',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'token-throttle',
-    risk: 'medium',
-    summary: 'Rolling-window tokens/min rate limiting via provider-call delays (opt-in).',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'plugin-stack-observer',
-    risk: 'low',
-    summary: 'Reports provider wrapper stack order and health.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'test-coverage-gate',
-    risk: 'medium',
-    summary: 'Checks coverage thresholds after test runs.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'test-flake-detector',
-    risk: 'medium',
-    summary: 'Runs tests repeatedly to identify flaky failures.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'performance-regression-gate',
-    risk: 'medium',
-    summary: 'Compares benchmark results and reports performance regressions.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'type-gate',
-    risk: 'medium',
-    summary: 'Runs TypeScript type checks after relevant edits when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'duplicate-code-detector',
-    risk: 'low',
-    summary:
-      'Detects duplicate or similar code blocks across source files on demand or when explicitly enabled.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'release-notes-generator',
-    risk: 'low',
-    summary: 'Builds traceable release notes with optional hash-preserving LLM polish.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'process-guard',
-    risk: 'high',
-    summary:
-      'Reports kill commands; built-in bash and exec guards enforce protection for WrongStack processes and host terminals.',
-    defaultState: 'inactive',
-    source: 'Suite',
-  },
-  {
-    name: 'test-generator',
-    risk: 'low',
-    summary: 'Generates framework-correct test files with optional behavior-focused LLM authoring.',
-    defaultState: 'inactive',
-    source: 'Suite',
+    source: 'Core',
   },
   {
     name: '@wrongstack/plug-lsp',
     risk: 'medium',
     summary: 'Language Server Protocol tools and slash commands.',
     defaultState: 'inactive',
-    source: 'Bridge',
+    source: 'Core',
   },
   {
     name: 'telegram',
@@ -1012,6 +615,717 @@ export const pluginCatalog = [
     summary: 'Telegram bridge for messages, approvals, and notifications.',
     defaultState: 'inactive',
     source: 'Bridge',
+  },
+  {
+    name: 'agent-handoff',
+    risk: 'medium',
+    summary:
+      'Listens for subagent.done events and posts structured handoff notes to the project mailbox',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'cost-tracker',
+    risk: 'low',
+    summary: 'Tracks LLM token usage and estimated cost per session with per-model breakdown',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'file-watcher',
+    risk: 'medium',
+    summary: 'Watches project files and emits events when changes occur (add, change, delete)',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'git-autocommit',
+    risk: 'high',
+    summary: 'AI-powered git staging and conventional commit message generation',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'auto-doc',
+    risk: 'medium',
+    summary: 'Auto-generates JSDoc/TSDoc comments for functions, classes, types, and interfaces',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'shell-check',
+    risk: 'low',
+    summary:
+      'Runs shellcheck analysis on bash/shell scripts and surfaces issues with severity levels',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'cron',
+    risk: 'medium',
+    summary: 'Schedules recurring tasks using beforeIteration/afterIteration extension hooks',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'template-engine',
+    risk: 'medium',
+    summary: 'Expands file templates with variable substitution, conditionals, and loops',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'semver-bump',
+    risk: 'high',
+    summary: 'Conventional-commit-driven semver version bumps with changelog generation',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'secret-scanner',
+    risk: 'high',
+    summary:
+      'Pre-tool hook that blocks (or optionally redacts) tools whose arguments contain plaintext credentials',
+    defaultState: 'active',
+    source: 'Suite',
+  },
+  {
+    name: 'token-budget',
+    risk: 'medium',
+    summary:
+      'Enforces a per-session token budget — warns at a threshold and stops the agent loop when the limit is hit',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'lint-gate',
+    risk: 'medium',
+    summary:
+      'Pre-tool hook that runs biome/eslint on would-be file content before write or edit commits',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'branch-guard',
+    risk: 'high',
+    summary:
+      'Pre-tool hook that blocks commits, pushes, and merges to protected branches (default: main, master)',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'diff-summary',
+    risk: 'low',
+    summary:
+      'PostToolUse hook that injects a compact git diff into the LLM context after every write or edit',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'commit-validator',
+    risk: 'medium',
+    summary:
+      'PreToolUse hook that validates conventional-commit format before git_autocommit or bash git commit runs',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'format-on-save',
+    risk: 'medium',
+    summary:
+      'PostToolUse hook that runs biome format --write on the file after every write or edit',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'test-runner-gate',
+    risk: 'medium',
+    summary:
+      'PostToolUse hook that runs the relevant test file after every write or edit to a source file',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'import-organizer',
+    risk: 'medium',
+    summary:
+      'PostToolUse hook that re-sorts and de-duplicates imports in a file after every write or edit',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'todo-listener',
+    risk: 'low',
+    summary:
+      'PostToolUse hook on `todo` tool — broadcasts a status update to the project mailbox so other agents can see what this one is working on',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'session-recap',
+    risk: 'low',
+    summary:
+      'Stop hook that posts a one-page session summary (tokens, tools, commits, last activity) to the project mailbox',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'spec-linker',
+    risk: 'low',
+    summary:
+      'Markdown link auditor for plugin references. PostToolUse surfaces unlinked references; PreToolUse on `write` (autoFix) wraps them in markdown links via modifiedInput.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'loop-breaker',
+    risk: 'low',
+    summary:
+      'Detects runaway tool-call loops (identical repeats and A-B-A-B oscillation) — warns the model, then blocks',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'gitignore-guard',
+    risk: 'low',
+    summary:
+      'PostToolUse hook that suggests or appends .gitignore entries for build-artifact-looking files after every write or edit',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'path-guard',
+    risk: 'medium',
+    summary:
+      'Blocks or warns about writes, edits, and destructive shell commands touching protected paths (lockfiles, .env, .git, migrations)',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'process-guard',
+    risk: 'high',
+    summary:
+      'Reports kill commands (taskkill, Stop-Process, kill, pkill, wmic) seen by bash/exec; the refusal itself is enforced by the built-in bash/exec kill guards.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'context-pins',
+    risk: 'low',
+    summary:
+      'Pin durable facts into the system prompt (pin_add/pin_remove/pin_list) — pins survive compaction and persist across sessions',
+    defaultState: 'active',
+    source: 'Suite',
+  },
+  {
+    name: 'checkpoint',
+    risk: 'medium',
+    summary:
+      'In-session file snapshots: auto-captures content before every write/edit and restores any pre-edit state on demand',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'error-lens',
+    risk: 'low',
+    summary:
+      'Distills failed command output into a compact digest (error line + project stack frames) and flags repeated failures',
+    defaultState: 'active',
+    source: 'Suite',
+  },
+  {
+    name: 'dep-guard',
+    risk: 'medium',
+    summary:
+      'Supervises dependency installs: blocks deny-listed packages, flags typosquat lookalikes, and optionally warns on unpinned versions',
+    defaultState: 'active',
+    source: 'Suite',
+  },
+  {
+    name: 'config-validator',
+    risk: 'low',
+    summary:
+      'Validates JSON/JSONC/YAML/TOML files right after write/edit and reports syntax problems in the same turn',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'notify-hub',
+    risk: 'medium',
+    summary:
+      'POSTs session events (stop, tool errors, budget thresholds) and ad-hoc notify_send messages to a configurable webhook',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'changelog-writer',
+    risk: 'low',
+    summary:
+      'Collects session work (commits, edits, manual notes) and writes Keep-a-Changelog entries under [Unreleased] on demand',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'injection-shield',
+    risk: 'low',
+    summary:
+      'Scans tool output (fetched pages, files) for prompt-injection patterns and warns the model that content is data, not instructions',
+    defaultState: 'active',
+    source: 'Suite',
+  },
+  {
+    name: 'prompt-firewall',
+    risk: 'high',
+    summary:
+      'Scans the provider wire for credential leaks before context reaches the LLM API (wrapProviderRunner); redact/warn/block. Opt-in; redact by default.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'llm-cache',
+    risk: 'medium',
+    summary:
+      'Caches identical provider requests and short-circuits the provider call on a hit (wrapProviderRunner). Opt-in; deterministic-only by default.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'model-router',
+    risk: 'medium',
+    summary:
+      'Routes each provider call to a different model by declarative size/tool rules (wrapProviderRunner). Opt-in; dry-run by default; routes within the active provider only.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'pr-drafter',
+    risk: 'low',
+    summary:
+      'Collects session work (commits, edited files, diff) and drafts a pull-request description',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'auto-escalate',
+    risk: 'medium',
+    summary:
+      'On retryable provider errors, retries the turn with the next model in an escalation ladder (onError). Opt-in; defers to default recovery otherwise.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'test-coverage-gate',
+    risk: 'medium',
+    summary: 'PostToolUse hook that detects test coverage regressions after source-file edits',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'type-gate',
+    risk: 'medium',
+    summary:
+      'PostToolUse hook that runs TypeScript type-checking after every write or edit to a source file',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'token-throttle',
+    risk: 'medium',
+    summary:
+      'Rolling-window tokens/min budget that delays provider calls to stay under a rate limit (wrapProviderRunner). Opt-in; delay capped by maxDelayMs.',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'plugin-stack-observer',
+    risk: 'low',
+    summary:
+      'Observes the wrapProviderRunner stack and exposes it to operators (plugin_stack_status) and, optionally, to the LLM (system-prompt contributor).',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'dependency-vulnerability-gate',
+    risk: 'high',
+    summary:
+      'PostToolUse hook that runs npm/pnpm audit after dependency installs and blocks or warns on vulnerabilities above a severity threshold',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'migration-planner',
+    risk: 'low',
+    summary:
+      'Builds evidence-backed migration checklists with optional Council-reviewed risk analysis',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'auto-i18n-extractor',
+    risk: 'low',
+    summary:
+      'Detects hardcoded user-facing strings in UI source files and suggests translation keys',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'doc-sync-guard',
+    risk: 'low',
+    summary:
+      'PostToolUse hook that tracks changed public source files and warns when README/docs edits omit them',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'api-compatibility-gate',
+    risk: 'medium',
+    summary:
+      'PostToolUse hook that detects breaking API changes (removed exports) in entry-point files after writes or edits',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'performance-regression-gate',
+    risk: 'medium',
+    summary:
+      'Compares benchmark results to detect performance regressions and reports metrics that increased beyond the configured threshold',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'test-flake-detector',
+    risk: 'medium',
+    summary: 'Runs a test command multiple times and reports tests that fail non-deterministically',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'schema-evolution-guard',
+    risk: 'high',
+    summary:
+      'PostToolUse hook that guards database/API schema changes by detecting destructive patterns in schema files',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'license-audit-gate',
+    risk: 'high',
+    summary:
+      'PostToolUse hook that audits dependency licenses after package-manager install/add commands and blocks disallowed licenses',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'accessibility-auditor',
+    risk: 'medium',
+    summary:
+      'Audits .tsx/.jsx/.html/.vue files for common accessibility issues and reports findings after writes/edits',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'security-hotspot-scanner',
+    risk: 'high',
+    summary:
+      'Scans source code for security anti-patterns and warns after writes/edits that introduce new hotspots',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'duplicate-code-detector',
+    risk: 'low',
+    summary:
+      'Finds duplicated code blocks across source files using normalized-line fingerprinting',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'test-generator',
+    risk: 'low',
+    summary:
+      'Generates framework-correct test skeletons with optional host-routed LLM test authoring',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'release-notes-generator',
+    risk: 'low',
+    summary:
+      'Generates traceable release notes from conventional commits with optional LLM polishing',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'workspace-health',
+    risk: 'medium',
+    summary:
+      'Inspects supplied workspace configuration evidence for broken package-manager, Node, and script contracts',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'test-impact-analyzer',
+    risk: 'medium',
+    summary:
+      'Inspects diffs and test output for untested changes, focused-test exclusions, and skipped coverage evidence',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'ci-failure-triage',
+    risk: 'medium',
+    summary:
+      'Classifies supplied CI logs into actionable dependency, test, type-check, and infrastructure failure evidence',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'env-contract-guard',
+    risk: 'medium',
+    summary:
+      'Inspects environment templates and runtime diagnostics for missing, placeholder, or accidentally exposed configuration contracts',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'dependency-drift-detector',
+    risk: 'medium',
+    summary:
+      'Inspects manifests and package-manager output for unpinned ranges, lockfile mismatch, and peer dependency drift',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'release-readiness',
+    risk: 'medium',
+    summary:
+      'Inspects supplied release-gate output for unmet validation, dirty-tree, publish, and version-alignment evidence',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'bundle-budget-guard',
+    risk: 'medium',
+    summary:
+      'Inspects build and bundle reports for budget breaches, unexpectedly large assets, and sourcemap publication signals',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'public-api-auditor',
+    risk: 'medium',
+    summary:
+      'Inspects public entry-point evidence for undocumented exports, deprecated contracts, and accidental internal API exposure',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'lockfile-consistency-guard',
+    risk: 'medium',
+    summary:
+      'Inspects lockfile and install evidence for mixed package managers, integrity failures, and reproducibility breaks',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'change-risk-classifier',
+    risk: 'medium',
+    summary:
+      'Inspects diffs or change descriptions for authentication, persistence, destructive-operation, and compatibility risk signals',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'bug-reproducer',
+    risk: 'high',
+    summary:
+      'Runs a supplied regression command twice against fingerprinted files and distinguishes a reproducible failure from instability or infrastructure errors',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'verification-ledger',
+    risk: 'high',
+    summary:
+      'Records executed checks with source fingerprints and invalidates their evidence when relevant files change within the host session',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'acceptance-verifier',
+    risk: 'high',
+    summary:
+      'Executes explicit acceptance criteria and maps each requirement to a command result and source fingerprint, preserving missing and stale evidence',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'runtime-trace-explorer',
+    risk: 'low',
+    summary:
+      'Reconstructs parent-child runtime spans from a local trace export and identifies broken ancestry, failed spans and missing expected layers',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'workspace-recipe-runner',
+    risk: 'high',
+    summary:
+      'Discovers explicit package scripts and their package-manager and runtime prerequisites, then runs a selected structured command',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'architecture-boundary-checker',
+    risk: 'low',
+    summary:
+      'Builds a literal source import graph, reports dependency cycles, and checks explicitly forbidden directory boundaries',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'monorepo-change-planner',
+    risk: 'low',
+    summary:
+      'Computes transitive workspace consumers and dependency-first validation order from explicit package manifests and changed paths',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'config-migration-assistant',
+    risk: 'low',
+    summary:
+      'Previews explicit JSON configuration key renames and defaults while preserving custom values and refusing destination conflicts',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'feature-flag-lifecycle',
+    risk: 'low',
+    summary:
+      'Maps declared feature flags to literal source references and reports expired flags and definitions without visible consumers',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'generated-artifact-tracker',
+    risk: 'low',
+    summary:
+      'Tracks source and generated-output fingerprints for declared generators and reports which artifacts need regeneration after changes',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'api-consumer-replay',
+    risk: 'medium',
+    summary:
+      'Replays explicit consumer HTTP fixtures against a loopback API and compares status and selected JSON fields without following redirects',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'migration-rehearsal',
+    risk: 'high',
+    summary:
+      'Rehearses SQLite up/down migrations in a fresh in-memory database and compares schema and data snapshots before and after rollback',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'failure-injection-lab',
+    risk: 'high',
+    summary:
+      'Runs a caller-supplied recovery test against a temporary loopback endpoint injecting HTTP 429, malformed JSON, disconnects or delayed responses',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'concurrency-scenario-tester',
+    risk: 'medium',
+    summary:
+      'Issues synchronized loopback HTTP requests and verifies an explicit allowed-success count plus an optional final-state JSON invariant',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'resource-lifecycle-inspector',
+    risk: 'high',
+    summary:
+      'Runs a Node lifecycle fixture repeatedly in a child process and compares active resource counts after each cleanup against its baseline',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'visual-regression-reviewer',
+    risk: 'low',
+    summary:
+      'Compares decoded PNG screenshot pixels and reports changed-pixel ratios and a bounding rectangle with explicit tolerance',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'responsive-journey-tester',
+    risk: 'high',
+    summary:
+      'Runs explicit Playwright browser journeys at selected viewport sizes and checks required controls for visibility, reachability and horizontal overflow',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'localization-completeness',
+    risk: 'low',
+    summary:
+      'Compares nested JSON locale keys, empty translations and interpolation variables across languages, including explicitly keyed plural variants',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'executable-documentation',
+    risk: 'high',
+    summary:
+      'Executes explicitly marked JavaScript documentation examples in Node and records their actual exit status and source location',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'dependency-upgrade-sandbox',
+    risk: 'high',
+    summary:
+      'Copies selected fixture files to a temporary directory, changes one npm dependency, installs without lifecycle scripts and runs explicit validation commands',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'developer-environment-doctor',
+    risk: 'high',
+    summary:
+      'Probes the active Node runtime, declared package-manager launcher and dependency-install presence using the project package manifest',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'service-topology-inspector',
+    risk: 'medium',
+    summary:
+      'Probes declared loopback service health endpoints, maps dependency failures and reports missing services and topology cycles',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'decision-journal',
+    risk: 'medium',
+    summary:
+      'Appends explicit architectural decisions and rationales to a project JSONL journal and retrieves decisions linked to changed files',
+    defaultState: 'inactive',
+    source: 'Suite',
+  },
+  {
+    name: 'plugin-workbench',
+    risk: 'high',
+    summary:
+      'Loads a built plugin in a bounded child-process harness and measures duplicate tool registration, hook cleanup and setup/teardown lifecycle behavior',
+    defaultState: 'inactive',
+    source: 'Suite',
   },
 ] as const;
 

@@ -460,13 +460,17 @@ describe('DefaultPluginAPI', () => {
       slashCommandRegistry: scr,
     });
 
+    // The view forwards `{ bare: false }` to SlashCommandRegistry.register.
+    // Production plug-lsp no longer passes that option (renamed wrappers
+    // register bare by default for discoverability), but the passthrough
+    // is still part of the view contract — this test pins it.
     api.slashCommands.register(
-      { name: 'stop', description: 'Stop LSP', run: async () => ({}) },
+      { name: 'lsp-stop', description: 'Stop LSP', run: async () => ({}) },
       { bare: false },
     );
 
     expect(scr.get('stop')).toBeUndefined();
-    expect(scr.ownerOf('@wrongstack/plug-lsp:stop')).toBe('@wrongstack/plug-lsp');
+    expect(scr.ownerOf('@wrongstack/plug-lsp:lsp-stop')).toBe('@wrongstack/plug-lsp');
   });
 
   it('slashCommands falls back to noop view when no host registry is provided', () => {

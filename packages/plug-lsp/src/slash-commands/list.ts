@@ -3,7 +3,11 @@ import type { LSPRegistry } from '../registry.js';
 
 export function listCommand(registry: LSPRegistry): SlashCommand {
   return {
-    name: 'list',
+    name: 'lsp-list',
+    // Kept as a deprecated alias for one release so existing muscle memory
+    // (`/list`) still resolves. The bare `/list` collides with no core
+    // command today, but the LSP-specific name is more discoverable.
+    aliases: ['list'],
     description: 'List configured LSP servers.',
     async run() {
       const rows = registry.list().map((s) => {

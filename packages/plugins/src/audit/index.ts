@@ -439,4 +439,276 @@ export const OFFICIAL_PLUGIN_AUDIT_ENTRIES = [
     defaultState: 'inactive',
     canDisable: true,
   },
+  {
+    name: 'workspace-health',
+    risk: 'medium',
+    summary:
+      'Inspects supplied workspace configuration evidence for broken package-manager, Node, and script contracts',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'test-impact-analyzer',
+    risk: 'medium',
+    summary:
+      'Inspects diffs and test output for untested changes, focused-test exclusions, and skipped coverage evidence',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'ci-failure-triage',
+    risk: 'medium',
+    summary:
+      'Classifies supplied CI logs into actionable dependency, test, type-check, and infrastructure failure evidence',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'env-contract-guard',
+    risk: 'medium',
+    summary:
+      'Inspects environment templates and runtime diagnostics for missing, placeholder, or accidentally exposed configuration contracts',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'dependency-drift-detector',
+    risk: 'medium',
+    summary:
+      'Inspects manifests and package-manager output for unpinned ranges, lockfile mismatch, and peer dependency drift',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'release-readiness',
+    risk: 'medium',
+    summary:
+      'Inspects supplied release-gate output for unmet validation, dirty-tree, publish, and version-alignment evidence',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'bundle-budget-guard',
+    risk: 'medium',
+    summary:
+      'Inspects build and bundle reports for budget breaches, unexpectedly large assets, and sourcemap publication signals',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'public-api-auditor',
+    risk: 'medium',
+    summary:
+      'Inspects public entry-point evidence for undocumented exports, deprecated contracts, and accidental internal API exposure',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'lockfile-consistency-guard',
+    risk: 'medium',
+    summary:
+      'Inspects lockfile and install evidence for mixed package managers, integrity failures, and reproducibility breaks',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'change-risk-classifier',
+    risk: 'medium',
+    summary:
+      'Inspects diffs or change descriptions for authentication, persistence, destructive-operation, and compatibility risk signals',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'bug-reproducer',
+    risk: 'high',
+    summary:
+      'Runs a supplied regression command twice against fingerprinted files and distinguishes a reproducible failure from instability or infrastructure errors',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'verification-ledger',
+    risk: 'high',
+    summary:
+      'Records executed checks with source fingerprints and invalidates their evidence when relevant files change within the host session',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'acceptance-verifier',
+    risk: 'high',
+    summary:
+      'Executes explicit acceptance criteria and maps each requirement to a command result and source fingerprint, preserving missing and stale evidence',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'runtime-trace-explorer',
+    risk: 'low',
+    summary:
+      'Reconstructs parent-child runtime spans from a local trace export and identifies broken ancestry, failed spans and missing expected layers',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'workspace-recipe-runner',
+    risk: 'high',
+    summary:
+      'Discovers explicit package scripts and their package-manager and runtime prerequisites, then runs a selected structured command',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'architecture-boundary-checker',
+    risk: 'low',
+    summary:
+      'Builds a literal source import graph, reports dependency cycles, and checks explicitly forbidden directory boundaries',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'monorepo-change-planner',
+    risk: 'low',
+    summary:
+      'Computes transitive workspace consumers and dependency-first validation order from explicit package manifests and changed paths',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'config-migration-assistant',
+    risk: 'low',
+    summary:
+      'Previews explicit JSON configuration key renames and defaults while preserving custom values and refusing destination conflicts',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'feature-flag-lifecycle',
+    risk: 'low',
+    summary:
+      'Maps declared feature flags to literal source references and reports expired flags and definitions without visible consumers',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'generated-artifact-tracker',
+    risk: 'low',
+    summary:
+      'Tracks source and generated-output fingerprints for declared generators and reports which artifacts need regeneration after changes',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'api-consumer-replay',
+    risk: 'medium',
+    summary:
+      'Replays explicit consumer HTTP fixtures against a loopback API and compares status and selected JSON fields without following redirects',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'migration-rehearsal',
+    risk: 'high',
+    summary:
+      'Rehearses SQLite up/down migrations in a fresh in-memory database and compares schema and data snapshots before and after rollback',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'failure-injection-lab',
+    risk: 'high',
+    summary:
+      'Runs a caller-supplied recovery test against a temporary loopback endpoint injecting HTTP 429, malformed JSON, disconnects or delayed responses',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'concurrency-scenario-tester',
+    risk: 'medium',
+    summary:
+      'Issues synchronized loopback HTTP requests and verifies an explicit allowed-success count plus an optional final-state JSON invariant',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'resource-lifecycle-inspector',
+    risk: 'high',
+    summary:
+      'Runs a Node lifecycle fixture repeatedly in a child process and compares active resource counts after each cleanup against its baseline',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'visual-regression-reviewer',
+    risk: 'low',
+    summary:
+      'Compares decoded PNG screenshot pixels and reports changed-pixel ratios and a bounding rectangle with explicit tolerance',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'responsive-journey-tester',
+    risk: 'high',
+    summary:
+      'Runs explicit Playwright browser journeys at selected viewport sizes and checks required controls for visibility, reachability and horizontal overflow',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'localization-completeness',
+    risk: 'low',
+    summary:
+      'Compares nested JSON locale keys, empty translations and interpolation variables across languages, including explicitly keyed plural variants',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'executable-documentation',
+    risk: 'high',
+    summary:
+      'Executes explicitly marked JavaScript documentation examples in Node and records their actual exit status and source location',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'dependency-upgrade-sandbox',
+    risk: 'high',
+    summary:
+      'Copies selected fixture files to a temporary directory, changes one npm dependency, installs without lifecycle scripts and runs explicit validation commands',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'developer-environment-doctor',
+    risk: 'high',
+    summary:
+      'Probes the active Node runtime, declared package-manager launcher and dependency-install presence using the project package manifest',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'service-topology-inspector',
+    risk: 'medium',
+    summary:
+      'Probes declared loopback service health endpoints, maps dependency failures and reports missing services and topology cycles',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'decision-journal',
+    risk: 'medium',
+    summary:
+      'Appends explicit architectural decisions and rationales to a project JSONL journal and retrieves decisions linked to changed files',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
+  {
+    name: 'plugin-workbench',
+    risk: 'high',
+    summary:
+      'Loads a built plugin in a bounded child-process harness and measures duplicate tool registration, hook cleanup and setup/teardown lifecycle behavior',
+    defaultState: 'inactive',
+    canDisable: true,
+  },
 ] as const;

@@ -52,7 +52,7 @@ tracked set is not a workspace verification. With no enabled server configured,
 LSP tools are removed. An enabled lazy server remains available and starts when
 a supported file is requested.
 
-`/lsp diagnostics` and `/diagnostics` display cached reports only and label them
+`/lsp diagnostics` and `/lsp-diagnostics` display cached reports only and label them
 as such. The tool rejects invalid pull reports and replies from a replaced
 connection or an earlier document revision. Versioned push reports must match
 the tracked document version; servers that omit versions cannot provide that

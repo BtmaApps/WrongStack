@@ -87,6 +87,19 @@ export type Action =
       provider?: string | undefined;
       cwd?: string | undefined;
       sessionId?: string | undefined;
+      /**
+       * Tells the reducer the boot-time restored transcript source has been
+       * discarded (e.g. by `/clear`). When explicitly `null` (not just
+       * omitted), the reducer resets the resume-derived state slice to the
+       * fresh values `createInitialState` would have produced with no
+       * restored entries: `historyBudget = undefined`, `autoProceedHold = false`,
+       * and `nextId` re-seeded from the surviving banner only. Pass
+       * `undefined` to leave the resume slice intact (existing behavior for
+       * `session.rewound` / `project.switched`).
+       */
+      restoredMessages?: readonly unknown[] | null | undefined;
+      restoredToolCalls?: readonly unknown[] | null | undefined;
+      restoredEvents?: readonly unknown[] | null | undefined;
     }
   | { type: 'streamDelta'; delta: string }
   | { type: 'streamReset' }

@@ -33,6 +33,8 @@ const NON_PLUGIN_EXPORT_NAMES = new Set([
   'manifest',
   'plugin-audit-catalog',
   'runtime',
+  'evidence-analyzer',
+  'workflow-runtime',
 ]);
 
 async function bundledPluginNames(): Promise<string[]> {

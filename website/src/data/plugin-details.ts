@@ -10,6 +10,7 @@ import { pluginDetailsPart3 } from './plugin-details-part-3';
 import { pluginDetailsPart4 } from './plugin-details-part-4';
 import { pluginDetailsPart5 } from './plugin-details-part-5';
 import { pluginDetailsPart6 } from './plugin-details-part-6';
+import { workflowPluginDetails } from './plugin-details-workflows';
 
 export type {
   PluginToolParam,
@@ -25,4 +26,5 @@ export const pluginDetails: Record<string, PluginDetail> = {
   ...pluginDetailsPart4,
   ...pluginDetailsPart5,
   ...pluginDetailsPart6,
+  ...workflowPluginDetails,
 };

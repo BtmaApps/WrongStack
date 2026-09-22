@@ -292,10 +292,10 @@ packages/plug-lsp/src/
 
 The plugin registers slash commands with the `@wrongstack/plug-lsp` namespace:
 
-- `/@wrongstack/plug-lsp:list`
-- `/@wrongstack/plug-lsp:start`
-- `/@wrongstack/plug-lsp:stop`
-- `/@wrongstack/plug-lsp:restart`
-- `/@wrongstack/plug-lsp:diagnostics`
+- `/@wrongstack/plug-lsp:lsp-list`
+- `/@wrongstack/plug-lsp:lsp-start`
+- `/@wrongstack/plug-lsp:lsp-stop`
+- `/@wrongstack/plug-lsp:lsp-restart`
+- `/@wrongstack/plug-lsp:lsp-diagnostics`
 
 These are also available as the short form **`/lsp`**, **`/lsp list`**, etc.

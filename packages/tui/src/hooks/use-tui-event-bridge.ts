@@ -6,7 +6,23 @@ import { useBrainEvents } from './use-brain-events.js';
 import { useSubagentEvents } from './use-subagent-events.js';
 
 type ClearHistoryDispatch = React.Dispatch<
-  | { type: 'clearHistory'; model?: string | undefined; provider?: string | undefined }
+  | {
+      type: 'clearHistory';
+      model?: string | undefined;
+      provider?: string | undefined;
+      /**
+       * When explicitly `null`, the reducer treats the boot-time restored
+       * transcript as discarded and resets `historyBudget`, `autoProceedHold`,
+       * and `nextId` to the fresh-boot values. `/clear` passes `null` for
+       * all three so the screen genuinely looks like first launch. Pass
+       * `undefined` (or omit) to preserve the existing resume-derived
+       * budget/hold — the behavior the bridge uses for `session.rewound` /
+       * `project.switched`.
+       */
+      restoredMessages?: readonly unknown[] | null | undefined;
+      restoredToolCalls?: readonly unknown[] | null | undefined;
+      restoredEvents?: readonly unknown[] | null | undefined;
+    }
   | { type: 'resetContextChip' }
   | { type: 'streamReset' }
   | { type: 'toolStreamClear' }

@@ -27,7 +27,7 @@
       "relativeImports": 34
     },
     "packages/cli/src/execution.ts": {
-      "lines": 968,
+      "lines": 992,
       "relativeImports": 44
     },
     "packages/cli/src/fleet/host.ts": {
@@ -323,7 +323,7 @@
       "relativeImports": 5
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 902,
+      "lines": 915,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {

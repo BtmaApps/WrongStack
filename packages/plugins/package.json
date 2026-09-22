@@ -252,6 +252,142 @@
       "types": "./dist/release-notes-generator.d.ts",
       "import": "./dist/release-notes-generator.js"
     },
+    "./workspace-health": {
+      "types": "./dist/workspace-health.d.ts",
+      "import": "./dist/workspace-health.js"
+    },
+    "./test-impact-analyzer": {
+      "types": "./dist/test-impact-analyzer.d.ts",
+      "import": "./dist/test-impact-analyzer.js"
+    },
+    "./ci-failure-triage": {
+      "types": "./dist/ci-failure-triage.d.ts",
+      "import": "./dist/ci-failure-triage.js"
+    },
+    "./env-contract-guard": {
+      "types": "./dist/env-contract-guard.d.ts",
+      "import": "./dist/env-contract-guard.js"
+    },
+    "./dependency-drift-detector": {
+      "types": "./dist/dependency-drift-detector.d.ts",
+      "import": "./dist/dependency-drift-detector.js"
+    },
+    "./release-readiness": {
+      "types": "./dist/release-readiness.d.ts",
+      "import": "./dist/release-readiness.js"
+    },
+    "./bundle-budget-guard": {
+      "types": "./dist/bundle-budget-guard.d.ts",
+      "import": "./dist/bundle-budget-guard.js"
+    },
+    "./public-api-auditor": {
+      "types": "./dist/public-api-auditor.d.ts",
+      "import": "./dist/public-api-auditor.js"
+    },
+    "./lockfile-consistency-guard": {
+      "types": "./dist/lockfile-consistency-guard.d.ts",
+      "import": "./dist/lockfile-consistency-guard.js"
+    },
+    "./change-risk-classifier": {
+      "types": "./dist/change-risk-classifier.d.ts",
+      "import": "./dist/change-risk-classifier.js"
+    },
+    "./bug-reproducer": {
+      "types": "./dist/bug-reproducer.d.ts",
+      "import": "./dist/bug-reproducer.js"
+    },
+    "./verification-ledger": {
+      "types": "./dist/verification-ledger.d.ts",
+      "import": "./dist/verification-ledger.js"
+    },
+    "./acceptance-verifier": {
+      "types": "./dist/acceptance-verifier.d.ts",
+      "import": "./dist/acceptance-verifier.js"
+    },
+    "./runtime-trace-explorer": {
+      "types": "./dist/runtime-trace-explorer.d.ts",
+      "import": "./dist/runtime-trace-explorer.js"
+    },
+    "./workspace-recipe-runner": {
+      "types": "./dist/workspace-recipe-runner.d.ts",
+      "import": "./dist/workspace-recipe-runner.js"
+    },
+    "./architecture-boundary-checker": {
+      "types": "./dist/architecture-boundary-checker.d.ts",
+      "import": "./dist/architecture-boundary-checker.js"
+    },
+    "./monorepo-change-planner": {
+      "types": "./dist/monorepo-change-planner.d.ts",
+      "import": "./dist/monorepo-change-planner.js"
+    },
+    "./config-migration-assistant": {
+      "types": "./dist/config-migration-assistant.d.ts",
+      "import": "./dist/config-migration-assistant.js"
+    },
+    "./feature-flag-lifecycle": {
+      "types": "./dist/feature-flag-lifecycle.d.ts",
+      "import": "./dist/feature-flag-lifecycle.js"
+    },
+    "./generated-artifact-tracker": {
+      "types": "./dist/generated-artifact-tracker.d.ts",
+      "import": "./dist/generated-artifact-tracker.js"
+    },
+    "./api-consumer-replay": {
+      "types": "./dist/api-consumer-replay.d.ts",
+      "import": "./dist/api-consumer-replay.js"
+    },
+    "./migration-rehearsal": {
+      "types": "./dist/migration-rehearsal.d.ts",
+      "import": "./dist/migration-rehearsal.js"
+    },
+    "./failure-injection-lab": {
+      "types": "./dist/failure-injection-lab.d.ts",
+      "import": "./dist/failure-injection-lab.js"
+    },
+    "./concurrency-scenario-tester": {
+      "types": "./dist/concurrency-scenario-tester.d.ts",
+      "import": "./dist/concurrency-scenario-tester.js"
+    },
+    "./resource-lifecycle-inspector": {
+      "types": "./dist/resource-lifecycle-inspector.d.ts",
+      "import": "./dist/resource-lifecycle-inspector.js"
+    },
+    "./visual-regression-reviewer": {
+      "types": "./dist/visual-regression-reviewer.d.ts",
+      "import": "./dist/visual-regression-reviewer.js"
+    },
+    "./responsive-journey-tester": {
+      "types": "./dist/responsive-journey-tester.d.ts",
+      "import": "./dist/responsive-journey-tester.js"
+    },
+    "./localization-completeness": {
+      "types": "./dist/localization-completeness.d.ts",
+      "import": "./dist/localization-completeness.js"
+    },
+    "./executable-documentation": {
+      "types": "./dist/executable-documentation.d.ts",
+      "import": "./dist/executable-documentation.js"
+    },
+    "./dependency-upgrade-sandbox": {
+      "types": "./dist/dependency-upgrade-sandbox.d.ts",
+      "import": "./dist/dependency-upgrade-sandbox.js"
+    },
+    "./developer-environment-doctor": {
+      "types": "./dist/developer-environment-doctor.d.ts",
+      "import": "./dist/developer-environment-doctor.js"
+    },
+    "./service-topology-inspector": {
+      "types": "./dist/service-topology-inspector.d.ts",
+      "import": "./dist/service-topology-inspector.js"
+    },
+    "./decision-journal": {
+      "types": "./dist/decision-journal.d.ts",
+      "import": "./dist/decision-journal.js"
+    },
+    "./plugin-workbench": {
+      "types": "./dist/plugin-workbench.d.ts",
+      "import": "./dist/plugin-workbench.js"
+    },
     "./runtime": {
       "types": "./dist/runtime.d.ts",
       "import": "./dist/runtime.js"

@@ -26,9 +26,15 @@ export function registerSlashCommands(
     diagnosticsCommand(registry),
   ];
   for (const command of commands) {
-    // `/stop` is a core alias for `/interrupt`. Keep the legacy LSP command
-    // namespaced while `/lsp stop` remains the primary short form.
-    api.slashCommands.register(command, command.name === 'stop' ? { bare: false } : undefined);
+    // Renamed wrappers register bare by default — the new names (`lsp-*`)
+    // are LSP-specific and discoverable, which is the whole point of the
+    // rename. The legacy aliases (`start`, `stop`, `restart`, `list`,
+    // `diagnostics`) are kept on each command for muscle-memory continuity.
+    // The `stop` alias collides with core's `/interrupt` alias and the
+    // registry's alias-reservation invariant (`isAliasReservedKey`) silently
+    // refuses that one write; bare `lsp-stop` is unaffected and remains
+    // reachable as documented.
+    api.slashCommands.register(command);
   }
   return commands.map((cmd) => cmd.name);
 }

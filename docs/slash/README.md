@@ -131,10 +131,10 @@ First-party plugins are official registry owners, so an enabled plugin exposes b
 | Opt-in | `wstack-auto-review` | `/auto-review`; [auto-review](auto-review.md) |
 | Opt-in | `wstack-specialist-triggers` | `/specialist-triggers`; [specialist triggers](specialist-triggers.md) |
 | Opt-in | `semver-bump` | `/semver`; [semantic versioning](semver.md) |
-| Opt-in | `@wrongstack/plug-lsp` | `/lsp` (`/lsplsp`), plus `/list`, `/start`, `/restart`, `/diagnostics`; namespaced `:stop`; [LSP](lsp.md) |
+| Opt-in | `@wrongstack/plug-lsp` | `/lsp` (`/lsplsp`), plus `/lsp-list`, `/lsp-start`, `/lsp-restart`, `/lsp-diagnostics`; namespaced `:lsp-stop`; [LSP](lsp.md) |
 | Opt-in | `telegram` | `/telegram-health` (`/telegram`, `/tgstat`, `/tgs`), `/send`, `/chatid`; [Telegram plugin](telegram.md) |
 
-Plugin registration is last-write-wins for bare official names. A plugin can keep a compatibility command namespaced-only when its short name belongs to the core interaction model: plug-lsp does this for `/@wrongstack/plug-lsp:stop`, while `/lsp stop` is its primary form and bare `/stop` remains the core alias for `/interrupt`. Namespaced forms such as `/@wrongstack/plug-lsp:stop` and `/telegram:send` are available while their plugin is loaded. External plugins do not receive bare names and are invoked only as `/owner:command`.
+Plugin registration is last-write-wins for bare official names. A plugin can keep a compatibility command namespaced-only when its short name belongs to the core interaction model: plug-lsp does this for `/@wrongstack/plug-lsp:lsp-stop`, while `/lsp stop` is its primary form and bare `/stop` remains the core alias for `/interrupt`. Namespaced forms such as `/@wrongstack/plug-lsp:lsp-stop` and `/telegram:send` are available while their plugin is loaded. External plugins do not receive bare names and are invoked only as `/owner:command`.
 
 ## Dispatch flow
 
