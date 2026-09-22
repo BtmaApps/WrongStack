@@ -93,22 +93,38 @@ export async function runNpmAudit(
 
           for (const advisory of via) {
             if (typeof advisory === 'string') continue;
-            const source = advisory.source as number | undefined;
             const name = advisory.name as string | undefined;
-            // npm uses numeric source references — skip those
-            if (typeof source === 'number') continue;
-
+            const title = advisory.title as string | undefined;
+            const url = advisory.url as string | undefined;
+            // Real npm via objects ARE the advisories: they reference their
+            // registry entry with a NUMERIC `source` and carry name/title/url
+            // (captured 2026-09-22). Only objects without any identifying
+            // data are skipped; string entries are indirect references.
+            if (typeof name !== 'string' && typeof title !== 'string') continue;
+            // The advisory id (GHSA/CVE) only appears inside `url` in real
+            // payloads — `cve`/`ghsa` fields never occur (captured shape).
+            const cve = advisory.cve as string | undefined;
+            const ghsaFromUrl =
+              typeof url === 'string'
+                ? /GHSA-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}/.exec(url)?.[0]
+                : undefined;
+            const rawFix = info.fixAvailable;
+            const fixVersion =
+              typeof rawFix === 'object' && rawFix !== null && 'version' in rawFix
+                ? String((rawFix as { version: unknown }).version)
+                : typeof rawFix === 'string' && rawFix !== ''
+                  ? rawFix
+                  : undefined;
             advisories.push({
-              id:
-                (advisory.cve as string) ??
-                (advisory.ghsa as string) ??
-                `npm-${pkg}-${name ?? 'unknown'}`,
+              id: cve ?? ghsaFromUrl ?? `npm-${pkg}-${name ?? 'unknown'}`,
               packageName: pkg,
-              severity: npmSeverity((info.severity as string) ?? 'info'),
-              summary: (advisory.title as string) ?? name ?? 'No summary',
-              fixVersion: (info.fixAvailable as string) ?? undefined,
-              url: (advisory.url as string) ?? undefined,
-              aliases: (advisory.cve as string) ? [advisory.cve as string] : [],
+              severity: npmSeverity(
+                (advisory.severity as string) ?? (info.severity as string) ?? 'info',
+              ),
+              summary: title ?? name ?? 'No summary',
+              fixVersion,
+              url,
+              aliases: cve ? [cve] : [],
             });
           }
         }

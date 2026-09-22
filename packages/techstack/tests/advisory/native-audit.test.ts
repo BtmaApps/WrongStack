@@ -99,7 +99,7 @@ describe('runNpmAudit', () => {
     expect(result.advisories).toHaveLength(0);
   });
 
-  it('skips numeric source references', async () => {
+  it('skips via objects without identifying data (bare numeric source)', async () => {
     const { runNpmAudit } = await import('../../src/advisory/native-audit.js');
     mockResult(
       JSON.stringify({
@@ -110,6 +110,44 @@ describe('runNpmAudit', () => {
     );
     const result = await runNpmAudit('/fake');
     expect(result.advisories).toHaveLength(0);
+  });
+
+  // Regression (round r27): the captured live `npm audit --json` payload shows
+  // every real advisory via object carries a NUMERIC `source` plus
+  // name/title/url (the GHSA id lives inside the url), an object
+  // `fixAvailable`, and no cve/ghsa fields. The old parser skipped all of
+  // them — zero advisories from a fully vulnerable tree.
+  it('emits advisories from the real npm audit via shape (numeric source, GHSA in url)', async () => {
+    const { runNpmAudit } = await import('../../src/advisory/native-audit.js');
+    mockResult(
+      JSON.stringify({
+        vulnerabilities: {
+          lodash: {
+            severity: 'high',
+            via: [
+              {
+                source: 1106913,
+                name: 'lodash',
+                title: 'Command Injection in lodash',
+                url: 'https://github.com/advisories/GHSA-35jh-r3h4-6jhm',
+                severity: 'high',
+                range: '<4.17.21',
+                cwe: ['CWE-77', 'CWE-94'],
+              },
+            ],
+            fixAvailable: { name: 'lodash', version: '4.18.1', isSemVerMajor: false },
+          },
+        },
+      }),
+    );
+    const result = await runNpmAudit('/fake');
+    expect(result.advisories).toHaveLength(1);
+    expect(result.advisories[0]!.id).toBe('GHSA-35jh-r3h4-6jhm');
+    expect(result.advisories[0]!.packageName).toBe('lodash');
+    expect(result.advisories[0]!.severity).toBe('high');
+    expect(result.advisories[0]!.summary).toBe('Command Injection in lodash');
+    expect(result.advisories[0]!.fixVersion).toBe('4.18.1');
+    expect(result.advisories[0]!.url).toBe('https://github.com/advisories/GHSA-35jh-r3h4-6jhm');
   });
 
   it('handles no vulnerabilities (status 0)', async () => {
