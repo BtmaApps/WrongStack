@@ -8,6 +8,7 @@ const { handlers, client } = vi.hoisted(() => {
       handlers.set(type, handler);
       return () => handlers.delete(type);
     }),
+    send: vi.fn(),
     listMcpServers: vi.fn(),
     updateMcpServer: vi.fn(),
   };
@@ -29,6 +30,7 @@ function emitServerList(servers: unknown[]): void {
 beforeEach(() => {
   handlers.clear();
   client.on.mockClear();
+  client.send.mockClear();
   client.listMcpServers.mockClear();
   client.updateMcpServer.mockClear();
 });

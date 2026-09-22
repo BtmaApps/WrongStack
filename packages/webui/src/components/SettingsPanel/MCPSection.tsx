@@ -231,6 +231,8 @@ export function MCPSection(): ReactElement {
           toast.error(
             i18n.t('settings:mcp.toastAuthFailed', {
               name: p.name,
+              // The reason rides an interpolation so every locale keeps it.
+              suffix: p.message ? `: ${p.message}` : '',
               defaultValue: `"${p.name}" needs authorization${p.message ? `: ${p.message}` : ''}`,
             }),
           );

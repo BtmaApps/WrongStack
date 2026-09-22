@@ -345,7 +345,17 @@
     "toastConnected": "Server \"{{name}}\" connected",
     "toastReconnected": "Server \"{{name}}\" reconnected",
     "toastDisconnected": "Server \"{{name}}\" disconnected: {{reason}}",
-    "toastError": "Server \"{{name}}\" error: {{error}}"
+    "toastError": "Server \"{{name}}\" error: {{error}}",
+    "authRequired": "Sign-in required",
+    "authorized": "Authorized",
+    "authorizeTitle": "Authorize with OAuth",
+    "authSignOutTitle": "Remove OAuth credentials",
+    "authSignOutBody": "Remove the stored OAuth credentials for \"{{name}}\"? You will need to authorize again.",
+    "authPromptTitle": "Finish signing in to \"{{name}}\"",
+    "authPromptBody": "Open the authorization page and approve access. This panel updates when the provider redirects back.",
+    "authPromptOpen": "Open authorization page",
+    "toastAuthorized": "Authorized \"{{name}}\"",
+    "toastAuthFailed": "\"{{name}}\" needs authorization{{suffix}}"
   },
   "allowlist": {
     "title": "Clear saved allowlist?",

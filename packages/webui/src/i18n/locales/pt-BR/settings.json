@@ -291,7 +291,17 @@
     "toastConnected": "Servidor \"{{name}}\" conectado",
     "toastReconnected": "Servidor \"{{name}}\" reconectado",
     "toastDisconnected": "Servidor \"{{name}}\" desconectado: {{reason}}",
-    "toastError": "Servidor \"{{name}}\" erro: {{error}}"
+    "toastError": "Servidor \"{{name}}\" erro: {{error}}",
+    "authRequired": "Login necessário",
+    "authorized": "Autorizado",
+    "authorizeTitle": "Autorizar com OAuth",
+    "authSignOutTitle": "Remover credenciais OAuth",
+    "authSignOutBody": "Remover as credenciais OAuth salvas de \"{{name}}\"? Você precisará autorizar novamente.",
+    "authPromptTitle": "Conclua o login em \"{{name}}\"",
+    "authPromptBody": "Abra a página de autorização e aprove o acesso. Este painel é atualizado quando o provedor redirecionar de volta.",
+    "authPromptOpen": "Abrir página de autorização",
+    "toastAuthorized": "\"{{name}}\" autorizado",
+    "toastAuthFailed": "\"{{name}}\" precisa de autorização{{suffix}}"
   },
   "allowlist": {
     "title": "Limpar a allowlist salva?",

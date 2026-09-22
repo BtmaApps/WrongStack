@@ -291,7 +291,17 @@
     "toastConnected": "Server „{{name}}“ verbunden",
     "toastReconnected": "Server „{{name}}“ neu verbunden",
     "toastDisconnected": "Server „{{name}}“ getrennt: {{reason}}",
-    "toastError": "Server „{{name}}“ Fehler: {{error}}"
+    "toastError": "Server „{{name}}“ Fehler: {{error}}",
+    "authRequired": "Anmeldung erforderlich",
+    "authorized": "Autorisiert",
+    "authorizeTitle": "Mit OAuth autorisieren",
+    "authSignOutTitle": "OAuth-Anmeldedaten entfernen",
+    "authSignOutBody": "Gespeicherte OAuth-Anmeldedaten für „{{name}}“ entfernen? Sie müssen sich erneut autorisieren.",
+    "authPromptTitle": "Anmeldung bei „{{name}}“ abschließen",
+    "authPromptBody": "Öffnen Sie die Autorisierungsseite und bestätigen Sie den Zugriff. Dieses Panel aktualisiert sich, sobald der Anbieter zurückleitet.",
+    "authPromptOpen": "Autorisierungsseite öffnen",
+    "toastAuthorized": "„{{name}}“ autorisiert",
+    "toastAuthFailed": "„{{name}}“ benötigt eine Autorisierung{{suffix}}"
   },
   "allowlist": {
     "title": "Gespeicherte Allowlist löschen?",

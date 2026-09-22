@@ -291,7 +291,17 @@
     "toastConnected": "\"{{name}}\" sunucusu bağlandı",
     "toastReconnected": "\"{{name}}\" sunucusu yeniden bağlandı",
     "toastDisconnected": "\"{{name}}\" sunucusu bağlantısı koptu: {{reason}}",
-    "toastError": "\"{{name}}\" sunucusu hatası: {{error}}"
+    "toastError": "\"{{name}}\" sunucusu hatası: {{error}}",
+    "authRequired": "Oturum açma gerekli",
+    "authorized": "Yetkilendirildi",
+    "authorizeTitle": "OAuth ile yetkilendir",
+    "authSignOutTitle": "OAuth kimlik bilgilerini kaldır",
+    "authSignOutBody": "\"{{name}}\" için kayıtlı OAuth kimlik bilgileri kaldırılsın mı? Yeniden yetkilendirmeniz gerekecek.",
+    "authPromptTitle": "\"{{name}}\" için oturum açmayı tamamlayın",
+    "authPromptBody": "Yetkilendirme sayfasını açın ve erişimi onaylayın. Sağlayıcı geri yönlendirdiğinde bu panel güncellenir.",
+    "authPromptOpen": "Yetkilendirme sayfasını aç",
+    "toastAuthorized": "\"{{name}}\" yetkilendirildi",
+    "toastAuthFailed": "\"{{name}}\" yetkilendirme gerektiriyor{{suffix}}"
   },
   "allowlist": {
     "title": "Kayıtlı izin listesi temizlensin mi?",

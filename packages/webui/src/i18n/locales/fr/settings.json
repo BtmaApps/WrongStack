@@ -291,7 +291,17 @@
     "toastConnected": "Serveur « {{name}} » connecté",
     "toastReconnected": "Serveur « {{name}} » reconnecté",
     "toastDisconnected": "Serveur « {{name}} » déconnecté : {{reason}}",
-    "toastError": "Serveur « {{name}} » erreur : {{error}}"
+    "toastError": "Serveur « {{name}} » erreur : {{error}}",
+    "authRequired": "Connexion requise",
+    "authorized": "Autorisé",
+    "authorizeTitle": "Autoriser avec OAuth",
+    "authSignOutTitle": "Supprimer les identifiants OAuth",
+    "authSignOutBody": "Supprimer les identifiants OAuth enregistrés pour « {{name}} » ? Vous devrez autoriser à nouveau.",
+    "authPromptTitle": "Terminez la connexion à « {{name}} »",
+    "authPromptBody": "Ouvrez la page d'autorisation et approuvez l'accès. Ce panneau se met à jour lorsque le fournisseur redirige.",
+    "authPromptOpen": "Ouvrir la page d'autorisation",
+    "toastAuthorized": "« {{name}} » autorisé",
+    "toastAuthFailed": "« {{name}} » nécessite une autorisation{{suffix}}"
   },
   "allowlist": {
     "title": "Effacer la allowlist enregistrée ?",

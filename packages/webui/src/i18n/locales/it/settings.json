@@ -291,7 +291,17 @@
     "toastConnected": "Server \"{{name}}\" connesso",
     "toastReconnected": "Server \"{{name}}\" riconnesso",
     "toastDisconnected": "Server \"{{name}}\" disconnesso: {{reason}}",
-    "toastError": "Server \"{{name}}\" errore: {{error}}"
+    "toastError": "Server \"{{name}}\" errore: {{error}}",
+    "authRequired": "Accesso richiesto",
+    "authorized": "Autorizzato",
+    "authorizeTitle": "Autorizza con OAuth",
+    "authSignOutTitle": "Rimuovi le credenziali OAuth",
+    "authSignOutBody": "Rimuovere le credenziali OAuth salvate per \"{{name}}\"? Dovrai autorizzare di nuovo.",
+    "authPromptTitle": "Completa l'accesso a \"{{name}}\"",
+    "authPromptBody": "Apri la pagina di autorizzazione e approva l'accesso. Questo pannello si aggiorna quando il provider reindirizza.",
+    "authPromptOpen": "Apri la pagina di autorizzazione",
+    "toastAuthorized": "\"{{name}}\" autorizzato",
+    "toastAuthFailed": "\"{{name}}\" richiede l'autorizzazione{{suffix}}"
   },
   "allowlist": {
     "title": "Cancella l'allowlist salvata?",
