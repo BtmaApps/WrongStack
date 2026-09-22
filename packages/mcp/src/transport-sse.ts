@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { ToolError } from '@wrongstack/core/types';
 import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
-import { parseServerMetadata } from './protocol.js';
+import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import { SSEReader } from './sse-reader.js';
 import { listAllTools } from './tool-schema.js';
@@ -153,6 +153,9 @@ export class SSETransport extends BaseHTTPTransport {
             this.notifyResourcesChanged();
           } else if (msg.method === 'notifications/prompts/list_changed') {
             this.notifyPromptsChanged();
+          } else if (msg.method === 'notifications/resources/updated') {
+            const uri = resourceUpdatedUri(msg.params);
+            if (uri) this.notifyResourceUpdated(uri);
           }
           return;
         }

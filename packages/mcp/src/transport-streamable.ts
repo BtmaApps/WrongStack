@@ -1,6 +1,6 @@
 import { MCP_CONSTANTS } from './constants.js';
 import type { JsonRpcResponse, ToolCallResult } from './contracts.js';
-import { parseServerMetadata } from './protocol.js';
+import { parseServerMetadata, resourceUpdatedUri } from './protocol.js';
 import { readBodyCapped } from './read-body.js';
 import { listAllTools } from './tool-schema.js';
 import {
@@ -47,20 +47,23 @@ export class StreamableHTTPTransport extends BaseHTTPTransport {
     const envelopes = extractJsonRpcEnvelopes(text);
     for (const envelope of envelopes) {
       if ('method' in envelope && envelope.id === undefined) {
-        this.handleNotification(envelope.method);
+        this.handleNotification(envelope.method, envelope.params);
       }
     }
     const responses = envelopes.filter(isJsonRpcResult);
     return responses.find((envelope) => envelope.id === requestId) ?? responses[0];
   }
 
-  private handleNotification(method: string): void {
+  private handleNotification(method: string, params?: unknown): void {
     if (method === 'notifications/resources/list_changed') {
       this.notifyResourcesChanged();
     } else if (method === 'notifications/prompts/list_changed') {
       this.notifyPromptsChanged();
     } else if (method === 'notifications/tools/list_changed') {
       void this.refreshTools();
+    } else if (method === 'notifications/resources/updated') {
+      const uri = resourceUpdatedUri(params);
+      if (uri) this.notifyResourceUpdated(uri);
     }
   }
 

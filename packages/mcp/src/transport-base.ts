@@ -177,6 +177,7 @@ export abstract class BaseHTTPTransport {
   protected readonly disconnectHandlers: Array<() => void> = [];
   protected readonly toolsChangedListeners = new Set<(tools: MCPTool[]) => void>();
   protected readonly resourcesChangedListeners = new Set<() => void>();
+  protected readonly resourceUpdatedListeners = new Set<(uri: string) => void>();
   protected readonly promptsChangedListeners = new Set<() => void>();
   protected protocolVersion?: string | undefined;
 
@@ -342,6 +343,11 @@ export abstract class BaseHTTPTransport {
     return () => this.promptsChangedListeners.delete(cb);
   }
 
+  onResourceUpdated(cb: (uri: string) => void): () => void {
+    this.resourceUpdatedListeners.add(cb);
+    return () => this.resourceUpdatedListeners.delete(cb);
+  }
+
   /**
    * Fire all disconnect handlers. Subclasses call this when the connection
    * drops so the registry can schedule reconnects.
@@ -370,6 +376,16 @@ export abstract class BaseHTTPTransport {
     for (const cb of this.promptsChangedListeners) {
       try {
         cb();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  protected notifyResourceUpdated(uri: string): void {
+    for (const cb of this.resourceUpdatedListeners) {
+      try {
+        cb(uri);
       } catch {
         /* ignore */
       }

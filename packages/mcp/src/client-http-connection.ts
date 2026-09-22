@@ -17,6 +17,7 @@ export interface ClientHttpConnectionHost {
   _toolsCache: MCPTool[] | undefined;
   toolsChangedListeners: Set<ToolsChangedListener>;
   emitCapabilityChanged: (capability: 'resources' | 'prompts') => void;
+  emitResourceUpdated: (uri: string) => void;
   _serverMetadata: MCPServerMetadata | undefined;
   httpTransport: StreamableHTTPTransport | undefined;
 }
@@ -61,6 +62,7 @@ export async function connectSSE(host: ClientHttpConnectionHost): Promise<void> 
     }
   });
   host.sseTransport.onResourcesChanged(() => host.emitCapabilityChanged('resources'));
+  host.sseTransport.onResourceUpdated((uri) => host.emitResourceUpdated(uri));
   host.sseTransport.onPromptsChanged(() => host.emitCapabilityChanged('prompts'));
   try {
     await host.sseTransport.connect();
@@ -126,6 +128,7 @@ export async function connectStreamableHTTP(host: ClientHttpConnectionHost): Pro
     }
   });
   host.httpTransport.onResourcesChanged(() => host.emitCapabilityChanged('resources'));
+  host.httpTransport.onResourceUpdated((uri) => host.emitResourceUpdated(uri));
   host.httpTransport.onPromptsChanged(() => host.emitCapabilityChanged('prompts'));
   try {
     await host.httpTransport.connect();

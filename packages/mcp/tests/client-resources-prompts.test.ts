@@ -169,6 +169,39 @@ describe('MCPClient resources and prompts', () => {
     expect(unsupportedRequest).not.toHaveBeenCalled();
   });
 
+  it('publishes a resources/updated notification to subscribers', () => {
+    const client = connectedClient(
+      { resources: { subscribe: true, listChanged: true } },
+      vi.fn<RequestFn>(),
+    );
+    const onUpdated = vi.fn();
+    client.addResourceUpdatedListener(onUpdated);
+    const onLine = (client as never as { onLine: (line: string) => void }).onLine.bind(client);
+
+    onLine(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'notifications/resources/updated',
+        params: { uri: 'mem://one' },
+      }),
+    );
+    expect(onUpdated).toHaveBeenCalledWith('fixture', 'mem://one');
+
+    // A malformed notification is dropped, not thrown: it has no reply.
+    onLine(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/resources/updated' }));
+    expect(onUpdated).toHaveBeenCalledTimes(1);
+
+    client.removeResourceUpdatedListener(onUpdated);
+    onLine(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'notifications/resources/updated',
+        params: { uri: 'mem://two' },
+      }),
+    );
+    expect(onUpdated).toHaveBeenCalledTimes(1);
+  });
+
   it('publishes stdio resource and prompt list-change notifications', () => {
     const client = connectedClient(
       { resources: { listChanged: true }, prompts: { listChanged: true } },

@@ -761,6 +761,14 @@ export class MCPRegistry {
     this.log.info(`MCP server "${name}" resource catalog invalidated`);
   };
 
+  private readonly onResourceUpdated = (name: string, uri: string): void => {
+    if (!this.servers.has(name)) return;
+    // A subscription is live data, not a catalog change: the list is still
+    // valid, so nothing is invalidated. Surfaces that asked to subscribe get
+    // the event; everyone else ignores it.
+    this.events.emit('mcp.resource.updated', { name, uri });
+  };
+
   private readonly onPromptsChanged = (name: string): void => {
     const slot = this.servers.get(name);
     if (!slot) return;
@@ -772,11 +780,13 @@ export class MCPRegistry {
   private addCatalogListeners(client: MCPClient): void {
     client.addResourcesChangedListener(this.onResourcesChanged);
     client.addPromptsChangedListener(this.onPromptsChanged);
+    client.addResourceUpdatedListener?.(this.onResourceUpdated);
   }
 
   private removeCatalogListeners(client: MCPClient): void {
     client.removeResourcesChangedListener?.(this.onResourcesChanged);
     client.removePromptsChangedListener?.(this.onPromptsChanged);
+    client.removeResourceUpdatedListener?.(this.onResourceUpdated);
   }
 
   private readonly onChildExit = (

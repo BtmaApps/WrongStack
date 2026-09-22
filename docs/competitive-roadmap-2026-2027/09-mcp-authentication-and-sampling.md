@@ -11,10 +11,30 @@ now-deprecated server-initiated sampling protocol.
 
 ## Standards correction — 2026-07-13
 
-MCP SEP-2577, accepted in April 2026, deprecated `sampling/createMessage`. WrongStack will not build
-a new provider/Brain/cost execution pipeline for a deprecated client capability. Legacy sampling
-requests remain unadvertised, strictly separated from responses, and denied by default. The active
+MCP SEP-2577 deprecated `sampling/createMessage`. WrongStack will not build a new
+provider/Brain/cost execution pipeline for a deprecated client capability. Legacy sampling requests
+remain unadvertised, strictly separated from responses, and denied by default. The active
 investment in this plan is OAuth authorization for HTTP transports.
+
+### Verified against the published spec — 2026-09-22
+
+Checked against the deprecated-features registry for revision `2026-07-28` rather than restated
+from this file:
+
+- **Sampling is Deprecated, not removed.** SEP-2577 landed it in revision `2026-07-28` (this file
+  previously said "accepted in April 2026"), earliest removal is the first revision on or after
+  2027-07-28, and the migration path is "integrate directly with LLM provider APIs". Our
+  default-deny stance matches the policy's "new implementations SHOULD NOT adopt it". A server that
+  still issues `sampling/createMessage` is answered `-32601`, which remains correct.
+- **Roots and Logging were deprecated by the same SEP.** Not implementing them is alignment, not a
+  gap; this plan should not schedule them.
+- **Dynamic client registration is itself now Deprecated** (PR #2858, revision `2026-07-28`), with
+  Client ID Metadata Documents (CIMD) as the migration path. The DCR support added below is still
+  the right call for today's deployed servers — deprecated is not removed, earliest removal is
+  2027-07-28, and hosted MCP servers overwhelmingly expect DCR — but CIMD is the forward path and
+  belongs in the remaining work.
+- **HTTP+SSE has been deprecated since `2025-03-26`** in favour of Streamable HTTP. We implement
+  both, so this costs nothing today.
 
 ## Scope
 
@@ -123,9 +143,10 @@ on the floor.
 - `/mcp auth login` in the REPL/TUI, with `--client-id`, `--port` and scopes. The legacy positional
   `start <server> <client-id> <redirect-uri>` form still parses.
 
-Remaining work: token revocation (RFC 7009) at logout, SecretVault key-rotation migration for the
-token file, re-registration when a cached client is rejected mid-flow, and Desktop-specific
-controls beyond the inherited WebUI backend.
+Remaining work: Client ID Metadata Documents (the migration path now that DCR is deprecated), token
+revocation (RFC 7009) at logout, SecretVault key-rotation migration for the token file,
+re-registration when a cached client is rejected mid-flow, and Desktop-specific controls beyond the
+inherited WebUI backend.
 
 ## Acceptance criteria
 

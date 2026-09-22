@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T11:29:20.038Z
+**Generated:** 2026-09-22T12:24:36.991Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 4074 |
-| Production source lines | 963339 |
-| Test files | 3591 |
+| Production source lines | 963907 |
+| Test files | 3595 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 13255 |
+| Relative module edges | 13256 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 9 |
@@ -22,8 +22,6 @@
 ## Verification result
 
 - 1 unexcepted module cycle(s)
-- packages/mcp/src/registry.ts: hotspot grew from 883 to 895 lines; review and update the ratchet in the same change
-- packages/mcp/src/registry.ts: relative import fan-out increased from 19 to 21; review and update the ratchet in the same change
 
 ## Workspace packages
 
@@ -39,7 +37,7 @@
 | @wrongstack/kanban | 95 | 72 | @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/kanban-mcp | 5 | 5 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/mailbox-mcp | 5 | 8 | @wrongstack/core, @wrongstack/mcp |
-| @wrongstack/mcp | 43 | 42 | @wrongstack/core |
+| @wrongstack/mcp | 43 | 45 | @wrongstack/core |
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
@@ -59,7 +57,7 @@
 | @wrongstack/tools | 230 | 269 | @wrongstack/core, @wrongstack/kanban, @wrongstack/persistence, @wrongstack/primitives |
 | @wrongstack/tui | 418 | 375 | @wrongstack/core, @wrongstack/kanban, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/tools |
 | @wrongstack/vector-memory | 14 | 20 | @wrongstack/core, @wrongstack/persistence, @wrongstack/sage |
-| @wrongstack/webui | 576 | 397 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
+| @wrongstack/webui | 576 | 398 | @wrongstack/core, @wrongstack/kanban, @wrongstack/plugins, @wrongstack/providers, @wrongstack/tools, @wrongstack/webui-protocol |
 | @wrongstack/webui-hq | 121 | 46 | @wrongstack/core, @wrongstack/tools, @wrongstack/webui-protocol, @wrongstack/webui-server |
 | @wrongstack/webui-protocol | 17 | 8 | @wrongstack/core |
 | @wrongstack/webui-server | 245 | 231 | @wrongstack/core, @wrongstack/kanban, @wrongstack/mcp, @wrongstack/primitives, @wrongstack/providers, @wrongstack/requirement-intake, @wrongstack/runtime, @wrongstack/sage, @wrongstack/sdd, @wrongstack/techstack, @wrongstack/tools, @wrongstack/vector-memory, @wrongstack/webui-protocol, @wrongstack/wrongtrace |
@@ -93,13 +91,13 @@ None.
 | 969 | `packages/core/src/execution/auto-compaction-middleware.ts` |
 | 968 | `packages/core/src/coordination/director.ts` |
 | 958 | `packages/sage/src/project-server.ts` |
+| 956 | `packages/mcp/src/client.ts` |
 | 955 | `packages/tools/src/codebase-index/writer.ts` |
 | 942 | `packages/tui/src/use-app-controller.tsx` |
 | 939 | `packages/acp/src/client/acp-session.ts` |
 | 939 | `packages/webui/src/stores/fleet-store.ts` |
 | 937 | `packages/webui-server/src/server/backend-services.ts` |
 | 936 | `packages/cli/src/execution.ts` |
-| 930 | `packages/mcp/src/client.ts` |
 | 921 | `packages/tools/src/session-kanban.ts` |
 | 918 | `packages/providers/src/openai-codex.ts` |
 | 915 | `packages/cli/src/auth-menu/panel-service.ts` |
@@ -110,11 +108,11 @@ None.
 | 909 | `packages/webui/src/components/AudienceMemoryPanel.tsx` |
 | 908 | `packages/webui/src/components/SddWizard.tsx` |
 | 906 | `packages/core/src/types/provider.ts` |
+| 905 | `packages/mcp/src/registry.ts` |
 | 902 | `packages/core/src/security/secret-vault.ts` |
-| 898 | `packages/webui/src/types/client-message.ts` |
-| 895 | `packages/mcp/src/registry.ts` |
+| 902 | `packages/webui-server/src/server/embedded-message-router.ts` |
+| 901 | `packages/webui/src/types/client-message.ts` |
 | 895 | `packages/webui/src/components/SettingsPanel/BrainSection.tsx` |
-| 892 | `packages/webui-server/src/server/embedded-message-router.ts` |
 | 891 | `packages/webui-server/src/server/memory-handlers.ts` |
 | 889 | `packages/core/src/hq/auth-store.ts` |
 | 887 | `packages/mcp/src/server.ts` |

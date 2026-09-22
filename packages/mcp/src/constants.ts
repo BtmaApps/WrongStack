@@ -11,11 +11,30 @@
  *
  * Deliberately conservative: a revision belongs here only once its wire
  * requirements are met, because the version we send in `initialize` is a
- * promise about what the peer may then use. WrongStack speaks the 2024-11-05
- * shape — tools, resources, prompts, sampling — and does not implement the
- * additions of later revisions (elicitation, structured tool output, resource
- * links), so listing one of those would advertise capabilities that are not
- * there.
+ * promise about what the peer may then use.
+ *
+ * WrongStack speaks the 2024-11-05 shape: tools, resources, prompts,
+ * pagination, list_changed, resource subscriptions and cancellation. It does
+ * NOT implement sampling (deliberately denied — see below), nor the additions
+ * of later revisions: elicitation, structured tool output (`outputSchema` /
+ * `structuredContent`), resource links, `completion/complete`, or progress
+ * notifications. Listing a newer revision here would advertise capabilities
+ * that are not there.
+ *
+ * Known drift, accepted: the HTTP layer already implements Streamable HTTP
+ * (added 2025-03-26), the `MCP-Protocol-Version` header and OAuth resource
+ * indicators (2025-06-18) even though we negotiate 2024-11-05. Those ride on
+ * the transport and the 401 challenge rather than on the negotiated revision,
+ * so servers accept them; the declaration is narrower than the behavior.
+ *
+ * Not gaps, by the spec's own reckoning: Roots, Sampling and Logging were all
+ * Deprecated in revision 2026-07-28 (SEP-2577), with new implementations told
+ * not to adopt them. Not having them is alignment, not lag.
+ *
+ * The current revision (2026-07-28) also replaced the `initialize` handshake
+ * with per-request version negotiation plus a mandatory `server/discover` RPC.
+ * Reaching it is an architectural change, not another entry in this list; the
+ * spec keeps a backward-compatibility path for handshake-based clients.
  *
  * Adding a revision: implement its additions, then put it at the FRONT.
  * `PROTOCOL_VERSION` follows automatically, and the negotiation below starts

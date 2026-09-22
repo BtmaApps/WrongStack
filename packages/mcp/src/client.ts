@@ -16,6 +16,7 @@ import type {
   MCPListChangedListener,
   MCPPageOptions,
   MCPRequestOptions,
+  MCPResourceUpdatedListener,
   ToolsChangedListener,
 } from './client-types.js';
 import { MCP_CONSTANTS } from './constants.js';
@@ -28,6 +29,7 @@ import {
   type MCPReadResourceResult,
   type MCPServerMetadata,
   parseServerMetadata,
+  resourceUpdatedUri,
 } from './protocol.js';
 import { listAllTools } from './tool-schema.js';
 import type { SSETransport, StreamableHTTPTransport } from './transport.js';
@@ -95,6 +97,7 @@ export class MCPClient {
   private readonly toolsChangedListeners = new Set<ToolsChangedListener>();
   private readonly resourcesChangedListeners = new Set<MCPListChangedListener>();
   private readonly promptsChangedListeners = new Set<MCPListChangedListener>();
+  private readonly resourceUpdatedListeners = new Set<MCPResourceUpdatedListener>();
   /** Notified when an HTTP transport (SSE or streamable-http) disconnects. */
   private readonly disconnectListeners = new Set<() => void>();
 
@@ -770,6 +773,9 @@ export class MCPClient {
         this.emitCapabilityChanged('resources');
       } else if (envelope['method'] === 'notifications/prompts/list_changed') {
         this.emitCapabilityChanged('prompts');
+      } else if (envelope['method'] === 'notifications/resources/updated') {
+        const uri = resourceUpdatedUri(envelope['params']);
+        if (uri) this.emitResourceUpdated(uri);
       }
       return;
     }
@@ -852,12 +858,30 @@ export class MCPClient {
     this.resourcesChangedListeners.delete(listener);
   }
 
+  addResourceUpdatedListener(listener: MCPResourceUpdatedListener): void {
+    this.resourceUpdatedListeners.add(listener);
+  }
+
+  removeResourceUpdatedListener(listener: MCPResourceUpdatedListener): void {
+    this.resourceUpdatedListeners.delete(listener);
+  }
+
   addPromptsChangedListener(listener: MCPListChangedListener): void {
     this.promptsChangedListeners.add(listener);
   }
 
   removePromptsChangedListener(listener: MCPListChangedListener): void {
     this.promptsChangedListeners.delete(listener);
+  }
+
+  private emitResourceUpdated(uri: string): void {
+    for (const listener of this.resourceUpdatedListeners) {
+      try {
+        listener(this.opts.name, uri);
+      } catch {
+        /* listeners are best-effort */
+      }
+    }
   }
 
   private emitCapabilityChanged(capability: 'resources' | 'prompts'): void {
@@ -905,6 +929,7 @@ export class MCPClient {
       },
       toolsChangedListeners: this.toolsChangedListeners,
       emitCapabilityChanged: (...args) => this.emitCapabilityChanged(...args),
+      emitResourceUpdated: (uri: string) => this.emitResourceUpdated(uri),
       get _serverMetadata() {
         return self._serverMetadata;
       },
@@ -925,5 +950,6 @@ export type {
   MCPListChangedListener,
   MCPPageOptions,
   MCPRequestOptions,
+  MCPResourceUpdatedListener,
   Transport,
 } from './client-types.js';

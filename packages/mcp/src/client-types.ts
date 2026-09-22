@@ -67,3 +67,5 @@ export type JsonRpcServerRequest = {
 export type ExitListener = (name: string, code: number | null, signal: string | null) => void;
 export type ToolsChangedListener = (name: string, tools: MCPTool[]) => void;
 export type MCPListChangedListener = (name: string) => void;
+/** `notifications/resources/updated` — the payload of a live subscription. */
+export type MCPResourceUpdatedListener = (name: string, uri: string) => void;

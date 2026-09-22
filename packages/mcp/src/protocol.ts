@@ -305,3 +305,20 @@ export function parseGetPromptResult(value: unknown): MCPGetPromptResult {
     }),
   };
 }
+
+/**
+ * Extract the `uri` from a `notifications/resources/updated` payload.
+ *
+ * The notification is the whole point of `resources/subscribe`, which the
+ * client already supported — every transport parsed the three `list_changed`
+ * notifications and silently dropped this one, so a subscription produced
+ * nothing. Returns `undefined` for a malformed payload rather than throwing:
+ * a notification has no reply, so a bad one is ignored, not answered.
+ */
+export function resourceUpdatedUri(params: unknown): string | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return undefined;
+  const uri = (params as { uri?: unknown }).uri;
+  if (typeof uri !== 'string' || uri.length === 0 || uri.length > 4_096) return undefined;
+  if (/[\r\n]/.test(uri)) return undefined;
+  return uri;
+}

@@ -321,6 +321,11 @@ export interface ToolEventMap {
   'mcp.server.reconnected': { name: string; toolCount: number };
   'mcp.server.disconnected': { name: string; reason: string };
   /**
+   * `notifications/resources/updated` for a resource this client subscribed to.
+   * Carries the URI only — the content is fetched with `resources/read`.
+   */
+  'mcp.resource.updated': { name: string; uri: string };
+  /**
    * OAuth state for one HTTP MCP server. Emitted by the host that owns the
    * token vault, so an expired or rejected credential is visible instead of
    * failing every call with an opaque 401. Carries no token or code.
