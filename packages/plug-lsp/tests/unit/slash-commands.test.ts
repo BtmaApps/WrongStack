@@ -133,6 +133,28 @@ describe('slash commands', () => {
     expect(result.message).toContain('Total: 2 diagnostics in 1 files.');
   });
 
+  it('skips servers that are not ready', async () => {
+    // A crashed or still-initializing server keeps whatever it buffered before
+    // it left `ready`. Those diagnostics no longer describe the workspace, so
+    // the command must skip the server rather than print stale findings.
+    const key = uriKey(pathToUri(`${process.cwd()}/a.ts`));
+    const crashed = server('ts');
+    crashed.state = 'failed';
+    crashed.diagnostics.set(key, [
+      {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        severity: 1,
+        message: 'stale error from a dead server',
+      },
+    ]);
+
+    const command = diagnosticsCommand({ list: () => [crashed] } as never);
+    const result = await command.run('', ctx());
+    if (!result) throw new Error('diagnostics command returned no result');
+
+    expect(result.message).not.toContain('stale error from a dead server');
+  });
+
   it('registers command set and returns bare names', () => {
     const registered: string[] = [];
     const options = new Map<string, { bare?: boolean } | undefined>();

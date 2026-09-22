@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'node:events';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -72,6 +73,29 @@ describe('LSPServer direct API', () => {
       params: { uri, version: 1, diagnostics: [] },
     });
     expect(server.getDiagnostics(uri)[0]?.message).toBe('mock diagnostic');
+
+    // Stale-child guards: a restart swaps `child`, but the previous child's
+    // connection can still deliver a queued notification or its close. Both
+    // handlers close over the child they were registered for and must no-op
+    // when it is no longer the live one, or a dead process gets to wipe the
+    // running server's diagnostics and flip its state to `failed`.
+    const stale = server as unknown as {
+      child: unknown;
+      state: string;
+      connection: { handleMessage(message: unknown): void; events: EventEmitter };
+    };
+    const liveChild = stale.child;
+    stale.child = { pid: -1 };
+    stale.connection.handleMessage({
+      jsonrpc: '2.0',
+      method: 'textDocument/publishDiagnostics',
+      params: { uri, version: 99, diagnostics: [] },
+    });
+    stale.connection.events.emit('close');
+    expect(server.getDiagnostics(uri)[0]?.message).toBe('mock diagnostic');
+    expect(stale.state).toBe('ready');
+    stale.child = liveChild;
+
     server.notifyDidClose(uri);
 
     expect(
