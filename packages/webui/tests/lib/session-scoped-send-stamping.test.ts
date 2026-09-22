@@ -54,7 +54,7 @@ function sessionScopedTypes(): Set<string> {
       block = [];
     };
     for (const line of lines) {
-      const match = /type:\s*'([a-zA-Z0-9_.]+)'/.exec(line);
+      const match = /type:\s*'([a-zA-Z0-9_.-]+)'/.exec(line);
       if (match?.[1]) {
         flush();
         current = match[1];
@@ -120,9 +120,20 @@ describe('session-scoped requests name the tab that sent them', () => {
     // A parser that quietly matched nothing would make the rule below vacuous.
     const scoped = sessionScopedTypes();
     expect(scoped.size).toBeGreaterThan(30);
-    for (const type of ['user_message', 'abort', 'design.use', 'brain.status', 'sessions.list']) {
+    for (const type of [
+      'user_message',
+      'abort',
+      'design.use',
+      'brain.status',
+      'sessions.list',
+      'goal-state.set',
+      'goal-state.refine',
+    ]) {
       expect([...scoped], `${type} must be declared session-scoped`).toContain(type);
     }
+    expect([...scoped], 'project-wide goal.get must not inherit the next goal-state payload').not.toContain(
+      'goal.get',
+    );
   });
 
   it('sees the send sites it is meant to police', () => {
@@ -151,7 +162,7 @@ describe('session-scoped requests name the tab that sent them', () => {
       const text = fs.readFileSync(file, 'utf8');
       if (text.includes(MARKER)) continue;
       for (const call of sendCalls(text)) {
-        const type = /type:\s*'([a-zA-Z0-9_.]+)'/.exec(call.args)?.[1];
+        const type = /type:\s*'([a-zA-Z0-9_.-]+)'/.exec(call.args)?.[1];
         if (!type || !scoped.has(type)) continue;
         if (/withSession|sessionId/.test(call.args)) continue;
         const preceding = text.slice(Math.max(0, call.index - 500), call.index);
