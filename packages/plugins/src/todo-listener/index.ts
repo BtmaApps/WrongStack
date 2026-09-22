@@ -146,7 +146,7 @@ const plugin: Plugin = {
   configSchema: {
     type: 'object',
     properties: {
-      enabled: { type: 'boolean', default: false, description: 'Master switch.' },
+      enabled: { type: 'boolean', default: true, description: 'Master switch.' },
       subjectPrefix: {
         type: 'string',
         default: DEFAULTS.subjectPrefix,

@@ -229,10 +229,89 @@ export const ENV_FLAG_OPTIONS = new Set([
   '--version',
 ]);
 
+/**
+ * Launchers that run another command with the same effect as running it
+ * directly, beyond `env` and `sudo`.
+ *
+ * Probe-verified blind spot (2026-09-22): every writer rule anchors on a
+ * command boundary, and a launcher name is not a path prefix, so `rm` in
+ * `nohup rm -rf .env` sat mid-argument where no rule looked. 21 of 28 probed
+ * launcher forms returned ZERO destructive targets while the bare `rm -rf .env`
+ * was caught -- `nohup`, `nice`, `timeout`, `setsid`, `stdbuf`, `ionice`,
+ * `command`, `exec`, `time`, `doas`, `flock`, `chroot`, `watch`, `runuser`.
+ *
+ * Each entry declares its own option arity. Getting that wrong in either
+ * direction is a bug: consuming too little leaves the wrapped command
+ * unanchored again, consuming too much swallows it. Options that take a value
+ * are enumerated rather than guessed, and `positionals` covers the launchers
+ * that take an operand of their own before the command (`timeout DURATION`,
+ * `chroot NEWROOT`, `flock FILE`).
+ *
+ * The command-STRING forms (`su -c "..."`, `runuser -c "..."`,
+ * `script -qc "..."`) are not argv shapes and are handled by the
+ * command-string rule in shell-targets.ts instead. `runuser` appears in both
+ * places, so it sets `defersToCommandString`: its `--` form
+ * (`runuser -u me -- rm ...`) is stripped here, its `-c` form is left intact
+ * for that rule.
+ */
+export const TRANSPARENT_LAUNCHERS: readonly TransparentLauncher[] = [
+  { name: 'nohup', valueTaking: new Set() },
+  { name: 'setsid', valueTaking: new Set() },
+  { name: 'unbuffer', valueTaking: new Set() },
+  { name: 'command', valueTaking: new Set() },
+  { name: 'exec', valueTaking: new Set(['-a']) },
+  { name: 'time', valueTaking: new Set(['-f', '--format', '-o', '--output']) },
+  { name: 'nice', valueTaking: new Set(['-n', '--adjustment']) },
+  {
+    name: 'ionice',
+    valueTaking: new Set(['-c', '-n', '-p', '-P', '-u', '--class', '--classdata', '--pid']),
+  },
+  {
+    name: 'stdbuf',
+    valueTaking: new Set(['-i', '-o', '-e', '--input', '--output', '--error']),
+  },
+  {
+    name: 'timeout',
+    valueTaking: new Set(['-s', '-k', '--signal', '--kill-after']),
+    positionals: 1,
+  },
+  { name: 'chroot', valueTaking: new Set(['--userspec', '--groups']), positionals: 1 },
+  {
+    name: 'flock',
+    valueTaking: new Set(['-w', '--wait', '--timeout', '-E', '--conflict-exit-code']),
+    positionals: 1,
+  },
+  { name: 'doas', valueTaking: new Set(['-u', '-C']) },
+  { name: 'watch', valueTaking: new Set(['-n', '--interval']) },
+  {
+    name: 'runuser',
+    valueTaking: new Set(['-u', '-g', '-G', '-s', '--user', '--shell']),
+    defersToCommandString: true,
+  },
+];
+
+/**
+ * Fixed-point passes the launcher stripper will make.
+ *
+ * Each pass rescans the whole command once per launcher, so nesting depth
+ * costs depth x launchers scans: with the table below, `'nohup nice timeout 5
+ * '.repeat(2000)` measured 1.3 s and a 3000-deep `timeout` flood 1.8 s on the
+ * main thread, over a model-supplied string. Real commands nest one or two
+ * launchers; the cap turns an unbounded quadratic into a bounded one.
+ *
+ * Exceeding it fails CLOSED, matching MAX_DESTRUCTIVE_TARGET_DEPTH: a command
+ * too tangled to normalize is reported as touching everything rather than
+ * silently reported as touching nothing.
+ */
+export const MAX_LAUNCHER_STRIP_PASSES = 16;
+
 export function stripTransparentLaunchers(command: string): string {
   let stripped = command;
   let previous: string;
+  let passes = 0;
   do {
+    if (passes >= MAX_LAUNCHER_STRIP_PASSES) return 'rm -rf **';
+    passes += 1;
     previous = stripped;
     let beforeUnwrap: string;
     do {
@@ -241,6 +320,9 @@ export function stripTransparentLaunchers(command: string): string {
     } while (stripped !== beforeUnwrap);
     stripped = stripLauncherAtBoundary(stripped, 'env', ENV_VALUE_TAKING);
     stripped = stripLauncherAtBoundary(stripped, 'sudo', SUDO_VALUE_TAKING);
+    for (const launcher of TRANSPARENT_LAUNCHERS) {
+      stripped = stripLauncherAtBoundary(stripped, launcher);
+    }
   } while (stripped !== previous);
   return stripped;
 }
@@ -313,13 +395,60 @@ export function launcherPrefixLength(
   return consumed;
 }
 
+/**
+ * Operands a launcher consumes BEFORE the command it runs -- `timeout 5 rm ...`,
+ * `chroot /jail rm ...`, `flock /tmp/lock rm ...`. Stripping only the launcher
+ * NAME is not enough for these: every writer rule anchors on a command
+ * boundary, and `5 rm -rf .env` leaves `rm` mid-argument where no rule looks.
+ */
+function consumePositionals(after: string, from: number, count: number): number | undefined {
+  let cursor = from;
+  for (let remaining = count; remaining > 0; remaining -= 1) {
+    const token = boundedShellTokens(after.slice(cursor))[0];
+    if (!token) return undefined;
+    const absoluteEnd = cursor + token.end;
+    // Never step over a command separator to find an operand: in
+    // `timeout; rm x` the `rm` is its own command and must stay visible.
+    if (firstUnquotedShellSeparator(after, cursor, absoluteEnd) !== undefined) return undefined;
+    if (token.value.startsWith('-')) return undefined;
+    cursor = absoluteEnd;
+  }
+  return cursor;
+}
+
+export interface TransparentLauncher {
+  /** Command name, matched case-insensitively and allowing a path prefix. */
+  name: string;
+  /** Options that consume the following token as their value. */
+  valueTaking: Set<string>;
+  /** Options accepted as bare flags; when set, an unknown option aborts the strip. */
+  flagOptions?: Set<string> | undefined;
+  /** Operands consumed after the option run and before the wrapped command. */
+  positionals?: number | undefined;
+  /**
+   * Launcher that ALSO accepts the command as a quoted string (`runuser -c
+   * "..."`). Stripping the launcher in that form would delete the only token
+   * the command-string rule recognises and leave a bare `-c "rm -rf .env"`
+   * behind, so the strip stands down and lets that rule handle it.
+   */
+  defersToCommandString?: boolean | undefined;
+}
+
 export function stripLauncherAtBoundary(
   command: string,
-  launcher: 'env' | 'sudo',
-  valueTaking: Set<string>,
+  launcher: TransparentLauncher | 'env' | 'sudo',
+  valueTaking?: Set<string>,
 ): string {
+  const spec: TransparentLauncher =
+    typeof launcher === 'string'
+      ? {
+          name: launcher,
+          valueTaking: valueTaking ?? new Set<string>(),
+          flagOptions: launcher === 'env' ? ENV_FLAG_OPTIONS : undefined,
+        }
+      : launcher;
   const pattern = new RegExp(
-    `(^|[;&|\\r\\n]\\s*|\\(\\s*|\u0060\\s*)(?:[^\\s;&|(){}]+[\\\\/])?${launcher}\\b`,
+    `(^|[;&|\\r\\n]\\s*|\\(\\s*|\u0060\\s*)(?:[^\\s;&|(){}]+[\\\\/])?${spec.name}\\b`,
     'i',
   );
   const match = pattern.exec(command);
@@ -327,13 +456,24 @@ export function stripLauncherAtBoundary(
   const boundary = match[1] ?? '';
   const afterStart = match.index + match[0].length;
   const after = command.slice(afterStart);
-  const consumed = launcherPrefixLength(
-    after,
-    valueTaking,
-    launcher === 'env' ? ENV_FLAG_OPTIONS : undefined,
-  );
+  if (
+    spec.defersToCommandString &&
+    boundedShellTokens(after)
+      .slice(0, 6)
+      .some((token) => /^-[A-Za-z]{0,8}c$/.test(token.value))
+  ) {
+    return command;
+  }
+  const consumed = launcherPrefixLength(after, spec.valueTaking, spec.flagOptions);
   if (consumed === undefined) {
     return `${command.slice(0, match.index)}${boundary}rm -rf **`;
   }
-  return `${command.slice(0, match.index)}${boundary}${after.slice(consumed).replace(/^\s+/, '')}`;
+  const afterPositionals = spec.positionals
+    ? consumePositionals(after, consumed, spec.positionals)
+    : consumed;
+  // An unconsumable operand means the shape was not understood. Leave the
+  // command alone rather than rewrite it into something the rules would read
+  // differently from the shell.
+  if (afterPositionals === undefined) return command;
+  return `${command.slice(0, match.index)}${boundary}${after.slice(afterPositionals).replace(/^\s+/, '')}`;
 }

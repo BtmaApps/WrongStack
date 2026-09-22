@@ -29,13 +29,16 @@ export function buildClearCommand(opts: SlashCommandContext): SlashCommand {
       // `isRunning()` only covers the leader run / autonomy / SDD — it does NOT
       // know about the fleet. `interruptAll()` below unconditionally kills every
       // subagent, so without this extra check a `/clear` at an idle prompt would
-      // silently kill running subagents. Match the set `onFleetKill` reaps
-      // (running | idle) so the confirm fires whenever there's fleet work to lose.
+      // silently kill running subagents.
+      //
+      // Only `running` subagents trigger the confirm. `idle` subagents sit in a
+      // reusable pool without an inflight runner — the previous `running | idle`
+      // filter caused a destructive prompt after ordinary slash-command traffic
+      // even when no real work was in flight, which users read as "/clear does
+      // nothing" because the cancelled branch deliberately wipes nothing.
       const leaderActive = opts.interruptController?.isRunning?.() ?? false;
       const fleetSubagents = opts.onFleetStatus?.()?.subagents ?? [];
-      const subagentCount = fleetSubagents.filter(
-        (sa) => sa.status === 'running' || sa.status === 'idle',
-      ).length;
+      const subagentCount = fleetSubagents.filter((sa) => sa.status === 'running').length;
       const fleetActive = subagentCount > 0;
       const operationActive = leaderActive || fleetActive;
       const surfaceConfirm = opts.interruptController?.confirmClear;

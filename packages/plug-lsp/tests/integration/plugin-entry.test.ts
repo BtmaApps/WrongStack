@@ -93,7 +93,7 @@ describe('plugin entry', () => {
     expect(tools.has('lsp_execute_command')).toBe(true);
     expect(tools.has('lsp_request')).toBe(true);
     expect(tools.has('codebase-lsp-search')).toBe(true);
-    expect(commands.has(`${PLUGIN_NAME}:list`)).toBe(true);
+    expect(commands.has(`${PLUGIN_NAME}:lsp-list`)).toBe(true);
     expect(promptContributors).toHaveLength(1);
     expect((await promptContributors[0]!())[0]?.text).toContain('use lsp_diagnostics');
 

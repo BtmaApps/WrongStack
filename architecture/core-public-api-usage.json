@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1145,
-      "typeOnly": 1024,
+      "files": 1148,
+      "typeOnly": 1027,
       "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -14055,6 +14055,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/bench/evidence-analyzer.mts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/accessibility-auditor/index.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -14416,6 +14422,18 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/src/workflow-runtime/index.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/catalog.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/evidence-analyzer-suite.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

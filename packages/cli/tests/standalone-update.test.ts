@@ -154,4 +154,36 @@ describe('replaceExecutable', () => {
     expect(fs.readFileSync(`${target}.old`, 'utf8')).toBe('old');
     expect(fs.readdirSync(dir).sort()).toEqual(['wstack.exe', 'wstack.exe.old']);
   });
+
+  // The staging path must be unguessable AND refuse an existing path, so a
+  // writable install directory cannot redirect the write through a planted
+  // symlink or hand the new executable pre-relaxed permissions.
+  it('does not stage under the pid, so the path cannot be pre-created', () => {
+    const target = path.join(dir, 'wstack');
+    fs.writeFileSync(target, 'old');
+    // Occupy the OLD, predictable name with a directory: a write there fails
+    // with EISDIR, so this passes only if the staging name moved off the pid.
+    fs.mkdirSync(`${target}.new-${process.pid}`);
+    replaceExecutable(target, Buffer.from('new'), 'linux');
+    expect(fs.readFileSync(target, 'utf8')).toBe('new');
+    // No staging leftovers beyond the planted directory.
+    expect(fs.readdirSync(dir).filter((name) => name.startsWith('wstack.new-'))).toEqual([
+      `wstack.new-${process.pid}`,
+    ]);
+  });
+
+  // A behavioural test cannot reach the exclusive-create branch: the staging
+  // name is random precisely so no test (or attacker) can pre-create it. The
+  // flag is therefore pinned at the source level, the same way the repo pins
+  // other spawn/open options that have no observable failure path.
+  it('opens the staging file exclusively', () => {
+    const source = fs.readFileSync(new URL('../src/standalone-update.ts', import.meta.url), 'utf8');
+    const write = /fs\.writeFileSync\(staged, bytes, \{([^}]*)\}\)/.exec(source);
+    expect(
+      write,
+      'replaceExecutable no longer stages via writeFileSync(staged, bytes, {...})',
+    ).not.toBeNull();
+    expect(write?.[1]).toContain("flag: 'wx'");
+    expect(write?.[1]).toContain('mode: 0o755');
+  });
 });

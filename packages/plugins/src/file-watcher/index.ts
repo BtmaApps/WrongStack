@@ -100,7 +100,7 @@ const plugin: Plugin = {
       },
       depWatcher: {
         type: 'object',
-        default: { enabled: false },
+        default: { enabled: false, targetAgent: 'tech-stack', debounceMs: 3000 },
         description:
           'Bridge dependency file changes (package.json, go.mod, etc.) to the inter-agent mailbox for tech-stack audits. Requires the mailbox tool to be registered.',
         properties: {

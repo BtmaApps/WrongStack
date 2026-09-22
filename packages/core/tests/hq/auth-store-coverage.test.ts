@@ -1,17 +1,20 @@
+import { scrypt } from 'node:crypto';
+import * as path from 'node:path';
 /**
  * Additional coverage for hq/auth-store.ts — pure token/TTL/capability
  * functions, content hashing, password hashing, and data-dir resolution.
  */
 import { describe, expect, it } from 'vitest';
 import {
+  emptyHqAuthFile,
   HQ_AUTH_CONTENT_HASH_REDACTED,
   HQ_AUTH_FILE_VERSION,
   type HqAuthFile,
   type HqToken,
-  emptyHqAuthFile,
   hashHqPassword,
   hqAuthContentHash,
   hqAuthFilePath,
+  hqPasswordNeedsUpgrade,
   hqRuntimeFilePath,
   isTokenExpired,
   mintHqToken,
@@ -19,7 +22,6 @@ import {
   tokenHasCapability,
   verifyHqPassword,
 } from '../../src/hq/auth-store.js';
-import * as path from 'node:path';
 
 // ── isTokenExpired ───────────────────────────────────────────────────────────
 
@@ -273,6 +275,44 @@ describe('hashHqPassword / verifyHqPassword', () => {
     const a = await hashHqPassword('same');
     const b = await hashHqPassword('same');
     expect(a).not.toBe(b);
+  });
+
+  // auth.json is the only input to a network-reachable login path, so both
+  // allocation sizes it carries — the scrypt working set and the digest length
+  // used as keylen — are bounded. Without the product bound, `N=1048576,r=32,
+  // p=16` passes every per-parameter check and asks for 68 GiB per attempt.
+  it('refuses stored parameters whose product is a memory-exhaustion request', async () => {
+    const salt = Buffer.alloc(16, 1).toString('base64url');
+    const digest = Buffer.alloc(32, 2).toString('base64url');
+    const hostile = `scrypt$N=1048576,r=32,p=16$${salt}$${digest}`;
+    await expect(verifyHqPassword('x', hostile)).resolves.toBe(false);
+    // 2^17/r=8 (128 MiB, OWASP's headline figure) stays acceptable.
+    const ok = `scrypt$N=131072,r=8,p=1$${salt}$${digest}`;
+    await expect(verifyHqPassword('x', ok)).resolves.toBe(false); // wrong password, but parsed
+    expect(hqPasswordNeedsUpgrade(ok)).toBe(false);
+    expect(hqPasswordNeedsUpgrade(hostile)).toBe(false); // unparseable → no upgrade claim
+  });
+
+  // Non-vacuous by construction: the digest below is the GENUINE derivation for
+  // this password, salt and parameters, so the only reason verification can
+  // fail is the length bound. Asserting `false` on a random buffer would have
+  // passed with or without the fix.
+  it('refuses an out-of-band digest length even when the digest is correct', async () => {
+    const saltBytes = Buffer.alloc(16, 1);
+    const salt = saltBytes.toString('base64url');
+    const params = { N: 65536, r: 8, p: 1, maxmem: 128 * 1024 * 1024 };
+    const derive = (keylen: number) =>
+      new Promise<Buffer>((resolve, reject) => {
+        scrypt('pw', saltBytes, keylen, params, (err, key) => (err ? reject(err) : resolve(key)));
+      });
+
+    const valid = `scrypt$N=65536,r=8,p=1$${salt}$${(await derive(32)).toString('base64url')}`;
+    await expect(verifyHqPassword('pw', valid)).resolves.toBe(true);
+
+    for (const keylen of [4, 4096]) {
+      const oversized = `scrypt$N=65536,r=8,p=1$${salt}$${(await derive(keylen)).toString('base64url')}`;
+      await expect(verifyHqPassword('pw', oversized)).resolves.toBe(false);
+    }
   });
 });
 

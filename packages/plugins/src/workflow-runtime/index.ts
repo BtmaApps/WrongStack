@@ -245,7 +245,9 @@ export function workflowPlugin(spec: WorkflowSpec): Plugin {
             }
             host.calls++;
             try {
-              return await definition.run(input, { root, signal, api, state });
+              const result = await definition.run(input, { root, signal, api, state });
+              signal.throwIfAborted();
+              return result;
             } catch (error) {
               host.errors++;
               throw error;

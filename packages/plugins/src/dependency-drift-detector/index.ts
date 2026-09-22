@@ -17,7 +17,8 @@ export default createEvidenceAnalyzerPlugin({
     {
       label: 'lockfile mismatch',
       severity: 'error',
-      pattern: /(?:lockfile.*(?:out of date|not up to date|mismatch)|frozen-lockfile)/i,
+      pattern:
+        /(?:lockfile.*(?:out of date|outdated|not up to date|mismatch)|ERR_PNPM_(?:OUTDATED|BROKEN)_LOCKFILE|cannot install with.*frozen-lockfile)/i,
       advice: 'Regenerate and review the lockfile with the declared package manager.',
     },
     {

@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T08:29:23.235Z
+**Generated:** 2026-09-22T09:18:26.400Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -9,10 +9,10 @@
 |---|---:|
 | Workspace packages | 36 |
 | Production source files | 4009 |
-| Production source lines | 958349 |
+| Production source lines | 958630 |
 | Test files | 3586 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12955 |
+| Relative module edges | 12956 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
 | Type-inclusive module cycles | 8 |
@@ -117,10 +117,10 @@ None.
 | 943 | `packages/core/src/chronicle/project-server.ts` |
 | 942 | `packages/tools/src/codebase-index/background-indexer.ts` |
 | 939 | `packages/plugins/src/secret-scanner/index.ts` |
+| 937 | `packages/tui/src/submit-controller.ts` |
 | 936 | `packages/simpleui/src/use-simple-ui-session.tsx` |
 | 933 | `packages/webui-server/src/server/goal-ws-handler.ts` |
 | 932 | `packages/tools/src/kanban-lifecycle-actions.ts` |
-| 932 | `packages/tui/src/submit-controller.ts` |
 | 931 | `packages/cli/src/goal-host.ts` |
 | 931 | `packages/governance/src/verification-ledger-store.ts` |
 | 931 | `packages/simpleui/src/lib/message-handler.ts` |

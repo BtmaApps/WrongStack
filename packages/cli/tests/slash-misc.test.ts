@@ -203,9 +203,81 @@ describe('buildClearCommand — confirm before clearing an active session', () =
 
     const res = await cmd.run('', fakeCtx());
 
-    expect(confirmClear).toHaveBeenCalledWith({ leaderActive: true, subagentCount: 2 });
+    // Only running subagents count toward the destructive confirm; idle
+    // subagents sit in a reusable pool without an in-flight runner.
+    expect(confirmClear).toHaveBeenCalledWith({ leaderActive: true, subagentCount: 1 });
     expect(confirm).not.toHaveBeenCalled();
     expect(interruptController.resetSession).toHaveBeenCalledTimes(1);
+    expect(res?.metadata?.cleared).toBe(true);
+  });
+
+  it('does NOT prompt when only idle subagents are pooled (no in-flight runner)', async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    const confirmClear = vi.fn().mockResolvedValue(false);
+    const interruptController = {
+      abortLeader: vi.fn(() => false),
+      isRunning: vi.fn(() => false),
+      confirmClear,
+      resetSession: vi.fn(),
+      waitForIdle: vi.fn().mockResolvedValue(undefined),
+    };
+    const opts = baseOpts({
+      interruptController,
+      confirm,
+      confirmClear,
+      onFleetStatus: () => ({
+        subagents: [
+          { id: 'one', status: 'idle' },
+          { id: 'two', status: 'idle' },
+          { id: 'three', status: 'stopped' },
+        ],
+      }),
+    });
+    const cmd = buildClearCommand(opts as never);
+    const ctx = fakeCtx();
+
+    const res = await cmd.run('', ctx);
+
+    // No confirm path is reached: the cleared branch runs through.
+    expect(confirm).not.toHaveBeenCalled();
+    expect(confirmClear).not.toHaveBeenCalled();
+    expect(interruptController.resetSession).toHaveBeenCalledTimes(1);
+    expect(ctx.state.replaceMessages).toHaveBeenCalledWith([]);
+    expect(res?.metadata?.cleared).toBe(true);
+    expect(res?.message ?? '').toContain('Session cleared');
+  });
+
+  it('counts only running subagents when mixing statuses (idle should not trigger confirm)', async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    const confirmClear = vi.fn().mockResolvedValue(true);
+    const interruptController = {
+      abortLeader: vi.fn(() => false),
+      isRunning: vi.fn(() => false),
+      confirmClear,
+      resetSession: vi.fn(),
+      waitForIdle: vi.fn().mockResolvedValue(undefined),
+    };
+    const opts = baseOpts({
+      interruptController,
+      confirm,
+      confirmClear,
+      onFleetStatus: () => ({
+        subagents: [
+          { id: 'one', status: 'running' },
+          { id: 'two', status: 'idle' },
+          { id: 'three', status: 'idle' },
+        ],
+      }),
+    });
+    const cmd = buildClearCommand(opts as never);
+    const ctx = fakeCtx();
+
+    const res = await cmd.run('', ctx);
+
+    // The panel sees exactly one runner in flight, not three.
+    expect(confirmClear).toHaveBeenCalledWith({ leaderActive: false, subagentCount: 1 });
+    expect(interruptController.resetSession).toHaveBeenCalledTimes(1);
+    expect(ctx.state.replaceMessages).toHaveBeenCalledWith([]);
     expect(res?.metadata?.cleared).toBe(true);
   });
 

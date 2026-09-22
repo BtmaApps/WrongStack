@@ -83,10 +83,10 @@ describe('VerificationContext command security', () => {
     );
   });
 
-  it('rejects environment-variable expansion even when shell operators are allowed', () => {
+  it('rejects environment-variable expansion on its own gate', () => {
     const allow = new Set(DEFAULT_ALLOWED_COMMANDS);
     const block = new Set(DEFAULT_BLOCKED_COMMANDS);
-    const config = { allow, block, allowAll: false, allowShellOperators: true };
+    const config = { allow, block, allowAll: false };
 
     expect(validateCommand('test -e $SECRET', config)).toContain('environment-variable');
     expect(validateCommand('test -e %SECRET%', config)).toContain('environment-variable');

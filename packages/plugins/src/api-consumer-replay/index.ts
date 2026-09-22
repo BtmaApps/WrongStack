@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+import { localRequest, localUrl } from '../workflow-runtime/http.js';
 import {
   integer,
   object,
@@ -6,7 +8,6 @@ import {
   stringField,
   workflowPlugin,
 } from '../workflow-runtime/index.js';
-import { localRequest, localUrl } from '../workflow-runtime/http.js';
 export default workflowPlugin({
   name: 'api-consumer-replay',
   description:
@@ -60,7 +61,7 @@ export default workflowPlugin({
               mismatches.push({ field: 'body', expected: 'JSON object', actual: 'invalid' });
             }
             for (const [key, value] of Object.entries(object(item.expectedJson)))
-              if (JSON.stringify(actual[key]) !== JSON.stringify(value))
+              if (!isDeepStrictEqual(actual[key], value))
                 mismatches.push({ field: key, expected: value, actual: actual[key] });
           }
           results.push({

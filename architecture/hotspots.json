@@ -183,7 +183,7 @@
       "relativeImports": 10
     },
     "packages/kanban/src/verification/verification-context.ts": {
-      "lines": 849,
+      "lines": 855,
       "relativeImports": 3
     },
     "packages/mcp/src/authorization.ts": {
@@ -359,7 +359,7 @@
       "relativeImports": 6
     },
     "packages/tui/src/submit-controller.ts": {
-      "lines": 932,
+      "lines": 937,
       "relativeImports": 13
     },
     "packages/tui/src/use-app-controller.tsx": {

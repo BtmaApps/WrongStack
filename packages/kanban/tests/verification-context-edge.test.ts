@@ -100,14 +100,12 @@ describe('validateCommand', () => {
       allow: Set<string>;
       block: Set<string>;
       allowAll: boolean;
-      allowShellOperators: boolean;
     }> = {},
   ) {
     return {
       allow: overrides.allow ?? defaultAllow,
       block: overrides.block ?? defaultBlock,
       allowAll: overrides.allowAll ?? false,
-      allowShellOperators: overrides.allowShellOperators ?? false,
     };
   }
 
@@ -159,15 +157,18 @@ describe('validateCommand', () => {
     expect(validateCommand('echo hello; rm -rf /', makeConfig())).toContain('shell operators');
   });
 
-  it('allows shell operators when allowShellOperators is true', () => {
-    const config = makeConfig({ allowShellOperators: true });
-    // But it also needs to be allowed/blocked correctly
-    // pwd is in the allowlist
-    expect(validateCommand('pwd && pwd', config)).toBeNull();
+  // The `allowShellOperators` opt-out was removed: no configuration admits an
+  // operator, because an allowlisted command can resolve to a Windows `.cmd`
+  // shim that spawns with `shell: true`.
+  it('rejects shell operators under every configuration', () => {
+    expect(validateCommand('pwd && pwd', makeConfig())).toContain('shell operators');
+    expect(validateCommand('pwd && pwd', makeConfig({ allowAll: true }))).toContain(
+      'shell operators',
+    );
   });
 
-  it('rejects env expansion even with allowShellOperators', () => {
-    const config = makeConfig({ allowShellOperators: true });
+  it('rejects env expansion independently of the operator gate', () => {
+    const config = makeConfig({ allowAll: true });
     expect(validateCommand('echo $HOME', config)).toContain('environment-variable');
     expect(validateCommand('echo %PATH%', config)).toContain('environment-variable');
     expect(validateCommand('echo !NAME!', config)).toContain('environment-variable');

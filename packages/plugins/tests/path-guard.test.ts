@@ -70,6 +70,84 @@ describe('compilePathGlob', () => {
   });
 });
 
+describe('destructiveTargets through transparent launchers', () => {
+  // Probe-verified blind spot (2026-09-22): the writer rules anchor on a
+  // command boundary and a launcher name is not a path prefix, so `rm` in
+  // `nohup rm -rf .env` sat mid-argument where no rule looked. 21 of 28 probed
+  // launcher forms returned ZERO targets while the bare `rm -rf .env` was
+  // caught. Each row below was one of those misses, or guards a shape that
+  // must keep working.
+  it.each([
+    ['nohup rm -rf .env'],
+    ['nice rm -rf .env'],
+    ['nice -n 5 rm -rf .env'],
+    ['ionice -c3 rm -rf .env'],
+    ['timeout 5 rm -rf .env'],
+    ['timeout -s KILL 5 rm -rf .env'],
+    ['setsid rm -rf .env'],
+    ['stdbuf -o0 rm -rf .env'],
+    ['command rm -rf .env'],
+    ['exec rm -rf .env'],
+    ['time rm -rf .env'],
+    ['doas rm -rf .env'],
+    ['chroot / rm -rf .env'],
+    ['flock /tmp/lock rm -rf .env'],
+    ['unbuffer rm -rf .env'],
+    ['watch rm -rf .env'],
+    ['runuser -u me -- rm -rf .env'],
+    // Launchers nest, and the strip loop runs to a fixed point.
+    ['nohup nice rm -rf .env'],
+    ['env nohup rm -rf .env'],
+    ['timeout 5 sudo rm -rf .env'],
+    // Command-STRING forms: not argv, handled by the command-string rule.
+    ['su -c "rm -rf .env"'],
+    ['su me -c "rm -rf .env"'],
+    ['runuser -u me -c "rm -rf .env"'],
+    ['script -qc "rm -rf .env" /dev/null'],
+    // The option no longer has to sit immediately after the shell name.
+    ['bash -x -c "rm -rf .env"'],
+  ])('sees the target through %s', (command) => {
+    expect(destructiveTargets(command)).toContain('.env');
+  });
+
+  // Stripping too much is as wrong as stripping too little: these must not
+  // acquire a target, and the separator must never be stepped over to find a
+  // launcher operand.
+  it.each([
+    ['echo hello'],
+    ['timeout 5 true'],
+    ['nice -n 10 pnpm build'],
+    ['echo "su -c is a thing"'],
+    ['script /tmp/typescript'],
+  ])('does not invent a target for %s', (command) => {
+    expect(destructiveTargets(command)).toEqual([]);
+  });
+
+  it('does not consume an operand across a command separator', () => {
+    // `timeout` takes a DURATION operand, but `rm` here is its own command.
+    expect(destructiveTargets('timeout; rm -rf .env')).toContain('.env');
+  });
+
+  // Each strip pass rescans the command once per launcher, so nesting depth
+  // costs depth x launchers. Measured before the cap: 1.3 s for 2000 nested
+  // launchers, 1.8 s for a 3000-deep timeout flood, synchronously on the main
+  // thread over a model-supplied string. The cap fails CLOSED -- '**', the
+  // same answer the recursion-depth limit gives -- so an unparseable command
+  // reads as touching everything rather than as touching nothing.
+  it('bounds launcher nesting and fails closed', () => {
+    const nested = `${'nohup nice timeout 5 '.repeat(2000)}rm -rf .env`;
+    const started = performance.now();
+    const targets = destructiveTargets(nested);
+    const elapsed = performance.now() - started;
+    expect(targets).toContain('**');
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it('still normalizes nesting within the cap', () => {
+    expect(destructiveTargets('nohup nice timeout 5 sudo rm -rf .env')).toContain('.env');
+  });
+});
+
 describe('destructiveTargets', () => {
   it('extracts rm and redirect targets', async () => {
     expect(destructiveTargets('rm -rf pnpm-lock.yaml')).toContain('pnpm-lock.yaml');

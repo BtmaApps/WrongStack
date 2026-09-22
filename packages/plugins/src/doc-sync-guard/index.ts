@@ -65,7 +65,7 @@ interface DocSyncGuardConfig {
 }
 
 const DEFAULTS: DocSyncGuardConfig = {
-  enabled: false,
+  enabled: true,
   sourceExtensions: ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts'],
   docNames: ['README.md', 'README', 'CONTRIBUTING.md', 'CHANGELOG.md'],
   maxTrackedFiles: 20,

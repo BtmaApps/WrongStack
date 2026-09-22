@@ -161,8 +161,9 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
-        description: 'Master switch. OFF by default because it changes error-recovery behavior.',
+        default: true,
+        description:
+          'Master switch after the plugin is loaded. Plugin loading is controlled separately.',
       },
       escalation: {
         type: 'array',

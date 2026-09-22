@@ -142,32 +142,41 @@ describe('auto-review change detection', () => {
     });
   });
 
-  it('waits for a trailing quiet window and reviews the latest content in the background', async () => {
+  it('waits for a trailing quiet window and reviews the latest content in the background', {
+    timeout: 20000,
+  }, async () => {
     const { api, events, emitCustom } = makeApi({ debounceMs: 200 });
     createAutoReviewPlugin().setup!(api);
-    await events['agent.run.started']!();
+    try {
+      await events['agent.run.started']!();
 
-    await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 2;\n');
-    await events['iteration.completed']!();
-    expect(reviewPayloads(emitCustom)).toHaveLength(0);
+      await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 2;\n');
+      await events['iteration.completed']!();
+      expect(reviewPayloads(emitCustom)).toHaveLength(0);
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 3;\n');
-    await events['iteration.completed']!();
-    expect(reviewPayloads(emitCustom)).toHaveLength(0);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await fs.writeFile(path.join(tmp, 'tracked.ts'), 'export const value = 3;\n');
+      await events['iteration.completed']!();
+      expect(reviewPayloads(emitCustom)).toHaveLength(0);
 
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    expect(reviewPayloads(emitCustom)).toHaveLength(0);
-    await vi.waitFor(() => {
-      expect(reviewPayloads(emitCustom)).toHaveLength(1);
-    });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(reviewPayloads(emitCustom)).toHaveLength(0);
+      // The quiet timer also awaits real git snapshot/context subprocesses on Windows.
+      await vi.waitFor(
+        () => {
+          expect(reviewPayloads(emitCustom)).toHaveLength(1);
+        },
+        { timeout: 10000 },
+      );
 
-    const payloads = reviewPayloads(emitCustom);
-    expect(payloads).toHaveLength(1);
-    expect(payloads[0]!.files[0]?.content).toBe('export const value = 3;\n');
+      const payloads = reviewPayloads(emitCustom);
+      expect(payloads).toHaveLength(1);
+      expect(payloads[0]!.files[0]?.content).toBe('export const value = 3;\n');
 
-    // Join any timer-started snapshot/context work before test teardown.
-    await events['session.ended']!();
+      // Join any timer-started snapshot/context work before test teardown.
+    } finally {
+      await events['session.ended']!();
+    }
     expect(reviewPayloads(emitCustom)).toHaveLength(1);
   });
 

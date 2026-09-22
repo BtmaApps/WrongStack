@@ -57,11 +57,18 @@ export default workflowPlugin({
           }
         }
         const expected = input.layers === undefined ? [] : strings(input.layers);
+        const missingLayers = expected.filter(
+          (layer) => !spans.some((span) => span.layer === layer),
+        );
         return {
-          status: !spans.length ? 'no-evidence' : issues.length ? 'issues-found' : 'inspected',
+          status: !spans.length
+            ? 'no-evidence'
+            : issues.length || missingLayers.length
+              ? 'issues-found'
+              : 'inspected',
           spans,
           issues,
-          missingLayers: expected.filter((layer) => !spans.some((span) => span.layer === layer)),
+          missingLayers,
           source: input.path,
         };
       },

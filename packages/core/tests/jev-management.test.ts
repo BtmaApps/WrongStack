@@ -139,6 +139,29 @@ describe('Jev settings', () => {
   ])('rejects invalid patches %j', (patch) => {
     expect(() => validateJevSettingsPatch(patch)).toThrow();
   });
+
+  // The endpoint is where the stored API key and every judgment payload go,
+  // and `apply()` keeps the existing key when only the endpoint changes — so a
+  // cleartext remote endpoint is a credential and state disclosure. Loopback
+  // stays allowed: a local proxy or mock cannot leave the machine.
+  it.each([
+    'http://evil.test/v1',
+    'http://10.0.0.5/v1',
+    'http://[2001:db8::1]/v1',
+    'http://127.0.0.1.evil.test/v1',
+  ])('rejects cleartext non-loopback endpoint %s', (endpoint) => {
+    expect(() => validateJevSettingsPatch({ endpoint })).toThrow(/https/);
+  });
+
+  it.each([
+    'http://localhost:8080/v1',
+    'http://127.0.0.1:8080/v1',
+    'http://127.5.5.5/v1',
+    'http://[::1]:8080/v1',
+    'https://remote.test/v1',
+  ])('accepts %s', (endpoint) => {
+    expect(() => validateJevSettingsPatch({ endpoint })).not.toThrow();
+  });
 });
 describe('Jev activity', () => {
   it('rotates the disk log and appends valid JSONL', async () => {

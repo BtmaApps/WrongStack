@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { isLoopbackHost } from '../hq/exposure.js';
 import { encryptConfigSecrets } from '../security/config-secrets.js';
 import type { Config, ConfigStore } from '../types/config/root.js';
 import type { SecretVault } from '../types/secret-vault.js';
@@ -67,6 +68,14 @@ export function validateJevSettingsPatch(value: unknown): JevSettingsPatch {
       url.search
     )
       throw new Error('Endpoint must be HTTP(S), without credentials, query or fragment');
+    // Cleartext is allowed only to this machine. The endpoint is where the
+    // stored Jev API key and every judgment payload (which carries application
+    // state) are sent, and `apply()` below clears the key only when the ROUTE
+    // changes — so setting just `endpoint` on an already-custom route retargets
+    // the existing credential. Over `http:` to a remote host that is a
+    // plaintext credential and state disclosure to anything on the path.
+    if (url.protocol === 'http:' && !isLoopbackHost(url.hostname))
+      throw new Error('A non-loopback endpoint must use https://');
   }
   return patch as JevSettingsPatch;
 }

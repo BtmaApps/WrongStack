@@ -284,7 +284,7 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description: 'Master switch.',
       },
       command: {

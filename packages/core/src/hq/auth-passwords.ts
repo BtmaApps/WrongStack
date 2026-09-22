@@ -28,6 +28,14 @@ const HQ_PASSWORD_SCRYPT_PARAMS = { N: 1 << 16, r: 8, p: 1, maxmem: 128 * 1024 *
 /** Cost used by the legacy, parameter-less `scrypt$<salt>$<hash>` payloads. */
 const HQ_PASSWORD_SCRYPT_PARAMS_LEGACY = { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
+/**
+ * Largest scrypt working set a STORED parameter segment may ask for.
+ * `auth.json` is a local file, but it is also the only input to a
+ * network-reachable login path — a hand-edited or restored-from-elsewhere file
+ * must not be able to turn each attempt into a multi-gigabyte allocation.
+ */
+const MAX_SCRYPT_MEMORY_BYTES = 256 * 1024 * 1024;
+
 interface ScryptParams {
   N: number;
   r: number;
@@ -62,7 +70,14 @@ function parseScryptParams(segment: string): ScryptParams | null {
   // N must be a power of two (scrypt requires it) and within sane bounds.
   if ((N & (N - 1)) !== 0 || N > 1 << 20) return null;
   if (r > 32 || p > 16) return null;
+  // The per-parameter ceilings above bound each factor but not their PRODUCT:
+  // `N=1048576,r=32,p=16` satisfies all three and asks for 68 GiB per login
+  // attempt on a service that ships `BIND_IP=0.0.0.0`. Bound the derived cost
+  // itself, which is the number that actually gets allocated. 256 MiB leaves
+  // room for OWASP's 2^17 (128 MiB) while refusing anything that turns a login
+  // into a memory-exhaustion primitive.
   const needed = 128 * N * r * p;
+  if (needed > MAX_SCRYPT_MEMORY_BYTES) return null;
   return { N, r, p, maxmem: Math.max(needed * 2, 64 * 1024 * 1024) };
 }
 
@@ -142,7 +157,11 @@ export async function verifyHqPassword(password: string, hash: string): Promise<
   } catch {
     return false;
   }
-  if (salt.length === 0 || expected.length === 0) return false;
+  // `expected.length` becomes scrypt's keylen below, so it is a second
+  // allocation size read straight out of the file. A 32-byte digest is what
+  // both formats write; anything outside a narrow band is a malformed or
+  // hostile payload, not a password this process should spend memory on.
+  if (salt.length === 0 || expected.length < 16 || expected.length > 64) return false;
   const derived = await new Promise<Buffer>((resolve, reject) => {
     scrypt(password, salt, expected.length, params, (err, key) => {
       if (err) reject(err);

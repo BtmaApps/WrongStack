@@ -243,8 +243,13 @@ jobs:
     with:
       ref: ${{ needs.verify.outputs.sha }}
       artifact-name: binaries-${{ needs.verify.outputs.version }}
+    # A called workflow's permissions are capped by the caller's, so the
+    # build-provenance attestation inside binaries.yml only works if these are
+    # granted here too.
     permissions:
       contents: read
+      id-token: write
+      attestations: write
 
   desktop:
     name: Desktop packages
@@ -410,7 +415,12 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          find dist-bin -maxdepth 1 -type f -name 'wstack-*' -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/release-binary-assets"
+          # Every asset this job uploads must be covered by the manifest, and
+          # the manifest must not name anything that is not being uploaded.
+          # The installers are in that set now (binaries.yml appends their
+          # digests), so the comparison covers all published files, not just
+          # wstack-*.
+          find dist-bin -maxdepth 1 -type f \( -name 'wstack-*' -o -name 'install.sh' -o -name 'install.ps1' \) -printf '%f\n' | LC_ALL=C sort > "$RUNNER_TEMP/release-binary-assets"
           awk 'NF == 2 { name=$2; sub(/^\*/, "", name); print name }' dist-bin/SHA256SUMS | LC_ALL=C sort > "$RUNNER_TEMP/checksummed-binary-assets"
           diff -u "$RUNNER_TEMP/release-binary-assets" "$RUNNER_TEMP/checksummed-binary-assets"
           # SHA256SUMS lists bare filenames (`wstack-linux-x64`), not paths, so

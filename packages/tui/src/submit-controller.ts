@@ -351,7 +351,13 @@ export function createSubmitController(host: SubmitControllerHost) {
       clearDraft();
       try {
         const res = await slashRegistry.dispatch(resolvedForDispatch, agent.ctx);
-        if (slashGeneration !== sessionGenerationRef.current) return;
+        const cmd = trimmed.slice(1).split(/\s+/, 1)[0];
+        const cleared = cmd === 'clear' && res?.metadata?.cleared === true;
+        // /clear itself advances the generation via resetSession before it
+        // returns. Its own successful result must still wipe the UI. Other
+        // commands and clears superseded by a later boundary remain stale.
+        const resetByCommand = cleared && sessionGenerationRef.current === slashGeneration + 1;
+        if (slashGeneration !== sessionGenerationRef.current && !resetByCommand) return;
         // Refresh goal summary after any slash command — `/goal clear` or
         // `/goal set` changed the goal file on disk; the status bar chip
         // must reflect the new state (or disappear).
@@ -497,8 +503,7 @@ export function createSubmitController(host: SubmitControllerHost) {
         // slash command (`/model`, `/use`, `/help`, …) would wipe the
         // conversation. Match the command name segment, not just the
         // prefix, so `/clearfoo` doesn't trigger.
-        const cmd = trimmed.slice(1).split(/\s+/, 1)[0];
-        if (cmd === 'clear' && res?.metadata?.cleared === true) {
+        if (cleared) {
           // Terminate any running subagents BEFORE clearing state. Without
           // this, in-flight subagents keep executing and their completion
           // events (task.completed, fleetDone, addEntry) re-pollute the
@@ -515,7 +520,7 @@ export function createSubmitController(host: SubmitControllerHost) {
           }
           // Bump the session generation so provider-response/text-delta
           // listeners discard any stale output from the aborted run.
-          sessionGenerationRef.current++;
+          if (!resetByCommand) sessionGenerationRef.current++;
           // Physically wipe the terminal (screen + scrollback) FIRST so the
           // old conversation isn't left reachable above the fresh banner;
           // the clearHistory remount below then reprints the banner onto a

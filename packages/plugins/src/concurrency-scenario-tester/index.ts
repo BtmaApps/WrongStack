@@ -1,5 +1,6 @@
-import { integer, object, str, stringField, workflowPlugin } from '../workflow-runtime/index.js';
+import { isDeepStrictEqual } from 'node:util';
 import { localRequest, localUrl } from '../workflow-runtime/http.js';
+import { integer, object, str, stringField, workflowPlugin } from '../workflow-runtime/index.js';
 export default workflowPlugin({
   name: 'concurrency-scenario-tester',
   description:
@@ -61,8 +62,8 @@ export default workflowPlugin({
           invariant =
             response.status >= 200 &&
             response.status < 300 &&
-            Object.entries(object(spec.expectedJson)).every(
-              ([key, value]) => JSON.stringify(actual[key]) === JSON.stringify(value),
+            Object.entries(object(spec.expectedJson)).every(([key, value]) =>
+              isDeepStrictEqual(actual[key], value),
             );
         }
         return {

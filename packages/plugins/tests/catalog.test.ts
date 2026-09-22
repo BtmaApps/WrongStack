@@ -4,6 +4,8 @@
  * Verifies the plugin catalog is well-formed and stays in sync with
  * the actual plugin exports.
  */
+
+import type { JSONSchema } from '@wrongstack/core/types';
 import { describe, expect, it } from 'vitest';
 import { PLUGIN_CATALOG, PLUGIN_CATALOG_ENTRIES, PLUGIN_NAMES } from '../src/catalog.js';
 import * as pluginExports from '../src/index.js';
@@ -51,6 +53,19 @@ describe('plugin catalog', () => {
       expect(PLUGIN_CATALOG.has(name), `catalog is missing ${name}`).toBe(true);
     }
   });
+
+  it.each(exportedPlugins)(
+    '$name exposes configuration defaults consistent with its schema',
+    (plugin) => {
+      const schema = plugin.configSchema as JSONSchema | undefined;
+      const defaults = plugin.defaultConfig as Record<string, unknown> | undefined;
+      for (const [key, field] of Object.entries(schema?.properties ?? {})) {
+        if (field.default !== undefined && defaults && Object.hasOwn(defaults, key)) {
+          expect(defaults[key], `${plugin.name}.${key}`).toEqual(field.default);
+        }
+      }
+    },
+  );
 
   it('every catalog entry has a non-empty kebab-case name and a relative path', () => {
     for (const e of PLUGIN_CATALOG_ENTRIES) {

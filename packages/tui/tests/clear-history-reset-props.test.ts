@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { reducer } from '../src/app.js';
-import type { Action, State } from '../src/app-state.js';
+import type { Action } from '../src/app-action-type.js';
+import type { State } from '../src/app-state.js';
 
 /**
  * Regression: `/clear` must reset the boot-resume slice.

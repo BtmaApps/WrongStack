@@ -432,7 +432,22 @@ export function destructiveTargetsAtDepth(command: string, depth: number): strin
     f = findDelete.exec(normalizedCommand);
   }
 
-  const shellWrapper = /\b(?:(?:ba|z|k)?sh|pwsh|powershell)\s+(?:-c|-Command)\s+(['"])(.*?)\1/gi;
+  /**
+   * Launchers that take the command as a single quoted STRING.
+   *
+   * Two gaps this closes, both probe-verified (2026-09-22):
+   *  - `su`, `runuser` and `script` run a command string exactly like
+   *    `sh -c` does, and were not in the alternation at all.
+   *  - the option had to sit immediately after the name and be exactly `-c`,
+   *    so `bash -x -c "rm -rf .env"`, `su me -c "..."` and `script -qc "..."`
+   *    all walked past this rule.
+   *
+   * The intervening-token run is bounded ({0,4} tokens of at most 64 chars,
+   * each anchored by required whitespace and a class that excludes it) so it
+   * cannot backtrack pathologically -- the same discipline as XARGS_OPTIONS.
+   */
+  const shellWrapper =
+    /\b(?:(?:ba|z|k)?sh|pwsh|powershell|su|runuser|script)(?:\s+[^\s;&|"']{1,64}){0,4}?\s+(?:-[A-Za-z]{0,8}c|-Command)\s+(['"])(.*?)\1/gi;
   let w: RegExpExecArray | null = shellWrapper.exec(normalizedCommand);
   while (w !== null) {
     if (w[2] && !tokenIsQuoted(w, w[0].split(/\s/)[0] ?? '')) {

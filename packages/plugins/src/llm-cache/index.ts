@@ -254,9 +254,9 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description:
-          'Master switch. OFF by default because caching changes provider call semantics.',
+          'Master switch after the plugin is loaded. Plugin loading is controlled separately.',
       },
       maxEntries: {
         type: 'number',

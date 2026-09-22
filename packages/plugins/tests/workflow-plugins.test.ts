@@ -1,15 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { createServer, type RequestListener, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { createServer, type RequestListener, type Server } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { deflateSync, gzipSync } from 'node:zlib';
-import { createHash } from 'node:crypto';
 import type { Plugin, PluginAPI, Tool } from '@wrongstack/core/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as plugins from '../src/index.js';
+import { fingerprints, workflowPlugin } from '../src/workflow-runtime/index.js';
 import { decodePng } from '../src/workflow-runtime/png.js';
-import { fingerprints } from '../src/workflow-runtime/index.js';
 
 let root: string;
 const cleanup: Array<() => Promise<void>> = [];
@@ -67,6 +67,62 @@ async function server(handler: RequestListener) {
 }
 
 describe('workflow plugins: command evidence and lifecycle', () => {
+  it('rejects a result completed after the workflow was cancelled or unloaded', async () => {
+    for (const unload of [false, true]) {
+      let finish!: () => void;
+      const waiting = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const plugin = workflowPlugin({
+        name: 'cancel-fixture',
+        description: 'fixture',
+        tools: [
+          {
+            name: 'wait',
+            description: 'wait',
+            properties: {},
+            async run() {
+              await waiting;
+              return { passed: true };
+            },
+          },
+        ],
+      });
+      const h = harness(plugin);
+      const controller = new AbortController();
+      const pending = h.call('wait', {}, controller.signal);
+      const assertion = expect(pending).rejects.toThrow();
+      if (unload) await plugin.teardown?.(h.api);
+      else controller.abort();
+      finish();
+      await assertion;
+    }
+  });
+  it('compares replay JSON objects independently of property order', async () => {
+    const baseUrl = await server((_req, res) => {
+      res.end(JSON.stringify({ nested: { b: 2, a: 1 } }));
+    });
+    expect(
+      await harness(plugins.apiConsumerReplayPlugin).call('api_consumer_replay', {
+        baseUrl,
+        cases: [{ path: '/', expectedJson: { nested: { a: 1, b: 2 } } }],
+      }),
+    ).toMatchObject({ passed: true });
+  });
+
+  it('reports a missing required trace layer as an issue', async () => {
+    await file(
+      'trace.json',
+      JSON.stringify({ spans: [{ id: 'one', traceId: 't', layer: 'api', startMs: 0, endMs: 1 }] }),
+    );
+    expect(
+      await harness(plugins.runtimeTraceExplorerPlugin).call('runtime_trace_explore', {
+        path: 'trace.json',
+        traceId: 't',
+        layers: ['storage'],
+      }),
+    ).toMatchObject({ status: 'issues-found', missingLayers: ['storage'] });
+  });
   it('reproduces an attributed failure, but not an unrelated failure', async () => {
     await file('source.ts', 'broken');
     const h = harness(plugins.bugReproducerPlugin);
@@ -596,6 +652,17 @@ describe('workflow plugins: live local services and subprocesses', () => {
         path: 'leaky.mjs',
       }),
     ).toMatchObject({ execution: { passed: true }, report: { passed: false, leaked: 2 } });
+  });
+  it('accepts the real extension unregister function contract in the workbench', async () => {
+    await file(
+      'extension.mjs',
+      "let release; export default {name:'extension',setup(api){release?.();release=api.extensions.register({name:'example'})},teardown(){release?.()}};",
+    );
+    expect(
+      await harness(plugins.pluginWorkbenchPlugin).call('plugin_workbench_run', {
+        path: 'extension.mjs',
+      }),
+    ).toMatchObject({ execution: { passed: true }, report: { passed: true, leaked: 0 } });
   });
   it('runs an actual responsive browser journey and detects an offscreen control', async () => {
     await symlink(

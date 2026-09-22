@@ -11,7 +11,7 @@
  * running .exe but can rename it, so the old file moves aside to `.old` first
  * and is deleted by the next start (scripts/binary/entry.mjs).
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { FetchError } from '@wrongstack/core/types';
@@ -95,8 +95,18 @@ export function replaceExecutable(
   bytes: Buffer,
   platform = process.platform,
 ): void {
-  const staged = `${target}.new-${process.pid}`;
-  fs.writeFileSync(staged, bytes, { mode: 0o755 });
+  // `wx` + a random suffix, not `w` + the pid.
+  //
+  // The staged name has to be predictable-proof for two reasons that both only
+  // bite when the install directory is writable by someone else: plain `w`
+  // FOLLOWS a symlink planted at that path (writing the new executable wherever
+  // the link points, with this process's privileges), and the `mode` argument
+  // is ignored when the file already exists (so a pre-created 0666 file would
+  // keep its permissions and stay writable after the rename). `wx` fails on an
+  // existing path of any kind, including a symlink, and the random suffix means
+  // there is no path to pre-create in the first place.
+  const staged = `${target}.new-${randomBytes(9).toString('hex')}`;
+  fs.writeFileSync(staged, bytes, { mode: 0o755, flag: 'wx' });
   try {
     if (platform === 'win32') {
       const aside = `${target}.old`;

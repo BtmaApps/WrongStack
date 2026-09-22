@@ -319,7 +319,6 @@ export class VerificationContext {
     opts?: {
       cwd?: string;
       timeoutMs?: number;
-      allowShellOperators?: boolean;
     },
   ): Promise<CommandResult> {
     const start = Date.now();
@@ -329,7 +328,6 @@ export class VerificationContext {
       allow: this.cmdAllow,
       block: this.cmdBlock,
       allowAll: this.cmdAllowAll,
-      allowShellOperators: opts?.allowShellOperators ?? false,
     });
     if (validationError !== null) {
       return {
@@ -757,7 +755,11 @@ export class VerificationContext {
         // as resolveProjectPath above (lines 521/525/530) and the design
         // tool's materialize/verify guards.
         const relToPkg = path.relative(packageDir, entry);
-        if (relToPkg !== '..' && !relToPkg.startsWith(`..${path.sep}`) && !path.isAbsolute(relToPkg)) {
+        if (
+          relToPkg !== '..' &&
+          !relToPkg.startsWith(`..${path.sep}`) &&
+          !path.isAbsolute(relToPkg)
+        ) {
           await fsp.access(entry);
           const isJsEntry = /\.(?:c|m)?js$/.test(entry);
           return isJsEntry
@@ -834,7 +836,11 @@ export class VerificationContext {
         // resolveConfiguredExecutable above and resolveProjectPath at
         // lines 521/525/530.
         const relToPkg = path.relative(packageDir, entry);
-        if (relToPkg === '..' || relToPkg.startsWith(`..${path.sep}`) || path.isAbsolute(relToPkg)) {
+        if (
+          relToPkg === '..' ||
+          relToPkg.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relToPkg)
+        ) {
           continue;
         }
         await fsp.access(entry);

@@ -212,9 +212,9 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description:
-          'Master switch. OFF by default because throttling injects delays into provider calls.',
+          'Master switch after the plugin is loaded. Plugin loading is controlled separately.',
       },
       tokensPerMinute: {
         type: 'number',

@@ -5,9 +5,10 @@
  * output. They never execute a project command, mutate a file, or quietly
  * claim that a broad check passed without the caller supplying evidence.
  */
-import { readFileSync } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
-import { withinProject } from '../runtime/index.js';
+import { safePath } from '../runtime/sandbox.js';
 
 const MAX_INPUT_CHARS = 1_000_000;
 
@@ -47,10 +48,6 @@ function readConfig(raw: unknown): EvidenceAnalyzerConfig {
   };
 }
 
-function lineFor(content: string, offset: number): number {
-  return content.slice(0, offset).split(/\r?\n/).length;
-}
-
 /** Never echo a credential-like value back in a diagnostic excerpt. */
 function redactExcerpt(line: string): string {
   return line
@@ -59,6 +56,10 @@ function redactExcerpt(line: string): string {
 }
 
 function analyze(content: string, profile: EvidenceAnalyzerProfile, maxFindings: number) {
+  const starts = [0];
+  for (let index = content.indexOf('\n'); index !== -1; index = content.indexOf('\n', index + 1)) {
+    starts.push(index + 1);
+  }
   const findings: Array<{
     rule: string;
     severity: EvidenceRule['severity'];
@@ -70,11 +71,18 @@ function analyze(content: string, profile: EvidenceAnalyzerProfile, maxFindings:
     const matcher = new RegExp(rule.pattern.source, rule.pattern.flags.replace('g', '') + 'g');
     for (const match of content.matchAll(matcher)) {
       const index = match.index ?? 0;
-      const line = content.split(/\r?\n/)[lineFor(content, index) - 1] ?? '';
+      let low = 0;
+      let high = starts.length;
+      while (low + 1 < high) {
+        const middle = (low + high) >>> 1;
+        if (starts[middle]! <= index) low = middle;
+        else high = middle;
+      }
+      const line = content.slice(starts[low], starts[low + 1] ?? content.length);
       findings.push({
         rule: rule.label,
         severity: rule.severity,
-        line: lineFor(content, index),
+        line: low + 1,
         excerpt: redactExcerpt(line.trim()).slice(0, 240),
         advice: rule.advice,
       });
@@ -84,7 +92,11 @@ function analyze(content: string, profile: EvidenceAnalyzerProfile, maxFindings:
   return findings;
 }
 
-function sourceFromInput(input: { path?: string; content?: string }) {
+async function sourceFromInput(
+  input: { path?: string; content?: string },
+  root: string,
+  signal: AbortSignal,
+) {
   if (typeof input.content === 'string') {
     if (input.content.length > MAX_INPUT_CHARS) {
       throw new ToolValidationError({
@@ -98,10 +110,34 @@ function sourceFromInput(input: { path?: string; content?: string }) {
   if (!path) {
     throw new ToolValidationError({ message: 'path or content is required', field: 'path' });
   }
-  if (!withinProject(path)) {
+  const canonical = safePath(path, { projectRoot: root });
+  if (!canonical) {
     throw new ToolValidationError({ message: 'path must be inside the project', field: 'path' });
   }
-  const content = readFileSync(path, 'utf8');
+  const file = await open(canonical, 'r');
+  let content: string;
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > MAX_INPUT_CHARS * 4) {
+      throw new ToolValidationError({
+        message: 'Expected a regular evidence file within the size limit',
+        field: 'path',
+      });
+    }
+    const buffer = Buffer.alloc(info.size + 1);
+    let total = 0;
+    while (total < buffer.length) {
+      signal.throwIfAborted();
+      const { bytesRead } = await file.read(buffer, total, buffer.length - total, total);
+      if (!bytesRead) break;
+      total += bytesRead;
+    }
+    if (total > info.size)
+      throw new Error('Evidence file grew during read; retry with stable inputs');
+    content = buffer.subarray(0, total).toString('utf8');
+  } finally {
+    await file.close();
+  }
   if (content.length > MAX_INPUT_CHARS) {
     throw new ToolValidationError({
       message: `file exceeds the ${MAX_INPUT_CHARS}-character evidence limit`,
@@ -113,7 +149,7 @@ function sourceFromInput(input: { path?: string; content?: string }) {
 
 /** Build a deterministic, evidence-first diagnostic plugin. */
 export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): Plugin {
-  const state: EvidenceAnalyzerState = { analyses: 0, readErrors: 0, findings: 0 };
+  const hosts = new Map<object, { state: EvidenceAnalyzerState; abort: AbortController }>();
   const defaults: EvidenceAnalyzerConfig = { enabled: true, maxFindings: 40 };
   return {
     name: profile.name,
@@ -136,10 +172,10 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
       },
     },
     setup(api) {
-      state.analyses = 0;
-      state.readErrors = 0;
-      state.findings = 0;
-      const config = readConfig(api.config.extensions?.[profile.name]);
+      hosts.get(api)?.abort.abort();
+      const state: EvidenceAnalyzerState = { analyses: 0, readErrors: 0, findings: 0 };
+      const abort = new AbortController();
+      hosts.set(api, { state, abort });
       api.tools.register({
         name: profile.toolName,
         description: `${profile.evidenceHint} Returns only evidence found in the supplied file or pasted content; it does not run commands.`,
@@ -159,10 +195,18 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
         permission: 'auto',
         category: 'Diagnostics',
         mutating: false,
-        async execute(input: { path?: string; content?: string }) {
+        async execute(input: { path?: string; content?: string }, ctx, opts) {
+          const signal = AbortSignal.any([abort.signal, ...(opts?.signal ? [opts.signal] : [])]);
+          signal.throwIfAborted();
+          const config = readConfig(api.config.extensions?.[profile.name]);
           if (!config.enabled) throw new Error(`${profile.name} is disabled`);
           try {
-            const evidence = sourceFromInput(input ?? {});
+            const evidence = await sourceFromInput(
+              input ?? {},
+              resolve(ctx?.projectRoot ?? ctx?.cwd ?? process.cwd()),
+              signal,
+            );
+            signal.throwIfAborted();
             const findings = analyze(evidence.content, profile, config.maxFindings);
             state.analyses += 1;
             state.findings += findings.length;
@@ -181,21 +225,29 @@ export function createEvidenceAnalyzerPlugin(profile: EvidenceAnalyzerProfile): 
                 'Only the supplied evidence was inspected; no project command was executed.',
             };
           } catch (error) {
-            state.readErrors += 1;
+            if (!signal.aborted) state.readErrors += 1;
             throw error;
           }
         },
       });
-      api.log.info(`${profile.name} plugin loaded`, { enabled: config.enabled });
+      api.log.info(`${profile.name} plugin loaded`, {
+        enabled: readConfig(api.config.extensions?.[profile.name]).enabled,
+      });
     },
     teardown(api) {
-      const final = { ...state };
-      state.analyses = 0;
-      state.readErrors = 0;
-      state.findings = 0;
+      const host = hosts.get(api);
+      host?.abort.abort();
+      const final = { ...host?.state };
+      hosts.delete(api);
       api.log.info(`${profile.name}: teardown complete`, { final });
     },
     async health() {
+      const state: EvidenceAnalyzerState = { analyses: 0, readErrors: 0, findings: 0 };
+      for (const host of hosts.values()) {
+        state.analyses += host.state.analyses;
+        state.readErrors += host.state.readErrors;
+        state.findings += host.state.findings;
+      }
       return {
         ok: state.readErrors === 0,
         message: `${profile.name}: ${state.analyses} evidence input(s), ${state.findings} finding(s), ${state.readErrors} read error(s)`,

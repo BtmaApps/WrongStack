@@ -9,7 +9,8 @@ export default createEvidenceAnalyzerPlugin({
     {
       label: 'test failure',
       severity: 'error',
-      pattern: /(?:FAIL|AssertionError|Expected:|Tests?\s+\d+\s+failed)/i,
+      pattern:
+        /(?:^\s*(?:FAIL|FAILED)\b|\bAssertionError\b|Expected:|\bTests?\s+[1-9]\d*\s+failed\b)/im,
       advice:
         'Reproduce the named test locally and keep the failing assertion as the repair proof.',
     },

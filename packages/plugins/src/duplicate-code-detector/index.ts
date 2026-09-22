@@ -526,7 +526,7 @@ const plugin: Plugin = {
         type: 'number',
         minimum: 1,
         maximum: 500,
-        default: 20,
+        default: DEFAULTS.maxFindings,
         description: 'Maximum duplicate groups reported per scan.',
       },
     },

@@ -183,9 +183,9 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description:
-          'Master switch. OFF by default because rerouting changes which model serves each turn.',
+          'Master switch after the plugin is loaded. Plugin loading is controlled separately.',
       },
       dryRun: {
         type: 'boolean',

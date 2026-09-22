@@ -489,6 +489,37 @@ describe('createSubmitController — /mouse metadata', () => {
 });
 
 describe('createSubmitController — /clear cascade', () => {
+  it.each(['idle', 'running'] as const)(
+    'finishes the screen reset after the clear command advances the session generation (%s)',
+    async (status) => {
+      const h = makeHost({ statusRef: status });
+      h.slashRegistry.dispatch.mockImplementation(async () => {
+        // The real CLI command calls interruptController.resetSession before
+        // draining the old run and returning its successful result.
+        h.host.refs.sessionGeneration.current += 1;
+        return { metadata: { cleared: true } };
+      });
+
+      await h.submit('/clear');
+
+      expect(h.capabilities['clearTerminal']).toHaveBeenCalledOnce();
+      expect(h.capabilities['onClearHistory']).toHaveBeenCalledWith(h.dispatch);
+      expect(h.actionFns['onAfterClear']).toHaveBeenCalledOnce();
+      expect(h.host.refs.sessionGeneration.current).toBe(1);
+    },
+  );
+
+  it('drops a clear result superseded by another session boundary', async () => {
+    const h = makeHost();
+    h.slashRegistry.dispatch.mockImplementation(async () => {
+      h.host.refs.sessionGeneration.current += 2;
+      return { metadata: { cleared: true } };
+    });
+    await h.submit('/clear');
+    expect(h.capabilities['clearTerminal']).not.toHaveBeenCalled();
+    expect(h.capabilities['onClearHistory']).not.toHaveBeenCalled();
+  });
+
   function clearedHost(extra: Record<string, unknown> = {}) {
     return makeHost({ slashResult: { metadata: { cleared: true, ...extra } } });
   }

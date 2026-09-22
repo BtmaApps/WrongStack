@@ -43,8 +43,7 @@ describe('api-compatibility-gate extra coverage', () => {
     expect(h.message).toContain('0 invocation(s)');
   });
 
-  it('readConfig uses defaults for null config and enabled is false by default', async () => {
-    // Default config has enabled:false
+  it('a loaded plugin works with null config without a second enable switch', async () => {
     const api = makeApi({ 'api-compatibility-gate': null });
     apiCompatPlugin.setup(api as never);
     const status = await (
@@ -54,7 +53,7 @@ describe('api-compatibility-gate extra coverage', () => {
     ).execute({});
     const s = status as Record<string, unknown>;
     expect(s.severity).toBe('warn');
-    expect(s.enabled).toBe(false); // default is false
+    expect(s.enabled).toBe(true);
   });
 
   it('readConfig reads block severity', async () => {

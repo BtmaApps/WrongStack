@@ -373,7 +373,6 @@ export function validateCommand(
     allow: Set<string>;
     block: Set<string>;
     allowAll: boolean;
-    allowShellOperators?: boolean;
   },
 ): string | null {
   const tokens = parseCommandArguments(command);
@@ -383,8 +382,17 @@ export function validateCommand(
   if (command.includes('\n') || command.includes('\r')) {
     return 'Command contains newline or carriage return characters which are not permitted.';
   }
+  // The operator gate is UNCONDITIONAL. It used to be skippable via an
+  // `allowShellOperators` config flag that no production caller ever set — only
+  // tests did. That flag was one caller away from command injection: an
+  // allowlisted base command resolving to a Windows `node_modules/.bin/*.cmd`
+  // shim spawns with `shell: true` and DEP0190 argument concatenation
+  // (verification-context.ts `resolveConfiguredExecutable`), so an unfiltered
+  // `&&` or `|` in the command string would have reached cmd.exe verbatim. An
+  // escape hatch whose only safety property is "nobody calls it yet" is not a
+  // control; the hatch is gone instead.
   const testTarget = process.platform === 'win32' ? command.replaceAll('^', '') : command;
-  if (!config.allowShellOperators && SHELL_OPERATOR_RE.test(testTarget)) {
+  if (SHELL_OPERATOR_RE.test(testTarget)) {
     return 'Command contains shell operators (&&, ||, ;, |, &, >, <, backticks, $()) which are not permitted in the verifier.';
   }
   if (ENV_EXPANSION_RE.test(testTarget)) {

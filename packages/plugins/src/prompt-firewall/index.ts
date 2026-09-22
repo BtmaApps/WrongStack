@@ -693,9 +693,9 @@ const plugin: Plugin = {
     properties: {
       enabled: {
         type: 'boolean',
-        default: false,
+        default: true,
         description:
-          'Master switch. OFF by default; redact/block modes can alter or stop provider calls.',
+          'Master switch after the plugin is loaded. Plugin loading is controlled separately.',
       },
       mode: {
         type: 'string',

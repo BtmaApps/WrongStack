@@ -121,7 +121,6 @@ function makeConfig(
     allow: Set<string>;
     block: Set<string>;
     allowAll: boolean;
-    allowShellOperators: boolean;
   }> = {},
 ) {
   return {
@@ -149,12 +148,14 @@ describe('validateCommand', () => {
     expect(
       validateCommand('pnpm exec tsc --noEmit --project packages/core/tsconfig.json', makeConfig()),
     ).toBeNull();
-    expect(
-      validateCommand(
-        'pnpm exec vitest run x&calc.test.ts',
-        makeConfig({ allowShellOperators: true }),
-      ),
-    ).toContain('requires one or more project-relative');
+    expect(validateCommand('pnpm exec vitest run --reporter dot', makeConfig())).toContain(
+      'requires one or more project-relative',
+    );
+    // The same shape carrying an operator is refused by the operator gate,
+    // which runs BEFORE the pnpm-exec parse and can no longer be turned off.
+    expect(validateCommand('pnpm exec vitest run x&calc.test.ts', makeConfig())).toContain(
+      'shell operators',
+    );
   });
 
   it('rejects empty commands', () => {
@@ -175,9 +176,18 @@ describe('validateCommand', () => {
     expect(result).toContain('shell operators');
   });
 
-  it('allows shell operators when explicitly enabled', () => {
-    const config = makeConfig({ allowShellOperators: true, allowAll: true });
-    expect(validateCommand('pwd && true', config)).toBeNull();
+  // Regression for the removed `allowShellOperators` escape hatch: the gate is
+  // unconditional, so not even `allowAll` (the widest configuration a user can
+  // ask for) admits an operator. On Windows an allowlisted command can resolve
+  // to a `.cmd` shim spawned with `shell: true`, which is what made a skippable
+  // operator gate a command-injection primitive.
+  it('rejects shell operators even under allowAll', () => {
+    expect(validateCommand('pwd && true', makeConfig({ allowAll: true }))).toContain(
+      'shell operators',
+    );
+    expect(validateCommand('tsc | calc', makeConfig({ allowAll: true }))).toContain(
+      'shell operators',
+    );
   });
 
   it('rejects unknown commands when allowAll is false', () => {
