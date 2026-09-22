@@ -387,7 +387,7 @@ describe('MCPAuthorizationManager client identity', () => {
     expect(started.clientIdSource).toBe('registered');
     expect(new URL(started.authorizationUrl).searchParams.get('client_id')).toBe('dcr-client');
     expect(register).toHaveBeenCalledTimes(1);
-    expect(register.mock.calls[0]?.[0]).toMatchObject({
+    expect([...register.mock.calls][0]?.[0]).toMatchObject({
       redirectUris: ['http://127.0.0.1:43123/callback'],
     });
   });
