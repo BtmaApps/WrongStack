@@ -1,18 +1,17 @@
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import autoDocPlugin from '../src/auto-doc/index.js';
+import costTrackerPlugin from '../src/cost-tracker/index.js';
 // chokidar import is left un-mocked — the H1 audit is about resource
 // cleanup, not chokidar's API. A separate test (currently skipped due
 // to import-shape subtleties) asserts that FSWatcher.close() is invoked
 // per registered handle; see the audit notes for the trade-off.
 import cronPlugin from '../src/cron/index.js';
 import fileWatcherPlugin from '../src/file-watcher/index.js';
-import templateEnginePlugin from '../src/template-engine/index.js';
 import gitAutocommitPlugin from '../src/git-autocommit/index.js';
-import costTrackerPlugin from '../src/cost-tracker/index.js';
-import autoDocPlugin from '../src/auto-doc/index.js';
-import shellCheckPlugin from '../src/shell-check/index.js';
 import semverBumpPlugin from '../src/semver-bump/index.js';
+import shellCheckPlugin from '../src/shell-check/index.js';
+import templateEnginePlugin from '../src/template-engine/index.js';
 
 interface MockApi {
   tools: { register: ReturnType<typeof vi.fn> };
@@ -58,7 +57,9 @@ function makeApi(): MockApi {
 }
 
 function getTool(api: MockApi, name: string): { execute: (input: unknown) => Promise<unknown> } {
-  const call = api.tools.register.mock.calls.find(([t]) => (t as { name: string }).name === name);
+  const call = api.tools.register.mock.calls.findLast(
+    ([t]) => (t as { name: string }).name === name,
+  );
   if (!call) throw new Error(`tool ${name} not registered`);
   return call[0] as { execute: (input: unknown) => Promise<unknown> };
 }
@@ -119,6 +120,7 @@ describe('plugin teardown (H1 regression guard)', () => {
       // though state was populated twice. (The pre-fix code would have
       // fallen through to the `?? { jobs: new Map() }` default and left
       // every timer alive.)
+      cronPlugin.setup(api as never);
       const scheduleTool = getTool(api, 'cron_schedule');
       await scheduleTool.execute({ name: 'job-d', intervalMs: 60_000, action: 'noop' });
       expect(vi.getTimerCount()).toBe(1);

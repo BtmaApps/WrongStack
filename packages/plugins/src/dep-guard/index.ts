@@ -124,8 +124,53 @@ export interface ParsedInstall {
   packages: Array<{ name: string; version: string | null }>;
 }
 
-const INSTALL_RE =
-  /(?:^|[;&|]\s*)(npm|pnpm|yarn|bun)\s+(?:install|i|add)\s+([^;&|]+)|(?:^|[;&|]\s*)(pip3?|uv)\s+(?:pip\s+)?install\s+([^;&|]+)|(?:^|[;&|]\s*)(uv)\s+add\s+([^;&|]+)|(?:^|[;&|]\s*)(cargo)\s+add\s+([^;&|]+)/gi;
+/**
+ * Where a command can START.
+ *
+ * Probe-verified gap (2026-09-22): this was `(?:^|[;&|]\s*)`, which knows
+ * neither a NEWLINE nor shell grouping. A multi-line bash script -- the
+ * ordinary shape for anything with more than one step -- put every install
+ * after the first out of reach, and `(npm i x)` / `{ npm i x; }` were never
+ * seen at all. 10 of 16 probed install forms parsed to zero packages.
+ */
+const CMD_BOUNDARY = String.raw`(?:^|[;&|(){}\n\r]\s*)`;
+
+/**
+ * Launchers that run the package manager for you, and an optional path
+ * prefix. `sudo npm install evil` was the single most obvious miss: the
+ * manager has to sit at a command boundary, and `sudo ` is not one.
+ *
+ * Each launcher may carry flags, env assignments and a numeric operand
+ * (`timeout 60 npm i x`). The three inner alternatives are mutually exclusive
+ * by first character and none can begin a launcher word, so the nesting
+ * cannot fork the parse; the run is bounded at 4.
+ */
+const LAUNCHER_PREFIX = String.raw`(?:(?:sudo|doas|nohup|setsid|timeout|time|nice|ionice|stdbuf|unbuffer|command|exec|env|xargs)\b(?:\s+(?:-[^\s]+|[A-Za-z_][A-Za-z0-9_]*=[^\s]*|\d+[smhd]?))*\s+){0,4}`;
+const MANAGER_PREFIX = String.raw`(?:[^\s;&|(){}]+[\\/])?`;
+
+/**
+ * Everything up to the next command boundary. Newlines end an arg run, and so
+ * do the grouping closers: without `)` the subshell form `(npm i evil-pkg)`
+ * parsed the package as `evil-pkg)`, which matches no deny entry and no
+ * typosquat neighbour. No npm/pip/cargo package or version spec contains
+ * either character.
+ */
+const ARGS = String.raw`([^;&|\n\r)}]+)`;
+
+const START = `${CMD_BOUNDARY}${LAUNCHER_PREFIX}${MANAGER_PREFIX}`;
+
+// `global` covers `yarn global add` / `npm install global`-style invocations,
+// which the previous pattern could not reach because it required the
+// subcommand to sit immediately after the manager name.
+const INSTALL_RE = new RegExp(
+  [
+    String.raw`${START}(npm|pnpm|yarn|bun)\s+(?:global\s+)?(?:install|i|add)\s+${ARGS}`,
+    String.raw`${START}(pip3?|uv)\s+(?:pip\s+)?install\s+${ARGS}`,
+    String.raw`${START}(uv)\s+add\s+${ARGS}`,
+    String.raw`${START}(cargo)\s+add\s+${ARGS}`,
+  ].join('|'),
+  'gi',
+);
 
 /**
  * Parse a shell command for dependency installs. Returns one entry

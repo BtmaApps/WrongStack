@@ -4,10 +4,13 @@ import * as path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Context } from '../../src/core/context.js';
 import { ToolExecutor } from '../../src/execution/tool-executor.js';
+import {
+  fsWriteTargetPaths,
+  SENSITIVE_PATH_INPUT_KEYS,
+} from '../../src/security/permission-helpers.js';
 import { DefaultPermissionPolicy } from '../../src/security/permission-policy.js';
-import { fsWriteTargetPaths } from '../../src/security/permission-helpers.js';
-import type { Tool } from '../../src/types/tool.js';
 import type { ToolUseBlock } from '../../src/types/blocks.js';
+import type { Tool } from '../../src/types/tool.js';
 import { wstackGlobalRoot } from '../../src/utils/wstack-paths.js';
 
 /**
@@ -64,6 +67,38 @@ function plainTool(): Tool {
     },
   };
 }
+
+describe('write-target keys stay a superset of the sensitive-read keys', () => {
+  // These two lists answer the same question -- "which fields of this input
+  // are paths?" -- for the read gate and the write gate, and they had drifted:
+  // the plural keys added for WS-2026-09-17-01 (`paths`, `file_paths`,
+  // `filePaths`, `targets`, `targetPaths`) went into the sensitive-read list
+  // and not into the write list, so a mutating tool using a plural key would
+  // have had its destinations invisible to the write gate.
+  //
+  // No such tool existed when this was found, which is why it was worth
+  // closing while still latent. The write list is now DERIVED from the read
+  // list; this pins that relationship so a future edit cannot quietly re-split
+  // them into two hand-maintained literals.
+  it.each([...SENSITIVE_PATH_INPUT_KEYS])('collects a write target named %s', (key) => {
+    expect(fsWriteTargetPaths(undefined, { [key]: 'secrets/value.txt' })).toContain(
+      'secrets/value.txt',
+    );
+  });
+
+  it('collects every string in a plural key array', () => {
+    expect(fsWriteTargetPaths(undefined, { paths: ['a.txt', 'b.txt'] })).toEqual([
+      'a.txt',
+      'b.txt',
+    ]);
+  });
+
+  it('keeps the write-only destination keys', () => {
+    for (const key of ['out', 'directory', 'cwd', 'template']) {
+      expect(fsWriteTargetPaths(undefined, { [key]: 'dest' })).toContain('dest');
+    }
+  });
+});
 
 describe('fsWriteTargetPaths — Tool.writeTargets union (VULN-001 Phase 2)', () => {
   it('unions the hook destinations with the fixed key list', () => {
@@ -138,13 +173,20 @@ describe('confirm payload carries writeTargets (ToolConfirmPendingResult)', () =
     const confirmPolicy = {
       evaluate: vi.fn().mockResolvedValue({ permission: 'confirm', source: 'default' }),
     };
-    const registry = { get: (n: string) => (n === tool.name ? tool : undefined), list: () => [tool] };
+    const registry = {
+      get: (n: string) => (n === tool.name ? tool : undefined),
+      list: () => [tool],
+    };
     const executor = new ToolExecutor(registry, {
       permissionPolicy: confirmPolicy as never,
       secretScrubber: { scrub: (s: string) => s } as never,
     });
     const use: ToolUseBlock = { type: 'tool_use', id: 'id_1', name: tool.name, input: {} };
-    const out = await executor.executeBatch([use], { cwd: tmpDir, meta: {} } as never, 'sequential');
+    const out = await executor.executeBatch(
+      [use],
+      { cwd: tmpDir, meta: {} } as never,
+      'sequential',
+    );
     const result = (out.outputs[0]?.result ?? {}) as {
       type?: string;
       writeTargets?: string[];

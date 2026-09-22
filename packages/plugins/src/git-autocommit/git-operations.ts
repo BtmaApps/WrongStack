@@ -16,7 +16,9 @@ async function runGit(
   args: string[],
   cwd?: string,
   timeoutMs = DEFAULT_GIT_TIMEOUT_MS,
+  signal?: AbortSignal,
 ): Promise<string> {
+  signal?.throwIfAborted();
   return await new Promise<string>((resolvePromise, rejectPromise) => {
     execFile(
       'git',
@@ -24,6 +26,7 @@ async function runGit(
       {
         encoding: 'utf-8',
         cwd,
+        signal,
         windowsHide: true,
         timeout: timeoutMs,
         maxBuffer: 10 * 1024 * 1024,
@@ -144,8 +147,8 @@ export function parsePorcelainLine(line: string): string | null {
   return unquotePorcelainPath(body.trim());
 }
 
-export async function getChangedFiles(cwd?: string): Promise<string[]> {
-  const output = await runGit(['status', '--porcelain'], cwd);
+export async function getChangedFiles(cwd?: string, signal?: AbortSignal): Promise<string[]> {
+  const output = await runGit(['status', '--porcelain'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
   if (!output) return [];
   return output
     .split('\n')
@@ -154,8 +157,13 @@ export async function getChangedFiles(cwd?: string): Promise<string[]> {
     .filter((p): p is string => p !== null && p.length > 0);
 }
 
-export async function getStagedFiles(cwd?: string): Promise<string[]> {
-  const output = await runGit(['diff', '--cached', '--name-only'], cwd);
+export async function getStagedFiles(cwd?: string, signal?: AbortSignal): Promise<string[]> {
+  const output = await runGit(
+    ['diff', '--cached', '--name-only'],
+    cwd,
+    DEFAULT_GIT_TIMEOUT_MS,
+    signal,
+  );
   // `git diff --name-only` applies the same C-quoting as `status --porcelain`
   // for non-ASCII and control characters, so decode before the names are used
   // as commit pathspecs or scope-warning keys.
@@ -166,8 +174,17 @@ export async function getStagedFiles(cwd?: string): Promise<string[]> {
  * Staged files limited to a pathspec scope — the caller's own slice of the
  * index, excluding anything another process staged concurrently.
  */
-export async function getScopedStagedFiles(paths: string[], cwd?: string): Promise<string[]> {
-  const output = await runGit(['diff', '--cached', '--name-only', '--', ...paths], cwd);
+export async function getScopedStagedFiles(
+  paths: string[],
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const output = await runGit(
+    ['diff', '--cached', '--name-only', '--', ...paths],
+    cwd,
+    DEFAULT_GIT_TIMEOUT_MS,
+    signal,
+  );
   // Decode git's C-quoting (see getStagedFiles): the result is used verbatim
   // as the `git commit --only` path list, so a quoted path would fail commit.
   return output ? output.split('\n').filter(Boolean).map(unquotePorcelainPath) : [];
@@ -183,7 +200,11 @@ export async function getScopedStagedFiles(paths: string[], cwd?: string): Promi
  * Returns the concrete path list handed to `git add`, so the caller can fence
  * its commit to exactly what was staged.
  */
-export async function stageFiles(files: string[] | undefined, cwd?: string): Promise<string[]> {
+export async function stageFiles(
+  files: string[] | undefined,
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
   /* v8 ignore next -- callers always pass a validated array; the guard is defensive. */
   if (!files || !Array.isArray(files) || files.length === 0) return [];
   const hasPattern = files.some((f) => /[*?[\]]/.test(f));
@@ -204,7 +225,7 @@ export async function stageFiles(files: string[] | undefined, cwd?: string): Pro
     if (onDisk.length < files.length) {
       let tracked: string[] = [];
       try {
-        const out = await runGit(['ls-files', '--', ...files], cwd);
+        const out = await runGit(['ls-files', '--', ...files], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
         tracked = out ? out.split('\n').filter(Boolean).map(unquotePorcelainPath) : [];
       } catch {
         tracked = [];
@@ -216,10 +237,10 @@ export async function stageFiles(files: string[] | undefined, cwd?: string): Pro
     }
     // `--` terminates option parsing: without it a file named `-f` or
     // `--force` would be read by git as a flag rather than a pathspec.
-    await runGit(['add', '--', ...existing], cwd);
+    await runGit(['add', '--', ...existing], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
     return existing;
   }
-  await runGit(['add', '--', ...files], cwd);
+  await runGit(['add', '--', ...files], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
   return files;
 }
 
@@ -234,9 +255,10 @@ export async function commitWithMessage(
    * staged workstream it never asked for.
    */
   paths?: string[],
+  signal?: AbortSignal,
 ): Promise<string> {
   const scoped = paths && paths.length > 0 ? ['--only', '--', ...paths] : [];
-  return await runGit(['commit', '-m', message, ...scoped], cwd, GIT_COMMIT_TIMEOUT_MS);
+  return await runGit(['commit', '-m', message, ...scoped], cwd, GIT_COMMIT_TIMEOUT_MS, signal);
 }
 
 /**
@@ -248,16 +270,20 @@ export async function commitWithMessage(
  * dry-run preview or the LLM prompt. The caller aborts when this returns
  * any path; a re-run re-stages the current content and proceeds.
  *
- * Fail-open on git errors: the `--only` fence still bounds the blast radius
- * to these paths either way.
+ * Git errors propagate: without drift evidence a scoped commit is unsafe.
  */
-export async function scopedPathsDrifted(paths: string[], cwd?: string): Promise<string[]> {
-  try {
-    const out = await runGit(['diff', '--name-only', '--', ...paths], cwd);
-    return out ? out.split('\n').filter(Boolean) : [];
-  } catch {
-    return [];
-  }
+export async function scopedPathsDrifted(
+  paths: string[],
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const out = await runGit(
+    ['diff', '--name-only', '--', ...paths],
+    cwd,
+    DEFAULT_GIT_TIMEOUT_MS,
+    signal,
+  );
+  return out ? out.split('\n').filter(Boolean).map(unquotePorcelainPath) : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -271,9 +297,14 @@ interface WorktreeInfo {
 }
 
 /** Parse `git worktree list --porcelain` into structured entries. */
-async function getWorktrees(cwd?: string): Promise<WorktreeInfo[]> {
+async function getWorktrees(cwd?: string, signal?: AbortSignal): Promise<WorktreeInfo[]> {
   try {
-    const out = await runGit(['worktree', 'list', '--porcelain'], cwd);
+    const out = await runGit(
+      ['worktree', 'list', '--porcelain'],
+      cwd,
+      DEFAULT_GIT_TIMEOUT_MS,
+      signal,
+    );
     if (!out) return [];
     const entries: WorktreeInfo[] = [];
     let current: Partial<WorktreeInfo> = {};
@@ -298,8 +329,11 @@ async function getWorktrees(cwd?: string): Promise<WorktreeInfo[]> {
  * Return a warning string when other worktrees exist besides the main one.
  * Multiple worktrees mean other agents may be making simultaneous changes.
  */
-export async function simultaneousEditWarning(cwd?: string): Promise<string | null> {
-  const worktrees = await getWorktrees(cwd);
+export async function simultaneousEditWarning(
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const worktrees = await getWorktrees(cwd, signal);
   if (worktrees.length > 1) {
     const otherBranches = worktrees
       .filter((wt) => wt.branch)
@@ -315,11 +349,14 @@ export async function simultaneousEditWarning(cwd?: string): Promise<string | nu
 }
 
 /** Run git diff --cached and return both stat and full diff. */
-export async function getStagedDiff(cwd?: string): Promise<{ stat: string; diff: string }> {
+export async function getStagedDiff(
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<{ stat: string; diff: string }> {
   try {
-    const stat = await runGit(['diff', '--cached', '--stat'], cwd);
+    const stat = await runGit(['diff', '--cached', '--stat'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
     // Limit full diff to prevent blowing up tool output
-    const diff = await runGit(['diff', '--cached'], cwd);
+    const diff = await runGit(['diff', '--cached'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
     const MAX_DIFF = 20_000;
     const truncated =
       diff.length > MAX_DIFF ? diff.slice(0, MAX_DIFF) + '\n\n... (diff truncated)' : diff;
@@ -336,10 +373,21 @@ export async function getStagedDiff(cwd?: string): Promise<{ stat: string; diff:
 export async function getScopedStagedDiff(
   paths: string[],
   cwd?: string,
+  signal?: AbortSignal,
 ): Promise<{ stat: string; diff: string }> {
   try {
-    const stat = await runGit(['diff', '--cached', '--stat', '--', ...paths], cwd);
-    const diff = await runGit(['diff', '--cached', '--', ...paths], cwd);
+    const stat = await runGit(
+      ['diff', '--cached', '--stat', '--', ...paths],
+      cwd,
+      DEFAULT_GIT_TIMEOUT_MS,
+      signal,
+    );
+    const diff = await runGit(
+      ['diff', '--cached', '--', ...paths],
+      cwd,
+      DEFAULT_GIT_TIMEOUT_MS,
+      signal,
+    );
     const MAX_DIFF = 20_000;
     const truncated =
       diff.length > MAX_DIFF ? diff.slice(0, MAX_DIFF) + '\n\n... (diff truncated)' : diff;
@@ -356,9 +404,12 @@ export async function getScopedStagedDiff(
  * simultaneous edits from agents working in the same directory without
  * worktree isolation.
  */
-export async function externalChangesSinceStage(cwd?: string): Promise<string[] | null> {
+export async function externalChangesSinceStage(
+  cwd?: string,
+  signal?: AbortSignal,
+): Promise<string[] | null> {
   try {
-    const out = await runGit(['status', '--porcelain'], cwd);
+    const out = await runGit(['status', '--porcelain'], cwd, DEFAULT_GIT_TIMEOUT_MS, signal);
     if (!out) return null;
     const unstaged = out
       .split('\n')

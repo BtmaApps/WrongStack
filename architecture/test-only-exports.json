@@ -579,6 +579,9 @@
       "reachedQuotaWindow",
       "resetProviderQuota"
     ],
+    "packages/core/src/security/permission-helpers.ts": [
+      "SENSITIVE_PATH_INPUT_KEYS"
+    ],
     "packages/core/src/security/secret-vault.ts": [
       "keyFileNeedsHardening"
     ],
@@ -1134,6 +1137,9 @@
       "bumpCounter",
       "observeHistogram",
       "TelegramTelemetry"
+    ],
+    "packages/tools/src/_danger-detect.ts": [
+      "unwrapArgvLaunchers"
     ],
     "packages/tools/src/_output-spool.ts": [
       "_resetOutputSpoolForTests",

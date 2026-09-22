@@ -380,14 +380,14 @@ const plugin: Plugin = {
         } | null;
         if (p?.model) state.models.add(p.model);
         const rawUsage = p?.usage as Record<string, unknown> | undefined;
-        const inputTokens =
+        const rawInput =
           (typeof rawUsage?.['input'] === 'number' ? rawUsage['input'] : undefined) ??
           (typeof rawUsage?.['prompt_tokens'] === 'number'
             ? rawUsage['prompt_tokens']
             : undefined) ??
           (typeof rawUsage?.['input_tokens'] === 'number' ? rawUsage['input_tokens'] : undefined) ??
           (typeof rawUsage?.['promptTokens'] === 'number' ? rawUsage['promptTokens'] : 0);
-        const outputTokens =
+        const rawOutput =
           (typeof rawUsage?.['output'] === 'number' ? rawUsage['output'] : undefined) ??
           (typeof rawUsage?.['completion_tokens'] === 'number'
             ? rawUsage['completion_tokens']
@@ -396,6 +396,13 @@ const plugin: Plugin = {
             ? rawUsage['output_tokens']
             : undefined) ??
           (typeof rawUsage?.['completionTokens'] === 'number' ? rawUsage['completionTokens'] : 0);
+        // A non-finite provider usage value (JSON `1e999` parses to Infinity,
+        // an upstream proxy may emit NaN) would poison the cumulative totals
+        // and any later arithmetic against them. Normalize at the boundary,
+        // matching the invariant already applied in token-budget and
+        // token-throttle.
+        const inputTokens = Number.isFinite(rawInput) ? rawInput : 0;
+        const outputTokens = Number.isFinite(rawOutput) ? rawOutput : 0;
         state.totalInputTokens += inputTokens;
         state.totalOutputTokens += outputTokens;
       });
@@ -558,6 +565,8 @@ const plugin: Plugin = {
         toolCalls: state.toolCalls,
         draftsWritten: state.draftsWritten,
         draftErrors: state.draftErrors,
+        totalInputTokens: state.totalInputTokens,
+        totalOutputTokens: state.totalOutputTokens,
       },
     };
   },

@@ -10,7 +10,8 @@
 import { watch as fsWatch } from 'node:fs';
 import { join } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
-import { withinProject } from '../runtime/index.js';
+import { createHostStates } from '../runtime/host-state.js';
+import { safePath } from '../runtime/sandbox.js';
 
 const API_VERSION = '^0.1.10';
 
@@ -43,18 +44,28 @@ function nextId(): string {
   return `watch_${++watch_idCounter}_${Date.now().toString(36)}`;
 }
 
-// Module-level state, shared between `setup` and `teardown`.
-//
-// Why module-level? The Plugin interface in @wrongstack/core does not
-// thread state from `setup` → `teardown`. Keeping `watches` and
-// `debounceTimers` inside the setup closure made both Maps invisible
-// to teardown — which is why the previous teardown was a documented
-// no-op that leaked every fs.FSWatcher and every debounce setTimeout
-// (H1 audit, 2026-06-03). With stable Map identity at module scope
-// teardown can finally close handles and clear timers. The contents
-// are reset in setup (idempotent re-init) and freed in teardown.
-const watches = new Map<string, WatchHandle>();
-const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const hosts = createHostStates(
+  () => ({
+    abort: new AbortController(),
+    extensionUnregister: null as (() => void) | null,
+    watches: new Map<string, WatchHandle>(),
+    debounceTimers: new Map<string, ReturnType<typeof setTimeout>>(),
+  }),
+  (state) => {
+    for (const handle of state.watches.values())
+      for (const watcher of handle.watchers) {
+        try {
+          watcher.close();
+        } catch {
+          /* Already closed by the host. */
+        }
+      }
+    state.watches.clear();
+    for (const timer of state.debounceTimers.values()) clearTimeout(timer);
+    state.debounceTimers.clear();
+  },
+);
+
 const MAX_WATCH_GROUPS = 32;
 const MAX_PATHS_PER_WATCH = 16;
 const MAX_FILESYSTEM_WATCHERS = 64;
@@ -113,21 +124,8 @@ const plugin: Plugin = {
   },
 
   setup(api) {
-    // Idempotent re-init: on plugin reload, close any leftover watches
-    // and clear any pending debounce timers before re-populating. The
-    // Maps live at module scope so teardown can reach them.
-    for (const handle of watches.values()) {
-      for (const w of handle.watchers) {
-        try {
-          w.close();
-        } catch {
-          /* ignore — handle may already be closed */
-        }
-      }
-    }
-    watches.clear();
-    for (const t of debounceTimers.values()) clearTimeout(t);
-    debounceTimers.clear();
+    const state = hosts.reset(api);
+    const { watches, debounceTimers } = state;
 
     const debounceMs =
       ((api.config.extensions?.['file-watcher'] as Record<string, unknown>)?.[
@@ -155,19 +153,6 @@ const plugin: Plugin = {
       ((api.config.extensions?.['file-watcher'] as Record<string, unknown>)?.[
         'indexProjectRoot'
       ] as string) ?? '';
-    // Sandbox: the configured index root must live inside the project.
-    // An out-of-project value would route codebase-index reads anywhere
-    // on disk; ignore it and warn instead of trusting the config.
-    const safeIndexRoot =
-      indexProjectRoot !== '' && withinProject(indexProjectRoot) ? indexProjectRoot : '';
-    if (indexProjectRoot !== '' && safeIndexRoot === '') {
-      api.log.warn(
-        'file-watcher: indexProjectRoot is outside the project root — using watched dirPath instead',
-        {
-          indexProjectRoot,
-        },
-      );
-    }
 
     const INDEXABLE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
@@ -182,10 +167,15 @@ const plugin: Plugin = {
       return INDEXABLE_EXTENSIONS.has(ext);
     }
 
-    function safeWatchDir(dirPath: string, recursive: boolean, handle: WatchHandle): boolean {
+    function safeWatchDir(
+      dirPath: string,
+      recursive: boolean,
+      handle: WatchHandle,
+      safeIndexRoot: string | null,
+    ): boolean {
       try {
         const watcher = fsWatch(dirPath, { recursive }, (eventType, filename) => {
-          if (!filename) return;
+          if (state.abort.signal.aborted || watches.get(handle.id) !== handle || !filename) return;
           // Filter to the event types the caller requested.  fs.watch
           // reports 'change' and 'rename'; 'rename' maps to the user-facing
           // 'add' / 'delete' slots — a file appears/disappears, so the
@@ -209,6 +199,7 @@ const plugin: Plugin = {
           debounceEvent(
             key,
             () => {
+              if (state.abort.signal.aborted || watches.get(handle.id) !== handle) return;
               api.emitCustom('file-watcher:changed', {
                 watch_id: handle.id,
                 path: fullPath,
@@ -228,6 +219,7 @@ const plugin: Plugin = {
                       // circuit breaker) — a direct runIndexer call here used to race
                       // the startup scan and per-edit reindexes on the same SQLite file.
                       const { enqueueReindex } = await import('@wrongstack/tools/codebase-index');
+                      if (state.abort.signal.aborted || watches.get(handle.id) !== handle) return;
                       const root = safeIndexRoot || dirPath;
                       enqueueReindex({
                         projectRoot: root,
@@ -292,7 +284,9 @@ const plugin: Plugin = {
       permission: 'confirm',
       category: 'Filesystem',
       mutating: false,
-      async execute(input: Record<string, unknown>) {
+      async execute(input: Record<string, unknown>, _ctx, options) {
+        state.abort.signal.throwIfAborted();
+        options?.signal?.throwIfAborted();
         const explicitPaths = input['paths'];
         let rawPaths: unknown;
         if (explicitPaths !== undefined) {
@@ -365,12 +359,22 @@ const plugin: Plugin = {
         // Sandbox: every requested path must resolve inside the project
         // root. Reject the whole call early otherwise — half-attaching
         // some watchers would silently leave unsafe paths unmonitored.
-        const bad = paths.find((p) => !withinProject(p));
+        const projectRoot = _ctx?.projectRoot ?? _ctx?.cwd ?? api.config.cwd ?? process.cwd();
+        const resolvedPaths = new Map(paths.map((path) => [path, safePath(path, { projectRoot })]));
+        const bad = paths.find((p) => !resolvedPaths.get(p));
         if (bad !== undefined) {
           throw new ToolValidationError({
             message: `path is outside the project root: ${bad}`,
             field: 'paths',
           });
+        }
+
+        const safeIndexRoot = indexProjectRoot ? safePath(indexProjectRoot, { projectRoot }) : null;
+        if (indexProjectRoot && !safeIndexRoot) {
+          api.log.warn(
+            'file-watcher: indexProjectRoot is outside the project root — using watched dirPath instead',
+            { indexProjectRoot },
+          );
         }
 
         const id = nextId();
@@ -386,7 +390,8 @@ const plugin: Plugin = {
         const watchedPaths: string[] = [];
         const failedPaths: string[] = [];
         for (const p of paths) {
-          if (safeWatchDir(p, recursive, handle)) watchedPaths.push(p);
+          if (safeWatchDir(resolvedPaths.get(p)!, recursive, handle, safeIndexRoot))
+            watchedPaths.push(p);
           else failedPaths.push(p);
         }
 
@@ -439,7 +444,9 @@ const plugin: Plugin = {
       permission: 'auto',
       category: 'Filesystem',
       mutating: false,
-      async execute(input: Record<string, unknown>) {
+      async execute(input: Record<string, unknown>, _ctx, options) {
+        state.abort.signal.throwIfAborted();
+        options?.signal?.throwIfAborted();
         const rawId = input['watch_id'] ?? input['watchId'] ?? input['id'];
         const watch_id = typeof rawId === 'string' ? rawId.trim() : '';
         const handle = watches.get(watch_id);
@@ -506,43 +513,22 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    // Close every chokidar.FSWatcher handle and clear every debounce
-    // setTimeout. The previous implementation was a documented no-op
-    // (the watches Map was in the setup closure and unreachable from
-    // teardown), so the only thing that ever cleaned these up was
-    // process exit — which is fine for a one-shot run, but leaks
-    // during a hot-reload loop or a long-lived REPL session (H1
-    // audit, 2026-06-03). With module-level Maps we can finally
-    // reach the resources and free them.
-    const closed = watches.size;
-    for (const handle of watches.values()) {
-      for (const w of handle.watchers) {
-        try {
-          w.close();
-        } catch {
-          /* ignore — may already be closed */
-        }
-      }
-    }
-    watches.clear();
-    for (const t of debounceTimers.values()) clearTimeout(t);
-    debounceTimers.clear();
-    api.log.info('file-watcher: teardown complete', {
-      closed,
-    });
+    const closed = hosts.get(api)?.watches.size ?? 0;
+    const state = hosts.remove(api);
+    if (!state) return;
+    api.log.info('file-watcher: teardown complete', { closed });
   },
 
   async health() {
-    const watcherCount = Array.from(watches.values()).reduce(
-      (sum, handle) => sum + handle.watchers.length,
-      0,
-    );
+    const active = [...hosts.values()];
+    const watches = active.flatMap((state) => [...state.watches.values()]);
+    const watcherCount = watches.reduce((sum, handle) => sum + handle.watchers.length, 0);
     return {
       ok: true,
-      message: `file-watcher: ${watches.size} active watch group(s), ${watcherCount} filesystem watcher(s)`,
-      activeWatchGroups: watches.size,
+      message: `file-watcher: ${watches.length} active watch group(s), ${watcherCount} filesystem watcher(s)`,
+      activeWatchGroups: watches.length,
       filesystemWatchers: watcherCount,
-      pendingDebounces: debounceTimers.size,
+      pendingDebounces: active.reduce((sum, state) => sum + state.debounceTimers.size, 0),
     };
   },
 };

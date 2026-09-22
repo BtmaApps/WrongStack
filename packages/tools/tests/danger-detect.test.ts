@@ -1,5 +1,65 @@
 import { describe, expect, it } from 'vitest';
-import { detectDanger } from '../src/_danger-detect.js';
+import { detectDanger, unwrapArgvLaunchers } from '../src/_danger-detect.js';
+
+describe('transparent launchers do not hide the real command', () => {
+  // Probe-verified gap (2026-09-22): `exec` receives ARGV, so a launcher is
+  // the executable and the real command is its first operand -- and `env`,
+  // `nice`, `nohup` and `timeout` all ship in the DEFAULT exec allowlist.
+  // Every rule keys on `cmd`, so `exec nohup rm -rf /` assessed as `safe`.
+  // 10 of 12 launcher-wrapped forms were missed.
+  //
+  // Scope, honestly: this level drives the destructive-command BANNER, not the
+  // permission gate. `destructiveKindOf` joins cmd+args into a shell line and
+  // classifies `nohup rm -rf /` on its own, so the confirmation still happened
+  // -- the warning that explains WHY did not.
+  it.each([
+    ['nohup', 'nohup', ['rm', '-rf', '/']],
+    ['nice', 'nice', ['rm', '-rf', '/']],
+    ['nice with option', 'nice', ['-n', '5', 'rm', '-rf', '/']],
+    ['env', 'env', ['rm', '-rf', '/']],
+    ['env -i', 'env', ['-i', 'rm', '-rf', '/']],
+    ['env with assignment', 'env', ['FOO=1', 'rm', '-rf', '/']],
+    ['timeout with operand', 'timeout', ['5', 'rm', '-rf', '/']],
+    ['timeout with signal', 'timeout', ['-s', 'KILL', '5', 'rm', '-rf', '/']],
+    ['sudo', 'sudo', ['rm', '-rf', '/']],
+    ['nested launchers', 'nohup', ['nice', 'rm', '-rf', '/']],
+    ['after --', 'env', ['--', 'rm', '-rf', '/']],
+    ['path-qualified launcher', '/usr/bin/nohup', ['rm', '-rf', '/']],
+  ])('sees the destructive command behind %s', (_name, cmd, args) => {
+    expect(detectDanger(cmd, args).level).toBe('destructive');
+  });
+
+  it('still reports a launcher wrapping a force push', () => {
+    expect(detectDanger('nohup', ['git', 'push', '--force']).matchedRule).toBe('git-push-force');
+  });
+
+  // Unwrapping must not invent danger: a launcher in front of ordinary work
+  // stays safe, and an unrecognised leading token is never dropped.
+  it.each([
+    ['nohup', ['pnpm', 'build']],
+    ['nice', ['-n', '10', 'pnpm', 'test']],
+    ['timeout', ['60', 'vitest', 'run']],
+    ['nohup', []],
+    ['env', ['-i']],
+  ])('stays safe for %s %j', (cmd, args) => {
+    expect(detectDanger(cmd, args).level).toBe('safe');
+  });
+
+  // The `shell-launcher` rule already flagged launcher-wrapped INTERPRETERS at
+  // `caution` ("bypasses allowlist name-gate"). That rule is why this case is
+  // not `safe`, and it predates the unwrapping — which is also the measure of
+  // what was missing: it recognised the SHAPE of a wrapper, never the severity
+  // of what was wrapped, so a launcher in front of `rm -rf /` stayed `safe`.
+  it('keeps the pre-existing caution for a launcher wrapping an interpreter', () => {
+    const verdict = detectDanger('env', ['FOO=1', 'node', 'scripts/build.mjs']);
+    expect(verdict.level).toBe('caution');
+    expect(verdict.matchedRule).toBe('shell-launcher');
+  });
+
+  it('leaves a non-launcher argv untouched', () => {
+    expect(unwrapArgvLaunchers('pnpm', ['build'])).toEqual({ cmd: 'pnpm', args: ['build'] });
+  });
+});
 
 describe('detectDanger — rm / rmdir recursive force', () => {
   it('flags `rm -rf ./build` as destructive', () => {

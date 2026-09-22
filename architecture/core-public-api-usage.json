@@ -179,8 +179,8 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1150,
-      "typeOnly": 1029,
+      "files": 1154,
+      "typeOnly": 1033,
       "runtimeOrMixed": 331
     },
     "@wrongstack/core/types/multi-agent.js": {
@@ -14439,13 +14439,37 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/background-plugin-lifecycle.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/catalog.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/checkpoint-isolation.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/plugins/tests/evidence-analyzer-suite.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/git-autocommit-context.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/plugins/tests/git-autocommit-project.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },

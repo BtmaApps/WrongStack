@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T09:55:36.386Z",
+  "generatedAt": "2026-09-22T10:44:38.212Z",
   "scope": {
     "workspaceRoots": [
       "packages",
@@ -12,19 +12,21 @@
   },
   "summary": {
     "packages": 36,
-    "sourceFiles": 4010,
-    "testFiles": 3587,
-    "sourceLines": 958847,
+    "sourceFiles": 4012,
+    "testFiles": 3591,
+    "sourceLines": 959292,
     "workspaceEdges": 129,
-    "moduleEdges": 12961,
+    "moduleEdges": 12969,
     "nonCommandSlashImports": 0,
     "runtimeModuleCycles": 0,
-    "typeModuleCycles": 8,
+    "typeModuleCycles": 9,
     "testsWithoutTypecheck": 0,
     "testsWithMultipleTypechecks": 0,
-    "testOnlyExports": 943
+    "testOnlyExports": 945
   },
-  "errors": [],
+  "errors": [
+    "1 unexcepted module cycle(s)"
+  ],
   "packageCycles": [],
   "coreAreas": {
     "actual": [
@@ -438,8 +440,8 @@
     {
       "name": "@wrongstack/plugins",
       "dir": "packages/plugins",
-      "sourceFiles": 120,
-      "testFiles": 116,
+      "sourceFiles": 122,
+      "testFiles": 120,
       "workspaceDependencies": [
         "@wrongstack/core",
         "@wrongstack/plugin-sdk",
@@ -455,7 +457,7 @@
         {
           "path": "packages/plugins/tsconfig.test.json",
           "error": null,
-          "testFiles": 116
+          "testFiles": 120
         }
       ]
     },
@@ -1072,6 +1074,14 @@
       {
         "kind": "type-module-cycle",
         "members": [
+          "packages/plugins/src/checkpoint/index.ts",
+          "packages/plugins/src/checkpoint/state.ts",
+          "packages/plugins/src/checkpoint/storage.ts"
+        ]
+      },
+      {
+        "kind": "type-module-cycle",
+        "members": [
           "packages/sage/src/middleware/tool-call-memory-retrieval.ts",
           "packages/sage/src/middleware/tool-call-memory-trace.ts",
           "packages/sage/src/middleware/tool-call-memory.ts"
@@ -1088,7 +1098,16 @@
       "ARCH-CYCLE-TYPE-30",
       "ARCH-CYCLE-TYPE-31"
     ],
-    "unexcepted": []
+    "unexcepted": [
+      {
+        "kind": "type-module-cycle",
+        "members": [
+          "packages/plugins/src/checkpoint/index.ts",
+          "packages/plugins/src/checkpoint/state.ts",
+          "packages/plugins/src/checkpoint/storage.ts"
+        ]
+      }
+    ]
   },
   "testOwnership": {
     "runtimeAssignments": [
@@ -11203,6 +11222,12 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/background-plugin-lifecycle.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/branch-guard-extra.test.ts",
         "projects": [
           "root-node"
@@ -11228,6 +11253,12 @@
       },
       {
         "file": "packages/plugins/tests/checkpoint-byte-budget.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/checkpoint-isolation.test.ts",
         "projects": [
           "root-node"
         ]
@@ -11371,6 +11402,12 @@
         ]
       },
       {
+        "file": "packages/plugins/tests/git-autocommit-context.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
         "file": "packages/plugins/tests/git-autocommit-exec.test.ts",
         "projects": [
           "root-node"
@@ -11378,6 +11415,12 @@
       },
       {
         "file": "packages/plugins/tests/git-autocommit-porcelain.test.ts",
+        "projects": [
+          "root-node"
+        ]
+      },
+      {
+        "file": "packages/plugins/tests/git-autocommit-project.test.ts",
         "projects": [
           "root-node"
         ]
@@ -22891,7 +22934,7 @@
     },
     {
       "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 996,
+      "lines": 1106,
       "relativeImports": 1
     },
     {
@@ -23312,6 +23355,11 @@
       "relativeImports": 16
     },
     {
+      "file": "packages/core/src/security/yolo-risk.ts",
+      "lines": 1106,
+      "relativeImports": 1
+    },
+    {
       "file": "packages/sage/src/project-server.ts",
       "lines": 1019,
       "relativeImports": 7
@@ -23325,11 +23373,6 @@
       "file": "packages/tools/src/codebase-index/writer.ts",
       "lines": 997,
       "relativeImports": 24
-    },
-    {
-      "file": "packages/core/src/security/yolo-risk.ts",
-      "lines": 996,
-      "relativeImports": 1
     },
     {
       "file": "packages/mcp/src/client.ts",
@@ -24727,6 +24770,10 @@
       "name": "resetProviderQuota"
     },
     {
+      "file": "packages/core/src/security/permission-helpers.ts",
+      "name": "SENSITIVE_PATH_INPUT_KEYS"
+    },
+    {
       "file": "packages/core/src/security/secret-vault.ts",
       "name": "keyFileNeedsHardening"
     },
@@ -25741,6 +25788,10 @@
     {
       "file": "packages/telegram/src/telemetry.ts",
       "name": "TelegramTelemetry"
+    },
+    {
+      "file": "packages/tools/src/_danger-detect.ts",
+      "name": "unwrapArgvLaunchers"
     },
     {
       "file": "packages/tools/src/_output-spool.ts",

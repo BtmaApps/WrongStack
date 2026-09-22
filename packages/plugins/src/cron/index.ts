@@ -7,6 +7,7 @@
  * - cron_cancel: Cancel a scheduled job
  */
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { createHostStates } from '../runtime/host-state.js';
 
 const COORDINATION_CRON_CAPABILITY = 'coordination.cron';
 
@@ -26,30 +27,25 @@ interface CronJob {
 }
 
 interface CronState {
+  abort: AbortController;
+  pendingDue: WeakSet<CronJob>;
   jobs: Map<string, CronJob>;
   timers: Map<string, ReturnType<typeof setTimeout>>;
   extensionUnregister: (() => void) | null;
   createdAt: string;
 }
 
-// Module-level state, shared between `setup` and `teardown`.
-//
-// Why module-level? The Plugin interface in @wrongstack/core does not
-// currently thread state from `setup` → `teardown`. The previous
-// implementation kept `state` as a `const` inside the setup closure,
-// which made it inaccessible from teardown — so the teardown function
-// fell through to a `?? { jobs: new Map(), timers: new Map() }` default
-// and silently leaked every setTimeout timer it had registered (H1
-// audit, 2026-06-03). Keeping a single shared object with stable Map
-// identity lets teardown actually clear resources. The contents are
-// reset in setup (idempotent re-init on plugin reload) and cleared in
-// teardown (resource release).
-const state: CronState = {
-  jobs: new Map(),
-  timers: new Map(),
-  extensionUnregister: null,
-  createdAt: new Date().toISOString(),
-};
+const hosts = createHostStates<CronState>(
+  () => ({
+    abort: new AbortController(),
+    pendingDue: new WeakSet(),
+    jobs: new Map(),
+    timers: new Map(),
+    extensionUnregister: null,
+    createdAt: new Date().toISOString(),
+  }),
+  clearCronResources,
+);
 
 function formatNextRun(intervalMs: number): string {
   /* v8 ignore next -- callers always pass a clamped interval (>=1000); the NaN/<=0/non-finite -> 60_000 fallback is defensive. */
@@ -91,7 +87,7 @@ function buildSnapshot(
   return { count: jobs.length, maxConcurrent, jobs };
 }
 
-function clearCronResources(): void {
+function clearCronResources(state: CronState): void {
   for (const timer of state.timers.values()) {
     clearTimeout(timer);
   }
@@ -132,11 +128,7 @@ const plugin: Plugin = {
   },
 
   setup(api) {
-    // Idempotent re-init: if the plugin is reloaded (e.g. via /plugin
-    // reload), clear any previous timers/jobs first. The shared
-    // `state` object lives at module scope so teardown can reach it.
-    clearCronResources();
-    state.createdAt = new Date().toISOString();
+    const state = hosts.reset(api);
 
     const rawMaxConcurrent = (api.config.extensions?.['cron'] as Record<string, unknown>)?.[
       'maxConcurrentJobs'
@@ -148,13 +140,14 @@ const plugin: Plugin = {
 
     function scheduleNextRun(name: string): void {
       const job = state.jobs.get(name);
-      if (!job?.enabled) return;
+      if (state.abort.signal.aborted || !job?.enabled) return;
 
       const existing = state.timers.get(name);
       if (existing) clearTimeout(existing);
 
       const delay = Math.max(0, new Date(job.nextRun).getTime() - Date.now());
       const timer = setTimeout(() => {
+        if (state.abort.signal.aborted || state.jobs.get(name) !== job) return;
         job.runCount++;
         job.lastRun = new Date().toISOString();
         job.nextRun = formatNextRun(job.intervalMs);
@@ -201,17 +194,19 @@ const plugin: Plugin = {
       name: 'cron-iteration-hooks',
       owner: 'cron',
       beforeIteration: async (_ctx, _idx) => {
+        if (state.abort.signal.aborted) return;
         const now = Date.now();
         let activeJobs = 0;
         const promises: Array<Promise<void>> = [];
 
         for (const [name, job] of state.jobs) {
-          if (!job.enabled) continue;
+          if (!job.enabled || state.pendingDue.has(job)) continue;
           /* v8 ignore next -- jobs.size is capped at maxConcurrent on schedule, so this break is unreachable via the public API; kept as a safety bound. */
           if (activeJobs >= maxConcurrent) break;
 
           if (new Date(job.nextRun).getTime() <= now) {
             activeJobs++;
+            state.pendingDue.add(job);
             promises.push(
               (async () => {
                 try {
@@ -225,6 +220,8 @@ const plugin: Plugin = {
                 } catch {
                   // best-effort
                 }
+                state.pendingDue.delete(job);
+                if (state.abort.signal.aborted || state.jobs.get(name) !== job) return;
                 api.emitCustom('cron:job_due', {
                   name,
                   action: job.action,
@@ -238,6 +235,7 @@ const plugin: Plugin = {
         await Promise.all(promises);
       },
       afterIteration: async (_ctx, _idx) => {
+        if (state.abort.signal.aborted) return;
         for (const job of state.jobs.values()) {
           if (!job.enabled) continue;
           if (new Date(job.nextRun).getTime() <= Date.now()) {
@@ -274,7 +272,9 @@ const plugin: Plugin = {
       category: 'Session',
       mutating: false,
       capabilities: [COORDINATION_CRON_CAPABILITY],
-      async execute(input: Record<string, unknown>) {
+      async execute(input: Record<string, unknown>, _ctx, options) {
+        state.abort.signal.throwIfAborted();
+        options?.signal?.throwIfAborted();
         const name = (input['name'] ??
           input['jobName'] ??
           input['job_name'] ??
@@ -401,7 +401,9 @@ const plugin: Plugin = {
       permission: 'auto',
       mutating: false,
       capabilities: [COORDINATION_CRON_CAPABILITY],
-      async execute(input: Record<string, unknown>) {
+      async execute(input: Record<string, unknown>, _ctx, options) {
+        state.abort.signal.throwIfAborted();
+        options?.signal?.throwIfAborted();
         const name = (input['name'] ??
           input['jobName'] ??
           input['job_name'] ??
@@ -432,12 +434,12 @@ const plugin: Plugin = {
   teardown(api) {
     // Clear every pending timer and unregister the iteration extension so the
     // agent loop never invokes callbacks against a torn-down plugin.
-    clearCronResources();
+    hosts.remove(api);
     api.log.info('cron plugin unloaded');
   },
 
   async health() {
-    const jobs = Array.from(state.jobs.values());
+    const jobs = [...hosts.values()].flatMap((state) => [...state.jobs.values()]);
     const overdue = jobs.filter(
       (job) => job.enabled && new Date(job.nextRun).getTime() < Date.now(),
     ).length;

@@ -19,6 +19,9 @@ let metrics: {
 };
 let ext: Extension;
 
+const hosts: Parameters<typeof cronPlugin.setup>[0][] = [];
+let currentApi: Parameters<typeof cronPlugin.setup>[0];
+
 function setup(cfg: Record<string, unknown> = {}): Record<string, Tool> {
   const tools: Record<string, Tool> = {};
   emitCustom = vi.fn();
@@ -42,6 +45,8 @@ function setup(cfg: Record<string, unknown> = {}): Record<string, Tool> {
     session: { append: sessionAppend },
   };
   cronPlugin.setup(api as never);
+  currentApi = api as never;
+  hosts.push(currentApi);
   return tools;
 }
 
@@ -51,7 +56,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  cronPlugin.teardown?.({ log: { info: vi.fn() } } as never);
+  for (const api of hosts.splice(0)) cronPlugin.teardown?.(api);
   vi.useRealTimers();
 });
 
@@ -258,7 +263,7 @@ describe('teardown', () => {
   it('clears timers and jobs', async () => {
     const tools = setup();
     await tools.cron_schedule!.execute({ name: 'j', intervalMs: 1000, action: 'x' });
-    cronPlugin.teardown?.({ log: { info: vi.fn() } } as never);
+    cronPlugin.teardown?.(currentApi);
     const res = await tools.cron_list!.execute({});
     expect(res.count).toBe(0);
   });

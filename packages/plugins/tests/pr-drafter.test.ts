@@ -106,4 +106,80 @@ describe('pr-drafter plugin', () => {
     expect(health.counters['draftsWritten']).toBe(0);
     expect(api.log.info).toHaveBeenCalledWith('pr-drafter: teardown complete', expect.any(Object));
   });
+
+  // Same class as the previously-fixed bugs in token-budget and
+  // token-throttle: a non-finite provider usage value (JSON `1e999` parses
+  // to Infinity; an upstream proxy may emit NaN) would otherwise poison the
+  // cumulative state.totalInputTokens / state.totalOutputTokens and any
+  // later arithmetic against them. The canonical invariant
+  // `Number.isFinite(v) ? v : 0` is applied at the boundary before
+  // accumulation.
+  it('keeps cumulative token totals finite across non-finite provider responses', async () => {
+    const api = makeApi();
+    prDrafterPlugin.setup(api as never);
+    const onEventCalls = api.onEvent.mock.calls.filter(
+      ([event]: unknown[]) => event === 'provider.response',
+    );
+    expect(onEventCalls).toHaveLength(1);
+    const handler = onEventCalls[0]![1] as (
+      payload: { model?: string; usage?: Record<string, unknown> } | null,
+    ) => void;
+
+    // Control: a valid request contributes 100 input / 50 output.
+    handler({ model: 'claude-3-5-sonnet', usage: { input: 100, output: 50 } });
+
+    // Poisoned via the camelCase `input` / `output` alias.
+    handler({
+      model: 'claude-3-5-sonnet',
+      usage: { input: Number.POSITIVE_INFINITY, output: Number.POSITIVE_INFINITY },
+    });
+
+    // Poisoned via the snake_case `prompt_tokens` / `completion_tokens` alias.
+    handler({
+      model: 'claude-3-5-sonnet',
+      usage: {
+        prompt_tokens: Number.POSITIVE_INFINITY,
+        completion_tokens: Number.NaN,
+      },
+    });
+
+    // Poisoned via the camelCase `promptTokens` / `completionTokens` alias.
+    handler({
+      model: 'claude-3-5-sonnet',
+      usage: { promptTokens: Number.NaN, completionTokens: Number.NaN },
+    });
+
+    // Read cumulative totals BEFORE teardown zeroes them.
+    const health = (await prDrafterPlugin.health!()) as {
+      counters: Record<string, number>;
+    };
+    const inputTotal = health.counters['totalInputTokens'];
+    const outputTotal = health.counters['totalOutputTokens'];
+
+    prDrafterPlugin.teardown!(api as never);
+
+    expect(Number.isFinite(inputTotal)).toBe(true);
+    expect(Number.isFinite(outputTotal)).toBe(true);
+    expect(inputTotal).toBe(100);
+    expect(outputTotal).toBe(50);
+  });
+
+  // health().counters must surface the cumulative token totals for
+  // diagnostics, mirroring the shape cost-tracker uses for lastCostUsd.
+  it('health().counters reports totalInputTokens and totalOutputTokens', async () => {
+    const api = makeApi();
+    prDrafterPlugin.setup(api as never);
+    const handler = (
+      api.onEvent.mock.calls.find(([event]: unknown[]) => event === 'provider.response')![1] as (
+        payload: { model?: string; usage?: Record<string, unknown> },
+      ) => void
+    );
+    handler({ model: 'claude-3-5-sonnet', usage: { input: 250, output: 75 } });
+    const health = (await prDrafterPlugin.health!()) as {
+      counters: Record<string, number>;
+    };
+    expect(health.counters['totalInputTokens']).toBe(250);
+    expect(health.counters['totalOutputTokens']).toBe(75);
+    prDrafterPlugin.teardown!(api as never);
+  });
 });

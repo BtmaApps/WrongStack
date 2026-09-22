@@ -25,7 +25,9 @@
  * - For status: use the built-in `git` tool with `command: "status"` or `command: "diff"`.
  */
 
+import { resolve } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import { createHostStates } from '../runtime/host-state.js';
 import type { ConventionalType } from './commit-message.js';
 import { generateCommitFromDiff, generateCommitMessage } from './commit-message.js';
 import {
@@ -43,24 +45,13 @@ import {
 
 const API_VERSION = '^0.1.10';
 
-// Module-level state, shared between `setup`, `teardown`, and `health`.
-//
-// Why module-level? The Plugin interface in @wrongstack/core does not
-// thread state from `setup` → `teardown`. Today `git-autocommit` holds
-// no in-process resources (everything goes through `execFile`, the
-// async variant),
-// but `health()` wants to report a commit count and last-commit hash
-// that survive the function-call boundary — and a future reload-cycle
-// audit could turn those into resource-tracking requirements the same
-// way `cron` and `file-watcher` needed timers cleared (H1 audit,
-// 2026-06-03). Module-level state is the path of least friction: it
-// gives `teardown` something concrete to reset and `health()` something
-// concrete to report. Setup re-zeros the counters (idempotent re-init
-// on plugin reload); teardown clears them and logs.
-const commitCount = { value: 0 };
-const lastCommit = { hash: null as string | null, at: null as string | null };
-/** Commits whose message was written by the LLM this session. */
-const llmGenerated = { value: 0 };
+const hosts = createHostStates(() => ({
+  abort: new AbortController(),
+  extensionUnregister: null as (() => void) | null,
+  commitCount: { value: 0 },
+  llmGenerated: { value: 0 },
+  lastCommit: { hash: null as string | null, at: null as string | null },
+}));
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -103,13 +94,8 @@ const plugin: Plugin = {
   },
 
   setup(api) {
-    // Idempotent re-init: zero the counters on every reload so the
-    // counters reported by health() reflect the current plugin lifetime,
-    // not the accumulated history across reloads.
-    commitCount.value = 0;
-    llmGenerated.value = 0;
-    lastCommit.hash = null;
-    lastCommit.at = null;
+    const state = hosts.reset(api);
+    const { commitCount, llmGenerated, lastCommit } = state;
 
     const extConfig = api.config.extensions?.['git-autocommit'] as
       | Record<string, unknown>
@@ -179,7 +165,13 @@ const plugin: Plugin = {
       permission: 'confirm',
       category: 'Git',
       mutating: true,
-      async execute(input: Record<string, unknown>, _ctx) {
+      async execute(input: Record<string, unknown>, ctx, execution) {
+        const cwd = resolve(ctx?.projectRoot ?? ctx?.cwd ?? api.config.cwd ?? process.cwd());
+        const signal = AbortSignal.any([
+          state.abort.signal,
+          ...(execution?.signal ? [execution.signal] : []),
+        ]);
+        signal.throwIfAborted();
         try {
           let type = input['type'] as ConventionalType | undefined;
           let scope = input['scope'] as string | undefined;
@@ -265,7 +257,7 @@ const plugin: Plugin = {
             // Pathspec flow: stage ONLY changed files matching the patterns,
             // then read back the concrete matching slice of the index.
             try {
-              await stageFiles(pathspecs);
+              await stageFiles(pathspecs, cwd, signal);
             } catch (err: unknown) {
               throw new Error(
                 `Failed to stage files matching paths: ${err instanceof Error ? err.message : String(err)}`,
@@ -273,7 +265,7 @@ const plugin: Plugin = {
               );
             }
             try {
-              staged = await getScopedStagedFiles(pathspecs);
+              staged = await getScopedStagedFiles(pathspecs, cwd, signal);
             } catch {
               staged = [];
             }
@@ -287,7 +279,7 @@ const plugin: Plugin = {
             // scoped readback alone would hide foreign staged files, making
             // the warning permanently empty on this flow.
             try {
-              staged = await getStagedFiles();
+              staged = await getStagedFiles(cwd, signal);
             } catch {
               staged = commitScope;
             }
@@ -297,7 +289,7 @@ const plugin: Plugin = {
             // non-existent path is filtered by stageFiles and must not reach
             // `git commit --only` (which would abort the whole commit).
             try {
-              commitScope = await stageFiles(files);
+              commitScope = await stageFiles(files, cwd, signal);
             } catch (err: unknown) {
               /* v8 ignore next -- stageFiles only throws Error; the String(err) branch is defensive. */
               const detail = err instanceof Error ? err.message : String(err);
@@ -311,7 +303,7 @@ const plugin: Plugin = {
               );
             }
             try {
-              staged = await getStagedFiles();
+              staged = await getStagedFiles(cwd, signal);
             } catch {
               staged = [];
             }
@@ -323,21 +315,21 @@ const plugin: Plugin = {
             // `autoStage` (default false); an empty index falls through to
             // the "Nothing staged" error below with guidance instead.
             try {
-              staged = await getStagedFiles();
+              staged = await getStagedFiles(cwd, signal);
             } catch {
               staged = [];
             }
             if (staged.length === 0 && opts.autoStage) {
               try {
-                const changed = await getChangedFiles();
+                const changed = await getChangedFiles(cwd, signal);
                 if (changed.length > 0) {
                   try {
-                    await stageFiles(changed);
+                    await stageFiles(changed, cwd, signal);
                   } catch {
                     /* ignore staging errors */
                   }
                   try {
-                    staged = await getStagedFiles();
+                    staged = await getStagedFiles(cwd, signal);
                   } catch {
                     staged = [];
                   }
@@ -356,13 +348,15 @@ const plugin: Plugin = {
           // calls see only their own slice; foreign staged files never
           // reach the LLM prompt or the preview.
           const { stat, diff: stagedDiff } = commitScope
-            ? await getScopedStagedDiff(commitScope)
-            : await getStagedDiff();
+            ? await getScopedStagedDiff(commitScope, cwd, signal)
+            : await getStagedDiff(cwd, signal);
+
+          signal.throwIfAborted();
 
           // LLM generation from the staged diff (best-effort; needs a diff).
           let generatedByLlm = false;
           if (wantGenerate && staged.length > 0) {
-            const g = await generateCommitFromDiff(api, stat, stagedDiff);
+            const g = await generateCommitFromDiff(api, stat, stagedDiff, signal);
             if (g) {
               type = g.type;
               if (g.scope) scope = g.scope;
@@ -371,6 +365,8 @@ const plugin: Plugin = {
               generatedByLlm = true;
             }
           }
+
+          signal.throwIfAborted();
 
           // Default the type when the caller (and the LLM) left it unset.
           if (!type) type = opts.defaultType as ConventionalType;
@@ -429,10 +425,10 @@ const plugin: Plugin = {
           }
 
           // Build warning before committing.
-          const worktreeWarn = await simultaneousEditWarning();
+          const worktreeWarn = await simultaneousEditWarning(cwd, signal);
 
           // Detect files modified by other agents since staging
-          const externalChanges = await externalChangesSinceStage();
+          const externalChanges = await externalChangesSinceStage(cwd, signal);
           let externalWarning: string | null = null;
           if (externalChanges && externalChanges.length > 0) {
             const preview = externalChanges.slice(0, 10).join(', ');
@@ -447,6 +443,8 @@ const plugin: Plugin = {
 
           const warning =
             [worktreeWarn, scopeWarning, externalWarning].filter(Boolean).join('\n') || undefined;
+
+          signal.throwIfAborted();
 
           // Return early in dry run with the diff visible
           if (dryRun) {
@@ -464,7 +462,7 @@ const plugin: Plugin = {
           // previewed. An in-scope edit that landed since staging aborts the
           // commit — silently shipping it would betray the preview above.
           if (commitScope && !dryRun) {
-            const drifted = await scopedPathsDrifted(commitScope);
+            const drifted = await scopedPathsDrifted(commitScope, cwd, signal);
             if (drifted.length > 0) {
               const preview = drifted.slice(0, 10).join(', ');
               const suffix = drifted.length > 10 ? ` and ${drifted.length - 10} more` : '';
@@ -480,7 +478,7 @@ const plugin: Plugin = {
           // Commit — fenced to the caller's scope when one exists.
           let hash = '';
           try {
-            hash = await commitWithMessage(msg, undefined, commitScope);
+            hash = await commitWithMessage(msg, cwd, commitScope, signal);
           } catch (err: unknown) {
             /* v8 ignore next -- commitWithMessage only throws Error; the String(err) branch is defensive. */
             throw new Error(
@@ -541,17 +539,9 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    // git-autocommit has no in-process resources to release (every
-    // git interaction goes through the async `execFile` and finishes
-    // before the tool returns), but we still want a symmetric teardown
-    // so:
-    //   1. /diag plugins can observe the unload
-    //   2. The counters reset cleanly on the next setup() — without
-    //      this, a reload that skips a successful commit would leave
-    //      stale counts in health().
-    // Snap the current values for the log line, then zero them so the
-    // next setup() starts fresh (matching the cron/file-watcher
-    // pattern from the H1 audit).
+    const state = hosts.remove(api);
+    if (!state) return;
+    const { commitCount, llmGenerated, lastCommit } = state;
     const finalCount = commitCount.value;
     const finalHash = lastCommit.hash;
     const finalLlm = llmGenerated.value;
@@ -567,6 +557,12 @@ const plugin: Plugin = {
   },
 
   async health() {
+    const active = [...hosts.values()];
+    const commitCount = { value: active.reduce((sum, host) => sum + host.commitCount.value, 0) };
+    const llmGenerated = { value: active.reduce((sum, host) => sum + host.llmGenerated.value, 0) };
+    const lastCommit = active
+      .map((host) => host.lastCommit)
+      .sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''))[0] ?? { hash: null, at: null };
     // /diag plugins wants a quick yes/no plus a useful message.
     // `ok` reflects "did the plugin load successfully" — the plugin
     // is otherwise healthy until git itself is unreachable, which the

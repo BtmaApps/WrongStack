@@ -50,6 +50,56 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('install parsing reaches past launchers, grouping and newlines', () => {
+  // Probe-verified gap (2026-09-22): the install pattern anchored on
+  // `(?:^|[;&|]\s*)`, which knows neither a NEWLINE nor shell grouping, and
+  // required the manager to sit AT that boundary. 10 of 16 probed forms parsed
+  // to zero packages -- including `sudo npm install x` and any multi-line bash
+  // script, which is the ordinary shape for anything with more than one step.
+  it.each([
+    ['plain', 'npm install evil-pkg'],
+    ['after &&', 'cd /tmp && npm i evil-pkg'],
+    ['after ;', 'echo hi; npm i evil-pkg'],
+    ['pip', 'pip install evil-pkg'],
+    // Launchers.
+    ['sudo', 'sudo npm install evil-pkg'],
+    ['nohup', 'nohup npm install evil-pkg'],
+    ['env', 'env npm install evil-pkg'],
+    ['timeout with operand', 'timeout 60 npm install evil-pkg'],
+    ['nice', 'nice npm install evil-pkg'],
+    // Grouping and newlines.
+    ['subshell', '(npm install evil-pkg)'],
+    ['brace group', '{ npm install evil-pkg; }'],
+    ['newline separated', 'cd /tmp\nnpm install evil-pkg'],
+    ['multi-line script', '#!/bin/bash\nset -e\ncd /app\nnpm install evil-pkg\n'],
+    ['sudo after newline', 'echo start\nsudo npm install evil-pkg'],
+    // Path-qualified manager and global installs.
+    ['absolute path', '/usr/local/bin/npm install evil-pkg'],
+    ['npm -g', 'npm install -g evil-pkg'],
+    ['yarn global add', 'yarn global add evil-pkg'],
+  ])('extracts the package from %s', (_name, command) => {
+    const names = parseInstallCommands(command).flatMap((entry) =>
+      entry.packages.map((pkg) => pkg.name),
+    );
+    expect(names).toContain('evil-pkg');
+  });
+
+  // Widening the boundary must not turn a lockfile restore, a script run, or
+  // prose about installing into an "adding dependencies" event.
+  it.each([
+    ['bare install', 'npm install'],
+    ['ci', 'npm ci'],
+    ['run script', 'npm run build'],
+    ['prose', 'echo "run npm install evil-pkg yourself"'],
+    ['grep', 'grep -r "npm install" docs/'],
+  ])('stays quiet on %s', (_name, command) => {
+    const names = parseInstallCommands(command).flatMap((entry) =>
+      entry.packages.map((pkg) => pkg.name),
+    );
+    expect(names).toEqual([]);
+  });
+});
+
 describe('parseInstallCommands', () => {
   it('parses npm/pnpm/yarn adds with and without versions', async () => {
     const [npm] = parseInstallCommands('npm install lodash@4.17.21');

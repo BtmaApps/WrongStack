@@ -6,7 +6,10 @@ interface HostState {
 }
 
 /** Reload and disposal belong to the API instance that owns the registration. */
-export function createHostStates<T extends HostState>(create: () => T) {
+export function createHostStates<T extends HostState>(
+  create: () => T,
+  dispose?: (state: T) => void,
+) {
   const hosts = new Map<PluginAPI, T>();
   function remove(api: PluginAPI): T | undefined {
     const state = hosts.get(api);
@@ -20,6 +23,7 @@ export function createHostStates<T extends HostState>(create: () => T) {
     } catch {
       // The host may already have disposed its extension registry.
     }
+    dispose?.(state);
     return state;
   }
   return {
@@ -30,6 +34,7 @@ export function createHostStates<T extends HostState>(create: () => T) {
       return state;
     },
     remove,
+    get: (api: PluginAPI) => hosts.get(api),
     values: () => hosts.values(),
   };
 }

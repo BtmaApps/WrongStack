@@ -21,7 +21,14 @@ describe('Kanban IPC ownership boundary', () => {
         // from SAGE's DB (see packages/vector-memory/src/store.ts header) so
         // the two stores cannot contend on the same file lock. It is not
         // kanban data and does not route through the kanban daemon.
-        !file.endsWith(`${path.sep}vector-memory${path.sep}src${path.sep}store.ts`),
+        !file.endsWith(`${path.sep}vector-memory${path.sep}src${path.sep}store.ts`) &&
+        // migration-rehearsal's `new DatabaseSync(...)` is not a database this
+        // process opens: it lives inside a script string handed to `node -e`,
+        // and it opens `:memory:` in that child. No file, no lock, no kanban
+        // data — nothing for the IPC owner to arbitrate.
+        !file.endsWith(
+          `${path.sep}plugins${path.sep}src${path.sep}migration-rehearsal${path.sep}index.ts`,
+        ),
     );
     const offenders = productionFiles
       .filter((file) => /\bnew\s+DatabaseSync\s*\(/.test(fs.readFileSync(file, 'utf8')))

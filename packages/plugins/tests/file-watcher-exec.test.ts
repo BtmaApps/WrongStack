@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fsm = vi.hoisted(() => ({ watch: vi.fn() }));
@@ -38,6 +39,9 @@ let metrics: {
 };
 let emitCustom: ReturnType<typeof vi.fn>;
 
+const hosts: Parameters<typeof fileWatcherPlugin.setup>[0][] = [];
+let currentApi: Parameters<typeof fileWatcherPlugin.setup>[0];
+
 function setup(fw: Record<string, unknown> = { debounceMs: 100 }): Record<string, Tool> {
   const tools: Record<string, Tool> = {};
   log = { info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
@@ -55,6 +59,8 @@ function setup(fw: Record<string, unknown> = { debounceMs: 100 }): Record<string
     emitCustom,
   };
   fileWatcherPlugin.setup(api as never);
+  currentApi = api as never;
+  hosts.push(currentApi);
   return tools;
 }
 
@@ -72,7 +78,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   // Clean module-level state so timers don't leak between tests.
-  fileWatcherPlugin.teardown?.({ log: { info: vi.fn() } } as never);
+  for (const api of hosts.splice(0)) fileWatcherPlugin.teardown?.(api);
 });
 
 describe('watch_start', () => {
@@ -151,7 +157,7 @@ describe('watch_start', () => {
 
   it('only reports successfully-opened paths in watch_list when some fail', async () => {
     fsm.watch.mockImplementation((dir: string, _opts: unknown, _cb: WatchCb) => {
-      if (dir === 'bad') throw new Error('ENOSPC');
+      if (dir === resolve('bad')) throw new Error('ENOSPC');
       return fakeWatcher();
     });
     const tools = setup();
@@ -171,7 +177,7 @@ describe('watch_start', () => {
     expect(emitCustom).toHaveBeenCalledWith(
       'file-watcher:changed',
       expect.objectContaining({
-        path: 'src/a.txt',
+        path: resolve('src/a.txt').replaceAll('\\', '/'),
         event: 'change',
         filename: 'a.txt',
       }),
@@ -212,7 +218,7 @@ describe('watch_start', () => {
     const tools = setup();
     await tools.watch_start!.execute({ paths: ['src'] });
     errorHandler!(new Error('watch broke'));
-    expect(log.warn).toHaveBeenCalledWith(expect.stringMatching(/error on src/));
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining(`error on ${resolve('src')}`));
   });
 
   it('schedules a reindex for indexable files when autoIndex is on', async () => {
@@ -224,8 +230,8 @@ describe('watch_start', () => {
     await vi.advanceTimersByTimeAsync(50); // index debounce → enqueueReindex
     expect(idx.enqueueReindex).toHaveBeenCalledWith(
       expect.objectContaining({
-        projectRoot: 'proj',
-        files: ['src/mod.ts'],
+        projectRoot: resolve('proj'),
+        files: [resolve('src/mod.ts').replaceAll('\\', '/')],
       }),
     );
     expect(metrics.counter).toHaveBeenCalledWith('index_file', 1);
@@ -243,7 +249,10 @@ describe('watch_start', () => {
     await vi.advanceTimersByTimeAsync(50);
     await vi.advanceTimersByTimeAsync(50);
     expect(idx.enqueueReindex).toHaveBeenCalledWith(
-      expect.objectContaining({ projectRoot: 'src', files: ['src/mod.ts'] }),
+      expect.objectContaining({
+        projectRoot: resolve('src'),
+        files: [resolve('src/mod.ts').replaceAll('\\', '/')],
+      }),
     );
     expect(log.warn).toHaveBeenCalledWith(
       expect.stringMatching(/indexProjectRoot is outside the project root/),
@@ -293,7 +302,9 @@ describe('watch_start', () => {
     await vi.advanceTimersByTimeAsync(50);
     await vi.advanceTimersByTimeAsync(50);
     expect(log.warn).toHaveBeenCalledWith(
-      expect.stringMatching(/auto-index failed for src\/mod\.ts/),
+      expect.stringContaining(
+        `auto-index failed for ${resolve('src/mod.ts').replaceAll('\\', '/')}`,
+      ),
     );
   });
 
@@ -305,7 +316,7 @@ describe('watch_start', () => {
     await vi.advanceTimersByTimeAsync(50);
     await vi.advanceTimersByTimeAsync(50);
     expect(idx.enqueueReindex).toHaveBeenCalledWith(
-      expect.objectContaining({ projectRoot: 'srcdir' }),
+      expect.objectContaining({ projectRoot: resolve('srcdir') }),
     );
   });
 });
@@ -377,7 +388,8 @@ describe('lifecycle', () => {
     const started = await tools.watch_start!.execute({ paths: ['src'] });
     expect(started.ok).toBe(true);
     // A second setup() must clear the previous watch (idempotent re-init).
-    const tools2 = setup();
+    fileWatcherPlugin.setup(currentApi);
+    const tools2 = tools;
     const res = await tools2.watch_list!.execute({});
     expect(res.count).toBe(0);
   });
@@ -385,8 +397,8 @@ describe('lifecycle', () => {
   it('teardown closes watches and clears timers', async () => {
     const tools = setup();
     await tools.watch_start!.execute({ paths: ['src'] });
-    const teardownLog = { info: vi.fn() };
-    fileWatcherPlugin.teardown?.({ log: teardownLog } as never);
+    const teardownLog = log;
+    fileWatcherPlugin.teardown?.(currentApi);
     expect(teardownLog.info).toHaveBeenCalledWith(
       'file-watcher: teardown complete',
       expect.anything(),
@@ -401,7 +413,8 @@ describe('lifecycle', () => {
     await tools.watch_start!.execute({ paths: ['src'] });
     lastCb!('change', 'x.txt'); // schedules a pending (un-fired) debounce timer
     // Re-init must clear the pending timer (the clear loop in setup).
-    const tools2 = setup({ debounceMs: 1000 });
+    fileWatcherPlugin.setup(currentApi);
+    const tools2 = tools;
     await tools2.watch_start!.execute({ paths: ['src'] });
     lastCb!('change', 'y.txt'); // another pending timer → cleared by afterEach teardown
     expect(emitCustom).not.toHaveBeenCalled(); // neither timer fired

@@ -3,8 +3,8 @@
  *
  * Before every `write`/`edit` the plugin captures the file's current
  * content (a `PreToolUse` hook reads the file from disk *before* the
- * tool mutates it). Snapshots are held in an in-memory ring, so the
- * agent can always roll back a bad edit — even one made outside git
+ * tool mutates it). Snapshots are held in project/session rings scoped
+ * to their host, so the agent can restore captured edits made outside git
  * (untracked files, mid-refactor states, dirty worktrees).
  *
  * Tools:
@@ -26,7 +26,8 @@
  *   "enabled": true,
  *   "autoCapture": true,     // snapshot before every write/edit
  *   "maxSnapshots": 50,      // ring size
- *   "maxFileBytes": 1048576  // skip files larger than this (1 MiB)
+ *   "maxFileBytes": 1048576, // skip files larger than this (1 MiB)
+ *   "maxTotalBytes": 67108864 // retained content budget across this host
  * }
  * ```
  *
@@ -36,12 +37,22 @@
  * @public
  */
 
-import { mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { type Plugin, ToolValidationError } from '@wrongstack/core/types';
+import {
+  type CheckpointHost,
+  type CheckpointState,
+  endSession,
+  hosts,
+  nextSnapshotId,
+  scopeFor,
+  scopeSignal,
+  stateBytes,
+  states,
+} from './state.js';
+import { captureFile, resolveProjectPath, restoreFile } from './storage.js';
 
 // ---------------------------------------------------------------------------
-// Module-scope state (H1 audit pattern)
+// Snapshot representation
 // ---------------------------------------------------------------------------
 
 export interface Snapshot {
@@ -53,30 +64,13 @@ export interface Snapshot {
     path: string;
     /** null = file did not exist at capture time. */
     content: string | null;
+    /** Binary data is retained losslessly as base64. Text remains UTF-8. */
+    encoding?: 'base64' | undefined;
+    /** Permission bits used when recreating a captured file that has since been deleted. */
+    mode?: number | undefined;
     bytes: number;
   }>;
 }
-
-interface CheckpointState {
-  snapshots: Snapshot[];
-  nextId: number;
-  captures: number;
-  restores: number;
-  skippedLarge: number;
-  /** Snapshots dropped to respect the retained-bytes budget. */
-  evictedForBytes: number;
-  hookUnregister: null | (() => void);
-}
-
-const state: CheckpointState = {
-  snapshots: [],
-  nextId: 1,
-  captures: 0,
-  restores: 0,
-  skippedLarge: 0,
-  evictedForBytes: 0,
-  hookUnregister: null,
-};
 
 // ---------------------------------------------------------------------------
 // Config
@@ -111,15 +105,22 @@ function readConfig(raw: unknown): CheckpointConfig {
     enabled: r['enabled'] !== false,
     autoCapture: r['autoCapture'] !== false,
     maxSnapshots:
-      typeof r['maxSnapshots'] === 'number' && r['maxSnapshots'] >= 1 && r['maxSnapshots'] <= 500
+      typeof r['maxSnapshots'] === 'number' &&
+      Number.isInteger(r['maxSnapshots']) &&
+      r['maxSnapshots'] >= 1 &&
+      r['maxSnapshots'] <= 500
         ? r['maxSnapshots']
         : DEFAULTS.maxSnapshots,
     maxTotalBytes:
-      typeof r['maxTotalBytes'] === 'number' && r['maxTotalBytes'] >= 1024
+      typeof r['maxTotalBytes'] === 'number' &&
+      Number.isSafeInteger(r['maxTotalBytes']) &&
+      r['maxTotalBytes'] >= 1024
         ? r['maxTotalBytes']
         : DEFAULTS.maxTotalBytes,
     maxFileBytes:
-      typeof r['maxFileBytes'] === 'number' && r['maxFileBytes'] >= 1024
+      typeof r['maxFileBytes'] === 'number' &&
+      Number.isSafeInteger(r['maxFileBytes']) &&
+      r['maxFileBytes'] >= 1024
         ? r['maxFileBytes']
         : DEFAULTS.maxFileBytes,
   };
@@ -129,73 +130,6 @@ function readConfig(raw: unknown): CheckpointConfig {
 // Capture helpers
 // ---------------------------------------------------------------------------
 
-async function resolveProjectPath(rawPath: string, cwd = process.cwd()): Promise<string | null> {
-  if (typeof rawPath !== 'string' || rawPath.length === 0) return null;
-  const root = resolve(cwd);
-  const resolved = isAbsolute(rawPath) ? resolve(rawPath) : resolve(root, rawPath);
-  const rel = relative(root, resolved);
-  const lexicallyInside = rel === '' || (rel.split(/[\\/]/)[0] !== '..' && !isAbsolute(rel));
-  if (!lexicallyInside) return null;
-  // Lexically inside is not sufficient: checkpoints hold file CONTENT, so a
-  // project-local symlink/junction whose real target escaped the project
-  // must be rejected like any other outside path. Not-yet-existing leaves
-  // resolve via their nearest existing ancestor so brand-new files keep
-  // being captured.
-  if (await realResolutionEscapes(resolved, root)) return null;
-  return resolved;
-}
-
-/**
- * True when the canonical resolution of `absPath` — following symlinks, via
- * the nearest existing ancestor when the leaf does not exist yet — lies
- * outside `root`. The non-existing tail cannot re-escape on its own: the
- * caller already established `absPath` is lexically inside `root`.
- */
-async function realResolutionEscapes(absPath: string, root: string): Promise<boolean> {
-  let real: string;
-  try {
-    real = await realpath(absPath);
-  } catch {
-    let current = dirname(absPath);
-    let hops = 0;
-    while (hops < 64 && !(await pathExists(current))) {
-      const parent = dirname(current);
-      if (parent === current) return false;
-      current = parent;
-      hops++;
-    }
-    if (!(await pathExists(current))) return false;
-    try {
-      real = await realpath(current);
-    } catch {
-      return false;
-    }
-  }
-  const realRel = relative(root, real);
-  return (
-    realRel !== '' && realRel !== '.' && (realRel.split(/[\\/]/)[0] === '..' || isAbsolute(realRel))
-  );
-}
-
-/** Async existence probe (stat-based) so hot paths never touch sync fs APIs. */
-async function pathExists(p: string): Promise<boolean> {
-  try {
-    await stat(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Tiny non-cryptographic content fingerprint (DJB2) used by the
- * `checkpoint:captured` custom event. Consumers compare hashes per
- * path to detect file changes between captures — same hash means
- * no observable change, different hash means the file mutated.
- *
- * Capped at 64 KB to keep the cost bounded on very large files; the
- * first 64 KB is more than enough to distinguish real edits.
- */
 function hashContent(s: string): number {
   const cap = Math.min(s.length, 65536);
   let h = 5381;
@@ -205,69 +139,18 @@ function hashContent(s: string): number {
   return h >>> 0;
 }
 
-async function captureFile(
-  path: string,
-  maxBytes: number,
-): Promise<Snapshot['files'][number] | 'too-large'> {
-  try {
-    const st = await stat(path);
-    if (st.size > maxBytes) return 'too-large';
-    const content = await readFile(path, 'utf-8');
-    return { path, content, bytes: st.size };
-  } catch (err) {
-    // Any failure other than "missing" (EACCES, EISDIR…) must not be recorded
-    // as "did not exist" — restore would then silently skip the file.
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw new Error(
-        `could not snapshot ${path}: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
-      );
-    }
-    // File does not exist yet — record that so restore knows the file
-    // was created by the tool call (restore reports it, never deletes).
-    return { path, content: null, bytes: 0 };
-  }
-}
-
-async function captureFileForHook(
-  path: string,
-  maxBytes: number,
-  signal: AbortSignal,
-): Promise<Snapshot['files'][number] | 'too-large'> {
-  try {
-    signal.throwIfAborted();
-    const st = await stat(path);
-    if (st.size > maxBytes) return 'too-large';
-    const content = await readFile(path, 'utf-8');
-    signal.throwIfAborted();
-    return { path, content, bytes: st.size };
-  } catch (err) {
-    if (signal.aborted) throw err;
-    // Mirror captureFile: only a genuinely missing file may be recorded as
-    // "did not exist" — EACCES/EISDIR/EBUSY must not become a false
-    // existed:false / notRestoredFileDidNotExist record for a file that was
-    // there. The rethrow is contained by the hook's failurePolicy:'open'
-    // (recovery automation must not stall writes).
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    return { path, content: null, bytes: 0 };
-  }
-}
-
-/** Retained bytes across all snapshots — surfaced by status/health(). */
+/** Retained bytes across all active hosts, projects and sessions. */
 export function retainedSnapshotBytes(): number {
-  let total = 0;
-  for (const snap of state.snapshots) {
-    for (const f of snap.files) {
-      // The budget is denominated in bytes; content.length counts UTF-16
-      // code units, which undercounts multi-byte content ('€' is 1 unit
-      // but 3 UTF-8 bytes). Buffer.byteLength is the memory actually held.
-      total += f.content === null ? 0 : Buffer.byteLength(f.content, 'utf8');
-    }
-  }
-  return total;
+  return states().reduce((sum, state) => sum + stateBytes(state), 0);
 }
 
-function pushSnapshot(snapshot: Snapshot, maxSnapshots: number, maxTotalBytes: number): void {
+function pushSnapshot(
+  host: CheckpointHost,
+  state: CheckpointState,
+  snapshot: Snapshot,
+  maxSnapshots: number,
+  maxTotalBytes: number,
+): void {
   state.snapshots.push(snapshot);
   if (state.snapshots.length > maxSnapshots) {
     state.snapshots.splice(0, state.snapshots.length - maxSnapshots);
@@ -278,9 +161,21 @@ function pushSnapshot(snapshot: Snapshot, maxSnapshots: number, maxTotalBytes: n
   // all of it live for the whole session, captured automatically on every
   // write. Evict oldest-first until the retained total fits the budget,
   // always keeping the newest snapshot so a restore is still possible.
-  while (state.snapshots.length > 1 && retainedSnapshotBytes() > maxTotalBytes) {
-    state.snapshots.shift();
-    state.evictedForBytes += 1;
+  while (
+    [...host.scopes.values()].reduce((sum, scope) => sum + stateBytes(scope), 0) > maxTotalBytes
+  ) {
+    let oldest: { scope: CheckpointState; snapshot: Snapshot } | undefined;
+    for (const scope of host.scopes.values()) {
+      for (const candidate of scope.snapshots) {
+        if (candidate === snapshot) continue;
+        // Monotonic ids preserve capture order even when timestamps tie or the clock moves back.
+        if (!oldest || Number(candidate.id.slice(3)) < Number(oldest.snapshot.id.slice(3)))
+          oldest = { scope, snapshot: candidate };
+      }
+    }
+    if (!oldest) break; // Keep the newly captured snapshot even when it alone exceeds the budget.
+    oldest.scope.snapshots.splice(oldest.scope.snapshots.indexOf(oldest.snapshot), 1);
+    oldest.scope.evictedForBytes += 1;
   }
 }
 
@@ -306,63 +201,49 @@ const plugin: Plugin = {
         description: 'Snapshot the target file before every write/edit tool call.',
       },
       maxSnapshots: {
-        type: 'number',
+        type: 'integer',
         minimum: 1,
         maximum: 500,
         default: 50,
         description: 'Snapshot ring size — oldest snapshots are dropped first.',
       },
       maxFileBytes: {
-        type: 'number',
+        type: 'integer',
         minimum: 1024,
         default: 1_048_576,
         description: 'Files larger than this are not captured.',
+      },
+      maxTotalBytes: {
+        type: 'integer',
+        minimum: 1024,
+        default: DEFAULTS.maxTotalBytes,
+        description:
+          'Retained snapshot content budget across this host; oldest snapshots are evicted, keeping the newest snapshot even if it exceeds this budget.',
       },
     },
   },
 
   setup(api) {
-    // Idempotent re-init (H1 pattern).
-    state.snapshots = [];
-    state.nextId = 1;
-    state.captures = 0;
-    state.restores = 0;
-    state.skippedLarge = 0;
-    state.evictedForBytes = 0;
-    if (state.hookUnregister) {
-      try {
-        state.hookUnregister();
-      } catch {
-        // best-effort
-      }
-      state.hookUnregister = null;
-    }
-
+    const host = hosts.reset(api);
+    const baseRoot = api.config.cwd ?? process.cwd();
     const cfg = readConfig(api.config.extensions?.['checkpoint']);
-
-    // Snapshots are "in-session" by this plugin's own contract — it restores
-    // "any pre-edit state from this session". But the plugin is set up once
-    // per PROCESS and the host outlives any one session (the WebUI opens
-    // additional sessions in the same process), and nothing ever cleared the
-    // ring. A snapshot captured in one session stayed restorable in the next,
-    // and `checkpoint_restore` defaults to the NEWEST snapshot — so a restore
-    // could write another session's captured content over a live file.
-    // Clearing the ring also releases its retained bytes: the budget is the
-    // sum of the snapshots' own `bytes`, not a separate counter.
-    // Guarded like pr-drafter's subscription — minimal hosts omit onEvent.
-    if (api.onEvent) {
-      api.onEvent('session.ended', () => {
-        state.snapshots = [];
-        state.nextId = 1;
-      });
-    }
+    host.sessionUnregister =
+      api.onEvent?.('session.ended', (event) => endSession(host, event?.id)) ?? null;
 
     // ── Auto-capture hook ─────────────────────────────────────────────
     if (cfg.enabled && cfg.autoCapture) {
       const hook = async (
-        input: { toolName?: string | undefined; toolInput?: unknown },
+        input: {
+          toolName?: string | undefined;
+          toolInput?: unknown;
+          cwd?: string | undefined;
+          sessionId?: string | undefined;
+        },
         runtime: { signal: AbortSignal } = { signal: new AbortController().signal },
       ) => {
+        const state = await scopeFor(host, baseRoot, input);
+        const signal = scopeSignal(host, state, runtime.signal);
+        signal.throwIfAborted();
         const ti = (input.toolInput ?? {}) as Record<string, unknown>;
         const raw =
           ti['path'] ??
@@ -372,16 +253,19 @@ const plugin: Plugin = {
           ti['targetFile'] ??
           ti['file'];
         if (typeof raw !== 'string' || raw.length === 0) return;
-        const safePath = await resolveProjectPath(raw);
+        const safePath = await resolveProjectPath(raw, state.root);
         if (!safePath) return;
-        const captured = await captureFileForHook(safePath, cfg.maxFileBytes, runtime.signal);
+        const captured = await captureFile(safePath, cfg.maxFileBytes, signal);
         if (captured === 'too-large') {
           state.skippedLarge += 1;
           return;
         }
+        signal.throwIfAborted();
         pushSnapshot(
+          host,
+          state,
           {
-            id: `cp-${state.nextId++}`,
+            id: nextSnapshotId(),
             createdAt: new Date().toISOString(),
             origin: `auto:${input.toolName ?? 'unknown'}`,
             files: [captured],
@@ -408,7 +292,7 @@ const plugin: Plugin = {
           when: new Date().toISOString(),
         });
       };
-      state.hookUnregister = api.registerHook('PreToolUse', 'write|edit', hook as never, {
+      host.extensionUnregister = api.registerHook('PreToolUse', 'write|edit', hook as never, {
         name: 'checkpoint-guard',
         stage: 'validate',
         // Checkpointing is recovery automation, not an enforcement boundary.
@@ -437,7 +321,10 @@ const plugin: Plugin = {
       permission: 'auto',
       category: 'Safety',
       mutating: false,
-      async execute(input: { paths: string[]; label?: string | undefined }) {
+      async execute(input: { paths: string[]; label?: string | undefined }, ctx, options) {
+        const state = await scopeFor(host, baseRoot, ctx);
+        const signal = scopeSignal(host, state, options?.signal);
+        signal.throwIfAborted();
         if (!cfg.enabled) throw new Error('checkpoint is disabled');
         let paths: string[] = [];
         const rawInput = input as unknown as Record<string, unknown>;
@@ -461,7 +348,7 @@ const plugin: Plugin = {
         const rejectedOutsideProject: string[] = [];
         const safePaths: string[] = [];
         for (const p of paths) {
-          const safePath = await resolveProjectPath(p);
+          const safePath = await resolveProjectPath(p, state.root);
           if (safePath) safePaths.push(safePath);
           else rejectedOutsideProject.push(p);
         }
@@ -474,7 +361,7 @@ const plugin: Plugin = {
         const files: Snapshot['files'] = [];
         let skipped = 0;
         for (const safePath of safePaths) {
-          const captured = await captureFile(safePath, cfg.maxFileBytes);
+          const captured = await captureFile(safePath, cfg.maxFileBytes, signal);
           if (captured === 'too-large') {
             skipped += 1;
             state.skippedLarge += 1;
@@ -488,12 +375,13 @@ const plugin: Plugin = {
           );
         }
         const snapshot: Snapshot = {
-          id: `cp-${state.nextId++}`,
+          id: nextSnapshotId(),
           createdAt: new Date().toISOString(),
           origin: input.label?.trim() ? `manual:${input.label.trim()}` : 'manual',
           files,
         };
-        pushSnapshot(snapshot, cfg.maxSnapshots, cfg.maxTotalBytes);
+        signal.throwIfAborted();
+        pushSnapshot(host, state, snapshot, cfg.maxSnapshots, cfg.maxTotalBytes);
         state.captures += 1;
         api.metrics.counter('captures');
         return {
@@ -518,7 +406,9 @@ const plugin: Plugin = {
       permission: 'auto',
       category: 'Safety',
       mutating: false,
-      async execute(input: { limit?: number | undefined }) {
+      async execute(input: { limit?: number | undefined }, ctx, options) {
+        const state = await scopeFor(host, baseRoot, ctx);
+        scopeSignal(host, state, options?.signal).throwIfAborted();
         const limit =
           typeof input.limit === 'number' && input.limit >= 1 ? Math.floor(input.limit) : 20;
         return {
@@ -543,7 +433,7 @@ const plugin: Plugin = {
             captures: state.captures,
             restores: state.restores,
             skippedLarge: state.skippedLarge,
-            retainedBytes: retainedSnapshotBytes(),
+            retainedBytes: stateBytes(state),
             evictedForBytes: state.evictedForBytes,
           },
         };
@@ -568,7 +458,10 @@ const plugin: Plugin = {
       permission: 'confirm',
       category: 'Safety',
       mutating: true,
-      async execute(input: { id?: string | undefined; path?: string | undefined }) {
+      async execute(input: { id?: string | undefined; path?: string | undefined }, ctx, options) {
+        const state = await scopeFor(host, baseRoot, ctx);
+        const signal = scopeSignal(host, state, options?.signal);
+        signal.throwIfAborted();
         if (!cfg.enabled) throw new Error('checkpoint is disabled');
         const raw = (input ?? {}) as Record<string, unknown>;
         const rawId =
@@ -592,12 +485,30 @@ const plugin: Plugin = {
         if (!snapshot) {
           throw new Error(rawId ? `no snapshot with id "${rawId}"` : 'no snapshots captured yet');
         }
-        const targetPath = rawPath ? ((await resolveProjectPath(rawPath)) ?? rawPath) : null;
+        const targetPath = rawPath ? await resolveProjectPath(rawPath, state.root) : null;
+        if (rawPath && !targetPath)
+          throw new ToolValidationError({
+            message: 'Restore path must stay within the current project directory',
+            field: 'path',
+          });
         const targets = targetPath
           ? snapshot.files.filter((f) => f.path === targetPath || f.path === rawPath)
           : snapshot.files;
         if (targets.length === 0) {
           throw new Error(`snapshot ${snapshot.id} has no entry for "${rawPath}"`);
+        }
+        // Validate the whole selection before writing any file.
+        for (const file of targets) {
+          signal.throwIfAborted();
+          try {
+            if ((await resolveProjectPath(file.path, state.root)) !== file.path)
+              throw new Error('path moved outside the project or changed its target');
+          } catch (error) {
+            throw new Error(
+              `checkpoint_restore ${snapshot.id}: failed to restore ${file.path}: ${String(error)}`,
+              { cause: error },
+            );
+          }
         }
         const restored: string[] = [];
         const createdByTool: string[] = [];
@@ -610,11 +521,11 @@ const plugin: Plugin = {
             continue;
           }
           try {
-            await mkdir(dirname(f.path), { recursive: true });
-            await writeFile(f.path, f.content);
+            await restoreFile(f, state.root, signal);
             restored.push(f.path);
           } catch (err) {
             errors.push({ path: f.path, error: err instanceof Error ? err.message : String(err) });
+            if (signal.aborted) break;
           }
         }
         if (restored.length > 0) {
@@ -647,32 +558,33 @@ const plugin: Plugin = {
   },
 
   teardown(api) {
-    if (state.hookUnregister) {
-      try {
-        state.hookUnregister();
-      } catch {
-        // best-effort
-      }
-      state.hookUnregister = null;
-    }
+    const host = hosts.get(api);
+    if (!host) return;
     const final = {
-      captures: state.captures,
-      restores: state.restores,
-      skippedLarge: state.skippedLarge,
-      snapshotsHeld: state.snapshots.length,
-      retainedBytes: retainedSnapshotBytes(),
-      evictedForBytes: state.evictedForBytes,
+      snapshotsHeld: [...host.scopes.values()].reduce(
+        (sum, scope) => sum + scope.snapshots.length,
+        0,
+      ),
     };
-    state.snapshots = [];
-    state.nextId = 1;
-    state.captures = 0;
-    state.restores = 0;
-    state.skippedLarge = 0;
-    state.evictedForBytes = 0;
+    hosts.remove(api);
     api.log.info('checkpoint: teardown complete', { final });
   },
 
   async health() {
+    const active = states();
+    const state = {
+      snapshots: active.flatMap((scope) => scope.snapshots),
+      captures: 0,
+      restores: 0,
+      skippedLarge: 0,
+      evictedForBytes: 0,
+    };
+    for (const scope of active) {
+      state.captures += scope.captures;
+      state.restores += scope.restores;
+      state.skippedLarge += scope.skippedLarge;
+      state.evictedForBytes += scope.evictedForBytes;
+    }
     return {
       ok: true,
       message: `checkpoint: ${state.snapshots.length} snapshot(s) held, ${state.captures} capture(s), ${state.restores} restore(s), ${state.skippedLarge} skipped (too large)`,

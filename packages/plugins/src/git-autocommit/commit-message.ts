@@ -53,8 +53,10 @@ export async function generateCommitFromDiff(
   api: Parameters<Plugin['setup']>[0],
   stat: string,
   diff: string,
+  signal?: AbortSignal,
 ): Promise<{ type: ConventionalType; scope?: string; summary: string; body?: string } | null> {
   if (!api.llm) return null;
+  signal?.throwIfAborted();
   try {
     const result = await api.llm.complete(
       'Write a Conventional Commits message for this staged git diff. ' +
@@ -71,8 +73,10 @@ export async function generateCommitFromDiff(
         role: 'document',
         maxTokens: 400,
         responseFormat: 'json',
+        signal,
       },
     );
+    signal?.throwIfAborted();
     const parsed = JSON.parse(extractJsonObject(result.text)) as {
       type?: unknown;
       scope?: unknown;
@@ -91,6 +95,7 @@ export async function generateCommitFromDiff(
       typeof parsed.body === 'string' && parsed.body.trim() ? parsed.body.trim() : undefined;
     return { type, summary, ...(scope ? { scope } : {}), ...(body ? { body } : {}) };
   } catch {
+    signal?.throwIfAborted();
     return null;
   }
 }

@@ -570,6 +570,82 @@ const RULES: readonly DangerRule[] = [
  * This function is the single source of truth for danger classification;
  * it is pure (no side effects) and unit-tested in `danger-detect.test.ts`.
  */
+/**
+ * Launchers that run another program, keyed by the options they consume.
+ *
+ * `exec` receives argv, so the launcher is the EXECUTABLE and the real command
+ * is its first operand — and `env`, `nice`, `nohup` and `timeout` all ship in
+ * the default exec allowlist. Every rule here keys on `cmd`, so
+ * `exec nohup rm -rf /` read as the harmless `nohup` and assessed `safe`
+ * (probe-verified 2026-09-22: 10 of 12 launcher-wrapped forms).
+ *
+ * `numericOperand` marks the launchers that also take a positional of their
+ * own before the command (`timeout 5 rm …`).
+ */
+const ARGV_LAUNCHERS: ReadonlyMap<
+  string,
+  { valueFlags: ReadonlySet<string>; numericOperand: boolean }
+> = new Map([
+  ['nohup', { valueFlags: new Set<string>(), numericOperand: false }],
+  ['setsid', { valueFlags: new Set<string>(), numericOperand: false }],
+  ['unbuffer', { valueFlags: new Set<string>(), numericOperand: false }],
+  ['command', { valueFlags: new Set<string>(), numericOperand: false }],
+  ['exec', { valueFlags: new Set(['-a']), numericOperand: false }],
+  ['env', { valueFlags: new Set(['-u', '-C', '--unset', '--chdir']), numericOperand: false }],
+  ['nice', { valueFlags: new Set(['-n', '--adjustment']), numericOperand: false }],
+  ['ionice', { valueFlags: new Set(['-c', '-n', '-p']), numericOperand: false }],
+  ['stdbuf', { valueFlags: new Set(['-i', '-o', '-e']), numericOperand: false }],
+  [
+    'timeout',
+    { valueFlags: new Set(['-s', '-k', '--signal', '--kill-after']), numericOperand: true },
+  ],
+  ['sudo', { valueFlags: new Set(['-u', '-g', '-C', '--user', '--group']), numericOperand: false }],
+  ['doas', { valueFlags: new Set(['-u', '-C']), numericOperand: false }],
+]);
+
+/**
+ * Peel transparent launchers off an argv pair so the rules see the real
+ * command. Bounded at four hops; returns the input unchanged when the shape is
+ * not understood, so an unrecognised launcher never silently drops arguments.
+ */
+export function unwrapArgvLaunchers(
+  cmd: string,
+  args: readonly string[],
+): { cmd: string; args: readonly string[] } {
+  let currentCmd = cmd;
+  let currentArgs = args;
+  for (let hops = 0; hops < 4; hops += 1) {
+    const base = currentCmd
+      .toLowerCase()
+      .replace(/^.*[\\/]/, '')
+      .replace(/\.(?:exe|cmd|bat|com)$/, '');
+    const spec = ARGV_LAUNCHERS.get(base);
+    if (!spec) break;
+    let i = 0;
+    while (i < currentArgs.length) {
+      const token = currentArgs[i] ?? '';
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) {
+        i += 1;
+        continue;
+      }
+      if (token === '--') {
+        i += 1;
+        break;
+      }
+      if (!token.startsWith('-') || token === '-') break;
+      const name = token.split('=', 1)[0] ?? token;
+      i += 1;
+      if (spec.valueFlags.has(name) && !token.includes('=')) i += 1;
+    }
+    if (spec.numericOperand && /^\d+[smhd]?$/.test(currentArgs[i] ?? '')) i += 1;
+    const next = currentArgs[i];
+    if (next === undefined) break;
+    currentCmd = next;
+    currentArgs = currentArgs.slice(i + 1);
+  }
+  return { cmd: currentCmd, args: currentArgs };
+}
+
 export function detectDanger(
   cmd: string,
   args: readonly string[],
@@ -581,9 +657,16 @@ export function detectDanger(
   let level: DangerLevel = 'safe';
   let matchedRule: string | undefined;
 
+  // Rules run against the ORIGINAL pair and the unwrapped one: a rule keyed on
+  // the launcher itself must keep firing, and the unwrapped pair is what
+  // exposes the command it was hiding.
+  const unwrapped = unwrapArgvLaunchers(cmd, safeArgs);
+  const pairs: Array<{ cmd: string; args: readonly string[] }> =
+    unwrapped.cmd === cmd ? [{ cmd, args: safeArgs }] : [{ cmd, args: safeArgs }, unwrapped];
+
   for (const rule of RULES) {
     if (bypass?.has(rule.id)) continue;
-    if (!rule.test(cmd, safeArgs)) continue;
+    if (!pairs.some((pair) => rule.test(pair.cmd, pair.args))) continue;
     reasons.push(rule.reason);
     if (matchedRule === undefined || levelRank(rule.level) >= levelRank(level)) {
       matchedRule = rule.id;

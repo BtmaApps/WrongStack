@@ -73,6 +73,56 @@ export function matchesCommandTrust(patterns: string[], subject: string): boolea
  * hook degrades to the key-list heuristic rather than failing permission
  * evaluation.
  */
+/**
+ * Path-bearing input keys this gate inspects.
+ *
+ * The list was singular-only (`path`, `file`, `target`, …), so a tool whose
+ * path field is PLURAL was structurally invisible here — `collab_debug` reads
+ * every entry of `targetPaths` and one character kept it off this list
+ * (WS-2026-09-17-01). Plural keys carry arrays, so the value scan below handles
+ * both shapes; a key that is merely absent costs nothing.
+ */
+export const SENSITIVE_PATH_INPUT_KEYS = [
+  'path',
+  'paths',
+  'file',
+  'files',
+  'file_path',
+  'file_paths',
+  'filePath',
+  'filePaths',
+  'target',
+  'targets',
+  'targetPath',
+  'targetPaths',
+] as const;
+
+/**
+ * Input keys that may NAME a write destination.
+ *
+ * DERIVED from {@link SENSITIVE_PATH_INPUT_KEYS} rather than written out
+ * again. The two lists are the read side and the write side of the same
+ * question — "which fields of this input are paths?" — and they had already
+ * drifted: the plural keys added for WS-2026-09-17-01 (`paths`, `file_paths`,
+ * `filePaths`, `targets`, `targetPaths`) went into the sensitive-read list and
+ * not into this one, so a mutating tool using a plural key would have had its
+ * destinations invisible to the write gate.
+ *
+ * No such tool exists today (probe-verified 2026-09-22: every mutating tool
+ * with a plural path input uses `files`, and most also declare `writeTargets`),
+ * which is exactly why this was worth closing while it was still latent rather
+ * than after a tool made it reachable.
+ *
+ * The extras below are write-only destinations with no read-gate meaning.
+ */
+const FS_WRITE_TARGET_INPUT_KEYS: readonly string[] = [
+  ...SENSITIVE_PATH_INPUT_KEYS,
+  'out',
+  'directory',
+  'cwd',
+  'template',
+];
+
 export function fsWriteTargetPaths(tool: Tool | undefined, input: unknown): string[] {
   const out: string[] = [];
   if (typeof tool?.writeTargets === 'function') {
@@ -89,19 +139,7 @@ export function fsWriteTargetPaths(tool: Tool | undefined, input: unknown): stri
   }
   if (!input || typeof input !== 'object') return out;
   const obj = input as Record<string, unknown>;
-  for (const key of [
-    'path',
-    'file_path',
-    'file',
-    'filePath',
-    'files',
-    'target',
-    'targetPath',
-    'out',
-    'directory',
-    'cwd',
-    'template',
-  ]) {
+  for (const key of FS_WRITE_TARGET_INPUT_KEYS) {
     const value = obj[key];
     if (typeof value === 'string') {
       if (value.length > 0) out.push(value);
@@ -416,30 +454,6 @@ function pathLooksSensitive(rawPath: string): boolean {
   // the match precise.
   return isProtectedAgentStatePath(normalized);
 }
-
-/**
- * Path-bearing input keys this gate inspects.
- *
- * The list was singular-only (`path`, `file`, `target`, …), so a tool whose
- * path field is PLURAL was structurally invisible here — `collab_debug` reads
- * every entry of `targetPaths` and one character kept it off this list
- * (WS-2026-09-17-01). Plural keys carry arrays, so the value scan below handles
- * both shapes; a key that is merely absent costs nothing.
- */
-const SENSITIVE_PATH_INPUT_KEYS = [
-  'path',
-  'paths',
-  'file',
-  'files',
-  'file_path',
-  'file_paths',
-  'filePath',
-  'filePaths',
-  'target',
-  'targets',
-  'targetPath',
-  'targetPaths',
-] as const;
 
 /** Depth-1 scan: a string value, or any string inside an array value. */
 function valueLooksSensitive(value: unknown): boolean {

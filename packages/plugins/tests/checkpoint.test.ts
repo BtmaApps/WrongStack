@@ -21,14 +21,17 @@ interface MockApi {
   registerHook: ReturnType<typeof vi.fn>;
 }
 
+const hosts: MockApi[] = [];
 function makeApi(overrides: { extensions?: Record<string, unknown> } = {}): MockApi {
-  return {
+  const api = {
     tools: { register: vi.fn() },
     config: { extensions: overrides.extensions ?? {} },
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     metrics: { counter: vi.fn(), histogram: vi.fn(), gauge: vi.fn() },
     registerHook: vi.fn(() => vi.fn()),
   };
+  hosts.push(api);
+  return api;
 }
 
 function getTool(
@@ -59,6 +62,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const api of hosts.splice(0)) checkpointPlugin.teardown?.(api as never);
   process.chdir(originalCwd);
   try {
     rmSync(tmp, { recursive: true, force: true });
@@ -110,10 +114,9 @@ describe('checkpoint plugin', () => {
     // ring, so a snapshot captured in one session stayed restorable in the
     // next — and checkpoint_restore defaults to the NEWEST snapshot, which
     // could write another session's captured content over a live file.
-    const api = {
-      ...makeApi(),
+    const api = Object.assign(makeApi(), {
       onEvent: vi.fn((_event: string, _handler: () => void) => vi.fn()),
-    };
+    });
     checkpointPlugin.setup(api as never);
     const hook = getHook(api as never);
 

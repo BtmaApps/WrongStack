@@ -1,6 +1,6 @@
 # Architecture Health Report
 
-**Generated:** 2026-09-22T09:55:36.386Z
+**Generated:** 2026-09-22T10:44:38.212Z
 **Scope:** packages, apps; excluded: website
 
 ## Summary
@@ -8,20 +8,20 @@
 | Measure | Value |
 |---|---:|
 | Workspace packages | 36 |
-| Production source files | 4010 |
-| Production source lines | 958847 |
-| Test files | 3587 |
+| Production source files | 4012 |
+| Production source lines | 959292 |
+| Test files | 3591 |
 | Workspace dependency edges | 129 |
-| Relative module edges | 12961 |
+| Relative module edges | 12969 |
 | Non-command slash imports | 0 |
 | Runtime module cycles | 0 |
-| Type-inclusive module cycles | 8 |
+| Type-inclusive module cycles | 9 |
 | Tests without TypeScript test-project coverage | 0 |
 | Tests in multiple TypeScript projects | 0 |
 
 ## Verification result
 
-PASS — no blocking architecture-health errors.
+- 1 unexcepted module cycle(s)
 
 ## Workspace packages
 
@@ -41,7 +41,7 @@ PASS — no blocking architecture-health errors.
 | @wrongstack/persistence | 7 | 10 | — |
 | @wrongstack/plug-lsp | 50 | 48 | @wrongstack/core, @wrongstack/tools |
 | @wrongstack/plugin-sdk | 11 | 4 | @wrongstack/core, @wrongstack/tools |
-| @wrongstack/plugins | 120 | 116 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
+| @wrongstack/plugins | 122 | 120 | @wrongstack/core, @wrongstack/plugin-sdk, @wrongstack/primitives, @wrongstack/tools |
 | @wrongstack/primitives | 7 | 6 | — |
 | @wrongstack/providers | 85 | 76 | @wrongstack/core |
 | @wrongstack/requirement-intake | 16 | 10 | @wrongstack/core |
@@ -79,6 +79,7 @@ None.
 - packages/core/src/core/agent-internals.ts ↔ packages/core/src/core/agent-loop-context.ts ↔ packages/core/src/core/agent-loop-detector.ts ↔ packages/core/src/core/agent-loop.ts ↔ packages/core/src/core/agent-response.ts ↔ packages/core/src/core/agent-tools.ts ↔ packages/core/src/core/agent-types.ts ↔ packages/core/src/core/agent.ts ↔ packages/core/src/extension/extension-points.ts ↔ packages/core/src/extension/registry.ts ↔ packages/core/src/mailbox-attach.ts ↔ packages/core/src/session-note-attach.ts ↔ packages/core/src/types/plugin.ts
 - packages/core/src/index.ts ↔ packages/core/src/plugins/prompts-plugin.ts ↔ packages/core/src/plugins/skills-plugin.ts ↔ packages/core/src/plugins/sync-plugin.ts ↔ packages/core/src/tools/mcp-control.ts ↔ packages/core/src/tools/mcp-use.ts
 - packages/core/src/types/blocks.ts ↔ packages/core/src/types/context.ts ↔ packages/core/src/types/conversation-state.ts ↔ packages/core/src/types/messages.ts ↔ packages/core/src/types/provider.ts ↔ packages/core/src/types/run-env.ts ↔ packages/core/src/types/session-events.ts ↔ packages/core/src/types/session-storage.ts ↔ packages/core/src/types/session.ts ↔ packages/core/src/types/token-counter.ts ↔ packages/core/src/types/tool.ts
+- packages/plugins/src/checkpoint/index.ts ↔ packages/plugins/src/checkpoint/state.ts ↔ packages/plugins/src/checkpoint/storage.ts
 - packages/sage/src/middleware/tool-call-memory-retrieval.ts ↔ packages/sage/src/middleware/tool-call-memory-trace.ts ↔ packages/sage/src/middleware/tool-call-memory.ts
 
 ## Largest production files
@@ -86,10 +87,10 @@ None.
 | Lines | File |
 |---:|---|
 | 1129 | `packages/core/src/execution/auto-compaction-middleware.ts` |
+| 1106 | `packages/core/src/security/yolo-risk.ts` |
 | 1019 | `packages/sage/src/project-server.ts` |
 | 1000 | `packages/webui/src/stores/fleet-store.ts` |
 | 997 | `packages/tools/src/codebase-index/writer.ts` |
-| 996 | `packages/core/src/security/yolo-risk.ts` |
 | 996 | `packages/mcp/src/client.ts` |
 | 994 | `packages/sage/src/sqlite-store.ts` |
 | 992 | `packages/cli/src/execution.ts` |
@@ -138,7 +139,7 @@ None.
 
 ## Exports only tests reference
 
-- 943 runtime exports are referenced by tests and by no other production file.
+- 945 runtime exports are referenced by tests and by no other production file.
 - Green coverage on one of these proves the function works, not that anything calls it.
 - The set is frozen in `architecture/test-only-exports.json`; the check fires on additions.
 
