@@ -76,9 +76,8 @@ export function bindReplayToContainer(opts: BindReplayOptions): void {
         }
       : undefined,
   });
-  // Re-bind to override the just-installed default with the wrapped
-  // version. Container's `bind` is replace-by-default; if a project's
-  // container disallows rebinding, callers should use a decorator
-  // pattern via `AgentExtension.wrapProviderRunner` instead.
-  container.bind(TOKENS.ProviderRunner, () => wrapped);
+  // `bind` throws on a bound token (the comment here used to claim it
+  // replaced, and `wstack --record` / `--replay` crashed at boot with
+  // "ProviderRunner already bound"). `override` is the replace API.
+  container.override(TOKENS.ProviderRunner, () => wrapped);
 }

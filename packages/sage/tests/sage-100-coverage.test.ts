@@ -250,28 +250,33 @@ describe('sage 100% coverage suite', () => {
     });
 
     it('breaks ties by id when createdAt is identical in compareMemoryAgeAscending', async () => {
+      // This test used to call `hygiene({ maxSessionMemories: 1 } as never)` on two
+      // unrelated memories — an option that exists nowhere in src (the cast hid
+      // that), so hygiene examined both, changed nothing, and `toBeDefined()`
+      // passed. The comparator's only caller is contradiction flagging: of two
+      // contradictory memories, the NEWER one gets the `contradicts` link. With
+      // identical timestamps the ULID id decides, and the query lists the newest
+      // id first — so without the tie-break the link lands on the OLDER claim.
       const now = '2026-01-01T12:00:00.000Z';
-      // Insert session memories that share exact createdAt to trigger tie-break
-      await store.rememberSage({
-        id: 'mem_01AAAAAA',
-        text: 'Session mem 1',
-        scope: 'session',
-        kind: 'fact',
-        ownerSessionId: 'sess-tie',
+      const older = mem('mem_01AAAAAA', 'The build uses pnpm workspaces for every package here', {
         createdAt: now,
-      } as any);
-      await store.rememberSage({
-        id: 'mem_01BBBBBB',
-        text: 'Session mem 2',
-        scope: 'session',
-        kind: 'fact',
-        ownerSessionId: 'sess-tie',
-        createdAt: now,
-      } as any);
+        updatedAt: now,
+      });
+      const newer = mem(
+        'mem_01BBBBBB',
+        'The build does not use pnpm workspaces for every package here',
+        { createdAt: now, updatedAt: now },
+      );
+      (store as any).upsertMemory(older);
+      (store as any).upsertMemory(newer);
 
-      // Trigger session retention pruning
-      const report = await store.hygiene({ maxSessionMemories: 1 } as never);
-      expect(report).toBeDefined();
+      const report = await store.hygiene({});
+      expect(report.contradicted).toBe(1);
+      expect((await store.getSage('mem_01BBBBBB'))?.contradicts).toEqual(['mem_01AAAAAA']);
+      expect((await store.getSage('mem_01AAAAAA'))?.contradicts ?? []).toEqual([]);
+
+      // Already linked → a second pass does not re-flag the pair.
+      expect((await store.hygiene({})).contradicted).toBe(0);
     });
   });
 
@@ -559,7 +564,12 @@ describe('sage 100% coverage suite', () => {
         },
         { suggest: 'always' },
       );
-      expect(suggestHits).toBeDefined();
+      // No hit matches all three words, so `suggest: 'always'` must fall back to
+      // suggestions — the partial match seeded above.
+      expect(suggestHits.hits).toEqual([]);
+      expect(suggestHits.suggestions?.map((m) => m.text)).toContain(
+        'Search query wordone wordtwo testing',
+      );
     });
   });
 
@@ -726,7 +736,8 @@ describe('sage 100% coverage suite', () => {
 
       // 2. memory_hygiene
       const hRes = await hygieneTool.execute({}, {} as any, {} as any);
-      expect(hRes).toBeDefined();
+      // Empty store: a real report, examining nothing and changing nothing.
+      expect(hRes).toMatchObject({ examined: 0, archived: 0, deleted: 0 });
 
       // 3. memory_gather_batch with throwing graphFor
       const m = await store.rememberSage({ text: 'Gather test memory' });
@@ -849,7 +860,13 @@ describe('sage 100% coverage suite', () => {
       const result = await runTriage([lowValMem], async () => '4 | Keep', {
         verbose: true,
       });
-      expect(result).toBeDefined();
+      // importance/confidence 0.1 is discarded in phase 1; the default run is a
+      // dry run, so nothing is dispatched.
+      expect(result).toMatchObject({
+        dryRun: true,
+        phaseStats: { input: 1, phase1Discard: 1, phase1Keep: 0 },
+        dispatch: { autoApply: [], proposals: [] },
+      });
     });
 
     it('covers triage/merge-detection.ts command clustering and verbose logging', async () => {
@@ -1011,8 +1028,20 @@ describe('sage 100% coverage suite', () => {
     });
 
     it('covers sqlite-store-list-page.ts with sessionId filter', async () => {
+      // Ran on an empty store and asserted `memories` existed — any filter, or
+      // none, passed. Seed one memory per visibility class and check the rule:
+      // the caller's own session memory and project memory are listed, another
+      // session's session-scoped memory is not.
+      (store as any).upsertMemory(
+        mem('own', 'Own session memory', { scope: 'session', ownerSessionId: 'sess-page-test' }),
+      );
+      (store as any).upsertMemory(
+        mem('foreign', 'Other session memory', { scope: 'session', ownerSessionId: 'sess-other' }),
+      );
+      (store as any).upsertMemory(mem('shared', 'Project memory'));
+
       const page = await store.listSagePage({ sessionId: 'sess-page-test' });
-      expect(page.memories).toBeDefined();
+      expect(page.memories.map((m) => m.id).sort()).toEqual(['own', 'shared']);
     });
 
     it('covers sqlite-store-recovery.ts scopes and updatedAfter filter skips', async () => {
@@ -1091,14 +1120,23 @@ describe('sage 100% coverage suite', () => {
         type: 'command',
         command: 'env FOO=bar node -v',
       });
-      expect(envRes.status).toBeDefined();
+      // The `env FOO=bar` wrapper is stripped: the executable checked is `node`.
+      expect(envRes).toMatchObject({ status: 'verified' });
+      expect(envRes.reason).toContain('"node"');
+      // Negative control: the same wrapper around a missing binary is stale, so
+      // 'verified' above is not what every command gets.
+      const missing = await anchorVerificationCoverage.verifyAnchor(tempDir, {
+        type: 'command',
+        command: 'env FOO=bar definitely-not-a-binary-xyz -v',
+      });
+      expect(missing.status).toBe('stale');
 
       // 2. verifyAnchor with > 8 flags
       const flagRes = await anchorVerificationCoverage.verifyAnchor(tempDir, {
         type: 'command',
         command: 'node -a -b -c -d -e -f -g -h -i index.js',
       });
-      expect(flagRes.status).toBeDefined();
+      expect(flagRes.status).toBe('verified');
 
       // 3. buildShellBuiltins on non-win32
       const orig = process.platform;
@@ -1108,7 +1146,7 @@ describe('sage 100% coverage suite', () => {
           type: 'command',
           command: 'export FOO=1',
         });
-        expect(builtinRes.status).toBeDefined();
+        expect(builtinRes.status).toBe('verified');
       } finally {
         Object.defineProperty(process, 'platform', { value: orig });
       }

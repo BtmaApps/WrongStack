@@ -9,7 +9,7 @@ vi.mock('node:fs', async (importActual) => {
   };
 });
 
-import { closeSync, openSync, writeSync } from 'node:fs';
+import { closeSync, fsyncSync, openSync, writeSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -452,7 +452,21 @@ describe('SessionWriteBuffer — coverage', () => {
         ({ appendFile: vi.fn(), datasync: vi.fn(), close: vi.fn() }) as unknown as fs.FileHandle,
       setHandle: () => undefined,
     });
+    // "No-op" is a claim about SYSCALLS, not just about not throwing: this test
+    // asserted nothing, so it passed even if flushSync opened and fsync'd the
+    // file on every empty flush — the cost this early-return exists to avoid.
+    // flushSync runs on the crash path, where an open+fsync per empty buffer is
+    // exactly the latency it must not add.
+    vi.mocked(openSync).mockClear();
+    vi.mocked(writeSync).mockClear();
+    vi.mocked(fsyncSync).mockClear();
+
     buffer.flushSync();
+
+    expect(buffer.length).toBe(0);
+    expect(openSync).not.toHaveBeenCalled();
+    expect(writeSync).not.toHaveBeenCalled();
+    expect(fsyncSync).not.toHaveBeenCalled();
   });
 
   it('flushSync is a no-op when filePath is undefined', () => {

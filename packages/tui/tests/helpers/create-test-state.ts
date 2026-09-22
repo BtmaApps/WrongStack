@@ -71,6 +71,7 @@ export function createTestState(
     copiedNotice: '',
     copiedEntryId: null,
     inspectOverlay: null,
+    chatSearch: null,
     toolResultViewOverrides: new Map(),
     brain: { state: 'idle' },
     brainPrompt: null,

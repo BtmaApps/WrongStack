@@ -29,6 +29,7 @@ import {
 import { handleDesktopShortCircuit } from './boot/short-circuit-desktop.js';
 import { handleHelpVersionShortCircuit } from './boot/short-circuit-flags.js';
 import { handleHqShortCircuit } from './boot/short-circuit-hq.js';
+import { resolveLaunchAllowedTools } from './boot/tool-restriction-flags.js';
 import {
   parseWebuiSessionChildOptions,
   type WebuiSessionChildOptions,
@@ -277,6 +278,7 @@ export async function initializeCli(argv: string[]): Promise<CliContext | number
     reader,
     renderer,
     modelsRegistry,
+    launchAllowedTools: resolveLaunchAllowedTools(ctx.flags),
   });
 
   // Replay / record wiring moved to `runInteractive` (cli-main.ts), which is

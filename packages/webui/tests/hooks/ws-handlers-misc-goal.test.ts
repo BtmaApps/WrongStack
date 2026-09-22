@@ -61,6 +61,34 @@ describe('misc ws-handlers — goal run', () => {
     }
   });
 
+  it('shows mission errors without failing the phase-run store', () => {
+    miscHandlerMap['goal-state.error']?.(msg('goal-state.error', { message: 'No mission' }));
+    expect(toast.error).toHaveBeenCalledWith('No mission');
+    expect(run().status).toBe('idle');
+  });
+
+  it('shows refinement only for the current mission generation', () => {
+    useGoalStateStore.getState().setGoal({ goal: 'First', missionId: 'first' });
+    miscHandlerMap['goal-state.refining']?.(
+      msg('goal-state.refining', { missionId: 'first', active: true }),
+    );
+    expect(useGoalStateStore.getState().refiningMissionId).toBe('first');
+
+    useGoalStateStore.getState().setGoal({ goal: 'Second', missionId: 'second' });
+    miscHandlerMap['goal-state.refining']?.(
+      msg('goal-state.refining', { missionId: 'first', active: false }),
+    );
+    expect(useGoalStateStore.getState().refiningMissionId).toBeNull();
+    miscHandlerMap['goal-state.refining']?.(
+      msg('goal-state.refining', { missionId: 'second', active: true }),
+    );
+    expect(useGoalStateStore.getState().refiningMissionId).toBe('second');
+    miscHandlerMap['goal-state.refining']?.(
+      msg('goal-state.refining', { missionId: 'first', active: true }),
+    );
+    expect(useGoalStateStore.getState().refiningMissionId).toBe('second');
+  });
+
   // ── goal.state ────────────────────────────────────────────────────────────
 
   describe('goal.state', () => {
@@ -84,6 +112,27 @@ describe('misc ws-handlers — goal run', () => {
         goal: 'Ship the thing',
         multiBoard: true,
       });
+    });
+
+    it('uses the authoritative run status and progress from the snapshot', () => {
+      handleGoalState(
+        msg('goal.state', {
+          phases: [phase('pending')],
+          status: 'stopped',
+          progress: {
+            totalPhases: 1,
+            completed: 0,
+            failed: 0,
+            totalTasks: 3,
+            completedTasks: 1,
+            failedTasks: 0,
+          },
+          finalVerification: { status: 'passed', checkedAt: 123 },
+        }),
+      );
+      expect(run().status).toBe('stopped');
+      expect(run().progress).toMatchObject({ totalTasks: 3, completedTasks: 1 });
+      expect(run().finalVerification).toEqual({ status: 'passed', checkedAt: 123 });
     });
 
     it('drops non-conforming scalar fields rather than storing garbage', () => {
@@ -175,10 +224,12 @@ describe('misc ws-handlers — goal run', () => {
       expect(run().lastError).toBeNull();
     });
 
-    it('preserves lastError while the run is still failed', () => {
+    it('hydrates lastError from the authoritative failed snapshot', () => {
       useGoalRunStore.setState({ lastError: 'boom' } as never);
-      handleGoalState(msg('goal.state', { phases: [phase('failed')] }));
-      expect(run().lastError).toBe('boom');
+      handleGoalState(
+        msg('goal.state', { phases: [phase('failed')], lastError: 'typecheck failed' }),
+      );
+      expect(run().lastError).toBe('typecheck failed');
     });
   });
 

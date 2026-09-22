@@ -39,7 +39,7 @@ export function createWebuiDomainHandlers(
   kanbanRunMirror: KanbanRunMirror | null,
 ): DomainHandlersResult {
   const goalStoreDir = opts.projectRoot
-    ? path.join(opts.projectRoot, '.wrongstack', 'goal')
+    ? resolveWstackPaths({ projectRoot: opts.projectRoot }).projectAutophase
     : path.join(os.tmpdir(), '.wrongstack', 'goal');
 
   const goalHandler = new GoalWebSocketHandler(
@@ -50,6 +50,7 @@ export function createWebuiDomainHandlers(
     opts.events,
     opts.projectRoot,
     kanbanRunMirror ? (graphId, state) => kanbanRunMirror.onGoalState(graphId, state) : undefined,
+    opts.sddSubagentFactory,
   );
   const worktreeHandler = new WorktreeWebSocketHandler(opts.events, consoleLogger);
 

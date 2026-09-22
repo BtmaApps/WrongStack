@@ -50,13 +50,27 @@ describe('canonical core route families', () => {
   it.each(['goal.get', 'goal-state.get'])(
     'routes %s to the same snapshot authority',
     async (type) => {
-      const handlers: GoalSnapshotRouteHandlers = { getSnapshot: vi.fn() };
+      const handlers: GoalSnapshotRouteHandlers = { getSnapshot: vi.fn(), mutate: vi.fn() };
       const msg = { type };
 
       await expect(handleGoalSnapshotRoute(ws, msg, handlers)).resolves.toBe(true);
       expect(handlers.getSnapshot).toHaveBeenCalledWith(ws, msg);
     },
   );
+
+  it.each([
+    'goal-state.set',
+    'goal-state.refine',
+    'goal-state.pause',
+    'goal-state.resume',
+    'goal-state.clear',
+  ])('routes %s to mission mutation authority', async (type) => {
+    const handlers: GoalSnapshotRouteHandlers = { getSnapshot: vi.fn(), mutate: vi.fn() };
+    const msg = { type, payload: type === 'goal-state.set' ? { goal: 'Ship it' } : {} };
+
+    await expect(handleGoalSnapshotRoute(ws, msg, handlers)).resolves.toBe(true);
+    expect(handlers.mutate).toHaveBeenCalledWith(ws, msg);
+  });
 
   it('does not claim unrelated messages', async () => {
     const handlers: ConversationRouteHandlers = {

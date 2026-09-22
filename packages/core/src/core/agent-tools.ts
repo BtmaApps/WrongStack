@@ -454,6 +454,19 @@ export function createAgentToolHandler(a: AgentInternals): AgentToolHandler {
                 },
                 durationMs: 0,
               };
+        if (!(decision === 'yes' || isPersistentApproval(decision))) {
+          await a.toolExecutor.abandonTool?.(
+            tool,
+            {
+              type: 'tool_use' as const,
+              id: result.toolUseId,
+              name: tool.name,
+              input: result.input as Record<string, unknown>,
+            },
+            a.ctx,
+            String(reRunResult.result.content),
+          );
+        }
 
         const use = useById.get(reRunResult.result.tool_use_id);
         if (use) {

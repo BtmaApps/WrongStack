@@ -26,6 +26,12 @@ export interface HistoryScrollController {
   scrollToBottom(): void;
   /** Jump to a 0-based cell clicked/dragged on the scrollbar track. */
   scrollToTrackCell(cell: number): void;
+  /**
+   * Bring the card holding `entryId` to the viewport top (re-pinning when it
+   * sits too close to the bottom). Returns false when the entry is not
+   * retained or not rendered.
+   */
+  scrollToEntry(entryId: number): boolean;
   /** True while the viewport is scrolled away from the newest output. */
   isScrolled(): boolean;
   /**
@@ -151,6 +157,11 @@ export interface ScrollableHistoryProps extends HistoryProps {
    * `null` / undefined = no card highlighted.
    */
   copiedEntryId?: number | null | undefined;
+  /**
+   * Entry the transcript search currently selects. Its card gets a marker in
+   * the rail's reserved gap column, so marking never reflows content.
+   */
+  markedEntryId?: number | null | undefined;
   /**
    * Called when the user scrolls near the top of the currently loaded
    * entries. The host should respond by loading older entries from the

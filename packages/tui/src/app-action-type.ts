@@ -123,6 +123,12 @@ export type Action =
     }
   | { type: 'inspectOverlayClose' }
   | { type: 'inspectOverlayScroll'; delta: number }
+  /** Open the transcript search bar, optionally with a prefilled query. */
+  | { type: 'chatSearchOpen'; query?: string | undefined; includeReasoning: boolean }
+  | { type: 'chatSearchSetQuery'; query: string; includeReasoning: boolean }
+  /** Move the selection: -1 = older match, +1 = newer match (wraps). */
+  | { type: 'chatSearchStep'; delta: -1 | 1; includeReasoning: boolean }
+  | { type: 'chatSearchClose' }
   | {
       type: 'brainStatus';
       state: State['brain']['state'];

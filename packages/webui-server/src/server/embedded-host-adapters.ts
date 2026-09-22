@@ -13,7 +13,7 @@ import type {
   SessionStore,
   SessionWriter,
 } from '@wrongstack/core/types';
-import { toErrorMessage, wstackGlobalRoot } from '@wrongstack/core/utils';
+import { resolveWstackPaths, toErrorMessage, wstackGlobalRoot } from '@wrongstack/core/utils';
 import { makeProviderFromConfig } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import {
@@ -530,7 +530,7 @@ export function createEmbeddedSessionRoutes(ctx: EmbeddedSessionContext): Sessio
 export async function broadcastEmbeddedGoalSnapshot(ctx: EmbeddedSessionContext): Promise<void> {
   const projectRoot = ctx.opts.projectRoot ?? ctx.opts.agent.ctx.projectRoot;
   try {
-    const raw = await fs.readFile(path.join(projectRoot, '.wrongstack', 'goal.json'), 'utf8');
+    const raw = await fs.readFile(resolveWstackPaths({ projectRoot }).projectGoal, 'utf8');
     ctx.broadcast({ type: 'goal-state.updated', payload: JSON.parse(raw) });
   } catch {
     ctx.broadcast({ type: 'goal-state.updated', payload: null });

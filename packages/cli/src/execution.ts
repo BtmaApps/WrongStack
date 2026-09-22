@@ -12,6 +12,7 @@ import { runSingleShotDispatch } from './boot/dispatch-singleshot.js';
 import { runTuiDispatch } from './boot/dispatch-tui.js';
 import { runWebUIDispatch } from './boot/dispatch-webui.js';
 import { resolveExecutionMode } from './boot/execution-mode.js';
+import { appendPipedStdin, readPipedStdin } from './boot/piped-stdin.js';
 import { createTuiCoordinatorCallbacks } from './boot/tui-coordinator-callbacks.js';
 import { setupAutonomousCoordinator } from './boot/tui-coordinator-setup.js';
 import {
@@ -335,12 +336,21 @@ export async function execute(deps: ExecuteDeps): Promise<number> {
       fleetStatusLine.start();
     }
     if (executionMode === 'single-shot') {
+      const piped = await readPipedStdin(process.stdin);
+      if (piped.timedOut) {
+        renderer.writeWarning(
+          'No stdin data received in time; continuing without it. Redirect stdin (< /dev/null) to skip the wait.',
+        );
+      } else if (piped.truncated) {
+        renderer.writeWarning('Piped stdin exceeded 2 MB and was truncated.');
+      }
       code = await runSingleShotDispatch({
         agent,
-        query: positional.join(' '),
+        query: appendPipedStdin(positional.join(' '), piped.text),
         flags,
         tokenCounter,
         renderer,
+        events,
       });
     } else if (executionMode === 'tui') {
       agent.disableInteractiveConfirmation();

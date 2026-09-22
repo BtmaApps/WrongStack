@@ -190,7 +190,8 @@ describe('security-scanner 100% coverage edge cases', () => {
 
       setTimeout(() => ac.abort(), 10);
 
-      await orchestrator.run(
+      const startedAt = Date.now();
+      const result = await orchestrator.run(
         { provider: mockProvider },
         {
           projectRoot: tmpDir,
@@ -198,6 +199,12 @@ describe('security-scanner 100% coverage edge cases', () => {
           signal: ac.signal,
         },
       );
+
+      // Nothing was asserted here, so the test could not tell the two outcomes
+      // apart: honouring the external abort at ~10ms, or ignoring it and sitting
+      // out the full 5s timeout. The elapsed time is what distinguishes them.
+      expect(result).toBeDefined();
+      expect(Date.now() - startedAt).toBeLessThan(2000);
     });
 
     it('uses custom outputDir in gitignore when gitignoreUpdater is default', async () => {

@@ -302,7 +302,7 @@ files verbatim (read 2026-08).
 `goal.clear`, `goal.get`, `goal.list`, `goal.load`, `goal.moveTask`,
 `goal.pause`, `goal.resume`, `goal.retryTask`, `goal.revert`, `goal.runTask`,
 `goal.save`, `goal.selectPhase`, `goal.start`, `goal.state`, `goal.status`,
-`goal.stop`, `goal.taskStatus`, `goal.toggleAutonomous`, `plan.get`,
+`goal.stop`, `goal.taskStatus`, `plan.get`,
 `plan.item.update`, `plan.template_use`, `task.update`, `tasks.get`
 
 `CLIENT_SDD_MESSAGE_TYPES`:

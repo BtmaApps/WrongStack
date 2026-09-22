@@ -12,6 +12,25 @@ export interface PhaseStoreOptions {
 
 /** Current schema version for SerializedPhaseGraph. Increment on breaking changes. */
 const PHASE_STORE_VERSION = 1;
+const RUN_LEASE_FILE = '.active-run.lock';
+const INCOMPLETE_LEASE_GRACE_MS = 30_000;
+
+interface SerializedRunLease {
+  ownerId: string;
+  pid: number;
+  acquiredAt: string;
+}
+
+export class GoalRunLeaseBusyError extends Error {
+  constructor(readonly ownerId?: string | undefined) {
+    super(
+      ownerId
+        ? `Another Goal run already owns this project (${ownerId}).`
+        : 'Another Goal run already owns this project.',
+    );
+    this.name = 'GoalRunLeaseBusyError';
+  }
+}
 
 interface SerializedPhaseGraph {
   /** Schema version for forward-compatibility. Missing/0 means pre-v1. */
@@ -26,6 +45,12 @@ interface SerializedPhaseGraph {
   failedPhaseIds: string[];
   autonomous: boolean;
   stopOnComplete: boolean;
+  multiBoard?: boolean | undefined;
+  verifyTasks?: boolean | undefined;
+  chimeraReview?: boolean | undefined;
+  worktrees?: boolean | undefined;
+  runBase?: PhaseGraph['runBase'];
+  finalVerification?: PhaseGraph['finalVerification'];
   createdAt: number;
   updatedAt: number;
   startedAt?: number | undefined;
@@ -99,6 +124,64 @@ export class PhaseStore {
     );
   }
 
+  /**
+   * Acquire the one active Goal-run lease for this project/store.
+   *
+   * The lease is process-backed rather than time-only: a live PID keeps the
+   * lease indefinitely, while a crashed process is reclaimed on the next
+   * acquire. This prevents CLI and WebUI hosts from concurrently mutating the
+   * same repository even though they own separate in-memory orchestrators.
+   */
+  async acquireRunLease(ownerId: string): Promise<() => Promise<void>> {
+    if (!ownerId.trim()) throw new Error('Goal run lease ownerId must not be empty.');
+    await fsp.mkdir(this.baseDir, { recursive: true });
+    const leasePath = path.join(this.baseDir, RUN_LEASE_FILE);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const handle = await fsp.open(leasePath, 'wx', 0o600);
+        const lease: SerializedRunLease = {
+          ownerId,
+          pid: process.pid,
+          acquiredAt: new Date().toISOString(),
+        };
+        try {
+          await handle.writeFile(JSON.stringify(lease), 'utf8');
+          await handle.sync();
+        } finally {
+          await handle.close();
+        }
+
+        let released = false;
+        return async () => {
+          if (released) return;
+          released = true;
+          const current = await this.readRunLease(leasePath);
+          if (current?.ownerId !== ownerId) return;
+          await fsp.unlink(leasePath).catch((err: NodeJS.ErrnoException) => {
+            if (err.code !== 'ENOENT') throw err;
+          });
+        };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+        const current = await this.readRunLease(leasePath);
+        if (current && this.isProcessAlive(current.pid)) {
+          throw new GoalRunLeaseBusyError(current.ownerId);
+        }
+        if (!current) {
+          const stat = await fsp.stat(leasePath).catch(() => null);
+          if (stat && Date.now() - stat.mtimeMs < INCOMPLETE_LEASE_GRACE_MS) {
+            throw new GoalRunLeaseBusyError();
+          }
+        }
+        await fsp.unlink(leasePath).catch((unlinkErr: NodeJS.ErrnoException) => {
+          if (unlinkErr.code !== 'ENOENT') throw unlinkErr;
+        });
+      }
+    }
+    throw new GoalRunLeaseBusyError();
+  }
+
   async save(graph: PhaseGraph): Promise<void> {
     const filePath = this.getFilePath(graph.id);
     const serialized = this.serializeGraph(graph);
@@ -146,13 +229,25 @@ export class PhaseStore {
         try {
           const raw = await fsp.readFile(path.join(this.baseDir, entry.name), 'utf8');
           const serialized = JSON.parse(raw) as SerializedPhaseGraph;
-          const done = serialized.completedPhaseIds.length;
+          const done = serialized.phases.filter(
+            (phase) => phase.status === 'completed' || phase.status === 'skipped',
+          ).length;
           const total = serialized.phases.length;
+          const failed =
+            serialized.finalVerification?.status === 'failed' ||
+            serialized.phases.some((phase) => phase.status === 'failed');
+          const running = serialized.phases.some((phase) => phase.status === 'running');
           graphs.push({
             id: serialized.id,
             title: serialized.title,
             updatedAt: serialized.updatedAt,
-            status: done === total ? 'completed' : done > 0 ? 'in_progress' : 'pending',
+            status: failed
+              ? 'failed'
+              : done === total
+                ? 'completed'
+                : running || done > 0
+                  ? 'in_progress'
+                  : 'pending',
           });
         } catch {
           // Skip invalid files
@@ -236,6 +331,35 @@ export class PhaseStore {
     }
   }
 
+  private async readRunLease(leasePath: string): Promise<SerializedRunLease | null> {
+    try {
+      const parsed = JSON.parse(
+        await fsp.readFile(leasePath, 'utf8'),
+      ) as Partial<SerializedRunLease>;
+      if (
+        typeof parsed.ownerId !== 'string' ||
+        typeof parsed.pid !== 'number' ||
+        !Number.isInteger(parsed.pid) ||
+        typeof parsed.acquiredAt !== 'string'
+      ) {
+        return null;
+      }
+      return parsed as SerializedRunLease;
+    } catch {
+      return null;
+    }
+  }
+
+  private isProcessAlive(pid: number): boolean {
+    if (pid <= 0) return false;
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err) {
+      return (err as NodeJS.ErrnoException).code === 'EPERM';
+    }
+  }
+
   private async removeMigratedLegacyFile(legacyDir: string, legacyPath: string): Promise<void> {
     await fsp.unlink(legacyPath).catch(() => undefined);
     await fsp.rmdir(legacyDir).catch(() => undefined);
@@ -254,6 +378,12 @@ export class PhaseStore {
       failedPhaseIds: graph.failedPhaseIds,
       autonomous: graph.autonomous,
       stopOnComplete: graph.stopOnComplete,
+      multiBoard: graph.multiBoard,
+      verifyTasks: graph.verifyTasks,
+      chimeraReview: graph.chimeraReview,
+      worktrees: graph.worktrees,
+      runBase: graph.runBase,
+      finalVerification: graph.finalVerification,
       createdAt: graph.createdAt,
       updatedAt: graph.updatedAt,
       startedAt: graph.startedAt,
@@ -327,6 +457,12 @@ export class PhaseStore {
       failedPhaseIds: serialized.failedPhaseIds,
       autonomous: serialized.autonomous,
       stopOnComplete: serialized.stopOnComplete,
+      multiBoard: serialized.multiBoard,
+      verifyTasks: serialized.verifyTasks,
+      chimeraReview: serialized.chimeraReview,
+      worktrees: serialized.worktrees,
+      runBase: serialized.runBase,
+      finalVerification: serialized.finalVerification,
       createdAt: serialized.createdAt,
       updatedAt: serialized.updatedAt,
       startedAt: serialized.startedAt,

@@ -85,7 +85,12 @@ describe('every workflow (WS-041 / WS-042)', () => {
   it('declares an explicit top-level permissions block', () => {
     // Absent this, the job inherits the repository default, which may be
     // write-all.
-    for (const file of workflowFiles()) {
+    const files = workflowFiles();
+    // If the glob ever stops matching, "every workflow declares permissions"
+    // becomes vacuously true and the guard reports green while protecting
+    // nothing — the failure mode a security check can least afford.
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
       expect(read(file), file).toMatch(/^permissions:/m);
     }
   });

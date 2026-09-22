@@ -472,6 +472,21 @@ describe('makeACPServerAgentTurn', () => {
         params: { sessionId, prompt: [{ type: 'text', text: 'go' }] },
       }),
     ).resolves.toBeDefined();
+
+    // The title's actual claim — an EMPTY plan — was never checked: only that
+    // the turn did not throw. End to end, that means no plan entry reaches the
+    // client. `?? []` admits both correct outcomes (no plan update at all, or
+    // one with no entries) and still fails on the real regression, a string
+    // plan leaking through as entries.
+    const updates = transport.sent
+      .map(
+        (m) =>
+          (m as { params?: { update?: { sessionUpdate?: string; entries?: unknown[] } } }).params
+            ?.update,
+      )
+      .filter(Boolean);
+    const planUpd = updates.find((u) => u?.sessionUpdate === 'plan');
+    expect(planUpd?.entries ?? []).toEqual([]);
   });
 
   it('handles agent result with usage but no cost', async () => {
@@ -923,7 +938,14 @@ describe('makeACPServerAgentTurn', () => {
     await new Promise((resolve) => setImmediate(resolve));
     turn.dispose('active');
     finish({});
-    await pending;
+    // Disposing mid-run must let the pending turn settle rather than leave it
+    // hanging on the timeout timer it just cleared. Nothing here was asserted,
+    // so a dispose that dropped the in-flight turn looked the same as success.
+    await expect(pending).resolves.toBeDefined();
+    // The run was genuinely started (so the timer this test is about existed)
+    // and the agent was torn down by dispose.
+    expect(agent.run).toHaveBeenCalled();
+    expect(agent.teardown).toHaveBeenCalled();
   });
 
   it('streams failed tool updates without output or structured input', async () => {

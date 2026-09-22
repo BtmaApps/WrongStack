@@ -411,7 +411,18 @@ describe('DefaultTaskStore', () => {
       };
       await store.saveGraph(graph);
       const loaded = await store.loadGraph('g1');
-      expect(loaded?.nodes.get('n1')).toBeDefined();
+      // "Preserves" means the node's CONTENT survives, not just its key: a store
+      // that kept `{ id: 'n1' }` and dropped the rest passed the old check. And
+      // it must come back as a Map — JSON serialises a Map to `{}`, the classic
+      // round-trip loss this store has to undo.
+      expect(loaded?.nodes).toBeInstanceOf(Map);
+      expect(loaded?.nodes.get('n1')).toMatchObject({
+        id: 'n1',
+        title: 'Node',
+        type: 'feature',
+        priority: 'high',
+        status: 'pending',
+      });
     });
   });
 

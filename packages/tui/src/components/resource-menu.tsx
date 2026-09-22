@@ -5,6 +5,10 @@ import { theme } from '../theme.js';
 import type { ResourceMenuItem, ResourceMenuSnapshot } from '../ui-contracts.js';
 import { MonitorShell, MonitorViewportProvider } from './monitor-shell.js';
 
+import { filterResourceMenuItems } from './resource-menu-model.js';
+
+export { filterResourceMenuItems };
+
 interface ResourceMenuProps {
   snapshot: ResourceMenuSnapshot;
   selected: number;
@@ -115,22 +119,6 @@ export function ResourceMenu({
         </MonitorViewportProvider>
       </Box>
     </Box>
-  );
-}
-
-export function filterResourceMenuItems(
-  snapshot: ResourceMenuSnapshot,
-  filter: string,
-): ResourceMenuItem[] {
-  const query = filter.trim().toLowerCase();
-  if (!query) return snapshot.items;
-  return snapshot.items.filter((item) =>
-    [
-      item.label,
-      item.summary ?? '',
-      item.body ?? '',
-      ...item.details.flatMap((detail) => [detail.label, detail.value]),
-    ].some((value) => value.toLowerCase().includes(query)),
   );
 }
 

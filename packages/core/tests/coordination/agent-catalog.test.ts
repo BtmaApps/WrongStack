@@ -168,6 +168,9 @@ describe('fleet roster derivation', () => {
   });
 
   it('every roster role has a budget and applyRosterBudget fills an idle window', () => {
+    // An empty roster satisfies "every role" vacuously. The floor is what turns
+    // this from a tautology into the coverage guard it is named for.
+    expect(Object.keys(FLEET_ROSTER).length).toBeGreaterThan(0);
     for (const role of Object.keys(FLEET_ROSTER)) {
       expect(FLEET_ROSTER_BUDGETS[role], `budget for ${role}`).toBeDefined();
       const resolved = applyRosterBudget({ ...FLEET_ROSTER[role]!, role });

@@ -123,6 +123,27 @@ cleared when the trust file is reloaded.
 | YOLO left on unintentionally | TUI status and `/yolo` show the current state |
 | Subagent privilege escalation | Subagents use `AutoApprovePermissionPolicy`, which denies dangerous capabilities, MCP tools, and legacy risky names by default |
 | Trust file poisoning | Trust is per project at `~/.wrongstack/projects/<hash>/trust.json`; encrypted secrets are separate |
+| Reviewing code you do not trust | `wstack --restricted` (below) |
+
+### `--restricted`
+
+For a run over code you do not trust yet — a stranger's repository, a fork you
+are triaging. The agent keeps reading, searching and editing inside the
+project; for the whole process it loses:
+
+- every tool declaring a shell, network, package-install, config-mutation,
+  outside-project-write or `tool.mutate.any` capability (by capability, so a
+  newly added tool is covered too), plus every MCP tool — configured MCP
+  servers are not started;
+- plugin tools that declare no capabilities at all (unknown fails closed);
+- leaving the project root, including through `/settings`;
+- YOLO, including `/yolo on`, WebUI, HQ and per-tab toggles — every write asks.
+
+Subagents inherit the same tool surface. `--yolo`, `--yolo-destructive`,
+`--full-auto`, `--mcp-config` and `--allowed-tools` are refused alongside it
+(exit 2) rather than silently winning or losing. `WRONGSTACK_RESTRICTED=1` is
+equivalent and is exported to child processes. It is not an OS sandbox: it
+limits what the agent's tools can do, not what the WrongStack process can do.
 
 Example defensive trust rules:
 

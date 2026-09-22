@@ -325,3 +325,89 @@ describe('ToolExecutor — PostToolUse hooks', () => {
     expect(ctx.pendingPostToolContext).toBe('plugin notice');
   });
 });
+
+describe('ToolExecutor — PostToolUse when the tool never runs', () => {
+  // WrongTrace claims a file lock in PreToolUse and releases it in
+  // PostToolUse. A call that PreToolUse allowed but that then never ran left
+  // the lock held for its 15-minute TTL, blocking every other session from
+  // that file. `runWhenToolSkipped` hooks now see those calls; ordinary
+  // PostToolUse hooks still only see tools that ran.
+  function hooks() {
+    const reg = new HookRegistry();
+    const release = vi.fn(async () => undefined);
+    const ordinary = vi.fn(async () => undefined);
+    reg.registerInProcess('PostToolUse', '*', release, 'lock', { runWhenToolSkipped: true });
+    reg.registerInProcess('PostToolUse', '*', ordinary, 'plain');
+    return { runner: new HookRunner({ registry: reg }), release, ordinary };
+  }
+
+  it('releases on a policy deny', async () => {
+    const h = hooks();
+    const exec = vi.fn();
+    const deny = { evaluate: vi.fn().mockResolvedValue({ permission: 'deny', source: 'deny' }) };
+    const ex = makeExecutor([tool('write', exec)], h.runner, { permissionPolicy: deny });
+    await ex.executeBatch([use('write')], makeCtx(), 'sequential');
+    expect(exec).not.toHaveBeenCalled();
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.release.mock.calls[0]![0]).toMatchObject({
+      toolName: 'write',
+      toolResult: { isError: true },
+    });
+    expect(h.ordinary).not.toHaveBeenCalled();
+  });
+
+  it('releases when the user rejects the prompt', async () => {
+    const h = hooks();
+    const confirm = {
+      evaluate: vi.fn().mockResolvedValue({ permission: 'confirm', source: 'default' }),
+    };
+    const ex = makeExecutor([tool('write', vi.fn())], h.runner, {
+      permissionPolicy: confirm,
+      confirmAwaiter: vi.fn().mockResolvedValue('no'),
+    });
+    await ex.executeBatch([use('write')], makeCtx(), 'sequential');
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.ordinary).not.toHaveBeenCalled();
+  });
+
+  it('releases when the tool throws', async () => {
+    const h = hooks();
+    const ex = makeExecutor(
+      [tool('write', vi.fn().mockRejectedValue(new Error('disk full')))],
+      h.runner,
+    );
+    await ex.executeBatch([use('write')], makeCtx(), 'sequential');
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.release.mock.calls[0]![0]).toMatchObject({ toolResult: { content: 'disk full' } });
+    expect(h.ordinary).not.toHaveBeenCalled();
+  });
+
+  it('runs every PostToolUse hook exactly once for a tool that ran', async () => {
+    const h = hooks();
+    const ex = makeExecutor([tool('write', vi.fn().mockResolvedValue('ok'))], h.runner);
+    await ex.executeBatch([use('write')], makeCtx(), 'sequential');
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.ordinary).toHaveBeenCalledOnce();
+  });
+
+  it('runs PostToolUse for the run a confirm prompt approved (executeTool)', async () => {
+    const h = hooks();
+    const ex = makeExecutor([tool('write', vi.fn().mockResolvedValue('ok'))], h.runner);
+    await ex.executeTool(
+      tool('write', vi.fn().mockResolvedValue('ok')),
+      use('write'),
+      makeCtx(),
+      50_000,
+    );
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.ordinary).toHaveBeenCalledOnce();
+  });
+
+  it('abandonTool releases a pending call that was rejected', async () => {
+    const h = hooks();
+    const ex = makeExecutor([tool('write', vi.fn())], h.runner);
+    await ex.abandonTool(tool('write', vi.fn()), use('write'), makeCtx(), 'denied by user');
+    expect(h.release).toHaveBeenCalledOnce();
+    expect(h.ordinary).not.toHaveBeenCalled();
+  });
+});

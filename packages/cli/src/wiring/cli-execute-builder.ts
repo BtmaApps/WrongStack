@@ -4,6 +4,7 @@ import type { Container } from '@wrongstack/core/kernel';
 import { TOKENS } from '@wrongstack/core/kernel';
 import type { Logger } from '@wrongstack/core/types';
 import { createAuthPanelHost } from '../auth-menu/panel-service.js';
+import { isSafeMode } from '../boot/safe-mode.js';
 import type { CliGovernanceRuntimeHandle } from '../cli-main-helpers.js';
 import { createPickableProvidersLoader } from '../cli-main-helpers.js';
 import type { MultiAgentHost } from '../fleet/host.js';
@@ -294,7 +295,7 @@ export async function runCliExecution(params: {
         effectiveMaxContext: effectiveMaxContextRef.current,
         getEffectiveMaxContext: () => effectiveMaxContextRef.current,
         stats,
-        skillLoader: config.features.skills ? skillLoader : undefined,
+        skillLoader: config.features.skills && !isSafeMode(flags) ? skillLoader : undefined,
         promptLoader: config.features.prompts === false ? undefined : promptLoader,
         modeId,
       },

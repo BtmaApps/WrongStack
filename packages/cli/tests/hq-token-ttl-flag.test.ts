@@ -113,6 +113,27 @@ function makeDeps(overrides: Partial<SubcommandDeps> = {}): TestDeps {
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
+/**
+ * Run `hqCmd` and assert the minted token expires `ttlMs` after the call.
+ * These tests used to assert only `expiresAt` toBeDefined() — a 30m TTL parsed
+ * as 30 days (or `w` read as `m`) passed. Returns the token for further checks.
+ */
+async function expectMintedWithTtl(
+  args: string[],
+  ttlMs: number,
+  deps = makeDeps(),
+  kind: 'browserTokens' | 'clientTokens' = 'browserTokens',
+) {
+  const before = Date.now();
+  expect(await hqCmd(args, deps)).toBe(0);
+  const after = Date.now();
+  const token = (await readHqAuthFile(dataDir))[kind]?.[0];
+  const expiresAt = Date.parse(token?.expiresAt ?? '');
+  expect(expiresAt).toBeGreaterThanOrEqual(before + ttlMs - 5);
+  expect(expiresAt).toBeLessThanOrEqual(after + ttlMs + 5);
+  return token;
+}
+
 // ── Unit-form parsing ─────────────────────────────────────────────────────
 
 describe('wstack hq token create --ttl — unit-form parsing', () => {
@@ -123,8 +144,7 @@ describe('wstack hq token create --ttl — unit-form parsing', () => {
     const after = Date.now();
 
     const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
-    const expiresAt = Date.parse(token!.expiresAt!);
+    const expiresAt = Date.parse(token?.expiresAt ?? '');
     expect(expiresAt).toBeGreaterThanOrEqual(before + HOUR_MS - 5);
     expect(expiresAt).toBeLessThanOrEqual(after + HOUR_MS + 5);
   });
@@ -142,10 +162,7 @@ describe('wstack hq token create --ttl — unit-form parsing', () => {
   });
 
   it('parses --ttl 30m as 30 minutes', async () => {
-    const deps = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl', '30m'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl', '30m'], 30 * 60 * 1000);
   });
 
   it('parses --ttl 3600s as 1 hour (seconds unit)', async () => {
@@ -161,10 +178,7 @@ describe('wstack hq token create --ttl — unit-form parsing', () => {
   });
 
   it('parses --ttl 1w as 1 week', async () => {
-    const deps = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl', '1w'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl', '1w'], 7 * DAY_MS);
   });
 
   it('parses --ttl 5000ms as 5 seconds (explicit ms unit)', async () => {
@@ -181,21 +195,19 @@ describe('wstack hq token create --ttl — unit-form parsing', () => {
 
   it('accepts unit-form TTL via deps.flags (parseArgs path)', async () => {
     const deps = makeDeps({ flags: { 'data-dir': dataDir, ttl: '2h' } });
-    expect(await hqCmd(['token', 'create', 'via-flags'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
+    const token = await expectMintedWithTtl(['token', 'create', 'via-flags'], 2 * HOUR_MS, deps);
+    expect(token?.label).toBe('via-flags');
   });
 
   it('is case-insensitive on the unit suffix (1H, 7D, 30M)', async () => {
-    const deps1 = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl', '1H'], deps1)).toBe(0);
-    expect((await readHqAuthFile(dataDir)).browserTokens?.[0]?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl', '1H'], HOUR_MS);
 
-    // Wipe and retry with mixed case.
+    // Wipe and retry with other upper-case units.
     await fs.rm(path.join(dataDir, 'auth.json'), { force: true });
-    const deps2 = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl', '7D'], deps2)).toBe(0);
-    expect((await readHqAuthFile(dataDir)).browserTokens?.[0]?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl', '7D'], 7 * DAY_MS);
+
+    await fs.rm(path.join(dataDir, 'auth.json'), { force: true });
+    await expectMintedWithTtl(['token', 'create', '--ttl', '30M'], 30 * 60 * 1000);
   });
 });
 
@@ -219,17 +231,11 @@ describe('wstack hq token create --ttl — bare integer (milliseconds)', () => {
 
 describe('wstack hq token create --ttl=<value> — inline form', () => {
   it('parses --ttl=1h inline', async () => {
-    const deps = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl=1h'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl=1h'], HOUR_MS);
   });
 
   it('parses --ttl=3600000 inline (bare ms)', async () => {
-    const deps = makeDeps();
-    expect(await hqCmd(['token', 'create', '--ttl=3600000'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
-    expect(token?.expiresAt).toBeDefined();
+    await expectMintedWithTtl(['token', 'create', '--ttl=3600000'], HOUR_MS);
   });
 });
 
@@ -237,21 +243,23 @@ describe('wstack hq token create --ttl=<value> — inline form', () => {
 
 describe('wstack hq token create --ttl — composes with --client and label', () => {
   it('stamps expiresAt on a --client token', async () => {
-    const deps = makeDeps();
-    expect(await hqCmd(['token', 'create', '--client', 'ci-bot', '--ttl', '1h'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).clientTokens?.[0];
+    const token = await expectMintedWithTtl(
+      ['token', 'create', '--client', 'ci-bot', '--ttl', '1h'],
+      HOUR_MS,
+      makeDeps(),
+      'clientTokens',
+    );
     expect(token?.label).toBe('ci-bot');
-    expect(token?.expiresAt).toBeDefined();
     expect(token?.capabilities).toEqual(['telemetry.publish']);
   });
 
   it('label is not consumed by --ttl positional scan', async () => {
-    const deps = makeDeps();
     // --ttl comes before the label; label should still resolve correctly.
-    expect(await hqCmd(['token', 'create', '--ttl', '1h', 'after-flag'], deps)).toBe(0);
-    const token = (await readHqAuthFile(dataDir)).browserTokens?.[0];
+    const token = await expectMintedWithTtl(
+      ['token', 'create', '--ttl', '1h', 'after-flag'],
+      HOUR_MS,
+    );
     expect(token?.label).toBe('after-flag');
-    expect(token?.expiresAt).toBeDefined();
   });
 
   it('stdout reports the expiresAt alongside createdAt', async () => {
@@ -293,6 +301,23 @@ describe('wstack hq token create --ttl — error paths', () => {
     // the unit list) rather than the prefix.
     expect(err).toContain('5x');
     expect(err).toMatch(/ms.*s.*m.*h.*d.*w/);
+  });
+
+  it.each([
+    ['1h30m', 'got 1h30m'], // compound — promised in the header, never tested
+    ['1.5h', 'got 1.5h'],
+    ['0', 'must be positive'],
+    ['0h', 'must be positive'],
+    ['5x', 'got 5x'],
+    ['', 'empty'],
+    ['-3600', '--ttl requires a value'],
+  ])('rejects --ttl %j and mints no token', async (value, message) => {
+    const deps = makeDeps();
+    expect(await hqCmd(['token', 'create', '--ttl', value], deps)).toBe(1);
+    expect(deps.renderer.captured.err.join('')).toContain(message);
+    const auth = await readHqAuthFile(dataDir);
+    expect(auth.browserTokens ?? []).toEqual([]);
+    expect(auth.clientTokens ?? []).toEqual([]);
   });
 
   it('errors when --ttl value is empty', async () => {

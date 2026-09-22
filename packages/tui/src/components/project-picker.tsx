@@ -60,7 +60,7 @@ export function ProjectPicker({
       accent={theme.accent}
       icon={glyphs.folder}
       title="PROJECTS"
-      kicker={size.columns >= 58 ? 'workspace switcher' : undefined}
+      kicker="workspace switcher"
       right={
         <Text color={theme.textMuted}>
           {projectCount} project{projectCount === 1 ? '' : 's'}

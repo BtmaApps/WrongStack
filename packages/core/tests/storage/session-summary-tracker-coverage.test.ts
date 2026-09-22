@@ -235,7 +235,11 @@ describe('SessionSummaryTracker — coverage', () => {
 
   it('recomputeFromDisk returns early for empty path', async () => {
     const tracker = new SessionSummaryTracker({ id: 's14', startedAt: ts, meta: baseMeta });
-    await tracker.recomputeFromDisk('');
+    const before = tracker.snapshot();
+    // "Returns early" means the summary is untouched — not merely that the call
+    // did not throw, which is all an assertion-free body could have shown.
+    await expect(tracker.recomputeFromDisk('')).resolves.toBeUndefined();
+    expect(tracker.snapshot()).toEqual(before);
   });
 
   it('recomputeFromDisk returns early when the file is not accessible', async () => {

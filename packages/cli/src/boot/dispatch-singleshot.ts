@@ -11,24 +11,46 @@
  * aborted) so the caller assigns it to its `code` variable without a
  * closure mutation.
  */
-import type { Agent } from '@wrongstack/core/agent';
-import type { TokenCounter } from '@wrongstack/core/types';
+import type { Agent, RunResult } from '@wrongstack/core/agent';
+import type { EventBus } from '@wrongstack/core/kernel';
+import type { JSONSchema, TokenCounter } from '@wrongstack/core/types';
 import { color, writeOut } from '@wrongstack/core/utils';
 import { contextOverflowHint } from '../context-overflow-diagnostic.js';
 import type { TerminalRenderer } from '../renderer.js';
 import { fmtTok } from '../utils.js';
+import {
+  parseMaxBudgetUsd,
+  type SingleShotBudget,
+  watchSingleShotBudget,
+} from './single-shot-budget.js';
+import { parseOutputFormat, startStreamJson, streamJsonInit } from './stream-json.js';
+import {
+  checkStructuredAnswer,
+  repairPrompt,
+  type StructuredCheck,
+  withSchemaInstruction,
+} from './structured-output.js';
 
 interface SingleShotDispatchContext {
   /** The agent to run. */
   agent: Agent;
   /** Joined positional args forming the query string. */
   query: string;
-  /** Parsed top-level CLI flags (e.g. `--output-json`). */
+  /** Parsed top-level CLI flags (e.g. `--output-json`, `--output-format`). */
   flags: Record<string, string | boolean>;
   /** Token counter for usage delta computation. */
   tokenCounter: TokenCounter;
   /** Terminal renderer for output. */
   renderer: TerminalRenderer;
+  /** Host event bus; required for `--max-budget-usd` to see spend as it lands. */
+  events?: Pick<EventBus, 'on'> | undefined;
+}
+
+/** Exit code for a run status: 0 success, 130 aborted, 1 anything that stopped short. */
+function exitCodeForStatus(status: RunResult['status']): number {
+  if (status === 'failed' || status === 'max_iterations') return 1;
+  if (status === 'aborted') return 130;
+  return 0;
 }
 
 /**
@@ -40,16 +62,74 @@ interface SingleShotDispatchContext {
 export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Promise<number> {
   const { agent, query, flags, tokenCounter, renderer } = ctx;
 
+  let limitUsd: number | undefined;
+  let format: 'text' | 'json' | 'stream-json';
+  try {
+    limitUsd = parseMaxBudgetUsd(flags['max-budget-usd']);
+    format = parseOutputFormat(flags['output-format']) ?? (flags['output-json'] ? 'json' : 'text');
+  } catch (err) {
+    renderer.writeError(err instanceof Error ? err.message : String(err));
+    return 2;
+  }
+
   const ctrl = new AbortController();
   const onSigint = () => ctrl.abort();
   process.on('SIGINT', onSigint);
+  let budget: SingleShotBudget | undefined;
+  if (limitUsd !== undefined && ctx.events) {
+    budget = watchSingleShotBudget({
+      limitUsd,
+      tokenCounter,
+      events: ctx.events,
+      onExceeded: () => ctrl.abort(),
+    });
+  }
+  let stopStream: (() => void) | undefined;
+  if (format === 'stream-json') {
+    const tools = agent.tools?.listForProvider?.() ?? agent.tools?.list?.() ?? [];
+    writeOut(
+      streamJsonInit({
+        sessionId: agent.ctx?.session?.id ?? null,
+        provider: agent.ctx?.provider?.id ?? null,
+        model: agent.ctx?.model ?? null,
+        cwd: agent.ctx?.cwd ?? process.cwd(),
+        tools: tools.map((tool) => tool.name),
+      }),
+    );
+    if (ctx.events) {
+      stopStream = startStreamJson({
+        events: ctx.events,
+        write: (line) => writeOut(line),
+        includePartialMessages: flags['include-partial-messages'] === true,
+      });
+    }
+  }
   const startedAt = Date.now();
   const before = tokenCounter.total();
   const costBefore = tokenCounter.estimateCost().total;
-  let result: import('@wrongstack/core/agent').RunResult;
+  // `--json-schema`, normalized to inline JSON at boot.
+  const schema =
+    typeof flags['json-schema'] === 'string'
+      ? (JSON.parse(flags['json-schema']) as JSONSchema)
+      : undefined;
+  let result: RunResult;
+  let structured: StructuredCheck | undefined;
   try {
-    result = await agent.run(query, { signal: ctrl.signal });
+    result = await agent.run(schema ? withSchemaInstruction(query, schema) : query, {
+      signal: ctrl.signal,
+    });
+    if (schema && result.status === 'done') {
+      structured = checkStructuredAnswer(result.finalText, schema);
+      if (!structured.ok && !ctrl.signal.aborted) {
+        const first = result;
+        result = await agent.run(repairPrompt(structured.errors), { signal: ctrl.signal });
+        result = { ...result, iterations: first.iterations + result.iterations };
+        if (result.status === 'done') structured = checkStructuredAnswer(result.finalText, schema);
+      }
+    }
   } finally {
+    stopStream?.();
+    budget?.dispose();
     process.off('SIGINT', onSigint);
     // Clean up any lingering bash/exec processes.
     const { getProcessRegistry } = await import('@wrongstack/tools');
@@ -64,9 +144,19 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
     cost: costAfter - costBefore,
     elapsedMs: Date.now() - startedAt,
   };
-  if (flags['output-json']) {
+  // A run that finished but never produced schema-valid JSON is a failure for
+  // the script that asked for it.
+  const schemaFailed = structured !== undefined && !structured.ok;
+  const exitCode = budget?.exceeded || schemaFailed ? 1 : exitCodeForStatus(result.status);
+  if (format !== 'text') {
     const json = JSON.stringify({
+      // In a stream the result is one event among many; name it.
+      ...(format === 'stream-json' ? { type: 'result' } : {}),
       status: result.status,
+      // Lets a script continue the conversation: `wstack --resume <sessionId>`.
+      // Read defensively — the session is swapped in by /resume and absent in
+      // some embedders.
+      sessionId: agent.ctx?.session?.id ?? null,
       finalText: result.finalText ?? null,
       error: result.error
         ? {
@@ -79,14 +169,30 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
           }
         : null,
       usage,
+      ...(limitUsd !== undefined
+        ? { budget: { limitUsd, exceeded: budget?.exceeded ?? false } }
+        : {}),
+      ...(schema
+        ? {
+            structuredOutput: structured?.ok ? structured.value : null,
+            schemaErrors: structured && !structured.ok ? structured.errors : null,
+          }
+        : {}),
     });
     writeOut(json + '\n');
-    return 0;
+    // The payload carries the status, but scripts gate on the exit code
+    // (`wstack --output-json ... && deploy`). Returning 0 here let a failed or
+    // aborted run pass every such gate. A budget stop surfaces as an abort;
+    // report it as the failure it is, not as a user Ctrl+C (130).
+    return exitCode;
   }
 
-  let code = 0;
-  if (result.status === 'failed') {
-    code = 1;
+  const code = exitCode;
+  if (budget?.exceeded) {
+    renderer.writeError(
+      `Stopped: spend $${budget.spent().toFixed(4)} exceeded --max-budget-usd $${limitUsd}.`,
+    );
+  } else if (result.status === 'failed') {
     const err = result.error;
     if (err) {
       const tag = err.recoverable ? ' (recoverable)' : '';
@@ -97,11 +203,11 @@ export async function runSingleShotDispatch(ctx: SingleShotDispatchContext): Pro
       renderer.writeError('Failed.');
     }
   } else if (result.status === 'aborted') {
-    code = 130;
     renderer.writeWarning('Aborted.');
   } else if (result.status === 'max_iterations') {
-    code = 1;
     renderer.writeWarning(`Hit max iterations (${result.iterations}).`);
+  } else if (structured && !structured.ok) {
+    renderer.writeError(`Answer did not match --json-schema: ${structured.errors.join('; ')}`);
   }
   if (result.finalText) renderer.write('\n' + result.finalText + '\n');
   // Surface any delegate subagent completion banners.

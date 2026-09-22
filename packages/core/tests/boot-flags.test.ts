@@ -26,6 +26,15 @@ describe('flagsToConfigPatch', () => {
     expect(patch.fallbackModels).toEqual(['openai/gpt-4o', 'anthropic/claude-3']);
   });
 
+  it('maps --effort to the session reasoning effort, case-insensitively', () => {
+    const patch = flagsToConfigPatch({ effort: 'High' });
+    expect(patch.modelRuntime?.reasoning?.effort).toBe('high');
+  });
+
+  it('ignores an unknown --effort level instead of guessing', () => {
+    expect(flagsToConfigPatch({ effort: 'turbo' }).modelRuntime).toBeUndefined();
+  });
+
   it('ignores empty fallback-model', () => {
     const patch = flagsToConfigPatch({ 'fallback-model': '' });
     expect(patch.fallbackModels).toBeUndefined();

@@ -770,7 +770,7 @@ async function runIndexerAtomic(store: IndexStore, opts: IndexerOptions): Promis
   const completeProjectScope =
     !opts.files && (!langs || langs.length === 0) && (!opts.ignore || opts.ignore.length === 0);
   if (completeProjectScope && discoverySnapshotKey !== undefined) {
-    const finalSnapshot = await findGitSourceFiles(projectRoot, ignore, signal);
+    const finalSnapshot = await findGitSourceFiles(projectRoot, ignore, signal, isGitIgnored);
     if (!finalSnapshot || finalSnapshot.snapshotKey !== discoverySnapshotKey) {
       throw new IndexSourceChangedError(
         'Project files changed during indexing; retrying before publishing the generation.',

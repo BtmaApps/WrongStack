@@ -40,6 +40,8 @@ export type WSSystemMiscServerMessage =
       };
     }
   | { type: 'goal-state.updated'; payload: Record<string, unknown> | null }
+  | { type: 'goal-state.refining'; payload: { missionId: string; active: boolean } }
+  | { type: 'goal-state.error'; payload: { message: string } }
   | { type: 'prefs.updated'; payload: Record<string, unknown> }
   | { type: 'system_prompt.info'; payload: WSSystemPromptInfo }
   | { type: 'techstack.job.started'; payload: { jobId: string; kind: 'inventory' | 'analyze' } }

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { AppStatusRegion } from './app-status-region.js';
 import {
   buildSidebarOpenFlags,
@@ -9,6 +9,7 @@ import {
 import type { AppViewProps } from './app-view-contract.js';
 import { AppViewPickers } from './app-view-pickers.js';
 import { AppViewSidebar } from './app-view-sidebar.js';
+import { ChatSearchBar } from './components/chat-search-bar.js';
 import { DEFAULT_INPUT_PROMPT, Input } from './components/input.js';
 import { InspectOverlay, resolveInspectOverlayContent } from './components/inspect-overlay.js';
 import {
@@ -26,6 +27,7 @@ import {
 } from './hooks/use-sidebar-panel-data.js';
 import { useTerminalSize } from './hooks/use-terminal-size.js';
 import { Box } from './ink.js';
+import { setMotionStatic } from './motion.js';
 import { estimateSidebarMaxScroll } from './reducers/workspace-panels.js';
 import { theme } from './theme.js';
 import type { ToolResultViewMode } from './tool-result-view-mode.js';
@@ -57,6 +59,22 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
   const { workingTimeMs } = activity;
   const { autonomyLive } = environment;
   const { inputHint, composerStatus, composerAnimationStyle, inputHeight, hideInput } = viewState;
+  // Leaves without a style prop (tool stream spinner, composer activity icon)
+  // follow the effective style through the motion store.
+  useEffect(() => {
+    setMotionStatic(composerAnimationStyle === 'static');
+  }, [composerAnimationStyle]);
+  const showModelReasoning = state.settingsPicker.open
+    ? state.settingsPicker.showModelReasoning
+    : (liveSettings?.showModelReasoning ?? true);
+  const chatSearch = state.chatSearch;
+  const chatSearchJumpSeq = chatSearch?.jumpSeq ?? 0;
+  const chatSearchEntryId = chatSearch?.selectedEntryId ?? null;
+  // Each jumpSeq bump is one explicit "show me this match" request; the
+  // selection alone must not re-scroll while the user pages around.
+  useEffect(() => {
+    if (chatSearchEntryId !== null) historyScrollRef.current?.scrollToEntry(chatSearchEntryId);
+  }, [chatSearchJumpSeq]);
   const blockingPrompt =
     state.confirmQueue.length > 0 ||
     state.shellCommandWarning != null ||
@@ -210,11 +228,8 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                   nextStepsAutoSubmitDeadlineMs={runtime.nextStepsAutoSubmitDeadlineMs}
                   multiDiffSummaryThreshold={state.settingsPicker.multiDiffSummaryThreshold}
                   todos={liveTodos}
-                  showModelReasoning={
-                    state.settingsPicker.open
-                      ? state.settingsPicker.showModelReasoning
-                      : (liveSettings?.showModelReasoning ?? true)
-                  }
+                  showModelReasoning={showModelReasoning}
+                  markedEntryId={chatSearchEntryId}
                   showSageMemoryInject={
                     state.settingsPicker.open
                       ? state.settingsPicker.showSageMemoryInject
@@ -234,6 +249,14 @@ export function AppView({ host, runtime }: AppViewProps): React.ReactElement {
                 ref={bottomRegionRef}
                 width={mainColumnWidth}
               >
+                {chatSearch && !hideInput ? (
+                  <ChatSearchBar
+                    search={chatSearch}
+                    entries={state.entries}
+                    includeReasoning={showModelReasoning}
+                    width={mainColumnWidth}
+                  />
+                ) : null}
                 <Input
                   prompt={bashMode ? BASH_PROMPT : INPUT_PROMPT}
                   value={state.buffer}

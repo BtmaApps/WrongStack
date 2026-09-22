@@ -1128,15 +1128,26 @@ export const ALL_DESTRUCTIVE_KINDS = [
 /**
  * Compile gate for {@link ALL_DESTRUCTIVE_KINDS}. Resolves to `never` while the
  * list is complete; the moment a kind is added to the union without being
- * listed, this becomes that kind and every `never`-typed use of it errors —
- * naming the offender. Exported so it counts as used.
+ * listed, this becomes that kind and {@link AssertAllKindsListed} fails to
+ * compile — naming the offender. Exported so it counts as used.
  */
 export type UnlistedDestructiveKind = Exclude<
   DestructiveKind,
   (typeof ALL_DESTRUCTIVE_KINDS)[number]
 >;
-const _assertAllKindsListed: UnlistedDestructiveKind[] = [];
-void _assertAllKindsListed;
+
+/**
+ * The guard that actually fires. The previous form,
+ * `const _assertAllKindsListed: UnlistedDestructiveKind[] = []`, was INERT: an
+ * empty array literal is assignable to `X[]` for every `X`, so it compiled with a
+ * kind missing. Probe-verified 2026-09-22 by adding an unlisted kind to the union
+ * — `packages/core` still typechecked cleanly. That kind would then have been
+ * absent from `normalizeYoloConfirmKinds(undefined)`'s default set, i.e. silently
+ * UN-GATED under YOLO: the exact failure this gate exists to prevent. A type
+ * parameter constrained to `never` rejects anything else outright.
+ */
+type AssertNever<T extends never> = T;
+export type AssertAllKindsListed = AssertNever<UnlistedDestructiveKind>;
 
 /** True when `value` is a kind this build knows — for decoding user config. */
 export function isDestructiveKind(value: unknown): value is DestructiveKind {

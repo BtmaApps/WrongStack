@@ -302,7 +302,7 @@ DELIVERABLES:
     expect(result.deliverables).toContain('E2E tests pass');
   });
 
-  it('uses the raw goal as fallback when DELIVERABLES section is missing', async () => {
+  it('extracts fallback deliverables when the model omits DELIVERABLES', async () => {
     const provider = fakeProvider({
       responseText: `REFINED_GOAL:
 Just cleanup.`,
@@ -314,13 +314,11 @@ Just cleanup.`,
     });
 
     expect(result.refinedGoal).toBe('Just cleanup.');
-    expect(result.deliverables).toEqual([]);
+    expect(result.deliverables).toEqual(['Just cleanup.']);
   });
 
   it('falls through tiers when LLM returns unparseable output', async () => {
-    // Tier 1 returns text with no markers → parseRefinement falls back to raw goal
-    // Tier 2 throws → skipped
-    // Tier 3 succeeds
+    // Tier 1 returns text with no markers, so the primary model gets a turn.
     const tier1 = fakeProvider({
       responseText: 'Sure, I can help with that.',
     });
@@ -333,8 +331,6 @@ Just cleanup.`,
       primaryModel: 'claude-opus-4',
     });
 
-    // tier1 returned unparseable → refineGoal returned the raw goal as fallback
-    // which is truthy, so tier1 "succeeds" with the raw goal text
-    expect(result.refinedGoal).toBeDefined();
+    expect(result.refinedGoal).toContain('auth module');
   });
 });

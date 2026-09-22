@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { writeClipboardText } from '../../clipboard.js';
 import {
+  anchorForGroupIndex,
   anchorForTrackCell,
   pageRows,
   type ScrollAnchor,
@@ -47,6 +48,9 @@ interface UseHistoryControllerOptions {
     };
   };
   entriesByIdRef: { current: Map<number, HistoryEntry> };
+  /** Render-group index for every retained entry id, including entries
+   *  folded into a compact tool group. */
+  groupIndexByEntryIdRef?: { current: ReadonlyMap<number, number> } | undefined;
   toolStreamRef: { current: { name: string; text: string; startedAt: number } | null | undefined };
   /** External store for the drag-selection highlight band. The controller
    * publishes selection geometry here so the rail leaf can re-render on
@@ -78,6 +82,7 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
     mountedGroupSpansRef,
     selectionRef,
     entriesByIdRef,
+    groupIndexByEntryIdRef,
     toolStreamRef,
     selectionBandStore,
     setAnchor,
@@ -170,6 +175,14 @@ export function useHistoryController(opts: UseHistoryControllerOptions): {
       },
       scrollToTrackCell: (cell) => {
         applyAnchor(anchorForTrackCell(geometryRef.current, cell));
+      },
+      scrollToEntry: (entryId) => {
+        const index = groupIndexByEntryIdRef?.current.get(entryId);
+        if (index === undefined) return false;
+        const next = anchorForGroupIndex(geometryRef.current, index);
+        if (next === undefined) return false;
+        applyAnchor(next);
+        return true;
       },
       isScrolled: () => effectiveAnchorRef.current !== null,
       hasCopyTargetAt: (row, col) =>

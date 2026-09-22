@@ -4,7 +4,7 @@ import type { PhaseGraph } from './types.js';
 export function normalizePhaseGraphForResume(graph: PhaseGraph): void {
   graph.activePhaseIds = [];
   for (const phase of graph.phases.values()) {
-    if (phase.status === 'running') {
+    if (phase.status === 'running' || phase.status === 'paused') {
       phase.status = 'pending';
       phase.updatedAt = Date.now();
     }

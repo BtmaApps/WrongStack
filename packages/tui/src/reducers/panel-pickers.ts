@@ -14,7 +14,7 @@ import {
   navigableFields,
   nextDensity,
   STATUSLINE_FIELD_COUNT,
-} from '../components/statusline-picker.js';
+} from '../components/statusline-picker-model.js';
 import { closePanels } from './helpers.js';
 
 const panelPickerActionTypes = [

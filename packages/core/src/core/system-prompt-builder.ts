@@ -151,6 +151,14 @@ export interface DefaultSystemPromptBuilderOptions {
    */
   contributors?: readonly SystemPromptContributor[] | undefined;
   /**
+   * Operator-supplied text appended to the host prompt for this process
+   * (`--append-system-prompt` / `--append-system-prompt-file`). Fixed for the
+   * session, so it sits in the stable `session` region where it stays inside
+   * the provider's cached prefix. Subagents do not receive it: they run a
+   * narrow task under their own prompt.
+   */
+  appendedInstructions?: string | undefined;
+  /**
    * Token-saving mode tier. Controls how aggressively the system prompt is
    * compacted: skill bodies are omitted/trimmed, tool hints are shortened,
    * and optional guidance sections (delegation, mailbox, context management)
@@ -409,6 +417,12 @@ export class DefaultSystemPromptBuilder implements SystemPromptBuilder {
         'environment',
       ),
     ];
+    const appended = this.opts.appendedInstructions?.trim();
+    if (appended && !ctx.subagent) {
+      // No cache breakpoint of its own: it still rides inside the prefix cached
+      // by later breakpoints, without spending one of the provider's few slots.
+      session.push(tagBlock({ type: 'text', text: appended }, 'identity'));
+    }
     const volatile: TextBlock[] = [];
 
     if (layer4.trim()) {

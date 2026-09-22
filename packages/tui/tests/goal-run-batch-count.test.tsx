@@ -92,7 +92,7 @@ describe('goal run task counting', () => {
       await until(() => (phaseView(captured)?.activeTasks ?? []).length === 2, 'both tasks active');
 
       // Same-tick pair, exactly as the orchestrator's allSettled loop emits
-      // them (DEFAULT_TASK_CONCURRENCY = 2).
+      // them when task concurrency is explicitly raised above the safe default.
       h('phase.taskCompleted', { phaseId: 'p1', taskId: 't1', taskTitle: 'T1' });
       h('phase.taskCompleted', { phaseId: 'p1', taskId: 't2', taskTitle: 'T2' });
 
@@ -136,6 +136,81 @@ describe('goal run task counting', () => {
       );
 
       expect(phaseView(captured)?.completedTasks).toBe(2);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('accepts the Core autonomous.tick string-id payload without losing running phases', async () => {
+    const captured: Captured = {};
+    const view = mountBridge(captured);
+    try {
+      await until(() => captured.handler !== undefined, 'subscribeGoal handler captured');
+      const h = captured.handler as GoalHandler;
+      h('phase.started', {
+        phaseId: 'p1',
+        name: 'Alpha',
+        completedTasks: 0,
+        totalTasks: 2,
+      });
+      await until(() => phaseView(captured) !== undefined, 'phase p1 registered');
+      h('autonomous.tick', { activePhases: ['p1'], queuedPhases: [] });
+      await until(
+        () => captured.stateRef?.current.goalRun?.runningPhaseIds[0] === 'p1',
+        'running phase id applied',
+      );
+      expect(captured.stateRef?.current.goalRun?.runningPhaseIds).toEqual(['p1']);
+      expect(phaseView(captured)?.totalTasks).toBe(2);
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('preserves phase identity and counters across statusChange and completion', async () => {
+    const captured: Captured = {};
+    const view = mountBridge(captured);
+    try {
+      await until(() => captured.handler !== undefined, 'subscribeGoal handler captured');
+      const h = captured.handler as GoalHandler;
+      h('phase.started', {
+        phaseId: 'p1',
+        name: 'Alpha',
+        completedTasks: 1,
+        totalTasks: 3,
+      });
+      await until(() => phaseView(captured)?.totalTasks === 3, 'phase counts registered');
+      h('phase.statusChange', { phaseId: 'p1', from: 'running', to: 'paused' });
+      await until(() => phaseView(captured)?.status === 'paused', 'phase paused');
+      h('phase.completed', { phaseId: 'p1', name: 'Alpha', durationMs: 10 });
+      await until(() => phaseView(captured)?.status === 'completed', 'phase completed');
+      expect(phaseView(captured)).toMatchObject({
+        name: 'Alpha',
+        completedTasks: 1,
+        totalTasks: 3,
+      });
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('keeps terminal goal details visible after graph completion', async () => {
+    const captured: Captured = {};
+    const view = mountBridge(captured);
+    try {
+      await until(() => captured.handler !== undefined, 'subscribeGoal handler captured');
+      const h = captured.handler as GoalHandler;
+      h('phase.started', {
+        phaseId: 'p1',
+        name: 'Alpha',
+        completedTasks: 0,
+        totalTasks: 1,
+      });
+      await until(() => phaseView(captured) !== undefined, 'phase p1 registered');
+      h('phase.completed', { phaseId: 'p1', name: 'Alpha', durationMs: 10 });
+      h('graph.completed', { graphId: 'g1', durationMs: 10 });
+      await until(() => phaseView(captured)?.status === 'completed', 'terminal state retained');
+      expect(captured.stateRef?.current.goalRun).not.toBeNull();
+      expect(captured.stateRef?.current.goalRun?.runningPhaseIds).toEqual([]);
     } finally {
       view.unmount();
     }

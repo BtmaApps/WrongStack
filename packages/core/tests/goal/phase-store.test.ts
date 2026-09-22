@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import * as os from 'node:os';
-import { PhaseStore } from '../../src/goal/phase-store.js';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PhaseGraphBuilder } from '../../src/goal/phase-graph-builder.js';
+import { GoalRunLeaseBusyError, PhaseStore } from '../../src/goal/phase-store.js';
 
 describe('PhaseStore', () => {
   let tmpDir: string;
@@ -21,6 +21,9 @@ describe('PhaseStore', () => {
   it('should save and load a phase graph', async () => {
     const builder = new PhaseGraphBuilder({
       title: 'Store Test',
+      multiBoard: true,
+      verifyTasks: true,
+      chimeraReview: true,
       phases: [
         {
           name: 'Phase A',
@@ -40,6 +43,9 @@ describe('PhaseStore', () => {
     });
 
     const graph = await builder.build();
+    graph.worktrees = true;
+    graph.runBase = { branch: 'main', sha: 'abc123' };
+    graph.finalVerification = { status: 'passed', checkedAt: 123 };
     await store.save(graph);
 
     const loaded = await store.load(graph.id);
@@ -47,6 +53,12 @@ describe('PhaseStore', () => {
     expect(loaded!.title).toBe('Store Test');
     expect(loaded!.phases.size).toBe(2);
     expect(loaded!.autonomous).toBe(true);
+    expect(loaded!.multiBoard).toBe(true);
+    expect(loaded!.verifyTasks).toBe(true);
+    expect(loaded!.chimeraReview).toBe(true);
+    expect(loaded!.worktrees).toBe(true);
+    expect(loaded!.runBase).toEqual({ branch: 'main', sha: 'abc123' });
+    expect(loaded!.finalVerification).toEqual({ status: 'passed', checkedAt: 123 });
   });
 
   it('should list saved graphs', async () => {
@@ -69,6 +81,28 @@ describe('PhaseStore', () => {
     const list = await store.list();
     expect(list.length).toBeGreaterThanOrEqual(1);
     expect(list.some((g) => g.title === 'List Test')).toBe(true);
+  });
+
+  it('reports failed graphs as failed in the saved-run list', async () => {
+    const graph = await new PhaseGraphBuilder({
+      title: 'Failed Test',
+      phases: [
+        {
+          name: 'P1',
+          description: 'P1',
+          priority: 'high',
+          estimateHours: 1,
+          parallelizable: false,
+        },
+      ],
+    }).build();
+    const phase = graph.phases.values().next().value;
+    if (!phase) throw new Error('expected phase');
+    phase.status = 'failed';
+    graph.failedPhaseIds.push(phase.id);
+    await store.save(graph);
+
+    expect((await store.list()).find((entry) => entry.id === graph.id)?.status).toBe('failed');
   });
 
   it('should delete a graph', async () => {
@@ -96,6 +130,28 @@ describe('PhaseStore', () => {
   it('should return null for non-existent graph', async () => {
     const loaded = await store.load('non-existent-id');
     expect(loaded).toBeNull();
+  });
+
+  it('allows only one active run lease and releases it idempotently', async () => {
+    const release = await store.acquireRunLease('cli:test');
+    await expect(store.acquireRunLease('webui:test')).rejects.toBeInstanceOf(GoalRunLeaseBusyError);
+    await release();
+    await release();
+    const releaseNext = await store.acquireRunLease('webui:test');
+    await releaseNext();
+  });
+
+  it('reclaims a lease left by a crashed process', async () => {
+    await fs.promises.writeFile(
+      path.join(tmpDir, '.active-run.lock'),
+      JSON.stringify({
+        ownerId: 'crashed',
+        pid: 2_147_483_647,
+        acquiredAt: new Date(0).toISOString(),
+      }),
+    );
+    const release = await store.acquireRunLease('replacement');
+    await release();
   });
 
   it('migrates legacy goal.json directory checkpoints into autophase', async () => {

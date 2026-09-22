@@ -120,7 +120,7 @@ export function GoalPanel({
       accent={theme.brand}
       icon={glyphs.goal}
       title="GOAL"
-      kicker={size.columns >= 90 ? 'mission control' : undefined}
+      kicker="mission control"
       right={
         <Text>
           <Text color={stateColor} bold>

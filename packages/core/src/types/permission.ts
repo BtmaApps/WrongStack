@@ -41,6 +41,13 @@ export interface PermissionDecision {
     | 'directory_rules';
   /** Risk tier of the tool, if classified. */
   riskTier?: 'safe' | 'standard' | 'destructive' | undefined;
+  /**
+   * The `auto` came from a tool the operator named with `--allowed-tools` at
+   * launch. Unlike a remembered trust pattern it is a deliberate, per-process
+   * decision that no repo can plant, so the executor's dangerous-capability
+   * confirm does not re-prompt for it (destructive calls still confirm).
+   */
+  launchGrant?: true | undefined;
 }
 
 /**

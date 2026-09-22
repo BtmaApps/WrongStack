@@ -714,7 +714,20 @@ describe('ACPProtocolHandler', () => {
       await new Promise((r) => setImmediate(r));
       handler.close();
       // The pending turn should resolve because the runTurn's signal fires.
-      await turnDone;
+      // Resolves (handleMessage returns a boolean) rather than hanging.
+      await expect(turnDone).resolves.toBeDefined();
+
+      // The title's SECOND half went unverified: nothing checked that the
+      // session state was cleared. After close, the id must no longer resolve
+      // to a live session — otherwise a closed handler keeps serving it.
+      transport.sent.length = 0;
+      await handler.handleMessage({
+        id: 4,
+        method: 'session/set_mode',
+        params: { sessionId, modeId: 'bogus' },
+      });
+      const resp = transport.sent[0] as { error?: { code: number } };
+      expect(resp.error?.code).toBe(-32602);
     });
   });
 
@@ -1407,7 +1420,14 @@ describe('ACPProtocolHandler', () => {
           params: { sessionId, prompt: [] },
         });
         await vi.advanceTimersByTimeAsync(60_000);
-        await timedOut;
+        // The TIMEOUT half: the turn must settle rather than wait forever on a
+        // permission reply the client never sends.
+        await expect(timedOut).resolves.toBeDefined();
+        // The server-initiated permission request did go out first, so the
+        // timeout was reached through the real path and not skipped.
+        expect(
+          sent.some((m) => (m as { method?: string }).method === 'session/request_permission'),
+        ).toBe(true);
 
         const pending = handler.handleMessage({
           id: 4,
@@ -1416,9 +1436,16 @@ describe('ACPProtocolHandler', () => {
         });
         await vi.advanceTimersByTimeAsync(0);
         handler.close();
-        await pending;
-        onMsg?.({ id: 42, result: {} });
-        onMsg?.({ id: 'missing', result: {} });
+        // The CLOSES-PENDING half: close() settles a request still in flight.
+        await expect(pending).resolves.toBeDefined();
+
+        // A reply arriving after close, and one for an id that was never issued,
+        // must both be ignored rather than throw — the test drove these two
+        // lines and checked neither.
+        expect(() => {
+          onMsg?.({ id: 42, result: {} });
+          onMsg?.({ id: 'missing', result: {} });
+        }).not.toThrow();
       } finally {
         vi.useRealTimers();
       }

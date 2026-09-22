@@ -89,6 +89,29 @@ describe('parseArgs', () => {
     });
   });
 
+  it('expands -c to a boolean --continue that keeps the following prompt', () => {
+    expect(parseArgs(['-c', 'next step'])).toEqual({
+      flags: { continue: true },
+      positional: ['next step'],
+    });
+    expect(parseArgs(['--continue', 'next step'])).toEqual({
+      flags: { continue: true },
+      positional: ['next step'],
+    });
+  });
+
+  it('expands -r to --resume, with or without a session id', () => {
+    expect(parseArgs(['-r', 'sess1'])).toEqual({ flags: { resume: 'sess1' }, positional: [] });
+    expect(parseArgs(['-r'])).toEqual({ flags: { resume: true }, positional: [] });
+  });
+
+  it('keeps the task after --record (a boolean the replay wiring reads as === true)', () => {
+    expect(parseArgs(['--record', 'fix it'])).toEqual({
+      flags: { record: true },
+      positional: ['fix it'],
+    });
+  });
+
   it('treats non-boolean flag at end of argv as true', () => {
     const r = parseArgs(['--label']);
     expect(r.flags.label).toBe(true);

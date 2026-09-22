@@ -97,6 +97,19 @@ export function scrollAnchorBy(
   return anchorAtTopRow(geometry, anchorTopRow(geometry, current) - deltaUp);
 }
 
+/**
+ * Anchor that puts the start of render group `index` at the viewport top.
+ * Groups too close to the bottom to reach the top re-pin (`null`), which
+ * still shows them. Out-of-range indexes return `undefined` (no move).
+ */
+export function anchorForGroupIndex(
+  geometry: ScrollGeometry,
+  index: number,
+): ScrollAnchor | null | undefined {
+  if (!Number.isInteger(index) || index < 0 || index >= geometry.groupCount) return undefined;
+  return anchorAtTopRow(geometry, geometry.cache.accumulatedHeight(index));
+}
+
 /** Anchor for the very top of the transcript (or `null` when it all fits). */
 export function scrollAnchorToTop(geometry: ScrollGeometry): ScrollAnchor | null {
   return anchorAtTopRow(geometry, 0);

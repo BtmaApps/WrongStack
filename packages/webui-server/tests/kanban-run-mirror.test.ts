@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 vi.mock('ws', () => {
   const MockWebSocket: any = vi.fn();
   MockWebSocket.OPEN = 1;
@@ -142,7 +143,7 @@ describe('createKanbanRunMirror', () => {
     vi.useRealTimers();
     const mirror = createKanbanRunMirror(makeDeps());
     mirror.dispose();
-    mirror.dispose();
+    expect(() => mirror.dispose()).not.toThrow();
   });
 
   it('onGoalState with phases but no tasks does not throw', () => {

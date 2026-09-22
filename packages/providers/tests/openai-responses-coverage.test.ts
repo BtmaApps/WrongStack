@@ -226,9 +226,50 @@ describe('OpenAIResponsesProvider', () => {
       apiKey: 'k',
       baseUrl: 'https://api.openai.com/v1',
     });
-    const result = (p as any).parseStream(null, 'gpt-4');
-    // Should be an async iterable
-    expect(result[Symbol.asyncIterator]).toBeDefined();
+    // "Is an async iterable" held for ANY async generator — including a parser
+    // that dropped the provider id or the fallback model. Drive a real stream.
+    const sse = (frames: unknown[]) =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(frames.map((f) => `data: ${JSON.stringify(f)}\n\n`).join('')),
+          );
+          controller.close();
+        },
+      });
+    const events: Array<Record<string, unknown>> = [];
+    for await (const ev of (p as any).parseStream(
+      sse([
+        { type: 'response.output_text.delta', delta: 'hel' },
+        { type: 'response.output_text.delta', delta: 'lo' },
+        { type: 'response.completed', response: { status: 'completed', usage: {} } },
+      ]),
+      'gpt-4',
+    )) {
+      events.push(ev);
+    }
+    const text = events
+      .filter((e) => e.type === 'text_delta')
+      .map((e) => e.text)
+      .join('');
+    expect(text).toBe('hello');
+    expect(events.at(-1)).toMatchObject({ type: 'message_stop', stopReason: 'end_turn' });
+
+    // The provider id is threaded through: a failed stream is attributed to it.
+    const failing = async () => {
+      for await (const _ of (p as any).parseStream(
+        sse([
+          {
+            type: 'response.failed',
+            response: { status: 'failed', error: { code: 'server_error', message: 'boom' } },
+          },
+        ]),
+        'gpt-4',
+      )) {
+        // drain
+      }
+    };
+    await expect(failing()).rejects.toMatchObject({ providerId: 'my-provider' });
   });
 
   it('translateError creates ProviderError with the provider id', async () => {

@@ -167,52 +167,61 @@ function useGoalEvents(
       if (!isCurrentSession(sessionId)) return;
       switch (event) {
         case 'phase.started': {
-          const p = payload as { phaseId: string; name: string };
+          const p = payload as {
+            phaseId: string;
+            name: string;
+            completedTasks: number;
+            totalTasks: number;
+          };
           dispatch({
             type: 'goalRunPhaseUpdate',
             phaseId: p.phaseId,
             name: p.name,
             status: 'running',
-            completedTasks: 0,
-            totalTasks: 0,
+            completedTasks: Number.isInteger(p.completedTasks) ? p.completedTasks : 0,
+            totalTasks: Number.isInteger(p.totalTasks) ? p.totalTasks : 0,
             startedAt: Date.now(),
           });
           break;
         }
         case 'phase.completed': {
           const p = payload as { phaseId: string; name: string };
+          const current = stateRef.current.goalRun?.phases[p.phaseId];
           dispatch({
             type: 'goalRunPhaseUpdate',
             phaseId: p.phaseId,
             name: p.name,
             status: 'completed',
-            completedTasks: 0,
-            totalTasks: 0,
+            completedTasks: current?.completedTasks ?? 0,
+            totalTasks: current?.totalTasks ?? 0,
           });
           break;
         }
         case 'phase.failed': {
           const p = payload as { phaseId: string; name: string };
+          const current = stateRef.current.goalRun?.phases[p.phaseId];
           dispatch({
             type: 'goalRunPhaseUpdate',
             phaseId: p.phaseId,
             name: p.name,
             status: 'failed',
-            completedTasks: 0,
-            totalTasks: 0,
+            completedTasks: current?.completedTasks ?? 0,
+            totalTasks: current?.totalTasks ?? 0,
           });
           break;
         }
         case 'phase.statusChange': {
-          const p = payload as { phaseId: string; name: string; to: string };
+          const p = payload as { phaseId: string; to: string };
+          const current = stateRef.current.goalRun?.phases[p.phaseId];
+          if (!current) break;
           const status = p.to === 'running' ? 'running' : p.to;
           dispatch({
             type: 'goalRunPhaseUpdate',
             phaseId: p.phaseId,
-            name: p.name,
+            name: current.name,
             status,
-            completedTasks: 0,
-            totalTasks: 0,
+            completedTasks: current.completedTasks,
+            totalTasks: current.totalTasks,
           });
           break;
         }
@@ -270,9 +279,9 @@ function useGoalEvents(
         }
         case 'autonomous.tick': {
           const p = payload as {
-            activePhases: Array<{ id: string }>;
+            activePhases: string[];
           };
-          dispatch({ type: 'goalRunRunningPhases', phaseIds: p.activePhases.map((ph) => ph.id) });
+          dispatch({ type: 'goalRunRunningPhases', phaseIds: p.activePhases });
           const goalRun = stateRef.current.goalRun;
           if (goalRun) {
             const firstPhase = goalRun.phases[Object.keys(goalRun.phases)[0] ?? ''];
@@ -286,7 +295,9 @@ function useGoalEvents(
         }
         case 'graph.completed':
         case 'graph.failed': {
-          dispatch({ type: 'goalRunReset' });
+          // Keep the terminal phase snapshot visible for inspection. A new
+          // goalRunInit or an explicit session clear replaces it.
+          dispatch({ type: 'goalRunRunningPhases', phaseIds: [] });
           break;
         }
         case 'sdd.board.snapshot': {

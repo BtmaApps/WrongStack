@@ -6,7 +6,10 @@ import type { SystemPromptBuilder } from '@wrongstack/core/types';
 import { writeErr } from '@wrongstack/core/utils';
 import { setProxyTransitionLogger } from '@wrongstack/core/wiring/proxy-rewrite';
 import { wireEventWiring } from './boot/event-wiring.js';
+import { isRestrictedMode, withRestrictedTools } from './boot/restricted-mode.js';
+import { isSafeMode } from './boot/safe-mode.js';
 import { resolveModeAndCapabilities } from './boot/system-prompt.js';
+import { resolveToolRestriction } from './boot/tool-restriction-flags.js';
 import type { CliContext } from './cli-context.js';
 import { launchEternalFromFlag } from './cli-eternal-flag.js';
 import { loadOnlineAgentsForPrompt } from './cli-main-helpers.js';
@@ -134,6 +137,11 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
   } = { current: 'off' };
 
   const { toolRegistry } = await setupCliPromptAndTools({
+    appendedInstructions:
+      typeof flags['append-system-prompt'] === 'string' ? flags['append-system-prompt'] : undefined,
+    toolRestriction: withRestrictedTools(resolveToolRestriction(flags), isRestrictedMode(flags)),
+    safeMode: isSafeMode(flags),
+    warn: (message) => renderer.writeWarning(message),
     container,
     modeStore,
     memoryStore,
@@ -492,7 +500,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     modelsRegistry,
     promptBuilder,
     tokenCounter,
-    skillLoader: config.features.skills ? skillLoader : undefined,
+    skillLoader: config.features.skills && !isSafeMode(flags) ? skillLoader : undefined,
     projectRoot,
     cwd,
     wpaths,
@@ -747,7 +755,7 @@ export async function runInteractive(cliCtx: CliContext): Promise<number> {
     profileConfigPath,
     pipelines,
     memoryStore,
-    skillLoader: config.features.skills ? skillLoader : undefined,
+    skillLoader: config.features.skills && !isSafeMode(flags) ? skillLoader : undefined,
     logger,
     events,
     agent,

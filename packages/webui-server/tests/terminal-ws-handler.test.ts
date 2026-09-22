@@ -271,26 +271,28 @@ describe('TerminalWebSocketHandler', () => {
     );
   });
 
-  it('terminal.close uses taskkill on Windows when the pty pid is available', async () => {
-    if (process.platform !== 'win32') return;
-    const killProcessTree = vi.fn();
-    const h = new TerminalWebSocketHandler(
-      () => '/c',
-      logger,
-      loadFakeNodePty,
-      killProcessTree,
-      allowBoundary,
-    );
-    const ws = makeWs();
-    h.addClient(ws);
-    await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
-    if (spawned[0]) spawned[0].pid = 4242;
-    await h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } });
-    expect(killProcessTree).toHaveBeenCalledWith(4242);
-    expect(spawned[0]?.kill).not.toHaveBeenCalled();
-    expect(spawned[0]?.write).toHaveBeenCalledWith('\x03');
-    expect(spawned[0]?.write).toHaveBeenCalledWith('exit\r');
-  });
+  it.skipIf(process.platform !== 'win32')(
+    'terminal.close uses taskkill on Windows when the pty pid is available',
+    async () => {
+      const killProcessTree = vi.fn();
+      const h = new TerminalWebSocketHandler(
+        () => '/c',
+        logger,
+        loadFakeNodePty,
+        killProcessTree,
+        allowBoundary,
+      );
+      const ws = makeWs();
+      h.addClient(ws);
+      await h.handleMessage(ws, { type: 'terminal.create', payload: { id: 't1' } });
+      if (spawned[0]) spawned[0].pid = 4242;
+      await h.handleMessage(ws, { type: 'terminal.close', payload: { id: 't1' } });
+      expect(killProcessTree).toHaveBeenCalledWith(4242);
+      expect(spawned[0]?.kill).not.toHaveBeenCalled();
+      expect(spawned[0]?.write).toHaveBeenCalledWith('\x03');
+      expect(spawned[0]?.write).toHaveBeenCalledWith('exit\r');
+    },
+  );
 
   it('pty exit notifies the client', async () => {
     const h = new TerminalWebSocketHandler(

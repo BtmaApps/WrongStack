@@ -1,7 +1,7 @@
 import type { Action } from '../app-action-type.js';
 import { coercePanelPositionMap } from '../app-settings-type.js';
 import type { State } from '../app-state.js';
-import { SETTINGS_FIELD_COUNT } from '../components/settings-picker.js';
+import { SETTINGS_FIELD_COUNT } from '../components/settings-picker-model.js';
 import { closePanels } from './helpers.js';
 
 const settingsPanelActionTypes = [

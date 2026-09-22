@@ -249,6 +249,10 @@ describe('bundled instruction tool-reference integrity', () => {
       }
     }
 
+    // A filesystem walk: if the instructions root ever moves, `files` is empty
+    // and every per-file assertion below is skipped while the test stays green.
+    expect(files.length).toBeGreaterThan(0);
+
     const known = new Set<string>(RUNTIME_CAPABILITY_MANIFEST.flatMap((entry) => entry.tools));
     for (const file of files) {
       const raw = await fs.readFile(file, 'utf8');

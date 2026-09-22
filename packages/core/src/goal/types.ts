@@ -80,6 +80,18 @@ export interface PhaseGraph {
   verifyTasks?: boolean | undefined;
   /** Enable chimera auto-review for this run. */
   chimeraReview?: boolean | undefined;
+  /** Whether this run used phase worktrees; persisted for safe resume. */
+  worktrees?: boolean | undefined;
+  /** Base tip before the run's first merge, retained across process restart. */
+  runBase?: { branch: string; sha: string } | undefined;
+  /** Verification of the fully merged base tree after every phase integrates. */
+  finalVerification?:
+    | {
+        status: 'passed' | 'failed';
+        checkedAt: number;
+        error?: string | undefined;
+      }
+    | undefined;
   createdAt: number;
   updatedAt: number;
   startedAt?: number | undefined;
@@ -109,7 +121,12 @@ export interface PhaseProgress {
 
 export interface PhaseEventMap {
   'phase.statusChange': { phaseId: string; from: PhaseStatus; to: PhaseStatus };
-  'phase.started': { phaseId: string; name: string };
+  'phase.started': {
+    phaseId: string;
+    name: string;
+    totalTasks: number;
+    completedTasks: number;
+  };
   'phase.completed': { phaseId: string; name: string; durationMs: number };
   'phase.failed': { phaseId: string; name: string; error?: string | undefined };
   /** A task began executing — carries the worker agent so boards can show who is on it. */
@@ -149,6 +166,8 @@ export interface PhaseEventMap {
   'phase.conflictResolved': { phaseId: string; name: string };
   'graph.completed': { graphId: string; durationMs: number };
   'graph.failed': { graphId: string; failedPhaseId: string; error: string };
+  'graph.verifying': { graphId: string };
+  'graph.verifyFailed': { graphId: string; error: string };
   'autonomous.tick': { activePhases: string[]; queuedPhases: string[] };
   'agent.assigned': { phaseId: string; agentId: string };
   'agent.released': { phaseId: string; agentId: string };
@@ -193,6 +212,8 @@ export const PHASE_EVENT_NAMES: readonly PhaseEventName[] = [
   'phase.taskAdded',
   'graph.completed',
   'graph.failed',
+  'graph.verifying',
+  'graph.verifyFailed',
   'autonomous.tick',
   'agent.assigned',
   'agent.released',
@@ -257,6 +278,12 @@ export interface PhaseExecutionContext {
   onPhaseComplete?: ((phase: PhaseNode) => void) | undefined;
   /** Called when a phase fails. */
   onPhaseFail?: ((phase: PhaseNode, error: Error) => void) | undefined;
+  /** Called after a task status transition so hosts can durably checkpoint it. */
+  onTaskUpdate?: ((phase: PhaseNode, task: TaskNode) => void) | undefined;
+  /** Verify the fully merged base tree before graph completion is announced. */
+  verifyGoal?:
+    | ((graph: PhaseGraph) => Promise<{ ok: boolean; output?: string | undefined }>)
+    | undefined;
   /** Called on every tick in autonomous mode. */
   onTick?: ((ctx: { activePhases: PhaseNode[]; readyPhases: PhaseNode[] }) => void) | undefined;
 }

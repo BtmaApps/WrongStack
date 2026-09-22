@@ -60,6 +60,11 @@ describe('alibaba-token-plan overlay ↔ core floor parity', () => {
 
   it('every alibaba-token-plan model carries a non-empty description', () => {
     const models = OVERLAY['alibaba-token-plan']?.models ?? {};
+    // The `?? {}` fallback makes the empty case silent BY CONSTRUCTION: if the
+    // overlay key were renamed or failed to load, this loop would run zero times
+    // and the guard would pass having checked no model at all. Pin the
+    // precondition so "every model" means at least one.
+    expect(Object.keys(models).length).toBeGreaterThan(0);
     for (const m of Object.values(models)) {
       expect(m.description, `${m.id} is missing a description`).toBeTruthy();
     }

@@ -59,6 +59,9 @@ export async function runWstack(opts: RunWstackOptions): Promise<RawRun> {
         // windowsHide + no detached: per the repo spawn convention, detached on
         // win32 voids CREATE_NO_WINDOW and pops visible consoles for grandchildren.
         windowsHide: true,
+        // Closed stdin: single-shot mode reads piped stdin as prompt context,
+        // and an open-but-silent pipe would cost every run the first-byte wait.
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
     } catch (err) {
       resolve(

@@ -70,7 +70,14 @@ describe('/memory SAGE commands', () => {
     expect((await cmd.run(`verify ${memory.id}`))?.message).toContain('verified: 1');
     expect((await cmd.run('hygiene'))?.message).toContain('SAGE Hygiene');
     // Memory→symbol, symbol→file, and file→project-root directory.
-    expect((await cmd.run('stats'))?.message).toContain('Graph edges: 3');
+    const stats = (await cmd.run('stats'))?.message ?? '';
+    expect(stats).toContain('Graph edges: 3');
+    // End to end on the real backend: a store holding only active memories
+    // printed "stale undefined; archived undefined; deleted undefined", because
+    // `GROUP BY status` omits empty groups and the partial record was cast to
+    // the complete type. The zero counts are what a user reads.
+    expect(stats).toContain('Total: 1; active 1; stale 0; archived 0; deleted 0.');
+    expect(stats).not.toContain('undefined');
   });
 
   it('remembers with structured flags, then updates and deletes by id', async () => {

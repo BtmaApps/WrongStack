@@ -36,7 +36,7 @@ describe('GoalView', () => {
     const { container } = render(<GoalView onClose={() => {}} />);
 
     expect(sendMock).toHaveBeenCalledWith({ type: 'goal.list' });
-    expect(sendMock).toHaveBeenCalledWith({ type: 'goal.state' });
+    expect(sendMock).toHaveBeenCalledWith({ type: 'goal.status' });
 
     expect(container.querySelector('textarea')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Start Goal/i })).toBeTruthy();
@@ -56,6 +56,7 @@ describe('GoalView', () => {
       payload: expect.objectContaining({
         title: 'Build user auth system',
         autonomous: true,
+        verifyTasks: true,
       }),
     });
 
@@ -115,14 +116,9 @@ describe('GoalView', () => {
     expect(screen.getByRole('heading', { name: 'Setup Database' })).toBeTruthy();
     expect(screen.getByText('Setup PostgreSQL schema and migrations')).toBeTruthy();
 
-    // Controls: autonomous toggle, pause button, stop button
-    const autoBtn = screen.getByRole('button', { name: /Autonomous/i });
-    fireEvent.click(autoBtn);
-    expect(sendMock).toHaveBeenCalledWith({
-      type: 'goal.toggleAutonomous',
-      payload: {},
-    });
-
+    // Controls: pause and stop. The old autonomous toggle was removed because
+    // it only changed a persisted flag and did not alter the live scheduler.
+    expect(screen.queryByRole('button', { name: /Autonomous/i })).toBeNull();
     const pauseBtn = screen.getByRole('button', { name: /Pause/i });
     fireEvent.click(pauseBtn);
     expect(sendMock).toHaveBeenCalledWith({
@@ -166,6 +162,21 @@ describe('GoalView', () => {
     expect(sendMock).toHaveBeenCalledWith({
       type: 'goal.clear',
       payload: {},
+    });
+  });
+
+  it('offers Resume for a stopped saved board', () => {
+    useGoalRunStore.setState({
+      graphId: 'saved-graph',
+      title: 'Stopped Run',
+      status: 'stopped',
+      phases: [{ id: 'p1', name: 'Build', status: 'paused', tasks: [] }] as any,
+    });
+    render(<GoalView onClose={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /Resume/i }));
+    expect(sendMock).toHaveBeenCalledWith({
+      type: 'goal.resume',
+      payload: { graphId: 'saved-graph' },
     });
   });
 

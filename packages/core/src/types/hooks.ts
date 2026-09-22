@@ -56,6 +56,17 @@ export interface HookRegistrationOptions {
    * Default: false (hooks block the tool result).
    */
   background?: boolean | undefined;
+  /**
+   * PostToolUse only: ALSO run when PreToolUse allowed the call but the tool
+   * then never ran — permission denied, the user rejected the prompt, the run
+   * aborted, or the tool threw. The hook sees `toolResult.isError: true` and
+   * the reason as content. For hooks that release what their PreToolUse half
+   * claimed (a file lock); without it a denied write held the lock until TTL
+   * and blocked every other session from that file.
+   *
+   * Default: false — ordinary PostToolUse hooks only see tools that ran.
+   */
+  runWhenToolSkipped?: boolean | undefined;
 }
 
 /** Deadline/cancellation context passed to in-process hooks. */
@@ -188,6 +199,7 @@ interface HookEntryBase {
   stage: PreToolUseStage;
   policy: boolean;
   background: boolean;
+  runWhenToolSkipped?: boolean | undefined;
 }
 
 /** A registered hook entry, discriminated by transport. */

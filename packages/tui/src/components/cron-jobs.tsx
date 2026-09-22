@@ -213,7 +213,7 @@ export function CronJobsMonitor({
       accent={theme.accent}
       icon={glyphs.clock}
       title="CRON JOBS"
-      kicker={size.columns >= 90 ? 'scheduled tasks' : undefined}
+      kicker="scheduled tasks"
       right={
         <Text>
           <Text color={enabledCount > 0 ? theme.success : theme.textMuted} bold>

@@ -46,6 +46,8 @@ import {
   handleGitStage,
   handleGitUnstage,
 } from './git-handlers.js';
+import { handleGoalStateMutation } from './goal-handlers.js';
+import { createGoalRefinerAdapter } from './goal-refiner-adapter.js';
 import type { GoalRouteHandlers } from './goal-routes.js';
 import type { GoalSnapshotRouteHandlers } from './goal-snapshot-routes.js';
 import type { GoalWebSocketHandler } from './goal-ws-handler.js';
@@ -761,6 +763,59 @@ export function createEmbeddedMessageRouter(
   };
   const goalSnapshot: GoalSnapshotRouteHandlers = {
     getSnapshot: async () => broadcastEmbeddedGoalSnapshot(deps.sessionCtx),
+    mutate: (_ws, msg) => {
+      const projectRoot =
+        deps.sessionCtx.opts.projectRoot ?? deps.sessionCtx.opts.agent.ctx.projectRoot;
+      const payload = msg.payload as Record<string, unknown> | undefined;
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
+      const targetAgent = sessionId
+        ? (deps.sessionCtx.peekAgent?.(sessionId) ??
+          (!deps.sessionCtx.peekAgent || opts.agent.ctx.session?.id === sessionId
+            ? opts.agent
+            : undefined))
+        : opts.agent;
+      if (!targetAgent) {
+        deps.sessionCtx.broadcast({
+          type: 'goal-state.error',
+          payload: { message: 'Goal refiner session is unavailable.' },
+        });
+        return;
+      }
+      const { provider, model } = targetAgent.ctx;
+      const config = deps.agentConfigCtx.getConfig?.() ?? deps.prefsCtx.configStore?.get();
+      const activeProviderId = provider?.id ?? config?.provider;
+      const createProvider = (providerId: string) => {
+        if (providerId === activeProviderId && provider) return provider;
+        const providerConfig = config?.providers?.[providerId];
+        if (!providerConfig) return undefined;
+        try {
+          return makeProviderFromConfig(
+            providerId,
+            routeProviderCfgThroughProxy(providerConfig, config?.baseUrl, providerId),
+          );
+        } catch {
+          return undefined;
+        }
+      };
+      return handleGoalStateMutation(
+        projectRoot,
+        msg.type as
+          | 'goal-state.set'
+          | 'goal-state.refine'
+          | 'goal-state.pause'
+          | 'goal-state.resume'
+          | 'goal-state.clear',
+        payload,
+        deps.sessionCtx.broadcast,
+        createGoalRefinerAdapter({
+          config,
+          primaryProvider: provider,
+          primaryModel: model,
+          activeProviderId,
+          createProvider,
+        }),
+      );
+    },
   };
   const goal: GoalRouteHandlers = {
     handleMessage: (ws, msg) => deps.goalHandler.handleMessage(ws, msg),

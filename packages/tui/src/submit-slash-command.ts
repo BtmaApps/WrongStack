@@ -238,7 +238,15 @@ export async function submitSlashCommand({
               ...(modeChanged ? { mouseMode: nextVal } : {}),
               ...(nativeChanged ? { mouseNative: nextNative } : {}),
             }),
-          ).catch(() => {});
+          ).catch((err: unknown) =>
+            dispatch({
+              type: 'addEntry',
+              entry: {
+                kind: 'error',
+                text: `Could not save mouse setting: ${toErrorMessage(err)}`,
+              },
+            }),
+          );
         }
       }
       const effectiveNative = mouseToggle === 'query' ? nativeMouse : nextNative;

@@ -81,13 +81,33 @@ describe('AgentMonitorService', () => {
     expect(() => monitor.stop()).not.toThrow();
   });
 
-  it('is safe to start and stop multiple times', () => {
+  // The `_started` guard exists so a repeat start does not subscribe to FleetBus
+  // twice — a double subscription would record every event twice. This test
+  // asserted nothing, so it passed with the guard removed; the duplication only
+  // shows up in the transcript.
+  it('a second start does not double-subscribe to FleetBus', () => {
     monitor.start();
-    monitor.start(); // second start should be no-op
-    monitor.stop();
-    monitor.stop(); // second stop should be no-op
-    monitor.start(); // restart
-    monitor.stop();
+    monitor.start();
+    monitor.trackSubagent('a1', 'Agent 1');
+
+    fleetBus.emit(makeFleetEvent('a1', 'provider.text_delta', { text: 'once', iteration: 0 }));
+
+    const session = monitor.getSession('a1');
+    // spawn system entry + exactly ONE text entry
+    expect(session!.transcript).toHaveLength(2);
+    expect(session!.transcript[1]!.content).toBe('once');
+  });
+
+  it('is safe to stop and restart', () => {
+    monitor.start();
+    expect(() => {
+      monitor.stop();
+      monitor.stop();
+    }).not.toThrow();
+    expect(() => {
+      monitor.start();
+      monitor.stop();
+    }).not.toThrow();
   });
 
   it('starts without a FleetBus set', () => {

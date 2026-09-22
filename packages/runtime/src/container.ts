@@ -50,6 +50,8 @@ export interface CreateContainerOptions {
   events?: EventBus | undefined;
   permission?: {
     yolo?: boolean | undefined;
+    /** `--allowed-tools`: in-memory tool-scope pre-approvals (see DefaultPermissionPolicy). */
+    launchAllowedTools?: readonly string[] | undefined;
     promptDelegate?: (
       tool: Tool,
       input: unknown,
@@ -260,6 +262,9 @@ export function createDefaultContainer(opts: CreateContainerOptions): Container 
     };
     if (opts.permission?.promptDelegate !== undefined) {
       policyOptions.promptDelegate = opts.permission.promptDelegate;
+    }
+    if (opts.permission?.launchAllowedTools !== undefined) {
+      policyOptions.launchAllowedTools = opts.permission.launchAllowedTools;
     }
     return new DirectoryPermissionPolicy(new DefaultPermissionPolicy(policyOptions), {
       policy: directoryPolicy,

@@ -195,7 +195,7 @@ describe('goal run store — hydrateFromServer', () => {
     const send = vi.fn();
     useGoalRunStore.getState().hydrateFromServer(send);
     expect(send).toHaveBeenNthCalledWith(1, { type: 'goal.list' });
-    expect(send).toHaveBeenNthCalledWith(2, { type: 'goal.state' });
+    expect(send).toHaveBeenNthCalledWith(2, { type: 'goal.status' });
     expect(send).toHaveBeenCalledTimes(2);
   });
 
@@ -204,6 +204,6 @@ describe('goal run store — hydrateFromServer', () => {
     useGoalRunStore.getState().hydrateFromServer((m) => {
       order.push((m as { type: string }).type);
     });
-    expect(order).toEqual(['goal.list', 'goal.state']);
+    expect(order).toEqual(['goal.list', 'goal.status']);
   });
 });

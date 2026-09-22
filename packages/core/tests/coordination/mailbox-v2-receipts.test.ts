@@ -6,20 +6,27 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
-import type { EventBus } from '../../src/kernel/events.js';
-import type {
-  MailboxMessage,
-  MailboxMessageProjection,
-} from '../../src/coordination/mailbox-types.js';
+import { parseMailboxFile } from '../../src/coordination/mailbox-parse-state.js';
 import {
   buildReceiptRecordV2,
   extractV2Receipts,
   materializeMessages,
   serializeReceiptRecordV2,
 } from '../../src/coordination/mailbox-receipt-folding.js';
-import { parseMailboxFile } from '../../src/coordination/mailbox-parse-state.js';
+import type {
+  MailboxMessage,
+  MailboxMessageProjection,
+} from '../../src/coordination/mailbox-types.js';
 import { isMailboxReceiptRecordV2 } from '../../src/coordination/mailbox-types.js';
+import { SqliteMailbox } from '../../src/coordination/sqlite-mailbox.js';
+import type { EventBus } from '../../src/kernel/events.js';
+
+/**
+ * Receipt timestamps are ISO-8601 strings. Asserted as such rather than with
+ * `toBeDefined()`, which also passes for `null` — a value a projection could
+ * use to mean "not read" / "not completed".
+ */
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
 
 let dir: string;
 let mb: SqliteMailbox;
@@ -566,8 +573,8 @@ describe('SqliteMailbox v2 receipt integration', () => {
 
     const projection = await projectionOf(mb, msg.id);
     expect(projection?.recipientState['b']).toMatchObject({ actorId: 'b' });
-    expect(projection?.recipientState['b']?.readAt).toBeDefined();
-    expect(projection?.recipientState['b']?.completedAt).toBeDefined();
+    expect(projection?.recipientState['b']?.readAt).toMatch(ISO_TIMESTAMP);
+    expect(projection?.recipientState['b']?.completedAt).toMatch(ISO_TIMESTAMP);
   });
 
   it('keeps actor completion and outcome off the message for fan-out messages', async () => {
@@ -588,11 +595,11 @@ describe('SqliteMailbox v2 receipt integration', () => {
 
     const projection = await projectionOf(mb, msg.id);
     // Aggregate view: one actor finishing a fan-out completes nothing globally.
-    expect(projection?.readBy['actor-a']).toBeDefined();
+    expect(projection?.readBy['actor-a']).toMatch(ISO_TIMESTAMP);
     expect(projection?.completed).toBe(false);
     expect(projection?.completedBy).toBeUndefined();
     // Per-actor view: that actor's completion and outcome are recorded.
-    expect(projection?.recipientState['actor-a']?.completedAt).toBeDefined();
+    expect(projection?.recipientState['actor-a']?.completedAt).toMatch(ISO_TIMESTAMP);
     expect(projection?.recipientState['actor-a']?.outcome).toBe('handled by actor a');
   });
 
@@ -634,8 +641,10 @@ describe('SqliteMailbox v2 receipt integration', () => {
     expect(all).toHaveLength(2);
     expect(all.map((m) => m.subject)).toContain('s');
     expect(all.map((m) => m.subject)).toContain('s2');
-    expect((await projectionOf(mb3, msg.id))?.recipientState['b']?.readAt).toBeDefined();
-    expect((await projectionOf(mb3, msg2.id))?.recipientState['b']?.completedAt).toBeDefined();
+    expect((await projectionOf(mb3, msg.id))?.recipientState['b']?.readAt).toMatch(ISO_TIMESTAMP);
+    expect((await projectionOf(mb3, msg2.id))?.recipientState['b']?.completedAt).toMatch(
+      ISO_TIMESTAMP,
+    );
   });
 
   it('imports v1 acks and v2 receipt lines from a legacy JSONL mailbox', async () => {
@@ -811,8 +820,8 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
     expect(forAAfterReopen.map((message) => message.id)).not.toContain(msg.id);
 
     const persisted = await projectionOf(reopened, msg.id);
-    expect(persisted?.recipientState['actor-a']?.completedAt).toBeDefined();
-    expect(persisted?.recipientState['actor-b']?.completedAt).toBeDefined();
+    expect(persisted?.recipientState['actor-a']?.completedAt).toMatch(ISO_TIMESTAMP);
+    expect(persisted?.recipientState['actor-b']?.completedAt).toMatch(ISO_TIMESTAMP);
   });
 
   it('direct message completion is actor-scoped', async () => {
@@ -843,7 +852,7 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
     const msg = await mb.send({ from: 'a', to: 'b', type: 'note', subject: 'q', body: '?' });
     await mb.ack({ messageId: msg.id, readerId: 'b', read: true });
     const firstReadAt = (await projectionOf(mb, msg.id))?.recipientState['b']?.readAt;
-    expect(firstReadAt).toBeDefined();
+    expect(firstReadAt).toMatch(ISO_TIMESTAMP);
 
     await mb.ack({ messageId: msg.id, readerId: 'b', read: true });
     const projection = await projectionOf(mb, msg.id);
@@ -922,7 +931,7 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
     // The receipt reflects the reopen: completedAt is cleared for that actor.
     const projection = await projectionOf(mb, msg.id);
     expect(projection?.recipientState['b']?.completedAt).toBeUndefined();
-    expect(projection?.recipientState['b']?.readAt).toBeDefined();
+    expect(projection?.recipientState['b']?.readAt).toMatch(ISO_TIMESTAMP);
   });
 
   it('reopens a direct message whose completion exists only in v1 state', async () => {
@@ -991,7 +1000,9 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
       incompleteOnly: true,
     });
     expect(incomplete.map((m) => m.id)).not.toContain(msg.id);
-    expect((await projectionOf(mb, msg.id))?.recipientState['b']?.completedAt).toBeDefined();
+    expect((await projectionOf(mb, msg.id))?.recipientState['b']?.completedAt).toMatch(
+      ISO_TIMESTAMP,
+    );
   });
 
   it('outcome-only ack after completion does NOT silently reopen', async () => {
@@ -1017,7 +1028,7 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
       outcome: 'resolved',
     });
     const projection = await projectionOf(mb, msg.id);
-    expect(projection?.recipientState['b']?.completedAt).toBeDefined();
+    expect(projection?.recipientState['b']?.completedAt).toMatch(ISO_TIMESTAMP);
     expect(projection?.recipientState['b']?.outcome).toBe('resolved');
     const incomplete = await mb.query({
       to: 'b',
@@ -1054,14 +1065,14 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
       actorId: 'b',
       outcome: 'resolved',
     });
-    expect(projection.recipientState['b']?.readAt).toBeDefined();
-    expect(projection.recipientState['b']?.completedAt).toBeDefined();
+    expect(projection.recipientState['b']?.readAt).toMatch(ISO_TIMESTAMP);
+    expect(projection.recipientState['b']?.completedAt).toMatch(ISO_TIMESTAMP);
     expect(updated).toMatchObject({
       completed: true,
       completedBy: 'b',
       outcome: 'resolved',
     });
-    expect(updated?.completedAt).toBeDefined();
+    expect(updated?.completedAt).toMatch(ISO_TIMESTAMP);
 
     const repeated = await mb.ack({
       messageId: msg.id,
@@ -1070,7 +1081,11 @@ describe('SqliteMailbox v2 actor-scoped completion', () => {
       completed: true,
     });
     expect(repeated).toMatchObject({ completed: true, completedBy: 'b' });
-    expect(repeated?.completedAt).toBeDefined();
+    // Measured: a repeated completion keeps the original timestamp AND the
+    // outcome the first ack recorded — the second ack carries no outcome and
+    // must not erase it. `toBeDefined()` accepted a re-stamp (or null).
+    expect(repeated?.completedAt).toBe(updated?.completedAt);
+    expect(repeated).toMatchObject({ outcome: 'resolved' });
   });
 
   it('records the same outcome independently for two actors', async () => {
@@ -1221,8 +1236,10 @@ describe('SqliteMailbox autoCompact preserves v2 receipts', () => {
     // Large TTL so nothing is removed by expiry.
     await mb.autoCompact({ defaultTtlMs: 86400_000 });
 
-    expect((await projectionOf(mb, msg1.id))?.recipientState['b']?.completedAt).toBeDefined();
-    expect((await projectionOf(mb, msg2.id))?.recipientState['b']?.readAt).toBeDefined();
+    expect((await projectionOf(mb, msg1.id))?.recipientState['b']?.completedAt).toMatch(
+      ISO_TIMESTAMP,
+    );
+    expect((await projectionOf(mb, msg2.id))?.recipientState['b']?.readAt).toMatch(ISO_TIMESTAMP);
   });
 
   it('read-by-all compaction keeps v2 receipts for surviving messages', async () => {
@@ -1272,9 +1289,9 @@ describe('SqliteMailbox autoCompact preserves v2 receipts', () => {
     const ids = (await store.query({ limit: 100 })).map((message) => message.id);
     expect(ids).toContain('keep-me');
     expect(ids).not.toContain('purge-me');
-    expect(
-      (await projectionOf(store, 'keep-me'))?.recipientState['ag1']?.completedAt,
-    ).toBeDefined();
+    expect((await projectionOf(store, 'keep-me'))?.recipientState['ag1']?.completedAt).toMatch(
+      ISO_TIMESTAMP,
+    );
   });
 });
 
@@ -1387,6 +1404,8 @@ describe('SqliteMailbox purgeStale preserves v2 receipts', () => {
     const ids = (await store.query({ limit: 100 })).map((message) => message.id);
     expect(ids).toContain('keep-me');
     expect(ids).not.toContain('old-done');
-    expect((await projectionOf(store, 'keep-me'))?.recipientState['b']?.readAt).toBeDefined();
+    expect((await projectionOf(store, 'keep-me'))?.recipientState['b']?.readAt).toMatch(
+      ISO_TIMESTAMP,
+    );
   });
 });

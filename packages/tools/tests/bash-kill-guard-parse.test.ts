@@ -12,15 +12,15 @@ const isWin = os.platform() === 'win32';
 describe('parseKillCommand', () => {
   // ── taskkill (Windows) ─────────────────────────────────────────────────
 
-  it('parses taskkill /PID with /F', () => {
-    if (!isWin) return; // taskkill is Windows-only
+  // taskkill is Windows-only
+  it.runIf(isWin)('parses taskkill /PID with /F', () => {
     const result = parseKillCommand('taskkill /PID 1234 /F');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses taskkill /IM by image name', () => {
-    if (!isWin) return; // taskkill is Windows-only
+  // taskkill is Windows-only
+  it.runIf(isWin)('parses taskkill /IM by image name', () => {
     const result = parseKillCommand('taskkill /IM node.exe /F');
     expect(result).not.toBeNull();
     expect(result!.name).toBe('node.exe');
@@ -28,8 +28,8 @@ describe('parseKillCommand', () => {
 
   // ── tskill ─────────────────────────────────────────────────────────────
 
-  it('parses tskill with PID', () => {
-    if (!isWin) return; // tskill is Windows-only
+  // tskill is Windows-only
+  it.runIf(isWin)('parses tskill with PID', () => {
     const result = parseKillCommand('tskill 5678');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(5678);
@@ -37,50 +37,50 @@ describe('parseKillCommand', () => {
 
   // ── Stop-Process (PowerShell) ──────────────────────────────────────────
 
-  it('parses Stop-Process -Id', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses Stop-Process -Id', () => {
     const result = parseKillCommand('Stop-Process -Id 1234 -Force');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses Stop-Process -Id:<pid> colon-attached', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses Stop-Process -Id:<pid> colon-attached', () => {
     const result = parseKillCommand('Stop-Process -Id:1234 -Force');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses kill -Id:<pid> colon-attached alias', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses kill -Id:<pid> colon-attached alias', () => {
     const result = parseKillCommand('kill -Id:1234');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses Stop-Process -id:<pid> colon-attached lowercase', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses Stop-Process -id:<pid> colon-attached lowercase', () => {
     const result = parseKillCommand('Stop-Process -id:1234');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses Stop-Process -Name:<name> colon-attached', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses Stop-Process -Name:<name> colon-attached', () => {
     const result = parseKillCommand('Stop-Process -Name:chrome -Force');
     expect(result).not.toBeNull();
     expect(result!.name).toBe('chrome');
   });
 
-  it('parses powershell-wrapped Stop-Process -Id (implicit -Command)', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses powershell-wrapped Stop-Process -Id (implicit -Command)', () => {
     const result = parseKillCommand('powershell Stop-Process -Id 1234');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses powershell-wrapped Stop-Process with launcher flags', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses powershell-wrapped Stop-Process with launcher flags', () => {
     const result = parseKillCommand(
       'powershell -NoProfile -ExecutionPolicy Bypass Stop-Process -Id 1234',
     );
@@ -88,35 +88,35 @@ describe('parseKillCommand', () => {
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses powershell -command with unquoted payload', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses powershell -command with unquoted payload', () => {
     const result = parseKillCommand('powershell -command stop-process -id 1234');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses powershell -command with quoted payload', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses powershell -command with quoted payload', () => {
     const result = parseKillCommand('powershell -command "stop-process -id 1234"');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
   });
 
-  it('parses powershell taskkill wrapper', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses powershell taskkill wrapper', () => {
     const result = parseKillCommand('powershell taskkill /F /PID 1234');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
     expect(result!.signal).toBe('FORCE');
   });
 
-  it('does not parse a powershell -File script as a kill command', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('does not parse a powershell -File script as a kill command', () => {
     expect(parseKillCommand('powershell -File kill-things.ps1')).toBeNull();
   });
 
-  it('parses Stop-Process -Name with process name', () => {
-    if (!isWin) return; // Stop-Process is Windows-only
+  // Stop-Process is Windows-only
+  it.runIf(isWin)('parses Stop-Process -Name with process name', () => {
     const result = parseKillCommand('Stop-Process -Name "chrome" -Force');
     expect(result).not.toBeNull();
     expect(result!.name).toBe('chrome');
@@ -147,62 +147,79 @@ describe('parseKillCommand', () => {
 
   // ── pkill / killall (POSIX only) ───────────────────────────────────────
 
-  it('parses pkill on POSIX', () => {
-    if (isWin) return; // pkill is POSIX-only
+  // pkill is POSIX-only
+  it.skipIf(isWin)('parses pkill on POSIX', () => {
     const result = parseKillCommand('pkill node');
-    expect(result).not.toBeNull();
+    // `not.toBeNull()` alone passed a parser that named the WRONG process — for
+    // a guard deciding whether a kill targets WrongStack, the target is the
+    // whole point. Values follow the parser's own capture (`pkill <name>`).
+    expect(result).toMatchObject({ name: 'node', signal: 'TERM', isAllKill: false });
   });
 
-  it('parses killall on POSIX', () => {
-    if (isWin) return; // killall is POSIX-only
+  // killall is POSIX-only
+  it.skipIf(isWin)('parses killall on POSIX', () => {
     const result = parseKillCommand('killall node');
-    expect(result).not.toBeNull();
+    // `not.toBeNull()` alone passed a parser that named the WRONG process — for
+    // a guard deciding whether a kill targets WrongStack, the target is the
+    // whole point. Values follow the parser's own capture (`killall <name>`).
+    expect(result).toMatchObject({ name: 'node', signal: 'TERM', isAllKill: false });
   });
 
   // ── kill scripts ───────────────────────────────────────────────────────
 
-  it('parses kill script (.ps1)', () => {
-    if (!isWin) return; // .ps1 scripts are Windows-only
+  // .ps1 scripts are Windows-only
+  it.runIf(isWin)('parses kill script (.ps1)', () => {
     const result = parseKillCommand('kill-process.ps1 -pid 1234');
-    expect(result).not.toBeNull();
+    expect(result?.name).toBe('kill-script');
   });
 
   it('parses kill script (.sh)', () => {
     const result = parseKillCommand('./kill-server.sh');
-    expect(result).not.toBeNull();
+    expect(result?.name).toBe('kill-script');
   });
 
-  it('parses kill script (.bat)', () => {
-    if (!isWin) return; // .bat scripts are Windows-only
+  // .bat scripts are Windows-only
+  it.runIf(isWin)('parses kill script (.bat)', () => {
     const result = parseKillCommand('terminate-all.bat');
-    expect(result).not.toBeNull();
+    expect(result?.name).toBe('kill-script');
   });
 
-  it('parses kill script (.cmd)', () => {
-    if (!isWin) return; // .cmd scripts are Windows-only
+  // .cmd scripts are Windows-only
+  it.runIf(isWin)('parses kill script (.cmd)', () => {
     const result = parseKillCommand('stop-services.cmd');
-    expect(result).not.toBeNull();
+    expect(result?.name).toBe('kill-script');
   });
+
+  // Negative control for the kill-script branch. Recognition is by NAME, so an
+  // ordinary script must NOT be classified as a kill — otherwise the guard
+  // would block routine `./build.sh` / `deploy.ps1` runs. Every test above
+  // asserted only non-null, which could not tell over-matching from matching.
+  it.each([['build.sh'], ['./deploy.ps1'], ['setup.bat'], ['test-runner.cmd']])(
+    'does not classify ordinary script %j as a kill script',
+    (cmd) => {
+      expect(parseKillCommand(cmd)?.name).not.toBe('kill-script');
+    },
+  );
 
   // ── wmic (Windows) ──────────────────────────────────────────────────
 
-  it('parses wmic process where "name=..." delete', () => {
-    if (!isWin) return; // wmic is Windows-only
+  // wmic is Windows-only
+  it.runIf(isWin)('parses wmic process where "name=..." delete', () => {
     const result = parseKillCommand('wmic process where "name=\'node.exe\'" delete');
     expect(result).not.toBeNull();
     expect(result!.name).toBe('node.exe');
   });
 
-  it('parses wmic process where "ProcessId=N" delete (issue #360)', () => {
-    if (!isWin) return; // wmic is Windows-only
+  // wmic is Windows-only
+  it.runIf(isWin)('parses wmic process where "ProcessId=N" delete (issue #360)', () => {
     const result = parseKillCommand('wmic process where "ProcessId=1234" delete');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);
     expect(result!.signal).toBe('FORCE');
   });
 
-  it('parses unquoted wmic ProcessId form (issue #360)', () => {
-    if (!isWin) return; // wmic is Windows-only
+  // wmic is Windows-only
+  it.runIf(isWin)('parses unquoted wmic ProcessId form (issue #360)', () => {
     const result = parseKillCommand('wmic process where ProcessId=1234 delete');
     expect(result).not.toBeNull();
     expect(result!.pid).toBe(1234);

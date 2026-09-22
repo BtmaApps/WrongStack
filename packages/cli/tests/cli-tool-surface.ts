@@ -37,6 +37,8 @@ export interface CliToolSurfaceOptions {
   projectRoot?: string;
   cwd?: string;
   modelCapabilities?: unknown;
+  /** Forwarded to `setupCliPromptAndTools` (`--safe-mode`). */
+  safeMode?: boolean;
 }
 
 export function makeWstackPaths(tmp: string): WstackPaths {
@@ -87,6 +89,7 @@ export async function buildCliToolSurface(opts: CliToolSurfaceOptions): Promise<
     wpaths,
     projectRoot,
     events: { emit: vi.fn(), on: vi.fn(() => () => {}) },
+    ...(opts.safeMode === undefined ? {} : { safeMode: opts.safeMode }),
   });
 
   return {

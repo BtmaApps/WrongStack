@@ -11,6 +11,8 @@ import { SKILL_LIMITS } from '../../src/skills/limits.js';
  */
 describe('SKILL_LIMITS', () => {
   it('each limit is a positive integer', () => {
+    // "Each" over an empty object is vacuously true.
+    expect(Object.keys(SKILL_LIMITS).length).toBeGreaterThan(0);
     for (const [key, value] of Object.entries(SKILL_LIMITS)) {
       expect(Number.isInteger(value), `${key} should be an integer`).toBe(true);
       expect(value, `${key} should be positive`).toBeGreaterThan(0);

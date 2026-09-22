@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Settings } from '../app-settings-type.js';
 import { DEFAULT_STATUSLINE_MODE } from '../components/settings-picker.js';
+import { titleAnimationAllowed } from '../motion.js';
 
 type AnimationStyle = 'rainbow' | 'wave' | 'pulse' | 'dots' | 'breathe' | 'static' | 'cycle';
 
@@ -43,7 +44,7 @@ export function useLiveSettingsState({
   const liveTitleAnimation = liveSettings?.titleAnimation;
   useEffect(() => {
     if (!titleController) return;
-    titleController.setEnabled(liveTitleAnimation !== false);
+    titleController.setEnabled(titleAnimationAllowed(liveTitleAnimation));
   }, [titleController, liveTitleAnimation]);
 
   return {

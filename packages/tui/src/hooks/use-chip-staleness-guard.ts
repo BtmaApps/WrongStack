@@ -49,6 +49,12 @@ interface UseChipStalenessGuardOptions {
   agentState: 'idle' | 'running' | 'streaming' | 'aborting';
   /** Current spinner phase index (advances every SPINNER_INTERVAL_MS while active). */
   spinnerPhase: number;
+  /**
+   * False while the spinner is deliberately still (the `static` animation
+   * style / reduced motion): a still spinner is then not a frozen one.
+   * Default true.
+   */
+  spinnerAnimated?: boolean;
   /** Token usage fingerprint — changes when new token events arrive. */
   tokenFingerprint: string;
   /** Context usage ratio (0..1) — changes as context grows. */
@@ -96,6 +102,7 @@ export function useChipStalenessGuard(opts: UseChipStalenessGuardOptions): ChipS
   const {
     agentState,
     spinnerPhase,
+    spinnerAnimated = true,
     tokenFingerprint,
     contextRatio,
     tokenSubscriptionActive,
@@ -110,12 +117,20 @@ export function useChipStalenessGuard(opts: UseChipStalenessGuardOptions): ChipS
   const [recoveryCount, setRecoveryCount] = useState(0);
 
   // Track last-seen values and timestamps for staleness detection.
+  const spinnerAnimatedRef = useRef(spinnerAnimated);
+  spinnerAnimatedRef.current = spinnerAnimated;
   const lastSpinnerPhaseRef = useRef(spinnerPhase);
   const lastSpinnerChangeAtRef = useRef(Date.now());
   const lastTokenFingerprintRef = useRef(tokenFingerprint);
   const lastTokenChangeAtRef = useRef(Date.now());
   const lastContextRatioRef = useRef(contextRatio);
   const lastContextChangeAtRef = useRef(Date.now());
+
+  // Leaving a still style restarts the spinner clock: time spent still is
+  // not time spent frozen.
+  useEffect(() => {
+    if (spinnerAnimated) lastSpinnerChangeAtRef.current = Date.now();
+  }, [spinnerAnimated]);
 
   // Update last-seen refs when values change.
   useEffect(() => {
@@ -148,8 +163,9 @@ export function useChipStalenessGuard(opts: UseChipStalenessGuardOptions): ChipS
     const isActive = agentState === 'running' || agentState === 'streaming';
     const newDiagnoses: ChipStalenessDiagnosis[] = [];
 
-    // 1. Animation frozen — spinner should advance while active.
-    if (isActive) {
+    // 1. Animation frozen — spinner should advance while active, unless it
+    //    is still by design.
+    if (isActive && spinnerAnimatedRef.current) {
       const spinnerStaleFor = now - lastSpinnerChangeAtRef.current;
       if (spinnerStaleFor > SPINNER_FROZEN_THRESHOLD_MS) {
         newDiagnoses.push({

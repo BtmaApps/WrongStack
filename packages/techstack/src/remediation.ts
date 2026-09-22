@@ -59,7 +59,11 @@ const LANGUAGE_BY_ECOSYSTEM: Readonly<Partial<Record<string, LanguageProfileId>>
 
 const EXECUTABLE_ECOSYSTEMS = new Set(['npm', ...Object.keys(LANGUAGE_BY_ECOSYSTEM)]);
 
-function versionedPackageName(operation: PackageOperation): string {
+function versionedPackageName(operation: {
+  ecosystem: string;
+  dependencyName: string;
+  targetVersion?: string | undefined;
+}): string {
   const version = operation.targetVersion;
   if (!version) return operation.dependencyName;
   switch (operation.ecosystem) {
@@ -134,30 +138,31 @@ function suggestCommand(
   action: Finding['action'],
   targetVersion?: string,
 ): string | undefined {
-  const ver = targetVersion ? `@${targetVersion}` : '@latest';
+  // Mirror the executable path's requested version without inventing
+  // `@latest`/`:latest` when no target is known. Dotnet translates its
+  // structured `name@version` input to `name --version version`.
+  const specifier = versionedPackageName({ ecosystem, dependencyName: name, targetVersion });
   switch (ecosystem) {
     case 'npm':
       if (action === 'remove') return `npm uninstall ${name}`;
-      return `npm install ${name}${ver}`;
+      return `npm install ${specifier}`;
     case 'python':
       if (action === 'remove') return `pip uninstall ${name}`;
-      // pip joins a version with `==` (PEP 508) — `name@version` is npm syntax
-      // and pip rejects it. With no target version, name the package alone,
-      // which is the same shape `versionedPackageName` sends on the executable
-      // path (`toLanguagePackageInput`) instead of inventing `@latest`.
-      return targetVersion ? `pip install ${name}==${targetVersion}` : `pip install ${name}`;
+      return `pip install ${specifier}`;
     case 'rust':
       if (action === 'remove') return `cargo remove ${name}`;
-      return `cargo add ${name}@${targetVersion ?? 'latest'}`;
+      return `cargo add ${specifier}`;
     case 'go':
       if (action === 'remove') return `go get ${name}@none`;
-      return `go get ${name}@${targetVersion ?? 'latest'}`;
+      return `go get ${specifier}`;
     case 'php':
       if (action === 'remove') return `composer remove ${name}`;
-      return `composer require ${name}:${targetVersion ?? 'latest'}`;
+      return `composer require ${specifier}`;
     case 'dotnet':
       if (action === 'remove') return `dotnet remove package ${name}`;
-      return `dotnet add package ${name}`;
+      return targetVersion
+        ? `dotnet add package ${name} --version ${targetVersion}`
+        : `dotnet add package ${name}`;
     default:
       return undefined;
   }

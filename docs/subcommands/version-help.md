@@ -13,9 +13,12 @@ WrongStack <version> (apiVersion <apiVersion>, node <version>, <platform>)
 
 ## `wstack help`
 
-Prints the compact top-level usage guide, including common commands and flags.
-It is the same help surface users see when they ask for CLI usage from the
-subcommand dispatcher.
+Prints the top-level usage guide (also `wstack --help`), grouped by intent:
+Start, Sessions, Setup, Project & diagnostics, Session flags, Tools &
+permissions, Scripting, Interfaces, Startup & tuning. It lists only what the
+CLI actually reads; per-command detail lives in `wstack <command> --help`.
+Keep rows under ~100 columns — long flag spellings wrap their description onto
+the next line automatically.
 
 ## Code Reference
 

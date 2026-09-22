@@ -376,12 +376,18 @@ describe('IC6: multi-kind exceeded — H3 fix via coordinator auto-mode (T4 cove
   // agent-subagent-runner. Those tests pass, providing coverage of the H3 fix.
   //
   // These tests remain as xit to document the gap and allow future fix.
-  it('H3: each exceeded kind in auto mode gets its own kind/used/limit (DEFERRED — needs EventBus wiring)', () => {
-    // This test would verify that when tool_calls AND tokens are both exceeded,
-    // the budget emits { kind: 'tool_calls', used: X } and { kind: 'tokens', used: Y }
-    // with their respective values — not both reporting exceeded[0].
-    // COVERED BY: IC2 and IC5 (coordinator auto-mode tests that pass).
-  });
+  // `it.todo`, not `it` — the comment above says these "remain as xit to
+  // document the gap", but an `it()` with an empty body REPORTS AS PASSING:
+  // it added a green tick for a scenario nobody verifies and inflated the
+  // suite count. `todo` is the honest shape; the runner lists it as pending.
+  //
+  // Would verify: when tool_calls AND tokens are both exceeded, the budget
+  // emits { kind: 'tool_calls', used: X } and { kind: 'tokens', used: Y } with
+  // their respective values — not both reporting exceeded[0].
+  // COVERED INDIRECTLY BY: IC2 and IC5 (coordinator auto-mode tests).
+  it.todo(
+    'H3: each exceeded kind in auto mode gets its own kind/used/limit (DEFERRED — needs EventBus wiring)',
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

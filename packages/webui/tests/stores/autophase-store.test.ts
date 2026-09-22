@@ -9,10 +9,12 @@ describe('goal run store', () => {
       overallPercent: 0,
       autonomous: false,
       title: null,
+      graphId: null,
       status: 'idle',
       lastEvent: null,
       lastError: null,
       progress: null,
+      finalVerification: null,
     });
   });
 
@@ -28,9 +30,10 @@ describe('goal run store', () => {
       phases: [{ id: 'p1', label: 'Thinking', status: 'active' }],
       autonomous: true,
     });
-    useGoalRunStore.getState().setState({ title: 'My Title', status: 'running' });
+    useGoalRunStore.getState().setState({ title: 'My Title', graphId: 'g1', status: 'running' });
     // autonomous should still be true (not reset)
     expect(useGoalRunStore.getState().title).toBe('My Title');
+    expect(useGoalRunStore.getState().graphId).toBe('g1');
     expect(useGoalRunStore.getState().autonomous).toBe(true);
     expect(useGoalRunStore.getState().status).toBe('running');
   });
@@ -47,6 +50,7 @@ describe('goal run store', () => {
         completedTasks: 3,
         failedTasks: 0,
       },
+      finalVerification: { status: 'failed', checkedAt: 123, error: 'broken' },
     });
     const s = useGoalRunStore.getState();
     expect(s.status).toBe('running');
@@ -61,6 +65,7 @@ describe('goal run store', () => {
       overallPercent: 50,
       autonomous: true,
       title: 'Test',
+      graphId: 'g1',
       status: 'failed',
       lastEvent: 'failed',
       lastError: 'boom',
@@ -80,9 +85,11 @@ describe('goal run store', () => {
     expect(s.overallPercent).toBe(0);
     expect(s.autonomous).toBe(false);
     expect(s.title).toBeNull();
+    expect(s.graphId).toBeNull();
     expect(s.status).toBe('idle');
     expect(s.lastEvent).toBeNull();
     expect(s.lastError).toBeNull();
     expect(s.progress).toBeNull();
+    expect(s.finalVerification).toBeNull();
   });
 });

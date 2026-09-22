@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *     boot would have done anyway.
  */
 
-const registryEntries: Array<{ sessionId: string }> = [];
+const registryEntries: Array<{ sessionId: string; pid: number }> = [];
 vi.mock('@wrongstack/core/storage', async () => {
   const actual = await vi.importActual<typeof import('@wrongstack/core/storage')>(
     '@wrongstack/core/storage',
@@ -73,7 +73,7 @@ describe('pickResumeCandidate', () => {
   it('--recover skips a session another process is still writing to', async () => {
     await writeLog('held', [start('held'), HUNG], Date.UTC(2026, 0, 2));
     await writeLog('free', [start('free'), HUNG], Date.UTC(2026, 0, 1));
-    registryEntries.push({ sessionId: 'held' });
+    registryEntries.push({ sessionId: 'held', pid: process.pid });
 
     expect(await pickResumeCandidate(options(true))).toBe('free');
   });
@@ -96,13 +96,26 @@ describe('pickResumeCandidate', () => {
   });
 
   it('bare --resume also refuses a session held by another process', async () => {
-    registryEntries.push({ sessionId: 'real' });
+    registryEntries.push({ sessionId: 'real', pid: process.pid });
     const list = [
       { id: 'real', messageCount: 12 },
       { id: 'older', messageCount: 3 },
     ];
 
     expect(await pickResumeCandidate(options(false, list))).toBe('older');
+  });
+
+  it('treats a registry entry whose process is gone as free', async () => {
+    // The registry only probes pids after two missed heartbeats, so a one-shot
+    // run that just exited still listed its session — and `-c` right after it
+    // reopened the session BEFORE the one just finished.
+    registryEntries.push({ sessionId: 'real', pid: 2 ** 22 + 12345 });
+    const list = [
+      { id: 'real', messageCount: 12 },
+      { id: 'older', messageCount: 3 },
+    ];
+
+    expect(await pickResumeCandidate(options(false, list))).toBe('real');
   });
 });
 
@@ -143,7 +156,7 @@ describe('announceRecoverableSession', () => {
 
   it('says nothing about a session another process is still writing', async () => {
     await writeLog('held', [start('held'), HUNG], Date.now());
-    registryEntries.push({ sessionId: 'held' });
+    registryEntries.push({ sessionId: 'held', pid: process.pid });
 
     expect(await announce()).toEqual([]);
   });

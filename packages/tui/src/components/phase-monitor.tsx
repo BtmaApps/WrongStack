@@ -1,5 +1,5 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
+import { Box, Text } from '../ink.js';
 
 const fmtElapsed = (ms: number): string => {
   const s = Math.floor(ms / 1000);
@@ -11,6 +11,8 @@ const fmtElapsed = (ms: number): string => {
 };
 
 interface PhaseMonitorProps {
+  /** Human-readable Goal run title. */
+  title?: string | undefined;
   /** Per-phase state from the App reducer. */
   phases: Record<
     string,
@@ -57,6 +59,7 @@ function fmtPhase(s: string): { icon: string; color: string; label: string } {
  *   Bottom: keyboard hint
  */
 export function PhaseMonitor({
+  title = 'Goal',
   phases,
   runningPhaseIds,
   elapsedMs,
@@ -76,6 +79,7 @@ export function PhaseMonitor({
         <Text bold color="cyan">
           PHASE MONITOR
         </Text>
+        <Text>{title}</Text>
         <Text dimColor>│</Text>
         <Text dimColor>⏱ {fmtElapsed(elapsedMs)}</Text>
         <Text dimColor>│</Text>

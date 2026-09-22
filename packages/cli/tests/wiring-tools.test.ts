@@ -48,6 +48,26 @@ afterEach(async () => {
 // no production code path ever called; see `./cli-tool-surface.ts` for why that
 // mattered enough to delete.
 describe('setupCliPromptAndTools', () => {
+  it('--safe-mode ignores instruction override files', async () => {
+    // makeWstackPaths points both instruction dirs at `tmp`.
+    await fs.writeFile(path.join(tmp, 'system.md'), 'OVERRIDE-IDENTITY-MARKER');
+    const text = async (safeMode: boolean) =>
+      (
+        await (
+          await buildCliToolSurface({
+            config: fakeConfig(),
+            memoryStore: makeFakeMemoryStore(),
+            tmp,
+            safeMode,
+          })
+        ).buildSystemPrompt()
+      )
+        .map((block) => block.text)
+        .join('\n');
+    expect(await text(false)).toContain('OVERRIDE-IDENTITY-MARKER');
+    expect(await text(true)).not.toContain('OVERRIDE-IDENTITY-MARKER');
+  });
+
   it('registers builtin tools and binds a working system-prompt builder', async () => {
     const { toolRegistry, buildSystemPrompt } = await surface(fakeConfig());
     expect(toolRegistry.list().length).toBeGreaterThan(0);

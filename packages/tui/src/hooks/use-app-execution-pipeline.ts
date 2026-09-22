@@ -1,3 +1,4 @@
+import { toErrorMessage } from '@wrongstack/core/utils';
 import { createAppKeyHandler } from '../app-key-handler.js';
 import { createRunBlocksController } from '../run-blocks-controller.js';
 import { createSubmitController } from '../submit-controller.js';
@@ -25,7 +26,13 @@ export function useAppExecutionPipeline(args: AppExecutionPipelineArgs) {
   const submit = createSubmitController(submitParams);
   submitRef.current = submit;
 
-  const stableOnKey = useStableKeyHandler(handleKey);
+  const { dispatch } = keyHandlerParams;
+  const stableOnKey = useStableKeyHandler(handleKey, (err) => {
+    dispatch({
+      type: 'addEntry',
+      entry: { kind: 'error', text: `Key handling failed: ${toErrorMessage(err)}` },
+    });
+  });
 
   return { handleKey, runBlocks, submit, stableOnKey };
 }

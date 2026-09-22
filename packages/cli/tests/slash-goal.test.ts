@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Context } from '@wrongstack/core/agent';
+import { loadGoal } from '@wrongstack/core/goal';
 import { SlashCommandRegistry } from '@wrongstack/core/registry';
 import { resolveWstackPaths } from '@wrongstack/core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -71,10 +72,10 @@ describe('/goal slash command', () => {
     await fs.rm(tmp, { recursive: true, force: true });
   });
 
-  it('reports no active goal when status is requested without a runner', async () => {
+  it('reports no persistent mission when status is requested without a runner', async () => {
     const { registry, goalCtx } = rig(tmp);
     const result = await registry.dispatch('/goal', goalCtx as never as Context);
-    expect(result?.message).toMatch(/No active Goal/i);
+    expect(result?.message).toMatch(/No persistent mission/i);
   });
 
   it('/goal start requires onGoalStart to be wired', async () => {
@@ -107,7 +108,7 @@ describe('/goal slash command', () => {
     const result = await registry.dispatch('/goal start test project', goalCtx as never as Context);
     expect(startSpy).toHaveBeenCalledOnce();
     expect(result?.message).toContain('Test Build');
-    expect(result?.metadata?.goalInit).toBeDefined();
+    expect(result?.metadata?.goalRunInit).toBeDefined();
   });
 
   it('/goal start with host error reports it', async () => {
@@ -121,6 +122,11 @@ describe('/goal slash command', () => {
     const { registry, goalCtx } = rig(tmp);
     const pauseSpy = vi.fn();
     goalCtx.onGoalPause = pauseSpy;
+    goalCtx.getGoalRunner = vi.fn(() => ({
+      graph: {},
+      getProgress: () => null,
+      isRunning: () => true,
+    })) as never;
     const result = await registry.dispatch('/goal pause', goalCtx as never as Context);
     expect(pauseSpy).toHaveBeenCalledOnce();
     expect(result?.message).toMatch(/paused/i);
@@ -130,6 +136,11 @@ describe('/goal slash command', () => {
     const { registry, goalCtx } = rig(tmp);
     const resumeSpy = vi.fn();
     goalCtx.onGoalResume = resumeSpy;
+    goalCtx.getGoalRunner = vi.fn(() => ({
+      graph: {},
+      getProgress: () => null,
+      isRunning: () => false,
+    })) as never;
     const result = await registry.dispatch('/goal resume', goalCtx as never as Context);
     expect(resumeSpy).toHaveBeenCalledOnce();
     expect(result?.message).toMatch(/resuming/i);
@@ -150,9 +161,18 @@ describe('/goal slash command', () => {
     expect(result?.message).toMatch(/No saved projects/i);
   });
 
-  it('unknown subcommand shows available subcommands', async () => {
+  it('treats free text as a persistent mission for backward compatibility', async () => {
     const { registry, goalCtx } = rig(tmp);
-    const result = await registry.dispatch('/goal frobnicate', goalCtx as never as Context);
-    expect(result?.message).toMatch(/Unknown|start|pause|status/i);
+    const result = await registry.dispatch('/goal ship the release', goalCtx as never as Context);
+    expect(result?.message).toMatch(/Mission set/i);
+    expect(result?.runText).toContain('ship the release');
+  });
+
+  it('pauses the persistent mission when no phase run is active', async () => {
+    const { registry, goalCtx } = rig(tmp);
+    await registry.dispatch('/goal set ship safely', goalCtx as never as Context);
+    const result = await registry.dispatch('/goal pause', goalCtx as never as Context);
+    expect(result?.message).toMatch(/Mission paused/i);
+    expect((await loadGoal(goalCtx.paths!.projectGoal))?.goalState).toBe('paused');
   });
 });

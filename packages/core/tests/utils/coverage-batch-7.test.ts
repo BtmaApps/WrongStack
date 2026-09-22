@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { expandGlob } from '../../src/utils/glob-expand.js';
 import {
   createToolOutputSerializer,
-  truncateForEvent,
   sizeSignals,
+  truncateForEvent,
 } from '../../src/utils/tool-output-serializer.js';
-import { expandGlob } from '../../src/utils/glob-expand.js';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
 // ── tool-output-serializer ──────────────────────────────────────────────
 
@@ -59,7 +59,11 @@ describe('createToolOutputSerializer', () => {
         toolName: 'read',
       },
     );
-    expect(result).toBeDefined();
+    // A throwing custom serializer must not lose the output: the built-in
+    // renderer takes over and still names the tool and carries the payload.
+    expect(result).toContain('read');
+    expect(result).toContain('x=1');
+    expect(result).not.toContain('boom');
   });
 
   it('renders read tool output with header', () => {

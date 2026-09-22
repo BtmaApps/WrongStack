@@ -41,6 +41,8 @@ export function createSubagentWrongTraceHookRunner(
     WRONGTRACE_MATCHER,
     hooks.postToolUse,
     'wrongtrace-gate',
+    // Also on a denied / rejected / failed call: release the lock PreToolUse took.
+    { runWhenToolSkipped: true },
   );
   // allowNonPolicy: true — these hooks are coordination, not enforcement;
   // they are fail-open by construction and must run regardless of any

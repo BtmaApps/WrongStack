@@ -16,6 +16,7 @@
 
 import type React from 'react';
 import { Text, useAnimation } from '../ink.js';
+import { animatesColor, useMotionStatic } from '../motion.js';
 import { displayWidth, truncateDisplay } from '../terminal-width.js';
 import { theme } from '../theme.js';
 import { resolveIconStyle } from '../ui-glyphs.js';
@@ -98,9 +99,10 @@ export function ComposerActivityIcon({
   disabled,
 }: ComposerActivityIconProps): React.ReactElement {
   const active = status.kind !== 'idle';
+  const motionStatic = useMotionStatic();
   const { frame } = useAnimation({
     interval: ACTIVITY_INTERVAL_MS,
-    isActive: active && !disabled,
+    isActive: active && !disabled && !motionStatic,
   });
 
   if (!active) {
@@ -314,9 +316,10 @@ export function ComposerStatusChip({
   reservedWidth,
 }: ComposerStatusChipProps): React.ReactElement {
   const animating = status.kind === 'working';
+  // `static` renders a flat label: neither clock may run for it.
   const { frame: spinnerIdx, time: animationTime } = useAnimation({
     interval: SPINNER_INTERVAL_MS,
-    isActive: animating,
+    isActive: animating && animationStyle !== 'static',
   });
   const cycleTick = Math.floor(animationTime / 1000);
 
@@ -324,7 +327,7 @@ export function ComposerStatusChip({
   // rainbow/wave/pulse gradient moves smoothly (~8 updates/s).
   const { time: colorTime } = useAnimation({
     interval: COLOR_TICK_MS,
-    isActive: animating,
+    isActive: animating && animatesColor(animationStyle),
   });
   const colorPhase = animating ? colorPhaseFromTime(colorTime) : 0;
 

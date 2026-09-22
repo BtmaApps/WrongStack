@@ -98,7 +98,7 @@ export function TodosMonitor({ todos }: { todos: TodoItem[] }): React.ReactEleme
       accent={theme.warn}
       icon={glyphs.task}
       title="TODOS"
-      kicker={size.columns >= 90 ? 'execution board' : undefined}
+      kicker="execution board"
       right={
         <Text>
           <Text color={theme.warn}>↻ {inProgress}</Text>

@@ -144,30 +144,31 @@ describe('resolveWorkingDirInsideProject', () => {
   // Windows: `D:` (no slash) is drive-relative. path.resolve(project, 'D:')
   // becomes the current directory on D:, which is often process.cwd() and
   // need not be inside projectRoot (e.g. project in %TEMP% on C:, cwd on D:).
-  it('rejects a drive-relative path that resolves to cwd outside the project', async () => {
-    if (process.platform !== 'win32') return;
+  it.skipIf(process.platform !== 'win32')(
+    'rejects a drive-relative path that resolves to cwd outside the project',
+    async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-test-'));
+      projectRoot = path.join(tmpDir, 'project');
+      await fs.mkdir(projectRoot, { recursive: true });
 
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wstack-test-'));
-    projectRoot = path.join(tmpDir, 'project');
-    await fs.mkdir(projectRoot, { recursive: true });
+      const cwdRoot = path.parse(process.cwd()).root;
+      const projectRootDrive = path.parse(path.resolve(projectRoot)).root;
+      if (cwdRoot.toLowerCase() === projectRootDrive.toLowerCase()) {
+        // Same-drive cwd cannot demonstrate the jump; lexical `..` is covered above.
+        await fs.rm(tmpDir, { recursive: true, force: true });
+        return;
+      }
 
-    const cwdRoot = path.parse(process.cwd()).root;
-    const projectRootDrive = path.parse(path.resolve(projectRoot)).root;
-    if (cwdRoot.toLowerCase() === projectRootDrive.toLowerCase()) {
-      // Same-drive cwd cannot demonstrate the jump; lexical `..` is covered above.
-      await fs.rm(tmpDir, { recursive: true, force: true });
-      return;
-    }
-
-    const driveLetter = cwdRoot.replace(/[\\/]/g, '');
-    try {
-      await expect(resolveWorkingDirInsideProject(projectRoot, driveLetter)).rejects.toThrow(
-        /Path must stay inside the project root/,
-      );
-    } finally {
-      await fs.rm(tmpDir, { recursive: true, force: true });
-    }
-  });
+      const driveLetter = cwdRoot.replace(/[\\/]/g, '');
+      try {
+        await expect(resolveWorkingDirInsideProject(projectRoot, driveLetter)).rejects.toThrow(
+          /Path must stay inside the project root/,
+        );
+      } finally {
+        await fs.rm(tmpDir, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 // B-07: migrated from packages/webui/tests/server/path-containment.test.ts —

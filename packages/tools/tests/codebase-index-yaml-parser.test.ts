@@ -60,8 +60,10 @@ describe('yaml-parser parseSymbols', () => {
 
   it('extracts list item keys (- key: value)', () => {
     const content = ['items:', '- key: a', '- name: b'].join('\n');
-    expect(find(content, 'key')).toBeDefined();
-    expect(find(content, 'name')).toBeDefined();
+    // Existence alone passed a parser that put the symbol on the wrong line or
+    // under the wrong kind — the line is what code navigation jumps to.
+    expect(find(content, 'key')).toMatchObject({ kind: 'property', line: 2 });
+    expect(find(content, 'name')).toMatchObject({ kind: 'property', line: 3 });
   });
 
   it('extracts indented list-item keys under a parent key', () => {

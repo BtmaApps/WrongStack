@@ -1,7 +1,11 @@
 import type { InputReader, Tool } from '@wrongstack/core/types';
 import { stripAnsi } from '@wrongstack/core/utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makePromptDelegate } from '../src/permission-prompt.js';
+import {
+  makeHeadlessPromptDelegate,
+  makePromptDelegate,
+  makeStdinPromptDelegate,
+} from '../src/permission-prompt.js';
 
 const fakeTool: Tool = {
   name: 'edit',
@@ -185,5 +189,35 @@ describe('makePromptDelegate', () => {
     );
     // A silent cap would recreate the same class of bug at a different size.
     expect(getStdout()).toMatch(/more lines? not shown/);
+  });
+});
+
+describe('headless approval', () => {
+  // With no terminal on stdin nobody can press a key: the prompt used to wait
+  // forever, hanging `wstack "task" < /dev/null` and every CI run that hit a
+  // confirm-level tool.
+  it('denies without reading and tells the user how to grant it', async () => {
+    const lines: string[] = [];
+    const decision = await makeHeadlessPromptDelegate((text) => lines.push(text))(fakeTool);
+    expect(decision).toBe('no');
+    expect(stripAnsi(lines.join(''))).toContain('--allowed-tools edit');
+  });
+
+  it('only prompts on the terminal when stdin is one', async () => {
+    const reader: InputReader = {
+      readLine: vi.fn(async () => ''),
+      readKey: vi.fn(async () => 'yes'),
+      close: vi.fn(async () => undefined),
+    };
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    try {
+      expect(await makeStdinPromptDelegate(reader, false)(fakeTool, {}, 'edit')).toBe('no');
+      expect(reader.readKey).not.toHaveBeenCalled();
+    } finally {
+      stderr.mockRestore();
+    }
+    captureStdout();
+    expect(await makeStdinPromptDelegate(reader, true)(fakeTool, {}, 'edit')).toBe('yes');
+    expect(reader.readKey).toHaveBeenCalledOnce();
   });
 });

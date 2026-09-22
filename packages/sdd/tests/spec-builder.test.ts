@@ -606,7 +606,10 @@ describe('AISpecBuilder', () => {
 
   // ── parseSpecFromJSON edge cases ──────────────────────────────────────────
 
-  it('parseSpecFromJSON throws on invalid JSON', () => {
+  // The earlier test of this name feeds plain `'not json'`; this one feeds a
+  // TRUNCATED object (`'not-json{'`), which is the shape a cut-off LLM response
+  // produces. Two different inputs deserve two different names.
+  it('parseSpecFromJSON throws on truncated JSON', () => {
     const builder = new AISpecBuilder({ store: mockStore() });
     expect(() => builder.parseSpecFromJSON('not-json{')).toThrow(/Invalid JSON/);
   });

@@ -32,6 +32,8 @@ vi.mock('../src/slash-commands/memory-compact.js', () => ({
 
 import type { SlashCommandContext } from '../src/slash-commands/command-context.js';
 import { buildMemoryCommand } from '../src/slash-commands/memory.js';
+import { runCompact } from '../src/slash-commands/memory-compact.js';
+import { formatSageStats } from '../src/slash-commands/memory-formatters.js';
 
 /** Narrow the slash-command execute/run union (which includes `void`) to its message. */
 function runMessage(result: unknown): string | undefined {
@@ -118,7 +120,9 @@ describe('memory slash command', () => {
       mockGetSageSurface.mockReturnValue(makeSageStub());
       const cmd = buildMemoryCommand(makeCtx());
       const result = await cmd.run('');
-      expect(runMessage(result)).toContain('SAGE');
+      // `toContain('SAGE')` also matched the 'SAGE STATS' sentinel; pin the
+      // show formatter's sentinel so a mis-route to `stats` fails.
+      expect(runMessage(result)).toBe('SAGE SHOW');
     });
 
     it('shows empty message when SAGE is empty', async () => {
@@ -217,24 +221,44 @@ describe('memory slash command', () => {
 
   describe('stats', () => {
     it('returns legacy stats when no SAGE (falls back to store.list)', async () => {
-      const cmd = buildMemoryCommand(makeCtx());
+      const ctx = makeCtx();
+      const cmd = buildMemoryCommand(ctx);
       const result = await cmd.run('stats');
-      expect(runMessage(result)).toBeTruthy();
+      // The stub store lists nothing, so the fallback reports an empty store —
+      // a message only the non-SAGE `runStats` path produces.
+      expect(runMessage(result)).toContain('Memory is empty');
+      expect(ctx.memoryStore!.list).toHaveBeenCalledWith('project-memory');
     });
 
     it('returns formatted stats when SAGE available', async () => {
-      mockGetSageSurface.mockReturnValue(makeSageStub());
+      const stub = makeSageStub();
+      mockGetSageSurface.mockReturnValue(stub);
+      // Mocks are not cleared between tests in this file (see beforeEach), so
+      // drop earlier calls — the assertion below must see THIS run's call.
+      vi.mocked(formatSageStats).mockClear();
       const cmd = buildMemoryCommand(makeCtx());
       const result = await cmd.run('stats');
-      expect(runMessage(result)).toBeTruthy();
+      // This suite mocks the formatters to sentinel strings on purpose — it tests
+      // COMMAND ROUTING, not formatting (formatting is covered against the real
+      // formatter in memory-formatters.test.ts). `toBeTruthy()` could not tell
+      // routes apart: the non-SAGE `runStats` fallback also returns a truthy
+      // message. Pin that the SAGE branch ran and received the surface's stats.
+      expect(runMessage(result)).toBe('SAGE STATS');
+      expect(formatSageStats).toHaveBeenCalledWith(
+        await stub.stats(),
+        expect.any(Number),
+        expect.any(String),
+      );
     });
   });
 
   describe('search', () => {
     it('returns legacy search when no SAGE (falls back to store.search)', async () => {
-      const cmd = buildMemoryCommand(makeCtx());
+      const ctx = makeCtx();
+      const cmd = buildMemoryCommand(ctx);
       const result = await cmd.run('search query');
-      expect(runMessage(result)).toBeTruthy();
+      expect(runMessage(result)).toBe('LEGACY');
+      expect(ctx.memoryStore!.search).toHaveBeenCalledWith('query', 'project-memory', 20);
     });
 
     it('returns usage when no query', async () => {
@@ -309,18 +333,31 @@ describe('memory slash command', () => {
   });
 
   describe('clear', () => {
-    it('calls store.forget on legacy store', async () => {
-      const cmd = buildMemoryCommand(makeCtx());
+    // Was titled "calls store.forget on legacy store" and asserted toBeTruthy();
+    // measured, a bare `clear` is refused. The wipe goes through `store.clear()`,
+    // so that is what must stay untouched. Forced clears (with and without
+    // confirmation) are covered in slash-diag-memory-todos.test.ts.
+    it('blocks a bare clear and deletes nothing', async () => {
+      const ctx = makeCtx();
+      const clear = vi.fn(async () => undefined);
+      (ctx.memoryStore as unknown as { clear: typeof clear }).clear = clear;
+      const cmd = buildMemoryCommand(ctx);
       const result = await cmd.run('clear');
-      expect(runMessage(result)).toBeTruthy();
+      const message = runMessage(result) ?? '';
+      expect(message).toContain('Bulk memory clear is blocked by default');
+      expect(message).toContain('/memory clear --force');
+      expect(clear).not.toHaveBeenCalled();
+      expect(ctx.memoryStore!.forget).not.toHaveBeenCalled();
     });
   });
 
   describe('compact', () => {
     it('runs compact', async () => {
+      vi.mocked(runCompact).mockClear();
       const cmd = buildMemoryCommand(makeCtx());
       const result = await cmd.run('compact');
-      expect(runMessage(result)).toBeTruthy();
+      expect(runMessage(result)).toBe('Compacted.');
+      expect(runCompact).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -328,7 +365,9 @@ describe('memory slash command', () => {
     it('returns help for unknown subcommand', async () => {
       const cmd = buildMemoryCommand(makeCtx());
       const result = await cmd.run('totally-unknown');
-      expect(runMessage(result)).toBeTruthy();
+      const message = runMessage(result) ?? '';
+      expect(message).toContain('Unknown subcommand "totally-unknown" for /memory.');
+      expect(message).toMatch(/Valid: show, search, /);
     });
   });
 

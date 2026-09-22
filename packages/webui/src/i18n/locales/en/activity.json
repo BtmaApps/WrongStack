@@ -908,7 +908,7 @@
       "disableTitle": "This goal has an unrealistic duration assessment — use \"Start anyway\" to override"
     },
     "multiBoardLabel": "Split into multiple kanban boards",
-    "verifyTasksLabel": "Require verification for each task",
+    "verifyTasksLabel": "Verify each phase and final result",
     "chimeraReviewLabel": "Enable chimera auto-review"
   },
   "collab": {
@@ -1249,6 +1249,7 @@
     "statusAbandoned": "Abandoned",
     "heading": "Goal",
     "refined": "Refined",
+    "refining": "Refining mission…",
     "progress": "Progress",
     "iterations": "iterations",
     "deliverables": "Deliverables",

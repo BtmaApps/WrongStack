@@ -6,8 +6,8 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AutonomousCoordinator } from '../../src/coordination/autonomous-coordinator.js';
 import type { AutonomousCoordinatorOptions } from '../../src/coordination/autonomous-coordinator.js';
+import { AutonomousCoordinator } from '../../src/coordination/autonomous-coordinator.js';
 
 let tempDir: string;
 
@@ -115,10 +115,27 @@ describe('AutonomousCoordinator — public API', () => {
     expect(events.length).toBeGreaterThan(0);
   });
 
-  it('dispose cleans up subscriptions', () => {
+  // "Cleans up subscriptions" is observable: the callback that fired in the test
+  // above must stop firing. This asserted nothing, so a dispose() that left every
+  // subscription attached passed it.
+  it('dispose cleans up subscriptions', async () => {
+    const events: unknown[] = [];
+    const coord = makeCoordinator({ onCoordinatorEvent: (e) => events.push(e) });
+    await coord.createGoal({ title: 'Cleanup goal', description: 'test' });
+    expect(events.length).toBeGreaterThan(0); // the subscription is live
+
+    const beforeDispose = events.length;
+    expect(() => coord.dispose()).not.toThrow();
+
+    await coord.createGoal({ title: 'After dispose', description: 'test' });
+    expect(events.length).toBe(beforeDispose);
+  });
+
+  it('dispose is idempotent', () => {
     const coord = makeCoordinator();
-    coord.createGoal({ title: 'Cleanup goal', description: 'test' });
-    // dispose should not throw
     coord.dispose();
+    // `unsubs.splice(0)` empties the list, so a second pass has nothing to call —
+    // pinned because the splice is what makes the repeat safe.
+    expect(() => coord.dispose()).not.toThrow();
   });
 });

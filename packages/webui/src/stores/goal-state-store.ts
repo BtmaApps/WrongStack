@@ -1,12 +1,15 @@
 import { create } from 'zustand';
-import { getWSClient } from '@/lib/ws-client';
 import { type GoalJournalEntry, type GoalState, parseGoalState } from '@/lib/goal';
+import { getWSClient } from '@/lib/ws-client';
 
 // ── Goal State Store (goal.json tracking / eternal goal) ──────────────────
 
 interface GoalStateStoreState {
   goal: GoalState | null;
+  missionId: string | null;
+  refiningMissionId: string | null;
   setGoal: (raw: Record<string, unknown> | null) => void;
+  setRefining: (missionId: string, active: boolean) => void;
   clear: () => void;
   appendJournalEntry: (entry: GoalJournalEntry) => void;
   /** Request the latest goal state from the server. Safe to call any time. */
@@ -15,8 +18,27 @@ interface GoalStateStoreState {
 
 export const useGoalStateStore = create<GoalStateStoreState>()((set) => ({
   goal: null,
-  setGoal: (raw) => set({ goal: parseGoalState(raw) }),
-  clear: () => set({ goal: null }),
+  missionId: null,
+  refiningMissionId: null,
+  setGoal: (raw) =>
+    set((state) => {
+      const missionId =
+        typeof raw?.missionId === 'string'
+          ? raw.missionId
+          : typeof raw?.setAt === 'string'
+            ? raw.setAt
+            : null;
+      return {
+        goal: parseGoalState(raw),
+        missionId,
+        refiningMissionId: missionId === state.missionId ? state.refiningMissionId : null,
+      };
+    }),
+  setRefining: (missionId, active) =>
+    set((state) =>
+      state.missionId === missionId ? { refiningMissionId: active ? missionId : null } : state,
+    ),
+  clear: () => set({ goal: null, missionId: null, refiningMissionId: null }),
   appendJournalEntry: (entry) =>
     set((state) => {
       if (!state.goal) return state;

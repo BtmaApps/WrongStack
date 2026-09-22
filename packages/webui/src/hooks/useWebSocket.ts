@@ -366,12 +366,6 @@ export function useWebSocket() {
   );
 
   // Goal
-  const toggleGoalAutonomous = useCallback(
-    (autonomous: boolean) => {
-      client.send({ type: 'goal.toggleAutonomous', payload: { autonomous } });
-    },
-    [client],
-  );
   const startGoal = useCallback(
     (title: string, phases?: unknown[] | undefined, autonomous = true) => {
       client.send({ type: 'goal.start', payload: { title, phases, autonomous } });
@@ -451,7 +445,6 @@ export function useWebSocket() {
     updateContextMode,
     deleteContextMode,
     repairContext,
-    toggleGoalAutonomous,
     startGoal,
     pauseGoal,
     resumeGoal,

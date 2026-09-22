@@ -394,6 +394,20 @@ describe('DefaultSystemPromptBuilder', () => {
     expect(flat.at(-1)?.text).toBe('volatile-now');
   });
 
+  it('appends operator instructions to the stable session region, host only', async () => {
+    const b = new DefaultSystemPromptBuilder({
+      appendedInstructions: '  Always answer in Turkish.  ',
+    });
+    const host = await b.buildRegions({ cwd: tmp, projectRoot: tmp, tools: [] });
+    const hostTexts = host.session.map((block) => block.text);
+    expect(hostTexts).toContain('Always answer in Turkish.');
+    expect(host.volatile.map((block) => block.text)).not.toContain('Always answer in Turkish.');
+
+    const sub = await b.buildRegions({ cwd: tmp, projectRoot: tmp, tools: [], subagent: true });
+    const subTexts = [...sub.core, ...sub.session, ...sub.volatile].map((block) => block.text);
+    expect(subTexts.join('\n')).not.toContain('Always answer in Turkish.');
+  });
+
   it('renders structured negative selection guidance without description truncation', async () => {
     const tool = mkTool('finder', 'Find useful things.');
     tool.category = 'Search';

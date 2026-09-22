@@ -968,6 +968,7 @@
         "export { decryptConfigSecrets, decryptConfigSecretsForRewrite, encryptConfigSecrets, isSecretField, } from './config-secrets.js';",
         "export { describeWriteTargets } from './permission-helpers.js';",
         "export { evaluateToolKanbanBoundary, type ToolKanbanBoundaryEvaluation, } from './kanban-boundary.js';",
+        "export { isProjectRootLocked, isYoloLockedOff, lockToProjectRoot, lockYoloOff, } from './process-lockdown.js';",
         "export { noOpVault } from '../types/secret-vault.js';",
         "export { restrictDirPermissions, restrictFilePermissions, SECRET_DIR_MODE, SECRET_FILE_MODE, } from './file-permissions.js';",
         "export { type KanbanGovernancePort, kanbanGovernance, setKanbanGovernance, } from './kanban-governance-port.js';"
@@ -1350,16 +1351,19 @@
       },
       "source": "packages/core/src/goal/index.ts",
       "declarations": [
-        "export type { PhaseGraph, PhaseNode, PhaseStatus, PhaseProgress, PhaseEventMap, PhaseEventName, PhaseExecutionContext, GoalOptions, PhaseFilter, PhaseSort, PhaseTemplate, } from './types.js';",
-        "export { CheckpointManager, type CheckpointManagerOptions, type Checkpoint, } from './checkpoint.js';",
-        "export { GoalAssessor, type GoalAssessResult, type GoalAssessorOptions, } from './goal-assessor.js';",
-        "export { GoalPlanner, extractJSONArray as extractGoalJSONArray, type GoalPlannerOptions, type GoalPlanResult, } from './goal-planner.js';",
-        "export { GoalRunner, createGoalRunnerFromTaskGraph, type GoalRunnerOptions, } from './goal-runner.js';",
+        "export type { GoalOptions, PhaseEventMap, PhaseEventName, PhaseExecutionContext, PhaseFilter, PhaseGraph, PhaseNode, PhaseProgress, PhaseSort, PhaseStatus, PhaseTemplate, } from './types.js';",
+        "export { GoalAssessor, type GoalAssessorOptions, type GoalAssessResult, } from './goal-assessor.js';",
+        "export { GoalRunLeaseBusyError, PhaseStore, type PhaseStoreOptions } from './phase-store.js';",
+        "export { GoalRunPersistence, prepareGoalGraphForResume } from './goal-run-lifecycle.js';",
         "export { PHASE_EVENT_NAMES } from './types.js';",
         "export { PhaseGraphBuilder, type PhaseGraphBuilderOptions, } from './phase-graph-builder.js';",
         "export { PhaseOrchestrator, type PhaseOrchestratorOptions, } from './phase-orchestrator.js';",
-        "export { PhaseStore, type PhaseStoreOptions } from './phase-store.js';",
-        "export { appendJournal, emptyGoal, formatGoal, goalFilePath, loadGoal, MAX_JOURNAL_ENTRIES, MAX_PROGRESS_HISTORY, parseProgressFromText, recordProgress, saveGoal, setProgress, summarizeUsage, type GoalFile, type JournalEntry, type ProgressSnapshot, } from '../storage/goal-store.js';"
+        "export { appendJournal, emptyGoal, formatGoal, type GoalFile, goalFilePath, type JournalEntry, loadGoal, MAX_JOURNAL_ENTRIES, MAX_PROGRESS_HISTORY, type ProgressSnapshot, parseProgressFromText, recordProgress, replaceGoalMission, saveGoal, setProgress, summarizeUsage, updateGoal, } from '../storage/goal-store.js';",
+        "export { buildGoalRefinementPrompt, parseGoalRefinement, type RefinedMission, refineGoalHeuristic, refineGoalWithProvider, resolveRefinerTarget, } from './mission-refinement.js';",
+        "export { createGoalRunnerFromTaskGraph, GoalRunner, type GoalRunnerOptions, } from './goal-runner.js';",
+        "export { extractJSONArray as extractGoalJSONArray, GoalPlanner, type GoalPlannerOptions, type GoalPlanResult, } from './goal-planner.js';",
+        "export { type Checkpoint, CheckpointManager, type CheckpointManagerOptions, } from './checkpoint.js';",
+        "export { type GoalProjectVerificationResult, type GoalProjectVerifierOptions, verifyGoalProject, } from './project-verifier.js';"
       ]
     },
     {
@@ -1461,7 +1465,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core",
       "sourceFiles": 59,
-      "sourceLines": 13465
+      "sourceLines": 13507
     },
     {
       "directory": "design",
@@ -1475,7 +1479,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime pilot candidate after R2/R3",
       "sourceFiles": 69,
-      "sourceLines": 20101
+      "sourceLines": 20163
     },
     {
       "directory": "extension",
@@ -1488,15 +1492,15 @@
       "directory": "goal",
       "classification": "storage/repository implementation",
       "intendedOwner": "repository behind persistence primitive",
-      "sourceFiles": 14,
-      "sourceLines": 3531
+      "sourceFiles": 17,
+      "sourceLines": 4112
     },
     {
       "directory": "hooks",
       "classification": "product feature",
       "intendedOwner": "feature/plugin owner",
       "sourceFiles": 6,
-      "sourceLines": 1381
+      "sourceLines": 1410
     },
     {
       "directory": "hq",
@@ -1524,7 +1528,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or Providers",
       "sourceFiles": 12,
-      "sourceLines": 2809
+      "sourceLines": 2819
     },
     {
       "directory": "notifications",
@@ -1580,7 +1584,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime composition",
       "sourceFiles": 5,
-      "sourceLines": 1194
+      "sourceLines": 1265
     },
     {
       "directory": "replay",
@@ -1593,15 +1597,15 @@
       "directory": "security",
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime security subsystem",
-      "sourceFiles": 23,
-      "sourceLines": 8350
+      "sourceFiles": 24,
+      "sourceLines": 8439
     },
     {
       "directory": "session-catalog",
       "classification": "storage/repository implementation",
       "intendedOwner": "project-scoped ownership and catalog subsystem",
       "sourceFiles": 17,
-      "sourceLines": 5098
+      "sourceLines": 5113
     },
     {
       "directory": "skills",
@@ -1622,7 +1626,7 @@
       "classification": "storage/repository implementation",
       "intendedOwner": "repositories over dependency-free persistence",
       "sourceFiles": 106,
-      "sourceLines": 23625
+      "sourceLines": 23657
     },
     {
       "directory": "tasking",
@@ -1643,7 +1647,7 @@
       "classification": "agent-domain contract",
       "intendedOwner": "Core type-only subpaths",
       "sourceFiles": 76,
-      "sourceLines": 14097
+      "sourceLines": 14126
     },
     {
       "directory": "typesafe",
@@ -1671,7 +1675,7 @@
       "classification": "concrete runtime default",
       "intendedOwner": "Runtime or focused worktree implementation",
       "sourceFiles": 5,
-      "sourceLines": 1258
+      "sourceLines": 1306
     }
   ]
 }

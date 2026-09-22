@@ -538,7 +538,12 @@ export interface SlashCommandContext {
    * the loaded graph and starts executing pending tasks.
    */
   onGoalResumeFromGraph?:
-    | ((graph: import('@wrongstack/core/goal').PhaseGraph) => Promise<void>)
+    | ((
+        graph: import('@wrongstack/core/goal').PhaseGraph,
+      ) => Promise<
+        | { ok: true; graph: import('@wrongstack/core/goal').PhaseGraph }
+        | { ok: false; error: string }
+      >)
     | undefined;
   /** Live, read-only view of the running Goal (null when idle). */
   getGoalRunner?: () => {

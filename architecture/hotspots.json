@@ -19,12 +19,12 @@
       "relativeImports": 1
     },
     "packages/cli/src/cli-main.ts": {
-      "lines": 881,
-      "relativeImports": 34
+      "lines": 889,
+      "relativeImports": 37
     },
     "packages/cli/src/execution.ts": {
-      "lines": 936,
-      "relativeImports": 42
+      "lines": 946,
+      "relativeImports": 43
     },
     "packages/cli/src/fleet/host.ts": {
       "lines": 875,
@@ -55,8 +55,8 @@
       "relativeImports": 22
     },
     "packages/core/src/boot.ts": {
-      "lines": 835,
-      "relativeImports": 15
+      "lines": 847,
+      "relativeImports": 16
     },
     "packages/core/src/chronicle/file-observer.ts": {
       "lines": 807,
@@ -106,6 +106,10 @@
       "lines": 818,
       "relativeImports": 9
     },
+    "packages/core/src/goal/phase-orchestrator.ts": {
+      "lines": 842,
+      "relativeImports": 14
+    },
     "packages/core/src/hq/auth-store.ts": {
       "lines": 889,
       "relativeImports": 9
@@ -119,7 +123,7 @@
       "relativeImports": 9
     },
     "packages/core/src/security/yolo-risk.ts": {
-      "lines": 1241,
+      "lines": 1252,
       "relativeImports": 2
     },
     "packages/core/src/storage/session-store.ts": {
@@ -128,6 +132,10 @@
     },
     "packages/core/src/types/provider.ts": {
       "lines": 906,
+      "relativeImports": 7
+    },
+    "packages/core/src/worktree/worktree-manager.ts": {
+      "lines": 843,
       "relativeImports": 7
     },
     "packages/governance/src/protocol-decoder.ts": {
@@ -275,31 +283,23 @@
       "relativeImports": 0
     },
     "packages/tui/src/app-action-type.ts": {
-      "lines": 915,
+      "lines": 921,
       "relativeImports": 13
     },
     "packages/tui/src/app-props.ts": {
       "lines": 821,
       "relativeImports": 10
     },
-    "packages/tui/src/components/history/code-block.tsx": {
-      "lines": 839,
-      "relativeImports": 8
-    },
     "packages/tui/src/components/settings-picker.tsx": {
       "lines": 856,
       "relativeImports": 12
-    },
-    "packages/tui/src/components/sidebar-panels-workspace.tsx": {
-      "lines": 914,
-      "relativeImports": 11
     },
     "packages/tui/src/reducers/settings-values.ts": {
       "lines": 880,
       "relativeImports": 6
     },
     "packages/tui/src/use-app-controller.tsx": {
-      "lines": 942,
+      "lines": 943,
       "relativeImports": 50
     },
     "packages/vector-memory/src/store.ts": {
@@ -359,19 +359,19 @@
       "relativeImports": 19
     },
     "packages/webui/src/types/client-message.ts": {
-      "lines": 901,
+      "lines": 911,
       "relativeImports": 7
     },
     "packages/webui-server/src/server/backend-services.ts": {
-      "lines": 937,
+      "lines": 947,
       "relativeImports": 14
     },
     "packages/webui-server/src/server/embedded-message-router.ts": {
-      "lines": 902,
-      "relativeImports": 54
+      "lines": 957,
+      "relativeImports": 56
     },
     "packages/webui-server/src/server/goal-ws-handler.ts": {
-      "lines": 857,
+      "lines": 1161,
       "relativeImports": 4
     },
     "packages/webui-server/src/server/memory-handlers.ts": {

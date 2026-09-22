@@ -393,15 +393,6 @@ describe('useWebSocket', () => {
     });
   });
 
-  it('toggleGoalAutonomous carries the flag', () => {
-    const r = setup();
-    r.current.toggleGoalAutonomous(false);
-    expect(client.calls).toContainEqual({
-      method: 'send',
-      args: [{ type: 'goal.toggleAutonomous', payload: { autonomous: false } }],
-    });
-  });
-
   it('selectGoal carries the phase id', () => {
     const r = setup();
     r.current.selectGoal('p2');

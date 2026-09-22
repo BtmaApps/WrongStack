@@ -895,7 +895,7 @@
       "disableTitle": "Dieses Ziel hat eine unrealistische Dauer — mit \"Trotzdem starten\" überschreiben"
     },
     "multiBoardLabel": "In mehrere Kanban-Boards aufteilen",
-    "verifyTasksLabel": "Verifizierung für jede Aufgabe erforderlich",
+    "verifyTasksLabel": "Jede Phase und das Endergebnis prüfen",
     "chimeraReviewLabel": "Chimera-Auto-Review aktivieren"
   },
   "collab": {
@@ -1183,6 +1183,7 @@
     "statusAbandoned": "Aufgegeben",
     "heading": "Ziel",
     "refined": "Verfeinert",
+    "refining": "Ziel wird verfeinert…",
     "progress": "Fortschritt",
     "iterations": "Iterationen",
     "deliverables": "Lieferobjekte",

@@ -6,7 +6,7 @@
     "@wrongstack/core/agent": {
       "files": 338,
       "typeOnly": 268,
-      "runtimeOrMixed": 92
+      "runtimeOrMixed": 91
     },
     "@wrongstack/core/agent-catalog": {
       "files": 17,
@@ -44,9 +44,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/execution": {
-      "files": 67,
+      "files": 68,
       "typeOnly": 18,
-      "runtimeOrMixed": 65
+      "runtimeOrMixed": 66
     },
     "@wrongstack/core/extension": {
       "files": 7,
@@ -54,9 +54,9 @@
       "runtimeOrMixed": 1
     },
     "@wrongstack/core/goal": {
-      "files": 24,
-      "typeOnly": 11,
-      "runtimeOrMixed": 23
+      "files": 30,
+      "typeOnly": 13,
+      "runtimeOrMixed": 29
     },
     "@wrongstack/core/hooks": {
       "files": 13,
@@ -79,9 +79,9 @@
       "runtimeOrMixed": 48
     },
     "@wrongstack/core/kernel": {
-      "files": 286,
-      "typeOnly": 143,
-      "runtimeOrMixed": 157
+      "files": 292,
+      "typeOnly": 146,
+      "runtimeOrMixed": 160
     },
     "@wrongstack/core/kernel/events.js": {
       "files": 6,
@@ -139,9 +139,9 @@
       "runtimeOrMixed": 2
     },
     "@wrongstack/core/security": {
-      "files": 162,
+      "files": 163,
       "typeOnly": 27,
-      "runtimeOrMixed": 138
+      "runtimeOrMixed": 139
     },
     "@wrongstack/core/session-catalog": {
       "files": 12,
@@ -159,9 +159,9 @@
       "runtimeOrMixed": 15
     },
     "@wrongstack/core/statusline": {
-      "files": 25,
+      "files": 26,
       "typeOnly": 12,
-      "runtimeOrMixed": 27
+      "runtimeOrMixed": 28
     },
     "@wrongstack/core/storage": {
       "files": 127,
@@ -179,9 +179,9 @@
       "runtimeOrMixed": 9
     },
     "@wrongstack/core/types": {
-      "files": 1161,
-      "typeOnly": 1036,
-      "runtimeOrMixed": 342
+      "files": 1171,
+      "typeOnly": 1045,
+      "runtimeOrMixed": 343
     },
     "@wrongstack/core/types/multi-agent.js": {
       "files": 2,
@@ -214,9 +214,9 @@
       "runtimeOrMixed": 17
     },
     "@wrongstack/core/utils": {
-      "files": 630,
+      "files": 634,
       "typeOnly": 60,
-      "runtimeOrMixed": 599
+      "runtimeOrMixed": 603
     },
     "@wrongstack/core/utils/child-env": {
       "files": 1,
@@ -299,7 +299,7 @@
       "specifier": "@wrongstack/core/agent",
       "file": "packages/cli/src/boot/dispatch-singleshot.ts",
       "typeOnly": 1,
-      "runtimeOrMixed": 1
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/agent",
@@ -4023,6 +4023,12 @@
     },
     {
       "specifier": "@wrongstack/core/execution",
+      "file": "packages/cli/src/slash-commands/goal.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/execution",
       "file": "packages/cli/src/subcommands/handlers/typesafe-brain-replay.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4439,7 +4445,13 @@
       "specifier": "@wrongstack/core/goal",
       "file": "packages/cli/src/slash-commands/command-context.ts",
       "typeOnly": 0,
-      "runtimeOrMixed": 4
+      "runtimeOrMixed": 5
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/src/slash-commands/goal-refiner.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 2
     },
     {
       "specifier": "@wrongstack/core/goal",
@@ -4497,6 +4509,12 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/cli/tests/slash-goal.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/tui/src/app-props.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -4509,7 +4527,19 @@
     },
     {
       "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/src/server/goal-handlers.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
       "file": "packages/webui-server/src/server/goal-phase-planning.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/src/server/goal-refiner-adapter.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -4524,6 +4554,18 @@
       "file": "packages/webui-server/src/server/goal-ws-handler.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/tests/goal-ws-handler.gaps.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/goal",
+      "file": "packages/webui-server/tests/goal-ws-handler.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
     },
     {
       "specifier": "@wrongstack/core/goal",
@@ -5817,6 +5859,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/boot/dispatch-singleshot.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/boot/dispatch-webui.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -5830,6 +5878,18 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/src/boot/governance-shadow-bridge.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/boot/single-shot-budget.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/src/boot/stream-json.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -6297,6 +6357,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/cli-dispatch-journeys.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/cli-eternal-flag.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6459,6 +6525,12 @@
     },
     {
       "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/single-shot-budget.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/slash-commands-autothin.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -6472,6 +6544,12 @@
     {
       "specifier": "@wrongstack/core/kernel",
       "file": "packages/cli/tests/slash-supervisor.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/kernel",
+      "file": "packages/cli/tests/stream-json.test.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -9111,6 +9189,12 @@
     },
     {
       "specifier": "@wrongstack/core/security",
+      "file": "packages/cli/src/boot/restricted-mode.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/security",
       "file": "packages/cli/src/cli-entry-point.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -10276,6 +10360,12 @@
     {
       "specifier": "@wrongstack/core/statusline",
       "file": "packages/tui/src/components/status-line-registry.tsx",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/statusline",
+      "file": "packages/tui/src/components/statusline-picker-model.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },
@@ -11565,7 +11655,31 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/boot/mcp-config-flag.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/boot/simpleui-full-auto.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/boot/single-shot-budget.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/boot/stream-json.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/boot/structured-output.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -12610,6 +12724,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/cli/src/subcommands/contracts.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/cli/src/subcommands/handlers/import-claude-code.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -16701,6 +16821,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/tui/src/chat-search-slash.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/tui/src/components/audit-panel.tsx",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -17535,6 +17661,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/goal-refiner-adapter.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/goal-state.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -17614,6 +17746,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/src/server/memory-routes.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/src/server/message-dispatcher.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18009,6 +18147,12 @@
     },
     {
       "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/backend-services.test.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/completion-handlers.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
@@ -18040,6 +18184,12 @@
     {
       "specifier": "@wrongstack/core/types",
       "file": "packages/webui-server/tests/embedded-host-adapters.proxy.test.ts",
+      "typeOnly": 1,
+      "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/types",
+      "file": "packages/webui-server/tests/goal-refiner-adapter.test.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
     },
@@ -18927,6 +19077,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/boot/structured-output.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/boot/system-prompt-builder.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19509,12 +19665,6 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
-      "file": "packages/cli/src/slash-commands/goal-refiner.ts",
-      "typeOnly": 0,
-      "runtimeOrMixed": 1
-    },
-    {
-      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/slash-commands/health.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -19929,6 +20079,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/subcommands/handlers/import-claude-code.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/cli/src/subcommands/handlers/init.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -20256,6 +20412,12 @@
       "file": "packages/cli/src/wiring/replay.ts",
       "typeOnly": 1,
       "runtimeOrMixed": 0
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/cli/src/wiring/resume-candidate.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
     },
     {
       "specifier": "@wrongstack/core/utils",
@@ -21699,6 +21861,12 @@
     },
     {
       "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/hooks/use-app-execution-pipeline.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-app-picker-keys.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
@@ -21760,6 +21928,12 @@
     {
       "specifier": "@wrongstack/core/utils",
       "file": "packages/tui/src/hooks/use-provider-event-bridge.ts",
+      "typeOnly": 0,
+      "runtimeOrMixed": 1
+    },
+    {
+      "specifier": "@wrongstack/core/utils",
+      "file": "packages/tui/src/hooks/use-queue-manager.ts",
       "typeOnly": 0,
       "runtimeOrMixed": 1
     },

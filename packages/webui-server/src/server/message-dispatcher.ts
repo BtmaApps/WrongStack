@@ -18,6 +18,8 @@
  */
 
 import path from 'node:path';
+import type { ProviderConfig } from '@wrongstack/core/types';
+import { makeProviderFromConfig } from '@wrongstack/providers';
 import type { WebSocket } from 'ws';
 import { AgentRosterWSHandler } from './agent-roster-handlers.js';
 import type { ClientTransportRouteHandlers } from './client-transport-routes.js';
@@ -30,7 +32,8 @@ import {
   handleConnectionsServiceAction,
 } from './connections-health-route.js';
 import { createConversationOperations } from './conversation-operations.js';
-import { handleGoalGet } from './goal-handlers.js';
+import { handleGoalGet, handleGoalStateMutation } from './goal-handlers.js';
+import { createGoalRefinerAdapter } from './goal-refiner-adapter.js';
 import type { GoalSnapshotRouteHandlers } from './goal-snapshot-routes.js';
 import type { HostRouteHandlers } from './host-routes.js';
 import type { KanbanHostRouteHandlers } from './kanban-host-routes.js';
@@ -41,6 +44,7 @@ import type { PendingConfirm } from './pending-confirms.js';
 import { authorizeWebUIAction } from './privileged-actions.js';
 import { handleProcessKill, handleProcessKillAll, handleProcessList } from './process-handlers.js';
 import type { ProcessRouteHandlers } from './process-routes.js';
+import { routeProviderCfgThroughProxy } from './proxy-runtime.js';
 import { createRouteFamilyDispatcher } from './route-family-dispatcher.js';
 import type { AllRoutes, WebuiDeps, WebuiMutableState } from './routes.js';
 import { collectDisplayedSessionIds } from './session-handlers.js';
@@ -296,6 +300,61 @@ export function createMessageDispatcher(
   const goalSnapshotRoutes: GoalSnapshotRouteHandlers = {
     getSnapshot: () =>
       handleGoalGet(state.getProjectRoot(), (message) => broadcast(state.getClients(), message)),
+    mutate: (_ws, msg) => {
+      const payload = msg.payload as Record<string, unknown> | undefined;
+      const sessionId = typeof payload?.sessionId === 'string' ? payload.sessionId : undefined;
+      const targetContext = sessionId
+        ? sessionId === deps.context.session?.id || !deps.getAgent
+          ? deps.context
+          : deps.getAgent?.(sessionId)?.ctx
+        : deps.context;
+      if (!targetContext) {
+        broadcast(state.getClients(), {
+          type: 'goal-state.error',
+          payload: { message: 'Goal refiner session is unavailable.' },
+        });
+        return;
+      }
+      const provider = targetContext.provider;
+      const model = targetContext.model;
+      const config = state.getConfig();
+      const activeProviderId = provider?.id ?? config.provider;
+      const createProvider = (providerId: string) => {
+        if (providerId === activeProviderId && provider) return provider;
+        const providerConfig = config.providers?.[providerId];
+        if (!providerConfig) return undefined;
+        const factoryType = providerConfig.type ?? providerId;
+        const routed = routeProviderCfgThroughProxy(providerConfig, config.baseUrl, providerId);
+        try {
+          return deps.providerRegistry.has(factoryType)
+            ? deps.providerRegistry.create(
+                { ...routed, type: providerId } as ProviderConfig,
+                factoryType,
+              )
+            : makeProviderFromConfig(providerId, { ...routed, type: factoryType });
+        } catch {
+          return undefined;
+        }
+      };
+      return handleGoalStateMutation(
+        state.getProjectRoot(),
+        msg.type as
+          | 'goal-state.set'
+          | 'goal-state.refine'
+          | 'goal-state.pause'
+          | 'goal-state.resume'
+          | 'goal-state.clear',
+        payload,
+        (message) => broadcast(state.getClients(), message),
+        createGoalRefinerAdapter({
+          config,
+          primaryProvider: provider,
+          primaryModel: model,
+          activeProviderId,
+          createProvider,
+        }),
+      );
+    },
   };
   const kanbanSupervisor = createKanbanSupervisor({
     projectRoot: () => state.getProjectRoot(),

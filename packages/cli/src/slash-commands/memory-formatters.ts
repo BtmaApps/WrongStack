@@ -235,9 +235,15 @@ export function formatSageStats(
   scopedCount?: number,
   scopedRoles?: string,
 ): string {
+  // `?? 0`, matching `formatSageShow` below. This line interpolated the counts
+  // raw, so a backend returning a partial `byStatus` (SQL `GROUP BY` omits empty
+  // groups; the record was cast to the complete type) rendered the literal word
+  // "undefined" three times. The backend now zero-fills, but a formatter should
+  // not print "undefined" to a user whatever a surface hands it.
+  const s = stats.byStatus;
   const lines = [
     '## SAGE Stats',
-    `Total: ${stats.total}; active ${stats.byStatus.active}; stale ${stats.byStatus.stale}; archived ${stats.byStatus.archived}; deleted ${stats.byStatus.deleted}.`,
+    `Total: ${stats.total}; active ${s.active ?? 0}; stale ${s.stale ?? 0}; archived ${s.archived ?? 0}; deleted ${s.deleted ?? 0}.`,
     `Graph edges: ${stats.edges}.`,
     `Kinds: ${
       Object.entries(stats.byKind)

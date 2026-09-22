@@ -1752,8 +1752,12 @@ describe('SddParallelRun — coverage edge paths', () => {
       run.pause();
       const wait1 = (run as unknown as { waitWhilePaused: () => Promise<void> }).waitWhilePaused();
       run.resume();
-      await wait1;
-      await vi.advanceTimersByTimeAsync(1000);
+      // resume() removes the waiter, so the wait settles…
+      await expect(wait1).resolves.toBeUndefined();
+      // …and the safety timer firing AFTERWARDS must be harmless: no throw, no
+      // second resolution of a waiter that is already gone. Both cases below ran
+      // without a single assertion, so either failure mode was invisible.
+      await expect(vi.advanceTimersByTimeAsync(1000)).resolves.toBeDefined();
 
       // Case 2: safety timer fires while still waiting
       run.pause();
@@ -1762,7 +1766,9 @@ describe('SddParallelRun — coverage edge paths', () => {
         (run as unknown as { paused: boolean }).paused = false;
       }, 990);
       await vi.advanceTimersByTimeAsync(1000);
-      await wait2;
+      // Case 2: the safety timer is what unblocks the waiter here.
+      await expect(wait2).resolves.toBeUndefined();
+      expect((run as unknown as { paused: boolean }).paused).toBe(false);
     } finally {
       vi.useRealTimers();
     }

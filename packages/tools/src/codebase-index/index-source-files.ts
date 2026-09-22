@@ -93,6 +93,7 @@ export async function findGitSourceFiles(
   projectRoot: string,
   ignore: string[],
   signal?: AbortSignal | undefined,
+  isGitIgnored?: IgnoreMatcher,
 ): Promise<{ files: string[]; trustedUnchanged: Set<string>; snapshotKey: string } | null> {
   try {
     throwIfAborted(signal);
@@ -137,7 +138,8 @@ export async function findGitSourceFiles(
       if (
         portable.split('/').some((segment) => ignoreSet.has(segment)) ||
         DEFAULT_IGNORE_FILES.has(path.posix.basename(portable)) ||
-        isAtlasProjection(portable)
+        isAtlasProjection(portable) ||
+        (isGitIgnored?.(portable, false) ?? false)
       ) {
         continue;
       }
@@ -247,7 +249,7 @@ export async function findSourceFiles(
   trustedUnchanged?: Set<string>;
   snapshotKey?: string;
 }> {
-  const gitFiles = await findGitSourceFiles(projectRoot, ignore, signal);
+  const gitFiles = await findGitSourceFiles(projectRoot, ignore, signal, isGitIgnored);
   if (gitFiles) {
     return {
       files: gitFiles.files,

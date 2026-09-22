@@ -32,7 +32,11 @@ export interface EventWiring {
 /** Wire CLI spinner, live streaming, and client.status emission. */
 export function wireEventWiring(deps: WireEventWiringDeps): EventWiring {
   const { evOn, events, renderer, projectSlug, getActiveModeId, getProvider, getModel } = deps;
-  const spinner = new Spinner(process.stderr, { enabled: !deps.tuiOwnsScreen });
+  // `enabled` overrides the spinner's own TTY check, so keep it here: a bare
+  // `!tuiOwnsScreen` animated 80ms `\x1b[2K` frames into piped / CI stderr.
+  const spinner = new Spinner(process.stderr, {
+    enabled: !deps.tuiOwnsScreen && process.stderr.isTTY === true,
+  });
   let lastInputTokens = 0;
   let effectiveMaxContext = 0;
   let streamingActive = false;

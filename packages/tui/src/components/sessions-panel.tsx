@@ -132,7 +132,7 @@ export function SessionsPanel({
       accent={theme.accent}
       icon={glyphs.sessions}
       title="SESSIONS"
-      kicker={size.columns >= 92 ? 'cross-surface presence' : undefined}
+      kicker="cross-surface presence"
       right={
         <Text>
           <Text color={theme.success}>● {active} active</Text>

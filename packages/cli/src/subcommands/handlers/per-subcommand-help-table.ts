@@ -546,6 +546,26 @@ export const helpTable: Record<string, PerSubcommandHelp> = {
     subcommands: [{ name: 'status', description: 'Show daemon and attachment-broker health.' }],
     seeAlso: 'wstack doctor (broader environment diagnostics)',
   },
+  'import-claude-code': {
+    name: 'import-claude-code',
+    title: 'wstack import-claude-code — bring a Claude Code setup across',
+    description:
+      'Import MCP servers from ~/.claude.json (user + this project) and the ' +
+      "repository's .mcp.json into the active profile. Previews by default. " +
+      'Repository servers arrive disabled unless --enable-project-servers. ' +
+      'Skills are read in place; hooks, permission rules and CLAUDE.md are ' +
+      'reported with next steps, not translated.',
+    usage: 'wstack import-claude-code [--apply] [--overwrite] [--enable-project-servers]',
+    subcommands: [
+      { name: '--apply', description: 'Write the plan (default: preview only).' },
+      { name: '--overwrite', description: 'Replace servers that already exist by name.' },
+      {
+        name: '--enable-project-servers',
+        description: "Enable the repository's .mcp.json servers on import.",
+      },
+    ],
+    seeAlso: 'wstack mcp list; --mcp-config (one-off servers without importing)',
+  },
   // -- Chronicle ──────────────────────────────────────────────────────
   chronicle: {
     name: 'chronicle',

@@ -107,16 +107,21 @@ export type WSClientMessageCore =
     }
   | { type: 'goal.assess'; payload: { goal: string; seq?: number | undefined } }
   | { type: 'goal.pause'; payload: Record<string, never> }
-  | { type: 'goal.resume'; payload: Record<string, never> }
+  | { type: 'goal.resume'; payload: { graphId?: string | undefined } }
   | { type: 'goal.stop'; payload: Record<string, never> }
   | { type: 'goal.clear'; payload?: Record<string, never> }
   | { type: 'goal.revert'; payload?: Record<string, never> }
   | { type: 'goal.status'; payload?: Record<string, never> }
-  | { type: 'goal.state'; payload?: Record<string, never> }
   | { type: 'goal.save'; payload?: Record<string, never> }
   | { type: 'goal.list'; payload?: Record<string, never> }
-  | { type: 'goal.load'; payload: { graphId: string } }
-  | { type: 'goal.toggleAutonomous'; payload: { autonomous?: boolean | undefined } }
+  | {
+      type: 'goal.load';
+      payload: {
+        graphId?: string | undefined;
+        query?: string | undefined;
+        resume?: boolean | undefined;
+      };
+    }
   | { type: 'goal.selectPhase'; payload: { phaseId: string } }
   | { type: 'goal.taskStatus'; payload: { taskId: string; status: string } }
   | { type: 'goal.moveTask'; payload: { taskId: string; toPhaseId: string } }
@@ -683,6 +688,11 @@ export type WSClientMessageCore =
   | { type: 'git.commit'; payload: { message: string } }
   | { type: 'goal.get' }
   | { type: 'goal-state.get' }
+  | { type: 'goal-state.set'; payload: { goal: string } & SessionScopedPayload }
+  | { type: 'goal-state.refine'; payload?: SessionScopedPayload }
+  | { type: 'goal-state.pause'; payload?: Record<string, never> }
+  | { type: 'goal-state.resume'; payload?: Record<string, never> }
+  | { type: 'goal-state.clear'; payload?: Record<string, never> }
   | { type: 'autonomy.switch'; payload: { mode: string } & SessionScopedPayload }
   | { type: 'prefs.update'; payload: Record<string, unknown> }
   | { type: 'prefs.get'; payload?: SessionScopedPayload | undefined }

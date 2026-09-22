@@ -134,21 +134,24 @@ describe('/dev runCommand (BIZ-001/BIZ-002 regression)', () => {
     // foreign-signal test below (signal death without kill → no TIMEOUT).
   });
 
-  it('distinguishes a foreign signal death from a timeout kill (chimera regression)', async () => {
-    if (isWin) return; // Windows has no real signals; TerminateProcess → exit 1
-    // The child kills ITSELF with SIGTERM. Our handle never calls kill(), so
-    // child.killed stays false and this must NOT render as a TIMEOUT.
-    // Old code mapped any signal to 124/TIMEOUT; shell convention is 128+15.
-    const result = await runCommand(
-      'node -e "process.kill(process.pid, \'SIGTERM\')"',
-      cwd,
-      15_000,
-    );
-    expect(result.exitCode).toBe(143);
-    expect(result.killed).toBe(true);
-    expect(result.signalName).toBe('SIGTERM');
-    expect(result.timedOut).toBeUndefined();
-  });
+  // Windows has no real signals; TerminateProcess → exit 1
+  it.skipIf(isWin)(
+    'distinguishes a foreign signal death from a timeout kill (chimera regression)',
+    async () => {
+      // The child kills ITSELF with SIGTERM. Our handle never calls kill(), so
+      // child.killed stays false and this must NOT render as a TIMEOUT.
+      // Old code mapped any signal to 124/TIMEOUT; shell convention is 128+15.
+      const result = await runCommand(
+        'node -e "process.kill(process.pid, \'SIGTERM\')"',
+        cwd,
+        15_000,
+      );
+      expect(result.exitCode).toBe(143);
+      expect(result.killed).toBe(true);
+      expect(result.signalName).toBe('SIGTERM');
+      expect(result.timedOut).toBeUndefined();
+    },
+  );
 
   it('decodes multi-byte UTF-8 output without replacement chars (chimera regression)', async () => {
     // The child generates the volume ITSELF: 50k '€' (3 bytes each) ≈ 150 KB
@@ -194,8 +197,8 @@ describe('/dev runCommand (BIZ-001/BIZ-002 regression)', () => {
     expect(result.stderr).toContain('Unterminated');
   });
 
-  it('rejects real cmd.exe operators inside a token on Windows', async () => {
-    if (!isWin) return; // shell-less POSIX treats & as a literal argv char
+  // shell-less POSIX treats & as a literal argv char
+  it.skipIf(!isWin)('rejects real cmd.exe operators inside a token on Windows', async () => {
     // The shim builder refuses tokens containing & — no cmd.exe injection.
     const result = await runCommand('echo a&calc', cwd, 15_000);
     expect(result.spawnFailed).toBe(true);

@@ -61,6 +61,8 @@ const loaders: Record<string, SubcommandLoader> = {
   permissions: async () => (await import('./handlers/permissions.js')).permissionsCmd,
   project: async () => (await import('./handlers/project.js')).projectCmd,
   governance: async () => (await import('./handlers/governance.js')).governanceCmd,
+  'import-claude-code': async () =>
+    (await import('./handlers/import-claude-code.js')).importClaudeCodeCmd,
 };
 
 /**

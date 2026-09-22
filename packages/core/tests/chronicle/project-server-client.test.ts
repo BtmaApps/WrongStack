@@ -4,7 +4,7 @@
  */
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChronicleRemoteJournal,
   isChronicleProjectServerAvailable,
@@ -164,7 +164,13 @@ describe('ChronicleRemoteJournal', { retry: 1 }, () => {
     const journal = new ChronicleRemoteJournal(makeJournalOpts(), client as never);
 
     await journal.dispose();
-    await journal.dispose(); // second call should not throw
+    await expect(journal.dispose()).resolves.toBeUndefined();
+
+    // `dispose()` has no "already disposed" guard, so it forwards close() on
+    // every call. The mock tolerates that; this pins the count so the reliance
+    // on a close()-twice-tolerant client is visible rather than assumed — a real
+    // transport that throws on double close would break here first.
+    expect(client.close).toHaveBeenCalledTimes(2);
   });
 
   it('stats returns counter snapshot', () => {

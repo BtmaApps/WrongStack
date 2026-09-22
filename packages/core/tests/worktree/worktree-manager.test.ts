@@ -38,6 +38,28 @@ const GIT_ENV = {
 };
 
 describe('WorktreeManager (stubbed git)', () => {
+  it('adopts only the exact managed checkout and branch after restart', async () => {
+    const dir = path.join(PROJ, '.wrongstack', 'worktrees', 'build-abc123');
+    const branch = 'wstack/ap/build-abc123';
+    const { calls, run } = stubRunner((args) =>
+      args[0] === 'worktree' && args[1] === 'list'
+        ? { code: 0, stdout: `worktree ${dir}\nbranch refs/heads/${branch}\n\n`, stderr: '' }
+        : { code: 0, stdout: '', stderr: '' },
+    );
+    const wm = new WorktreeManager({ projectRoot: PROJ, run });
+    const handle = await wm.adopt('phase-1', { dir, branch, baseBranch: 'main' });
+    expect(handle).toMatchObject({ ownerId: 'phase-1', dir, branch, status: 'active' });
+    expect(wm.get('phase-1')).toBe(handle);
+    expect(calls.some((call) => call.args[1] === 'add')).toBe(false);
+    await expect(
+      wm.adopt('phase-2', {
+        dir: path.join(PROJ, '..', 'outside'),
+        branch,
+        baseBranch: 'main',
+      }),
+    ).rejects.toThrow('outside the managed checkout root');
+  });
+
   it('allocates with `worktree add -b <branch> <dir> <base>` (path before commit-ish)', async () => {
     const { calls, run } = stubRunner((args) =>
       args[0] === 'rev-parse'

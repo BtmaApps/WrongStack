@@ -895,7 +895,7 @@
       "disableTitle": "Esta meta tiene una duración poco realista — use \"Iniciar de todas formas\" para sobrescribir"
     },
     "multiBoardLabel": "Dividir en múltiples tableros kanban",
-    "verifyTasksLabel": "Requerir verificación para cada tarea",
+    "verifyTasksLabel": "Verificar cada fase y el resultado final",
     "chimeraReviewLabel": "Habilitar revisión automática chimera"
   },
   "collab": {
@@ -1183,6 +1183,7 @@
     "statusAbandoned": "Abandonado",
     "heading": "Objetivo",
     "refined": "Refinado",
+    "refining": "Refinando el objetivo…",
     "progress": "Progreso",
     "iterations": "iteraciones",
     "deliverables": "Entregables",

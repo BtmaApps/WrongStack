@@ -2,19 +2,32 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { EventBus } from '@wrongstack/core/kernel';
-import { PhaseGraphBuilder, type PhaseGraph } from '@wrongstack/core/goal';
 import { promisify } from 'node:util';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { type PhaseGraph, PhaseGraphBuilder } from '@wrongstack/core/goal';
+import { EventBus } from '@wrongstack/core/kernel';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   configureGoalPolicy,
   createGoalHost,
+  type GoalHostDeps,
   isGoalCommandAllowed,
   resetGoalPolicy,
-  type GoalHostDeps,
 } from '../src/goal-host.js';
 
 const execFileAsync = promisify(execFile);
+
+async function waitForRunLeaseRelease(storeDir: string): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      const locked = await fs
+        .access(path.join(storeDir, '.active-run.lock'))
+        .then(() => true)
+        .catch(() => false);
+      expect(locked).toBe(false);
+    },
+    { timeout: 30_000 },
+  );
+}
 
 interface RouteOpts {
   plan: unknown;
@@ -118,6 +131,7 @@ describe('createGoalHost — start failures and task errors', () => {
   });
 
   afterEach(async () => {
+    await waitForRunLeaseRelease(storeDir);
     if (prevVerify === undefined) delete process.env['WRONGSTACK_GOAL_VERIFY'];
     else process.env['WRONGSTACK_GOAL_VERIFY'] = prevVerify;
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
@@ -273,6 +287,7 @@ describe('createGoalHost — verify gate', () => {
     if (prevVerifyCmd === undefined) delete process.env['WRONGSTACK_GOAL_VERIFY_CMD'];
     else process.env['WRONGSTACK_GOAL_VERIFY_CMD'] = prevVerifyCmd;
     resetGoalPolicy();
+    await waitForRunLeaseRelease(storeDir);
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
     await fs.rm(storeDir, rmOpts);
     await fs.rm(projectRoot, rmOpts);
@@ -417,6 +432,7 @@ describe('createGoalHost — worktree actions', () => {
   });
 
   afterEach(async () => {
+    await waitForRunLeaseRelease(storeDir);
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
     await fs.rm(storeDir, rmOpts);
     await fs.rm(projectRoot, rmOpts);

@@ -144,6 +144,8 @@ export interface PluginsWiringDeps {
   agent: { extensions?: ExtensionRegistry | undefined };
   /** Lifecycle hook registry — injected so plugins can register in-process hooks. */
   hookRegistry?: import('@wrongstack/core/hooks').HookRegistry | undefined;
+  /** `--safe-mode`: built-in plugins still load, third-party ones do not. */
+  safeMode?: boolean | undefined;
   sessionWriter: SessionWriter;
   metricsSink?: MetricsSinkView | undefined;
   metricsStatus?: MetricsRuntimeStatus | undefined;
@@ -285,6 +287,7 @@ export async function setupPlugins(
     pipelines,
     paths,
     hookRegistry,
+    safeMode,
   } = params;
 
   // ── 1. Load built-in plugins (prompts, sync, git, …) only when paths are
@@ -340,7 +343,7 @@ export async function setupPlugins(
   // plugins`. Every external plugin passes a pre-import TOFU trust gate and
   // a shape/spoof check — see wiring/external-plugins.ts for the pipeline.
   const userPlugins: Plugin[] =
-    config.features?.plugins === false
+    config.features?.plugins === false || safeMode === true
       ? []
       : await loadExternalPlugins(
           {

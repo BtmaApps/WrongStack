@@ -30,7 +30,7 @@ function makeLogger() {
 
 beforeEach(() => {
   startMetricsServerMock.mockReset();
-  startMetricsServerMock.mockReturnValue({
+  startMetricsServerMock.mockResolvedValue({
     url: 'http://127.0.0.1:9999',
     close: vi.fn().mockResolvedValue(undefined),
   });
@@ -64,6 +64,7 @@ describe('setupMetrics', () => {
         logger: makeLogger(),
         config: { provider: 'a', model: 'm' },
       });
+      await vi.waitFor(() => expect(out.metricsServerHandle).toBeDefined());
       expect(out.metricsSink).toBeDefined();
       expect(out.healthRegistry).toBeDefined();
       expect(startMetricsServerMock).toHaveBeenCalledWith(
@@ -121,6 +122,7 @@ describe('setupMetrics', () => {
         logger,
         config: { provider: 'a', model: 'm' },
       });
+      await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
       expect(logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('metrics endpoint failed to start'),
       );

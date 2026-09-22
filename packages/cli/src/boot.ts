@@ -42,10 +42,20 @@ import { isSetupProvider, SETUP_MODEL_ID, SETUP_PROVIDER_ID } from '@wrongstack/
 import { createDefaultContainer } from '@wrongstack/runtime';
 import { registerBuiltinToolTier } from '@wrongstack/tools/tool-tier';
 import { parseArgs } from './arg-parser.js';
+import { resolveAppendedSystemPrompt } from './boot/append-system-prompt.js';
 import { discoverAndMergeProviders } from './boot/auto-discover-providers.js';
 import { maybeRestoreDefaultProfileFromBackup } from './boot/config-backup-recovery.js';
+import { resolveLaunchMcpServers } from './boot/mcp-config-flag.js';
+import { activateRestrictedMode } from './boot/restricted-mode.js';
+import { announceSafeMode } from './boot/safe-mode.js';
 import { applySimpleUiFullAutoProfile, isSimpleUiFullAuto } from './boot/simpleui-full-auto.js';
+import { parseOutputFormat } from './boot/stream-json.js';
+import { resolveJsonSchemaFlag } from './boot/structured-output.js';
 import { maybeRunSystemPromptMenu } from './boot/system-prompt-menu.js';
+import {
+  resolveLaunchAllowedTools,
+  resolveToolRestriction,
+} from './boot/tool-restriction-flags.js';
 import { bootConfig } from './boot-config.js';
 import { ReadlineInputReader } from './input-reader.js';
 import { type PickerResult, runPicker, saveToGlobalConfig } from './picker.js';
@@ -120,6 +130,33 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     return 2;
   }
   let { paths, config, vault } = bootResult;
+
+  // Resolve `--append-system-prompt[-file]` once, up front: a missing file is
+  // a usage error, and it must fail before any picker or provider work. The
+  // resolved text replaces the inline flag so downstream reads one value.
+  try {
+    // Validated here for the same fail-fast reason; applied to the registry
+    // once it is built (setupCliPromptAndTools).
+    resolveToolRestriction(flags);
+    resolveLaunchAllowedTools(flags);
+    parseOutputFormat(flags['output-format']);
+    announceSafeMode(flags, writeErr);
+    activateRestrictedMode(flags, writeErr);
+    // Normalized into one inline document so later phases parse it without
+    // touching the filesystem again (the working directory may change).
+    const launchMcp = await resolveLaunchMcpServers(flags, paths.cwd);
+    if (launchMcp) flags['mcp-config'] = JSON.stringify({ mcpServers: launchMcp });
+    const schema = await resolveJsonSchemaFlag(flags['json-schema'], paths.cwd);
+    if (schema) flags['json-schema'] = JSON.stringify(schema);
+    const appended = await resolveAppendedSystemPrompt(flags, paths.cwd);
+    delete flags['append-system-prompt-file'];
+    if (appended) flags['append-system-prompt'] = appended;
+    else delete flags['append-system-prompt'];
+  } catch (err) {
+    writeErr(`wstack: ${toErrorMessage(err)}\n`);
+    return 2;
+  }
+
   // Not `const`: the `quick` intercept below consumes this token and must be
   // able to clear it, otherwise the subcommand dispatch still matches.
   let first = positional[0];
@@ -133,7 +170,15 @@ export async function boot(argv: string[]): Promise<BootContext | number> {
     !flags['webui'] &&
     !flags['no-interactive'] &&
     !flags['skip'];
-  const renderer = new TerminalRenderer();
+  // `--output-json` / `--output-format json|stream-json` promise machine
+  // output on stdout (`... | jq`). Everything meant for a human — streamed
+  // answer text, tool output, the session report — moves to stderr so it
+  // cannot corrupt the payload.
+  const machineOutput =
+    flags['output-json'] === true ||
+    flags['output-format'] === 'json' ||
+    flags['output-format'] === 'stream-json';
+  const renderer = new TerminalRenderer(machineOutput ? { out: process.stderr } : undefined);
   const reader = new ReadlineInputReader({ historyFile: paths.wpaths.historyFile });
   if (mayOfferConfigRecovery) {
     const recoveryProfile = config.activeProfile ?? 'default';

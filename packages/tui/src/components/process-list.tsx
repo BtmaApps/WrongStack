@@ -132,7 +132,7 @@ export function ProcessListMonitor(): React.ReactElement {
       accent={theme.error}
       icon={glyphs.process}
       title="PROCESSES"
-      kicker={size.columns >= 90 ? 'background execution' : undefined}
+      kicker="background execution"
       right={
         <Text>
           <Text color={running > 0 ? theme.warn : theme.success} bold>

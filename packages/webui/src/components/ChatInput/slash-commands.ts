@@ -124,7 +124,7 @@ export const SLASH_COMMANDS: SlashCommandDef[] = [
   {
     name: '/goal',
     category: 'Agent',
-    description: 'Goal: start <title> | pause | resume | stop | status',
+    description: 'Goal: set <mission> | start <goal> | pause | resume | stop | status',
   },
   {
     name: '/goal-state',

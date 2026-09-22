@@ -24,6 +24,34 @@ export const BOOLEAN_FLAGS = new Set([
   // Both are boolean so they cannot swallow the next positional token.
   'no-recovery',
   'recover',
+  // `--continue` / `-c`: resume the most recent session (same pick as a bare
+  // `--resume`). Boolean so `wstack -c "next step"` keeps the prompt.
+  'continue',
+  // `--fork-session` (with --resume/--continue/--recover): branch instead of reopening.
+  'fork-session',
+  // `--strict-mcp-config`: start only the `--mcp-config` servers.
+  'strict-mcp-config',
+  // `--include-partial-messages`: add text_delta events to stream-json output.
+  'include-partial-messages',
+  // `--safe-mode`: start with plugins/hooks/MCP/skills/instruction overrides off.
+  'safe-mode',
+  // `--restricted`: no code-running/network tools, project-root lock, no YOLO.
+  'restricted',
+  // `--record` is read as `=== true`; as a value flag it swallowed the task
+  // (`wstack --record "fix it"` recorded nothing and ran nothing).
+  'record',
+  // Same class: switches read only as `=== true` that would otherwise take the
+  // next token (`--vector-sync "task"`, `typesafe lint-conventions --staged x`).
+  'vector-sync',
+  'allow-all',
+  'no-llm',
+  'staged',
+  'sweep',
+  'n',
+  // `wstack import-claude-code` switches.
+  'apply',
+  'overwrite',
+  'enable-project-servers',
   'output-json',
   'metrics',
   'webui',
@@ -152,7 +180,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
       }
     } else if (a.startsWith('-') && a.length === 2) {
       const short = a.slice(1);
-      const expand: Record<string, string> = { v: 'verbose', y: 'yes', h: 'help' };
+      const expand: Record<string, string> = {
+        v: 'verbose',
+        y: 'yes',
+        h: 'help',
+        c: 'continue',
+        r: 'resume',
+      };
       const name = expand[short] ?? short;
       // Mirror the long-flag rule above: a short flag that is not a known
       // boolean owns the following token as its value (e.g. `auth local
@@ -169,6 +203,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
   }
   normalizeSurfaceAliases(flags, positional);
+  // Claude Code spells these both ways; accept the camelCase forms too.
+  for (const [camel, kebab] of [
+    ['disallowedTools', 'disallowed-tools'],
+    ['allowedTools', 'allowed-tools'],
+  ] as const) {
+    if (flags[camel] !== undefined && flags[kebab] === undefined) flags[kebab] = flags[camel];
+    delete flags[camel];
+  }
   return { flags, positional };
 }
 

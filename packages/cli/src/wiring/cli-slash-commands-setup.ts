@@ -117,6 +117,7 @@ export function setupCliSlashCommands(params: {
     onGoalStart: NonNullable<B['onGoalStart']>;
     onGoalPause: NonNullable<B['onGoalPause']>;
     onGoalResume: NonNullable<B['onGoalResume']>;
+    onGoalResumeFromGraph: NonNullable<B['onGoalResumeFromGraph']>;
     onGoalStop: NonNullable<B['onGoalStop']>;
     getGoalRunner: NonNullable<B['getGoalRunner']>;
     onGoalMoveTask: NonNullable<B['onGoalMoveTask']>;
@@ -361,6 +362,7 @@ export function setupCliSlashCommands(params: {
           onGoalStart: goalHost.onGoalStart,
           onGoalPause: goalHost.onGoalPause,
           onGoalResume: goalHost.onGoalResume,
+          onGoalResumeFromGraph: goalHost.onGoalResumeFromGraph,
           onGoalStop: goalHost.onGoalStop,
           getGoalRunner: goalHost.getGoalRunner,
           onGoalMoveTask: goalHost.onGoalMoveTask,

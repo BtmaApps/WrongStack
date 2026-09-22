@@ -6,9 +6,9 @@ import {
   effortOptionsForFocused,
 } from '../components/model-picker-effort.js';
 
-import { filterPromptPicker } from '../components/prompt-picker.js';
+import { filterPromptPicker } from '../components/prompt-picker-model.js';
 
-import { filterResourceMenuItems } from '../components/resource-menu.js';
+import { filterResourceMenuItems } from '../components/resource-menu-model.js';
 
 import { getActiveThemeName, THEME_OPTIONS } from '../theme.js';
 

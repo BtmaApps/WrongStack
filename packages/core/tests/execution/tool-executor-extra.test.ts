@@ -590,6 +590,39 @@ describe('ToolExecutor — additional coverage', () => {
       });
       expect(tool.execute).toHaveBeenCalledOnce();
     });
+
+    it('does not re-confirm a tool the operator granted with --allowed-tools', async () => {
+      // `wstack --allowed-tools write "task"` used to prompt for write anyway,
+      // and in a script — nobody to answer — the write was simply denied.
+      const events = new EventBus();
+      const decisions: EventMap['permission.evaluated'][] = [];
+      events.on('permission.evaluated', (event) => decisions.push(event));
+      const permissionPolicy = {
+        evaluate: vi.fn().mockResolvedValue({
+          permission: 'auto',
+          source: 'trust',
+          reason: 'allowed by --allowed-tools',
+          launchGrant: true,
+        }),
+        getYolo: () => false,
+      };
+      const confirmAwaiter = vi.fn().mockResolvedValue('no');
+      const tool = makeTool({ name: 'write', capabilities: ['fs.write'] });
+      const executor = makeExecutor([tool], {
+        events,
+        permissionPolicy: permissionPolicy as never,
+        confirmAwaiter,
+      });
+
+      await executor.executeBatch([makeUse('write', { path: 'a.txt' })], makeCtx(), 'sequential');
+
+      expect(decisions[0]).toMatchObject({
+        effectiveDecision: 'auto',
+        capabilityDowngraded: false,
+      });
+      expect(confirmAwaiter).not.toHaveBeenCalled();
+      expect(tool.execute).toHaveBeenCalledOnce();
+    });
   });
 
   describe('abort signal handling', () => {

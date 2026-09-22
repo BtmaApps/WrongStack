@@ -5,13 +5,14 @@
  * a real daemon. The drain tries covers the gated-IPC, race, and dispose
  * paths; the warning branches need the mock to reject.
  */
+
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { Agent } from '@wrongstack/core/agent';
 import { EventBus } from '@wrongstack/core/kernel';
 import type { TaskStore } from '@wrongstack/core/tasking';
 import type { TaskGraph } from '@wrongstack/core/types';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SddBoardStore } from '../src/sdd-board-store.js';
 import { startSddRun } from '../src/start-sdd-run.js';
@@ -142,6 +143,14 @@ describe('startSddRun — kanban transport', () => {
       // therefore be reached.
     });
     await handle.completion;
+
+    // The test is named for an assertion it never made: awaiting completion was
+    // the whole body, so a run that skipped the coverage check, or that fell
+    // back to a different transport, passed identically.
+    expect(kanban.subscribe).toHaveBeenCalled();
+    // `requiredRequirementIds = []` is a DEFINED but empty scope, so the assert
+    // path runs AND passes — no coverage complaint may be emitted.
+    expect(warnSpy.mock.calls.flat().join('\n')).not.toContain('requirement');
   });
 
   it('warns when the kanban drain rejects and the worker keeps running', async () => {

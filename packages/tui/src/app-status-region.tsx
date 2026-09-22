@@ -26,6 +26,7 @@ import { TodosMonitor } from './components/todos-monitor.js';
 import { WorktreeMonitor } from './components/worktree-monitor.js';
 import { WorktreePanel } from './components/worktree-panel.js';
 import { Box } from './ink.js';
+import { effectiveAnimationStyle } from './motion.js';
 import { renderRunningTools } from './running-tools.js';
 import { getActiveThemeName } from './theme.js';
 import type { PanelId, PanelPositionMap } from './ui-contracts.js';
@@ -169,7 +170,9 @@ export function AppStatusRegion({
             // ←/→ selection synchronously (saveSettings → configStore is
             // async, so liveAnimationStyle lags a keystroke). When closed,
             // use the persisted value from getSettings().
-            state.settingsPicker.open ? state.settingsPicker.animationStyle : liveAnimationStyle
+            effectiveAnimationStyle(
+              state.settingsPicker.open ? state.settingsPicker.animationStyle : liveAnimationStyle,
+            )
           }
           tokenCounter={tokenCounter}
           hint={state.copiedNotice || renderRunningTools(state.runningTools) || state.hint}
@@ -267,6 +270,7 @@ export function AppStatusRegion({
             />
           ) : state.goalRun?.monitorOpen && routedToBottom('coordinator') ? (
             <PhaseMonitor
+              title={state.goalRun.title}
               phases={state.goalRun.phases}
               runningPhaseIds={state.goalRun.runningPhaseIds}
               elapsedMs={state.goalRun.elapsedMs}

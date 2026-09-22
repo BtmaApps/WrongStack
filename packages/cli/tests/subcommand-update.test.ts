@@ -134,6 +134,17 @@ describe('updateCmd subcommand', () => {
     expect(updateMocks.spawn).not.toHaveBeenCalled();
   });
 
+  it('keeps -c as check-only after the top-level parser expands it to --continue', async () => {
+    updateMocks.checkForUpdate.mockResolvedValue({
+      outdated: false,
+      current: '1.0.0',
+      latest: '1.0.0',
+    });
+    await updateCmd([], { ...deps, flags: { continue: true } });
+    expect(writes.join('')).toContain('You are on the latest version');
+    expect(updateMocks.spawn).not.toHaveBeenCalled();
+  });
+
   it('when already latest, returns 0 without spawning npm', async () => {
     updateMocks.checkForUpdate.mockResolvedValue({
       outdated: false,

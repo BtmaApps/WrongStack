@@ -18,69 +18,80 @@
 //   await runner.start();
 
 export {
-  GoalRunner,
+  appendJournal,
+  emptyGoal,
+  formatGoal,
+  type GoalFile,
+  goalFilePath,
+  type JournalEntry,
+  loadGoal,
+  MAX_JOURNAL_ENTRIES,
+  MAX_PROGRESS_HISTORY,
+  type ProgressSnapshot,
+  parseProgressFromText,
+  recordProgress,
+  replaceGoalMission,
+  saveGoal,
+  setProgress,
+  summarizeUsage,
+  updateGoal,
+} from '../storage/goal-store.js';
+export {
+  type Checkpoint,
+  CheckpointManager,
+  type CheckpointManagerOptions,
+} from './checkpoint.js';
+export {
+  GoalAssessor,
+  type GoalAssessorOptions,
+  type GoalAssessResult,
+} from './goal-assessor.js';
+export {
+  extractJSONArray as extractGoalJSONArray,
+  GoalPlanner,
+  type GoalPlannerOptions,
+  type GoalPlanResult,
+} from './goal-planner.js';
+export { GoalRunPersistence, prepareGoalGraphForResume } from './goal-run-lifecycle.js';
+export {
   createGoalRunnerFromTaskGraph,
+  GoalRunner,
   type GoalRunnerOptions,
 } from './goal-runner.js';
-
+export {
+  buildGoalRefinementPrompt,
+  parseGoalRefinement,
+  type RefinedMission,
+  refineGoalHeuristic,
+  refineGoalWithProvider,
+  resolveRefinerTarget,
+} from './mission-refinement.js';
+export {
+  PhaseGraphBuilder,
+  type PhaseGraphBuilderOptions,
+} from './phase-graph-builder.js';
 export {
   PhaseOrchestrator,
   type PhaseOrchestratorOptions,
 } from './phase-orchestrator.js';
 
+export { GoalRunLeaseBusyError, PhaseStore, type PhaseStoreOptions } from './phase-store.js';
 export {
-  PhaseGraphBuilder,
-  type PhaseGraphBuilderOptions,
-} from './phase-graph-builder.js';
-
-export {
-  GoalPlanner,
-  extractJSONArray as extractGoalJSONArray,
-  type GoalPlannerOptions,
-  type GoalPlanResult,
-} from './goal-planner.js';
-
-export {
-  GoalAssessor,
-  type GoalAssessResult,
-  type GoalAssessorOptions,
-} from './goal-assessor.js';
-
+  type GoalProjectVerificationResult,
+  type GoalProjectVerifierOptions,
+  verifyGoalProject,
+} from './project-verifier.js';
 export type {
-  PhaseGraph,
-  PhaseNode,
-  PhaseStatus,
-  PhaseProgress,
+  GoalOptions,
   PhaseEventMap,
   PhaseEventName,
   PhaseExecutionContext,
-  GoalOptions,
   PhaseFilter,
+  PhaseGraph,
+  PhaseNode,
+  PhaseProgress,
   PhaseSort,
+  PhaseStatus,
   PhaseTemplate,
 } from './types.js';
 export { PHASE_EVENT_NAMES } from './types.js';
-
-export { PhaseStore, type PhaseStoreOptions } from './phase-store.js';
-export {
-  appendJournal,
-  emptyGoal,
-  formatGoal,
-  goalFilePath,
-  loadGoal,
-  MAX_JOURNAL_ENTRIES,
-  MAX_PROGRESS_HISTORY,
-  parseProgressFromText,
-  recordProgress,
-  saveGoal,
-  setProgress,
-  summarizeUsage,
-  type GoalFile,
-  type JournalEntry,
-  type ProgressSnapshot,
-} from '../storage/goal-store.js';
-export {
-  CheckpointManager,
-  type CheckpointManagerOptions,
-  type Checkpoint,
-} from './checkpoint.js';

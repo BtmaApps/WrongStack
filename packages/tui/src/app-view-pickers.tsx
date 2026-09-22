@@ -486,7 +486,15 @@ export function AppViewPickers({
             setYoloLive(true);
             const cur = getSettings?.();
             if (cur && saveSettings) {
-              Promise.resolve(saveSettings({ ...cur, yolo: true })).catch(() => {});
+              Promise.resolve(saveSettings({ ...cur, yolo: true })).catch((err: unknown) =>
+                dispatch({
+                  type: 'addEntry',
+                  entry: {
+                    kind: 'error',
+                    text: `Could not save YOLO setting: ${toErrorMessage(err)}`,
+                  },
+                }),
+              );
             }
             // YOLO removes routine prompts, not the destructive gate that put
             // this specific call on screen. Keep it pending for y/n/a/d or Brain.

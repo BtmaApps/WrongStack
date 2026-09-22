@@ -5,8 +5,8 @@ import { resolvePowerShell, resolveWin32Command } from '../src/_win32-resolve.js
 const isWin = os.platform() === 'win32';
 
 describe('resolvePowerShell', () => {
-  it('returns the input unchanged on non-Windows', () => {
-    if (isWin) return; // win32-specific assertion
+  // win32-specific assertion
+  it.skipIf(isWin)('returns the input unchanged on non-Windows', () => {
     expect(resolvePowerShell('pwsh')).toBe('pwsh');
     expect(resolvePowerShell('powershell')).toBe('powershell');
     expect(resolvePowerShell('pwsh.exe')).toBe('pwsh.exe');
@@ -51,8 +51,7 @@ describe('resolvePowerShell', () => {
 });
 
 describe('resolveWin32Command', () => {
-  it('is a no-op on non-Windows', () => {
-    if (isWin) return;
+  it.skipIf(isWin)('is a no-op on non-Windows', () => {
     expect(resolveWin32Command('pnpm')).toBe('pnpm');
     expect(resolveWin32Command('C:/some/full/path.exe')).toBe('C:/some/full/path.exe');
   });

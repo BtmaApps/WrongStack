@@ -84,6 +84,7 @@ function mapSeverity(
   // CVSS vector string (`CVSS:3.1/...`); parseFloat on a vector yields NaN,
   // so vectors are computed to their base score (see cvss.ts).
   if (osvSeverity && osvSeverity.length > 0) {
+    let highestScore = 0;
     for (const s of osvSeverity) {
       if (s.type === 'CVSS_V3' || s.type === 'CVSS_V2') {
         const direct = Number(s.score);
@@ -91,13 +92,15 @@ function mapSeverity(
           s.score.trim() !== '' && Number.isFinite(direct)
             ? direct
             : cvssBaseScore(s.type, s.score);
-        if (score === undefined || Number.isNaN(score)) continue;
-        if (score >= 9.0) return 'critical';
-        if (score >= 7.0) return 'high';
-        if (score >= 4.0) return 'medium';
-        if (score >= 0.1) return 'low';
+        if (score !== undefined && Number.isFinite(score)) {
+          highestScore = Math.max(highestScore, score);
+        }
       }
     }
+    if (highestScore >= 9.0) return 'critical';
+    if (highestScore >= 7.0) return 'high';
+    if (highestScore >= 4.0) return 'medium';
+    if (highestScore >= 0.1) return 'low';
   }
 
   // Check database_specific severity

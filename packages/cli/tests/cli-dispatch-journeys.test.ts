@@ -21,6 +21,7 @@ vi.mock('../src/webui-server.js', () => ({
   runWebUI: surfaceMocks.runWebUI,
 }));
 
+import { EventBus } from '@wrongstack/core/kernel';
 import { runSingleShotDispatch } from '../src/boot/dispatch-singleshot.js';
 import { runTuiDispatch } from '../src/boot/dispatch-tui.js';
 import { runWebUIDispatch } from '../src/boot/dispatch-webui.js';
@@ -110,7 +111,7 @@ describe('CLI production dispatch journeys', { concurrent: false }, () => {
     expect(surfaceMocks.killAll).toHaveBeenCalledOnce();
   });
 
-  it('legacy contract: output-json serializes a failed run but returns exit code 0', async () => {
+  it('output-json serializes a failed run and still exits non-zero', async () => {
     const run = vi.fn(async () => ({
       status: 'failed',
       iterations: 1,
@@ -143,12 +144,65 @@ describe('CLI production dispatch journeys', { concurrent: false }, () => {
         renderer: renderer as never,
       });
 
-      expect(code).toBe(0);
+      expect(code).toBe(1);
       expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"status":"failed"'));
+      expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"sessionId":null'));
       expect(renderer.writeError).not.toHaveBeenCalled();
     } finally {
       stdout.mockRestore();
     }
+  });
+
+  it('stops the run when --max-budget-usd is crossed and exits 1, not 130', async () => {
+    const events = new EventBus();
+    let spent = 0;
+    const run = vi.fn(async (_query: string, opts: { signal: AbortSignal }) => {
+      spent = 0.75;
+      events.emit('token.accounted', {
+        usage: { input: 1, output: 1 },
+        cost: { input: 0, output: 0, total: spent },
+      } as never);
+      return { status: opts.signal.aborted ? 'aborted' : 'done', iterations: 1, messages: [] };
+    });
+    const renderer = {
+      write: vi.fn(),
+      writeError: vi.fn(),
+      writeWarning: vi.fn(),
+      writeDelegateSummaries: vi.fn(),
+    };
+    const tokenCounter = {
+      total: () => ({ input: 0, output: 0 }),
+      estimateCost: () => ({ input: 0, output: 0, total: spent, currency: 'USD' }),
+    };
+
+    const code = await runSingleShotDispatch({
+      agent: { run } as never,
+      query: 'spend',
+      flags: { 'max-budget-usd': '0.5' },
+      tokenCounter: tokenCounter as never,
+      renderer: renderer as never,
+      events,
+    });
+
+    expect(code).toBe(1);
+    expect(renderer.writeError).toHaveBeenCalledWith(
+      expect.stringContaining('exceeded --max-budget-usd $0.5'),
+    );
+    expect(renderer.writeWarning).not.toHaveBeenCalledWith('Aborted.');
+  });
+
+  it('rejects an unusable --max-budget-usd before running anything', async () => {
+    const run = vi.fn();
+    const renderer = { writeError: vi.fn() };
+    const code = await runSingleShotDispatch({
+      agent: { run } as never,
+      query: 'spend',
+      flags: { 'max-budget-usd': 'lots' },
+      tokenCounter: {} as never,
+      renderer: renderer as never,
+    });
+    expect(code).toBe(2);
+    expect(run).not.toHaveBeenCalled();
   });
 
   it('loads and invokes the TUI only through its production dispatch boundary', async () => {

@@ -3,8 +3,8 @@
  * status transitions, filtering, sorting, and change notifications.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { TaskTracker } from '../../src/tasking/task-tracker.js';
 import type { TaskStore } from '../../src/tasking/task-tracker.js';
+import { TaskTracker } from '../../src/tasking/task-tracker.js';
 
 function makeStore(): TaskStore {
   const graphs = new Map<string, unknown>();
@@ -220,9 +220,25 @@ describe('TaskTracker — patchMetadata', () => {
     expect(t.getNode(node.id)?.metadata).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
   });
 
-  it('is a no-op for missing node or graph', () => {
+  // The title promises BOTH halves; only the no-graph one was exercised, and it
+  // asserted nothing — so a patchMetadata that threw on a missing node, or that
+  // silently created one, would both have passed.
+  it('is a no-op when there is no graph', () => {
     const t = makeTracker();
-    t.patchMetadata('x', { a: 1 }); // no graph — no throw
+    expect(() => t.patchMetadata('x', { a: 1 })).not.toThrow();
+    expect(t.getNode('x')).toBeUndefined();
+  });
+
+  it('is a no-op for a missing node, leaving existing nodes untouched', async () => {
+    const t = await withGraph();
+    const node = t.addNode(makeNode());
+    t.patchMetadata(node.id, { provider: 'openai' });
+
+    expect(() => t.patchMetadata('does-not-exist', { a: 1 })).not.toThrow();
+    // No phantom node is conjured for the unknown id…
+    expect(t.getNode('does-not-exist')).toBeUndefined();
+    // …and the real node's metadata is not disturbed.
+    expect(t.getNode(node.id)?.metadata).toEqual({ provider: 'openai' });
   });
 });
 
@@ -597,7 +613,12 @@ describe('TaskTracker — transition identity and filtering (BIZ-005)', () => {
     const n2 = t.addNode(makeNode());
     t.updateNodeStatus(n1.id, 'in_progress');
     t.updateNodeStatus(n2.id, 'completed');
-    for (const tr of t.getTransitions()) {
+    const transitions = t.getTransitions();
+    // The setup produced exactly two transitions. Without pinning that, a
+    // getTransitions() that returned NOTHING — the very regression this guards
+    // — would leave the loop empty and the test green.
+    expect(transitions).toHaveLength(2);
+    for (const tr of transitions) {
       expect([n1.id, n2.id]).toContain(tr.nodeId);
     }
   });

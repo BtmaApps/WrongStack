@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { EventBus } from '../../src/kernel/events.js';
 import { PhaseGraphBuilder } from '../../src/goal/phase-graph-builder.js';
 import { PhaseOrchestrator } from '../../src/goal/phase-orchestrator.js';
 import type { PhaseExecutionContext, PhaseGraph } from '../../src/goal/types.js';
+import { EventBus } from '../../src/kernel/events.js';
 import type { TaskNode } from '../../src/types/task-graph.js';
 import type { WorktreeHandle, WorktreeManager } from '../../src/worktree/worktree-manager.js';
 
@@ -585,6 +585,57 @@ describe('PhaseOrchestrator + verify gate', () => {
     const phase = Array.from(graph.phases.values())[0]!;
     expect(phase.status).toBe('completed');
     expect(wt.calls).toContain(`merge:${phase.id}:ok`);
+  });
+
+  it('verifies the fully merged base tree after phase integration', async () => {
+    const graph = await singlePhaseGraph();
+    const wt = fakeWorktrees();
+    let sawMergedTree = false;
+    const orchestrator = new PhaseOrchestrator({
+      graph,
+      ctx: {
+        executeTask: async () => {},
+        verifyGoal: async () => {
+          sawMergedTree = wt.calls.some((call) => call.includes(':ok'));
+          return { ok: true };
+        },
+      },
+      worktrees: wt.wm,
+      autonomous: false,
+    });
+    await orchestrator.start();
+
+    expect(sawMergedTree).toBe(true);
+    expect(graph.finalVerification).toMatchObject({ status: 'passed' });
+  });
+
+  it('fails the graph when final merged-tree verification fails', async () => {
+    const graph = await singlePhaseGraph();
+    const events = new EventBus();
+    const failures: unknown[] = [];
+    (events.on.bind(events) as (event: string, handler: (payload: unknown) => void) => void)(
+      'graph.failed',
+      (payload) => failures.push(payload),
+    );
+    const orchestrator = new PhaseOrchestrator({
+      graph,
+      ctx: {
+        executeTask: async () => {},
+        verifyGoal: async () => ({ ok: false, output: 'combined build is broken' }),
+      },
+      events,
+      autonomous: false,
+    });
+    await orchestrator.start();
+
+    expect(graph.finalVerification).toMatchObject({
+      status: 'failed',
+      error: 'combined build is broken',
+    });
+    expect(failures).toContainEqual(
+      expect.objectContaining({ error: expect.stringContaining('Final verification failed') }),
+    );
+    expect(orchestrator.isRunning()).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useActiveTheme } from '../../hooks/use-active-theme.js';
 import { Text, useAnimation } from '../../ink.js';
+import { useMotionStatic } from '../../motion.js';
 import { sanitizeTerminalText, truncateDisplay } from '../../terminal-width.js';
 import { theme } from '../../theme.js';
 import { getToolVisual } from '../../tool-glyph.js';
@@ -43,7 +44,8 @@ export const ToolPendingLine = React.memo(function ToolPendingLine({
   termWidth: number;
 }): React.ReactElement {
   useActiveTheme();
-  const { frame } = useAnimation({ interval: 180 });
+  const motionStatic = useMotionStatic();
+  const { frame } = useAnimation({ interval: 180, isActive: !motionStatic });
   const { glyph, color } = getToolVisual(name);
   const spinner = ['◐', '◓', '◑', '◒'][frame % 4] ?? '◐';
   return (

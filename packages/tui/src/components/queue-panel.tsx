@@ -107,7 +107,7 @@ export function QueuePanel({
       accent={theme.accent}
       icon={glyphs.queue}
       title="MESSAGE QUEUE"
-      kicker={size.columns >= 88 ? 'next turns' : undefined}
+      kicker="next turns"
       right={
         <Text color={items.length > 0 ? theme.accent : theme.textMuted} bold>
           {items.length} waiting

@@ -247,3 +247,51 @@ describe('explicit approval scopes', () => {
     expect((await policy.evaluate(tool, { name: 'unrelated' }, ctx)).permission).toBe('confirm');
   });
 });
+
+describe('--allowed-tools launch approvals', () => {
+  let root: string;
+  let ctx: Context;
+  const input = { command: 'uv', args: ['run', 'pytest'] };
+  beforeEach(async () => {
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'launch-allow-'));
+    ctx = { projectRoot: root, cwd: root } as Context;
+  });
+  afterEach(async () => {
+    await fs.rm(root, { recursive: true, force: true });
+  });
+  const make = (launchAllowedTools: string[]) =>
+    new DefaultPermissionPolicy({ trustFile: path.join(root, 'trust.json'), launchAllowedTools });
+
+  it('auto-approves the named tool without writing the trust file', async () => {
+    const policy = make(['exec']);
+    const decision = await policy.evaluate(exec, input, ctx);
+    expect(decision).toMatchObject({
+      permission: 'auto',
+      reason: 'allowed by --allowed-tools',
+      launchGrant: true,
+    });
+    await expect(fs.access(path.join(root, 'trust.json'))).rejects.toThrow();
+    expect((await policy.explain(exec, input, ctx)).decision.permission).toBe('auto');
+  });
+
+  it('matches prefix globs and leaves other tools prompting', async () => {
+    const policy = make(['mcp__gh__*']);
+    expect(
+      (await policy.evaluate({ ...exec, name: 'mcp__gh__create_issue' }, input, ctx)).permission,
+    ).toBe('auto');
+    expect((await policy.evaluate(exec, input, ctx)).permission).toBe('confirm');
+  });
+
+  it('still confirms destructive calls, like a tool-scope grant', async () => {
+    const policy = make(['exec']);
+    const reset = { command: 'git', args: ['reset', '--hard'] };
+    expect((await policy.evaluate(exec, reset, ctx)).permission).toBe('confirm');
+    expect((await policy.explain(exec, reset, ctx)).decision.permission).toBe('confirm');
+  });
+
+  it('loses to an explicit deny rule', async () => {
+    const policy = make(['exec']);
+    await policy.deny({ tool: 'exec', pattern: 'uv *' });
+    expect((await policy.evaluate(exec, input, ctx)).permission).toBe('deny');
+  });
+});

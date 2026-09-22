@@ -31,7 +31,7 @@ import {
   THINKING_WORD_FIELD,
   THINKING_WORD_PRESETS,
   TOKEN_SAVING_TIERS,
-} from '../components/settings-picker.js';
+} from '../components/settings-picker-model.js';
 import { MAX_TUI_THINKING_WORD_LENGTH, normalizeTuiThinkingWord } from '../thinking-word.js';
 import { hasPanelRoutedToSidebar, PANEL_IDS, PANEL_POSITION_FIELD_START } from '../ui-contracts.js';
 

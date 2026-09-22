@@ -124,8 +124,10 @@ describe('director-state checkpoint', () => {
     const lockPath = path.join(dir, 'nonexistent.lock');
     try {
       const { releaseDirectorStateLock } = await import('../../src/storage/director-state.js');
-      // Should not throw
-      await releaseDirectorStateLock(lockPath);
+      // "Silently succeeds" was only a comment; state it so the runner checks
+      // it, and pin that the release does not CREATE the lock it failed to find.
+      await expect(releaseDirectorStateLock(lockPath)).resolves.toBeUndefined();
+      await expect(fs.access(lockPath)).rejects.toThrow();
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

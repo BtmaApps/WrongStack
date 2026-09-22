@@ -75,11 +75,9 @@ export class GoalRunner {
       if (failedPhase) {
         this.opts.onFail?.(this.graph, failedPhase, new Error(p.error));
       }
-      // Only cleanup on failure when stopOnFailure is explicitly true.
-      // When false (default), the orchestrator continues with remaining phases.
-      if (this.opts.stopOnFailure) {
-        this.cleanup();
-      }
+      // graph.failed is terminal. Per-phase failures are reported separately;
+      // keeping timers/listeners alive here only leaks completed GoalRunner state.
+      this.cleanup();
     }
   };
 
@@ -152,44 +150,49 @@ export class GoalRunner {
       this.unsubscribeFailed = onUntyped('graph.failed', this.graphFailedHandler);
     }
 
-    await this.orchestrator.start();
-
-    // Arm the max-run-duration timeout only AFTER orchestrator.start() settles,
-    // so the timer cannot fire mid-start and race with this.orchestrator.stop().
-    this.maxRunTimer = setTimeout(
-      () => {
-        this.opts.onProgress?.({
-          totalPhases: 0,
-          pending: 0,
-          ready: 0,
-          running: 0,
-          paused: 0,
-          completed: 0,
-          failed: 0,
-          skipped: 0,
-          percentComplete: 0,
-          totalTasks: 0,
-          completedTasks: 0,
-          failedTasks: 0,
-          estimatedHours: 0,
-          actualHours: 0,
-        });
-        this.stop();
-      },
-      this.opts.maxRunDurationMs ?? 7 * 24 * 60 * 60_000,
-    );
-    if (this.opts.maxRunDurationMs !== undefined && this.opts.maxRunDurationMs <= 0) {
-      clearTimeout(this.maxRunTimer);
-      this.maxRunTimer = null;
+    // Observe the run while it is actually active. Previously both timers were
+    // installed only after await start(), i.e. after every phase had already
+    // settled, so the safety timeout could not protect a hung task and the
+    // progress interval leaked beyond successful completion.
+    if (this.opts.maxRunDurationMs === undefined || this.opts.maxRunDurationMs > 0) {
+      this.maxRunTimer = setTimeout(
+        () => {
+          this.opts.onProgress?.({
+            totalPhases: 0,
+            pending: 0,
+            ready: 0,
+            running: 0,
+            paused: 0,
+            completed: 0,
+            failed: 0,
+            skipped: 0,
+            percentComplete: 0,
+            totalTasks: 0,
+            completedTasks: 0,
+            failedTasks: 0,
+            estimatedHours: 0,
+            actualHours: 0,
+          });
+          this.stop();
+        },
+        this.opts.maxRunDurationMs ?? 7 * 24 * 60 * 60_000,
+      );
+      this.maxRunTimer.unref?.();
     }
-    this.maxRunTimer?.unref?.();
 
-    // Progress reporting — start after orchestrator is running.
     if (this.opts.onProgress) {
       this.progressInterval = setInterval(() => {
         const progress = this.orchestrator?.getProgress();
         if (progress) this.opts.onProgress?.(progress);
       }, 2000);
+    }
+
+    try {
+      await this.orchestrator.start();
+    } finally {
+      // A terminal event normally performs this cleanup synchronously. Keep the
+      // finally path for no-op/custom event buses and thrown start failures.
+      this.cleanup();
     }
 
     return this.graph;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGoalStore } from '../../src/stores/goal-store';
 import { parseGoalState } from '../../src/lib/goal';
+import { useGoalStore } from '../../src/stores/goal-store';
 
 // ── ws-client stub ───────────────────────────────────────────────
 
@@ -243,10 +243,10 @@ describe('useGoalStore', () => {
   describe('refresh', () => {
     beforeEach(() => resetStore());
 
-    it('sends goal.get via WS', () => {
+    it('uses the canonical goal-state snapshot request', () => {
       useGoalStore.getState().refresh();
       expect(mockSend).toHaveBeenCalledOnce();
-      expect(mockSend).toHaveBeenCalledWith({ type: 'goal.get' });
+      expect(mockSend).toHaveBeenCalledWith({ type: 'goal-state.get' });
     });
 
     it('throws nothing when WS is disconnected', () => {

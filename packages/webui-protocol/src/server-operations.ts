@@ -6,6 +6,8 @@ export const SERVER_GOAL_MESSAGE_TYPES = [
   'eternal.iteration',
   'fleet.concurrency_update',
   'goal-state.updated',
+  'goal-state.refining',
+  'goal-state.error',
   'goal.assess.result',
   'goal.list',
   'goal.paused',

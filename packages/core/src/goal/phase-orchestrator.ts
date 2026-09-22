@@ -71,7 +71,8 @@ export class PhaseOrchestrator {
    */
   private stopController = new AbortController();
   private runningPhases = new Set<string>();
-  private tickInterval: ReturnType<typeof setInterval> | null = null;
+  /** Prevent duplicate terminal events when completion/failure paths converge. */
+  private terminalEventEmitted = false;
   private trackerCache = new Map<string, TaskTracker>();
   private taskRetryCounts = new Map<string, number>();
 
@@ -116,6 +117,7 @@ export class PhaseOrchestrator {
   async start(): Promise<void> {
     this.stopped = false;
     this.paused = false;
+    this.terminalEventEmitted = false;
     // Fresh run-wide abort source: a previous stop() aborted the old one, and
     // reusing it would instantly abort every task of this new run.
     this.stopController = new AbortController();
@@ -128,6 +130,15 @@ export class PhaseOrchestrator {
     while (readyPhases.length > 0 && !this.stopped) {
       await this.waitWhilePaused();
       if (this.stopped) break;
+
+      if (this.opts.autonomous) {
+        const active = this.getActivePhases();
+        this.emit('autonomous.tick', {
+          activePhases: active.map((phase) => phase.id),
+          queuedPhases: readyPhases.map((phase) => phase.id),
+        });
+        this.ctx.onTick?.({ activePhases: active, readyPhases });
+      }
 
       const batch = readyPhases.slice(0, this.opts.maxConcurrentPhases);
       await Promise.all(batch.map((p) => this.startPhase(p)));
@@ -150,13 +161,37 @@ export class PhaseOrchestrator {
     // changes reach the base branch before the graph is declared completed.
     await this.drainMerges();
 
-    // Autonomous tick loop for real-time monitoring. Guarded so a stop() that
-    // landed during start() cannot leave a ticking timer behind: tick()
-    // early-returns when stopped, but nothing would ever clear this interval.
-    if (this.opts.autonomous && !this.stopped) {
-      if (this.tickInterval) clearInterval(this.tickInterval);
-      this.tickInterval = setInterval(() => this.tick(), 1000);
+    if (this.stopped) return;
+
+    // start() owns the complete scheduling lifecycle. Once every runnable
+    // phase and queued merge has settled, publish exactly one terminal event
+    // here instead of waiting for a post-completion timer tick.
+    if (this.opts.stopOnFailure && this.graph.failedPhaseIds.length > 0) {
+      const failedPhase = this.graph.phases.get(this.graph.failedPhaseIds[0] ?? '');
+      if (failedPhase) this.onGraphFailed(failedPhase);
+      return;
     }
+
+    if (this.isComplete()) {
+      if (!(await this.runFinalVerification())) return;
+      this.onGraphComplete();
+      return;
+    }
+
+    // No phase is active or runnable and the graph is not complete. This is a
+    // dependency/lifecycle deadlock, not a long-running autonomous state.
+    const stalledPhase = Array.from(this.graph.phases.values()).find(
+      (phase) =>
+        phase.status !== 'completed' && phase.status !== 'skipped' && phase.status !== 'failed',
+    );
+    if (stalledPhase) {
+      this.updatePhaseStatus(stalledPhase, 'failed');
+      stalledPhase.completedAt = Date.now();
+      if (!this.graph.failedPhaseIds.includes(stalledPhase.id)) {
+        this.graph.failedPhaseIds.push(stalledPhase.id);
+      }
+    }
+    this.onGraphFailed(stalledPhase, 'Goal graph stalled with no runnable phases');
   }
 
   /**
@@ -182,6 +217,28 @@ export class PhaseOrchestrator {
     });
   }
 
+  private async runFinalVerification(): Promise<boolean> {
+    if (!this.ctx.verifyGoal) return true;
+    this.emit('graph.verifying', { graphId: this.graph.id });
+    let verdict: { ok: boolean; output?: string | undefined };
+    try {
+      verdict = await this.ctx.verifyGoal(this.graph);
+    } catch (err) {
+      verdict = { ok: false, output: toErrorMessage(err) };
+    }
+    const checkedAt = Date.now();
+    this.graph.updatedAt = checkedAt;
+    if (verdict.ok) {
+      this.graph.finalVerification = { status: 'passed', checkedAt };
+      return true;
+    }
+    const error = verdict.output ?? 'final merged-tree verification failed';
+    this.graph.finalVerification = { status: 'failed', checkedAt, error };
+    this.emit('graph.verifyFailed', { graphId: this.graph.id, error: this.truncate(error) });
+    this.onGraphFailed(undefined, `Final verification failed: ${this.truncate(error)}`);
+    return false;
+  }
+
   /** Pause: active phases continue, but no new phase starts. */
   pause(): void {
     this.paused = true;
@@ -190,10 +247,6 @@ export class PhaseOrchestrator {
   /** Resume: new phases may start again. */
   resume(): void {
     this.paused = false;
-    this.tick().catch((err) => {
-      const msg = toErrorMessage(err);
-      this.logger.error(msg, { event: 'orchestrator.tick_failed' });
-    });
   }
 
   /** Stop completely, including active phases. */
@@ -204,10 +257,6 @@ export class PhaseOrchestrator {
     // promptly instead of continuing to write into worktrees that are about
     // to be released underneath them.
     this.stopController.abort();
-    if (this.tickInterval) {
-      clearInterval(this.tickInterval);
-      this.tickInterval = null;
-    }
     for (const phaseId of this.runningPhases) {
       const phase = this.graph.phases.get(phaseId);
       if (phase) {
@@ -225,47 +274,6 @@ export class PhaseOrchestrator {
     }
   }
 
-  // ─── Tick Loop (Autonomous) ───────────────────────────────────────────────
-
-  private async tick(): Promise<void> {
-    if (this.stopped || this.paused) return;
-
-    const active = this.getActivePhases();
-    const queued = this.getReadyPhases();
-
-    this.emit('autonomous.tick', {
-      activePhases: active.map((p) => p.id),
-      queuedPhases: queued.map((p) => p.id),
-    });
-
-    this.ctx.onTick?.({ activePhases: active, readyPhases: queued });
-
-    // Is there a slot to start a new phase?
-    const availableSlots = this.opts.maxConcurrentPhases - active.length;
-    if (availableSlots > 0 && queued.length > 0) {
-      for (const phase of queued.slice(0, availableSlots)) {
-        if (phase.status === 'pending') {
-          await this.startPhase(phase);
-        }
-      }
-    }
-
-    // Are all phases complete?
-    if (this.isComplete()) {
-      this.onGraphComplete();
-      return;
-    }
-
-    // Did a phase fail while stopOnFailure is enabled?
-    if (this.opts.stopOnFailure && this.graph.failedPhaseIds.length > 0) {
-      const failedPhase = this.graph.phases.get(this.graph.failedPhaseIds[0] ?? '');
-      if (failedPhase) {
-        this.onGraphFailed(failedPhase);
-      }
-      return;
-    }
-  }
-
   // ─── Phase Execution ──────────────────────────────────────────────────────
 
   private async startPhase(phase: PhaseNode): Promise<void> {
@@ -277,20 +285,55 @@ export class PhaseOrchestrator {
     this.graph.activePhaseIds.push(phase.id);
 
     // Allocate an isolated git worktree for this phase, if a manager is wired.
-    // Allocation failure degrades gracefully to the shared working tree.
+    // A persisted isolated run must never silently switch to the base tree.
     if (this.worktrees && !this.phaseWorktrees.has(phase.id)) {
+      const savedWorktree = phase.metadata?.['worktreeResume'] as
+        | { dir?: unknown; branch?: unknown; baseBranch?: unknown }
+        | undefined;
+      const canAdopt = savedWorktree && phase.metadata?.['integrationStatus'] !== 'merged';
       try {
-        const handle = await this.worktrees.allocate(phase.id, {
-          slugHint: phase.name,
-          ownerLabel: phase.name,
-        });
-        if (handle.status === 'active') this.phaseWorktrees.set(phase.id, handle);
-      } catch {
-        // Manager already emitted worktree.failed; run on the shared tree.
+        const handle = canAdopt
+          ? await this.worktrees.adopt(phase.id, {
+              dir: String(savedWorktree.dir ?? ''),
+              branch: String(savedWorktree.branch ?? ''),
+              baseBranch: String(savedWorktree.baseBranch ?? ''),
+              ownerLabel: phase.name,
+            })
+          : await this.worktrees.allocate(phase.id, {
+              slugHint: phase.name,
+              ownerLabel: phase.name,
+            });
+        if (handle.status === 'active') {
+          this.phaseWorktrees.set(phase.id, handle);
+          phase.metadata = {
+            ...phase.metadata,
+            worktreeResume: {
+              dir: handle.dir,
+              branch: handle.branch,
+              baseBranch: handle.baseBranch,
+            },
+          };
+        } else if (canAdopt || this.graph.worktrees === true) {
+          throw new Error('Saved Goal phase worktree is not active.');
+        }
+      } catch (error) {
+        if (canAdopt || this.graph.worktrees === true) {
+          await this.failPhaseAfterTasks(
+            phase,
+            `Cannot safely use phase worktree: ${toErrorMessage(error)}`,
+          );
+          return;
+        }
+        // A fresh allocation failure may fall back to the shared tree.
       }
     }
 
-    this.emit('phase.started', { phaseId: phase.id, name: phase.name });
+    this.emit('phase.started', {
+      phaseId: phase.id,
+      name: phase.name,
+      totalTasks: phase.taskGraph.nodes.size,
+      completedTasks: this.getCompletedTaskCount(phase),
+    });
 
     try {
       if (phase.taskGraph.nodes.size === 0) {
@@ -495,6 +538,7 @@ export class PhaseOrchestrator {
   private async executeSingleTask(task: TaskNode, phase: PhaseNode): Promise<unknown> {
     const tracker = this.getTrackerForPhase(phase);
     tracker.updateNodeStatus(task.id, 'in_progress');
+    this.ctx.onTaskUpdate?.(phase, task);
     // Signal the start so boards can move the card to "in progress" and show the
     // worker. `executeTask` may assign/refine the agent right after (taskAssigned).
     this.emit('phase.taskStarted', {
@@ -566,6 +610,7 @@ export class PhaseOrchestrator {
   private markTaskCompleted(phase: PhaseNode, task: TaskNode): void {
     const tracker = this.getTrackerForPhase(phase);
     tracker.updateNodeStatus(task.id, 'completed');
+    this.ctx.onTaskUpdate?.(phase, task);
     this.emit('phase.taskCompleted', {
       phaseId: phase.id,
       taskId: task.id,
@@ -582,6 +627,7 @@ export class PhaseOrchestrator {
       // A stop()-initiated abort is a user action, not a task failure: leave
       // the node resumable-pending without burning a retry attempt.
       tracker.updateNodeStatus(task.id, 'pending', 'Stopped before completion');
+      this.ctx.onTaskUpdate?.(phase, task);
       return;
     }
 
@@ -592,6 +638,7 @@ export class PhaseOrchestrator {
         'pending',
         `Retry ${currentRetries + 1}/${this.opts.maxRetries}`,
       );
+      this.ctx.onTaskUpdate?.(phase, task);
       this.emit('phase.taskRetrying', {
         phaseId: phase.id,
         taskId: task.id,
@@ -605,6 +652,7 @@ export class PhaseOrchestrator {
         'failed',
         error instanceof Error ? error.message : String(error),
       );
+      this.ctx.onTaskUpdate?.(phase, task);
       this.emit('phase.taskFailed', {
         phaseId: phase.id,
         taskId: task.id,
@@ -659,17 +707,21 @@ export class PhaseOrchestrator {
   }
 
   private onGraphComplete(): void {
+    if (this.terminalEventEmitted) return;
+    this.terminalEventEmitted = true;
     this.graph.completedAt = Date.now();
     const durationMs = this.graph.completedAt - (this.graph.startedAt ?? this.graph.completedAt);
     this.emit('graph.completed', { graphId: this.graph.id, durationMs });
     this.stop();
   }
 
-  private onGraphFailed(failedPhase: PhaseNode): void {
+  private onGraphFailed(failedPhase?: PhaseNode, error?: string): void {
+    if (this.terminalEventEmitted) return;
+    this.terminalEventEmitted = true;
     this.emit('graph.failed', {
       graphId: this.graph.id,
-      failedPhaseId: failedPhase.id,
-      error: `Phase "${failedPhase.name}" failed`,
+      failedPhaseId: failedPhase?.id ?? '',
+      error: error ?? `Phase "${failedPhase?.name ?? 'unknown'}" failed`,
     });
     this.stop();
   }

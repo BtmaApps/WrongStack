@@ -49,10 +49,15 @@ const mocks = vi.hoisted(() => {
     setSettingsActiveTab: fns.setSettingsActiveTab,
   });
 
-  return { ...fns, createMockUIStore };
+  return {
+    ...fns,
+    createMockUIStore,
+    goalRunState: { status: 'idle', graphId: null as string | null },
+  };
 });
 
 vi.mock('@/stores', () => ({
+  useGoalRunStore: { getState: () => mocks.goalRunState },
   useSessionStore: {
     getState: () => ({
       cwd: '/work/proj',
@@ -123,6 +128,8 @@ describe('runChatSlashCommand', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.goalRunState.status = 'idle';
+    mocks.goalRunState.graphId = null;
     streamCoalescer.dropAll();
     options = makeOptions();
   });
@@ -552,10 +559,14 @@ describe('runChatSlashCommand — agent/autonomy commands', () => {
     expect(mocks.setCurrentViewUI).toHaveBeenCalledWith('goal');
   });
 
-  it.each(['pause', 'resume', 'stop'] as const)('/goal %s sends the matching message', (sub) => {
+  it.each([
+    ['pause', 'goal-state.pause'],
+    ['resume', 'goal-state.resume'],
+    ['stop', 'goal.stop'],
+  ] as const)('/goal %s sends %s when no phase run is active', (sub, type) => {
     const opts = makeOptions({ raw: `/goal ${sub}` });
     expect(runChatSlashCommand(opts)).toBe(true);
-    expect(opts.client?.send).toHaveBeenCalledWith({ type: `goal.${sub}`, payload: {} });
+    expect(opts.client?.send).toHaveBeenCalledWith({ type, payload: {} });
   });
 
   it('/review sends a review prompt to the agent', () => {
@@ -761,8 +772,8 @@ describe('runChatSlashCommand — /goal', () => {
   });
 
   it.each([
-    ['pause', 'goal.pause'],
-    ['resume', 'goal.resume'],
+    ['pause', 'goal-state.pause'],
+    ['resume', 'goal-state.resume'],
     ['stop', 'goal.stop'],
   ])('%s sends %s', (sub, type) => {
     const opts = makeOptions({ raw: `/goal ${sub}` });
@@ -770,10 +781,57 @@ describe('runChatSlashCommand — /goal', () => {
     expect(opts.client?.send).toHaveBeenCalledWith({ type, payload: {} });
   });
 
-  it('falls through to the goal view for an unknown sub-command', () => {
+  it('treats free text as a persistent mission', () => {
     const opts = makeOptions({ raw: '/goal wibble' });
     expect(runChatSlashCommand(opts)).toBe(true);
-    expect(opts.client?.send).not.toHaveBeenCalled();
+    expect(opts.client?.send).toHaveBeenCalledWith({
+      type: 'goal-state.set',
+      payload: { goal: 'wibble', sessionId: 'sess-fg' },
+    });
+  });
+
+  it.each([
+    ['save', 'goal.save'],
+    ['list', 'goal.list'],
+  ])('routes /goal %s without replacing the mission', (sub, type) => {
+    const opts = makeOptions({ raw: `/goal ${sub}` });
+    expect(runChatSlashCommand(opts)).toBe(true);
+    expect(opts.client?.send).toHaveBeenCalledWith({ type, payload: {} });
+    expect(opts.client?.send).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'goal-state.set' }),
+    );
+  });
+
+  it('loads a saved run by title and can request resume', () => {
+    const opts = makeOptions({ raw: '/goal load --resume Build auth' });
+    expect(runChatSlashCommand(opts)).toBe(true);
+    expect(opts.client?.send).toHaveBeenCalledWith({
+      type: 'goal.load',
+      payload: { query: 'Build auth', resume: true },
+    });
+  });
+
+  it('resumes a stopped phase graph instead of the persistent mission', () => {
+    mocks.goalRunState.status = 'stopped';
+    mocks.goalRunState.graphId = 'saved-graph';
+    const opts = makeOptions({ raw: '/goal resume' });
+    expect(runChatSlashCommand(opts)).toBe(true);
+    expect(opts.client?.send).toHaveBeenCalledWith({
+      type: 'goal.resume',
+      payload: { graphId: 'saved-graph' },
+    });
+  });
+
+  it('routes /goal refine without replacing the mission', () => {
+    const opts = makeOptions({ raw: '/goal refine' });
+    expect(runChatSlashCommand(opts)).toBe(true);
+    expect(opts.client?.send).toHaveBeenCalledWith({
+      type: 'goal-state.refine',
+      payload: { sessionId: 'sess-fg' },
+    });
+    expect(opts.client?.send).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'goal-state.set' }),
+    );
   });
 });
 

@@ -603,6 +603,19 @@ Animated tab/window title via OSC-0 sequence (`ESC ] 0 ; <text> BEL`):
 - Idle: scrolling marquee of app name
 - 130ms interval (unref'd to not keep event loop alive)
 - Disable with `WRONGSTACK_NO_TITLE=1`
+- Also off under `WRONGSTACK_REDUCED_MOTION=1` (see 10.5)
+
+### 10.5 Reduced motion
+`src/motion.ts`
+
+The `static` animation style (Settings → animation) means no decorative
+motion anywhere: the working label, the status-bar and composer spinners,
+the tool-stream spinner and the fast color clock all stop. Color-moving
+clocks (~8 fps) run only for `rainbow`, `wave`, `pulse` and `cycle`.
+`WRONGSTACK_REDUCED_MOTION=1` forces `static` and disables the animated
+terminal title for the process without changing saved settings — useful for
+screen readers, screen recordings, slow remote terminals and CI. Elapsed
+timers, countdowns and progress indicators keep updating.
 
 ---
 

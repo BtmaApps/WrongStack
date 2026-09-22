@@ -93,10 +93,19 @@ describe('SqliteSageStore', () => {
       expect(fs.existsSync(manifestPath)).toBe(true);
     });
 
-    it('is idempotent — calling initialize twice does not throw', async () => {
+    // "Idempotent" has to mean more than "did not throw": the second open must
+    // not re-run the schema setup over existing rows. This asserted nothing, so
+    // an initialize that wiped the database on every call passed it.
+    it('is idempotent — a second initialize preserves existing memories', async () => {
       const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
       await store.initialize();
-      await store.initialize();
+      const mem = await store.rememberSage({ text: 'survives re-initialize', kind: 'fact' });
+
+      await expect(store.initialize()).resolves.not.toThrow();
+
+      const after = await store.getSage(mem.id);
+      expect(after?.text).toBe('survives re-initialize');
+      expect(after?.status).toBe('active');
     });
   });
 
@@ -638,6 +647,48 @@ describe('SqliteSageStore', () => {
       expect(stats.byKind.fact).toBe(1);
       expect(stats.byKind.decision).toBe(1);
       expect(stats.edges).toBeGreaterThanOrEqual(1);
+    });
+
+    // Every status with ZERO rows must read as 0, not be absent. `GROUP BY
+    // status` omits empty groups, and the partial record used to be cast to
+    // `Record<SageStatus, number>` — so `/memory stats` printed
+    // "stale undefined; archived undefined; deleted undefined" for any store
+    // holding only active memories. Both assertions above only probed statuses
+    // that HAD rows, which is exactly where the gap could not show.
+    it('reports every status, zero-filling the ones with no rows', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      await store.rememberSage({ text: 'Only an active memory', kind: 'fact' });
+      const stats = await store.getStats();
+
+      expect(stats.byStatus).toEqual({
+        active: 1,
+        stale: 0,
+        superseded: 0,
+        contradicted: 0,
+        archived: 0,
+        deleted: 0,
+      });
+      // The consumer-visible symptom, stated directly.
+      for (const count of Object.values(stats.byStatus)) {
+        expect(count).toBeTypeOf('number');
+      }
+    });
+
+    it('reports every status as zero on an empty store', async () => {
+      const store = trackStore(new SqliteSageStore({ projectRoot: tempDir }));
+      await store.initialize();
+      const stats = await store.getStats();
+      expect(stats.total).toBe(0);
+      expect(Object.values(stats.byStatus).every((n) => n === 0)).toBe(true);
+      expect(Object.keys(stats.byStatus).sort()).toEqual([
+        'active',
+        'archived',
+        'contradicted',
+        'deleted',
+        'stale',
+        'superseded',
+      ]);
     });
   });
 

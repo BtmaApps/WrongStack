@@ -171,6 +171,26 @@ Owns its own `useInput`. Rendered as a full-screen overlay.
 | Enter | Rewind to selected checkpoint |
 | Esc | Cancel, close timeline |
 
+### Transcript search (Alt+F, `/chat-search [text]`)
+
+A two-row search bar above the composer. While it is open, typing edits the
+search query and never the composer draft. The history scrolls the selected
+match's card to the top, and a `◀` marker in the rail's gap column points at
+that card. A lowercase query matches any case; any capital letter makes the
+search case-sensitive. Only history retained in the TUI is searched; entries
+evicted by history retention are not. Thinking cards are searched only while
+model reasoning is shown.
+
+| Key | Effect |
+|---|---|
+| Any printable char | Extend the query; jumps to the newest match |
+| ↑ / Enter | Older match (wraps) |
+| ↓ | Newer match (wraps) |
+| Backspace | Delete the last character of the query |
+| Ctrl+U | Clear the query |
+| Esc / Alt+F | Close the bar (the scroll position stays) |
+| PgUp/PgDn, wheel, F-keys, Ctrl+C | Keep their normal behavior |
+
 ### F-key panel picker (`/f`)
 
 | Key | Effect |

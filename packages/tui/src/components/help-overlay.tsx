@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import type React from 'react';
+import { useState } from 'react';
 import { F_KEY_PANEL_ENTRIES } from '../f-key-panels.js';
 import { Box, Text, useInput } from '../ink.js';
 import { theme } from '../theme.js';
@@ -40,6 +40,7 @@ export function helpSections(): HelpSection[] {
     { keys: '↑/↓', desc: 'previous / next input (empty prompt)' },
     { keys: 'Shift+Tab', desc: 'focus sidebar for scroll (↑/↓), Esc to unfocus' },
     { keys: '?', desc: 'open this help (empty prompt)' },
+    { keys: 'Alt+F or /chat-search', desc: 'search the chat transcript' },
   );
 
   return [

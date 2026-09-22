@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`gpt-6-sol` and `gpt-6-luna` are available under the ChatGPT sign-in
+  (`openai-codex`) provider.** They sit right after GPT-6 Astra in the Codex
+  picker. Sol targets complex coding and agentic workflows. Luna is the
+  efficient model for focused, high-volume tasks. Both take text and image
+  input and support the `low`…`max` reasoning efforts. They declare the same
+  872K Codex window as the rest of the GPT-6/5.6 line, and the live
+  `/codex/models` probe remains the runtime authority.
+  (`packages/core/src/models/codex-catalog.ts`, `packages/cli/data/providers.json`)
+
 ## [1.0.24] — 2026-09-20
 
 ### Added

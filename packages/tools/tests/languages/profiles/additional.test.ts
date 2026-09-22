@@ -59,12 +59,6 @@ describe('ADDITIONAL_LANGUAGE_PROFILES', () => {
     expect(cpp!.displayName).toBe('C++');
   });
 
-  it('includes shell profile', () => {
-    const shell = ADDITIONAL_LANGUAGE_PROFILES.find((p) => p.id === 'shell');
-    expect(shell).toBeDefined();
-    expect(shell!.displayName).toBe('Shell');
-  });
-
   it('all profiles have unique ids', () => {
     const ids = ADDITIONAL_LANGUAGE_PROFILES.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);

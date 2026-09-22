@@ -1,15 +1,15 @@
+import { Layers, Loader2, Pause, Play, Plus, Rocket, Square, Undo2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAppTranslation, i18n } from '@/i18n';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useGoalRunStore, useChatStore, useWorktreeStore, useGoalAssessStore } from '@/stores';
 import { showPanel } from '@/components/activity-bar/nav';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { i18n, useAppTranslation } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { useChatStore, useGoalAssessStore, useGoalRunStore, useWorktreeStore } from '@/stores';
 import { BoardView } from './BoardView';
+import { Button } from './ui/button';
 import { WorktreeGraph } from './WorktreeGraph';
 import { WorktreeLanes } from './WorktreeLanes';
 import { WorktreeOrphans } from './WorktreeOrphans';
-import { Layers, Loader2, Pause, Play, Plus, Rocket, Square, Undo2, X, Zap } from 'lucide-react';
-import { Button } from './ui/button';
 
 /**
  * GoalView — Full-screen goal phase view.
@@ -27,17 +27,18 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
   const { t } = useAppTranslation();
   const phases = useGoalRunStore((s) => s.phases);
   const overallPercent = useGoalRunStore((s) => s.overallPercent);
-  const autonomous = useGoalRunStore((s) => s.autonomous);
   const title = useGoalRunStore((s) => s.title);
+  const graphId = useGoalRunStore((s) => s.graphId);
   const goalText = useGoalRunStore((s) => s.goal);
   const status = useGoalRunStore((s) => s.status);
   const lastError = useGoalRunStore((s) => s.lastError);
+  const finalVerification = useGoalRunStore((s) => s.finalVerification);
   const graphs = useGoalRunStore((s) => s.graphs);
 
   // Pull the list of persisted boards and current state for this project on mount.
   useEffect(() => {
     client?.send?.({ type: 'goal.list' });
-    client?.send?.({ type: 'goal.state' });
+    client?.send?.({ type: 'goal.status' });
   }, [client]);
 
   const worktrees = useWorktreeStore((s) => s.worktrees);
@@ -53,7 +54,7 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
   const [isolate, setIsolate] = useState(true);
   // Additional goal configuration options.
   const [multiBoard, setMultiBoard] = useState(false);
-  const [verifyTasks, setVerifyTasks] = useState(false);
+  const [verifyTasks, setVerifyTasks] = useState(true);
   const [chimeraReview, setChimeraReview] = useState(false);
 
   // ── Goal realism assessment ──────────────────────────────────────────────
@@ -120,15 +121,11 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
     // Navigate to chat so the user sees the echoed goal and live agent
     // messages in the transcript.
     showPanel('chat');
-  }, [goal, planningGoal, client, isolate]);
+  }, [goal, planningGoal, client, isolate, multiBoard, verifyTasks, chimeraReview]);
 
   const handleCancelPlanning = useCallback(() => {
     client?.send?.({ type: 'goal.stop', payload: {} });
     setPlanningGoal(null);
-  }, [client]);
-
-  const handleToggleAutonomous = useCallback(() => {
-    client?.send?.({ type: 'goal.toggleAutonomous', payload: {} });
   }, [client]);
 
   const handlePauseResume = useCallback(() => {
@@ -138,6 +135,10 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
         : { type: 'goal.pause', payload: {} },
     );
   }, [client, status]);
+
+  const handleResumeSaved = useCallback(() => {
+    if (graphId) client?.send?.({ type: 'goal.resume', payload: { graphId } });
+  }, [client, graphId]);
 
   const handleStop = useCallback(() => {
     client?.send?.({ type: 'goal.stop', payload: {} });
@@ -200,13 +201,31 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
               {status}
             </span>
           )}
+          {finalVerification && (
+            <span
+              className={cn(
+                'rounded border px-2 py-0.5 text-[11px] font-medium',
+                finalVerification.status === 'passed'
+                  ? 'border-success/40 bg-success/10 text-success'
+                  : 'border-destructive/40 bg-destructive/10 text-destructive',
+              )}
+              title={finalVerification.error}
+            >
+              {t('activity:goalRun.verifyTasksLabel')}:{' '}
+              {t(
+                finalVerification.status === 'passed'
+                  ? 'activity:goal.statusDone'
+                  : 'activity:goal.statusFailed',
+              )}
+            </span>
+          )}
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
           {/* Board selector — every Goal run is a persisted board (JSON on
               disk); switch between all boards saved for this project. */}
           {graphs.length > 0 && (
             <select
-              value={hasPhases ? (graphs.find((g) => g.title === title)?.id ?? '') : ''}
+              value={hasPhases ? (graphId ?? '') : ''}
               onChange={(e) => handleSelectBoard(e.target.value)}
               title={t('activity:goalRun.switchBoard')}
               className="min-w-0 flex-1 rounded border border-border bg-card px-2 py-1 text-xs text-foreground sm:w-72 sm:flex-none"
@@ -220,22 +239,6 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
                 </option>
               ))}
             </select>
-          )}
-          {hasPhases && (
-            <button
-              type="button"
-              onClick={handleToggleAutonomous}
-              title={t('activity:goalRun.toggleAutonomousTitle')}
-              className={cn(
-                'inline-flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors',
-                autonomous
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Zap className="h-3.5 w-3.5" />{' '}
-              {autonomous ? t('activity:goalRun.autonomous') : t('activity:goalRun.manual')}
-            </button>
           )}
           {isLive && (
             <>
@@ -268,6 +271,16 @@ export function GoalView({ onClose }: { onClose: () => void }): React.ReactEleme
           )}
           {hasPhases && isDone && (
             <>
+              {(status === 'stopped' || status === 'failed') && graphId && (
+                <button
+                  type="button"
+                  onClick={handleResumeSaved}
+                  title={t('activity:goalRun.resumeTitle')}
+                  className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Play className="h-3.5 w-3.5" /> {t('activity:goalRun.resume')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleNew}

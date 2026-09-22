@@ -157,7 +157,7 @@ export async function setupSession(params: {
   // the caller: both mean "pick a session for me", and the pick needs the
   // store and the live-session registry that only this phase holds.
   //
-  //   --resume            -> the most recent session, closed or not
+  //   --resume, -c        -> the most recent session, closed or not
   //   --recover           -> the most recent session with NO trailing
   //                          `session_end` (crash, kill, closed lid)
   //
@@ -167,7 +167,7 @@ export async function setupSession(params: {
   // fresh. A pick that finds nothing is not an error — the boot continues
   // with a new session, which is what the user would have got anyway.
   if (!resumeId) {
-    const wantsLatest = flags['resume'] === true;
+    const wantsLatest = flags['resume'] === true || flags['continue'] === true;
     const wantsRecover = flags['recover'] === true && flags['no-recovery'] !== true;
     if (wantsLatest || wantsRecover) {
       const picked = await pickResumeCandidate({
@@ -189,6 +189,11 @@ export async function setupSession(params: {
         );
       }
     }
+  }
+  if (flags['fork-session'] === true && !resumeId) {
+    renderer.writeInfo(
+      '--fork-session needs a session to branch from (--resume, --continue or --recover); starting a new one.',
+    );
   }
 
   // Nothing to resume, but something to say: if the LAST thing this project
@@ -218,6 +223,15 @@ export async function setupSession(params: {
     let claimHandle: SessionClaimHandle | undefined;
     try {
       if (sessionStore.resolveId) resumeId = await sessionStore.resolveId(resumeId);
+      // `--fork-session`: branch the picked session and continue the branch.
+      // Forking only reads the parent, so it happens before the claim — the
+      // parent may still be open in another process and stays untouched.
+      if (flags['fork-session'] === true) {
+        if (!sessionStore.fork) throw new Error('this session store cannot fork sessions');
+        const parentId = resumeId;
+        resumeId = (await sessionStore.fork(parentId)).id;
+        renderer.writeInfo(`Forked session ${parentId} → ${resumeId}`);
+      }
       const claimed = await claimSession?.(resumeId);
       if (typeof claimed === 'function') {
         claimHandle = { rollback: claimed, activate: async () => {} };

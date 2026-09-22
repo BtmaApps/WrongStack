@@ -209,7 +209,7 @@ export function PlanPanel({
       accent={theme.accent}
       icon={glyphs.plan}
       title="PLAN"
-      kicker={size.columns >= 90 ? truncatePanelText(title ?? 'execution map', 30) : undefined}
+      kicker={truncatePanelText(title ?? 'execution map', 30)}
       right={
         <Text color={scope === 'project' ? theme.warn : theme.accent} bold>
           {scope.toUpperCase()} {items.length} items

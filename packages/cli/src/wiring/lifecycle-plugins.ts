@@ -40,6 +40,9 @@ import {
   MCPVaultTokenStore,
 } from '@wrongstack/mcp';
 import type { EventWiring } from '../boot/event-wiring.js';
+import { effectiveMcpServers, parseLaunchMcpServers } from '../boot/mcp-config-flag.js';
+import { isRestrictedMode } from '../boot/restricted-mode.js';
+import { isSafeMode } from '../boot/safe-mode.js';
 import type { MaxContextBranch } from '../context-limit.js';
 import {
   describeMaxContextChange,
@@ -179,7 +182,8 @@ export async function setupLifecycleAndPlugins(
   } = deps;
 
   // ── Lifecycle hooks ──────────────────────────────────────────────────────
-  const hooksEnabled = flags['no-hooks'] !== true;
+  const safeMode = isSafeMode(flags);
+  const hooksEnabled = flags['no-hooks'] !== true && !safeMode;
   const hookRegistry = new HookRegistry();
   // `--no-hooks` disables ordinary automation, not trusted enforcement.
   // Explicit `policy: true` hooks remain active and never ask for approval;
@@ -235,6 +239,8 @@ export async function setupLifecycleAndPlugins(
     'edit|write|replace|patch|codebase-ast-replace',
     wrongTraceHooks.postToolUse,
     'wrongtrace-gate',
+    // Also on a denied / rejected / failed call: release the lock PreToolUse took.
+    { runWhenToolSkipped: true },
   );
 
   // The toolCall recorder captures the agent-driven journal categories
@@ -435,19 +441,31 @@ export async function setupLifecycleAndPlugins(
     }),
     authorizationManager: mcpAuthorizationManager,
   });
-  if (config.features.mcp) {
-    // The record key is the name: the documented `{ github: { enabled: true } }`
-    // has no `name` field, so reading `cfg.name` started an unnamed server.
-    for (const [name, entry] of Object.entries(config.mcpServers ?? {})) {
-      const resolved = resolveMcpServerConfig(name, entry);
-      if (!resolved) {
-        logger.warn(`MCP server "${name}" has no transport and matches no preset — skipped`);
-        continue;
-      }
-      void mcpRegistry.start(resolved).catch((err) => {
-        logger.warn(`MCP server "${name}" failed to start`, err);
-      });
+  // `--mcp-config` servers (normalized at boot) always start — naming them on
+  // the command line is the opt-in. `features.mcp` and `--strict-mcp-config`
+  // only decide whether the configured servers join them.
+  const launchMcpServers =
+    typeof flags['mcp-config'] === 'string'
+      ? parseLaunchMcpServers(flags['mcp-config'], '--mcp-config')
+      : undefined;
+  const mcpServersToStart = effectiveMcpServers(
+    // `--restricted` hides every MCP tool, so starting servers would only run
+    // their processes for nothing.
+    config.features.mcp && !safeMode && !isRestrictedMode(flags) ? config.mcpServers : undefined,
+    launchMcpServers,
+    flags['strict-mcp-config'] === true,
+  );
+  // The record key is the name: the documented `{ github: { enabled: true } }`
+  // has no `name` field, so reading `cfg.name` started an unnamed server.
+  for (const [name, entry] of Object.entries(mcpServersToStart)) {
+    const resolved = resolveMcpServerConfig(name, entry);
+    if (!resolved) {
+      logger.warn(`MCP server "${name}" has no transport and matches no preset — skipped`);
+      continue;
     }
+    void mcpRegistry.start(resolved).catch((err) => {
+      logger.warn(`MCP server "${name}" failed to start`, err);
+    });
   }
   registerMcpObservability(healthRegistry, metricsSink, mcpRegistry);
 
@@ -510,8 +528,9 @@ export async function setupLifecycleAndPlugins(
     metricsStatus,
     modelsRegistry,
     healthRegistry,
-    skillLoader: config.features.skills ? skillLoader : undefined,
+    skillLoader: config.features.skills && !safeMode ? skillLoader : undefined,
     promptLoader: config.features.prompts === false ? undefined : promptLoader,
+    safeMode,
     configStore,
     vault,
     paths: {

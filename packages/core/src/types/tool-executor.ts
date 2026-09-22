@@ -177,4 +177,14 @@ export interface ToolExecutorLike {
     budget: number,
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ block: ToolResultBlock; bytes: number }>;
+  /**
+   * A `tool_confirm_pending` call was rejected or aborted: PreToolUse already
+   * ran, the tool never will. Optional so minimal executors stay valid.
+   */
+  abandonTool?(
+    tool: Tool,
+    use: ToolUseBlock,
+    ctx: import('../core/context.js').Context,
+    reason: string,
+  ): Promise<void>;
 }

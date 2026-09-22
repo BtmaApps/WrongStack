@@ -22,8 +22,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
-  inlineScripts,
   injectWebsiteCsp,
+  inlineScripts,
   scriptHash,
   websiteCsp,
 } from '../../../../website/csp.mjs';
@@ -150,7 +150,11 @@ describe('injection (WS-071)', () => {
   it('produces a policy that covers the scripts in its own output', () => {
     const out = injectWebsiteCsp(sourceHtml);
     const policy = policyOf(out);
-    for (const body of inlineScripts(out)) {
+    const scripts = inlineScripts(out);
+    // A parser change that stopped finding inline scripts would leave this
+    // loop empty and the CSP unverified, while the test stayed green.
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const body of scripts) {
       expect(policy).toContain(scriptHash(body));
     }
   });

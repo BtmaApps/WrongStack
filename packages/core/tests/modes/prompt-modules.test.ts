@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROMPT as briefPrompt } from '../../src/core/modes/brief.js';
-import { PROMPT as teachPrompt } from '../../src/core/modes/teach.js';
 import { PROMPT as defaultPrompt } from '../../src/core/modes/default.js';
+import { PROMPT as teachPrompt } from '../../src/core/modes/teach.js';
 import { DEFAULT_MODES } from '../../src/types/mode.js';
 
 // These modules only export a `PROMPT` string. Coverage requires the file
@@ -28,7 +28,12 @@ describe('mode prompts', () => {
   });
 
   it('built-in non-default mode prompts load from files', () => {
-    for (const mode of DEFAULT_MODES.filter((m) => m.id !== 'default')) {
+    // A FILTER result, and mode prompts load from disk: if DEFAULT_MODES came
+    // back empty (or held only `default`), this asserted nothing and still
+    // reported green.
+    const builtIns = DEFAULT_MODES.filter((m) => m.id !== 'default');
+    expect(builtIns.length).toBeGreaterThan(0);
+    for (const mode of builtIns) {
       expect(mode.prompt.trim(), mode.id).toBeTruthy();
       expect(mode.prompt, mode.id).toContain('## ');
     }

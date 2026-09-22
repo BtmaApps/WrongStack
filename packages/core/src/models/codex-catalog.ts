@@ -45,6 +45,16 @@ export const CODEX_MODELS: ReadonlyArray<CodexModelMeta> = [
     current: true,
   },
   {
+    id: 'gpt-6-sol',
+    name: 'GPT-6 Sol',
+    description: 'Built to power complex coding and agentic workflows.',
+  },
+  {
+    id: 'gpt-6-luna',
+    name: 'GPT-6 Luna',
+    description: 'Most efficient model for focused, high-volume tasks.',
+  },
+  {
     id: 'gpt-5.6-sol',
     name: 'GPT-5.6 Sol',
     description: 'Latest frontier agentic coding model.',

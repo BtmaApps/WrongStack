@@ -9,46 +9,6 @@ import { toErrorMessage } from '@wrongstack/core/utils';
 export interface GoalPhasePlanningHost {
   agent: Agent;
   logger: Logger;
-  defaultPhases: () => PhaseTemplate[];
-}
-export function defaultPhases(_host: GoalPhasePlanningHost): PhaseTemplate[] {
-  return [
-    {
-      name: 'Discovery',
-      description: 'Requirements gathering',
-      priority: 'high',
-      estimateHours: 2,
-      parallelizable: false,
-    },
-    {
-      name: 'Design',
-      description: 'Architecture and design',
-      priority: 'critical',
-      estimateHours: 4,
-      parallelizable: false,
-    },
-    {
-      name: 'Implementation',
-      description: 'Core development',
-      priority: 'critical',
-      estimateHours: 12,
-      parallelizable: false,
-    },
-    {
-      name: 'Testing',
-      description: 'Unit and integration tests',
-      priority: 'high',
-      estimateHours: 6,
-      parallelizable: true,
-    },
-    {
-      name: 'Deployment',
-      description: 'Deploy to production',
-      priority: 'medium',
-      estimateHours: 2,
-      parallelizable: false,
-    },
-  ];
 }
 
 export async function planPhases(
@@ -75,11 +35,11 @@ export async function planPhases(
       host.logger.info(`[Goal] Planned ${phases.length} phases / ${todos} todos for: ${goal}`);
       return phases;
     }
-    host.logger.info(`[Goal] Planner produced no phases; using defaults for: ${goal}`);
+    host.logger.warn(`[Goal] Planner produced no executable phases for: ${goal}`);
   } catch (err) {
-    host.logger.error(`[Goal] Planning failed, using defaults: ${toErrorMessage(err)}`);
+    host.logger.error(`[Goal] Planning failed: ${toErrorMessage(err)}`);
   }
-  return host.defaultPhases();
+  return [];
 }
 
 export async function runChimeraReview(

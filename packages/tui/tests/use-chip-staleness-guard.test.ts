@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  useChipStalenessGuard,
+  type ChipStalenessDiagnosis,
   computeTokenFingerprint,
   formatDiagnosis,
-  type ChipStalenessDiagnosis,
+  useChipStalenessGuard,
 } from '../src/hooks/use-chip-staleness-guard.js';
 
 describe('useChipStalenessGuard', () => {
@@ -60,6 +60,37 @@ describe('useChipStalenessGuard', () => {
     expect(result.current.diagnoses[0]?.chip).toBe('state');
     expect(result.current.renderNonce).toBe(1);
     expect(result.current.recoveryCount).toBe(1);
+  });
+
+  it('does not flag a spinner that is still by design (static style)', () => {
+    const { result } = renderHook(() =>
+      useChipStalenessGuard({ ...baseOpts, agentState: 'running', spinnerAnimated: false }),
+    );
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(result.current.diagnoses.filter((d) => d.chip === 'state')).toEqual([]);
+    expect(result.current.renderNonce).toBe(0);
+  });
+
+  it('does not count time spent still against a spinner that resumes', () => {
+    const { result, rerender } = renderHook(
+      (props: { animated: boolean }) =>
+        useChipStalenessGuard({
+          ...baseOpts,
+          agentState: 'running',
+          spinnerAnimated: props.animated,
+        }),
+      { initialProps: { animated: false } },
+    );
+    act(() => {
+      vi.advanceTimersByTime(9_000);
+    });
+    rerender({ animated: true });
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(result.current.diagnoses.filter((d) => d.chip === 'state')).toEqual([]);
   });
 
   it('does not flag animation_frozen when spinner is advancing', () => {

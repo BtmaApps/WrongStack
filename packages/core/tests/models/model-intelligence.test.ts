@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MODEL_PROFILES,
-  TASK_TO_ROLE,
   findModelProfile,
   inferTaskType,
+  MODEL_PROFILES,
   scoreModelForTask,
+  TASK_TO_ROLE,
 } from '../../src/models/model-intelligence.js';
 
 describe('inferTaskType', () => {
@@ -33,6 +33,9 @@ describe('inferTaskType', () => {
   });
 
   it('every TaskType has a role mapping', () => {
+    // "Every" over an empty map is vacuously true; the floor is what makes this
+    // a coverage guard rather than a tautology.
+    expect(Object.keys(TASK_TO_ROLE).length).toBeGreaterThan(0);
     for (const tt of Object.keys(TASK_TO_ROLE)) {
       expect(TASK_TO_ROLE[tt as keyof typeof TASK_TO_ROLE].length).toBeGreaterThan(0);
     }

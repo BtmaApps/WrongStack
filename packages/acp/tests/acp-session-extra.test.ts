@@ -739,6 +739,12 @@ describe('ACPSession — focused coverage', () => {
       params: {},
     });
     await new Promise((r) => setImmediate(r));
-    await session.close();
+
+    // The point is that a REJECTED transport.send is caught rather than
+    // surfacing as an unhandled rejection. Assert the failing path actually
+    // ran, and that the session still shuts down cleanly — an assertion-free
+    // body proved neither.
+    expect(t.send).toHaveBeenCalled();
+    await expect(session.close()).resolves.toBeUndefined();
   });
 });

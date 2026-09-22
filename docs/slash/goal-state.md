@@ -1,10 +1,14 @@
-# `/goal-state` — Autonomous Mission Tracker
+# Goal mission state (`goal.json`)
+
+> `/goal-state` is a WebUI compatibility/read-only route, not a registered CLI
+> slash command. In CLI/TUI use `/goal set`, `/goal status`, `/goal pause`,
+> `/goal resume`, `/goal clear`, and `/goal journal`.
 
 ## What it does
 
 Sets, inspects, pauses, resumes, or clears the long-running mission used by
 `/autonomy eternal`. Goals persist at
-`~/.wrongstack/projects/<hash>/goal.json` across sessions, surviving process
+`~/.wrongstack/projects/<slug>/goal.json` across sessions, surviving process
 restarts.
 
 ## Storage format
@@ -14,6 +18,9 @@ restarts.
 {
   "version": 1,
   "goal": "string",
+  "missionId": "unique id for this mission generation",
+  "refinedGoal": "refined mission text",
+  "deliverables": ["verifiable outcome"],
   "setAt": "ISO timestamp",
   "lastActivityAt": "ISO timestamp",
   "engineState": "idle | running | stopped",
@@ -53,29 +60,32 @@ Once `goalState` is not `active`, the engine refuses to run further iterations �
 
 | Usage | Effect |
 |---|---|
-| `/goal-state` | Show current goal + recent journal (last 25 entries) |
-| `/goal-state show` | Same as above |
-| `/goal-state status` | Same as above (alias) |
-| `/goal-state set <text>` | Set or replace the goal |
-| `/goal-state new <text>` | Alias for `/goal-state set` |
-| `/goal-state clear` | Mark goal abandoned, delete goal.json, and stop eternal loop immediately |
-| `/goal-state journal [N]` | Show last N journal entries (default 25) |
-| `/goal-state log [N]` | Alias for `/goal-state journal` |
-| `/goal-state pause` | Pause loop gracefully after current iteration finishes. State becomes `paused` until `/goal-state resume`. |
-| `/goal-state resume` | Clear `paused` state and resume the loop from the next iteration. |
-| `/goal-state <any text without verb>` | Treated as `/goal-state set <text>` |
+| `/goal` or `/goal status` | Show the active phase run, or this mission when no phase run is active |
+| `/goal set <text>` | Set or replace the mission |
+| `/goal refine` | Re-refine the existing mission without resetting its journal |
+| `/goal <text>` | Alias for `/goal set <text>` |
+| `/goal clear` | Delete goal.json and stop the eternal loop immediately |
+| `/goal journal [N]` | Show recent journal entries |
+| `/goal pause` | Pause the active phase run; with no phase run, pause this mission |
+| `/goal resume` | Resume the active phase run; with no phase run, resume this mission |
+
+CLI and WebUI use the same refinement prompt and parser. WebUI saves a new
+mission immediately with heuristic deliverables, then applies the LLM result
+when it arrives. A late result cannot overwrite a newer mission or a clear.
+The Goal panel shows refinement progress; a configured refiner profile is
+tried before the requesting session's provider/model.
 
 ## Pause / Resume
 
-`/goal-state pause` writes `goalState: 'paused'` to goal.json. The engine finishes the current iteration then exits the loop cleanly via the existing `missionState !== 'active'` guard — no AbortController, no work lost.
+When no phase run is active, `/goal pause` writes `goalState: 'paused'` to goal.json. The engine finishes the current iteration then exits the loop cleanly via the existing `missionState !== 'active'` guard — no AbortController, no work lost.
 
-`/goal-state resume` clears `goalState: 'active'` and the loop continues from the next iteration. If there is no active `/autonomy eternal` running, the state change is persisted and the next `/autonomy eternal` call picks up where it left off.
+`/goal resume` clears `goalState: 'active'` and the loop continues from the next iteration. If there is no active `/autonomy eternal` running, the state change is persisted and the next `/autonomy eternal` call picks up where it left off.
 
 **Edge cases:**
-- `/goal-state pause` when already paused → no-op, returns "Already paused."
-- `/goal-state resume` when not paused → no-op, returns "Not paused."
-- `/goal-state pause` when no goal exists → returns "No goal set — nothing to pause."
-- `/goal-state pause` while an iteration is in-flight → loop exits after that iteration completes
+- `/goal pause` when already paused → no-op, returns "Already paused."
+- `/goal resume` when not paused → no-op, returns "Not paused."
+- `/goal pause` when no goal exists → returns "No goal set — nothing to pause."
+- `/goal pause` while an iteration is in-flight → loop exits after that iteration completes
 
 ## Journal entry format
 
@@ -87,6 +97,6 @@ Each iteration writes a journal entry with emoji status indicator:
 
 ## Code reference
 
-- `packages/cli/src/slash-commands/goal-state.ts`
+- `packages/cli/src/slash-commands/goal.ts`
 - `packages/core/src/storage/goal-store.ts`
 - `packages/core/src/execution/eternal-autonomy.ts`

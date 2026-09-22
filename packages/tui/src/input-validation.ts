@@ -458,6 +458,9 @@ export function validateAction(action: {
     case 'fallbackOverlayOpen':
     case 'inspectOverlayOpen':
     case 'inspectOverlayScroll':
+    case 'chatSearchOpen':
+    case 'chatSearchSetQuery':
+    case 'chatSearchStep':
     case 'clearConfirmSetValue':
     case 'checkpointReceived':
     case 'rewindOverlayOpen':

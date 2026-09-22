@@ -8,7 +8,11 @@ import { expandSharedSystemInstructions } from '../../src/utils/instruction-file
 describe('shared system contract', () => {
   it('keeps shared fragments terminal and conditional blocks balanced', () => {
     const dir = new URL('../../instructions/shared/system/', import.meta.url);
-    for (const name of readdirSync(dir)) {
+    const names = readdirSync(dir);
+    // A moved or renamed directory yields zero entries, and every balance
+    // assertion below is then skipped silently.
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
       const text = readFileSync(new URL(name, dir), 'utf8');
       expect(text, name).not.toContain('{{shared:');
       let depth = 0;

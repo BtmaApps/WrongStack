@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WebSocket } from 'ws';
 
-vi.mock('@wrongstack/core/goal', () => {
+const captures = vi.hoisted(() => ({ orchestratorOpts: null as Record<string, unknown> | null }));
+
+vi.mock('@wrongstack/core/goal', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/core/goal')>();
   class PhaseOrchestrator {
+    constructor(opts: Record<string, unknown>) {
+      captures.orchestratorOpts = opts;
+    }
     pause = vi.fn();
     resume = vi.fn();
     stop = vi.fn();
@@ -22,6 +28,7 @@ vi.mock('@wrongstack/core/goal', () => {
     });
     list = vi.fn(async () => [{ id: 'g1', title: 'Saved Goal' }]);
     load = vi.fn(async (id: string) => this.graphs.get(id) ?? null);
+    acquireRunLease = vi.fn(async () => vi.fn(async () => undefined));
   }
   class PhaseGraphBuilder {
     constructor(public readonly opts: unknown) {}
@@ -35,7 +42,27 @@ vi.mock('@wrongstack/core/goal', () => {
       // Gate planning on runOnce so stop-during-planning tests can hold it.
       const opts = this.opts as { runOnce: (prompt: string) => Promise<string> };
       await opts.runOnce('plan');
-      return { phases: [], parseFailed: true };
+      return {
+        phases: [
+          {
+            name: 'Only Phase',
+            description: 'work',
+            priority: 'high',
+            estimateHours: 1,
+            parallelizable: false,
+            taskTemplates: [
+              {
+                title: 'Do work',
+                description: 'work',
+                type: 'implementation',
+                priority: 'high',
+                estimateHours: 1,
+              },
+            ],
+          },
+        ],
+        parseFailed: false,
+      };
     });
   }
   class GoalAssessor {
@@ -71,7 +98,14 @@ vi.mock('@wrongstack/core/goal', () => {
       activePhaseIds: [],
     };
   }
-  return { GoalAssessor, GoalPlanner, PhaseGraphBuilder, PhaseOrchestrator, PhaseStore };
+  return {
+    ...actual,
+    GoalAssessor,
+    GoalPlanner,
+    PhaseGraphBuilder,
+    PhaseOrchestrator,
+    PhaseStore,
+  };
 });
 vi.mock('@wrongstack/core/worktree', () => ({
   WorktreeManager: vi.fn(),
@@ -105,7 +139,13 @@ class FakeWs {
   }
 }
 
-function makeHandler(opts: { agentRun?: () => Promise<unknown> } = {}) {
+function makeHandler(
+  opts: {
+    agentRun?: () => Promise<unknown>;
+    taskAgentFactory?: () => Promise<unknown>;
+    projectRoot?: string;
+  } = {},
+) {
   const storeDir = '/store';
   const agent = {
     run: opts.agentRun ?? (vi.fn(async () => ({ status: 'done', finalText: '[]' })) as never),
@@ -128,8 +168,9 @@ function makeHandler(opts: { agentRun?: () => Promise<unknown> } = {}) {
     logger,
     storeDir,
     undefined,
-    undefined,
+    opts.projectRoot,
     onBoardState,
+    opts.taskAgentFactory as never,
   );
   return { handler, logger, info, onBoardState, ws: new FakeWs() };
 }
@@ -154,7 +195,7 @@ describe('GoalWebSocketHandler — client lifecycle and simple messages', () => 
     handler.dispose();
   });
 
-  it('relays pause, resume, and status to the orchestrator', async () => {
+  it('reports an idle resume error and still answers status', async () => {
     const { handler, ws } = makeHandler();
     handler.addClient(ws as unknown as WebSocket);
 
@@ -162,12 +203,15 @@ describe('GoalWebSocketHandler — client lifecycle and simple messages', () => 
     expect(ws.sent.some((m) => m.type === 'goal.paused')).toBe(true);
 
     await handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.resume' });
-    expect(ws.sent.some((m) => m.type === 'goal.resumed')).toBe(true);
+    expect(ws.sent.find((m) => m.type === 'goal.error')?.payload).toMatchObject({
+      message: 'No saved Goal to resume.',
+    });
 
-    // goal.status without a graph is a silent no-op (broadcastState guards).
+    // goal.status always returns an authoritative snapshot, including idle.
     const before = ws.sent.length;
     await handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.status' });
-    expect(ws.sent.length).toBe(before);
+    expect(ws.sent.length).toBe(before + 1);
+    expect(ws.sent.at(-1)?.payload).toMatchObject({ status: 'idle', phases: [] });
     handler.dispose();
   });
 
@@ -237,7 +281,23 @@ describe('GoalWebSocketHandler — goal.start', () => {
       type: 'goal.start',
       payload: {
         goal: 'Ship the new dashboard.\nMore detail here.',
-        phases: [{ name: 'Only Phase', description: '', priority: 'high', estimateHours: 1 }],
+        phases: [
+          {
+            name: 'Only Phase',
+            description: '',
+            priority: 'high',
+            estimateHours: 1,
+            taskTemplates: [
+              {
+                title: 'Do work',
+                description: 'work',
+                type: 'implementation',
+                priority: 'high',
+                estimateHours: 1,
+              },
+            ],
+          },
+        ],
         autonomous: false,
       },
     });
@@ -247,15 +307,21 @@ describe('GoalWebSocketHandler — goal.start', () => {
     handler.dispose();
   });
 
-  it('uses the default phases when the planner fails', async () => {
-    const { handler, ws, info } = makeHandler();
+  it('rejects a planner failure instead of launching taskless fallback phases', async () => {
+    const { handler, ws } = makeHandler({
+      agentRun: vi.fn(async () => {
+        throw new Error('planner down');
+      }) as never,
+    });
     handler.addClient(ws as unknown as WebSocket);
     await handler.handleMessage(ws as unknown as WebSocket, {
       type: 'goal.start',
       payload: { goal: 'vague goal' },
     });
     await new Promise((r) => setTimeout(r, 30));
-    expect(info).toHaveBeenCalledWith(expect.stringContaining('using defaults'));
+    expect(ws.sent.find((m) => m.type === 'goal.error')?.payload).toMatchObject({
+      message: expect.stringContaining('did not produce executable tasks'),
+    });
     handler.dispose();
   });
 
@@ -286,6 +352,239 @@ describe('GoalWebSocketHandler — goal.start', () => {
     expect(ws.sent.some((m) => m.type === 'goal.state')).toBe(false);
     handler.dispose();
   });
+
+  it('rejects a second start while a run is active', async () => {
+    const { handler, ws } = makeHandler();
+    handler.addClient(ws as unknown as WebSocket);
+    const phases = [
+      {
+        name: 'Only Phase',
+        description: 'work',
+        priority: 'high',
+        estimateHours: 1,
+        taskTemplates: [
+          {
+            title: 'Do work',
+            description: 'work',
+            type: 'implementation',
+            priority: 'high',
+            estimateHours: 1,
+          },
+        ],
+      },
+    ];
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: { goal: 'first', phases },
+    });
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: { goal: 'second', phases },
+    });
+    expect(ws.sent.filter((m) => m.type === 'goal.error').at(-1)?.payload).toMatchObject({
+      message: expect.stringContaining('already in progress'),
+    });
+    handler.dispose();
+  });
+
+  it('executes tasks on a fresh factory agent and disposes it', async () => {
+    const mainRun = vi.fn();
+    const workerRun = vi.fn(async () => ({ status: 'done', finalText: 'changed files' }));
+    const dispose = vi.fn();
+    const taskAgentFactory = vi.fn(async () => ({
+      agent: { run: workerRun },
+      events: {},
+      dispose,
+    }));
+    const { handler, ws } = makeHandler({ agentRun: mainRun, taskAgentFactory });
+    handler.addClient(ws as unknown as WebSocket);
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: {
+        goal: 'isolated work',
+        phases: [
+          {
+            name: 'Only Phase',
+            description: 'work',
+            priority: 'high',
+            estimateHours: 1,
+            taskTemplates: [
+              {
+                title: 'Do work',
+                description: 'work',
+                type: 'implementation',
+                priority: 'high',
+                estimateHours: 1,
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const ctx = captures.orchestratorOpts?.['ctx'] as {
+      executeTask: (
+        task: Record<string, unknown>,
+        phaseId: string,
+        env?: { cwd?: string },
+      ) => Promise<unknown>;
+    };
+    await ctx.executeTask(
+      {
+        id: 't1',
+        title: 'Do work',
+        description: 'work',
+        priority: 'high',
+        type: 'implementation',
+        updatedAt: 0,
+      },
+      'phase-1',
+      { cwd: '/isolated' },
+    );
+    expect(taskAgentFactory).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'executor', cwd: '/isolated' }),
+    );
+    expect(workerRun).toHaveBeenCalledOnce();
+    expect(mainRun).not.toHaveBeenCalled();
+    expect(dispose).toHaveBeenCalledOnce();
+    handler.dispose();
+  });
+
+  it('rejects a fulfilled worker result whose status is not done', async () => {
+    const dispose = vi.fn();
+    const taskAgentFactory = vi.fn(async () => ({
+      agent: {
+        run: vi.fn(async () => ({ status: 'failed', error: { message: 'worker failed' } })),
+      },
+      events: {},
+      dispose,
+    }));
+    const { handler, ws } = makeHandler({ taskAgentFactory });
+    handler.addClient(ws as unknown as WebSocket);
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: {
+        goal: 'failure path',
+        phases: [
+          {
+            name: 'Only Phase',
+            description: 'work',
+            priority: 'high',
+            estimateHours: 1,
+            taskTemplates: [
+              {
+                title: 'Do work',
+                description: 'work',
+                type: 'implementation',
+                priority: 'high',
+                estimateHours: 1,
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const ctx = captures.orchestratorOpts?.['ctx'] as {
+      executeTask: (task: Record<string, unknown>, phaseId: string) => Promise<unknown>;
+    };
+    await expect(
+      ctx.executeTask(
+        {
+          id: 't1',
+          title: 'Do work',
+          description: 'work',
+          priority: 'high',
+          type: 'implementation',
+          updatedAt: 0,
+        },
+        'phase-1',
+      ),
+    ).rejects.toThrow('worker failed');
+    expect(dispose).toHaveBeenCalledOnce();
+    handler.dispose();
+  });
+
+  it('runs verification repair in the phase worktree using an isolated worker', async () => {
+    const mainRun = vi.fn(async () => ({ status: 'done' }));
+    const repairRun = vi.fn(async () => ({ status: 'done' }));
+    const dispose = vi.fn();
+    const taskAgentFactory = vi.fn(async () => ({
+      agent: { run: repairRun },
+      dispose,
+    }));
+    const { handler, ws } = makeHandler({
+      agentRun: mainRun,
+      taskAgentFactory,
+      projectRoot: '/proj',
+    });
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: {
+        goal: 'repair worktree',
+        verifyTasks: true,
+        worktrees: false,
+        phases: [
+          {
+            name: 'Only Phase',
+            description: 'work',
+            priority: 'high',
+            estimateHours: 1,
+            taskTemplates: [{ title: 'Do work', description: 'work', type: 'feature' }],
+          },
+        ],
+      },
+    });
+    const ctx = captures.orchestratorOpts?.['ctx'] as {
+      repairPhase: (
+        phase: { name: string },
+        failure: string,
+        attempt: number,
+        env: { cwd: string },
+      ) => Promise<void>;
+    };
+    await ctx.repairPhase({ name: 'Only Phase' }, 'typecheck failed', 1, {
+      cwd: '/phase-worktree',
+    });
+
+    expect(taskAgentFactory).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'executor', cwd: '/phase-worktree' }),
+    );
+    expect(repairRun).toHaveBeenCalledWith(
+      expect.stringContaining('/phase-worktree'),
+      expect.any(Object),
+    );
+    expect(mainRun).not.toHaveBeenCalled();
+    expect(dispose).toHaveBeenCalledOnce();
+    handler.dispose();
+  });
+
+  it('enables the verifier by default for a project-backed Goal run', async () => {
+    const { handler, ws } = makeHandler({ projectRoot: '/proj' });
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.start',
+      payload: {
+        goal: 'verified by default',
+        worktrees: false,
+        phases: [
+          {
+            name: 'Only Phase',
+            description: 'work',
+            priority: 'high',
+            estimateHours: 1,
+            taskTemplates: [{ title: 'Do work', description: 'work', type: 'feature' }],
+          },
+        ],
+      },
+    });
+    const ctx = captures.orchestratorOpts?.['ctx'] as {
+      verifyPhase?: unknown;
+      verifyGoal?: unknown;
+      repairPhase?: unknown;
+    };
+    expect(ctx.verifyPhase).toEqual(expect.any(Function));
+    expect(ctx.verifyGoal).toEqual(expect.any(Function));
+    expect(ctx.repairPhase).toEqual(expect.any(Function));
+    handler.dispose();
+  });
 });
 
 describe('GoalWebSocketHandler — stop, clear, revert', () => {
@@ -314,7 +613,7 @@ describe('GoalWebSocketHandler — stop, clear, revert', () => {
     await handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.clear' });
     expect(ws.sent.some((m) => m.type === 'goal.cleared')).toBe(true);
     const state = ws.sent.filter((m) => m.type === 'goal.state').at(-1)?.payload;
-    expect(state?.['graphId']).toBeUndefined();
+    expect(state?.['graphId']).toBeNull();
     handler.dispose();
   });
 
@@ -344,10 +643,6 @@ describe('GoalWebSocketHandler — board mutations without a live run', () => {
       type: 'goal.addTask',
       payload: { phaseId: 'p1', title: 'new task' },
     });
-    await handler.handleMessage(ws as unknown as WebSocket, {
-      type: 'goal.toggleAutonomous',
-      payload: { autonomous: false },
-    });
     await handler.handleMessage(ws as unknown as WebSocket, { type: 'goal.save' });
     // No goal.state / goal.saved broadcasts — nothing is running.
     expect(ws.sent.some((m) => m.type === 'goal.saved')).toBe(false);
@@ -363,6 +658,62 @@ describe('GoalWebSocketHandler — board mutations without a live run', () => {
     });
     expect(ws.sent.find((m) => m.type === 'goal.error')?.payload).toMatchObject({
       message: 'Graph not found: missing',
+    });
+    handler.dispose();
+  });
+
+  it('loads and resumes an incomplete persisted graph without replanning', async () => {
+    const agentRun = vi.fn(async () => ({ status: 'done', finalText: '[]' }));
+    const { handler, ws } = makeHandler({ agentRun });
+    const store = (handler as unknown as { store: { graphs: Map<string, unknown> } }).store;
+    const saved = {
+      id: 'g1',
+      title: 'Saved Goal',
+      description: 'Build a saved project',
+      autonomous: true,
+      worktrees: false,
+      verifyTasks: false,
+      phases: new Map([
+        ['p1', { id: 'p1', name: 'Build', status: 'paused', taskGraph: { nodes: new Map() } }],
+      ]),
+      completedPhaseIds: [],
+      activePhaseIds: ['p1'],
+      failedPhaseIds: [],
+    };
+    store.graphs.set('g1', saved);
+    handler.addClient(ws as unknown as WebSocket);
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.load',
+      payload: { query: 'Saved', resume: true },
+    });
+
+    expect(captures.orchestratorOpts?.['graph']).toBe(saved);
+    expect(agentRun).not.toHaveBeenCalled();
+    expect(ws.sent.some((message) => message.type === 'goal.resumed')).toBe(true);
+    handler.dispose();
+  });
+
+  it('refuses to resume an already completed saved graph', async () => {
+    const { handler, ws } = makeHandler();
+    const store = (handler as unknown as { store: { graphs: Map<string, unknown> } }).store;
+    store.graphs.set('done', {
+      id: 'done',
+      title: 'Done',
+      description: 'Finished',
+      phases: new Map([['p1', { id: 'p1', name: 'Build', status: 'completed' }]]),
+      failedPhaseIds: [],
+      completedPhaseIds: ['p1'],
+      activePhaseIds: [],
+      completedAt: 1,
+    });
+    handler.addClient(ws as unknown as WebSocket);
+    await handler.handleMessage(ws as unknown as WebSocket, {
+      type: 'goal.resume',
+      payload: { graphId: 'done' },
+    });
+
+    expect(ws.sent.find((message) => message.type === 'goal.error')?.payload).toMatchObject({
+      message: expect.stringContaining('already complete'),
     });
     handler.dispose();
   });

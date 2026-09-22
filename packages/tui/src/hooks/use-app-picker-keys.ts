@@ -390,6 +390,7 @@ export function useAppPickerKeys({
       dispatch({ type: 'promptPickerClose' });
       if (entry) {
         dispatch({ type: 'setBuffer', buffer: entry.content, cursor: entry.content.length });
+        // Usage stats only rank the picker; a failed write must not interrupt insertion.
         void promptUsageRef.current?.record(entry.slug).catch(() => {});
       }
     },

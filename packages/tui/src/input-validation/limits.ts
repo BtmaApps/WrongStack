@@ -36,3 +36,6 @@ export const MAX_HOST_STRING_FIELD = 500;
 
 /** Maximum entries in a picker matches list. */
 export const MAX_PICKER_MATCHES = 500;
+
+/** Transcript search query cap (Alt+F / `/chat-search`). */
+export const MAX_CHAT_SEARCH_QUERY_CHARS = 1_000;

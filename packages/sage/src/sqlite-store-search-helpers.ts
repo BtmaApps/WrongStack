@@ -1,5 +1,6 @@
-import { sqliteRowToMemory, CorruptMemoryError } from './sqlite-store-codec.js';
+import { SAGE_STATUSES } from './memory-model.js';
 import { encodePageCursor } from './shared/pagination.js';
+import { CorruptMemoryError, sqliteRowToMemory } from './sqlite-store-codec.js';
 import type { ListSagePageResult, Sage, SageStats } from './types.js';
 
 type SqliteMemoryDataRow = { data: string };
@@ -197,9 +198,23 @@ export function buildSageStats(input: {
   kindRows: readonly SqliteCountRow[];
   edges: number;
 }): SageStats {
+  // `GROUP BY status` returns only statuses that have at least one row, so the
+  // raw counts are PARTIAL. Casting that straight to `Record<SageStatus, number>`
+  // hid the gap from the type system and `/memory stats` rendered
+  // "stale undefined; archived undefined; deleted undefined" for any store holding
+  // only active memories. Zero-fill every known status so the value is what its
+  // type claims. Extra keys (an unexpected status in the table) are kept, so no
+  // existing count is lost — this only adds the missing zeros.
+  const statusCounts = countRowsByField(input.statusRows, 'status');
+  const byStatus = {
+    ...Object.fromEntries(SAGE_STATUSES.map((status) => [status, 0])),
+    ...statusCounts,
+  } as SageStats['byStatus'];
   return {
     total: input.total,
-    byStatus: countRowsByField(input.statusRows, 'status') as SageStats['byStatus'],
+    byStatus,
+    // byKind stays sparse on purpose: it is rendered by iterating its entries,
+    // so an absent kind simply does not appear, which is the intended output.
     byKind: countRowsByField(input.kindRows, 'kind'),
     edges: input.edges,
   };

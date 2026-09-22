@@ -895,7 +895,7 @@
       "disableTitle": "Questo obiettivo ha una durata irrealistica — usa \"Avvia comunque\" per sovrascrivere"
     },
     "multiBoardLabel": "Dividi in più board kanban",
-    "verifyTasksLabel": "Richiedi verifica per ogni attività",
+    "verifyTasksLabel": "Verifica ogni fase e il risultato finale",
     "chimeraReviewLabel": "Abilita revisione automatica chimera"
   },
   "collab": {
@@ -1183,6 +1183,7 @@
     "statusAbandoned": "Abbandonato",
     "heading": "Obiettivo",
     "refined": "Raffinato",
+    "refining": "Perfezionamento dell'obiettivo…",
     "progress": "Progresso",
     "iterations": "iterazioni",
     "deliverables": "Deliverable",

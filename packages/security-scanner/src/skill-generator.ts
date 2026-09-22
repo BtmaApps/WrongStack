@@ -366,7 +366,13 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
         description: 'Detects Command::new with string interpolation',
         patterns: [/Command::new\s*\([^)]*\)\s*\.(?:arg|args)\s*\([^)]*\+/g, /Command::from\s*\(/g],
         fileExtensions: ['.rs'],
-        falsePositiveMarkers: ['Command::new', 'args\\('],
+        // Was ['Command::new', 'args\\(']. Markers are plain substring checks on
+        // the matched line, and the first pattern REQUIRES `Command::new(` — so
+        // every match was suppressed by its own marker and the detector could
+        // never fire on the case it exists for. `'args\\('` is the literal text
+        // `args\(` and never matched anything. The regex already requires `+`
+        // inside `.arg(`/`.args(`, so the safe `.args(&[...])` form is not matched.
+        falsePositiveMarkers: [],
         remediation: 'Use Command::new(array).args(&[...]) to avoid shell injection.',
         category: 'injection',
         confidence: 'high',
@@ -380,7 +386,11 @@ function getInjectionPatterns(stack: TechStack): SecurityPattern[] {
         description: 'Detects SQL with string concatenation in C#',
         patterns: [/SqlCommand\s*\([^)]*\+[^)]*\)/g, /\.ExecuteQuery\s*\([^)]*\+[^)]*\)/g],
         fileExtensions: ['.cs'],
-        falsePositiveMarkers: ['parameters.Add', '@', 'SqlParameter'],
+        // No bare '@' marker: it was meant for `@id` parameters, but both patterns
+        // already require `+`, so '@' could only ever suppress REAL concatenations
+        // — C# verbatim strings (`@"SELECT ..." + id`, the usual way to write SQL)
+        // and lines mixing a parameter with a concatenated value.
+        falsePositiveMarkers: ['parameters.Add', 'SqlParameter'],
         remediation: 'Use parameterized queries with SqlParameter.',
         category: 'injection',
         confidence: 'high',

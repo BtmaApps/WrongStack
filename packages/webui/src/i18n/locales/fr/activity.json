@@ -895,7 +895,7 @@
       "disableTitle": "Cet objectif a une durée irréaliste — utilisez \"Démarrer quand même\" pour passer outre"
     },
     "multiBoardLabel": "Diviser en plusieurs tableaux kanban",
-    "verifyTasksLabel": "Exiger une vérification pour chaque tâche",
+    "verifyTasksLabel": "Vérifier chaque phase et le résultat final",
     "chimeraReviewLabel": "Activer la révision automatique chimera"
   },
   "collab": {
@@ -1183,6 +1183,7 @@
     "statusAbandoned": "Abandonné",
     "heading": "Objectif",
     "refined": "Raffiné",
+    "refining": "Affinement de l'objectif…",
     "progress": "Progression",
     "iterations": "itérations",
     "deliverables": "Livrables",

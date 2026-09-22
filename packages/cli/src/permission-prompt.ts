@@ -28,6 +28,25 @@ export type ConfirmAwaiter = (
 ) => Promise<'yes' | 'no' | 'always' | 'always-exact' | 'always-command' | 'always-tool' | 'deny'>;
 
 /**
+ * Approval "prompt" for a process with no terminal on stdin — a script, CI,
+ * `wstack "task" < /dev/null`, piped input. Nobody can answer, and the
+ * terminal prompt used to wait for a key that never came, so the run hung
+ * until it was killed. Refuse instead, and say on stderr (stdout may be a
+ * JSON payload) how to grant it up front.
+ */
+export function makeHeadlessPromptDelegate(
+  write: (text: string) => void = (text) => process.stderr.write(text),
+): (tool: Tool) => Promise<PromptDecision> {
+  return async (tool) => {
+    write(
+      `${theme.warn('⚠')} ${tool.name} needs approval but no terminal is attached to ask — denied. ` +
+        `Grant it up front with --allowed-tools ${tool.name} or --yolo.\n`,
+    );
+    return 'no';
+  };
+}
+
+/**
  * The terminal approval prompt.
  *
  * `signal` exists because the same question can now be answered somewhere else
@@ -89,8 +108,20 @@ export function makePromptDelegate(reader: InputReader) {
  * Create a ConfirmAwaiter for the CLI path. Wraps makePromptDelegate
  * with the ConfirmAwaiter type signature expected by the Agent.
  */
+/**
+ * The terminal prompt when stdin is a terminal, the headless refusal
+ * otherwise. Both approval paths (policy prompt and executor confirm) go
+ * through this, so neither can wait on a keypress nobody can make.
+ */
+export function makeStdinPromptDelegate(
+  reader: InputReader,
+  stdinIsTTY: boolean = process.stdin.isTTY === true,
+): ReturnType<typeof makePromptDelegate> {
+  return stdinIsTTY ? makePromptDelegate(reader) : makeHeadlessPromptDelegate();
+}
+
 export function makeConfirmAwaiter(reader: InputReader): ConfirmAwaiter {
-  const delegate = makePromptDelegate(reader);
+  const delegate = makeStdinPromptDelegate(reader);
   return async (tool: Tool, input: unknown, _toolUseId: string, suggestedPattern: string) => {
     const result = await delegate(tool, input, suggestedPattern);
     return result as

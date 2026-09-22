@@ -24,6 +24,8 @@ export interface PermissionExplainContext {
   isSensitiveReadCall(tool: Tool, input: unknown): boolean;
   isDestructiveCall?(tool: Tool, input: unknown, ctx: Context): boolean;
   yoloBlockedAsDestructive(tool: Tool, input: unknown, ctx: Context): boolean;
+  /** `--allowed-tools` membership; mirrors evaluate()'s launch tool scope. */
+  isLaunchAllowed?(toolName: string): boolean;
 }
 
 export function explainPermissionTrace(
@@ -188,10 +190,13 @@ export function explainPermissionTrace(
 
   const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
   const denyUnevaluated = Boolean(entry?.deny?.length) && subject === undefined;
-  const matchedScope =
+  const trustScope =
     entry?.allow && !denyUnevaluated && allowUnexpired
       ? matchingApprovalScope(entry.allow, tool, input, ctx)
       : undefined;
+  const launchAllowed =
+    trustScope === undefined && !denyUnevaluated && state.isLaunchAllowed?.(tool.name) === true;
+  const matchedScope = trustScope ?? (launchAllowed ? 'tool' : undefined);
   // Mirror of evaluate(): a broad scope does not cover a sensitive read.
   const scope =
     matchedScope !== undefined &&
@@ -211,7 +216,7 @@ export function explainPermissionTrace(
       true,
       permission,
       'trust',
-      `matched ${scope} approval${destructive ? '; destructive call still requires approval' : ''}`,
+      `${launchAllowed ? 'allowed by --allowed-tools' : `matched ${scope} approval`}${destructive ? '; destructive call still requires approval' : ''}`,
     );
     return {
       toolName: tool.name,

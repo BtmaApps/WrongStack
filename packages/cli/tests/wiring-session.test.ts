@@ -3,8 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Message, SessionStore, SessionWriter } from '@wrongstack/core/types';
 import type { WstackPaths } from '@wrongstack/core/utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { settleSessionKanbanBackgroundWork } from '@wrongstack/tools/session-kanban';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type SessionResult, setupSession } from '../src/wiring/session.js';
 
 /**
@@ -170,6 +170,58 @@ describe('setupSession', () => {
     expect(result.restoredMessages).toEqual([restoredMsg]);
     expect(renderer.writeInfo).toHaveBeenCalledWith(
       expect.stringContaining('Resumed session resumed-1'),
+    );
+  });
+
+  it('--fork-session branches the picked session and claims only the branch', async () => {
+    const sessionStore = makeSessionStore({
+      fork: vi.fn().mockResolvedValue({ id: 'branch-1' }),
+      resume: vi.fn().mockResolvedValue({
+        writer: makeSessionWriter('branch-1'),
+        data: { messages: [], metadata: { id: 'branch-1' }, usage: { input: 0, output: 0 } },
+      }),
+    });
+    const renderer = makeRenderer();
+    const claimSession = vi.fn(async () => async () => undefined);
+    const result = await boot({
+      config: { model: 'm', provider: 'p' },
+      wpaths: makeWpaths(),
+      projectRoot: tmp,
+      cwd: tmp,
+      sessionStore,
+      systemPrompt: [],
+      provider: fakeProvider,
+      tokenCounter: fakeTokenCounter,
+      renderer,
+      flags: { resume: 'parent-1', 'fork-session': true },
+      claimSession,
+    });
+    expect(sessionStore.fork).toHaveBeenCalledWith('parent-1');
+    expect(claimSession).toHaveBeenCalledTimes(1);
+    expect(claimSession).toHaveBeenCalledWith('branch-1');
+    expect(sessionStore.resume).toHaveBeenCalledWith('branch-1');
+    expect(result.session.id).toBe('branch-1');
+    expect(renderer.writeInfo).toHaveBeenCalledWith('Forked session parent-1 → branch-1');
+  });
+
+  it('warns when --fork-session has nothing to branch from', async () => {
+    const sessionStore = makeSessionStore({ fork: vi.fn() });
+    const renderer = makeRenderer();
+    await boot({
+      config: { model: 'm', provider: 'p' },
+      wpaths: makeWpaths(),
+      projectRoot: tmp,
+      cwd: tmp,
+      sessionStore,
+      systemPrompt: [],
+      provider: fakeProvider,
+      tokenCounter: fakeTokenCounter,
+      renderer,
+      flags: { 'fork-session': true },
+    });
+    expect(sessionStore.fork).not.toHaveBeenCalled();
+    expect(renderer.writeInfo).toHaveBeenCalledWith(
+      expect.stringContaining('--fork-session needs a session to branch from'),
     );
   });
 

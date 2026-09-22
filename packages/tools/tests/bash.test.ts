@@ -160,35 +160,41 @@ describe('bashTool timeout kill paths', () => {
   // bash-treekill-win32.test.ts — a third ping-based spawn here added load
   // without new coverage.
 
-  it('times out and triggers kill on POSIX (SIGTERM then SIGKILL)', async () => {
-    if (isWin) return;
-    const sb = await mkSandbox();
-    try {
-      // sleep 10 will be killed after timeout
-      const out = await bashTool.execute({ command: 'sleep 10', timeout_ms: 300 }, sb.ctx, {
-        signal: newSignal(),
-      });
-      expect(out.timed_out).toBe(true);
-    } finally {
-      await sb.cleanup();
-    }
-  }, 10_000);
+  it.skipIf(isWin)(
+    'times out and triggers kill on POSIX (SIGTERM then SIGKILL)',
+    async () => {
+      const sb = await mkSandbox();
+      try {
+        // sleep 10 will be killed after timeout
+        const out = await bashTool.execute({ command: 'sleep 10', timeout_ms: 300 }, sb.ctx, {
+          signal: newSignal(),
+        });
+        expect(out.timed_out).toBe(true);
+      } finally {
+        await sb.cleanup();
+      }
+    },
+    10_000,
+  );
 
-  it('SIGKILL is issued after SIGTERM fails to stop the process', async () => {
-    if (isWin) return;
-    const sb = await mkSandbox();
-    try {
-      // Use a command that ignores SIGTERM
-      const out = await bashTool.execute(
-        { command: 'trap "" TERM; sleep 20; exit 0', timeout_ms: 500 },
-        sb.ctx,
-        { signal: newSignal() },
-      );
-      expect(out.timed_out).toBe(true);
-    } finally {
-      await sb.cleanup();
-    }
-  }, 15_000);
+  it.skipIf(isWin)(
+    'SIGKILL is issued after SIGTERM fails to stop the process',
+    async () => {
+      const sb = await mkSandbox();
+      try {
+        // Use a command that ignores SIGTERM
+        const out = await bashTool.execute(
+          { command: 'trap "" TERM; sleep 20; exit 0', timeout_ms: 500 },
+          sb.ctx,
+          { signal: newSignal() },
+        );
+        expect(out.timed_out).toBe(true);
+      } finally {
+        await sb.cleanup();
+      }
+    },
+    15_000,
+  );
 });
 
 describe('bashTool partial_output flush paths', () => {
@@ -436,43 +442,49 @@ describe('bashTool session and env', () => {
 
 // ─── Coverage: background mode stderr ────────────────────────────────────────
 describe('bashTool background mode stderr', () => {
-  it('captures stderr in background mode via child.stderr.on(data)', async () => {
-    if (isWin) return;
-    const sb = await mkSandbox();
-    try {
-      const out = await bashTool.execute(
-        { command: 'ls --no-such-option 2>&1 || true', background: true },
-        sb.ctx,
-        { signal: newSignal() },
-      );
-      expect(out).toHaveProperty('output');
-      expect(out).toHaveProperty('pid');
-    } finally {
+  it.skipIf(isWin)(
+    'captures stderr in background mode via child.stderr.on(data)',
+    async () => {
+      const sb = await mkSandbox();
       try {
-        await sb.cleanup();
-      } catch {
-        /* ignore */
+        const out = await bashTool.execute(
+          { command: 'ls --no-such-option 2>&1 || true', background: true },
+          sb.ctx,
+          { signal: newSignal() },
+        );
+        expect(out).toHaveProperty('output');
+        expect(out).toHaveProperty('pid');
+      } finally {
+        try {
+          await sb.cleanup();
+        } catch {
+          /* ignore */
+        }
       }
-    }
-  }, 10_000);
+    },
+    10_000,
+  );
 
-  it('background mode with stderr only redirected to stderr pipe', async () => {
-    if (isWin) return;
-    const sb = await mkSandbox();
-    try {
-      const out = await bashTool.execute(
-        { command: 'echo "error" >&2', background: true },
-        sb.ctx,
-        { signal: newSignal() },
-      );
-      expect(out).toHaveProperty('output');
-      expect(out.pid).toBeTruthy();
-    } finally {
+  it.skipIf(isWin)(
+    'background mode with stderr only redirected to stderr pipe',
+    async () => {
+      const sb = await mkSandbox();
       try {
-        await sb.cleanup();
-      } catch {
-        /* ignore */
+        const out = await bashTool.execute(
+          { command: 'echo "error" >&2', background: true },
+          sb.ctx,
+          { signal: newSignal() },
+        );
+        expect(out).toHaveProperty('output');
+        expect(out.pid).toBeTruthy();
+      } finally {
+        try {
+          await sb.cleanup();
+        } catch {
+          /* ignore */
+        }
       }
-    }
-  }, 10_000);
+    },
+    10_000,
+  );
 });

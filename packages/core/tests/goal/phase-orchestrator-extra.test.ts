@@ -86,20 +86,22 @@ function throwingMergeWorktrees(): WorktreeManager {
 }
 
 describe('PhaseOrchestrator — autonomous tick loop', () => {
-  it('arms a tick interval in autonomous mode and stop() clears it', async () => {
+  it('publishes graph completion before start() resolves without a trailing interval', async () => {
     const graph = await singlePhase();
+    const events: string[] = [];
     const orch = new PhaseOrchestrator({
       graph,
       ctx: { executeTask: async () => {} },
       autonomous: true,
+      events: { emit: (event: string) => events.push(event) } as never,
     });
     await orch.start();
-    expect((orch as never as { tickInterval: unknown }).tickInterval).not.toBeNull();
-    orch.stop();
-    expect((orch as never as { tickInterval: unknown }).tickInterval).toBeNull();
+    expect(events.filter((event) => event === 'graph.completed')).toHaveLength(1);
+    expect(graph.completedAt).toEqual(expect.any(Number));
+    expect('tickInterval' in orch).toBe(false);
   });
 
-  it('tick() is a no-op when stopped or paused', async () => {
+  it('resume() cannot restart an orchestrator that was stopped', async () => {
     const graph = await singlePhase();
     const executeTask = vi.fn(async () => {});
     const onTick = vi.fn();
@@ -110,9 +112,6 @@ describe('PhaseOrchestrator — autonomous tick loop', () => {
       phaseDelayMs: 1,
     });
     orch.stop();
-    await (orch as never as { tick: () => Promise<void> }).tick(); // stopped → early return
-    // resume() only clears `paused`; a stopped orchestrator must stay stopped
-    // instead of scheduling phases again.
     orch.resume();
     await new Promise((resolve) => setTimeout(resolve, 5));
     expect(onTick).not.toHaveBeenCalled();
@@ -120,39 +119,63 @@ describe('PhaseOrchestrator — autonomous tick loop', () => {
     expect(orch.isRunning()).toBe(false);
   });
 
-  it('tick() starts a pending phase when a slot is open and completes the graph', async () => {
+  it('reports autonomous scheduling before running a pending phase', async () => {
     const graph = await singlePhase();
     const completed: string[] = [];
+    const onTick = vi.fn();
     const orch = new PhaseOrchestrator({
       graph,
-      ctx: { executeTask: async () => {}, onPhaseComplete: (p) => completed.push(p.id) },
+      ctx: {
+        executeTask: async () => {},
+        onPhaseComplete: (p) => completed.push(p.id),
+        onTick,
+      },
       autonomous: true,
       phaseDelayMs: 1,
     });
-    await (orch as never as { tick: () => Promise<void> }).tick();
-    // the phase ran via tick and the graph completed → orchestrator stopped
+    await orch.start();
+    expect(onTick).toHaveBeenCalledWith(
+      expect.objectContaining({ readyPhases: [expect.objectContaining({ name: 'Build' })] }),
+    );
     expect(completed.length).toBe(1);
     expect(orch.isRunning()).toBe(false);
   });
 
-  it('tick() invokes onGraphFailed when stopOnFailure and a phase has failed', async () => {
-    const graph = await twoPhase();
+  it('publishes graph failure before start() resolves', async () => {
+    const graph = await singlePhase();
+    const events: string[] = [];
+    const orch = new PhaseOrchestrator({
+      graph,
+      ctx: {
+        executeTask: async () => {
+          throw new Error('task exploded');
+        },
+      },
+      autonomous: true,
+      stopOnFailure: true,
+      maxRetries: 0,
+      events: { emit: (e: string) => events.push(e) } as never,
+    });
+    await orch.start();
+    expect(events.filter((event) => event === 'graph.failed')).toHaveLength(1);
+  });
+
+  it('fails a stalled dependency graph instead of leaving it indefinitely running', async () => {
+    const graph = await singlePhase();
+    const phase = Array.from(graph.phases.values())[0]!;
+    phase.dependsOn = [phase.id];
     const events: string[] = [];
     const orch = new PhaseOrchestrator({
       graph,
       ctx: { executeTask: async () => {} },
-      autonomous: true,
-      stopOnFailure: true,
-      events: { emit: (e: string) => events.push(e) } as never,
+      events: { emit: (event: string) => events.push(event) } as never,
     });
-    const phases = Array.from(graph.phases.values());
-    // phase A failed, phase B "running" (an active slot) so tick neither starts B nor completes.
-    phases[0]!.status = 'failed';
-    graph.failedPhaseIds.push(phases[0]!.id);
-    phases[1]!.status = 'running';
-    await (orch as never as { tick: () => Promise<void> }).tick();
-    await (orch as { tick: () => Promise<void> }).tick();
-    expect(events).toContain('graph.failed');
+
+    await orch.start();
+
+    expect(phase.status).toBe('failed');
+    expect(graph.failedPhaseIds).toContain(phase.id);
+    expect(events.filter((event) => event === 'graph.failed')).toHaveLength(1);
   });
 });
 
@@ -386,6 +409,23 @@ describe('PhaseOrchestrator — phase-level error + verify edge cases', () => {
     expect(phase.status).toBe('completed');
   });
 
+  it('resumes a stopped graph whose phase was persisted as paused', async () => {
+    const graph = await singlePhase();
+    const phase = Array.from(graph.phases.values())[0]!;
+    const task = Array.from(phase.taskGraph.nodes.values())[0]!;
+    phase.status = 'paused';
+    task.status = 'in_progress';
+    const executeTask = vi.fn(async () => {});
+    const orch = new PhaseOrchestrator({ graph, ctx: { executeTask } });
+
+    await orch.start();
+
+    expect(executeTask).toHaveBeenCalledOnce();
+    expect(phase.status).toBe('completed');
+    expect(task.status).toBe('completed');
+    expect(graph.completedAt).toEqual(expect.any(Number));
+  });
+
   it('does not re-run already-completed tasks on resume', async () => {
     // A phase reloaded with its only task already `completed` should finish
     // immediately without re-executing it.
@@ -516,7 +556,7 @@ describe('PhaseOrchestrator — start/stop lifecycle edges', () => {
     expect(orch.isRunning()).toBe(false);
   });
 
-  it('leaves no autonomous tick interval behind when stop() lands during start()', async () => {
+  it('stays stopped when stop() lands during start()', async () => {
     const graph = await singlePhase();
     // Hold start() at a deterministic awaited seam: executeTask() returns a
     // promise that only resolves after stop() has already landed, so the
@@ -541,9 +581,7 @@ describe('PhaseOrchestrator — start/stop lifecycle edges', () => {
     orch.stop();
     releaseTask();
     await run;
-    expect(
-      (orch as never as { tickInterval: ReturnType<typeof setInterval> | null }).tickInterval,
-    ).toBeNull();
+    expect('tickInterval' in orch).toBe(false);
     expect(orch.isRunning()).toBe(false);
   });
 

@@ -103,7 +103,7 @@ export function CoordinatorPanel({
       accent={theme.accent}
       icon={glyphs.auto}
       title="COORDINATOR"
-      kicker={size.columns >= 90 ? 'cross-session control' : undefined}
+      kicker="cross-session control"
       right={
         <Text>
           <Text color={healthy ? theme.success : theme.error} bold>

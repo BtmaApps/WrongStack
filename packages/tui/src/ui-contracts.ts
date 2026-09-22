@@ -28,7 +28,7 @@ export const PILL_MIN_INNER_WIDTH = 22;
  * starts rendering per-row "metric" columns (latency, diff, elapsed, agent
  * count, relative time). Below this threshold the row keeps its identity
  * label only; the secondary metric is dropped to preserve the title.
- * Centralized so the F twins in `sidebar-panels-workspace.tsx` and
+ * Centralized so the F twins in `sidebar-panel-*.tsx` and
  * `sidebar-panels-task.tsx` stop hand-rolling the literal `24`.
  */
 export const METRIC_MIN_BODY_WIDTH = 24;

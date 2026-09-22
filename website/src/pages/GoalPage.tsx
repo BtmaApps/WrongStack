@@ -12,7 +12,7 @@ export function GoalPage() {
             Full autonomy <span className="text-brand">across worktrees.</span>
           </>
         }
-        description="Goal runs autonomous phased workflows. Unlike SDD, it never pauses for review. Each phase runs in an isolated git worktree with checkpoint-based rollback and goal tracking across sessions."
+        description="Goal combines a durable mission with autonomous phased runs. Each run can isolate phases in git worktrees, verify produced changes, and resume from persisted phase/task state."
         aside={<ExternalDoc path="docs/goal.md">Open Goal docs</ExternalDoc>}
       />
 
@@ -20,8 +20,8 @@ export function GoalPage() {
         <SectionIntro
           index="01"
           eyebrow="Architecture"
-          title="Worktree isolation and checkpoint recovery."
-          description="Every phase runs in its own git worktree. If something goes wrong, checkpoint snapshots let you roll back to the last known-good state."
+          title="Worktree isolation and durable run state."
+          description="Phase/task state is persisted throughout the run. Optional worktree isolation keeps phase changes reviewable before integration."
         />
         <div className="mt-12 grid gap-6 lg:grid-cols-4">
           {[
@@ -32,8 +32,8 @@ export function GoalPage() {
             },
             {
               icon: RotateCcw,
-              title: 'Checkpoint rollback',
-              body: 'After each phase, a checkpoint is saved. Failed phases roll back to the last checkpoint — no starting over from scratch.',
+              title: 'Durable progress',
+              body: 'Task and phase transitions are persisted so interrupted runs can resume without treating completed work as new.',
             },
             {
               icon: Play,
@@ -43,7 +43,7 @@ export function GoalPage() {
             {
               icon: Target,
               title: 'Goal tracking',
-              body: 'Goals persist across phases and sessions via the Coordinator. Resume an interrupted Goal run days later.',
+              body: 'The mission and its phase runs persist per project. Resume an interrupted Goal run from its saved board.',
             },
           ].map(({ icon: Icon, title, body }) => (
             <div key={title} className="rounded-xl border border-line bg-card p-6">
@@ -60,8 +60,8 @@ export function GoalPage() {
           <SectionIntro
             index="02"
             eyebrow="Phase lifecycle"
-            title="Four phases — no human in the loop."
-            description="Each Goal run progresses through four standard phases. Between phases, checkpoints are written."
+            title="A planned lifecycle with explicit gates."
+            description="The planner creates goal-specific phases and tasks. Execution, verification, and worktree integration then advance from persisted state."
           />
           <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line lg:grid-cols-4">
             {[
@@ -78,7 +78,7 @@ export function GoalPage() {
               [
                 '03',
                 'Test',
-                'After implementation, the agent runs the project test suite, typecheck, and linters against the worktree. Failures trigger retry or rollback.',
+                'When verification is enabled, configured checks run against the phase worktree. Failures trigger a bounded repair-and-reverify loop.',
               ],
               [
                 '04',
@@ -106,13 +106,13 @@ export function GoalPage() {
           {[
             {
               icon: RotateCcw,
-              title: 'Per-phase checkpoints',
-              body: 'After each phase, a checkpoint captures the worktree state. Failed phases roll back to the last checkpoint.',
+              title: 'Durable task state',
+              body: 'Task and phase transitions are saved throughout execution, including stopped and failed runs.',
             },
             {
               icon: Timer,
               title: 'Automatic retry',
-              body: 'Test failures trigger up to 3 retries with adjusted approaches before the phase is marked failed.',
+              body: 'Task failures receive bounded retries; verification failures receive bounded repair attempts before the phase fails closed.',
             },
             {
               icon: CheckCircle,
@@ -144,8 +144,8 @@ export function GoalPage() {
                 desc: 'Create a persistent goal. Goal reads this as its mission.',
               },
               {
-                cmd: '/goal start',
-                desc: 'Begin autonomous execution. Phases run sequentially without pausing.',
+                cmd: '/goal start "refactor auth"',
+                desc: 'Plan executable phases and begin an autonomous run.',
               },
               {
                 cmd: '/goal status',

@@ -70,6 +70,16 @@ export type PanelState = {
     entryIds?: readonly number[] | undefined;
     scroll: number;
   } | null;
+  /**
+   * Transcript search bar (Alt+F / `/chat-search`). `selectedEntryId` is the
+   * current hit; `jumpSeq` increments whenever the view should scroll that
+   * hit into view. Null when the bar is closed.
+   */
+  chatSearch: {
+    query: string;
+    selectedEntryId: number | null;
+    jumpSeq: number;
+  } | null;
   picker: { open: boolean; query: string; matches: string[]; selected: number };
   /** Slash command picker — open while typing a / command. */
   slashPicker: { open: boolean; query: string; matches: SlashCommandMatch[]; selected: number };

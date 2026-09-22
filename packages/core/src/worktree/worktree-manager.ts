@@ -1,5 +1,5 @@
 import { mkdir, readFile } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import type { EventBus } from '../kernel/events.js';
 import { toErrorMessage } from '../utils/error.js';
 import {
@@ -133,6 +133,54 @@ export class WorktreeManager {
       branch: handle.branch,
       baseBranch: handle.baseBranch,
     });
+    return handle;
+  }
+
+  /** Reattach a persisted phase checkout after the process that created it exits. */
+  async adopt(
+    ownerId: string,
+    saved: { dir: string; branch: string; baseBranch: string; ownerLabel?: string | undefined },
+  ): Promise<WorktreeHandle> {
+    const existing = this.handles.get(ownerId);
+    if (existing) return existing;
+    const root = resolve(this.worktreesRoot());
+    const dir = resolve(saved.dir);
+    const slug = basename(dir);
+    if (
+      dir === root ||
+      !dir.startsWith(root + sep) ||
+      dir.slice(root.length + 1).includes(sep) ||
+      saved.branch !== `wstack/ap/${slug}` ||
+      !saved.baseBranch
+    ) {
+      throw new Error('Goal phase worktree identity is outside the managed checkout root.');
+    }
+    const managed = await this.listManaged();
+    if (
+      !managed.worktrees.some(
+        (entry) => resolve(entry.dir) === dir && entry.branch === saved.branch,
+      )
+    ) {
+      throw new Error(`Goal phase worktree is no longer available: ${dir}`);
+    }
+    const now = Date.now();
+    const handle: WorktreeHandle = {
+      id: slug,
+      ownerId,
+      ownerLabel: saved.ownerLabel ?? ownerId,
+      slug,
+      dir,
+      branch: saved.branch,
+      baseBranch: saved.baseBranch,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      insertions: 0,
+      deletions: 0,
+      files: 0,
+    };
+    this.handles.set(ownerId, handle);
+    this.usedSlugs.add(slug);
     return handle;
   }
 

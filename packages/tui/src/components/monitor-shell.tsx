@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { useTerminalSize } from '../hooks/use-terminal-size.js';
 import { Box, type DOMElement, measureElement, Text, useInput, useStdin } from '../ink.js';
 import { parseMouseEvents, splitTrailingMousePartial } from '../mouse.js';
-import { truncateDisplay } from '../terminal-width.js';
+import { displayWidth, truncateDisplay } from '../terminal-width.js';
 import { theme } from '../theme.js';
 
 /**
@@ -75,7 +75,11 @@ interface MonitorShellProps {
   accent: string;
   icon: string;
   title: string;
-  /** Quiet context beside the title, hidden by callers on narrow terminals. */
+  /**
+   * Quiet context beside the title. Shown only when title, kicker and the
+   * right-hand content all fit on the header row; callers pass it
+   * unconditionally.
+   */
   kicker?: string | undefined;
   right?: ReactNode | undefined;
   footer?: ReactNode | undefined;
@@ -107,7 +111,32 @@ export function MonitorShell({
   const contentRef = useRef<DOMElement>(null);
   const [scroll, setScroll] = useState(0);
   const [maxScroll, setMaxScroll] = useState(0);
+  const headerRef = useRef<DOMElement>(null);
+  const rightRef = useRef<DOMElement>(null);
+  const [headerFit, setHeaderFit] = useState<{ header: number; right: number } | null>(null);
   const { stdin } = useStdin();
+  const showRight = size.columns >= 64 && right != null;
+  // The kicker is shown only when it fits beside the title and the right-hand
+  // content. Both widths are measured after layout: the header row gives the
+  // real width available (a viewport-less mount can differ from the terminal
+  // size), and the right-hand box never shrinks, so its width does not depend
+  // on the kicker decision and cannot feed back into it. A passive effect —
+  // a layout-phase state update here held back Ink's resize repaint.
+  useEffect(() => {
+    const header = headerRef.current ? measureElement(headerRef.current).width : 0;
+    const rightWidth = showRight && rightRef.current ? measureElement(rightRef.current).width : 0;
+    setHeaderFit((prev) =>
+      prev && prev.header === header && prev.right === rightWidth
+        ? prev
+        : { header, right: rightWidth },
+    );
+  });
+  const available = headerFit?.header || size.contentWidth;
+  const kickerFits =
+    kicker !== undefined &&
+    kicker !== '' &&
+    displayWidth(`${icon} ${title} / ${kicker}`) + (showRight ? (headerFit?.right ?? 0) + 1 : 0) <=
+      available;
   useLayoutEffect(() => {
     if (!viewport || !bodyRef.current || !contentRef.current) return;
     const maximum = Math.max(
@@ -164,13 +193,28 @@ export function MonitorShell({
       maxHeight={viewport ? Math.min(maxHeight ?? viewport.rows, viewport.rows) : maxHeight}
       overflow={viewport ? 'hidden' : undefined}
     >
-      <Box height={1} flexShrink={0} overflow="hidden">
-        <Text color={accent} bold wrap="truncate-end">
-          {icon} {title}
-        </Text>
-        {kicker && size.columns >= 58 ? <Text color={theme.textMuted}> / {kicker}</Text> : null}
+      <Box ref={headerRef} height={1} flexShrink={0} overflow="hidden">
+        {/* While a kicker is shown it yields first: until a resize is
+            re-measured it truncates, never the title. */}
+        <Box flexShrink={kickerFits ? 0 : 1}>
+          <Text color={accent} bold wrap="truncate-end">
+            {icon} {title}
+          </Text>
+        </Box>
+        {kickerFits ? (
+          <Box flexShrink={1}>
+            <Text color={theme.textMuted} wrap="truncate-end">
+              {' '}
+              / {kicker}
+            </Text>
+          </Box>
+        ) : null}
         <Box flexGrow={1} />
-        {size.columns >= 64 ? right : null}
+        {showRight ? (
+          <Box ref={rightRef} flexShrink={0}>
+            {right}
+          </Box>
+        ) : null}
       </Box>
       {viewport ? (
         <Box ref={bodyRef} flexDirection="column" flexShrink={1} overflow="hidden">

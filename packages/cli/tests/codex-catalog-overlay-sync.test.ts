@@ -52,6 +52,11 @@ describe('openai-codex overlay ↔ core floor parity', () => {
 
   it('every openai-codex model carries a non-empty description', () => {
     const models = OVERLAY['openai-codex']?.models ?? {};
+    // The `?? {}` fallback makes the empty case silent BY CONSTRUCTION: if the
+    // overlay key were renamed or failed to load, this loop would run zero times
+    // and the guard would pass having checked no model at all. Pin the
+    // precondition so "every model" means at least one.
+    expect(Object.keys(models).length).toBeGreaterThan(0);
     for (const m of Object.values(models)) {
       expect(m.description, `${m.id} is missing a description`).toBeTruthy();
     }
@@ -75,6 +80,8 @@ describe('openai-codex overlay ↔ core floor parity', () => {
     // backend rejects it.
     const expected: Record<string, number> = {
       'gpt-6-astra': 872_000,
+      'gpt-6-sol': 872_000,
+      'gpt-6-luna': 872_000,
       'gpt-5.6-sol': 872_000,
       'gpt-5.6-terra': 872_000,
       'gpt-5.6-luna': 872_000,
@@ -92,7 +99,14 @@ describe('openai-codex overlay ↔ core floor parity', () => {
   it('declares the documented GPT-6/GPT-5.6 wire reasoning efforts', () => {
     // Ultra is a product orchestration mode (max + automatic task delegation),
     // not a reasoning.effort value sent to the Responses backend.
-    for (const id of ['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']) {
+    for (const id of [
+      'gpt-6-astra',
+      'gpt-6-sol',
+      'gpt-6-luna',
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+    ]) {
       const model = OVERLAY['openai-codex']?.models?.[id] as
         | { reasoningConfig?: { effortLevels?: string[] } }
         | undefined;

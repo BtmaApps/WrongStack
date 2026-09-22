@@ -2,7 +2,11 @@ import { TUI_CHECKPOINTS_MAX_ENTRIES } from './checkpoint-retention.js';
 
 import { ALLOWED_CAPABILITY_FIELDS } from './input-validation/allow-lists.js';
 
-import { MAX_ENTRY_TEXT_CHARS, MAX_INPUT_BUFFER_CHARS } from './input-validation/limits.js';
+import {
+  MAX_CHAT_SEARCH_QUERY_CHARS,
+  MAX_ENTRY_TEXT_CHARS,
+  MAX_INPUT_BUFFER_CHARS,
+} from './input-validation/limits.js';
 
 import type { ValidationResult } from './input-validation/result.js';
 
@@ -112,6 +116,34 @@ export function validateDisplayAction(
         if (ids.some((id) => !Number.isInteger(id))) {
           return { valid: false, error: `${type}.entryIds: every id must be an integer.` };
         }
+      }
+      return { valid: true, value: payload };
+    }
+
+    case 'chatSearchOpen':
+    case 'chatSearchSetQuery': {
+      if (typeof action.includeReasoning !== 'boolean') {
+        return { valid: false, error: `${type}.includeReasoning: not a boolean.` };
+      }
+      const query = action.query;
+      if (normalized === 'chatSearchOpen' && query === undefined) {
+        return { valid: true, value: payload };
+      }
+      if (typeof query !== 'string' || query.length > MAX_CHAT_SEARCH_QUERY_CHARS) {
+        return {
+          valid: false,
+          error: `${type}.query: not a string of at most ${MAX_CHAT_SEARCH_QUERY_CHARS} chars.`,
+        };
+      }
+      return { valid: true, value: payload };
+    }
+
+    case 'chatSearchStep': {
+      if (action.delta !== -1 && action.delta !== 1) {
+        return { valid: false, error: `${type}.delta: must be -1 or 1.` };
+      }
+      if (typeof action.includeReasoning !== 'boolean') {
+        return { valid: false, error: `${type}.includeReasoning: not a boolean.` };
       }
       return { valid: true, value: payload };
     }

@@ -4,6 +4,11 @@
  * Tests TechStackStore: constructor, snapshot CRUD, job CRUD, outbox operations.
  * Mocks node:sqlite, node:fs, and @wrongstack/core/utils.
  *
+ * Because node:sqlite is mocked, no SQL here is ever executed: this suite pins
+ * construction (pragmas, directory creation) and the arguments handed to each
+ * statement. Query SEMANTICS — ordering, scoping, boundaries, the outbox CAS,
+ * cache expiry — live in store-roundtrip.test.ts, against a real database.
+ *
  * @see packages/techstack/src/store/sqlite.ts
  */
 

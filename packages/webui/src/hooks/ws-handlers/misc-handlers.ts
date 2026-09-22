@@ -31,7 +31,9 @@ import {
   handleGoalLifecycle,
   handleGoalList,
   handleGoalProgress,
+  handleGoalRefining,
   handleGoalState,
+  handleGoalStateError,
   handleGoalUpdated,
 } from './goal-handlers.js';
 
@@ -526,6 +528,8 @@ export function handleChimeraReports(msg: WSServerMessage) {
 
 export const miscHandlerMap: Partial<Record<string, (msg: WSServerMessage) => void>> = {
   'goal-state.updated': handleGoalUpdated,
+  'goal-state.refining': handleGoalRefining,
+  'goal-state.error': handleGoalStateError,
   'prefs.updated': handlePrefsUpdated,
   'system_prompt.info': handleSystemPromptInfo,
   'goal.state': handleGoalState,

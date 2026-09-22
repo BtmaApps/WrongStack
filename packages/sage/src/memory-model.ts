@@ -54,6 +54,34 @@ export type SageStatus =
   | 'archived'
   | 'deleted';
 
+/**
+ * Every {@link SageStatus} as a runtime list. The union alone cannot be iterated,
+ * which is how `buildSageStats` came to return only the statuses that happened to
+ * have rows: SQL `GROUP BY status` omits empty groups, the partial record was cast
+ * to `Record<SageStatus, number>`, and `/memory stats` printed
+ * "stale undefined; archived undefined; deleted undefined" on any store with only
+ * active memories (probe-verified 2026-09-22 against the real SQLite backend).
+ */
+export const SAGE_STATUSES = [
+  'active',
+  'stale',
+  'superseded',
+  'contradicted',
+  'archived',
+  'deleted',
+] as const satisfies readonly SageStatus[];
+
+/**
+ * Compile gate: `never` while {@link SAGE_STATUSES} lists every status. A status
+ * added to the union but not to the list fails here, naming itself — the same
+ * `AssertNever` idiom `config-doctor.ts` and `view-navigation.ts` use. (An empty
+ * array typed `X[]` is NOT a gate: it is assignable for every `X`.)
+ */
+type AssertNever<T extends never> = T;
+export type AssertAllSageStatusesListed = AssertNever<
+  Exclude<SageStatus, (typeof SAGE_STATUSES)[number]>
+>;
+
 export interface MemoryAnchor {
   type: 'file' | 'directory' | 'symbol' | 'package' | 'command' | 'test' | 'git' | 'agent';
   path?: string | undefined;

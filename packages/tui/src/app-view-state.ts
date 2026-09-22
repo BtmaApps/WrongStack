@@ -4,6 +4,7 @@ import { composerStatusFromState } from './components/composer-status-chip.js';
 import { DEFAULT_INPUT_PROMPT, inputContentWidth } from './components/input.js';
 import { activeBottomFKeyPanel } from './f-key-panels.js';
 import { layoutInputRows } from './input-tokens.js';
+import { effectiveAnimationStyle } from './motion.js';
 import type { PanelId, PanelPositionMap } from './ui-contracts.js';
 
 interface AppViewStateOptions {
@@ -39,9 +40,9 @@ export function deriveAppViewState(options: AppViewStateOptions) {
     thinkingWord: displayThinkingWord,
     fleetRunning,
   });
-  const composerAnimationStyle = state.settingsPicker.open
-    ? state.settingsPicker.animationStyle
-    : liveAnimationStyle;
+  const composerAnimationStyle = effectiveAnimationStyle(
+    state.settingsPicker.open ? state.settingsPicker.animationStyle : liveAnimationStyle,
+  );
   const enhanceActive = state.enhanceBusy || state.enhance != null || state.topicCheckBusy;
   const inputHeight = Math.max(
     3,

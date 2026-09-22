@@ -151,6 +151,8 @@ interface BindSystemPromptBuilderDeps {
   tokenSavingMode?: TokenSavingTier | boolean | undefined;
   /** `config.systemPrompt.variant` — selects system.md, system-lite.md, or system-pro.md. */
   systemPromptVariant?: SystemInstructionVariant | undefined;
+  /** `--append-system-prompt[-file]` text; appended to the host prompt only. */
+  appendedInstructions?: string | undefined;
   paths: SystemPromptBuilderPaths;
   /** Project root, for the Atlas brief. Omit to leave the brief out entirely. */
   projectRoot?: string | undefined;
@@ -217,6 +219,7 @@ export function bindSystemPromptBuilder(deps: BindSystemPromptBuilderDeps): void
         modePrompt: deps.modePrompt,
         modelCapabilities: deps.modelCapabilities,
         tokenSavingMode: deps.tokenSavingMode,
+        appendedInstructions: deps.appendedInstructions,
         instructionPaths: {
           globalDir: deps.paths.globalInstructions,
           projectDir: deps.paths.inProjectInstructions,

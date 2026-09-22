@@ -116,6 +116,19 @@ describe('SessionCatalogStore', () => {
     store.close();
   });
 
+  it('frees an unexpired lease once its owner process is gone', async () => {
+    // A CLI leaving through the forced-exit path never releases its lease;
+    // waiting out the expiry made `wstack -r <id>` right after a one-shot run
+    // fail with "already open in another running wstack" naming a dead pid.
+    const { store } = await fixture();
+    const id = '2026-08-08/sess_dead_owner';
+    store.claimNew(entry(id, 2 ** 22 + 12_345), 'owner-gone');
+    const next = store.claimNew(entry(id), 'owner-new');
+    expect(next.sessionId).toBe(id);
+    store.release(next);
+    store.close();
+  });
+
   it('uses a two-phase resume reservation with one winner', async () => {
     const { root, store } = await fixture();
     const id = '2026-08-08/sess_resume';
@@ -361,9 +374,10 @@ describe('SessionCatalogStore', () => {
     expect(() => store.acquireMaintenance(id, 'delete', 'self')).toThrow(/live/);
     store.release(self);
 
-    // Foreign pid (simulated via entry(pid=999_999)). All operations,
+    // Foreign pid (a live process other than this one; a dead pid's lease
+    // is reaped on sight). All operations,
     // including non-destructive ones, must be rejected with /live/.
-    const foreign = store.claimNew(entry(id, 999_999), 'owner-foreign');
+    const foreign = store.claimNew(entry(id, process.ppid), 'owner-foreign');
     expect(() => store.acquireMaintenance(id, 'clear', 'self')).toThrow(/live/);
     expect(() => store.acquireMaintenance(id, 'rewind', 'self')).toThrow(/live/);
     expect(() => store.acquireMaintenance(id, 'truncate', 'self')).toThrow(/live/);
@@ -379,7 +393,8 @@ describe('SessionCatalogStore', () => {
     // "Session … is live" at an idle prompt with nothing running.
     const { store } = await fixture();
     const id = '2026-08-08/sess_daemon_hosted';
-    const ownerPid = 999_999; // the TUI, a different process than this one
+    // The TUI: a different, live process (a dead owner's lease is reaped).
+    const ownerPid = process.ppid;
     const live = store.claimNew(entry(id, ownerPid), 'owner-tui');
 
     // Daemon's own pid → the lease is genuinely foreign.

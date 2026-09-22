@@ -114,7 +114,7 @@ it('rejects a missing alias value instead of silently adding a key to the defaul
 });
 
 describe('helpCmd', () => {
-  it('documents YOLO and the destructive compatibility flags', async () => {
+  it('documents YOLO, the lockdown modes and the surfaces', async () => {
     const deps = fakeDeps();
     const code = await helpCmd([], deps);
     expect(code).toBe(0);
@@ -123,8 +123,11 @@ describe('helpCmd', () => {
       .join('');
     expect(output).toContain('--yolo');
     expect(output).toContain('--no-yolo');
-    expect(output).toContain('--confirm-destructive');
-    expect(output).toContain('YOLO no longer prompts by destructiveness');
+    expect(output).toContain('--restricted');
+    expect(output).toContain('--safe-mode');
+    expect(output).toContain('wstack import-claude-code');
+    // Parsed for old launch scripts, but read nowhere: not advertised.
+    expect(output).not.toContain('--confirm-destructive');
     expect(output).toContain('wstack desktop');
     expect(output).toContain('--desktop');
     expect(output).toContain('wstack webui');

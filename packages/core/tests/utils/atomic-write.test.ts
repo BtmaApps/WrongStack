@@ -48,15 +48,18 @@ describe('atomicWrite', () => {
     expect(Array.from(onDisk)).toEqual(Array.from(buf));
   });
 
-  it('preserves target file mode when overwriting', async () => {
-    if (process.platform === 'win32') return; // Windows has limited mode semantics
-    const file = path.join(dir, 'modes.txt');
-    await fs.writeFile(file, 'old', { mode: 0o644 });
-    await fs.chmod(file, 0o600);
-    await atomicWrite(file, 'new');
-    const stat = await fs.stat(file);
-    expect(stat.mode & 0o777).toBe(0o600);
-  });
+  // Windows has limited mode semantics
+  it.skipIf(process.platform === 'win32')(
+    'preserves target file mode when overwriting',
+    async () => {
+      const file = path.join(dir, 'modes.txt');
+      await fs.writeFile(file, 'old', { mode: 0o644 });
+      await fs.chmod(file, 0o600);
+      await atomicWrite(file, 'new');
+      const stat = await fs.stat(file);
+      expect(stat.mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('uses a custom encoding when provided', async () => {
     const file = path.join(dir, 'enc.txt');
@@ -64,24 +67,26 @@ describe('atomicWrite', () => {
     expect(await fs.readFile(file, 'utf8')).toBe('héllo');
   });
 
-  it('survives a transient handle-lock on the destination (Windows)', async () => {
-    if (process.platform !== 'win32') return;
-    const file = path.join(dir, 'locked.txt');
-    await fs.writeFile(file, 'old');
-    // Open an exclusive handle on the destination; release it after ~80ms so
-    // the first rename attempt fails with EPERM and a retry can succeed.
-    const fh = await fs.open(file, 'r+');
-    const releaser = new Promise<void>((resolve) => {
-      setTimeout(async () => {
-        await fh.close();
-        resolve();
-      }, 80);
-    });
-    await Promise.all([atomicWrite(file, 'new'), releaser]);
-    expect(await fs.readFile(file, 'utf8')).toBe('new');
-    const entries = await fs.readdir(dir);
-    expect(entries.filter((e) => e.endsWith('.tmp'))).toEqual([]);
-  });
+  it.skipIf(process.platform !== 'win32')(
+    'survives a transient handle-lock on the destination (Windows)',
+    async () => {
+      const file = path.join(dir, 'locked.txt');
+      await fs.writeFile(file, 'old');
+      // Open an exclusive handle on the destination; release it after ~80ms so
+      // the first rename attempt fails with EPERM and a retry can succeed.
+      const fh = await fs.open(file, 'r+');
+      const releaser = new Promise<void>((resolve) => {
+        setTimeout(async () => {
+          await fh.close();
+          resolve();
+        }, 80);
+      });
+      await Promise.all([atomicWrite(file, 'new'), releaser]);
+      expect(await fs.readFile(file, 'utf8')).toBe('new');
+      const entries = await fs.readdir(dir);
+      expect(entries.filter((e) => e.endsWith('.tmp'))).toEqual([]);
+    },
+  );
 
   it('rethrows the error and cleans up the tmp file when writeFile fails', async () => {
     const file = path.join(dir, 'failed.txt');

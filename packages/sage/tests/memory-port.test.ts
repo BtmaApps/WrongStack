@@ -99,7 +99,12 @@ describe('MemoryPort conformance', () => {
   });
 
   it('normalizes canonical path retrieval for every SAGE backend', async () => {
-    for (const port of ports.filter((candidate) => getSageSurface(candidate))) {
+    const sagePorts = ports.filter((candidate) => getSageSurface(candidate));
+    // The filter is over runtime-detected backends. If none exposed a SAGE
+    // surface — a real regression shape, not a hypothetical — this "for every
+    // backend" contract would pass having exercised no backend.
+    expect(sagePorts.length).toBeGreaterThan(0);
+    for (const port of sagePorts) {
       const surface = getSageSurface(port)!;
       const retrieval = getSageRetrieval(port)!;
       const created = await surface.rememberSage({
@@ -152,8 +157,12 @@ describe('SqliteMemoryPort flushPendingCounters is wired', () => {
       // implementation must not acquire a lock, mutate state, or
       // depend on any per-call setup.
       for (let i = 0; i < 50; i++) {
-        await retrieval.flushPendingCounters!();
+        await expect(retrieval.flushPendingCounters!()).resolves.toBeUndefined();
       }
+      // "Without leaking resources" is only observable if the port still works
+      // afterwards: 50 no-op flushes must not have closed the handle or left a
+      // lock held. The loop alone asserted nothing.
+      await expect(port.listMemories({})).resolves.toBeDefined();
     } finally {
       await port.dispose();
     }

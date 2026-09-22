@@ -184,7 +184,7 @@ describe('slash-deep-help — renderSlashDeepHelp', () => {
     expect(renderSlashDeepHelp('interrupt', 'add')).toBeUndefined();
   });
 
-  it('returns the same string as the underlying deep help table for every key', () => {
+  it("renders each family's own deep-help block, headed by its CLI mirror", () => {
     // Smoke test: each deep-help entry that's reachable from a
     // slash command in the canonical map should also be reachable
     // via `renderSlashDeepHelp` (the slash dispatcher for
@@ -212,7 +212,12 @@ describe('slash-deep-help — renderSlashDeepHelp', () => {
     ];
     for (const [slash, sub] of pairs) {
       const got = renderSlashDeepHelp(slash, sub);
-      expect(got, `renderSlashDeepHelp('${slash}', '${sub}')`).toBeDefined();
+      // `toBeDefined()` accepted ANY block — including another family's, e.g. a
+      // mis-keyed lookup returning `mcp:add` for `plugin add`. Every block is
+      // headed by its CLI mirror, so pin that header to this exact pair.
+      expect(got, `renderSlashDeepHelp('${slash}', '${sub}')`).toMatch(
+        new RegExp(`^wstack ${slash} ${sub}\\b`),
+      );
     }
   });
 });

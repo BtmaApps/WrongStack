@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import * as path from 'node:path';
-import type { TerminalRenderer } from '../../renderer.js';
 import { isStandaloneBinary } from '@wrongstack/core/utils';
+import type { TerminalRenderer } from '../../renderer.js';
 import { checkForUpdate, type UpdatePackageName } from '../../update-check.js';
 import { buildWin32CmdShimInvocation } from '../../utils/win32-cmd.js';
 import type { SubcommandDeps, SubcommandHandler } from '../contracts.js';
@@ -55,6 +55,8 @@ export async function runUpdateCommand(args: string[], deps: UpdateCommandDeps):
       ![
         'check-only',
         'c',
+        // `-c` after the top-level parser's expansion; see mergeUpdateArgs.
+        'continue',
         'pm',
         'package-manager',
         'allow-scripts',
@@ -213,7 +215,9 @@ function mergeUpdateArgs(args: string[], flags: SubcommandDeps['flags'] | undefi
     if (flags[name] === true || flags[name] === 'true') merged.push(`--${alias}`);
   };
   addBoolean('check-only');
-  if (flags['c'] === true || flags['c'] === 'true') merged.push('-c');
+  // The top-level parser expands `-c` to `continue` (resume latest session);
+  // for `wstack update` the same letter means check-only.
+  if (flags['continue'] === true || flags['c'] === true || flags['c'] === 'true') merged.push('-c');
   addBoolean('allow-scripts');
   addBoolean('lifecycle-scripts');
   for (const pm of ['npm', 'pnpm', 'yarn', 'bun'] as const) addBoolean(pm);

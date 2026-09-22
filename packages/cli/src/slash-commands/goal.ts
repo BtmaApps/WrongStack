@@ -1,10 +1,19 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
-import type { PhaseGraph, PhaseProgress } from '@wrongstack/core/goal';
-import { PhaseStore } from '@wrongstack/core/goal';
+import { buildGoalPreamble } from '@wrongstack/core/execution';
+import type { GoalFile, PhaseGraph, PhaseProgress } from '@wrongstack/core/goal';
+import {
+  formatGoal,
+  loadGoal,
+  PhaseStore,
+  replaceGoalMission,
+  saveGoal,
+  updateGoal,
+} from '@wrongstack/core/goal';
 import type { SlashCommand } from '@wrongstack/core/types';
 import { ConfigError } from '@wrongstack/core/types';
 import type { SlashCommandContext } from './command-context.js';
+import { refineGoalWithFallback, resolveRefinerTarget } from './goal-refiner.js';
 import { parseSubcommand, unknownSubcommand } from './helpers.js';
 
 function getStore(opts: SlashCommandContext): PhaseStore {
@@ -17,8 +26,116 @@ function getStore(opts: SlashCommandContext): PhaseStore {
     });
   return new PhaseStore({
     baseDir: opts.paths.projectAutophase,
-    legacyBaseDirs: [opts.paths.projectGoal],
   });
+}
+
+const MISSION_COMMANDS = new Set(['set', 'new', 'refine', 'clear', 'journal', 'log']);
+
+async function runMissionCommand(
+  opts: SlashCommandContext,
+  args: string,
+): Promise<{ message?: string | undefined; runText?: string | undefined }> {
+  if (!opts.paths) return { message: 'Goal mission storage is not configured.' };
+  const [verbRaw, ...rest] = args.trim().split(/\s+/);
+  const verb = (verbRaw || 'status').toLowerCase();
+  const text = rest.join(' ').trim();
+  const goalPath = opts.paths.projectGoal;
+
+  if (verb === 'status' || verb === 'show') {
+    const current = await loadGoal(goalPath, opts.events);
+    return {
+      message: current
+        ? formatGoal(current)
+        : 'No persistent mission set. Use `/goal set <mission>` or `/goal start <goal>`.',
+    };
+  }
+
+  if (verb === 'set' || verb === 'new') {
+    if (!text) return { message: 'Usage: /goal set <mission>' };
+    const cfg = opts.configStore?.get();
+    const refinerTarget =
+      cfg && opts.createProvider
+        ? resolveRefinerTarget(cfg, opts.createProvider, cfg.provider ?? '', cfg.model ?? '')
+        : undefined;
+    const refined = await refineGoalWithFallback(text, {
+      primaryProvider: opts.llmProvider,
+      primaryModel: opts.llmModel,
+      refinerProvider: refinerTarget?.provider,
+      refinerModel: refinerTarget?.model,
+    });
+    let next: GoalFile | undefined;
+    await updateGoal(
+      goalPath,
+      (current) => {
+        next = replaceGoalMission(current, text, refined);
+        return next;
+      },
+      opts.events,
+    );
+    return {
+      message: `🎯 Mission set: ${refined.refinedGoal}\n\n${formatGoal(next!, 0)}`,
+      runText: buildGoalPreamble(refined.refinedGoal, refined.deliverables),
+    };
+  }
+
+  if (verb === 'refine') {
+    const current = await loadGoal(goalPath, opts.events);
+    if (!current) return { message: 'No persistent mission to refine.' };
+    const cfg = opts.configStore?.get();
+    const refinerTarget =
+      cfg && opts.createProvider
+        ? resolveRefinerTarget(cfg, opts.createProvider, cfg.provider ?? '', cfg.model ?? '')
+        : undefined;
+    const refined = await refineGoalWithFallback(current.goal, {
+      primaryProvider: opts.llmProvider,
+      primaryModel: opts.llmModel,
+      refinerProvider: refinerTarget?.provider,
+      refinerModel: refinerTarget?.model,
+    });
+    const updated: GoalFile = {
+      ...current,
+      refinedGoal: refined.refinedGoal,
+      deliverables: refined.deliverables,
+    };
+    await saveGoal(goalPath, updated, opts.events);
+    return { message: `✓ Mission refined.\n\n${formatGoal(updated)}` };
+  }
+
+  if (verb === 'clear') {
+    const current = await loadGoal(goalPath, opts.events);
+    if (!current) return { message: 'No persistent mission to clear.' };
+    opts.onEternalStop?.();
+    await fsp.unlink(goalPath).catch(() => undefined);
+    return { message: 'Mission cleared and the eternal loop stopped.' };
+  }
+
+  if (verb === 'journal' || verb === 'log') {
+    const current = await loadGoal(goalPath, opts.events);
+    if (!current) return { message: 'No persistent mission set.' };
+    const count = Math.min(500, Math.max(1, Number.parseInt(text || '25', 10) || 25));
+    const rows = current.journal.slice(-count);
+    return {
+      message:
+        rows.length === 0
+          ? 'Mission journal is empty.'
+          : rows.map((entry) => `#${entry.iteration} [${entry.status}] ${entry.task}`).join('\n'),
+    };
+  }
+
+  if (verb === 'pause' || verb === 'resume') {
+    const current = await loadGoal(goalPath, opts.events);
+    if (!current) return { message: `No persistent mission to ${verb}.` };
+    if (verb === 'pause') {
+      if (current.goalState === 'paused') return { message: 'Mission is already paused.' };
+      await saveGoal(goalPath, { ...current, goalState: 'paused' }, opts.events);
+      return { message: 'Mission paused; the current eternal iteration may finish first.' };
+    }
+    if (current.goalState !== 'paused') return { message: 'Mission is not paused.' };
+    await saveGoal(goalPath, { ...current, goalState: 'active' }, opts.events);
+    return { message: 'Mission resumed.' };
+  }
+
+  return { message: `Unknown mission command: ${verb}` };
 }
 
 function formatProgress(p: PhaseProgress): string {
@@ -91,6 +208,7 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
     help: [
       'Usage:',
       '  /goal                 Show current status',
+      '  /goal set <mission>   Set the persistent eternal/parallel mission',
       '  /goal start <goal>    Plan + start an autonomous phase build',
       '  /goal pause           Pause (in-flight tasks finish, no new ones start)',
       '  /goal resume          Resume a paused run',
@@ -98,9 +216,28 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
       '  /goal save            Persist current graph to disk',
       '  /goal load [title]    Load a persisted graph (display only)',
       '  /goal list            List saved projects',
+      '  /goal clear           Clear the persistent mission',
+      '  /goal journal [N]     Show persistent mission activity',
       '',
     ].join('\n'),
     async run(args) {
+      const raw = args.trim();
+      const [firstRaw, ...tail] = raw.split(/\s+/);
+      const first = (firstRaw ?? '').toLowerCase();
+      if (first === 'mission') return runMissionCommand(opts, tail.join(' '));
+      if (MISSION_COMMANDS.has(first)) return runMissionCommand(opts, raw);
+      const phaseCommands = new Set([
+        'start',
+        'pause',
+        'resume',
+        'stop',
+        'save',
+        'load',
+        'list',
+        'status',
+      ]);
+      if (first && !phaseCommands.has(first)) return runMissionCommand(opts, `set ${raw}`);
+
       const { cmd, rest } = parseSubcommand(args);
       const sub = cmd || 'status';
       const store = getStore(opts);
@@ -131,11 +268,12 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
               'Building autonomously in the background — one subagent per todo.',
               'Use `/goal` for status, `/goal pause` to hold, `/goal stop` to abort.',
             ].join('\n'),
-            metadata: { goalInit: { title: result.graph.title } },
+            metadata: { goalRunInit: { title: result.graph.title } },
           };
         }
 
         case 'pause': {
+          if (!opts.getGoalRunner?.()) return runMissionCommand(opts, 'pause');
           if (!opts.onGoalPause) return { message: '❌ Goal host not available.' };
           opts.onGoalPause();
           return {
@@ -144,6 +282,7 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
         }
 
         case 'resume': {
+          if (!opts.getGoalRunner?.()) return runMissionCommand(opts, 'resume');
           if (!opts.onGoalResume) return { message: '❌ Goal host not available.' };
           opts.onGoalResume();
           return { message: '▶ Goal resuming.' };
@@ -186,9 +325,11 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
                 ].join('\n'),
               };
             }
-            await opts.onGoalResumeFromGraph(graph);
+            const resumed = await opts.onGoalResumeFromGraph(graph);
+            if (!resumed.ok) return { message: `❌ ${resumed.error}` };
             return {
               message: [`▶ Resumed: **${graph.title}**`, formatPhaseList(graph)].join('\n'),
+              metadata: { goalRunInit: { title: graph.title } },
             };
           }
 
@@ -217,7 +358,7 @@ export function buildGoalCommand(opts: SlashCommandContext): SlashCommand {
         case 'status': {
           const view = opts.getGoalRunner?.();
           if (!view) {
-            return { message: 'No active Goal. Run `/goal start <goal>` to begin.' };
+            return runMissionCommand(opts, 'status');
           }
           const progress = view.getProgress();
           return {

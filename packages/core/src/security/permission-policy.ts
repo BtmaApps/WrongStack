@@ -56,6 +56,7 @@ import {
   shellCommandLineFromInput,
 } from './permission-helpers.js';
 
+import { isYoloLockedOff } from './process-lockdown.js';
 import { mergeTrustEntries } from './trust-entry.js';
 
 export { mergeTrustEntries } from './trust-entry.js';
@@ -70,6 +71,14 @@ export interface PermissionPolicyOptions {
    * caller cannot un-gate the writes that switch approval itself off.
    */
   yoloConfirmKinds?: Iterable<DestructiveKind> | undefined;
+  /**
+   * `--allowed-tools`: tools pre-approved for this process, as if the user had
+   * answered "always allow this tool" — held in memory, never written to the
+   * trust file. It rides the same `tool` approval scope, so deny rules still
+   * win, destructive calls still confirm and sensitive reads still prompt.
+   * A trailing `*` matches a prefix (`mcp__github__*`).
+   */
+  launchAllowedTools?: readonly string[] | undefined;
   promptDelegate?: (
     tool: Tool,
     input: unknown,
@@ -96,14 +105,22 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
   private policyDiagnostics: TrustPolicyDiagnostic[] = [];
   private policyInvalid = false;
   private yoloConfirmKinds: ReadonlySet<DestructiveKind>;
+  private readonly launchAllowedTools: readonly string[];
 
   constructor(opts: PermissionPolicyOptions) {
     this.trustFile = opts.trustFile;
+    this.launchAllowedTools = [...(opts.launchAllowedTools ?? [])];
     this.yolo = opts.yolo ?? false;
     this.yoloConfirmKinds = normalizeYoloConfirmKinds(
       opts.yoloConfirmKinds ?? (opts.yoloDestructive === true ? [] : undefined),
     );
     this.promptDelegate = opts.promptDelegate;
+  }
+
+  private isLaunchAllowed(name: string): boolean {
+    return this.launchAllowedTools.some((pattern) =>
+      pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : pattern === name,
+    );
   }
 
   setYoloConfirmKinds(kinds: Iterable<DestructiveKind> | undefined): void {
@@ -211,6 +228,8 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
    * hosts (and tests) that never write the meta key.
    */
   private effectiveYolo(ctx?: Pick<Context, 'meta'> | undefined): boolean {
+    // `--restricted`: no path — config, /yolo, a scoped tab — turns YOLO on.
+    if (isYoloLockedOff()) return false;
     const scoped = ctx?.meta?.['yolo'];
     return typeof scoped === 'boolean' ? scoped : this.yolo;
   }
@@ -221,7 +240,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
   }
 
   getYolo(): boolean {
-    return this.yolo;
+    return this.yolo && !isYoloLockedOff();
   }
 
   getPolicyDiagnostics(): readonly TrustPolicyDiagnostic[] {
@@ -404,10 +423,13 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
     // rather than blocks. Absent `allowUntil` (a hand-authored entry) never
     // expires.
     const allowUnexpired = entry?.allowUntil === undefined || Date.now() < entry.allowUntil;
-    const matchedScope =
+    const trustScope =
       allowUnexpired && !denyUnevaluated
         ? matchingApprovalScope(entry?.allow ?? [], tool, input, ctx)
         : undefined;
+    const launchAllowed =
+      trustScope === undefined && !denyUnevaluated && this.isLaunchAllowed(tool.name);
+    const matchedScope = trustScope ?? (launchAllowed ? 'tool' : undefined);
     // A broad grant ("Tool, any input") was given for the call the user saw,
     // not for credential / agent-state reads the sensitive-read gate below
     // exists to surface. Those still prompt unless the grant was for this
@@ -430,7 +452,12 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
           reason: 'Broad approval does not cover destructive calls',
         };
       }
-      return { permission: 'auto', source: 'trust', reason: `matched ${scope} approval` };
+      return {
+        permission: 'auto',
+        source: 'trust',
+        reason: launchAllowed ? 'allowed by --allowed-tools' : `matched ${scope} approval`,
+        ...(launchAllowed ? { launchGrant: true as const } : {}),
+      };
     }
     const allowMatches = hasShellSubject(tool) ? matchesCommandTrust : matchesTrust;
     if (
@@ -643,6 +670,7 @@ export class DefaultPermissionPolicy implements PermissionPolicy {
           t.riskTier === 'destructive' || this.destructiveKindOf(t, inp, c) !== undefined,
         isSensitiveReadCall: (t, inp) => this.isSensitiveReadCall(t, inp),
         yoloBlockedAsDestructive: (t, inp, c) => this.yoloBlockedAsDestructive(t, inp, c),
+        isLaunchAllowed: (name) => this.isLaunchAllowed(name),
       },
       tool,
       input,

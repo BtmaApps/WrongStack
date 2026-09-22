@@ -241,6 +241,19 @@ interface AgentServices {
 }
 
 /**
+ * A context window only counts when it is a positive, finite token count —
+ * the same rule as the CLI's `positiveNumber` in context-limit.ts. `0` or a
+ * negative from a hand-edited `context.effectiveMaxContext` (the `/context
+ * limit` writer rejects both) means "not set", so the chain falls through to
+ * the provider window. The model-switch path used `??`, which kept the `0`:
+ * boot fell through to the provider window, but the next switch wrote 0 into
+ * the new provider's capabilities and turned auto-compaction off.
+ */
+function positiveWindow(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/**
  * Build the post-context agent services: pipelines + middleware, compaction,
  * tool executor + agent, Brain, and the per-feature WebSocket handlers.
  *
@@ -372,11 +385,13 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
       context.model,
       config.providers?.[config.provider],
     );
-    effectiveMaxContext = m?.capabilities?.maxContext ?? 0;
+    effectiveMaxContext = positiveWindow(m?.capabilities?.maxContext) ?? 0;
   } catch {
     // best-effort: fall through to the configured value / provider capability
   }
-  if (!effectiveMaxContext) effectiveMaxContext = config.context?.effectiveMaxContext ?? 0;
+  if (!effectiveMaxContext) {
+    effectiveMaxContext = positiveWindow(config.context?.effectiveMaxContext) ?? 0;
+  }
   if (!effectiveMaxContext) effectiveMaxContext = provider.capabilities.maxContext;
 
   const initialContextPolicy = resolveContextWindowPolicy(
@@ -429,7 +444,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     });
     const currentConfig = input.config;
     let newMaxContext =
-      currentConfig.context?.effectiveMaxContext ?? newProvider.capabilities.maxContext;
+      positiveWindow(currentConfig.context?.effectiveMaxContext) ??
+      newProvider.capabilities.maxContext;
     try {
       const m = await resolveProviderModelMetadata(
         modelsRegistry,
@@ -437,7 +453,7 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
         context.model,
         providerCfg ?? currentConfig.providers?.[providerId],
       );
-      newMaxContext = m?.capabilities?.maxContext ?? newMaxContext;
+      newMaxContext = positiveWindow(m?.capabilities?.maxContext) ?? newMaxContext;
     } catch {
       // best-effort: use provider capability
     }
@@ -518,6 +534,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     'edit|write|replace|patch|codebase-ast-replace',
     wrongTraceHooks.postToolUse,
     'wrongtrace-gate',
+    // Also on a denied / rejected / failed call: release the lock PreToolUse took.
+    { runWhenToolSkipped: true },
   );
   const wrongTraceHookRunner = new HookRunner({
     registry: wrongTraceHookRegistry,
@@ -768,6 +786,16 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
   console.log('[WebUI] Brain initialized (tiered policy → LLM, monitor active)');
 
   // Per-feature WebSocket handlers.
+  const subagentFactory = makeLightSubagentFactory({
+    container,
+    providerRegistry,
+    toolRegistry,
+    session: input.sessionGetter(),
+    projectRoot,
+    statusTracker: container.safeResolve(TOKENS.ProviderModelStatusTracker),
+    hookRunner: wrongTraceHookRunner,
+    ...(input.installToolBoundary ? { installToolBoundary: input.installToolBoundary } : {}),
+  });
   const goalHandler = new GoalWebSocketHandler(
     agent,
     context,
@@ -775,6 +803,8 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
     wpaths.projectAutophase,
     events,
     projectRoot,
+    undefined,
+    subagentFactory,
   );
   const specsHandler = new SpecsWebSocketHandler(wpaths.projectSpecs, wpaths.projectTaskGraphs);
   const sddBoardHandler = new SddBoardWebSocketHandler(
@@ -797,29 +827,9 @@ export async function createAgentServices(input: AgentServicesInput): Promise<Ag
       events,
       projectRoot,
       brain,
-      subagentFactory: makeLightSubagentFactory({
-        container,
-        providerRegistry,
-        toolRegistry,
-        session: input.sessionGetter(),
-        projectRoot,
-        // Thread the container-provided ProviderModelStatusTracker so a 429
-        // from this subagent's first call transitions the (provider, model)
-        // pair to `state: 'blocked'` instead of silently no-op'ing. The
-        // runtime container binds a default `ProviderModelStatusTracker`
-        // (see packages/runtime/src/container.ts); without this dep, the
-        // subagent's fallback extension's tracker hooks are undefined and
-        // round-robin keeps reassigning the doomed model. Mirrors the CLI
-        // factory wiring at host-subagent-factory.ts:337.
-        statusTracker: container.safeResolve(TOKENS.ProviderModelStatusTracker),
-        // WrongTrace lock gate for SDD-wizard workers: the standalone server
-        // already built a dedicated WrongTrace-only HookRunner for its own
-        // executor above; handing the same runner to the runtime factory
-        // makes every worker edit honor peer locks with one process-wide
-        // owner identity (context.session.id).
-        hookRunner: wrongTraceHookRunner,
-        ...(input.installToolBoundary ? { installToolBoundary: input.installToolBoundary } : {}),
-      }),
+      // Shared factory, fresh Agent/Context per task. Goal and SDD workers use
+      // the same provider health, hook, and tool-boundary policy.
+      subagentFactory,
       paths: {
         projectSpecs: wpaths.projectSpecs,
         projectTaskGraphs: wpaths.projectTaskGraphs,

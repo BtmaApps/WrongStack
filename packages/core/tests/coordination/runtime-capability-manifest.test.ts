@@ -61,6 +61,11 @@ describe('runtime capability manifest', () => {
     const files = await typescriptSourceFiles(packageRoot);
     const sources: Array<{ file: string; raw: string }> = [];
     const implementationFiles = files.filter((file) => !file.endsWith('capability-manifest.ts'));
+    // This guard walks the filesystem, so the failure mode that hides is an
+    // EMPTY sweep: a moved package root or a glob that stops matching leaves
+    // nothing to scan and every "maps every tool name" assertion below passes
+    // without reading a single implementation.
+    expect(implementationFiles.length).toBeGreaterThan(0);
     for (let offset = 0; offset < implementationFiles.length; offset += 32) {
       sources.push(
         ...(await Promise.all(

@@ -3,6 +3,7 @@ import type { PhaseGraph } from '@wrongstack/core/goal';
 export function buildGoalState(
   graph: PhaseGraph | null,
   activePhaseId?: string,
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped' = 'idle',
 ): Record<string, unknown> {
   if (!graph) {
     return {
@@ -11,9 +12,12 @@ export function buildGoalState(
       overallPercent: 0,
       autonomous: true,
       title: '',
+      graphId: null,
       multiBoard: false,
       verifyTasks: false,
       chimeraReview: false,
+      finalVerification: null,
+      status,
     };
   }
 
@@ -89,12 +93,16 @@ export function buildGoalState(
   const lastFailed = phases
     .filter((p) => p.status === 'failed')
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
-  const lastError = lastFailed
-    ? `${lastFailed.name}: ${(lastFailed.metadata?.integrationError as string | undefined) ?? 'phase failed'}`
-    : null;
+  const lastError =
+    graph.finalVerification?.status === 'failed'
+      ? (graph.finalVerification.error ?? 'final verification failed')
+      : lastFailed
+        ? `${lastFailed.name}: ${(lastFailed.metadata?.integrationError as string | undefined) ?? 'phase failed'}`
+        : null;
 
   return {
     title: graph.title,
+    graphId: graph.id,
     // Full operator prompt, shown verbatim in a dedicated goal block (the
     // title is only a short derived heading). Fall back to the title for
     // legacy boards saved before the title/goal split.
@@ -120,5 +128,7 @@ export function buildGoalState(
     multiBoard: graph.multiBoard ?? false,
     verifyTasks: graph.verifyTasks ?? false,
     chimeraReview: graph.chimeraReview ?? false,
+    finalVerification: graph.finalVerification ?? null,
+    status,
   };
 }

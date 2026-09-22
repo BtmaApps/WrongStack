@@ -266,7 +266,13 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
   };
   const onExit = () => {
     dumpMetrics();
-    void metricsServerHandle?.close().catch(() => {});
+    // Never throw from an 'exit' listener: the crash shield recovers the
+    // exception and the process then never exits.
+    try {
+      void metricsServerHandle?.close().catch(() => {});
+    } catch {
+      // best-effort
+    }
   };
   process.on('exit', onExit);
 
@@ -278,24 +284,44 @@ export function setupMetrics(params: MetricsWiringDeps): MetricsWiringResult {
 
   if (metricsPort !== undefined && Number.isFinite(metricsPort)) {
     metricsStatus.httpExporter = 'failed';
-    try {
-      // eslint-disable-next-line no-restricted-syntax
-      metricsServerHandle = startMetricsServer({
-        port: metricsPort,
-        host: process.env['METRICS_HOST'] ?? '127.0.0.1',
-        sink: metricsSink,
-        healthRegistry,
-      }) as never as MetricsServerHandle;
-      logger.info(
-        `metrics endpoint listening on ${(metricsServerHandle as never as { url?: string | undefined }).url} (healthz on same port)`,
-      );
-      metricsStatus.httpExporter = 'listening';
-    } catch (err) {
-      logger.warn(`metrics endpoint failed to start: ${toErrorMessage(err)}`);
-    }
+    // `startMetricsServer` is async. It used to be cast straight to a handle,
+    // so the "handle" was a Promise: the log printed an undefined URL, a bind
+    // failure became an unhandled rejection, and the exit hook's `close()`
+    // threw inside `process.exit` — which the crash shield swallowed, leaving
+    // `wstack --metrics-port N "task"` alive forever after finishing.
+    // eslint-disable-next-line no-restricted-syntax
+    const sink = metricsSink;
+    const registry = healthRegistry;
+    // `Promise.resolve().then` also turns a synchronous throw into a rejection.
+    void Promise.resolve()
+      .then(() =>
+        startMetricsServer({
+          port: metricsPort,
+          host: process.env['METRICS_HOST'] ?? '127.0.0.1',
+          sink,
+          healthRegistry: registry,
+        }),
+      )
+      .then((handle) => {
+        metricsServerHandle = handle;
+        metricsStatus.httpExporter = 'listening';
+        logger.info(`metrics endpoint listening on ${handle.url} (healthz on same port)`);
+      })
+      .catch((err: unknown) => {
+        logger.warn(`metrics endpoint failed to start: ${toErrorMessage(err)}`);
+      });
   } else if (metricsPort !== undefined) {
     metricsStatus.httpExporter = 'failed';
   }
 
-  return { metricsSink, healthRegistry, metricsServerHandle, metricsStatus, dispose };
+  return {
+    metricsSink,
+    healthRegistry,
+    // The server binds after this returns; read the handle live.
+    get metricsServerHandle() {
+      return metricsServerHandle;
+    },
+    metricsStatus,
+    dispose,
+  };
 }

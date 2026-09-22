@@ -356,6 +356,19 @@ describe('setupPlugins', () => {
     expect(names).not.toContain('telegram');
   });
 
+  it('--safe-mode keeps built-ins but skips third-party plugins', async () => {
+    const deps = {
+      ...baseDeps({ plugins: ['virtual:test-plugin'] as never }),
+      paths: fakePaths(),
+      safeMode: true,
+    };
+    await setupPlugins(deps as never);
+    const [plugins] = loadPluginsMock.mock.calls[0]!;
+    const names = (plugins as Array<{ name: string }>).map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining(EXPECTED_BUILTINS));
+    expect(names).not.toContain('virtual:test-plugin');
+  });
+
   it('loads a default-inactive built-in when enabled through extensions', async () => {
     const deps = {
       ...baseDeps({ extensions: { 'wstack-auto-review': { enabled: true } } as never }),

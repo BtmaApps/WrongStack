@@ -1,3 +1,4 @@
+import { isProjectRootLocked } from '../security/process-lockdown.js';
 import type { TextBlock } from '../types/blocks.js';
 // Roadmap 10A: TodoItem's canonical home is the types/context.ts leaf
 // (single source of truth, acyclic); re-exported here for existing import paths.
@@ -36,6 +37,13 @@ import { drainHooks, registerHook } from './context-hooks.js';
 import { resolveEventSessionId, resolveOwningSessionId } from './context-session-id.js';
 import { resolveAndValidateWorkingDir } from './context-working-dir.js';
 import { ConversationState } from './conversation-state.js';
+
+/**
+ * Backing store for `Context.allowOutsideProjectRoot`. A side table rather
+ * than a private field: a private member makes `Context` nominal, and code
+ * that passes an `AgentContext` where a `Context` is expected stops compiling.
+ */
+const allowOutsideProjectRootByContext = new WeakMap<object, boolean>();
 
 export type { ProviderMemoryEvidence, TodoItem };
 export { isAppendableSessionWriter, resolveEventSessionId, resolveOwningSessionId };
@@ -222,8 +230,15 @@ export class Context implements RunEnv, AgentContext {
    * outside `projectRoot`. When false, those boundary checks are bypassed so
    * tools may reach paths outside the project (still gated by permission
    * tiers). Mutable so `/settings` can toggle it live on the running session.
+   * Under `--restricted` (`lockToProjectRoot`) it always reads false, whatever
+   * was assigned.
    */
-  allowOutsideProjectRoot: boolean;
+  get allowOutsideProjectRoot(): boolean {
+    return (allowOutsideProjectRootByContext.get(this) ?? false) && !isProjectRootLocked();
+  }
+  set allowOutsideProjectRoot(value: boolean) {
+    allowOutsideProjectRootByContext.set(this, value);
+  }
   model: string;
   tools: Tool[] = [];
   /** Complete enabled catalog; provider token accounting continues to use `tools`. */

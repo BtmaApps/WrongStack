@@ -45,7 +45,7 @@ import type { WstackPaths } from '@wrongstack/core/utils';
 import { createDefaultContainer } from '@wrongstack/runtime';
 import { resolveBundledPromptsDir } from '../cli-bundled-prompts.js';
 import { resolveBundledSkillsDir } from '../cli-bundled-skills.js';
-import { makePromptDelegate } from '../permission-prompt.js';
+import { makeStdinPromptDelegate } from '../permission-prompt.js';
 import { type ApprovalMirrorRef, makeMirroredPromptDelegate } from '../permission-prompt-mirror.js';
 
 interface WireContainerDeps {
@@ -53,9 +53,11 @@ interface WireContainerDeps {
   wpaths: WstackPaths;
   cwd: string;
   logger: Logger;
-  reader: Parameters<typeof makePromptDelegate>[0];
+  reader: Parameters<typeof makeStdinPromptDelegate>[0];
   renderer: Renderer;
   modelsRegistry: ModelsRegistry;
+  /** `--allowed-tools`, already validated at boot. */
+  launchAllowedTools?: readonly string[] | undefined;
 }
 
 /**
@@ -90,12 +92,13 @@ export function wireContainer(deps: WireContainerDeps): {
     events,
     permission: {
       yolo: deps.config.yolo,
+      launchAllowedTools: deps.launchAllowedTools,
       // Wrapped so the REPL's terminal prompt also appears on the HQ
       // dashboard and can be answered from there. The wrapper is a no-op
       // until `approvalMirror.current` is populated (HQ telemetry boot), and
       // the terminal prompt itself behaves exactly as it always has.
       promptDelegate: makeMirroredPromptDelegate({
-        inner: makePromptDelegate(deps.reader),
+        inner: makeStdinPromptDelegate(deps.reader),
         getRegistry: () => approvalMirror.current,
         getSessionId: () => approvalMirror.sessionId?.(),
       }) as NonNullable<

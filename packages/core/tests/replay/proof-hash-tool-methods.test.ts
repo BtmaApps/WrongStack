@@ -22,9 +22,9 @@ function makeBaseRequest(): Request {
 // one and the hash comparisons stay symmetric.
 const noopExecute = async (): Promise<unknown> => ({});
 
-// ── Diagnostic: what JSON does hashRequest produce for tools with functions? ───
+// ── Contract: which tool properties reach the hash, and survive a round-trip ──
 
-describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
+describe('hashRequest: tool properties that reach the hash', () => {
   it('inspect JSON for a request with execute/validate functions', () => {
     const req = makeBaseRequest();
     req.tools = [
@@ -55,12 +55,17 @@ describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
       toolChoice: req.toolChoice,
     });
 
-    // Log for human inspection:
-    console.log('\n[JSON with execute/validate present]');
-    console.log(json);
-    // Expected: `execute` and `validate` appear as `null` or are dropped.
-    // If they appear as `null`, their KEY is still in the sorted output.
-    // This means the hash CAN change based on whether the key exists at all.
+    // The open question here ("null, or dropped?") is exactly what decides
+    // whether the hash is stable, so answer it with an assertion instead of a
+    // console.log a human has to read. Dropped entirely: no key at all, so a
+    // tool carrying functions hashes the same as that tool read back from disk
+    // without them.
+    expect(json).not.toContain('"execute"');
+    expect(json).not.toContain('"validate"');
+    // Serialisable siblings survive — the drop is specific to functions, not a
+    // wholesale loss of the tool definition.
+    expect(json).toContain('"name":"read"');
+    expect(json).toContain('"permission":"confirm"');
   });
 
   it('inspect JSON for a request after JSON round-trip (no functions)', () => {
@@ -106,11 +111,12 @@ describe('DIAGNOSTIC: what JSON does hashRequest produce for tools', () => {
       toolChoice: deserialised.toolChoice,
     });
 
-    console.log('\n[JSON after JSON round-trip (no functions)]');
-    console.log(jsonAfterRoundTrip);
-    console.log('\n[Are they equal?]', json === jsonAfterRoundTrip);
-    console.log('[Original hash]', hashRequest(req));
-    console.log('[After round-trip hash]', hashRequest(deserialised as Request));
+    // These console.logs asked the right questions and recorded no answer. The
+    // invariant they probed is load-bearing for replay: a request is written to
+    // disk and read back WITHOUT its functions, so if the round-trip changed the
+    // hash, no replayed request would ever match its recording.
+    expect(jsonAfterRoundTrip).toBe(json);
+    expect(hashRequest(deserialised as Request)).toBe(hashRequest(req));
   });
 });
 

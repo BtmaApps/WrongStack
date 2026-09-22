@@ -523,6 +523,7 @@ export function useAppController(props: AppProps) {
     streamingTextRef,
     director,
     handleRewindTo,
+    getSettings,
   });
 
   const panelControllers = usePanelControllers({

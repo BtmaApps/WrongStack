@@ -1,18 +1,18 @@
-import { cn } from '@/lib/utils';
-import { useAppTranslation } from '@/i18n';
 import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Circle,
   Clock,
+  Minus,
   Target,
   TrendingDown,
   TrendingUp,
-  Minus,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
+import { useAppTranslation } from '@/i18n';
 import type { GoalState } from '@/lib/goal';
+import { cn } from '@/lib/utils';
 import { getWSClient } from '@/lib/ws-client';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -58,10 +58,15 @@ const STATE_CONFIG: Record<
 
 export interface GoalPanelProps {
   goal: GoalState | null;
+  refining?: boolean | undefined;
   className?: string | undefined;
 }
 
-export function GoalPanel({ goal, className }: GoalPanelProps): React.ReactElement | null {
+export function GoalPanel({
+  goal,
+  refining = false,
+  className,
+}: GoalPanelProps): React.ReactElement | null {
   const { t } = useAppTranslation();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -96,9 +101,10 @@ export function GoalPanel({ goal, className }: GoalPanelProps): React.ReactEleme
   // (completed / failed) — it's served its purpose and shouldn't linger.
   if (!goal) return null;
   if (
-    goal.goalState === 'completed' ||
-    goal.goalState === 'failed' ||
-    goal.goalState === 'abandoned'
+    !refining &&
+    (goal.goalState === 'completed' ||
+      goal.goalState === 'failed' ||
+      goal.goalState === 'abandoned')
   )
     return null;
 
@@ -119,6 +125,11 @@ export function GoalPanel({ goal, className }: GoalPanelProps): React.ReactEleme
         <span className="text-xs font-semibold text-foreground flex-1 min-w-0 truncate">
           {t('activity:goal.heading')}
         </span>
+        {refining && (
+          <span className="text-xs text-muted-foreground" role="status">
+            {t('activity:goal.refining', { defaultValue: 'Refining mission…' })}
+          </span>
+        )}
         <span
           className={cn(
             'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium shrink-0',

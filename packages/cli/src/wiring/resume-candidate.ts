@@ -21,6 +21,7 @@
  */
 import { getSessionRegistry, SessionRecovery } from '@wrongstack/core/storage';
 import type { SessionStore } from '@wrongstack/core/types';
+import { isPidAlive } from '@wrongstack/core/utils';
 
 /** How many unclosed candidates to examine before giving up on a free one. */
 const MAX_CANDIDATES = 20;
@@ -66,7 +67,13 @@ async function liveSessionIds(globalRoot: string): Promise<Set<string>> {
   try {
     const registry = getSessionRegistry(globalRoot);
     const entries = await registry.list();
-    return new Set(entries.map((entry) => entry.sessionId));
+    // The registry only probes a pid after two missed heartbeats (~10s), so a
+    // one-shot run that just exited still reads as live. Skipping it made
+    // `-c` / bare `--resume` pick the session BEFORE the one just finished.
+    // A dead pid on this machine is proof enough.
+    return new Set(
+      entries.filter((entry) => isPidAlive(entry.pid)).map((entry) => entry.sessionId),
+    );
   } catch {
     // No registry (headless embedder, unreadable global root): fall back to
     // "nothing is live". The resume itself still goes through `claimSession`,

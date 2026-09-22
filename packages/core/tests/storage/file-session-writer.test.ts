@@ -592,10 +592,63 @@ describe('FileSessionWriter', () => {
 
   // ── clearSession() ───────────────────────────────────────────────────
 
+  // clearSession does REAL filesystem work (atomic rewrite + handle reopen), so
+  // these two build their own writer over a unique temp file rather than the
+  // shared `/tmp/test.jsonl`. Sharing it made the second test fail on Windows
+  // with EPERM: the handle clearSession reopens is still held when the next
+  // atomic rename tries to replace the file.
+  async function withRealFileWriter(): Promise<{ w: FileSessionWriter; filePath: string }> {
+    const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wstack-fsw-'));
+    const filePath = path.join(dir, 'session.jsonl');
+    const realHandle = await fsp.open(filePath, 'a', 0o600);
+    const w = new FileSessionWriter(
+      TEST_ID,
+      realHandle as never,
+      STARTED_AT,
+      makeMeta(),
+      undefined,
+      {
+        filePath,
+      },
+    );
+    return { w, filePath };
+  }
+
+  // The comment this replaces ("buffer is empty and file was reset") was the
+  // whole test — nothing checked it, so a clearSession that reset neither passed.
   it('clearSession resets the writer state', async () => {
-    await writer.append({ type: 'user_input', ts: now(), content: 'hello' } as SessionEvent);
-    await writer.clearSession();
-    // After clearSession, buffer is empty and file was reset
+    const { w, filePath } = await withRealFileWriter();
+    await w.append({ type: 'user_input', ts: now(), content: 'hello' } as SessionEvent);
+    expect(await fsp.readFile(filePath, 'utf8')).toContain('hello');
+
+    await w.clearSession();
+
+    // The transcript no longer carries the pre-clear turn.
+    expect(await fsp.readFile(filePath, 'utf8')).not.toContain('hello');
+    await w.close();
+  });
+
+  // `executeClearSession` closes the handle before the atomic rewrite; the
+  // reopen in `clearSession` exists so the next append does not meet a closed
+  // handle, which the source comment calls "effectively corrupted".
+  //
+  // Scope, measured rather than assumed: deleting that reopen does NOT turn this
+  // test red — the write buffer independently recovers from a closed handle
+  // (see "enqueueWrite reopens the file handle on a closed-handle error"). So
+  // this pins the END-TO-END contract — a writer stays usable across
+  // clearSession — and not that one line. Both layers would have to regress for
+  // it to fail, which is the honest thing for it to assert.
+  it('clearSession leaves the writer usable for the next append', async () => {
+    const { w, filePath } = await withRealFileWriter();
+    await w.append({ type: 'user_input', ts: now(), content: 'before' } as SessionEvent);
+    await w.clearSession();
+
+    await expect(
+      w.append({ type: 'user_input', ts: now(), content: 'after-clear' } as SessionEvent),
+    ).resolves.toBeUndefined();
+
+    await w.close();
+    expect(await fsp.readFile(filePath, 'utf8')).toContain('after-clear');
   });
 
   // ── truncateToCheckpoint() ───────────────────────────────────────────
@@ -612,11 +665,18 @@ describe('FileSessionWriter', () => {
     const w = new FileSessionWriter(TEST_ID, handle as any, STARTED_AT, makeMeta(), undefined, {
       filePath: '/tmp/test.jsonl',
     });
-    await w.append({ type: 'user_input', ts: now(), content: 'test' } as SessionEvent);
-    await w.clearInFlightMarker('clean');
-    await w.writeInFlightMarker('context');
-    // close will handle flush chain cleanup; the test doesn't need to verify handle.close
-    await w.close();
+    // "Without errors" is the entire claim, so state it per call — an
+    // assertion-free body could not distinguish "worked" from "did nothing".
+    await expect(
+      w.append({ type: 'user_input', ts: now(), content: 'test' } as SessionEvent),
+    ).resolves.toBeUndefined();
+    await expect(w.clearInFlightMarker('clean')).resolves.toBeUndefined();
+    await expect(w.writeInFlightMarker('context')).resolves.toBeUndefined();
+    await expect(w.close()).resolves.toBeUndefined();
+
+    // …and the event actually reached the handle, so a writer that swallowed
+    // everything when no EventBus was supplied would not pass.
+    expect(capturedWrites.join('')).toContain('"type":"user_input"');
   });
 
   // ── Scrubber integration ─────────────────────────────────────────────
@@ -891,17 +951,26 @@ describe('FileSessionWriter', () => {
     // Critical events (user_input/llm_response/checkpoint) propagate errors — see
     // session-writer-critical-append-proof.test.ts for that regression coverage.
     for (let i = 0; i < 50; i++) {
-      await w.append({
-        type: 'tool_result',
-        ts: now(),
-        id: `tu-${i}`,
-        content: `ok${i}`,
-        isError: false,
-      } as SessionEvent);
+      // Best-effort means the append RESOLVES despite the rejecting handle.
+      await expect(
+        w.append({
+          type: 'tool_result',
+          ts: now(),
+          id: `tu-${i}`,
+          content: `ok${i}`,
+          isError: false,
+        } as SessionEvent),
+      ).resolves.toBeUndefined();
     }
 
     // The flush error is caught and logged — no unhandled rejection
     await new Promise((r) => setTimeout(r, 200));
+
+    // The failing write must actually have been ATTEMPTED. Without this, a
+    // writer that dropped every non-critical event on the floor would satisfy
+    // "appends do not throw" just as well — and that is the opposite of
+    // best-effort.
+    expect(errHandle.appendFile).toHaveBeenCalled();
     // Close the writer (but mock will still reject; we catch at the test level)
     try {
       await w.close();

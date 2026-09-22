@@ -14,6 +14,11 @@ import {
 
 const LAZY_TOOL_GATEWAYS = new Set(['tool_search', 'tool_use']);
 
+/** Exact tool name, or a prefix when the pattern ends with `*`. */
+function matchToolPattern(pattern: string, name: string): boolean {
+  return pattern.endsWith('*') ? name.startsWith(pattern.slice(0, -1)) : pattern === name;
+}
+
 /**
  * A function that wraps (decorates) an existing tool. Receives the
  * original tool and returns a modified version — typically the same
@@ -69,6 +74,20 @@ export class ToolRegistry {
   private _providerToolNames: Set<string> | undefined;
   private _providerListSnapshot: readonly Tool[] | undefined;
   private _providerListSnapshotVersion = -1;
+  /**
+   * Launch-time tool restriction (`--only-tools` / `--disallowed-tools`). Unlike
+   * `_disabled` it is not a toggle: `enable()` cannot lift it, and it applies
+   * to tools registered later (MCP servers connect lazily), because it is a
+   * name predicate rather than a set of disabled registrations.
+   */
+  private _restriction:
+    | {
+        only?: readonly string[];
+        deny: readonly string[];
+        denyCapabilities: readonly string[];
+        requireDeclaredCapabilities: boolean;
+      }
+    | undefined;
 
   /** Pre-compute tool definition token estimate once at registration time. */
   private _stampDefTokens(tool: Tool): void {
@@ -258,8 +277,58 @@ export class ToolRegistry {
     return { applied, missing };
   }
 
+  /**
+   * Restrict this registry for the process lifetime. `only` keeps just the
+   * named tools (the lazy `tool_search`/`tool_use` gateways stay unless
+   * denied — they can only reach tools that pass the restriction anyway);
+   * `deny` hides the named tools. A trailing `*` matches a prefix, so
+   * `mcp__github__*` covers one MCP server.
+   */
+  setSessionRestriction(restriction: {
+    only?: readonly string[] | undefined;
+    deny?: readonly string[] | undefined;
+    /** Hide any tool declaring one of these capabilities (`--restricted`). */
+    denyCapabilities?: readonly string[] | undefined;
+    /**
+     * Hide tools that declare no capabilities at all unless core owns them:
+     * an undeclared plugin tool could do anything, so it fails closed.
+     */
+    requireDeclaredCapabilities?: boolean | undefined;
+  }): void {
+    this._restriction = {
+      ...(restriction.only ? { only: [...restriction.only] } : {}),
+      deny: [...(restriction.deny ?? [])],
+      denyCapabilities: [...(restriction.denyCapabilities ?? [])],
+      requireDeclaredCapabilities: restriction.requireDeclaredCapabilities === true,
+    };
+    this._version++;
+  }
+
+  /** True when the launch-time restriction hides `name`. */
+  isRestricted(name: string): boolean {
+    const r = this._restriction;
+    if (!r) return false;
+    if (r.deny.some((pattern) => matchToolPattern(pattern, name))) return true;
+    // The lazy gateways only reach tools that pass this same check, so the
+    // capability rules below never apply to them (tool_use declares
+    // `tool.mutate.any` precisely because it forwards).
+    if (LAZY_TOOL_GATEWAYS.has(name)) return false;
+    const entry = this.tools.get(name);
+    if (entry) {
+      const caps = entry.tool.capabilities ?? [];
+      if (caps.some((cap) => r.denyCapabilities.includes(cap))) return true;
+      if (r.requireDeclaredCapabilities && caps.length === 0 && entry.owner !== 'core') return true;
+    }
+    if (!r.only) return false;
+    return !r.only.some((pattern) => matchToolPattern(pattern, name));
+  }
+
+  private isHidden(name: string): boolean {
+    return this._disabled.has(name) || this.isRestricted(name);
+  }
+
   get(name: string): Tool | undefined {
-    if (this._disabled.has(name)) return undefined;
+    if (this.isHidden(name)) return undefined;
     return this.tools.get(name)?.tool;
   }
 
@@ -460,7 +529,7 @@ export class ToolRegistry {
       return this._listSnapshot as Tool[];
     }
     const arr = Array.from(this.tools.entries())
-      .filter(([name]) => !this._disabled.has(name))
+      .filter(([name]) => !this.isHidden(name))
       .map(([, entry]) => entry.tool);
     this._listSnapshot = arr;
     this._listSnapshotVersion = this._version;
@@ -489,7 +558,7 @@ export class ToolRegistry {
       return this._providerListSnapshot as Tool[];
     }
     const arr = Array.from(this.tools.entries())
-      .filter(([name]) => !this._disabled.has(name) && this._providerToolNames?.has(name) === true)
+      .filter(([name]) => !this.isHidden(name) && this._providerToolNames?.has(name) === true)
       .map(([, entry]) => entry.tool);
     this._providerListSnapshot = arr;
     this._providerListSnapshotVersion = this._version;
@@ -504,7 +573,7 @@ export class ToolRegistry {
    * next provider request. Disabled and unknown tools always return false.
    */
   isExposedToProvider(name: string): boolean {
-    if (this._disabled.has(name) || !this.tools.has(name)) return false;
+    if (this.isHidden(name) || !this.tools.has(name)) return false;
     return this._providerToolNames?.has(name) ?? true;
   }
 
@@ -516,7 +585,7 @@ export class ToolRegistry {
   listByCategory(): Map<string, Tool[]> {
     const map = new Map<string, Tool[]>();
     for (const [name, { tool }] of this.tools) {
-      if (this._disabled.has(name)) continue;
+      if (this.isHidden(name)) continue;
       const cat = tool.category ?? '';
       let group = map.get(cat);
       if (!group) {
@@ -530,7 +599,7 @@ export class ToolRegistry {
 
   listWithOwner(): { tool: Tool; owner: string }[] {
     return Array.from(this.tools.entries())
-      .filter(([name]) => !this._disabled.has(name))
+      .filter(([name]) => !this.isHidden(name))
       .map(([, entry]) => entry);
   }
 
@@ -565,6 +634,8 @@ export class ToolRegistry {
     copy._providerToolNames = this._providerToolNames
       ? new Set(this._providerToolNames)
       : undefined;
+    // Subagent registries are clones: a launch restriction must reach them too.
+    copy._restriction = this._restriction;
     copy._version = this._version;
     return copy;
   }

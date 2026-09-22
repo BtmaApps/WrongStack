@@ -6,7 +6,7 @@ import {
   authMoveSelected,
   authPanelRows,
 } from '../auth-panel-model.js';
-import { nextSendModeIndex, SEND_MODE_OPTIONS } from '../components/send-mode-picker.js';
+import { nextSendModeIndex, SEND_MODE_OPTIONS } from '../components/send-mode-model.js';
 import { F_KEY_PANEL_ENTRIES } from '../f-key-panels.js';
 import { closePanels, firstSelectable, skipDivider } from './helpers.js';
 

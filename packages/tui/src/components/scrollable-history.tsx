@@ -102,6 +102,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
   showSageMemoryInject,
   layoutStore,
   copiedEntryId,
+  markedEntryId = null,
   onRequestOlderEntries,
   toolResultViewMode = 'normal',
   toolResultViewOverrides,
@@ -319,6 +320,19 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     tailRows: toolTailHeight + assistantTailHeight,
   };
 
+  const groupIndexByEntryIdRef = useRef<ReadonlyMap<number, number>>(new Map());
+  groupIndexByEntryIdRef.current = useMemo(() => {
+    const indexes = new Map<number, number>();
+    groupedEntries.forEach((group, index) => {
+      if (group.type === 'tool-group') {
+        for (const entry of group.data.entries) indexes.set(entry.id, index);
+      } else {
+        indexes.set(group.entry.id, index);
+      }
+    });
+    return indexes;
+  }, [groupedEntries]);
+
   const groupIndexById = useMemo(() => {
     const indexes = new Map<number, number>();
     groupIds.forEach((id, index) => {
@@ -350,6 +364,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
     mountedGroupSpansRef,
     selectionRef,
     entriesByIdRef,
+    groupIndexByEntryIdRef,
     toolStreamRef,
     selectionBandStore,
     setAnchor,
@@ -627,6 +642,7 @@ export const ScrollableHistory = memo(function ScrollableHistory({
         total={totalRows}
         copyHits={copyRailHits}
         copiedEntryId={copiedEntryId}
+        markedEntryId={markedEntryId}
         selectionBandStore={selectionBandStore}
       />
     </Box>

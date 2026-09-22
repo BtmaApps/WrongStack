@@ -895,7 +895,7 @@
       "disableTitle": "Bu hedefin süresi gerçekçi değil — geçersiz kılmak için \"Yine de başlat\" kullanın"
     },
     "multiBoardLabel": "Birden çok kanban panosuna böl",
-    "verifyTasksLabel": "Her görev için doğrulama gerektir",
+    "verifyTasksLabel": "Her aşamayı ve son sonucu doğrula",
     "chimeraReviewLabel": "Chimera otomatik incelemesini etkinleştir"
   },
   "collab": {
@@ -1244,6 +1244,7 @@
     "statusAbandoned": "Terk edildi",
     "heading": "Hedef",
     "refined": "Arıtılmış",
+    "refining": "Hedef iyileştiriliyor…",
     "progress": "İlerleme",
     "iterations": "yineleme",
     "deliverables": "Teslimatlar",

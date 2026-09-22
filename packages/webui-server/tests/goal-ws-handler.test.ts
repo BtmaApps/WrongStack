@@ -18,7 +18,8 @@ vi.mock('../src/server/git-process.js', () => ({
 
 // Mock core/goal with stub types — handler does `new PhaseOrchestrator(...)` and
 // `new PhaseStore(...)`, so we need constructors (must use class/function syntax).
-vi.mock('@wrongstack/core/goal', () => {
+vi.mock('@wrongstack/core/goal', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@wrongstack/core/goal')>();
   class FakeOrchestrator {
     start = vi.fn();
     stop = vi.fn();
@@ -49,6 +50,7 @@ vi.mock('@wrongstack/core/goal', () => {
     save = vi.fn(async () => undefined);
     load = vi.fn(async () => null);
     list = vi.fn(async () => []);
+    acquireRunLease = vi.fn(async () => vi.fn(async () => undefined));
   }
   class FakePlanner {
     plan = vi.fn(async () => ({ phases: [], parseFailed: false }));
@@ -65,6 +67,7 @@ vi.mock('@wrongstack/core/goal', () => {
     }));
   }
   return {
+    ...actual,
     PhaseOrchestrator: FakeOrchestrator,
     PhaseGraphBuilder: FakeGraphBuilder,
     PhaseStore: FakePhaseStore,
@@ -230,24 +233,31 @@ describe('GoalWebSocketHandler', () => {
       expect(sentMessages(ws)).toEqual([{ type: 'goal.paused', payload: {} }]);
     });
 
-    it('goal.resume without orchestrator: broadcast emits goal.resumed to clients', async () => {
+    it('goal.resume without a saved graph reports an error', async () => {
       const handler = new GoalWebSocketHandler(agent, context, logger, '/tmp/store');
       const ws = makeMockWs();
       handler.addClient(ws);
 
       await handler.handleMessage(ws, { type: 'goal.resume', payload: {} });
 
-      expect(sentMessages(ws)).toEqual([{ type: 'goal.resumed', payload: {} }]);
+      expect(sentMessages(ws)).toEqual([
+        { type: 'goal.error', payload: { message: 'No saved Goal to resume.' } },
+      ]);
     });
 
-    it('goal.status without graph: no broadcast fires', async () => {
+    it('goal.status without graph returns an authoritative idle snapshot', async () => {
       const handler = new GoalWebSocketHandler(agent, context, logger, '/tmp/store');
       const ws = makeMockWs();
       handler.addClient(ws);
 
       await handler.handleMessage(ws, { type: 'goal.status', payload: {} });
 
-      expect(ws.send).not.toHaveBeenCalled();
+      expect(sentMessages(ws)).toEqual([
+        expect.objectContaining({
+          type: 'goal.state',
+          payload: expect.objectContaining({ status: 'idle', phases: [] }),
+        }),
+      ]);
     });
 
     it('goal.list triggers store.list and broadcasts goal.list', async () => {
@@ -275,14 +285,16 @@ describe('GoalWebSocketHandler', () => {
       ]);
     });
 
-    it('goal.load with missing graphId: silent no-op', async () => {
+    it('goal.load without a saved graph reports an error', async () => {
       const handler = new GoalWebSocketHandler(agent, context, logger, '/tmp/store');
       const ws = makeMockWs();
       handler.addClient(ws);
 
       await handler.handleMessage(ws, { type: 'goal.load', payload: {} });
 
-      expect(ws.send).not.toHaveBeenCalled();
+      expect(sentMessages(ws)).toEqual([
+        { type: 'goal.error', payload: { message: 'No saved Goals.' } },
+      ]);
     });
   });
 
@@ -341,17 +353,6 @@ describe('GoalWebSocketHandler', () => {
       const ws = makeMockWs();
       handler.addClient(ws);
       await handler.handleMessage(ws, { type: 'goal.runTask', payload: { taskId: 't1' } });
-      expect(ws.send).not.toHaveBeenCalled();
-    });
-
-    it('goal.toggleAutonomous with no graph: silent', async () => {
-      const handler = new GoalWebSocketHandler(agent, context, logger, '/tmp/store');
-      const ws = makeMockWs();
-      handler.addClient(ws);
-      await handler.handleMessage(ws, {
-        type: 'goal.toggleAutonomous',
-        payload: { autonomous: false },
-      });
       expect(ws.send).not.toHaveBeenCalled();
     });
 

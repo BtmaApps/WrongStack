@@ -19,6 +19,7 @@ interface GoalRunState {
   overallPercent: number;
   autonomous: boolean;
   title: string | null;
+  graphId: string | null;
   /** Full operator prompt that started the run (title is only a short heading). */
   goal: string | null;
   status: GoalRunStatus;
@@ -36,6 +37,11 @@ interface GoalRunState {
     completedTasks: number;
     failedTasks: number;
   } | null;
+  finalVerification: {
+    status: 'passed' | 'failed';
+    checkedAt: number;
+    error?: string | undefined;
+  } | null;
 
   setState: (s: {
     phases?: PhaseItem[] | undefined;
@@ -43,6 +49,7 @@ interface GoalRunState {
     overallPercent?: number | undefined;
     autonomous?: boolean | undefined;
     title?: string | null | undefined;
+    graphId?: string | null | undefined;
     goal?: string | null | undefined;
     status?: GoalRunStatus | undefined;
     multiBoard?: boolean | undefined;
@@ -50,6 +57,7 @@ interface GoalRunState {
     lastError?: string | null | undefined;
     graphs?: GoalRunBoardSummary[] | undefined;
     progress?: GoalRunState['progress'] | undefined;
+    finalVerification?: GoalRunState['finalVerification'] | undefined;
   }) => void;
   clear: () => void;
   /** Request state from server on mount. */
@@ -62,6 +70,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
   overallPercent: 0,
   autonomous: false,
   title: null,
+  graphId: null,
   goal: null,
   status: 'idle',
   multiBoard: false,
@@ -69,6 +78,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
   lastError: null,
   graphs: [],
   progress: null,
+  finalVerification: null,
 
   setState: (patch) =>
     set((prev) => ({
@@ -77,6 +87,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       overallPercent: patch.overallPercent ?? prev.overallPercent,
       autonomous: patch.autonomous ?? prev.autonomous,
       title: patch.title !== undefined ? patch.title : prev.title,
+      graphId: patch.graphId !== undefined ? patch.graphId : prev.graphId,
       goal: patch.goal !== undefined ? patch.goal : prev.goal,
       status: patch.status ?? prev.status,
       multiBoard: patch.multiBoard ?? prev.multiBoard,
@@ -84,6 +95,8 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       lastError: patch.lastError !== undefined ? patch.lastError : prev.lastError,
       graphs: patch.graphs ?? prev.graphs,
       progress: patch.progress !== undefined ? patch.progress : prev.progress,
+      finalVerification:
+        patch.finalVerification !== undefined ? patch.finalVerification : prev.finalVerification,
     })),
   clear: () =>
     set({
@@ -92,6 +105,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       overallPercent: 0,
       autonomous: false,
       title: null,
+      graphId: null,
       goal: null,
       status: 'idle',
       multiBoard: false,
@@ -99,6 +113,7 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
       lastError: null,
       graphs: [],
       progress: null,
+      finalVerification: null,
     }),
   /**
    * Request state hydration from the server. Call on mount to populate
@@ -106,6 +121,6 @@ export const useGoalRunStore = create<GoalRunState>()((set) => ({
    */
   hydrateFromServer: (send: (msg: unknown) => void) => {
     send({ type: 'goal.list' });
-    send({ type: 'goal.state' });
+    send({ type: 'goal.status' });
   },
 }));

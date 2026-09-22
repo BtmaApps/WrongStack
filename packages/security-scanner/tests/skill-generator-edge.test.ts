@@ -7,6 +7,7 @@
  * - buildSkillContent filter branches for different file extension types
  */
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SecurityScanner } from '../src/scanner.js';
 import { SkillGenerator } from '../src/skill-generator.js';
 import type { TechStackInfo } from '../src/types.js';
 
@@ -258,5 +259,98 @@ describe('SkillGenerator - edge coverage', () => {
     const skill = generator.generate(makeStack('dotnet'));
     const dotnetPattern = skill.patterns.find((p) => p.id === 'dotnet-config-secrets');
     expect(dotnetPattern).toBeDefined();
+  });
+
+  // ── Stack detectors actually DETECT (end to end through the scanner) ─────
+  //
+  // The tests above only prove each pattern id is present. Probing them showed
+  // two could not do their job: `rust-command-injection` was suppressed by its
+  // own false-positive marker (`Command::new`, which its regex requires), and
+  // `csharp-sql-injection` skipped C# verbatim strings (`@"..."`) because of a
+  // bare '@' marker. Each detector must fire on the vulnerable line and stay
+  // quiet on the safe form — through `scanFile`, so markers are applied.
+  describe('each stack detector fires on the vulnerable form only', () => {
+    const scanner = new SecurityScanner();
+    function findingsFor(stack: TechStackInfo['stack'], file: string, line: string): string[] {
+      const skill = new SkillGenerator().generate(makeStack(stack));
+      const findings = (
+        scanner as unknown as {
+          scanFile(c: string, f: string, p: unknown, conf: unknown): Array<{ patternId: string }>;
+        }
+      ).scanFile(line, file, skill.patterns, skill.metadata.confidence);
+      return findings.map((f) => f.patternId);
+    }
+
+    it.each([
+      [
+        'rust',
+        'rust-command-injection',
+        'main.rs',
+        'Command::new("sh").arg(prefix + &user_input).spawn();',
+        'Command::new("ls").args(&["-la", dir]).spawn();',
+      ],
+      [
+        'rust',
+        'rust-env-secrets',
+        'main.rs',
+        'const API_SECRET: &str = "sk_live_abc123";',
+        'let api_secret = std::env::var("API_SECRET")?;',
+      ],
+      [
+        'go',
+        'go-sql-injection',
+        'main.go',
+        'rows, err := db.Query("SELECT * FROM users WHERE id=" + id)',
+        'rows, err := db.Query("SELECT * FROM users WHERE id=?", id)',
+      ],
+      [
+        'go',
+        'go-hardcoded-secret',
+        'main.go',
+        'const apiSecret = "sk_live_abc123"',
+        'apiSecret := os.Getenv("API_SECRET")',
+      ],
+      [
+        'java',
+        'java-sql-injection',
+        'A.java',
+        'ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM u WHERE id=" + id);',
+        'PreparedStatement ps = conn.prepareStatement("SELECT * FROM u WHERE id=?");',
+      ],
+      [
+        'java',
+        'java-system-getenv',
+        'A.java',
+        'private static final String API_SECRET = "sk_live_abc123";',
+        'private static final String API_SECRET = System.getenv("API_SECRET");',
+      ],
+      [
+        'dotnet',
+        'csharp-sql-injection',
+        'A.cs',
+        'var cmd = new SqlCommand(@"SELECT * FROM Users WHERE Id = " + id, conn);',
+        'var cmd = new SqlCommand("SELECT * FROM Users WHERE Id = @id", conn);',
+      ],
+      [
+        'dotnet',
+        'dotnet-config-secrets',
+        'A.cs',
+        'private const string ApiSecret = "sk_live_abc123";',
+        'private readonly string ApiSecret = Environment.GetEnvironmentVariable("API_SECRET");',
+      ],
+    ] as const)('%s %s', (stack, id, file, vulnerable, safe) => {
+      expect(findingsFor(stack, file, vulnerable)).toContain(id);
+      expect(findingsFor(stack, file, safe)).not.toContain(id);
+    });
+
+    it('csharp-sql-injection still flags a concatenation mixed with a parameter', () => {
+      expect(
+        findingsFor(
+          'dotnet',
+          'A.cs',
+          'var cmd = new SqlCommand("SELECT * FROM T WHERE Id = @id AND Name = \'" + name + "\'", conn);',
+        ),
+      ).toContain('csharp-sql-injection');
+    });
   });
 });

@@ -22,6 +22,13 @@ This prints:
 - Context window mode and thresholds
 - Session store path and recent sessions
 
+If the problem might come from your own setup rather than WrongStack, start
+once with `--safe-mode`. It turns off third-party plugins, hooks (policy hooks
+stay), configured MCP servers, skills and instruction override files for that
+run only — config is not modified. Auth, model selection, permissions,
+built-in tools and built-in plugins work normally. If the problem goes away,
+re-enable the pieces one by one. `WRONGSTACK_SAFE_MODE=1` is equivalent.
+
 ---
 
 ## Common issues

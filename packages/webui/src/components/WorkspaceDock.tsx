@@ -372,6 +372,7 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
   const setDockSection = useUIStore((s) => s.setDockSection);
   const inspectorOpen = useUIStore((s) => s.inspectorOpen);
   const goalState = useGoalStateStore((s) => s.goal);
+  const refiningMissionId = useGoalStateStore((s) => s.refiningMissionId);
   const worktrees = useWorktreeStore((s) => s.worktrees);
   const baseBranch = useWorktreeStore((s) => s.baseBranch);
   const [worktreeView, setWorktreeView] = useState<'graph' | 'lanes'>('graph');
@@ -438,7 +439,7 @@ export function WorkspaceDockInspector({ sessionId }: { sessionId: string }): Re
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
         {section === 'goal-state' &&
           (goalState ? (
-            <GoalPanel goal={goalState} />
+            <GoalPanel goal={goalState} refining={refiningMissionId !== null} />
           ) : (
             <DockEmptyState
               title={t('activity:dock.noActiveGoal')}

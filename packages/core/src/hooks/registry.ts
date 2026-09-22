@@ -19,7 +19,10 @@ function entryControls(
   fallbackName: string,
   options: HookRegistrationOptions,
   legacyStage: 'mutate' | 'validate',
-): Pick<HookEntry, 'name' | 'timeoutMs' | 'failurePolicy' | 'stage' | 'policy' | 'background'> {
+): Pick<
+  HookEntry,
+  'name' | 'timeoutMs' | 'failurePolicy' | 'stage' | 'policy' | 'background' | 'runWhenToolSkipped'
+> {
   return {
     name: options.name?.trim() || fallbackName,
     timeoutMs: options.timeoutMs,
@@ -30,6 +33,7 @@ function entryControls(
     policy: options.policy === true,
     // `background` only applies to PostToolUse — PreToolUse hooks always block.
     background: event === 'PostToolUse' && options.background === true,
+    runWhenToolSkipped: event === 'PostToolUse' && options.runWhenToolSkipped === true,
   };
 }
 

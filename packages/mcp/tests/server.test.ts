@@ -530,9 +530,15 @@ describe('toContentBlocks', () => {
 describe('serveStdio', () => {
   it('can attach to and immediately detach from the default process streams', async () => {
     const handle = serveStdio(new MCPServer({ host: makeHost() }));
-    handle.close();
-    handle.close();
-    await handle.done;
+    // The contract is that a repeat close is harmless AND that the transport
+    // still finishes. Asserting neither meant a close() that threw on the
+    // second call, or a `done` that never settled, looked identical to success
+    // (the latter only via a suite timeout).
+    expect(() => {
+      handle.close();
+      handle.close();
+    }).not.toThrow();
+    await expect(handle.done).resolves.toBeUndefined();
   });
 
   it('reads newline-delimited requests and writes responses', async () => {
@@ -677,13 +683,20 @@ describe('serveStdio', () => {
   });
 
   it('supports readable streams without resume()', async () => {
+    // A bare EventEmitter has no resume(): the point is that serveStdio feature-
+    // detects it instead of calling it unconditionally. Attaching must not throw,
+    // and the transport must still shut down cleanly.
     const stdin = new EventEmitter() as never as NodeJS.ReadableStream;
+    expect(() =>
+      serveStdio(new MCPServer({ host: makeHost() }), { stdin, stdout: new PassThrough() }),
+    ).not.toThrow();
+
     const handle = serveStdio(new MCPServer({ host: makeHost() }), {
       stdin,
       stdout: new PassThrough(),
     });
     handle.close();
-    await handle.done;
+    await expect(handle.done).resolves.toBeUndefined();
   });
 });
 

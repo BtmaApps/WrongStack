@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockDecrypt = vi.hoisted(() => vi.fn());
 const mockEncrypt = vi.hoisted(() => vi.fn());
@@ -53,7 +53,16 @@ describe('provider-store', () => {
     // here, on the first `await lock.current` in production code.
     it('starts with a resolved promise', async () => {
       const lock = createConfigWriteLock();
-      await lock.current; // must not hang
+      // `await lock.current` alone only failed by TIMING OUT, which is both slow
+      // and silent about the cause. The claim above is sharper than "does not
+      // hang" — the promise is ALREADY resolved — so assert exactly that: its
+      // continuation runs on the first microtask, with nothing else awaited.
+      let settled = false;
+      void lock.current.then(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+      expect(settled).toBe(true);
     });
 
     // B-07: migrated from packages/webui/tests/server/provider-store.test.ts —

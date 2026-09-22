@@ -182,6 +182,7 @@ describe('builtin prompt dataset', () => {
   });
 
   it('every performance prompt lives in the performance category', () => {
+    expect(Object.keys(PERF_MODES).length).toBeGreaterThan(0);
     for (const mode of Object.values(PERF_MODES)) {
       const file = path.join(promptsDir, 'performance', `${mode.slug}.json`);
       expect(fs.existsSync(file), `${mode.id} -> ${mode.slug}`).toBe(true);

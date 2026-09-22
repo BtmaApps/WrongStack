@@ -39,6 +39,21 @@ export function reapExpiredCatalogEntries(db: DatabaseSync, now = Date.now()): v
       );
     }
   }
+  // A lease whose owner process is gone is dead now, not when it expires. A
+  // CLI that exits through the forced-exit path never releases its lease, and
+  // waiting out the expiry made `wstack -r <id>` right after a one-shot run
+  // fail with "already open in another running wstack" naming a dead pid.
+  const unexpired = db
+    .prepare('SELECT session_id, lease_id, owner_pid FROM session_leases WHERE lease_expires_at>?')
+    .all(now) as unknown as Array<Pick<LeaseRow, 'session_id' | 'lease_id' | 'owner_pid'>>;
+  for (const row of unexpired) {
+    if (!isPidAlive(row.owner_pid)) {
+      db.prepare('DELETE FROM session_leases WHERE session_id=? AND lease_id=?').run(
+        row.session_id,
+        row.lease_id,
+      );
+    }
+  }
 }
 
 export function maintenanceExists(db: DatabaseSync, sessionId: string): boolean {

@@ -758,12 +758,15 @@ describe('SSETransport — mocked connect + callTool', () => {
       const t = new SSETransport({ name: 'x', url: 'https://m.test' });
       await t.connect();
       expect(t.getServerMetadata()?.serverInfo.name).toBe('transport-fixture');
-      expect(calls.length).toBeGreaterThan(0);
-      for (const c of calls) {
-        const parsed = JSON.parse(c.body);
-        expect(parsed.jsonrpc).toBe('2.0');
-        expect(parsed.method).toBeDefined();
-      }
+      // `method` defined held for any request; pin the envelope each call sent,
+      // in order, with the id a JSON-RPC request needs to be answered.
+      const envelopes = calls.map((c) => JSON.parse(c.body));
+      expect(envelopes.map((e) => [e.jsonrpc, e.method])).toEqual([
+        ['2.0', 'initialize'],
+        ['2.0', 'tools/list'],
+      ]);
+      for (const e of envelopes) expect(typeof e.id).toBe('number');
+      expect(envelopes[0].id).not.toBe(envelopes[1].id);
     } finally {
       (globalThis as { fetch: typeof globalThis.fetch }).fetch = origFetch;
     }
@@ -1191,8 +1194,9 @@ describe('SSETransport — mocked connect + callTool', () => {
       const res = await (
         t as never as { request: (m: string, p: unknown) => Promise<unknown> }
       ).request('tools/call', { name: 'x', arguments: {} });
-      // Should have found the JSON-RPC result in the NDJSON lines
-      expect((res as { result?: unknown }).result).toBeDefined();
+      // The non-JSON "ping" line is skipped and the JSON-RPC line's result is the
+      // one returned — `toBeDefined()` accepted any result, even a wrong line's.
+      expect((res as { result?: unknown }).result).toEqual({ content: 'ok' });
     } finally {
       (globalThis as { fetch: typeof globalThis.fetch }).fetch = origFetch;
     }

@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  type AutonomyStage,
+  type RunTuiOptions,
   runTui,
   silenceTerminal,
   unsilenceTerminal,
-  type AutonomyStage,
-  type RunTuiOptions,
 } from '../src/run-tui.js';
 
 // ─────────────────────────────────────────────────────────────────────
@@ -407,11 +407,18 @@ describe('silenceTerminal / unsilenceTerminal export integrity', () => {
   });
 
   it('silenceTerminal → unsilenceTerminal does not throw', () => {
-    silenceTerminal();
-    unsilenceTerminal();
-    // Call again — should be safe
-    silenceTerminal();
-    unsilenceTerminal();
+    const original = process.stdout.write;
+    expect(() => {
+      silenceTerminal();
+      unsilenceTerminal();
+      // Call again — should be safe
+      silenceTerminal();
+      unsilenceTerminal();
+    }).not.toThrow();
+    // A repeated cycle must leave the REAL writer installed: silencing swaps
+    // process.stdout.write, so a cycle that captured the already-swapped stub
+    // as its "original" would restore a no-op and silence the terminal for good.
+    expect(process.stdout.write).toBe(original);
   });
 
   it('stderr no-op returns true when called after silenceTerminal', () => {

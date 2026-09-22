@@ -154,11 +154,14 @@ describe('GoalRunner event handlers + lifecycle', () => {
       onComplete,
     });
     const graph = await runner.start();
+    expect(onComplete).toHaveBeenCalledWith(graph);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    // cleanup ran (handler unsubscribed) — a second emit is a no-op.
     (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.completed', {
       graphId: graph.id,
       durationMs: 500,
     });
-    expect(onComplete).toHaveBeenCalledWith(graph);
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('graph.failed fires onFail; stopOnFailure=true cleans up', async () => {
@@ -168,17 +171,15 @@ describe('GoalRunner event handlers + lifecycle', () => {
       title: 't',
       phases: phases(),
       events,
-      executeTask: async () => {},
+      executeTask: async () => {
+        throw new Error('boom');
+      },
       onFail,
       stopOnFailure: true,
+      maxRetries: 0,
     });
     const graph = await runner.start();
     const phaseId = Array.from(graph.phases.keys())[0]!;
-    (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.failed', {
-      graphId: graph.id,
-      failedPhaseId: phaseId,
-      error: 'boom',
-    });
     expect(onFail).toHaveBeenCalledTimes(1);
     // cleanup ran (handler unsubscribed) — a second emit is a no-op.
     (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.failed', {
@@ -189,32 +190,29 @@ describe('GoalRunner event handlers + lifecycle', () => {
     expect(onFail).toHaveBeenCalledTimes(1);
   });
 
-  it('graph.failed with stopOnFailure=false does not clean up', async () => {
+  it('cleans up after every terminal graph.failed event', async () => {
     const events = new EventBus();
     const onFail = vi.fn();
     const runner = new GoalRunner({
       title: 't',
       phases: phases(),
       events,
-      executeTask: async () => {},
+      executeTask: async () => {
+        throw new Error('boom');
+      },
       onFail,
-      stopOnFailure: false,
+      stopOnFailure: true,
+      maxRetries: 0,
     });
     const graph = await runner.start();
     const phaseId = Array.from(graph.phases.keys())[0]!;
+    expect(onFail).toHaveBeenCalledTimes(1);
     (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.failed', {
       graphId: graph.id,
       failedPhaseId: phaseId,
       error: 'boom',
     });
     expect(onFail).toHaveBeenCalledTimes(1);
-    // not cleaned up — second emit fires onFail again.
-    (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.failed', {
-      graphId: graph.id,
-      failedPhaseId: phaseId,
-      error: 'x',
-    });
-    expect(onFail).toHaveBeenCalledTimes(2);
   });
 
   it('ignores graph events for a different graph id', async () => {
@@ -228,11 +226,12 @@ describe('GoalRunner event handlers + lifecycle', () => {
       onComplete,
     });
     await runner.start();
+    expect(onComplete).toHaveBeenCalledTimes(1);
     (events as unknown as { emit: (t: string, p: unknown) => void }).emit('graph.completed', {
       graphId: 'other',
       durationMs: 500,
     });
-    expect(onComplete).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('forwards phase callbacks + exposes delegate methods + stop/cleanup', async () => {
@@ -281,28 +280,32 @@ describe('GoalRunner event handlers + lifecycle', () => {
     }
   });
 
-  it('fires the progress interval and the max-run safety-net timer', async () => {
-    vi.useFakeTimers();
-    try {
-      const onProgress = vi.fn();
-      const runner = new GoalRunner({
-        title: 't',
-        phases: phases(),
-        executeTask: async () => {},
-        onProgress,
-        maxRunDurationMs: 5_000,
-      });
-      await runner.start();
-      // Progress interval (2s) fires first, before the 5s safety net.
-      await vi.advanceTimersByTimeAsync(2_000);
-      expect(onProgress).toHaveBeenCalled();
-      const before = onProgress.mock.calls.length;
-      // Advance past the safety-net timeout → it calls onProgress(zeros) + stop() (cleanup).
-      await vi.advanceTimersByTimeAsync(4_000);
-      expect(onProgress.mock.calls.length).toBeGreaterThan(before);
-    } finally {
-      vi.useRealTimers();
-    }
+  it('arms progress and max-run guards while work is active, then clears them on stop', async () => {
+    let markTaskStarted: () => void = () => {};
+    const taskStarted = new Promise<void>((resolve) => {
+      markTaskStarted = resolve;
+    });
+    const runner = new GoalRunner({
+      title: 't',
+      phases: phases(),
+      executeTask: async (_task, _phaseId, _env, signal) => {
+        markTaskStarted();
+        await new Promise<void>((resolve) => {
+          signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+      },
+      onProgress: vi.fn(),
+      maxRunDurationMs: 5_000,
+    });
+    const run = runner.start();
+    await taskStarted;
+    expect((runner as never as { progressInterval: unknown }).progressInterval).not.toBeNull();
+    expect((runner as never as { maxRunTimer: unknown }).maxRunTimer).not.toBeNull();
+
+    runner.stop();
+    await run;
+    expect((runner as never as { progressInterval: unknown }).progressInterval).toBeNull();
+    expect((runner as never as { maxRunTimer: unknown }).maxRunTimer).toBeNull();
   });
 });
 

@@ -107,6 +107,11 @@ vi.mock('../src/slash-commands/kanban-column.js', () => ({
 
 import type { SlashCommandContext } from '../src/slash-commands/command-context.js';
 import { buildKanbanCommand } from '../src/slash-commands/kanban.js';
+import {
+  formatBoardDetail,
+  formatBoardList,
+  formatDependencyChain,
+} from '../src/slash-commands/kanban-format.js';
 
 /** Narrow the slash-command execute/run union (which includes `void`) to its message. */
 function runMessage(result: unknown): string | undefined {
@@ -140,7 +145,10 @@ describe('kanban slash command', () => {
     ]);
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('BOARD LIST');
+    expect(formatBoardList).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'b1', title: 'Board 1' }),
+    ]);
   });
 
   it('creates a board with title', async () => {
@@ -179,13 +187,16 @@ describe('kanban slash command', () => {
     mockGetBoard.mockResolvedValue({ id: 'b1', title: 'Board 1', columns: [], tasks: [] });
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('show b1');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('BOARD DETAIL');
+    expect(formatBoardDetail).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }));
   });
 
   it('returns help when show has no boardId', async () => {
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('show');
-    expect(runMessage(result)).toBeTruthy();
+    // A bare `show` must fall back to the help text, not look up a board.
+    expect(runMessage(result)).toBe('KANBAN HELP');
+    expect(mockGetBoard).not.toHaveBeenCalled();
   });
 
   it('returns error when board not found for show', async () => {
@@ -254,7 +265,8 @@ describe('kanban slash command', () => {
     mockGetKanbanSnapshot.mockResolvedValue({});
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('snapshot');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('SNAPSHOT');
+    expect(mockGetKanbanSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it('exports a board as markdown', async () => {
@@ -262,7 +274,8 @@ describe('kanban slash command', () => {
     mockExportBoardAsMarkdown.mockReturnValue('# Board');
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('export b1');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('# Board');
+    expect(mockExportBoardAsMarkdown).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }));
   });
 
   it('returns error when export has no boardId', async () => {
@@ -287,7 +300,8 @@ describe('kanban slash command', () => {
     });
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('deps b1 t1');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('DEPS');
+    expect(formatDependencyChain).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }), 't1');
   });
 
   it('returns error when deps has insufficient args', async () => {
@@ -334,12 +348,15 @@ describe('kanban slash command', () => {
   it('returns help for unknown subcommand', async () => {
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('totally-unknown');
-    expect(runMessage(result)).toBeTruthy();
+    // Measured: the message names the typo and lists the valid subcommands.
+    const message = runMessage(result) ?? '';
+    expect(message).toContain('Unknown subcommand "totally-unknown" for /kanban.');
+    expect(message).toMatch(/Valid: open, create, /);
   });
 
   it('open/panel subcommand in non-TUI returns message', async () => {
     const cmd = buildKanbanCommand(makeCtx());
     const result = await cmd.run('open');
-    expect(runMessage(result)).toBeTruthy();
+    expect(runMessage(result)).toBe('Kanban panel is only available in the TUI.');
   });
 });

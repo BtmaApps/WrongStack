@@ -103,6 +103,15 @@
     "packages/cli/src/boot/launch-menu.ts": [
       "shouldSkipMenu"
     ],
+    "packages/cli/src/boot/restricted-mode.ts": [
+      "RESTRICTED_DENY_CAPABILITIES",
+      "RESTRICTED_ENV",
+      "validateRestrictedMode"
+    ],
+    "packages/cli/src/boot/safe-mode.ts": [
+      "propagateSafeMode",
+      "SAFE_MODE_ENV"
+    ],
     "packages/cli/src/boot/short-circuit-desktop.ts": [
       "desktopExecutableCandidates",
       "selectDesktopLauncherExecutable",
@@ -192,6 +201,10 @@
     "packages/cli/src/permission-prompt-mirror.ts": [
       "REPL_MIRROR_TTL_MS"
     ],
+    "packages/cli/src/permission-prompt.ts": [
+      "makeHeadlessPromptDelegate",
+      "makePromptDelegate"
+    ],
     "packages/cli/src/picker.ts": [
       "filterProviders",
       "renderLiveProviderList"
@@ -221,10 +234,7 @@
       "cacheTrendVerdict"
     ],
     "packages/cli/src/slash-commands/goal-refiner.ts": [
-      "refineGoal",
-      "refineGoalHeuristic",
-      "refineGoalWithFallback",
-      "resolveRefinerTarget"
+      "refineGoal"
     ],
     "packages/cli/src/slash-commands/memory-triage.ts": [
       "fileProposals"
@@ -269,6 +279,10 @@
     ],
     "packages/cli/src/subcommands/handlers/governance.ts": [
       "runGovernanceStatusCommand"
+    ],
+    "packages/cli/src/subcommands/handlers/import-claude-code.ts": [
+      "planClaudeCodeImport",
+      "readClaudeCodeSources"
     ],
     "packages/cli/src/subcommands/handlers/modeldiag-profiles.ts": [
       "ROLE_CATEGORY"
@@ -573,6 +587,9 @@
     "packages/core/src/security/permission-helpers.ts": [
       "SENSITIVE_PATH_INPUT_KEYS"
     ],
+    "packages/core/src/security/process-lockdown.ts": [
+      "__resetProcessLockdownForTests"
+    ],
     "packages/core/src/security/secret-vault.ts": [
       "keyFileNeedsHardening"
     ],
@@ -597,9 +614,6 @@
     "packages/core/src/storage/director-state.ts": [
       "acquireDirectorStateLock",
       "releaseDirectorStateLock"
-    ],
-    "packages/core/src/storage/goal-store.ts": [
-      "updateGoal"
     ],
     "packages/core/src/types/runtime-capability-manifest.ts": [
       "isDeprecatedRuntimeToolAlias",
@@ -1267,7 +1281,7 @@
     "packages/tui/src/brain-panel-model.ts": [
       "personaCycle"
     ],
-    "packages/tui/src/components/animation-style.tsx": [
+    "packages/tui/src/components/animation-style.ts": [
       "CYCLE_INTERVAL_SECONDS",
       "CYCLE_ORDER",
       "CYCLE_TICK_INTERVAL_MS",
@@ -1323,6 +1337,9 @@
     "packages/tui/src/components/history/sage-output-format.ts": [
       "SAGE_MEMORY_DETAIL"
     ],
+    "packages/tui/src/components/history/scrollbar-rail.tsx": [
+      "scrollbarPropsEqual"
+    ],
     "packages/tui/src/components/inspect-overlay.tsx": [
       "INSPECT_OVERLAY_MIN_ROWS",
       "inspectOverlaySize",
@@ -1337,10 +1354,6 @@
     ],
     "packages/tui/src/components/refine-failure-panel.tsx": [
       "filterRefineModels"
-    ],
-    "packages/tui/src/components/send-mode-picker.tsx": [
-      "formatSendModeMessagePreview",
-      "sendModeFromKey"
     ],
     "packages/tui/src/components/settings-picker-model.ts": [
       "SETTINGS_DEFAULTS"
@@ -1369,11 +1382,13 @@
       "canonicalChipKey",
       "partitionRailEntries"
     ],
-    "packages/tui/src/components/statusline-picker.tsx": [
+    "packages/tui/src/components/statusline-picker-model.ts": [
       "getExpiresInLabel",
       "ITEM_LINE",
-      "lineSelectorText",
       "STREAM_CHIP_EXPIRES_IN_MINUTES"
+    ],
+    "packages/tui/src/components/statusline-picker.tsx": [
+      "lineSelectorText"
     ],
     "packages/tui/src/components/worktree-monitor.tsx": [
       "isWorktreeMonitorCloseKey"
@@ -1486,6 +1501,10 @@
     ],
     "packages/tui/src/memory-slash-gather.ts": [
       "handleGatherSubcommand"
+    ],
+    "packages/tui/src/motion.ts": [
+      "isMotionStatic",
+      "reducedMotionFromEnv"
     ],
     "packages/tui/src/mouse.ts": [
       "MOUSE_CLICK_ON",
@@ -1896,9 +1915,6 @@
     ],
     "packages/webui/src/stores/file-store.ts": [
       "mergePersistedFileStore"
-    ],
-    "packages/webui/src/stores/goal-store.ts": [
-      "useGoalStore"
     ],
     "packages/webui/src/stores/local-prefs.ts": [
       "SESSION_SCOPED_PREFS"

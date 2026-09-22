@@ -12,77 +12,140 @@ export const versionCmd: SubcommandHandler = async (_args, deps) => {
   return 0;
 };
 
+/** One `  left  description` row; long left sides wrap the description onto the next line. */
+function row(left: string, description: string): string {
+  const pad = 31;
+  return left.length < pad - 2
+    ? `  ${left.padEnd(pad - 2)}${description}`
+    : `  ${left}\n${' '.repeat(pad)}${description}`;
+}
+
+function section(title: string, rows: ReadonlyArray<readonly [string, string]>): string[] {
+  return ['', color.bold(title), ...rows.map(([left, description]) => row(left, description))];
+}
+
+/**
+ * Global help. Every row here must name something the CLI actually reads —
+ * `wstack <command> --help` carries the per-command detail, so this page
+ * groups by what the user is trying to do rather than listing everything.
+ */
 export const helpCmd: SubcommandHandler = async (_args, deps) => {
   const lines = [
     color.bold('WrongStack — usage'),
     '',
-    '  wstack                       Start REPL',
-    '  wstack "<task>"              Run task and exit',
-    '  wstack desktop               Open WrongStack Desktop (alias: --desktop)',
-    '  wstack webui                 Serve the project WebUI (alias: --webui)',
-    '  wstack simpleui              Serve the minimal chat UI (alias: --simpleui)',
-    '  wstack hq                    Start HQ command center (alias: --hq)',
-    '  wstack --eternal "<mission>" Launch eternal-autonomy loop against a goal — Ctrl+C to stop',
-    '  wstack resume [<id>]         Resume a session',
-    '  wstack sessions              List recent sessions',
-    '  wstack auth                  Interactive setup + key manager (add/edit/delete)',
-    '  wstack auth list             Quick listing of saved providers and keys',
-    '  wstack auth status <id>      Detailed view of one provider',
-    '  wstack auth remove <id>      Delete a provider (asks for confirmation)',
-    '  wstack auth <provider>       Add a key for a provider (--label, --family, …)',
-    '  wstack auth local [...]      Quick-configure local Ollama / vLLM / LM Studio',
-    '  wstack config [show|edit]    Show or edit effective config',
-    '  wstack tools                 List registered tools',
-    '  wstack skills                List discovered skills',
-    '  wstack typesafe              TypeSafe account: status, login, test, lint-conventions',
-    '  wstack skill-suggest         Preview/tune the TypeSafe skill suggester',
-    '  wstack providers [--all]     List providers from models.dev',
-    '  wstack models [<provider>]   List models',
-    '  wstack models refresh        Force-refresh cache',
-    '  wstack models add <mid>      Add/override custom model (--max-context, --tools, --vision, …)',
-    '  wstack models remove <mid>   Remove a custom model',
-    '  wstack models list           List all custom models',
-    '  wstack mcp [list|add|serve]  Manage MCP servers',
-    '  wstack plugin [list|install|toggle|remove|enable|disable]  Manage plugins',
-    '  wstack project id|init|rekey Manage the committed repository identity',
-    '  wstack governance status     Show advisory project-daemon governance health',
-    '  wstack projects              List tracked projects',
-    '  wstack audit [<id>] [--list] Tamper-evident session audit log',
-    '  wstack replay [<id>] [--list] Recorded provider responses log',
-    '  wstack rewind [<id>] [opts]  Rewind a session to an earlier point',
-    '  wstack chronicle [opts]      Chronological session metrics and timeline',
-    '  wstack mailbox serve [opts]  Start external-agent mailbox HTTP bridge',
-    '  wstack permissions explain   Explain tool permission policy decisions',
-    '  wstack modeldiag [test]      Model benchmarks and capability diagnostics',
-    '  wstack bench [run|compare]   Agentic benchmarks against standard suites',
-    '  wstack acp [serve]           Agent Client Protocol (ACP) server',
-    '  wstack update [--check-only] Self-update the CLI',
-    '  wstack diag                  Full diagnostics',
-    '  wstack doctor                Health checks',
-    '  wstack export <id> [opts]    Render a session',
-    '  wstack usage                 Token + cost summary',
-    '  wstack version               Print version',
-    '',
-    color.bold('Common flags'),
-    '  --yolo / --no-yolo           Force auto-approval on or off at startup',
-    '  --confirm-destructive         Deprecated — YOLO no longer prompts by destructiveness',
-    '  --yolo-destructive           Let YOLO run every destructive kind it is allowed to (see /yolo confirm)',
-    '  --tui / --no-tui             Force or disable TUI mode',
-    '  --mouse                      Full mouse mode in the TUI (in-app scroll + clickable UI)',
-    '  --desktop                    Open WrongStack Desktop (requires @wrongstack/desktop)',
-    '  --hq [--host <h>] [--port <n>] [--password <secret>] [--hq-allowlist <ip,cidr,...>] [--tunnel] [--hq-public-url <https-origin>] [--open]',
-    '                               Start HQ; publish through a temporary tunnel or persistent TLS proxy',
-    '  --webui [--host <h>] [--port <n>] [--webui-token <t>] [--open]',
-    '          [--webui-public-url <url>] [--webui-public-ws-url <url>] [--webui-require-token]',
-    '                               Serve the browser UI + WS bridge (prints a token URL,',
-    "                               --open pops the browser; shares this terminal's agent)",
-    '  --simpleui [same network flags as --webui] [--open]',
-    '                               Serve the independent minimal chat UI',
-    '  --full-auto                   SimpleUI: runtime-only YOLO + Director + autonomy override',
-    '  --eternal "<mission>"        Start an eternal-autonomy loop',
-    '  --skip-index                 Skip codebase indexing on startup',
-    '  --chimera-auto-fix off|ask|auto',
-    '                               How to handle Chimera review findings (default: config value)',
+    '  wstack [flags] ["<task>"]    With a task: run it and exit. Without: start a session.',
+    '  wstack <command> --help      Details for one command',
+    ...section('Start', [
+      ['wstack', 'Interactive session (REPL or TUI, picked at launch)'],
+      ['wstack "<task>"', 'Run one task and exit (also: --prompt "<task>")'],
+      ['wstack quick', 'Straight into the TUI with saved defaults'],
+      ['wstack webui | simpleui', 'Browser UI / minimal chat UI for this project'],
+      ['wstack desktop', 'WrongStack Desktop (requires @wrongstack/desktop)'],
+      ['wstack hq', 'HQ command center across projects and machines'],
+      ['wstack --eternal "<mission>"', 'Eternal-autonomy loop against a goal (Ctrl+C stops)'],
+      ['wstack acp [serve]', 'Agent Client Protocol server for editors'],
+    ]),
+    ...section('Sessions', [
+      ['wstack sessions', 'List recent sessions (also: fork, doctor, fleet)'],
+      ['wstack resume [<id>]', 'Resume a session (same as -r)'],
+      ['wstack rewind [<id>]', 'Rewind a session to an earlier point'],
+      ['wstack export <id>', 'Render a session as markdown, JSON or text'],
+      ['wstack audit | replay [<id>]', 'Tamper-evident audit log / recorded provider responses'],
+      ['wstack chronicle', 'Cross-session timeline and metrics'],
+      ['wstack usage', 'Token and cost summary'],
+    ]),
+    ...section('Setup', [
+      ['wstack auth', 'Provider keys: add/edit/remove, list, status, local'],
+      ['wstack providers | models', 'Browse providers and models; models add|remove|refresh'],
+      ['wstack config', 'Show, edit, back up or restore the active profile config'],
+      ['wstack config-export | config-import', 'Move behaviour settings via ./wstack-config.json'],
+      ['wstack mcp', 'MCP servers: list, add, remove, serve'],
+      ['wstack import-claude-code', 'Import MCP servers from Claude Code (preview; --apply)'],
+      ['wstack plugin', 'Plugins: list, install, enable, disable, remove'],
+      ['wstack tools | skills', 'List registered tools / discovered skills'],
+      ['wstack typesafe', 'TypeSafe account: status, login, test'],
+      ['wstack update', 'Self-update (--check-only)'],
+    ]),
+    ...section('Project & diagnostics', [
+      ['wstack project | projects', 'Committed project identity / tracked projects'],
+      ['wstack permissions explain', 'Why a tool call is allowed, asked or denied'],
+      ['wstack doctor | diag', 'Health checks / full diagnostic dump'],
+      ['wstack governance status', 'Project-daemon health'],
+      ['wstack modeldiag | bench', 'Model capability diagnostics / agentic benchmarks'],
+      ['wstack mailbox serve', 'HTTP bridge for external agents'],
+      ['wstack version', 'Print version'],
+    ]),
+    ...section('Session flags', [
+      ['-c, --continue', 'Resume the most recent session'],
+      ['-r, --resume [<id>]', 'Resume a session (latest when no id)'],
+      ['--recover', 'Reopen the last session that never closed (crash, kill)'],
+      ['--fork-session', 'With -c/-r/--recover: continue a copy, keep the original'],
+      ['--provider <id> --model <id>', 'Provider and model for this run'],
+      ['--fallback-model <a,b,...>', 'Models to fall back to when the primary is unavailable'],
+      ['--effort <level>', 'Reasoning effort: none|minimal|low|medium|high|xhigh|max'],
+      ['--system-prompt lite|pro|default', 'Bundled system-prompt variant'],
+      [
+        '--append-system-prompt <text> | --append-system-prompt-file <path>',
+        'Add instructions to the host agent prompt for this run',
+      ],
+      ['--goal "<goal>" | --ask "<q>"', 'Open the TUI with a goal or a question queued'],
+    ]),
+    ...section('Tools & permissions', [
+      ['--yolo | --no-yolo', 'Auto-approve on or off (gated destructive kinds still ask)'],
+      ['--yolo-destructive', 'Let YOLO run every destructive kind you may un-gate'],
+      ['--restricted', 'Untrusted repo: no shell/network/MCP tools, stay in project, no YOLO'],
+      ['--safe-mode', 'Troubleshoot: no 3rd-party plugins, hooks, MCP, skills, overrides'],
+      ['--only-tools <a,b,...>', 'Expose only these tools (trailing * = prefix: mcp__gh__*)'],
+      ['--disallowed-tools <a,b,...>', 'Hide these tools, subagents included'],
+      ['--allowed-tools <a,b,...>', 'Run these without a prompt (destructive calls still ask)'],
+      ['--mcp-config <file|json>', 'Extra MCP servers for this run (.mcp.json accepted)'],
+      ['--strict-mcp-config', 'Start only the --mcp-config servers'],
+      ['--no-hooks', 'Skip user and plugin hooks (policy hooks still run)'],
+    ]),
+    ...section('Scripting (with a task)', [
+      ['<stdin>', 'Piped input becomes context: git diff | wstack "review this"'],
+      ['--output-json', 'One JSON result line: status, finalText, sessionId, usage'],
+      [
+        '--output-format text|json|stream-json',
+        'stream-json: init, assistant, tool_result, result lines',
+      ],
+      ['--include-partial-messages', 'stream-json: add text_delta lines'],
+      ['--json-schema <file|json>', 'Answer must be JSON matching the schema (structuredOutput)'],
+      ['--max-budget-usd <amount>', 'Stop once spend (leader + subagents) passes the amount'],
+      ['', 'Exit: 0 done, 1 failed/limit/budget/schema, 130 aborted, 2 usage'],
+    ]),
+    ...section('Interfaces', [
+      ['--tui | --no-tui', 'Force or disable the TUI'],
+      ['--mouse', 'Full mouse mode in the TUI'],
+      ['--desktop', 'Same as wstack desktop'],
+      [
+        '--webui [--host <h>] [--port <n>] [--open]',
+        'Browser UI (+ --webui-token, --webui-public-url, ...)',
+      ],
+      [
+        '--simpleui [same flags] [--full-auto]',
+        'Minimal chat UI; --full-auto = YOLO + autonomy for this run only',
+      ],
+      [
+        '--hq [--host <h>] [--port <n>] [--password <p>] [--tunnel] [--open]',
+        'HQ server (+ --hq-allowlist, --hq-public-url)',
+      ],
+    ]),
+    ...section('Startup & tuning', [
+      ['--skip', 'Skip every startup prompt; use saved choices'],
+      ['--skip-index', 'Skip codebase indexing at startup'],
+      ['--no-models-refresh', 'Use the cached model catalog'],
+      ['--token-saving-tier <tier>', 'auto|off|minimal|light|medium|aggressive'],
+      ['--max-concurrent <n> | --max-spawns <n>', 'Fleet concurrency / lifetime subagent spawns'],
+      ['--chimera-auto-fix off|ask|auto', 'How to handle Chimera review findings'],
+      ['--cwd <dir>', 'Run as if started in <dir>'],
+      ['--verbose | --trace | --log-level <l>', 'Log verbosity'],
+      ['--metrics [--metrics-port <n>]', 'Metrics and health; Prometheus endpoint on the port'],
+      [
+        '--record | --replay <session-id>',
+        'Record provider responses / serve them back (test harnesses; a changed prompt misses)',
+      ],
+    ]),
   ];
   deps.renderer.write(lines.join('\n') + '\n');
   return 0;

@@ -1,19 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  validateStdinFragment,
-  validatePasteContent,
-  validateMouseEvent,
-  validateAction,
-  validateFleetEntry,
-  validateRestoreEntry,
-  safeDispatch,
   ensureValidAction,
+  MAX_ACTION_STRING_FIELD,
+  MAX_BATCHED_ACTIONS,
+  MAX_ENTRY_TEXT_CHARS,
   MAX_INPUT_BUFFER_CHARS,
   MAX_PASTE_CHARS,
   MAX_PASTE_FRAGMENT_CHARS,
-  MAX_ENTRY_TEXT_CHARS,
-  MAX_BATCHED_ACTIONS,
-  MAX_ACTION_STRING_FIELD,
+  safeDispatch,
+  validateAction,
+  validateFleetEntry,
+  validateMouseEvent,
+  validatePasteContent,
+  validateRestoreEntry,
+  validateStdinFragment,
 } from '../src/input-validation.js';
 
 // ── validateStdinFragment ───────────────────────────────────────────
@@ -116,7 +116,10 @@ describe('validatePasteContent', () => {
     expect(validatePasteContent('hello\r\nworld').valid).toBe(true);
   });
 
-  it('rejects paste with C0 control chars', () => {
+  // Distinct from the NUL/BEL case above: this pins the 0x01-0x08 range AND the
+  // error message. Both tests shared one title, so the reporter listed the same
+  // name twice and a reader could not tell which case had regressed.
+  it('rejects paste with C0 control chars and names the reason', () => {
     // C0 control chars (0x01-0x08) are caught by the C0 check
     const binary = '\x01\x02\x03\x04' + 'aaaaaa';
     const result = validatePasteContent(binary);

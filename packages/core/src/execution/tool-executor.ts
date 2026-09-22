@@ -179,7 +179,12 @@ export class ToolExecutor {
       let effectivePermission = decision.permission;
       const policy = this.opts.permissionPolicy;
       const yolo = policy.getYolo?.() === true;
-      const authoritativeAuto = decision.source === 'yolo';
+      // A trust-file `auto` must not widen into arbitrary dangerous-capability
+      // execution, so it still confirms below. YOLO and an explicit
+      // `--allowed-tools` grant are the operator's own launch decision; without
+      // this waiver `--allowed-tools write` re-prompted — and in a script
+      // (nobody to answer) the write was simply denied.
+      const authoritativeAuto = decision.source === 'yolo' || decision.launchGrant === true;
 
       const capabilityDowngraded =
         toolDangerousCaps.length > 0 &&
@@ -224,6 +229,7 @@ export class ToolExecutor {
 
       if (effectivePermission === 'deny') {
         const result = deniedResult(use, decision.reason);
+        await this.toolSkipped(tool, use, ctx, String(result.content));
         budget = this.budgetForString(result.content, budget);
         return { result, tool, durationMs: Date.now() - start };
       }
@@ -291,6 +297,7 @@ export class ToolExecutor {
                   : `Tool "${tool.name}" denied by user.`,
               is_error: true,
             };
+            await this.toolSkipped(tool, use, ctx, result.content);
             budget = this.budgetForString(result.content, budget);
             return { result, tool, durationMs: Date.now() - start };
           }
@@ -325,6 +332,7 @@ export class ToolExecutor {
           toolCapsForAudit.length > 0 ? JSON.stringify(tool.capabilities ?? []) : '[]',
         'tool.has_dangerous_capabilities': toolCapsForAudit.length > 0,
       });
+      let postRan = false;
       try {
         const inputPath =
           use.input && typeof use.input === 'object'
@@ -357,6 +365,7 @@ export class ToolExecutor {
             ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`
             : preToolContext.text;
         }
+        postRan = true;
         if (this.opts.hookRunner?.has('PostToolUse')) {
           const post = await this.opts.hookRunner.postToolUse(
             tool.name,
@@ -429,6 +438,7 @@ export class ToolExecutor {
 
         return { result, tool, durationMs: Date.now() - start };
       } catch (err) {
+        if (!postRan) await this.toolSkipped(tool, use, ctx, toErrorMessage(err));
         if (isWrongStackError(err)) {
           if (err instanceof Error) span?.recordError(err);
           span?.setAttribute('tool.is_error', true);
@@ -566,7 +576,13 @@ export class ToolExecutor {
     preToolContext?: { text: string; contextAs: 'inline' | 'separate' },
   ): Promise<{ block: ToolResultBlock; bytes: number }> {
     return this.withGovernedExecutionBridge(ctx, async () => {
-      let text = await this.produceToolOutput(tool, use, ctx, budget);
+      let text: string;
+      try {
+        text = await this.produceToolOutput(tool, use, ctx, budget);
+      } catch (err) {
+        await this.toolSkipped(tool, use, ctx, toErrorMessage(err));
+        throw err;
+      }
       if (preToolContext?.contextAs === 'inline') {
         text = `${text}\n\n${preToolContext.text}`;
       }
@@ -576,8 +592,54 @@ export class ToolExecutor {
           ? `${ctx.pendingPostToolContext}\n\n${preToolContext.text}`
           : preToolContext.text;
       }
+      // This is the run a confirm prompt approved. It used to skip PostToolUse
+      // entirely, so an approved write never released the file lock its
+      // PreToolUse claimed and never reached post-write hooks (type-gate...).
+      if (this.opts.hookRunner?.has('PostToolUse')) {
+        const post = await this.opts.hookRunner.postToolUse(
+          tool.name,
+          use.input,
+          { content: String(settled.block.content), isError: !!settled.block.is_error },
+          ctx,
+        );
+        if (post.additionalContext) {
+          if (post.contextAs === 'separate') {
+            ctx.pendingPostToolContext = ctx.pendingPostToolContext
+              ? `${ctx.pendingPostToolContext}\n\n${post.additionalContext}`
+              : post.additionalContext;
+          } else {
+            const appended = `\n\n${post.additionalContext}`;
+            return {
+              block: { ...settled.block, content: `${settled.block.content}${appended}` },
+              bytes: settled.bytes + Buffer.byteLength(appended, 'utf8'),
+            };
+          }
+        }
+      }
       return settled;
     });
+  }
+
+  /**
+   * PreToolUse ran for this call but the tool will not run (denied, rejected,
+   * aborted, threw). Lets claim-releasing PostToolUse hooks undo what
+   * PreToolUse took; see `HookRegistrationOptions.runWhenToolSkipped`.
+   */
+  async abandonTool(tool: Tool, use: ToolUseBlock, ctx: Context, reason: string): Promise<void> {
+    await this.toolSkipped(tool, use, ctx, reason);
+  }
+
+  private async toolSkipped(
+    tool: Tool,
+    use: ToolUseBlock,
+    ctx: Context,
+    reason: string,
+  ): Promise<void> {
+    try {
+      await this.opts.hookRunner?.toolSkipped(tool.name, use.input, reason, ctx);
+    } catch {
+      // Cleanup only; the call already has its result.
+    }
   }
 
   private async produceToolOutput(

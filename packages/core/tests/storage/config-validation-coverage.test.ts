@@ -6,8 +6,8 @@ import {
   validateConfigBehavior,
   validateConfigIdentity,
 } from '../../src/storage/config-loader/validation.js';
-import { ConfigError } from '../../src/types/errors.js';
 import type { ContextConfig } from '../../src/types/config/context.js';
+import { ConfigError } from '../../src/types/errors.js';
 
 function validConfig(): { version: 1; context: ContextConfig } {
   return {
@@ -81,12 +81,48 @@ describe('validateConfigBehavior', () => {
     expect(warnCalled).toBe(true);
   });
 
-  it('normalizes known context.mode', () => {
+  // The previous body set `mode = 'balanced'` — already a valid id — and then
+  // asserted `toBeDefined()`, which held before validate even ran. It exercised
+  // the no-op path and could only fail if validate DELETED the field. The real
+  // normalisation is the deprecated-alias rewrite, pinned here with its
+  // neighbours so each branch is distinguishable.
+  it('normalizes a deprecated context.mode alias to its current id, silently', () => {
     const cfg = validConfig();
-    cfg.context.mode = 'balanced' as any;
-    validateConfigBehavior(cfg, () => {});
-    expect(cfg.context.mode).toBeDefined();
+    cfg.context.mode = 'archival' as any;
+    const warnings: string[] = [];
+    validateConfigBehavior(cfg, (w) => warnings.push(String(w)));
+    expect(cfg.context.mode).toBe('balanced');
+    // A known alias is a rename, not a mistake — it must not warn.
+    expect(warnings).toEqual([]);
   });
+
+  it.each([['balanced'], ['frugal'], ['deep']])(
+    'preserves the valid context.mode %j unchanged',
+    (mode) => {
+      const cfg = validConfig();
+      cfg.context.mode = mode as any;
+      const warnings: string[] = [];
+      validateConfigBehavior(cfg, (w) => warnings.push(String(w)));
+      expect(cfg.context.mode).toBe(mode);
+      expect(warnings).toEqual([]);
+    },
+  );
+
+  // Ids are case-sensitive: `BALANCED` is NOT normalised case-insensitively, it
+  // is an unknown id that happens to fall back to the same default. Pinned so a
+  // reader does not mistake that coincidence for case folding.
+  it.each([['nonsense'], ['BALANCED']])(
+    'falls back to balanced and warns for unknown %j',
+    (mode) => {
+      const cfg = validConfig();
+      cfg.context.mode = mode as any;
+      const warnings: string[] = [];
+      validateConfigBehavior(cfg, (w) => warnings.push(String(w)));
+      expect(cfg.context.mode).toBe('balanced');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain(`unknown context.mode "${mode}"`);
+    },
+  );
 });
 
 describe('validateConfigIdentity', () => {

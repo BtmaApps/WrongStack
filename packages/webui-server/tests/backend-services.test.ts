@@ -35,11 +35,27 @@ vi.mock('@wrongstack/core/coordination', () => ({
   ObservableBrainArbiter: class {},
 }));
 
+// Every AutoCompactionMiddleware the factory builds, so tests can assert what the
+// model-switch closure told it (max context, enabled) — the instance is private.
+const autoCompactors = vi.hoisted(
+  () =>
+    [] as Array<{
+      initialMaxContext: number;
+      setMaxContext: ReturnType<typeof vi.fn>;
+      setEnabled: ReturnType<typeof vi.fn>;
+    }>,
+);
+
 vi.mock('@wrongstack/core/execution', () => ({
   AutoCompactionMiddleware: class {
     handler = vi.fn(() => vi.fn());
     setMaxContext = vi.fn();
     setEnabled = vi.fn();
+    initialMaxContext: number;
+    constructor(_compactor: unknown, maxContext: number) {
+      this.initialMaxContext = maxContext;
+      autoCompactors.push(this);
+    }
   },
   createBrainRuntime: vi.fn(() => ({
     arbiter: { decide: vi.fn() },
@@ -128,8 +144,10 @@ vi.mock('../src/server/model-catalog.js', () => ({
 
 import { createStrategyCompactor } from '@wrongstack/core/execution';
 import { TOKENS } from '@wrongstack/core/kernel';
+import { CONTEXT_WINDOW_MODE_PINNED_META_KEY } from '@wrongstack/core/types';
 import { makeLightSubagentFactory } from '@wrongstack/runtime';
 import { createAgentServices } from '../src/server/backend-services.js';
+import { resolveProviderModelMetadata } from '../src/server/model-catalog.js';
 
 function makeInput(): any {
   return {
@@ -328,18 +346,116 @@ describe('createAgentServices', () => {
   it('disposeRealtimeHandlers is idempotent', async () => {
     const services = await createAgentServices(makeInput());
     services.disposeRealtimeHandlers();
-    services.disposeRealtimeHandlers();
+    // `not.toThrow()` alone passed even without the guard: the mocked handlers'
+    // dispose() is a no-op, so a second full teardown was invisible. Idempotent
+    // means each handler is torn down exactly ONCE.
+    expect(() => services.disposeRealtimeHandlers()).not.toThrow();
+    expect(services.goalHandler.dispose).toHaveBeenCalledTimes(1);
+    expect(services.collabHandler.dispose).toHaveBeenCalledTimes(1);
   });
 
-  it('updateAutoCompactionMaxContext runs without throwing', async () => {
-    const services = await createAgentServices(makeInput());
-    await expect(
-      services.updateAutoCompactionMaxContext(
-        { id: 'openai', capabilities: { maxContext: 200000 } } as any,
-        'openai',
-        { type: 'openai' },
-      ),
-    ).resolves.toBeUndefined();
+  describe('updateAutoCompactionMaxContext (model switch)', () => {
+    beforeEach(() => {
+      autoCompactors.length = 0;
+      // The boot-time lookup uses the same mock; default it to "no catalog entry".
+      vi.mocked(resolveProviderModelMetadata).mockResolvedValue(undefined);
+    });
+
+    function switchedProvider(maxContext: number) {
+      return { id: 'openai', capabilities: { maxContext, tools: true } } as any;
+    }
+
+    it('prefers the catalog window and propagates it to every consumer', async () => {
+      const input = makeInput();
+      const services = await createAgentServices(input);
+      vi.mocked(resolveProviderModelMetadata).mockResolvedValue({
+        capabilities: { maxContext: 1_000_000 },
+      } as never);
+      const next = switchedProvider(200_000);
+
+      await services.updateAutoCompactionMaxContext(next, 'openai', { type: 'openai' } as never);
+
+      expect(next.capabilities.maxContext).toBe(1_000_000);
+      expect(input.context.meta.effectiveMaxContext).toBe(1_000_000);
+      expect(input.modelCapabilitiesRef.current).toEqual({
+        maxContextTokens: 1_000_000,
+        supportsTools: true,
+        supportsVision: false,
+        supportsReasoning: false,
+      });
+      expect(autoCompactors[0]?.setMaxContext).toHaveBeenCalledWith(1_000_000);
+      expect(autoCompactors[0]?.setEnabled).toHaveBeenCalledWith(true);
+      expect(input.events.emit).toHaveBeenCalledWith('ctx.max_context', {
+        sessionId: 'sess-1',
+        providerId: 'openai',
+        modelId: 'gpt-4o',
+        maxContext: 1_000_000,
+      });
+    });
+
+    it('falls back to config.context.effectiveMaxContext when the catalog has nothing', async () => {
+      const input = makeInput(); // effectiveMaxContext: 128000
+      const services = await createAgentServices(input);
+      const next = switchedProvider(200_000);
+      await services.updateAutoCompactionMaxContext(next, 'openai', { type: 'openai' } as never);
+      expect(next.capabilities.maxContext).toBe(128_000);
+      expect(autoCompactors[0]?.setMaxContext).toHaveBeenCalledWith(128_000);
+    });
+
+    it.each([0, -1])(
+      'treats a configured window of %d as unset — like boot and the CLI',
+      async (configured) => {
+        // Regression: boot fell through to the provider window for 0, but the
+        // switch path used `??`, kept the 0, wrote it into the new provider's
+        // capabilities and disabled auto-compaction on the next model switch.
+        const input = makeInput();
+        input.config.context.effectiveMaxContext = configured;
+        const services = await createAgentServices(input);
+        expect(autoCompactors[0]?.initialMaxContext).toBe(128_000); // boot: provider window
+
+        const next = switchedProvider(200_000);
+        await services.updateAutoCompactionMaxContext(next, 'openai', { type: 'openai' } as never);
+
+        expect(next.capabilities.maxContext).toBe(200_000);
+        expect(input.context.meta.effectiveMaxContext).toBe(200_000);
+        expect(autoCompactors[0]?.setEnabled).toHaveBeenCalledWith(true);
+        expect(autoCompactors[0]?.setEnabled).not.toHaveBeenCalledWith(false);
+      },
+    );
+
+    it('an unknown window (0 everywhere) disables compaction and clears the meta', async () => {
+      const input = makeInput();
+      input.config.context.effectiveMaxContext = undefined;
+      const services = await createAgentServices(input);
+      input.context.meta.effectiveMaxContext = 128_000;
+
+      await services.updateAutoCompactionMaxContext(switchedProvider(0), 'openai', {
+        type: 'openai',
+      } as never);
+
+      expect('effectiveMaxContext' in input.context.meta).toBe(false);
+      expect(input.modelCapabilitiesRef.current).toBeUndefined();
+      expect(autoCompactors[0]?.setEnabled).toHaveBeenCalledWith(false);
+      expect(autoCompactors[0]?.setMaxContext).not.toHaveBeenCalled();
+    });
+
+    it('re-resolves the window policy on a switch, but leaves a pinned policy alone', async () => {
+      const input = makeInput();
+      input.config.context.effectiveMaxContext = undefined;
+      const services = await createAgentServices(input);
+
+      await services.updateAutoCompactionMaxContext(switchedProvider(200_000), 'openai', {
+        type: 'openai',
+      } as never);
+      expect(input.context.meta.contextWindowMode).toBe('balanced');
+
+      input.context.meta.contextWindowMode = 'frugal';
+      input.context.meta[CONTEXT_WINDOW_MODE_PINNED_META_KEY] = true;
+      await services.updateAutoCompactionMaxContext(switchedProvider(1_000_000), 'openai', {
+        type: 'openai',
+      } as never);
+      expect(input.context.meta.contextWindowMode).toBe('frugal');
+    });
   });
 
   it('brainLedger getter returns undefined when disabled', async () => {

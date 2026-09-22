@@ -14,20 +14,67 @@ function deriveGoalRunStatus(
   return 'running';
 }
 
+function parseGoalProgress(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const p = value as Record<string, unknown>;
+  const keys = [
+    'totalPhases',
+    'completed',
+    'failed',
+    'totalTasks',
+    'completedTasks',
+    'failedTasks',
+  ] as const;
+  if (keys.some((key) => typeof p[key] !== 'number' || !Number.isFinite(p[key]))) {
+    return undefined;
+  }
+  return {
+    totalPhases: p.totalPhases as number,
+    completed: p.completed as number,
+    failed: p.failed as number,
+    totalTasks: p.totalTasks as number,
+    completedTasks: p.completedTasks as number,
+    failedTasks: p.failedTasks as number,
+  };
+}
+
 export function handleGoalState(msg: WSServerMessage) {
   const p = msg.payload as Record<string, unknown>;
   const phases = Array.isArray(p.phases) ? (p.phases as PhaseItem[]) : undefined;
-  const status = deriveGoalRunStatus(phases);
+  const explicitStatus =
+    typeof p.status === 'string' &&
+    ['idle', 'running', 'paused', 'completed', 'failed', 'stopped'].includes(p.status)
+      ? (p.status as ReturnType<typeof useGoalRunStore.getState>['status'])
+      : undefined;
+  const status = explicitStatus ?? deriveGoalRunStatus(phases);
+  const progress = parseGoalProgress(p.progress);
+  const serverError = typeof p.lastError === 'string' ? p.lastError : null;
+  const finalVerification =
+    p.finalVerification &&
+    typeof p.finalVerification === 'object' &&
+    !Array.isArray(p.finalVerification) &&
+    ((p.finalVerification as Record<string, unknown>).status === 'passed' ||
+      (p.finalVerification as Record<string, unknown>).status === 'failed') &&
+    typeof (p.finalVerification as Record<string, unknown>).checkedAt === 'number'
+      ? (p.finalVerification as NonNullable<
+          ReturnType<typeof useGoalRunStore.getState>['finalVerification']
+        >)
+      : p.finalVerification === null
+        ? null
+        : undefined;
   useGoalRunStore.getState().setState({
     phases,
     activePhaseId: typeof p.activePhaseId === 'string' ? p.activePhaseId : undefined,
     overallPercent: typeof p.overallPercent === 'number' ? p.overallPercent : undefined,
     autonomous: typeof p.autonomous === 'boolean' ? p.autonomous : undefined,
     title: typeof p.title === 'string' ? p.title : undefined,
+    graphId: typeof p.graphId === 'string' ? p.graphId : p.graphId === null ? null : undefined,
     goal: typeof p.goal === 'string' ? p.goal : undefined,
     status,
     multiBoard: p.multiBoard === true,
-    lastError: status === 'failed' ? useGoalRunStore.getState().lastError : null,
+    progress,
+    finalVerification,
+    lastError: status === 'failed' ? serverError : null,
   });
 }
 
@@ -135,4 +182,15 @@ export function handleGoalList(msg: WSServerMessage) {
 export function handleGoalUpdated(msg: WSServerMessage) {
   const p = msg.payload as Record<string, unknown> | null;
   useGoalStateStore.getState().setGoal(p);
+}
+
+export function handleGoalRefining(msg: WSServerMessage) {
+  const payload = msg.payload as { missionId?: unknown; active?: unknown };
+  if (typeof payload.missionId !== 'string' || typeof payload.active !== 'boolean') return;
+  useGoalStateStore.getState().setRefining(payload.missionId, payload.active);
+}
+
+export function handleGoalStateError(msg: WSServerMessage) {
+  const payload = msg.payload as { message?: unknown };
+  toast.error(typeof payload.message === 'string' ? payload.message : 'Goal mission update failed');
 }

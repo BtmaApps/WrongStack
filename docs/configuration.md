@@ -332,6 +332,18 @@ project-local pro prompt that is not committed, create:
 That file is used when `variant` is `"pro"` and overrides the bundled
 `packages/core/instructions/system-pro.md` for that project.
 
+To add instructions on top of whichever baseline is active — without replacing
+it — use the append flags. The text lands after the environment block of the
+host agent's prompt (subagents do not receive it) and is not persisted:
+
+```bash
+wstack --append-system-prompt "Answer in Turkish."
+wstack --append-system-prompt-file ./ci-rules.md
+```
+
+Both may be combined; the inline text comes first. An unreadable file is a
+usage error (exit 2) rather than a silently dropped instruction.
+
 ---
 
 ## `providers` — Per-provider configuration
@@ -708,6 +720,20 @@ Every detection emits a `tool.loop_detected` event with `action` (`steer`/`cut`)
 | `tls.ca` | `string` | — | Path to CA certificate file (HTTPS transports). |
 | `tls.rejectUnauthorized` | `boolean` | `true` | Verify server certificate (set `false` for self-signed). |
 
+### Per-run servers (`--mcp-config`)
+
+`--mcp-config <file|json>` starts extra servers for one run without touching
+config. It reads Claude Code's `.mcp.json` shape (`type: "stdio" | "http" |
+"sse"`) as well as the `transport` form above, with or without the
+`mcpServers` wrapper. A same-named entry replaces the configured one, and
+`--strict-mcp-config` starts only the flag's servers. These servers run even
+when `features.mcp` is off — naming them on the command line is the opt-in.
+
+```bash
+wstack --mcp-config .mcp.json --strict-mcp-config "triage open issues"
+wstack --mcp-config '{"mcpServers":{"gh":{"type":"http","url":"https://example/mcp"}}}' "..."
+```
+
 ### Built-in presets
 
 WrongStack ships with a set of built-in MCP server presets. Use
@@ -829,6 +855,9 @@ are omitted instead of being sent to the provider.
 enable/disable field and the provider/model default wins. `"on"` requests
 reasoning when supported. `"off"` requests disable only for models that advertise
 safe disable support.
+
+`--effort <level>` sets `reasoning.effort` for one launch (same levels as
+above); an unknown level is ignored and the configured effort stays.
 
 The TUI `/settings` picker and WebUI Settings panel expose the top-level
 reasoning and cache controls. Use `modelMatrix[*].modelRuntime` for

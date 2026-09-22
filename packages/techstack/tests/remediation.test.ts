@@ -156,6 +156,65 @@ describe('generateUpgradePlan', () => {
     expect(pyItem?.suggestedCommand?.split(/\s+/)).toContain(specifier);
   });
 
+  it('suggests a versioned dotnet command using the CLI --version syntax', () => {
+    const dependency: DependencyObservation = {
+      ...DEPS[0]!,
+      id: 'dep-dotnet',
+      ecosystem: 'dotnet',
+      name: 'Newtonsoft.Json',
+      latestStable: '2.0.0',
+    };
+    const snapshot: Snapshot = {
+      ...SNAPSHOT,
+      dependencies: [dependency],
+      findings: [{ ...FINDINGS[0]!, dependencyId: dependency.id }],
+    };
+    const item = generateUpgradePlan(snapshot).items[0];
+    expect(item?.suggestedCommand).toBe('dotnet add package Newtonsoft.Json --version 2.0.0');
+    expect(
+      toLanguagePackageInput({
+        ecosystem: 'dotnet',
+        workspaceId: 'ws-1',
+        dependencyName: dependency.name,
+        action: 'upgrade_minor',
+        targetVersion: '2.0.0',
+      }).names,
+    ).toEqual(['Newtonsoft.Json@2.0.0']);
+  });
+
+  it('does not invent latest specifiers when no target version is known', () => {
+    for (const [ecosystem, name, prefix] of [
+      ['npm', 'lodash', 'npm install'],
+      ['rust', 'serde', 'cargo add'],
+      ['go', 'example.com/module', 'go get'],
+      ['php', 'monolog/monolog', 'composer require'],
+      ['dotnet', 'Newtonsoft.Json', 'dotnet add package'],
+      ['python', 'requests', 'pip install'],
+    ] as const) {
+      const dependency: DependencyObservation = {
+        ...DEPS[0]!,
+        id: `dep-${ecosystem}`,
+        ecosystem,
+        name,
+        latestStable: undefined,
+      };
+      const snapshot: Snapshot = {
+        ...SNAPSHOT,
+        dependencies: [dependency],
+        findings: [{ ...FINDINGS[0]!, dependencyId: dependency.id }],
+      };
+      const item = generateUpgradePlan(snapshot).items[0];
+      const specifier = toLanguagePackageInput({
+        ecosystem,
+        workspaceId: 'ws-1',
+        dependencyName: name,
+        action: 'upgrade_minor',
+      }).names?.[0];
+      expect(specifier).toBe(name);
+      expect(item?.suggestedCommand).toBe(`${prefix} ${specifier}`);
+    }
+  });
+
   it('summary counts match items', () => {
     const plan = generateUpgradePlan(SNAPSHOT);
     expect(plan.summary.total).toBe(3);

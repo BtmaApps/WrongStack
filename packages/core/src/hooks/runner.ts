@@ -324,6 +324,31 @@ export class HookRunner {
       : {};
   }
 
+  /**
+   * PreToolUse allowed `toolName`, but the tool never ran (denied, rejected,
+   * aborted, threw). Only PostToolUse hooks registered with
+   * `runWhenToolSkipped` run — hooks that must undo what their PreToolUse half
+   * claimed. Output is ignored and failures are swallowed: the call already
+   * has its result, and cleanup must never replace it.
+   */
+  async toolSkipped(
+    toolName: string,
+    toolInput: unknown,
+    reason: string,
+    env: HookRunEnv,
+  ): Promise<void> {
+    const entries = this.matching('PostToolUse', toolName).filter((e) => e.runWhenToolSkipped);
+    if (entries.length === 0) return;
+    const payload: HookInput = {
+      event: 'PostToolUse',
+      toolName,
+      toolInput,
+      toolResult: { content: reason, isError: true },
+      ...this.base(env),
+    };
+    await Promise.allSettled(entries.map((entry) => this.invoke(entry, payload, env)));
+  }
+
   async userPromptSubmit(prompt: string, env: HookRunEnv): Promise<PromptResult> {
     // A turn that ran no tools still collects whatever a background hook
     // finished since the last boundary.

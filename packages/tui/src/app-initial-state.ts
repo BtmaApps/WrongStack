@@ -215,6 +215,7 @@ export function createInitialState(options: CreateInitialStateOptions): State {
     copiedNotice: '',
     copiedEntryId: null,
     inspectOverlay: null,
+    chatSearch: null,
     toolResultViewOverrides: new Map(),
     brain: { state: 'idle' },
     brainPrompt: null,

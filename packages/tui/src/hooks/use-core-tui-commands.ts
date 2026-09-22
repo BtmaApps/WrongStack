@@ -9,12 +9,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
 import type { Action } from '../app-action-type.js';
 import type { AppProps } from '../app-props.js';
 import type { State } from '../app-state.js';
+import { createChatSearchSlashCommand } from '../chat-search-slash.js';
 import { createConnectionsSlashCommand } from '../connections-slash.js';
-import { createWorkbenchSlashCommand } from '../workbench-slash.js';
 import { createContextSlashCommand } from '../context-slash.js';
 import { createCronJobsGetter, createCronSlashCommand } from '../cron-slash.js';
 import { createKanbanSlashCommand } from '../kanban-slash.js';
@@ -24,6 +25,7 @@ import { createMemorySlashCommand } from '../memory-slash.js';
 import { createPsSlashCommand } from '../ps-slash.js';
 import { registerSlashCommandLifecycle } from '../slash-command-lifecycle.js';
 import { buildSteeringPreamble } from '../steering-preamble.js';
+import { createWorkbenchSlashCommand } from '../workbench-slash.js';
 
 interface CoreTuiCommandsOptions {
   agent: AppProps['agent'];
@@ -44,6 +46,7 @@ interface CoreTuiCommandsOptions {
   streamingTextRef: MutableRefObject<string>;
   director: AppProps['director'];
   handleRewindTo: (index: number) => Promise<void>;
+  getSettings?: AppProps['getSettings'] | undefined;
 }
 
 /** Registers process/context/kanban/steer/rewind/agents commands. */
@@ -66,6 +69,7 @@ export function useCoreTuiCommands({
   streamingTextRef,
   director,
   handleRewindTo,
+  getSettings,
 }: CoreTuiCommandsOptions): {
   getCronJobs: ReturnType<typeof createCronJobsGetter>;
   runSteerSequence: (text: string) => {
@@ -76,6 +80,8 @@ export function useCoreTuiCommands({
 } {
   const stdout = { columns: terminalWidth };
   const getCronJobs = useMemo(() => createCronJobsGetter(agent), [agent]);
+  const getSettingsRef = useRef(getSettings);
+  getSettingsRef.current = getSettings;
   useEffect(() => {
     const cleanups: Array<() => void> = [];
     cleanups.push(registerSlashCommandLifecycle(slashRegistry, createKillSlashCommand()));
@@ -118,6 +124,15 @@ export function useCoreTuiCommands({
 
     cleanups.push(
       registerSlashCommandLifecycle(slashRegistry, createConnectionsSlashCommand({ onPanelOpen })),
+    );
+    cleanups.push(
+      registerSlashCommandLifecycle(
+        slashRegistry,
+        createChatSearchSlashCommand({
+          dispatch,
+          includeReasoning: () => getSettingsRef.current?.()?.showModelReasoning ?? true,
+        }),
+      ),
     );
     cleanups.push(
       registerSlashCommandLifecycle(

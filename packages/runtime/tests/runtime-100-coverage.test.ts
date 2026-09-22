@@ -1041,6 +1041,24 @@ describe('runtime 100 coverage completion', () => {
         );
       }
 
+      // The loop drove the eviction path and checked nothing, so a cache that
+      // threw once full — or a handler that stopped forwarding after eviction —
+      // passed identically. Assert the boundary still works PAST the cap and
+      // that nothing was logged as a problem along the way.
+      const next = vi.fn(async (p: unknown) => p);
+      await expect(
+        handler(
+          {
+            ctx: { session: { id: 'sess-after-eviction' } },
+            toolUse: { id: 'tool-after-eviction' },
+            tool: { mutating: false },
+            result: {},
+          },
+          next,
+        ),
+      ).resolves.toBeDefined();
+      expect(next).toHaveBeenCalled();
+
       await bridge.close();
     });
 

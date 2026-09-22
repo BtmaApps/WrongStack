@@ -1,10 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
-import type { EventBus } from './event-bus-port.js';
+import { ERROR_CODES, FsError } from '../types/errors.js';
 import { atomicWrite, withFileLock } from '../utils/atomic-write.js';
-import { toErrorMessage } from '../utils/error.js';
 import { color } from '../utils/color.js';
+import { toErrorMessage } from '../utils/error.js';
 import { resolveWstackPaths } from '../utils/wstack-paths.js';
-import { FsError, ERROR_CODES } from '../types/errors.js';
+import type { EventBus } from './event-bus-port.js';
 
 /**
  * Long-running autonomous mission. A goal survives across sessions and
@@ -39,6 +40,8 @@ export interface GoalFile {
   version: 1;
   /** The raw mission statement as entered by the user. */
   goal: string;
+  /** Unique generation used to reject refinement results from a replaced mission. */
+  missionId?: string | undefined;
   /**
    * LLM-refined version of the goal — unambiguous, with concrete
    * deliverables and acceptance criteria.
@@ -302,6 +305,35 @@ export function emptyGoal(goal: string): GoalFile {
     iterations: 0,
     engineState: 'idle',
     goalState: 'active',
+    todoAttempts: {},
+    journal: [],
+  };
+}
+
+/** Replace a mission while retaining project-level links and clearing old run evidence. */
+export function replaceGoalMission(
+  current: GoalFile | null,
+  goal: string,
+  refined: { refinedGoal: string; deliverables: string[] },
+): GoalFile {
+  const now = new Date().toISOString();
+  return {
+    ...(current ?? emptyGoal(goal)),
+    goal,
+    missionId: randomUUID(),
+    refinedGoal: refined.refinedGoal,
+    deliverables: refined.deliverables,
+    setAt: now,
+    lastActivityAt: now,
+    iterations: 0,
+    engineState: 'idle',
+    goalState: 'active',
+    progress: undefined,
+    progressNote: undefined,
+    progressHistory: undefined,
+    progressTrend: undefined,
+    reachedAt: undefined,
+    reachedNote: undefined,
     todoAttempts: {},
     journal: [],
   };

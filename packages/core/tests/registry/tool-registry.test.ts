@@ -430,3 +430,92 @@ describe('ToolRegistry registration + mode branches', () => {
     expect(second).toBe(first); // same cached ref (no mutation between)
   });
 });
+
+describe('ToolRegistry session restriction', () => {
+  const names = (r: ToolRegistry) =>
+    r
+      .list()
+      .map((x) => x.name)
+      .sort();
+
+  it('only-list hides every other tool but keeps the lazy gateways', () => {
+    const r = new ToolRegistry();
+    for (const n of ['read', 'bash', 'tool_search', 'tool_use']) r.register(t(n));
+    r.setSessionRestriction({ only: ['read'] });
+    expect(names(r)).toEqual(['read', 'tool_search', 'tool_use']);
+    expect(r.get('bash')).toBeUndefined();
+  });
+
+  it('deny hides tools, including gateways named explicitly', () => {
+    const r = new ToolRegistry();
+    for (const n of ['read', 'bash', 'tool_use']) r.register(t(n));
+    r.setSessionRestriction({ deny: ['bash', 'tool_use'] });
+    expect(names(r)).toEqual(['read']);
+  });
+
+  it('applies to tools registered afterwards (lazy MCP servers) via prefix globs', () => {
+    const r = new ToolRegistry();
+    r.setSessionRestriction({ deny: ['mcp__github__*'] });
+    r.register(t('mcp__github__create_issue'));
+    r.register(t('mcp__jira__search'));
+    expect(names(r)).toEqual(['mcp__jira__search']);
+  });
+
+  it('cannot be lifted by enable() and survives clone()', () => {
+    const r = new ToolRegistry();
+    r.register(t('bash'));
+    r.setSessionRestriction({ deny: ['bash'] });
+    expect(r.enable('bash')).toBe(false);
+    expect(r.enableAll()).toBe(0);
+    expect(r.get('bash')).toBeUndefined();
+    expect(r.clone().get('bash')).toBeUndefined();
+    expect(r.ownerOf('bash')).toBe('core');
+  });
+
+  it('invalidates the cached list', () => {
+    const r = new ToolRegistry();
+    r.register(t('a'));
+    r.register(t('b'));
+    expect(names(r)).toEqual(['a', 'b']);
+    r.setSessionRestriction({ deny: ['b'] });
+    expect(names(r)).toEqual(['a']);
+  });
+});
+
+describe('ToolRegistry capability restriction', () => {
+  const withCaps = (name: string, capabilities?: string[]) => ({
+    ...t(name),
+    ...(capabilities ? { capabilities } : {}),
+  });
+
+  it('hides tools by declared capability but never the lazy gateways', () => {
+    const r = new ToolRegistry();
+    r.register(withCaps('read', ['fs.read']));
+    r.register(withCaps('bash', ['shell.arbitrary']));
+    r.register(withCaps('fetch', ['net.outbound']));
+    r.register(withCaps('tool_use', ['tool.mutate.any']));
+    r.setSessionRestriction({
+      denyCapabilities: ['shell.arbitrary', 'net.outbound', 'tool.mutate.any'],
+    });
+    expect(
+      r
+        .list()
+        .map((x) => x.name)
+        .sort(),
+    ).toEqual(['read', 'tool_use']);
+  });
+
+  it('fails closed on undeclared non-core tools when asked', () => {
+    const r = new ToolRegistry();
+    r.register(withCaps('clarify'));
+    r.register(withCaps('plugin_thing'), 'some-plugin');
+    r.register(withCaps('plugin_reader', ['fs.read']), 'some-plugin');
+    r.setSessionRestriction({ requireDeclaredCapabilities: true });
+    expect(
+      r
+        .list()
+        .map((x) => x.name)
+        .sort(),
+    ).toEqual(['clarify', 'plugin_reader']);
+  });
+});

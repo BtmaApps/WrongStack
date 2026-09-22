@@ -25,6 +25,7 @@ WrongStack exposes standalone CLI entry points as `wstack <subcommand>` (the `wr
 | `wstack version`, `wstack help` | `--version` and `--help` are top-level flag paths | [version and help](version-help.md) |
 | `wstack projects` | — | [project registry](projects.md) |
 | `wstack project id\|init\|rekey` | — | [project identity](project.md) |
+| `wstack import-claude-code` | `--apply`, `--overwrite`, `--enable-project-servers` | [Claude Code import](import-claude-code.md) |
 | `wstack modeldiag` | `keys`, `caps`, `suggest`, `test`, `bench`, `eval` (`evall` alias) | [model diagnostics](modeldiag.md) |
 | `wstack quick` | intercepted by `boot()` before its registered fallback handler | [quick launch](quick.md) |
 | `wstack bench` | `run`, `compare`, `mine`, `report`, `list` | [benchmarks](bench.md) |

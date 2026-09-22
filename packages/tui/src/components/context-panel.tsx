@@ -124,7 +124,7 @@ export function ContextPanel({ data, onClose }: ContextPanelProps): React.ReactE
         accent={theme.monitor.fleet}
         icon={glyphs.context}
         title="CONTEXT"
-        kicker={size.columns >= 80 ? 'context window' : undefined}
+        kicker="context window"
         maxHeight={Math.max(8, size.rows - 1)}
         right={
           <Text color={theme.textMuted}>
@@ -153,7 +153,7 @@ export function ContextPanel({ data, onClose }: ContextPanelProps): React.ReactE
       accent={zoneClr}
       icon={glyphs.context}
       title="CONTEXT WINDOW"
-      kicker={size.columns >= 80 ? `${data.model} · ${data.provider}` : undefined}
+      kicker={`${data.model} · ${data.provider}`}
       maxHeight={Math.max(8, size.rows - 1)}
       right={
         <Text>

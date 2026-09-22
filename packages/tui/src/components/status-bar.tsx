@@ -169,7 +169,9 @@ export const StatusBar = memo(function StatusBar({
   const cost = tokenData?.cost;
   const cache = tokenData?.cacheStats;
 
-  const animationActive = state !== 'idle' && state !== 'aborting';
+  // A `static` style renders '●' below; its spinner clock must not run.
+  const animationActive =
+    state !== 'idle' && state !== 'aborting' && thinkingAnimationStyle !== 'static';
   const { frame: spinnerIdx, time: animationTime } = useAnimation({
     interval: SPINNER_INTERVAL_MS,
     isActive: animationActive,
@@ -184,6 +186,7 @@ export const StatusBar = memo(function StatusBar({
   const stalenessGuard = useChipStalenessGuard({
     agentState: state,
     spinnerPhase: spinnerIdx,
+    spinnerAnimated: thinkingAnimationStyle !== 'static',
     tokenFingerprint,
     contextRatio: context && context.max > 0 ? context.used / context.max : undefined,
     tokenSubscriptionActive: events != null,

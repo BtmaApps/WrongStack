@@ -29,12 +29,20 @@ vi.mock('@wrongstack/core/replay', () => ({
 
 import { bindReplayToContainer } from '../src/wiring/replay.js';
 
+// Mirrors the real Container contract: `bind` refuses a bound token and
+// `override` refuses an unbound one. The fake used to let `bind` replace, which
+// hid that `wstack --record` crashed with "ProviderRunner already bound".
 function container(initial?: unknown) {
   const bindings = new Map<symbol, () => unknown>();
   if (initial) bindings.set(TOKENS.ProviderRunner, () => initial);
   return {
     has: vi.fn((token: symbol) => bindings.has(token)),
     bind: vi.fn((token: symbol, factory: () => unknown) => {
+      if (bindings.has(token)) throw new Error('already bound');
+      bindings.set(token, factory);
+    }),
+    override: vi.fn((token: symbol, factory: () => unknown) => {
+      if (!bindings.has(token)) throw new Error('not bound');
       bindings.set(token, factory);
     }),
     resolve: vi.fn((token: symbol) => {
@@ -64,7 +72,8 @@ describe('bindReplayToContainer', () => {
       mode: 'record',
     });
 
-    expect(target.bind).toHaveBeenCalledTimes(2);
+    expect(target.bind).toHaveBeenCalledOnce();
+    expect(target.override).toHaveBeenCalledOnce();
     const inner = (mocks.runnerArgs[0] as [unknown, Record<string, unknown>])[0] as {
       run(options: unknown): Promise<unknown>;
     };
@@ -96,7 +105,8 @@ describe('bindReplayToContainer', () => {
       logger: { debug, warn } as never,
     });
 
-    expect(target.bind).toHaveBeenCalledOnce();
+    expect(target.bind).not.toHaveBeenCalled();
+    expect(target.override).toHaveBeenCalledOnce();
     const [capturedInner, options] = mocks.runnerArgs[0] as [
       unknown,
       { logger: { debug(message: string): void; warn(message: string): void } },

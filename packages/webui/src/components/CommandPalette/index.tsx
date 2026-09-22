@@ -12,8 +12,6 @@ import {
   Maximize2,
   Monitor,
   Moon,
-  Pause,
-  Play,
   Rocket,
   RotateCcw,
   Scissors,
@@ -39,7 +37,6 @@ import { navigateToView, openMainView, showPanel } from '@/lib/view-navigation';
 import {
   useChatStore,
   useConfigStore,
-  useGoalRunStore,
   useHistoryStore,
   useLocalPrefs,
   useSessionTabStore,
@@ -341,20 +338,6 @@ export function CommandPalette() {
         icon: Rocket,
         keywords: ['goal', 'autonomous', 'phases', 'rocket'],
         run: () => openMainView('goal'),
-      },
-      {
-        id: 'goal-toggle',
-        category: 'Command',
-        label: useGoalRunStore.getState().autonomous
-          ? t('commandPalette:cmd.autoOn')
-          : t('commandPalette:cmd.autoOff'),
-        icon: useGoalRunStore.getState().autonomous ? Pause : Play,
-        hint: t('commandPalette:cmd.autoHint'),
-        keywords: ['autonomous', 'goal', 'auto', 'pause', 'resume'],
-        run: () => {
-          const next = !useGoalRunStore.getState().autonomous;
-          ws.toggleGoalAutonomous(next);
-        },
       },
       {
         id: 'goal-stop',

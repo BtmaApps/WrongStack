@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { TerminalLifecycle, writeErr } from '@wrongstack/core/utils';
 import React from 'react';
 import { App } from './app.js';
+import { titleAnimationAllowed } from './motion.js';
 import { ALT_SCREEN_ON } from './mouse.js';
 import { createExitOrchestrator } from './run-tui-exits.js';
 import { resolveTuiLaunchPlan } from './run-tui-launch.js';
@@ -112,7 +113,7 @@ export async function runTui(opts: RunTuiOptions): Promise<number> {
     model: opts.model,
     projectRoot: opts.projectRoot,
   });
-  if (opts.titleAnimation !== false) startTitle();
+  if (titleAnimationAllowed(opts.titleAnimation)) startTitle();
 
   // Exit orchestration (idempotent cleanup, durable teardown, the six exit
   // paths, registration lifecycle) moved verbatim into createExitOrchestrator

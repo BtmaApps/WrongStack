@@ -1,6 +1,6 @@
 import { clearChatContext } from '@/lib/clear-chat-context';
 import { navigateToView, openMainView, showPanel } from '@/lib/view-navigation';
-import { useSessionStore, useUIStore } from '@/stores';
+import { useGoalRunStore, useSessionStore, useUIStore } from '@/stores';
 import { useSystemPromptStore } from '@/stores/system-prompt-store';
 import type { WSClientMessage } from '@/types';
 import { downloadChatAsMarkdown } from '../CommandPalette/export-utils.js';
@@ -21,6 +21,12 @@ type SlashRoutingClientMessage = Extract<
   | { type: 'brain.status' }
   | { type: 'autonomy.switch' }
   | { type: 'goal.get' }
+  | { type: 'goal-state.get' }
+  | { type: 'goal-state.set' }
+  | { type: 'goal-state.refine' }
+  | { type: 'goal-state.pause' }
+  | { type: 'goal-state.resume' }
+  | { type: 'goal-state.clear' }
   | { type: 'mode.switch' }
   | { type: 'modes.list' }
   | { type: 'mcp.list' }
@@ -30,6 +36,9 @@ type SlashRoutingClientMessage = Extract<
   | { type: 'mcp.prompt.get' }
   | { type: 'working_dir.set' }
   | { type: 'goal.start' }
+  | { type: 'goal.load' }
+  | { type: 'goal.save' }
+  | { type: 'goal.list' }
   | { type: 'goal.pause' }
   | { type: 'goal.resume' }
   | { type: 'goal.stop' }
@@ -234,7 +243,7 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
       addMessage({ role: 'assistant', content: `🤖 Autonomy mode → **${mode}**.` });
       return true;
     }
-    case '/goal': // start <title> | pause | resume | stop. No arg → open the full view.
+    case '/goal': // mission set/status + phase-run start/pause/resume/stop.
       {
         const [sub, ...rest] = args.split(/\s+/).filter(Boolean);
         const subcmd = (sub ?? '').toLowerCase();
@@ -248,16 +257,89 @@ export function runChatSlashCommand(options: RunChatSlashCommandOptions): boolea
           openMainView('goal');
           return true;
         }
+        if (subcmd === 'set' || subcmd === 'new') {
+          const goal = rest.join(' ').trim();
+          if (!goal) {
+            addMessage({ role: 'assistant', content: 'Usage: `/goal set <mission>`' });
+            return true;
+          }
+          client?.send?.({
+            type: 'goal-state.set',
+            payload: client.withSession?.({ goal }) ?? { goal },
+          });
+          useUIStore.getState().setDockSection('goal-state');
+          showPanel('chat');
+          return true;
+        }
+        if (subcmd === 'clear') {
+          client?.send?.({ type: 'goal-state.clear', payload: {} });
+          return true;
+        }
+        if (subcmd === 'save') {
+          client?.send?.({ type: 'goal.save', payload: {} });
+          return true;
+        }
+        if (subcmd === 'list') {
+          client?.send?.({ type: 'goal.list', payload: {} });
+          openMainView('goal');
+          return true;
+        }
+        if (subcmd === 'load') {
+          const resume = rest.includes('--resume');
+          const query = rest
+            .filter((part) => part !== '--resume')
+            .join(' ')
+            .trim();
+          client?.send?.({ type: 'goal.load', payload: { query, resume } });
+          openMainView('goal');
+          return true;
+        }
+        if (subcmd === 'refine') {
+          client?.send?.({
+            type: 'goal-state.refine',
+            payload: client.withSession?.({}) ?? {},
+          });
+          useUIStore.getState().setDockSection('goal-state');
+          showPanel('chat');
+          return true;
+        }
+        if (subcmd === 'status' || subcmd === 'journal') {
+          client?.send?.({ type: 'goal-state.get' });
+          useUIStore.getState().setDockSection('goal-state');
+          showPanel('chat');
+          return true;
+        }
         if (subcmd === 'pause') {
-          client?.send?.({ type: 'goal.pause', payload: {} });
+          const runStatus = useGoalRunStore.getState().status;
+          client?.send?.(
+            runStatus === 'running'
+              ? { type: 'goal.pause', payload: {} }
+              : { type: 'goal-state.pause', payload: {} },
+          );
           return true;
         }
         if (subcmd === 'resume') {
-          client?.send?.({ type: 'goal.resume', payload: {} });
+          const { status: runStatus, graphId: savedGraphId } = useGoalRunStore.getState();
+          client?.send?.(
+            runStatus === 'paused'
+              ? { type: 'goal.resume', payload: {} }
+              : (runStatus === 'stopped' || runStatus === 'failed') && savedGraphId
+                ? { type: 'goal.resume', payload: { graphId: savedGraphId } }
+                : { type: 'goal-state.resume', payload: {} },
+          );
           return true;
         }
         if (subcmd === 'stop') {
           client?.send?.({ type: 'goal.stop', payload: {} });
+          return true;
+        }
+        if (subcmd) {
+          client?.send?.({
+            type: 'goal-state.set',
+            payload: client.withSession?.({ goal: args.trim() }) ?? { goal: args.trim() },
+          });
+          useUIStore.getState().setDockSection('goal-state');
+          showPanel('chat');
           return true;
         }
         openMainView('goal');

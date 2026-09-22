@@ -207,7 +207,7 @@ export {
   handleGitUnstage,
   repoRelativePrefix,
 } from './git-handlers.js';
-export { handleGoalGet } from './goal-handlers.js';
+export { handleGoalGet, handleGoalStateMutation } from './goal-handlers.js';
 export type { GoalRouteHandlers } from './goal-routes.js';
 // ── Additional re-exports for consumers/tests ──────────────────────────────
 // Extracted server modules whose route handlers, validators, stores, and

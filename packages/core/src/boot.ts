@@ -8,6 +8,7 @@ import { DefaultSecretVault, migratePlaintextSecrets } from './security/secret-v
 import { ALL_DESTRUCTIVE_KINDS } from './security/yolo-risk.js';
 import { DefaultConfigLoader } from './storage/config-loader.js';
 import type { Config, TokenSavingTier } from './types/config.js';
+import { REASONING_EFFORT_LEVELS, type ReasoningEffort } from './types/provider.js';
 
 /**
  * Values `--token-saving-tier` accepts, including the `'auto'` default. Kept
@@ -345,6 +346,17 @@ export function flagsToConfigPatch(flags: Record<string, string | boolean>): Par
     if (list.length > 0) patch.fallbackModels = list;
   }
   if (typeof flags['cwd'] === 'string') patch.cwd = flags['cwd'];
+  // `--effort <level>` is the startup twin of `/effort <level>`: same config
+  // key, but a session-only patch. An unknown level leaves the configured
+  // effort alone rather than guessing, like `--token-saving-tier`.
+  if (typeof flags['effort'] === 'string') {
+    const requested = flags['effort'].trim().toLowerCase();
+    if ((REASONING_EFFORT_LEVELS as readonly string[]).includes(requested)) {
+      patch.modelRuntime = {
+        reasoning: { effort: requested as ReasoningEffort },
+      } as Config['modelRuntime'];
+    }
+  }
   if (typeof flags['log-level'] === 'string') {
     patch.log = { level: flags['log-level'] as Config['log']['level'] };
   } else if (flags['verbose']) {

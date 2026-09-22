@@ -306,6 +306,10 @@ describe('matrixKeyKind / isValidMatrixKey', () => {
 
 describe('agent catalog prompts', () => {
   it('loads every catalog prompt from file-backed instructions', () => {
+    // Catalog prompts are loaded lazily, so an empty AGENT_CATALOG is a real
+    // regression shape — and one this loop could not report, because zero
+    // iterations pass. "Every" needs a floor to mean anything.
+    expect(Object.keys(AGENT_CATALOG).length).toBeGreaterThan(0);
     for (const [role, def] of Object.entries(AGENT_CATALOG)) {
       expect(def.config.prompt?.trim(), role).toBeTruthy();
       expect(def.config.prompt, role).toContain('You are');

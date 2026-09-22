@@ -147,6 +147,8 @@ describe('resolveProviderModelList', () => {
     const list = resolveProviderModelList([], undefined, 'openai-codex');
     expect(list.map((m) => m.id)).toEqual([
       'gpt-6-astra',
+      'gpt-6-sol',
+      'gpt-6-luna',
       'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',
@@ -166,6 +168,8 @@ describe('resolveProviderModelList', () => {
     const list = resolveProviderModelList(undefined, catalog([]), 'openai-codex');
     expect(list.map((m) => m.id)).toEqual([
       'gpt-6-astra',
+      'gpt-6-sol',
+      'gpt-6-luna',
       'gpt-5.6-sol',
       'gpt-5.6-terra',
       'gpt-5.6-luna',

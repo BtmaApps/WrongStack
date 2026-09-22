@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { EventBus } from '@wrongstack/core/kernel';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGoalHost, type GoalHostDeps } from '../src/goal-host.js';
 
 // A minimal fake MultiAgentHost: makeSubagentFactory() returns a factory whose
@@ -60,9 +60,16 @@ describe('createGoalHost', () => {
   afterEach(async () => {
     if (prevVerify === undefined) delete process.env['WRONGSTACK_GOAL_VERIFY'];
     else process.env['WRONGSTACK_GOAL_VERIFY'] = prevVerify;
-    // Fire-and-forget `void persist(graph)` calls can still be in flight after a
-    // run finalizes; retry the removal so a trailing write doesn't ENOTEMPTY on
-    // Windows.
+    await vi.waitFor(
+      async () => {
+        const locked = await fs
+          .access(path.join(storeDir, '.active-run.lock'))
+          .then(() => true)
+          .catch(() => false);
+        expect(locked).toBe(false);
+      },
+      { timeout: 30_000 },
+    );
     const rmOpts = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const;
     await fs.rm(storeDir, rmOpts);
     await fs.rm(projectRoot, rmOpts);
@@ -93,8 +100,8 @@ describe('createGoalHost', () => {
     expect(result.graph.phases.size).toBe(1);
 
     await completed;
-    // Let trailing fire-and-forget persists settle before asserting/cleanup.
-    await new Promise((r) => setTimeout(r, 30));
+    // Completion is published before the final snapshot and lease release.
+    await vi.waitFor(() => expect(host.getGoalRunner()).toBeNull(), { timeout: 5_000 });
 
     const phase = Array.from(result.graph.phases.values())[0]!;
     expect(phase.status).toBe('completed');
@@ -104,7 +111,7 @@ describe('createGoalHost', () => {
     const files = await fs.readdir(storeDir);
     expect(files.some((f) => f.endsWith('.json'))).toBe(true);
 
-    // The run finalized — no active runner remains.
+    // The run finalized after its last durable snapshot.
     expect(host.getGoalRunner()).toBeNull();
   });
 

@@ -1,6 +1,6 @@
-import { Box, Text } from '../ink.js';
 import type React from 'react';
 import { F_KEY_PANEL_ENTRIES } from '../f-key-panels.js';
+import { Box, Text } from '../ink.js';
 import { theme } from '../theme.js';
 import { glyphs } from '../ui-glyphs.js';
 import {
@@ -34,7 +34,7 @@ export function FKeyPicker({ selected }: FKeyPickerProps): React.ReactElement {
       accent={theme.accent}
       icon={glyphs.tools}
       title="FUNCTION KEYS"
-      kicker={size.columns >= 78 ? 'panel launcher' : undefined}
+      kicker="panel launcher"
       right={<Text color={theme.textMuted}>{F_KEY_PANEL_ENTRIES.length} surfaces</Text>}
       footer={
         <Box gap={2}>
