@@ -304,7 +304,9 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
       ['/help', 'Help'],
       ['/prompts', 'Prompt library'],
       ['/skill', 'Skills'],
-      ['/design', 'Design Studio'],
+      // The needle must be panel text, not the slash-command description the
+      // completion dropdown paints while the command is still being typed.
+      ['/design', 'Design Studio · pick a kit'],
       ['/fallback', 'Fallback routing'],
       ['/tier', 'Model cost tiers'],
       ['/profile', 'Profiles'],
@@ -315,8 +317,11 @@ describe.skipIf(!runnable)('bare /subagent-models — PTY end-to-end', () => {
       ['/audit', 'Side Effects Audit'],
       ['/f12', 'KANBAN'],
     ] as const) {
-      const pickerStart = output.length;
       await type(command);
+      // Search only what the submit paints. Command descriptions rendered by
+      // the completion dropdown while typing can otherwise satisfy the wait
+      // before the panel exists, leaking the next keystrokes into it.
+      const pickerStart = output.length;
       child.write('\r');
       await expectSoon(title, 10_000, pickerStart);
       await sleep(200);
