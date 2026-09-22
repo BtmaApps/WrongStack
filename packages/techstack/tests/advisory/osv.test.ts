@@ -60,7 +60,8 @@ describe('queryOsvBatch', () => {
       .mockResolvedValueOnce(ok(Array.from({ length: 500 }, () => ({}))))
       .mockResolvedValueOnce(ok([{ vulns: [{ id: 'OSV-LAST', summary: 'last one' }] }]));
 
-    const result = await queryOsvBatch(purls);
+    // Hydration is disabled: this test focuses on chunking, not the GET budget.
+    const result = await queryOsvBatch(purls, { maxSeverityLookups: 0 });
 
     expect(requestWithRetry).toHaveBeenCalledTimes(2);
     expect(sentQueries(0)).toHaveLength(500);
@@ -117,5 +118,113 @@ describe('queryOsvBatch', () => {
     const result = await queryOsvBatch([]);
     expect(requestWithRetry).not.toHaveBeenCalled();
     expect(result.advisories.size).toBe(0);
+  });
+
+  // Regression (round r26): /v1/querybatch returns ID+modified stubs without
+  // any severity signal, so every id is hydrated via GET /v1/vulns/{id} and
+  // the full records feed real severities/summaries into the advisories.
+  it('hydrates querybatch stubs via GET /v1/vulns/{id} and feeds real severities', async () => {
+    requestWithRetry.mockImplementation(async (opts: { method?: string; path?: string }) => {
+      if (opts.method === 'POST' && opts.path === '/v1/querybatch') {
+        return ok([
+          {
+            vulns: [
+              { id: 'HYDRA-VEC', modified: 'm' },
+              { id: 'HYDRA-DB', modified: 'm' },
+              { id: 'HYDRA-MISSING', modified: 'm' },
+            ],
+          },
+        ]);
+      }
+      if (opts.method === 'GET' && opts.path === '/v1/vulns/HYDRA-VEC') {
+        return {
+          statusCode: 200,
+          headers: {},
+          body: JSON.stringify({
+            id: 'HYDRA-VEC',
+            severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }],
+          }),
+        };
+      }
+      if (opts.method === 'GET' && opts.path === '/v1/vulns/HYDRA-DB') {
+        return {
+          statusCode: 200,
+          headers: {},
+          body: JSON.stringify({
+            id: 'HYDRA-DB',
+            summary: 'db-backed summary',
+            database_specific: { severity: 'HIGH' },
+          }),
+        };
+      }
+      return { statusCode: 404, headers: {}, body: 'not found' };
+    });
+
+    const result = await queryOsvBatch(['pkg:npm/hydra@1.0.0']);
+    const advisories = result.advisories.get('pkg:npm/hydra@1.0.0') ?? [];
+    const byId = new Map(advisories.map((a) => [a.id, a]));
+    expect(byId.get('HYDRA-VEC')?.severity, 'CVSS vector base 9.8 -> critical').toBe('critical');
+    expect(byId.get('HYDRA-DB')?.severity, 'database_specific HIGH -> high').toBe('high');
+    expect(byId.get('HYDRA-DB')?.summary).toBe('db-backed summary');
+    expect(byId.get('HYDRA-MISSING')?.severity, '404 degrades to the stub mapping').toBe('info');
+    const getPaths = requestWithRetry.mock.calls
+      .map(([opts]) => opts as { method?: string; path?: string })
+      .filter((opts) => opts.method === 'GET')
+      .map((opts) => opts.path);
+    expect(getPaths).toEqual([
+      '/v1/vulns/HYDRA-VEC',
+      '/v1/vulns/HYDRA-DB',
+      '/v1/vulns/HYDRA-MISSING',
+    ]);
+  });
+
+  it('caches hydrations across calls (no repeated GETs for the same id)', async () => {
+    requestWithRetry.mockImplementation(async (opts: { method?: string; path?: string }) => {
+      if (opts.method === 'POST' && opts.path === '/v1/querybatch') {
+        return ok([{ vulns: [{ id: 'HYDRA-CACHE', modified: 'm' }] }]);
+      }
+      if (opts.method === 'GET' && opts.path === '/v1/vulns/HYDRA-CACHE') {
+        return {
+          statusCode: 200,
+          headers: {},
+          body: JSON.stringify({
+            id: 'HYDRA-CACHE',
+            severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N' }],
+          }),
+        };
+      }
+      throw new Error(`unexpected HTTP call ${opts.method} ${opts.path}`);
+    });
+
+    const countGets = () =>
+      requestWithRetry.mock.calls.filter(([opts]) => (opts as { method?: string }).method === 'GET')
+        .length;
+
+    await queryOsvBatch(['pkg:npm/cache@1.0.0']);
+    expect(countGets()).toBe(1);
+    await queryOsvBatch(['pkg:npm/cache@1.0.0']);
+    expect(countGets()).toBe(1);
+    const advisories = (await queryOsvBatch(['pkg:npm/cache@1.0.0'])).advisories.get(
+      'pkg:npm/cache@1.0.0',
+    );
+    expect(advisories?.[0]?.severity, '7.5 vector served from cache').toBe('high');
+  });
+
+  it('respects maxSeverityLookups: 0 (hydration disabled)', async () => {
+    requestWithRetry.mockImplementation(async (opts: { method?: string; path?: string }) => {
+      if (opts.method === 'POST' && opts.path === '/v1/querybatch') {
+        return ok([{ vulns: [{ id: 'HYDRA-OFF', modified: 'm' }] }]);
+      }
+      throw new Error(`unexpected HTTP call ${opts.method} ${opts.path}`);
+    });
+
+    const result = await queryOsvBatch(['pkg:npm/nohydra@1.0.0'], { maxSeverityLookups: 0 });
+    const getPaths = requestWithRetry.mock.calls
+      .map(([opts]) => opts as { method?: string; path?: string })
+      .filter((opts) => opts.method === 'GET')
+      .map((opts) => opts.path);
+    expect(getPaths).toEqual([]);
+    const advisories = result.advisories.get('pkg:npm/nohydra@1.0.0') ?? [];
+    expect(advisories[0]?.severity).toBe('info');
   });
 });
