@@ -15,10 +15,16 @@ import {
   createProjectMailbox,
   getSharedProjectMailbox,
   MailboxProjectServerConnection,
+  mailboxProjectServerEndpoint,
+  mailboxProjectServerMetadataPath,
   type RemoteMailbox,
 } from '../../src/coordination/index.js';
 import type { HqPublisher } from '../../src/hq/publisher.js';
 import { EventBus } from '../../src/kernel/events.js';
+import {
+  waitForEndpointClosed,
+  waitForMetadataRemoval,
+} from '../helpers/project-server-harness.js';
 
 let dir: string;
 const openMailboxes: RemoteMailbox[] = [];
@@ -59,7 +65,11 @@ afterEach(async () => {
   for (const mailbox of openMailboxes.splice(0)) await mailbox.close().catch(() => undefined);
   const control = new MailboxProjectServerConnection(dir);
   try {
-    await control.shutdown('test-teardown');
+    const result = await control.shutdown('test-teardown');
+    if (result.stopped) {
+      await waitForMetadataRemoval(mailboxProjectServerMetadataPath(dir));
+      await waitForEndpointClosed(mailboxProjectServerEndpoint(dir));
+    }
   } catch {
     // No owner running, or it exited on its own.
   } finally {

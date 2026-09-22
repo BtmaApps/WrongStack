@@ -81,7 +81,8 @@ export async function waitForEndpointClosed(endpoint: string, timeoutMs = 15_000
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      await connectRaw(endpoint, 500);
+      const socket = await connectRaw(endpoint, 500);
+      socket.destroy();
       await sleep(50);
     } catch {
       return;
